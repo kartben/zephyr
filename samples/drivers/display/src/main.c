@@ -14,6 +14,9 @@ LOG_MODULE_REGISTER(sample, LOG_LEVEL_INF);
 #include <zephyr/device.h>
 #include <zephyr/drivers/display.h>
 
+#include <zephyr/drivers/i2c.h>
+
+
 #ifdef CONFIG_ARCH_POSIX
 #include "posix_board_if.h"
 #endif
@@ -163,6 +166,9 @@ static void fill_buffer_mono(enum corner corner, uint8_t grey, uint8_t *buf,
 	memset(buf, color, buf_size);
 }
 
+static const struct i2c_dt_spec i2c_axp192 =
+	I2C_DT_SPEC_GET(DT_NODELABEL(axp192));
+
 void main(void)
 {
 	size_t x;
@@ -179,6 +185,27 @@ void main(void)
 	struct display_buffer_descriptor buf_desc;
 	size_t buf_size = 0;
 	fill_buffer fill_buffer_fnc = NULL;
+
+
+
+
+	if (!device_is_ready(i2c_axp192.bus)) {
+		printk("AXP192 I2C bus not ready.\n");
+		return;
+	}
+
+	i2c_reg_write_byte_dt(&i2c_axp192, 0x28, 0xCC);
+	i2c_reg_write_byte_dt(&i2c_axp192, 0x82, 0xff);
+	i2c_reg_write_byte_dt(&i2c_axp192, 0x33, 0xC0);
+	i2c_reg_write_byte_dt(&i2c_axp192, 0x12, 0x5F);
+	i2c_reg_write_byte_dt(&i2c_axp192, 0x36, 0x0c);
+	i2c_reg_write_byte_dt(&i2c_axp192, 0x91, 0xf0);
+	i2c_reg_write_byte_dt(&i2c_axp192, 0x90, 0x02);
+	i2c_reg_write_byte_dt(&i2c_axp192, 0x30, 0x80);
+	i2c_reg_write_byte_dt(&i2c_axp192, 0x39, 0xfc);
+	i2c_reg_write_byte_dt(&i2c_axp192, 0x35, 0xa2);
+	i2c_reg_write_byte_dt(&i2c_axp192, 0x32, 0x46);
+
 
 	display_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
 	if (!device_is_ready(display_dev)) {
@@ -291,6 +318,7 @@ void main(void)
 		display_write(display_dev, x, y, &buf_desc, buf);
 		++grey_count;
 		k_msleep(grey_scale_sleep);
+//		k_sleep(K_MSEC(3000));	
 #if CONFIG_TEST
 		if (grey_count >= 1024) {
 			break;

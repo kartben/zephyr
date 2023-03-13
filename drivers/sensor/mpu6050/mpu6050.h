@@ -16,6 +16,7 @@
 
 #define MPU6050_REG_CHIP_ID		0x75
 #define MPU6050_CHIP_ID			0x68
+#define MPU6886_CHIP_ID			0x19
 #define MPU9250_CHIP_ID			0x71
 
 #define MPU6050_REG_GYRO_CFG		0x1B
