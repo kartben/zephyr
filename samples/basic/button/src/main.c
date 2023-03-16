@@ -32,13 +32,10 @@ static struct gpio_callback button_cb_data;
 static struct gpio_dt_spec led = GPIO_DT_SPEC_GET_OR(DT_ALIAS(led0), gpios,
 						     {0});
 
-uint8_t active_tab;
-
 void button_pressed(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
 {
 	printk("Button pressed at %" PRIu32 "\n", k_cycle_get_32());
-	active_tab = active_tab + 1 % 2 ;
 }
 
 void main(void)

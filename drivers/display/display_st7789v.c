@@ -71,10 +71,6 @@ static void st7789v_set_lcd_margins(const struct device *dev,
 static void st7789v_transmit(const struct device *dev, uint8_t cmd,
 			     uint8_t *tx_data, size_t tx_count)
 {
-
-	LOG_DBG("cmd: 0x%02x, tx_count: %zu", cmd, tx_count);
-	LOG_HEXDUMP_DBG(tx_data, tx_count, "tx_data: ");
-
 	const struct st7789v_config *config = dev->config;
 	uint16_t data = cmd;
 
@@ -163,22 +159,12 @@ static void st7789v_set_mem_area(const struct device *dev, const uint16_t x,
 	uint16_t ram_x = x + data->x_offset;
 	uint16_t ram_y = y + data->y_offset;
 
-	LOG_DBG("ram_x %u", ram_x);
-	LOG_DBG("ram_y %u", ram_y);
-
-
 	spi_data[0] = sys_cpu_to_be16(ram_x);
 	spi_data[1] = sys_cpu_to_be16(ram_x + w - 1);
-
-	LOG_DBG("CASET %x %x", spi_data[0], spi_data[1]);
-
 	st7789v_transmit(dev, ST7789V_CMD_CASET, (uint8_t *)&spi_data[0], 4);
 
 	spi_data[0] = sys_cpu_to_be16(ram_y);
 	spi_data[1] = sys_cpu_to_be16(ram_y + h - 1);
-
-	LOG_DBG("RASET %x %x", spi_data[0], spi_data[1]);
-
 	st7789v_transmit(dev, ST7789V_CMD_RASET, (uint8_t *)&spi_data[0], 4);
 }
 
@@ -286,12 +272,11 @@ static void st7789v_lcd_init(const struct device *dev)
 
 	st7789v_set_lcd_margins(dev, data->x_offset,
 				data->y_offset);
-	LOG_DBG("set lcd margins x %d, y %d", data->x_offset, data->y_offset);
 
 	st7789v_transmit(dev, ST7789V_CMD_CMD2EN,
 			 (uint8_t *)config->cmd2en_param,
 			 sizeof(config->cmd2en_param));
-	
+
 	st7789v_transmit(dev, ST7789V_CMD_PORCTRL,
 			 (uint8_t *)config->porch_param,
 			 sizeof(config->porch_param));
@@ -332,7 +317,6 @@ static void st7789v_lcd_init(const struct device *dev)
 	/* Interface Pixel Format */
 	tmp = config->colmod;
 	st7789v_transmit(dev, ST7789V_CMD_COLMOD, &tmp, 1);
-	k_sleep(K_MSEC(10));
 
 	tmp = config->lcm;
 	st7789v_transmit(dev, ST7789V_CMD_LCMCTRL, &tmp, 1);
@@ -367,8 +351,6 @@ static int st7789v_init(const struct device *dev)
 		LOG_ERR("SPI device not ready");
 		return -ENODEV;
 	}
-
-	k_sleep(K_MSEC(2000));
 
 	if (config->reset_gpio.port != NULL) {
 		if (!device_is_ready(config->reset_gpio.port)) {

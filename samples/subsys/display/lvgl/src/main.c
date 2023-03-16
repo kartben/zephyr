@@ -10,6 +10,7 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/i2c.h>
+#include <zephyr/random/rand32.h>
 
 #include <lvgl.h>
 #include <stdio.h>
@@ -57,14 +58,47 @@ static const struct gpio_dt_spec button = GPIO_DT_SPEC_GET_OR(SW0_NODE, gpios,
 							      {0});
 static struct gpio_callback button_cb_data;
 
+
+
+/*
+ * Get button configuration from the devicetree sw0 alias. This is mandatory.
+ */
+#define SW1_NODE	DT_ALIAS(sw1)
+#if !DT_NODE_HAS_STATUS(SW1_NODE, okay)
+#error "Unsupported board: sw0 devicetree alias is not defined"
+#endif
+static const struct gpio_dt_spec button2 = GPIO_DT_SPEC_GET_OR(SW1_NODE, gpios,
+							      {0});
+static struct gpio_callback button2_cb_data;
+
+
+
+
+
 uint8_t new_active_tab=0;
+#define MAX_TABS 3
 
 void button_pressed(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
 {
 	printk("Button pressed at %" PRIu32 "\n", k_cycle_get_32());
-	new_active_tab = (new_active_tab + 1) % 2 ;
+	new_active_tab = (new_active_tab + 1) % MAX_TABS ;
 }
+
+
+uint8_t backlight_on = 0;
+
+void button2_pressed(const struct device *dev, struct gpio_callback *cb,
+		    uint32_t pins)
+{
+	printk("Button2 pressed at %" PRIu32 "\n", k_cycle_get_32());
+	backlight_on = !backlight_on;
+}
+
+
+lv_obj_t *tabview;
+lv_timer_t *fetch_and_display_timer;
+
 
 
 
@@ -211,15 +245,7 @@ static void bas_notify(void)
 
 static void hrs_notify(void)
 {
-	static uint8_t heartrate = 90U;
-
-	/* Heartrate measurements simulation */
-	heartrate++;
-	if (heartrate == 160U) {
-		heartrate = 90U;
-	}
-
-	bt_hrs_notify(heartrate);
+	bt_hrs_notify(80 + (sys_rand32_get() % 10));
 }
 
 
@@ -273,7 +299,8 @@ void accelerometer_chart(lv_obj_t * parent)
     /*Do not display points on the data*/
     lv_obj_set_style_size(chart1, 0, LV_PART_INDICATOR);
 
-    lv_timer_create(fetch_and_display, 50, NULL);
+    fetch_and_display_timer = lv_timer_create(fetch_and_display, 20, NULL);
+	lv_timer_pause(fetch_and_display_timer);
 }  
 
 LV_IMG_DECLARE(zephyr_m5stickcplusR);
@@ -285,9 +312,54 @@ void zephyr_logo(lv_obj_t * parent) {
 	//lv_obj_align(img1, NULL, LV_ALIGN_IN_TOP_LEFT, 0, 0);
 }
 
+lv_obj_t *battery_mw_label;;
+lv_obj_t *battery_voltage_label;;
+
+static void refresh_battery_info(lv_timer_t * timer) {
+	char buf[64];
+	sprintf(buf, "%0.02f mA", getBatCurrent());
+	lv_label_set_text(battery_mw_label, buf);
+
+	sprintf(buf, "%0.02f V", getBatVoltage());
+	lv_label_set_text(battery_voltage_label, buf);
+}
+
+void battery_info(lv_obj_t * parent) {
+	battery_mw_label = lv_label_create(parent);
+	battery_voltage_label = lv_label_create(parent);
+
+	lv_obj_align(battery_mw_label, LV_ALIGN_CENTER, 0, 0);
+	lv_obj_align(battery_voltage_label, LV_ALIGN_BOTTOM_MID, 0, 0);
+
+	lv_timer_create(refresh_battery_info, 5000, NULL);
+}
+
 void main(void)
 {
 	int err, ret;
+
+
+
+
+	if (!device_is_ready(i2c_axp192.bus)) {
+		printk("AXP192 I2C bus not ready.\n");
+		return;
+	}
+
+	i2c_reg_write_byte_dt(&i2c_axp192, 0x28, 0xCC);
+	i2c_reg_write_byte_dt(&i2c_axp192, 0x82, 0xff);
+	i2c_reg_write_byte_dt(&i2c_axp192, 0x33, 0xC0);
+	i2c_reg_write_byte_dt(&i2c_axp192, 0x12, 0x5F);
+	i2c_reg_write_byte_dt(&i2c_axp192, 0x36, 0x0c);
+	i2c_reg_write_byte_dt(&i2c_axp192, 0x91, 0xf0);
+	i2c_reg_write_byte_dt(&i2c_axp192, 0x90, 0x02);
+	i2c_reg_write_byte_dt(&i2c_axp192, 0x30, 0x80);
+	i2c_reg_write_byte_dt(&i2c_axp192, 0x39, 0xfc);
+	i2c_reg_write_byte_dt(&i2c_axp192, 0x35, 0xa2);
+	i2c_reg_write_byte_dt(&i2c_axp192, 0x32, 0x46);
+
+
+
 
 	if (!gpio_is_ready_dt(&button)) {
 		printk("Error: button device %s is not ready\n",
@@ -314,6 +386,35 @@ void main(void)
 	gpio_add_callback(button.port, &button_cb_data);
 	printk("Set up button at %s pin %d\n", button.port->name, button.pin);
 
+
+
+	if (!gpio_is_ready_dt(&button2)) {
+		printk("Error: button device %s is not ready\n",
+		       button2.port->name);
+		return;
+	}
+
+	ret = gpio_pin_configure_dt(&button2, GPIO_INPUT);
+	if (ret != 0) {
+		printk("Error %d: failed to configure %s pin %d\n",
+		       ret, button2.port->name, button2.pin);
+		return;
+	}
+
+	ret = gpio_pin_interrupt_configure_dt(&button2,
+					      GPIO_INT_EDGE_TO_ACTIVE);
+	if (ret != 0) {
+		printk("Error %d: failed to configure interrupt on %s pin %d\n",
+			ret, button2.port->name, button2.pin);
+		return;
+	}
+
+	gpio_init_callback(&button2_cb_data, button2_pressed, BIT(button2.pin));
+	gpio_add_callback(button2.port, &button2_cb_data);
+	printk("Set up button at %s pin %d\n", button2.port->name, button2.pin);
+
+
+
 	err = bt_enable(NULL);
 	if (err) {
 		printk("Bluetooth init failed (err %d)\n", err);
@@ -323,24 +424,6 @@ void main(void)
 	bt_ready();
 
 	bt_conn_auth_cb_register(&auth_cb_display);
-
-	if (!device_is_ready(i2c_axp192.bus)) {
-		printk("AXP192 I2C bus not ready.\n");
-		return;
-	}
-
-	i2c_reg_write_byte_dt(&i2c_axp192, 0x28, 0xCC);
-	i2c_reg_write_byte_dt(&i2c_axp192, 0x82, 0xff);
-	i2c_reg_write_byte_dt(&i2c_axp192, 0x33, 0xC0);
-	i2c_reg_write_byte_dt(&i2c_axp192, 0x12, 0x5F);
-	i2c_reg_write_byte_dt(&i2c_axp192, 0x36, 0x0c);
-	i2c_reg_write_byte_dt(&i2c_axp192, 0x91, 0xf0);
-	i2c_reg_write_byte_dt(&i2c_axp192, 0x90, 0x02);
-	i2c_reg_write_byte_dt(&i2c_axp192, 0x30, 0x80);
-	i2c_reg_write_byte_dt(&i2c_axp192, 0x39, 0xfc);
-	i2c_reg_write_byte_dt(&i2c_axp192, 0x35, 0xa2);
-	i2c_reg_write_byte_dt(&i2c_axp192, 0x32, 0x46);
-
 
 
 	display_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
@@ -359,11 +442,11 @@ void main(void)
 		return;
 	}
 
-	lv_obj_t *tabview;
     tabview = lv_tabview_create(lv_scr_act(), LV_DIR_TOP, 0);
 
     lv_obj_t *tab1 = lv_tabview_add_tab(tabview, "Tab 1");
     lv_obj_t *tab2 = lv_tabview_add_tab(tabview, "Tab 2");
+    lv_obj_t *tab3 = lv_tabview_add_tab(tabview, "Tab 3");
 
     lv_obj_set_style_pad_all(tabview, 0, 0);
     lv_obj_set_style_pad_all(tab1, 0, 0);
@@ -375,11 +458,9 @@ void main(void)
 	lv_btnmatrix_set_btn_ctrl(tab_buttons, 1, LV_BTNMATRIX_CTRL_HIDDEN);
 
 
-
-
-
-	accelerometer_chart(tab2);
 	zephyr_logo(tab1);
+	accelerometer_chart(tab2);
+	battery_info(tab3);
 
 	display_blanking_off(display_dev);
 
@@ -389,7 +470,28 @@ void main(void)
 		lv_task_handler();
 		k_sleep(K_MSEC(10));
 
+		// set proper back_light
+		if (backlight_on) {
+			i2c_reg_write_byte_dt(&i2c_axp192, 0x28, 0xCC);
+		} else {
+//			i2c_reg_write_byte_dt(&i2c_axp192, 0x28, 0x7C);
+			i2c_reg_write_byte_dt(&i2c_axp192, 0x28, 0x0C);
+		}
+			
+
+
+
 		if (new_active_tab != lv_tabview_get_tab_act(tabview)) {
+
+			if(new_active_tab == 1) {
+				printk("resume timer\n");
+				lv_timer_resume(fetch_and_display_timer);
+			} else {
+				printk("pause timer\n");
+				lv_timer_pause(fetch_and_display_timer);
+			}
+
+
 			lv_tabview_set_act(tabview, new_active_tab, LV_ANIM_ON);
 		}
 

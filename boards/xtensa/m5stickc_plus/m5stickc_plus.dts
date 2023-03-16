@@ -124,29 +124,29 @@
 		compatible = "sitronix,st7789v";
 		reg = <0>;
 		spi-max-frequency = <20000000>;
-		cmd-data-gpios = <&gpio0 23 GPIO_ACTIVE_LOW>;	/* DET */
-		reset-gpios = <&gpio0 18 GPIO_ACTIVE_LOW>;	/* RESX reset */
+		cmd-data-gpios = <&gpio0 23 GPIO_ACTIVE_LOW>;
+		reset-gpios = <&gpio0 18 GPIO_ACTIVE_LOW>;
 
 		width = <135>;
 		height = <240>;
-		x-offset = <52>;
+		x-offset = <53>;
 		y-offset = <40>;
-		vcom = <0x28>; // check
-		gctrl = <0x35>; //check
-		
-		vrhs = <0x10>; //check
-		vdvs = <0x20>; //check
-		mdac = <0x08>; //check
-		gamma = <0x01>; // check (use default)
-		colmod = <0x55>; //check
-		lcm = <0x2c>; // check
-		porch-param = [0c 0c 00 33 33]; //check
-		cmd2en-param = [5a 69 02 00]; // check (use default)
-		pwctrl1-param = [a4 a1]; //check
-		pvgam-param = [d0 00 02 07 0a 28 32 44 42 06 0e 12 14 17]; //check
-		nvgam-param = [d0 00 02 07 0a 28 31 54 47 0e 1c 17 1b 1e]; //check
-		ram-param = [00 F0]; // check (use default)
-		rgb-param = [40 02 14]; // check(use default)
+
+		vcom = <0x28>;
+		gctrl = <0x35>;
+		vrhs = <0x10>;
+		vdvs = <0x20>;
+		mdac = <0x00>;
+		gamma = <0x01>;
+		colmod = <0x55>;
+		lcm = <0x2c>;
+		porch-param = [0c 0c 00 33 33];
+		cmd2en-param = [5a 69 02 00];
+		pwctrl1-param = [a4 a1];
+		pvgam-param = [d0 00 02 07 0a 28 32 44 42 06 0e 12 14 17];
+		nvgam-param = [d0 00 02 07 0a 28 31 54 47 0e 1c 17 1b 1e];
+		ram-param = [00 F0];
+		rgb-param = [40 02 14];
 	};
 	
 };
