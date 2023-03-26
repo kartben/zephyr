@@ -1049,3 +1049,8 @@ test_i2c_ina226: ina226@8d {
 	current-lsb-microamps = <5000>;
 	rshunt-micro-ohms = <500>;
 };
+
+test_i2c_sht21@8e {
+	compatible = "sensirion,sht21";
+	reg = <0x8e>;
+};
