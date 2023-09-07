@@ -283,6 +283,7 @@ external_content_contents = [
     (ZEPHYR_BASE, "boards/**/*.rst"),
     (ZEPHYR_BASE, "boards/**/doc"),
     (ZEPHYR_BASE, "samples/**/*.rst"),
+    (ZEPHYR_BASE, "samples/**/*.htm"),
     (ZEPHYR_BASE, "samples/**/doc"),
     (ZEPHYR_BASE, "snippets/**/*.rst"),
     (ZEPHYR_BASE, "snippets/**/doc"),
