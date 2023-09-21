@@ -1,0 +1,12 @@
+# XIAO ESP32S3 board configuration
+
+# Copyright (c) 2023 Seeed Studio inc.
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_SENSECAP_INDICATOR_ESP32S3
+	bool "Seeed Studio SenseCAP Indicator (ESP32)"
+	depends on SOC_SERIES_ESP32S3
+
+choice SOC_PART_NUMBER
+	default SOC_ESP32S3_R8
+endchoice

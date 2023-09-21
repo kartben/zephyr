@@ -1,0 +1,21 @@
+identifier: sensecap_indicator_esp32
+name: Seeed Studio SenseCAP Indicator (ESP32)
+type: mcu
+arch: xtensa
+toolchain:
+  - zephyr
+supported:
+  - gpio
+  - uart
+  - i2c
+  - spi
+  - can
+  - counter
+  - watchdog
+  - entropy
+  - pwm
+  - dma
+testing:
+  ignore_tags:
+    - net
+    - bluetooth
