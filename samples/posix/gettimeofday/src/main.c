@@ -1,35 +1,54 @@
-/*
- * Copyright (c) 2019 Linaro Limited
- *
- * SPDX-License-Identifier: Apache-2.0
- */
-
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
-#include <sys/time.h>
-#include <time.h>
-#include <unistd.h>
+#include <pthread.h>
+#include <string.h>
 
-int main(void)
-{
-	struct timeval tv;
+// Shared counter and spin lock
+int counter = 0;
+pthread_spinlock_t spinlock;
 
-	while (1) {
-		int res = gettimeofday(&tv, NULL);
-		time_t now = time(NULL);
-		struct tm tm;
-		localtime_r(&now, &tm);
+// Thread function to increment counter
+void* increment_counter(void* arg) {
+    char thread_name[16];
+    strncpy(thread_name, (char*) arg, sizeof(thread_name) - 1);
+    thread_name[sizeof(thread_name) - 1] = '\0';  // Null-terminate
+    pthread_setname_np(pthread_self(), thread_name);
 
-		if (res < 0) {
-			printf("Error in gettimeofday(): %d\n", errno);
-			return 1;
-		}
+    int rounds = 100000;  // Hard-coded for demonstration
 
-		printf("gettimeofday(): HI(tv_sec)=%d, LO(tv_sec)=%d, "
-		       "tv_usec=%d\n\t%s\n", (unsigned int)(tv.tv_sec >> 32),
-		       (unsigned int)tv.tv_sec, (unsigned int)tv.tv_usec,
-		       asctime(&tm));
-		sleep(1);
-	}
+    for (int i = 0; i < rounds; i++) {
+        pthread_spin_lock(&spinlock);  // Lock the counter
+        counter++;
+
+        // Print a message every 1000 increments
+        if (counter % 1000 == 0) {
+            printf("%s: Counter value %d\n", thread_name, counter);
+        }
+
+        pthread_spin_unlock(&spinlock);  // Unlock the counter
+    }
+
+    return NULL;
+}
+
+int main() {
+    pthread_t t1, t2;
+
+    // Initialize the spin lock
+    pthread_spin_init(&spinlock, 0);
+
+    // Create threads
+    pthread_create(&t1, NULL, increment_counter, (void*)"Thread 1");
+    pthread_create(&t2, NULL, increment_counter, (void*)"Thread 2");
+
+    // Wait for both threads to finish
+    pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
+
+    // Destroy the spin lock
+    pthread_spin_destroy(&spinlock);
+
+    printf("Final counter value: %d\n", counter);
+
+    return 0;
 }
