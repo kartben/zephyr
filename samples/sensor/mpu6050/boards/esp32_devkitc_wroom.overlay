@@ -1,0 +1,32 @@
+/ {
+	aliases {
+		accel0 = &mpu6050_i2c;
+	};
+
+        chosen {
+                zephyr,display = &ili9340;
+        };
+};
+
+&i2c0 {
+	mpu6050_i2c: mpu6050@68 {
+		compatible = "invensense,mpu6050";
+		reg = <0x68>;
+	};
+};
+
+
+&spi3 {
+        status = "okay";
+        ili9340: ili9340@0 {
+		compatible = "ilitek,ili9340";
+		reg = <0>;
+		spi-max-frequency = <32000000>;
+		reset-gpios = <&gpio0 4 GPIO_ACTIVE_LOW>;
+		cmd-data-gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
+		rotation = <270>;
+		width = <320>;
+		height = <240>;
+	};
+};
+

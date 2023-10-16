@@ -10,6 +10,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <cfloat>
 
 #include <fcntl.h>
 
@@ -44,6 +45,9 @@ int main(int argc, char **argv)
 #endif
 {
 	std::string my_addr;
+
+
+    std::cout << "Minimum float positive value: " << FLT_MIN << std::endl;
 
 #ifdef __ZEPHYR__
 	my_addr = CONFIG_NET_CONFIG_PEER_IPV4_ADDR;

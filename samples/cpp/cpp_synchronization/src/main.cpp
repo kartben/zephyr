@@ -23,6 +23,8 @@
 #include <zephyr/arch/cpu.h>
 #include <zephyr/sys/printk.h>
 
+#include <cfloat>
+
 /**
  * @class semaphore the basic pure virtual semaphore class
  */
