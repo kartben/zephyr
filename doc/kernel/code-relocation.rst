@@ -61,7 +61,7 @@ for  data copy operations from ROM to required memory type.
 
   .. note::
 
-     function zephyr_code_relocate() can be called  as many times as required.
+     function ``zephyr_code_relocate()`` can be called  as many times as required.
 
 Additional Configurations
 =========================
@@ -71,7 +71,7 @@ This section shows additional configuration options that can be set in
 * if the memory is SRAM1, SRAM2, CCD, or AON, then place the full object in the
   sections for example:
 
-  .. code-block:: none
+  .. code-block:: cmake
 
      zephyr_code_relocate(FILES src/file1.c LOCATION SRAM2)
      zephyr_code_relocate(FILES src/file2.c LOCATION SRAM)
@@ -80,7 +80,7 @@ This section shows additional configuration options that can be set in
   selected memory is placed in the required memory region.
   for example:
 
-  .. code-block:: none
+  .. code-block:: cmake
 
      zephyr_code_relocate(FILES src/file1.c LOCATION SRAM2_DATA)
      zephyr_code_relocate(FILES src/file2.c LOCATION SRAM2_TEXT)
@@ -91,7 +91,7 @@ This section shows additional configuration options that can be set in
 * Multiple files can be passed to the FILES argument, or CMake generator
   expressions can be used to relocate a comma-separated list of files
 
-  .. code-block:: none
+  .. code-block:: cmake
 
      file(GLOB sources "file*.c")
      zephyr_code_relocate(FILES ${sources} LOCATION SRAM)
@@ -109,7 +109,7 @@ This example will place the .text section of the ``xip_external_flash.c`` file
 to the ``EXTFLASH`` memory region where it will be executed from (XIP). The
 .data will be relocated as usual into SRAM.
 
-  .. code-block:: none
+  .. code-block:: cmake
 
      zephyr_code_relocate(FILES src/xip_external_flash.c LOCATION EXTFLASH_TEXT NOCOPY)
      zephyr_code_relocate(FILES src/xip_external_flash.c LOCATION SRAM_DATA)
@@ -121,7 +121,7 @@ Libraries can be relocated using the LIBRARY argument to
 ``zephyr_code_relocation()`` with the library name. For example, the following
 snippet will relocate kernel code to ITCM and serial drivers to SRAM2:
 
-  .. code-block:: none
+  .. code-block:: cmake
 
     zephyr_code_relocate(LIBRARY kernel LOCATION ITCM_TEXT)
     zephyr_code_relocate(LIBRARY drivers__serial LOCATION SRAM2)
