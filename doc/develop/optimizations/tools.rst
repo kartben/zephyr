@@ -31,7 +31,9 @@ Use the ``ram_report`` target with your board:
     :board: reel_board
     :goals: ram_report
 
-which will generate something similar to the output below::
+which will generate something similar to the output below:
+
+.. code-block:: none
 
     Path                                                                                    Size       %
     ==============================================================================================================
@@ -80,7 +82,9 @@ Use the ``rom_report`` to get the ROM report:
     :board: reel_board
     :goals: rom_report
 
-which will generate something similar to the output below::
+which will generate something similar to the output below:
+
+.. code-block:: none
 
     Path                                                                                    Size       %
     ==============================================================================================================
@@ -131,7 +135,9 @@ This target uses a third-party tool called puncover which can be found at
 https://github.com/HBehrens/puncover. When this target is built, it will
 launch a local web server which will allow you to open a web client and browse
 the files and view their ROM, RAM, and stack usage. Before you can use this
-target, you will have to install the puncover python module::
+target, you will have to install the puncover python module:
+
+.. code-block:: console
 
     pip3 install git+https://github.com/HBehrens/puncover --user
 
@@ -174,14 +180,17 @@ elements to the word-size of the CPU by the compiler.
 
 Poke-a-hole (pahole) must be installed prior to using this target. It can be
 obtained from https://git.kernel.org/pub/scm/devel/pahole/pahole.git and is
-available in the dwarves package in both fedora and ubuntu::
+available in the dwarves package in both fedora and ubuntu:
+
+.. code-block:: console
 
     sudo apt-get install dwarves
 
-or in fedora::
+or in fedora:
+
+.. code-block:: console
 
     sudo dnf install dwarves
-
 
 .. zephyr-app-commands::
     :tool: all
@@ -190,7 +199,9 @@ or in fedora::
     :goals: pahole
 
 
-After running this target, pahole will output the results to the console::
+After running this target, pahole will output the results to the console:
+
+.. code-block:: none
 
     /* Used at: zephyr/isr_tables.c */
     /* <80> ../include/sw_isr_table.h:30 */

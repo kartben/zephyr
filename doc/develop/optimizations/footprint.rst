@@ -31,8 +31,9 @@ Unused Peripherals
 ******************
 
 Some peripherals are enabled by default. You can disable unused
-peripherals in your project configuration, for example::
+peripherals in your project configuration, for example:
 
+.. code-block:: cfg
 
         CONFIG_GPIO=n
         CONFIG_SPI=n
