@@ -227,7 +227,7 @@ the **bar** component of **foo**, you should copy the sample folder to
 
 .. code-block:: console
 
-   ./scripts/twister -s tests/foo/bar/test-identifier
+   $ ./scripts/twister -s tests/foo/bar/test-identifier
 
 In the example above ``tests/foo/bar`` signifies the path to the test and the
 ``test-identifier`` references a test defined in the :file:`testcase.yaml` file.
@@ -236,7 +236,7 @@ To run all tests defined in a test project, run:
 
 .. code-block:: console
 
-    ./scripts/twister -T tests/foo/bar/
+    $ ./scripts/twister -T tests/foo/bar/
 
 The sample contains the following files:
 
@@ -308,7 +308,7 @@ can list all kernel test cases, for example, by running:
 
 .. code-block:: console
 
-   twister --list-tests -T tests/kernel
+   $ twister --list-tests -T tests/kernel
 
 Skipping Tests
 ==============

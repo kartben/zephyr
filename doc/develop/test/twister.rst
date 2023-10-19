@@ -37,7 +37,7 @@ To run the script in the local tree, follow the steps below:
 
    .. group-tab:: Linux
 
-      .. code-block:: bash
+      .. code-block:: console
 
          $ source zephyr-env.sh
          $ ./scripts/twister
@@ -57,7 +57,7 @@ you can build and run all possible tests using the following options:
 
    .. group-tab:: Linux
 
-      .. code-block:: bash
+      .. code-block:: console
 
          $ ./scripts/twister --all --enable-slow
 
@@ -82,7 +82,7 @@ The list of command line options supported by twister can be viewed using:
 
    .. group-tab:: Linux
 
-      .. code-block:: bash
+      .. code-block:: console
 
          $ ./scripts/twister --help
 
@@ -138,7 +138,7 @@ identifier:
   string is used when building, for example when calling ``west build`` or
   ``cmake``:
 
-  .. code-block:: console
+  .. code-block:: bash
 
      # with west
      west build -b reel_board
@@ -1287,7 +1287,7 @@ To execute a Robot test suite with twister, run the following command:
 
       .. code-block:: bash
 
-         $ ./scripts/twister --platform hifive1 --test samples/subsys/shell/shell_module/sample.shell.shell_module.robot
+         ./scripts/twister --platform hifive1 --test samples/subsys/shell/shell_module/sample.shell.shell_module.robot
 
    .. group-tab:: Windows
 

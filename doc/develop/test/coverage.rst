@@ -60,13 +60,13 @@ These steps will produce an HTML coverage report for a single application.
 
    .. code-block:: console
 
-      ninja -Cbuild run | tee log.log
+      $ ninja -Cbuild run | tee log.log
 
    or
 
    .. code-block:: console
 
-      ninja -Cbuild run | tee log.log
+      $ ninja -Cbuild run | tee log.log
 
 #. Generate the gcov ``.gcda`` and ``.gcno`` files from the log file that was
    saved:
