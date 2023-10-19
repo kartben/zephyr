@@ -90,9 +90,12 @@ More generally then, with
 - ``SECTOR_SIZE`` in bytes, and
 - ``PAGE_ERASES`` as the number of times the page can be erased,
 
-the expected device life (in minutes) can be calculated as::
+the expected device life (in minutes) can be calculated as:
 
-   SECTOR_COUNT * SECTOR_SIZE * PAGE_ERASES / (NS * (DS+8)) minutes
+.. math::
+
+   \frac{{\mathtt{SECTOR\_COUNT} \times \mathtt{SECTOR\_SIZE} \times
+   \mathtt{PAGE\_ERASES}}}{{\mathtt{NS} \times (\mathtt{DS} + 8)}}~\text{minutes}
 
 From this formula it is also clear what to do in case the expected life is too
 short: increase ``SECTOR_COUNT`` or ``SECTOR_SIZE``.
