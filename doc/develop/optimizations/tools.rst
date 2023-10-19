@@ -137,7 +137,7 @@ launch a local web server which will allow you to open a web client and browse
 the files and view their ROM, RAM, and stack usage. Before you can use this
 target, you will have to install the puncover python module:
 
-.. code-block:: console
+.. code-block:: bash
 
     pip3 install git+https://github.com/HBehrens/puncover --user
 
@@ -182,13 +182,13 @@ Poke-a-hole (pahole) must be installed prior to using this target. It can be
 obtained from https://git.kernel.org/pub/scm/devel/pahole/pahole.git and is
 available in the dwarves package in both fedora and ubuntu:
 
-.. code-block:: console
+.. code-block:: bash
 
     sudo apt-get install dwarves
 
 or in fedora:
 
-.. code-block:: console
+.. code-block:: bash
 
     sudo dnf install dwarves
 
