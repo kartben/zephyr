@@ -62,7 +62,7 @@ Running QEMU via :command:`ninja`
 
 Run the following inside the build directory of an application:
 
-.. code-block:: console
+.. code-block:: bash
 
    ninja debugserver
 
@@ -76,7 +76,7 @@ Running QEMU via :command:`west`
 
 Run the following from your project root:
 
-.. code-block:: console
+.. code-block:: bash
 
    west build -t debugserver_qemu
 
@@ -99,7 +99,7 @@ GDB client
 
 Connect to the server by running :command:`gdb` and giving these commands:
 
-.. code-block:: bash
+.. code-block:: console
 
    $ path/to/gdb path/to/zephyr.elf
    (gdb) target remote localhost:1234
@@ -294,7 +294,9 @@ This feature is enabled by the Kconfig option :kconfig:option:`CONFIG_I2C_DUMP_M
 uses the ``LOG_DBG`` function to print the contents so the
 :kconfig:option:`CONFIG_I2C_LOG_LEVEL_DBG` option must also be enabled.
 
-The sample output of the dump looks like this::
+The sample output of the dump looks like this:
+
+.. code-block:: none
 
    D: I2C msg: io_i2c_ctrl7_port0, addr=50
    D:    W      len=01: 00
@@ -335,7 +337,9 @@ communication with a device of interest.
 
 Enable the Kconfig option :kconfig:option:`CONFIG_I2C_DUMP_MESSAGES_ALLOWLIST` to create an
 allowlist of I2C targets to log.
-The allowlist of devices is configured using the devicetree, for example::
+The allowlist of devices is configured using the devicetree, for example:
+
+.. code-block:: devicetree
 
   / {
       i2c {
