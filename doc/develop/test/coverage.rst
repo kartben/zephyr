@@ -69,23 +69,31 @@ These steps will produce an HTML coverage report for a single application.
       ninja -Cbuild run | tee log.log
 
 #. Generate the gcov ``.gcda`` and ``.gcno`` files from the log file that was
-   saved::
+   saved:
 
-     $ python3 scripts/gen_gcov_files.py -i log.log
+   .. code-block:: console
+
+      $ python3 scripts/gen_gcov_files.py -i log.log
 
 #. Find the gcov binary placed in the SDK. You will need to pass the path to
    the gcov binary for the appropriate architecture when you later invoke
-   ``gcovr``::
+   ``gcovr``:
 
-     $ find $ZEPHYR_SDK_INSTALL_DIR -iregex ".*gcov"
+   .. code-block:: console
 
-#. Create an output directory for the reports::
+      $ find $ZEPHYR_SDK_INSTALL_DIR -iregex ".*gcov"
 
-     $ mkdir -p gcov_report
+#. Create an output directory for the reports:
 
-#. Run ``gcovr`` to get the reports::
+   .. code-block:: console
 
-     $ gcovr -r $ZEPHYR_BASE . --html -o gcov_report/coverage.html --html-details --gcov-executable <gcov_path_in_SDK>
+      $ mkdir -p gcov_report
+
+#. Run ``gcovr`` to get the reports:
+
+   .. code-block:: console
+
+      $ gcovr -r $ZEPHYR_BASE . --html -o gcov_report/coverage.html --html-details --gcov-executable <gcov_path_in_SDK>
 
 .. _coverage_posix:
 
@@ -134,18 +142,24 @@ Zephyr's :ref:`twister script <twister_script>` can automatically
 generate a coverage report from the tests which were executed.
 You just need to invoke it with the ``--coverage`` command line option.
 
-For example, you may invoke::
+For example, you may invoke:
+
+.. code-block:: console
 
     $ twister --coverage -p qemu_x86 -T tests/kernel
 
-or::
+or:
+
+.. code-block:: console
 
     $ twister --coverage -p native_posix -T tests/bluetooth
 
 which will produce ``twister-out/coverage/index.html`` with the report.
 
 The process differs for unit tests, which are built with the host
-toolchain and require a different board::
+toolchain and require a different board:
+
+.. code-block:: console
 
     $ twister --coverage -p unit_testing -T tests/unit
 

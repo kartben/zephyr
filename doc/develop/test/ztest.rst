@@ -599,7 +599,7 @@ tests within a suite.
 
 For example
 
-.. code-block:: bash
+.. code-block:: console
 
     $ zephyr.exe -list
     $ zephyr.exe -test="fixture_tests::test_fixture_pointer,framework_tests::test_assert_mem_equal"
