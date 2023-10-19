@@ -10,7 +10,7 @@ perform operations not directly available to them.
 When defining system calls, it is very important to ensure that access to the
 API's private data is done exclusively through system call interfaces.
 Private kernel data should never be made available to user mode threads
-directly. For example, the ``k_queue`` APIs were intentionally not made
+directly. For example, the :ref:`queues` APIs were intentionally not made
 available as they store bookkeeping information about the queue directly
 in the queue buffers which are visible from user mode.
 
@@ -170,11 +170,15 @@ the project out directory under ``include/generated/``:
 
 The body of the API is created in the generated system header. Using the
 example of :c:func:`k_sem_init()`, this API is declared in
-``include/kernel.h``. At the bottom of ``include/kernel.h`` is::
+``include/kernel.h``. At the bottom of ``include/kernel.h`` is:
+
+.. code-block:: c
 
     #include <syscalls/kernel.h>
 
-Inside this header is the body of :c:func:`k_sem_init()`::
+Inside this header is the body of :c:func:`k_sem_init()`:
+
+.. code-block:: c
 
     static inline void k_sem_init(struct k_sem * sem, unsigned int initial_count, unsigned int limit)
     {
