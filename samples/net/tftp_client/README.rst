@@ -56,16 +56,20 @@ Build the tftp-client sample application for native_posix like this:
 Download and run a TFTP server (like TFTPd), then create file1.bin (with data) and newfile.bin.
 
 Please note that default IP server address is 192.0.2.2 and default port is 69.
-To specify an IP server address and/or port, change configurations in ``prj.conf``::
+To specify an IP server address and/or port, change configurations in ``prj.conf``:
 
-    CONFIG_TFTP_APP_SERVER="10.0.0.10"
-    CONFIG_TFTP_APP_PORT="70"
+.. code-block:: cfg
+
+   CONFIG_TFTP_APP_SERVER="10.0.0.10"
+   CONFIG_TFTP_APP_PORT="70"
 
 To connect to server using hostname, enable DNS resolver by changing these two
-configurations in ``prj.conf``::
+configurations in ``prj.conf``:
 
-    CONFIG_DNS_RESOLVER=y
-    CONFIG_TFTP_APP_SERVER="my-tftp-server.org"
+.. code-block:: cfg
+
+   CONFIG_DNS_RESOLVER=y
+   CONFIG_TFTP_APP_SERVER="my-tftp-server.org"
 
 Sample output
 ==================================

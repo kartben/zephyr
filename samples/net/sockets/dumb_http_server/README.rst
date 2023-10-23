@@ -50,7 +50,9 @@ Alternatively, a tool like ``curl`` can be used:
     $ curl http://192.0.2.1:8080/
 
 Finally, you can run an HTTP profiling/load tool like Apache Bench
-(``ab``) against the server::
+(``ab``) against the server:
+
+.. code-block:: console
 
     $ ab -n10 http://192.0.2.1:8080/
 

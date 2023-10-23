@@ -80,7 +80,7 @@ Binary PCM Output
 The ttyUSB0 port must be configured in raw mode to avoid having
 characters 'cooked' out.
 
-.. code-block:: console
+.. code-block:: shell
 
    stty -F /dev/ttyUSB0 115200 raw
    cat /dev/ttyUSB0 > /tmp/sound.raw
@@ -90,7 +90,9 @@ characters 'cooked' out.
    and before audio acquisition ends (before red led glows).
 
 .. note:: In case the character 0x0a is interpreted as NL and an 0x0d (CR) is added,
-   you may need to remove it::
+   you may need to remove it:
+
+   .. code-block:: shell
 
       dos2unix -f /tmp/sound.raw
 

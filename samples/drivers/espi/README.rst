@@ -24,14 +24,16 @@ Any pins required for minimum eSPI handshake should be configured.
 Sample requires a correct harness and fixture setup.
 Please connect an eSPI device to the testing board.
 After that for the correct execution of that sample in twister, add into
-boards's map-file next fixture settings::
+boards's map-file next fixture settings:
+
+.. code-block:: yaml
 
       - fixture: espi_device_connect
 
 Sample output
 =============
 
-.. code-block:: console
+.. code-block:: none
 
    Hello eSPI test!
    eSPI test - I/O initialization...complete

@@ -59,9 +59,11 @@ Prepare the boot device (USB storage drive) as described for the :ref:`UP Square
 board. Insert the USB boot device containing the prepared software binary of the sample.
 
 Connect the board to a host computer and open a serial connection for serial
-console interface::
+console interface:
 
-   $ minicom -D <tty_device> -b 115200
+   .. code-block:: console
+
+      $ minicom -D <tty_device> -b 115200
 
 Replace :code:`<tty_device>` with the port where the UP Squared board
 can be found. For example, under Linux, :code:`/dev/ttyUSB0`.

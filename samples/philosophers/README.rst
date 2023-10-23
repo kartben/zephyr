@@ -24,15 +24,19 @@ It is possible to run the demo in coop-only or preempt-only mode. To achieve
 this, set these values for CONFIG_NUM_COOP_PRIORITIES and
 CONFIG_NUM_PREEMPT_PRIORITIES in prj.conf:
 
-preempt-only:
+preempt-only
 
-  CONFIG_NUM_PREEMPT_PRIORITIES 6
-  CONFIG_NUM_COOP_PRIORITIES 0
+  .. code-block:: cfg
 
-coop-only:
+     CONFIG_NUM_PREEMPT_PRIORITIES=6
+     CONFIG_NUM_COOP_PRIORITIES=0
 
-  CONFIG_NUM_PREEMPT_PRIORITIES 0
-  CONFIG_NUM_COOP_PRIORITIES 6
+coop-only
+
+  .. code-block:: cfg
+
+     CONFIG_NUM_PREEMPT_PRIORITIES=0
+     CONFIG_NUM_COOP_PRIORITIES=6
 
 In these cases, the philosopher threads will run with priorities 0 to 5
 (preempt-only) and -7 to -2 (coop-only).

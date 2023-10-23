@@ -94,10 +94,12 @@ The sample will start and automatically connect to the Leshan Demo Server with
 an IPv6 client endpoint "qemu_x86".
 
 To change the sample to use IPv4, disable IPv6 by changing these two
-configurations in ``prj.conf``::
+configurations in ``prj.conf``:
 
-    CONFIG_NET_IPV6=n
-    CONFIG_NET_CONFIG_NEED_IPV6=n
+.. code-block:: cfg
+
+   CONFIG_NET_IPV6=n
+   CONFIG_NET_CONFIG_NEED_IPV6=n
 
 DTLS Support
 ============

@@ -90,9 +90,11 @@ Code is performed on 2 clock outputs with ``clkout_nr`` defined in ``LITEX_CLK_T
 Building
 ********
 
-.. code-block:: none
-
-  west build -b litex_vexriscv zephyr/samples/drivers/clock_control
+.. zephyr-app-commands::
+   :zephyr-app: samples/drivers/clock_control
+   :board: litex_vexriscv
+   :goals: build
+   :compact:
 
 Drivers prints a lot of useful debugging information to the log. It is highly recommended to enable logging and synchronous processing of log messages and set log level to ``Info``.
 

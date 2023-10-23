@@ -75,7 +75,7 @@ This sample will only build on a Linux or macOS development system
 TF-M BL2 logs
 =============
 Add the following to ``prj.conf`` to see the logs from TF-M BL2:
-   .. code-block:: bash
+   .. code-block:: cfg
 
       CONFIG_TFM_BL2=y
       CONFIG_TFM_CMAKE_BUILD_TYPE_DEBUG=y

@@ -32,7 +32,7 @@ On QEMU:
 Refer to :ref:`tfm_ipc` for detailed instructions.
 Following is an example based on ``west build``
 
-   .. code-block:: bash
+   .. code-block:: console
 
       $ west build samples/tfm_integration/tfm_regression_test/ -p -b mps2_an521_ns -t run
 

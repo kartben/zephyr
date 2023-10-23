@@ -62,7 +62,7 @@ In order to use the HCI UART controller with QEMU or Native POSIX you will need
 to attach it to the Linux Host first. To do so simply build the sample and
 connect the UART to the Linux machine, and then attach it with this command:
 
-.. code-block:: console
+.. code-block:: shell
 
    sudo btattach -B /dev/ttyACM0 -S 1000000 -R
 
@@ -95,7 +95,7 @@ In order to use the HCI UART controller with BlueZ you will need to attach it
 to the Linux Host first. To do so simply build the sample and connect the
 UART to the Linux machine, and then attach it with this command:
 
-.. code-block:: console
+.. code-block:: shell
 
    sudo btattach -B /dev/ttyACM0 -S 1000000
 
@@ -173,7 +173,7 @@ so:
 On the host application, some config options need to be used to select the H4
 driver instead of the built-in controller:
 
-.. code-block:: kconfig
+.. code-block:: cfg
 
    CONFIG_BT_HCI=y
    CONFIG_BT_CTLR=n
