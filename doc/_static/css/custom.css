@@ -881,3 +881,27 @@ dark-mode-toggle::part(toggleLabel){
    font-size: 3rem;
    color: white;
 }
+
+/* Custom search box, including search engine selection */
+
+.search-container {
+    align-items: center;
+}
+
+#search-engine-container {
+    margin-top: 0.5em;
+}
+
+#search-engine-container #search-engine-label {
+    font-size: 80%;
+    display: inline;
+    margin-right: 0.5em;
+    color: var(--navbar-level-1-color);
+}
+
+#search-engine-container #search-engine-selector {
+    color: var(--navbar-level-2-color);
+    background-color: transparent;
+    border-radius: 50px;
+    box-shadow: none;
+}

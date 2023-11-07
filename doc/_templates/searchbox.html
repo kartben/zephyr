@@ -1,0 +1,48 @@
+{#
+   Override the default searchbox from RTD theme to provide the ability to select a search method
+   (ex. built-in search, Google Custom Search, ...)
+#}
+
+{%- if 'singlehtml' not in builder %}
+<div class="search-container" role="search">
+  <form id="rtd-search-form" class="wy-form" action="{{ pathto('search') }}" method="get">
+    <input type="text" name="q" placeholder="{{ _('Search docs') }}" aria-label="{{ _('Search docs') }}" />
+    <div id="search-engine-container">
+      <label for="search-engine-selector" id="search-engine-label">Search engine:</label>
+      <select id="search-engine-selector" onchange="updateSearchActionAndSavePreference()">
+        <option value="sphinx" selected>Built-in search</option>
+        <option value="google">Google</option>
+      </select>
+    </div>
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+<script>
+  // Script to handle search action update and preference saving
+  (function() {
+    var form = document.getElementById('rtd-search-form');
+    var searchSelector = document.getElementById('search-engine-selector');
+
+    // Load the saved search preference or default to 'sphinx'
+    var savedPreference = localStorage.getItem('searchPreference') || 'sphinx';
+    searchSelector.value = savedPreference;
+    updateAction(savedPreference);
+
+    window.updateSearchActionAndSavePreference = function() {
+      var searchType = searchSelector.value;
+      updateAction(searchType);
+      localStorage.setItem('searchPreference', searchType);
+    }
+
+    function updateAction(searchType) {
+      if (searchType === 'sphinx') {
+        form.action = "{{ pathto('search') }}";
+      } else if (searchType === 'google') {
+        form.action = "{{ pathto('gsearch') }}";
+      }
+    }
+  })();
+  </script>
+{%- endif %}
