@@ -1,0 +1,21 @@
+identifier: m5stack_atom_lite
+name: M5Stack ATOM Lite
+type: mcu
+arch: xtensa
+toolchain:
+  - zephyr
+supported:
+  - gpio
+  - i2c
+  - spi
+  - watchdog
+  - regulator
+  - uart
+  - pinmux
+  - nvs
+  - display
+testing:
+  ignore_tags:
+    - net
+    - bluetooth
+vendor: m5stack

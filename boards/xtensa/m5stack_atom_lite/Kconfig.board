@@ -1,0 +1,12 @@
+# M5Stack Atom Lite board configuration
+
+# Copyright (c) 2023 Benjamin Cabé <benjamin@zephyrproject.org>
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_M5STACK_ATOM_LITE
+	bool "M5Stack ATOM Lite Development Board"
+	depends on SOC_SERIES_ESP32
+
+choice SOC_PART_NUMBER
+	default SOC_ESP32_PICO_D4
+endchoice

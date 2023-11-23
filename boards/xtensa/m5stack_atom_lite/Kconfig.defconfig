@@ -1,0 +1,23 @@
+# M5Stack ATOM Lite board configuration
+# Copyright (c) 2023 Benjamin Cabé <benjamin@zephyrproject.org>
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_M5STACK_ATOM_LITE
+
+config BOARD
+	default "m5stack_atom_lite"
+	depends on BOARD_M5STACK_ATOM_LITE
+
+config ENTROPY_GENERATOR
+	default y
+
+config HEAP_MEM_POOL_SIZE
+	default 98304 if WIFI
+	default 65536 if BT
+	default 4096
+
+choice BT_HCI_BUS_TYPE
+	default BT_ESP32 if BT
+endchoice
+
+endif # BOARD_M5STACK_ATOM_LITE
