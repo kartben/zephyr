@@ -1,0 +1,26 @@
+# Copyright (c) 2023 Benjamin Cabé <benjamin@zephyrproject.org>
+# SPDX-License-Identifier: Apache-2.0
+
+config ZEPHYR_GUIX_MODULE
+	bool
+
+config GUIX
+	bool "GUIX support"
+	help
+	  This option enables the Eclipse ThreadX GUIX graphics library.
+
+if GUIX
+
+config GUIX_THREAD_STACK_SIZE
+	int "GUIX thread stack size"
+	default 4096
+	help
+	  This option sets the stack size for the GUIX thread.
+
+config GUIX_MAX_ACTIVE_TIMERS
+	int "GUIX max active timers"
+	default 32
+	help
+	  This option sets the maximum number of active timers in GUIX.
+
+endif
