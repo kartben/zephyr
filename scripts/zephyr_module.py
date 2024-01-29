@@ -147,6 +147,15 @@ mapping:
           doc-url:
             required: false
             type: str
+  vulnerabilities:
+     required: false
+     type: map
+     mapping:
+       external-references:
+         required: false
+         type: seq
+         sequence:
+            - type: str
 '''
 
 MODULE_YML_PATH = PurePath('zephyr/module.yml')
@@ -548,6 +557,8 @@ def process_meta(zephyr_base, west_projs, modules, extra_modules=None,
     for module in modules:
         meta_module, dirty = _create_meta_project(module.project)
         meta_module['name'] = module.meta.get('name')
+        if module.meta.get('vulnerabilities'):
+            meta_module['vulnerabilities'] = module.meta.get('vulnerabilities')
         meta_projects.append(meta_module)
 
     meta['modules'] = meta_projects

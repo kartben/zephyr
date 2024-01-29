@@ -55,6 +55,7 @@ class Walker:
         self.docZephyr = None
         self.docApp = None
         self.docSDK = None
+        self.docModulesExtRefs = None
 
         # dict of absolute file path => the Document that owns that file
         self.allFileLinks = {}
@@ -294,7 +295,7 @@ class Walker:
 
             # set up zephyr sources package
             cfgPackageZephyrModule = PackageConfig()
-            cfgPackageZephyrModule.name = module_name
+            cfgPackageZephyrModule.name = module_name + "-sources"
             cfgPackageZephyrModule.spdxID = "SPDXRef-" + module_name + "-sources"
             cfgPackageZephyrModule.relativeBaseDir = module_path
 
@@ -339,6 +340,42 @@ class Walker:
         # add it to pending relationships queue
         self.pendingRelationships.append(rd)
 
+    def setupModulesDocument(self, modules):
+        # set up zephyr document
+        cfgModuleExtRef = DocumentConfig()
+        cfgModuleExtRef.name = "modules-deps"
+        cfgModuleExtRef.namespace = self.cfg.namespacePrefix + "/modules-deps"
+        cfgModuleExtRef.docRefID = "DocumentRef-modules-deps"
+        self.docModulesExtRefs = Document(cfgModuleExtRef)
+
+        for module in modules:
+            module_name = module.get("name", None)
+            module_vul = module.get("vulnerabilities", None)
+
+            if not module_name:
+                log.err(f"cannot find module name in meta file; bailing")
+                return False
+
+            module_name = self._normalize_module_name(module_name)
+
+            module_ext_ref = []
+            if module_vul:
+                module_ext_ref = module_vul.get("external-references")
+
+            # set up zephyr sources package
+            cfgPackageModuleExtRef = PackageConfig()
+            cfgPackageModuleExtRef.name = module_name + "-deps"
+            cfgPackageModuleExtRef.spdxID = "SPDXRef-" + module_name + "-deps"
+
+            for ref in module_ext_ref:
+                cfgPackageModuleExtRef.externalReferences.append(ref)
+
+            pkgModule = Package(cfgPackageModuleExtRef, self.docModulesExtRefs)
+            self.docModulesExtRefs.pkgs[pkgModule.cfg.spdxID] = pkgModule
+
+            self._add_describe_relationship(self.docModulesExtRefs, cfgPackageModuleExtRef)
+
+
     # set up Documents before beginning
     def setupDocuments(self):
         log.dbg("setting up placeholder documents")
@@ -358,6 +395,8 @@ class Walker:
 
         if self.cfg.includeSDK:
             self.setupSDKDocument()
+
+        self.setupModulesDocument(content["modules"])
 
         return True
 
