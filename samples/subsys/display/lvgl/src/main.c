@@ -18,38 +18,59 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(app);
 
+#include <zephyr/llext/llext.h>
+
+EXPORT_SYMBOL(lv_label_create);
+EXPORT_SYMBOL(lv_label_set_text);
+
+EXPORT_SYMBOL(lv_img_create);
+EXPORT_SYMBOL(lv_img_set_src);
+EXPORT_SYMBOL(lv_obj_align);
+
+EXPORT_SYMBOL(lv_bar_create);
+EXPORT_SYMBOL(lv_bar_set_value);
+EXPORT_SYMBOL(lv_obj_center);
+EXPORT_SYMBOL(lv_anim_init);
+EXPORT_SYMBOL(lv_anim_path_ease_in);
+EXPORT_SYMBOL(lv_obj_set_size);
+EXPORT_SYMBOL(lv_anim_start);
+
 static uint32_t count;
 
-#ifdef CONFIG_GPIO
-static struct gpio_dt_spec button_gpio = GPIO_DT_SPEC_GET_OR(
-		DT_ALIAS(sw0), gpios, {0});
-static struct gpio_callback button_callback;
+lv_obj_t *win;
 
-static void button_isr_callback(const struct device *port,
-				struct gpio_callback *cb,
-				uint32_t pins)
+static void win_btn_close_event_handler(lv_event_t *e)
 {
-	ARG_UNUSED(port);
-	ARG_UNUSED(cb);
-	ARG_UNUSED(pins);
-
-	count = 0;
+	lv_obj_del(win);
 }
-#endif /* CONFIG_GPIO */
-
-#ifdef CONFIG_LV_Z_ENCODER_INPUT
-static const struct device *lvgl_encoder =
-	DEVICE_DT_GET(DT_COMPAT_GET_ANY_STATUS_OKAY(zephyr_lvgl_encoder_input));
-#endif /* CONFIG_LV_Z_ENCODER_INPUT */
-
-#ifdef CONFIG_LV_Z_KEYPAD_INPUT
-static const struct device *lvgl_keypad =
-	DEVICE_DT_GET(DT_COMPAT_GET_ANY_STATUS_OKAY(zephyr_lvgl_keypad_input));
-#endif /* CONFIG_LV_Z_KEYPAD_INPUT */
 
 static void lv_btn_click_callback(lv_event_t *e)
 {
 	ARG_UNUSED(e);
+
+	win = lv_win_create(lv_scr_act(), 40);
+	lv_obj_t *btn;
+
+	lv_win_add_title(win, "LLEXT FTW");
+	btn = lv_win_add_btn(win, LV_SYMBOL_CLOSE, 60);
+	lv_obj_add_event_cb(btn, win_btn_close_event_handler, LV_EVENT_CLICKED, NULL);
+
+	lv_obj_t *cont = lv_win_get_content(win);
+
+	struct llext *ext = llext_by_name("gui_ext");
+	if (ext) {
+		void (*fn)(lv_obj_t *);
+
+		fn = llext_find_sym(&ext->exp_tab, "fill_window");
+		if (fn == NULL) {
+			printk("fill_window() not found in gui_ext\n");
+			return -EINVAL;
+		}
+		fn(cont);
+	} else {
+		lv_obj_t *label = lv_label_create(cont);
+		lv_label_set_text(label, "Load gui_ext first to see the magic!");
+	}
 
 	count = 0;
 }
@@ -66,62 +87,6 @@ int main(void)
 		LOG_ERR("Device not ready, aborting test");
 		return 0;
 	}
-
-#ifdef CONFIG_GPIO
-	if (gpio_is_ready_dt(&button_gpio)) {
-		int err;
-
-		err = gpio_pin_configure_dt(&button_gpio, GPIO_INPUT);
-		if (err) {
-			LOG_ERR("failed to configure button gpio: %d", err);
-			return 0;
-		}
-
-		gpio_init_callback(&button_callback, button_isr_callback,
-				   BIT(button_gpio.pin));
-
-		err = gpio_add_callback(button_gpio.port, &button_callback);
-		if (err) {
-			LOG_ERR("failed to add button callback: %d", err);
-			return 0;
-		}
-
-		err = gpio_pin_interrupt_configure_dt(&button_gpio,
-						      GPIO_INT_EDGE_TO_ACTIVE);
-		if (err) {
-			LOG_ERR("failed to enable button callback: %d", err);
-			return 0;
-		}
-	}
-#endif /* CONFIG_GPIO */
-
-#ifdef CONFIG_LV_Z_ENCODER_INPUT
-	lv_obj_t *arc;
-	lv_group_t *arc_group;
-
-	arc = lv_arc_create(lv_scr_act());
-	lv_obj_align(arc, LV_ALIGN_CENTER, 0, -15);
-	lv_obj_set_size(arc, 150, 150);
-
-	arc_group = lv_group_create();
-	lv_group_add_obj(arc_group, arc);
-	lv_indev_set_group(lvgl_input_get_indev(lvgl_encoder), arc_group);
-#endif /* CONFIG_LV_Z_ENCODER_INPUT */
-
-#ifdef CONFIG_LV_Z_KEYPAD_INPUT
-	lv_obj_t *btn_matrix;
-	lv_group_t *btn_matrix_group;
-	static const char *const btnm_map[] = {"1", "2", "3", "4", ""};
-
-	btn_matrix = lv_btnmatrix_create(lv_scr_act());
-	lv_obj_align(btn_matrix, LV_ALIGN_CENTER, 0, 70);
-	lv_btnmatrix_set_map(btn_matrix, (const char **)btnm_map);
-	lv_obj_set_size(btn_matrix, 100, 50);
-
-	btn_matrix_group = lv_group_create();
-	lv_group_add_obj(btn_matrix_group, btn_matrix);
-	lv_indev_set_group(lvgl_input_get_indev(lvgl_keypad), btn_matrix_group);
-#endif /* CONFIG_LV_Z_KEYPAD_INPUT */
 
 	if (IS_ENABLED(CONFIG_LV_Z_POINTER_KSCAN) || IS_ENABLED(CONFIG_LV_Z_POINTER_INPUT)) {
 		lv_obj_t *hello_world_button;
