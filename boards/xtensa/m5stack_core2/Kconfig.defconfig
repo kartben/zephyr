@@ -12,6 +12,10 @@ config BOARD
 config ENTROPY_GENERATOR
 	default y
 
+choice SPIRAM_TYPE
+	default SPIRAM_TYPE_ESPPSRAM64
+endchoice
+
 config HEAP_MEM_POOL_ADD_SIZE_BOARD
 	int
 	default 65535 if WIFI && BT

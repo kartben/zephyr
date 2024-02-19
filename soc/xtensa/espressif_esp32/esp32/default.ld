@@ -447,7 +447,8 @@ SECTIONS
 #endif
     _spiram_heap_start = ABSOLUTE(.);
     . = . + CONFIG_ESP_SPIRAM_HEAP_SIZE;
-
+    . = ALIGN (8);
+		*(.lvgl_heap);
     *(.ext_ram.bss*)
 
     _ext_ram_data_end = ABSOLUTE(.);
