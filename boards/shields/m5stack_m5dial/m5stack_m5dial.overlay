@@ -15,7 +15,8 @@
 	};
 
 	aliases {
-		sw0 = &user_button_1; /* overwrite StampS3 user button */
+		sw0 = &user_button_1;                /* overwrite StampS3 user button */
+		pwm-lcd0 = &backlight_pwm;
 	};
 
 	gpio_keys {
@@ -27,17 +28,17 @@
 			zephyr,code = <INPUT_KEY_0>;
 		};
 
-		rotary_left: rotary_left {
-			label = "rotary left";
-			gpios = <&m5stack_stamps3_header 20 GPIO_ACTIVE_LOW>;
-			zephyr,code = <INPUT_KEY_LEFT>;
-		};
+		// rotary_left: rotary_left {
+			//         label = "rotary left";
+			//         gpios = <&m5stack_stamps3_header 20 GPIO_ACTIVE_LOW>;
+			//         zephyr,code = <INPUT_KEY_LEFT>;
+		// };
 
-		rotary_right: rotary_right {
-			label = "rotary right";
-			gpios = <&m5stack_stamps3_header 22 GPIO_ACTIVE_LOW>;
-			zephyr,code = <INPUT_KEY_RIGHT>;
-		};
+		// rotary_right: rotary_right {
+			//         label = "rotary right";
+			//         gpios = <&m5stack_stamps3_header 22 GPIO_ACTIVE_LOW>;
+			//         zephyr,code = <INPUT_KEY_RIGHT>;
+		// };
 	};
 
 	backlight_pwm: backlight_pwm {
@@ -83,6 +84,22 @@
 		compatible = "zephyr,lvgl-pointer-input";
 		input = <&ft5267_touch>;
 		swap-xy;
+	};
+
+	lvgl_encoder_input {
+		compatible = "zephyr,lvgl-encoder-input";
+		rotation-input-code = <INPUT_REL_WHEEL>;
+		button-input-code = <INPUT_KEY_0>;
+	};
+
+	qdec {
+		compatible = "gpio-qdec";
+		gpios = <&m5stack_stamps3_header 20 GPIO_ACTIVE_LOW>,
+		        <&m5stack_stamps3_header 22 GPIO_ACTIVE_LOW>;
+		steps-per-period = <4>;
+		zephyr,axis = <INPUT_REL_WHEEL>;
+		sample-time-us = <2000>;
+		idle-timeout-ms = <200>;
 	};
 
 };

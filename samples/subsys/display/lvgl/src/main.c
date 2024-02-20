@@ -163,6 +163,11 @@ int main(void)
 	}
 #endif
 
+#ifdef CONFIG_LV_Z_ENCODER_INPUT
+	lv_group_set_editing(arc_group, true);
+	lv_group_focus_freeze(arc_group, true);
+#endif /* CONFIG_LV_Z_ENCODER_INPUT */
+
 	while (1) {
 		if ((count % 100) == 0U) {
 			sprintf(count_str, "%d", count/100U);

@@ -7,6 +7,9 @@ if SHIELD_M5STACK_M5DIAL
 config INPUT
 	default y
 
+config INPUT_THREAD_STACK_SIZE
+	default 1024 if INPUT_GPIO_QDEC
+
 config INPUT_FT5336_INTERRUPT
 	default y if INPUT
 
