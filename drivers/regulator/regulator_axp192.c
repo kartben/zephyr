@@ -363,6 +363,9 @@ static int regulator_axp192_init(const struct device *dev)
 	is_enabled = ((enabled_val & config->desc->enable_mask) == config->desc->enable_val);
 	LOG_INST_DBG(config->log, "is_enabled: %d", is_enabled);
 
+	ret = i2c_reg_update_byte_dt(&config->i2c, 0x10, 0x04, 0x04);
+	ret = i2c_reg_update_byte_dt(&config->i2c, 0x90, 0x07, 0x07);
+
 	return regulator_common_init(dev, is_enabled);
 }
 
