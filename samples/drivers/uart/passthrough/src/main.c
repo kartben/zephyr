@@ -9,6 +9,9 @@
 #include <zephyr/drivers/uart.h>
 #include <zephyr/sys/ring_buffer.h>
 
+#include <zephyr/drivers/misc/devmux/devmux.h>
+#include <zephyr/input/input.h>
+
 #include <stdio.h>
 #include <string.h>
 
@@ -25,8 +28,26 @@ struct patch_info {
 
 #define DEV_CONSOLE DEVICE_DT_GET(DT_CHOSEN(zephyr_console))
 #define DEV_OTHER   DEVICE_DT_GET(DT_CHOSEN(uart_passthrough))
+#define DEV_DEVMUX  DEVICE_DT_GET(DT_NODELABEL(devmux))
 
 #define RING_BUF_SIZE 64
+
+static void input_cb(struct input_event *evt)
+{
+	int ret;
+	struct device *const devmux_dev = DEV_DEVMUX;
+
+	if (evt->type == INPUT_EV_KEY && evt->value == 1) {
+		int select = devmux_select_get(devmux_dev);
+		printk("Touch detected, switching to %s\n", select == 0 ? "UART1" : "UART2");
+		ret = devmux_select_set(devmux_dev, (select + 1) % 2);
+		if (ret < 0) {
+			printk("Failed to switch UARTs\n");
+		}
+		printk("New UART index = %d\n", devmux_select_get(devmux_dev));
+	}
+}
+INPUT_CALLBACK_DEFINE(NULL, input_cb);
 
 RING_BUF_DECLARE(rb_console, RING_BUF_SIZE);
 struct patch_info patch_c2o = {
