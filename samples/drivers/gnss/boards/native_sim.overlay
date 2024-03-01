@@ -1,0 +1,19 @@
+/ {
+        aliases {
+                gnss = &gnss;
+        };
+
+
+        uart2: uart2 {
+                status = "okay";
+                compatible = "zephyr,native-tty-uart";
+                current-speed = <9600>;
+                serial-port = "/dev/pts/3";
+
+                gnss: gnss-nmea-generic {
+                        compatible = "gnss-nmea-generic";
+                };
+
+        };
+
+};

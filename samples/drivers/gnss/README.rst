@@ -15,6 +15,23 @@ Requirements
 This sample requires a board with a GNSS device present and enabled
 in the devicetree.
 
+Testing with the native simulator and mock NMEA data
+----------------------------------------------------
+
+You may test this sample using the :ref:`native_sim <native simulator>` and ``socat`` to feed mock
+NMEA data to the GNSS driver.
+
+.. code-block:: console
+
+    $ socat -d -d pty,raw,echo=0 pty,raw,echo=0
+    2021/10/03 16:17:36 socat[123456] N PTY is /dev/pts/1
+    2021/10/03 16:17:36 socat[123456] N PTY is /dev/pts/2
+    2021/10/03 16:17:36 socat[123456] N starting data transfer loop with FDs [5,5] and [7,7]
+
+.. code-block:: console
+
+    $ echo -e "\$GNGGA,161736.000,5710.9400,N,00957.6660,E,1,14,0.85,42.372,M,40.0,M,,*5A\r\n" > /dev/pts/1
+
 Sample Output
 *************
 
