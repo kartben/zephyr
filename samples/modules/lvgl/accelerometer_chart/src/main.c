@@ -48,8 +48,8 @@ static void create_accelerometer_chart(lv_obj_t *parent)
 	chart1 = lv_chart_create(parent);
 	lv_obj_set_size(chart1, LV_HOR_RES, LV_VER_RES);
 	lv_chart_set_type(chart1, LV_CHART_TYPE_LINE);
-	lv_chart_set_div_line_count(chart1, 5, 8);
-	lv_chart_set_range(chart1, LV_CHART_AXIS_PRIMARY_Y, -20, 20); /* roughly -/+ 2G */
+	lv_chart_set_div_line_count(chart1, 0, 0);
+	lv_chart_set_range(chart1, LV_CHART_AXIS_PRIMARY_Y, -12, 12);
 	lv_chart_set_update_mode(chart1, LV_CHART_UPDATE_MODE_SHIFT);
 
 	ser_x = lv_chart_add_series(chart1, lv_palette_main(LV_PALETTE_RED),
@@ -63,6 +63,10 @@ static void create_accelerometer_chart(lv_obj_t *parent)
 
 	/* Do not display point markers on the data */
 	lv_obj_set_style_size(chart1, 0, LV_PART_INDICATOR);
+	lv_obj_set_style_bg_color(chart1, lv_color_hex(0x000000), LV_PART_MAIN);
+	lv_obj_set_style_border_width(chart1, 0, LV_PART_MAIN);
+
+	lv_obj_set_style_pad_all(chart1, 0, LV_PART_MAIN);
 }
 
 int main(void)
@@ -80,6 +84,8 @@ int main(void)
 		LOG_ERR("Device %s is not ready\n", accel_sensor->name);
 		return -ENODEV;
 	}
+
+	lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x000000), LV_PART_MAIN);
 
 	create_accelerometer_chart(lv_scr_act());
 	sensor_timer = lv_timer_create(sensor_timer_cb,
