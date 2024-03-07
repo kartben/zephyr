@@ -58,7 +58,7 @@ int main(void)
 {
 	char count_str[11] = {0};
 	const struct device *display_dev;
-	lv_obj_t *hello_world_label;
+	// lv_obj_t *hello_world_label;
 	lv_obj_t *count_label;
 
 	display_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
@@ -123,26 +123,16 @@ int main(void)
 	lv_indev_set_group(lvgl_input_get_indev(lvgl_keypad), btn_matrix_group);
 #endif /* CONFIG_LV_Z_KEYPAD_INPUT */
 
-	if (IS_ENABLED(CONFIG_LV_Z_POINTER_KSCAN) || IS_ENABLED(CONFIG_LV_Z_POINTER_INPUT)) {
-		lv_obj_t *hello_world_button;
-
-		hello_world_button = lv_btn_create(lv_scr_act());
-		lv_obj_align(hello_world_button, LV_ALIGN_CENTER, 0, -15);
-		lv_obj_add_event_cb(hello_world_button, lv_btn_click_callback, LV_EVENT_CLICKED,
-				    NULL);
-		hello_world_label = lv_label_create(hello_world_button);
-	} else {
-		hello_world_label = lv_label_create(lv_scr_act());
-	}
-
-	lv_label_set_text(hello_world_label, "Hello world!");
-	lv_obj_align(hello_world_label, LV_ALIGN_CENTER, 0, 0);
+	// lv_label_set_text(hello_world_label, "Hello world!");
+	// lv_obj_align(hello_world_label, LV_ALIGN_CENTER, 0, 0);
 
 	count_label = lv_label_create(lv_scr_act());
 	lv_obj_align(count_label, LV_ALIGN_BOTTOM_MID, 0, 0);
 
 	lv_task_handler();
 	display_blanking_off(display_dev);
+
+	lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x000000), LV_PART_MAIN);
 
 	while (1) {
 		if ((count % 100) == 0U) {
