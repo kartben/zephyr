@@ -383,24 +383,30 @@ struct uart_ns16550_dev_data {
 static void ns16550_outbyte(const struct uart_ns16550_device_config *cfg,
 			    uintptr_t port, uint8_t val)
 {
-#if UART_NS16550_IOPORT_ENABLED
-	if (cfg->io_map) {
-		if (IS_ENABLED(CONFIG_UART_NS16550_ACCESS_WORD_ONLY)) {
-			sys_out32(val, port);
-		} else {
-			sys_out8(val, port);
-		}
-	} else {
-#else
-	{
-#endif
-		/* MMIO mapped */
-		if (IS_ENABLED(CONFIG_UART_NS16550_ACCESS_WORD_ONLY)) {
-			sys_write32(val, port);
-		} else {
-			sys_write8(val, port);
-		}
-	}
+
+	// Hardcode the HTIF Base Address and print...
+	*(volatile uint64_t *)0x40008000
+		// device=1, cmd=1, buf=val
+		= 0x0101000000000000ul | val;
+
+	// #if UART_NS16550_IOPORT_ENABLED
+	// 	if (cfg->io_map) {
+	// 		if (IS_ENABLED(CONFIG_UART_NS16550_ACCESS_WORD_ONLY)) {
+	// 			sys_out32(val, port);
+	// 		} else {
+	// 			sys_out8(val, port);
+	// 		}
+	// 	} else {
+	// #else
+	// 	{
+	// #endif
+	// 		/* MMIO mapped */
+	// 		if (IS_ENABLED(CONFIG_UART_NS16550_ACCESS_WORD_ONLY)) {
+	// 			sys_write32(val, port);
+	// 		} else {
+	// 			sys_write8(val, port);
+	// 		}
+	// 	}
 }
 
 static uint8_t ns16550_inbyte(const struct uart_ns16550_device_config *cfg,
@@ -882,16 +888,17 @@ static int uart_ns16550_poll_in(const struct device *dev, unsigned char *c)
 {
 	struct uart_ns16550_dev_data *data = dev->data;
 	const struct uart_ns16550_device_config * const dev_cfg = dev->config;
-	int ret = -1;
-	k_spinlock_key_t key = k_spin_lock(&data->lock);
+	int ret = 0;
 
-	if ((ns16550_inbyte(dev_cfg, LSR(dev)) & LSR_RXRDY) != 0) {
-		/* got a character */
-		*c = ns16550_inbyte(dev_cfg, RDR(dev));
-		ret = 0;
-	}
+	// k_spinlock_key_t key = k_spin_lock(&data->lock);
 
-	k_spin_unlock(&data->lock, key);
+	// if ((ns16550_inbyte(dev_cfg, LSR(dev)) & LSR_RXRDY) != 0) {
+	// 	/* got a character */
+	// 	*c = ns16550_inbyte(dev_cfg, RDR(dev));
+	// 	ret = 0;
+	// }
+
+	// k_spin_unlock(&data->lock, key);
 
 	return ret;
 }
