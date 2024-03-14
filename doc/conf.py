@@ -103,6 +103,8 @@ if tags.has("svgconvert"):  # pylint: disable=undefined-variable
 
 templates_path = ["_templates"]
 
+include_patterns = [  ]
+
 exclude_patterns = ["_build"]
 
 if not west_found:

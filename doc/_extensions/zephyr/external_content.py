@@ -129,6 +129,19 @@ def sync_contents(app: Sphinx) -> None:
         if not dst.parent.exists():
             dst.parent.mkdir(parents=True)
 
+        allowed_file_patterns = [ "adafruit" ]
+        # check if .rst file contains a ".. toctree::" or is an allowed pattern
+        if src.suffix == ".rst":
+            with open(src, "r", encoding=app.config.source_encoding) as f:
+                content = f.read()
+                # add file to include_patterns if its path contains any of the allowed patterns
+                if any(pattern in src.as_posix() for pattern in allowed_file_patterns):
+                    app.config.include_patterns.append(str(src.relative_to(prefix_src)))
+
+                if ".. toctree::" in content:
+                    # add to sphinx config option "include_patterns"
+                    app.config.include_patterns.append(str(src.relative_to(prefix_src)))
+
         # just copy if it does not exist
         if not dst.exists():
             shutil.copy(src, dst)
