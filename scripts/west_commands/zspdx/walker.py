@@ -36,13 +36,6 @@ class WalkerConfig:
 # build files, and corresponding source and SDK files, and gathers the
 # information needed to build the SPDX data classes.
 class Walker:
-    CPE23TYPE_REGEX = (
-        r'^cpe:2\.3:[aho\*\-](:(((\?*|\*?)([a-zA-Z0-9\-\._]|(\\[\\\*\?!"#$$%&\'\(\)\+,\/:;<=>@\[\]\^'
-        r"`\{\|}~]))+(\?*|\*?))|[\*\-])){5}(:(([a-zA-Z]{2,3}(-([a-zA-Z]{2}|[0-9]{3}))?)|[\*\-]))(:(((\?*"
-        r'|\*?)([a-zA-Z0-9\-\._]|(\\[\\\*\?!"#$$%&\'\(\)\+,\/:;<=>@\[\]\^`\{\|}~]))+(\?*|\*?))|[\*\-])){4}$'
-    )
-    PURL_REGEX = r"^pkg:.+(\/.+)?\/.+(@.+)?(\?.+)?(#.+)?$"
-
     # initialize with WalkerConfig
     def __init__(self, cfg):
         super(Walker, self).__init__()
@@ -350,7 +343,7 @@ class Walker:
 
         for module in modules:
             module_name = module.get("name", None)
-            module_vul = module.get("vulnerabilities", None)
+            module_security = module.get("security", None)
 
             if not module_name:
                 log.err(f"cannot find module name in meta file; bailing")
@@ -359,8 +352,8 @@ class Walker:
             module_name = self._normalize_module_name(module_name)
 
             module_ext_ref = []
-            if module_vul:
-                module_ext_ref = module_vul.get("external-references")
+            if module_security:
+                module_ext_ref = module_security.get("external-references")
 
             # set up zephyr sources package
             cfgPackageModuleExtRef = PackageConfig()

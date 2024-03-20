@@ -577,20 +577,29 @@ Vulnerability monitoring
 The module description file :file:`zephyr/module.yml` can be used to improve vulnerability monitoring.
 
 If your module needs to track vulnerabilities using an external reference
-(e.g your module is forked from an other repository), you can use the ``vulnerabilities`` section.
+(e.g your module is forked from an other repository), you can use the ``security`` section.
 It contains the field ``external-references`` that contains a list of references that needs to
-be monitored for your module. The supported format are:
+be monitored for your module. The supported formats are:
 
 - CPE (Common Platform Enumeration)
 - PURL (Package URL)
 
 .. code-block:: yaml
 
-   vulnerabilities:
+   security:
      external-references:
        - <module-related-cpe>
        - <an-other-module-related-cpe>
        - <module-related-purl>
+
+A real life example for `mbedTLS` module could look like this:
+
+.. code-block:: yaml
+
+   security:
+     external-references:
+       - cpe:2.3:a:arm:mbed_tls:3.5.2:*:*:*:*:*:*:*
+       - pkg:github/Mbed-TLS/mbedtls@V3.5.2
 
 .. note::
    CPE field must follow the CPE 2.3 schema provided by `NVD

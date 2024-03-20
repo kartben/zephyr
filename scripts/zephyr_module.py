@@ -147,7 +147,7 @@ mapping:
           doc-url:
             required: false
             type: str
-  vulnerabilities:
+  security:
      required: false
      type: map
      mapping:
@@ -557,8 +557,8 @@ def process_meta(zephyr_base, west_projs, modules, extra_modules=None,
     for module in modules:
         meta_module, dirty = _create_meta_project(module.project)
         meta_module['name'] = module.meta.get('name')
-        if module.meta.get('vulnerabilities'):
-            meta_module['vulnerabilities'] = module.meta.get('vulnerabilities')
+        if module.meta.get('security'):
+            meta_module['security'] = module.meta.get('security')
         meta_projects.append(meta_module)
 
     meta['modules'] = meta_projects
