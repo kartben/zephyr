@@ -193,6 +193,7 @@ class Walker:
         cfgPackageApp = PackageConfig()
         cfgPackageApp.name = "app-sources"
         cfgPackageApp.spdxID = "SPDXRef-app-sources"
+        cfgPackageApp.primaryPurpose = "SOURCE"
         # relativeBaseDir is app sources dir
         cfgPackageApp.relativeBaseDir = self.cm.paths_source
         pkgApp = Package(cfgPackageApp, self.docApp)
@@ -291,6 +292,7 @@ class Walker:
             cfgPackageZephyrModule.name = module_name + "-sources"
             cfgPackageZephyrModule.spdxID = "SPDXRef-" + module_name + "-sources"
             cfgPackageZephyrModule.relativeBaseDir = module_path
+            cfgPackageZephyrModule.primaryPurpose = "SOURCE"
 
             if module_revision:
                 cfgPackageZephyrModule.revision = module_revision
@@ -407,6 +409,10 @@ class Walker:
             if len(cfgTarget.target.artifacts) > 0:
                 # add its build file
                 bf = self.addBuildFile(cfgTarget, pkg)
+                if pkg.cfg.name == "zephyr_final":
+                    pkg.cfg.primaryPurpose = "APPLICATION"
+                else:
+                    pkg.cfg.primaryPurpose = "LIBRARY"
 
                 # get its source files if build file is found
                 if bf:

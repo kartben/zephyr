@@ -17,14 +17,14 @@ CPE23TYPE_REGEX = (
 )
 PURL_REGEX = r"^pkg:.+(\/.+)?\/.+(@.+)?(\?.+)?(#.+)?$"
 
-# Output tag-value SPDX 2.2 content for the given Relationship object.
+# Output tag-value SPDX 2.3 content for the given Relationship object.
 # Arguments:
 #   1) f: file handle for SPDX document
 #   2) rln: Relationship object being described
 def writeRelationshipSPDX(f, rln):
     f.write(f"Relationship: {rln.refA} {rln.rlnType} {rln.refB}\n")
 
-# Output tag-value SPDX 2.2 content for the given File object.
+# Output tag-value SPDX 2.3 content for the given File object.
 # Arguments:
 #   1) f: file handle for SPDX document
 #   2) bf: File object being described
@@ -63,7 +63,7 @@ def generateDowloadUrl(url, revision):
 
     return url
 
-# Output tag-value SPDX 2.2 content for the given Package object.
+# Output tag-value SPDX 2.3 content for the given Package object.
 # Arguments:
 #   1) f: file handle for SPDX document
 #   2) pkg: Package object being described
@@ -97,6 +97,9 @@ PackageCopyrightText: {pkg.cfg.copyrightText}
         else:
             log.wrn(f"Unknown external reference ({ref})")
 
+    if pkg.cfg.primaryPurpose != "":
+        f.write(f"PrimaryPackagePurpose: {pkg.cfg.primaryPurpose}\n")
+
     # flag whether files analyzed / any files present
     if len(pkg.files) > 0:
         if len(pkg.licenseInfoFromFiles) > 0:
@@ -121,7 +124,7 @@ PackageCopyrightText: {pkg.cfg.copyrightText}
         for bf in bfs:
             writeFileSPDX(f, bf)
 
-# Output tag-value SPDX 2.2 content for a custom license.
+# Output tag-value SPDX 2.3 content for a custom license.
 # Arguments:
 #   1) f: file handle for SPDX document
 #   2) lic: custom license ID being described
@@ -132,12 +135,12 @@ LicenseName: {lic}
 LicenseComment: Corresponds to the license ID `{lic}` detected in an SPDX-License-Identifier: tag.
 """)
 
-# Output tag-value SPDX 2.2 content for the given Document object.
+# Output tag-value SPDX 2.3 content for the given Document object.
 # Arguments:
 #   1) f: file handle for SPDX document
 #   2) doc: Document object being described
 def writeDocumentSPDX(f, doc):
-    f.write(f"""SPDXVersion: SPDX-2.2
+    f.write(f"""SPDXVersion: SPDX-2.3
 DataLicense: CC0-1.0
 SPDXID: SPDXRef-DOCUMENT
 DocumentName: {doc.cfg.name}
