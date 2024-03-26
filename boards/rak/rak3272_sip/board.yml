@@ -1,0 +1,5 @@
+board:
+  name: rak3272_sip
+  vendor: rak
+  socs:
+    - name: stm32wle5xx

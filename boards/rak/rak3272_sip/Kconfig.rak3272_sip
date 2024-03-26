@@ -1,0 +1,5 @@
+# Copyright (c) 2021 Thomas Stranger
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_RAK3272_SIP
+	select SOC_STM32WLE5XX
