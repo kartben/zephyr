@@ -51,6 +51,18 @@ FileChecksum: SHA1: {bf.sha1}
             writeRelationshipSPDX(f, rln)
         f.write("\n")
 
+def generateDowloadUrl(url, revision):
+    # Only git is supported
+    # walker.py only parse revision if it's from git repositiory
+    if len(revision) == 0 or url.startswith("git://"):
+        return url
+
+    url = url.replace("https://", "git+https://")
+    url = url.replace("http://", "git+http://")
+    url = "@".join([url, revision])
+
+    return url
+
 # Output tag-value SPDX 2.2 content for the given Package object.
 # Arguments:
 #   1) f: file handle for SPDX document
@@ -67,7 +79,8 @@ PackageCopyrightText: {pkg.cfg.copyrightText}
 """)
 
     if len(pkg.cfg.url) > 0:
-        f.write(f"PackageDownloadLocation: {pkg.cfg.url}\n")
+        downloadUrl = generateDowloadUrl(pkg.cfg.url, pkg.cfg.revision)
+        f.write(f"PackageDownloadLocation: {downloadUrl}\n")
     else:
         f.write("PackageDownloadLocation: NOASSERTION\n")
 

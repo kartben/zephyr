@@ -577,7 +577,7 @@ Vulnerability monitoring
 The module description file :file:`zephyr/module.yml` can be used to improve vulnerability monitoring.
 
 If your module needs to track vulnerabilities using an external reference
-(e.g your module is forked from an other repository), you can use the ``security`` section.
+(e.g your module is forked from another repository), you can use the ``security`` section.
 It contains the field ``external-references`` that contains a list of references that needs to
 be monitored for your module. The supported formats are:
 
