@@ -16,6 +16,7 @@
    href="https://github.com/zephyrproject-rtos/zephyr/actions/workflows/twister.yaml?query=branch%3Amain">
    <img
    src="https://github.com/zephyrproject-rtos/zephyr/actions/workflows/twister.yaml/badge.svg?event=push"></a>
+<a href="https://app.fossa.com/projects/git%2Bgithub.com%2Fkartben%2Fzephyr?ref=badge_shield" alt="FOSSA Status"><img src="https://app.fossa.com/api/projects/git%2Bgithub.com%2Fkartben%2Fzephyr.svg?type=shield"/></a>
 
 
 The Zephyr Project is a scalable real-time operating system (RTOS) supporting
@@ -110,3 +111,7 @@ Additional Resources
 .. _Security Advisories Repository: https://github.com/zephyrproject-rtos/zephyr/security
 .. _Tips when asking for help: https://docs.zephyrproject.org/latest/develop/getting_started/index.html#asking-for-help
 .. _Zephyr Tech Talks: https://www.zephyrproject.org/tech-talks
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fkartben%2Fzephyr.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fkartben%2Fzephyr?ref=badge_large)
