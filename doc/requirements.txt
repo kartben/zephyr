@@ -20,3 +20,7 @@ pytest
 
 # Doxygen doxmlparser
 doxmlparser
+
+# add old dependency to a random package to test dependabot
+# this should be removed after the first PR
+requests~=2.0.0
