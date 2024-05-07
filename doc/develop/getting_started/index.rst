@@ -3,20 +3,23 @@
 Getting Started Guide
 #####################
 
-Follow this guide to:
+Welcome to the Zephyr Getting Started Guide! This resource is designed to help you quickly set up
+your Zephyr development environment on Ubuntu [#other_linux_distributions]_, macOS, or Windows.
 
-- Set up a command-line Zephyr development environment on Ubuntu, macOS, or
-  Windows (instructions for other Linux distributions are discussed in
-  :ref:`installation_linux`)
-- Get the source code
-- Build, flash, and run a sample application
+Here’s what you will be achieving by following this guide:
+
+- Prepare your system by ensuring your operating system is up to date and all necessary dependencies
+  are installed.
+- Acquire the Zephyr source code, and understand the basic structure of Zephyr projects.
+- Build, flash, and run your first application on a supported board.
 
 .. _host_setup:
 
 Select and Update OS
 ********************
 
-Click the operating system you are using.
+First, ensure your operating system is up to date. Select your operating system
+below for detailed instructions.
 
 .. tabs::
 
@@ -32,25 +35,28 @@ Click the operating system you are using.
 
    .. group-tab:: macOS
 
-      On macOS Mojave or later, select *System Preferences* >
-      *Software Update*. Click *Update Now* if necessary.
+      On macOS Mojave or later, select
+      :menuselection:`Apple menu --> System Preferences --> Software Update`.
+      Click :guilabel:`Update Now` if necessary.
 
       On other versions, see `this Apple support topic
       <https://support.apple.com/en-us/HT201541>`_.
 
    .. group-tab:: Windows
 
-      Select *Start* > *Settings* > *Update & Security* > *Windows Update*.
-      Click *Check for updates* and install any that are available.
+      Select :menuselection:`Start --> Settings --> Update & Security --> Windows Update`.
+      Click :guilabel:`Check for updates` and install any that are available.
 
 .. _install-required-tools:
 
 Install dependencies
 ********************
 
-Next, you'll install some host dependencies using your package manager.
+In this step, you will install the necessary tools and dependencies for Zephyr development. In
+particular, Zephyr relies on CMake for its build system, Python as a scripting language, and also
+requires the Devicetree compiler (``dtc``) to validate :ref:`devicetree` files.
 
-The current minimum required version for the main dependencies are:
+The current minimum required versions for these main dependencies are:
 
 .. list-table::
    :header-rows: 1
@@ -191,13 +197,23 @@ The current minimum required version for the main dependencies are:
 Get Zephyr and install Python dependencies
 ******************************************
 
-Next, clone Zephyr and its :ref:`modules <modules>` into a new :ref:`west
-<west>` workspace. In the following instructions the name :file:`zephyrproject`
-is used for the workspace, however in practice its name and location can be freely
-chosen. You'll also install Zephyr's additional Python dependencies in a
-`Python virtual environment`_.
+The Zephyr source code is hosted on GitHub. While you may be tempted to clone the repository
+directly like you would for other projects, Zephyr uses a tool called :ref:`west <west>` to manage
+your workspace and the source code repositories corresponding to additional
+:ref:`modules <modules>`.
 
-.. _Python virtual environment: https://docs.python.org/3/library/venv.html
+west comes in the form of a Python package, which will be installed during this step, alongside
+other Python dependencies required for Zephyr development.
+
+.. note::
+
+   To avoid Python package incompatibilities, especially when working on multiple Zephyr versions
+   or other Python projects, it is recommended to use `Python virtual environments`_.
+
+In the following steps, the name :file:`zephyrproject` is used for the workspace however, in
+practice, the name and location of your workspace can be chosen freely.
+
+.. _Python virtual environments: https://docs.python.org/3/library/venv.html
 
 .. tabs::
 
@@ -230,7 +246,9 @@ chosen. You'll also install Zephyr's additional Python dependencies in a
 
             pip install west
 
-      #. Get the Zephyr source code:
+      #. Create a new :ref:`workspace <west-workspaces>` and provision it, using respectively
+         the ``west init`` (which, by default, creates a workspace corresponding to the Zephyr
+         upstream repository) and ``west update`` commands:
 
          .. only:: not release
 
@@ -396,14 +414,14 @@ chosen. You'll also install Zephyr's additional Python dependencies in a
 Install the Zephyr SDK
 **********************
 
-The :ref:`Zephyr Software Development Kit (SDK) <toolchain_zephyr_sdk>`
-contains toolchains for each of Zephyr's supported architectures, which
-include a compiler, assembler, linker and other programs required to build
-Zephyr applications.
+The :ref:`Zephyr Software Development Kit (SDK) <toolchain_zephyr_sdk>` includes toolchains for each
+supported architecture, providing the compilers, assemblers, linkers, and necessary programs to
+build Zephyr applications.
 
 For Linux, it also contains additional host tools, such as custom QEMU and OpenOCD builds
 that are used to emulate, flash and debug Zephyr applications.
 
+The full SDK can be downloaded and installed using the ``west sdk`` command.
 
 .. tabs::
 
@@ -476,7 +494,8 @@ Build the Blinky Sample
    :zephyr:code-sample:`hello_world` is a good alternative.
 
    If you are unsure what name west uses for your board, ``west boards``
-   can be used to obtain a list of all boards Zephyr supports.
+   can be used to obtain a list of all boards Zephyr supports. You may also read more about board
+   naming scheme in the dedicated :ref:`board_terminology` section.
 
 Build the :zephyr:code-sample:`blinky` with :ref:`west build <west-building>`, changing
 ``<your-board-name>`` appropriately for your board:
@@ -523,7 +542,7 @@ another sample.
    When building for such boards it is necessary to specify the SoC or CPU
    cluster for which the sample must be built.
    For example to build :zephyr:code-sample:`blinky` for the ``cpuapp`` core on
-   the :zephyr:board:`nrf5340dk` the board must be provided as:
+   the :zephyr:board:`nrf5340dk` the board target must be provided as:
    ``nrf5340dk/nrf5340/cpuapp``. See also :ref:`board_terminology` for more
    details.
 
@@ -531,9 +550,9 @@ Flash the Sample
 ****************
 
 Connect your board, usually via USB, and turn it on if there's a power switch.
-If in doubt about what to do, check your board's page in :ref:`boards`.
+If in doubt about what to do, check your board's documentation page in :ref:`boards`.
 
-Then flash the sample using :ref:`west flash <west-flashing>`:
+Then, flash the sample using :ref:`west flash <west-flashing>`:
 
 .. code-block:: shell
 
@@ -562,7 +581,9 @@ If you're using blinky, the LED will start to blink as shown in this figure:
 Next Steps
 **********
 
-Here are some next steps for exploring Zephyr:
+Congratulations! You've built and flashed your first Zephyr application.
+
+Here are some suggestions for what to do next:
 
 * Try other :zephyr:code-sample-category:`samples`
 * Learn about :ref:`application` and the :ref:`west <west>` tool
@@ -595,12 +616,12 @@ For more information about these environment variables in Zephyr, see :ref:`env_
 Asking for Help
 ***************
 
-You can ask for help on a mailing list or on Discord. Please send bug reports and
+You can ask for help on Discord or on mailing lists. Please send bug reports and
 feature requests to GitHub.
 
-* **Mailing Lists**: users@lists.zephyrproject.org is usually the right list to
-  ask for help. `Search archives and sign up here`_.
 * **Discord**: You can join with this `Discord invite`_.
+* **Mailing Lists**: ``users@lists.zephyrproject.org`` is usually the right list to
+  ask for help. `Search archives and sign up here`_.
 * **GitHub**: Use `GitHub issues`_ for bugs and feature requests.
 
 How to Ask
@@ -636,3 +657,10 @@ create a snippet using three backticks to delimit the snippet.
 .. _Discord invite: https://chat.zephyrproject.org
 .. _GitHub issues: https://github.com/zephyrproject-rtos/zephyr/issues
 .. _Accessibility: https://www.w3.org/standards/webdesign/accessibility
+
+.. rubric:: Footnotes
+
+.. [#other_linux_distributions]
+
+   Instructions for other Linux distributions are discussed in
+   :ref:`installation_linux`
