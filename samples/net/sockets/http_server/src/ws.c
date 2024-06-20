@@ -14,6 +14,8 @@
 #include <zephyr/net/socket.h>
 #include <zephyr/net/websocket.h>
 
+#include <zephyr/drivers/sensor.h>
+
 #include <zephyr/logging/log.h>
 LOG_MODULE_DECLARE(net_http_server_sample, LOG_LEVEL_DBG);
 
@@ -73,21 +75,6 @@ static int get_free_slot(struct data *cfg)
 	return -1;
 }
 
-static ssize_t sendall(int sock, const void *buf, size_t len)
-{
-	while (len) {
-		ssize_t out_len = send(sock, buf, len, 0);
-
-		if (out_len < 0) {
-			return out_len;
-		}
-		buf = (const char *)buf + out_len;
-		len -= out_len;
-	}
-
-	return 0;
-}
-
 static void ws_handler(void *ptr1, void *ptr2, void *ptr3)
 {
 	int slot = POINTER_TO_INT(ptr1);
@@ -103,6 +90,12 @@ static void ws_handler(void *ptr1, void *ptr2, void *ptr3)
 	cfg->fds[0].fd = client;
 	cfg->fds[0].events = POLLIN;
 
+	const struct device *accel_sensor = DEVICE_DT_GET(DT_ALIAS(accel0));
+	if (!device_is_ready(accel_sensor)) {
+		LOG_ERR("Device %s is not ready\n", accel_sensor->name);
+		return -ENODEV;
+	}
+
 	/* In this example, we start to receive data from the websocket
 	 * and send it back to the client. Note that we could either use
 	 * the BSD socket interface if we do not care about Websocket
@@ -110,11 +103,6 @@ static void ws_handler(void *ptr1, void *ptr2, void *ptr3)
 	 * function to send websocket specific data.
 	 */
 	while (true) {
-		if (poll(cfg->fds, 1, -1) < 0) {
-			LOG_ERR("Error in poll:%d", errno);
-			continue;
-		}
-
 		if (cfg->fds[0].fd < 0) {
 			continue;
 		}
@@ -124,52 +112,30 @@ static void ws_handler(void *ptr1, void *ptr2, void *ptr3)
 			break;
 		}
 
-		received = recv(client,
-				cfg->recv_buffer + offset,
-				sizeof(cfg->recv_buffer) - offset,
-				0);
+		char buf[32];
 
-		if (received == 0) {
-			/* Connection closed */
-			LOG_INF("[%d] Connection closed", slot);
-			break;
-		} else if (received < 0) {
-			/* Socket error */
-			LOG_ERR("[%d] Connection error %d", slot, errno);
+		struct sensor_value accel[3];
+		ret = sensor_sample_fetch(accel_sensor);
+
+		if (ret == 0) {
+			ret = sensor_channel_get(accel_sensor, SENSOR_CHAN_ACCEL_XYZ, accel);
+		}
+		if (ret < 0) {
+			LOG_ERR("ERROR: Update failed: %d\n", ret);
+			continue;
+		}
+
+		snprintf(buf, sizeof(buf), "{\"value\": %.3f}", sensor_value_to_double(&accel[0]));
+
+		ret = websocket_send_msg(cfg->fds[0].fd, buf, strlen(buf),
+					 WEBSOCKET_OPCODE_DATA_TEXT, false, true, SYS_FOREVER_MS);
+
+		if (ret < 0) {
+			LOG_ERR("[%d] Failed to send data, closing socket", slot);
 			break;
 		}
 
-		cfg->bytes_received += received;
-		offset += received;
-
-#if !defined(CONFIG_NET_SOCKETS_SOCKOPT_TLS)
-		/* To prevent fragmentation of the response, reply only if
-		 * buffer is full or there is no more data to read
-		 */
-		if (offset == sizeof(cfg->recv_buffer) ||
-		    (recv(client, cfg->recv_buffer + offset,
-			  sizeof(cfg->recv_buffer) - offset,
-			  MSG_PEEK | MSG_DONTWAIT) < 0 &&
-		     (errno == EAGAIN || errno == EWOULDBLOCK))) {
-#endif
-			ret = sendall(client, cfg->recv_buffer, offset);
-			if (ret < 0) {
-				LOG_ERR("[%d] Failed to send data, closing socket",
-					slot);
-				break;
-			}
-
-			LOG_DBG("[%d] Received and replied with %d bytes",
-				slot, offset);
-
-			if (++cfg->counter % 1000 == 0U) {
-				LOG_INF("[%d] Sent %u packets", slot, cfg->counter);
-			}
-
-			offset = 0;
-#if !defined(CONFIG_NET_SOCKETS_SOCKOPT_TLS)
-		}
-#endif
+		k_sleep(K_MSEC(20));
 	}
 
 	*in_use = false;

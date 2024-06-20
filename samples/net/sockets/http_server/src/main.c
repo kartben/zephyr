@@ -23,8 +23,7 @@ static uint8_t index_html_gz[] = {
 
 #if defined(CONFIG_NET_SAMPLE_HTTP_SERVICE)
 static uint16_t test_http_service_port = CONFIG_NET_SAMPLE_HTTP_SERVER_SERVICE_PORT;
-HTTP_SERVICE_DEFINE(test_http_service, CONFIG_NET_CONFIG_MY_IPV4_ADDR, &test_http_service_port, 1,
-		    10, NULL);
+HTTP_SERVICE_DEFINE(test_http_service, "192.168.1.180", &test_http_service_port, 1, 10, NULL);
 
 struct http_resource_detail_static index_html_gz_resource_detail = {
 	.common = {
@@ -195,8 +194,50 @@ static void setup_tls(void)
 #endif /* defined(CONFIG_NET_SAMPLE_HTTPS_SERVICE) */
 }
 
+#include <zephyr/net/wifi_mgmt.h>
+
+void wifi_connect(void)
+{
+	int ret;
+#if defined(CONFIG_WIFI)
+	int nr_tries = 10;
+	struct net_if *iface = net_if_get_default();
+	static struct wifi_connect_req_params cnx_params = {
+		.ssid = "MY_SSID",
+		.ssid_length = 0,
+		.psk = "MY_PWD",
+		.psk_length = 0,
+		.channel = 0,
+		.security = WIFI_SECURITY_TYPE_PSK,
+	};
+
+	cnx_params.ssid_length = strlen(cnx_params.ssid);
+	cnx_params.psk_length = strlen(cnx_params.psk);
+
+	/* Let's wait few seconds to allow wifi device be on-line */
+
+	LOG_INF("Connecting to WiFi network %s...", cnx_params.ssid);
+
+	while (nr_tries-- > 0) {
+		ret = net_mgmt(NET_REQUEST_WIFI_CONNECT, iface, &cnx_params,
+			       sizeof(struct wifi_connect_req_params));
+		if (ret == 0) {
+			break;
+		}
+
+		// LOG_INF("Connect request failed %d. Waiting iface be up...", ret);
+		k_msleep(500);
+	}
+#endif
+}
+
 int main(void)
 {
+	wifi_connect();
+
+	/* hack :) would be better to properly wait for an IP to be assigned */
+	k_sleep(K_SECONDS(10));
+
 	setup_tls();
 	http_server_start();
 	return 0;
