@@ -26,7 +26,7 @@ config NET_SAMPLE_MQTT_SUB_TOPIC_CMD
 
 config NET_SAMPLE_MQTT_PUBLISH_INTERVAL
 	int "Interval between MQTT publishes (in seconds)"
-	default 3
+	default 30
 	help
 	  This config determines the frequency at which MQTT publishes occur.
 
@@ -53,6 +53,6 @@ endchoice
 
 config NET_SAMPLE_MQTT_PAYLOAD_SIZE
 	int "Size of MQTT payload in bytes"
-	default 128
+	default 300
 
 source "Kconfig.zephyr"

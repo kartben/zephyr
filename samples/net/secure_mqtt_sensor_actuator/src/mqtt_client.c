@@ -31,8 +31,15 @@ static struct zsock_pollfd fds[1];
 static int nfds;
 
 /* JSON payload format */
+
+static const struct json_obj_descr timestamp_descr[] = {
+	JSON_OBJ_DESCR_PRIM(struct timestamp, seconds, JSON_TOK_NUMBER),
+	JSON_OBJ_DESCR_PRIM(struct timestamp, nanoseconds, JSON_TOK_NUMBER),
+};
+
 static const struct json_obj_descr sensor_sample_descr[] = {
 	JSON_OBJ_DESCR_PRIM(struct sensor_sample, unit, JSON_TOK_STRING),
+	JSON_OBJ_DESCR_OBJECT(struct sensor_sample, ts, timestamp_descr),
 	JSON_OBJ_DESCR_PRIM(struct sensor_sample, value, JSON_TOK_NUMBER),
 };
 

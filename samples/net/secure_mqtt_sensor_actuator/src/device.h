@@ -8,8 +8,15 @@
 #define __DEVICE_H__
 
 /** @brief Sensor sample structure */
+
+struct timestamp {
+	uint64_t seconds;
+	uint32_t nanoseconds;
+};
+
 struct sensor_sample {
 	const char *unit;
+	struct timestamp ts;
 	int value;
 };
 

@@ -8,17 +8,24 @@
 LOG_MODULE_REGISTER(app_device, LOG_LEVEL_DBG);
 
 #include <zephyr/kernel.h>
+#include <zephyr/drivers/ptp_clock.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/led.h>
 #include <zephyr/random/random.h>
 
+#include <zephyr/net/net_if.h>
+#include <zephyr/net/ethernet.h>
+
 #include "device.h"
 
-#define SENSOR_CHAN     SENSOR_CHAN_AMBIENT_TEMP
+#include <time.h>
+
+
+#define SENSOR_CHAN     SENSOR_CHAN_DIE_TEMP
 #define SENSOR_UNIT     "Celsius"
 
 /* Devices */
-static const struct device *sensor = DEVICE_DT_GET_OR_NULL(DT_ALIAS(ambient_temp0));
+static const struct device *sensor = DEVICE_DT_GET_OR_NULL(DT_ALIAS(asssmbient_temp0));
 static const struct device *leds = DEVICE_DT_GET_OR_NULL(DT_INST(0, gpio_leds));
 
 /* Command handlers */
@@ -62,6 +69,51 @@ int device_read_sensor(struct sensor_sample *sample)
 	 */
 	if (sensor == NULL) {
 		sample->unit = SENSOR_UNIT;
+
+
+
+#if defined(CONFIG_PTP_CLOCK)
+	struct net_if *iface;
+
+	iface = net_if_get_default();
+	if (iface == NULL) {
+		LOG_ERR("No network interface configured");
+		return -ENETDOWN;
+	}
+
+	const struct device *clk;
+	struct net_ptp_time tm;
+
+	clk = net_eth_get_ptp_clock(iface);
+	if(clk) {
+		rc = ptp_clock_get(clk, &tm);
+		if (rc) {
+			LOG_ERR("Failed to get PTP clock time [%d]", rc);
+			return rc;
+		}
+		printf("PTP clock time: %lld.%llu\n", tm.second, tm.nanosecond);
+
+		time_t sec = (time_t)tm.second - 37; /** UTC to TAI offset */
+		struct tm *tm_info = gmtime(&sec);
+
+		char buffer[50];
+		// Format time as ISO 8601 string with nanoseconds
+		strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S", tm_info);
+		snprintf(buffer, sizeof(buffer), "%s.%dZ", buffer, tm.nanosecond);
+	//	strncpy(sample->timestamp, buffer, sizeof(buffer));
+		sample->ts.seconds = tm.second - 37;
+		sample->ts.nanoseconds = tm.nanosecond;
+	} else {
+	//	sample->ts = { 0, 0 };
+	}
+
+#else
+	//sample->ts = { 0, 0 };
+#endif
+
+
+
+
 		sample->value = 20.0 + (double)sys_rand32_get() / UINT32_MAX * 5.0;
 		return 0;
 	}
@@ -79,6 +131,38 @@ int device_read_sensor(struct sensor_sample *sample)
 	}
 
 	sample->unit = SENSOR_UNIT;
+
+// 	struct net_ptp_time current;
+
+// #if defined(CONFIG_PTP_CLOCK)
+// 	struct net_if *iface;
+
+// 	iface = net_if_get_default();
+// 	if (iface == NULL) {
+// 		LOG_ERR("No network interface configured");
+// 		return -ENETDOWN;
+// 	}
+
+// 	const struct device *clk;
+// 	struct net_ptp_time tm;
+
+// 	clk = net_eth_get_ptp_clock(iface);
+// 	if(clk) {
+// 		rc = ptp_clock_get(clk, &tm);
+// 		if (rc) {
+// 			LOG_ERR("Failed to get PTP clock time [%d]", rc);
+// 			return rc;
+// 		}
+// 		printf("PTP clock time: %d.%09d\n", tm.second, tm.nanosecond);
+// 		sample->timestamp = "2024-xx";
+// 	} else {
+// 		sample->timestamp = "N/A";
+// 	}
+
+// #else
+// 	sample->timestamp = "N/A";
+// #endif
+
 	sample->value = sensor_value_to_double(&sensor_val);
 	return rc;
 }

@@ -10,8 +10,8 @@
 #include <zephyr/types.h>
 
 /* Naming of the  ETH PTP Config Status changes depending on the stm32 serie */
-#if defined(CONFIG_SOC_SERIES_STM32F4X)
-#define ETH_STM32_PTP_CONFIGURED HAL_ETH_PTP_CONFIGURATED
+#if defined(CONFIG_SOC_SERIES_STM32F4X) || defined(CONFIG_SOC_SERIES_STM32F7X)
+#define ETH_STM32_PTP_CONFIGURED HAL_ETH_PTP_CONFIGURED
 #define ETH_STM32_PTP_NOT_CONFIGURED HAL_ETH_PTP_NOT_CONFIGURATED
 #else
 #define ETH_STM32_PTP_CONFIGURED HAL_ETH_PTP_CONFIGURED
@@ -63,8 +63,8 @@ struct eth_stm32_hal_dev_data {
 #endif /* CONFIG_ETH_STM32_MULTICAST_FILTER */
 #if defined(CONFIG_PTP_CLOCK_STM32_HAL)
 	const struct device *ptp_clock;
-	float clk_ratio;
-	float clk_ratio_adj;
+	double clk_ratio;
+	double clk_ratio_adj;
 #endif /* CONFIG_PTP_CLOCK_STM32_HAL */
 #if defined(CONFIG_NET_STATISTICS_ETHERNET)
 	struct net_stats_eth stats;

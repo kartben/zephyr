@@ -525,9 +525,11 @@ void ptp_clock_synchronize(uint64_t ingress, uint64_t egress)
 		struct net_ptp_time current;
 		int32_t dest_nsec;
 
-		LOG_WRN("Clock offset exceeds 1 second.");
+		LOG_WRN("Clock offset exceeds 1 second. (offset = %lld ns)", offset);
 
 		ptp_clock_get(ptp_clk.phc, &current);
+		LOG_WRN("Current clock = %llu.%09u", current.second, current.nanosecond);
+
 
 		current.second -= (uint64_t)(offset / NSEC_PER_SEC);
 		dest_nsec = current.nanosecond - (uint32_t)(offset % NSEC_PER_SEC);
@@ -542,14 +544,28 @@ void ptp_clock_synchronize(uint64_t ingress, uint64_t egress)
 
 		current.nanosecond = dest_nsec;
 
+		LOG_WRN("New clock = %llu.%09u", current.second, current.nanosecond);
+
 		ptp_clock_set(ptp_clk.phc, &current);
 		return;
 	}
 
-	LOG_DBG("Offset %lldns", offset);
+	LOG_DBG("Offset %09lld", offset);
+	// LOG_DBG("Offset %+lld.%09lld", offset / (int64_t)NSEC_PER_SEC, offset % (int64_t) NSEC_PER_SEC);
 	ptp_clk.current_ds.offset_from_tt = clock_ns_to_timeinterval(offset);
 
 	ptp_clock_adjust(ptp_clk.phc, -offset);
+
+	// if (offset > 0) {
+	// 	ptp_clock_rate_adjust(ptp_clk.phc, 0.99999999L);
+	// } else {
+	// 	ptp_clock_rate_adjust(ptp_clk.phc, 1.00000001L);
+	// }
+
+	double ratio = 1.0L - ( (double)offset / 1000000000L);
+	printf("computed ratio: %.12f\n", ratio);
+	ptp_clock_rate_adjust(ptp_clk.phc, ratio);
+
 }
 
 void ptp_clock_delay(uint64_t egress, uint64_t ingress)
@@ -558,6 +574,11 @@ void ptp_clock_delay(uint64_t egress, uint64_t ingress)
 
 	ptp_clk.timestamp.t3 = egress;
 	ptp_clk.timestamp.t4 = ingress;
+
+	LOG_DBG("t1: %llu", ptp_clk.timestamp.t1);
+	LOG_DBG("t2: %llu", ptp_clk.timestamp.t2);
+	LOG_DBG("t3: %llu", ptp_clk.timestamp.t3);
+	LOG_DBG("t4: %llu", ptp_clk.timestamp.t4);
 
 	delay = ((ptp_clk.timestamp.t2 - ptp_clk.timestamp.t3) +
 		 (ptp_clk.timestamp.t4 - ptp_clk.timestamp.t1)) / 2;
