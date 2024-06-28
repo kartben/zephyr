@@ -33,6 +33,7 @@ static int nfds;
 /* JSON payload format */
 static const struct json_obj_descr sensor_sample_descr[] = {
 	JSON_OBJ_DESCR_PRIM(struct sensor_sample, unit, JSON_TOK_STRING),
+	JSON_OBJ_DESCR_PRIM(struct sensor_sample, timestamp, JSON_TOK_STRING),
 	JSON_OBJ_DESCR_PRIM(struct sensor_sample, value, JSON_TOK_NUMBER),
 };
 

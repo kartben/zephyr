@@ -10,6 +10,7 @@
 /** @brief Sensor sample structure */
 struct sensor_sample {
 	const char *unit;
+	const char *timestamp;
 	int value;
 };
 
