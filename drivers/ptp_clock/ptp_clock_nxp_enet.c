@@ -43,6 +43,9 @@ static int ptp_clock_nxp_enet_set(const struct device *dev,
 	enet_time.second = tm->second;
 	enet_time.nanosecond = tm->nanosecond;
 
+	printk("ENET PTP set time: %llu.%09u\n", enet_time.second,
+			enet_time.nanosecond);
+
 	ENET_Ptp1588SetTimer(data->base, &data->enet_handle, &enet_time);
 
 	return 0;

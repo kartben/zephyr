@@ -278,9 +278,12 @@ static inline void setup_mac_filter(ETH_HandleTypeDef *heth)
 #if defined(CONFIG_PTP_CLOCK_STM32_HAL)
 static bool eth_is_ptp_pkt(struct net_if *iface, struct net_pkt *pkt)
 {
+	LOG_DBG("Checking if %p is timestampped", pkt);
+	LOG_DBG("packet type =  %04x", NET_ETH_HDR(pkt)->type);
 	if (ntohs(NET_ETH_HDR(pkt)->type) != NET_ETH_PTYPE_PTP) {
 		return false;
 	}
+
 
 	net_pkt_set_priority(pkt, NET_PRIORITY_CA);
 
@@ -1633,6 +1636,8 @@ static int ptp_clock_stm32_rate_adjust(const struct device *dev, double ratio)
 	int key, ret;
 	uint32_t addend_val;
 
+
+
 	/* No change needed */
 	if (ratio == 1.0L) {
 		return 0;
@@ -1736,15 +1741,24 @@ static int ptp_stm32_init(const struct device *port)
 		LOG_ERR("PTP clock period is more than %d nanoseconds", UINT8_MAX);
 		return -EINVAL;
 	}
+
+	printk(">> ss_incr_ns: %u\n", ss_incr_ns);
+
 #if defined(CONFIG_SOC_SERIES_STM32H7X) || defined(CONFIG_SOC_SERIES_STM32H5X)
 	heth->Instance->MACSSIR = ss_incr_ns << ETH_MACMACSSIR_SSINC_Pos;
 #else
 	heth->Instance->PTPSSIR = ss_incr_ns;
 #endif /* CONFIG_SOC_SERIES_STM32H7X || CONFIG_SOC_SERIES_STM32H5X */
 
+	printk(">> CONFIG_ETH_STM32_HAL_PTP_CLOCK_SRC_HZ: %u\n", ptp_hclk_rate);
+	printk(">> ptp_hclk_rate: %u\n", ptp_hclk_rate);
+
 	/* Program timestamp addend register */
 	eth_dev_data->clk_ratio =
 		((double)CONFIG_ETH_STM32_HAL_PTP_CLOCK_SRC_HZ) / ((double)ptp_hclk_rate);
+
+	printk(">> clk_ratio = %.12f\n", eth_dev_data->clk_ratio);
+
 	/*
 	 * clk_ratio is a ratio between desired PTP clock frequency and HCLK rate.
 	 * Because HCLK is defined by a physical oscillator, it might drift due
@@ -1755,6 +1769,9 @@ static int ptp_stm32_init(const struct device *port)
 	eth_dev_data->clk_ratio_adj = 1.0f;
 	addend_val =
 		UINT32_MAX * eth_dev_data->clk_ratio * eth_dev_data->clk_ratio_adj;
+
+	printk(">> addend_val: %u\n", addend_val);
+
 #if defined(CONFIG_SOC_SERIES_STM32H7X) || defined(CONFIG_SOC_SERIES_STM32H5X)
 	heth->Instance->MACTSAR = addend_val;
 	heth->Instance->MACTSCR |= ETH_MACTSCR_TSADDREG;

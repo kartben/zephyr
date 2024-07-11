@@ -160,15 +160,22 @@ static bool eth_get_ptp_data(struct net_if *iface, struct net_pkt *pkt)
 static inline void ts_register_tx_event(const struct device *dev,
 					 enet_frame_info_t *frameinfo)
 {
+	LOG_DBG("ts_register_tx_event");
 	struct nxp_enet_mac_data *data = dev->data;
 	struct net_pkt *pkt = frameinfo->context;
 
 	if (pkt && atomic_get(&pkt->atomic_ref) > 0) {
-		if (eth_get_ptp_data(net_pkt_iface(pkt), pkt) && frameinfo->isTsAvail) {
+
+		LOG_DBG("BLABLABLALBA");
+
+		if ((eth_get_ptp_data(net_pkt_iface(pkt), pkt) || net_pkt_is_tx_timestamping(pkt))
+		     && frameinfo->isTsAvail) {
 			k_mutex_lock(data->ptp_mutex, K_FOREVER);
 
 			pkt->timestamp.nanosecond = frameinfo->timeStamp.nanosecond;
 			pkt->timestamp.second = frameinfo->timeStamp.second;
+
+			LOG_DBG("PTP timestamp of tx packet: %llu.%u", pkt->timestamp.second, pkt->timestamp.nanosecond);
 
 			net_if_add_tx_timestamp(pkt);
 			k_sem_give(&data->ptp_ts_sem);
@@ -181,6 +188,7 @@ static inline void ts_register_tx_event(const struct device *dev,
 
 static inline void eth_wait_for_ptp_ts(const struct device *dev, struct net_pkt *pkt)
 {
+	LOG_DBG("eth_wait_for_ptp_ts");
 	struct nxp_enet_mac_data *data = dev->data;
 
 	net_pkt_ref(pkt);
@@ -220,16 +228,20 @@ static int eth_nxp_enet_tx(const struct device *dev, struct net_pkt *pkt)
 		goto exit;
 	}
 
-	frame_is_timestamped = eth_get_ptp_data(net_pkt_iface(pkt), pkt);
+	frame_is_timestamped = eth_get_ptp_data(net_pkt_iface(pkt), pkt) ||
+			    net_pkt_is_tx_timestamping(pkt);
+
+	LOG_DBG("frame_is_timestamped: %d", frame_is_timestamped);
 
 	ret = ENET_SendFrame(data->base, &data->enet_handle, data->tx_frame_buf,
 			     total_len, RING_ID, frame_is_timestamped, pkt);
-	if (ret == kStatus_Success) {
-		goto exit;
-	}
 
-	if (frame_is_timestamped) {
-		eth_wait_for_ptp_ts(dev, pkt);
+	if (ret == kStatus_Success) {
+		if(frame_is_timestamped) {
+			eth_wait_for_ptp_ts(dev, pkt);
+		} else {
+			goto exit;
+		}
 	} else {
 		LOG_ERR("ENET_SendFrame error: %d", ret);
 		ENET_ReclaimTxDescriptor(data->base, &data->enet_handle, RING_ID);
@@ -398,22 +410,25 @@ static int eth_nxp_enet_rx(const struct device *dev)
 	pkt->timestamp.nanosecond = UINT32_MAX;
 	pkt->timestamp.second = UINT64_MAX;
 
-	/* Timestamp the packet using PTP clock */
-	if (eth_get_ptp_data(get_iface(data), pkt)) {
-		struct net_ptp_time ptp_time;
+	struct net_ptp_time ptp_time;
 
-		ptp_clock_get(config->ptp_clock, &ptp_time);
+	int rc = ptp_clock_get(config->ptp_clock, &ptp_time);
+	LOG_DBG("PTP timestamp of rx packet: %llu.%u", ptp_time.second, ptp_time.nanosecond);
 
-		/* If latest timestamp reloads after getting from Rx BD,
-		 * then second - 1 to make sure the actual Rx timestamp is accurate
-		 */
-		if (ptp_time.nanosecond < ts) {
-			ptp_time.second--;
-		}
-
-		pkt->timestamp.nanosecond = ts;
-		pkt->timestamp.second = ptp_time.second;
+	/* If latest timestamp reloads after getting from Rx BD,
+		* then second - 1 to make sure the actual Rx timestamp is accurate
+		*/
+	if (ptp_time.nanosecond < ts) {
+		ptp_time.second--;
 	}
+
+	pkt->timestamp.nanosecond = ts;
+	pkt->timestamp.second = ptp_time.second;
+
+	if (pkt->timestamp.second != UINT64_MAX) {
+		net_pkt_set_rx_timestamping(pkt, true);
+	}
+
 	k_mutex_unlock(data->ptp_mutex);
 #endif /* CONFIG_PTP_CLOCK_NXP_ENET */
 

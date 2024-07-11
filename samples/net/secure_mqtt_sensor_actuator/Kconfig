@@ -5,7 +5,7 @@ mainmenu "Secure MQTT Sensor Actuator Sample Application"
 
 config NET_SAMPLE_MQTT_BROKER_HOSTNAME
 	string "Hostname of MQTT broker"
-	default "test.mosquitto.org"
+	default "192.0.5.1"
 	help
 	  MQTT broker's hostname or IP address.
 
@@ -26,7 +26,7 @@ config NET_SAMPLE_MQTT_SUB_TOPIC_CMD
 
 config NET_SAMPLE_MQTT_PUBLISH_INTERVAL
 	int "Interval between MQTT publishes (in seconds)"
-	default 30
+	default 5
 	help
 	  This config determines the frequency at which MQTT publishes occur.
 
