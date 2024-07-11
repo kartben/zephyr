@@ -1,0 +1,4 @@
+west spdx --init -d build
+west build -b wio_terminal/samd51p19a -p auto samples/net/wifi -- -DCONFIG_BUILD_OUTPUT_META=y
+west spdx -d build
+cve-bin-tool --sbom spdx --sbom-file build/spdx/modules-deps.spdx
