@@ -1,0 +1,24 @@
+docker run -it ubuntu
+
+
+
+apt update
+apt install git wget xz-utils cmake xxd
+
+
+wget https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.8/toolchain_linux-x86_64_arm-zephyr-eabi.tar.xz
+
+tar xvf toolchain_linux-x86_64_arm-zephyr-eabi.tar.xz
+
+export ZEPHYR_SDK_INSTALL_DIR=/
+
+git clone https://github.com/kartben/zephyr --branch demo37_llext_edk_lvgl_demo --depth 1
+cd zephyr/llext-edk-simple-app
+
+tar -xf ./llext-edk.tar.xz -C /tmp
+export LLEXT_EDK_INSTALL_DIR=/tmp/llext-edk
+cmake -B build
+cd build && make
+
+
+xxd -p progress_bar.llext | tr -d '\n'
