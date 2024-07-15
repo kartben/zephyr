@@ -20,6 +20,8 @@ LOG_MODULE_REGISTER(app_device, LOG_LEVEL_DBG);
 
 #include <time.h>
 
+#include <zephyr/input/input.h>
+
 
 #define SENSOR_CHAN     SENSOR_CHAN_DIE_TEMP
 #define SENSOR_UNIT     "Celsius"
@@ -194,6 +196,81 @@ int device_write_led(enum led_id led_idx, enum led_state state)
 
 	return rc;
 }
+
+static void input_dump_cb(struct input_event *evt)
+{
+	uint64_t event_time = k_cycle_get_64();
+
+
+	//printk("Input event sysclock in ns = %llu\n", k_cyc_to_ns_floor64(event_time));
+
+	uint64_t hasptpcktime_time;
+
+#if defined(CONFIG_PTP_CLOCK)
+	struct net_if *iface;
+	int rc;
+
+	iface = net_if_get_default();
+	if (iface == NULL) {
+		LOG_ERR("No network interface configured");
+		return -ENETDOWN;
+	}
+
+	const struct device *clk;
+	struct net_ptp_time tm;
+
+	clk = net_eth_get_ptp_clock(iface);
+	if(clk) {
+		rc = ptp_clock_get(clk, &tm);
+		if (rc) {
+			LOG_ERR("Failed to get PTP clock time [%d]", rc);
+			return;
+		}
+
+		hasptpcktime_time = k_cycle_get_64();
+
+		// LOG_DBG("cycles between event time and ptp clock acquisition: %u",
+		// 	hasptpcktime_time - event_time);
+		// LOG_DBG("nanoseconds between event time and ptp clock acquisition: %u",
+		// 	k_cyc_to_ns_floor32(hasptpcktime_time - event_time));
+
+
+		printk("PUSH >>> PTP clock time: %09llu\n", (tm.second * 1000000000L +
+			tm.nanosecond -
+			k_cyc_to_ns_floor64(hasptpcktime_time - event_time) -
+			30 * 1000 * 1000) % 1000000000L);
+
+
+		time_t sec = (time_t)tm.second - 37; /** UTC to TAI offset */
+		struct tm *tm_info = gmtime(&sec);
+
+		// todo!! handle second rollover if nanosecond would end up being negative
+
+		tm.nanosecond -= k_cyc_to_ns_floor64(hasptpcktime_time - event_time);
+
+		// also subtract debounce time (30ms). TODO -- shouldn't be hardcoded!
+		tm.nanosecond -= 30 * 1000 * 1000;
+
+		char buffer[50];
+		// Format time as ISO 8601 string with nanoseconds
+		strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S", tm_info);
+		snprintf(buffer, sizeof(buffer), "%s.%dZ", buffer, tm.nanosecond);
+
+
+		// LOG_INF("Received input event at %s", buffer);
+
+	} else {
+	//	sample->ts = { 0, 0 };
+	}
+
+#else
+	//sample->ts = { 0, 0 };
+#endif
+
+
+}
+INPUT_CALLBACK_DEFINE(NULL, input_dump_cb);
+
 
 bool devices_ready(void)
 {

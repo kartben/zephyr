@@ -1,0 +1,16 @@
+/*
+ * Copyright (c) 2024 STMicroelectronics
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	gpio_keys {
+		// debounce-interval-ms = <2000>;
+		user_button2: button2 {
+			label = "Btn2";
+			gpios = <&arduino_header 8 GPIO_PULL_UP>;
+			zephyr,code = <INPUT_KEY_1>;
+		};
+	};
+};
