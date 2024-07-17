@@ -373,8 +373,8 @@ void sensor_shell_processing_callback(int result, uint8_t *buf, uint32_t buf_len
 
 		rc = decoder->get_size_info(ch, &base_size, &frame_size);
 		if (rc != 0) {
-			LOG_DBG("skipping unsupported channel %s:%d",
-				 sensor_channel_name[ch.chan_type], ch.chan_idx);
+			// LOG_DBG("skipping unsupported channel %s:%d",
+			// 	 sensor_channel_name[ch.chan_type], ch.chan_idx);
 			/* Channel not supported, skipping */
 			continue;
 		}

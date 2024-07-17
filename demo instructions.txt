@@ -1,0 +1,20 @@
+ west build -b disco_l475_iot1 -p auto .\samples\sensor\sensor_shell  -- -DEXTRA_DTC_OVERLAY_FILE="boards/bme280_grove_arduino.overlay" -DCONFIG_PM_DEVICE=y -DCONFIG_PM_DEVICE_LOG_LEVEL_DBG=y -DCONFIG_I2C_LOG_LEVEL_ERR=y -DCONFIG_SENSOR_LOG_LEVEL_DBG=y -DCONFIG_PM_DEVICE_RUNTIME=y -DCONFIG_PM_DEVICE_SHELL=y -DCONFIG_I2C_SHELL=y -DCONFIG_GPIO_SHELL=y && west flash
+
+
+sensor get bme280@76
+
+device list
+
+pm suspend bme280@76
+
+device list
+
+sensor get bme280@76
+
+pm resume bme280@76
+
+
+
+pm suspend adc@50040000
+
+pm resume adc@50040000
