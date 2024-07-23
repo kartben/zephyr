@@ -539,6 +539,7 @@ static ptrdiff_t get_elem_size(const struct json_obj_descr *descr)
 		return sizeof(int32_t);
 	case JSON_TOK_OPAQUE:
 	case JSON_TOK_FLOAT:
+		return sizeof(float);
 	case JSON_TOK_OBJ_ARRAY:
 		return sizeof(struct json_obj_token);
 	case JSON_TOK_STRING:
@@ -982,12 +983,12 @@ static int num_encode(const int32_t *num, json_append_bytes_t append_bytes,
 	return append_bytes(buf, (size_t)ret, data);
 }
 
-static int float_ascii_encode(struct json_obj_token *num, json_append_bytes_t append_bytes,
-		      void *data)
-{
+// static int float_ascii_encode(struct json_obj_token *num, json_append_bytes_t append_bytes,
+// 		      void *data)
+// {
 
-	return append_bytes(num->start, num->length, data);
-}
+// 	return append_bytes(num->start, num->length, data);
+// }
 
 static int opaque_string_encode(struct json_obj_token *opaque, json_append_bytes_t append_bytes,
 		      void *data)
@@ -1006,6 +1007,25 @@ static int opaque_string_encode(struct json_obj_token *opaque, json_append_bytes
 
 	return append_bytes("\"", 1, data);
 }
+
+
+static int float_encode(const float *num, json_append_bytes_t append_bytes,
+		      void *data)
+{
+	char buf[16 * sizeof(float)];
+	int ret;
+
+	ret = snprintk(buf, sizeof(buf), "%.3f", *num);
+	if (ret < 0) {
+		return ret;
+	}
+	if (ret >= (int)sizeof(buf)) {
+		return -ENOMEM;
+	}
+
+	return append_bytes(buf, (size_t)ret, data);
+}
+
 
 static int encoded_obj_encode(const char **str, json_append_bytes_t append_bytes, void *data)
 {
@@ -1045,7 +1065,7 @@ static int encode(const struct json_obj_descr *descr, const void *val,
 	case JSON_TOK_NUMBER:
 		return num_encode(ptr, append_bytes, data);
 	case JSON_TOK_FLOAT:
-		return float_ascii_encode(ptr, append_bytes, data);
+		return float_encode(ptr, append_bytes, data);
 	case JSON_TOK_OPAQUE:
 		return opaque_string_encode(ptr, append_bytes, data);
 	case JSON_TOK_ENCODED_OBJ:
