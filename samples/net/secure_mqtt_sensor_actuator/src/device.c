@@ -23,12 +23,14 @@ LOG_MODULE_REGISTER(app_device, LOG_LEVEL_DBG);
 #include <zephyr/input/input.h>
 
 
-#define SENSOR_CHAN     SENSOR_CHAN_DIE_TEMP
+#define SENSOR_CHAN     SENSOR_CHAN_AMBIENT_TEMP
 #define SENSOR_UNIT     "Celsius"
 
 /* Devices */
-static const struct device *sensor = DEVICE_DT_GET_OR_NULL(DT_ALIAS(asssmbient_temp0));
+static const struct device *sensor = DEVICE_DT_GET_OR_NULL(DT_ALIAS(ambient_temp0));
 static const struct device *leds = DEVICE_DT_GET_OR_NULL(DT_INST(0, gpio_leds));
+
+extern struct k_msgq input_events_msgq;
 
 /* Command handlers */
 static void led_on_handler(void)
@@ -71,10 +73,10 @@ int device_read_sensor(struct sensor_sample *sample)
 	 */
 	if (sensor == NULL) {
 		sample->unit = SENSOR_UNIT;
+		sample->value = 20.0 + (double)sys_rand32_get() / UINT32_MAX * 5.0;
+		return 0;
+	}
 
-
-
-#if defined(CONFIG_PTP_CLOCK)
 	struct net_if *iface;
 
 	iface = net_if_get_default();
@@ -93,7 +95,7 @@ int device_read_sensor(struct sensor_sample *sample)
 			LOG_ERR("Failed to get PTP clock time [%d]", rc);
 			return rc;
 		}
-		printf("PTP clock time: %lld.%llu\n", tm.second, tm.nanosecond);
+		// printf("PTP clock time: %lld.%llu\n", tm.second, tm.nanosecond);
 
 		time_t sec = (time_t)tm.second - 37; /** UTC to TAI offset */
 		struct tm *tm_info = gmtime(&sec);
@@ -109,17 +111,6 @@ int device_read_sensor(struct sensor_sample *sample)
 	//	sample->ts = { 0, 0 };
 	}
 
-#else
-	//sample->ts = { 0, 0 };
-#endif
-
-
-
-
-		sample->value = 20.0 + (double)sys_rand32_get() / UINT32_MAX * 5.0;
-		return 0;
-	}
-
 	rc = sensor_sample_fetch(sensor);
 	if (rc) {
 		LOG_ERR("Failed to fetch sensor sample [%d]", rc);
@@ -133,39 +124,7 @@ int device_read_sensor(struct sensor_sample *sample)
 	}
 
 	sample->unit = SENSOR_UNIT;
-
-// 	struct net_ptp_time current;
-
-// #if defined(CONFIG_PTP_CLOCK)
-// 	struct net_if *iface;
-
-// 	iface = net_if_get_default();
-// 	if (iface == NULL) {
-// 		LOG_ERR("No network interface configured");
-// 		return -ENETDOWN;
-// 	}
-
-// 	const struct device *clk;
-// 	struct net_ptp_time tm;
-
-// 	clk = net_eth_get_ptp_clock(iface);
-// 	if(clk) {
-// 		rc = ptp_clock_get(clk, &tm);
-// 		if (rc) {
-// 			LOG_ERR("Failed to get PTP clock time [%d]", rc);
-// 			return rc;
-// 		}
-// 		printf("PTP clock time: %d.%09d\n", tm.second, tm.nanosecond);
-// 		sample->timestamp = "2024-xx";
-// 	} else {
-// 		sample->timestamp = "N/A";
-// 	}
-
-// #else
-// 	sample->timestamp = "N/A";
-// #endif
-
-	sample->value = sensor_value_to_double(&sensor_val);
+	sample->value = sensor_value_to_float(&sensor_val);
 	return rc;
 }
 
@@ -197,16 +156,8 @@ int device_write_led(enum led_id led_idx, enum led_state state)
 	return rc;
 }
 
-static void input_dump_cb(struct input_event *evt)
+static int get_ptp_clock_time(struct net_ptp_time *tm)
 {
-	uint64_t event_time = k_cycle_get_64();
-
-
-	//printk("Input event sysclock in ns = %llu\n", k_cyc_to_ns_floor64(event_time));
-
-	uint64_t hasptpcktime_time;
-
-#if defined(CONFIG_PTP_CLOCK)
 	struct net_if *iface;
 	int rc;
 
@@ -217,57 +168,60 @@ static void input_dump_cb(struct input_event *evt)
 	}
 
 	const struct device *clk;
-	struct net_ptp_time tm;
 
 	clk = net_eth_get_ptp_clock(iface);
 	if(clk) {
-		rc = ptp_clock_get(clk, &tm);
+		rc = ptp_clock_get(clk, tm);
 		if (rc) {
 			LOG_ERR("Failed to get PTP clock time [%d]", rc);
-			return;
+			return rc;
 		}
+	} else {
+		tm->second = 0;
+		tm->nanosecond = 0;
+	}
 
-		hasptpcktime_time = k_cycle_get_64();
+	return 0;
+}
 
-		// LOG_DBG("cycles between event time and ptp clock acquisition: %u",
-		// 	hasptpcktime_time - event_time);
-		// LOG_DBG("nanoseconds between event time and ptp clock acquisition: %u",
-		// 	k_cyc_to_ns_floor32(hasptpcktime_time - event_time));
+static struct timestamp event_ts;
 
+static void input_dump_cb(struct input_event *evt)
+{
+	uint64_t event_time = k_cycle_get_64();
+	struct net_ptp_time tm;
+	int rc;
 
-		printk("PUSH >>> PTP clock time: %09llu\n", (tm.second * 1000000000L +
-			tm.nanosecond -
-			k_cyc_to_ns_floor64(hasptpcktime_time - event_time) -
-			30 * 1000 * 1000) % 1000000000L);
+	if(evt->value != 1) {
+		return;
+	}
 
+	rc = get_ptp_clock_time(&tm);
+	if (rc == 0) {
+		uint64_t get_time = k_cycle_get_64();
 
 		time_t sec = (time_t)tm.second - 37; /** UTC to TAI offset */
 		struct tm *tm_info = gmtime(&sec);
 
-		// todo!! handle second rollover if nanosecond would end up being negative
+		// correct by the time it took to get the PTP clock time
+		tm.nanosecond -= k_cyc_to_ns_floor64(get_time - event_time);
 
-		tm.nanosecond -= k_cyc_to_ns_floor64(hasptpcktime_time - event_time);
-
-		// also subtract debounce time (30ms). TODO -- shouldn't be hardcoded!
+		// correct by the debounce time (30ms). TODO -- shouldn't be hardcoded!
 		tm.nanosecond -= 30 * 1000 * 1000;
 
 		char buffer[50];
 		// Format time as ISO 8601 string with nanoseconds
 		strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S", tm_info);
 		snprintf(buffer, sizeof(buffer), "%s.%dZ", buffer, tm.nanosecond);
+		printk("PTP clock time: %s\n", buffer);
 
+		event_ts.seconds = tm.second - 37;
+		event_ts.nanoseconds = tm.nanosecond;
 
-		// LOG_INF("Received input event at %s", buffer);
-
+		k_msgq_put(&input_events_msgq, &event_ts, K_NO_WAIT);
 	} else {
-	//	sample->ts = { 0, 0 };
+		LOG_ERR("Failed to get PTP clock time [%d]", rc);
 	}
-
-#else
-	//sample->ts = { 0, 0 };
-#endif
-
-
 }
 INPUT_CALLBACK_DEFINE(NULL, input_dump_cb);
 

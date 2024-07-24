@@ -563,7 +563,7 @@ void ptp_clock_synchronize(uint64_t ingress, uint64_t egress)
 	// }
 
 	double ratio = 1.0L - ( (double)offset / 1000000000L);
-	printf("computed ratio: %.12f\n", ratio);
+	// printf("computed ratio: %.12f\n", ratio);
 	ptp_clock_rate_adjust(ptp_clk.phc, ratio);
 
 }

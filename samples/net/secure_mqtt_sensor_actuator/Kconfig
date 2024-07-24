@@ -20,13 +20,17 @@ config NET_SAMPLE_MQTT_PUB_TOPIC
 	string "The MQTT topic the application should publish data to"
 	default "zephyr_sample/sensor"
 
+config NET_SAMPLE_MQTT_PUB_TOPIC_GPIO
+	string "The MQTT topic the application should publish data to (GPIO)"
+	default "zephyr_sample/gpio"
+
 config NET_SAMPLE_MQTT_SUB_TOPIC_CMD
 	string "The MQTT topic the application will receive commands on"
 	default "zephyr_sample/command"
 
 config NET_SAMPLE_MQTT_PUBLISH_INTERVAL
 	int "Interval between MQTT publishes (in seconds)"
-	default 5
+	default 2
 	help
 	  This config determines the frequency at which MQTT publishes occur.
 

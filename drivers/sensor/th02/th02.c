@@ -90,9 +90,9 @@ static int th02_sample_fetch(const struct device *dev,
 	__ASSERT_NO_MSG(chan == SENSOR_CHAN_ALL || chan == SENSOR_CHAN_AMBIENT_TEMP);
 
 	drv_data->t_sample = get_temp(&cfg->i2c);
-	LOG_INF("temp: %u", drv_data->t_sample);
+	// LOG_INF("temp: %u", drv_data->t_sample);
 	drv_data->rh_sample = get_humi(&cfg->i2c);
-	LOG_INF("rh: %u", drv_data->rh_sample);
+	// LOG_INF("rh: %u", drv_data->rh_sample);
 
 	return 0;
 }

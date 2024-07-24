@@ -17,7 +17,7 @@ struct timestamp {
 struct sensor_sample {
 	const char *unit;
 	struct timestamp ts;
-	int value;
+	float value;
 };
 
 /** @brief Available board LEDs */

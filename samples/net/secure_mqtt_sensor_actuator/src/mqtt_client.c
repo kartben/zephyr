@@ -40,8 +40,10 @@ static const struct json_obj_descr timestamp_descr[] = {
 static const struct json_obj_descr sensor_sample_descr[] = {
 	JSON_OBJ_DESCR_PRIM(struct sensor_sample, unit, JSON_TOK_STRING),
 	JSON_OBJ_DESCR_OBJECT(struct sensor_sample, ts, timestamp_descr),
-	JSON_OBJ_DESCR_PRIM(struct sensor_sample, value, JSON_TOK_NUMBER),
+	JSON_OBJ_DESCR_PRIM(struct sensor_sample, value, JSON_TOK_FLOAT),
 };
+
+K_MSGQ_DEFINE(input_events_msgq, sizeof(struct timestamp), 10, 1);
 
 /* MQTT connectivity status flag */
 bool mqtt_connected;
@@ -295,6 +297,30 @@ static int get_mqtt_payload(struct mqtt_binstr *payload)
 	return rc;
 }
 
+static int get_mqtt_payload_input_event(struct timestamp input_event_ts, struct mqtt_binstr *payload)
+{
+	int rc;
+	struct sensor_sample sample;
+
+	sample.unit = "unitless";
+	sample.value = 1;
+	sample.ts.seconds = input_event_ts.seconds;
+	sample.ts.nanoseconds = input_event_ts.nanoseconds;
+
+	rc = json_obj_encode_buf(sensor_sample_descr, ARRAY_SIZE(sensor_sample_descr),
+					&sample, payload_buf, CONFIG_NET_SAMPLE_MQTT_PAYLOAD_SIZE);
+
+	if (rc != 0) {
+		LOG_ERR("Failed to encode JSON object [%d]", rc);
+		return rc;
+	}
+
+	payload->data = payload_buf;
+	payload->len = strlen(payload->data);
+
+	return rc;
+}
+
 int app_mqtt_publish(struct mqtt_client *client)
 {
 	int rc;
@@ -329,6 +355,30 @@ int app_mqtt_publish(struct mqtt_client *client)
 	LOG_INF("Published to topic '%s', QoS %d",
 			param.message.topic.topic.utf8,
 			param.message.topic.qos);
+
+	// look at all the input events that potentially piled up in input_events_msgq
+	struct timestamp input_event_ts;
+	while (k_msgq_get(&input_events_msgq, &input_event_ts, K_NO_WAIT) == 0) {
+		LOG_INF("Received input event  at: %lld.%llu", input_event_ts.seconds, input_event_ts.nanoseconds);
+
+		topic.topic.utf8 = CONFIG_NET_SAMPLE_MQTT_PUB_TOPIC_GPIO;
+		topic.topic.size = strlen(topic.topic.utf8);
+
+		rc = get_mqtt_payload_input_event(input_event_ts, &payload);
+
+		param.message.topic = topic;
+		param.message.payload = payload;
+		param.message_id = msg_id++;
+
+		rc = mqtt_publish(client, &param);
+		if (rc != 0) {
+			LOG_ERR("MQTT Publish failed [%d]", rc);
+		}
+
+		LOG_INF("Published to topic '%s', QoS %d",
+				param.message.topic.topic.utf8,
+				param.message.topic.qos);
+	}
 
 	return rc;
 }

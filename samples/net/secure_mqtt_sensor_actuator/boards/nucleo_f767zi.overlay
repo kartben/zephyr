@@ -7,7 +7,7 @@
 / {
 
 	aliases {
-		ambient-temp0 = &th02;
+		ambient-temp0 = &bme280_mikroe_weather_click;
 	};
 
 	gpio_keys {
@@ -18,11 +18,5 @@
 			zephyr,code = <INPUT_KEY_1>;
 		};
 	};
-};
 
-&i2c1 {
-	th02: th02@40 {
-		compatible = "hoperf,th02";
-		reg = <0x40>;
-	};
 };
