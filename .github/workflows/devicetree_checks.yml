@@ -35,14 +35,14 @@ jobs:
           python-version: 3.6
     steps:
     - name: checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@39cd14951b08e74b54015e9e001cdefcf80e669f # v5.1.1
       with:
         python-version: ${{ matrix.python-version }}
     - name: cache-pip-linux
       if: startsWith(runner.os, 'Linux')
-      uses: actions/cache@v4
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ matrix.python-version }}
@@ -50,7 +50,7 @@ jobs:
           ${{ runner.os }}-pip-${{ matrix.python-version }}
     - name: cache-pip-mac
       if: startsWith(runner.os, 'macOS')
-      uses: actions/cache@v4
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
       with:
         path: ~/Library/Caches/pip
         # Trailing '-' was just to get a different cache name
@@ -59,7 +59,7 @@ jobs:
           ${{ runner.os }}-pip-${{ matrix.python-version }}-
     - name: cache-pip-win
       if: startsWith(runner.os, 'Windows')
-      uses: actions/cache@v4
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
       with:
         path: ~\AppData\Local\pip\Cache
         key: ${{ runner.os }}-pip-${{ matrix.python-version }}

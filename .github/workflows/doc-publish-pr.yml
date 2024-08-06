@@ -20,8 +20,13 @@ jobs:
       github.repository == 'zephyrproject-rtos/zephyr'
 
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@5c7944e73c4c2a096b17a9cb74d65b6c2bbafbde # v2.9.1
+      with:
+        egress-policy: audit
+
     - name: Download artifacts
-      uses: dawidd6/action-download-artifact@v3
+      uses: dawidd6/action-download-artifact@09f2f74827fd3a8607589e5ad7f9398816f540fe # v3.1.4
       with:
         workflow: doc-build.yml
         run_id: ${{ github.event.workflow_run.id }}
@@ -32,7 +37,7 @@ jobs:
 
     - name: Check PR number
       id: check-pr
-      uses: carpentries/actions/check-valid-pr@v0.14.0
+      uses: carpentries/actions/check-valid-pr@e27aa6c531dadd357d2aa4c9a21e90849e23e963 # v0.14.0
       with:
         pr: ${{ env.PR_NUM }}
         sha: ${{ github.event.workflow_run.head_sha }}
@@ -51,7 +56,7 @@ jobs:
         fi
 
     - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
       with:
         aws-access-key-id: ${{ vars.AWS_BUILDS_ZEPHYR_PR_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_BUILDS_ZEPHYR_PR_SECRET_ACCESS_KEY }}

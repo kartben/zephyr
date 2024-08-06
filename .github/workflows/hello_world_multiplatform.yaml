@@ -30,7 +30,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           path: zephyr
           fetch-depth: 0
@@ -49,12 +49,12 @@ jobs:
           git log --graph --oneline HEAD...${PR_HEAD}
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@39cd14951b08e74b54015e9e001cdefcf80e669f # v5.1.1
         with:
           python-version: 3.11
 
       - name: Setup Zephyr project
-        uses: zephyrproject-rtos/action-zephyr-setup@v1
+        uses: zephyrproject-rtos/action-zephyr-setup@1ec60c2940c6c4c19f973c043de0564e39998423 # v1.0.2
         with:
           app-path: zephyr
           toolchains: all
@@ -72,7 +72,7 @@ jobs:
 
       - name: Upload artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@89ef406dd8d7e03cfd12d9e0a4a378f454709029 # v4.3.5
         with:
           if-no-files-found: ignore
           path:

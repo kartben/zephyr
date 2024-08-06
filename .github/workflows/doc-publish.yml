@@ -13,8 +13,14 @@ on:
     types:
     - completed
 
+permissions:
+  contents: read
+
 jobs:
   doc-publish:
+    permissions:
+      actions: read  # for dawidd6/action-download-artifact to query and download artifacts
+      pull-requests: read  # for dawidd6/action-download-artifact to query commit hash
     name: Publish Documentation
     runs-on: ubuntu-22.04
     if: |
@@ -24,7 +30,7 @@ jobs:
 
     steps:
     - name: Download artifacts
-      uses: dawidd6/action-download-artifact@v3
+      uses: dawidd6/action-download-artifact@09f2f74827fd3a8607589e5ad7f9398816f540fe # v3.1.4
       with:
         workflow: doc-build.yml
         run_id: ${{ github.event.workflow_run.id }}
@@ -37,7 +43,7 @@ jobs:
         fi
 
     - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
       with:
         aws-access-key-id: ${{ vars.AWS_DOCS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_DOCS_SECRET_ACCESS_KEY }}
