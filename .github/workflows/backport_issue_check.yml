@@ -5,6 +5,9 @@ on:
     branches:
       - v*-branch
 
+permissions:
+  contents: read
+
 jobs:
   backport:
     name: Backport Issue Check
@@ -12,8 +15,13 @@ jobs:
     if: github.repository == 'zephyrproject-rtos/zephyr'
 
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@5c7944e73c4c2a096b17a9cb74d65b6c2bbafbde # v2.9.1
+        with:
+          egress-policy: audit
+
       - name: Check out source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
       - name: Install Python dependencies
         run: |
