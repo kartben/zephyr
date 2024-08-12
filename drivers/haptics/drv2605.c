@@ -454,7 +454,16 @@ static int drv2605_hw_config(const struct device *dev)
 
 	mask = DRV2605_N_ERM_LRA | DRV2605_FB_BRAKE_FACTOR | DRV2605_LOOP_GAIN;
 
+	printk("setting value %x with mask %x\n", value, mask);
+
 	ret = i2c_reg_update_byte_dt(&config->i2c, DRV2605_REG_FEEDBACK_CONTROL, mask, value);
+
+
+	ret = i2c_reg_update_byte_dt(&config->i2c, DRV2605_REG_CONTROL3, DRV2605_LRA_OPEN_LOOP, 1);
+
+
+	printk("ret: %d\n", ret);
+
 	if (ret < 0) {
 		return ret;
 	}
@@ -546,6 +555,9 @@ static int drv2605_gpio_config(const struct device *dev)
 	int ret;
 
 	if (config->en_gpio.port != NULL) {
+
+		printk("configure en_gpio\n");
+
 		if (!gpio_is_ready_dt(&config->en_gpio)) {
 			return -ENODEV;
 		}
