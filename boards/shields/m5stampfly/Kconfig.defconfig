@@ -1,0 +1,13 @@
+# M5StampFly shield configuration
+# Copyright (c) 2024 The Linux Foundation.
+# SPDX-License-Identifier: Apache-2.0
+
+if SHIELD_M5STAMPFLY
+
+config PWM
+	default y
+
+# config REGULATOR
+# 	default y
+
+endif # SHIELD_M5STAMPFLY

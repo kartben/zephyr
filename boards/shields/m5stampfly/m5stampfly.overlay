@@ -1,0 +1,125 @@
+/*
+ * Copyright (c) 2024 The Linux Foundation.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+ #include <zephyr/dt-bindings/pwm/pwm.h>
+ #include <zephyr/dt-bindings/display/panel.h>
+ #include <zephyr/dt-bindings/input/input-event-codes.h>
+
+ / {
+	 chosen {
+		//  zephyr,display = &gc9x01x_lcd;
+		//  zephyr,display-backlight = &backlight_pwm;
+		//  zephyr,rtc = &pfc8563_rtc;
+	 };
+
+	 aliases {
+		 accel0 = &stampfly_bmi270;
+	 };
+
+	stampfly_beeper_pwm: beeper_pwm {
+		 status = "okay";
+		 compatible = "pwm-clock";
+		 #clock-cells = <1>;
+		 pwms = <&m5stack_stamps3_clkout0 2 PWM_USEC(1500) PWM_POLARITY_NORMAL>;
+	 };
+
+	pwmleds {
+		compatible = "pwm-leds";
+
+		stampfly_motor_l_down: motor_l_down {
+			pwms = <&m5stack_stamps3_clkout0 0 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+			label = "L-Down motor";
+		};
+
+		stampfly_motor_l_up: motor_l_up {
+			pwms = <&m5stack_stamps3_clkout0 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+			label = "L-Up motor";
+		};
+
+		stampfly_motor_r_down: motor_r_down {
+			pwms = <&m5stack_stamps3_clkout0 3 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+			label = "R-Down motor";
+		};
+
+		stampfly_motor_r_up: motor_r_up {
+			pwms = <&m5stack_stamps3_clkout0 4 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+			label = "R-Up motor";
+		};
+	};
+
+
+	//  grove_header_red: grove_header_red {
+	// 	 compatible = "grove-header";
+	// 	 #gpio-cells = <2>;
+	// 	 gpio-map-mask = <0xffffffff 0xffffffc0>;
+	// 	 gpio-map-pass-thru = <0 0x3f>;
+	// 	 gpio-map = <0 0 &m5stack_stamps3_header 2 0>,
+	// 		    <1 0 &m5stack_stamps3_header 3 0>;
+	//  };
+
+	//  grove_header_black: grove_header_black {
+	// 	 compatible = "grove-header";
+	// 	 #gpio-cells = <2>;
+	// 	 gpio-map-mask = <0xffffffff 0xffffffc0>;
+	// 	 gpio-map-pass-thru = <0 0x3f>;
+	// 	 gpio-map = <0 0 &m5stack_stamps3_header 0 0>,
+	// 		    <1 0 &m5stack_stamps3_header 1 0>;
+	//  };
+ };
+
+ &m5stack_stamps3_clkout0 {
+	 status = "okay";
+
+ };
+
+ &m5stack_stamps3_i2c0 {
+	 status = "okay";
+
+	stampfly_bmm150: bmm150@10 {
+		compatible = "bosch,bmm150";
+		reg = <0x10>;
+		status = "okay";
+	};
+
+	stampfly_bmp280: bmp280@76 {
+		compatible = "bosch,bme280"; /* bme280 is able to handle bmp280 */
+		reg = <0x76>;
+		status = "okay";
+	};
+
+	stampfly_vl530x: vl53l3cxv0dh@29 {
+		compatible = "st,vl53l3x";
+		reg = <0x29>;
+		status = "okay";
+	};
+
+	stampfly_ina3221: ina3221airgvr@40 {
+		compatible = "ti,ina3221";
+		reg = <0x40>;
+		enable-channel = <0 1 0>;
+		shunt-resistors = <10 10 10>;
+		status = "okay";
+	};
+
+ };
+
+ &m5stack_stamps3_spilcd {
+	status = "okay";
+	dma-enabled;
+	cs-gpios = <&m5stack_stamps3_header 26 GPIO_ACTIVE_LOW>,
+		   <&m5stack_stamps3_header 12 GPIO_ACTIVE_LOW>;
+
+	stampfly_bmi270: bmi270@0 {
+		compatible = "bosch,bmi270";
+		spi-max-frequency = <8000000>;
+		reg = <0>;
+		status = "okay";
+	};
+
+	/* pixart  */
+
+ };
+
+//  groveA_i2c: &m5stack_stamps3_i2c0 {};

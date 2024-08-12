@@ -1,0 +1,48 @@
+&pinctrl {
+
+	i2c0_bis: i2c0_bis {
+		group1 {
+			pinmux = <I2C0_SDA_GPIO3>,
+				 <I2C0_SCL_GPIO4>;
+			bias-pull-up;
+			drive-open-drain;
+			output-high;
+		};
+	};
+
+	mcpwm0_bis: mcpwm0_bis {
+		group1 {
+			pinmux = <MCPWM0_OUT0A_GPIO5>,
+				 <MCPWM0_OUT0B_GPIO10>,
+				 <MCPWM0_OUT1A_GPIO41>,
+				 <MCPWM0_OUT1B_GPIO42>;
+			output-enable;
+		};
+	};
+
+
+	spim2_bis: spim2_bis {
+		group1 {
+			pinmux = <SPIM2_MISO_GPIO43>,
+				 <SPIM2_SCLK_GPIO44>;
+		};
+		group2 {
+			pinmux = <SPIM2_MOSI_GPIO14>;
+			output-low;
+		};
+
+	};
+
+};
+
+&i2c0 {
+	pinctrl-0 = <&i2c0_bis>;
+};
+
+&spi2 {
+	pinctrl-0 = <&spim2_bis>;
+};
+
+&mcpwm0 {
+	pinctrl-0 = <&mcpwm0_bis>;
+};
