@@ -1,0 +1,17 @@
+/*
+ * Copyright (c) 2024 Common Ground Electronics
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&mikrobus_i2c {
+	status = "okay";
+
+	drv2605_mikroe_vibro_motor_click: drv2605@5a {
+		compatible = "ti,drv2605";
+		reg = <0x5a>;
+		en-gpios = <&mikrobus_header_1 2 GPIO_ACTIVE_HIGH>;
+		actuator-mode = "LRA";
+		status = "okay";
+	};
+};

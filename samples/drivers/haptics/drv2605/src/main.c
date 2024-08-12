@@ -37,7 +37,7 @@ static struct drv2605_rom_data rom_data = {
 
 int main(void)
 {
-	const struct device *dev = DEVICE_DT_GET(DT_NODELABEL(haptic));
+	const struct device *dev = DEVICE_DT_GET(DT_COMPAT_GET_ANY_STATUS_OKAY(ti_drv2605));
 	union drv2605_config_data config_data = {};
 
 	int ret;
@@ -61,6 +61,7 @@ int main(void)
 	}
 
 	ret = haptics_start_output(dev);
+	printk("start_output ret: %d\n", ret);
 	if (ret < 0) {
 		LOG_ERR("Failed to start ROM event: %d", ret);
 		return ret;
