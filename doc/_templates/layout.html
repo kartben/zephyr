@@ -30,6 +30,19 @@
       </ul>
     </div>
     {% endif %}
+    <div class="toctree-wrapper compound">
+      <p class="caption"><span class="caption-text">Main Menu</span></p>
+      <ul>
+        <li class="toctree-l1"><a class="reference internal" href="{{ pathto('introduction/index') }}">Introduction</a></li>
+        <li class="toctree-l1"><a class="reference internal" href="{{ pathto('develop/getting_started/index') }}">Getting Started Guide</a></li>
+        <li class="toctree-l1"><a class="reference internal" href="{{ pathto('contribute/index') }}">Contribution Guidelines</a></li>
+        <li class="toctree-l1"><a class="reference internal" href="{{ pathto('samples/index') }}">Samples and Demos</a></li>
+        <li class="toctree-l1"><a class="reference internal" href="{{ pathto('hardware/index') }}">Hardware Support</a></li>
+        <li class="toctree-l1"><a class="reference internal" href="{{ pathto('security/index') }}">Security</a></li>
+        <li class="toctree-l1"><a class="reference internal" href="{{ pathto('boards/index') }}">Supported Boards</a></li>
+        <li class="toctree-l1"><a class="reference internal" href="{{ pathto('services/index') }}">OS Services</a></li>
+      </ul>
+    </div>
   </div>
 {% endblock %}
 {% block extrahead %}

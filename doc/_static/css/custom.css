@@ -953,3 +953,58 @@ dark-mode-toggle::part(toggleLabel){
   #search-se-menu ul li.selected .fa-check {
     display: inline;
   }
+
+/* P8d6f */
+.menu {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 1rem auto;
+    max-width: calc((160px + 2rem) * 4);
+}
+
+.menu-item {
+    flex: 0 0 auto;
+    width: 150px;
+    text-align: center;
+    margin: 1rem;
+}
+
+.menu-item a {
+    display: block;
+    width: 150px;
+    height: 150px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border-radius: 0.5rem;
+    background: linear-gradient(135deg, #0070c5 0%, #5c13a5 100%);
+    color: white;
+}
+
+.menu-item h2 {
+    font-size: 1rem;
+}
+
+.menu-item img {
+    margin-bottom: 1rem;
+    max-width: 75%;
+}
+
+.menu-item a:hover {
+    text-decoration: none;
+}
+
+.menu-item p {
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    color: var(--body-color);
+}
+
+.menu-icon {
+    line-height: 1.5;
+    font-size: 3rem;
+    color: white;
+}
