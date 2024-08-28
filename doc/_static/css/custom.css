@@ -70,6 +70,8 @@ body,
 
 a {
     color: var(--link-color);
+    text-decoration: underline;
+        text-decoration-style: dotted;
 }
 
 a:hover {
@@ -154,7 +156,7 @@ hr,
 
 footer,
 #search-results .context {
-    color: var(--footer-color);
+    color: var(--body-color);
 }
 
 /* Icon tweaks */
