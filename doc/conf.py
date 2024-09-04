@@ -94,6 +94,7 @@ extensions = [
     "zephyr.external_content",
     "zephyr.domain",
     "zephyr.api_overview",
+    "sphinxcontrib.spelling",
 ]
 
 # Only use image conversion when it is really needed, e.g. LaTeX build.
@@ -354,3 +355,13 @@ def setup(app):
     app.add_css_file("css/custom.css")
     app.add_js_file("js/custom.js")
     app.add_js_file("js/dark-mode-toggle.min.mjs", type="module")
+
+# -- Options for sphinxcontrib.spelling -----------------------------------
+
+spelling_show_suggestions = True
+spelling_suggestion_limit = 1
+spelling_ignore_acronyms = True
+spelling_exclude_patterns = ["release-notes-*"]
+
+
+# spelling_filters = ["zephyr.enchant_filters.CustomFilter"]

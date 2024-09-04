@@ -23,3 +23,145 @@
    :rtrim:
 .. |sup2|  unicode:: U+00B2 .. SUPERSCRIPT TWO
    :ltrim:
+
+
+
+.. spelling:word-list::
+
+   gpio
+   spi
+   pinmux
+   pinctrl
+   SoC
+   pwm
+   Devicetree
+   MCU
+   Ethernet
+   PCI
+   Kconfig
+   TCP
+   RTOS
+   bootloader
+   Bootloader
+   SoM
+   multithreading
+   mutex
+   formatter
+   sysbuild
+   backend
+   backends
+   toolchain
+   toolchains
+   microcontroller
+   debouncing
+   debounce
+   matrixes
+   cryptographic
+   accelerometer
+   endian
+   bitrate
+   Makefile
+   bitstream
+   ISR
+   Ztress
+   phandle
+   ivhsmem
+   multicast
+   unicast
+   Multicast
+   Unicast
+
+
+
+.. spelling:word-list::
+
+   kB
+   MB
+   KiB
+   MiB
+   GiB
+   KByte
+   MByte
+   GByte
+   Kbit
+   Mbit
+   Gbit
+   dBm
+   kbps
+   Mbps
+   Gbps
+   μA
+   mA
+   mW
+
+
+.. spelling:word-list::
+
+   Coverity
+   CMake
+   Lauterbach
+   Xtensa
+   nRF
+   Apache
+   Chocolatey
+   Xen
+   Spotify
+   BlueZ
+   pyOCD
+   Tracealyzer
+   Percepio
+   Segger
+   Contiki
+   Mosquitto
+   Leshan
+   Eclipse
+   Nucleo
+   Longan
+   LiteX
+   Xilinx
+   Coresight
+   microSD
+   gPTP
+   Smartbond
+   Atmel
+   Numaker
+   Picolibc
+   Sparkfun
+   Renesas
+   Quectel
+   Sitronix
+   Seeed
+   BeagleV
+   Adafruit
+   Mcuboot
+   Würth Elektronik
+   Wi-Fi
+   Actinius
+   CoreMark
+   Musca
+   Croxel
+   Ezurio
+   Digilent
+   Infineon
+   IoT
+   LTE
+   JTAG
+   Twinkie
+   Nios
+   6LoWPAN
+   Nuvoton
+   PAwR
+   Tensilica
+   Espressif
+   Intel
+   QEMU
+   Newlib
+   mDNS
+   Modbus
+   Toradex
+   Zigbee
+   SPI
+   Genuino
+   Ambiq
+   eMMC
+   Renesas

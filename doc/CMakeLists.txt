@@ -65,6 +65,7 @@ set(DOCS_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR})
 set(DOCS_SRC_DIR ${CMAKE_CURRENT_BINARY_DIR}/src)
 set(DOCS_HTML_DIR ${CMAKE_CURRENT_BINARY_DIR}/html)
 set(DOCS_LINKCHECK_DIR ${CMAKE_CURRENT_BINARY_DIR}/linkcheck)
+set(DOCS_SPELLCHECK_DIR ${CMAKE_CURRENT_BINARY_DIR}/spellcheck)
 set(DOCS_LATEX_DIR ${CMAKE_CURRENT_BINARY_DIR}/latex)
 
 if(WIN32)
@@ -280,6 +281,33 @@ set_target_properties(
   PROPERTIES
     ADDITIONAL_CLEAN_FILES "${DOCS_SRC_DIR};${DOCS_LINKCHECK_DIR};${DOCS_DOCTREE_DIR}"
 )
+
+#-------------------------------------------------------------------------------
+# spellcheck
+
+add_doc_target(
+  spellcheck
+  COMMAND ${CMAKE_COMMAND} -E env ${SPHINX_ENV}
+  ${SPHINXBUILD}
+    -b spelling
+    -c ${DOCS_CFG_DIR}
+    -d ${DOCS_DOCTREE_DIR}
+    -w ${DOCS_BUILD_DIR}/spellcheck.log
+    -t ${DOC_TAG}
+    ${SPHINXOPTS}
+    ${SPHINXOPTS_EXTRA}
+    ${DOCS_SRC_DIR}
+    ${DOCS_SPELLCHECK_DIR}
+  USES_TERMINAL
+  COMMENT "Running Sphinx spell check..."
+)
+
+set_target_properties(
+  linkcheck linkcheck-nodeps
+  PROPERTIES
+    ADDITIONAL_CLEAN_FILES "${DOCS_SRC_DIR};${DOCS_SPELLCHECK_DIR};${DOCS_DOCTREE_DIR}"
+)
+
 
 add_dependencies(linkcheck devicetree)
 

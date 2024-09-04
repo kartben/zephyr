@@ -20,7 +20,7 @@ html-fast:
 html-live-fast:
 	${MAKE} html-live DT_TURBO_MODE=1
 
-html html-live latex pdf linkcheck doxygen: configure
+html html-live latex pdf linkcheck spellcheck doxygen: configure
 	cmake --build ${BUILDDIR} --target $@
 
 configure:
