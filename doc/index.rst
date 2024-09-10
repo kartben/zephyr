@@ -6,6 +6,12 @@
 Zephyr Project Documentation
 ############################
 
+A typo in the syntax for a sphinx role: :c:func`test`
+
+The use of an unbalanced ``backtick`.
+
+A very long line a very long line a very long line a very long line a very long line a very long line a very long line.
+
 .. only:: release
 
    Welcome to the Zephyr Project's documentation for version |version|.
