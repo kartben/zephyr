@@ -6,6 +6,16 @@ Adafruit Feather STM32F405 Express
 Overview
 ********
 
+bad use of a role :c:func`missingcolon`
+
+using `backticks` thinking it will do the same as in markdown
+
+dangling hyphen is so-
+so and considered an error.
+
+Bad:  `Link text<https://example.com>_`
+Good: `Link text <https://example.com>_`
+
 The Adafruit Feather STM32F405 is an ARM Development board in the
 Feather standard layout, sharing peripheral placement with other
 devices labeled as Feathers or FeatherWings. The board is equipped
