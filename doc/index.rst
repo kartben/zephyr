@@ -6,6 +6,17 @@
 Zephyr Project Documentation
 ############################
 
+
+a role with a missing column :c:func`missingcolon`
+
+using `backticks` thinking it will do the same as in markdown
+
+dangling hyphen is so-
+so and considered an error.
+
+Bad link:  `Link text <https://example.com>`
+Good link: `Link text <https://example.com>`_
+
 .. only:: release
 
    Welcome to the Zephyr Project's documentation for version |version|.
