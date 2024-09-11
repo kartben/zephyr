@@ -5,6 +5,12 @@ Debugging
 
 .. _application_debugging:
 
+A typo in the syntax for a sphinx role: :c:func`test`
+
+incorrect the use of an unbalanced ``backtick`.
+
+incorrect use of single `backticks`.
+
 Application Debugging
 *********************
 
