@@ -68,41 +68,111 @@ Supported Features
 The ``bl5340_dvk/nrf5340/cpuapp`` board configuration supports the following
 hardware features:
 
-+-----------+------------+----------------------+
-| Interface | Controller | Driver/Component     |
-+===========+============+======================+
-| ADC       | on-chip    | adc                  |
-+-----------+------------+----------------------+
-| CLOCK     | on-chip    | clock_control        |
-+-----------+------------+----------------------+
-| FLASH     | on-chip    | flash                |
-+-----------+------------+----------------------+
-| GPIO      | on-chip    | gpio                 |
-+-----------+------------+----------------------+
-| I2C(M)    | on-chip    | i2c                  |
-+-----------+------------+----------------------+
-| MPU       | on-chip    | arch/arm             |
-+-----------+------------+----------------------+
-| NVIC      | on-chip    | arch/arm             |
-+-----------+------------+----------------------+
-| QSPI(M)   | on-chip    | nor                  |
-+-----------+------------+----------------------+
-| PWM       | on-chip    | pwm                  |
-+-----------+------------+----------------------+
-| RTC       | on-chip    | system clock         |
-+-----------+------------+----------------------+
-| RTT       | Segger     | console              |
-+-----------+------------+----------------------+
-| SPI(M/S)  | on-chip    | spi                  |
-+-----------+------------+----------------------+
-| SPU       | on-chip    | system protection    |
-+-----------+------------+----------------------+
-| UARTE     | on-chip    | serial               |
-+-----------+------------+----------------------+
-| USB       | on-chip    | usb                  |
-+-----------+------------+----------------------+
-| WDT       | on-chip    | watchdog             |
-+-----------+------------+----------------------+
+.. list-table:: Enabled features
+   :widths: 20 80
+   :header-rows: 1
+
+   * - Type
+     - Compatible
+   * - MIPI-DBI
+     - * MIPI-DBI Mode C compatible SPI controller. This driver emulates MIPI DBI (:dtcompatible:`zephyr,mipi-dbi-spi`)
+   * - POWER
+     - * Nordic nRF power control node (:dtcompatible:`nordic,nrf-power`)
+       * Nordic nRF family USBREG (USB Regulator Control) (:dtcompatible:`nordic,nrf-usbreg`)
+       * Nordic VMC (Volatile Memory Controller) (:dtcompatible:`nordic,nrf-vmc`)
+   * - FLASH_CONTROLLER
+     - * Properties defining the interface for the Nordic QSPI peripheral. (:dtcompatible:`nordic,nrf-qspi`)
+       * Nordic NVMC (Non-Volatile Memory Controller) (:dtcompatible:`nordic,nrf53-flash-controller`)
+   * - MISC
+     - * Nordic FICR (Factory Information Configuration Registers) (:dtcompatible:`nordic,nrf-ficr`)
+       * Nordic DPPIC (Distributed Programmable Peripheral Interconnect Controller) (:dtcompatible:`nordic,nrf-dppic`)
+   * - SD
+     - * Generic Zephyr SPI based SDHC controller (:dtcompatible:`zephyr,sdhc-spi-slot`)
+       * Zephyr MMC disk node. A binding with this compatible present within an SD (:dtcompatible:`zephyr,sdmmc-disk`)
+   * - PINCTRL
+     - * The nRF pin controller is a singleton node responsible for controlling (:dtcompatible:`nordic,nrf-pinctrl`)
+   * - PWM
+     - * nRF PWM (:dtcompatible:`nordic,nrf-pwm`)
+   * - LED
+     - * This allows you to define a group of LEDs. Each LED in the group is (:dtcompatible:`gpio-leds`)
+   * - CPU
+     - * ARM Cortex-M33F CPU (:dtcompatible:`arm,cortex-m33f`)
+   * - INTERRUPT-CONTROLLER
+     - * ARMv8-M NVIC (Nested Vectored Interrupt Controller) (:dtcompatible:`arm,v8m-nvic`)
+   * - RETAINED_MEM
+     - * Nordic GPREGRET (General Purpose Register Retention) device. (:dtcompatible:`nordic,nrf-gpregret`)
+   * - INPUT
+     - * FT3267/FT5XX6/FT6XX6 capacitive touch panels (:dtcompatible:`focaltech,ft5336`)
+       * Zephyr Input GPIO KEYS parent node (:dtcompatible:`gpio-keys`)
+       * LVGL pointer indev pseudo-device (:dtcompatible:`zephyr,lvgl-pointer-input`)
+   * - I2C
+     - * Nordic nRF family TWIM (TWI master with EasyDMA). (:dtcompatible:`nordic,nrf-twim`)
+   * - REGULATOR
+     - * Nordic REGULATORS (voltage regulators control module) on nRF53X. (:dtcompatible:`nordic,nrf53x-regulators`)
+       * Nordic nRF5X regulator (fixed stage of the core supply) (:dtcompatible:`nordic,nrf5x-regulator`)
+       * Nordic nRF53X regulator (high voltage stage of the main supply) (:dtcompatible:`nordic,nrf53x-regulator-hv`)
+   * - ETHERNET
+     - * ENC424J600 standalone 100BASE-T Ethernet controller with SPI interface (:dtcompatible:`microchip,enc424j600`)
+   * - MBOX
+     - * Nordic nRF family IPC (MBOX Interprocessor Communication) (:dtcompatible:`nordic,mbox-nrf-ipc`)
+   * - USB
+     - * Nordic nRF52 USB device controller (:dtcompatible:`nordic,nrf-usbd`)
+   * - SPI
+     - * Nordic nRF family SPIM (SPI master with EasyDMA) (:dtcompatible:`nordic,nrf-spim`)
+   * - WATCHDOG
+     - * Nordic nRF family WDT (Watchdog Timer) (:dtcompatible:`nordic,nrf-wdt`)
+   * - ADC
+     - * Nordic Semiconductor nRF family SAADC node (:dtcompatible:`nordic,nrf-saadc`)
+   * - SRAM
+     - * Generic on-chip SRAM description (:dtcompatible:`mmio-sram`)
+   * - BLUETOOTH
+     - * Bluetooth module that uses Zephyr's Bluetooth Host Controller Interface as (:dtcompatible:`zephyr,bt-hci-entropy`)
+       * Bluetooth HCI using the IPC subsystem (:dtcompatible:`zephyr,bt-hci-ipc`)
+   * - RTC
+     - * Microchip MCP7940N I2C RTC with battery-backed SRAM (:dtcompatible:`microchip,mcp7940n`)
+   * - SDHC
+     - * Generic Zephyr SPI based SDHC controller (:dtcompatible:`zephyr,sdhc-spi-slot`)
+   * - MM
+     - * ARMv8-M MPU (Memory Protection Unit) (:dtcompatible:`arm,armv8m-mpu`)
+   * - IPC
+     - * OpenAMP (RPMsg with static VRINGs) backend (:dtcompatible:`zephyr,ipc-openamp-static-vrings`)
+   * - DISPLAY
+     - * ILI9340 320x240 display controller (:dtcompatible:`ilitek,ili9340`)
+   * - DAC
+     - * Microchip MCP4725 12-bit DAC (:dtcompatible:`microchip,mcp4725`)
+   * - MMU_MPU
+     - * ARMv8-M MPU (Memory Protection Unit) (:dtcompatible:`arm,armv8m-mpu`)
+   * - ARM
+     - * Nordic UICR (User Information Configuration Registers) (:dtcompatible:`nordic,nrf-uicr`)
+       * Nordic nRF family DCNF (Domain Configuration) (:dtcompatible:`nordic,nrf-dcnf`)
+       * Nordic nRF family RESET (Reset Control) (:dtcompatible:`nordic,nrf-reset`)
+       * Nordic nRF family CTRL-AP (Control Access Port) (:dtcompatible:`nordic,nrf-ctrlapperi`)
+       * Nordic EGU (Event Generator Unit) (:dtcompatible:`nordic,nrf-egu`)
+       * Nordic nRF family MUTEX (Mutual Exclusive Peripheral) (:dtcompatible:`nordic,nrf-mutex`)
+       * Nordic KMU (Key Management Unit) (:dtcompatible:`nordic,nrf-kmu`)
+       * Nordic SPU (System Protection Unit) (:dtcompatible:`nordic,nrf-spu`)
+   * - MTD
+     - * I2C EEPROMs compatible with Atmel's AT24 family (:dtcompatible:`atmel,at24`)
+       * QSPI NOR flash supporting the JEDEC CFI interface. (:dtcompatible:`nordic,qspi-nor`)
+       * This binding is used to describe fixed partitions of a flash (or (:dtcompatible:`fixed-partitions`)
+       * Flash node (:dtcompatible:`soc-nv-flash`)
+   * - GPIO
+     - * TCA9538 GPIO node (:dtcompatible:`ti,tca9538`)
+       * NRF5 GPIO node (:dtcompatible:`nordic,nrf-gpio`)
+       * NRF5 GPIOTE node (:dtcompatible:`nordic,nrf-gpiote`)
+       * This is an abstract device responsible for forwarding pins between cores. (:dtcompatible:`nordic,nrf-gpio-forwarder`)
+   * - SERIAL
+     - * Nordic nRF family UARTE (UART with EasyDMA) (:dtcompatible:`nordic,nrf-uarte`)
+   * - CLOCK
+     - * Nordic nRF family OSCILLATORS (Oscillator Control) (:dtcompatible:`nordic,nrf-oscillators`)
+       * Nordic nRF clock control node (:dtcompatible:`nordic,nrf-clock`)
+   * - DEBUG
+     - * ARMv8 instrumentation trace macrocell. Used for single wire output (SWO) (:dtcompatible:`arm,armv8m-itm`)
+   * - SENSOR
+     - * STMicroelectronics LIS2DH 3-axis accelerometer accessed through I2C bus (:dtcompatible:`st,lis2dh`)
+       * The BME680 is an integrated environmental sensor that measures (:dtcompatible:`bosch,bme680`)
+
+
 
 The ``bl5340_dvk/nrf5340/cpunet`` board configuration supports the following
 hardware features:

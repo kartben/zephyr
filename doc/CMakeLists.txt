@@ -16,6 +16,7 @@ set(SPHINXOPTS "-j auto -W --keep-going -T" CACHE STRING "Default Sphinx Options
 set(SPHINXOPTS_EXTRA "" CACHE STRING "Extra Sphinx Options (added to defaults)")
 set(LATEXMKOPTS "-halt-on-error -no-shell-escape" CACHE STRING "Default latexmk options")
 set(DT_TURBO_MODE OFF CACHE BOOL "Enable DT turbo mode")
+set(BOARDS_TURBO_MODE OFF CACHE BOOL "Enable Boards turbo mode")
 set(DOC_TAG "development" CACHE STRING "Documentation tag")
 set(DTS_ROOTS "${ZEPHYR_BASE}" CACHE STRING "DT bindings root folders")
 
@@ -147,6 +148,30 @@ add_custom_target(
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${GEN_DEVICETREE_REST_SCRIPT})
 
 #-------------------------------------------------------------------------------
+# boards catalog
+
+set(GEN_BOARDS_CATALOG_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/_scripts/gen_boards_catalog.py)
+
+set(GEN_BOARDS_ARGS)
+if(BOARDS_TURBO_MODE)
+  list(APPEND GEN_BOARDS_ARGS --turbo-mode)
+endif()
+
+add_custom_target(
+  boards-catalog
+  COMMAND ${CMAKE_COMMAND} -E env
+  PYTHONPATH=${ZEPHYR_BASE}/scripts/dts/python-devicetree/src${SEP}$ENV{PYTHONPATH}:${ZEPHYR_BASE}/scripts
+  ZEPHYR_BASE=${ZEPHYR_BASE}
+  ${PYTHON_EXECUTABLE} ${GEN_BOARDS_CATALOG_SCRIPT}
+    ${GEN_BOARDS_ARGS}
+    ${DOCS_SRC_DIR}/boards/_catalog
+  VERBATIM
+  USES_TERMINAL
+  COMMENT "Generating Boards catalog documentation..."
+)
+
+
+#-------------------------------------------------------------------------------
 # html
 
 add_doc_target(
@@ -172,7 +197,7 @@ set_target_properties(
     ADDITIONAL_CLEAN_FILES "${DOCS_SRC_DIR};${DOCS_HTML_DIR};${DOCS_DOCTREE_DIR}"
 )
 
-add_dependencies(html devicetree)
+add_dependencies(html devicetree boards-catalog)
 
 #-------------------------------------------------------------------------------
 # html-live
@@ -202,7 +227,7 @@ set_target_properties(
     ADDITIONAL_CLEAN_FILES "${DOCS_SRC_DIR};${DOCS_HTML_DIR};${DOCS_DOCTREE_DIR}"
 )
 
-add_dependencies(html-live devicetree)
+add_dependencies(html-live devicetree boards-catalog)
 #-------------------------------------------------------------------------------
 # pdf
 
