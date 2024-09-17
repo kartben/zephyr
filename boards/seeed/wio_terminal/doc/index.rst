@@ -43,51 +43,8 @@ Supported Features
 
 The wio_terminal board configuration supports the following hardware features:
 
-.. list-table::
-    :header-rows: 1
-
-    * - Interface
-      - Controller
-      - Driver / Component
-    * - NVIC
-      - on-chip
-      - Nested vector interrupt controller
-    * - Flash
-      - on-chip
-      - Can be used with LittleFS to store files
-    * - SYSTICK
-      - on-chip
-      - Systick
-    * - WDT
-      - on-chip
-      - Watchdog
-    * - GPIO
-      - on-chip
-      - I/O ports
-    * - USART
-      - on-chip
-      - Serial port
-    * - I2C
-      - on-chip
-      - Inter-Integrated Circuit
-    * - SPI
-      - on-chip
-      - Serial Peripheral Interface port
-    * - TRNG
-      - on-chip
-      - True Random Number Generator
-    * - HWINFO
-      - on-chip
-      - Unique 128 bit serial number
-    * - RTC
-      - on-chip
-      - Real-Time Counter
-    * - USB
-      - on-chip
-      - USB device
-    * - PWM
-      - on-chip
-      - PWM
+.. include:: /boards/_catalog/wio_terminal/wio_terminal.rst
+   :start-after: :orphan:
 
 Other hardware features are not currently supported by Zephyr.
 

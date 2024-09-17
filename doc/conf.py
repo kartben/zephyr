@@ -299,6 +299,7 @@ external_content_contents = [
     (ZEPHYR_BASE, "tests/**/*.pts"),
 ]
 external_content_keep = [
+    "boards/_catalog/**/*",
     "reference/kconfig/*",
     "develop/manifest/index.rst",
     "build/dts/api/bindings.rst",

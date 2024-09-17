@@ -7,11 +7,11 @@
  * visual identity. Many colors are also overridden to use CSS variables.
  */
 
- :root {
-     /* Use system font stacks for better performance (no Web fonts required) */
-     --system-font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-     --header-font-family: Seravek, 'Gill Sans Nova', Ubuntu, Calibri, 'DejaVu Sans', source-sans-pro, sans-serif;
- }
+:root {
+    /* Use system font stacks for better performance (no Web fonts required) */
+    --system-font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    --header-font-family: Seravek, 'Gill Sans Nova', Ubuntu, Calibri, 'DejaVu Sans', source-sans-pro, sans-serif;
+}
 
 body,
 h1,
@@ -125,6 +125,7 @@ hr,
     border-color: var(--admonition-note-title-background-color) !important;
     color: var(--admonition-note-color) !important;
 }
+
 .rst-content dl:not(.docutils) dl dt {
     background-color: var(--admonition-attention-background-color) !important;
     border-color: var(--admonition-attention-title-background-color) !important;
@@ -154,6 +155,7 @@ hr,
 .rst-content dl:not(.docutils) dt a.headerlink {
     color: var(--link-color) !important;
 }
+
 .rst-content dl:not(.docutils) dt a.headerlink:visited {
     color: var(--link-color-visited) !important;
 }
@@ -203,9 +205,12 @@ a.icon-home:visited {
     border-color: var(--code-border-color);
 }
 
-.rst-content table.docutils caption, .rst-content table.field-list caption, .wy-table caption {
+.rst-content table.docutils caption,
+.rst-content table.field-list caption,
+.wy-table caption {
     color: var(--body-color);
 }
+
 .wy-table-odd td,
 .wy-table-striped tr:nth-child(2n-1) td,
 .rst-content table.docutils:not(.field-list) tr:nth-child(2n-1) td {
@@ -232,7 +237,7 @@ a.icon-home:visited {
 
 /* Force table content font-size in responsive tables to be 100%
  * fixing larger font size for paragraphs in the kconfig tables */
- .wy-table-responsive td p {
+.wy-table-responsive td p {
     font-size: 100%;
 }
 
@@ -302,7 +307,9 @@ a.internal:visited code.literal {
     margin-bottom: 1em;
 }
 
-.rst-content tt.literal, .rst-content code.literal, .highlight {
+.rst-content tt.literal,
+.rst-content code.literal,
+.highlight {
     border-radius: 0.25rem;
 }
 
@@ -315,95 +322,224 @@ a.internal:visited code.literal {
     background-color: var(--highlight-background-emph-color);
 }
 
-.highlight .gh /* Generic.Heading */,
-.highlight .gu /* Generic.Subheading */,
-.highlight .go /* Generic.Output */,
-.highlight .gt /* Generic.Traceback */ {
+.highlight .gh
+/* Generic.Heading */
+,
+.highlight .gu
+/* Generic.Subheading */
+,
+.highlight .go
+/* Generic.Output */
+,
+.highlight .gt
+
+/* Generic.Traceback */
+    {
     color: var(--highlight-default-color);
 }
 
-.highlight .c  /* Comment */,
-.highlight .c1 /* Comment.Single */,
-.highlight .cm /* Comment.Multiline */,
-.highlight .cs /* Comment.Special */ {
+.highlight .c
+/* Comment */
+,
+.highlight .c1
+/* Comment.Single */
+,
+.highlight .cm
+/* Comment.Multiline */
+,
+.highlight .cs
+
+/* Comment.Special */
+    {
     color: var(--highlight-comment-color);
 }
 
-.highlight .bp /* Name.Builtin.Pseudo */,
-.highlight .k  /* Keyword */,
-.highlight .kc /* Keyword.Constant */,
-.highlight .kd /* Keyword.Declaration */,
-.highlight .kn /* Keyword.Namespace */,
-.highlight .kp /* Keyword.Pseudo */,
-.highlight .kr /* Keyword.Reserved */,
-.highlight .kt /* Keyword.Type */,
-.highlight .ow /* Operator.Word */ {
+.highlight .bp
+/* Name.Builtin.Pseudo */
+,
+.highlight .k
+/* Keyword */
+,
+.highlight .kc
+/* Keyword.Constant */
+,
+.highlight .kd
+/* Keyword.Declaration */
+,
+.highlight .kn
+/* Keyword.Namespace */
+,
+.highlight .kp
+/* Keyword.Pseudo */
+,
+.highlight .kr
+/* Keyword.Reserved */
+,
+.highlight .kt
+/* Keyword.Type */
+,
+.highlight .ow
+
+/* Operator.Word */
+    {
     color: var(--highlight-keyword-color);
 }
 
-.highlight .ch /* Comment.Hashbang */,
-.highlight .cp /* Comment.Preproc */ {
+.highlight .ch
+/* Comment.Hashbang */
+,
+.highlight .cp
+
+/* Comment.Preproc */
+    {
     color: var(--highlight-keyword2-color);
 }
 
-.highlight .m  /* Literal.Number */,
-.highlight .mf /* Literal.Number.Float */,
-.highlight .mi /* Literal.Number.Integer */,
-.highlight .il /* Literal.Number.Integer.Long */,
-.highlight .mb /* Literal.Number.Bin */,
-.highlight .mh /* Literal.Number.Hex */,
-.highlight .mo /* Literal.Number.Oct */ {
+.highlight .m
+/* Literal.Number */
+,
+.highlight .mf
+/* Literal.Number.Float */
+,
+.highlight .mi
+/* Literal.Number.Integer */
+,
+.highlight .il
+/* Literal.Number.Integer.Long */
+,
+.highlight .mb
+/* Literal.Number.Bin */
+,
+.highlight .mh
+/* Literal.Number.Hex */
+,
+.highlight .mo
+
+/* Literal.Number.Oct */
+    {
     color: var(--highlight-number-color);
 }
 
-.highlight .na /* Name.Attribute */,
-.highlight .nd /* Name.Decorator */,
-.highlight .ni /* Name.Entity */,
-.highlight .nl /* Name.Label */ {
+.highlight .na
+/* Name.Attribute */
+,
+.highlight .nd
+/* Name.Decorator */
+,
+.highlight .ni
+/* Name.Entity */
+,
+.highlight .nl
+
+/* Name.Label */
+    {
     color: var(--highlight-decorator-color);
 }
 
-.highlight .nb /* Name.Builtin */,
-.highlight .ne /* Name.Exception */ {
+.highlight .nb
+/* Name.Builtin */
+,
+.highlight .ne
+
+/* Name.Exception */
+    {
     color: var(--highlight-type-color);
 }
 
-.highlight .nc /* Name.Class */,
-.highlight .nn /* Name.Namespace */,
-.highlight .no /* Name.Constant */,
-.highlight .nv /* Name.Variable */,
-.highlight .vc /* Name.Variable.Class */,
-.highlight .vg /* Name.Variable.Global */,
-.highlight .vi /* Name.Variable.Instance */,
-.highlight .vm /* Name.Variable.Magic */ {
+.highlight .nc
+/* Name.Class */
+,
+.highlight .nn
+/* Name.Namespace */
+,
+.highlight .no
+/* Name.Constant */
+,
+.highlight .nv
+/* Name.Variable */
+,
+.highlight .vc
+/* Name.Variable.Class */
+,
+.highlight .vg
+/* Name.Variable.Global */
+,
+.highlight .vi
+/* Name.Variable.Instance */
+,
+.highlight .vm
+
+/* Name.Variable.Magic */
+    {
     color: var(--highlight-type2-color);
 }
 
-.highlight .nf /* Name.Function */,
-.highlight .fm /* Name.Function.Magic */,
-.highlight .nt /* Name.Tag */ {
+.highlight .nf
+/* Name.Function */
+,
+.highlight .fm
+/* Name.Function.Magic */
+,
+.highlight .nt
+
+/* Name.Tag */
+    {
     color: var(--highlight-function-color);
 }
 
-.highlight .o  /* Operator */,
-.highlight .si /* Literal.String.Interpol */,
-.highlight .sx /* Literal.String.Other */,
-.highlight .sr /* Literal.String.Regex */,
-.highlight .ss /* Literal.String.Symbol */ {
+.highlight .o
+/* Operator */
+,
+.highlight .si
+/* Literal.String.Interpol */
+,
+.highlight .sx
+/* Literal.String.Other */
+,
+.highlight .sr
+/* Literal.String.Regex */
+,
+.highlight .ss
+
+/* Literal.String.Symbol */
+    {
     color: var(--highlight-operator-color);
 }
 
-.highlight .cpf/* Comment.PreprocFile */,
-.highlight .s  /* Literal.String */,
-.highlight .s1 /* Literal.String.Single */,
-.highlight .s2 /* Literal.String.Double */,
-.highlight .sc /* Literal.String.Char */,
-.highlight .se /* Literal.String.Escape */,
-.highlight .sa /* Literal.String.Affix */,
-.highlight .sb /* Literal.String.Backtick */,
-.highlight .dl /* Literal.String.Delimiter */,
-.highlight .sd /* Literal.String.Doc */,
-.highlight .sh /* Literal.String.Heredoc */ {
+.highlight .cpf
+/* Comment.PreprocFile */
+,
+.highlight .s
+/* Literal.String */
+,
+.highlight .s1
+/* Literal.String.Single */
+,
+.highlight .s2
+/* Literal.String.Double */
+,
+.highlight .sc
+/* Literal.String.Char */
+,
+.highlight .se
+/* Literal.String.Escape */
+,
+.highlight .sa
+/* Literal.String.Affix */
+,
+.highlight .sb
+/* Literal.String.Backtick */
+,
+.highlight .dl
+/* Literal.String.Delimiter */
+,
+.highlight .sd
+/* Literal.String.Doc */
+,
+.highlight .sh
+
+/* Literal.String.Heredoc */
+    {
     color: var(--highlight-string-color);
 }
 
@@ -480,9 +616,10 @@ a.internal:visited code.literal {
 }
 
 /* Keyboard shortcuts tweaks */
-kbd, .kbd,
-.rst-content :not(dl.option-list) > :not(dt):not(kbd):not(.kbd) > kbd,
-.rst-content :not(dl.option-list) > :not(dt):not(kbd):not(.kbd) > .kbd {
+kbd,
+.kbd,
+.rst-content :not(dl.option-list)> :not(dt):not(kbd):not(.kbd)>kbd,
+.rst-content :not(dl.option-list)> :not(dt):not(kbd):not(.kbd)>.kbd {
     background-color: var(--kbd-background-color);
     border: 1px solid var(--kbd-outline-color);
     border-radius: 3px;
@@ -505,7 +642,7 @@ kbd, .kbd,
 
 /* heading tweaks to make document hierarchy easier to grasp */
 
-.rst-content section > h1 {
+.rst-content section>h1 {
     font-weight: 700;
     margin-bottom: 2.5rem;
     position: relative;
@@ -513,22 +650,23 @@ kbd, .kbd,
     z-index: 1;
 }
 
-.rst-content section > h1::before {
+.rst-content section>h1::before {
     content: '';
     position: absolute;
-    z-index:-1;
+    z-index: -1;
     left: 0;
     right: 0;
     height: 4px;
     bottom: -1px;
-    background: linear-gradient(to right, var(--admonition-note-title-background-color), var(--admonition-note-title-background-color) 50%, var(--admonition-note-background-color) 80%, transparent); /* Example gradient */
-    opacity:50%;
+    background: linear-gradient(to right, var(--admonition-note-title-background-color), var(--admonition-note-title-background-color) 50%, var(--admonition-note-background-color) 80%, transparent);
+    /* Example gradient */
+    opacity: 50%;
 }
 
-.rst-content section > h2,
-.rst-content section > h3,
-.rst-content section > h4,
-.rst-content section > h5 {
+.rst-content section>h2,
+.rst-content section>h3,
+.rst-content section>h4,
+.rst-content section>h5 {
     font-weight: 500;
     padding-inline-start: 8px;
     margin-inline-start: 0px;
@@ -537,20 +675,20 @@ kbd, .kbd,
     padding-bottom: 0.2em;
 }
 
-.rst-content section > h2 {
+.rst-content section>h2 {
     border-color: var(--admonition-note-title-background-color);
 }
 
-.rst-content section > h3 {
+.rst-content section>h3 {
     border-color: var(--admonition-note-background-color);
 }
 
-.rst-content section > h4 {
+.rst-content section>h4 {
     border-color: transparent;
     font-weight: 400;
 }
 
-.rst-content section > h5 {
+.rst-content section>h5 {
     border-color: transparent;
     font-weight: 100;
 }
@@ -576,7 +714,7 @@ kbd, .kbd,
     opacity: var(--logo-opacity);
 }
 
-.wy-side-nav-search > a img.logo {
+.wy-side-nav-search>a img.logo {
     /* Fixed size to prevent reflows and support hiDPI displays */
     /* A 5 pixel margin is added on each side. The logo itself displays at 200×100 at 100% scaling. */
     width: 210px;
@@ -592,6 +730,7 @@ kbd, .kbd,
 }
 
 @media only screen and (min-width: 769px) {
+
     /* Simulate a drop shadow that only affects the bottom edge */
     /* This is used to indicate the search bar is fixed */
     .wy-side-nav-search.fixed-and-scrolled::after {
@@ -606,13 +745,13 @@ kbd, .kbd,
     }
 }
 
-.wy-side-nav-search > a:hover,
-.wy-side-nav-search .wy-dropdown > a:hover {
+.wy-side-nav-search>a:hover,
+.wy-side-nav-search .wy-dropdown>a:hover {
     background-color: var(--navbar-background-color-hover);
 }
 
-.wy-side-nav-search > a:active,
-.wy-side-nav-search .wy-dropdown > a:active {
+.wy-side-nav-search>a:active,
+.wy-side-nav-search .wy-dropdown>a:active {
     background-color: var(--navbar-background-color-active);
 }
 
@@ -662,7 +801,7 @@ kbd, .kbd,
 }
 
 /* Version branch label below the logo */
-.wy-side-nav-search > div.version {
+.wy-side-nav-search>div.version {
     color: var(--navbar-level-3-color);
     opacity: 0.9;
 }
@@ -682,24 +821,30 @@ kbd, .kbd,
     background-color: var(--navbar-background-color-active);
 }
 
-.wy-menu-vertical li.toctree-l1.current > a {
+.wy-menu-vertical li.toctree-l1.current>a {
     border: none;
 }
 
-.wy-side-nav-search, .wy-menu-vertical a, .wy-menu-vertical a span.toctree-expand,
+.wy-side-nav-search,
+.wy-menu-vertical a,
+.wy-menu-vertical a span.toctree-expand,
 .wy-menu-vertical li.toctree-l2 a span.toctree-expand {
     color: var(--navbar-level-3-color);
     opacity: 0.9;
     margin-right: 8px;
 }
 
-.wy-side-nav-search, .wy-menu-vertical a, .wy-menu-vertical a:hover span.toctree-expand,
+.wy-side-nav-search,
+.wy-menu-vertical a,
+.wy-menu-vertical a:hover span.toctree-expand,
 .wy-menu-vertical li.toctree-l2 a:hover span.toctree-expand {
     color: var(--navbar-level-2-color);
     opacity: 1;
 }
 
-.wy-side-nav-search, .wy-menu-vertical a, .wy-menu-vertical a:active span.toctree-expand,
+.wy-side-nav-search,
+.wy-menu-vertical a,
+.wy-menu-vertical a:active span.toctree-expand,
 .wy-menu-vertical li.toctree-l2 a:active span.toctree-expand {
     color: var(--navbar-level-1-color);
     opacity: 1;
@@ -714,25 +859,25 @@ kbd, .kbd,
 }
 
 .wy-menu-vertical li.current a,
-.wy-menu-vertical li.toctree-l2.current > a,
-.wy-menu-vertical li.toctree-l2.current li.toctree-l3 > a,
-.wy-menu-vertical li.toctree-l2.current li.toctree-l4 > a {
+.wy-menu-vertical li.toctree-l2.current>a,
+.wy-menu-vertical li.toctree-l2.current li.toctree-l3>a,
+.wy-menu-vertical li.toctree-l2.current li.toctree-l4>a {
     background-color: var(--navbar-current-background-color);
     color: var(--navbar-level-2-color);
     border-color: var(--navbar-current-background-color);
 }
 
 .wy-menu-vertical li.current a:hover,
-.wy-menu-vertical li.toctree-l2.current > a:hover,
-.wy-menu-vertical li.toctree-l2.current li.toctree-l3 > a:hover,
-.wy-menu-vertical li.toctree-l3.current li.toctree-l4 > a:hover {
+.wy-menu-vertical li.toctree-l2.current>a:hover,
+.wy-menu-vertical li.toctree-l2.current li.toctree-l3>a:hover,
+.wy-menu-vertical li.toctree-l3.current li.toctree-l4>a:hover {
     background-color: var(--navbar-current-background-color-hover);
 }
 
 .wy-menu-vertical li.current a:active,
-.wy-menu-vertical li.toctree-l2.current > a:active,
-.wy-menu-vertical li.toctree-l2.current li.toctree-l3 > a:active,
-.wy-menu-vertical li.toctree-l3.current li.toctree-l4 > a:active {
+.wy-menu-vertical li.toctree-l2.current>a:active,
+.wy-menu-vertical li.toctree-l2.current li.toctree-l3>a:active,
+.wy-menu-vertical li.toctree-l3.current li.toctree-l4>a:active {
     background-color: var(--navbar-current-background-color-active);
 }
 
@@ -805,19 +950,23 @@ kbd, .kbd,
         padding: 0 0 0 1em;
     }
 }
+
 .wy-menu.wy-menu-vertical {
     overflow-y: auto;
     overflow-x: hidden;
     max-height: calc(100% - 243px);
 }
+
 @media screen and (max-width: 768px) {
     .wy-nav-side {
         padding-bottom: 44px;
     }
+
     .wy-menu.wy-menu-vertical {
         overflow-y: initial;
         max-height: initial;
     }
+
     .wy-nav-content {
         min-height: calc(100vh - 64px);
         min-height: calc(100dvh - 64px);
@@ -828,19 +977,24 @@ kbd, .kbd,
 .wy-menu.wy-menu-vertical {
     scrollbar-color: var(--navbar-scrollbar-color) var(--navbar-scrollbar-background);
 }
+
 .wy-menu.wy-menu-vertical::-webkit-scrollbar {
     width: .75rem;
 }
+
 .wy-menu.wy-menu-vertical::-webkit-scrollbar-track {
     background-color: var(--navbar-scrollbar-background);
 }
+
 .wy-menu.wy-menu-vertical::-webkit-scrollbar-thumb {
     background-color: var(--navbar-scrollbar-color);
 }
+
 /* Firefox does the dimming on hover automatically. We emulate it for Webkit-based browsers. */
 .wy-menu.wy-menu-vertical::-webkit-scrollbar-thumb:hover {
     background-color: var(--navbar-scrollbar-hover-color);
 }
+
 .wy-menu.wy-menu-vertical::-webkit-scrollbar-thumb:active {
     background-color: var(--navbar-scrollbar-active-color);
 }
@@ -851,7 +1005,8 @@ kbd, .kbd,
     column-width: 18em;
 }
 
-.rst-content div.figure, .rst-content figure {
+.rst-content div.figure,
+.rst-content figure {
     text-align: center;
 }
 
@@ -861,14 +1016,14 @@ kbd, .kbd,
 
 
 dark-mode-toggle::part(fieldset) {
-  padding-inline: 0.75rem;
-  padding-block: 0;
+    padding-inline: 0.75rem;
+    padding-block: 0;
 }
 
 dark-mode-toggle::part(darkLabel),
 dark-mode-toggle::part(lightLabel),
-dark-mode-toggle::part(toggleLabel){
-  font-size: unset;
+dark-mode-toggle::part(toggleLabel) {
+    font-size: unset;
 }
 
 /* Home page grid display */
@@ -878,10 +1033,10 @@ dark-mode-toggle::part(toggleLabel){
     display: -ms-flexbox;
     display: flex;
     -ms-flex-wrap: wrap;
-        flex-wrap: wrap;
+    flex-wrap: wrap;
     -webkit-box-pack: center;
-        -ms-flex-pack: center;
-            justify-content: center;
+    -ms-flex-pack: center;
+    justify-content: center;
     margin: 1rem auto;
     max-width: calc((160px + 2rem) * 4);
 }
@@ -889,8 +1044,8 @@ dark-mode-toggle::part(toggleLabel){
 .grid-item {
     list-style-type: none !important;
     -webkit-box-flex: 0;
-        -ms-flex: 0 0 auto;
-            flex: 0 0 auto;
+    -ms-flex: 0 0 auto;
+    flex: 0 0 auto;
     width: 150px;
     text-align: center;
     margin: 1rem;
@@ -906,14 +1061,14 @@ dark-mode-toggle::part(toggleLabel){
     display: flex;
     -webkit-box-orient: vertical;
     -webkit-box-direction: normal;
-        -ms-flex-direction: column;
-            flex-direction: column;
+    -ms-flex-direction: column;
+    flex-direction: column;
     -webkit-box-pack: center;
-        -ms-flex-pack: center;
-            justify-content: center;
+    -ms-flex-pack: center;
+    justify-content: center;
     -webkit-box-align: center;
-        -ms-flex-align: center;
-            align-items: center;
+    -ms-flex-align: center;
+    align-items: center;
     border-radius: 1rem;
     background: linear-gradient(135deg, #0070c5 0%, #5c13a5 100%);
     color: white;
@@ -943,9 +1098,9 @@ dark-mode-toggle::part(toggleLabel){
 }
 
 .grid-icon {
-   line-height: 1.5;
-   font-size: 3rem;
-   color: white;
+    line-height: 1.5;
+    font-size: 3rem;
+    color: white;
 }
 
 .lastupdated {
@@ -1018,11 +1173,11 @@ dark-mode-toggle::part(toggleLabel){
 
 #search-se-menu ul li .fa-check {
     display: none;
-  }
+}
 
-  #search-se-menu ul li.selected .fa-check {
+#search-se-menu ul li.selected .fa-check {
     display: inline;
-  }
+}
 
 .doxygroup::after {
     content: 'Doxygen';
@@ -1039,6 +1194,7 @@ dark-mode-toggle::part(toggleLabel){
 .code-sample-list li {
     margin-bottom: 0.25em;
 }
+
 .code-sample-name {
     font-weight: bold;
     padding-right: 0.5em;
@@ -1049,7 +1205,8 @@ dark-mode-toggle::part(toggleLabel){
 }
 
 .code-sample-description::before {
-    content: '\F0A9'; /* arrow-circle-right */
+    content: '\F0A9';
+    /* arrow-circle-right */
     font-family: 'FontAwesome';
     padding-right: 0.5em;
 }
@@ -1060,4 +1217,157 @@ li>a.code-sample-link.reference.internal {
 
 li>a.code-sample-link.reference.internal.current {
     text-decoration: underline;
+}
+
+/** board catalog **/
+.filter-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.filter-form input[type="text"],
+.filter-form input[type="number"],
+.filter-form select {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    flex: 1 1 200px;
+    background-color: var(--input-background-color);
+    color: var(--body-color);
+    transition: all 0.3s ease;
+}
+
+.filter-form input[type="text"]:focus,
+.filter-form input[type="number"]:focus,
+.filter-form select:focus {
+    border-color: var(--input-focus-border-color);
+}
+
+.filter-form .capabilities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    max-height: 75px;
+    overflow: auto;
+}
+
+.filter-form .capabilities label {
+    display: flex;
+    align-items: center;
+    margin-right: 10px;
+    font-size: 14px;
+    color: var(--body-color);
+}
+
+.catalog {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    /* Center the cards horizontally */
+    margin-top: 20px;
+}
+
+.board-card {
+    flex: 1 1 calc(33.3% - 20px);
+        /* Three cards per row */
+        max-width: calc(33.3% - 20px);
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    background-color: var(--admonition-note-background-color);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* Center card content */
+    transition: all 0.3s ease;
+}
+
+.board-card:hover {
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    /* Add hover effect for card */
+    transform: translateY(-5px);
+    /* Slight lift on hover */
+}
+
+.board-card img {
+    width: auto;
+    height: auto;
+    max-height: 180px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+
+@media (max-width: 1024px) {
+    .board-card {
+        flex: 1 1 calc(50% - 20px);
+        max-width: calc(50% - 20px);
+    }
+}
+
+@media (max-width: 768px) {
+    .board-card {
+        flex: 1 1 calc(100% - 20px);
+        max-width: calc(100% - 20px);
+    }
+
+    .board-card img {
+        max-height: 120px;
+    }
+}
+
+
+.board-card h3 {
+    margin: 10px 0 5px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--body-color);
+}
+
+.board-card p {
+    margin: 5px 0;
+    text-align: center;
+    font-size: 14px;
+    color: var(--body-color);
+}
+
+.board-card .capabilities {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+}
+
+.capability-tag {
+    display: inline-block;
+    background-color: #e6f7ff;
+    border-radius: 4px;
+    padding: 0px 10px;
+    margin-right: 4px;
+    font-size: 10px;
+    color: #007acc;
+    border: 1px solid #007acc;
+    transition: background-color 0.3s ease;
+}
+
+.capability-tag:hover {
+    background-color: #cceeff;
+    /* Highlight on hover */
+}
+
+.capability-tag.selected {
+    background-color: var(--admonition-tip-title-background-color);
+    color: var(--admonition-tip-title-color);
 }
