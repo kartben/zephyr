@@ -110,6 +110,8 @@ licensing, as described in :ref:`Zephyr_Licensing`.
    boards/index.rst
    releases/index.rst
 
+fake PR
+
 Indices and Tables
 ******************
 
