@@ -3,8 +3,8 @@
 
 .. _zephyr-home:
 
-Zephyr Project Documentation
-############################
+Zephyr Project Documentationx
+#############################
 
 .. only:: release
 
