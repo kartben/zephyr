@@ -300,6 +300,7 @@ external_content_contents = [
 ]
 external_content_keep = [
     "reference/kconfig/*",
+    "boards/_catalog/**/*",
     "develop/manifest/index.rst",
     "build/dts/api/bindings.rst",
     "build/dts/api/bindings/**/*",
