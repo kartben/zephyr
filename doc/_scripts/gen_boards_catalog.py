@@ -9,7 +9,7 @@ import sys
 from collections import namedtuple
 from pathlib import Path
 
-import list_boards
+import list_boards, list_hardware
 import pykwalify
 import yaml
 import zephyr_module
@@ -90,6 +90,16 @@ def main():
     )
 
     boards = list_boards.find_v2_boards(args_find_boards)
+    systems = list_hardware.find_v2_systems(args_find_boards)
+
+    all_socs = {}
+    for soc in systems.get_socs():
+        all_socs[soc.name] = {
+            "name": soc.name,
+            "series": soc.series,
+            "family": soc.family,
+        }
+
     board_catalog = {}
 
     for board in boards:
@@ -111,6 +121,8 @@ def main():
                     archs.add(board_data.get("arch"))
             except Exception as e:
                 logger.error(f"Error parsing twister file {twister_file}: {e}")
+
+        socs = {soc.name for soc in board.socs}
 
         full_name = board.full_name
         doc_page = guess_doc_page(board)
@@ -136,11 +148,16 @@ def main():
             "doc_page": doc_page.relative_to(ZEPHYR_BASE).as_posix() if doc_page else None,
             "vendor": vendor,
             "archs": list(archs),
+            "socs": list(socs),
             "image": guess_image(board),
         }
 
     with open(f"{args.out_dir}/board_catalog.json", "w") as f:
-        json.dump({"boards": board_catalog, "vendors": vnd_lookup.vnd2vendor}, f, indent=2)
+        json.dump(
+            {"boards": board_catalog, "vendors": vnd_lookup.vnd2vendor, "socs": all_socs},
+            f,
+            indent=2,
+        )
 
 
 if __name__ == "__main__":
