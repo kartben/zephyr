@@ -21,10 +21,18 @@ jobs:
 
     steps:
     - name: Download artifacts
+      id: download-artifacts
       uses: dawidd6/action-download-artifact@v6
       with:
         workflow: doc-build.yml
         run_id: ${{ github.event.workflow_run.id }}
+        if_no_artifact_found: ignore
+
+    - name: Exit if no artifacts found
+      if: steps.download-artifacts.outputs.found_artifact == 'false'
+      run: |
+        echo "No artifacts found - publishing skipped"
+        exit 0
 
     - name: Load PR number
       run: |
