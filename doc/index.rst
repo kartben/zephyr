@@ -24,6 +24,9 @@ documentation for a specific version of Zephyr.
 For information about the changes and additions for releases, please
 consult the published :ref:`zephyr_release_notes` documentation.
 
+touch docs
+
+
 The Zephyr OS is provided under the `Apache 2.0 license`_ (as found in
 the LICENSE file in the project's `GitHub repo`_).  The Zephyr OS also
 imports or reuses packages, scripts, and other files that use other
