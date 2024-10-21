@@ -84,7 +84,7 @@ class Node:
     # Public interface
     #
 
-    def __init__(self, name: str, parent: Optional['Node'], dt: 'DT'):
+    def __init__(self, name: str, parent: Optional['Node'], dt: 'DT', lineno: int, filename: str):
         """
         Node constructor. Not meant to be called directly by clients.
         """
@@ -96,6 +96,8 @@ class Node:
         self.labels: List[str] = []
         self.parent = parent
         self.dt = dt
+        self.lineno = lineno
+        self.filename = filename
 
         self._omit_if_no_ref = False
         self._is_referenced = False
@@ -106,7 +108,10 @@ class Node:
             for char in name:
                 if char not in _nodename_chars:
                     dt._parse_error(f"{self.path}: bad character '{char}' "
-                                    "in node name")
+                                    "in node name")\
+
+        print(f"Node {name} created - file:{filename}:{lineno}")
+
 
     @property
     def name(self) -> str:
@@ -180,7 +185,8 @@ class Node:
         Returns a DTS representation of the node. Called automatically if the
         node is print()ed.
         """
-        s = "".join(label + ": " for label in self.labels)
+        s = f"/* in {self.filename}:{self.lineno} */\n"
+        s += "".join(label + ": " for label in self.labels)
 
         s += f"{self.name} {{\n"
 
@@ -1088,7 +1094,7 @@ class DT:
             if tok.val == "/":
                 # '/ { ... };', the root node
                 if not self._root:
-                    self._root = Node(name="/", parent=None, dt=self)
+                    self._root = Node(name="/", parent=None, dt=self, lineno=self._lineno, filename=self.filename)
                 self._parse_node(self.root)
 
             elif tok.id in (_T.LABEL, _T.REF):
@@ -1151,7 +1157,7 @@ class DT:
                         if child.name in current_child_names:
                             self._parse_error(f'{child.path}: duplicate node name')
                     else:
-                        child = Node(name=tok.val, parent=node, dt=self)
+                        child = Node(name=tok.val, parent=node, dt=self, lineno=self._lineno, filename=self.filename)
                         current_child_names.add(tok.val)
 
                     for label in labels:
