@@ -1189,3 +1189,8 @@ li>a.code-sample-link.reference.internal.current {
     text-overflow: ellipsis;
     max-width:80%;
 }
+
+/* TEMPORARY */
+#supported-features>div>table>tbody>tr>td>p {
+    white-space: normal;
+}
