@@ -277,6 +277,28 @@ class ConvertBoardNode(SphinxTransform):
             for sibling in siblings_to_move:
                 parent.remove(sibling)
 
+        json_ld = nodes.raw(
+            "",
+            f"""<script type="application/ld+json">
+            {json.dumps({
+                "@context": "http://schema.org",
+                "@type": "Product",
+                "name": node['full_name'],
+                "image:": node['image'],
+                "category": {
+                    "@type": "ProductModel",
+                    "additionalType": "http://www.productontology.org/doc/Microprocessor_development_board",
+                },
+                "manufacturer": {
+                    "@type": "Organization",
+                    "name": node['vendor']
+                }
+            })}
+            </script>""",
+            format="html",
+        )
+        node.document += json_ld
+
 
 class CodeSampleCategoriesTocPatching(SphinxPostTransform):
     default_priority = 5  # needs to run *before* ReferencesResolver
