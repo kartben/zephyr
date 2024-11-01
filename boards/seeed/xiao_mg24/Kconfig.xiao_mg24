@@ -1,0 +1,5 @@
+# Copyright (c) 2024 The Linux Foundation
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_XIAO_MG24
+	select SOC_PART_NUMBER_EFR32MG24B220F1536IM48

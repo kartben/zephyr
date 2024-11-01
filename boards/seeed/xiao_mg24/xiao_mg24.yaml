@@ -1,0 +1,24 @@
+identifier: xiao_mg24
+name: Seeed Studio XIAO MG24
+type: mcu
+arch: arm
+ram: 256
+flash: 1536
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+supported:
+  - counter
+  - gpio
+  - uart
+  - spi
+  - watchdog
+  - clock_control
+testing:
+  ignore_tags:
+    - net
+    - bluetooth
+    - pm
+    - hwinfo
+vendor: seeed
