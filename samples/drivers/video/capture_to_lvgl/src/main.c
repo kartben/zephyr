@@ -19,7 +19,7 @@ LOG_MODULE_REGISTER(main);
 
 int main(void)
 {
-	struct video_buffer *buffers[2], *vbuf;
+	struct video_buffer *buffers[CONFIG_VIDEO_BUFFER_POOL_NUM_MAX], *vbuf;
 	const struct device *display_dev;
 	struct video_format fmt;
 	struct video_caps caps;
@@ -92,12 +92,21 @@ int main(void)
 		LOG_ERR("Partial framebuffers not supported by this sample");
 		return 0;
 	}
+
 	/* Size to allocate for each buffer */
-	bsize = fmt.pitch * fmt.height;
+	if (caps.min_line_count == LINE_COUNT_HEIGHT) {
+		bsize = fmt.pitch * fmt.height;
+	} else {
+		bsize = fmt.pitch * caps.min_line_count;
+	}
 
 	/* Alloc video buffers and enqueue for capture */
 	for (i = 0; i < ARRAY_SIZE(buffers); i++) {
-		buffers[i] = video_buffer_alloc(bsize);
+		/*
+		 * For some hardwares, such as the PxP used on i.MX RT1170 to do image rotation,
+		 * buffer alignment is needed in order to achieve the best performance
+		 */
+		buffers[i] = video_buffer_aligned_alloc(bsize, CONFIG_VIDEO_BUFFER_POOL_ALIGN);
 		if (buffers[i] == NULL) {
 			LOG_ERR("Unable to alloc video buffer");
 			return 0;
@@ -140,6 +149,7 @@ int main(void)
 	};
 
 	lv_obj_t *screen = lv_img_create(lv_scr_act());
+	lv_obj_align(screen, LV_ALIGN_BOTTOM_LEFT, 0, 0);
 
 	LOG_INF("- Capture started");
 
@@ -153,10 +163,18 @@ int main(void)
 			return 0;
 		}
 
+		k_msleep(lv_task_handler());
 		lv_img_set_src(screen, &video_img);
-		lv_obj_align(screen, LV_ALIGN_BOTTOM_LEFT, 0, 0);
 
-		lv_task_handler();
+		struct display_buffer_descriptor buf_desc;
+
+		buf_desc.buf_size = vbuf->bytesused;
+		buf_desc.width = fmt.width;
+		buf_desc.pitch = buf_desc.width;
+		buf_desc.height = vbuf->bytesused / fmt.pitch;
+
+		// printk("Displaying frame %u! size: %u; timestamp %u ms. Line offset: %u\n",
+		//        vbuf->bytesused, vbuf->timestamp, vbuf->line_offset);
 
 		err = video_enqueue(video_dev, VIDEO_EP_OUT, vbuf);
 		if (err) {
