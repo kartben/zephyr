@@ -69,6 +69,21 @@
 		volt-sensor0 = &vref;
 		volt-sensor1 = &vbat;
 	};
+
+
+	// west build -b nucleo_wl55jc -p auto .\samples\sensor\sensor_shell\ -- -DCONFIG_STEPPER=y -DCONFIG_STEPPER_SHELL=y
+
+	stepper {
+		compatible = "zephyr,gpio-steppers";
+		motor: motor {
+			micro-step-res = <1>;
+			gpios = <&gpioa 10 0>,
+				<&gpiob 4 0>,
+				<&gpiob 14 0>,
+				<&gpiob 13 0>;
+		};
+	};
+
 };
 
 &clk_lsi {
