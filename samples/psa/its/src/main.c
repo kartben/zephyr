@@ -22,10 +22,10 @@ static int write_and_read_data(void)
 
 	/* Data to be written to ITS. */
 	uint8_t p_data_write[SAMPLE_DATA_SIZE];
+	strcpy(p_data_write, "Lorem ipsum dolor sit amet, consectetur adipiscing elit. "
+			     "Morbi porttitor velit magna, at egestas massa aliquam in. Phasellus");
 
-	for (unsigned int i = 0; i != sizeof(p_data_write); ++i) {
-		p_data_write[i] = i;
-	}
+	LOG_INF("Writing '%s' to ITS\n", p_data_write);
 
 	ret = psa_its_set(SAMPLE_DATA_UID, sizeof(p_data_write), p_data_write, SAMPLE_DATA_FLAGS);
 	if (ret != PSA_SUCCESS) {
@@ -92,21 +92,6 @@ static int read_info(void)
 	return 0;
 }
 
-static int remove_entry(void)
-{
-	LOG_INF("Removing the entry from ITS...");
-	psa_status_t ret;
-
-	ret = psa_its_remove(SAMPLE_DATA_UID);
-	if (ret != PSA_SUCCESS) {
-		LOG_ERR("Failed to remove the entry. (%d)", ret);
-		return -1;
-	}
-
-	LOG_INF("Entry removed from ITS.");
-	return 0;
-}
-
 int main(void)
 {
 	LOG_INF("PSA ITS sample started.");
@@ -119,9 +104,9 @@ int main(void)
 		return -1;
 	}
 
-	if (remove_entry()) {
-		return -1;
-	}
+	// if (remove_entry()) {
+	// 	return -1;
+	// }
 
 	LOG_INF("Sample finished successfully.");
 	return 0;
