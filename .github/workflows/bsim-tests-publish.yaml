@@ -12,13 +12,18 @@ jobs:
     if: github.event.workflow_run.conclusion != 'skipped'
 
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@5c7944e73c4c2a096b17a9cb74d65b6c2bbafbde # v2.9.1
+        with:
+          egress-policy: audit
+
       - name: Download artifacts
-        uses: dawidd6/action-download-artifact@v3
+        uses: dawidd6/action-download-artifact@09f2f74827fd3a8607589e5ad7f9398816f540fe # v3.1.4
         with:
           run_id: ${{ github.event.workflow_run.id }}
 
       - name: Publish BabbleSim Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v2
+        uses: EnricoMi/publish-unit-test-result-action@567cc7f8dcea3eba5da355f6ebc95663310d8a07 # v2.17.0
         with:
           check_name: BabbleSim Test Results
           comment_mode: off

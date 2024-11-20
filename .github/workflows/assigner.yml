@@ -22,13 +22,18 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@5c7944e73c4c2a096b17a9cb74d65b6c2bbafbde # v2.9.1
+      with:
+        egress-policy: audit
+
     - name: Install Python dependencies
       run: |
         sudo pip3 install -U setuptools wheel pip
         pip3 install -U PyGithub>=1.55 west
 
     - name: Check out source code
-      uses: actions/checkout@v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
     - name: Run assignment script
       env:

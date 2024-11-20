@@ -20,6 +20,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   footprint-tracking:
     runs-on:
@@ -58,7 +61,7 @@ jobs:
           sudo pip3 install -U setuptools wheel pip gitpython
 
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
@@ -74,7 +77,7 @@ jobs:
           west update 2>&1 1> west.update.log || west update 2>&1 1> west.update2.log
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
         with:
           aws-access-key-id: ${{ vars.AWS_TESTING_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_TESTING_SECRET_ACCESS_KEY }}
