@@ -8,6 +8,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   codecov:
     if: github.repository_owner == 'zephyrproject-rtos'
@@ -61,7 +64,7 @@ jobs:
           git remote set-url origin ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}
 
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           fetch-depth: 0
 
@@ -121,7 +124,7 @@ jobs:
 
       - name: Upload Coverage Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@89ef406dd8d7e03cfd12d9e0a4a378f454709029 # v4.3.5
         with:
           name: Coverage Data (Subset ${{ matrix.normalized }})
           path: |
@@ -137,12 +140,12 @@ jobs:
 
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           fetch-depth: 0
 
       - name: Download Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           path: coverage/reports
 
@@ -209,7 +212,7 @@ jobs:
 
       - name: Upload Merged Coverage Results and Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@89ef406dd8d7e03cfd12d9e0a4a378f454709029 # v4.3.5
         with:
           name: Coverage Data and report
           path: |
@@ -220,7 +223,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: always()
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@ab904c41d6ece82784817410c45d8b8c02684457 # v3.1.6
         with:
           directory: ./coverage/reports
           env_vars: OS,PYTHON
