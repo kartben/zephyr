@@ -27,5 +27,5 @@ anytree
 
 # add old dependencies to a random package to test dependabot
 # this should be removed after the first PR
-requests==2.9.1
-aiohttp==3.5.4
+requests==2.32.2
+aiohttp==3.10.11
