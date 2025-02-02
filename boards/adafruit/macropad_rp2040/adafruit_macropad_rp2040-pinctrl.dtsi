@@ -1,0 +1,44 @@
+#include <dt-bindings/pinctrl/rpi-pico-rp2040-pinctrl.h>
+
+&pinctrl {
+	uart0_default: uart0_default {
+		group1 {
+			pinmux = <UART0_TX_P0>;
+		};
+		group2 {
+			pinmux = <UART0_RX_P1>;
+			input-enable;
+		};
+	};
+
+	i2c0_default: i2c0_default {
+		group1 {
+			pinmux = <I2C0_SDA_P20>;
+			input-enable;
+		};
+		group2 {
+			pinmux = <I2C0_SCL_P21>;
+			input-enable;
+		};
+	};
+
+	spi1_default: spi1_default {
+		group1 {
+			pinmux = <SPI1_TX_P27>;
+		};
+		group2 {
+			pinmux = <SPI1_RX_P28>;
+			input-enable;
+		};
+		group3 {
+			pinmux = <SPI1_SCK_P26>;
+		};
+	};
+
+	ws2812_pio1_default: ws2812_pio1_default {
+		ws2812 {
+			pinmux = <PIO1_P19>;
+		};
+	};
+
+};
