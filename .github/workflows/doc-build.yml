@@ -10,6 +10,7 @@ on:
     tags:
     - v*
   pull_request:
+  workflow_dispatch:
 
 env:
   # NOTE: west docstrings will be extracted from the version listed here
@@ -63,13 +64,27 @@ jobs:
     if: >
       github.repository_owner == 'zephyrproject-rtos' &&
         ( needs.doc-file-check.outputs.file_check == 'true' || github.event_name != 'pull_request' )
-    runs-on: ubuntu-22.04
+    runs-on: ${{ (github.event_name != 'pull_request') && fromJSON('{"group":"zephyr-runner-v2-linux-x64-4xlarge"}') || 'ubuntu-22.04' }}
     timeout-minutes: 90
     concurrency:
       group: doc-build-html-${{ github.ref }}
       cancel-in-progress: true
 
     steps:
+    - name: Print cloud service information
+      if: needs.doc-file-check.outputs.file_check == 'true' && github.event_name == 'pull_request'
+      run: |
+        echo "ZEPHYR_RUNNER_CLOUD_PROVIDER = ${ZEPHYR_RUNNER_CLOUD_PROVIDER}"
+        echo "ZEPHYR_RUNNER_CLOUD_NODE = ${ZEPHYR_RUNNER_CLOUD_NODE}"
+        echo "ZEPHYR_RUNNER_CLOUD_POD = ${ZEPHYR_RUNNER_CLOUD_POD}"
+
+    - name: Setup Zephyr project
+      uses: zephyrproject-rtos/action-zephyr-setup@v1
+      if: github.event_name != 'pull_request'
+      with:
+        app-path: zephyr
+        toolchains: all
+
     - name: install-pkgs
       run: |
         sudo apt-get update
