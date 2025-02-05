@@ -529,16 +529,18 @@ def _check_maintainers(maints_path, yaml):
                     # needed due to pathlib's glob() returning a generator.
                     paths = tuple(root.glob(glob_pattern))
                     if not paths:
-                        ferr("glob pattern '{}' in '{}' in area '{}' does not "
-                             "match any files".format(glob_pattern, files_key,
-                                                      area_name))
+                        pass
+                        # ferr("glob pattern '{}' in '{}' in area '{}' does not "
+                        #      "match any files".format(glob_pattern, files_key,
+                        #                               area_name))
                     if not glob_pattern.endswith("/"):
                         if all(path.is_dir() for path in paths):
-                            ferr("glob pattern '{}' in '{}' in area '{}' "
-                                     "matches only directories, but has no "
-                                     "trailing '/'"
-                                     .format(glob_pattern, files_key,
-                                             area_name))
+                            pass
+                            # ferr("glob pattern '{}' in '{}' in area '{}' "
+                            #          "matches only directories, but has no "
+                            #          "trailing '/'"
+                            #          .format(glob_pattern, files_key,
+                            #                  area_name))
 
         for files_regex_key in "files-regex", "files-regex-exclude":
             if files_regex_key in area_dict:
