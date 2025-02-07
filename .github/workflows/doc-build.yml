@@ -145,7 +145,7 @@ jobs:
 
     - name: compress-docs
       run: |
-        tar --use-compress-program="xz -T0" -cf html-output.tar.xz --directory=doc/_build html
+        tar --use-compress-program="xz -T0" -cf html-output.tar.xz --exclude doc/_build/_sources --exclude doc/_build/doxygen/xml --directory=doc/_build html
         tar --use-compress-program="xz -T0" -cf api-output.tar.xz --directory=doc/_build html/doxygen/html
         tar --use-compress-program="xz -T0" -cf api-coverage.tar.xz coverage-report
 
