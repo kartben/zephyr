@@ -94,6 +94,7 @@ extensions = [
     "zephyr.external_content",
     "zephyr.domain",
     "zephyr.api_overview",
+    "sphinxext.opengraph",
 ]
 
 # Only use image conversion when it is really needed, e.g. LaTeX build.
@@ -347,6 +348,17 @@ copybutton_prompt_is_regexp = True
 # -- Options for sphinx-sitemap ----------------------------------------
 
 sitemap_url_scheme = "{link}"
+
+# -- Options for sphinxext.opengraph ----------------------------------------
+
+ogp_site_url = "https://c95f-2a01-e0a-989-8710-b01e-7d7-2c0e-2a4d.ngrok-free.app/"
+# ogp_image = f"{ogp_site_url}/_static/images/logo.svg"
+ogp_social_cards = {
+    "enable": True,
+    "site_url": "https://c95f-2a01-e0a-989-8710-b01e-7d7-2c0e-2a4d.ngrok-free.app/",
+    "image_mini": Path(__file__).parent / "_static/images/kite.png",
+}
+
 
 # -- Linkcheck options ----------------------------------------------------
 
