@@ -112,12 +112,18 @@
 
 	encoder {
 		compatible = "gpio-qdec";
-		gpios = <&gpio0 17 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
-			<&gpio0 18 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+		gpios = <&gpio0 18 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>,
+		        <&gpio0 17 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
 		zephyr,axis = <INPUT_REL_WHEEL>;
 		steps-per-period = <4>;
 		sample-time-us = <2000>;
 		idle-timeout-ms = <200>;
+	};
+
+	lvgl_encoder_input {
+		compatible = "zephyr,lvgl-encoder-input";
+		rotation-input-code = <INPUT_REL_WHEEL>;
+		button-input-code = <INPUT_KEY_ENTER>;
 	};
 
 	stemma_connector: stemma_connector {
@@ -190,7 +196,7 @@
 		prechargep = <0x1F>;
 		segment-remap;
 		com-invdir;
-		inversion-on;
+		// inversion-on;
 		reset-gpios = <&gpio0 23 GPIO_ACTIVE_LOW>;
 		data-cmd-gpios = <&gpio0 24 GPIO_ACTIVE_HIGH>;
 		ready-time-ms = <100>;  /* SH1106G needs 100ms delay after init */
@@ -230,10 +236,16 @@ zephyr_udc0: &usbd {
 			gpios = <&gpio0 19 GPIO_ACTIVE_HIGH>;
 			chain-length = <12>;
 			color-mapping = <LED_COLOR_ID_GREEN
-					 LED_COLOR_ID_RED
-					 LED_COLOR_ID_BLUE>;
+			LED_COLOR_ID_RED
+			LED_COLOR_ID_BLUE>;
 			reset-delay = <280>;
 			frequency = <800000>;
 		};
+	};
+};
+
+&zephyr_udc0 {
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
 	};
 };

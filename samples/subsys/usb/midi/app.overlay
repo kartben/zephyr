@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <zephyr/dt-bindings/lvgl/lvgl.h>
+
 / {
 	usb_midi: usb_midi {
 		compatible = "zephyr,midi2-device";
@@ -15,5 +18,11 @@
 			reg = <0 1>;
 			protocol = "midi1-up-to-128b";
 		};
+	};
+
+	lvgl_encoder_input {
+		compatible = "zephyr,lvgl-encoder-input";
+		rotation-input-code = <INPUT_REL_WHEEL>;
+		button-input-code = <INPUT_KEY_ENTER>;
 	};
 };
