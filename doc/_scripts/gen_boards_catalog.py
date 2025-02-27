@@ -119,13 +119,17 @@ def gather_board_devicetrees(twister_out_dir):
         twister_out_dir: Path object pointing to twister output directory
 
     Returns:
-        A dictionary mapping board names to a dictionary of board targets and their EDT objects.
-        The structure is: {board_name: {board_target: edt_object}}
+        A tuple containing:
+        1. A dictionary mapping board names to a dictionary of board targets and their EDT objects.
+           The structure is: {board_name: {board_target: edt_object}}
+        2. A dictionary mapping board names to a dictionary of board targets and their runners info.
+           The structure is: {board_name: {board_target: runners_info}}
     """
     board_devicetrees = {}
+    board_runners = {}
 
     if not twister_out_dir.exists():
-        return board_devicetrees
+        return board_devicetrees, board_runners
 
     # Find all build_info.yml files in twister-out
     build_info_files = list(twister_out_dir.glob("*/**/build_info.yml"))
@@ -133,8 +137,7 @@ def gather_board_devicetrees(twister_out_dir):
     for build_info_file in build_info_files:
         # Look for corresponding zephyr.dts
         edt_pickle_file = build_info_file.parent / EDT_PICKLE_PATH
-        if not edt_pickle_file.exists():
-            continue
+        runners_yaml_file = build_info_file.parent / "zephyr/runners.yaml"
 
         try:
             with open(build_info_file) as f:
@@ -150,14 +153,49 @@ def gather_board_devicetrees(twister_out_dir):
                 if revision:
                     board_target = f"{board_target}@{revision}"
 
-                with open(edt_pickle_file, 'rb') as f:
-                    edt = pickle.load(f)
-                    board_devicetrees.setdefault(board_name, {})[board_target] = edt
+                # Process EDT pickle file if it exists
+                if edt_pickle_file.exists():
+                    try:
+                        with open(edt_pickle_file, 'rb') as f:
+                            edt = pickle.load(f)
+                            board_devicetrees.setdefault(board_name, {})[board_target] = edt
+                    except Exception as e:
+                        logger.error(f"Error processing EDT pickle file {edt_pickle_file}: {e}")
+
+                # Process runners.yaml file if it exists
+                if runners_yaml_file.exists():
+                    try:
+                        with open(runners_yaml_file) as f:
+                            runners_info = yaml.safe_load(f)
+                            board_runners.setdefault(board_name, {})[board_target] = runners_info
+                    except Exception as e:
+                        logger.error(f"Error processing runners.yaml file {runners_yaml_file}: {e}")
 
         except Exception as e:
             logger.error(f"Error processing build info file {build_info_file}: {e}")
 
-    return board_devicetrees
+    return board_devicetrees, board_runners
+
+
+def get_runners_info(board_runners, board_name, board_target=None):
+    """Get runners information for a specific board.
+
+    Args:
+        board_runners: Dictionary mapping board names to board targets and their runners info
+        board_name: Name of the board
+        board_target: Specific board target (optional)
+
+    Returns:
+        Dictionary containing runners information or None if not found
+    """
+    if board_name not in board_runners:
+        return None
+
+    if board_target is None:
+        # Return the first available target if no specific target is requested
+        return next(iter(board_runners[board_name].values()), None)
+
+    return board_runners[board_name].get(board_target)
 
 
 def run_twister_cmake_only(outdir):
@@ -173,6 +211,7 @@ def run_twister_cmake_only(outdir):
         "--all",
         "-M",
         "--keep-artifacts", "zephyr/edt.pickle",
+        "--keep-artifacts", "zephyr/runners.yaml",
         "--cmake-only",
         "--outdir", str(outdir),
     ]
@@ -225,12 +264,13 @@ def get_catalog(generate_hw_features=False):
     systems = list_hardware.find_v2_systems(args_find_boards)
     board_catalog = {}
     board_devicetrees = {}
+    board_runners = {}
 
     if generate_hw_features:
         logger.info("Running twister in cmake-only mode to get Devicetree files for all boards")
         with tempfile.TemporaryDirectory() as tmp_dir:
             run_twister_cmake_only(tmp_dir)
-            board_devicetrees = gather_board_devicetrees(Path(tmp_dir))
+            board_devicetrees, board_runners = gather_board_devicetrees(Path(tmp_dir))
     else:
         logger.info("Skipping generation of supported hardware features.")
 
@@ -289,7 +329,7 @@ def get_catalog(generate_hw_features=False):
             except Exception as e:
                 logger.error(f"Error parsing twister file {twister_file}: {e}")
 
-        # Infer supported runners from board.cmake file
+        # Get list
         runners = set()
         board_cmake = board.dir / "board.cmake"
         if board_cmake.exists():
@@ -298,6 +338,15 @@ def get_catalog(generate_hw_features=False):
                     match = re.search(r"include\((.*\.board\.cmake)\)", line)
                     if match:
                         runners.add(match.group(1).split("/")[-1].split(".")[0])
+
+        # Check if we have runners information from twister output
+        runners_info = None
+        if board.name in board_runners:
+            # Get the first available target's runners info
+            runners_info = get_runners_info(board_runners, board.name)
+            if runners_info and 'runners' in runners_info:
+                # Add runners from the runners.yaml file
+                runners.update(runners_info['runners'])
 
         board_catalog[board.name] = {
             "name": board.name,
@@ -309,6 +358,10 @@ def get_catalog(generate_hw_features=False):
             "supported_features": supported_features,
             "image": guess_image(board),
             "runners": list(runners),
+            # runners_info contains the full contents of runners.yaml if available,
+            # including available runners, default runners for flash/debug/etc.,
+            # and runner-specific configuration
+            "runners_info": runners_info,  # Include the full runners info if available
         }
 
     socs_hierarchy = {}
