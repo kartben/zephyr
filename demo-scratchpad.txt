@@ -1,0 +1,6 @@
+./scripts/twister -T tests/benchmarks/thread_metric -p nucleo_f411re/stm32f411xe -vvv -i --device-testing --hardware-map hwmap --force-toolchain -j1 -W
+
+
+# clean up results to make them easier to analyze in Excel, upload to e.g. ElasticSearch, etc.
+
+./tests/benchmarks/thread_metric/scripts/twister_postprocess.py ./twister-out/twister.json

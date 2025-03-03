@@ -1,0 +1,6 @@
+- connected: true
+  id: 066FFF505256656767185748
+  platform: nucleo_f411re/stm32f411xe
+  product: STM32 STLink
+  runner: stm32cubeprogrammer
+  serial: /dev/cu.usbmodem21203
