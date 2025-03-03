@@ -30,12 +30,6 @@ common:
       - "(.*)Time Period Total:[ ]*[0-9]+(.*)"
       - "(.*) Thread-Metric(.+) Relative Time:[ ]*[0-9]+(.*)"
       - "(.*)Time Period Total:[ ]*[0-9]+(.*)"
-    record:
-      regex:
-        - "Time Period Total:[ ]*(?P<total_time_period>[0-9]+)"
-        - "ERROR:[ ]*(?P<error_message>.*)"
-        - "[ ]+Average:(?P<error_details>.*)"
-      merge: true
 
 tests:
   benchmark.thread_metric.basic:

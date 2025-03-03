@@ -1,0 +1,8 @@
+- baud: 115200
+  connected: true
+  flash_timeout: 60
+  id: 066FFF505256656767185748
+  platform: nucleo_f411re/stm32f411xe
+  product: STM32 STLink
+  runner: openocd
+  serial: /dev/cu.usbmodem21203
