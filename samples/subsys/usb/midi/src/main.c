@@ -301,8 +301,8 @@ static void update_arp_timer(void)
 		return;
 	}
 
-	/* Convert BPM to milliseconds (sixteenth notes for more musical timing) */
-	uint32_t period_ms = 15000 / arp.bpm; /* 60000/4 = 15000 for sixteenth notes */
+	/* Convert BPM to milliseconds (eighth notes for more musical timing) */
+	uint32_t period_ms = 30000 / arp.bpm; /* 60000/2 = 30000 for eighth notes */
 	k_timer_start(&arp.timer, K_MSEC(period_ms), K_MSEC(period_ms));
 }
 
@@ -499,12 +499,46 @@ INPUT_CALLBACK_DEFINE(NULL, key_press, NULL);
 
 static void on_midi_packet(const struct device *dev, const struct midi_ump ump)
 {
+	printk("Received MIDI packet (MT=%X)\n", UMP_MT(ump));
 	LOG_INF("Received MIDI packet (MT=%X)", UMP_MT(ump));
 
-	/* Only send MIDI1 channel voice messages back to the host */
+	/* Only handle MIDI1 channel voice messages */
 	if (UMP_MT(ump) == UMP_MT_MIDI1_CHANNEL_VOICE) {
-		LOG_INF("Send back MIDI1 message %02X %02X %02X", UMP_MIDI_STATUS(ump),
-			UMP_MIDI1_P1(ump), UMP_MIDI1_P2(ump));
+		uint8_t status = UMP_MIDI_STATUS(ump);
+		uint8_t note = UMP_MIDI1_P1(ump);
+		uint8_t velocity = UMP_MIDI1_P2(ump);
+		uint8_t command = status & 0xF0;
+
+		/* Handle Note On/Off messages */
+		if (command == UMP_MIDI_NOTE_ON || command == UMP_MIDI_NOTE_OFF) {
+			/* Calculate base note from current octave */
+			uint8_t base_note = 60 + (mode_values[MODE_OCTAVE] * 12);
+
+			/* Calculate LED index (0-11) based on note difference from base note */
+			int8_t note_diff = note - base_note;
+			if (note_diff >= 0 && note_diff < 12) {
+				size_t led_idx = note_diff;
+
+				/* Update LED strip */
+				if (device_is_ready(led_strip)) {
+					if (command == UMP_MIDI_NOTE_ON && velocity > 0) {
+						/* Note On with velocity > 0 - light up LED */
+						pixels[led_idx].r = 0;
+						pixels[led_idx].g = velocity * 2;
+						pixels[led_idx].b = 0;
+					} else {
+						/* Note Off or Note On with velocity 0 - turn off
+						 * LED */
+						pixels[led_idx].r = 0;
+						pixels[led_idx].g = 0;
+						pixels[led_idx].b = 0;
+					}
+					led_strip_update_rgb(led_strip, pixels, 12);
+				}
+			}
+		}
+
+		LOG_INF("Send back MIDI1 message %02X %02X %02X", status, note, velocity);
 		// usbd_midi_send(dev, ump);
 	}
 }
