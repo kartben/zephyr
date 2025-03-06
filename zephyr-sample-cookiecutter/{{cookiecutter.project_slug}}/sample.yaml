@@ -1,0 +1,11 @@
+sample:
+  name: "{{cookiecutter.project_name}}"
+  description: "{{cookiecutter.project_description}}"
+tests:
+  sample.basic.test:
+    tags: introduction
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - ".*"
