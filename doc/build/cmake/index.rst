@@ -46,6 +46,8 @@ paths of a target library.
 When introducing build system code using CMake or adding new CMake files,
 please follow the style guidelines outlined :ref:`here <cmake-style>`.
 
+The :ref:`cmake-reference` section provides a reference for all CMake commands,
+variables, and modules used by Zephyr and available to application developers.
 
 Build and Configuration Phases
 ==============================
@@ -421,3 +423,4 @@ The following is a detailed description of the scripts used during the build pro
 .. include:: ../../../scripts/build/check_init_priorities.py
    :start-after: """
    :end-before: """
+

@@ -95,7 +95,26 @@ extensions = [
     "zephyr.external_content",
     "zephyr.domain",
     "zephyr.api_overview",
+    "sphinxcontrib.moderncmakedomain",
+    "sphinx.ext.intersphinx",
 ]
+
+intersphinx_mapping = {
+    "cmake": ("https://cmake.org/cmake/help/latest", None),
+}
+
+# import sphinx_tabs.tabs
+
+# # Monkeypatch sphinx_tabs.tabs.visit to fix KeyError: 'backrefs' with docutils > 0.18
+# _original_visit = sphinx_tabs.tabs.visit
+
+# def _patched_visit(self, node):
+#     # Ensure backrefs exists to avoid KeyError
+#     if 'backrefs' not in node.attributes:
+#         node.attributes['backrefs'] = []
+#     return _original_visit(self, node)
+
+# sphinx_tabs.tabs.visit = _patched_visit
 
 # Only use image conversion when it is really needed, e.g. LaTeX build.
 # Ensure "sphinxcontrib.rsvgconverter" is added before "sphinx.ext.imgconverter"
@@ -180,7 +199,7 @@ html_theme = "sphinx_rtd_theme"
 html_theme_options = {
     "logo_only": True,
     "prev_next_buttons_location": None,
-    "navigation_depth": 5,
+    "navigation_depth": 6,
 }
 html_baseurl = "https://docs.zephyrproject.org/latest/"
 html_title = "Zephyr Project Documentation"
@@ -218,6 +237,7 @@ html_context = {
         "API": f"{reference_prefix}/doxygen/html/index.html",
         "Kconfig Options": f"{reference_prefix}/kconfig.html",
         "Devicetree Bindings": f"{reference_prefix}/build/dts/api/bindings.html",
+        "CMake modules": f"{reference_prefix}/build/cmake-ref/index.html",
         "West Projects": f"{reference_prefix}/develop/manifest/index.html",
         "Glossary": f"{reference_prefix}/glossary.html",
     },
@@ -329,6 +349,7 @@ external_content_contents = [
     (ZEPHYR_BASE, "snippets/**/*.rst"),
     (ZEPHYR_BASE, "snippets/**/doc"),
     (ZEPHYR_BASE, "tests/**/*.pts"),
+    (ZEPHYR_BASE, "cmake/modules"),
 ]
 external_content_keep = [
     "reference/kconfig/*",

@@ -2,54 +2,113 @@
 #
 # Copyright (c) 2021, Nordic Semiconductor ASA
 
-# Validate board and setup boards target.
-#
-# This CMake module will validate the BOARD argument as well as splitting the
-# BOARD argument into <BOARD> and <BOARD_REVISION>. When BOARD_EXTENSIONS option
-# is enabled (default) this module will also take care of finding board
-# extension directories.
-#
-# If a board implementation is not found for the specified board an error will
-# be raised and list of valid boards will be printed.
-#
-# If user provided board is a board alias, the board will be adjusted to real
-# board name.
-#
-# If board name is deprecated, then board will be adjusted to new board name and
-# a deprecation warning will be printed to the user.
-#
-# Outcome:
-# The following variables will be defined when this CMake module completes:
-#
-# - BOARD:                       Board, without revision field.
-# - BOARD_REVISION:              Board revision
-# - BOARD_QUALIFIERS:            Board qualifiers
-# - NORMALIZED_BOARD_QUALIFIERS: Board qualifiers in lower-case format where slashes have been
-#                                replaced with underscores
-# - NORMALIZED_BOARD_TARGET:     Board target in lower-case format where slashes have been
-#                                replaced with underscores
-# - BOARD_DIR:                   Board directory with the implementation for selected board
-# - ARCH_DIR:                    Arch dir for extracted from selected board
-# - BOARD_ROOT:                  BOARD_ROOT with ZEPHYR_BASE appended
-# - BOARD_EXTENSION_DIRS:        List of board extension directories (If
-#                                BOARD_EXTENSIONS is not explicitly disabled)
-#
-# The following targets will be defined when this CMake module completes:
-# - board: when invoked, a list of valid boards will be printed
-#
-# Required variables:
-# - BOARD: Board name, including any optional revision field, for example: `foo` or `foo@1.0.0`
-#
-# Optional variables:
-# - BOARD_ROOT: CMake list of board roots containing board implementations
-# - ARCH_ROOT:  CMake list of arch roots containing arch implementations
-#
-# Optional environment variables:
-# - ZEPHYR_BOARD_ALIASES: Environment setting pointing to a CMake file
-#                         containing board aliases.
-#
-# Variables set by this module and not mentioned above are for internal
-# use only, and may be removed, renamed, or re-purposed without prior notice.
+#[=======================================================================[.rst:
+boards
+######
+
+Validate board and setup boards target.
+
+This CMake module will validate the BOARD argument as well as splitting the
+BOARD argument into ``<BOARD>`` and ``<BOARD_REVISION>``. When ``BOARD_EXTENSIONS`` option
+is enabled (default) this module will also take care of finding board
+extension directories.
+
+If a board implementation is not found for the specified board an error will
+be raised and list of valid boards will be printed.
+
+If user provided board is a board alias, the board will be adjusted to real
+board name.
+
+If board name is deprecated, then board will be adjusted to new board name and
+a deprecation warning will be printed to the user.
+
+
+Required variables
+******************
+
+.. cmake:variable:: BOARD
+
+   Board name, including any optional revision field, for example: ``foo`` or ``foo@1.0.0``.
+
+Optional variables
+******************
+
+.. cmake:variable:: BOARD_ROOT
+
+   CMake list of board roots containing board implementations.
+
+.. cmake:variable:: ARCH_ROOT
+
+   CMake list of arch roots containing arch implementations.
+
+Variables
+*********
+
+The following variables will be defined when this CMake module completes:
+
+.. cmake:variable:: BOARD
+
+   Board, without revision field.
+
+.. cmake:variable:: BOARD_REVISION
+
+   Board revision.
+
+.. cmake:variable:: BOARD_QUALIFIERS
+
+   Board qualifiers.
+
+.. cmake:variable:: NORMALIZED_BOARD_QUALIFIERS
+
+   Board qualifiers in lower-case format where slashes have been replaced with underscores.
+
+.. cmake:variable:: NORMALIZED_BOARD_TARGET
+
+   Board target in lower-case format where slashes have been replaced with underscores.
+
+.. cmake:variable:: BOARD_DIR
+
+   Board directory with the implementation for selected board.
+
+.. cmake:variable:: ARCH_DIR
+
+   Arch dir for extracted from selected board.
+
+.. cmake:variable:: BOARD_ROOT
+
+   List of directories containing board implementations.
+   This variable is updated to include ``ZEPHYR_BASE`` appended.
+
+.. cmake:variable:: BOARD_EXTENSION_DIRS
+
+   List of board extension directories (If ``BOARD_EXTENSIONS`` is not explicitly disabled).
+
+Targets
+********
+
+The following targets will be defined when this CMake module completes:
+
+.. cmake:target:: board
+
+   When invoked, a list of valid boards will be printed.
+
+Optional environment variables
+******************************
+
+:envvar:`ZEPHYR_BOARD_ALIASES`
+
+  Environment setting pointing to a CMake file containing board aliases.
+
+Example usage
+*************
+
+.. code-block:: cmake
+
+   include(boards)
+   # TODO FIXME
+
+
+#]=======================================================================]
 
 include_guard(GLOBAL)
 

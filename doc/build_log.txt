@@ -1,0 +1,53 @@
+cmake \
+		-GNinja \
+		-B_build \
+		-S. \
+		-DDOC_TAG=development \
+		-DSPHINXOPTS="-j auto -W --keep-going -T" \
+		-DSPHINXOPTS_EXTRA="" \
+		-DLATEXMKOPTS="-halt-on-error -no-shell-escape" \
+		-DDT_TURBO_MODE=0 \
+		-DHW_FEATURES_TURBO_MODE=0 \
+		-DHW_FEATURES_VENDOR_FILTER=
+Loading Zephyr module(s) (Zephyr base (cached)): doc
+-- Cache files will be written to: /Users/kartben/Library/Caches/zephyr
+-- Found west (found suitable version "1.5.0", minimum required is "1.0.0")
+-- Zephyr base: /Users/kartben/zephyrproject/zephyr
+-- Configuring done (0.5s)
+-- Generating done (0.0s)
+-- Build files have been written to: /Users/kartben/zephyrproject/zephyr/doc/_build
+cmake --build _build --target html
+[0/2] Generating Devicetree bindings documentation...
+make: *** [html] Interrupt: 2
+ninja: build stopped: interrupted by user.
+Traceback (most recent call last):
+  File "/Users/kartben/zephyrproject/zephyr/doc/_scripts/gen_devicetree_rest.py", line 914, in <module>
+    main()
+    ~~~~^^
+  File "/Users/kartben/zephyrproject/zephyr/doc/_scripts/gen_devicetree_rest.py", line 165, in main
+    bindings = load_bindings(args.dts_roots, args.dts_folders, args.dts_files)
+  File "/Users/kartben/zephyrproject/zephyr/doc/_scripts/gen_devicetree_rest.py", line 220, in load_bindings
+    bindings = edtlib.bindings_from_paths(binding_files, ignore_errors=True)
+  File "/Users/kartben/zephyrproject/zephyr/scripts/dts/python-devicetree/src/devicetree/edtlib.py", line 2481, in bindings_from_paths
+    ret.append(Binding(path, fname2path))
+               ~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/Users/kartben/zephyrproject/zephyr/scripts/dts/python-devicetree/src/devicetree/edtlib.py", line 236, in __init__
+    self.raw: dict = self._merge_includes(raw, self.path)
+                     ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Users/kartben/zephyrproject/zephyr/scripts/dts/python-devicetree/src/devicetree/edtlib.py", line 328, in _merge_includes
+    _merge_props(merged, self._load_raw(include), None, binding_path,
+                         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Users/kartben/zephyrproject/zephyr/scripts/dts/python-devicetree/src/devicetree/edtlib.py", line 389, in _load_raw
+    return self._merge_includes(contents, path)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Users/kartben/zephyrproject/zephyr/scripts/dts/python-devicetree/src/devicetree/edtlib.py", line 334, in _merge_includes
+    _merge_props(merged, self._load_raw(elem), None,
+                         ~~~~~~~~~~~~~~^^^^^^
+  File "/Users/kartben/zephyrproject/zephyr/scripts/dts/python-devicetree/src/devicetree/edtlib.py", line 385, in _load_raw
+    contents = yaml.load(f, Loader=_BindingLoader)
+  File "/Users/kartben/zephyrproject/.venv/lib/python3.13/site-packages/yaml/__init__.py", line 79, in load
+    loader = Loader(stream)
+  File "/Users/kartben/zephyrproject/.venv/lib/python3.13/site-packages/yaml/cyaml.py", line 47, in __init__
+    CParser.__init__(self, stream)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+KeyboardInterrupt
