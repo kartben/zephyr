@@ -18,7 +18,6 @@ on:
     - 'kernel/include/kernel_arch_interface.h'
     - 'lib/libc/**'
     - 'subsys/testsuite/ztest/include/**'
-    - 'tests/**'
     - '**/Kconfig*'
     - 'west.yml'
     - 'scripts/dts/**'
