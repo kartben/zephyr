@@ -15,6 +15,9 @@ on:
     # Run at 17:00 UTC on every Saturday
     - cron: '0 17 * * 6'
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
