@@ -10,6 +10,7 @@ on:
     tags:
     - v*
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -70,7 +71,7 @@ jobs:
     - name: install-pkgs
       run: |
         sudo apt-get update
-        sudo apt-get install -y wget python3-pip git ninja-build graphviz lcov
+        sudo apt-get install -y graphviz lcov
         wget --no-verbose "https://github.com/doxygen/doxygen/releases/download/Release_${DOXYGEN_VERSION//./_}/doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz"
         sudo tar xf doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz -C /opt
         echo "/opt/doxygen-${DOXYGEN_VERSION}/bin" >> $GITHUB_PATH
@@ -82,6 +83,12 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
         fetch-depth: 0
         path: zephyr
+
+    - name: Setup Python
+      uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+      with:
+        python-version: '3.12'
+        cache: 'pip'
 
     - name: Rebase
       if: github.event_name == 'pull_request'
@@ -105,7 +112,7 @@ jobs:
         app-path: zephyr
         toolchains: 'all'
 
-    - name: install-pip
+    - name: install-pip-pkgs
       working-directory: zephyr
       run: |
         pip install -r doc/requirements.txt
@@ -182,7 +189,7 @@ jobs:
     needs: [doc-file-check]
     if: |
       github.event_name != 'pull_request'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     container: texlive/texlive:latest
     timeout-minutes: 120
     concurrency:
@@ -200,21 +207,15 @@ jobs:
     - name: install-pkgs
       run: |
         apt-get update
-        apt-get install -y python3-pip python3-venv ninja-build doxygen graphviz librsvg2-bin imagemagick
+        apt-get install -y lsb-release python3-pip doxygen graphviz librsvg2-bin imagemagick
 
-    - name: cache-pip
-      uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+    - name: Setup Python
+      uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
       with:
-        path: ~/.cache/pip
-        key: pip-${{ hashFiles('doc/requirements.txt') }}
+        python-version: '3.13'
+        cache: 'pip'
 
-    - name: setup-venv
-      run: |
-        python3 -m venv .venv
-        . .venv/bin/activate
-        echo PATH=$PATH >> $GITHUB_ENV
-
-    - name: install-pip
+    - name: install-pip-pkgs
       run: |
         pip install -r doc/requirements.txt
         pip install west==${WEST_VERSION}
