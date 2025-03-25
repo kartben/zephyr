@@ -825,6 +825,9 @@ class BoardSupportedHardwareDirective(SphinxDirective):
 </div>"""
         result_nodes.append(nodes.raw("", html_contents, format="html"))
 
+        tables_container = nodes.container(ids=[f"{board_node['id']}-hw-features"])
+        result_nodes.append(tables_container)
+
         for target, features in sorted(supported_features.items()):
             if not features:
                 continue
@@ -834,9 +837,10 @@ class BoardSupportedHardwareDirective(SphinxDirective):
             heading += nodes.literal(text=target)
             heading += nodes.Text(" target")
             target_heading += heading
-            result_nodes.append(target_heading)
+            tables_container += target_heading
 
-            table = nodes.table(classes=["colwidths-given", "hardware-features"])
+            table = nodes.table(classes=["colwidths-given", "hardware-features"],
+                                ids=[f"{board_node['id']}-{target}-hw-features"])
             tgroup = nodes.tgroup(cols=4)
 
             tgroup += nodes.colspec(colwidth=15, classes=["type"])
@@ -965,7 +969,7 @@ class BoardSupportedHardwareDirective(SphinxDirective):
 
             tgroup += tbody
             table += tgroup
-            result_nodes.append(table)
+            tables_container += table
 
         return result_nodes
 
