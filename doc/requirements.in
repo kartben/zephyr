@@ -28,4 +28,4 @@ anytree
 # Used to generate API coverage reports
 coverxygen
 
-west<0.9
+west<1.1
