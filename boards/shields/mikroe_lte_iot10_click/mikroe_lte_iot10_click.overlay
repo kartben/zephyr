@@ -1,0 +1,23 @@
+/*
+ * Copyright (c) 2025 Benjamin Cabé <benjamin@zephyrproject.org>
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	aliases {
+		modem = &modem;
+		modem-uart = &mikrobus_serial;
+	};
+};
+
+&mikrobus_serial {
+	status = "okay";
+	current-speed = <115200>;
+	hw-flow-control;
+	modem: modem {
+		status = "okay";
+		compatible = "sqn,gm02s";
+		// mdm-reset-gpios = <&mikrobus_header 1 GPIO_OPEN_DRAIN | GPIO_ACTIVE_LOW>;
+	};
+};
