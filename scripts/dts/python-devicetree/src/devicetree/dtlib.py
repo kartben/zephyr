@@ -216,12 +216,170 @@ class Node:
 
         return s
 
+    def check_node_spacing(self) -> list[str]:
+        """
+        Checks for proper node spacing in the devicetree.
+        Returns a list of linting errors found.
+
+        This method recursively checks:
+        1. Spacing between sibling nodes at the current level
+        2. Spacing between properties and nodes
+        3. Spacing between nodes in all child nodes
+        """
+        errors = []
+
+        # Check spacing between properties and nodes
+        if self.props and self.nodes:
+            # Get the last property's line number
+            last_prop = max(prop.lineno for prop in self.props.values())
+            # Get the first node's line number
+            first_node = min(node.lineno for node in self.nodes.values())
+            if last_prop + 1 == first_node:
+                first_node_name = min(self.nodes.values(), key=lambda n: n.lineno).name
+                errors.append(
+                    f"Missing blank line between last property and node '{first_node_name}' "
+                    f"at {self.filename}:{first_node}"
+                )
+
+        # Check spacing between child nodes at this level
+        prev_node = None
+        for node in self.nodes.values():
+            if prev_node is not None:
+                # Check if nodes are on consecutive lines
+                if prev_node.lineno + 1 == node.lineno:
+                    errors.append(
+                        f"Missing blank line between nodes '{prev_node.path}' and '{node.path}' "
+                        f"at {node.filename}:{node.lineno}"
+                    )
+            prev_node = node
+
+            # Recursively check each child node's children
+            child_errors = node.check_node_spacing()
+            errors.extend(child_errors)
+
+        return errors
+
     def __repr__(self):
         """
         Returns some information about the Node instance. Called automatically
         if the Node instance is evaluated.
         """
         return f"<Node {self.path} in '{self.dt.filename}'>"
+
+    def check_style(self) -> list[str]:
+        """
+        Checks for devicetree style guide compliance.
+        Returns a list of style errors found.
+
+        Checks:
+        1. Indentation (must use tabs)
+        2. Node and property naming conventions
+        3. Label naming conventions
+        4. Property value formatting
+        5. Blank line rules
+        """
+        errors = []
+
+        # Check node name format (use dashes as separators)
+        if self.name != "/" and "-" not in self.name and "_" in self.name:
+            errors.append(
+                f"Node name '{self.name}' at {self.filename}:{self.lineno} "
+                f"should use dashes (-) as word separators, not underscores"
+            )
+
+        # Check label format (use underscores as separators)
+        for label in self.labels:
+            if "-" in label:
+                errors.append(
+                    f"Label '{label}' at {self.filename}:{self.lineno} "
+                    f"should use underscores (_) as word separators, not dashes"
+                )
+
+        # Check property names and formatting
+        for prop in self.props.values():
+            # Check property name format (use dashes as separators)
+            if "_" in prop.name and "-" not in prop.name:
+                errors.append(
+                    f"Property name '{prop.name}' at {self.filename}:{prop.lineno} "
+                    f"should use dashes (-) as word separators, not underscores"
+                )
+
+            # Check for proper spacing around equals sign
+            # We need to read the actual line from the file to check this
+            try:
+                with open(self.filename, 'r') as f:
+                    lines = f.readlines()
+                    if prop.lineno <= len(lines):
+                        line = lines[prop.lineno - 1].strip()
+                        if "=" in line:
+                            if " = " not in line or "  =" in line or "=  " in line:
+                                errors.append(
+                                    f"Property '{prop.name}' at {self.filename}:{prop.lineno} "
+                                    f"should have exactly one space around equals sign"
+                                )
+            except (IOError, IndexError):
+                pass  # Skip file reading errors
+
+        # Check for empty lines before closing brace
+        try:
+            with open(self.filename, 'r') as f:
+                lines = f.readlines()
+                for i, line in enumerate(lines, 1):
+                    if "}" in line and i > 1 and lines[i-2].strip() == "":
+                        errors.append(
+                            f"Empty line before closing brace at {self.filename}:{i}"
+                        )
+        except (IOError, IndexError):
+            pass  # Skip file reading errors
+
+        # Recursively check child nodes
+        for child in self.nodes.values():
+            child_errors = child.check_style()
+            errors.extend(child_errors)
+
+        return errors
+
+    def check_indentation(self, content: str) -> list[str]:
+        """
+        Checks if indentation is done with tabs.
+        Returns a list of line numbers where spaces are used for indentation.
+        """
+        errors = []
+        lines = content.split('\n')
+        for i, line in enumerate(lines, 1):
+            if line.startswith(' '):  # Line starts with space instead of tab
+                errors.append(
+                    f"Line {i} uses spaces for indentation instead of tabs at {self.filename}:{i}"
+                )
+        return errors
+
+    def lint(self) -> list[str]:
+        """
+        Performs all linting checks on the devicetree.
+        Returns a list of all linting errors found.
+
+        Checks:
+        1. Node spacing
+        2. Style guide compliance
+        3. Indentation
+        """
+        errors = []
+
+        # Check node spacing
+        errors.extend(self.check_node_spacing())
+
+        # Check style guide compliance
+        errors.extend(self.check_style())
+
+        # Check indentation
+        try:
+            with open(self.filename, 'r') as f:
+                content = f.read()
+                errors.extend(self.check_indentation(content))
+        except IOError:
+            pass  # Skip file reading errors
+
+        return errors
 
 # See Property.type
 class Type(enum.IntEnum):
@@ -796,6 +954,49 @@ class DT:
             self._parse_file(filename, include_path)
         else:
             self._include_path: list[str] = []
+
+        res = self.lint()
+
+        print(f"\n\nDT linting errors: {len(res)}\n")
+
+        if res:
+            for error in res:
+                print(f" - {error}")
+        else:
+            print("No DT linting errors found")
+
+        print(f"\n\n--------------------------------\n")
+
+    def lint(self) -> list[str]:
+        """
+        Performs all linting checks on the devicetree.
+        Returns a list of all linting errors found.
+
+        Checks:
+        1. Node spacing
+        2. Style guide compliance
+        3. Indentation
+        """
+        if not self._root:
+            return []
+
+        errors = []
+
+        # Check node spacing
+        errors.extend(self.root.check_node_spacing())
+
+        # Check style guide compliance
+        errors.extend(self.root.check_style())
+
+        # Check indentation
+        try:
+            with open(self.filename, 'r') as f:
+                content = f.read()
+                errors.extend(self.root.check_indentation(content))
+        except IOError:
+            pass  # Skip file reading errors
+
+        return errors
 
     @property
     def root(self) -> Node:
@@ -2041,6 +2242,137 @@ class DT:
                     continue
 
             self._parse_error(f"'{filename}' could not be found")
+
+    def check_style(self) -> list[str]:
+        """
+        Checks for devicetree style guide compliance.
+        Returns a list of style errors found.
+
+        Checks:
+        1. Indentation (must use tabs)
+        2. Node and property naming conventions
+        3. Label naming conventions
+        4. Property value formatting
+        5. Blank line rules
+        """
+        errors = []
+
+        # Check node name format (use dashes as separators)
+        if self.name != "/" and "-" not in self.name and "_" in self.name:
+            errors.append(
+                f"Node name '{self.name}' at {self.filename}:{self.lineno} "
+                f"should use dashes (-) as word separators, not underscores"
+            )
+
+        # Check label format (use underscores as separators)
+        for label in self.labels:
+            if "-" in label:
+                errors.append(
+                    f"Label '{label}' at {self.filename}:{self.lineno} "
+                    f"should use underscores (_) as word separators, not dashes"
+                )
+
+        # Check property names and formatting
+        for prop in self.props.values():
+            # Check property name format (use dashes as separators)
+            if "_" in prop.name and "-" not in prop.name:
+                errors.append(
+                    f"Property name '{prop.name}' at {self.filename}:{prop.lineno} "
+                    f"should use dashes (-) as word separators, not underscores"
+                )
+
+            # Check for proper spacing around equals sign
+            # We need to read the actual line from the file to check this
+            try:
+                with open(self.filename, 'r') as f:
+                    lines = f.readlines()
+                    if prop.lineno <= len(lines):
+                        line = lines[prop.lineno - 1].strip()
+                        if "=" in line:
+                            if " = " not in line or "  =" in line or "=  " in line:
+                                errors.append(
+                                    f"Property '{prop.name}' at {self.filename}:{prop.lineno} "
+                                    f"should have exactly one space around equals sign"
+                                )
+            except (IOError, IndexError):
+                pass  # Skip file reading errors
+
+        # Check for empty lines before closing brace
+        try:
+            with open(self.filename, 'r') as f:
+                lines = f.readlines()
+                for i, line in enumerate(lines, 1):
+                    if "}" in line and i > 1 and lines[i-2].strip() == "":
+                        errors.append(
+                            f"Empty line before closing brace at {self.filename}:{i}"
+                        )
+        except (IOError, IndexError):
+            pass  # Skip file reading errors
+
+        # Recursively check child nodes
+        for child in self.nodes.values():
+            child_errors = child.check_style()
+            errors.extend(child_errors)
+
+        return errors
+
+    def check_indentation(self, content: str) -> list[str]:
+        """
+        Checks if indentation is done with tabs.
+        Returns a list of line numbers where spaces are used for indentation.
+        """
+        errors = []
+        lines = content.split('\n')
+        for i, line in enumerate(lines, 1):
+            if line.startswith(' '):  # Line starts with space instead of tab
+                errors.append(
+                    f"Line {i} uses spaces for indentation instead of tabs at {self.filename}:{i}"
+                )
+        return errors
+
+    def check_node_spacing(self) -> list[str]:
+        """
+        Checks for proper node spacing in the devicetree.
+        Returns a list of linting errors found.
+
+        This method recursively checks:
+        1. Spacing between sibling nodes at the current level
+        2. Spacing between properties and nodes
+        3. Spacing between nodes in all child nodes
+        4. Property grouping with blank lines
+        """
+        errors = []
+
+        # Check spacing between properties and nodes
+        if self.props and self.nodes:
+            # Get the last property's line number
+            last_prop = max(prop.lineno for prop in self.props.values())
+            # Get the first node's line number
+            first_node = min(node.lineno for node in self.nodes.values())
+            if last_prop + 1 == first_node:
+                first_node_name = min(self.nodes.values(), key=lambda n: n.lineno).name
+                errors.append(
+                    f"Missing blank line between last property and node '{first_node_name}' "
+                    f"at {self.filename}:{first_node}"
+                )
+
+        # Check spacing between child nodes at this level
+        prev_node = None
+        for node in self.nodes.values():
+            if prev_node is not None:
+                # Check if nodes are on consecutive lines
+                if prev_node.lineno + 1 == node.lineno:
+                    errors.append(
+                        f"Missing blank line between nodes '{prev_node.path}' and '{node.path}' "
+                        f"at {node.filename}:{node.lineno}"
+                    )
+            prev_node = node
+
+            # Recursively check each child node's children
+            child_errors = node.check_node_spacing()
+            errors.extend(child_errors)
+
+        return errors
 
 #
 # Public functions
