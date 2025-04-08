@@ -1,0 +1,14 @@
+/*
+ * Copyright (c) 2024 Benjamin Cabé <benjamin@zephyrproject.org>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&mikrobus_i2c {
+	status = "okay";
+
+	hdc2080@40 {
+		compatible = "ti,hdc2080";
+		reg = <0x40>;
+		status = "okay";
+	};
+};

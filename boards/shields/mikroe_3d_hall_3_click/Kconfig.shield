@@ -1,5 +1,5 @@
 # Copyright (c) 2024 Benjamin Cabé <benjamin@zephyrproject.org>
 # SPDX-License-Identifier: Apache-2.0
 
-config SHIELD_MIKROE_WEATHER_CLICK
-	def_bool $(shields_list_contains,mikroe_weather_click)
+config SHIELD_MIKROE_3D_HALL_3_CLICK
+	def_bool $(shields_list_contains,mikroe_3d_hall_3_click)

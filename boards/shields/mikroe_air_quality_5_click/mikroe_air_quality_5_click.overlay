@@ -1,0 +1,15 @@
+/*
+ * Copyright (c) 2024 Benjamin Cabé <benjamin@zephyrproject.org>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&mikrobus_i2c {
+	status = "okay";
+
+	ads1015@48 {
+		compatible = "ti,ads1015";
+		reg = <0x48>;
+		#io-channel-cells = <1>;
+		alert-rdy-gpios = <&mikrobus_header 7 GPIO_ACTIVE_LOW>;
+	};
+};

@@ -1,0 +1,14 @@
+/*
+ * Copyright (c) 2024 Benjamin Cabé <benjamin@zephyrproject.org>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&mikrobus_i2c {
+	status = "okay";
+
+	bma280@18 {
+		compatible = "bosch,bma280";
+		reg = <0x18>;
+		status = "okay";
+	};
+};

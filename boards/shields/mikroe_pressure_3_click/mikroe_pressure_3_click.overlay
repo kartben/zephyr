@@ -1,0 +1,15 @@
+/*
+ * Copyright (c) 2024 Benjamin Cabé <benjamin@zephyrproject.org>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&mikrobus_i2c {
+	status = "okay";
+
+	dps310@76 {
+		compatible = "infineon,dps310";
+		reg = <0x76>;
+		int-gpios = <&mikrobus_header 7 GPIO_ACTIVE_LOW>;
+		status = "okay";
+	};
+};
