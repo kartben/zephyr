@@ -1,0 +1,13 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&mikrobus_i2c {
+	status = "okay";
+
+	pca9685_mikroe_pwm_click: pca9685@40 {
+		compatible = "nxp,pca9685";
+		reg = <0x40>;
+	};
+};
