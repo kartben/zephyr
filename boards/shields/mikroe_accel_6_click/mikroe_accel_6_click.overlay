@@ -1,0 +1,13 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&mikrobus_i2c {
+	status = "okay";
+
+	bma280_mikroe_accel_6_click: bma280@18 {
+		compatible = "bosch,bma280";
+		reg = <0x18>;
+	};
+};

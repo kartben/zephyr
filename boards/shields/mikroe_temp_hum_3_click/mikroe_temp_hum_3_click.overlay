@@ -1,0 +1,13 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&mikrobus_i2c {
+	status = "okay";
+
+	hdc2010_mikroe_temp_hum_3_click: hdc2010@40 {
+		compatible = "ti,hdc2010";
+		reg = <0x40>;
+	};
+};

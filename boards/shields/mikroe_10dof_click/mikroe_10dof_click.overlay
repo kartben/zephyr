@@ -1,0 +1,14 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&mikrobus_i2c {
+	status = "okay";
+
+	bmp180_mikroe_10dof_click: bmp180@77 {
+		compatible = "bosch,bmp180";
+		reg = <0x77>;
+		int-gpios = <&mikrobus_header 7 GPIO_ACTIVE_LOW>;
+	};
+};

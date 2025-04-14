@@ -1,0 +1,13 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&mikrobus_i2c {
+	status = "okay";
+
+	ms5607_mikroe_altitude_2_click: ms5607@77 {
+		compatible = "meas,ms5607";
+		reg = <0x77>;
+	};
+};
