@@ -159,13 +159,13 @@ def gather_board_build_info(twister_out_dir):
                 build_info = yaml.safe_load(f)
                 board_info = build_info.get('cmake', {}).get('board', {})
                 board_name = board_info.get('name')
-                qualifier = board_info.get('qualifiers', '')
-                revision = board_info.get('revision', '')
+                qualifier = board_info.get('qualifiers')
+                revision = board_info.get('revision')
 
                 board_target = board_name
                 if revision is not None:
                     board_target = f"{board_target}@{revision}"
-                if qualifier:
+                if qualifier is not None:
                     board_target = f"{board_target}/{qualifier}"
 
                 with open(edt_pickle_file, 'rb') as f:
