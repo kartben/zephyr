@@ -1261,10 +1261,48 @@ Boards
 
       Check out :zephyr:board:`wio_terminal` for more information.
 
+.. rst:directive:: .. zephyr:shield:: name
+
+   This directive is used at the beginning of a document to indicate it is the main documentation
+   page for a shield whose name is given as the directive argument.
+
+   For example::
+
+      .. zephyr:shield:: adafruit_data_logger
+
+   The metadata for the shield is read from the shield.yml file and used to automatically populate
+   some sections of the shield documentation. A shield documentation page that uses this directive
+   can be linked to using the :rst:role:`zephyr:shield` role.
+
+   .. note::
+
+      The shield must have a valid shield.yml file in its directory for this directive to work
+      properly.
+
+.. rst:role:: zephyr:shield
+
+   This role is used to reference a shield documented using :rst:dir:`zephyr:shield`.
+
+   For example::
+
+      Check out :zephyr:shield:`adafruit_data_logger` for more information.
+
+   Will render as:
+
+      Check out :zephyr:shield:`adafruit_data_logger` for more information.
+
 .. rst:directive:: .. zephyr:board-catalog::
 
    This directive is used to generate a catalog of Zephyr-supported boards that can be used to
    quickly browse the list of all supported boards and filter them according to various criteria.
+
+   .. rubric:: Options
+
+   .. rst:directive:option:: include-shields
+      :type: flag
+
+      If set, the catalog will also include shields in its output, allowing users to browse and
+      filter both boards and shields.
 
 .. rst:directive:: .. zephyr:board-supported-hw::
 

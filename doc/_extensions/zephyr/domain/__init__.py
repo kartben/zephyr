@@ -127,143 +127,30 @@ class CodeSampleListingNode(nodes.Element):
     pass
 
 
-class BoardNode(nodes.Element):
+class HardwareNode(nodes.Element):
+    """Base class for hardware nodes (boards and shields)"""
     pass
 
 
-class ConvertCodeSampleNode(SphinxTransform):
+class BoardNode(HardwareNode):
+    pass
+
+
+class ShieldNode(HardwareNode):
+    pass
+
+
+class ConvertHardwareNode(SphinxTransform):
+    """Base class for converting hardware nodes to documentation sections"""
     default_priority = 100
+    node_class = None  # To be overridden by subclasses
+    overview_class = None  # To be overridden by subclasses
+    overview_title = None  # To be overridden by subclasses
 
     def apply(self):
-        matcher = NodeMatcher(CodeSampleNode)
-        for node in self.document.traverse(matcher):
-            self.convert_node(node)
-
-    def convert_node(self, node):
-        """
-        Transforms a `CodeSampleNode` into a `nodes.section` named after the code sample name.
-
-        Moves all sibling nodes that are after the `CodeSampleNode` in the document under this new
-        section.
-
-        Adds a "See Also" section at the end with links to all relevant APIs as per the samples's
-        `relevant-api` attribute.
-        """
-        parent = node.parent
-        siblings_to_move = []
-        if parent is not None:
-            index = parent.index(node)
-            siblings_to_move = parent.children[index + 1 :]
-
-            # Create a new section
-            new_section = nodes.section(ids=[node["id"]])
-            new_section += nodes.title(text=node["name"])
-
-            gh_link = gh_link_get_url(self.app, self.env.docname)
-            gh_link_button = nodes.raw(
-                "",
-                f"""
-                <a href="{gh_link}/.." class="btn btn-info fa fa-github"
-                    target="_blank" style="text-align: center;">
-                    Browse source code on GitHub
-                </a>
-                """,
-                format="html",
-            )
-            new_section += nodes.paragraph("", "", gh_link_button)
-
-            # Move the sibling nodes under the new section
-            new_section.extend(siblings_to_move)
-
-            # Replace the custom node with the new section
-            node.replace_self(new_section)
-
-            # Remove the moved siblings from their original parent
-            for sibling in siblings_to_move:
-                parent.remove(sibling)
-
-            # Add a "See Also" section at the end with links to relevant APIs
-            if node["relevant-api"]:
-                see_also_section = nodes.section(ids=["see-also"])
-                see_also_section += nodes.title(text="See also")
-
-                for api in node["relevant-api"]:
-                    desc_node = addnodes.desc()
-                    desc_node["domain"] = "c"
-                    desc_node["objtype"] = "group"
-
-                    title_signode = addnodes.desc_signature()
-                    api_xref = addnodes.pending_xref(
-                        "",
-                        refdomain="c",
-                        reftype="group",
-                        reftarget=api,
-                        refwarn=True,
-                    )
-                    api_xref += nodes.Text(api)
-                    title_signode += api_xref
-                    desc_node += title_signode
-                    see_also_section += desc_node
-
-                new_section += see_also_section
-
-            # Set sample description as the meta description of the document for improved SEO
-            meta_description = nodes.meta()
-            meta_description["name"] = "description"
-            meta_description["content"] = node.children[0].astext()
-            node.document += meta_description
-
-            # Similarly, add a node with JSON-LD markup (only renders in HTML output) describing
-            # the code sample.
-            json_ld = nodes.raw(
-                "",
-                f"""<script type="application/ld+json">
-                {json.dumps({
-                    "@context": "http://schema.org",
-                    "@type": "SoftwareSourceCode",
-                    "name": node['name'],
-                    "description": node.children[0].astext(),
-                    "codeSampleType": "full",
-                    "codeRepository": gh_link_get_url(self.app, self.env.docname)
-                })}
-                </script>""",
-                format="html",
-            )
-            node.document += json_ld
-
-
-class ConvertCodeSampleCategoryNode(SphinxTransform):
-    default_priority = 100
-
-    def apply(self):
-        matcher = NodeMatcher(CodeSampleCategoryNode)
-        for node in self.document.traverse(matcher):
-            self.convert_node(node)
-
-    def convert_node(self, node):
-        # move all the siblings of the category node underneath the section it contains
-        parent = node.parent
-        siblings_to_move = []
-        if parent is not None:
-            index = parent.index(node)
-            siblings_to_move = parent.children[index + 1 :]
-
-            node.children[0].extend(siblings_to_move)
-            for sibling in siblings_to_move:
-                parent.remove(sibling)
-
-        # note document as needing toc patching
-        self.document["needs_toc_patch"] = True
-
-        # finally, replace the category node with the section it contains
-        node.replace_self(node.children[0])
-
-
-class ConvertBoardNode(SphinxTransform):
-    default_priority = 100
-
-    def apply(self):
-        matcher = NodeMatcher(BoardNode)
+        if not self.node_class:
+            return
+        matcher = NodeMatcher(self.node_class)
         for node in self.document.traverse(matcher):
             self.convert_node(node)
 
@@ -277,14 +164,13 @@ class ConvertBoardNode(SphinxTransform):
             new_section = nodes.section(ids=[node["id"]])
             new_section += nodes.title(text=node["full_name"])
 
-            # create a sidebar with all the board details
-            sidebar = nodes.sidebar(classes=["board-overview"])
+            # create a sidebar with all the hardware details
+            sidebar = nodes.sidebar(classes=[self.overview_class])
             new_section += sidebar
-            sidebar += nodes.title(text="Board Overview")
+            sidebar += nodes.title(text=self.overview_title)
 
             if node["image"] is not None:
                 figure = nodes.figure()
-                # set a scale of 100% to indicate we want a link to the full-size image
                 figure += nodes.image(uri=f"/{node['image']}", scale=100)
                 figure += nodes.caption(text=node["full_name"])
                 sidebar += figure
@@ -292,12 +178,14 @@ class ConvertBoardNode(SphinxTransform):
             field_list = nodes.field_list()
             sidebar += field_list
 
+            # Get common details
             details = [
                 ("Name", nodes.literal(text=node["id"])),
                 ("Vendor", node["vendor"]),
-                ("Architecture", ", ".join(node["archs"])),
-                ("SoC", ", ".join(node["socs"])),
             ]
+
+            # Add subclass-specific details
+            self.add_specific_details(node, details)
 
             for property_name, value in details:
                 field = nodes.field()
@@ -311,14 +199,17 @@ class ConvertBoardNode(SphinxTransform):
                 field += field_body
                 field_list += field
 
+            # Add subclass-specific sections
+            self.add_specific_sections(node, sidebar)
+
             gh_link = gh_link_get_url(self.app, self.env.docname)
             gh_link_button = nodes.raw(
                 "",
                 f"""
-                <div id="board-github-link">
+                <div id="{self.overview_class}-github-link">
                     <a href="{gh_link}/../.." class="btn btn-info fa fa-github"
                         target="_blank">
-                        Browse board sources
+                        Browse {self.overview_class} sources
                     </a>
                 </div>
                 """,
@@ -335,6 +226,130 @@ class ConvertBoardNode(SphinxTransform):
             # Remove the moved siblings from their original parent
             for sibling in siblings_to_move:
                 parent.remove(sibling)
+
+    def add_specific_details(self, node, details):
+        """To be overridden by subclasses to add specific details"""
+        pass
+
+    def add_specific_sections(self, node, sidebar):
+        """To be overridden by subclasses to add specific sections"""
+        pass
+
+
+class ConvertBoardNode(ConvertHardwareNode):
+    node_class = BoardNode
+    overview_class = "board-overview"
+    overview_title = "Board Overview"
+
+    def add_specific_details(self, node, details):
+        details.extend(
+            [
+                ("Architecture", ", ".join(node["archs"])),
+                ("SoC", ", ".join(node["socs"])),
+            ]
+        )
+
+
+class ConvertShieldNode(ConvertHardwareNode):
+    node_class = ShieldNode
+    overview_class = "shield-overview"
+    overview_title = "Shield Overview"
+
+    def add_specific_details(self, node, details):
+        details.extend(
+            [
+                ("Description", node["description"]),
+            ]
+        )
+        if node["compatible"]:
+            details.append(("Compatible Boards", ", ".join(node["compatible"])))
+
+    def add_specific_sections(self, node, sidebar):
+        if node["variants"]:
+            variants_section = nodes.section(ids=["variants"])
+            variants_section += nodes.title(text="Variants")
+            variants_list = nodes.bullet_list()
+            for variant in node["variants"]:
+                item = nodes.list_item()
+                item += nodes.strong(text=variant["name"])
+                if variant["description"]:
+                    item += nodes.Text(" - " + variant["description"])
+                variants_list += item
+            variants_section += variants_list
+            sidebar += variants_section
+
+
+class HardwareDirective(SphinxDirective):
+    """Base class for hardware directives (boards and shields)"""
+
+    has_content = False
+    required_arguments = 1
+    optional_arguments = 0
+    hardware_type = None  # To be overridden by subclasses
+    hardware_data = None  # To be overridden by subclasses
+
+    def run(self):
+        hardware_name = self.arguments[0]
+        hardware_list = self.env.domaindata["zephyr"][self.hardware_data]
+        vendors = self.env.domaindata["zephyr"]["vendors"]
+
+        if hardware_name not in hardware_list:
+            logger.warning(
+                f"{self.hardware_type} {hardware_name} does not seem to be a valid name.",
+                location=(self.env.docname, self.lineno),
+            )
+            return []
+        elif "docname" in hardware_list[hardware_name]:
+            logger.warning(
+                f"{self.hardware_type} {hardware_name} is already documented in {hardware_list[hardware_name]['docname']}.",
+                location=(self.env.docname, self.lineno),
+            )
+            return []
+        else:
+            self.env.domaindata["zephyr"][f"has_{self.hardware_type}"][self.env.docname] = True
+            hardware = hardware_list[hardware_name]
+            hardware["docname"] = self.env.docname
+
+            node = self.create_node(hardware_name, hardware, vendors)
+            return [node]
+
+    def create_node(self, name, hardware, vendors):
+        """To be overridden by subclasses to create the appropriate node"""
+        raise NotImplementedError
+
+
+class BoardDirective(HardwareDirective):
+    hardware_type = "board"
+    hardware_data = "boards"
+
+    def create_node(self, name, board, vendors):
+        board_node = BoardNode(id=name)
+        board_node["full_name"] = board["full_name"]
+        board_node["vendor"] = vendors.get(board["vendor"], board["vendor"])
+        board_node["revision_default"] = board["revision_default"]
+        board_node["supported_features"] = board["supported_features"]
+        board_node["archs"] = board["archs"]
+        board_node["socs"] = board["socs"]
+        board_node["image"] = board["image"]
+        board_node["supported_runners"] = board["supported_runners"]
+        board_node["flash_runner"] = board["flash_runner"]
+        board_node["debug_runner"] = board["debug_runner"]
+        return board_node
+
+
+class ShieldDirective(HardwareDirective):
+    hardware_type = "shield"
+    hardware_data = "shields"
+
+    def create_node(self, name, shield, vendors):
+        shield_node = ShieldNode(id=name)
+        shield_node["full_name"] = shield["full_name"]
+        shield_node["vendor"] = vendors.get(shield["vendor"], shield["vendor"])
+        shield_node["description"] = shield["description"]
+        shield_node["compatible"] = shield["compatible"]
+        shield_node["variants"] = shield["variants"]
+        shield_node["image"] = shield["image"]
+        return shield_node
 
 
 class CodeSampleCategoriesTocPatching(SphinxPostTransform):
@@ -693,51 +708,6 @@ class CodeSampleListingDirective(SphinxDirective):
         code_sample_listing_node["live-search"] = "live-search" in self.options
 
         return [code_sample_listing_node]
-
-
-class BoardDirective(SphinxDirective):
-    has_content = False
-    required_arguments = 1
-    optional_arguments = 0
-
-    def run(self):
-        # board_name is passed as the directive argument
-        board_name = self.arguments[0]
-
-        boards = self.env.domaindata["zephyr"]["boards"]
-        vendors = self.env.domaindata["zephyr"]["vendors"]
-
-        if board_name not in boards:
-            logger.warning(
-                f"Board {board_name} does not seem to be a valid board name.",
-                location=(self.env.docname, self.lineno),
-            )
-            return []
-        elif "docname" in boards[board_name]:
-            logger.warning(
-                f"Board {board_name} is already documented in {boards[board_name]['docname']}.",
-                location=(self.env.docname, self.lineno),
-            )
-            return []
-        else:
-            self.env.domaindata["zephyr"]["has_board"][self.env.docname] = True
-            board = boards[board_name]
-            # flag board in the domain data as now having a documentation page so that it can be
-            # cross-referenced etc.
-            board["docname"] = self.env.docname
-
-            board_node = BoardNode(id=board_name)
-            board_node["full_name"] = board["full_name"]
-            board_node["vendor"] = vendors.get(board["vendor"], board["vendor"])
-            board_node["revision_default"] = board["revision_default"]
-            board_node["supported_features"] = board["supported_features"]
-            board_node["archs"] = board["archs"]
-            board_node["socs"] = board["socs"]
-            board_node["image"] = board["image"]
-            board_node["supported_runners"] = board["supported_runners"]
-            board_node["flash_runner"] = board["flash_runner"]
-            board_node["debug_runner"] = board["debug_runner"]
-            return [board_node]
 
 
 class BoardCatalogDirective(SphinxDirective):
@@ -1125,6 +1095,7 @@ class ZephyrDomain(Domain):
         "code-sample": XRefRole(innernodeclass=nodes.inline, warn_dangling=True),
         "code-sample-category": XRefRole(innernodeclass=nodes.inline, warn_dangling=True),
         "board": XRefRole(innernodeclass=nodes.inline, warn_dangling=True),
+        "shield": XRefRole(innernodeclass=nodes.inline, warn_dangling=True),
     }
 
     directives = {
@@ -1135,12 +1106,14 @@ class ZephyrDomain(Domain):
         "board": BoardDirective,
         "board-supported-hw": BoardSupportedHardwareDirective,
         "board-supported-runners": BoardSupportedRunnersDirective,
+        "shield": ShieldDirective,
     }
 
     object_types: dict[str, ObjType] = {
         "code-sample": ObjType("code sample", "code-sample"),
         "code-sample-category": ObjType("code sample category", "code-sample-category"),
         "board": ObjType("board", "board"),
+        "shield": ObjType("shield", "shield"),
     }
 
     initial_data: dict[str, Any] = {
@@ -1151,6 +1124,7 @@ class ZephyrDomain(Domain):
         "has_code_sample_listing": {},  # docname -> bool
         "has_board_catalog": {},  # docname -> bool
         "has_board": {},  # docname -> bool
+        "has_shield": {},  # docname -> bool
     }
 
     def clear_doc(self, docname: str) -> None:
@@ -1171,6 +1145,7 @@ class ZephyrDomain(Domain):
         self.data["has_code_sample_listing"].pop(docname, None)
         self.data["has_board_catalog"].pop(docname, None)
         self.data["has_board"].pop(docname, None)
+        self.data["has_shield"].pop(docname, None)
 
     def merge_domaindata(self, docnames: list[str], otherdata: dict) -> None:
         self.data["code-samples"].update(otherdata["code-samples"])
@@ -1204,6 +1179,7 @@ class ZephyrDomain(Domain):
                 docname, False
             )
             self.data["has_board"][docname] = otherdata["has_board"].get(docname, False)
+            self.data["has_shield"][docname] = otherdata["has_shield"].get(docname, False)
 
     def get_objects(self):
         for _, code_sample in self.data["code-samples"].items():
@@ -1238,6 +1214,17 @@ class ZephyrDomain(Domain):
                     1,
                 )
 
+        for _, shield in self.data["shields"].items():
+            if "docname" in shield:
+                yield (
+                    shield["name"],
+                    shield["full_name"],
+                    "shield",
+                    shield["docname"],
+                    shield["name"],
+                    1,
+                )
+
     # used by Sphinx Immaterial theme
     def get_object_synopses(self) -> Iterator[tuple[tuple[str, str], str]]:
         for _, code_sample in self.data["code-samples"].items():
@@ -1253,6 +1240,8 @@ class ZephyrDomain(Domain):
             elem = self.data["code-samples-categories"].get(target)
         elif type == "board":
             elem = self.data["boards"].get(target)
+        elif type == "shield":
+            elem = self.data["shields"].get(target)
         else:
             return
 
@@ -1383,6 +1372,7 @@ def setup(app):
     app.add_transform(ConvertCodeSampleNode)
     app.add_transform(ConvertCodeSampleCategoryNode)
     app.add_transform(ConvertBoardNode)
+    app.add_transform(ConvertShieldNode)
 
     app.add_post_transform(ProcessCodeSampleListingNode)
     app.add_post_transform(CodeSampleCategoriesTocPatching)

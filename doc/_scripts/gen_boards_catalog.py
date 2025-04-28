@@ -12,6 +12,7 @@ from pathlib import Path
 
 import list_boards
 import list_hardware
+import list_shields
 import yaml
 import zephyr_module
 from gen_devicetree_rest import VndLookup
@@ -249,9 +250,12 @@ def get_catalog(generate_hw_features=False):
 
     boards = list_boards.find_v2_boards(args_find_boards)
     systems = list_hardware.find_v2_systems(args_find_boards)
+    shields = list_shields.find_shields(args_find_boards)
+
     board_catalog = {}
     board_devicetrees = {}
     board_runners = {}
+    shield_catalog = {}
 
     if generate_hw_features:
         logger.info("Running twister in cmake-only mode to get Devicetree files for all boards")
@@ -261,6 +265,33 @@ def get_catalog(generate_hw_features=False):
     else:
         logger.info("Skipping generation of supported hardware features.")
 
+    # Process shields
+    for shield in shields:
+        doc_page = guess_doc_page(shield)
+        if doc_page and doc_page.is_relative_to(ZEPHYR_BASE):
+            doc_page_path = doc_page.relative_to(ZEPHYR_BASE).as_posix()
+        else:
+            doc_page_path = None
+
+        shield_catalog[shield.name] = {
+            "name": shield.name,
+            "full_name": shield.full_name or shield.name,
+            "doc_page": doc_page_path,
+            "vendor": shield.vendor,
+            "description": shield.description,
+            "compatible": shield.compatible,
+            "variants": [
+                {
+                    "name": variant.name,
+                    "description": variant.description,
+                    "overlay": variant.overlay
+                }
+                for variant in (shield.variants or [])
+            ],
+            "image": guess_image(shield)
+        }
+
+    # Process boards
     for board in boards.values():
         # We could use board.vendor but it is often incorrect. Instead, deduce vendor from
         # containing folder. There are a few exceptions, like the "native" and "others" folders
@@ -397,6 +428,7 @@ def get_catalog(generate_hw_features=False):
 
     return {
         "boards": board_catalog,
+        "shields": shield_catalog,
         "vendors": {**vnd_lookup.vnd2vendor, "others": "Other/Unknown"},
         "socs": socs_hierarchy,
         "runners": available_runners,
