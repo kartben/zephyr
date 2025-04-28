@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (c) 2024, Nordic Semiconductor ASA
+
+## A pykwalify schema for basic validation of the structure of a
+## shield metadata YAML file.
+##
+# The shield.yml file is a simple list of key value pairs containing shield
+# information like: name, vendor, and full_name.
+
+type: map
+mapping:
+  name:
+    required: true
+    type: str
+    desc: Name of the shield (used in Kconfig and build system)
+  full_name:
+    required: true
+    type: str
+    desc: Full name of the shield (typically the commercial name)
+  vendor:
+    required: true
+    type: str
+    desc: Manufacturer/vendor of the shield
+  description:
+    required: false
+    type: str
+    desc: Brief description of the shield's functionality
+  compatible:
+    required: false
+    type: seq
+    sequence:
+      - type: str
+    desc: List of compatible board names this shield can be used with
+  variants:
+    required: false
+    type: seq
+    sequence:
+      - type: map
+        mapping:
+          name:
+            required: true
+            type: str
+            desc: Name of the variant (e.g. i2c, spi)
+          description:
+            required: false
+            type: str
+            desc: Description of what this variant provides
+          overlay:
+            required: true
+            type: str
+            desc: Name of the overlay file for this variant (without .overlay extension)

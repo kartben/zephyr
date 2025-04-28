@@ -31,6 +31,7 @@
 include_guard(GLOBAL)
 
 include(extensions)
+include(python)
 
 # Check that SHIELD has not changed.
 zephyr_check_cache(SHIELD WATCH)
@@ -48,26 +49,28 @@ set(SHIELD-NOTFOUND ${SHIELD_AS_LIST})
 
 foreach(root ${BOARD_ROOT})
   set(shield_dir ${root}/boards/shields)
-  # Match the Kconfig.shield files in the shield directories to make sure we are
-  # finding shields, e.g. x_nucleo_iks01a1/Kconfig.shield
+  # First look for shield.yml files
+  file(GLOB_RECURSE shield_yml_files ${shield_dir}/*/shield.yml)
+
+  foreach(shield_yml ${shield_yml_files})
+    get_filename_component(shield_path ${shield_yml} DIRECTORY)
+    get_filename_component(shield ${shield_path} NAME)
+    list(APPEND SHIELD_LIST ${shield})
+    set(SHIELD_DIR_${shield} ${shield_path})
+  endforeach()
+
+  # Then look for Kconfig.shield files as fallback
   file(GLOB_RECURSE shields_refs_list ${shield_dir}/*/Kconfig.shield)
 
-  # The above gives a list of Kconfig.shield files, like this:
-  #
-  # x_nucleo_iks01a1/Kconfig.shield;x_nucleo_iks01a2/Kconfig.shield
-  #
-  # we construct a list of shield names by extracting the directories
-  # from each file and looking for <shield>.overlay files in there.
-  # Each overlay corresponds to a shield. We obtain the shield name by
-  # removing the .overlay extension.
-  # We also create a SHIELD_DIR_${name} variable for each shield's directory.
   foreach(shields_refs ${shields_refs_list})
     get_filename_component(shield_path ${shields_refs} DIRECTORY)
     file(GLOB shield_overlays RELATIVE ${shield_path} ${shield_path}/*.overlay)
     foreach(overlay ${shield_overlays})
       get_filename_component(shield ${overlay} NAME_WE)
-      list(APPEND SHIELD_LIST ${shield})
-      set(SHIELD_DIR_${shield} ${shield_path})
+      if(NOT ${shield} IN_LIST SHIELD_LIST)
+        list(APPEND SHIELD_LIST ${shield})
+        set(SHIELD_DIR_${shield} ${shield_path})
+      endif()
     endforeach()
   endforeach()
 endforeach()

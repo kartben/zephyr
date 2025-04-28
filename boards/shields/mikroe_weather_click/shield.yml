@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (c) 2024, Nordic Semiconductor ASA
+
+name: mikroe_weather_click
+full_name: MikroE Weather Click
+vendor: MikroE
+description: A weather sensor shield featuring the BME280 temperature, humidity, and pressure sensor
+compatible:
+  - mikrobus
+variants:
+  - name: i2c
+    description: I2C interface for the BME280 sensor
+    overlay: mikroe_weather_click_i2c
+  - name: spi
+    description: SPI interface for the BME280 sensor
+    overlay: mikroe_weather_click_spi

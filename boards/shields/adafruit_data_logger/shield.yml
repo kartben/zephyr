@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (c) 2024, Nordic Semiconductor ASA
+
+name: adafruit_data_logger
+full_name: Adafruit Data Logger Shield
+vendor: Adafruit
+description: A data logging shield featuring an SD card slot and real-time clock (RTC) with battery backup
+compatible:
+  - arduino_uno
+  - arduino_nano
+  - arduino_mega
