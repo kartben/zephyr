@@ -41,6 +41,9 @@ and the documentation's `Getting Started Guide`_ to start developing.
 Community Support
 *****************
 
+x
+
+
 Community support is provided via mailing lists and Discord; see the Resources
 below for details.
 
