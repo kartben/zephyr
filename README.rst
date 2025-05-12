@@ -33,6 +33,9 @@ SPARC, MIPS, and a large number of `supported boards`_.
 Getting Started
 ***************
 
+
+xx
+
 Welcome to Zephyr! See the `Introduction to Zephyr`_ for a high-level overview,
 and the documentation's `Getting Started Guide`_ to start developing.
 
