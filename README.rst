@@ -27,6 +27,8 @@ The Zephyr kernel supports multiple architectures, including ARM (Cortex-A,
 Cortex-R, Cortex-M), Intel x86, ARC, Nios II, Tensilica Xtensa, and RISC-V,
 SPARC, MIPS, and a large number of `supported boards`_.
 
+xxx
+
 .. below included in doc/introduction/introduction.rst
 
 
