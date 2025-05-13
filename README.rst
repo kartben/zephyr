@@ -43,6 +43,10 @@ Community Support
 
 Community support is provided via mailing lists and Discord; see the Resources
 below for details.
+xx
+xx
+
+xx
 
 .. _project-resources:
 
