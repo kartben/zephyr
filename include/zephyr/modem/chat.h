@@ -52,6 +52,30 @@ struct modem_chat_match {
 	modem_chat_match_callback callback;
 };
 
+/**
+ * @brief Defines a modem chat match instance
+ *
+ * This macro creates a modem chat match instance that defines a single pattern to match
+ * in the modem's response, along with separators for parsing arguments and a callback
+ * function to handle the match. The match is used to identify and process specific
+ * responses from the modem.
+ *
+ * When a match is found, the response string is split into arguments using the provided
+ * separators. The callback function is then called with these parsed arguments.
+ *
+ * @param _match String literal containing the pattern to match in the modem's response
+ * @param _separators String literal containing separator characters for parsing arguments.
+ *                    The response string will be split at these characters to extract arguments.
+ * @param _callback A @ref modem_chat_match_callback function to be called when the match is found.
+ *
+ * @return A struct modem_chat_match instance
+ *
+ * Example:
+ *
+ * @code{.c}
+ * MODEM_CHAT_MATCH("+CSQ: ", ",", on_csq);
+ * @endcode
+ */
 #define MODEM_CHAT_MATCH(_match, _separators, _callback)                                           \
 	{                                                                                          \
 		.match = (uint8_t *)(_match), .match_size = (uint8_t)(sizeof(_match) - 1),         \
@@ -60,6 +84,27 @@ struct modem_chat_match {
 		.callback = _callback,                                                             \
 	}
 
+/**
+ * @brief Defines a modem chat match instance with wildcard support
+ *
+ * This macro is similar to @ref MODEM_CHAT_MATCH but enables wildcard matching in the
+ * response pattern. Wildcards allow for more flexible pattern matching when the exact
+ * response format may vary.
+ *
+ * @param _match String literal containing the pattern to match in the modem's response.
+ *               May contain wildcard characters (`?`) for flexible matching.
+ * @param _separators String literal containing separator characters for parsing arguments.
+ *                    The response string will be split at these characters to extract arguments.
+ * @param _callback A @ref modem_chat_match_callback function to be called when the match is found.
+ *
+ * @return A struct modem_chat_match instance
+ *
+ * Example:
+ *
+ * @code{.c}
+ * MODEM_CHAT_MATCH_WILDCARD("$??GGA", ",*", on_gga);
+ * @endcode
+ */
 #define MODEM_CHAT_MATCH_WILDCARD(_match, _separators, _callback)                                  \
 	{                                                                                          \
 		.match = (uint8_t *)(_match), .match_size = (uint8_t)(sizeof(_match) - 1),         \
@@ -79,12 +124,53 @@ struct modem_chat_match {
 		.callback = _callback,                                                             \
 	}
 
+/**
+ * @brief Defines a static modem chat match instance
+ *
+ * This macro creates a static modem chat match instance with the specified match pattern,
+ * separators, and callback function. The match instance can be used to define expected
+ * responses in modem chat scripts.
+ *
+ * @param _sym Symbol name for the static match instance
+ * @param _match String literal containing the match pattern to look for
+ * @param _separators String literal containing separator characters for parsing arguments
+ * @param _callback Function pointer to callback that will be called when match is found
+ *
+ * @return A `const static` @ref modem_chat_match instance
+ *
+ * Example:
+ *
+ * @code{.c}
+ * MODEM_CHAT_MATCH_DEFINE(ok_match, "OK", "", on_match);
+ * @endcode
+ */
 #define MODEM_CHAT_MATCH_DEFINE(_sym, _match, _separators, _callback)                              \
 	const static struct modem_chat_match _sym = MODEM_CHAT_MATCH(_match, _separators, _callback)
 
 /* Helper struct to match any response without callback. */
 extern const struct modem_chat_match modem_chat_any_match;
 
+/**
+ * @brief Defines an array of modem chat match instances
+ *
+ * This macro creates a static array of modem chat match instances that can be used
+ * to define multiple expected responses in a modem chat script. Each match in the
+ * array can have its own pattern, separators, and callback function.
+ *
+ * @param _sym Symbol name for the static match array
+ * @param ... Variable number of @ref modem_chat_match instances to include in the array
+ *
+ * @return A `const static` array of @ref modem_chat_match instances
+ *
+ * Example:
+ *
+ * @code{.c}
+ * MODEM_CHAT_MATCHES_DEFINE(abort_matches,
+ *                          MODEM_CHAT_MATCH("ERROR", "", NULL),
+ *                          MODEM_CHAT_MATCH("BUSY", "", NULL),
+ *                          MODEM_CHAT_MATCH("NO ANSWER", "", NULL));
+ * @endcode
+ */
 #define MODEM_CHAT_MATCHES_DEFINE(_sym, ...)                                                       \
 	const static struct modem_chat_match _sym[] = {__VA_ARGS__}
 
@@ -107,6 +193,25 @@ struct modem_chat_script_chat {
 	uint16_t timeout;
 };
 
+/**
+ * @brief Defines a modem chat script command with a single response match
+ *
+ * This macro creates a modem chat script command that sends a request to the modem
+ * and expects a single response match. The command is used to define steps in a
+ * modem chat script sequence.
+ *
+ * @param _request String literal containing the AT command to send to the modem
+ * @param _response_match Pointer to a modem_chat_match instance that defines the expected response
+ *
+ * @return A struct modem_chat_script_chat instance
+ *
+ * Example:
+ *
+ * @code{.c}
+ * MODEM_CHAT_SCRIPT_CMD_RESP("AT+CSQ", csq_match);
+ * MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGDCONT=1,\"IP\",\"apn.example.com\"", ok_match);
+ * @endcode
+ */
 #define MODEM_CHAT_SCRIPT_CMD_RESP(_request, _response_match)                                      \
 	{                                                                                          \
 		.request = (uint8_t *)(_request),                                                  \
@@ -116,6 +221,28 @@ struct modem_chat_script_chat {
 		.timeout = 0,                                                                      \
 	}
 
+/**
+ * @brief Defines a modem chat script command with multiple response matches
+ *
+ * This macro creates a modem chat script command that sends a request to the modem
+ * and expects multiple possible response matches. The command is used to define steps
+ * in a modem chat script sequence where the modem might respond with different patterns.
+ *
+ * @param _request String literal containing the AT command to send to the modem
+ * @param _response_matches Pointer to an array of @ref modem_chat_match instances that define
+ *                         the possible expected responses
+ *
+ * @return A struct modem_chat_script_chat instance
+ *
+ * Example:
+ *
+ * @code{.c}
+ * MODEM_CHAT_MATCHES_DEFINE(allow_match,
+ *                          MODEM_CHAT_MATCH("OK", "", NULL),
+ *                          MODEM_CHAT_MATCH("ERROR", "", NULL));
+ * MODEM_CHAT_SCRIPT_CMD_RESP_MULT("AT+CGACT=0,1", allow_match);
+ * @endcode
+ */
 #define MODEM_CHAT_SCRIPT_CMD_RESP_MULT(_request, _response_matches)                               \
 	{                                                                                          \
 		.request = (uint8_t *)(_request),                                                  \
@@ -125,6 +252,25 @@ struct modem_chat_script_chat {
 		.timeout = 0,                                                                      \
 	}
 
+/**
+ * @brief Defines a modem chat script command with no expected response
+ *
+ * This macro creates a modem chat script command that sends a request to the modem
+ * but does not expect any response. Instead, it uses a timeout to determine when
+ * to proceed to the next command in the script. This is useful for commands that
+ * don't generate a response or when the response is not relevant.
+ *
+ * @param _request String literal containing the AT command to send to the modem
+ * @param _timeout_ms Timeout in milliseconds to wait before proceeding to next command
+ *
+ * @return A struct modem_chat_script_chat instance
+ *
+ * Example:
+ *
+ * @code{.c}
+ * MODEM_CHAT_SCRIPT_CMD_RESP_NONE("AT+CFUN=1", 1000);
+ * @endcode
+ */
 #define MODEM_CHAT_SCRIPT_CMD_RESP_NONE(_request, _timeout_ms)                                     \
 	{                                                                                          \
 		.request = (uint8_t *)(_request),                                                  \
@@ -134,6 +280,28 @@ struct modem_chat_script_chat {
 		.timeout = _timeout_ms,                                                            \
 	}
 
+/**
+ * @brief Defines an array of modem chat script commands
+ *
+ * This macro creates a static array of modem chat script commands that define a sequence
+ * of AT commands to be sent to the modem. Each command in the array can have different
+ * response expectations (single response, multiple responses, or no response).
+ *
+ * @param _sym Symbol name for the static command array
+ * @param ... Variable number of @ref modem_chat_script_chat instances to include in the array
+ *
+ * @return A `const static` array of @ref modem_chat_script_chat instances
+ *
+ * Example:
+ *
+ * @code{.c}
+ * MODEM_CHAT_SCRIPT_CMDS_DEFINE(dial_script_cmds,
+ *                               MODEM_CHAT_SCRIPT_CMD_RESP_MULT("AT+CGACT=0,1", allow_match),
+ *                               MODEM_CHAT_SCRIPT_CMD_RESP("AT+CGDCONT=1,\"IP\",
+ *                                                          "\"apn.example.com\"", ok_match),
+ *                               MODEM_CHAT_SCRIPT_CMD_RESP_NONE("AT+CFUN=1", 1000));
+ * @endcode
+ */
 #define MODEM_CHAT_SCRIPT_CMDS_DEFINE(_sym, ...)                                                   \
 	const struct modem_chat_script_chat _sym[] = {__VA_ARGS__}
 
@@ -176,6 +344,34 @@ struct modem_chat_script {
 	uint32_t timeout;
 };
 
+/**
+ * @brief Defines a complete modem chat script
+ *
+ * This macro creates a static modem chat script instance that defines a complete sequence
+ * of commands to be executed, along with abort conditions, callback function, and timeout.
+ *
+ * This "script" can be used to automate a series of AT commands with proper error handling
+ * and timeout management.
+ *
+ * @param _sym Symbol name for the static script instance
+ * @param _script_chats Array of @ref modem_chat_script_chat instances defining the command sequence
+ * @param _abort_matches Array of @ref modem_chat_match instances that will abort the script if
+ * matched
+ * @param _callback Function to be called when script execution completes or aborts
+ * @param _timeout_s Timeout in seconds for the entire script execution
+ *
+ * @return A `const static` @ref modem_chat_script instance
+ *
+ * Example:
+ *
+ * @code{.c}
+ * MODEM_CHAT_SCRIPT_DEFINE(dial_script,
+ *                          dial_script_cmds,
+ *                          abort_matches,
+ *                          modem_cellular_chat_callback_handler,
+ *                          10);
+ * @endcode
+ */
 #define MODEM_CHAT_SCRIPT_DEFINE(_sym, _script_chats, _abort_matches, _callback, _timeout_s)       \
 	const static struct modem_chat_script _sym = {                                             \
 		.name = #_sym,                                                                     \
