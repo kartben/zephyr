@@ -21,6 +21,12 @@ schema;shield-schema:
       required: true
       type: str
       desc: Manufacturer/vendor of the shield
+    supported_features:
+      required: false
+      type: seq
+      sequence:
+        - type: str
+      desc: List of hardware features supported by the shield (e.g. modem, display, etc.)
 
 type: map
 mapping:

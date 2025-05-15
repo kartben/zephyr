@@ -13,6 +13,7 @@
   aria-label="Open the documentation page for {{ shield.full_name }}"
   data-name="{{ shield.full_name}}"
   data-vendor="{{ shield.vendor }}"
+  data-supported-features="{{ shield.supported_features | join(' ') }}"
   tabindex="0">
   <div class="vendor">{{ vendors[shield.vendor] }}</div>
   {% if shield.image -%}

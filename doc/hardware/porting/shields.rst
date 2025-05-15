@@ -32,6 +32,8 @@ These files provides shield configuration as follows:
   * ``name``: Name of the shield used in Kconfig and build system (required)
   * ``full_name``: Full commercial name of the shield (optional)
   * ``vendor``: Manufacturer/vendor of the shield (required)
+  * ``supported_features``: List of hardware features supported by the shield,
+    taken from :zephyr_file:`dts/bindings/binding-types.txt`. (optional)
 
   Example:
 
@@ -40,6 +42,9 @@ These files provides shield configuration as follows:
      name: foo_shield
      full_name: Foo Shield for Arduino
      vendor: acme
+     supported_features:
+       - display
+       - modem
 
 * **<shield>.overlay**: This file provides a shield description in devicetree
   format that is merged with the board's :ref:`devicetree <dt-guide>`

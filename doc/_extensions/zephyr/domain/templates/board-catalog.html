@@ -8,7 +8,7 @@
   <div class="form-group" style="flex-basis: 100%">
     <label for="name">Name</label>
     <input type="text" id="name"
-      placeholder='Name (or partial name) of the board, e.g. "reel board", "nucleo", &hellip;'
+      placeholder='Name (or partial name) of the board/shield, e.g. "reel board", "nucleo", &hellip;'
       oninput="filterBoards()" />
   </div>
 
@@ -36,9 +36,11 @@
     <div class="select-container">
       <select id="vendor">
         <option value="" disabled selected>Select a vendor</option>
-        {# Only show those vendors that have actual boards in the catalog.
+        {# Show vendors that have either boards or shields in the catalog.
            Note: as sorting per vendor name is not feasible in Jinja, the option list is sorted in the JavaScript code later #}
-        {% for vendor in (boards | items | map(attribute='1.vendor') | unique ) -%}
+        {% set board_vendors = boards | items | map(attribute='1.vendor') | unique | list %}
+        {% set shield_vendors = shields | items | map(attribute='1.vendor') | unique | list %}
+        {% for vendor in (board_vendors + shield_vendors) | unique -%}
         <option value="{{ vendor }}">{{ vendors[vendor] }}</option>
         {% endfor %}
       </select>
@@ -106,5 +108,5 @@
 </div>
 
 <script>
-  socs_data = {{ socs | tojson }};
+  const socs_data = {{ socs | tojson }};
 </script>
