@@ -99,6 +99,10 @@
   {% for board_name, board in boards | items | sort(attribute='1.full_name') -%}
   {% include "board-card.html" %}
   {% endfor %}
+
+  {% for shield_name, shield in shields | items | sort(attribute='1.full_name') -%}
+  {% include "shield-card.html" %}
+  {% endfor %}
 </div>
 
 <script>
