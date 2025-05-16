@@ -20,6 +20,7 @@ Directives
   of the board documented in the current page.
 - ``zephyr:board-supported-runners::`` - Shows a table of supported runners for the board documented
   in the current page.
+- ``zephyr:subsystem::`` - Flags a document as being the documentation page for a subsystem.
 
 Roles
 -----
@@ -1128,6 +1129,47 @@ class BoardSupportedRunnersDirective(SphinxDirective):
         return result_nodes
 
 
+class SubsystemDirective(SphinxDirective):
+    has_content = True
+    required_arguments = 1
+    optional_arguments = 0
+    option_spec = {
+        'kconfig_prefix': directives.unchanged,
+        'doxygen_groups': directives.unchanged,
+    }
+
+    def run(self):
+        env = self.env
+
+        # get the subsystem name from the directive argument
+        subsystem_name = self.arguments[0]
+
+        # Parse the content to get the description
+        description_node = nodes.container()
+        self.state.nested_parse(self.content, self.content_offset, description_node)
+
+        # Parse doxygen groups if provided
+        doxygen_groups = []
+        if 'doxygen_groups' in self.options:
+            doxygen_groups = [g.strip() for g in self.options['doxygen_groups'].split()]
+
+        # add the subsystem to the domain
+        env.domaindata["zephyr"]["subsystems"][subsystem_name] = {
+            "name": subsystem_name,
+            "docname": env.docname,
+            "description": description_node,
+            "kconfig_prefix": self.options.get('kconfig_prefix'),
+            "doxygen_groups": doxygen_groups,
+        }
+
+        # Create a section node for the subsystem
+        section = nodes.section(ids=[f"subsystem-{subsystem_name}"])
+        section += nodes.title(text=subsystem_name)
+        section += description_node
+
+        return [section]
+
+
 class ZephyrDomain(Domain):
     """Zephyr domain"""
 
@@ -1138,6 +1180,7 @@ class ZephyrDomain(Domain):
         "code-sample": XRefRole(innernodeclass=nodes.inline, warn_dangling=True),
         "code-sample-category": XRefRole(innernodeclass=nodes.inline, warn_dangling=True),
         "board": XRefRole(innernodeclass=nodes.inline, warn_dangling=True),
+        "subsystem": XRefRole(innernodeclass=nodes.inline, warn_dangling=True),
     }
 
     directives = {
@@ -1148,6 +1191,7 @@ class ZephyrDomain(Domain):
         "board": BoardDirective,
         "board-supported-hw": BoardSupportedHardwareDirective,
         "board-supported-runners": BoardSupportedRunnersDirective,
+        "subsystem": SubsystemDirective,
     }
 
     object_types: dict[str, ObjType] = {
@@ -1164,6 +1208,7 @@ class ZephyrDomain(Domain):
         "has_code_sample_listing": {},  # docname -> bool
         "has_board_catalog": {},  # docname -> bool
         "has_board": {},  # docname -> bool
+        "subsystems": {},  # name -> subsystem data
     }
 
     def clear_doc(self, docname: str) -> None:
@@ -1179,6 +1224,12 @@ class ZephyrDomain(Domain):
             if category_data["docname"] != docname
         }
 
+        self.data["subsystems"] = {
+            name: subsystem_data
+            for name, subsystem_data in self.data["subsystems"].items()
+            if subsystem_data["docname"] != docname
+        }
+
         # TODO clean up the anytree as well
 
         self.data["has_code_sample_listing"].pop(docname, None)
@@ -1188,6 +1239,7 @@ class ZephyrDomain(Domain):
     def merge_domaindata(self, docnames: list[str], otherdata: dict) -> None:
         self.data["code-samples"].update(otherdata["code-samples"])
         self.data["code-samples-categories"].update(otherdata["code-samples-categories"])
+        self.data["subsystems"].update(otherdata["subsystems"])
 
         # self.data["boards"] contains all the boards right from builder-inited time, but it still
         # potentially needs merging since a board's docname property is set by BoardDirective to
