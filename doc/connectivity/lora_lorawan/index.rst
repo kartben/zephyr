@@ -4,6 +4,12 @@
 LoRa and LoRaWAN
 ################
 
+.. zephyr:subsystem:: lora
+   :kconfig_prefix: CONFIG_LORA
+   :doxygen_groups: lora_api, lorawan_api
+
+   LoRa and LoRaWAN xxxxx
+
 Overview
 ********
 
