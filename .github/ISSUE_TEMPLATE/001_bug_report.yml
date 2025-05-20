@@ -1,0 +1,79 @@
+name: Bug Report
+description: File a bug report.
+title: "[Bug]: "
+labels: ["bug"]
+type: "Bug"
+projects: ["octo-org/1", "octo-org/44"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Describe the bug
+      description: |
+        A clear and concise description of what the bug is.
+
+      placeholder: |
+        Please also mention any information which could help others to understand
+        the problem you're facing:
+          - What target platform are you using?
+          - What have you tried to diagnose or workaround this issue?
+          - Is this a regression? If yes, have you been able to "git bisect" it to a
+            specific commit?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: |
+        Steps to reproduce the behavior.
+
+      placeholder: Tell us what you see!
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+      render: shell
+  - type: dropdown
+    attributes:
+      label: Impact
+      description: Impact of this bug
+      multiple: false
+      options:
+        - Showstopper – Prevents release or major functionality; system unusable.
+        - Major – Severely degrades functionality; workaround is difficult or unavailable.
+        - Functional Limitation – Some features not working as expected, but system usable.
+        - Annoyance – Minor irritation; no significant impact on usability or functionality.
+        - Intermittent – Occurs occasionally; hard to reproduce.
+        - Not sure
+      default: 3
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: please complete the following information
+      placeholder: |
+       - OS: (e.g. Linux, MacOS, Windows)
+       - Toolchain (e.g Zephyr SDK, ...)
+       - Commit SHA or Version used
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: |
+        By submitting this issue, you agree to follow our
+        [Code of Conduct](https://github.com/zephyrproject-rtos/zephyr/blob/main/CODE_OF_CONDUCT.md).
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true
+
