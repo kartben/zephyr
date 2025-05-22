@@ -4,6 +4,7 @@
 
 import os
 import json
+import re
 from datetime import datetime, timezone
 
 from west import log
@@ -15,6 +16,14 @@ try:
 except ImportError:
     SPDX_PYTHON_MODEL_AVAILABLE = False
     log.wrn("spdx-python-model not available. Install spdx-python-model to enable SPDX 3.0 support")
+
+# Regex patterns for external reference validation
+CPE23TYPE_REGEX = (
+    r'^cpe:2\.3:[aho\*\-](:(((\?*|\*?)([a-zA-Z0-9\-\._]|(\\[\\\*\?!"#$$%&\'\(\)\+,\/:;<=>@\[\]\^'
+    r"`\{\|}~]))+(\?*|\*?))|[\*\-])){5}(:(([a-zA-Z]{2,3}(-([a-zA-Z]{2}|[0-9]{3}))?)|[\*\-]))(:(((\?*"
+    r'|\*?)([a-zA-Z0-9\-\._]|(\\[\\\*\?!"#$$%&\'\(\)\+,\/:;<=>@\[\]\^`\{\|}~]))+(\?*|\*?))|[\*\-])){4}$'
+)
+PURL_REGEX = r"^pkg:.+(\/.+)?\/.+(@.+)?(\?.+)?(#.+)?$"
 
 
 class SPDX3Config:
@@ -275,6 +284,36 @@ class SPDX3Generator:
         if hasattr(zspdx_pkg.cfg, 'version') and zspdx_pkg.cfg.version:
             software.software_packageVersion = zspdx_pkg.cfg.version
 
+        # Handle external references (PURL and CPE)
+        if hasattr(zspdx_pkg.cfg, 'externalReferences') and zspdx_pkg.cfg.externalReferences:
+            for ref in zspdx_pkg.cfg.externalReferences:
+                if re.fullmatch(CPE23TYPE_REGEX, ref):
+                    # Create CPE external identifier
+                    cpe_id = spdx.ExternalIdentifier()
+                    cpe_id.externalIdentifierType = (
+                        "https://spdx.org/rdf/3.0.1/terms/Core/ExternalIdentifierType/cpe23"
+                    )
+                    cpe_id.identifier = ref
+                    software.externalIdentifier.append(cpe_id)
+                elif re.fullmatch(PURL_REGEX, ref):
+                    # For PURL, we can use the dedicated packageUrl field OR external identifier
+                    # SPDX 3.0 prefers the dedicated packageUrl field
+                    if (
+                        not hasattr(software, 'software_packageUrl')
+                        or not software.software_packageUrl
+                    ):
+                        software.software_packageUrl = ref
+                    else:
+                        # If packageUrl is already set, add as external identifier
+                        purl_id = spdx.ExternalIdentifier()
+                        purl_id.externalIdentifierType = "https://spdx.org/rdf/3.0.1/terms/Core/ExternalIdentifierType/packageUrl"
+                        purl_id.identifier = ref
+                        software.externalIdentifier.append(purl_id)
+                else:
+                    log.wrn(
+                        f"Unknown external reference format ({ref}) for package {zspdx_pkg.cfg.name}"
+                    )
+
         return software
 
     def _convert_file_to_artifact(self, zspdx_file):
@@ -387,6 +426,10 @@ class SPDX3Generator:
                     ('build', walker.docBuild),
                 ]
             )
+
+            # Always include modules dependencies document if it exists
+            if hasattr(walker, 'docModulesExtRefs') and walker.docModulesExtRefs:
+                documents_to_convert.append(('modules-deps', walker.docModulesExtRefs))
 
             # Convert elements from each document but don't create separate SpdxDocuments
             for doc_name, zspdx_doc in documents_to_convert:
