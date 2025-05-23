@@ -25,6 +25,61 @@ CPE23TYPE_REGEX = (
 )
 PURL_REGEX = r"^pkg:.+(\/.+)?\/.+(@.+)?(\?.+)?(#.+)?$"
 
+# Mapping from SPDX 2.3 relationship types to SPDX 3.0 relationship types
+SPDX_2_3_TO_3_0_RELATIONSHIP_MAPPING = {
+    "AMENDS": "amendedBy",
+    "ANCESTOR_OF": "ancestorOf",
+    "BUILD_DEPENDENCY_OF": "dependsOn",  # Closest match
+    "BUILD_TOOL_OF": "usesTool",  # Closest match
+    "CONTAINED_BY": "contains",  # Reverse direction
+    "CONTAINS": "contains",
+    "COPY_OF": "copiedTo",  # Closest match
+    "DATA_FILE_OF": "hasDataFile",  # Closest match
+    "DEPENDENCY_MANIFEST_OF": "hasDependencyManifest",  # Closest match
+    "DEPENDENCY_OF": "dependsOn",
+    "DEPENDS_ON": "dependsOn",
+    "DESCENDANT_OF": "descendantOf",
+    "DESCRIBED_BY": "describes",  # Reverse direction
+    "DESCRIBES": "describes",
+    "DEV_DEPENDENCY_OF": "dependsOn",  # Treat as regular dependency
+    "DEV_TOOL_OF": "usesTool",  # Closest match
+    "DISTRIBUTION_ARTIFACT": "hasDistributionArtifact",  # Closest match
+    "DOCUMENTATION_OF": "hasDocumentation",  # Closest match
+    "DYNAMIC_LINK": "hasDynamicLink",
+    "EXAMPLE_OF": "hasExample",  # Closest match
+    "EXPANDED_FROM_ARCHIVE": "expandsTo",  # Closest match
+    "FILE_ADDED": "hasAddedFile",
+    "FILE_DELETED": "hasDeletedFile",
+    "FILE_MODIFIED": "modifiedBy",  # Closest match
+    "GENERATED_FROM": "generates",  # Reverse direction
+    "GENERATES": "generates",
+    "HAS_PREREQUISITE": "hasPrerequisite",
+    "METAFILE_OF": "hasMetadata",  # Closest match
+    "OPTIONAL_COMPONENT_OF": "hasOptionalComponent",  # Closest match
+    "OPTIONAL_DEPENDENCY_OF": "hasOptionalDependency",  # Closest match
+    "OTHER": "other",
+    "PACKAGE_OF": "packagedBy",  # Closest match
+    "PATCH_APPLIED": "patchedBy",  # Closest match
+    "PATCH_FOR": "patchedBy",
+    "PREREQUISITE_FOR": "hasPrerequisite",  # Reverse direction
+    "PROVIDED_DEPENDENCY_OF": "hasProvidedDependency",  # Closest match
+    "REQUIREMENT_DESCRIPTION_FOR": "hasRequirement",  # Closest match
+    "RUNTIME_DEPENDENCY_OF": "dependsOn",  # Treat as regular dependency
+    "SPECIFICATION_FOR": "hasSpecification",  # Closest match
+    "STATIC_LINK": "hasStaticLink",
+    "TEST_CASE_OF": "hasTestCase",  # Closest match
+    "TEST_DEPENDENCY_OF": "dependsOn",  # Treat as regular dependency
+    "TEST_OF": "hasTest",  # Closest match
+    "TEST_TOOL_OF": "usesTool",  # Closest match
+    "VARIANT_OF": "hasVariant",  # Closest match
+}
+
+
+def _map_spdx2_to_spdx3_relationship_type(spdx2_type: str) -> str:
+    """Map SPDX 2.3 relationship type to SPDX 3.0 relationship type URI"""
+    mapped_type = SPDX_2_3_TO_3_0_RELATIONSHIP_MAPPING.get(spdx2_type, "other")
+    return f"https://spdx.org/rdf/3.0.1/terms/Core/RelationshipType/{mapped_type}"
+
 
 class SPDX3Config:
     """Configuration for SPDX 3.0 generation using spdx-python-model"""
@@ -56,6 +111,7 @@ class SPDX3Generator:
         self.config = config
         self.elements = []  # Store all elements
         self.processed_file_ids = set()  # Track processed file IDs to avoid duplicates
+        self.global_spdx_id_to_uri = {}  # Global mapping for cross-document ID resolution
 
         # Create shared tool and creation info once to avoid duplicates
         self.tool_spdx_id = f"{self.config.namespacePrefix}/agents/west-spdx-tool"
@@ -176,41 +232,117 @@ class SPDX3Generator:
                     artifact = self._convert_file_to_artifact(file_obj)
                     document_elements.append(artifact)
                     self.elements.append(artifact)
-                else:
-                    # Find the existing artifact by ID
-                    artifact = next(
-                        (
-                            elem
-                            for elem in self.elements
-                            if hasattr(elem, '_obj_data')
-                            and elem._obj_data.get('@id') == artifact_id
-                        ),
-                        None,
-                    )
 
-                if artifact:
-                    # Create relationship from software to artifact - use shared creation info
-                    contains_rel = spdx.Relationship()
-                    contains_rel._obj_data['@id'] = (
-                        f"{self.config.namespacePrefix}/relationships/contains-{file_id}-{pkg_id}-{doc_name}"
-                    )
-                    # Reference creation info by ID instead of embedding
-                    contains_rel._obj_data['https://spdx.org/rdf/3.0.1/terms/Core/creationInfo'] = (
-                        self.creation_info_id
-                    )
-                    # Note: 'from' is a Python keyword, but spdx-python-model handles this
-                    contains_rel._obj_data['https://spdx.org/rdf/3.0.1/terms/Core/from'] = (
-                        software_element._obj_data['@id']
-                    )
-                    contains_rel.relationshipType = (
-                        "https://spdx.org/rdf/3.0.1/terms/Core/RelationshipType/contains"
-                    )
-                    contains_rel.to.append(artifact._obj_data['@id'])
+        # Process all relationships from the zspdx document
+        # Document-level relationships (typically DESCRIBES relationships)
+        if hasattr(zspdx_doc, 'relationships') and zspdx_doc.relationships:
+            for zspdx_rel in zspdx_doc.relationships:
+                spdx3_rel = self._convert_zspdx_relationship_to_spdx3(
+                    zspdx_rel, zspdx_doc, doc_name
+                )
+                if spdx3_rel:
+                    document_elements.append(spdx3_rel)
+                    self.elements.append(spdx3_rel)
 
-                    document_elements.append(contains_rel)
-                    self.elements.append(contains_rel)
+        # Package-level relationships (dependencies, etc.)
+        for pkg_id, pkg in zspdx_doc.pkgs.items():
+            if hasattr(pkg, 'rlns') and pkg.rlns:
+                for zspdx_rel in pkg.rlns:
+                    spdx3_rel = self._convert_zspdx_relationship_to_spdx3(
+                        zspdx_rel, zspdx_doc, doc_name
+                    )
+                    if spdx3_rel:
+                        document_elements.append(spdx3_rel)
+                        self.elements.append(spdx3_rel)
+
+            # File-level relationships
+            for file_id, file_obj in pkg.files.items():
+                if hasattr(file_obj, 'rlns') and file_obj.rlns:
+                    for zspdx_rel in file_obj.rlns:
+                        spdx3_rel = self._convert_zspdx_relationship_to_spdx3(
+                            zspdx_rel, zspdx_doc, doc_name
+                        )
+                        if spdx3_rel:
+                            document_elements.append(spdx3_rel)
+                            self.elements.append(spdx3_rel)
 
         return document_elements
+
+    def _convert_zspdx_relationship_to_spdx3(self, zspdx_rel, zspdx_doc, doc_name):
+        """Convert a zspdx Relationship to SPDX 3.0 Relationship element"""
+        # Use shared creation info
+        self._initialize_shared_objects()
+
+        # Create SPDX 3.0 Relationship
+        spdx3_rel = spdx.Relationship()
+
+        # Generate unique ID for this relationship
+        rel_id = f"{self.config.namespacePrefix}/relationships/{zspdx_rel.rlnType.lower()}-{hash(zspdx_rel.refA + zspdx_rel.refB)}-{doc_name}"
+        spdx3_rel._obj_data['@id'] = rel_id
+
+        # Reference creation info by ID
+        spdx3_rel._obj_data['https://spdx.org/rdf/3.0.1/terms/Core/creationInfo'] = (
+            self.creation_info_id
+        )
+
+        # Convert SPDX IDs to full URIs
+        from_uri = self._convert_spdx_id_to_uri(zspdx_rel.refA, zspdx_doc)
+        to_uri = self._convert_spdx_id_to_uri(zspdx_rel.refB, zspdx_doc)
+
+        if not from_uri or not to_uri:
+            log.wrn(
+                f"Could not resolve SPDX IDs for relationship: {zspdx_rel.refA} {zspdx_rel.rlnType} {zspdx_rel.refB}"
+            )
+            return None
+
+        # Set relationship properties
+        spdx3_rel._obj_data['https://spdx.org/rdf/3.0.1/terms/Core/from'] = from_uri
+        spdx3_rel.to.append(to_uri)
+
+        # Map relationship type from SPDX 2.3 to SPDX 3.0
+        spdx3_rel.relationshipType = _map_spdx2_to_spdx3_relationship_type(zspdx_rel.rlnType)
+
+        return spdx3_rel
+
+    def _convert_spdx_id_to_uri(self, spdx_id, zspdx_doc):
+        """Convert an SPDX ID (like SPDXRef-app-sources) to a full URI"""
+        if not spdx_id:
+            return None
+
+        # Handle external document references (format: DocumentRef-xxx:SPDXRef-yyy)
+        if ":" in spdx_id:
+            doc_ref, local_ref = spdx_id.split(":", 1)
+            # Check global mapping first
+            if local_ref in self.global_spdx_id_to_uri:
+                return self.global_spdx_id_to_uri[local_ref]
+            # For external references we can't resolve, use a placeholder approach
+            log.wrn(f"External document reference not fully supported: {spdx_id}")
+            return f"{self.config.namespacePrefix}/external/{doc_ref}/{local_ref}"
+
+        # Check global mapping first (this handles cross-document references)
+        if spdx_id in self.global_spdx_id_to_uri:
+            return self.global_spdx_id_to_uri[spdx_id]
+
+        # Fallback: local search for backward compatibility
+        # Handle special case of document reference
+        if spdx_id == "SPDXRef-DOCUMENT":
+            return f"https://spdx.org/documents/{zspdx_doc.cfg.name}"
+
+        # For local references, look up in packages and files
+        if spdx_id.startswith("SPDXRef-"):
+            # Check if it's a package
+            for pkg_id, pkg in zspdx_doc.pkgs.items():
+                if pkg.cfg.spdxID == spdx_id:
+                    return f"{self.config.namespacePrefix}/packages/{spdx_id}"
+
+                # Check if it's a file in this package
+                for file_id, file_obj in pkg.files.items():
+                    if file_obj.spdxID == spdx_id:
+                        return f"{self.config.namespacePrefix}/files/{spdx_id}"
+
+        # If we can't resolve it, create a generic URI
+        log.wrn(f"Could not resolve SPDX ID to specific element: {spdx_id}")
+        return f"{self.config.namespacePrefix}/elements/{spdx_id}"
 
     def _convert_zspdx_to_spdx3(self, zspdx_doc):
         """Convert zspdx Document structure to SPDX 3.0 elements"""
@@ -412,6 +544,9 @@ class SPDX3Generator:
             if not walker:
                 return False
 
+            # Build a global mapping of SPDX IDs to URIs for cross-document resolution
+            self.global_spdx_id_to_uri = {}
+
             # Collect all elements from different documents but create only one SpdxDocument
             all_document_elements = []
             documents_to_convert = []
@@ -430,6 +565,10 @@ class SPDX3Generator:
             # Always include modules dependencies document if it exists
             if hasattr(walker, 'docModulesExtRefs') and walker.docModulesExtRefs:
                 documents_to_convert.append(('modules-deps', walker.docModulesExtRefs))
+
+            # First pass: build global ID mapping
+            for doc_name, zspdx_doc in documents_to_convert:
+                self._build_global_id_mapping(zspdx_doc, doc_name)
 
             # Convert elements from each document but don't create separate SpdxDocuments
             for doc_name, zspdx_doc in documents_to_convert:
@@ -453,6 +592,27 @@ class SPDX3Generator:
         except Exception as e:
             log.err(f"Failed to generate SPDX 3.0 document: {e}")
             return False
+
+    def _build_global_id_mapping(self, zspdx_doc, doc_name):
+        """Build global mapping of SPDX IDs to URIs for cross-document resolution"""
+        # Map document itself
+        self.global_spdx_id_to_uri["SPDXRef-DOCUMENT"] = (
+            f"https://spdx.org/documents/{zspdx_doc.cfg.name}"
+        )
+
+        # Map packages
+        for pkg_id, pkg in zspdx_doc.pkgs.items():
+            if pkg.cfg.spdxID:
+                self.global_spdx_id_to_uri[pkg.cfg.spdxID] = (
+                    f"{self.config.namespacePrefix}/packages/{pkg.cfg.spdxID}"
+                )
+
+                # Map files in packages
+                for file_id, file_obj in pkg.files.items():
+                    if file_obj.spdxID:
+                        self.global_spdx_id_to_uri[file_obj.spdxID] = (
+                            f"{self.config.namespacePrefix}/files/{file_obj.spdxID}"
+                        )
 
 
 def generate_spdx3_from_config(config: SPDX3Config) -> bool:
