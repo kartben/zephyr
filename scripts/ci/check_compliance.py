@@ -671,7 +671,7 @@ class KconfigCheck(ComplianceTest):
         regex = r"^\s*(?:module\s*=\s*)([A-Z0-9_]+)\s*(?:#|$)"
 
         # Grep samples/ and tests/ for symbol definitions
-        grep_stdout = git("grep", "-I", "-h", "--perl-regexp", regex, "--",
+        grep_stdout = git("grep", "-I", "-h", "--perl-regexp", "--threads=4", regex, "--",
                           ":samples", ":tests", cwd=ZEPHYR_BASE)
 
         names = re.findall(regex, grep_stdout, re.MULTILINE)
@@ -724,10 +724,10 @@ class KconfigCheck(ComplianceTest):
         regex_socs = r"\bconfig\s+[A-Z0-9_]+$"
 
         grep_stdout_boards = git("grep", "--line-number", "-I", "--null",
-                                 "--perl-regexp", regex_boards, "--", ":boards",
+                                 "--perl-regexp", "--threads=4", regex_boards, "--", ":boards",
                                  cwd=ZEPHYR_BASE)
         grep_stdout_socs = git("grep", "--line-number", "-I", "--null",
-                               "--perl-regexp", regex_socs, "--", ":soc",
+                               "--perl-regexp", "--threads=4", regex_socs, "--", ":soc",
                                cwd=ZEPHYR_BASE)
 
         # Board processing
@@ -776,7 +776,7 @@ Found disallowed Kconfig symbol in SoC Kconfig files: {sym_name:35}
         regex = r"^\s*(?:menu)?config\s*([A-Z0-9_]+)\s*(?:#|$)"
 
         # Grep samples/ and tests/ for symbol definitions
-        grep_stdout = git("grep", "-I", "-h", "--perl-regexp", regex, "--",
+        grep_stdout = git("grep", "-I", "-h", "--perl-regexp", "--threads=4", regex, "--",
                           ":samples", ":tests", cwd=ZEPHYR_BASE)
 
         # Generate combined list of configs and choices from the main Kconfig tree.
@@ -957,7 +957,7 @@ Missing SoC names or CONFIG_SOC vs soc.yml out of sync:
         # Skip doc/releases and doc/security/vulnerabilities.rst, which often
         # reference removed symbols
         grep_stdout = git("grep", "--line-number", "-I", "--null",
-                          "--perl-regexp", regex, "--", ":!/doc/releases",
+                          "--perl-regexp", "--threads=4", regex, "--", ":!/doc/releases",
                           ":!/doc/security/vulnerabilities.rst",
                           cwd=GIT_TOP)
 
