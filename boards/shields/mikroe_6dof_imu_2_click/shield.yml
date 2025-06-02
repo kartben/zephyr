@@ -1,0 +1,6 @@
+shield:
+  name: mikroe_6dof_imu_2_click
+  full_name: 6DOF IMU 2 Click
+  vendor: mikroe
+  supported_features:
+    - sensor
