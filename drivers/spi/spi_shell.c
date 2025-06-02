@@ -179,26 +179,26 @@ static int cmd_spi_conf_cs(const struct shell *ctx, size_t argc, char **argv)
 	return 0;
 }
 
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_spi_cmds,
-			       SHELL_CMD_ARG(conf, &dsub_device_name,
-					     "Configure SPI\n"
-					     "Usage: spi conf <device> <frequency> [<settings>]\n"
-					     "<settings> - any sequence of letters:\n"
-					     "o - SPI_MODE_CPOL\n"
-					     "h - SPI_MODE_CPHA\n"
-					     "l - SPI_TRANSFER_LSB\n"
-					     "T - SPI_FRAME_FORMAT_TI\n"
-					     "example: spi conf spi1 1000000 ol",
-					     cmd_spi_conf, 3, 1),
-			       SHELL_CMD_ARG(cs, &dsub_device_name,
-					     "Assign CS GPIO to SPI device\n"
-					     "Usage: spi cs <gpio-device> <pin> [<gpio flags>]"
-					     "example: spi conf gpio1 3 0x01",
-					     cmd_spi_conf_cs, 3, 1),
-			       SHELL_CMD_ARG(transceive, NULL,
-					     "Transceive data to and from an SPI device\n"
-					     "Usage: spi transceive <TX byte 1> [<TX byte 2> ...]",
-					     cmd_spi_transceive, 2, MAX_SPI_BYTES - 1),
-			       SHELL_SUBCMD_SET_END);
+SHELL_STATIC_SUBCMD_SET_CREATE(
+	sub_spi_cmds,
+	SHELL_CMD_ARG(conf, &dsub_device_name,
+		      SHELL_HELP("Configure SPI", "spi conf <device> <frequency> [<settings>]\n"
+						  "<settings> - any sequence of letters:\n"
+						  "  * o - SPI_MODE_CPOL\n"
+						  "  * h - SPI_MODE_CPHA\n"
+						  "  * l - SPI_TRANSFER_LSB\n"
+						  "  * T - SPI_FRAME_FORMAT_TI\n"
+						  "Example: spi conf spi1 1000000 ol"),
+		      cmd_spi_conf, 3, 1),
+	SHELL_CMD_ARG(cs, &dsub_device_name,
+		      SHELL_HELP("Assign CS GPIO to SPI device",
+				 "spi cs <gpio-device> <pin> [<gpio flags>]"
+				 "example: spi conf gpio1 3 0x01"),
+		      cmd_spi_conf_cs, 3, 1),
+	SHELL_CMD_ARG(transceive, NULL,
+		      SHELL_HELP("Transceive data to and from an SPI device",
+				 "spi transceive <TX byte 1> [<TX byte 2> ...]"),
+		      cmd_spi_transceive, 2, MAX_SPI_BYTES - 1),
+	SHELL_SUBCMD_SET_END);
 
 SHELL_CMD_REGISTER(spi, &sub_spi_cmds, "SPI commands", NULL);

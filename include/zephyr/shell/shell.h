@@ -82,6 +82,41 @@ extern "C" {
 struct shell_static_entry;
 
 /**
+ * @brief Shell structured help descriptor.
+ *
+ * @details This structure provides an organized way to specify command help
+ * as opposed to a free-form string. This helps make help messages more
+ * consistent and easier to read.
+ */
+struct shell_cmd_help {
+	uint32_t magic;          /*!< Magic number to identify structured help */
+	const char *description; /*!< Command description */
+	const char *usage;       /*!< Command usage string */
+};
+
+/**
+ * @brief Magic number used to identify the beginning of a structured help
+ * message when cast to a char pointer.
+ */
+#define SHELL_STRUCTURED_HELP_MAGIC 0x5348454C /* "SHEL" */
+
+/**
+ * @brief Check if help string is structured help.
+ *
+ * @param help Pointer to help string or structured help.
+ * @return true if help is structured, false otherwise.
+ */
+static inline bool shell_help_is_structured(const char *help)
+{
+	if (help == NULL) {
+		return false;
+	}
+
+	const struct shell_cmd_help *structured = (const struct shell_cmd_help *)help;
+	return structured->magic == SHELL_STRUCTURED_HELP_MAGIC;
+}
+
+/**
  * @brief Shell dynamic command descriptor.
  *
  * @details Function shall fill the received shell_static_entry structure
@@ -1333,6 +1368,44 @@ int shell_mode_delete_set(const struct shell *sh, bool val);
  * @retval return value of previous command
  */
 int shell_get_return_value(const struct shell *sh);
+
+/**
+ * @brief Create a structured help object.
+ *
+ * @param[in] _name		Name for the help object.
+ * @param[in] _description	Command description.
+ * @param[in] _usage		Command usage string.
+ */
+#define SHELL_STRUCTURED_HELP_CREATE(_name, _description, _usage)                                  \
+	static const struct shell_cmd_help _name = {.magic = SHELL_STRUCTURED_HELP_MAGIC,          \
+						    .description = _description,                   \
+						    .usage = _usage}
+
+/**
+ * @brief Helper macro to create structured help inline.
+ *
+ * This macro allows you to pass structured help directly to existing shell macros.
+ * Usage: SHELL_CMD_ARG(cmd, subcmd, SHELL_HELP("description", "usage"), handler, 1, 0)
+ *
+ * @param[in] _description	Command description.
+ * @param[in] _usage		Command usage string.
+ */
+#define SHELL_HELP(_description, _usage)                                                           \
+	((const char *)&(const struct shell_cmd_help){.magic = SHELL_STRUCTURED_HELP_MAGIC,        \
+						      .description = (_description),               \
+						      .usage = (_usage)})
+
+/**
+ * @brief Initializes a shell command with structured help.
+ *
+ * @param[in] _syntax	Command syntax (for example: history).
+ * @param[in] _subcmd	Pointer to a subcommands array.
+ * @param[in] _description	Command description.
+ * @param[in] _usage	Command usage string.
+ * @param[in] _handler	Pointer to a function handler.
+ */
+#define SHELL_CMD_STRUCTURED(_syntax, _subcmd, _description, _usage, _handler)                     \
+	SHELL_CMD_STRUCTURED_ARG(_syntax, _subcmd, _description, _usage, _handler, 0, 0)
 
 /**
  * @}
