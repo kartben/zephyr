@@ -1,0 +1,6 @@
+shield:
+  name: mikroe_temp_hum_8_click
+  full_name: Temp Hum 8 Click
+  vendor: mikroe
+  supported_features:
+    - sensor

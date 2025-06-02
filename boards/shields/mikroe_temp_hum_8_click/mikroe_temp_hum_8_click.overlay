@@ -1,0 +1,13 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&mikrobus_i2c {
+	status = "okay";
+
+	sht21_mikroe_temp_hum_8_click: sht21@40 {
+		compatible = "sensirion,sht21";
+		reg = <0x40>;
+	};
+};
