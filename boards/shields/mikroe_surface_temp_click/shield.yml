@@ -1,0 +1,6 @@
+shield:
+  name: mikroe_surface_temp_click
+  full_name: Surface Temp Click
+  vendor: mikroe
+  supported_features:
+    - sensor
