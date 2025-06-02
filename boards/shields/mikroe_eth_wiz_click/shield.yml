@@ -1,0 +1,6 @@
+shield:
+  name: mikroe_eth_wiz_click
+  full_name: ETH WIZ Click
+  vendor: mikroe
+  supported_features:
+    - ethernet
