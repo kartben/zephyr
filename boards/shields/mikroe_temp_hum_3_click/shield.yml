@@ -1,0 +1,6 @@
+shield:
+  name: mikroe_temp_hum_3_click
+  full_name: TEMP HUM 3 CLICK Click
+  vendor: mikroe
+  supported_features:
+    - sensor
