@@ -187,10 +187,13 @@ SHELL_DYNAMIC_CMD_CREATE(dsub_device_name, device_name_get);
 
 SHELL_STATIC_SUBCMD_SET_CREATE(bbram_cmds,
 			       SHELL_CMD_ARG(read, &dsub_device_name,
-					     "<device> [<address>] [<count>]", cmd_read, 2, 2),
+					     "Read from BBRAM\n"
+					     "Usage: bbram read <device> [<address>] [<count>]\n",
+					     cmd_read, 2, 2),
 			       SHELL_CMD_ARG(write, &dsub_device_name,
-					     "<device> <address> <byte> [<byte>...]", cmd_write, 4,
-					     BUF_ARRAY_CNT),
+					     "Write to BBRAM\n"
+					     "Usage: bbram write <device> <address> <byte> [<byte>...]\n",
+					     cmd_write, 4, BUF_ARRAY_CNT),
 			       SHELL_SUBCMD_SET_END);
 
 static int cmd_bbram(const struct shell *sh, size_t argc, char **argv)
