@@ -1,0 +1,6 @@
+shield:
+  name: mikroe_13dof_2_click
+  full_name: 13DOF 2 Click
+  vendor: mikroe
+  supported_features:
+    - sensor
