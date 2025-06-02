@@ -1,0 +1,6 @@
+shield:
+  name: mikroe_environment_click
+  full_name: Environment Click
+  vendor: mikroe
+  supported_features:
+    - sensor
