@@ -1,0 +1,6 @@
+shield:
+  name: mikroe_pwm_click
+  full_name: PWM Click
+  vendor: mikroe
+  supported_features:
+    - pwm
