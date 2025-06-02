@@ -1,0 +1,6 @@
+shield:
+  name: mikroe_altitude_2_click
+  full_name: Altitude 2 Click
+  vendor: mikroe
+  supported_features:
+    - sensor
