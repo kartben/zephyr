@@ -1,0 +1,6 @@
+shield:
+  name: mikroe_adc_8_click
+  full_name: ADC 8 Click
+  vendor: mikroe
+  supported_features:
+    - adc
