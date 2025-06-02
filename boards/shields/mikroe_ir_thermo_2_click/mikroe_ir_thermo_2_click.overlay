@@ -1,0 +1,14 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&mikrobus_i2c {
+	status = "okay";
+
+	tmp007_mikroe_ir_thermo_2_click: tmp007@40 {
+		compatible = "ti,tmp007";
+		reg = <0x40>;
+		int-gpios = <&mikrobus_header 7 GPIO_ACTIVE_LOW>;
+	};
+};

@@ -1,0 +1,6 @@
+shield:
+  name: mikroe_ir_thermo_2_click
+  full_name: IR Thermo 2 Click
+  vendor: mikroe
+  supported_features:
+    - sensor
