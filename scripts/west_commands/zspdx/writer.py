@@ -8,7 +8,7 @@ from datetime import datetime
 from west import log
 
 from zspdx.util import getHashes
-from zspdx.version import SPDX_VERSION_2_3
+from zspdx.version import SPDX_VERSION_2_3, SPDX_VERSION_3_0
 
 CPE23TYPE_REGEX = (
     r'^cpe:2\.3:[aho\*\-](:(((\?*|\*?)([a-zA-Z0-9\-\._]|(\\[\\\*\?!"#$$%&\'\(\)\+,\/:;<=>@\[\]\^'
@@ -196,7 +196,12 @@ Created: {datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
 #   2) doc: SPDX Document object to write
 #   3) spdx_version: SPDX specification version
 def writeSPDX(spdxPath, doc, spdx_version=SPDX_VERSION_2_3):
-    # create and write document to disk
+    # Use SPDX v3 writer for version 3.0
+    if spdx_version >= SPDX_VERSION_3_0:
+        from zspdx.writer_v3 import write_spdx_v3
+        return write_spdx_v3(spdxPath, doc, doc.cfg.namespace)
+
+    # create and write document to disk (SPDX v2 format)
     try:
         log.inf(f"Writing SPDX {spdx_version} document {doc.cfg.name} to {spdxPath}")
         with open(spdxPath, "w") as f:

@@ -23,3 +23,6 @@ PyGithub
 
 # used to generate devicetree dependency graphs
 graphviz
+
+# used by west spdx command for SPDX 3.0 support
+spdx_python_model
