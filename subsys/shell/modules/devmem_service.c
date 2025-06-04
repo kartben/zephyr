@@ -345,22 +345,21 @@ static int cmd_devmem(const struct shell *sh, size_t argc, char **argv)
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_devmem,
 			       SHELL_CMD_ARG(dump, NULL,
-					     "Usage:\n"
-					     "devmem dump -a <address> -s <size> [-w <width>]\n",
+					     SHELL_HELP("Dump memory contents",
+							"-a <address> -s <size> [-w <width>]"),
 					     cmd_dump, 5, 2),
 			       SHELL_CMD_ARG(load, NULL,
-					     "Usage:\n"
-					     "devmem load [options] [address]\n"
-					     "Options:\n"
-					     "-e\tlittle-endian parse",
+					     SHELL_HELP("Load contents to memory",
+							"[options] <address>\n"
+							"Options:\n"
+							"-e\tlittle-endian parse"),
 					     cmd_load, 2, 1),
 			       SHELL_SUBCMD_SET_END);
 
 SHELL_CMD_ARG_REGISTER(devmem, &sub_devmem,
-		   "Read/write physical memory\n"
-		   "Usage:\n"
-		   "Read memory at address with optional width:\n"
-		   "devmem <address> [<width>]\n"
-		   "Write memory at address with mandatory width and value:\n"
-		   "devmem <address> <width> <value>",
-		   cmd_devmem, 2, 2);
+		       SHELL_HELP("Read/write physical memory",
+				  "<address> [<width>]\n"
+				  "Reads memory at address with optional width.\n"
+				  "<address> <width> <value>\n"
+				  "Writes memory at address with mandatory width and value."),
+		       cmd_devmem, 2, 2);
