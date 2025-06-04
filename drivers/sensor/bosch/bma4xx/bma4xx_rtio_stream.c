@@ -136,14 +136,16 @@ static void bma4xx_fifo_count_cb(struct rtio *r, const struct rtio_sqe *sqe, voi
 	LOG_DBG("Requesting buffer [%u, %u] got %u", (unsigned int)min_read_size,
 		(unsigned int)ideal_read_size, buf_len);
 
-	/* Read FIFO and call back to rtio with rtio_sqe completion */
-	struct bma4xx_fifo_data hdr;
+       /* Read FIFO and call back to rtio with rtio_sqe completion */
+       struct bma4xx_fifo_data hdr = { 0 };
 
-	hdr.header.is_fifo = true;
-	hdr.header.accel_fs = drv_data->cfg.accel_fs_range;
-	hdr.header.timestamp = drv_data->timestamp;
-	hdr.int_status = drv_data->int_status;
-	hdr.accel_odr = drv_data->cfg.accel_odr;
+       hdr.header.is_fifo = true;
+       hdr.header.accel_fs = drv_data->cfg.accel_fs_range;
+       hdr.header.timestamp = drv_data->timestamp;
+       hdr.int_status = drv_data->int_status;
+       hdr.accel_odr = drv_data->cfg.accel_odr;
+       hdr.fifo_count = 0U;
+       hdr.reserved = 0U;
 
 	uint32_t buf_avail = buf_len;
 
