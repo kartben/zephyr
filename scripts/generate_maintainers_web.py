@@ -144,9 +144,14 @@ def process_structure(structure, maintainers, current_path=''):
 
 def generate_html(data):
     """Generate the HTML file with the interactive visualization."""
+    # Add metadata with generation timestamp
+    from datetime import datetime
+
+    data_with_metadata = {'generated_at': datetime.now().isoformat(), 'data': data}
+
     # Write data to JSON file
     with open('maintainers_data.json', 'w') as f:
-        json.dump(data, f)
+        json.dump(data_with_metadata, f)
 
     # Rename the HTML file to index.html for GitHub Pages
     html = '''
@@ -230,9 +235,18 @@ def generate_html(data):
             }
             .item {
                 position: relative;
-                cursor: pointer;
                 padding: 2px 0;
                 contain: layout style;
+            }
+            .item.directory {
+                cursor: pointer;
+            }
+            .item.directory:hover {
+                background-color: rgba(0, 0, 0, 0.05);
+                border-radius: 4px;
+            }
+            .item.file {
+                cursor: default;
             }
             .item-wrapper {
                 display: flex;
@@ -411,11 +425,35 @@ def generate_html(data):
                 async loadData() {
                     try {
                         const response = await fetch(new URL('maintainers_data.json', window.location.href).href);
-                        this.data = await response.json();
+                        const jsonData = await response.json();
+
+                        // Extract metadata and data
+                        if (jsonData.generated_at && jsonData.data) {
+                            // New format with metadata
+                            this.generatedAt = jsonData.generated_at;
+                            this.data = jsonData.data;
+                        } else {
+                            // Legacy format without metadata
+                            this.data = jsonData;
+                            this.generatedAt = null;
+                        }
+
+                        // Update the last update timestamp
+                        this.updateLastUpdateDisplay();
                         this.render();
                     } catch (error) {
                         console.error('Error loading data:', error);
                         this.container.innerHTML = '<div class="alert alert-danger">Error loading data. Please try again later.</div>';
+                    }
+                }
+
+                updateLastUpdateDisplay() {
+                    const lastUpdateElement = document.getElementById('last-update');
+                    if (this.generatedAt) {
+                        const date = new Date(this.generatedAt);
+                        lastUpdateElement.textContent = date.toLocaleString();
+                    } else {
+                        lastUpdateElement.textContent = 'Unknown';
                     }
                 }
 
@@ -455,15 +493,20 @@ def generate_html(data):
                     return summary;
                 }
 
-                handleClick(e) {
-                    const toggle = e.target.closest('.toggle');
-                    if (!toggle) return;
+                                handleClick(e) {
+                    const item = e.target.closest('.item');
+                    if (!item) return;
+
+                    const path = item.dataset.path;
+                    const info = this.getNodeInfo(path);
+
+                    // Only handle clicks for directories
+                    if (!info || info.type !== 'directory') return;
 
                     e.stopPropagation();
                     this.hideTooltip();
 
-                    const item = toggle.closest('.item');
-                    const path = item.dataset.path;
+                    const toggle = item.querySelector('.toggle');
 
                     if (this.expandedNodes.has(path)) {
                         this.expandedNodes.delete(path);
@@ -646,7 +689,7 @@ def generate_html(data):
 
                 createItemElement(name, info, path, level) {
                     const item = document.createElement('div');
-                    item.className = 'item';
+                    item.className = `item ${info.type}`;
                     item.dataset.path = path;
                     item.style.marginLeft = (level * 20) + 'px';
 
@@ -687,7 +730,6 @@ def generate_html(data):
 
             // Initialize when DOM is ready
             document.addEventListener('DOMContentLoaded', () => {
-                document.getElementById('last-update').textContent = new Date().toLocaleString();
                 new TreeViewer();
             });
         </script>
