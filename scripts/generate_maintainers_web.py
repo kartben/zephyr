@@ -354,7 +354,7 @@ def generate_html(data):
             <div class="row">
                 <div class="col-md-8">
                     <div class="search-container">
-                        <input type="text" class="search-input" placeholder="Search files and directories..." id="search-input">
+                        <input type="text" class="search-input" placeholder="Search files and directories (min 2 chars)..." id="search-input">
                         <div class="search-results" id="search-results"></div>
                     </div>
                     <div id="tree-view" class="tree-view">
@@ -389,7 +389,7 @@ def generate_html(data):
         <script>
             // Performance-optimized tree viewer
             class TreeViewer {
-                constructor() {
+                                constructor() {
                     this.data = null;
                     this.renderedNodes = new Map();
                     this.statusCountCache = new Map();
@@ -400,6 +400,7 @@ def generate_html(data):
                     this.expandedNodes = new Set(['']); // Root is always expanded
                     this.searchMode = false;
                     this.searchMatches = new Set();
+                    this.searchTimeout = null;
 
                     this.init();
                 }
@@ -576,10 +577,27 @@ def generate_html(data):
                     }, 100);
                 }
 
-                handleSearch(e) {
+                                handleSearch(e) {
                     const query = e.target.value.toLowerCase().trim();
 
-                    if (!query) {
+                    // Clear existing timeout
+                    if (this.searchTimeout) {
+                        clearTimeout(this.searchTimeout);
+                    }
+
+                    // Show loading indicator for searches longer than 1 character
+                    if (query.length > 1) {
+                        this.searchResults.textContent = 'Searching...';
+                    }
+
+                    // Debounce search - only execute after user stops typing for 300ms
+                    this.searchTimeout = setTimeout(() => {
+                        this.performSearch(query);
+                    }, 300);
+                }
+
+                                performSearch(query) {
+                    if (!query || query.length < 2) {
                         this.searchMode = false;
                         this.searchMatches.clear();
                         this.searchResults.textContent = '';
@@ -590,18 +608,27 @@ def generate_html(data):
                     this.searchMode = true;
                     this.searchMatches.clear();
 
+                    const MAX_RESULTS = 1000; // Limit results to prevent browser freeze
+                    let resultCount = 0;
+
                     const searchRecursive = (data, path = '') => {
-                                                 for (const [name, info] of Object.entries(data)) {
-                             const currentPath = path ? `${path}/${name}` : name;
+                        if (resultCount >= MAX_RESULTS) return; // Stop if we hit the limit
+
+                        for (const [name, info] of Object.entries(data)) {
+                            if (resultCount >= MAX_RESULTS) return;
+
+                            const currentPath = path ? `${path}/${name}` : name;
 
                             if (name.toLowerCase().includes(query)) {
                                 this.searchMatches.add(currentPath);
+                                resultCount++;
+
                                 // Ensure parent directories are expanded
                                 let parentPath = '';
-                                                                 for (const segment of currentPath.split('/').slice(0, -1)) {
-                                     parentPath = parentPath ? `${parentPath}/${segment}` : segment;
-                                     this.expandedNodes.add(parentPath);
-                                 }
+                                for (const segment of currentPath.split('/').slice(0, -1)) {
+                                    parentPath = parentPath ? `${parentPath}/${segment}` : segment;
+                                    this.expandedNodes.add(parentPath);
+                                }
                             }
 
                             if (info.type === 'directory' && info.contents) {
@@ -610,9 +637,17 @@ def generate_html(data):
                         }
                     };
 
-                    searchRecursive(this.data);
-                                         this.searchResults.textContent = `${this.searchMatches.size} matches found`;
-                    this.render();
+                    try {
+                        searchRecursive(this.data);
+                        const matchText = this.searchMatches.size >= MAX_RESULTS
+                            ? `${MAX_RESULTS}+ matches found (showing first ${MAX_RESULTS})`
+                            : `${this.searchMatches.size} matches found`;
+                        this.searchResults.textContent = matchText;
+                        this.render();
+                    } catch (error) {
+                        console.error('Search error:', error);
+                        this.searchResults.textContent = 'Search error occurred';
+                    }
                 }
 
                 getNodeInfo(path) {
