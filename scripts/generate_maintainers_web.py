@@ -343,6 +343,21 @@ def generate_html(data):
                 font-size: 12px;
                 color: #6b7280;
             }
+            .search-match {
+                background-color: rgba(59, 130, 246, 0.08);
+                border-radius: 4px;
+                position: relative;
+            }
+            .search-match::after {
+                content: "";
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 3px;
+                background-color: #3b82f6;
+                border-radius: 2px 0 0 2px;
+            }
         </style>
     </head>
     <body>
@@ -747,14 +762,15 @@ def generate_html(data):
 
                     // Highlight search matches
                     const isMatch = this.searchMatches.has(path);
-                    const nameClass = isMatch ? 'item-name bg-warning' : 'item-name';
+                    const nameClass = 'item-name';
+                    const matchClass = isMatch ? 'search-match' : '';
 
-                    item.innerHTML = `
-                        <div class="item-wrapper">
-                                                         <div class="toggle" style="visibility: ${info.type === 'directory' ? 'visible' : 'hidden'}">${toggleSymbol}</div>
-                                     <div class="item-content">
-                                 <span class="${statusClass} ${nameClass}">${prefix}${name}</span>
-                                 ${statusSummary}
+                                        item.innerHTML = `
+                        <div class="item-wrapper ${matchClass}">
+                            <div class="toggle" style="visibility: ${info.type === 'directory' ? 'visible' : 'hidden'}">${toggleSymbol}</div>
+                            <div class="item-content">
+                                <span class="${statusClass} ${nameClass}">${prefix}${name}</span>
+                                ${statusSummary}
                             </div>
                         </div>
                     `;
