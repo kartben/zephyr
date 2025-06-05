@@ -1,0 +1,15 @@
+sample:
+  description: Generate hierarchical documentation of all available shell commands and subcommands using Zephyr's shell API and introspection.
+  name: Shell Documentation Generator
+common:
+  tags: shell
+  integration_platforms:
+    - qemu_x86
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - "Shell command documentation tree:"
+tests:
+  sample.shell.doc_generator:
+    tags: shell
