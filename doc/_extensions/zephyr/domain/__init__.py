@@ -42,6 +42,9 @@ from anytree import ChildResolverError, Node, PreOrderIter, Resolver, search
 from docutils import nodes
 from docutils.parsers.rst import directives, roles
 from docutils.statemachine import StringList
+from docutils.parsers.rst import Parser
+from docutils.utils import new_document
+from docutils.frontend import OptionParser
 from sphinx import addnodes
 from sphinx.application import Sphinx
 from sphinx.domains import Domain, ObjType
@@ -54,6 +57,7 @@ from sphinx.util.docutils import SphinxDirective, switch_source_input
 from sphinx.util.nodes import NodeMatcher, make_refnode
 from sphinx.util.parsing import nested_parse_to_nodes
 from sphinx.util.template import SphinxRenderer
+from jinja2 import Template
 
 from zephyr.doxybridge import DoxygenGroupDirective
 from zephyr.gh_utils import gh_link_get_url
@@ -70,6 +74,28 @@ from gen_boards_catalog import get_catalog
 ZEPHYR_BASE = Path(__file__).parents[4]
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 RESOURCES_DIR = Path(__file__).parent / "static"
+
+# Template used to generate subsystem documentation sections. Using Jinja
+# keeps the Python code constructing the docutils nodes reasonably small and
+# more readable.
+SUBSYS_TEMPLATE = Template(
+    """
+{% if kconfig %}
+Configuration Options
+*********************
+{% for opt in kconfig %}
+* {{ opt }}
+{% endfor %}
+{% endif %}
+{% if api %}
+API Reference
+*************
+{% for grp in api %}
+* {{ grp }}
+{% endfor %}
+{% endif %}
+"""
+)
 
 # Load and parse binding types from text file
 BINDINGS_TXT_PATH = ZEPHYR_BASE / "dts" / "bindings" / "binding-types.txt"
@@ -99,6 +125,67 @@ def parse_text_with_acronyms(text, uppercase_only=False):
         result += nodes.Text(text[last_end:])
 
     return result
+
+
+def render_subsys_sections(kconfig, api):
+    """Render subsystem sections using a Jinja template and return nodes."""
+
+    rst = SUBSYS_TEMPLATE.render(kconfig=kconfig, api=api)
+
+    parser = Parser()
+    settings = OptionParser(components=(Parser,)).get_default_values()
+    document = new_document("subsys", settings=settings)
+    parser.parse(rst, document)
+
+    sections = []
+    for sect in document.children:
+        title_node = sect.next_node(nodes.title)
+        if not isinstance(title_node, nodes.title):
+            continue
+
+        if title_node.astext() == "Configuration Options":
+            for li in sect.traverse(nodes.list_item):
+                opt = li.astext().strip()
+                li.clear()
+                para = nodes.paragraph()
+                xref = addnodes.pending_xref(
+                    "",
+                    refdomain="kconfig",
+                    reftype="option",
+                    reftarget=opt,
+                    refwarn=True,
+                )
+                xref += nodes.literal(text=opt)
+                para += xref
+                li += para
+        elif title_node.astext() == "API Reference":
+            new_children = []
+            for li in sect.traverse(nodes.list_item):
+                grp = li.astext().strip()
+                desc_node = addnodes.desc()
+                desc_node["domain"] = "c"
+                desc_node["objtype"] = "group"
+
+                title_signode = addnodes.desc_signature()
+                api_xref = addnodes.pending_xref(
+                    "",
+                    refdomain="c",
+                    reftype="group",
+                    reftarget=grp,
+                    refwarn=True,
+                )
+                api_xref += nodes.Text(grp)
+                title_signode += api_xref
+                desc_node += title_signode
+                new_children.append(desc_node)
+
+            sect.clear()
+            sect += title_node
+            sect.extend(new_children)
+
+        sections.append(sect)
+
+    return sections
 
 
 with open(BINDINGS_TXT_PATH) as f:
@@ -363,50 +450,11 @@ class ConvertSubsystemNode(SphinxTransform):
 
             new_section.extend(siblings_to_move)
 
-            # Append Configuration Options section if any
-            if node.get("kconfig"):
-                cfg_section = nodes.section(ids=[f"{node['id']}-kconfig"])
-                cfg_section += nodes.title(text="Configuration Options")
-                bullet = nodes.bullet_list()
-                for opt in node["kconfig"]:
-                    item = nodes.list_item()
-                    para = nodes.paragraph()
-                    xref = addnodes.pending_xref(
-                        "",
-                        refdomain="kconfig",
-                        reftype="option",
-                        reftarget=opt,
-                        refwarn=True,
-                    )
-                    xref += nodes.literal(text=opt)
-                    para += xref
-                    item += para
-                    bullet += item
-                cfg_section += bullet
-                new_section += cfg_section
-
-            # Append API Reference section if any
-            if node.get("api"):
-                api_section = nodes.section(ids=[f"{node['id']}-api"])
-                api_section += nodes.title(text="API Reference")
-                for grp in node["api"]:
-                    desc_node = addnodes.desc()
-                    desc_node["domain"] = "c"
-                    desc_node["objtype"] = "group"
-
-                    title_signode = addnodes.desc_signature()
-                    api_xref = addnodes.pending_xref(
-                        "",
-                        refdomain="c",
-                        reftype="group",
-                        reftarget=grp,
-                        refwarn=True,
-                    )
-                    api_xref += nodes.Text(grp)
-                    title_signode += api_xref
-                    desc_node += title_signode
-                    api_section += desc_node
-                new_section += api_section
+            sections = render_subsys_sections(
+                node.get("kconfig", []), node.get("api", [])
+            )
+            for sect in sections:
+                new_section += sect
 
             node.replace_self(new_section)
 
