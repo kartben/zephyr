@@ -10,6 +10,7 @@ import itertools
 from pathlib import Path
 import pykwalify.core
 import sys
+import json
 from typing import List, Union
 import yaml
 import list_hardware
@@ -378,6 +379,8 @@ def add_args(parser):
 def add_args_formatting(parser):
     parser.add_argument("--cmakeformat", default=None,
                         help='''CMake Format string to use to list each board''')
+    parser.add_argument("--json", action='store_true',
+                        help='Output board information in JSON format')
 
 
 def variant_v2_qualifiers(variant, qualifiers = None):
@@ -415,6 +418,24 @@ def board_v2_qualifiers_csv(board):
 def dump_v2_boards(args):
     boards = find_v2_boards(args)
 
+    if args.json:
+        info = []
+        for b in boards.values():
+            data = {
+                'name': b.name,
+                'directories': [str(x.as_posix()) for x in b.directories]
+                    if isinstance(b.directories, list) else [str(b.directories.as_posix())],
+                'hwm': b.hwm,
+                'revision_format': b.revision_format,
+                'revision_default': b.revision_default,
+                'revision_exact': b.revision_exact,
+                'revisions': [x.name for x in b.revisions],
+                'socs': [s.name for s in b.socs],
+                'qualifiers': board_v2_qualifiers(b)
+            }
+            info.append(data)
+        return info
+
     for b in boards.values():
         qualifiers_list = board_v2_qualifiers(b)
         if args.cmakeformat is not None:
@@ -440,6 +461,18 @@ def dump_v2_boards(args):
 
 def dump_boards(args):
     arch2boards = find_arch2boards(args)
+    if args.json:
+        info = []
+        for arch, boards in arch2boards.items():
+            for board in boards:
+                data = {
+                    'name': board.name,
+                    'dir': str(board.dir.as_posix()),
+                    'hwm': board.hwm,
+                }
+                info.append(data)
+        return info
+
     for arch, boards in arch2boards.items():
         if args.cmakeformat is None:
             print(f'{arch}:')
@@ -465,5 +498,15 @@ def dump_boards(args):
 
 if __name__ == '__main__':
     args = parse_args()
-    dump_boards(args)
-    dump_v2_boards(args)
+    if args.json:
+        info = []
+        v1 = dump_boards(args)
+        v2 = dump_v2_boards(args)
+        if v1:
+            info.extend(v1)
+        if v2:
+            info.extend(v2)
+        print(json.dumps(info))
+    else:
+        dump_boards(args)
+        dump_v2_boards(args)

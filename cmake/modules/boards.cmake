@@ -56,6 +56,19 @@ include_guard(GLOBAL)
 include(python)
 include(extensions)
 
+function(json_array_to_list json out_var)
+  string(JSON len LENGTH "${${json}}")
+  set(result "")
+  if(len GREATER 0)
+    math(EXPR last "${len} - 1")
+    foreach(i RANGE 0 ${last})
+      string(JSON val GET "${${json}}" ${i})
+      list(APPEND result "${val}")
+    endforeach()
+  endif()
+  set(${out_var} "${result}" PARENT_SCOPE)
+endfunction()
+
 # Check that BOARD has been provided, and that it has not changed.
 # If user tries to change the BOARD, the BOARD value is reset to the BOARD_CACHED value.
 zephyr_check_cache(BOARD REQUIRED)
@@ -165,14 +178,15 @@ set(list_boards_commands
 
 if(NOT BOARD_DIR)
   if(BOARD_ALIAS)
-    execute_process(${list_boards_commands} --board=${BOARD_ALIAS} --cmakeformat={DIR}
+    execute_process(${list_boards_commands} --board=${BOARD_ALIAS} --json
                     OUTPUT_VARIABLE ret_board
                     ERROR_VARIABLE err_board
                     RESULT_VARIABLE ret_val
     )
     string(STRIP "${ret_board}" ret_board)
-    cmake_parse_arguments(BOARD_HIDDEN "" "DIR" "" ${ret_board})
-    set(BOARD_HIDDEN_DIR ${BOARD_HIDDEN_DIR} CACHE PATH "Path to a folder." FORCE)
+    string(JSON first_obj GET "${ret_board}" 0)
+    string(JSON BOARD_HIDDEN_DIR GET "${first_obj}" directories 0)
+    set(BOARD_HIDDEN_DIR "${BOARD_HIDDEN_DIR}" CACHE PATH "Path to a folder." FORCE)
 
     if(BOARD_HIDDEN_DIR)
       message("Board alias ${BOARD_ALIAS} is hiding the real board of same name")
@@ -180,13 +194,9 @@ if(NOT BOARD_DIR)
   endif()
 endif()
 
-set(format_str "{NAME}\;{DIR}\;{HWM}\;")
-set(format_str "${format_str}{REVISION_FORMAT}\;{REVISION_DEFAULT}\;{REVISION_EXACT}\;")
-set(format_str "${format_str}{REVISIONS}\;{SOCS}\;{QUALIFIERS}")
-
 list(TRANSFORM BOARD_DIRECTORIES PREPEND "--board-dir=" OUTPUT_VARIABLE board_dir_arg)
 execute_process(${list_boards_commands} --board=${BOARD} ${board_dir_arg}
-  --cmakeformat=${format_str}
+  --json
                 OUTPUT_VARIABLE ret_board
                 ERROR_VARIABLE err_board
                 RESULT_VARIABLE ret_val
@@ -197,20 +207,28 @@ endif()
 
 if(NOT "${ret_board}" STREQUAL "")
   string(STRIP "${ret_board}" ret_board)
-  set(single_val "NAME;HWM;REVISION_FORMAT;REVISION_DEFAULT;REVISION_EXACT")
-  set(multi_val  "DIR;REVISIONS;SOCS;QUALIFIERS")
-  cmake_parse_arguments(LIST_BOARD "" "${single_val}" "${multi_val}" ${ret_board})
-  list(GET LIST_BOARD_DIR 0 BOARD_DIR)
-  set(BOARD_DIR ${BOARD_DIR} CACHE PATH "Main board directory for board (${BOARD})" FORCE)
-  set(BOARD_DIRECTORIES ${LIST_BOARD_DIR} CACHE INTERNAL "List of board directories for board (${BOARD})" FORCE)
+  string(JSON board_json GET "${ret_board}" 0)
+  string(JSON BOARD_DIR_JSON GET "${board_json}" directories 0)
+  string(JSON BOARD_DIRS GET "${board_json}" directories)
+  string(JSON LIST_BOARD_NAME GET "${board_json}" name)
+  string(JSON BOARD_HWM GET "${board_json}" hwm)
+  string(JSON LIST_BOARD_REVISION_FORMAT GET "${board_json}" revision_format)
+  string(JSON LIST_BOARD_REVISION_DEFAULT GET "${board_json}" revision_default)
+  string(JSON LIST_BOARD_REVISION_EXACT GET "${board_json}" revision_exact)
+  string(JSON LIST_BOARD_REVISIONS_JSON GET "${board_json}" revisions)
+  string(JSON LIST_BOARD_SOCS_JSON GET "${board_json}" socs)
+  string(JSON LIST_BOARD_QUALIFIERS_JSON GET "${board_json}" qualifiers)
+  json_array_to_list(LIST_BOARD_REVISIONS_JSON LIST_BOARD_REVISIONS)
+  json_array_to_list(LIST_BOARD_SOCS_JSON LIST_BOARD_SOCS)
+  json_array_to_list(LIST_BOARD_QUALIFIERS_JSON LIST_BOARD_QUALIFIERS)
+  set(BOARD_DIR ${BOARD_DIR_JSON} CACHE PATH "Main board directory for board (${BOARD})" FORCE)
+  json_array_to_list(BOARD_DIRS BOARD_DIRECTORIES)
+  set(BOARD_DIRECTORIES ${BOARD_DIRECTORIES} CACHE INTERNAL "List of board directories for board (${BOARD})" FORCE)
   foreach(dir ${BOARD_DIRECTORIES})
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${dir}/board.yml)
   endforeach()
 
-  # Create two CMake variables identifying the hw model.
-  # CMake variable: HWM=v2
-  # CMake variable: HWMv2=True
-  set(HWM       ${LIST_BOARD_HWM} CACHE INTERNAL "Zephyr hardware model version")
+  set(HWM       ${BOARD_HWM} CACHE INTERNAL "Zephyr hardware model version")
   set(HWM${HWM} True   CACHE INTERNAL "Zephyr hardware model")
 elseif(BOARD_DIR)
   message(FATAL_ERROR "Error finding board: ${BOARD} in ${BOARD_DIR}.\n"
