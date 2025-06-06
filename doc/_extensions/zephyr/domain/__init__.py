@@ -133,6 +133,10 @@ class BoardNode(nodes.Element):
     pass
 
 
+class SubsystemNode(nodes.Element):
+    pass
+
+
 class ConvertCodeSampleNode(SphinxTransform):
     default_priority = 100
 
@@ -335,6 +339,77 @@ class ConvertBoardNode(SphinxTransform):
             node.replace_self(new_section)
 
             # Remove the moved siblings from their original parent
+            for sibling in siblings_to_move:
+                parent.remove(sibling)
+
+
+class ConvertSubsystemNode(SphinxTransform):
+    default_priority = 100
+
+    def apply(self):
+        matcher = NodeMatcher(SubsystemNode)
+        for node in self.document.traverse(matcher):
+            self.convert_node(node)
+
+    def convert_node(self, node):
+        parent = node.parent
+        siblings_to_move = []
+        if parent is not None:
+            index = parent.index(node)
+            siblings_to_move = parent.children[index + 1 :]
+
+            new_section = nodes.section(ids=[node["id"]])
+            new_section += nodes.title(text=node["name"])
+
+            new_section.extend(siblings_to_move)
+
+            # Append Configuration Options section if any
+            if node.get("kconfig"):
+                cfg_section = nodes.section(ids=[f"{node['id']}-kconfig"])
+                cfg_section += nodes.title(text="Configuration Options")
+                bullet = nodes.bullet_list()
+                for opt in node["kconfig"]:
+                    item = nodes.list_item()
+                    para = nodes.paragraph()
+                    xref = addnodes.pending_xref(
+                        "",
+                        refdomain="kconfig",
+                        reftype="option",
+                        reftarget=opt,
+                        refwarn=True,
+                    )
+                    xref += nodes.literal(text=opt)
+                    para += xref
+                    item += para
+                    bullet += item
+                cfg_section += bullet
+                new_section += cfg_section
+
+            # Append API Reference section if any
+            if node.get("api"):
+                api_section = nodes.section(ids=[f"{node['id']}-api"])
+                api_section += nodes.title(text="API Reference")
+                for grp in node["api"]:
+                    desc_node = addnodes.desc()
+                    desc_node["domain"] = "c"
+                    desc_node["objtype"] = "group"
+
+                    title_signode = addnodes.desc_signature()
+                    api_xref = addnodes.pending_xref(
+                        "",
+                        refdomain="c",
+                        reftype="group",
+                        reftarget=grp,
+                        refwarn=True,
+                    )
+                    api_xref += nodes.Text(grp)
+                    title_signode += api_xref
+                    desc_node += title_signode
+                    api_section += desc_node
+                new_section += api_section
+
+            node.replace_self(new_section)
+
             for sibling in siblings_to_move:
                 parent.remove(sibling)
 
@@ -1127,6 +1202,45 @@ class BoardSupportedRunnersDirective(SphinxDirective):
         return result_nodes
 
 
+class SubsystemDirective(SphinxDirective):
+    """Directive for documenting a Zephyr subsystem."""
+
+    required_arguments = 1
+    optional_arguments = 0
+    option_spec = {
+        "name": directives.unchanged,
+        "kconfig": directives.unchanged,
+        "api": directives.unchanged,
+    }
+    has_content = False
+
+    def run(self):
+        env = self.env
+        subsys_id = self.arguments[0]
+
+        name = self.options.get("name", subsys_id)
+        kconfig_list = self.options.get("kconfig", "").split()
+        api_list = self.options.get("api", "").split()
+
+        domain = env.get_domain("zephyr")
+        domain.add_subsystem({
+            "id": subsys_id,
+            "name": name,
+            "docname": env.docname,
+            "kconfig": kconfig_list,
+            "api": api_list,
+        })
+
+        env.domaindata["zephyr"]["has_subsys"][env.docname] = True
+
+        node = SubsystemNode(id=subsys_id)
+        node["name"] = name
+        node["kconfig"] = kconfig_list
+        node["api"] = api_list
+
+        return [node]
+
+
 class ZephyrDomain(Domain):
     """Zephyr domain"""
 
@@ -1137,6 +1251,7 @@ class ZephyrDomain(Domain):
         "code-sample": XRefRole(innernodeclass=nodes.inline, warn_dangling=True),
         "code-sample-category": XRefRole(innernodeclass=nodes.inline, warn_dangling=True),
         "board": XRefRole(innernodeclass=nodes.inline, warn_dangling=True),
+        "subsys": XRefRole(innernodeclass=nodes.inline, warn_dangling=True),
     }
 
     directives = {
@@ -1147,22 +1262,26 @@ class ZephyrDomain(Domain):
         "board": BoardDirective,
         "board-supported-hw": BoardSupportedHardwareDirective,
         "board-supported-runners": BoardSupportedRunnersDirective,
+        "subsys": SubsystemDirective,
     }
 
     object_types: dict[str, ObjType] = {
         "code-sample": ObjType("code sample", "code-sample"),
         "code-sample-category": ObjType("code sample category", "code-sample-category"),
         "board": ObjType("board", "board"),
+        "subsys": ObjType("subsystem", "subsys"),
     }
 
     initial_data: dict[str, Any] = {
         "code-samples": {},  # id -> code sample data
         "code-samples-categories": {},  # id -> code sample category data
         "code-samples-categories-tree": Node("samples"),
+        "subsystems": {},  # id -> subsystem data
         # keep track of documents containing special directives
         "has_code_sample_listing": {},  # docname -> bool
         "has_board_catalog": {},  # docname -> bool
         "has_board": {},  # docname -> bool
+        "has_subsys": {},  # docname -> bool
     }
 
     def clear_doc(self, docname: str) -> None:
@@ -1178,15 +1297,23 @@ class ZephyrDomain(Domain):
             if category_data["docname"] != docname
         }
 
+        self.data["subsystems"] = {
+            subsys_id: subsys_data
+            for subsys_id, subsys_data in self.data["subsystems"].items()
+            if subsys_data["docname"] != docname
+        }
+
         # TODO clean up the anytree as well
 
         self.data["has_code_sample_listing"].pop(docname, None)
         self.data["has_board_catalog"].pop(docname, None)
         self.data["has_board"].pop(docname, None)
+        self.data["has_subsys"].pop(docname, None)
 
     def merge_domaindata(self, docnames: list[str], otherdata: dict) -> None:
         self.data["code-samples"].update(otherdata["code-samples"])
         self.data["code-samples-categories"].update(otherdata["code-samples-categories"])
+        self.data["subsystems"].update(otherdata.get("subsystems", {}))
 
         # self.data["boards"] contains all the boards right from builder-inited time, but it still
         # potentially needs merging since a board's docname property is set by BoardDirective to
@@ -1216,6 +1343,9 @@ class ZephyrDomain(Domain):
                 docname, False
             )
             self.data["has_board"][docname] = otherdata["has_board"].get(docname, False)
+            self.data["has_subsys"][docname] = otherdata.get("has_subsys", {}).get(
+                docname, False
+            )
 
     def get_objects(self):
         for _, code_sample in self.data["code-samples"].items():
@@ -1250,12 +1380,29 @@ class ZephyrDomain(Domain):
                     1,
                 )
 
+        for _, subsys in self.data["subsystems"].items():
+            if "docname" in subsys:
+                yield (
+                    subsys["id"],
+                    subsys["name"],
+                    "subsys",
+                    subsys["docname"],
+                    subsys["id"],
+                    1,
+                )
+
     # used by Sphinx Immaterial theme
     def get_object_synopses(self) -> Iterator[tuple[tuple[str, str], str]]:
         for _, code_sample in self.data["code-samples"].items():
             yield (
                 (code_sample["docname"], code_sample["id"]),
                 code_sample["description"].astext(),
+            )
+
+        for _, subsys in self.data["subsystems"].items():
+            yield (
+                (subsys["docname"], subsys["id"]),
+                "",
             )
 
     def resolve_xref(self, env, fromdocname, builder, type, target, node, contnode):
@@ -1265,12 +1412,18 @@ class ZephyrDomain(Domain):
             elem = self.data["code-samples-categories"].get(target)
         elif type == "board":
             elem = self.data["boards"].get(target)
+        elif type == "subsys":
+            elem = self.data["subsystems"].get(target)
         else:
             return
 
         if elem and "docname" in elem:
             if not node.get("refexplicit"):
-                contnode = [nodes.Text(elem["name"] if type != "board" else elem["full_name"])]
+                contnode = [
+                    nodes.Text(
+                        elem["name"] if type != "board" else elem.get("full_name", elem["name"])
+                    )
+                ]
 
             return make_refnode(
                 builder,
@@ -1292,6 +1445,9 @@ class ZephyrDomain(Domain):
             code_sample_category["name"],
             code_sample_category["docname"],
         )
+
+    def add_subsystem(self, subsystem):
+        self.data["subsystems"][subsystem["id"]] = subsystem
 
     def add_category_to_tree(
         self, category_path: str, category_id: str, category_name: str, docname: str
@@ -1398,6 +1554,7 @@ def setup(app):
     app.add_transform(ConvertCodeSampleNode)
     app.add_transform(ConvertCodeSampleCategoryNode)
     app.add_transform(ConvertBoardNode)
+    app.add_transform(ConvertSubsystemNode)
 
     app.add_post_transform(ProcessCodeSampleListingNode)
     app.add_post_transform(CodeSampleCategoriesTocPatching)

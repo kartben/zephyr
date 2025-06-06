@@ -1328,6 +1328,48 @@ Boards
       produce a complete table. If disabled, a warning message will be shown instead of the runners
       tables.
 
+Subsystems
+==========
+
+.. rst:directive:: .. zephyr:subsys:: id
+
+   Use this directive at the beginning of a document that describes a Zephyr subsystem.
+   The argument is the subsystem identifier. The directive understands a few
+   options to capture commonly used information:
+
+   ``name``
+       Display name for the subsystem. Defaults to the identifier.
+
+   ``kconfig``
+       Space separated list of main Kconfig options. These will be listed in a
+       *Configuration Options* section.
+
+   ``api``
+       Space separated list of Doxygen groups providing the subsystem API.
+       They will populate an *API Reference* section.
+
+   Example::
+
+      .. zephyr:subsys:: logging
+         :name: Logging subsystem
+         :kconfig: CONFIG_LOG CONFIG_LOG_MODE_DEFERRED
+         :api: logging_api
+
+   The directive registers the subsystem so it can be cross-referenced using the
+   :rst:role:`zephyr:subsys` role.
+
+.. rst:role:: zephyr:subsys
+
+   This role creates a reference to a subsystem documented with :rst:dir:`zephyr:subsys`.
+
+   For example::
+
+      See the :zephyr:subsys:`logging` subsystem for details.
+
+   Will render as:
+
+      See the :zephyr:subsys:`logging` subsystem for details.
+
 Accessibilty Guidelines
 ***********************
 
