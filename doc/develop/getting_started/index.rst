@@ -16,6 +16,10 @@ Follow this guide to:
 Select and Update OS
 ********************
 
+.. admonition:: Why update your OS?
+
+   Ensuring your operating system is up to date helps you benefit from the latest security patches and package versions, avoiding compatibility issues with Zephyr's development tools and dependencies.
+
 Click the operating system you are using.
 
 .. tabs::
@@ -47,6 +51,10 @@ Click the operating system you are using.
 
 Install dependencies
 ********************
+
+.. admonition:: Why install dependencies?
+
+   Installing these host dependencies ensures that all required toolchains, build utilities, and libraries are available on your system, preventing build failures and reducing setup friction.
 
 Next, you'll install some host dependencies using your package manager.
 
@@ -204,6 +212,11 @@ The current minimum required version for the main dependencies are:
 
 Get Zephyr and install Python dependencies
 ******************************************
+
+.. admonition:: Why clone and install Python dependencies?
+
+   Cloning the Zephyr repository and installing Python dependencies ensures you have the correct code version and all required Python packages, avoiding version mismatches and dependency errors.
+
 
 Next, clone Zephyr and its :ref:`modules <modules>` into a new :ref:`west
 <west>` workspace. In the following instructions the name :file:`zephyrproject`
