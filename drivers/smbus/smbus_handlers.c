@@ -145,18 +145,20 @@ static inline int z_vrfy_smbus_block_pcall(const struct device *dev,
 #include <zephyr/syscalls/smbus_block_pcall_mrsh.c>
 
 static inline int z_vrfy_smbus_smbalert_remove_cb(const struct device *dev,
-						  struct smbus_callback *cb)
+struct smbus_callback *cb)
 {
 	K_OOPS(K_SYSCALL_OBJ(dev, K_OBJ_DRIVER_SMBUS));
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(cb, sizeof(struct smbus_callback)));
 
 	return z_impl_smbus_smbalert_remove_cb(dev, cb);
 }
 #include <zephyr/syscalls/smbus_smbalert_remove_cb_mrsh.c>
 
 static inline int z_vrfy_smbus_host_notify_remove_cb(const struct device *dev,
-						     struct smbus_callback *cb)
+struct smbus_callback *cb)
 {
 	K_OOPS(K_SYSCALL_OBJ(dev, K_OBJ_DRIVER_SMBUS));
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(cb, sizeof(struct smbus_callback)));
 
 	return z_impl_smbus_host_notify_remove_cb(dev, cb);
 }
