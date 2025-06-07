@@ -136,7 +136,7 @@ static int renesas_ra_sci_b_i2c_transfer(const struct device *dev, struct i2c_ms
 		    !(msgs[1].flags & I2C_MSG_READ)) {
 			uint16_t tmp_len = msgs[0].len + msgs[1].len;
 
-			if (tmp_len <= I2C_MAX_MSG_LEN) {
+                       if (tmp_len < I2C_MAX_MSG_LEN) {
 				static uint8_t merge_buf[I2C_MAX_MSG_LEN];
 				struct i2c_msg tmp_msg;
 

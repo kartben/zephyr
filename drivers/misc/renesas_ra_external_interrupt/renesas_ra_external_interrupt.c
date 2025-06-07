@@ -107,9 +107,9 @@ void gpio_ra_interrupt_unset(const struct device *dev, uint8_t port_num, uint8_t
 	const struct gpio_ra_irq_config *config = dev->config;
 	struct gpio_ra_irq_data *data = dev->data;
 
-	if ((port_num != data->callback.port_num) && (pin != data->callback.pin)) {
-		return;
-	}
+       if ((port_num != data->callback.port_num) || (pin != data->callback.pin)) {
+               return;
+       }
 
 	irq_disable(config->irq);
 	k_sem_give(&data->irq_sem);
