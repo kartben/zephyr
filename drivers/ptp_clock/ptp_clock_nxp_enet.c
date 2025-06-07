@@ -22,8 +22,8 @@ struct ptp_clock_nxp_enet_config {
 	const struct pinctrl_dev_config *pincfg;
 	const struct device *module_dev;
 	const struct device *port;
-	const struct device *clock_dev;
-	struct device *clock_subsys;
+       const struct device *clock_dev;
+       clock_control_subsys_t clock_subsys;
 	void (*irq_config_func)(void);
 };
 
@@ -249,7 +249,7 @@ static DEVICE_API(ptp_clock, ptp_clock_nxp_enet_api) = {
 			.pincfg = PINCTRL_DT_INST_DEV_CONFIG_GET(n),		\
 			.port = DEVICE_DT_INST_GET(n),				\
 			.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)),	\
-			.clock_subsys = (void *)				\
+			.clock_subsys = (clock_control_subsys_t)				\
 					DT_INST_CLOCKS_CELL_BY_IDX(n, 0, name),	\
 			.irq_config_func =					\
 				nxp_enet_ptp_clock_##n##_irq_config_func,	\
