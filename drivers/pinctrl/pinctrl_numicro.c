@@ -62,7 +62,10 @@ static int gpio_configure(const pinctrl_soc_pin_t *pin)
 
 	pin_idx = NUMICRO_PIN(pin->pinmux);
 
-	port = (GPIO_T *)gpio_port_addrs[port_idx];
+       port = (GPIO_T *)gpio_port_addrs[port_idx];
+       if (port == 0U) {
+               return -EINVAL;
+       }
 
 	if (pin->pull_up != 0) {
 		bias = GPIO_PUSEL_PULL_UP;
@@ -76,8 +79,8 @@ static int gpio_configure(const pinctrl_soc_pin_t *pin)
 		     ((pin->input_debounce ? 1 : 0) << pin_idx);
 	port->SMTEN = (port->SMTEN & ~BIT(pin_idx)) |
 		      ((pin->schmitt_trigger ? 1 : 0) << pin_idx);
-	port->DINOFF = (port->SMTEN & ~DINOFF_MASK(pin_idx)) |
-		       ((pin->input_disable ? 1 : 0) << DINOFF_PIN_SHIFT(pin_idx));
+       port->DINOFF = (port->DINOFF & ~DINOFF_MASK(pin_idx)) |
+                       ((pin->input_disable ? 1 : 0) << DINOFF_PIN_SHIFT(pin_idx));
 	port->PUSEL = (port->PUSEL & ~PUSEL_MASK(pin_idx)) |
 		      (bias << PUSEL_PIN_SHIFT(pin_idx));
 	port->SLEWCTL = (port->SLEWCTL & ~SLEWCTL_MASK(pin_idx)) |
