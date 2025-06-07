@@ -51,18 +51,20 @@ void riscv_clic_irq_priority_set(uint32_t irq, uint32_t prio, uint32_t flags)
 
 void soc_enable_irq(uint32_t idx)
 {
-	uint32_t current = sys_read32(SY1XX_ARCHI_FC_ITC_ADDR + SY1XX_ARCHI_ITC_MASK_SET_OFFSET);
-
-	sys_write32(current | (1 << (idx & 0x1f)),
-		    SY1XX_ARCHI_FC_ITC_ADDR + SY1XX_ARCHI_ITC_MASK_SET_OFFSET);
+    /* The MASK_SET register is write-only and sets bits atomically.
+     * Simply write the bit we want to enable without reading the register.
+     */
+    sys_write32(BIT(idx & 0x1f),
+                SY1XX_ARCHI_FC_ITC_ADDR + SY1XX_ARCHI_ITC_MASK_SET_OFFSET);
 }
 
 void soc_disable_irq(uint32_t idx)
 {
-	uint32_t current = sys_read32(SY1XX_ARCHI_FC_ITC_ADDR + SY1XX_ARCHI_ITC_MASK_CLR_OFFSET);
-
-	sys_write32(current & (~(1 << (idx & 0x1f))),
-		    SY1XX_ARCHI_FC_ITC_ADDR + SY1XX_ARCHI_ITC_MASK_CLR_OFFSET);
+    /* Similar to soc_enable_irq(), use the write-only MASK_CLR register
+     * to atomically clear the desired bit.
+     */
+    sys_write32(BIT(idx & 0x1f),
+                SY1XX_ARCHI_FC_ITC_ADDR + SY1XX_ARCHI_ITC_MASK_CLR_OFFSET);
 }
 
 /*
