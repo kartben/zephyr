@@ -159,7 +159,9 @@ enum rpi_pico_clkid {
 	rpi_pico_clkid_clk_usb = RPI_PICO_CLKID_CLK_USB,
 	rpi_pico_clkid_clk_adc = RPI_PICO_CLKID_CLK_ADC,
 #if defined(RPI_PICO_CLKID_CLK_RTC)
-	rpi_pico_clkid_clk_rtc = RPI_PICO_CLKID_CLK_RTC,
+       rpi_pico_clkid_clk_rtc = RPI_PICO_CLKID_CLK_RTC,
+#elif defined(RPI_PICO_CLKID_CLK_HSTX)
+       rpi_pico_clkid_clk_hstx = RPI_PICO_CLKID_CLK_HSTX,
 #endif
 	rpi_pico_clkid_pll_sys = RPI_PICO_CLKID_PLL_SYS,
 	rpi_pico_clkid_pll_usb = RPI_PICO_CLKID_PLL_USB,
@@ -243,9 +245,13 @@ uint64_t rpi_pico_frequency_count(const struct device *dev, clock_control_subsys
 		fc0_id = CLOCKS_FC0_SRC_VALUE_CLK_ADC;
 		break;
 #if defined(CONFIG_SOC_SERIES_RP2040)
-	case rpi_pico_clkid_clk_rtc:
-		fc0_id = CLOCKS_FC0_SRC_VALUE_CLK_RTC;
-		break;
+        case rpi_pico_clkid_clk_rtc:
+                fc0_id = CLOCKS_FC0_SRC_VALUE_CLK_RTC;
+                break;
+#elif defined(RPI_PICO_CLKID_CLK_HSTX)
+       case rpi_pico_clkid_clk_hstx:
+               fc0_id = CLOCKS_FC0_SRC_VALUE_CLK_HSTX;
+               break;
 #endif
 	case rpi_pico_clkid_pll_sys:
 		fc0_id = CLOCKS_FC0_SRC_VALUE_PLL_SYS_CLKSRC_PRIMARY;
@@ -262,12 +268,12 @@ uint64_t rpi_pico_frequency_count(const struct device *dev, clock_control_subsys
 	case rpi_pico_clkid_rosc_ph:
 		fc0_id = CLOCKS_FC0_SRC_VALUE_ROSC_CLKSRC_PH;
 		break;
-	case rpi_pico_clkid_gpin0:
-		fc0_id = CLOCKS_FC0_SRC_VALUE_CLKSRC_GPIN0;
-		break;
-	case rpi_pico_clkid_gpin1:
-		fc0_id = CLOCKS_FC0_SRC_VALUE_CLKSRC_GPIN0;
-		break;
+        case rpi_pico_clkid_gpin0:
+                fc0_id = CLOCKS_FC0_SRC_VALUE_CLKSRC_GPIN0;
+                break;
+        case rpi_pico_clkid_gpin1:
+                fc0_id = CLOCKS_FC0_SRC_VALUE_CLKSRC_GPIN1;
+                break;
 	default:
 		return -1;
 	}
@@ -392,10 +398,12 @@ static enum rpi_pico_clkid rpi_pico_get_clock_src(const struct device *dev, enum
 		srcid = table[aux];
 		break;
 	}
-	case rpi_pico_clkid_clk_usb:
-	case rpi_pico_clkid_clk_adc:
+       case rpi_pico_clkid_clk_usb:
+       case rpi_pico_clkid_clk_adc:
 #if defined(RPI_PICO_CLKID_CLK_RTC)
-	case rpi_pico_clkid_clk_rtc:
+       case rpi_pico_clkid_clk_rtc:
+#elif defined(RPI_PICO_CLKID_CLK_HSTX)
+       case rpi_pico_clkid_clk_hstx:
 #else
 
 #endif
@@ -443,9 +451,11 @@ static bool rpi_pico_is_clock_enabled(const struct device *dev, enum rpi_pico_cl
 		return true;
 	} else if (id == rpi_pico_clkid_clk_usb ||
 		   id == rpi_pico_clkid_clk_peri ||
-		   id == rpi_pico_clkid_clk_adc ||
+                   id == rpi_pico_clkid_clk_adc ||
 #if defined(RPI_PICO_CLKID_CLK_RTC)
-		   id == rpi_pico_clkid_clk_rtc ||
+                   id == rpi_pico_clkid_clk_rtc ||
+#elif defined(RPI_PICO_CLKID_CLK_HSTX)
+                   id == rpi_pico_clkid_clk_hstx ||
 #endif
 		   id == rpi_pico_clkid_clk_gpout0 ||
 		   id == rpi_pico_clkid_clk_gpout1 ||
@@ -491,14 +501,16 @@ static float rpi_pico_calc_clock_freq(const struct device *dev, enum rpi_pico_cl
 		return freq;
 	}
 
-	if (id == rpi_pico_clkid_clk_sys ||
-	    id == rpi_pico_clkid_clk_usb ||
-	    id == rpi_pico_clkid_clk_adc ||
+       if (id == rpi_pico_clkid_clk_sys ||
+           id == rpi_pico_clkid_clk_usb ||
+           id == rpi_pico_clkid_clk_adc ||
 #if defined(RPI_PICO_CLKID_CLK_RTC)
-	    id == rpi_pico_clkid_clk_rtc ||
+           id == rpi_pico_clkid_clk_rtc ||
+#elif defined(RPI_PICO_CLKID_CLK_HSTX)
+           id == rpi_pico_clkid_clk_hstx ||
 #endif
-	    id == rpi_pico_clkid_clk_ref ||
-	    id == rpi_pico_clkid_clk_gpout0 ||
+           id == rpi_pico_clkid_clk_ref ||
+           id == rpi_pico_clkid_clk_gpout0 ||
 	    id == rpi_pico_clkid_clk_gpout1 ||
 	    id == rpi_pico_clkid_clk_gpout2 ||
 	    id == rpi_pico_clkid_clk_gpout3) {
@@ -815,15 +827,18 @@ BUILD_ASSERT(SRC_CLOCK_FREQ(clk_ref) >= CLOCK_FREQ_clk_ref,
 BUILD_ASSERT(SRC_CLOCK_FREQ(clk_sys) >= CLOCK_FREQ_clk_sys,
 	     "clk_sys: clock divider is out of range");
 BUILD_ASSERT(SRC_CLOCK_FREQ(clk_usb) >= CLOCK_FREQ_clk_usb,
-	     "clk_usb: clock divider is out of range");
+             "clk_usb: clock divider is out of range");
 BUILD_ASSERT(SRC_CLOCK_FREQ(clk_adc) >= CLOCK_FREQ_clk_adc,
-	     "clk_adc: clock divider is out of range");
+             "clk_adc: clock divider is out of range");
 #if defined(CONFIG_SOC_SERIES_RP2040)
 BUILD_ASSERT(SRC_CLOCK_FREQ(clk_rtc) >= CLOCK_FREQ_clk_rtc,
-	     "clk_rtc: clock divider is out of range");
+             "clk_rtc: clock divider is out of range");
+#elif defined(RPI_PICO_CLKID_CLK_HSTX)
+BUILD_ASSERT(SRC_CLOCK_FREQ(clk_hstx) >= CLOCK_FREQ_clk_hstx,
+             "clk_hstx: clock divider is out of range");
 #endif
 BUILD_ASSERT(SRC_CLOCK_FREQ(clk_peri) >= CLOCK_FREQ_clk_peri,
-	     "clk_peri: clock divider is out of range");
+             "clk_peri: clock divider is out of range");
 
 BUILD_ASSERT(CLOCK_FREQ(rosc_ph) == CLOCK_FREQ(rosc), "rosc_ph: frequency must be equal to rosc");
 
