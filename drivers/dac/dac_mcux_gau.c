@@ -22,15 +22,19 @@ struct nxp_gau_dac_config {
 	dac_output_voltage_range_t output_range : 2;
 };
 
-static inline dac_channel_id_t convert_channel_id(uint8_t channel_id)
+static inline int convert_channel_id(uint8_t channel_id, dac_channel_id_t *id)
 {
-	switch (channel_id) {
-	case 0: return kDAC_ChannelA;
-	case 1: return kDAC_ChannelB;
-	default:
-		LOG_ERR("Invalid DAC channel ID");
-		return -EINVAL;
-	};
+       switch (channel_id) {
+       case 0:
+               *id = kDAC_ChannelA;
+               return 0;
+       case 1:
+               *id = kDAC_ChannelB;
+               return 0;
+       default:
+               LOG_ERR("Invalid DAC channel ID");
+               return -EINVAL;
+       }
 }
 
 static int nxp_gau_dac_channel_setup(const struct device *dev,
@@ -62,9 +66,16 @@ static int nxp_gau_dac_channel_setup(const struct device *dev,
 	dac_channel_config.enableDMA = false;
 	dac_channel_config.enableConversion = true;
 
-	DAC_SetChannelConfig(config->base,
-			(uint32_t)convert_channel_id(channel_cfg->channel_id),
-			&dac_channel_config);
+       {
+               dac_channel_id_t cid;
+               int ret = convert_channel_id(channel_cfg->channel_id, &cid);
+               if (ret != 0) {
+                       return ret;
+               }
+
+               DAC_SetChannelConfig(config->base, (uint32_t)cid,
+                                   &dac_channel_config);
+       }
 
 	return 0;
 };
@@ -74,10 +85,16 @@ static int nxp_gau_dac_write_value(const struct device *dev,
 {
 	const struct nxp_gau_dac_config *config = dev->config;
 
-	DAC_SetChannelData(config->base,
-			(uint32_t)convert_channel_id(channel),
-			(uint16_t)value);
-	return 0;
+       {
+               dac_channel_id_t cid;
+               int ret = convert_channel_id(channel, &cid);
+               if (ret != 0) {
+                       return ret;
+               }
+
+               DAC_SetChannelData(config->base, (uint32_t)cid, (uint16_t)value);
+       }
+       return 0;
 };
 
 static DEVICE_API(dac, nxp_gau_dac_driver_api) = {

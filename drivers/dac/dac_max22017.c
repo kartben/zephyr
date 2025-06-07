@@ -100,10 +100,10 @@ static int max22017_write_value(const struct device *dev, uint8_t channel, uint3
 	const struct device *parent = config->parent;
 	struct max22017_data *data = parent->data;
 
-	if (channel > config->nchannels - 1) {
-		LOG_ERR("unsupported channel %d", channel);
-		return ENOTSUP;
-	}
+       if (channel > config->nchannels - 1) {
+               LOG_ERR("unsupported channel %d", channel);
+               return -ENOTSUP;
+       }
 
 	if (value >= (1 << config->resolution)) {
 		LOG_ERR("Value %d out of range", value);
