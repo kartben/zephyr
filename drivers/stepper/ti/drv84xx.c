@@ -326,15 +326,17 @@ static int drv84xx_set_micro_step_res(const struct device *dev,
 		return -ENOTSUP;
 	};
 
-	ret = drv84xx_set_microstep_pin(dev, &config->m0_pin, m0_value);
-	if (ret != 0) {
-		return ret;
-	}
+        ret = drv84xx_set_microstep_pin(dev, &config->m0_pin, m0_value);
+        if (ret != 0) {
+                (void)drv84xx_microstep_recovery(dev);
+                return ret;
+        }
 
-	ret = drv84xx_set_microstep_pin(dev, &config->m1_pin, m1_value);
-	if (ret != 0) {
-		return ret;
-	}
+        ret = drv84xx_set_microstep_pin(dev, &config->m1_pin, m1_value);
+        if (ret != 0) {
+                (void)drv84xx_microstep_recovery(dev);
+                return ret;
+        }
 
 	data->ustep_res = micro_step_res;
 	data->pin_states.m0 = m0_value;
