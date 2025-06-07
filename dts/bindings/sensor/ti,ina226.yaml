@@ -71,3 +71,17 @@ properties:
     required: true
     description: |
       Shunt resistor value in micro-ohms.
+
+  mask:
+    type: int
+    default: 0
+    description: Mask register, default matches the power-on reset value
+
+  alert-limit:
+    type: int
+    default: 0
+    description: Alert register, default matches the power-on reset value
+
+  alert-gpios:
+    type: phandle-array
+    description: Alert pin

@@ -4,12 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/* TODO: Add functionality for Trigger. */
-
 #define DT_DRV_COMPAT ti_ina226
 
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/sensor.h>
+
 #include <zephyr/dt-bindings/sensor/ina226.h>
 #include <zephyr/sys/byteorder.h>
 
@@ -18,6 +17,7 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/i2c.h>
+#include "ina226.h"
 
 /* Device register addresses. */
 #define INA226_REG_CONFIG		0x00
@@ -35,23 +35,6 @@
 #define INA226_MANUFACTURER_ID		0x5449
 #define INA226_DEVICE_ID		0x2260
 
-struct ina226_data {
-	const struct device *dev;
-	int16_t current;
-	uint16_t bus_voltage;
-	uint16_t power;
-#ifdef CONFIG_INA226_VSHUNT
-	int16_t shunt_voltage;
-#endif
-	enum sensor_channel chan;
-};
-
-struct ina226_config {
-	const struct i2c_dt_spec bus;
-	uint16_t config;
-	uint32_t current_lsb;
-	uint16_t cal;
-};
 
 LOG_MODULE_REGISTER(INA226, CONFIG_SENSOR_LOG_LEVEL);
 
@@ -294,42 +277,81 @@ static int ina226_init(const struct device *dev)
 		return ret;
 	}
 
-	ret = ina226_calibrate(dev);
-	if (ret < 0) {
-		LOG_ERR("Failed to write calibration register.");
-		return ret;
-	}
+        ret = ina226_calibrate(dev);
+        if (ret < 0) {
+                LOG_ERR("Failed to write calibration register.");
+                return ret;
+        }
 
-	return 0;
+#ifdef CONFIG_INA226_TRIGGER
+        if (config->trig_enabled) {
+                ret = ina226_trigger_mode_init(dev);
+                if (ret < 0) {
+                        LOG_ERR("Failed to init trigger mode");
+                        return ret;
+                }
+
+                ret = ina226_reg_write(&config->bus, INA226_REG_ALERT, config->alert_limit);
+                if (ret < 0) {
+                        LOG_ERR("Failed to write alert register.");
+                        return ret;
+                }
+
+                ret = ina226_reg_write(&config->bus, INA226_REG_MASK, config->mask);
+                if (ret < 0) {
+                        LOG_ERR("Failed to write mask register.");
+                        return ret;
+                }
+        }
+#endif
+
+        return 0;
 }
 
+
 static DEVICE_API(sensor, ina226_driver_api) = {
-	.attr_set = ina226_attr_set,
-	.attr_get = ina226_attr_get,
-	.sample_fetch = ina226_sample_fetch,
-	.channel_get = ina226_channel_get,
+        .attr_set = ina226_attr_set,
+        .attr_get = ina226_attr_get,
+        .sample_fetch = ina226_sample_fetch,
+        .channel_get = ina226_channel_get,
+#ifdef CONFIG_INA226_TRIGGER
+        .trigger_set = ina226_trigger_set,
+#endif
 };
 
-#define INA226_DRIVER_INIT(inst)							\
-	static struct ina226_data ina226_data_##inst;					\
-	static const struct ina226_config ina226_config_##inst = {			\
-		.bus = I2C_DT_SPEC_INST_GET(inst),					\
-		.current_lsb = DT_INST_PROP(inst, current_lsb_microamps),		\
-		.cal = INA226_CAL_SCALING * 10000000ULL /				\
-			(DT_INST_PROP(inst, current_lsb_microamps) *			\
-			DT_INST_PROP(inst, rshunt_micro_ohms)),				\
-		.config = (DT_INST_ENUM_IDX(inst, avg_count) << 9) |			\
-			(DT_INST_ENUM_IDX(inst, vbus_conversion_time_us) << 6) |	\
-			(DT_INST_ENUM_IDX(inst, vshunt_conversion_time_us) << 3) |	\
-			DT_INST_ENUM_IDX(inst, operating_mode),				\
-	};										\
-	SENSOR_DEVICE_DT_INST_DEFINE(inst,						\
-				     &ina226_init,					\
-				     NULL,						\
-				     &ina226_data_##inst,				\
-				     &ina226_config_##inst,				\
-				     POST_KERNEL,					\
-				     CONFIG_SENSOR_INIT_PRIORITY,			\
-				     &ina226_driver_api);
+#ifdef CONFIG_INA226_TRIGGER
+#define INA226_CFG_IRQ(inst) \
+       .trig_enabled = true, \
+       .mask = DT_INST_PROP(inst, mask), \
+       .alert_limit = DT_INST_PROP(inst, alert_limit), \
+       .alert_gpio = GPIO_DT_SPEC_INST_GET(inst, alert_gpios)
+#else
+#define INA226_CFG_IRQ(inst)
+#endif
+
+#define INA226_DRIVER_INIT(inst)                                               \
+        static struct ina226_data ina226_data_##inst;                          \
+        static const struct ina226_config ina226_config_##inst = {             \
+                .bus = I2C_DT_SPEC_INST_GET(inst),                             \
+                .current_lsb = DT_INST_PROP(inst, current_lsb_microamps),      \
+                .cal = INA226_CAL_SCALING * 10000000ULL /                      \
+                        (DT_INST_PROP(inst, current_lsb_microamps) *           \
+                        DT_INST_PROP(inst, rshunt_micro_ohms)),                \
+                .config = (DT_INST_ENUM_IDX(inst, avg_count) << 9) |           \
+                        (DT_INST_ENUM_IDX(inst, vbus_conversion_time_us) << 6) |\
+                        (DT_INST_ENUM_IDX(inst, vshunt_conversion_time_us) << 3) |\
+                        DT_INST_ENUM_IDX(inst, operating_mode),                \
+                COND_CODE_1(DT_INST_NODE_HAS_PROP(inst, alert_gpios),          \
+                            (INA226_CFG_IRQ(inst)), ())                        \
+        };                                                                     \
+        SENSOR_DEVICE_DT_INST_DEFINE(inst,                                     \
+                                     &ina226_init,                             \
+                                     NULL,                                     \
+                                     &ina226_data_##inst,                      \
+                                     &ina226_config_##inst,                    \
+                                     POST_KERNEL,                              \
+                                     CONFIG_SENSOR_INIT_PRIORITY,              \
+                                     &ina226_driver_api);
+
 
 DT_INST_FOREACH_STATUS_OKAY(INA226_DRIVER_INIT)

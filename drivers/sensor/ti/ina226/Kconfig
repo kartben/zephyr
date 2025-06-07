@@ -23,4 +23,12 @@ config INA226_VSHUNT
 
 	  Note that enabling this option requires an extra I2C read when the
 	  SENSOR_CHAN_ALL is selected. Hence, only enable this option if the
-	  shunt voltage measurement is required.
+        shunt voltage measurement is required.
+
+config INA226_TRIGGER
+       bool "INA226 trigger mode"
+       depends on INA226
+       depends on GPIO
+       depends on $(dt_compat_any_has_prop,$(DT_COMPAT_TI_INA226),alert-gpios)
+       help
+         Enable trigger mode using the ALERT pin.
