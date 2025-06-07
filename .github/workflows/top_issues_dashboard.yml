@@ -1,0 +1,30 @@
+name: "Top Issues Dashboard"
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  show_and_label_top_issues:
+    name: Display and label top issues
+    runs-on: ubuntu-24.04
+    if: github.repository == 'zephyrproject-rtos/zephyr'
+
+    steps:
+      - name: Run top issues action
+        uses: rickstaa/top-issues-action@7e8dda5d5ae3087670f9094b9724a9a091fc3ba1 # v1.3.101
+        env:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          label: true
+          dashboard: true
+          dashboard_show_total_reactions: true
+          top_issues: true
+          top_bugs: true
+          top_features: true
+          top_pull_requests: true
