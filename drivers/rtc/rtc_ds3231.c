@@ -56,10 +56,10 @@ struct rtc_ds3231_conf {
 	struct gpio_dt_spec isw_gpios;
 };
 
-static int rtc_ds3231_modify_register(const struct device *dev, uint8_t reg, uint8_t *buf,
-				      const uint8_t bitmask)
+static int rtc_ds3231_modify_register(const struct device *dev, uint8_t reg,
+				uint8_t *buf, const uint8_t bitmask)
 {
-	int err;
+	int err = 0;
 	const struct rtc_ds3231_conf *config = dev->config;
 
 	if (bitmask != 255) {
