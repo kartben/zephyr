@@ -26,10 +26,10 @@ static inline int z_vrfy_i2c_get_config(const struct device *dev,
 }
 #include <zephyr/syscalls/i2c_get_config_mrsh.c>
 
-static uint32_t copy_msgs_and_transfer(const struct device *dev,
-				       const struct i2c_msg *msgs,
-				       uint8_t num_msgs,
-				       uint16_t addr)
+static int copy_msgs_and_transfer(const struct device *dev,
+                                       const struct i2c_msg *msgs,
+                                       uint8_t num_msgs,
+                                       uint16_t addr)
 {
 	struct i2c_msg copy[num_msgs];
 	uint8_t i;

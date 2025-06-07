@@ -52,10 +52,10 @@ static struct spi_buf_set *copy_and_check(struct spi_buf_set *bufs,
  * count member has been verified and is a value that won't lead to stack
  * overflow.
  */
-static uint32_t copy_bufs_and_transceive(const struct device *dev,
-					 const struct spi_config *config,
-					 struct spi_buf_set *tx_bufs,
-					 struct spi_buf_set *rx_bufs)
+static int copy_bufs_and_transceive(const struct device *dev,
+                                        const struct spi_config *config,
+                                        struct spi_buf_set *tx_bufs,
+                                        struct spi_buf_set *rx_bufs)
 {
 	struct spi_buf tx_buf_copy[tx_bufs->count ? tx_bufs->count : 1];
 	struct spi_buf rx_buf_copy[rx_bufs->count ? rx_bufs->count : 1];
