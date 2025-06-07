@@ -732,10 +732,10 @@ static inline int eth_xmc4xxx_reset(const struct device *dev)
 	dev_cfg->regs->BUS_MODE |= ETH_BUS_MODE_SWR_Msk;
 
 	/* reset may fail if the clocks are not properly setup */
-	if (!WAIT_FOR((dev_cfg->regs->BUS_MODE & ETH_BUS_MODE_SWR_Msk) == 0,
-		      ETH_RESET_TIMEOUT_USEC,)) {
-		return -ETIMEDOUT;
-	}
+       if (!WAIT_FOR((dev_cfg->regs->BUS_MODE & ETH_BUS_MODE_SWR_Msk) == 0,
+                     ETH_RESET_TIMEOUT_USEC, k_busy_wait(1))) {
+               return -ETIMEDOUT;
+       }
 
 	return 0;
 }
@@ -785,16 +785,16 @@ static inline int eth_xmc4xxx_init_timestamp_control_reg(ETH_GLOBAL_TypeDef *reg
 
 	/* Addend register update */
 	regs->TIMESTAMP_CONTROL |= ETH_TIMESTAMP_CONTROL_TSADDREG_Msk;
-	if (!WAIT_FOR((regs->TIMESTAMP_CONTROL & ETH_TIMESTAMP_CONTROL_TSADDREG_Msk) == 0,
-		      ETH_TIMESTAMP_CONTROL_REG_TIMEOUT_USEC,)) {
-		return -ETIMEDOUT;
-	}
+       if (!WAIT_FOR((regs->TIMESTAMP_CONTROL & ETH_TIMESTAMP_CONTROL_TSADDREG_Msk) == 0,
+                     ETH_TIMESTAMP_CONTROL_REG_TIMEOUT_USEC, k_busy_wait(1))) {
+               return -ETIMEDOUT;
+       }
 
 	regs->TIMESTAMP_CONTROL |= ETH_TIMESTAMP_CONTROL_TSINIT_Msk;
-	if (!WAIT_FOR((regs->TIMESTAMP_CONTROL & ETH_TIMESTAMP_CONTROL_TSINIT_Msk) == 0,
-		      ETH_TIMESTAMP_CONTROL_REG_TIMEOUT_USEC,)) {
-		return -ETIMEDOUT;
-	}
+       if (!WAIT_FOR((regs->TIMESTAMP_CONTROL & ETH_TIMESTAMP_CONTROL_TSINIT_Msk) == 0,
+                     ETH_TIMESTAMP_CONTROL_REG_TIMEOUT_USEC, k_busy_wait(1))) {
+               return -ETIMEDOUT;
+       }
 #endif
 	return 0;
 }
@@ -1025,10 +1025,10 @@ static int eth_xmc4xxx_ptp_clock_set(const struct device *dev, struct net_ptp_ti
 	dev_cfg->regs->SYSTEM_TIME_SECONDS_UPDATE = tm->second;
 
 	dev_cfg->regs->TIMESTAMP_CONTROL |= ETH_TIMESTAMP_CONTROL_TSINIT_Msk;
-	if (!WAIT_FOR((dev_cfg->regs->TIMESTAMP_CONTROL & ETH_TIMESTAMP_CONTROL_TSINIT_Msk) == 0,
-		      ETH_TIMESTAMP_CONTROL_REG_TIMEOUT_USEC,)) {
-		return -ETIMEDOUT;
-	}
+       if (!WAIT_FOR((dev_cfg->regs->TIMESTAMP_CONTROL & ETH_TIMESTAMP_CONTROL_TSINIT_Msk) == 0,
+                     ETH_TIMESTAMP_CONTROL_REG_TIMEOUT_USEC, k_busy_wait(1))) {
+               return -ETIMEDOUT;
+       }
 
 	return 0;
 }
@@ -1078,10 +1078,10 @@ static int eth_xmc4xxx_ptp_clock_adjust(const struct device *dev, int increment)
 	dev_cfg->regs->SYSTEM_TIME_SECONDS_UPDATE = 0;
 
 	dev_cfg->regs->TIMESTAMP_CONTROL |= ETH_TIMESTAMP_CONTROL_TSUPDT_Msk;
-	if (!WAIT_FOR((dev_cfg->regs->TIMESTAMP_CONTROL & ETH_TIMESTAMP_CONTROL_TSUPDT_Msk) == 0,
-		      ETH_TIMESTAMP_CONTROL_REG_TIMEOUT_USEC,)) {
-		return -ETIMEDOUT;
-	}
+       if (!WAIT_FOR((dev_cfg->regs->TIMESTAMP_CONTROL & ETH_TIMESTAMP_CONTROL_TSUPDT_Msk) == 0,
+                     ETH_TIMESTAMP_CONTROL_REG_TIMEOUT_USEC, k_busy_wait(1))) {
+               return -ETIMEDOUT;
+       }
 
 	return 0;
 }
@@ -1105,10 +1105,10 @@ static int eth_xmc4xxx_ptp_clock_rate_adjust(const struct device *dev, double ra
 
 	/* Addend register update */
 	dev_cfg->regs->TIMESTAMP_CONTROL |= ETH_TIMESTAMP_CONTROL_TSADDREG_Msk;
-	if (!WAIT_FOR((dev_cfg->regs->TIMESTAMP_CONTROL & ETH_TIMESTAMP_CONTROL_TSADDREG_Msk) == 0,
-		      ETH_TIMESTAMP_CONTROL_REG_TIMEOUT_USEC,)) {
-		return -ETIMEDOUT;
-	}
+       if (!WAIT_FOR((dev_cfg->regs->TIMESTAMP_CONTROL & ETH_TIMESTAMP_CONTROL_TSADDREG_Msk) == 0,
+                     ETH_TIMESTAMP_CONTROL_REG_TIMEOUT_USEC, k_busy_wait(1))) {
+               return -ETIMEDOUT;
+       }
 
 	return 0;
 }

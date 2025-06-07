@@ -124,12 +124,12 @@ static struct gptp_hdr *check_gptp_msg(struct net_if *iface,
 	 * In RX, the Ethernet header + other headers are in the
 	 * first net_buf.
 	 */
-	if (is_tx) {
-		if (pkt->frags->frags == NULL) {
-			return false;
-		}
+       if (is_tx) {
+               if (!pkt->frags || !pkt->frags->frags) {
+                       return NULL;
+               }
 
-		ghdr = (struct gptp_hdr *)pkt->frags->frags->data;
+               ghdr = (struct gptp_hdr *)pkt->frags->frags->data;
 	} else {
 		ghdr = (struct gptp_hdr *)(pkt->frags->data + eth_hlen);
 	}
