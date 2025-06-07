@@ -190,8 +190,8 @@ static int modem_atoi(const char *s, const int err_value,
 
 	ret = (int)strtol(s, &endptr, 10);
 	if (!endptr || *endptr != '\0') {
-		LOG_ERR("bad %s '%s' in %s", s, desc,
-			func);
+	LOG_ERR("bad %s '%s' in %s", desc, s,
+	func);
 		return err_value;
 	}
 
