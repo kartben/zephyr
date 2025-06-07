@@ -69,7 +69,7 @@ static int p3t1755_sample_fetch(const struct device *dev, enum sensor_channel ch
 
 	if (status) {
 		LOG_ERR("read return error %d", status);
-		return -ENOTSUP;
+		return status;
 	}
 
 	/* Byte 1 contains the MSByte and Byte 2 contains the LSByte, we need to swap the 2 bytes.
@@ -171,14 +171,17 @@ static DEVICE_API(sensor, p3t1755_driver_api) = {
 /*
  * Instantiation macros used when a device is on an I#C bus.
  */
-#define P3T1755_CONFIG_I3C(inst)                                                                   \
-	.bus_cfg = {.i3c = &p3t1755_data_##inst.i3c_dev},                                          \
-	.ops = {                                                                                   \
-		.read = p3t1755_i3c_read_reg,                                                      \
-		.write = p3t1755_i3c_write_reg,                                                    \
-	},                                                                                         \
-	.inst_on_bus = P3T1755_BUS_I3C,                                                            \
-	.i3c.bus = DEVICE_DT_GET(DT_INST_BUS(inst)), .i3c.dev_id = I3C_DEVICE_ID_DT_INST(inst),
+#define P3T1755_CONFIG_I3C(inst)\
+       .bus_cfg = {.i3c = &p3t1755_data_##inst.i3c_dev},\
+       .ops = {\
+               .read = p3t1755_i3c_read_reg,\
+               .write = p3t1755_i3c_write_reg,\
+       },\
+       .inst_on_bus = P3T1755_BUS_I3C,\
+       .i3c = {\
+               .bus = DEVICE_DT_GET(DT_INST_BUS(inst)),\
+               .dev_id = I3C_DEVICE_ID_DT_INST(inst),\
+       },
 
 #define P3T1755_INIT(n)                                                                            \
 	static struct p3t1755_data p3t1755_data_##n;                                               \

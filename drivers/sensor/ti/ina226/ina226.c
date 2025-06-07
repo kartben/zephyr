@@ -318,10 +318,10 @@ static DEVICE_API(sensor, ina226_driver_api) = {
 		.cal = INA226_CAL_SCALING * 10000000ULL /				\
 			(DT_INST_PROP(inst, current_lsb_microamps) *			\
 			DT_INST_PROP(inst, rshunt_micro_ohms)),				\
-		.config = (DT_INST_ENUM_IDX(inst, avg_count) << 9) |			\
-			(DT_INST_ENUM_IDX(inst, vbus_conversion_time_us) << 6) |	\
-			(DT_INST_ENUM_IDX(inst, vshunt_conversion_time_us) << 3) |	\
-			DT_INST_ENUM_IDX(inst, operating_mode),				\
+                .config = (DT_INST_ENUM_IDX(inst, avg_count) << 9) | \
+                        (DT_INST_ENUM_IDX(inst, vbus_conversion_time_us) << 6) | \
+                        (DT_INST_ENUM_IDX(inst, vshunt_conversion_time_us) << 3) | \
+                        DT_INST_ENUM_IDX(inst, operating_mode), \
 	};										\
 	SENSOR_DEVICE_DT_INST_DEFINE(inst,						\
 				     &ina226_init,					\

@@ -407,7 +407,8 @@ static int tmp108_init(const struct device *dev)
 		.i2c_spec = I2C_DT_SPEC_INST_GET(inst),                                            \
 		IF_ENABLED(CONFIG_TMP108_ALERT_INTERRUPTS,                                         \
 			   (.alert_gpio = GPIO_DT_SPEC_INST_GET(inst, alert_gpios),))              \
-		.reg_def = t##_CONF};                                                              \
+		.reg_def = t##_CONF,
+       };                                                              \
 	SENSOR_DEVICE_DT_INST_DEFINE(inst, &tmp108_init, NULL, &tmp108_prv_data_##inst##t,         \
 				     &tmp108_config_##inst##t, POST_KERNEL,                        \
 				     CONFIG_SENSOR_INIT_PRIORITY, &tmp108_driver_api);
