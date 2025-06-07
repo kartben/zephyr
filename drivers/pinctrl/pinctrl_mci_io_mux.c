@@ -36,12 +36,12 @@ static void configure_pin_props(uint32_t pin_mux, uint8_t gpio_idx)
 
 	/* GPIO 22-27 use always on configuration registers */
 	if (gpio_idx > 21 && gpio_idx < 28) {
-		pull_reg = (&aon_soc_ciu->PAD_PU_PD_EN1 - 1);
-		slew_reg = (&aon_soc_ciu->SR_CONFIG1 - 1);
-		sleep_force_en = &aon_soc_ciu->PAD_SLP_EN0;
-		sleep_force_val = &aon_soc_ciu->PAD_SLP_VAL0;
+	pull_reg = &aon_soc_ciu->PAD_PU_PD_EN0;
+	slew_reg = &aon_soc_ciu->SR_CONFIG0;
+	sleep_force_en = &aon_soc_ciu->PAD_SLP_EN0;
+	sleep_force_val = &aon_soc_ciu->PAD_SLP_VAL0;
 	}
-	/* Calculate register offset for pull and slew regs.
+		/* Calculate register offset for pull and slew regs.
 	 * Use bit shifting as opposed to division
 	 */
 	pull_reg += (gpio_idx >> 4);
@@ -147,8 +147,8 @@ int pinctrl_configure_pins(const pinctrl_soc_pin_t *pins, uint8_t pin_cnt,
 		case IOMUX_SGPIO:
 			mci_iomux->S_GPIO |= (0x1 << (gpio_idx - 32));
 			break;
-		case IOMUX_GPIO:
-			if (gpio_idx > 32) {
+               case IOMUX_GPIO:
+                       if (gpio_idx >= 32) {
 				mci_iomux->GPIO_GRP1 |= (0x1 << (gpio_idx - 32));
 			} else {
 				mci_iomux->GPIO_GRP0 |= (0x1 << gpio_idx);

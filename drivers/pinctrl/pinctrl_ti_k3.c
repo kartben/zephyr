@@ -15,17 +15,22 @@ static struct pinctrl_ti_k3_dev_data {
 	DEVICE_MMIO_RAM;
 } pinctrl_ti_k3_dev;
 
-static struct pinctrl_ti_k3_cfg_data {
-	DEVICE_MMIO_ROM;
+static const struct pinctrl_ti_k3_cfg_data {
+       DEVICE_MMIO_ROM;
 } pinctrl_ti_k3_cfg = {
-	DEVICE_MMIO_ROM_INIT(PINCTRL_NODE)
+       DEVICE_MMIO_ROM_INIT(PINCTRL_NODE)
 };
 
 int pinctrl_configure_pins(const pinctrl_soc_pin_t *pins, uint8_t pin_cnt, uintptr_t reg)
 {
 	ARG_UNUSED(reg);
-	const struct device *dev = DEVICE_DT_GET(PINCTRL_NODE);
-	uintptr_t virt_reg_base = DEVICE_MMIO_GET(dev);
+       const struct device *dev = DEVICE_DT_GET(PINCTRL_NODE);
+
+       if (!device_is_ready(dev)) {
+               return -ENODEV;
+       }
+
+       uintptr_t virt_reg_base = DEVICE_MMIO_GET(dev);
 
 	for (uint8_t i = 0; i < pin_cnt; i++) {
 		sys_write32(pins[i].value, virt_reg_base + pins[i].offset);

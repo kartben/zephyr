@@ -52,7 +52,7 @@ int pinctrl_configure_pins(const pinctrl_soc_pin_t *pins, uint8_t pin_cnt, uintp
 			/* Reset the pin. */
 			regs->BSHR |= BIT(pin + 16);
 		} else {
-			regs->OUTDR &= ~(1 << pin);
+                       regs->OUTDR &= ~BIT(pin);
 			if (pins->bias_pull_up) {
 				regs->BSHR = BIT(pin);
 			}
