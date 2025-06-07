@@ -106,8 +106,8 @@ void __no_inline_not_in_flash_func(flash_put_get)(const uint8_t *tx, uint8_t *rx
 	uint8_t rxbyte;
 
 	while (tx_count || rx_skip || rx_count) {
-		tx_level = ssi_hw->txflr;
-		rx_level = ssi_hw->rxflr;
+               tx_level = ssi->txflr;
+               rx_level = ssi->rxflr;
 		did_something = false;
 		if (tx_count && tx_level + rx_level < max_in_flight) {
 			ssi->dr0 = (uint32_t) (tx ? *tx++ : 0);
