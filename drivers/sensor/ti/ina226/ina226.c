@@ -18,6 +18,7 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/i2c.h>
+#include <zephyr/pm/device.h>
 
 /* Device register addresses. */
 #define INA226_REG_CONFIG		0x00
@@ -66,6 +67,8 @@ LOG_MODULE_REGISTER(INA226, CONFIG_SENSOR_LOG_LEVEL);
 
 /** @brief Power scaling (need factor of 0.2) */
 #define INA226_POWER_TO_uW(x)		((x) * 25ULL)
+/* Mask for operating mode bits in the configuration register */
+#define INA226_MODE_MASK                0x0007
 
 
 int ina226_reg_read_16(const struct i2c_dt_spec *bus, uint8_t reg, uint16_t *val)
@@ -252,6 +255,37 @@ static int ina226_calibrate(const struct device *dev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_DEVICE
+static int ina226_pm_action(const struct device *dev,
+                            enum pm_device_action action)
+{
+        const struct ina226_config *config = dev->config;
+        uint16_t cfg;
+        int ret;
+
+        switch (action) {
+        case PM_DEVICE_ACTION_RESUME:
+                /* Restore configuration and calibration */
+                ret = ina226_reg_write(&config->bus, INA226_REG_CONFIG,
+                                      config->config);
+                if (ret < 0) {
+                        return ret;
+                }
+
+                return ina226_calibrate(dev);
+
+        case PM_DEVICE_ACTION_SUSPEND:
+                /* Put device into power-down mode */
+                cfg = (config->config & ~INA226_MODE_MASK) |
+                      INA226_OPER_MODE_POWER_DOWN;
+                return ina226_reg_write(&config->bus, INA226_REG_CONFIG, cfg);
+
+        default:
+                return -ENOTSUP;
+        }
+}
+#endif /* CONFIG_PM_DEVICE */
+
 static int ina226_init(const struct device *dev)
 {
 	struct ina226_data *data = dev->data;
@@ -323,13 +357,16 @@ static DEVICE_API(sensor, ina226_driver_api) = {
 			(DT_INST_ENUM_IDX(inst, vshunt_conversion_time_us) << 3) |	\
 			DT_INST_ENUM_IDX(inst, operating_mode),				\
 	};										\
-	SENSOR_DEVICE_DT_INST_DEFINE(inst,						\
-				     &ina226_init,					\
-				     NULL,						\
-				     &ina226_data_##inst,				\
-				     &ina226_config_##inst,				\
-				     POST_KERNEL,					\
-				     CONFIG_SENSOR_INIT_PRIORITY,			\
-				     &ina226_driver_api);
+PM_DEVICE_DT_INST_DEFINE(inst, ina226_pm_action);
+SENSOR_DEVICE_DT_INST_DEFINE(inst, 
+                                     &ina226_init, 
+                                     PM_DEVICE_DT_INST_GET(inst), 
+                                     &ina226_data_##inst, 
+                                     &ina226_config_##inst, 
+                                     POST_KERNEL, 
+                                     CONFIG_SENSOR_INIT_PRIORITY, 
+                                     &ina226_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(INA226_DRIVER_INIT)
+
+/* Mask for operating mode bits in the configuration register */
