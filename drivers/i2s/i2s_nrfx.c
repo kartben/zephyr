@@ -904,11 +904,12 @@ static void init_clock_manager(const struct device *dev)
 
 	if (drv_cfg->clk_src == ACLK) {
 		subsys = CLOCK_CONTROL_NRF_SUBSYS_HFAUDIO;
-	} else
-#endif
-	{
+	} else {
 		subsys = CLOCK_CONTROL_NRF_SUBSYS_HF;
 	}
+#else
+	subsys = CLOCK_CONTROL_NRF_SUBSYS_HF;
+#endif
 
 	drv_data->clk_mgr = z_nrf_clock_control_get_onoff(subsys);
 	__ASSERT_NO_MSG(drv_data->clk_mgr != NULL);
