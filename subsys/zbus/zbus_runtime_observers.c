@@ -173,13 +173,15 @@ int zbus_chan_rm_obs(const struct zbus_channel *chan, const struct zbus_observer
 		return err;
 	}
 
-	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&chan->data->observers, obs_nd, tmp, node) {
-		if (obs_nd->obs == obs) {
-			sys_slist_remove(&chan->data->observers, &prev_obs_nd->node, &obs_nd->node);
+       SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&chan->data->observers, obs_nd, tmp, node) {
+               if (obs_nd->obs == obs) {
+                       sys_slist_remove(&chan->data->observers,
+                                         prev_obs_nd ? &prev_obs_nd->node : NULL,
+                                         &obs_nd->node);
 #if defined(CONFIG_ZBUS_RUNTIME_OBSERVERS_NODE_ALLOC_NONE)
-			obs_nd->chan = NULL;
+                       obs_nd->chan = NULL;
 #else
-			_zbus_runtime_observer_node_free(obs_nd);
+                       _zbus_runtime_observer_node_free(obs_nd);
 #endif
 
 			k_sem_give(&chan->data->sem);
