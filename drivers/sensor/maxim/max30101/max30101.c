@@ -46,12 +46,13 @@ static int max30101_sample_fetch(const struct device *dev,
 }
 
 static int max30101_channel_get(const struct device *dev,
-				enum sensor_channel chan,
-				struct sensor_value *val)
+                               enum sensor_channel chan,
+                               struct sensor_value *val)
 {
-	struct max30101_data *data = dev->data;
-	enum max30101_led_channel led_chan;
-	int fifo_chan;
+       struct max30101_data *data = dev->data;
+       const struct max30101_config *config = dev->config;
+       enum max30101_led_channel led_chan;
+       int fifo_chan;
 
 	switch (chan) {
 	case SENSOR_CHAN_RED:
@@ -81,9 +82,13 @@ static int max30101_channel_get(const struct device *dev,
 		return -ENOTSUP;
 	}
 
-	/* TODO: Scale the raw data to standard units */
-	val->val1 = data->raw[fifo_chan];
-	val->val2 = 0;
+       /* Scale the raw data to microampere using configured ADC range */
+       static const uint32_t adc_pa_lsb[] = { 7810U, 15630U, 31250U, 62500U };
+
+       int range_idx = (config->spo2 >> MAX30101_SPO2_ADC_RGE_SHIFT) & 0x03;
+       int64_t micro_pa = (int64_t)data->raw[fifo_chan] * adc_pa_lsb[range_idx];
+
+       sensor_value_from_micro(val, micro_pa / 1000);
 
 	return 0;
 }
