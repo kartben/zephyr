@@ -78,9 +78,9 @@ static uint32_t soc_gpio_get_drv_mode(uint32_t flags)
 		/* bias_pull_down */
 		drv_mode = (_flags & SOC_GPIO_INPUTENABLE) ? CY_GPIO_DM_PULLDOWN
 							   : CY_GPIO_DM_PULLDOWN_IN_OFF;
-	} else if ((_flags & SOC_GPIO_HIGHZ) | (_flags & SOC_GPIO_INPUTENABLE)) {
-		/* bias_pull_down */
-		drv_mode = CY_GPIO_DM_HIGHZ;
+       } else if ((_flags & SOC_GPIO_HIGHZ) || (_flags & SOC_GPIO_INPUTENABLE)) {
+               /* bias_pull_down */
+               drv_mode = CY_GPIO_DM_HIGHZ;
 	} else {
 		/* nothing do here */
 	}

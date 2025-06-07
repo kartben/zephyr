@@ -90,7 +90,7 @@ struct npcx_periph {
  */
 struct npcx_dev_ctl {
 	/** Related register offset for device configuration. */
-	uint16_t offest: 5;
+	uint16_t offset: 5;
 	/** Related register field offset for device control. */
 	uint16_t field_offset: 3;
 	/** Related register field size for device control. */
@@ -191,7 +191,7 @@ typedef struct npcx_pinctrl pinctrl_soc_pin_t;
 #define Z_PINCTRL_NPCX_DEVICE_CONTROL_INIT(node_id, prop)			\
 	{									\
 		.flags.type = NPCX_PINCTRL_TYPE_DEVICE_CTRL,			\
-		.cfg.dev_ctl.offest = DT_PROP_BY_IDX(node_id, prop, 0),		\
+		.cfg.dev_ctl.offset = DT_PROP_BY_IDX(node_id, prop, 0),		\
 		.cfg.dev_ctl.field_offset = DT_PROP_BY_IDX(node_id, prop, 1),	\
 		.cfg.dev_ctl.field_size = DT_PROP_BY_IDX(node_id, prop, 2),	\
 		.cfg.dev_ctl.field_value = DT_PROP_BY_IDX(node_id, prop, 3),	\

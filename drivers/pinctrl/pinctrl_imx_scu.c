@@ -14,10 +14,10 @@ int pinctrl_configure_pins(const pinctrl_soc_pin_t *pins,
 	sc_ipc_t ipc_handle;
 	int ret, i;
 
-	ret = sc_ipc_open(&ipc_handle, DT_REG_ADDR(DT_NODELABEL(scu_mu)));
-	if (ret != SC_ERR_NONE) {
-		return -ENODEV;
-	}
+       ret = sc_ipc_open(&ipc_handle, DT_REG_ADDR(DT_NODELABEL(scu_mu)));
+       if (ret != SC_ERR_NONE) {
+               return -ENODEV;
+       }
 
 	for (i = 0; i < pin_cnt; i++) {
 		/* TODO: for now, pad configuration is not supported. As such,
@@ -28,11 +28,14 @@ int pinctrl_configure_pins(const pinctrl_soc_pin_t *pins,
 		 *	entity (e.g: SCFW, Linux etc...) or set to the default
 		 *	values as specified in the TRM.
 		 */
-		ret = sc_pad_set_mux(ipc_handle, pins[i].pad, pins[i].mux, 0, 0);
-		if (ret != SC_ERR_NONE) {
-			return -EINVAL;
-		}
-	}
+               ret = sc_pad_set_mux(ipc_handle, pins[i].pad, pins[i].mux, 0, 0);
+               if (ret != SC_ERR_NONE) {
+                       sc_ipc_close(ipc_handle);
+                       return -EINVAL;
+               }
+       }
 
-	return 0;
+       sc_ipc_close(ipc_handle);
+
+       return 0;
 }
