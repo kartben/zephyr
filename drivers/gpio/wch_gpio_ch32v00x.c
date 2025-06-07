@@ -102,14 +102,17 @@ static int gpio_ch32v00x_port_clear_bits_raw(const struct device *dev, uint32_t 
 }
 
 static int gpio_ch32v00x_port_toggle_bits(const struct device *dev, uint32_t pins)
-{
+	{
 	const struct gpio_ch32v00x_config *config = dev->config;
-	uint32_t changed = (config->regs->OUTDR ^ pins) & pins;
+	uint32_t outdr = config->regs->OUTDR;
 
-	config->regs->BSHR = (changed & pins) | (~changed & pins) << 16;
+		uint32_t set = (~outdr) & pins;
+		uint32_t reset = outdr & pins;
+
+		config->regs->BSHR = set | (reset << 16);
 
 	return 0;
-}
+	}
 
 static DEVICE_API(gpio, gpio_ch32v00x_driver_api) = {
 	.pin_configure = gpio_ch32v00x_configure,
