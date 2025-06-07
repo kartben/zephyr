@@ -132,8 +132,16 @@ ZTEST(basic, test_specification_based__zbus_obs_add_rm_obs)
 	zassert_equal(-ENOMSG, zbus_chan_pub(&chan2, &sd, K_MSEC(500)));
 	zassert_equal(count_callback2, 10);
 
-	zassert_equal(0, zbus_chan_rm_obs(&chan2, &sub1, K_MSEC(200)));
-	zassert_equal(0, zbus_chan_rm_obs(&chan2, &sub2, K_MSEC(200)));
+       zassert_equal(0, zbus_chan_rm_obs(&chan2, &sub1, K_MSEC(200)));
+       zassert_equal(0, zbus_chan_rm_obs(&chan2, &sub2, K_MSEC(200)));
+
+       /* Remove first runtime observer (lis3) to ensure correct handling */
+       zassert_equal(0, zbus_chan_rm_obs(&chan2, &lis3, K_MSEC(200)));
+       zassert_equal(-ENODATA, zbus_chan_rm_obs(&chan2, &lis3, K_MSEC(200)));
+
+       count_callback2 = 0;
+       zassert_equal(0, zbus_chan_pub(&chan2, &sd, K_MSEC(500)));
+       zassert_equal(count_callback2, 4);
 }
 
 struct aux2_wq_data {
