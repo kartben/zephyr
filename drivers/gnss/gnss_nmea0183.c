@@ -8,7 +8,6 @@
 
 #include <string.h>
 #include <stdarg.h>
-#include <stdarg.h>
 
 #include "gnss_nmea0183.h"
 #include "gnss_parse.h"
@@ -30,10 +29,10 @@
 #define GNSS_NMEA0183_GSV_PRN_BEIDOU_OFFSET  (100)
 
 struct gsv_header_args {
-	const char *message_id;
-	const char *number_of_messages;
-	const char *message_number;
-	const char *numver_of_svs;
+       const char *message_id;
+       const char *number_of_messages;
+       const char *message_number;
+       const char *number_of_svs;
 };
 
 struct gsv_sv_args {
@@ -641,11 +640,11 @@ int gnss_nmea0183_parse_gsv_header(const char **argv, uint16_t argc,
 
 	header->message_number = (uint16_t)i32;
 
-	/* Parse message number */
-	if ((gnss_parse_atoi(args->numver_of_svs, 10, &i32) < 0) ||
-		(i32 < 0) || (i32 > UINT16_MAX)) {
-		return -EINVAL;
-	}
+       /* Parse number of satellites */
+       if ((gnss_parse_atoi(args->number_of_svs, 10, &i32) < 0) ||
+               (i32 < 0) || (i32 > UINT16_MAX)) {
+               return -EINVAL;
+       }
 
 	header->number_of_svs = (uint16_t)i32;
 	return 0;
