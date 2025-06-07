@@ -25,7 +25,7 @@
 #include <soc_init.h>
 #include <soc_random.h>
 
-const static char *TAG = "hw_init";
+static const char *TAG = "hw_init";
 
 int hardware_init(void)
 {

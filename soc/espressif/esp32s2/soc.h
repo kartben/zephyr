@@ -55,9 +55,6 @@ extern void esp_rom_Cache_Resume_ICache(uint32_t autoload);
 extern int esp_rom_Cache_Invalidate_Addr(uint32_t addr, uint32_t size);
 
 /* data-cache related rom functions */
-extern void esp_rom_Cache_Set_DCache_Mode(cache_size_t cache_size, cache_ways_t ways,
-					cache_line_size_t cache_line_size);
-
 extern void esp_rom_Cache_Invalidate_DCache_All(void);
 extern void esp_rom_Cache_Enable_DCache(uint32_t autoload);
 

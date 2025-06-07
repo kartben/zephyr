@@ -4,7 +4,7 @@
  */
 #pragma once
 
-/* SRAM0 (32k) with adjacted SRAM1 (288k)
+/* SRAM0 (32k) with adjacent SRAM1 (288k)
  * Ibus and Dbus address space
  */
 #define SRAM_IRAM_START  (SRAM_DRAM_START + IRAM_DRAM_OFFSET)

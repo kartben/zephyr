@@ -81,5 +81,6 @@ int IRAM_ATTR arch_printk_char_out(int c)
 
 void sys_arch_reboot(int type)
 {
-	esp_restart();
+        ARG_UNUSED(type);
+        esp_restart();
 }
