@@ -30,9 +30,9 @@ static inline int z_vrfy_bbram_check_power(const struct device *dev)
 
 static inline int z_vrfy_bbram_get_size(const struct device *dev, size_t *size)
 {
-	K_OOPS(K_SYSCALL_OBJ(dev, K_OBJ_DRIVER_BBRAM));
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(size, sizeof(size_t)));
-	return z_impl_bbram_get_size(dev, size);
+       K_OOPS(K_SYSCALL_OBJ(dev, K_OBJ_DRIVER_BBRAM));
+       K_OOPS(K_SYSCALL_MEMORY_WRITE(size, sizeof(*size)));
+       return z_impl_bbram_get_size(dev, size);
 }
 #include <zephyr/syscalls/bbram_get_size_mrsh.c>
 
