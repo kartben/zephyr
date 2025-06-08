@@ -12,6 +12,7 @@
 #include "../../../lib/crc/crc32c_sw.c"
 #include "../../../lib/crc/crc7_sw.c"
 #include "../../../lib/crc/crc24_sw.c"
+#include "../../../lib/crc/crc4_sw.c"
 #include "../../../lib/crc/crc32k_4_2_sw.c"
 
 ZTEST(crc, test_crc32_k_4_2)
@@ -194,6 +195,29 @@ ZTEST(crc, test_crc16_itu_t)
 	zassert_equal(crc16_itu_t(0, test2, sizeof(test2)) ^ 0xffff, 0xce3c);
 
 }
+
+ZTEST(crc, test_crc4_ti)
+{
+        uint8_t test1[] = { 'A' };
+        uint8_t test2[] = { '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+        uint8_t test3[] = { 'Z', 'e', 'p', 'h', 'y', 'r' };
+
+        zassert_equal(crc4_ti(0xf, test1, sizeof(test1)), 0x2);
+        zassert_equal(crc4_ti(0xf, test2, sizeof(test2)), 0x4);
+        zassert_equal(crc4_ti(0xf, test3, sizeof(test3)), 0xf);
+}
+
+ZTEST(crc, test_crc4_generic)
+{
+        uint8_t test1[] = { 'A' };
+        uint8_t test2[] = { '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+        uint8_t test3[] = { 'Z', 'e', 'p', 'h', 'y', 'r' };
+
+        zassert_equal(crc4(test1, sizeof(test1), 0x9, 0xa, true), 0x6);
+        zassert_equal(crc4(test2, sizeof(test2), 0x9, 0xa, true), 0x1);
+        zassert_equal(crc4(test3, sizeof(test3), 0x9, 0xa, true), 0xd);
+}
+
 
 ZTEST(crc, test_crc8_ccitt)
 {
