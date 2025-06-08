@@ -419,6 +419,70 @@ ZTEST(dlist_api, test_dlist2)
 				&test_node[4].node) == &insert_node2.node, " ");
 }
 
+ZTEST(dlist_api, test_dlist_dequeue)
+{
+       struct container_node node1;
+       struct container_node node2;
+
+       sys_dlist_init(&test_list);
+       sys_dnode_init(&node1.node);
+       sys_dnode_init(&node2.node);
+
+       sys_dlist_append(&test_list, &node1.node);
+       sys_dlist_append(&test_list, &node2.node);
+
+       /* Dequeue without reinitializing the node */
+       sys_dlist_dequeue(&node1.node);
+
+       zassert_equal(sys_dlist_peek_head(&test_list), &node2.node,
+                     "wrong head after dequeue");
+       zassert_true(sys_dnode_is_linked(&node1.node),
+                    "node should still appear linked");
+       zassert_equal(node1.node.next, &test_list,
+                     "next pointer changed");
+       zassert_equal(node1.node.prev, &test_list,
+                     "prev pointer changed");
+
+       sys_dlist_remove(&node1.node);
+       zassert_false(sys_dnode_is_linked(&node1.node),
+                     "remove did not reset links");
+}
+
+ZTEST(dlist_api, test_dlist_container_macros)
+{
+       struct container_node nodes[3];
+       struct container_node *cn;
+       struct container_node *cns;
+       int count;
+
+       sys_dlist_init(&test_list);
+
+       for (int i = 0; i < 3; i++) {
+               sys_dnode_init(&nodes[i].node);
+               sys_dlist_append(&test_list, &nodes[i].node);
+       }
+
+       cn = SYS_DLIST_PEEK_HEAD_CONTAINER(&test_list, cn, node);
+       zassert_equal(cn, &nodes[0], "head container mismatch");
+
+       cn = SYS_DLIST_PEEK_NEXT_CONTAINER(&test_list, cn, node);
+       zassert_equal(cn, &nodes[1], "next container mismatch");
+
+       count = 0;
+       SYS_DLIST_FOR_EACH_CONTAINER(&test_list, cn, node) {
+               count++;
+       }
+       zassert_equal(count, 3, "iteration count wrong");
+
+       count = 0;
+       SYS_DLIST_FOR_EACH_CONTAINER_SAFE(&test_list, cn, cns, node) {
+               sys_dlist_remove(&cn->node);
+               count++;
+       }
+       zassert_true(sys_dlist_is_empty(&test_list), "list not empty");
+       zassert_equal(count, 3, "safe iteration count wrong");
+}
+
 /**
  * @}
  */
