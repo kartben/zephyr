@@ -135,7 +135,49 @@ ZTEST(hash_function, test_sys_hash32)
 
 	print_buckets("histogram", buckets, ARRAY_SIZE(buckets));
 
-	zassert_ok(kolmogorov_smirnov_test(buckets, ARRAY_SIZE(buckets)));
+        zassert_ok(kolmogorov_smirnov_test(buckets, ARRAY_SIZE(buckets)));
 }
+
+/* Verify deterministic hashes for a couple of input strings. */
+ZTEST(hash_function, test_sys_hash32_known_values)
+{
+       static const uint8_t str1[] = "hello";
+       static const uint8_t str2[] = "The quick brown fox";
+
+#if IS_ENABLED(CONFIG_SYS_HASH_FUNC32_CHOICE_IDENTITY)
+       uint32_t val = 0x01234567;
+       zassert_equal(sys_hash32(&val, sizeof(val)), val);
+#elif IS_ENABLED(CONFIG_SYS_HASH_FUNC32_DJB2)
+       zassert_equal(sys_hash32(str1, sizeof(str1) - 1), 0x0a9cede7);
+       zassert_equal(sys_hash32(str2, sizeof(str2) - 1), 0x1556a66e);
+#elif IS_ENABLED(CONFIG_SYS_HASH_FUNC32_MURMUR3)
+       zassert_equal(sys_hash32(str1, sizeof(str1) - 1), 0x248bfa47);
+       zassert_equal(sys_hash32(str2, sizeof(str2) - 1), 0x60a2c22d);
+#else
+       ztest_test_skip();
+#endif
+}
+
+#if IS_ENABLED(CONFIG_SYS_HASH_FUNC32_DJB2)
+ZTEST(hash_function, test_sys_hash32_djb2_known_values)
+{
+       static const uint8_t str1[] = "hello";
+       static const uint8_t str2[] = "The quick brown fox";
+
+       zassert_equal(sys_hash32_djb2(str1, sizeof(str1) - 1), 0x0a9cede7);
+       zassert_equal(sys_hash32_djb2(str2, sizeof(str2) - 1), 0x1556a66e);
+}
+#endif /* CONFIG_SYS_HASH_FUNC32_DJB2 */
+
+#if IS_ENABLED(CONFIG_SYS_HASH_FUNC32_MURMUR3)
+ZTEST(hash_function, test_sys_hash32_murmur3_known_values)
+{
+       static const uint8_t str1[] = "hello";
+       static const uint8_t str2[] = "The quick brown fox";
+
+       zassert_equal(sys_hash32_murmur3(str1, sizeof(str1) - 1), 0x248bfa47);
+       zassert_equal(sys_hash32_murmur3(str2, sizeof(str2) - 1), 0x60a2c22d);
+}
+#endif /* CONFIG_SYS_HASH_FUNC32_MURMUR3 */
 
 ZTEST_SUITE(hash_function, NULL, NULL, NULL, NULL, NULL);
