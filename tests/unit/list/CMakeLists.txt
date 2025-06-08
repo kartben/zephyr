@@ -12,4 +12,5 @@ target_sources(testbinary
     slist.c
     dlist.c
     sflist.c
+    list_gen.c
 )
