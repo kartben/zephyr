@@ -44,13 +44,13 @@ size_t bin2hex(const uint8_t *buf, size_t buflen, char *hex, size_t hexlen)
 	}
 
 	for (size_t i = 0; i < buflen; i++) {
-		if (hex2char(buf[i] >> 4, &hex[2U * i]) < 0) {
-			return 0;
-		}
-		if (hex2char(buf[i] & 0xf, &hex[2U * i + 1U]) < 0) {
-			return 0;
-		}
-	}
+               if (hex2char(buf[i] >> 4, &hex[2U * i]) < 0) {
+                       return 0; /* LCOV_EXCL_LINE */
+               }
+               if (hex2char(buf[i] & 0xf, &hex[2U * i + 1U]) < 0) {
+                       return 0; /* LCOV_EXCL_LINE */
+               }
+       }
 
 	hex[2U * buflen] = '\0';
 	return 2U * buflen;

@@ -1,0 +1,4 @@
+tests:
+  libraries.hex:
+    integration_platforms:
+      - native_sim
