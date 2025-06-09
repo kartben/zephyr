@@ -127,11 +127,11 @@ static int max30101_init(const struct device *dev)
 
 	/* Wait for reset to be cleared */
 	do {
-		if (i2c_reg_read_byte_dt(&config->i2c, MAX30101_REG_MODE_CFG,
-					 &mode_cfg)) {
-			LOG_ERR("Could read mode cfg after reset");
-			return -EIO;
-		}
+               if (i2c_reg_read_byte_dt(&config->i2c, MAX30101_REG_MODE_CFG,
+                                        &mode_cfg)) {
+                       LOG_ERR("Could not read mode cfg after reset");
+                       return -EIO;
+               }
 	} while (mode_cfg & MAX30101_MODE_CFG_RESET_MASK);
 
 	/* Write the FIFO configuration register */
@@ -204,47 +204,50 @@ static int max30101_init(const struct device *dev)
 	return 0;
 }
 
-static struct max30101_config max30101_config = {
-	.i2c = I2C_DT_SPEC_INST_GET(0),
-	.fifo = (CONFIG_MAX30101_SMP_AVE << MAX30101_FIFO_CFG_SMP_AVE_SHIFT) |
-#ifdef CONFIG_MAX30101_FIFO_ROLLOVER_EN
-		MAX30101_FIFO_CFG_ROLLOVER_EN_MASK |
-#endif
-		(CONFIG_MAX30101_FIFO_A_FULL <<
-		 MAX30101_FIFO_CFG_FIFO_FULL_SHIFT),
+#define MAX30101_DEFINE(inst)                                           \
+       static struct max30101_data max30101_data_##inst;                 \
+       static const struct max30101_config max30101_config_##inst = {    \
+               .i2c = I2C_DT_SPEC_INST_GET(inst),                         \
+               .fifo = (CONFIG_MAX30101_SMP_AVE <<                        \
+                       MAX30101_FIFO_CFG_SMP_AVE_SHIFT) |                \
+                       IF_ENABLED(CONFIG_MAX30101_FIFO_ROLLOVER_EN,       \
+                                   (MAX30101_FIFO_CFG_ROLLOVER_EN_MASK |))\
+                       (CONFIG_MAX30101_FIFO_A_FULL <<                    \
+                        MAX30101_FIFO_CFG_FIFO_FULL_SHIFT),               \
+               IF_ENABLED(CONFIG_MAX30101_HEART_RATE_MODE, (              \
+                       .mode = MAX30101_MODE_HEART_RATE,                 \
+                       .slot[0] = MAX30101_SLOT_RED_LED1_PA,             \
+                       .slot[1] = MAX30101_SLOT_DISABLED,                \
+                       .slot[2] = MAX30101_SLOT_DISABLED,                \
+                       .slot[3] = MAX30101_SLOT_DISABLED,                \
+               ))                                                        \
+               IF_ENABLED(CONFIG_MAX30101_SPO2_MODE, (                   \
+                       .mode = MAX30101_MODE_SPO2,                       \
+                       .slot[0] = MAX30101_SLOT_RED_LED1_PA,             \
+                       .slot[1] = MAX30101_SLOT_IR_LED2_PA,              \
+                       .slot[2] = MAX30101_SLOT_DISABLED,                \
+                       .slot[3] = MAX30101_SLOT_DISABLED,                \
+               ))                                                        \
+               IF_ENABLED(CONFIG_MAX30101_MULTI_LED_MODE, (              \
+                       .mode = MAX30101_MODE_MULTI_LED,                  \
+                       .slot[0] = CONFIG_MAX30101_SLOT1,                 \
+                       .slot[1] = CONFIG_MAX30101_SLOT2,                 \
+                       .slot[2] = CONFIG_MAX30101_SLOT3,                 \
+                       .slot[3] = CONFIG_MAX30101_SLOT4,                 \
+               ))                                                        \
+               .spo2 = (CONFIG_MAX30101_ADC_RGE <<                       \
+                       MAX30101_SPO2_ADC_RGE_SHIFT) |                    \
+                       (CONFIG_MAX30101_SR <<                            \
+                        MAX30101_SPO2_SR_SHIFT) |                        \
+                       (MAX30101_PW_18BITS << MAX30101_SPO2_PW_SHIFT),   \
+               .led_pa[0] = CONFIG_MAX30101_LED1_PA,                     \
+               .led_pa[1] = CONFIG_MAX30101_LED2_PA,                     \
+               .led_pa[2] = CONFIG_MAX30101_LED3_PA,                     \
+       };                                                                \
+       SENSOR_DEVICE_DT_INST_DEFINE(inst, max30101_init, NULL,           \
+                               &max30101_data_##inst,                    \
+                               &max30101_config_##inst,                  \
+                               POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY, \
+                               &max30101_driver_api);
 
-#if defined(CONFIG_MAX30101_HEART_RATE_MODE)
-	.mode = MAX30101_MODE_HEART_RATE,
-	.slot[0] = MAX30101_SLOT_RED_LED1_PA,
-	.slot[1] = MAX30101_SLOT_DISABLED,
-	.slot[2] = MAX30101_SLOT_DISABLED,
-	.slot[3] = MAX30101_SLOT_DISABLED,
-#elif defined(CONFIG_MAX30101_SPO2_MODE)
-	.mode = MAX30101_MODE_SPO2,
-	.slot[0] = MAX30101_SLOT_RED_LED1_PA,
-	.slot[1] = MAX30101_SLOT_IR_LED2_PA,
-	.slot[2] = MAX30101_SLOT_DISABLED,
-	.slot[3] = MAX30101_SLOT_DISABLED,
-#else
-	.mode = MAX30101_MODE_MULTI_LED,
-	.slot[0] = CONFIG_MAX30101_SLOT1,
-	.slot[1] = CONFIG_MAX30101_SLOT2,
-	.slot[2] = CONFIG_MAX30101_SLOT3,
-	.slot[3] = CONFIG_MAX30101_SLOT4,
-#endif
-
-	.spo2 = (CONFIG_MAX30101_ADC_RGE << MAX30101_SPO2_ADC_RGE_SHIFT) |
-		(CONFIG_MAX30101_SR << MAX30101_SPO2_SR_SHIFT) |
-		(MAX30101_PW_18BITS << MAX30101_SPO2_PW_SHIFT),
-
-	.led_pa[0] = CONFIG_MAX30101_LED1_PA,
-	.led_pa[1] = CONFIG_MAX30101_LED2_PA,
-	.led_pa[2] = CONFIG_MAX30101_LED3_PA,
-};
-
-static struct max30101_data max30101_data;
-
-SENSOR_DEVICE_DT_INST_DEFINE(0, max30101_init, NULL,
-		    &max30101_data, &max30101_config,
-		    POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY,
-		    &max30101_driver_api);
+DT_INST_FOREACH_STATUS_OKAY(MAX30101_DEFINE)
