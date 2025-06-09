@@ -127,16 +127,16 @@ static int gpio_rpi_configure(const struct device *dev,
 	const int offset = GPIO_RPI_PINS_PER_PORT * PORT_NO(dev);
 	struct gpio_rpi_data *data = dev->data;
 
-	if (flags == GPIO_DISCONNECTED) {
-		gpio_disable_pulls(pin);
-		/* This is almost the opposite of the Pico SDK's gpio_set_function. */
-		hw_write_masked(&pads_bank0_hw->io[pin], PADS_BANK0_GPIO0_OD_BITS,
-				PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
+       if (flags == GPIO_DISCONNECTED) {
+               gpio_disable_pulls(pin + offset);
+               /* This is almost the opposite of the Pico SDK's gpio_set_function. */
+               hw_write_masked(&pads_bank0_hw->io[pin + offset], PADS_BANK0_GPIO0_OD_BITS,
+                               PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
 #ifdef SOC_SERIES_RP2350
-		hw_set_bits(&pads_bank0_hw->io[gpio], PADS_BANK0_GPIO0_ISO_BITS);
+               hw_set_bits(&pads_bank0_hw->io[pin + offset], PADS_BANK0_GPIO0_ISO_BITS);
 #endif
-		return 0;
-	}
+               return 0;
+       }
 
 	gpio_set_pulls(pin + offset, (flags & GPIO_PULL_UP) != 0U, (flags & GPIO_PULL_DOWN) != 0U);
 
