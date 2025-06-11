@@ -5,6 +5,7 @@
 import hashlib
 import os
 import re
+from reuse.project import Project
 
 from west import log
 
@@ -177,6 +178,31 @@ def normalizeExpression(licsConcluded):
     return " AND ".join(revised)
 
 
+def getCopyrightInfo(filePath):
+    """
+    Scans the specified file for copyright information using reuse-tool.
+
+    Arguments:
+        - filePath: path to file to scan
+    Returns: list of copyright statements if found; empty list if not found
+    """
+    log.dbg(f"  - getting copyright info for {filePath}")
+
+    try:
+        project = Project(os.path.dirname(filePath))
+        infos = project.reuse_info_of(filePath)
+        copyrights = []
+
+        for info in infos:
+            if info.copyright_lines:
+                copyrights.extend(info.copyright_lines)
+
+        return copyrights
+    except Exception as e:
+        log.wrn(f"Error getting copyright info for {filePath}: {e}")
+        return []
+
+
 def scanDocument(cfg, doc):
     """
     Scan for licenses and calculate hashes for all Files and Packages
@@ -212,6 +238,13 @@ def scanDocument(cfg, doc):
                 if cfg.shouldConcludeFileLicenses:
                     f.concludedLicense = expression
                 f.licenseInfoInFile = splitExpression(expression)
+
+            copyrights = getCopyrightInfo(f.abspath)
+            if copyrights:
+                if len(copyrights) > 1:
+                    f.copyrightText = f"<text>" + "\n".join(copyrights) + "\n</text>"
+                else:
+                    f.copyrightText = copyrights[0]
 
             # check if any custom license IDs should be flagged for document
             for lic in f.licenseInfoInFile:
