@@ -1,0 +1,14 @@
+sample:
+  description: Display a random fortune on the console
+  name: fortune cookie
+common:
+  integration_platforms:
+    - native_sim
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - "Fortune: .*"
+tests:
+  sample.entertainment.fortune_cookie:
+    tags: random
