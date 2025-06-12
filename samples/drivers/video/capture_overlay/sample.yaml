@@ -1,0 +1,67 @@
+sample:
+  name: Video Capture with Overlay
+  description: Demonstrates capturing video frames and drawing an overlay on them.
+tests:
+  sample.video.capture_overlay:
+    tags:
+      - video
+      - display
+      - overlay
+      - shield
+      - samples
+    extra_args:
+      - platform:mimxrt1064_evk/mimxrt1064:SHIELD="dvp_fpc24_mt9m114;rk043fn66hs_ctg"
+      - platform:mimxrt1170_evk/mimxrt1176/cm7:SHIELD="nxp_btb44_ov5640;rk055hdmipi4ma0"
+      - platform:mimxrt1170_evk@B/mimxrt1176/cm7:SHIELD="nxp_btb44_ov5640;rk055hdmipi4ma0"
+      - platform:frdm_mcxn947/mcxn947/cpu0:SHIELD="dvp_20pin_ov7670;lcd_par_s035_8080"
+    extra_configs:
+      - CONFIG_TEST=y
+      - CONFIG_FPU=y
+      - CONFIG_LOG_DEFAULT_LEVEL=4 # Enable debug logs to see rectangle drawing info if added
+    harness: console
+    harness_config:
+      fixture: fixture_camera
+      type: multi_line
+      ordered: true
+      regex:
+        - "Got frame \\d+"
+        - "size: \\d+;"
+        - "timestamp \\d+"
+        # Pattern OK might not be relevant if overlay corrupts test pattern.
+        # For now, we assume the test pattern check is robust or disabled when overlay is active.
+        # If tests fail, this regex might need adjustment or the C code for test pattern
+        # needs to be aware of the overlay.
+        - "Pattern OK"
+    platform_allow:
+      - arduino_nicla_vision/stm32h747xx/m7
+      - mimxrt1064_evk/mimxrt1064
+      - mimxrt1170_evk/mimxrt1176/cm7
+      - mimxrt1170_evk@B/mimxrt1176/cm7
+      - frdm_mcxn947/mcxn947/cpu0
+      - mm_swiftio
+      - esp32s3_eye/esp32s3/procpu
+    depends_on: video display # Added display dependency
+    integration_platforms:
+      - mimxrt1064_evk/mimxrt1064
+      - mimxrt1170_evk/mimxrt1176/cm7
+  sample.video.capture_overlay.shell:
+    tags:
+      - video
+      - overlay
+      - samples
+      - shell
+    extra_configs:
+      - CONFIG_VIDEO_SHELL=y
+      - CONFIG_FPU=y
+      - CONFIG_DISPLAY=n # Shell typically doesn't require display
+    extra_args:
+      - platform:native_sim/native/64:SNIPPET="video-sw-generator"
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Letting the user control the device with the video shell"
+    platform_allow:
+      - native_sim/native/64
+    integration_platforms:
+      - native_sim/native/64
