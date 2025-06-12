@@ -412,83 +412,61 @@ int cfb_invert_area(const struct device *dev, uint16_t x, uint16_t y,
 
 	if (x >= fb->x_res || y >= fb->y_res) {
 		LOG_ERR("Coordinates outside of framebuffer");
-
 		return -EINVAL;
 	}
 
-	if ((fb->screen_info & SCREEN_INFO_MONO_VTILED)) {
-		if (x > fb->x_res) {
-			x = fb->x_res;
-		}
-
-		if (y > fb->y_res) {
-			y = fb->y_res;
-		}
-
-		if (x + width > fb->x_res) {
-			width = fb->x_res - x;
-		}
-
-		if (y + height > fb->y_res) {
-			height = fb->y_res - y;
-		}
-
-		for (size_t i = x; i < x + width; i++) {
-			for (size_t j = y; j < (y + height); j++) {
-				/*
-				 * Process inversion in the y direction
-				 * by separating per 8-line boundaries.
-				 */
-
-				const size_t index = ((j / 8) * fb->x_res) + i;
-				const uint8_t remains = y + height - j;
-
-				/*
-				 * Make mask to prevent overwriting the drawing contents that on
-				 * between the start line or end line and the 8-line boundary.
-				 */
-				if ((j % 8) > 0) {
-					uint8_t m = BIT_MASK((j % 8));
-					uint8_t b = fb->buf[index];
-
-					/*
-					 * Generate mask for remaining lines in case of
-					 * drawing within 8 lines from the start line
-					 */
-					if (remains < 8) {
-						m |= BIT_MASK((8 - (j % 8) + remains))
-						     << ((j % 8) + remains);
-					}
-
-					if (need_reverse) {
-						m = byte_reverse(m);
-					}
-
-					fb->buf[index] = (b ^ (~m));
-					j += 7 - (j % 8);
-				} else if (remains >= 8) {
-					/* No mask required if no start or end line is included */
-					fb->buf[index] = ~fb->buf[index];
-					j += 7;
-				} else {
-					uint8_t m = BIT_MASK(8 - remains) << (remains);
-					uint8_t b = fb->buf[index];
-
-					if (need_reverse) {
-						m = byte_reverse(m);
-					}
-
-					fb->buf[index] = (b ^ (~m));
-					j += (remains - 1);
-				}
-			}
-		}
-
-		return 0;
+	if (!(fb->screen_info & SCREEN_INFO_MONO_VTILED)) {
+		LOG_ERR("Unsupported framebuffer configuration");
+		return -EINVAL;
 	}
 
-	LOG_ERR("Unsupported framebuffer configuration");
-	return -EINVAL;
+	// Clamp dimensions to framebuffer bounds
+	if (x + width > fb->x_res) {
+		width = fb->x_res - x;
+	}
+	if (y + height > fb->y_res) {
+		height = fb->y_res - y;
+	}
+
+	// Process each column
+	for (uint16_t col = x; col < x + width; col++) {
+		uint16_t current_y = y;
+
+		while (current_y < y + height) {
+			uint16_t tile_row = current_y / 8;             // Which 8-pixel tile row
+			uint8_t bit_offset = current_y % 8;            // Bit position within tile
+			uint16_t remaining = (y + height) - current_y; // Pixels left to process
+			size_t buf_index = (tile_row * fb->x_res) + col;
+
+			uint8_t mask;
+			uint16_t pixels_processed;
+
+			if (bit_offset == 0 && remaining >= 8) {
+				// Full tile - invert all 8 bits
+				mask = 0xFF;
+				pixels_processed = 8;
+			} else {
+				// Partial tile - create mask for specific bits
+				uint8_t bits_in_tile = (remaining < (8 - bit_offset))
+							       ? remaining
+							       : (8 - bit_offset);
+				mask = ((1 << bits_in_tile) - 1) << bit_offset;
+				pixels_processed = bits_in_tile;
+			}
+
+			// Apply bit reversal if needed
+			if (need_reverse) {
+				mask = byte_reverse(mask);
+			}
+
+			// Invert the masked bits
+			fb->buf[buf_index] ^= mask;
+
+			current_y += pixels_processed;
+		}
+	}
+
+	return 0;
 }
 
 static int cfb_invert(const struct char_framebuffer *fb)
