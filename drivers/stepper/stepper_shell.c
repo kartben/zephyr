@@ -40,6 +40,54 @@ struct stepper_direction_map {
 		.microstep = _microstep,                                                           \
 	}
 
+#define ENABLE_CMD_HELP                                                                            \
+	SHELL_HELP("Enable a stepper motor",                                                       \
+		   "<device>")
+
+#define DISABLE_CMD_HELP                                                                           \
+	SHELL_HELP("Disable a stepper motor",                                                      \
+		   "<device>")
+
+#define SET_MICRO_STEP_RES_HELP                                                                    \
+	SHELL_HELP("Set a stepper motor's micro-step resolution",                                  \
+		   "<device> <1|2|4|8|16|32|64|128|256>")
+
+#define GET_MICRO_STEP_RES_HELP                                                                    \
+	SHELL_HELP("Get a stepper motor's micro-step resolution",                                  \
+		   "<device>")
+
+#define SET_REFERENCE_POSITION_HELP                                                                \
+	SHELL_HELP("Set a stepper motor's reference position",                                     \
+		   "<device> <position>")
+
+#define GET_REFERENCE_POSITION_HELP                                                                \
+	SHELL_HELP("Get a stepper motor's reference position",                                     \
+		   "<device>")
+
+#define SET_MICROSTEP_INTERVAL_HELP                                                                \
+	SHELL_HELP("Set a stepper motor's microstep interval",                                     \
+		   "<device> <microstep_interval_ns>")
+
+#define MOVE_BY_HELP                                                                               \
+	SHELL_HELP("Move a stepper motor by a given number of microsteps",                         \
+		   "<device> <microsteps>")
+
+#define MOVE_TO_HELP                                                                               \
+	SHELL_HELP("Move a stepper motor to a given position",                                     \
+		   "<device> <microsteps>")
+
+#define RUN_HELP                                                                                   \
+	SHELL_HELP("Run a stepper motor in a given direction",                                     \
+		   "<device> <positive|negative>")
+
+#define STOP_HELP                                                                                  \
+	SHELL_HELP("Stop a stepper motor",                                                         \
+		   "<device>")
+
+#define INFO_HELP                                                                                  \
+	SHELL_HELP("Get information about a stepper motor",                                        \
+		   "<device>")
+
 static void print_callback(const struct device *dev, const enum stepper_event event,
 			   void *user_data)
 {
@@ -493,26 +541,28 @@ static int cmd_stepper_info(const struct shell *sh, size_t argc, char **argv)
 
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	stepper_cmds,
-	SHELL_CMD_ARG(enable, &dsub_pos_stepper_motor_name, "<device>", cmd_stepper_enable, 2, 0),
-	SHELL_CMD_ARG(disable, &dsub_pos_stepper_motor_name, "<device>", cmd_stepper_disable, 2, 0),
+	SHELL_CMD_ARG(enable, &dsub_pos_stepper_motor_name, ENABLE_CMD_HELP,
+		      cmd_stepper_enable, 2, 0),
+	SHELL_CMD_ARG(disable, &dsub_pos_stepper_motor_name, DISABLE_CMD_HELP,
+		      cmd_stepper_disable, 2, 0),
 	SHELL_CMD_ARG(set_micro_step_res, &dsub_pos_stepper_motor_name_microstep,
-		      "<device> <resolution>", cmd_stepper_set_micro_step_res, 3, 0),
-	SHELL_CMD_ARG(get_micro_step_res, &dsub_pos_stepper_motor_name, "<device>",
+		      SET_MICRO_STEP_RES_HELP, cmd_stepper_set_micro_step_res, 3, 0),
+	SHELL_CMD_ARG(get_micro_step_res, &dsub_pos_stepper_motor_name, GET_MICRO_STEP_RES_HELP,
 		      cmd_stepper_get_micro_step_res, 2, 0),
-	SHELL_CMD_ARG(set_reference_position, &dsub_pos_stepper_motor_name, "<device> <position>",
-		      cmd_stepper_set_reference_position, 3, 0),
-	SHELL_CMD_ARG(get_actual_position, &dsub_pos_stepper_motor_name, "<device>",
-		      cmd_stepper_get_actual_position, 2, 0),
+	SHELL_CMD_ARG(set_reference_position, &dsub_pos_stepper_motor_name,
+		      SET_REFERENCE_POSITION_HELP, cmd_stepper_set_reference_position, 3, 0),
+	SHELL_CMD_ARG(get_actual_position, &dsub_pos_stepper_motor_name,
+		      GET_REFERENCE_POSITION_HELP, cmd_stepper_get_actual_position, 2, 0),
 	SHELL_CMD_ARG(set_microstep_interval, &dsub_pos_stepper_motor_name,
-		      "<device> <microstep_interval_ns>", cmd_stepper_set_microstep_interval, 3, 0),
-	SHELL_CMD_ARG(move_by, &dsub_pos_stepper_motor_name, "<device> <microsteps>",
+		      SET_MICROSTEP_INTERVAL_HELP, cmd_stepper_set_microstep_interval, 3, 0),
+	SHELL_CMD_ARG(move_by, &dsub_pos_stepper_motor_name, MOVE_BY_HELP,
 		      cmd_stepper_move_by, 3, 0),
-	SHELL_CMD_ARG(move_to, &dsub_pos_stepper_motor_name, "<device> <microsteps>",
+	SHELL_CMD_ARG(move_to, &dsub_pos_stepper_motor_name, MOVE_TO_HELP,
 		      cmd_stepper_move_to, 3, 0),
-	SHELL_CMD_ARG(run, &dsub_pos_stepper_motor_name_dir, "<device> <direction>",
+	SHELL_CMD_ARG(run, &dsub_pos_stepper_motor_name_dir, RUN_HELP,
 		      cmd_stepper_run, 3, 0),
-	SHELL_CMD_ARG(stop, &dsub_pos_stepper_motor_name, "<device>", cmd_stepper_stop, 2, 0),
-	SHELL_CMD_ARG(info, &dsub_pos_stepper_motor_name, "<device>", cmd_stepper_info, 2, 0),
+	SHELL_CMD_ARG(stop, &dsub_pos_stepper_motor_name, STOP_HELP, cmd_stepper_stop, 2, 0),
+	SHELL_CMD_ARG(info, &dsub_pos_stepper_motor_name, INFO_HELP, cmd_stepper_info, 2, 0),
 	SHELL_SUBCMD_SET_END);
 
 SHELL_CMD_REGISTER(stepper, &stepper_cmds, "Stepper motor commands", NULL);
