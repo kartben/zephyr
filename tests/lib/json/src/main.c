@@ -30,8 +30,8 @@ struct test_struct {
 	int16_t some_int16;
 	int64_t some_int64;
 	int64_t another_int64;
-	int64_t some_uint64;
-	int64_t another_uint64;
+	uint64_t some_uint64;
+	uint64_t another_uint64;
 	struct test_nested some_nested_struct;
 	int some_array[16];
 	size_t some_array_len;
@@ -329,6 +329,8 @@ enum int16_enum { I16_MIN = INT16_MIN, I16_MAX = INT16_MAX };
 enum uint16_enum { U16_MIN = 0, U16_MAX = UINT16_MAX };
 enum int32_enum { I32_MIN = INT32_MIN, I32_MAX = INT32_MAX };
 enum uint32_enum { U32_MIN = 0, U32_MAX = UINT32_MAX };
+enum int64_enum { I64_MIN = INT64_MIN, I64_MAX = INT64_MAX };
+enum uint64_enum { U64_MIN = 0, U64_MAX = UINT64_MAX };
 
 struct test_enums {
 	enum int8_enum i8;
@@ -337,6 +339,8 @@ struct test_enums {
 	enum uint16_enum u16;
 	enum int32_enum i32;
 	enum uint32_enum u32;
+	enum int64_enum i64;
+	enum uint64_enum u64;
 };
 
 static const struct json_obj_descr enums_descr[] = {
@@ -346,8 +350,9 @@ static const struct json_obj_descr enums_descr[] = {
 	JSON_OBJ_DESCR_PRIM(struct test_enums, u16, JSON_TOK_UINT),
 	JSON_OBJ_DESCR_PRIM(struct test_enums, i32, JSON_TOK_INT),
 	JSON_OBJ_DESCR_PRIM(struct test_enums, u32, JSON_TOK_UINT),
+	JSON_OBJ_DESCR_PRIM(struct test_enums, i64, JSON_TOK_INT64),
+	JSON_OBJ_DESCR_PRIM(struct test_enums, u64, JSON_TOK_UINT64),
 };
-
 
 ZTEST(lib_json_test, test_json_encoding)
 {
@@ -2154,7 +2159,9 @@ ZTEST(lib_json_test, test_json_enums)
 			 "\"i16\":-32768,"
 			 "\"u16\":65535,"
 			 "\"i32\":-2147483648,"
-			 "\"u32\":4294967295"
+			 "\"u32\":4294967295,"
+			 "\"i64\":-9223372036854775808,"
+			 "\"u64\":18446744073709551615"
 			 "}";
 	char buffer[sizeof(encoded)];
 	struct test_enums enums_decoded = {0};
@@ -2166,6 +2173,8 @@ ZTEST(lib_json_test, test_json_enums)
 	enums.u16 = U16_MAX;
 	enums.i32 = I32_MIN;
 	enums.u32 = U32_MAX;
+	enums.i64 = I64_MIN;
+	enums.u64 = U64_MAX;
 
 	ret = json_obj_encode_buf(enums_descr, ARRAY_SIZE(enums_descr),
 				&enums, buffer, sizeof(buffer));
