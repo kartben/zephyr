@@ -171,7 +171,7 @@ static void card_detect_gpio_cb(const struct device *port, struct gpio_callback 
 static void imx_usdhc_select_1_8v(USDHC_Type *base, bool enable_1_8v)
 {
 #if !(defined(FSL_FEATURE_USDHC_HAS_NO_VOLTAGE_SELECT) && (FSL_FEATURE_USDHC_HAS_NO_VOLTAGE_SELECT))
-	UDSHC_SelectVoltage(base, enable_1_8v);
+	USDHC_SelectVoltage(base, enable_1_8v);
 #endif
 }
 
