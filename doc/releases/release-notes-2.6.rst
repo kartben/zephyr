@@ -1289,7 +1289,7 @@ release:
 * :github:`34950` - xtensa arch ：The source code version is too old
 * :github:`34948` - SoF module is not pointing at Zehpyr repo
 * :github:`34935` - LwM2M: Block transfer with TLV format does not work
-* :github:`34932` - drvers/flash/nrf_qspi_nor: high power consumption on nrf52840
+* :github:`34932` - drivers/flash/nrf_qspi_nor: high power consumption on nrf52840
 * :github:`34931` - dns resolve timeout leads to CPU memory access violation error
 * :github:`34925` - tests/lib/cbprintf_package fails to build
 * :github:`34923` - net.socket.get_addr_info: frdm_k64f test fails
