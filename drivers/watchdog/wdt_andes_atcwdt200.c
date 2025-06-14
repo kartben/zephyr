@@ -246,12 +246,12 @@ static int wdt_atcwdt200_install_timeout(const struct device *dev,
 	}
 
 	counter_freq = counter_get_frequency(pit_counter_dev);
-	rst_period = wdt_atcwdt200_convtime(cfg->window.max, &scaler);
+       rst_period = wdt_atcwdt200_convtime(cfg->window.max, &scaler);
 
-	if (rst_period < 0 || WDOGCFG_PERIOD_MAX < rst_period) {
-		LOG_ERR("Unsupported watchdog timeout\n");
-		return -EINVAL;
-	}
+       if (rst_period == 0 || WDOGCFG_PERIOD_MAX < rst_period) {
+               LOG_ERR("Unsupported watchdog timeout\n");
+               return -EINVAL;
+       }
 
 	wdt_atcwdt200_disable(dev);
 

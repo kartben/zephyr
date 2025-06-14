@@ -403,9 +403,9 @@ static inline void dw_wdt_timeout_period_init_set(const uint32_t base,
 static inline uint32_t dw_wdt_current_counter_value_register_get(const uint32_t base,
 								 uint32_t wdt_counter_width)
 {
-	uint32_t current_counter_value = sys_read32(base + WDT_CCVR);
+       uint32_t current_counter_value = sys_read32(base + WDT_CCVR);
 
-	current_counter_value &= (1 << (wdt_counter_width - 1));
+       current_counter_value &= BIT_MASK(wdt_counter_width);
 	return current_counter_value;
 }
 
