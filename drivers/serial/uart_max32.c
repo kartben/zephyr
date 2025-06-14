@@ -187,7 +187,7 @@ static int api_configure(const struct device *dev, const struct uart_config *uar
 		if (err < 0) {
 			return -ENOTSUP;
 		}
-		/* incase of success keep configuration */
+               /* in case of success keep configuration */
 		data->conf.parity = uart_cfg->parity;
 	}
 
@@ -205,7 +205,7 @@ static int api_configure(const struct device *dev, const struct uart_config *uar
 		if (err < 0) {
 			return -ENOTSUP;
 		}
-		/* incase of success keep configuration */
+               /* in case of success keep configuration */
 		data->conf.stop_bits = uart_cfg->stop_bits;
 	}
 
@@ -220,7 +220,7 @@ static int api_configure(const struct device *dev, const struct uart_config *uar
 		if (err < 0) {
 			return -ENOTSUP;
 		}
-		/* incase of success keep configuration */
+               /* in case of success keep configuration */
 		data->conf.data_bits = uart_cfg->data_bits;
 	}
 
