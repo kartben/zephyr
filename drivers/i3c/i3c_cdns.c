@@ -34,7 +34,7 @@
 #define CONF_STATUS0_SUPPORTS_DDR         BIT(5)
 #define CONF_STATUS0_SEC_MASTER           BIT(4)
 /* And it was replaced with a Dev Role mask */
-#define CONF_STATUS0_DEV_ROLE(x)          ((x) & GENMASK(5, 4) >> 4)
+#define CONF_STATUS0_DEV_ROLE(x)          (((x) & GENMASK(5, 4)) >> 4)
 #define CONF_STATUS0_DEV_ROLE_MAIN_MASTER 0
 #define CONF_STATUS0_DEV_ROLE_SEC_MASTER  1
 #define CONF_STATUS0_DEV_ROLE_SLAVE       2
@@ -2668,7 +2668,7 @@ static void cdns_i3c_handle_hj(const struct device *dev, uint32_t ibir)
 	}
 }
 
-static void cnds_i3c_master_demux_ibis(const struct device *dev)
+static void cdns_i3c_master_demux_ibis(const struct device *dev)
 {
 	const struct cdns_i3c_config *config = dev->config;
 
@@ -2782,7 +2782,7 @@ static void cdns_i3c_irq_handler(const struct device *dev)
 	/* In-band interrupt */
 	if (int_st & MST_INT_IBIR_THR) {
 #ifdef CONFIG_I3C_USE_IBI
-		cnds_i3c_master_demux_ibis(dev);
+	cdns_i3c_master_demux_ibis(dev);
 #else
 		LOG_ERR("%s: IBI received - Kconfig for using IBIs is not enabled", dev->name);
 #endif
