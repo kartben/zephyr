@@ -28,7 +28,7 @@ ssize_t z_impl_hwinfo_get_device_id(uint8_t *buffer, size_t length)
  * the code, the unique identifier or the user signature area at the flash
  * location. Therefore the function reading the device id must be executed
  * from RAM with the interrupts disabled. To avoid executing this complex
- * code each time the device id is requested, we do this at boot time at save
+ * code each time the device id is requested, we do this at boot time and save
  * the 128-bit value into RAM.
  */
 __ramfunc static void hwinfo_sam_read_device_id(void)

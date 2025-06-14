@@ -10,8 +10,8 @@
 #include <soc.h>
 #include <da1469x_trimv.h>
 
-#define PRODUCT_INFO_GPOUP	(12U)
-#define CHIP_ID_GPOUP		(13U)
+#define PRODUCT_INFO_GROUP	(12U)
+#define CHIP_ID_GROUP		(13U)
 
 #define PRODUCT_INFO_LENGTH	(3U)
 #define CHIP_ID_LENGTH		(1U)
@@ -23,9 +23,9 @@ ssize_t z_impl_hwinfo_get_device_id(uint8_t *buffer, size_t length)
 	uint8_t product_info_len;
 	uint8_t chip_id_len;
 
-	product_info_len = da1469x_trimv_group_read(PRODUCT_INFO_GPOUP, &unique_id[0],
+	product_info_len = da1469x_trimv_group_read(PRODUCT_INFO_GROUP, &unique_id[0],
 						    PRODUCT_INFO_LENGTH);
-	chip_id_len = da1469x_trimv_group_read(CHIP_ID_GPOUP, &unique_id[3],
+	chip_id_len = da1469x_trimv_group_read(CHIP_ID_GROUP, &unique_id[3],
 					       CHIP_ID_LENGTH);
 
 	if ((product_info_len != PRODUCT_INFO_LENGTH) || (chip_id_len != CHIP_ID_LENGTH)) {
