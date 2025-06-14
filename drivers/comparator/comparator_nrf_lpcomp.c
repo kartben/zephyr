@@ -103,9 +103,7 @@ static void shim_nrf_lpcomp_stop(void)
 
 static int shim_nrf_lpcomp_pm_callback(const struct device *dev, enum pm_device_action action)
 {
-	ARG_UNUSED(dev);
-
-	ARG_UNUSED(dev);
+       ARG_UNUSED(dev);
 
 	switch (action) {
 	case PM_DEVICE_ACTION_RESUME:

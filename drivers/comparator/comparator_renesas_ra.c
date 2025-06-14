@@ -171,11 +171,11 @@ static int acmphs_renesas_ra_init(const struct device *dev)
 		return -EIO;
 	}
 
-	/*
-	 * Once the analog comparator is configurate, the program must wait
-	 * for the ACMPHS stabilization time (300ns enabling + 200ns input switching)
-	 * before using the comparator.
-	 */
+       /*
+        * Once the analog comparator is configured, the program must wait
+         * for the ACMPHS stabilization time (300ns enabling + 200ns input switching)
+         * before using the comparator.
+         */
 	k_usleep(5);
 
 	fsp_err = R_ACMPHS_OutputEnable(&data->acmphs);

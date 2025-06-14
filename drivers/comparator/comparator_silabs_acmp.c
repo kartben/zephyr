@@ -125,8 +125,8 @@ static int acmp_set_trigger(const struct device *dev, enum comparator_trigger tr
 	/* Disable ACMP trigger interrupts */
 	ACMP_IntDisable(config->base, ACMP_IEN_RISE | ACMP_IEN_FALL);
 
-	/* Clear ACMP trigger interrupt flags */
-	ACMP_IntClear(config->base, ACMP_IEN_RISE | ACMP_IEN_FALL);
+       /* Clear ACMP trigger interrupt flags */
+       ACMP_IntClear(config->base, ACMP_IF_RISE | ACMP_IF_FALL);
 
 	switch (trigger) {
 	case COMPARATOR_TRIGGER_BOTH_EDGES:
@@ -184,8 +184,8 @@ static int acmp_trigger_is_pending(const struct device *dev)
 	const struct acmp_config *config = dev->config;
 	const struct acmp_data *data = dev->data;
 
-	if (ACMP_IntGet(config->base) & data->interrupt_mask) {
-		ACMP_IntClear(config->base, data->interrupt_mask);
+       if (ACMP_IntGet(config->base) & data->interrupt_mask) {
+               ACMP_IntClear(config->base, data->interrupt_mask);
 		return 1;
 	}
 
