@@ -24,7 +24,7 @@ static int bbram_rts5912_get_size(const struct device *dev, size_t *size)
 	const struct bbram_rts5912_config *config = dev->config;
 
 	*size = config->size;
-	LOG_INF("size: 0x%08x", *size);
+       LOG_INF("size: 0x%zx", *size);
 	return 0;
 }
 
