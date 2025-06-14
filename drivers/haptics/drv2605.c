@@ -487,13 +487,18 @@ static int drv2605_reset(const struct device *dev)
 	int retries = 5, ret;
 	uint8_t value;
 
-	i2c_reg_update_byte_dt(&config->i2c, DRV2605_REG_MODE, DRV2605_STANDBY, 0);
-
-	ret = i2c_reg_update_byte_dt(&config->i2c, DRV2605_REG_MODE, DRV2605_DEV_RESET,
-				     DRV2605_DEV_RESET);
+	ret = i2c_reg_update_byte_dt(&config->i2c, DRV2605_REG_MODE,
+		DRV2605_STANDBY, 0);
 	if (ret < 0) {
 		return ret;
 	}
+
+	ret = i2c_reg_update_byte_dt(&config->i2c, DRV2605_REG_MODE,
+				DRV2605_DEV_RESET,
+				DRV2605_DEV_RESET);
+	if (ret < 0) {
+		return ret;
+}
 
 	k_msleep(100);
 
@@ -620,7 +625,7 @@ static DEVICE_API(haptics, drv2605_driver_api) = {
 };
 
 #define HAPTICS_DRV2605_DEFINE(inst)                                                               \
-                                                                                                   \
+	                                                                                            \
 	static const struct drv2605_config drv2605_config_##inst = {                               \
 		.i2c = I2C_DT_SPEC_INST_GET(inst),                                                 \
 		.en_gpio = GPIO_DT_SPEC_INST_GET_OR(inst, en_gpios, {}),                           \
@@ -632,13 +637,13 @@ static DEVICE_API(haptics, drv2605_driver_api) = {
 		.overdrive_clamp_voltage =                                                         \
 			DRV2605_CALCULATE_VOLTAGE(DT_INST_PROP(inst, vib_overdrive_mv)),           \
 	};                                                                                         \
-                                                                                                   \
+	                                                                                            \
 	static struct drv2605_data drv2605_data_##inst = {                                         \
 		.mode = DRV2605_MODE_INTERNAL_TRIGGER,                                             \
 	};                                                                                         \
-                                                                                                   \
+	                                                                                            \
 	PM_DEVICE_DT_INST_DEFINE(inst, drv2605_pm_action);                                         \
-                                                                                                   \
+	                                                                                            \
 	DEVICE_DT_INST_DEFINE(inst, drv2605_init, PM_DEVICE_DT_INST_GET(inst),                     \
 			      &drv2605_data_##inst, &drv2605_config_##inst, POST_KERNEL,           \
 			      CONFIG_HAPTICS_INIT_PRIORITY, &drv2605_driver_api);
