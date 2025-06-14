@@ -780,9 +780,10 @@ static int rcar_mmc_sd_buf_rx_tx_data(const struct device *dev, struct sdhc_data
 		}
 
 		/* clear write/read buffer ready flag */
-		info2_reg = rcar_mmc_read_reg32(dev, RCAR_MMC_INFO2);
-		info2_reg &= ~info2_poll_flag;
-		rcar_mmc_write_reg32(dev, RCAR_MMC_INFO2, info2_reg);
+               info2_reg = rcar_mmc_read_reg32(dev, RCAR_MMC_INFO2);
+               info2_reg &= ~info2_poll_flag;
+               info2_reg |= RCAR_MMC_INFO2_CLEAR;
+               rcar_mmc_write_reg32(dev, RCAR_MMC_INFO2, info2_reg);
 
 		for (w_off = 0; w_off < aligned_block_size; w_off += sd_buf0_size) {
 			uint64_t buf0 = 0ULL;
