@@ -967,13 +967,18 @@ static int littlefs_mount(struct fs_mount_t *mountp)
 	LOG_INF("%s mounted", mountp->mnt_point);
 
 out:
-	if (ret < 0) {
-		fs->backend = NULL;
-	}
+#ifdef CONFIG_FS_LITTLEFS_FMP_DEV
+        if (ret < 0 && fs->backend && !littlefs_on_blkdev(mountp->flags)) {
+                flash_area_close(fs->backend);
+        }
+#endif
+        if (ret < 0) {
+                fs->backend = NULL;
+        }
 
-	fs_unlock(fs);
+        fs_unlock(fs);
 
-	return ret;
+        return ret;
 }
 
 #if defined(CONFIG_FILE_SYSTEM_MKFS)
@@ -1007,9 +1012,14 @@ static int littlefs_mkfs(uintptr_t dev_id, void *cfg, int flags)
 		goto out;
 	}
 out:
-	fs->backend = NULL;
-	fs_unlock(fs);
-	return ret;
+#ifdef CONFIG_FS_LITTLEFS_FMP_DEV
+        if (fs->backend && !littlefs_on_blkdev(flags)) {
+                flash_area_close(fs->backend);
+        }
+#endif
+        fs->backend = NULL;
+        fs_unlock(fs);
+        return ret;
 }
 
 #endif /* CONFIG_FILE_SYSTEM_MKFS */
