@@ -937,7 +937,7 @@ static bool check_priority(const struct shell *sh, int priority)
 		shell_fprintf(sh, SHELL_WARNING,
 			      "Invalid priority: %d\n"
 			      "Valid values are [%d, %d] for co-operative "
-			      "and [%d, %d] for pre-emptive threads\n",
+                             "and [%d, %d] for preemptive threads\n",
 			      priority,
 			      -CONFIG_NUM_COOP_PRIORITIES, -1,
 			      0, CONFIG_NUM_PREEMPT_PRIORITIES - 1);
@@ -2041,9 +2041,10 @@ SHELL_STATIC_SUBCMD_SET_CREATE(zperf_cmd_udp,
 );
 
 SHELL_STATIC_SUBCMD_SET_CREATE(zperf_cmd_jobs,
-	SHELL_CMD(all, NULL, "Show all statistics", cmd_jobs_all),
-	SHELL_CMD(clear, NULL, "Clear all statistics", cmd_jobs_clear),
-	SHELL_CMD(start, NULL, "Start waiting jobs", cmd_jobs_start),
+        SHELL_CMD(all, NULL, "Show all statistics", cmd_jobs_all),
+        SHELL_CMD(clear, NULL, "Clear all statistics", cmd_jobs_clear),
+        SHELL_CMD(start, NULL, "Start waiting jobs", cmd_jobs_start),
+        SHELL_SUBCMD_SET_END
 );
 
 SHELL_STATIC_SUBCMD_SET_CREATE(zperf_commands,

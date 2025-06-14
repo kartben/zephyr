@@ -65,10 +65,8 @@ static void at_shell_print_match(struct modem_chat *chat, char **argv, uint16_t 
 	shell_print(at_shell_active_shell, "%s", argv[0]);
 }
 
-MODEM_CHAT_MATCHES_DEFINE(
-	at_shell_abort_matches,
-	MODEM_CHAT_MATCH("ERROR", "", at_shell_print_match),
-);
+MODEM_CHAT_MATCHES_DEFINE(at_shell_abort_matches,
+        MODEM_CHAT_MATCH("ERROR", "", at_shell_print_match));
 
 static void at_shell_script_callback(struct modem_chat *chat,
 				     enum modem_chat_script_result result,

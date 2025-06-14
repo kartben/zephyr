@@ -188,7 +188,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		      "Usage: lvgl monkey create [pointer|keypad|button|encoder]",
 		      cmd_lvgl_monkey_create, 1, 1),
 	SHELL_CMD_ARG(set, NULL,
-		      "Activate/deactive a monkey instance\n"
+                     "Activate/deactivate a monkey instance\n"
 		      "Usage: lvgl monkey set <index> <active|inactive>\n",
 		      cmd_lvgl_monkey_set, 3, 0),
 	SHELL_SUBCMD_SET_END);
