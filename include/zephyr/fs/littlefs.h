@@ -47,7 +47,7 @@ struct fs_littlefs {
 	/* Must be cfg.lookahead_size/4 elements, and
 	 * cfg.lookahead_size must be a multiple of 8.
 	 */
-	uint32_t *lookahead_buffer[CONFIG_FS_LITTLEFS_LOOKAHEAD_SIZE / sizeof(uint32_t)];
+       uint32_t lookahead_buffer[CONFIG_FS_LITTLEFS_LOOKAHEAD_SIZE / sizeof(uint32_t)];
 
 	/* These structures are filled automatically at mount. */
 	struct lfs lfs;
