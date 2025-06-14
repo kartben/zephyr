@@ -18,7 +18,7 @@ static uint8_t msg_buf[BUF_SIZE];
 
 #define OPTION_HELP_RESET "-r Perform bus reset before executing cmd."
 
-static const char *w1_settings_name[W1_SETINGS_TYPE_COUNT] = {
+static const char *w1_settings_name[W1_SETTINGS_TYPE_COUNT] = {
 	[W1_SETTING_SPEED] = "speed",
 	[W1_SETTING_STRONG_PULLUP] = "spu",
 };
@@ -176,7 +176,7 @@ static int cmd_w1_write_bit(const struct shell *sh, size_t argc, char **argv)
 	}
 
 	(void)w1_lock_bus(dev);
-	ret = w1_write_byte(dev, (bool)input);
+       ret = w1_write_bit(dev, (bool)input);
 	if (ret < 0) {
 		shell_error(sh, "Failed to write bit [%d]", ret);
 	}
@@ -317,7 +317,7 @@ static int cmd_w1_configure(const struct shell *sh, size_t argc, char **argv)
 		}
 	}
 
-	if (type > W1_SETINGS_TYPE_COUNT) {
+       if (type > W1_SETTINGS_TYPE_COUNT) {
 		shell_error(sh, "invalid type %u", type);
 		return -EINVAL;
 	}
