@@ -243,9 +243,9 @@ static int cmd_vget(const struct shell *sh, size_t argc, char **argv)
 
 static int cmd_clist(const struct shell *sh, size_t argc, char **argv)
 {
-	const struct device *dev;
-	unsigned int current_cnt;
-	int32_t last_current_ua;
+        const struct device *dev;
+        unsigned int current_cnt;
+        int32_t last_current_ua = 0;
 
 	ARG_UNUSED(argc);
 
