@@ -188,7 +188,7 @@ int pm_device_runtime_get(const struct device *dev)
 		return 0;
 	}
 
-	SYS_PORT_TRACING_FUNC_ENTER(pm, device_runtime_get, dev);
+       SYS_PORT_TRACING_OBJ_FUNC_ENTER(pm, device_runtime_get, dev);
 
 	/*
 	 * Early return if device runtime is not enabled.
@@ -287,7 +287,7 @@ unlock:
 	}
 
 end:
-	SYS_PORT_TRACING_FUNC_EXIT(pm, device_runtime_get, dev, ret);
+       SYS_PORT_TRACING_OBJ_FUNC_EXIT(pm, device_runtime_get, dev, ret);
 
 	return ret;
 }
@@ -339,7 +339,7 @@ int pm_device_runtime_put(const struct device *dev)
 		return 0;
 	}
 
-	SYS_PORT_TRACING_FUNC_ENTER(pm, device_runtime_put, dev);
+       SYS_PORT_TRACING_OBJ_FUNC_ENTER(pm, device_runtime_put, dev);
 
 	if (atomic_test_bit(&dev->pm_base->flags, PM_DEVICE_FLAG_ISR_SAFE)) {
 		struct pm_device_isr *pm_sync = dev->pm_isr;
@@ -359,7 +359,7 @@ int pm_device_runtime_put(const struct device *dev)
 			ret = pm_device_runtime_put(PM_DOMAIN(dev->pm_base));
 		}
 	}
-	SYS_PORT_TRACING_FUNC_EXIT(pm, device_runtime_put, dev, ret);
+       SYS_PORT_TRACING_OBJ_FUNC_EXIT(pm, device_runtime_put, dev, ret);
 
 	return ret;
 }
@@ -373,7 +373,7 @@ int pm_device_runtime_put_async(const struct device *dev, k_timeout_t delay)
 		return 0;
 	}
 
-	SYS_PORT_TRACING_FUNC_ENTER(pm, device_runtime_put_async, dev, delay);
+       SYS_PORT_TRACING_OBJ_FUNC_ENTER(pm, device_runtime_put_async, dev, delay);
 	if (atomic_test_bit(&dev->pm_base->flags, PM_DEVICE_FLAG_ISR_SAFE)) {
 		struct pm_device_isr *pm_sync = dev->pm_isr;
 		k_spinlock_key_t k = k_spin_lock(&pm_sync->lock);
@@ -384,7 +384,7 @@ int pm_device_runtime_put_async(const struct device *dev, k_timeout_t delay)
 	} else {
 		ret = runtime_suspend(dev, true, delay);
 	}
-	SYS_PORT_TRACING_FUNC_EXIT(pm, device_runtime_put_async, dev, delay, ret);
+       SYS_PORT_TRACING_OBJ_FUNC_EXIT(pm, device_runtime_put_async, dev, delay, ret);
 
 	return ret;
 #else
@@ -434,7 +434,7 @@ int pm_device_runtime_enable(const struct device *dev)
 	int ret = 0;
 	struct pm_device *pm = dev->pm;
 
-	SYS_PORT_TRACING_FUNC_ENTER(pm, device_runtime_enable, dev);
+       SYS_PORT_TRACING_OBJ_FUNC_ENTER(pm, device_runtime_enable, dev);
 
 	if (pm == NULL) {
 		ret = -ENOTSUP;
@@ -485,7 +485,7 @@ unlock:
 	}
 
 end:
-	SYS_PORT_TRACING_FUNC_EXIT(pm, device_runtime_enable, dev, ret);
+       SYS_PORT_TRACING_OBJ_FUNC_EXIT(pm, device_runtime_enable, dev, ret);
 	return ret;
 }
 
@@ -517,7 +517,7 @@ int pm_device_runtime_disable(const struct device *dev)
 	int ret = 0;
 	struct pm_device *pm = dev->pm;
 
-	SYS_PORT_TRACING_FUNC_ENTER(pm, device_runtime_disable, dev);
+       SYS_PORT_TRACING_OBJ_FUNC_ENTER(pm, device_runtime_disable, dev);
 
 	if (pm == NULL) {
 		ret = -ENOTSUP;
@@ -577,7 +577,7 @@ unlock:
 	}
 
 end:
-	SYS_PORT_TRACING_FUNC_EXIT(pm, device_runtime_disable, dev, ret);
+       SYS_PORT_TRACING_OBJ_FUNC_EXIT(pm, device_runtime_disable, dev, ret);
 
 	return ret;
 }
