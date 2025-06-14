@@ -61,12 +61,12 @@ enum w1_settings_type {
 	 * The strong pullup resistor is activated immediately after the next
 	 * written data block by passing a value of 1, and deactivated passing 0.
 	 */
-	W1_SETTING_STRONG_PULLUP,
+       W1_SETTING_STRONG_PULLUP,
 
-	/**
-	 * Number of different settings types.
-	 */
-	W1_SETINGS_TYPE_COUNT,
+       /**
+        * Number of different settings types.
+        */
+       W1_SETTINGS_TYPE_COUNT,
 };
 
 /**  @cond INTERNAL_HIDDEN */
