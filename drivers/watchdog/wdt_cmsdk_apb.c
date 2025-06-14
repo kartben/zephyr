@@ -75,7 +75,7 @@ static void (*user_cb)(const struct device *dev, int channel_id);
 
 static void wdog_cmsdk_apb_unlock(const struct device *dev)
 {
-	volatile struct wdog_cmsdk_apb *wdog = WDOG_STRUCT;
+volatile struct wdog_cmsdk_apb *wdog = WDOG_STRUCT;
 
 	ARG_UNUSED(dev);
 
@@ -111,8 +111,8 @@ static int wdog_cmsdk_apb_disable(const struct device *dev)
 
 	ARG_UNUSED(dev);
 
-	/* Stop the watchdog counter with INTEN bit */
-	wdog->ctrl = ~(CMSDK_APB_WDOG_CTRL_RESEN | CMSDK_APB_WDOG_CTRL_INTEN);
+	/* Stop the watchdog counter by clearing RESEN and INTEN */
+	wdog->ctrl &= ~(CMSDK_APB_WDOG_CTRL_RESEN | CMSDK_APB_WDOG_CTRL_INTEN);
 
 	enabled = false;
 	assigned_channels = 0;
