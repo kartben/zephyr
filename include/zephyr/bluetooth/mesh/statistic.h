@@ -34,7 +34,7 @@ struct bt_mesh_statistic {
 	/** Received frames over proxy. */
 	uint32_t rx_proxy;
 	/** Received over unknown interface. */
-	uint32_t rx_uknown;
+	uint32_t rx_unknown;
 	/** Counter of frames that were initiated to relay over advertiser bearer. */
 	uint32_t tx_adv_relay_planned;
 	/** Counter of frames that succeeded relaying over advertiser bearer. */

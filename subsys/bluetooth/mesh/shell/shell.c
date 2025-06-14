@@ -1598,7 +1598,7 @@ static int cmd_stat_get(const struct shell *sh, size_t argc, char *argv[])
 	shell_print(sh, "adv:       %d", st.rx_adv);
 	shell_print(sh, "loopback:  %d", st.rx_loopback);
 	shell_print(sh, "proxy:     %d", st.rx_proxy);
-	shell_print(sh, "unknown:   %d", st.rx_uknown);
+	shell_print(sh, "unknown:   %d", st.rx_unknown);
 
 	shell_print(sh, "Transmitted frames: <planned> - <succeeded>");
 	shell_print(sh, "relay adv:   %d - %d", st.tx_adv_relay_planned, st.tx_adv_relay_succeeded);

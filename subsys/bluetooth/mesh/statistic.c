@@ -56,8 +56,8 @@ void bt_mesh_stat_rx(enum bt_mesh_net_if net_if)
 	case BT_MESH_NET_IF_PROXY_CFG:
 		stat.rx_proxy++;
 		break;
-	default:
-		stat.rx_uknown++;
-		break;
-	}
+       default:
+               stat.rx_unknown++;
+               break;
+       }
 }
