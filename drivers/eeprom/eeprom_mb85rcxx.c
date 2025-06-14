@@ -182,15 +182,16 @@ static int mb85rcxx_write(const struct device *dev, off_t offset, const void *bu
 		i2c_addr = mb85rcxx_translate_address(dev, offset, addr);
 		len_in_page = mb85rcxx_remaining_len_in_page(dev, offset, len);
 
-		ret = mb85rcxx_i2c_write(dev, i2c_addr, addr, buf, len);
+		ret = mb85rcxx_i2c_write(dev, i2c_addr, addr, buf, len_in_page);
 		if (ret < 0) {
 			LOG_ERR("failed to write to FRAM (err %d)", ret);
 			k_mutex_unlock(&data->lock);
+			mb85rcxx_write_protect_set(dev, 1);
 			return ret;
-		}
+}
 
 		len -= len_in_page;
-		*(char *)&buf += len_in_page;
+		buf = (const char *)buf + len_in_page;
 		offset += len_in_page;
 	}
 
