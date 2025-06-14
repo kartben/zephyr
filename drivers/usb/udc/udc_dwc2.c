@@ -1907,8 +1907,8 @@ static int dwc2_core_soft_reset(const struct device *dev)
 	} while (sys_read32(grstctl_reg) & USB_DWC2_GRSTCTL_CSFTRST &&
 		 !(sys_read32(grstctl_reg) & USB_DWC2_GRSTCTL_CSFTRSTDONE));
 
-	/* CSFTRSTDONE is W1C so the write must have the bit set to clear it */
-	sys_clear_bits(grstctl_reg, USB_DWC2_GRSTCTL_CSFTRST);
+       /* CSFTRSTDONE is W1C so write 1 to clear it */
+       sys_write32(USB_DWC2_GRSTCTL_CSFTRSTDONE, grstctl_reg);
 
 	return 0;
 }
