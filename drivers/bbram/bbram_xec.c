@@ -24,11 +24,14 @@ struct bbram_xec_config {
 
 static int bbram_xec_check_invalid(const struct device *dev)
 {
-	struct vbatr_regs *const regs = (struct vbatr_regs *)(DT_REG_ADDR_BY_NAME(
-					DT_NODELABEL(pcr), vbatr));
+	struct vbatr_regs *const regs =
+		(struct vbatr_regs *)(DT_REG_ADDR_BY_NAME(DT_NODELABEL(pcr), vbatr));
 
 	if (regs->PFRS & BIT(MCHP_VBATR_PFRS_VBAT_RST_POS)) {
-		regs->PFRS |= BIT(MCHP_VBATR_PFRS_VBAT_RST_POS);
+		/* PFRS is a write-one-to-clear register.  Avoid
+		 * read-modify-write which may clear unrelated bits.
+		 */
+		regs->PFRS = BIT(MCHP_VBATR_PFRS_VBAT_RST_POS);
 		LOG_ERR("VBAT power rail failure");
 		return -EFAULT;
 	}
@@ -44,8 +47,7 @@ static int bbram_xec_get_size(const struct device *dev, size_t *size)
 	return 0;
 }
 
-static int bbram_xec_read(const struct device *dev, size_t offset, size_t size,
-			  uint8_t *data)
+static int bbram_xec_read(const struct device *dev, size_t offset, size_t size, uint8_t *data)
 {
 	const struct bbram_xec_config *dcfg = dev->config;
 
@@ -59,7 +61,7 @@ static int bbram_xec_read(const struct device *dev, size_t offset, size_t size,
 }
 
 static int bbram_xec_write(const struct device *dev, size_t offset, size_t size,
-			       const uint8_t *data)
+			   const uint8_t *data)
 {
 	const struct bbram_xec_config *dcfg = dev->config;
 
@@ -79,13 +81,12 @@ static DEVICE_API(bbram, bbram_xec_driver_api) = {
 	.write = bbram_xec_write,
 };
 
-#define BBRAM_INIT(inst)						\
-	static const struct bbram_xec_config bbram_cfg_##inst = {	\
-		.base = (uint8_t *)(DT_INST_REG_ADDR(inst)),		\
-		.size = DT_INST_REG_SIZE(inst),				\
-	};								\
-	DEVICE_DT_INST_DEFINE(inst, NULL, NULL, NULL, &bbram_cfg_##inst,\
-			      PRE_KERNEL_1, CONFIG_BBRAM_INIT_PRIORITY,	\
-			      &bbram_xec_driver_api);
+#define BBRAM_INIT(inst)                                                                           \
+	static const struct bbram_xec_config bbram_cfg_##inst = {                                  \
+		.base = (uint8_t *)(DT_INST_REG_ADDR(inst)),                                       \
+		.size = DT_INST_REG_SIZE(inst),                                                    \
+	};                                                                                         \
+	DEVICE_DT_INST_DEFINE(inst, NULL, NULL, NULL, &bbram_cfg_##inst, PRE_KERNEL_1,             \
+			      CONFIG_BBRAM_INIT_PRIORITY, &bbram_xec_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(BBRAM_INIT);
