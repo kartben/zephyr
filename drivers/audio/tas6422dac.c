@@ -39,7 +39,7 @@ enum tas6422dac_channel_t {
 	TAS6422DAC_CHANNEL_UNKNOWN,
 };
 
-static enum tas6422dac_channel_t audio_to_tas6422dac_channel[] = {
+static const enum tas6422dac_channel_t audio_to_tas6422dac_channel[] = {
 	[AUDIO_CHANNEL_FRONT_LEFT] = TAS6422DAC_CHANNEL_1,
 	[AUDIO_CHANNEL_FRONT_RIGHT] = TAS6422DAC_CHANNEL_2,
 	[AUDIO_CHANNEL_LFE] = TAS6422DAC_CHANNEL_UNKNOWN,
