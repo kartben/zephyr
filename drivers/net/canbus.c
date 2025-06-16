@@ -145,7 +145,7 @@ static int net_canbus_init(const struct device *dev)
 	return 0;
 }
 
-static struct canbus_api net_canbus_api = {
+static const struct canbus_api net_canbus_api = {
 	.iface_api.init = net_canbus_iface_init,
 	.send = net_canbus_send,
 	.close = net_canbus_close,
