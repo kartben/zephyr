@@ -60,6 +60,9 @@ static const unsigned char base64_test_enc5[] =
 	"JEhuVodiWr2/F9mixBcaAZTtjx4Rs9cJDLbpEG8i\n\r\ni"
 	"swcFdsn6MWwINP+Nwmw4AEPpVJevUEvRQbqVMVoLlw= ";
 
+static const unsigned char base64_test_invalid_char_gt127[] = "AB\xDECF"; /* 0xDE (>127) */
+static const unsigned char base64_test_invalid_char_map127[] = "AB!CD";   /* '!' maps to 127U */
+
 ZTEST(lib_base64, test_base64_codec)
 {
 	size_t len;
@@ -118,6 +121,16 @@ ZTEST(lib_base64, test_base64_codec)
 	src = base64_test_enc5;
 	rc = base64_decode(buffer, sizeof(buffer), &len, src, 88);
 	zassert_equal(rc, 0, "return, newline: decode test return value");
+
+	/* Test for invalid character (ASCII > 127) */
+	src = base64_test_invalid_char_gt127;
+	rc = base64_decode(buffer, sizeof(buffer), &len, src, strlen((const char *)src));
+	zassert_equal(rc, -EINVAL, "Error: char > 127: decode test return value");
+
+	/* Test for invalid character (maps to 127U in base64_dec_map) */
+	src = base64_test_invalid_char_map127;
+	rc = base64_decode(buffer, sizeof(buffer), &len, src, strlen((const char *)src));
+	zassert_equal(rc, -EINVAL, "Error: char maps to 127U: decode test return value");
 
 	src = base64_test_enc;
 	rc = base64_decode(buffer, sizeof(buffer), &len, src, 0);
