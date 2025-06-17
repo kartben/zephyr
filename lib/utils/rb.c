@@ -15,6 +15,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/sys/rb.h>
 #include <stdbool.h>
+#include <zephyr/toolchain/common.h> /* likely() / unlikely() */
 
 enum rb_color { RED = 0U, BLACK = 1U };
 
@@ -166,7 +167,7 @@ static void fix_extra_red(struct rbnode **stack, int stacksz)
 		CHECK((get_child(node, 1U) == NULL) ||
 		      is_black(get_child(node, 1U)));
 
-		if (is_black(parent)) {
+		if (likely(is_black(parent))) {
 			return;
 		}
 
@@ -180,7 +181,7 @@ static void fix_extra_red(struct rbnode **stack, int stacksz)
 		struct rbnode *aunt = get_child(grandparent,
 						(side == 0U) ? 1U : 0U);
 
-		if ((aunt != NULL) && is_red(aunt)) {
+		if (unlikely((aunt != NULL) && is_red(aunt))) {
 			set_color(grandparent, RED);
 			set_color(parent, BLACK);
 			set_color(aunt, BLACK);
@@ -285,7 +286,7 @@ static void fix_missing_black(struct rbnode **stack, int stacksz,
 		 * child of our previous-sibling, so N is lower in the
 		 * tree)
 		 */
-		if (!is_black(sib)) {
+		if (unlikely(!is_black(sib))) {
 			stack[stacksz - 1] = sib;
 			rotate(stack, stacksz);
 			set_color(parent, RED);
@@ -304,8 +305,7 @@ static void fix_missing_black(struct rbnode **stack, int stacksz,
 		 */
 		c0 = get_child(sib, 0U);
 		c1 = get_child(sib, 1U);
-		if (((c0 == NULL) || is_black(c0)) && ((c1 == NULL) ||
-					is_black(c1))) {
+		if (likely(((c0 == NULL) || is_black(c0)) && ((c1 == NULL) || is_black(c1)))) {
 			if (n == null_node) {
 				set_child(parent, n_side, NULL);
 			}
@@ -333,7 +333,7 @@ static void fix_missing_black(struct rbnode **stack, int stacksz,
 		 * opposite side from N) is definitely red.
 		 */
 		outer = get_child(sib, (n_side == 0U) ? 1U : 0U);
-		if (!((outer != NULL) && is_red(outer))) {
+		if (unlikely(!((outer != NULL) && is_red(outer)))) {
 			inner = get_child(sib, n_side);
 
 			stack[stacksz - 1] = sib;
@@ -389,7 +389,7 @@ void rb_remove(struct rbtree *tree, struct rbnode *node)
 	 * of 1 would work too) and swap our spot in the tree with
 	 * that one
 	 */
-	if ((get_child(node, 0U) != NULL) && (get_child(node, 1U) != NULL)) {
+	if (unlikely((get_child(node, 0U) != NULL) && (get_child(node, 1U) != NULL))) {
 		int stacksz0 = stacksz;
 		struct rbnode *hiparent, *loparent;
 		struct rbnode *node2 = get_child(node, 0U);
