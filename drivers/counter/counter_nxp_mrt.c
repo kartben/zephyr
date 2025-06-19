@@ -71,7 +71,7 @@ static int nxp_mrt_stop(const struct device *dev)
 	LOG_WRN("MRT channel resets upon stopping");
 
 	/* LOAD bit and 0 ivalue allows us to forcibly stop the timer */
-	base->CHANNEL[channel_id].INTVAL = MRT_CHANNEL_INTVAL_LOAD(1);
+		base->CHANNEL[channel_id].INTVAL = MRT_CHANNEL_INTVAL_LOAD(1);
 
 	return 0;
 }
@@ -91,7 +91,7 @@ static int nxp_mrt_start(const struct device *dev)
 	}
 
 	/* Start with previously configured top value (if already running this has no effect) */
-	base->CHANNEL[channel_id].INTVAL = data->top;
+		base->CHANNEL[channel_id].INTVAL = data->top;
 
 	LOG_DBG("MRT@%p channel %d started with top value %d", base, channel_id, data->top);
 
@@ -150,12 +150,12 @@ static int nxp_mrt_set_top_value(const struct device *dev, const struct counter_
 	}
 
 	/* Sets the top value. If we need to reset, LOAD bit does this */
-	base->CHANNEL[channel_id].INTVAL = MRT_CHANNEL_INTVAL_IVALUE(cfg->ticks) |
+		base->CHANNEL[channel_id].INTVAL = MRT_CHANNEL_INTVAL_IVALUE(cfg->ticks) |
 					   MRT_CHANNEL_INTVAL_LOAD(reset ? 1 : 0);
 
 	LOG_DBG("Changed MRT@%p channel %d top value while active to %d",
 			base, channel_id,
-			base->CHANNEL[channel_id].INTVAL & MRT_CHANNEL_INTVAL_IVALUE_MASK);
+		base->CHANNEL[channel_id].INTVAL & MRT_CHANNEL_INTVAL_IVALUE_MASK);
 
 	return ret;
 }
@@ -233,7 +233,7 @@ static int nxp_mrt_init_common(const struct device *dev)
 	/* Enable interrupts for all the channels that have devices */
 	for (int i = 0; i < num_channels; i++) {
 		if (config->channels[i]) {
-			base->CHANNEL[i].CTRL = MRT_CHANNEL_CTRL_INTEN_MASK;
+		base->CHANNEL[i].CTRL = MRT_CHANNEL_CTRL_INTEN_MASK;
 		}
 	}
 
@@ -282,7 +282,7 @@ static void nxp_mrt_isr(const struct device *dev)
 		LOG_DBG("Handling interrupt for MRT%p channel %d", base, i);
 
 		/* W1C interrupt flag */
-		base->CHANNEL[i].STAT |= MRT_CHANNEL_STAT_INTFLAG_MASK;
+		base->CHANNEL[i].STAT = MRT_CHANNEL_STAT_INTFLAG_MASK;
 
 		/* Channel devs & pointer path to channel cbs is in shared config */
 		if (config->data[i]->cb) {
