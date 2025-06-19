@@ -379,14 +379,15 @@ static int pcf8563_alarm_is_pending(const struct device *dev, uint16_t id)
 		return err;
 	}
 
-	/* Only the last bits use useful here */
-	if (reg & GENMASK(3, 2)) {
-		/* Clean the alarm */
-		err = i2c_reg_write_byte_dt(&config->i2c, PCF8563_CONTROL2_REGISTER, GENMASK(1, 0));
-		if (err) {
-			LOG_ERR("Error when clearing alarms: %d", err);
-			return err;
-		}
+        /* Only the last bits are useful here */
+        if (reg & GENMASK(3, 2)) {
+                /* Clear the alarm flags while preserving other bits */
+                reg &= ~GENMASK(3, 2);
+                err = i2c_reg_write_byte_dt(&config->i2c, PCF8563_CONTROL2_REGISTER, reg);
+                if (err) {
+                        LOG_ERR("Error when clearing alarms: %d", err);
+                        return err;
+                }
 		/* There was an alarm */
 		return 1;
 	}
