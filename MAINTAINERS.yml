@@ -1113,6 +1113,7 @@ Release Notes:
     - drivers/audio/
     - include/zephyr/audio/
     - doc/hardware/peripherals/audio/
+    - tests/drivers/*/audio/
   labels:
     - "area: Audio"
 
@@ -1142,6 +1143,7 @@ Release Notes:
     - drivers/auxdisplay/*
     - dts/bindings/auxdisplay/*
     - doc/hardware/peripherals/auxdisplay.rst
+    - tests/drivers/*/auxdisplay/
   labels:
     - "area: Aux display"
   tests:
@@ -1531,6 +1533,7 @@ Release Notes:
     - dts/bindings/fuel-gauge/
     - include/zephyr/drivers/fuel_gauge.h
     - tests/drivers/fuel_gauge/
+    - tests/drivers/build_all/fuel_gauge/
     - doc/hardware/peripherals/fuel_gauge.rst
   labels:
     - "area: Fuel Gauge"
@@ -1702,6 +1705,7 @@ Release Notes:
     - samples/drivers/mbox/
     - dts/bindings/mbox/
     - doc/hardware/peripherals/mbox.rst
+    - tests/drivers/mbox/
   labels:
     - "area: mbox"
   tests:
@@ -3281,6 +3285,7 @@ Power management:
     - drivers/power_domain/
     - dts/bindings/power/
     - include/zephyr/dt-bindings/power/
+    - tests/drivers/*/power_domain/
   labels:
     - "area: Power Management"
   tests:
