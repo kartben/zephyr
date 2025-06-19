@@ -121,7 +121,7 @@ static int wdt_rts5912_install_timeout(const struct device *dev,
 	uint32_t timeout;
 	uint32_t max, min;
 
-	LOG_DBG("WDT intstall timeout");
+	LOG_DBG("WDT install timeout");
 
 	if (wdt_reg->CTRL & WDT_CTRL_EN) {
 		LOG_ERR("WDT is already running");
