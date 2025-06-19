@@ -249,7 +249,8 @@ static int crypto_stm32_cbc_decrypt(struct cipher_ctx *ctx,
 		in_offset = 16;
 	}
 
-	ret = do_aes(ctx, hal_cbc_decrypt_op, pkt->in_buf + in_offset, pkt->in_len, pkt->out_buf);
+	ret = do_aes(ctx, hal_cbc_decrypt_op, pkt->in_buf + in_offset,
+	pkt->in_len - in_offset, pkt->out_buf);
 	if (ret == 0) {
 		pkt->out_len = pkt->in_len - in_offset;
 	}
