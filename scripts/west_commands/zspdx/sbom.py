@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from west import log
 
 from zspdx.scanner import ScannerConfig, scanDocument
-from zspdx.version import SPDX_VERSION_2_3
+from zspdx.version import SPDX_VERSION_2_3, SPDX_VERSION_3_0
 from zspdx.walker import Walker, WalkerConfig
 from zspdx.writer import writeSPDX
 
@@ -34,6 +34,9 @@ class SBOMConfig:
 
     # should also add an SPDX document for the SDK?
     includeSDK: bool = False
+
+    # use native SPDX3 approach (experimental)
+    useNativeSPDX3: bool = False
 
 
 # create Cmake file-based API directories and query file
@@ -66,10 +69,52 @@ def setupCmakeQuery(build_dir):
         return True
 
 
+def makeSPDXNative(cfg):
+    """Generate SPDX using the native SPDX3 approach (experimental)"""
+    if cfg.spdxVersion < SPDX_VERSION_3_0:
+        log.err("Native SPDX3 approach only supports SPDX 3.0+")
+        return False
+
+    try:
+        # Import here to avoid circular imports
+        from zspdx.spdx3_native_walker import SPDX3NativeWalker
+
+        # Create native walker configuration
+        native_config = type(
+            'NativeConfig',
+            (),
+            {
+                'namespacePrefix': cfg.namespacePrefix,
+                'buildDir': cfg.buildDir,
+                'spdxDir': cfg.spdxDir,
+                'analyzeIncludes': cfg.analyzeIncludes,
+                'includeSDK': cfg.includeSDK,
+            },
+        )()
+
+        # Create and run the native walker
+        walker = SPDX3NativeWalker(native_config)
+        return walker.generate_sbom()
+
+    except ImportError as e:
+        log.err(f"Native SPDX3 walker not available: {e}")
+        log.inf("Falling back to legacy approach")
+        return makeSPDX(cfg)
+    except Exception as e:
+        log.err(f"Native SPDX3 generation failed: {e}")
+        log.inf("Falling back to legacy approach")
+        return makeSPDX(cfg)
+
+
 # main entry point for SBOM maker
 # Arguments:
 #   1) cfg: SBOMConfig
 def makeSPDX(cfg):
+    # Use native approach if requested and supported
+    if cfg.useNativeSPDX3 and cfg.spdxVersion >= SPDX_VERSION_3_0:
+        log.inf("Using native SPDX3 approach")
+        return makeSPDXNative(cfg)
+
     # report any odd configuration settings
     if cfg.analyzeIncludes and not cfg.includeSDK:
         log.wrn("config: requested to analyze includes but not to generate SDK SPDX document;")
@@ -99,40 +144,53 @@ def makeSPDX(cfg):
     scanDocument(scannerCfg, w.docZephyr)
     scanDocument(scannerCfg, w.docBuild)
 
-    # write each document, in this particular order so that the
-    # hashes for external references are calculated
+    if cfg.spdxVersion < SPDX_VERSION_3_0:
+        # write SDK document, if we made one
+        if cfg.includeSDK:
+            retval = writeSPDX(os.path.join(cfg.spdxDir, "sdk.spdx"), w.docSDK, cfg.spdxVersion)
+            if not retval:
+                log.err("SPDX writer failed for SDK document; bailing")
+                return False
 
-    # write SDK document, if we made one
-    if cfg.includeSDK:
-        retval = writeSPDX(os.path.join(cfg.spdxDir, "sdk.spdx"), w.docSDK, cfg.spdxVersion)
+        # write app document
+        retval = writeSPDX(os.path.join(cfg.spdxDir, "app.spdx"), w.docApp, cfg.spdxVersion)
         if not retval:
-            log.err("SPDX writer failed for SDK document; bailing")
+            log.err("SPDX writer failed for app document; bailing")
             return False
 
-    # write app document
-    retval = writeSPDX(os.path.join(cfg.spdxDir, "app.spdx"), w.docApp, cfg.spdxVersion)
-    if not retval:
-        log.err("SPDX writer failed for app document; bailing")
-        return False
+        # write zephyr document
+        retval = writeSPDX(os.path.join(cfg.spdxDir, "zephyr.spdx"), w.docZephyr, cfg.spdxVersion)
+        if not retval:
+            log.err("SPDX writer failed for zephyr document; bailing")
+            return False
 
-    # write zephyr document
-    retval = writeSPDX(os.path.join(cfg.spdxDir, "zephyr.spdx"), w.docZephyr, cfg.spdxVersion)
-    if not retval:
-        log.err("SPDX writer failed for zephyr document; bailing")
-        return False
+        # write build document
+        retval = writeSPDX(os.path.join(cfg.spdxDir, "build.spdx"), w.docBuild, cfg.spdxVersion)
+        if not retval:
+            log.err("SPDX writer failed for build document; bailing")
+            return False
 
-    # write build document
-    retval = writeSPDX(os.path.join(cfg.spdxDir, "build.spdx"), w.docBuild, cfg.spdxVersion)
-    if not retval:
-        log.err("SPDX writer failed for build document; bailing")
-        return False
+        # write modules document
+        retval = writeSPDX(
+            os.path.join(cfg.spdxDir, "modules-deps.spdx"), w.docModulesExtRefs, cfg.spdxVersion
+        )
+        if not retval:
+            log.err("SPDX writer failed for modules-deps document; bailing")
+            return False
 
-    # write modules document
-    retval = writeSPDX(
-        os.path.join(cfg.spdxDir, "modules-deps.spdx"), w.docModulesExtRefs, cfg.spdxVersion
-    )
-    if not retval:
-        log.err("SPDX writer failed for modules-deps document; bailing")
-        return False
+        return True
+    else:  # SPDX 3.0
+        # Import here to avoid circular imports
+        from zspdx.spdx3_generator import SPDX3Config, SPDX3Generator
 
-    return True
+        # Convert SBOMConfig to SPDX3Config
+        spdx3_cfg = SPDX3Config()
+        spdx3_cfg.namespacePrefix = cfg.namespacePrefix
+        spdx3_cfg.buildDir = cfg.buildDir
+        spdx3_cfg.spdxDir = cfg.spdxDir
+        spdx3_cfg.analyzeIncludes = cfg.analyzeIncludes
+        spdx3_cfg.includeSDK = cfg.includeSDK
+
+        # Generate SPDX 3.0 using the walker results
+        generator = SPDX3Generator(spdx3_cfg)
+        return generator.generate_spdx3_from_walker(w)

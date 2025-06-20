@@ -10,8 +10,7 @@ from zspdx.sbom import SBOMConfig, makeSPDX, setupCmakeQuery
 from zspdx.version import SPDX_VERSION_2_3, SUPPORTED_SPDX_VERSIONS, parse
 
 SPDX_DESCRIPTION = """\
-This command creates an SPDX 2.2 or 2.3 tag-value bill of materials
-following the completion of a Zephyr build.
+This command creates an SPDX bill of materials following the completion of a Zephyr build.
 
 Prior to the build, an empty file must be created at
 BUILDDIR/.cmake/api/v1/query/codemodel-v2 in order to enable
@@ -48,6 +47,8 @@ class ZephyrSpdx(WestCommand):
                 help="also analyze included header files")
         parser.add_argument('--include-sdk', action="store_true",
                 help="also generate SPDX document for SDK")
+        parser.add_argument('--native-spdx3', action="store_true",
+                help="use native SPDX3 approach (experimental, SPDX 3.0+ only)")
 
         return parser
 
@@ -61,6 +62,7 @@ class ZephyrSpdx(WestCommand):
         self.dbg("  --spdx-version is", args.spdx_version)
         self.dbg("  --analyze-includes is", args.analyze_includes)
         self.dbg("  --include-sdk is", args.include_sdk)
+        self.dbg("  --native-spdx3 is", args.native_spdx3)
 
         if args.init:
             self.do_run_init(args)
@@ -109,6 +111,8 @@ class ZephyrSpdx(WestCommand):
             cfg.analyzeIncludes = True
         if args.include_sdk:
             cfg.includeSDK = True
+        if args.native_spdx3:
+            cfg.useNativeSPDX3 = True
 
         # make sure SPDX directory exists, or create it if it doesn't
         if os.path.exists(cfg.spdxDir):
