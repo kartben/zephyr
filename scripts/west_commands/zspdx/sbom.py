@@ -7,10 +7,8 @@ from dataclasses import dataclass
 
 from west import log
 
-from zspdx.scanner import ScannerConfig, scanDocument
+from zspdx.spdx2 import ScannerConfig, Walker, WalkerConfig, scanDocument, writeSPDX
 from zspdx.version import SPDX_VERSION_2_3
-from zspdx.walker import Walker, WalkerConfig
-from zspdx.writer import writeSPDX
 
 
 # SBOMConfig contains settings that will be passed along to the various
