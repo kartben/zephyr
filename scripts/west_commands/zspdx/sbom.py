@@ -64,10 +64,7 @@ def setupCmakeQuery(build_dir):
         return True
 
 
-# main entry point for SBOM maker
-# Arguments:
-#   1) cfg: SBOMConfig
-def makeSPDX(cfg):
+def makeSPDX2(cfg):
     # report any odd configuration settings
     if cfg.analyzeIncludes and not cfg.includeSDK:
         log.wrn("config: requested to analyze includes but not to generate SDK SPDX document;")
@@ -96,9 +93,6 @@ def makeSPDX(cfg):
     scanDocument(scannerCfg, w.docApp)
     scanDocument(scannerCfg, w.docZephyr)
     scanDocument(scannerCfg, w.docBuild)
-
-    # write each document, in this particular order so that the
-    # hashes for external references are calculated
 
     # write SDK document, if we made one
     if cfg.includeSDK:
@@ -134,3 +128,23 @@ def makeSPDX(cfg):
         return False
 
     return True
+
+
+def makeSPDX3(cfg):
+    # set up walker configuration
+    import zspdx.spdx3
+
+    walker = zspdx.spdx3.SPDX3NativeWalker(cfg)
+    return walker.generate_sbom()
+
+
+# main entry point for SBOM maker
+# Arguments:
+#   1) cfg: SBOMConfig
+def makeSPDX(cfg):
+    if cfg.spdxVersion.major == 2:
+        return makeSPDX2(cfg)
+    elif cfg.spdxVersion.major == 3:
+        return makeSPDX3(cfg)
+    else:
+        raise ValueError(f"Unsupported SPDX version: {cfg.spdxVersion}")
