@@ -75,7 +75,7 @@ See :zephyr_file:`share/zephyr-package/cmake` for details.
 Software bill of materials: ``west spdx``
 *****************************************
 
-This command generates SPDX 2.2 or 2.3 tag-value documents, creating relationships
+This command generates SPDX bill of materials documents, creating relationships
 from source files to the corresponding generated build files.
 ``SPDX-License-Identifier`` comments in source files are scanned and filled
 into the SPDX documents.
@@ -123,14 +123,18 @@ To use this command:
      west build -d BUILD_DIR/hello_world
      west spdx -d BUILD_DIR/hello_world
 
-This generates the following SPDX bill-of-materials (BOM) documents in
-:file:`BUILD_DIR/spdx/`:
+This generates SPDX bill-of-materials (BOM) documents in :file:`BUILD_DIR/spdx/`.
+
+For SPDX 2.2 and 2.3 formats, the following separate files are created:
 
 - :file:`app.spdx`: BOM for the application source files used for the build
 - :file:`zephyr.spdx`: BOM for the specific Zephyr source code files used for the build
 - :file:`build.spdx`: BOM for the built output files
 - :file:`modules-deps.spdx`: BOM for modules dependencies. Check
   :ref:`modules <modules-vulnerability-monitoring>` for more details.
+
+For SPDX 3.0 format, a single unified document is created that contains all
+elements from the above categories in one file.
 
 Each file in the bill-of-materials is scanned, so that its hashes (SHA256 and
 SHA1) can be recorded, along with any detected licenses if an
@@ -169,8 +173,23 @@ source files that are compiled to generate the built library files.
   ``.c`` file using the same arguments that were passed to it for the actual
   build.
 
-- ``--include-sdk``: with ``--analyze-includes``, also create a fourth SPDX
-  document, :file:`sdk.spdx`, which lists header files included from the SDK.
+- ``--include-sdk``: with ``--analyze-includes``, also include SDK header files
+  in the SBOM. For SPDX 2.x formats, this creates a fourth document :file:`sdk.spdx`.
+  For SPDX 3.0, SDK elements are included in the unified document.
+
+- ``--spdx-version {2.2,2.3,3.0}``: specifies the SPDX format version to
+  generate. Defaults to 2.2. SPDX 3.0 support requires the ``spdx-python-model``
+  package:
+
+  .. code-block:: bash
+
+     pip install spdx-python-model
+
+  When using SPDX 3.0, the output is generated as a single unified SBOM containing
+  all elements from the application, Zephyr sources, and build artifacts.
+  This creates two files in the specified output directory:
+  :file:`zephyr-spdx3.jsonld` (JSON-LD format) and :file:`zephyr-spdx3.json`
+  (plain JSON format).
 
 .. warning::
 
