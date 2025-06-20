@@ -7,7 +7,8 @@ import uuid
 
 from west.commands import WestCommand
 from zspdx.sbom import SBOMConfig, makeSPDX, setupCmakeQuery
-from zspdx.version import SPDX_VERSION_2_3, SUPPORTED_SPDX_VERSIONS, parse
+from zspdx.spdx3_generator import SPDX3Config, generate_spdx3_from_config
+from zspdx.version import SPDX_VERSION_2_3, SPDX_VERSION_3_0, SUPPORTED_SPDX_VERSIONS, parse
 
 SPDX_DESCRIPTION = """\
 This command creates an SPDX 2.2 or 2.3 tag-value bill of materials
@@ -94,31 +95,53 @@ class ZephyrSpdx(WestCommand):
         except Exception:
             self.die(f"Invalid SPDX version: {args.spdx_version}")
         cfg.spdxVersion = version_obj
+
         if args.namespace_prefix:
-            cfg.namespacePrefix = args.namespace_prefix
+            namespace_prefix = args.namespace_prefix
         else:
             # create default namespace according to SPDX spec
             # note that this is intentionally _not_ an actual URL where
             # this document will be stored
-            cfg.namespacePrefix = f"http://spdx.org/spdxdocs/zephyr-{str(uuid.uuid4())}"
+            namespace_prefix = f"http://spdx.org/spdxdocs/zephyr-{str(uuid.uuid4())}"
+
         if args.spdx_dir:
-            cfg.spdxDir = args.spdx_dir
+            spdx_dir = args.spdx_dir
         else:
-            cfg.spdxDir = os.path.join(args.build_dir, "spdx")
-        if args.analyze_includes:
-            cfg.analyzeIncludes = True
-        if args.include_sdk:
-            cfg.includeSDK = True
+            spdx_dir = os.path.join(args.build_dir, "spdx")
 
         # make sure SPDX directory exists, or create it if it doesn't
-        if os.path.exists(cfg.spdxDir):
-            if not os.path.isdir(cfg.spdxDir):
-                self.err(f'SPDX output directory {cfg.spdxDir} exists but is not a directory')
+        if os.path.exists(spdx_dir):
+            if not os.path.isdir(spdx_dir):
+                self.err(f'SPDX output directory {spdx_dir} exists but is not a directory')
                 return
             # directory exists, we're good
         else:
             # create the directory
-            os.makedirs(cfg.spdxDir, exist_ok=False)
+            os.makedirs(spdx_dir, exist_ok=False)
 
-        if not makeSPDX(cfg):
-            self.die("Failed to create SPDX output")
+        if version_obj == SPDX_VERSION_3_0:
+            # Generate SPDX 3.0 using spdx-python-model
+            cfg = SPDX3Config()
+            cfg.buildDir = args.build_dir
+            cfg.namespacePrefix = namespace_prefix
+            cfg.spdxDir = spdx_dir
+            if args.analyze_includes:
+                cfg.analyzeIncludes = True
+            if args.include_sdk:
+                cfg.includeSDK = True
+
+            if not generate_spdx3_from_config(cfg):
+                self.die("Failed to create SPDX 3.0 output")
+        else:
+            # Generate SPDX 2.x using existing generator
+            cfg = SBOMConfig()
+            cfg.buildDir = args.build_dir
+            cfg.namespacePrefix = namespace_prefix
+            cfg.spdxDir = spdx_dir
+            if args.analyze_includes:
+                cfg.analyzeIncludes = True
+            if args.include_sdk:
+                cfg.includeSDK = True
+
+            if not makeSPDX(cfg):
+                self.die("Failed to create SPDX output")
