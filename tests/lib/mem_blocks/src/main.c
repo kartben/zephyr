@@ -167,7 +167,7 @@ static void alloc_free(sys_mem_blocks_t *mem_block,
 		if (num_blocks >= NUM_BLOCKS) {
 			ret = sys_mem_blocks_alloc(mem_block, 1, blocks[i]);
 			zassert_equal(ret, -ENOMEM,
-				"sys_mem_blocks_alloc should fail with -ENOMEM but not");
+				      "sys_mem_blocks_alloc should fail with -ENOMEM but did not");
 		}
 
 #ifdef CONFIG_SYS_MEM_BLOCKS_LISTENER
@@ -602,7 +602,7 @@ ZTEST(lib_mem_block, test_multi_mem_block_alloc_free)
 	ret = sys_multi_mem_blocks_alloc(&alloc_group, UINT_TO_POINTER(16),
 					 1, blocks[0], &blk_size);
 	zassert_equal(ret, -EINVAL,
-		      "sys_multi_mem_blocks_alloc should fail with -EINVAL but not");
+		      "sys_multi_mem_blocks_alloc should fail with -EINVAL but did not");
 
 	ret = sys_multi_mem_blocks_alloc(&alloc_group, UINT_TO_POINTER(1),
 					 1, blocks[0], &blk_size);
@@ -681,8 +681,7 @@ ZTEST(lib_mem_block, test_mem_block_invalid_params)
 		      "sys_mem_blocks_alloc failed (%d)", ret);
 
 	ret = sys_mem_blocks_alloc(&mem_block_01, NUM_BLOCKS + 1, blocks);
-	zassert_equal(ret, -ENOMEM,
-		      "sys_mem_blocks_alloc should fail with -ENOMEM but not");
+	zassert_equal(ret, -ENOMEM, "sys_mem_blocks_alloc should fail with -ENOMEM but did not");
 
 	ret = sys_mem_blocks_alloc(&mem_block_01, 1, blocks);
 	zassert_equal(ret, 0,
@@ -693,22 +692,21 @@ ZTEST(lib_mem_block, test_mem_block_invalid_params)
 		      "sys_mem_blocks_free failed (%d)", ret);
 
 	ret = sys_mem_blocks_free(&mem_block_01, NUM_BLOCKS + 1, blocks);
-	zassert_equal(ret, -EINVAL,
-		      "sys_mem_blocks_free should fail with -EINVAL but not");
+	zassert_equal(ret, -EINVAL, "sys_mem_blocks_free should fail with -EINVAL but did not");
 
 	ret = sys_mem_blocks_free(&mem_block_01, 1, blocks);
 	zassert_equal(ret, 0,
 		      "sys_mem_blocks_free failed (%d)", ret);
 
 	ret = sys_mem_blocks_free(&mem_block_01, 1, blocks);
-	zassert_equal(ret, -EFAULT,
-		      "sys_mem_blocks_free should fail with -EFAULT but not");
+	zassert_equal(ret, -EFAULT, "sys_mem_blocks_free should fail with -EFAULT but did not");
 
 	/* Fake a pointer */
 	blocks[0] = mem_block_01.buffer +
 			(BIT(mem_block_01.info.blk_sz_shift) *
 			 mem_block_01.info.num_blocks);
 	ret = sys_mem_blocks_free(&mem_block_01, 1, blocks);
+	zassert_equal(ret, -EFAULT, "sys_mem_blocks_free should fail with -EFAULT but did not");
 	zassert_equal(ret, -EFAULT,
 		      "sys_mem_blocks_free should fail with -EFAULT but not");
 }
@@ -772,7 +770,7 @@ ZTEST(lib_mem_block, test_multi_mem_block_invalid_params)
 	ret = sys_multi_mem_blocks_alloc(&alloc_group, UINT_TO_POINTER(1),
 					 NUM_BLOCKS + 1, blocks, NULL);
 	zassert_equal(ret, -ENOMEM,
-		      "sys_multi_mem_blocks_alloc should fail with -ENOMEM but not");
+		      "sys_multi_mem_blocks_alloc should fail with -ENOMEM but did not");
 
 	ret = sys_multi_mem_blocks_alloc(&alloc_group, UINT_TO_POINTER(1),
 					 1, blocks, NULL);
@@ -785,7 +783,7 @@ ZTEST(lib_mem_block, test_multi_mem_block_invalid_params)
 
 	ret = sys_multi_mem_blocks_free(&alloc_group, NUM_BLOCKS + 1, blocks);
 	zassert_equal(ret, -EINVAL,
-		      "sys_multi_mem_blocks_free should fail with -EINVAL but not");
+		      "sys_multi_mem_blocks_free should fail with -EINVAL but did not");
 
 	ret = sys_multi_mem_blocks_free(&alloc_group, 1, blocks);
 	zassert_equal(ret, 0,
@@ -793,7 +791,7 @@ ZTEST(lib_mem_block, test_multi_mem_block_invalid_params)
 
 	ret = sys_multi_mem_blocks_free(&alloc_group, 1, blocks);
 	zassert_equal(ret, -EFAULT,
-		      "sys_multi_mem_blocks_free should fail with -EFAULT but not");
+		      "sys_multi_mem_blocks_free should fail with -EFAULT but did not");
 
 	/* Fake a pointer */
 	blocks[0] = mem_block_01.buffer +
@@ -801,7 +799,7 @@ ZTEST(lib_mem_block, test_multi_mem_block_invalid_params)
 			 mem_block_01.info.num_blocks);
 	ret = sys_multi_mem_blocks_free(&alloc_group, 1, blocks);
 	zassert_equal(ret, -EINVAL,
-		      "sys_multi_mem_blocks_free should fail with -EINVAL but not");
+		      "sys_multi_mem_blocks_free should fail with -EINVAL but did not");
 }
 
 static void *lib_mem_block_setup(void)
