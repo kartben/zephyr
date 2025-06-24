@@ -707,8 +707,13 @@ ZTEST(lib_mem_block, test_mem_block_invalid_params)
 			 mem_block_01.info.num_blocks);
 	ret = sys_mem_blocks_free(&mem_block_01, 1, blocks);
 	zassert_equal(ret, -EFAULT, "sys_mem_blocks_free should fail with -EFAULT but did not");
+
+	/* Free a pointer before the buffer */
+	blocks[0] = mem_block_01.buffer - 1;
+	ret = sys_mem_blocks_free(&mem_block_01, 1, blocks);
 	zassert_equal(ret, -EFAULT,
-		      "sys_mem_blocks_free should fail with -EFAULT but not");
+		      "sys_mem_blocks_free should fail with -EFAULT for pointer before buffer but "
+		      "did not");
 }
 
 ZTEST(lib_mem_block, test_multi_mem_block_invalid_params_panic_1)
