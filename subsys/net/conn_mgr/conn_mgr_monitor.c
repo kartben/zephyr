@@ -286,22 +286,36 @@ void conn_mgr_mon_resend_status(void)
 {
 	k_mutex_lock(&conn_mgr_mon_lock, K_FOREVER);
 
-	if (last_ready_count == 0) {
-		net_mgmt_event_notify(NET_EVENT_L4_DISCONNECTED, last_blame);
-	} else {
-		net_mgmt_event_notify(NET_EVENT_L4_CONNECTED, last_blame);
+	/* Check if there's any interface state to report */
+	bool has_any_state = false;
+	int idx;
+
+	for (idx = 0; idx < ARRAY_SIZE(iface_states); idx++) {
+		if (iface_states[idx] != 0) {
+			has_any_state = true;
+			break;
+		}
 	}
 
-	if (last_ready_count_ipv6 == 0) {
-		net_mgmt_event_notify(NET_EVENT_L4_IPV6_DISCONNECTED, last_blame_ipv6);
-	} else {
-		net_mgmt_event_notify(NET_EVENT_L4_IPV6_CONNECTED, last_blame_ipv6);
-	}
+	/* Only send events if there's meaningful state to report */
+	if (has_any_state) {
+		if (last_ready_count == 0) {
+			net_mgmt_event_notify(NET_EVENT_L4_DISCONNECTED, last_blame);
+		} else {
+			net_mgmt_event_notify(NET_EVENT_L4_CONNECTED, last_blame);
+		}
 
-	if (last_ready_count_ipv4 == 0) {
-		net_mgmt_event_notify(NET_EVENT_L4_IPV4_DISCONNECTED, last_blame_ipv4);
-	} else {
-		net_mgmt_event_notify(NET_EVENT_L4_IPV4_CONNECTED, last_blame_ipv4);
+		if (last_ready_count_ipv6 == 0) {
+			net_mgmt_event_notify(NET_EVENT_L4_IPV6_DISCONNECTED, last_blame_ipv6);
+		} else {
+			net_mgmt_event_notify(NET_EVENT_L4_IPV6_CONNECTED, last_blame_ipv6);
+		}
+
+		if (last_ready_count_ipv4 == 0) {
+			net_mgmt_event_notify(NET_EVENT_L4_IPV4_DISCONNECTED, last_blame_ipv4);
+		} else {
+			net_mgmt_event_notify(NET_EVENT_L4_IPV4_CONNECTED, last_blame_ipv4);
+		}
 	}
 
 	k_mutex_unlock(&conn_mgr_mon_lock);

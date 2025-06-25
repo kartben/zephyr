@@ -1188,6 +1188,159 @@ ZTEST(conn_mgr_monitor, test_ignores)
 		"if_dummy_eth should not be affected.");
 }
 
+/* Test conn_mgr_mon_resend_status API */
+ZTEST(conn_mgr_monitor, test_resend_status)
+{
+	struct test_stats stats;
+
+	/* Test 1: Resend status when no connectivity is available */
+	/* Ensure no ifaces are connected */
+	reset_test_iface(if_simp_a);
+	reset_test_iface(if_simp_b);
+	reset_test_iface(if_conn_a);
+	reset_test_iface(if_conn_b);
+	k_sleep(EVENT_WAIT_TIME_SHORT);
+	reset_stats();
+
+	/* Call resend_status and expect disconnect events */
+	conn_mgr_mon_resend_status();
+	wait_for_events(TEST_EXPECT_L4_DISCONNECTED | TEST_EXPECT_L4_IPV4_DISCONNECTED |
+				TEST_EXPECT_L4_IPV6_DISCONNECTED,
+			EVENT_WAIT_TIME);
+	stats = get_reset_stats();
+	zassert_equal(stats.dconn_count_gen, 1,
+		      "NET_EVENT_L4_DISCONNECTED should be fired when resending status with no "
+		      "connectivity.");
+	zassert_equal(stats.event_count_gen, 1, "Only NET_EVENT_L4_DISCONNECTED should be fired.");
+	zassert_equal(stats.dconn_count_ipv4, 1,
+		      "NET_EVENT_L4_IPV4_DISCONNECTED should be fired when resending status with "
+		      "no IPv4 connectivity.");
+	zassert_equal(stats.event_count_ipv4, 1,
+		      "Only NET_EVENT_L4_IPV4_DISCONNECTED should be fired.");
+	zassert_equal(stats.dconn_count_ipv6, 1,
+		      "NET_EVENT_L4_IPV6_DISCONNECTED should be fired when resending status with "
+		      "no IPv6 connectivity.");
+	zassert_equal(stats.event_count_ipv6, 1,
+		      "Only NET_EVENT_L4_IPV6_DISCONNECTED should be fired.");
+
+	/* Test 2: Resend status when IPv4 connectivity is available */
+	/* Set up IPv4 connectivity on if_simp_a */
+	net_if_ipv4_addr_add(if_simp_a, &test_ipv4_a, NET_ADDR_MANUAL, 0);
+	zassert_equal(net_if_up(if_simp_a), 0, "net_if_up should succeed for if_simp_a.");
+
+	/* Wait for initial connect events */
+	wait_for_events(TEST_EXPECT_L4_CONNECTED | TEST_EXPECT_L4_IPV4_CONNECTED, EVENT_WAIT_TIME);
+	reset_stats();
+
+	/* Call resend_status and expect connect events for IPv4 */
+	conn_mgr_mon_resend_status();
+	wait_for_events(TEST_EXPECT_L4_CONNECTED | TEST_EXPECT_L4_IPV4_CONNECTED, EVENT_WAIT_TIME);
+	stats = get_reset_stats();
+	zassert_equal(stats.conn_count_gen, 1,
+		      "NET_EVENT_L4_CONNECTED should be fired when resending status with IPv4 "
+		      "connectivity.");
+	zassert_equal(stats.event_count_gen, 1, "Only NET_EVENT_L4_CONNECTED should be fired.");
+	zassert_equal(stats.conn_count_ipv4, 1,
+		      "NET_EVENT_L4_IPV4_CONNECTED should be fired when resending status with IPv4 "
+		      "connectivity.");
+	zassert_equal(stats.event_count_ipv4, 1,
+		      "Only NET_EVENT_L4_IPV4_CONNECTED should be fired.");
+	zassert_equal(stats.event_count_ipv6, 0,
+		      "No IPv6 events should be fired when resending status with only IPv4 "
+		      "connectivity.");
+
+	/* Test 3: Resend status when IPv6 connectivity is available */
+	/* Add IPv6 connectivity to if_simp_a */
+	net_if_ipv6_addr_add(if_simp_a, &test_ipv6_a, NET_ADDR_MANUAL, 0);
+
+	/* Wait for IPv6 connect event */
+	wait_for_events(TEST_EXPECT_L4_IPV6_CONNECTED, EVENT_WAIT_TIME);
+	reset_stats();
+
+	/* Call resend_status and expect connect events for both IPv4 and IPv6 */
+	conn_mgr_mon_resend_status();
+	wait_for_events(TEST_EXPECT_L4_CONNECTED | TEST_EXPECT_L4_IPV4_CONNECTED |
+				TEST_EXPECT_L4_IPV6_CONNECTED,
+			EVENT_WAIT_TIME);
+	stats = get_reset_stats();
+	zassert_equal(stats.conn_count_gen, 1,
+		      "NET_EVENT_L4_CONNECTED should be fired when resending status with full "
+		      "connectivity.");
+	zassert_equal(stats.event_count_gen, 1, "Only NET_EVENT_L4_CONNECTED should be fired.");
+	zassert_equal(stats.conn_count_ipv4, 1,
+		      "NET_EVENT_L4_IPV4_CONNECTED should be fired when resending status with full "
+		      "connectivity.");
+	zassert_equal(stats.event_count_ipv4, 1,
+		      "Only NET_EVENT_L4_IPV4_CONNECTED should be fired.");
+	zassert_equal(stats.conn_count_ipv6, 1,
+		      "NET_EVENT_L4_IPV6_CONNECTED should be fired when resending status with full "
+		      "connectivity.");
+	zassert_equal(stats.event_count_ipv6, 1,
+		      "Only NET_EVENT_L4_IPV6_CONNECTED should be fired.");
+
+	/* Test 4: Resend status when iface is ignored */
+	/* Ignore if_simp_a */
+	conn_mgr_ignore_iface(if_simp_a);
+
+	/* Wait for disconnect events due to ignoring */
+	wait_for_events(TEST_EXPECT_L4_DISCONNECTED | TEST_EXPECT_L4_IPV4_DISCONNECTED |
+				TEST_EXPECT_L4_IPV6_DISCONNECTED,
+			EVENT_WAIT_TIME);
+	reset_stats();
+
+	/* Call resend_status and expect disconnect events */
+	conn_mgr_mon_resend_status();
+	wait_for_events(TEST_EXPECT_L4_DISCONNECTED | TEST_EXPECT_L4_IPV4_DISCONNECTED |
+				TEST_EXPECT_L4_IPV6_DISCONNECTED,
+			EVENT_WAIT_TIME);
+	stats = get_reset_stats();
+	zassert_equal(stats.dconn_count_gen, 1,
+		      "NET_EVENT_L4_DISCONNECTED should be fired when resending status with "
+		      "ignored iface.");
+	zassert_equal(stats.event_count_gen, 1, "Only NET_EVENT_L4_DISCONNECTED should be fired.");
+	zassert_equal(stats.dconn_count_ipv4, 1,
+		      "NET_EVENT_L4_IPV4_DISCONNECTED should be fired when resending status with "
+		      "ignored iface.");
+	zassert_equal(stats.event_count_ipv4, 1,
+		      "Only NET_EVENT_L4_IPV4_DISCONNECTED should be fired.");
+	zassert_equal(stats.dconn_count_ipv6, 1,
+		      "NET_EVENT_L4_IPV6_DISCONNECTED should be fired when resending status with "
+		      "ignored iface.");
+	zassert_equal(stats.event_count_ipv6, 1,
+		      "Only NET_EVENT_L4_IPV6_DISCONNECTED should be fired.");
+
+	/* Test 5: Resend status after un-ignoring iface */
+	/* Watch if_simp_a again */
+	conn_mgr_watch_iface(if_simp_a);
+
+	/* Wait for connect events due to un-ignoring */
+	wait_for_events(TEST_EXPECT_L4_CONNECTED | TEST_EXPECT_L4_IPV4_CONNECTED |
+				TEST_EXPECT_L4_IPV6_CONNECTED,
+			EVENT_WAIT_TIME);
+	reset_stats();
+
+	/* Call resend_status and expect connect events */
+	conn_mgr_mon_resend_status();
+	wait_for_events(TEST_EXPECT_L4_CONNECTED | TEST_EXPECT_L4_IPV4_CONNECTED |
+				TEST_EXPECT_L4_IPV6_CONNECTED,
+			EVENT_WAIT_TIME);
+	stats = get_reset_stats();
+	zassert_equal(stats.conn_count_gen, 1,
+		      "NET_EVENT_L4_CONNECTED should be fired when resending status after "
+		      "un-ignoring iface.");
+	zassert_equal(stats.event_count_gen, 1, "Only NET_EVENT_L4_CONNECTED should be fired.");
+	zassert_equal(stats.conn_count_ipv4, 1,
+		      "NET_EVENT_L4_IPV4_CONNECTED should be fired when resending status after "
+		      "un-ignoring iface.");
+	zassert_equal(stats.event_count_ipv4, 1,
+		      "Only NET_EVENT_L4_IPV4_CONNECTED should be fired.");
+	zassert_equal(stats.conn_count_ipv6, 1,
+		      "NET_EVENT_L4_IPV6_CONNECTED should be fired when resending status after "
+		      "un-ignoring iface.");
+	zassert_equal(stats.event_count_ipv6, 1,
+		      "Only NET_EVENT_L4_IPV6_CONNECTED should be fired.");
+}
+
 /* Make sure all state transitions of a single connectivity-enabled iface result in all expected
  * events. Perform IPv4 changes before IPv6 changes.
  */
