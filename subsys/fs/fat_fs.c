@@ -174,6 +174,9 @@ static int fatfs_rename(struct fs_mount_t *mountp, const char *from,
 #if !defined(CONFIG_FS_FATFS_READ_ONLY)
 	FILINFO fno;
 
+	/* Initialize the FILINFO structure to prevent stale data issues */
+	memset(&fno, 0, sizeof(fno));
+
 	/* Check if 'to' path exists; remove it if it does */
 	res = f_stat(translate_path(to), &fno);
 	if (res == FR_OK) {
@@ -369,13 +372,23 @@ static int fatfs_readdir(struct fs_dir_t *zdp, struct fs_dirent *entry)
 	FRESULT res;
 	FILINFO fno;
 
+	/* Initialize the FILINFO structure to prevent stale data issues */
+	memset(&fno, 0, sizeof(fno));
+
 	res = f_readdir(zdp->dirp, &fno);
 	if (res == FR_OK) {
-		strcpy(entry->name, fno.fname);
-		if (entry->name[0] != 0) {
+		/* Check for end of directory before copying filename */
+		if (fno.fname[0] != 0) {
+			/* Safely copy filename with bounds checking */
+			strncpy(entry->name, fno.fname, sizeof(entry->name) - 1);
+			entry->name[sizeof(entry->name) - 1] = '\0';
+
 			entry->type = ((fno.fattrib & AM_DIR) ?
 			       FS_DIR_ENTRY_DIR : FS_DIR_ENTRY_FILE);
 			entry->size = fno.fsize;
+		} else {
+			/* End of directory - clear the entry name */
+			entry->name[0] = '\0';
 		}
 	}
 
@@ -400,11 +413,16 @@ static int fatfs_stat(struct fs_mount_t *mountp,
 	FRESULT res;
 	FILINFO fno;
 
+	/* Initialize the FILINFO structure to prevent stale data issues */
+	memset(&fno, 0, sizeof(fno));
+
 	res = f_stat(translate_path(path), &fno);
 	if (res == FR_OK) {
 		entry->type = ((fno.fattrib & AM_DIR) ?
 			       FS_DIR_ENTRY_DIR : FS_DIR_ENTRY_FILE);
-		strcpy(entry->name, fno.fname);
+		/* Safely copy filename with bounds checking */
+		strncpy(entry->name, fno.fname, sizeof(entry->name) - 1);
+		entry->name[sizeof(entry->name) - 1] = '\0';
 		entry->size = fno.fsize;
 	}
 
