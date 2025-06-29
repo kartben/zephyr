@@ -129,7 +129,7 @@ static void mcux_flexcomm_pm_unlock_if_idle(const struct device *dev)
 		data->pm_policy_state_lock = false;
 		pm_policy_device_power_lock_put(dev);
 	} else {
-		/* can't block systemn workqueue so keep re-submitting until it's done */
+               /* can't block system workqueue so keep re-submitting until it's done */
 		k_work_submit(&data->pm_lock_work);
 	}
 }
@@ -1054,8 +1054,8 @@ static void mcux_flexcomm_isr(const struct device *dev)
 						K_USEC(data->rx_data.timeout));
 			}
 
-			/* Write 1 to clear start bit status bit */
-			config->base->STAT |= USART_STAT_START_MASK;
+                       /* Write 1 to clear start bit status bit */
+                       config->base->STAT = USART_STAT_START_MASK;
 		}
 
 		/* Handle TX interrupt (TXLVL = 0)
