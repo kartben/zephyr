@@ -191,17 +191,17 @@ int pm_device_runtime_get(const struct device *dev)
 	int ret = 0;
 	struct pm_device *pm = dev->pm;
 
-	if (pm == NULL) {
-		return 0;
-	}
-
 	SYS_PORT_TRACING_FUNC_ENTER(pm, device_runtime_get, dev);
+
+	if (pm == NULL) {
+	        goto end;
+	}
 
 	/*
 	 * Early return if device runtime is not enabled.
 	 */
 	if (!atomic_test_bit(&pm->base.flags, PM_DEVICE_FLAG_RUNTIME_ENABLED)) {
-		return 0;
+	        goto end;
 	}
 
 	if (atomic_test_bit(&dev->pm_base->flags, PM_DEVICE_FLAG_ISR_SAFE)) {
@@ -214,10 +214,11 @@ int pm_device_runtime_get(const struct device *dev)
 	}
 
 	if (!k_is_pre_kernel()) {
-		ret = k_sem_take(&pm->lock, k_is_in_isr() ? K_NO_WAIT : K_FOREVER);
-		if (ret < 0) {
-			return -EWOULDBLOCK;
-		}
+	        ret = k_sem_take(&pm->lock, k_is_in_isr() ? K_NO_WAIT : K_FOREVER);
+	        if (ret < 0) {
+	                ret = -EWOULDBLOCK;
+	                goto end;
+	        }
 	}
 
 	if (k_is_in_isr() && (pm->base.state == PM_DEVICE_STATE_SUSPENDING)) {
@@ -342,11 +343,12 @@ int pm_device_runtime_put(const struct device *dev)
 {
 	int ret;
 
-	if (dev->pm_base == NULL) {
-		return 0;
-	}
-
 	SYS_PORT_TRACING_FUNC_ENTER(pm, device_runtime_put, dev);
+
+	if (dev->pm_base == NULL) {
+	        ret = 0;
+	        goto end;
+	}
 
 	if (atomic_test_bit(&dev->pm_base->flags, PM_DEVICE_FLAG_ISR_SAFE)) {
 		struct pm_device_isr *pm_sync = dev->pm_isr;
@@ -360,6 +362,7 @@ int pm_device_runtime_put(const struct device *dev)
 	}
 	SYS_PORT_TRACING_FUNC_EXIT(pm, device_runtime_put, dev, ret);
 
+end:
 	return ret;
 }
 
@@ -368,11 +371,12 @@ int pm_device_runtime_put_async(const struct device *dev, k_timeout_t delay)
 #ifdef CONFIG_PM_DEVICE_RUNTIME_ASYNC
 	int ret;
 
-	if (dev->pm_base == NULL) {
-		return 0;
-	}
-
 	SYS_PORT_TRACING_FUNC_ENTER(pm, device_runtime_put_async, dev, delay);
+
+	if (dev->pm_base == NULL) {
+	        ret = 0;
+	        goto end;
+	}
 	if (atomic_test_bit(&dev->pm_base->flags, PM_DEVICE_FLAG_ISR_SAFE)) {
 		struct pm_device_isr *pm_sync = dev->pm_isr;
 		k_spinlock_key_t k = k_spin_lock(&pm_sync->lock);
@@ -385,6 +389,7 @@ int pm_device_runtime_put_async(const struct device *dev, k_timeout_t delay)
 	}
 	SYS_PORT_TRACING_FUNC_EXIT(pm, device_runtime_put_async, dev, delay, ret);
 
+end:
 	return ret;
 #else
 	LOG_WRN("Function not available");
