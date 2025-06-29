@@ -676,7 +676,7 @@ int k_work_poll_submit_to_queue(struct k_work_q *work_q,
 	__ASSERT(events != NULL, "NULL events\n");
 	__ASSERT(num_events >= 0, "<0 events\n");
 
-	SYS_PORT_TRACING_FUNC_ENTER(k_work_poll, submit_to_queue, work_q, work, timeout);
+	SYS_PORT_TRACING_OBJ_FUNC_ENTER(k_work_poll, submit_to_queue, work, work_q, timeout);
 
 	/* Take ownership of the work if it is possible. */
 	key = k_spin_lock(&lock);
@@ -688,16 +688,16 @@ int k_work_poll_submit_to_queue(struct k_work_q *work_q,
 			if (retval < 0) {
 				k_spin_unlock(&lock, key);
 
-				SYS_PORT_TRACING_FUNC_EXIT(k_work_poll, submit_to_queue, work_q,
-					work, timeout, retval);
+				SYS_PORT_TRACING_OBJ_FUNC_EXIT(k_work_poll, submit_to_queue, work,
+					work_q, timeout, retval);
 
 				return retval;
 			}
 		} else {
 			k_spin_unlock(&lock, key);
 
-			SYS_PORT_TRACING_FUNC_EXIT(k_work_poll, submit_to_queue, work_q,
-				work, timeout, -EADDRINUSE);
+			SYS_PORT_TRACING_OBJ_FUNC_EXIT(k_work_poll, submit_to_queue, work,
+				work_q, timeout, -EADDRINUSE);
 
 			return -EADDRINUSE;
 		}
@@ -740,7 +740,7 @@ int k_work_poll_submit_to_queue(struct k_work_q *work_q,
 		work->poller.mode = MODE_TRIGGERED;
 		k_spin_unlock(&lock, key);
 
-		SYS_PORT_TRACING_FUNC_EXIT(k_work_poll, submit_to_queue, work_q, work, timeout, 0);
+	SYS_PORT_TRACING_OBJ_FUNC_EXIT(k_work_poll, submit_to_queue, work, work_q, timeout, 0);
 
 		return 0;
 	}
@@ -770,7 +770,7 @@ int k_work_poll_submit_to_queue(struct k_work_q *work_q,
 	/* Submit work. */
 	k_work_submit_to_queue(work_q, &work->work);
 
-	SYS_PORT_TRACING_FUNC_EXIT(k_work_poll, submit_to_queue, work_q, work, timeout, 0);
+	SYS_PORT_TRACING_OBJ_FUNC_EXIT(k_work_poll, submit_to_queue, work, work_q, timeout, 0);
 
 	return 0;
 }
@@ -780,12 +780,12 @@ int k_work_poll_submit(struct k_work_poll *work,
 				     int num_events,
 				     k_timeout_t timeout)
 {
-	SYS_PORT_TRACING_FUNC_ENTER(k_work_poll, submit, work, timeout);
+	SYS_PORT_TRACING_OBJ_FUNC_ENTER(k_work_poll, submit, work, timeout);
 
 	int ret = k_work_poll_submit_to_queue(&k_sys_work_q, work,
 								events, num_events, timeout);
 
-	SYS_PORT_TRACING_FUNC_EXIT(k_work_poll, submit, work, timeout, ret);
+	SYS_PORT_TRACING_OBJ_FUNC_EXIT(k_work_poll, submit, work, timeout, ret);
 
 	return ret;
 }
@@ -795,11 +795,11 @@ int k_work_poll_cancel(struct k_work_poll *work)
 	k_spinlock_key_t key;
 	int retval;
 
-	SYS_PORT_TRACING_FUNC_ENTER(k_work_poll, cancel, work);
+	SYS_PORT_TRACING_OBJ_FUNC_ENTER(k_work_poll, cancel, work);
 
 	/* Check if the work was submitted. */
 	if (work == NULL || work->workq == NULL) {
-		SYS_PORT_TRACING_FUNC_EXIT(k_work_poll, cancel, work, -EINVAL);
+		SYS_PORT_TRACING_OBJ_FUNC_EXIT(k_work_poll, cancel, work, -EINVAL);
 
 		return -EINVAL;
 	}
@@ -808,7 +808,7 @@ int k_work_poll_cancel(struct k_work_poll *work)
 	retval = triggered_work_cancel(work, key);
 	k_spin_unlock(&lock, key);
 
-	SYS_PORT_TRACING_FUNC_EXIT(k_work_poll, cancel, work, retval);
+	SYS_PORT_TRACING_OBJ_FUNC_EXIT(k_work_poll, cancel, work, retval);
 
 	return retval;
 }
