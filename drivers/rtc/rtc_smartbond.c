@@ -114,7 +114,7 @@ static void smartbond_rtc_isr(const struct device *dev)
 	struct rtc_smartbond_data *data = dev->data;
 	/* Exercise which events asserted the RTC IRQ line. Register is cleared upon read. */
 	uint32_t rtc_event_flags_reg = RTC->RTC_EVENT_FLAGS_REG;
-	/* RTC_EVENT_FLASH_REG will be updated regardless of the interrupt mask. */
+       /* RTC_EVENT_FLAGS_REG will be updated regardless of the interrupt mask. */
 	uint32_t rtc_interrupt_mask_reg = RTC->RTC_INTERRUPT_MASK_REG;
 
 #if defined(CONFIG_RTC_ALARM)
