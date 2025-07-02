@@ -713,10 +713,10 @@ static int crypto_smartbond_hash_handler(struct hash_ctx *ctx, struct hash_pkt *
 {
 	int ret;
 	struct crypto_smartbond_data *data = ctx->device->data;
-	/*
-	 * In case of framgemented data processing crypto status should be visible as busy for
-	 * as long as the last block is to be processed.
-	 */
+       /*
+	* In case of fragmented data processing crypto status should be visible as busy for
+	* as long as the last block is to be processed.
+	*/
 	bool is_multipart_started =
 		(AES_HASH->CRYPTO_STATUS_REG & AES_HASH_CRYPTO_STATUS_REG_CRYPTO_WAIT_FOR_IN_Msk) &&
 		!(AES_HASH->CRYPTO_STATUS_REG & AES_HASH_CRYPTO_STATUS_REG_CRYPTO_INACTIVE_Msk);
