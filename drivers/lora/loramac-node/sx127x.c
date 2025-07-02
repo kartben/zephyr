@@ -625,8 +625,21 @@ static int sx127x_lora_init(const struct device *dev)
 	return 0;
 }
 
+static int sx127x_lora_config(const struct device *dev,
+			      struct lora_modem_config *config)
+{
+	int ret = sx12xx_lora_config(dev, config);
+
+	if (ret == 0 && config->sync_word != 0) {
+		Radio.SetModem(MODEM_LORA);
+		SX127xWrite(REG_LR_SYNCWORD, config->sync_word);
+	}
+
+	return ret;
+}
+
 static DEVICE_API(lora, sx127x_lora_api) = {
-	.config = sx12xx_lora_config,
+	.config = sx127x_lora_config,
 	.airtime = sx12xx_airtime,
 	.send = sx12xx_lora_send,
 	.send_async = sx12xx_lora_send_async,

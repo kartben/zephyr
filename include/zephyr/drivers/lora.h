@@ -152,6 +152,14 @@ struct lora_modem_config {
 	/** TX-power in dBm to use for transmission */
 	int8_t tx_power;
 
+	/**
+	 * Override @ref public_network with an explicit sync word when non-zero.
+	 * On SX126x-family radios the byte is expanded to the 16-bit register
+	 * value (same encoding as the native SX126x driver). On SX127x-family
+	 * radios and LoRa Basics Modem the byte is used directly.
+	 */
+	uint8_t sync_word;
+
 	/** Set to true for transmission, false for receiving */
 	bool tx;
 

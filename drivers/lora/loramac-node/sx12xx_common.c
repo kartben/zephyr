@@ -14,7 +14,18 @@
 /* LoRaMac-node specific includes */
 #include <radio.h>
 
+#if defined(CONFIG_LORA_SX126X) || defined(CONFIG_LORA_STM32WL_SUBGHZ_RADIO)
+#include <sx126x/sx126x.h>
+#endif
+
 #include "sx12xx_common.h"
+
+/* Same SX126x 16-bit sync-word encoding as drivers/lora/native/sx126x/sx126x.c */
+static uint16_t sx12xx_expand_sync_word(uint8_t sync_word)
+{
+	return 0x0404U | ((uint16_t)(sync_word & 0xF0) << 8) |
+	       ((uint16_t)(sync_word & 0x0F) << 4);
+}
 
 #define STATE_FREE      0
 #define STATE_BUSY      1
@@ -412,6 +423,15 @@ int sx12xx_lora_config(const struct device *dev,
 	}
 
 	Radio.SetPublicNetwork(config->public_network);
+
+#if defined(CONFIG_LORA_SX126X) || defined(CONFIG_LORA_STM32WL_SUBGHZ_RADIO)
+	if (config->sync_word != 0) {
+		uint16_t sw = sx12xx_expand_sync_word(config->sync_word);
+		uint8_t buf[2] = { (sw >> 8) & 0xFF, sw & 0xFF };
+
+		SX126xWriteRegisters(REG_LR_SYNCWORD, buf, sizeof(buf));
+	}
+#endif
 
 	modem_release(&dev_data);
 	return 0;
