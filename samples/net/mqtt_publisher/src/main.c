@@ -173,6 +173,14 @@ void mqtt_evt_handler(struct mqtt_client *const client,
 		} else {
 			LOG_INF("Topic aliases disallowed by the broker.");
 		}
+
+		/* Print all the properties */
+		LOG_INF("Properties set by the server:");
+		LOG_INF("  - Maximum packet size: %u", evt->param.connack.prop.maximum_packet_size);
+		LOG_INF("  - Maximum topic alias: %u", evt->param.connack.prop.topic_alias_maximum);
+		LOG_INF("  - Reason code: %u", evt->param.connack.return_code);
+		LOG_INF("  - Wildcard subscription available: %u", evt->param.connack.prop.wildcard_sub_available);
+
 #endif
 
 #if defined(CONFIG_LOG_BACKEND_MQTT)
@@ -250,9 +258,9 @@ static char *get_mqtt_payload(enum mqtt_qos qos)
 	snprintk(payload, sizeof(payload), "{d:{temperature:%d}}",
 		 sys_rand8_get());
 #else
-	static APP_DMEM char payload[] = "DOORS:OPEN_QoSx";
+	static APP_DMEM char payload[] = "{\"temperature\":23,\"humidity\":45}";
 
-	payload[strlen(payload) - 1] = '0' + qos;
+//	payload[strlen(payload) - 1] = '0' + qos;
 #endif
 
 	return payload;
@@ -264,7 +272,7 @@ static char *get_mqtt_topic(void)
 	return "iot-2/type/"BLUEMIX_DEVTYPE"/id/"BLUEMIX_DEVID
 	       "/evt/"BLUEMIX_EVENT"/fmt/"BLUEMIX_FORMAT;
 #else
-	return "sensors";
+	return "sensors/12345678";
 #endif
 }
 
@@ -294,6 +302,7 @@ static int publish(struct mqtt_client *client, enum mqtt_qos qos)
 		param.prop.topic_alias = APP_TOPIC_ALIAS;
 		include_topic = false;
 	}
+	param.prop.payload_format_indicator = 1U;
 #endif
 
 	return mqtt_publish(client, &param);
@@ -414,6 +423,8 @@ static int try_to_connect(struct mqtt_client *client)
 	while (i++ < APP_CONNECT_TRIES && !connected) {
 
 		client_init(client);
+
+		printk("Connecting to %s:%d\n", SERVER_ADDR, SERVER_PORT);
 
 		rc = mqtt_connect(client);
 		if (rc != 0) {
