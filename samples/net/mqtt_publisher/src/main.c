@@ -250,9 +250,9 @@ static char *get_mqtt_payload(enum mqtt_qos qos)
 	snprintk(payload, sizeof(payload), "{d:{temperature:%d}}",
 		 sys_rand8_get());
 #else
-	static APP_DMEM char payload[] = "DOORS:OPEN_QoSx";
+	static APP_DMEM char payload[] = "{\"temperature\":23,\"humidity\":45}";
 
-	payload[strlen(payload) - 1] = '0' + qos;
+//	payload[strlen(payload) - 1] = '0' + qos;
 #endif
 
 	return payload;
@@ -264,7 +264,7 @@ static char *get_mqtt_topic(void)
 	return "iot-2/type/"BLUEMIX_DEVTYPE"/id/"BLUEMIX_DEVID
 	       "/evt/"BLUEMIX_EVENT"/fmt/"BLUEMIX_FORMAT;
 #else
-	return "sensors";
+	return "sensors/12345678";
 #endif
 }
 
@@ -294,6 +294,7 @@ static int publish(struct mqtt_client *client, enum mqtt_qos qos)
 		param.prop.topic_alias = APP_TOPIC_ALIAS;
 		include_topic = false;
 	}
+	param.prop.payload_format_indicator = 1U;
 #endif
 
 	return mqtt_publish(client, &param);
@@ -414,6 +415,8 @@ static int try_to_connect(struct mqtt_client *client)
 	while (i++ < APP_CONNECT_TRIES && !connected) {
 
 		client_init(client);
+
+		printk("Connecting to %s:%d\n", SERVER_ADDR, SERVER_PORT);
 
 		rc = mqtt_connect(client);
 		if (rc != 0) {
