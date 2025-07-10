@@ -1,0 +1,14 @@
+# PPK2 Power Monitor Dependencies
+# Copyright: (c)  2025, Intel Corporation
+
+# Core PPK2 API
+ppk2-api-python>=1.0.0
+
+# Serial communication
+pyserial>=3.5
+
+# Threading support (built-in with Python 3.7+)
+# No additional package needed
+
+# Logging (built-in)
+# No additional package needed

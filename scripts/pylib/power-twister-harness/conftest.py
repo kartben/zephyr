@@ -19,10 +19,17 @@ def probe_class(request, probe_path):
         probe = PowerShield()  # Instantiate the power monitor probe
         probe.connect(path)
         probe.init()
+    elif request.param == 'ppk2':
+        from ppk2.PPK2PowerMonitor import PPK2PowerMonitor
+
+        probe = PPK2PowerMonitor()  # Instantiate the PPK2 power monitor probe
+        probe.connect(path)
 
     yield probe
 
     if request.param == 'stm_powershield':
+        probe.disconnect()
+    elif request.param == 'ppk2':
         probe.disconnect()
 
 
