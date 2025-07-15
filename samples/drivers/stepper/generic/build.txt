@@ -1,0 +1,1 @@
+west build -b nucleo_h743zi samples/drivers/stepper/generic -p auto --shield arduino_uno_click --shield mikroe_stepper_19_click -- -DCONFIG_I2C=y -DCONFIG_SHELL=y -DCONFIG_I2C_SHELL=y && west flash
