@@ -139,6 +139,7 @@ add_custom_target(
   ZEPHYR_BASE=${ZEPHYR_BASE}
   ${PYTHON_EXECUTABLE} ${GEN_DEVICETREE_REST_SCRIPT}
     --vendor-prefixes ${ZEPHYR_BASE}/dts/bindings/vendor-prefixes.txt
+    --binding-types ${ZEPHYR_BASE}/dts/bindings/binding-types.txt
     ${DTS_ARGS}
     ${DOCS_SRC_DIR}/build/dts/api
   VERBATIM

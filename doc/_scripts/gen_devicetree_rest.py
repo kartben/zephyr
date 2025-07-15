@@ -25,6 +25,7 @@ ZEPHYR_BASE = Path(__file__).parents[2]
 
 GENERIC_OR_VENDOR_INDEPENDENT = 'Generic or vendor-independent'
 UNKNOWN_VENDOR = 'Unknown vendor'
+UNKNOWN_TYPE = 'Other/Miscellaneous'
 
 ZEPHYR_BASE = Path(__file__).parents[2]
 
@@ -33,7 +34,95 @@ DETAILS_IN_IMPORTANT_PROPS = set('compatible label reg status interrupts'.split(
 
 logger = logging.getLogger('gen_devicetree_rest')
 
-class VndLookup:
+def load_binding_types(binding_types_file):
+    """Load binding types from binding-types.txt file.
+
+    Returns a dict mapping type keys to their descriptions.
+    """
+    type2desc = {}
+
+    try:
+        with open(binding_types_file, encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+
+                try:
+                    key, desc = line.split('\t', 1)
+                    type2desc[key] = desc
+                except ValueError:
+                    # Skip malformed lines
+                    continue
+    except FileNotFoundError:
+        logger.warning(f"Binding types file not found: {binding_types_file}")
+
+    return type2desc
+
+def parse_text_with_acronyms(text):
+    """Parse text with acronyms and return a formatted string.
+
+    Converts "FOO (Full Description)" patterns to reStructuredText abbreviations.
+    """
+    # Pattern to match acronyms like "ADC (Analog to Digital Converter)"
+    pattern = re.compile(r'([A-Z][A-Z0-9-]*)\s*\((.*?)\)')
+
+    def replace_acronym(match):
+        abbr, explanation = match.groups()
+        return f':abbr:`{abbr} ({explanation})`'
+
+    return pattern.sub(replace_acronym, text)
+
+def binding_type_from_path(binding):
+    """Get the binding type from a binding's file path.
+
+    Returns the first directory component under dts/bindings/,
+    or 'misc' for bindings outside the standard location.
+    """
+    if not binding.path:
+        return 'misc'
+
+    binding_path = Path(binding.path)
+
+    # Find the dts/bindings/ part in the path
+    try:
+        # Convert to relative path and find dts/bindings component
+        path_parts = binding_path.parts
+        bindings_idx = None
+        for i, part in enumerate(path_parts):
+            if part == 'bindings' and i > 0 and path_parts[i-1] == 'dts':
+                bindings_idx = i
+                break
+
+        if bindings_idx is not None and bindings_idx + 1 < len(path_parts):
+            return path_parts[bindings_idx + 1]
+    except (ValueError, IndexError):
+        pass
+
+    return 'misc'
+
+class BaseLookup:
+    """Base class for lookup functionality shared between vendor and type lookups."""
+
+    def __init__(self, bindings):
+        self.bindings_dict = self.init_bindings_dict(bindings)
+        self.ref_targets = self.init_ref_targets()
+
+    def bindings(self, key, default=None):
+        return self.bindings_dict.get(key, default)
+
+    def target(self, key):
+        return self.ref_targets.get(key, self.ref_targets.get((UNKNOWN_VENDOR,)))
+
+    def init_bindings_dict(self, bindings):
+        """To be implemented by subclasses."""
+        raise NotImplementedError
+
+    def init_ref_targets(self):
+        """To be implemented by subclasses."""
+        raise NotImplementedError
+
+class VndLookup(BaseLookup):
     """
     A convenience class for looking up information based on a
     devicetree compatible's vendor prefix 'vnd'.
@@ -41,18 +130,16 @@ class VndLookup:
 
     def __init__(self, vendor_prefixes, bindings):
         self.vnd2vendor = self.load_vnd2vendor(vendor_prefixes)
-        self.vnd2bindings = self.init_vnd2bindings(bindings)
-        self.vnd2ref_target = self.init_vnd2ref_target()
+        super().__init__(bindings)
 
     def vendor(self, vnd):
         return self.vnd2vendor.get(vnd, UNKNOWN_VENDOR)
 
-    def bindings(self, vnd, default=None):
-        return self.vnd2bindings.get(vnd, default)
+    def init_bindings_dict(self, bindings):
+        return self.init_vnd2bindings(bindings)
 
-    def target(self, vnd):
-        return self.vnd2ref_target.get(
-            vnd, self.vnd2ref_target[(UNKNOWN_VENDOR,)])
+    def init_ref_targets(self):
+        return self.init_vnd2ref_target()
 
     @staticmethod
     def load_vnd2vendor(vendor_prefixes):
@@ -148,7 +235,7 @@ class VndLookup:
         #   whose compatible has a vendor prefix that is not recognized.
         vnd2ref_target = {}
 
-        for vnd in self.vnd2bindings:
+        for vnd in self.bindings_dict:
             if vnd is None:
                 vnd2ref_target[vnd] = 'dt_no_vendor'
             elif isinstance(vnd, str):
@@ -159,6 +246,102 @@ class VndLookup:
 
         return vnd2ref_target
 
+class TypeLookup(BaseLookup):
+    """
+    A convenience class for looking up information based on a
+    devicetree binding type.
+    """
+
+    def __init__(self, binding_types, bindings):
+        self.type2desc = load_binding_types(binding_types)
+        super().__init__(bindings)
+
+    def target(self, key):
+        return self.ref_targets.get(key, self.ref_targets.get((UNKNOWN_TYPE,)))
+
+    def description(self, binding_type):
+        """Get the description for a binding type, with acronym formatting."""
+        desc = self.type2desc.get(binding_type, UNKNOWN_TYPE)
+        return parse_text_with_acronyms(desc)
+
+    def init_bindings_dict(self, bindings):
+        # Take a 'type2desc' map and a list of bindings and return a dict
+        # mapping type keys to lists of bindings. The bindings in each
+        # list are sorted by compatible. The keys in the return value are
+        # sorted by type description.
+        #
+        # Special cases:
+        #
+        # - The 'misc' key maps to bindings with no type in their
+        #   compatible, like 'gpio-keys'. This is the first key.
+        # - The (UNKNOWN_TYPE,) key maps to bindings whose compatible
+        #   has a type that exists, but is not known, like
+        #   'somethingrandom,device'. This is the last key.
+
+        # Get an unsorted dict mapping type keys to lists of bindings.
+        unsorted = defaultdict(list)
+        generic_bindings = []
+        unknown_type_bindings = []
+        for binding in bindings:
+            binding_type = binding_type_from_path(binding)
+            if binding_type == 'misc':
+                generic_bindings.append(binding)
+            elif binding_type in self.type2desc:
+                unsorted[binding_type].append(binding)
+            else:
+                unknown_type_bindings.append(binding)
+
+        # Key functions for sorting.
+        def type_key(binding_type):
+            return self.type2desc[binding_type].casefold()
+
+        def binding_key(binding):
+            return binding.compatible
+
+        # Sort the bindings for each type by compatible.
+        # Plain dicts are sorted in CPython 3.6+, which is what we
+        # support, so the return dict's keys are in the same
+        # order as type2desc.
+        #
+        # The unknown-type bindings being inserted as a 1-tuple key is a
+        # hack for convenience that ensures they won't collide with a
+        # known type. The code that consumes the dict below handles
+        # this.
+        type2bindings = {
+            'misc': sorted(generic_bindings, key=binding_key)
+        }
+        for binding_type in sorted(unsorted, key=type_key):
+            type2bindings[binding_type] = sorted(unsorted[binding_type], key=binding_key)
+        type2bindings[(UNKNOWN_TYPE,)] = sorted(unknown_type_bindings,
+                                                      key=binding_key)
+
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug('type2bindings: %s', pprint.pformat(type2bindings))
+
+        return type2bindings
+
+    def init_ref_targets(self):
+        # The return value, type2ref_target, is a dict mapping type
+        # keys to ref targets for their relevant sections in this
+        # file, with these special cases:
+        #
+        # - The 'misc' key maps to the ref target for bindings with no
+        #   type in their compatibles, like 'gpio-keys'
+        # - The (UNKNOWN_TYPE,) key maps to the ref target for bindings
+        #   whose compatible has a type that is not recognized.
+        type2ref_target = {}
+
+        for binding_type in self.bindings_dict:
+            if binding_type == 'misc':
+                type2ref_target['misc'] = 'dt_no_type'
+            elif isinstance(binding_type, str):
+                type2ref_target[binding_type] = f'dt_type_{binding_type}'
+            else:
+                assert binding_type == (UNKNOWN_TYPE,), binding_type
+                type2ref_target[binding_type] = 'dt_unknown_type'
+
+        return type2ref_target
+
 def main():
     args = parse_args()
     setup_logging(args.verbose)
@@ -166,7 +349,8 @@ def main():
     base_binding = load_base_binding()
     driver_sources = load_driver_sources()
     vnd_lookup = VndLookup(args.vendor_prefixes, bindings)
-    dump_content(bindings, base_binding, vnd_lookup, driver_sources, args.out_dir,
+    type_lookup = TypeLookup(args.binding_types, bindings)
+    dump_content(bindings, base_binding, vnd_lookup, driver_sources, type_lookup, args.out_dir,
                  args.turbo_mode)
 
 def parse_args():
@@ -184,6 +368,8 @@ def parse_args():
                         help='additional DTS folders containing binding files')
     parser.add_argument('--dts-file', dest='dts_files', action='append', default=[],
                         help='additional individual DTS binding files')
+    parser.add_argument('--binding-types', required=True,
+                        help='binding-types.txt file path')
     parser.add_argument('--turbo-mode', action='store_true',
                         help='Enable turbo mode (dummy references)')
     parser.add_argument('out_dir', help='output files are generated here')
@@ -299,7 +485,7 @@ def load_driver_sources():
 
     return driver_sources
 
-def dump_content(bindings, base_binding, vnd_lookup, driver_sources, out_dir, turbo_mode):
+def dump_content(bindings, base_binding, vnd_lookup, driver_sources, type_lookup, out_dir, turbo_mode):
     # Dump the generated .rst files for a vnd2bindings dict.
     # Files are only written if they are changed. Existing .rst
     # files which would not be written by the 'vnd2bindings'
@@ -311,8 +497,8 @@ def dump_content(bindings, base_binding, vnd_lookup, driver_sources, out_dir, tu
     if turbo_mode:
         write_dummy_index(bindings, out_dir)
     else:
-        write_bindings_rst(vnd_lookup, out_dir)
-        write_orphans(bindings, base_binding, vnd_lookup, driver_sources, out_dir)
+        write_bindings_rst(vnd_lookup, type_lookup, out_dir)
+        write_orphans(bindings, base_binding, vnd_lookup, driver_sources, type_lookup, out_dir)
 
 def setup_bindings_dir(bindings, out_dir):
     # Make a set of all the Path objects we will be creating for
@@ -358,7 +544,7 @@ def write_dummy_index(bindings, out_dir):
     write_if_updated(out_dir / 'bindings.rst', content)
 
 
-def write_bindings_rst(vnd_lookup, out_dir):
+def write_bindings_rst(vnd_lookup, type_lookup, out_dir):
     # Write out_dir / bindings.rst, the top level index of bindings.
 
     string_io = io.StringIO()
@@ -383,10 +569,27 @@ def write_bindings_rst(vnd_lookup, out_dir):
     .. rst-class:: rst-columns
     ''', string_io)
 
-    for vnd, bindings in vnd_lookup.vnd2bindings.items():
+    for vnd, bindings in vnd_lookup.bindings_dict.items():
         if len(bindings) == 0:
             continue
         print(f'- :ref:`{vnd_lookup.target(vnd)}`', file=string_io)
+
+    print_block('''\
+
+    Type index
+    **********
+
+    This section contains an index of binding types.
+    Click on a type name to go to the list of bindings for
+    that type.
+
+    .. rst-class:: rst-columns
+    ''', string_io)
+
+    for binding_type, bindings in type_lookup.bindings_dict.items():
+        if len(bindings) == 0:
+            continue
+        print(f'- :ref:`{type_lookup.target(binding_type)}`', file=string_io)
 
     print_block('''\
 
@@ -412,7 +615,7 @@ def write_bindings_rst(vnd_lookup, out_dir):
     appear as children of either I2C or SPI bus nodes.
     ''', string_io)
 
-    for vnd, bindings in vnd_lookup.vnd2bindings.items():
+    for vnd, bindings in vnd_lookup.bindings_dict.items():
         if isinstance(vnd, tuple):
             title = vnd[0]
         else:
@@ -436,9 +639,70 @@ def write_bindings_rst(vnd_lookup, out_dir):
             print(f'- :ref:`{binding_ref_target(binding)}`', file=string_io)
         print(file=string_io)
 
+    print_block('''\
+
+    Bindings by type
+    ****************
+
+    This section contains available bindings, grouped by type.
+    Within each group, bindings are listed by the "compatible" property
+    they apply to, like this:
+
+    **Type description**
+
+    .. rst-class:: rst-columns
+
+    - <compatible-A>
+    - <compatible-B> (on <bus-name> bus)
+    - <compatible-C>
+    - ...
+
+    The text "(on <bus-name> bus)" appears when bindings may behave
+    differently depending on the bus the node appears on.
+    For example, this applies to some sensor device nodes, which may
+    appear as children of either I2C or SPI bus nodes.
+    ''', string_io)
+
+    for binding_type, bindings in type_lookup.bindings_dict.items():
+        if isinstance(binding_type, tuple):
+            title = binding_type[0]
+            formatted_desc = None
+        else:
+            # Use raw description for title (no markup)
+            raw_desc = type_lookup.type2desc.get(binding_type, UNKNOWN_TYPE).strip()
+            if isinstance(binding_type, str):
+                title = f'{raw_desc} ({binding_type})'
+            else:
+                title = raw_desc
+            # Get formatted description for content
+            formatted_desc = type_lookup.description(binding_type)
+
+        underline = '=' * len(title)
+
+        if len(bindings) == 0:
+            continue
+
+        print_block(f'''\
+        .. _{type_lookup.target(binding_type)}:
+
+        {title}
+        {underline}
+        ''', string_io)
+
+        # Add formatted description if available
+        if formatted_desc and isinstance(binding_type, str) and formatted_desc != raw_desc:
+            print(f'{formatted_desc}\n', file=string_io)
+
+        print_block('''\
+        .. rst-class:: rst-columns
+        ''', string_io)
+        for binding in bindings:
+            print(f'- :ref:`{binding_ref_target(binding)}`', file=string_io)
+        print(file=string_io)
+
     write_if_updated(out_dir / 'bindings.rst', string_io.getvalue())
 
-def write_orphans(bindings, base_binding, vnd_lookup, driver_sources, out_dir):
+def write_orphans(bindings, base_binding, vnd_lookup, driver_sources, type_lookup, out_dir):
     # Write out_dir / bindings / foo / binding_page.rst for each binding
     # in 'bindings', along with any "disambiguation" pages needed when a
     # single compatible string can be handled by multiple bindings.
@@ -471,7 +735,7 @@ def write_orphans(bindings, base_binding, vnd_lookup, driver_sources, out_dir):
         string_io = io.StringIO()
 
         print_binding_page(binding, base_names, vnd_lookup,
-                           driver_sources, dup_compat2bindings, string_io)
+                           driver_sources, type_lookup, dup_compat2bindings, string_io)
 
         written = write_if_updated(out_dir / 'bindings' /
                                    binding_filename(binding),
@@ -499,7 +763,7 @@ def write_orphans(bindings, base_binding, vnd_lookup, driver_sources, out_dir):
     logging.info('done writing :orphan: files; %d files needed updates',
                  num_written)
 
-def print_binding_page(binding, base_names, vnd_lookup, driver_sources,dup_compats,
+def print_binding_page(binding, base_names, vnd_lookup, driver_sources, type_lookup, dup_compats,
                        string_io):
     # Print the rst content for 'binding' to 'string_io'. The
     # 'dup_compats' argument should support membership testing for
