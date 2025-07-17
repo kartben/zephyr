@@ -144,6 +144,81 @@ static void draw_text_overlay(struct video_buffer *vbuf, const struct video_form
 	}
 }
 
+static void draw_circle_grey(uint8_t *buffer, int buf_width, int buf_height,
+			     int center_x, int center_y, int radius)
+{
+	for (int y = center_y - radius; y <= center_y + radius; y++) {
+		if (y < 0 || y >= buf_height) continue;
+
+		for (int x = center_x - radius; x <= center_x + radius; x++) {
+			if (x < 0 || x >= buf_width) continue;
+
+			int dx = x - center_x;
+			int dy = y - center_y;
+			if (dx * dx + dy * dy <= radius * radius) {
+				buffer[y * buf_width + x] = 255; /* White */
+			}
+		}
+	}
+}
+
+static void draw_circle_yuyv(uint8_t *buffer, int buf_width, int buf_height,
+			     int center_x, int center_y, int radius)
+{
+	for (int y = center_y - radius; y <= center_y + radius; y++) {
+		if (y < 0 || y >= buf_height) continue;
+
+		for (int x = center_x - radius; x <= center_x + radius; x++) {
+			if (x < 0 || x >= buf_width) continue;
+
+			int dx = x - center_x;
+			int dy = y - center_y;
+			if (dx * dx + dy * dy <= radius * radius) {
+				/* YUYV format: Y0 U Y1 V (2 pixels per 4 bytes) */
+				int pixel_idx = y * buf_width + x;
+				int byte_idx = (pixel_idx / 2) * 4 + (pixel_idx % 2) * 2;
+
+				if (byte_idx < buf_width * buf_height * 2) {
+					buffer[byte_idx] = 255; /* Set Y (luminance) to white */
+				}
+			}
+		}
+	}
+}
+
+static void draw_distance_circle(struct video_buffer *vbuf, const struct video_format *fmt,
+				 int distance_mm)
+{
+	/* Map distance to radius: 50mm->30px, 500mm->5px */
+	int radius;
+	if (distance_mm <= 50) {
+		radius = 30;
+	} else if (distance_mm >= 500) {
+		radius = 5;
+	} else {
+		/* Linear interpolation */
+		radius = 30 - ((distance_mm - 50) * 25) / 450;
+	}
+
+	/* Position in bottom right corner with some margin */
+	int center_x = fmt->width - 40;
+	int center_y = fmt->height - 40;
+
+	switch (fmt->pixelformat) {
+	case VIDEO_PIX_FMT_GREY:
+		draw_circle_grey(vbuf->buffer, fmt->width, fmt->height,
+				 center_x, center_y, radius);
+		break;
+	case VIDEO_PIX_FMT_YUYV:
+		draw_circle_yuyv(vbuf->buffer, fmt->width, fmt->height,
+				 center_x, center_y, radius);
+		break;
+	default:
+		/* Skip overlay for unsupported formats like JPEG */
+		break;
+	}
+}
+
 static void format_uptime_string(char *buffer, size_t buffer_size)
 {
 	int64_t uptime_ms = k_uptime_get();
@@ -399,15 +474,34 @@ int main(void)
 			LOG_DBG("Dequeued %p from %s, enqueueing to %s",
 				(void *)vbuf, video_dev->name, uvc_dev->name);
 
-			/* Format current uptime and add as text overlay */
+						/* Format current uptime and add as text overlay */
 			char uptime_text[32];
 			format_uptime_string(uptime_text, sizeof(uptime_text));
 			draw_text_overlay(vbuf, &current_fmt, uptime_text, 10, 10);
 
-			/* Format distance reading and add as second overlay */
+			/* Get distance reading for both text and circle overlays */
+			struct sensor_value distance;
+			int distance_mm = 0;
+
+			if (device_is_ready(tof_dev) &&
+			    sensor_sample_fetch(tof_dev) == 0 &&
+			    sensor_channel_get(tof_dev, SENSOR_CHAN_DISTANCE, &distance) == 0) {
+				distance_mm = sensor_value_to_double(&distance);
+			}
+
+			/* Format distance reading and add as text overlay */
 			char distance_text[32];
-			format_distance_string(distance_text, sizeof(distance_text));
+			if (distance_mm > 0) {
+				snprintf(distance_text, sizeof(distance_text), "%d mm", distance_mm);
+			} else {
+				snprintf(distance_text, sizeof(distance_text), "ToF: ERR");
+			}
 			draw_text_overlay(vbuf, &current_fmt, distance_text, 10, 25);
+
+			/* Add distance circle overlay */
+			if (distance_mm > 0) {
+				draw_distance_circle(vbuf, &current_fmt, distance_mm);
+			}
 
 			vbuf->type = VIDEO_BUF_TYPE_INPUT;
 
