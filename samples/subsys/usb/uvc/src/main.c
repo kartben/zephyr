@@ -6,6 +6,8 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 
 #include <sample_usbd.h>
 
@@ -14,6 +16,7 @@
 #include <zephyr/drivers/video.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/usb/class/usbd_uvc.h>
+#include <zephyr/kernel.h>
 
 LOG_MODULE_REGISTER(uvc_sample, LOG_LEVEL_INF);
 
@@ -22,6 +25,124 @@ const static struct device *const video_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_cam
 
 /* Format capabilities of video_dev, usd everywhere through the sampel */
 static struct video_caps video_caps = {.type = VIDEO_BUF_TYPE_OUTPUT};
+
+/* Simple 8x8 bitmap font for digits 0-9 and "." */
+#define FONT_WIDTH 8
+#define FONT_HEIGHT 8
+
+static const uint8_t font_data[][FONT_HEIGHT] = {
+	/* '0' */ {0x3C, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x3C},
+	/* '1' */ {0x18, 0x38, 0x18, 0x18, 0x18, 0x18, 0x18, 0x7E},
+	/* '2' */ {0x3C, 0x66, 0x06, 0x0C, 0x18, 0x30, 0x60, 0x7E},
+	/* '3' */ {0x3C, 0x66, 0x06, 0x1C, 0x06, 0x06, 0x66, 0x3C},
+	/* '4' */ {0x0C, 0x1C, 0x2C, 0x4C, 0x7E, 0x0C, 0x0C, 0x0C},
+	/* '5' */ {0x7E, 0x60, 0x60, 0x7C, 0x06, 0x06, 0x66, 0x3C},
+	/* '6' */ {0x3C, 0x66, 0x60, 0x7C, 0x66, 0x66, 0x66, 0x3C},
+	/* '7' */ {0x7E, 0x06, 0x0C, 0x18, 0x30, 0x30, 0x30, 0x30},
+	/* '8' */ {0x3C, 0x66, 0x66, 0x3C, 0x66, 0x66, 0x66, 0x3C},
+	/* '9' */ {0x3C, 0x66, 0x66, 0x66, 0x3E, 0x06, 0x66, 0x3C},
+	/* '.' */ {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x18, 0x18},
+};
+
+static int get_char_index(char c)
+{
+	if (c >= '0' && c <= '9') {
+		return c - '0';
+	}
+	if (c == '.') {
+		return 10;
+	}
+	return -1; /* Unsupported character */
+}
+
+static void draw_char_grey(uint8_t *buffer, int buf_width, int buf_height,
+			   int x, int y, char c)
+{
+	int char_idx = get_char_index(c);
+	if (char_idx < 0) {
+		return;
+	}
+
+	const uint8_t *char_data = font_data[char_idx];
+
+	for (int row = 0; row < FONT_HEIGHT; row++) {
+		if (y + row >= buf_height) break;
+
+		uint8_t pixel_row = char_data[row];
+		for (int col = 0; col < FONT_WIDTH; col++) {
+			if (x + col >= buf_width) break;
+
+			if (pixel_row & (0x80 >> col)) {
+				/* Set pixel to white (255) */
+				buffer[(y + row) * buf_width + (x + col)] = 255;
+			}
+		}
+	}
+}
+
+static void draw_char_yuyv(uint8_t *buffer, int buf_width, int buf_height,
+			   int x, int y, char c)
+{
+	int char_idx = get_char_index(c);
+	if (char_idx < 0) {
+		return;
+	}
+
+	const uint8_t *char_data = font_data[char_idx];
+
+	for (int row = 0; row < FONT_HEIGHT; row++) {
+		if (y + row >= buf_height) break;
+
+		uint8_t pixel_row = char_data[row];
+		for (int col = 0; col < FONT_WIDTH; col++) {
+			if (x + col >= buf_width) break;
+
+			if (pixel_row & (0x80 >> col)) {
+				/* YUYV format: Y0 U Y1 V (2 pixels per 4 bytes) */
+				int pixel_idx = (y + row) * buf_width + (x + col);
+				int byte_idx = (pixel_idx / 2) * 4 + (pixel_idx % 2) * 2;
+
+				if (byte_idx < buf_width * buf_height * 2) {
+					buffer[byte_idx] = 255; /* Set Y (luminance) to white */
+				}
+			}
+		}
+	}
+}
+
+static void draw_text_overlay(struct video_buffer *vbuf, const struct video_format *fmt,
+			      const char *text, int x, int y)
+{
+	int text_len = strlen(text);
+
+	for (int i = 0; i < text_len; i++) {
+		int char_x = x + i * (FONT_WIDTH + 2); /* 2 pixel spacing between chars */
+
+		switch (fmt->pixelformat) {
+		case VIDEO_PIX_FMT_GREY:
+			draw_char_grey(vbuf->buffer, fmt->width, fmt->height,
+				       char_x, y, text[i]);
+			break;
+		case VIDEO_PIX_FMT_YUYV:
+			draw_char_yuyv(vbuf->buffer, fmt->width, fmt->height,
+				       char_x, y, text[i]);
+			break;
+		default:
+			/* Skip overlay for unsupported formats like JPEG */
+			break;
+		}
+	}
+}
+
+static void format_uptime_string(char *buffer, size_t buffer_size)
+{
+	int64_t uptime_ms = k_uptime_get();
+	int64_t seconds = uptime_ms / 1000;
+	int64_t milliseconds = uptime_ms % 1000;
+
+	/* Format as seconds with 3 decimal places: "123.456" */
+	snprintf(buffer, buffer_size, "%lld.%03lld", seconds, milliseconds);
+}
 
 static size_t app_get_min_buf_size(const struct video_format *const fmt)
 {
@@ -105,6 +226,7 @@ int main(void)
 	struct usbd_context *sample_usbd;
 	struct video_buffer *vbuf;
 	struct video_format fmt = {0};
+	struct video_format current_fmt = {0}; /* Store current format for overlay */
 	struct video_frmival frmival = {0};
 	struct k_poll_signal sig;
 	struct k_poll_event evt[1];
@@ -173,6 +295,9 @@ int main(void)
 		LOG_WRN("Could not set the format of %s", video_dev->name);
 	}
 
+	/* Store the current format for text overlay */
+	current_fmt = fmt;
+
 	ret = video_set_frmival(video_dev, &frmival);
 	if (ret != 0) {
 		LOG_WRN("Could not set the framerate of %s", video_dev->name);
@@ -235,6 +360,11 @@ int main(void)
 		if (video_dequeue(video_dev, &vbuf, K_NO_WAIT) == 0) {
 			LOG_DBG("Dequeued %p from %s, enqueueing to %s",
 				(void *)vbuf, video_dev->name, uvc_dev->name);
+
+			/* Format current uptime and add as text overlay */
+			char uptime_text[32];
+			format_uptime_string(uptime_text, sizeof(uptime_text));
+			draw_text_overlay(vbuf, &current_fmt, uptime_text, 10, 10);
 
 			vbuf->type = VIDEO_BUF_TYPE_INPUT;
 
