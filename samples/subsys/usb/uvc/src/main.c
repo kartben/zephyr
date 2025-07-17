@@ -17,11 +17,13 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/usb/class/usbd_uvc.h>
 #include <zephyr/kernel.h>
+#include <zephyr/drivers/sensor.h>
 
 LOG_MODULE_REGISTER(uvc_sample, LOG_LEVEL_INF);
 
 const static struct device *const uvc_dev = DEVICE_DT_GET(DT_NODELABEL(uvc));
 const static struct device *const video_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_camera));
+const static struct device *const tof_dev = DEVICE_DT_GET(DT_NODELABEL(vl53l1x));
 
 /* Format capabilities of video_dev, usd everywhere through the sampel */
 static struct video_caps video_caps = {.type = VIDEO_BUF_TYPE_OUTPUT};
@@ -42,6 +44,8 @@ static const uint8_t font_data[][FONT_HEIGHT] = {
 	/* '8' */ {0x3C, 0x66, 0x66, 0x3C, 0x66, 0x66, 0x66, 0x3C},
 	/* '9' */ {0x3C, 0x66, 0x66, 0x66, 0x3E, 0x06, 0x66, 0x3C},
 	/* '.' */ {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x18, 0x18},
+	/* ' ' */ {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+	/* 'm' */ {0x00, 0x00, 0x6C, 0xFE, 0xD6, 0xC6, 0xC6, 0x00},
 };
 
 static int get_char_index(char c)
@@ -51,6 +55,12 @@ static int get_char_index(char c)
 	}
 	if (c == '.') {
 		return 10;
+	}
+	if (c == ' ') {
+		return 11;
+	}
+	if (c == 'm') {
+		return 12;
 	}
 	return -1; /* Unsupported character */
 }
@@ -142,6 +152,28 @@ static void format_uptime_string(char *buffer, size_t buffer_size)
 
 	/* Format as seconds with 3 decimal places: "123.456" */
 	snprintf(buffer, buffer_size, "%lld.%03lld", seconds, milliseconds);
+}
+
+static void format_distance_string(char *buffer, size_t buffer_size)
+{
+	struct sensor_value distance;
+	int ret;
+
+	ret = sensor_sample_fetch(tof_dev);
+	if (ret != 0) {
+		snprintf(buffer, buffer_size, "ToF: ERR");
+		return;
+	}
+
+	ret = sensor_channel_get(tof_dev, SENSOR_CHAN_DISTANCE, &distance);
+	if (ret != 0) {
+		snprintf(buffer, buffer_size, "ToF: ERR");
+		return;
+	}
+
+	/* Convert to millimeters and format: "1234mm" */
+	int32_t distance_mm = sensor_value_to_double(&distance) ;
+	snprintf(buffer, buffer_size, "%d mm", distance_mm);
 }
 
 static size_t app_get_min_buf_size(const struct video_format *const fmt)
@@ -237,6 +269,12 @@ int main(void)
 	if (!device_is_ready(video_dev)) {
 		LOG_ERR("video source %s failed to initialize", video_dev->name);
 		return -ENODEV;
+	}
+
+	if (!device_is_ready(tof_dev)) {
+		LOG_WRN("ToF sensor %s not ready, distance overlay will show N/A", tof_dev->name);
+	} else {
+		LOG_INF("ToF sensor %s is ready", tof_dev->name);
 	}
 
 	ret = video_get_caps(video_dev, &video_caps);
@@ -365,6 +403,11 @@ int main(void)
 			char uptime_text[32];
 			format_uptime_string(uptime_text, sizeof(uptime_text));
 			draw_text_overlay(vbuf, &current_fmt, uptime_text, 10, 10);
+
+			/* Format distance reading and add as second overlay */
+			char distance_text[32];
+			format_distance_string(distance_text, sizeof(distance_text));
+			draw_text_overlay(vbuf, &current_fmt, distance_text, 10, 25);
 
 			vbuf->type = VIDEO_BUF_TYPE_INPUT;
 
