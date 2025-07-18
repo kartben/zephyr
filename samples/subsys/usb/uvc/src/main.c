@@ -341,6 +341,11 @@ int main(void)
 	size_t bsize;
 	int ret;
 
+	/* Distance sensor caching variables */
+	int64_t last_distance_update = 0;
+	int cached_distance_mm = 0;
+	const int64_t distance_update_interval_ms = 250;
+
 	if (!device_is_ready(video_dev)) {
 		LOG_ERR("video source %s failed to initialize", video_dev->name);
 		return -ENODEV;
@@ -474,33 +479,35 @@ int main(void)
 			LOG_DBG("Dequeued %p from %s, enqueueing to %s",
 				(void *)vbuf, video_dev->name, uvc_dev->name);
 
-						/* Format current uptime and add as text overlay */
-			char uptime_text[32];
-			format_uptime_string(uptime_text, sizeof(uptime_text));
-			draw_text_overlay(vbuf, &current_fmt, uptime_text, 10, 10);
+			/* Update distance reading only every 100ms */
+			int64_t current_time = k_uptime_get();
+			if (current_time - last_distance_update >= distance_update_interval_ms) {
+				struct sensor_value distance;
 
-			/* Get distance reading for both text and circle overlays */
-			struct sensor_value distance;
-			int distance_mm = 0;
+				if (device_is_ready(tof_dev) && sensor_sample_fetch(tof_dev) == 0 &&
+				    sensor_channel_get(tof_dev, SENSOR_CHAN_DISTANCE, &distance) ==
+					    0) {
+					cached_distance_mm = sensor_value_to_double(&distance);
+				} else {
+					cached_distance_mm = 0; /* Error state */
+				}
 
-			if (device_is_ready(tof_dev) &&
-			    sensor_sample_fetch(tof_dev) == 0 &&
-			    sensor_channel_get(tof_dev, SENSOR_CHAN_DISTANCE, &distance) == 0) {
-				distance_mm = sensor_value_to_double(&distance);
+				last_distance_update = current_time;
 			}
 
 			/* Format distance reading and add as text overlay */
 			char distance_text[32];
-			if (distance_mm > 0) {
-				snprintf(distance_text, sizeof(distance_text), "%d mm", distance_mm);
+			if (cached_distance_mm > 0) {
+				snprintf(distance_text, sizeof(distance_text), "%d mm",
+					 cached_distance_mm);
 			} else {
 				snprintf(distance_text, sizeof(distance_text), "ToF: ERR");
 			}
-			draw_text_overlay(vbuf, &current_fmt, distance_text, 10, 25);
+			draw_text_overlay(vbuf, &current_fmt, distance_text, 10, 10);
 
 			/* Add distance circle overlay */
-			if (distance_mm > 0) {
-				draw_distance_circle(vbuf, &current_fmt, distance_mm);
+			if (cached_distance_mm > 0) {
+				draw_distance_circle(vbuf, &current_fmt, cached_distance_mm);
 			}
 
 			vbuf->type = VIDEO_BUF_TYPE_INPUT;
