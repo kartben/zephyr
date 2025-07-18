@@ -45,7 +45,7 @@
 #endif
 
 #define APP_CONNECT_TIMEOUT_MS	2000
-#define APP_SLEEP_MSECS		2000
+#define APP_SLEEP_MSECS         5000
 
 #define APP_CONNECT_TRIES	10
 

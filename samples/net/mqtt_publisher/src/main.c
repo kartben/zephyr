@@ -303,6 +303,8 @@ static int publish(struct mqtt_client *client, enum mqtt_qos qos)
 		include_topic = false;
 	}
 	param.prop.payload_format_indicator = 1U;
+	param.prop.content_type.utf8 = (uint8_t *)"application/json";
+	param.prop.content_type.size = strlen("application/json");
 #endif
 
 	return mqtt_publish(client, &param);
@@ -503,9 +505,9 @@ static int publisher(void)
 	while (i++ < CONFIG_NET_SAMPLE_APP_MAX_ITERATIONS && connected) {
 		r = -1;
 
-		rc = mqtt_ping(&client_ctx);
-		PRINT_RESULT("mqtt_ping", rc);
-		SUCCESS_OR_BREAK(rc);
+		// rc = mqtt_ping(&client_ctx);
+		// PRINT_RESULT("mqtt_ping", rc);
+		// SUCCESS_OR_BREAK(rc);
 
 		rc = process_mqtt_and_sleep(&client_ctx, APP_SLEEP_MSECS);
 		SUCCESS_OR_BREAK(rc);
@@ -514,22 +516,22 @@ static int publisher(void)
 		PRINT_RESULT("mqtt_publish", rc);
 		SUCCESS_OR_BREAK(rc);
 
-		rc = process_mqtt_and_sleep(&client_ctx, APP_SLEEP_MSECS);
-		SUCCESS_OR_BREAK(rc);
+		// rc = process_mqtt_and_sleep(&client_ctx, APP_SLEEP_MSECS);
+		// SUCCESS_OR_BREAK(rc);
 
-		rc = publish(&client_ctx, MQTT_QOS_1_AT_LEAST_ONCE);
-		PRINT_RESULT("mqtt_publish", rc);
-		SUCCESS_OR_BREAK(rc);
+		// rc = publish(&client_ctx, MQTT_QOS_1_AT_LEAST_ONCE);
+		// PRINT_RESULT("mqtt_publish", rc);
+		// SUCCESS_OR_BREAK(rc);
 
-		rc = process_mqtt_and_sleep(&client_ctx, APP_SLEEP_MSECS);
-		SUCCESS_OR_BREAK(rc);
+		// rc = process_mqtt_and_sleep(&client_ctx, APP_SLEEP_MSECS);
+		// SUCCESS_OR_BREAK(rc);
 
-		rc = publish(&client_ctx, MQTT_QOS_2_EXACTLY_ONCE);
-		PRINT_RESULT("mqtt_publish", rc);
-		SUCCESS_OR_BREAK(rc);
+		// rc = publish(&client_ctx, MQTT_QOS_2_EXACTLY_ONCE);
+		// PRINT_RESULT("mqtt_publish", rc);
+		// SUCCESS_OR_BREAK(rc);
 
-		rc = process_mqtt_and_sleep(&client_ctx, APP_SLEEP_MSECS);
-		SUCCESS_OR_BREAK(rc);
+		// rc = process_mqtt_and_sleep(&client_ctx, APP_SLEEP_MSECS);
+		// SUCCESS_OR_BREAK(rc);
 
 		r = 0;
 	}
