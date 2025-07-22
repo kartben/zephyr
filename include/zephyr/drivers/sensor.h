@@ -323,7 +323,7 @@ enum sensor_attribute {
 	 * outside the threshold for the trigger to fire.
 	 */
 	SENSOR_ATTR_SLOPE_DUR,
-	/* Hysteresis for trigger thresholds. */
+	/** Hysteresis for trigger thresholds. */
 	SENSOR_ATTR_HYSTERESIS,
 	/** Oversampling factor */
 	SENSOR_ATTR_OVERSAMPLING,
@@ -356,9 +356,9 @@ enum sensor_attribute {
 
 	/** Hardware batch duration in ticks */
 	SENSOR_ATTR_BATCH_DURATION,
-	/* Configure the gain of a sensor. */
+	/** Configure the gain of a sensor. */
 	SENSOR_ATTR_GAIN,
-	/* Configure the resolution of a sensor. */
+	/** Configure the resolution of a sensor. */
 	SENSOR_ATTR_RESOLUTION,
 	/**
 	 * Number of all common sensor attributes.
@@ -621,18 +621,33 @@ enum sensor_stream_data_opt {
 	SENSOR_STREAM_DATA_DROP = 2,
 };
 
+/**
+ * @brief Sensor stream trigger configuration
+ *
+ * This structure defines a trigger for sensor streaming operations, specifying
+ * both the trigger type and what should be done with associated data when the
+ * trigger fires.
+ */
 struct sensor_stream_trigger {
+	/** The type of trigger to configure */
 	enum sensor_trigger_type trigger;
+	/** Option for handling data when trigger fires */
 	enum sensor_stream_data_opt opt;
 };
 
+/**
+ * @brief Helper macro to initialize a sensor_stream_trigger structure
+ *
+ * @param _trigger The sensor trigger type
+ * @param _opt The data handling option for the trigger
+ */
 #define SENSOR_STREAM_TRIGGER_PREP(_trigger, _opt)                                                 \
 	{                                                                                          \
 		.trigger = (_trigger), .opt = (_opt),                                              \
 	}
 
-/*
- * Internal data structure used to store information about the IODevice for async reading and
+/**
+ * @brief Data structure used to store information about the IODevice for async reading and
  * streaming sensor data.
  */
 struct sensor_read_config {
@@ -702,13 +717,19 @@ struct sensor_read_config {
 	};                                                                                         \
 	RTIO_IODEV_DEFINE(name, &__sensor_iodev_api, &_CONCAT(__sensor_read_config_, name))
 
-/* Used to submit an RTIO sqe to the sensor's iodev */
+/**
+ * @typedef sensor_submit_t
+ * @brief Callback API to submit an RTIO submission queue entry to the sensor's iodev
+ *
+ * @param sensor Pointer to the sensor device
+ * @param sqe Pointer to the RTIO submission queue entry to submit
+ */
 typedef void (*sensor_submit_t)(const struct device *sensor, struct rtio_iodev_sqe *sqe);
 
-/* The default decoder API */
+/** @brief The default decoder API */
 extern const struct sensor_decoder_api __sensor_default_decoder;
 
-/* The default sensor iodev API */
+/** @brief The default sensor iodev API */
 extern const struct rtio_iodev_api __sensor_iodev_api;
 
 __subsystem struct sensor_driver_api {
@@ -919,26 +940,26 @@ static inline int z_impl_sensor_channel_get(const struct device *dev,
 
 #if defined(CONFIG_SENSOR_ASYNC_API) || defined(__DOXYGEN__)
 
-/*
+/**
  * Generic data structure used for encoding the sample timestamp and number of channels sampled.
  */
 struct __attribute__((__packed__)) sensor_data_generic_header {
-	/* The timestamp at which the data was collected from the sensor */
+	/** The timestamp at which the data was collected from the sensor */
 	uint64_t timestamp_ns;
 
-	/*
+	/**
 	 * The number of channels present in the frame. This will be the true number of elements in
 	 * channel_info and in the q31 values that follow the header.
 	 */
 	uint32_t num_channels;
 
-	/* Shift value for all samples in the frame */
+	/** Shift value for all samples in the frame */
 	int8_t shift;
 
-	/* This padding is needed to make sure that the 'channels' field is aligned */
+	/** This padding is needed to make sure that the 'channels' field is aligned */
 	int8_t _padding[sizeof(struct sensor_chan_spec) - 1];
 
-	/* Channels present in the frame */
+	/** Channels present in the frame */
 	struct sensor_chan_spec channels[0];
 };
 
@@ -1043,6 +1064,20 @@ static inline int z_impl_sensor_reconfigure_read_iodev(struct rtio_iodev *iodev,
 	return 0;
 }
 
+/**
+ * @brief Start a streaming read from a sensor
+ *
+ * This function initiates a streaming read operation that will continuously receive
+ * data from the sensor based on configured triggers. The operation is non-blocking
+ * and will continue until explicitly cancelled.
+ *
+ * @param[in] iodev The iodev created by @ref SENSOR_DT_STREAM_IODEV
+ * @param[in] ctx The RTIO context to service the stream
+ * @param[in] userdata Optional userdata that will be available when data is received
+ * @param[out] handle Optional pointer to store the handle for the streaming operation
+ * @return 0 on success
+ * @return -ENOMEM if no RTIO SQE is available
+ */
 static inline int sensor_stream(struct rtio_iodev *iodev, struct rtio *ctx, void *userdata,
 				struct rtio_sqe **handle)
 {
