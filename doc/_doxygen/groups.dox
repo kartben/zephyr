@@ -17,8 +17,10 @@
 
 @}
 
-@brief Device Driver APIs
-@defgroup io_interfaces Device Driver APIs
+@defgroup io_interfaces Device Drivers
+@brief Interfaces to interact with various hardware peripherals.
+@details Collection of hardware-agnostic interfaces used to implement and interact with device
+         drivers.
 @{
 @}
 
