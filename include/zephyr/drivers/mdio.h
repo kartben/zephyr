@@ -8,7 +8,7 @@
 /**
  * @file
  * @ingroup mdio_interface
- * @brief Main header file for MDIO (Media Independent Interface) driver API.
+ * @brief Main header file for MDIO (Management Data Input/Output) driver API.
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MDIO_H_
