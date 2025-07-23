@@ -7,7 +7,7 @@
 /**
  * @file
  * @ingroup espi_interface
- * @brief Main header file for eSPI driver API.
+ * @brief Main header file for eSPI (Enhanced Serial Peripheral Interface) driver API.
  */
 
 #ifndef ZEPHYR_INCLUDE_ESPI_H_
