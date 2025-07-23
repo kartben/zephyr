@@ -24,14 +24,20 @@
 @{
 @}
 
-@brief Miscellaneous Drivers APIs
-@defgroup misc_interfaces Miscellaneous Drivers APIs
+@defgroup misc_interfaces Miscellaneous Devices
 @ingroup io_interfaces
+@brief Interfaces to interact with hardware peripherals that do not have a dedicated driver class.
 @{
 @}
 
 @brief Multi Function Device Drivers APIs
 @defgroup mfd_interfaces Multi Function Device Drivers APIs
+@ingroup io_interfaces
+@{
+@}
+
+@defgroup usb_interfaces USB Device Drivers
+@brief Interfaces to interact with USB devices.
 @ingroup io_interfaces
 @{
 @}
