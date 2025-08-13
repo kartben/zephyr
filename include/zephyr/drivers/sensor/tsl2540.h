@@ -21,27 +21,50 @@
 extern "C" {
 #endif
 
+/**
+ * Custom attributes for the TSL2540 sensor.
+ */
 enum sensor_attribute_tsl2540 {
-	/* Sensor Integration Time (in ms) */
+	/**
+	 * @brief Sensor integration time
+	 *
+	 * Sets the integration time, in milliseconds.
+	 */
 	SENSOR_ATTR_INTEGRATION_TIME = SENSOR_ATTR_PRIV_START + 1,
-	/* Sensor ALS interrupt persistence filters */
+	/**
+	 * @brief Sensor ALS interrupt persistence filter
+	 *
+	 * Enable the interrupt persistence filter (value is 0-15, representing the number of
+	 * samples to average).
+	 */
 	SENSOR_ATTR_INT_APERS,
-	/* Shutdown the sensor */
-	SENSOR_ATTR_TSL2540_SHUTDOWN_MODE,
-	/* Turn on continuous conversion */
+	/**
+	 * @brief Continuous conversion mode
+	 *
+	 * Enable continuous conversion mode (no attribute value is required).
+	 */
 	SENSOR_ATTR_TSL2540_CONTINUOUS_MODE,
-	/* Turn on continuous conversion without wait */
+	/**
+	 * @brief Continuous conversion mode without wait
+	 *
+	 * Enable continuous conversion mode without wait (no attribute value is required).
+	 */
 	SENSOR_ATTR_TSL2540_CONTINUOUS_NO_WAIT_MODE,
 };
 
+/**
+ * @name Possible values for SENSOR_ATTR_GAIN
+ * @{
+ */
 enum sensor_gain_tsl2540 {
-	TSL2540_SENSOR_GAIN_1_2,
-	TSL2540_SENSOR_GAIN_1,
-	TSL2540_SENSOR_GAIN_4,
-	TSL2540_SENSOR_GAIN_16,
-	TSL2540_SENSOR_GAIN_64,
-	TSL2540_SENSOR_GAIN_128,
+	TSL2540_SENSOR_GAIN_1_2,	/**< 1/2x gain */
+	TSL2540_SENSOR_GAIN_1,		/**< 1x gain */
+	TSL2540_SENSOR_GAIN_4,		/**< 4x gain */
+	TSL2540_SENSOR_GAIN_16,		/**< 16x gain */
+	TSL2540_SENSOR_GAIN_64,		/**< 64x gain */
+	TSL2540_SENSOR_GAIN_128,	/**< 128x gain */
 };
+/** @} */
 
 #ifdef __cplusplus
 }
