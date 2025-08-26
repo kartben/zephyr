@@ -1,0 +1,151 @@
+<!--
+SPDX-FileCopyrightText: Copyright (c) 2026 Nordic Semiconductor ASA
+SPDX-License-Identifier: Apache-2.0
+-->
+
+<form class="zms-calculator">
+    <div class="zms-calculator__header">
+        <h3>Device Lifetime Calculator</h3>
+        <button type="button" class="btn btn-neutral" data-action="toggle-advanced"
+            aria-controls="zms-lifetime-advanced" aria-expanded="false">
+            Advanced mode
+        </button>
+    </div>
+    <p>Calculate the expected lifetime of your ZMS storage device based on your configuration.</p>
+
+    <div id="zms-lifetime-advanced" class="zms-calculator__panel" data-panel="advanced" hidden>
+        <p data-help="plain">
+            Advanced mode: enter one pair per line in the format <code>0x01:010203</code>.
+            ID and data must be hexadecimal. Whitespace around the <code>:</code> separator is ignored
+            (data may include spaces or underscores). Empty lines and lines starting with <code>#</code>
+            are ignored.
+        </p>
+        <p data-help="settings" hidden>
+            Advanced mode: enter one pair per line in the format <code>/data/key1:010203</code>.
+            Path is plain text and data must be hexadecimal. Whitespace around the <code>:</code>
+            separator is ignored. Empty lines and lines starting with <code>#</code> are ignored.
+        </p>
+        <label>Entries (ID:data per line):
+            <textarea rows="6" data-field="advanced-entries"></textarea>
+        </label>
+    </div>
+
+    <div class="zms-calculator__grid">
+        <label>Write Block Size (bytes):
+            <input type="number" value="1" min="1" step="1" data-field="write-block-size" />
+        </label>
+        <label>Flash Type:
+            <select data-field="flash-type">
+                <option value="no-erase">No Explicit Erase (RRAM/MRAM)</option>
+                <option value="explicit-erase">Explicit Erase Required (NOR Flash)</option>
+            </select>
+        </label>
+        <label data-panel="erase-block" hidden>Erase Block Size (bytes):
+            <input type="number" value="4096" min="256" step="256" data-field="erase-block-size" />
+        </label>
+        <label>Sector Size (bytes):
+            <input type="number" value="1024" min="256" step="256" data-field="sector-size" />
+        </label>
+        <label>Number of Sectors:
+            <input type="number" value="4" min="2" max="100" data-field="sector-count" />
+        </label>
+        <label data-panel="data-size">Average Data Size (bytes):
+            <input type="number" value="8" min="1" max="65536" data-field="data-size" />
+        </label>
+        <label>Writes per Minute:
+            <input type="number" value="1" min="0.01" step="0.01" data-field="writes-per-minute" />
+        </label>
+        <label>Maximum Writes per Cell Before Wear-out:
+            <input type="number" value="100000" min="1000" step="1000" data-field="max-writes" />
+        </label>
+        <label data-panel="data-count">Number of Data Items:
+            <input type="number" value="1" min="1" max="1000" data-field="data-count" />
+        </label>
+        <label>Use with Settings Subsystem:
+            <select data-field="use-settings">
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+            </select>
+        </label>
+        <label data-panel="settings-path" hidden>Average Path Size (bytes):
+            <input type="number" value="16" min="1" max="256" data-field="avg-path-size" />
+        </label>
+        <label data-panel="id-type">ID Type:
+            <select data-field="id-type">
+                <option value="32">32-bit</option>
+                <option value="64">64-bit</option>
+            </select>
+        </label>
+    </div>
+
+    <button type="button" class="btn btn-neutral" data-action="calculate">Calculate Lifetime</button>
+
+    <output class="zms-calculator__panel" data-role="output" hidden>
+        <p class="zms-status zms-status--error" data-status="error" hidden>
+            <strong>Error: </strong>Total Storage Used exceeds the total available storage size.
+            Increase the storage size or reduce the effective data set.
+        </p>
+        <p class="zms-status zms-status--warning" data-status="warning" hidden>
+            <strong>Warning: </strong>Effective data occupies more than 50% of the available storage size.
+            The storage should be dimensioned so that effective data occupies less than 50% of available storage.
+        </p>
+
+        <div data-section="errors" hidden>
+            <h4>Validation Errors</h4>
+            <ul data-out="errors"></ul>
+        </div>
+
+        <div data-section="results" hidden>
+            <h4>Results</h4>
+            <dl>
+                <dt data-row="settings">Settings Mode</dt>
+                <dd data-row="settings">Enabled</dd>
+                <dt data-row="settings">Average Path Size (rounded)</dt>
+                <dd data-row="settings" data-out="avg-path"></dd>
+
+                <dt data-row="advanced">Advanced Mode</dt>
+                <dd data-row="advanced">Enabled (ID:data lines)</dd>
+                <dt data-row="advanced">Parsed Data Items</dt>
+                <dd data-row="advanced" data-out="parsed-count"></dd>
+                <dt data-row="advanced">Total Parsed Data Bytes</dt>
+                <dd data-row="advanced" data-out="parsed-data-bytes"></dd>
+                <dt data-row="advanced">Total Parsed Effective Size</dt>
+                <dd data-row="advanced" data-out="parsed-effective-size"></dd>
+
+                <dt>Write Block Size</dt>
+                <dd data-out="write-block"></dd>
+                <dt>ATE Size (rounded)</dt>
+                <dd data-out="ate-size"></dd>
+                <dt>Header Size</dt>
+                <dd data-out="header-size"></dd>
+                <dt>Sector Effective Size</dt>
+                <dd data-out="sector-effective"></dd>
+                <dt>Effective Data Size (rounded)</dt>
+                <dd data-out="effective-data"></dd>
+
+                <dt>Items per Sector</dt>
+                <dd data-out="items-per-sector"></dd>
+                <dt>Total Available Space</dt>
+                <dd data-out="total-available"></dd>
+                <dt>Total Storage Used (with ATEs)</dt>
+                <dd data-out="total-storage-used"></dd>
+                <dt>Cycles through Storage</dt>
+                <dd data-out="cycles"></dd>
+                <dt>Expected Lifetime</dt>
+                <dd>
+                    <ul>
+                        <li data-out="lifetime-total"></li>
+                        <li data-out="lifetime-years"></li>
+                        <li data-out="lifetime-days"></li>
+                        <li data-out="lifetime-hours"></li>
+                        <li data-out="lifetime-minutes"></li>
+                    </ul>
+                </dd>
+            </dl>
+        </div>
+    </output>
+</form>
+
+<script>
+    ZmsCalc.mount(document.currentScript.previousElementSibling, "lifetime");
+</script>

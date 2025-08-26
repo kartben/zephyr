@@ -1,0 +1,592 @@
+<!--
+SPDX-FileCopyrightText: Copyright (c) 2026 Nordic Semiconductor ASA
+SPDX-License-Identifier: Apache-2.0
+
+Shared styles and logic for the ZMS calculators included from zms.rst.
+All colors come from the existing theme variables (custom.css + light.css /
+dark.css), so light and dark themes work without any hard-coded values.
+-->
+
+<style>
+  .zms-calculator {
+    margin: 1.5rem 0;
+    padding: 1.25rem;
+    background-color: var(--admonition-note-background-color);
+    border: 1px solid var(--code-border-color);
+    border-radius: 0.5rem;
+    color: var(--body-color);
+  }
+
+  .zms-calculator__header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+  }
+
+  .zms-calculator__header h3 {
+    margin: 0;
+    flex: 1 1 auto;
+  }
+
+  .zms-calculator__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+
+  .zms-calculator label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+  }
+
+  .zms-calculator input,
+  .zms-calculator select,
+  .zms-calculator textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.4rem 0.5rem;
+    color: var(--body-color);
+    background-color: var(--input-background-color);
+    border: 1px solid var(--code-border-color);
+    border-radius: 0.25rem;
+    font-family: var(--monospace-font-family);
+    font-size: 0.9rem;
+  }
+
+  .zms-calculator textarea {
+    resize: vertical;
+    min-height: 7rem;
+  }
+
+  .zms-calculator__panel {
+    display: block;
+    padding: 1rem;
+    margin-top: 1rem;
+    background-color: var(--content-background-color);
+    border: 1px solid var(--code-border-color);
+    border-radius: 0.25rem;
+  }
+
+  .zms-calculator__panel > :first-child {
+    margin-top: 0;
+  }
+
+  .zms-calculator__panel > :last-child {
+    margin-bottom: 0;
+  }
+
+  .zms-calculator dl {
+    margin: 0;
+    border-left: none;
+  }
+
+  .zms-calculator dt {
+    font-weight: 600;
+    background: none;
+    padding-left: 0;
+  }
+
+  .zms-calculator dt::before {
+    display: none;
+  }
+
+  .zms-calculator dd {
+    margin: 0 0 0.5rem 1rem;
+    font-family: var(--monospace-font-family);
+    font-size: 0.9rem;
+  }
+
+  .zms-calculator hr {
+    border: 0;
+    border-top: 1px solid var(--code-border-color);
+    margin: 0.75rem 0;
+  }
+
+  .zms-calculator code {
+    font-size: 0.85em;
+  }
+
+  .zms-status {
+    padding: 0.6rem 0.9rem;
+    margin: 0 0 0.75rem;
+    border-radius: 0.25rem;
+    border-left: 4px solid;
+  }
+
+  .zms-status--error {
+    background-color: var(--admonition-danger-background-color);
+    color: var(--admonition-danger-color);
+    border-left-color: var(--admonition-danger-title-background-color);
+  }
+
+  .zms-status--warning {
+    background-color: var(--admonition-attention-background-color);
+    color: var(--admonition-attention-color);
+    border-left-color: var(--admonition-attention-title-background-color);
+  }
+</style>
+
+<script>
+  /*
+   * ZmsCalc -- shared logic for the Available Space and Device Lifetime
+   * calculators. The HTML template for each calculator carries the full
+   * results layout (labels, banners, lists). The JS only computes values
+   * and writes them into [data-out="..."] slots / flips [data-row="..."]
+   * groups via the `hidden` attribute. No DOM is built at runtime.
+   */
+  window.ZmsCalc = (() => {
+    "use strict";
+
+    /* ---- Core (no DOM) -------------------------------------------- */
+
+    const BASE_ATE_SIZE = 16; /* see "ATE structure" */
+    const RESERVED_ATE_COUNT = 5; /* header ATEs per sector */
+    const SETTINGS_LL_NODE_BYTES = 8; /* settings backend linked-list node */
+
+    const roundUp = (v, m) => Math.ceil(v / m) * m;
+    const ateSize = (wb) => roundUp(BASE_ATE_SIZE, wb);
+    const dataInsideAte = (id) => (id === 64 ? 4 : 8); /* small-data slot */
+
+    /* Small payloads ride inside the ATE; larger ones are appended at
+     * the top of the sector. Settings mode adds the path entry and the
+     * linked-list node entry (3 ZMS entries per setting). */
+    function entryEffectiveSize(entry, opts) {
+      const cost = (b) =>
+        b <= opts.dataInsideAte ? opts.ateSize : opts.ateSize + roundUp(b, opts.writeBlockSize);
+      const value = cost(entry.dataBytes);
+      if (!opts.useSettings) return value;
+      const path = entry.pathBytes > 0 ? entry.pathBytes : opts.avgPathSize;
+      return value + cost(path) + cost(SETTINGS_LL_NODE_BYTES);
+    }
+
+    function parseHexBytes(text) {
+      const s = text.trim().replace(/^0x/i, "").replace(/[\s_]/g, "");
+      if (!s.length) return { error: "hex data is empty" };
+      if (!/^[0-9a-f]+$/i.test(s)) return { error: "hex data contains invalid characters" };
+      if (s.length % 2) return { error: "hex data must have an even number of characters" };
+      return { bytesCount: s.length / 2 };
+    }
+
+    const utf8Length = (v) => new TextEncoder().encode(v).length;
+
+    function parseAdvancedEntries(text, useSettings) {
+      const lines = text
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l.length && l[0] !== "#");
+      if (!lines.length) return { error: "Advanced mode is enabled but no entries were provided" };
+
+      const entries = [];
+      for (let i = 0; i < lines.length; i++) {
+        const at = ` (line ${i + 1})`;
+        const sep = lines[i].indexOf(":");
+        if (sep <= 0 || sep >= lines[i].length - 1)
+          return { error: `expected ID:data format${at}` };
+        const id = lines[i].slice(0, sep).trim();
+        const data = lines[i].slice(sep + 1).trim();
+        if (!id) return { error: `ID is empty${at}` };
+        if (!useSettings && !/^(0x)?[0-9a-f]+$/i.test(id))
+          return { error: `ID must be hexadecimal (example 0x01)${at}` };
+        const parsed = parseHexBytes(data);
+        if (parsed.error) return { error: `${parsed.error}${at}` };
+        entries.push({
+          id,
+          dataBytes: parsed.bytesCount,
+          pathBytes: useSettings ? utf8Length(id) : 0,
+        });
+      }
+      return { entries };
+    }
+
+    function aggregate(entries, opts) {
+      let totalDataBytes = 0,
+        totalEffectiveSize = 0;
+      for (const e of entries) {
+        totalDataBytes += e.dataBytes;
+        totalEffectiveSize += entryEffectiveSize(e, opts);
+      }
+      const n = entries.length;
+      return {
+        entriesCount: n,
+        totalDataBytes,
+        totalEffectiveSize,
+        averageEffectiveSize: Math.max(1, Math.ceil(totalEffectiveSize / n)),
+        averageDataSize: Math.max(1, Math.ceil(totalDataBytes / n)),
+      };
+    }
+
+    function validate(cfg, kind) {
+      const errors = [];
+      const pos = (v, name) => {
+        if (!Number.isFinite(v) || v <= 0) errors.push(`${name} must be greater than 0`);
+      };
+      pos(cfg.writeBlockSize, "Write block size");
+      pos(cfg.sectorSize, "Sector size");
+      if (!Number.isFinite(cfg.sectorCount) || cfg.sectorCount < 2)
+        errors.push("Number of sectors must be at least 2");
+      if (!cfg.advanced) {
+        pos(cfg.dataSize, "Average data size");
+        pos(cfg.dataCount, "Number of data items");
+        if (cfg.useSettings) pos(cfg.avgPathSize, "Average path size");
+      }
+      /* Sector must hold the header ATEs and align to the write block
+       * (and the erase block, if the device requires explicit erase). */
+      if (cfg.sectorSize > 0 && cfg.writeBlockSize > 0) {
+        const minSector = RESERVED_ATE_COUNT * ateSize(cfg.writeBlockSize);
+        if (cfg.sectorSize <= minSector)
+          errors.push(
+            `Sector size (${cfg.sectorSize}) must be greater than ${RESERVED_ATE_COUNT} * ATE_SIZE (${minSector})`,
+          );
+        if (cfg.sectorSize % cfg.writeBlockSize !== 0)
+          errors.push(
+            `Sector size (${cfg.sectorSize}) must be aligned to write block size (${cfg.writeBlockSize})`,
+          );
+      }
+      if (cfg.flashType === "explicit-erase") {
+        if (!(cfg.eraseBlockSize > 0)) errors.push("Erase block size must be greater than 0");
+        else if (cfg.sectorSize % cfg.eraseBlockSize !== 0)
+          errors.push(
+            `Sector size (${cfg.sectorSize}) must be aligned to erase block size (${cfg.eraseBlockSize})`,
+          );
+      }
+      if (kind === "lifetime") {
+        pos(cfg.writesPerMinute, "Writes per minute");
+        pos(cfg.maxWrites, "Maximum writes per cell");
+      }
+      return errors;
+    }
+
+    function geometry(cfg) {
+      const ate = ateSize(cfg.writeBlockSize);
+      const hdr = RESERVED_ATE_COUNT * ate;
+      const opts = {
+        useSettings: cfg.useSettings,
+        writeBlockSize: cfg.writeBlockSize,
+        ateSize: ate,
+        avgPathSize: cfg.avgPathSize,
+        dataInsideAte: dataInsideAte(cfg.idType),
+      };
+      const g = {
+        ateSize: ate,
+        headerSize: hdr,
+        sectorEffectiveSize: cfg.sectorSize - hdr,
+        dataCount: cfg.dataCount,
+        dataSize: cfg.dataSize,
+        advancedInfo: null,
+      };
+      if (cfg.advanced) {
+        g.advancedInfo = aggregate(cfg.advancedEntries, opts);
+        g.dataCount = g.advancedInfo.entriesCount;
+        g.dataSize = g.advancedInfo.averageDataSize;
+        g.effectiveEntrySize = g.advancedInfo.averageEffectiveSize;
+      } else {
+        g.effectiveEntrySize = entryEffectiveSize(
+          { dataBytes: cfg.dataSize, pathBytes: cfg.avgPathSize },
+          opts,
+        );
+      }
+      g.itemsPerSector = Math.floor(g.sectorEffectiveSize / g.effectiveEntrySize);
+      return g;
+    }
+
+    /* see "Available space for user data" */
+    function computeSpace(cfg) {
+      const g = geometry(cfg);
+      if (g.itemsPerSector < 1)
+        return {
+          errors: [
+            `Effective entry size (${g.effectiveEntrySize} bytes) exceeds sector effective size (${g.sectorEffectiveSize} bytes)`,
+          ],
+        };
+      const availableSectors = cfg.sectorCount - 1; /* one sector reserved for GC */
+      const totalAvailableSpace = g.sectorEffectiveSize * availableSectors;
+      const totalItemsThatCanFit = g.itemsPerSector * availableSectors;
+      const occupiedStorageUsed = g.advancedInfo
+        ? g.advancedInfo.totalEffectiveSize
+        : g.effectiveEntrySize * g.dataCount;
+      const occupiedDataBytes = g.advancedInfo
+        ? g.advancedInfo.totalDataBytes
+        : g.dataSize * g.dataCount;
+      const itemsThatCanFit = Math.min(g.dataCount, totalItemsThatCanFit);
+      return Object.assign(g, {
+        availableSectors,
+        totalAvailableSpace,
+        totalItemsThatCanFit,
+        totalDataCapacity: totalItemsThatCanFit * g.dataSize,
+        occupiedStorageUsed,
+        occupiedDataBytes,
+        totalStorageUsedPercent: (occupiedStorageUsed / totalAvailableSpace) * 100,
+        storageEfficiency:
+          occupiedStorageUsed > 0 ? (occupiedDataBytes / occupiedStorageUsed) * 100 : 0,
+        itemsThatCanFit,
+        actualDataCapacity: itemsThatCanFit * g.dataSize,
+        actualStorageUsed: itemsThatCanFit * g.effectiveEntrySize,
+      });
+    }
+
+    /* see "Device lifetime calculation":
+     *   minutes = (SECTOR_EFFECTIVE_SIZE * SECTOR_NUMBER * MAX_NUM_WRITES)
+     *             / (TOTAL_EFFECTIVE_SIZE * WR_MIN) */
+    function computeLifetime(cfg) {
+      const g = geometry(cfg);
+      if (g.itemsPerSector < 1)
+        return {
+          errors: [
+            `Effective entry size (${g.effectiveEntrySize} bytes) exceeds sector effective size (${g.sectorEffectiveSize} bytes)`,
+          ],
+        };
+      const totalAvailableSpace = g.sectorEffectiveSize * (cfg.sectorCount - 1);
+      const totalPhysicalSpace = g.sectorEffectiveSize * cfg.sectorCount;
+      const totalEffectiveSize = g.advancedInfo
+        ? g.advancedInfo.totalEffectiveSize
+        : g.effectiveEntrySize * g.dataCount;
+      const cyclesThroughStorage = totalPhysicalSpace / totalEffectiveSize;
+      const totalMinutes = (cyclesThroughStorage * cfg.maxWrites) / cfg.writesPerMinute;
+      return Object.assign(g, {
+        totalAvailableSpace,
+        totalEffectiveSize,
+        cyclesThroughStorage,
+        totalStorageUsedPercent: (totalEffectiveSize / totalAvailableSpace) * 100,
+        totalLifetimeMinutes: totalMinutes,
+        breakdown: breakdownMinutes(totalMinutes),
+      });
+    }
+
+    function breakdownMinutes(total) {
+      const MIN = { yr: 525600, day: 1440, hr: 60 };
+      let r = total;
+      const years = Math.floor(r / MIN.yr);
+      r %= MIN.yr;
+      const days = Math.floor(r / MIN.day);
+      r %= MIN.day;
+      const hours = Math.floor(r / MIN.hr);
+      r %= MIN.hr;
+      return { totalMinutes: Math.floor(total), years, days, hours, minutes: Math.floor(r) };
+    }
+
+    /* ---- Presentation --------------------------------------------- */
+
+    const field = (root, name) => root.querySelector(`[data-field="${name}"]`);
+    const panel = (root, name) => root.querySelector(`[data-panel="${name}"]`);
+
+    function readConfig(root, kind) {
+      const num = (name) => {
+        const e = field(root, name);
+        return e ? parseFloat(e.value) : NaN;
+      };
+      const useSettings = field(root, "use-settings").value === "yes";
+      const flashType = field(root, "flash-type").value;
+      const cfg = {
+        writeBlockSize: num("write-block-size"),
+        flashType,
+        eraseBlockSize: flashType === "explicit-erase" ? num("erase-block-size") : NaN,
+        sectorSize: num("sector-size"),
+        sectorCount: num("sector-count"),
+        dataSize: num("data-size"),
+        dataCount: num("data-count"),
+        useSettings,
+        avgPathSize: useSettings ? num("avg-path-size") : 0,
+        idType: useSettings ? 32 : num("id-type"),
+        advanced: !panel(root, "advanced").hidden,
+        advancedEntries: null,
+      };
+      if (kind === "lifetime") {
+        cfg.writesPerMinute = num("writes-per-minute");
+        cfg.maxWrites = num("max-writes");
+      }
+      return cfg;
+    }
+
+    /* Visibility of conditional input fields. Two help-text variants
+     * (plain vs settings) live in the markup as [data-help] paragraphs;
+     * we just flip their `hidden` flags. */
+    function syncVisibility(root) {
+      const useSettings = field(root, "use-settings").value === "yes";
+      const advanced = !panel(root, "advanced").hidden;
+      const flashType = field(root, "flash-type").value;
+
+      panel(root, "erase-block").hidden = flashType !== "explicit-erase";
+      panel(root, "settings-path").hidden = !(useSettings && !advanced);
+      /* Settings backend pins IDs to 32-bit -- hide and lock the selector. */
+      panel(root, "id-type").hidden = useSettings;
+      if (useSettings) field(root, "id-type").value = "32";
+      panel(root, "data-size").hidden = advanced;
+      panel(root, "data-count").hidden = advanced;
+
+      const plain = root.querySelector('[data-help="plain"]');
+      const settings = root.querySelector('[data-help="settings"]');
+      if (plain && settings) {
+        plain.hidden = useSettings;
+        settings.hidden = !useSettings;
+      }
+    }
+
+    const bytes = (n) => `${n.toLocaleString()} bytes`;
+    const pct = (n) => `${n.toFixed(1)}%`;
+
+    /* Fill / toggle helpers operate against the static result template
+     * in each calculator's <output> element. */
+    function fill(out, slots) {
+      for (const [key, value] of Object.entries(slots)) {
+        const el = out.querySelector(`[data-out="${key}"]`);
+        if (el) el.textContent = value;
+      }
+    }
+
+    function toggle(out, groups) {
+      for (const [key, visible] of Object.entries(groups)) {
+        for (const el of out.querySelectorAll(`[data-row="${key}"]`)) {
+          el.hidden = !visible;
+        }
+      }
+    }
+
+    function renderBanners(out, used, available) {
+      out.querySelector('[data-status="error"]').hidden = !(used > available);
+      out.querySelector('[data-status="warning"]').hidden = !(
+        used > available / 2 && used <= available
+      );
+    }
+
+    function renderSection(out, name) {
+      for (const el of out.querySelectorAll("[data-section]")) {
+        el.hidden = el.dataset.section !== name;
+      }
+    }
+
+    function renderResults(out, kind, cfg, r) {
+      renderSection(out, "results");
+      const used = kind === "space" ? r.occupiedStorageUsed : r.totalEffectiveSize;
+      renderBanners(out, used, r.totalAvailableSpace);
+
+      const adv = r.advancedInfo;
+      toggle(out, {
+        settings: cfg.useSettings,
+        advanced: !!adv,
+        "plain-only": !adv,
+        "advanced-only": !!adv,
+        overflow: kind === "space" && r.dataCount > r.totalItemsThatCanFit,
+      });
+
+      /* Geometry rows (always shown). */
+      fill(out, {
+        "write-block": `${cfg.writeBlockSize} bytes`,
+        "ate-size": `${r.ateSize} bytes`,
+        "header-size": `${r.headerSize} bytes (${RESERVED_ATE_COUNT} × ${r.ateSize})`,
+        "sector-effective": `${r.sectorEffectiveSize} bytes`,
+        "effective-data": `${r.effectiveEntrySize} bytes${adv ? " (average from parsed lines)" : ""}`,
+        "total-storage-used": `${bytes(used)} (${pct(r.totalStorageUsedPercent)} of total available space)`,
+        "total-available": bytes(r.totalAvailableSpace),
+        "items-per-sector": String(r.itemsPerSector),
+      });
+
+      /* Conditional mode rows. */
+      if (cfg.useSettings) {
+        const note = adv ? " (not used in advanced mode)" : "";
+        fill(out, { "avg-path": `${roundUp(cfg.avgPathSize, cfg.writeBlockSize)} bytes${note}` });
+      }
+      if (adv) {
+        fill(out, {
+          "parsed-count": adv.entriesCount.toLocaleString(),
+          "parsed-data-bytes": bytes(adv.totalDataBytes),
+          "parsed-effective-size": bytes(adv.totalEffectiveSize),
+        });
+      }
+
+      if (kind === "space") renderSpace(out, cfg, r, adv);
+      else renderLifetime(out, r);
+
+      out.hidden = false;
+    }
+
+    function renderSpace(out, cfg, r, adv) {
+      fill(out, {
+        "available-sectors": `${r.availableSectors} (${cfg.sectorCount} total - 1 for GC)`,
+        "total-items-fit": r.totalItemsThatCanFit.toLocaleString(),
+        "total-data-capacity": bytes(r.totalDataCapacity),
+        "storage-efficiency": pct(r.storageEfficiency),
+        "requested-count": String(r.dataCount),
+        "items-can-fit": r.itemsThatCanFit.toLocaleString(),
+        "data-line-plain": `Actual data capacity: ${bytes(r.actualDataCapacity)}`,
+        "data-line-advanced": adv ? `Requested data bytes: ${bytes(adv.totalDataBytes)}` : "",
+        "storage-line-plain": `Actual storage used: ${bytes(r.actualStorageUsed)}`,
+        "storage-line-advanced": adv
+          ? `Requested storage used: ${bytes(adv.totalEffectiveSize)}`
+          : "",
+        "overflow-warning": `Warning: Only ${r.totalItemsThatCanFit.toLocaleString()} of ${r.dataCount.toLocaleString()} requested items can fit in the available space.`,
+      });
+    }
+
+    function renderLifetime(out, r) {
+      const b = r.breakdown;
+      fill(out, {
+        cycles: String(r.cyclesThroughStorage),
+        "lifetime-total": `${b.totalMinutes.toLocaleString()} minutes`,
+        "lifetime-years": `${b.years.toLocaleString()} years`,
+        "lifetime-days": `${b.days.toLocaleString()} days`,
+        "lifetime-hours": `${b.hours.toLocaleString()} hours`,
+        "lifetime-minutes": `${b.minutes.toLocaleString()} minutes`,
+      });
+    }
+
+    function renderErrors(out, errors) {
+      renderSection(out, "errors");
+      renderBanners(out, 0, 1); /* hide both banners */
+      const list = out.querySelector('[data-out="errors"]');
+      list.replaceChildren(
+        ...errors.map((msg) => {
+          const li = document.createElement("li");
+          li.textContent = msg;
+          return li;
+        }),
+      );
+      out.hidden = false;
+    }
+
+    function mount(root, kind) {
+      const compute = kind === "space" ? computeSpace : computeLifetime;
+      const out = root.querySelector('[data-role="output"]');
+      const advPanel = panel(root, "advanced");
+      const advBtn = root.querySelector('[data-action="toggle-advanced"]');
+
+      const run = () => {
+        const cfg = readConfig(root, kind);
+        const errs = validate(cfg, kind);
+        if (errs.length) return renderErrors(out, errs);
+        if (cfg.advanced) {
+          const parsed = parseAdvancedEntries(
+            field(root, "advanced-entries").value,
+            cfg.useSettings,
+          );
+          if (parsed.error) return renderErrors(out, [parsed.error]);
+          cfg.advancedEntries = parsed.entries;
+        }
+        const r = compute(cfg);
+        if (r.errors) return renderErrors(out, r.errors);
+        renderResults(out, kind, cfg, r);
+      };
+
+      root.querySelector('[data-action="calculate"]').addEventListener("click", run);
+      advBtn.addEventListener("click", () => {
+        advPanel.hidden = !advPanel.hidden;
+        advBtn.setAttribute("aria-expanded", String(!advPanel.hidden));
+        syncVisibility(root);
+      });
+      root.addEventListener("change", () => syncVisibility(root));
+      /* Enter in any input runs the calculation (Ctrl+Enter for textareas). */
+      root.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter") return;
+        if (e.target.tagName === "TEXTAREA" && !e.ctrlKey) return;
+        e.preventDefault();
+        run();
+      });
+      syncVisibility(root);
+    }
+
+    return { mount };
+  })();
+</script>
