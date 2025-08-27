@@ -9,6 +9,7 @@
 # Zephyr's sanity check testcases.
 
 import logging
+import pykwalify.core
 import yaml
 try:
     # Use the C LibYAML parser if available, rather than the Python parser.
@@ -20,7 +21,8 @@ except ImportError:
     from yaml import Loader, SafeLoader, Dumper
 
 log = logging.getLogger("scl")
-
+# Don't print error pykwalify error messages, let us do it
+logging.getLogger("pykwalify.core").setLevel(50)
 
 class EmptyYamlFileException(Exception):
     pass
@@ -51,23 +53,11 @@ def yaml_load(filename):
                   e.note, cmark.name, cmark.line, cmark.column, e.context)
         raise
 
-# If pykwalify is installed, then the validate function will work --
-# otherwise, it is a stub and we'd warn about it.
-try:
-    import pykwalify.core
-    # Don't print error messages yourself, let us do it
-    logging.getLogger("pykwalify.core").setLevel(50)
-
-    def _yaml_validate(data, schema):
-        if not schema:
-            return
-        c = pykwalify.core.Core(source_data=data, schema_data=schema)
-        c.validate(raise_exception=True)
-
-except ImportError as e:
-    log.warning("can't import pykwalify; won't validate YAML (%s)", e)
-    def _yaml_validate(data, schema):
-        pass
+def _yaml_validate(data, schema):
+    if not schema:
+        return
+    c = pykwalify.core.Core(source_data=data, schema_data=schema)
+    c.validate(raise_exception=True)
 
 def yaml_load_verify(filename, schema):
     """
