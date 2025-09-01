@@ -1,0 +1,243 @@
+# Zephyr Hardened Configuration Settings
+# This file defines recommended security-hardened values for Kconfig options
+# Each option can include an optional 'explanation' field describing why the setting is important
+
+# Critical Security Mitigations
+BOUNDS_CHECK_BYPASS_MITIGATION:
+  recommended: y
+  explanation: "Enables Spectre v1 mitigation by preventing bounds check bypass attacks through speculative execution"
+
+HW_STACK_PROTECTION:
+  recommended: y
+  explanation: "Enables hardware-based stack protection to prevent stack overflow attacks and buffer overflows"
+
+STACK_CANARIES:
+  recommended: y
+  explanation: "Adds stack canaries to detect stack buffer overflows by placing guard values before return addresses"
+
+MPU_STACK_GUARD:
+  recommended: y
+  explanation: "Uses Memory Protection Unit to create guard regions around stacks, preventing stack overflow exploitation"
+
+STACK_POINTER_RANDOM:
+  recommended: 100
+  explanation: "Randomizes stack pointer location to make stack-based attacks more difficult by reducing predictability"
+
+STACK_SENTINEL:
+  recommended: y
+  explanation: "Adds sentinel values to detect stack corruption and overflow attempts"
+
+BUILTIN_STACK_GUARD:
+  recommended: y
+  explanation: "Enables built-in stack guard mechanisms to protect against stack overflow vulnerabilities"
+
+# Memory Protection
+X86_MMU:
+  recommended: y
+  explanation: "Enables Memory Management Unit for x86 architectures to provide memory protection and isolation"
+
+EXECUTE_XOR_WRITE:
+  recommended: y
+  explanation: "Prevents execution of writable memory pages, implementing W^X (Write XOR Execute) security principle"
+
+# Build Security
+BUILD_OUTPUT_STRIPPED:
+  recommended: y
+  explanation: "Removes debug symbols and information from the final binary to prevent information disclosure"
+
+# Bluetooth Security
+BT_SMP_ENFORCE_MITM:
+  recommended: y
+  explanation: "Enforces Man-in-the-Middle protection in Bluetooth Secure Simple Pairing to prevent pairing attacks"
+
+# Debug and Information Disclosure Prevention
+BOOT_BANNER:
+  recommended: n
+  explanation: "Disables boot banner to prevent information disclosure about system details during startup"
+
+BOOT_DELAY:
+  recommended: 0
+  explanation: "Removes boot delay to prevent timing-based attacks and reduce attack surface"
+
+FAULT_DUMP:
+  recommended: 0
+  explanation: "Disables fault dumps to prevent sensitive information disclosure in error conditions"
+
+# Debug Options (Security Risk)
+ASSERT:
+  recommended: n
+  explanation: "Disables assertions in production to prevent information disclosure and reduce attack surface"
+
+DEBUG:
+  recommended: n
+  explanation: "Disables debug features in production to prevent information disclosure and reduce attack surface"
+
+DEBUG_COREDUMP:
+  recommended: n
+  explanation: "Disables core dumps to prevent sensitive memory contents from being written to storage"
+
+X86_DEBUG_INFO:
+  recommended: n
+  explanation: "Disables debug information for x86 to prevent information disclosure about program structure"
+
+DEBUG_THREAD_INFO:
+  recommended: n
+  explanation: "Disables thread debug information to prevent information disclosure about system internals"
+
+EARLY_CONSOLE:
+  recommended: n
+  explanation: "Disables early console to prevent information disclosure during boot process"
+
+EXCEPTION_DEBUG:
+  recommended: n
+  explanation: "Disables exception debugging to prevent information disclosure about system errors"
+
+GDBSTUB:
+  recommended: n
+  explanation: "Disables GDB stub to prevent remote debugging capabilities that could be exploited"
+
+PRINTK:
+  recommended: n
+  explanation: "Disables printk to prevent information disclosure through console output"
+
+STACK_USAGE:
+  recommended: n
+  explanation: "Disables stack usage tracking to prevent information disclosure about memory usage patterns"
+
+THREAD_ANALYZER:
+  recommended: n
+  explanation: "Disables thread analyzer to prevent information disclosure about thread behavior"
+
+# Bluetooth Debug and Testing (Security Risk)
+BT_CONN_DISABLE_SECURITY:
+  recommended: n
+  explanation: "Disables Bluetooth security features, should never be enabled in production"
+
+BT_KEYS_LOG_LEVEL_DBG:
+  recommended: n
+  explanation: "Disables debug logging of Bluetooth keys to prevent key material disclosure"
+
+BT_SMP_LOG_LEVEL_DBG:
+  recommended: n
+  explanation: "Disables debug logging of Bluetooth SMP to prevent pairing information disclosure"
+
+BT_FIXED_PASSKEY:
+  recommended: n
+  explanation: "Disables fixed passkeys to ensure proper authentication in Bluetooth pairing"
+
+BT_LOG_SNIFFER_INFO:
+  recommended: n
+  explanation: "Disables Bluetooth sniffer logging to prevent information disclosure about communications"
+
+BT_OOB_DATA_FIXED:
+  recommended: n
+  explanation: "Disables fixed out-of-band data to ensure proper Bluetooth security"
+
+BT_STORE_DEBUG_KEYS:
+  recommended: n
+  explanation: "Disables storage of debug keys to prevent key material persistence"
+
+BT_TESTING:
+  recommended: n
+  explanation: "Disables Bluetooth testing features that could bypass security measures"
+
+BT_USE_DEBUG_KEYS:
+  recommended: n
+  explanation: "Disables use of debug keys to ensure proper cryptographic key management"
+
+# System Debug and Testing (Security Risk)
+CORTEX_M_DEBUG_MONITOR_HOOK:
+  recommended: n
+  explanation: "Disables Cortex-M debug monitor hook to prevent debugging capabilities"
+
+DMA_INTEL_ADSP_GPDMA_DEBUG:
+  recommended: n
+  explanation: "Disables DMA debug features to prevent information disclosure about memory transfers"
+
+ESPI_PERIPHERAL_DEBUG_PORT_80:
+  recommended: n
+  explanation: "Disables eSPI debug port 80 to prevent information disclosure through debug ports"
+
+ETH_E1000_VERBOSE_DEBUG:
+  recommended: n
+  explanation: "Disables verbose Ethernet debugging to prevent information disclosure about network traffic"
+
+INIT_STACKS:
+  recommended: n
+  explanation: "Disables stack initialization debugging to prevent information disclosure"
+
+LOG:
+  recommended: n
+  explanation: "Disables general logging to prevent information disclosure through log output"
+
+MODEM_CONTEXT_VERBOSE_DEBUG:
+  recommended: n
+  explanation: "Disables verbose modem debugging to prevent information disclosure about communications"
+
+OVERRIDE_FRAME_POINTER_DEFAULT:
+  recommended: y
+  explanation: "Enables frame pointer override to improve stack trace reliability and security analysis"
+
+SHELL:
+  recommended: n
+  explanation: "Disables shell interface to prevent unauthorized command execution"
+
+SOC_ATMEL_SAME70_DISABLE_ERASE_PIN:
+  recommended: y
+  explanation: "Disables erase pin to prevent unauthorized flash memory erasure"
+
+SOC_ATMEL_SAME70_WAIT_MODE:
+  recommended: n
+  explanation: "Disables wait mode to prevent timing-based attacks"
+
+SOC_MEC1501_DEBUG_DISABLED:
+  recommended: y
+  explanation: "Disables MEC1501 debug features to prevent information disclosure"
+
+STATS:
+  recommended: n
+  explanation: "Disables statistics collection to prevent information disclosure about system usage"
+
+TEST:
+  recommended: n
+  explanation: "Disables test features to prevent unauthorized testing capabilities"
+
+TEST_RANDOM_GENERATOR:
+  recommended: n
+  explanation: "Disables test random generator to prevent predictable random number generation"
+
+TEST_SHELL:
+  recommended: n
+  explanation: "Disables test shell to prevent unauthorized command execution"
+
+TEST_USERSPACE:
+  recommended: n
+  explanation: "Disables test userspace features to prevent unauthorized access"
+
+TFM_CMAKE_BUILD_TYPE_DEBUG:
+  recommended: n
+  explanation: "Disables Trusted Firmware-M debug build to prevent information disclosure"
+
+TFM_DUMMY_PROVISIONING:
+  recommended: n
+  explanation: "Disables dummy provisioning to ensure proper security key provisioning"
+
+THREAD_MONITOR:
+  recommended: n
+  explanation: "Disables thread monitoring to prevent information disclosure about thread behavior"
+
+THREAD_NAME:
+  recommended: n
+  explanation: "Disables thread naming to prevent information disclosure about thread purposes"
+
+TIMER_RANDOM_GENERATOR:
+  recommended: n
+  explanation: "Disables timer-based random generation to prevent predictable random numbers"
+
+TRACING:
+  recommended: n
+  explanation: "Disables tracing to prevent information disclosure about program execution"
+
+ZTEST:
+  recommended: n
+  explanation: "Disables Zephyr test framework to prevent unauthorized testing capabilities"
