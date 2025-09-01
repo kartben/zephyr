@@ -1,0 +1,21 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+/ {
+	aliases {
+		distance0 = &vl53l0x_mikroe_lightranger_2_click;
+	};
+};
+
+&mikrobus_i2c {
+	status = "okay";
+
+	vl53l0x_mikroe_lightranger_2_click: vl53l0x@29 {
+		compatible = "st,vl53l0x";
+		reg = <0x29>;
+		xshut-gpios = <&mikrobus_header 1 GPIO_ACTIVE_LOW>;
+	};
+};
