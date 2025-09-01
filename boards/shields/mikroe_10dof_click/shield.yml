@@ -1,0 +1,6 @@
+shield:
+  name: mikroe_10dof_click
+  full_name: 10DOF Click
+  vendor: mikroe
+  supported_features:
+    - sensor
