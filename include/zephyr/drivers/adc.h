@@ -102,9 +102,6 @@ enum adc_reference {
 	ADC_REF_EXTERNAL1, /**< External, input 1. */
 };
 
-/**
- * @brief Structure for specifying the configuration of an ADC channel.
- */
 struct adc_channel_cfg {
 	/** Gain selection. */
 	enum adc_gain gain;
