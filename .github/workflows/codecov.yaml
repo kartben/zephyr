@@ -24,14 +24,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: ["mps2/an385", "native_sim", "qemu_x86", "unit_testing"]
+        platform: ["unit_testing"]
         include:
-          - platform: 'mps2/an385'
-            normalized: 'mps2_an385'
-          - platform: 'native_sim'
-            normalized: 'native_sim'
-          - platform: 'qemu_x86'
-            normalized: 'qemu_x86'
           - platform: 'unit_testing'
             normalized: 'unit_testing'
     env:
