@@ -121,6 +121,9 @@ schema;scenario-schema:
       type: map
       required: false
       mapping:
+        "expect_failure":
+          type: bool
+          required: false
         "power_measurements":
           type: any
           required: false

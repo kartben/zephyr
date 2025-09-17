@@ -1029,8 +1029,6 @@ class ProjectBuilder(FilterBuilder):
                 logger.debug(f"build test: {self.instance.name}")
                 ret = self.build()
                 if not ret:
-                    self.instance.status = TwisterStatus.ERROR
-                    self.instance.reason = "Build Failure"
                     next_op = 'report'
                 else:
                     # Count skipped cases during build, for example
@@ -1724,11 +1722,12 @@ class ProjectBuilder(FilterBuilder):
     def build(self):
         harness = HarnessImporter.get_harness(self.instance.testsuite.harness.capitalize())
         build_result = self.run_build(['--build', self.build_dir])
+        logger.debug(f"Build result after self.run_build: {build_result}")
         try:
             if harness:
                 harness.instance = self.instance
-                harness.build()
-        except ConfigurationError as error:
+                harness.build(build_result.get('returncode', 1))
+        except (ConfigurationError, BuildError) as error:
             self.instance.status = TwisterStatus.ERROR
             self.instance.reason = str(error)
             logger.error(self.instance.reason)

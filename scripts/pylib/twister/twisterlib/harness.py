@@ -22,7 +22,7 @@ import yaml
 from pytest import ExitCode
 from twisterlib.constants import SUPPORTED_SIMS_IN_PYTEST
 from twisterlib.environment import PYTEST_PLUGIN_INSTALLED, ZEPHYR_BASE
-from twisterlib.error import ConfigurationError, StatusAttributeError
+from twisterlib.error import ConfigurationError, StatusAttributeError, BuildError
 from twisterlib.handlers import Handler, terminate_process
 from twisterlib.reports import ReportStatus
 from twisterlib.statuses import TwisterStatus
@@ -67,6 +67,7 @@ class Harness:
         self.run_id_exists = False
         self.instance: TestInstance | None = None
         self.testcase_output = ""
+        self.expect_failure = False
         self._match = False
 
 
@@ -106,7 +107,10 @@ class Harness:
                 self.record_merge = self.record.get("merge", False)
                 self.record_as_json = self.record.get("as_json")
 
-    def build(self):
+    def build(self, build_result):
+        """
+        Called after the build is done, but before running the test.
+        """
         pass
 
     def get_testcase_name(self):
@@ -1013,7 +1017,7 @@ class Ztest(Test):
 
 class Bsim(Harness):
 
-    def build(self):
+    def build(self, build_result):
         """
         Copying the application executable to BabbleSim's bin directory enables
         running multidevice bsim tests after twister has built them.
@@ -1184,6 +1188,104 @@ class Ctest(Harness):
                         if isinstance(r, junit.Skipped)), 'Ctest skip')
             else:
                 tc.status = TwisterStatus.PASS
+
+class Build(Harness):
+    """
+    Harness to validate build outcomes (success or failure) by inspecting build.log.
+    If expect_failure is True, the test outcome is PASS if the build fails.
+    If a regex is provided, and independent of the build result, the test outcome is PASS if the
+    regex is a match.
+
+    harness: build
+    harness_config:
+      type: one_line | multi_line
+      regex:
+        - "error:.*undefined reference"
+      ordered: true          # (default True)
+      expect_failure: true   # (default False)
+    """
+
+    def build(self, build_result):
+        """
+        Invoked after the CMake/build step (see ProjectBuilder.build()).
+        Parse the selected log file and set instance & testcase status based on
+        build result, expected failure flag, and pattern matches.
+        """
+        self.configure(self.instance)
+        if self.regex and len(self.regex) > 0:
+            if self.type == "one_line":
+                self.pattern = re.compile(self.regex[0])
+            elif self.type == "multi_line":
+                self.patterns = []
+                for r in self.regex:
+                    self.patterns.append(re.compile(r))
+
+        config = self.instance.testsuite.harness_config
+        if config:
+            self.expect_failure = config.get('expect_failure', False)
+
+        # Check if build result matches expectations
+        logger.debug(f"self.expect_failure: {self.expect_failure}, build_result: {build_result}")
+        if self.expect_failure and build_result == 0:
+            raise BuildError("Expected build failure, but build succeeded")
+        elif not self.expect_failure and build_result != 0:
+            raise BuildError("Expected build success, but build failed")
+
+        build_log_file = os.path.join(self.instance.build_dir, "build.log")
+
+        # Check build log contents for pattern matches (regardless of build result)
+        if self.regex and os.path.exists(build_log_file):
+            with open(build_log_file, encoding='utf-8', errors='ignore') as f:
+                log_content = f.read()
+
+            # Process each line for pattern matching
+            for line in log_content.splitlines():
+                if self.type == "one_line":
+                    if self.pattern.search(line):
+                        logger.debug(f"HARNESS:{self.__class__.__name__}:EXPECTED:"
+                                   f"'{self.pattern.pattern}'")
+                        self.status = TwisterStatus.PASS
+                        tc = self.instance.get_case_or_create(self.id)
+                        tc.status = TwisterStatus.PASS
+                        return
+                elif self.type == "multi_line" and self.ordered:
+                    if (self.next_pattern < len(self.patterns) and
+                        self.patterns[self.next_pattern].search(line)):
+                        logger.debug(f"HARNESS:{self.__class__.__name__}:EXPECTED("
+                                   f"{self.next_pattern + 1}/{len(self.patterns)}):"
+                                   f"'{self.patterns[self.next_pattern].pattern}'")
+                        self.next_pattern += 1
+                        if self.next_pattern >= len(self.patterns):
+                            self.status = TwisterStatus.PASS
+                            tc = self.instance.get_case_or_create(self.id)
+                            tc.status = TwisterStatus.PASS
+                            return
+                elif self.type == "multi_line" and not self.ordered:
+                    for i, pattern in enumerate(self.patterns):
+                        r = self.regex[i]
+                        if pattern.search(line) and r not in self.matches:
+                            self.matches[r] = line
+                            logger.debug(f"HARNESS:{self.__class__.__name__}:EXPECTED("
+                                       f"{len(self.matches)}/{len(self.patterns)}):"
+                                       f"'{pattern.pattern}'")
+                    if len(self.matches) == len(self.regex):
+                        self.status = TwisterStatus.PASS
+                        tc = self.instance.get_case_or_create(self.id)
+                        tc.status = TwisterStatus.PASS
+                        return
+
+        # If we reach here and no patterns matched, set appropriate status
+        if self.regex:
+            self.status = TwisterStatus.FAIL
+            tc = self.instance.get_case_or_create(self.id)
+            tc.status = TwisterStatus.FAIL
+            tc.reason = "Build log pattern matching failed"
+        else:
+            # No regex patterns configured, just pass based on build result
+            self.status = TwisterStatus.PASS
+            tc = self.instance.get_case_or_create(self.id)
+            tc.status = TwisterStatus.PASS
+
 
 class HarnessImporter:
 
