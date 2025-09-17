@@ -1274,17 +1274,12 @@ class Build(Harness):
                         tc.status = TwisterStatus.PASS
                         return
 
-        # If we reach here and no patterns matched, set appropriate status
-        if self.regex:
-            self.status = TwisterStatus.FAIL
-            tc = self.instance.get_case_or_create(self.id)
-            tc.status = TwisterStatus.FAIL
-            tc.reason = "Build log pattern matching failed"
-        else:
-            # No regex patterns configured, just pass based on build result
-            self.status = TwisterStatus.PASS
-            tc = self.instance.get_case_or_create(self.id)
-            tc.status = TwisterStatus.PASS
+        # If we reach here and no patterns matched, it's a failure
+        self.status = TwisterStatus.FAIL
+        tc = self.instance.get_case_or_create(self.id)
+        tc.status = TwisterStatus.FAIL
+        tc.reason = "Build log pattern matching failed"
+
 
 
 class HarnessImporter:
