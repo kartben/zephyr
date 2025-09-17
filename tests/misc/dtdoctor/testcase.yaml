@@ -1,0 +1,36 @@
+common:
+  harness: build
+  build_only: true
+  platform_allow:
+    - reel_board
+  integration_platforms:
+    - reel_board
+
+tests:
+  dtdoctor.build_ok: {}
+  dtdoctor.node_disabled:
+    extra_args:
+      - ZEPHYR_SCA_VARIANT=dtdoctor
+      - DTC_OVERLAY_FILE=disable_gpio0.overlay
+    harness_config:
+      expect_failure: true
+      type: multi_line
+      ordered: true
+      regex:
+        - "gpio0: /soc/gpio@50000000' is disabled in ./disable_gpio0.overlay:2"
+        - "The following nodes depend on it"
+        - "/leds/led_0"
+        - "Try enabling the node by setting its 'status' property to 'okay'."
+  dtdoctor.node_enabled_but_subsystem_disabled:
+    extra_args:
+      - ZEPHYR_SCA_VARIANT=dtdoctor
+    extra_configs:
+      - CONFIG_GPIO=n
+    harness_config:
+      expect_failure: true
+      type: multi_line
+      regex:
+        - "DT Doctor"
+        - "gpio0: /soc/gpio@50000000' is enabled but no driver appears to be available for it."
+        - "Try enabling these Kconfig options:"
+        - "- CONFIG_GPIO=y"
