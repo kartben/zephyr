@@ -585,6 +585,7 @@ static int it51xxx_i3cs_init(const struct device *dev)
 
 	/* set tx and rx fifo size */
 	uint8_t i;
+
 	for (i = 0; i < ARRAY_SIZE(fifo_size_table); i++) {
 		if (sizeof(data->fifo.rx_data) == fifo_size_table[i].fifo_size) {
 			sys_write8(FIELD_PREP(I3CS_RX_FIFO_SIZE_MASK, fifo_size_table[i].value),
