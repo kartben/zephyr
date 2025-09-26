@@ -19,23 +19,24 @@
 
 LOG_MODULE_REGISTER(TH02, CONFIG_SENSOR_LOG_LEVEL);
 
-static uint8_t read8(const struct i2c_dt_spec *i2c, uint8_t d)
+static int read8(const struct i2c_dt_spec *i2c, uint8_t d, uint8_t *buf)
 {
-	uint8_t buf;
+	int ret = i2c_reg_read_byte_dt(i2c, d, buf);
 
-	if (i2c_reg_read_byte_dt(i2c, d, &buf) < 0) {
+	if (ret < 0) {
 		LOG_ERR("Error reading register.");
 	}
-	return buf;
+	return ret;
 }
 
 static int is_ready(const struct i2c_dt_spec *i2c)
 {
-
 	uint8_t status;
+	int ret = i2c_reg_read_byte_dt(i2c, TH02_REG_STATUS, &status);
 
-	if (i2c_reg_read_byte_dt(i2c, TH02_REG_STATUS, &status) < 0) {
+	if (ret < 0) {
 		LOG_ERR("error reading status register");
+		return ret;
 	}
 
 	if (status & TH02_STATUS_RDY_MASK) {
@@ -45,40 +46,72 @@ static int is_ready(const struct i2c_dt_spec *i2c)
 	}
 }
 
-static uint16_t get_humi(const struct i2c_dt_spec *i2c)
+static int get_humi(const struct i2c_dt_spec *i2c, uint16_t *humidity)
 {
-	uint16_t humidity = 0U;
+	uint8_t buf_h, buf_l;
+	int ret;
 
-	if (i2c_reg_write_byte_dt(i2c, TH02_REG_CONFIG, TH02_CMD_MEASURE_HUMI) < 0) {
+	ret = i2c_reg_write_byte_dt(i2c, TH02_REG_CONFIG, TH02_CMD_MEASURE_HUMI);
+	if (ret < 0) {
 		LOG_ERR("Error writing register");
-		return 0;
-	}
-	while (!is_ready(i2c)) {
+		return ret;
 	}
 
-	humidity = read8(i2c, TH02_REG_DATA_H) << 8;
-	humidity |= read8(i2c, TH02_REG_DATA_L);
-	humidity >>= 4;
+	do {
+		ret = is_ready(i2c);
+		if (ret < 0) {
+			return ret;
+		}
+	} while (ret);
 
-	return humidity;
+	ret = read8(i2c, TH02_REG_DATA_H, &buf_h);
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = read8(i2c, TH02_REG_DATA_L, &buf_l);
+	if (ret < 0) {
+		return ret;
+	}
+
+	*humidity = ((uint16_t)buf_h << 8) | buf_l;
+	*humidity >>= 4;
+
+	return 0;
 }
 
-uint16_t get_temp(const struct i2c_dt_spec *i2c)
+static int get_temp(const struct i2c_dt_spec *i2c, uint16_t *temperature)
 {
-	uint16_t temperature = 0U;
+	uint8_t buf_h, buf_l;
+	int ret;
 
-	if (i2c_reg_write_byte_dt(i2c, TH02_REG_CONFIG, TH02_CMD_MEASURE_TEMP) < 0) {
+	ret = i2c_reg_write_byte_dt(i2c, TH02_REG_CONFIG, TH02_CMD_MEASURE_TEMP);
+	if (ret < 0) {
 		LOG_ERR("Error writing register");
-		return 0;
-	}
-	while (!is_ready(i2c)) {
+		return ret;
 	}
 
-	temperature = read8(i2c, TH02_REG_DATA_H) << 8;
-	temperature |= read8(i2c, TH02_REG_DATA_L);
-	temperature >>= 2;
+	do {
+		ret = is_ready(i2c);
+		if (ret < 0) {
+			return ret;
+		}
+	} while (ret);
 
-	return temperature;
+	ret = read8(i2c, TH02_REG_DATA_H, &buf_h);
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = read8(i2c, TH02_REG_DATA_L, &buf_l);
+	if (ret < 0) {
+		return ret;
+	}
+
+	*temperature = ((uint16_t)buf_h << 8) | buf_l;
+	*temperature >>= 2;
+
+	return 0;
 }
 
 static int th02_sample_fetch(const struct device *dev,
@@ -86,12 +119,20 @@ static int th02_sample_fetch(const struct device *dev,
 {
 	struct th02_data *drv_data = dev->data;
 	const struct th02_config *cfg = dev->config;
+	int ret;
 
 	__ASSERT_NO_MSG(chan == SENSOR_CHAN_ALL || chan == SENSOR_CHAN_AMBIENT_TEMP);
 
-	drv_data->t_sample = get_temp(&cfg->i2c);
+	ret = get_temp(&cfg->i2c, &drv_data->t_sample);
+	if (ret < 0) {
+		return ret;
+	}
 	LOG_INF("temp: %u", drv_data->t_sample);
-	drv_data->rh_sample = get_humi(&cfg->i2c);
+
+	ret = get_humi(&cfg->i2c, &drv_data->rh_sample);
+	if (ret < 0) {
+		return ret;
+	}
 	LOG_INF("rh: %u", drv_data->rh_sample);
 
 	return 0;
