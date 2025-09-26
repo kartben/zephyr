@@ -1881,7 +1881,9 @@ static int spi_nor_process_bfp(const struct device *dev,
 			LOG_DBG("Erase %u with %02x",
 					(uint32_t)BIT(etp->exp), etp->cmd);
 		}
-		++etp;
+		if (idx < ARRAY_SIZE(data->erase_types)) {
+			++etp;
+		}
 	}
 
 	spi_nor_process_bfp_addrbytes(dev, jesd216_bfp_addrbytes(bfp));
