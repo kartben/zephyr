@@ -1375,7 +1375,9 @@ static int spi_nor_process_bfp(const struct device *dev,
 			LOG_DBG("Erase %u with %02x",
 					(uint32_t)BIT(etp->exp), etp->cmd);
 		}
-		++etp;
+		if (ti < ARRAY_SIZE(data->erase_types)) {
+			++etp;
+		}
 	}
 
 	data->page_size = jesd216_bfp_page_size(php, bfp) << STM32_QSPI_DOUBLE_FLASH;
