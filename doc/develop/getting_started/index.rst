@@ -171,9 +171,17 @@ The current minimum required version for the main dependencies are:
 
          .. code-block:: bat
 
-            winget install Kitware.CMake Ninja-build.Ninja oss-winget.gperf python Git.Git oss-winget.dtc wget 7zip.7zip
+            winget install Kitware.CMake Ninja-build.Ninja oss-winget.gperf Python.Python.3.12 Git.Git oss-winget.dtc wget 7zip.7zip
 
-      #. Close the terminal window.
+         .. note::
+
+            We specifically install Python 3.12 to ensure compatibility with all
+            Zephyr dependencies. The minimum required Python version is 3.10.
+            If you prefer a different Python 3.10+ version, you can specify it
+            (e.g., ``Python.Python.3.10`` or ``Python.Python.3.11``).
+
+      #. Close the terminal window and open a new one to ensure the newly installed
+         tools (especially Git and Python) are available in your PATH.
 
       .. note::
 
@@ -350,6 +358,20 @@ chosen. You'll also install Zephyr's additional Python dependencies in a
          Once activated your shell will be prefixed with ``(.venv)``. The
          virtual environment can be deactivated at any time by running
          ``deactivate``.
+
+         .. note::
+
+            If you're using PowerShell and encounter an error about script execution
+            being disabled, you may need to allow script execution for the current
+            session by running:
+
+            .. code-block:: powershell
+
+               Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+
+            After this, retry activating the virtual environment. This setting only
+            affects the current PowerShell session and will need to be set again in
+            new sessions if you encounter the same error.
 
          .. note::
 
