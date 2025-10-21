@@ -376,6 +376,82 @@ function renderKconfigEntry(entry, highlightIndices) {
     return container;
 }
 
+/**
+ * Calculate field-length norm for a given field.
+ * Shorter fields get higher scores (more relevant).
+ * @param {number} fieldLength Length of the field.
+ * @returns {number} Field-length norm score (0-1, higher is better).
+ */
+function calculateFieldNorm(fieldLength) {
+    /* use inverse square root to favor shorter fields */
+    return 1 / Math.sqrt(fieldLength || 1);
+}
+
+/**
+ * Calculate match score for a single field.
+ * @param {string} field Field text to search in.
+ * @param {RegExp[]} regexes Array of regex patterns to match.
+ * @param {number} keyWeight Weight of this field (higher = more important).
+ * @param {Array} highlightIndices Array to populate with match positions.
+ * @returns {number} Match score for this field.
+ */
+function calculateFieldScore(field, regexes, keyWeight, highlightIndices) {
+    if (!field) {
+        return 0;
+    }
+
+    let totalScore = 0;
+    let matchedRegexCount = 0;
+
+    regexes.forEach(regex => {
+        const regexGlobal = new RegExp(regex.source, regex.flags + 'g');
+        let bestMatchScore = 0;
+        let match;
+
+        while ((match = regexGlobal.exec(field)) !== null) {
+            highlightIndices.push([match.index, match.index + match[0].length]);
+
+            /* calculate match quality based on position and completeness */
+            const matchLength = match[0].length;
+            const matchPosition = match.index;
+
+            /* exact match bonus */
+            const exactBonus = (match[0].toLowerCase() === field.toLowerCase()) ? 0.5 : 0;
+
+            /* start position bonus (earlier matches score higher) */
+            const positionScore = 1 - (matchPosition / field.length);
+
+            /* match length relative to search term */
+            const lengthScore = matchLength / regex.source.length;
+
+            /* combine scores */
+            const matchScore = (positionScore * 0.3 + lengthScore * 0.7 + exactBonus);
+
+            bestMatchScore = Math.max(bestMatchScore, matchScore);
+
+            if (match.index === regexGlobal.lastIndex) {
+                regexGlobal.lastIndex++;
+            }
+        }
+
+        if (bestMatchScore > 0) {
+            matchedRegexCount++;
+            totalScore += bestMatchScore;
+        }
+    });
+
+    /* if not all regexes matched, return 0 */
+    if (matchedRegexCount < regexes.length) {
+        return 0;
+    }
+
+    /* apply field-length norm */
+    const fieldNorm = calculateFieldNorm(field.length);
+
+    /* apply key weight and field norm */
+    return (totalScore / regexes.length) * keyWeight * fieldNorm;
+}
+
 /** Perform a search and display the results. */
 function doSearch() {
     /* replace current state (to handle back button) */
@@ -396,57 +472,37 @@ function doSearch() {
     const regexes = input.value.trim().split(/\s+/).map(
         element => new RegExp(element, 'i')
     );
-    let count = 0;
 
-    const searchResults = [];
+    const scoredResults = [];
 
     db.forEach(entry => {
         const name = entry.name;
-        const prompt = entry.prompt ? entry.prompt : "";
+        const prompt = entry.prompt || "";
         const highlightIndices = {
             name: [],
             prompt: []
         };
 
-        /* check if each regex matches in name or prompt */
-        let matchCount = 0;
-        regexes.forEach(regex => {
-            const regexGlobal = new RegExp(regex.source, regex.flags + 'g');
-            let foundMatch = false;
+        const NAME_WEIGHT = 2.0;
+        const PROMPT_WEIGHT = 1.0;
 
-            /* check name matches */
-            let match;
-            while ((match = regexGlobal.exec(name)) !== null) {
-                highlightIndices.name.push([match.index, match.index + match[0].length]);
-                foundMatch = true;
-                if (match.index === regexGlobal.lastIndex) {
-                    regexGlobal.lastIndex++;
-                }
-            }
+        const nameScore = calculateFieldScore(name, regexes, NAME_WEIGHT, highlightIndices.name);
+        const promptScore = calculateFieldScore(prompt, regexes, PROMPT_WEIGHT, highlightIndices.prompt);
 
-            /* check prompt matches */
-            regexGlobal.lastIndex = 0;
-            while ((match = regexGlobal.exec(prompt)) !== null) {
-                highlightIndices.prompt.push([match.index, match.index + match[0].length]);
-                foundMatch = true;
-                if (match.index === regexGlobal.lastIndex) {
-                    regexGlobal.lastIndex++;
-                }
-            }
-
-            if (foundMatch) {
-                matchCount++;
-            }
-        });
-
-        /* all regexes must have at least one match */
-        if (matchCount === regexes.length) {
-            count++;
-            if (count > searchOffset && count <= (searchOffset + maxResults)) {
-                searchResults.push({ entry, highlightIndices });
-            }
+        const totalScore = nameScore + promptScore;
+        if (totalScore > 0) {
+            scoredResults.push({
+                entry,
+                highlightIndices,
+                score: totalScore
+            });
         }
     });
+
+    scoredResults.sort((a, b) => b.score - a.score);
+    
+    const count = scoredResults.length;
+    const searchResults = scoredResults.slice(searchOffset, searchOffset + maxResults);
 
     /* show results count and search tools */
     summaryText.nodeValue = `${count} options match your search.`;
