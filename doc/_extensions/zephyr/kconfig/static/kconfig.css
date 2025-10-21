@@ -76,3 +76,13 @@
 .kconfig ul {
     margin-bottom: 0 !important;
 }
+
+.kconfig mark {
+    background: inherit;
+    font-style: inherit;
+    font-weight: inherit;
+    color: inherit;
+    border-radius: 4px;
+    outline: 4px solid rgba(255, 255, 0, 0.3);
+    outline-offset: 2px;
+  }

@@ -239,10 +239,57 @@ function renderKconfigDefaults(parent, defaults, alt_defaults) {
 }
 
 /**
+ * Highlight text by wrapping matches in <mark> tags.
+ * @param {String} text Text to highlight.
+ * @param {Array} indices Array of [start, end] indices to highlight.
+ * @returns {Element} Document fragment with highlighted text.
+ */
+function highlightText(text, indices) {
+    const fragment = document.createDocumentFragment();
+
+    if (!indices || indices.length === 0) {
+        fragment.appendChild(document.createTextNode(text));
+        return fragment;
+    }
+
+    /* sort and merge overlapping indices */
+    const sorted = [...indices].sort((a, b) => a[0] - b[0]);
+    const merged = [];
+    sorted.forEach(([start, end]) => {
+        if (merged.length === 0 || merged[merged.length - 1][1] < start) {
+            merged.push([start, end]);
+        } else {
+            merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], end);
+        }
+    });
+
+    /* build fragment with highlighted text */
+    let lastIndex = 0;
+    merged.forEach(([start, end]) => {
+        if (lastIndex < start) {
+            fragment.appendChild(document.createTextNode(text.substring(lastIndex, start)));
+        }
+        const mark = document.createElement('mark');
+        mark.appendChild(document.createTextNode(text.substring(start, end)));
+        fragment.appendChild(mark);
+        lastIndex = end;
+    });
+
+    if (lastIndex < text.length) {
+        fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+    }
+
+    return fragment;
+}
+
+/**
  * Render a Kconfig entry.
  * @param {Object} entry Kconfig entry.
+ * @param {Object} highlightIndices Map with keys corresponding to properties of the Kconfig entry
+          (e.g. name, prompt, ...) and values containing arrays of [start, end] indices to
+          highlight.
  */
-function renderKconfigEntry(entry) {
+function renderKconfigEntry(entry, highlightIndices) {
     const container = document.createElement('dl');
     container.className = 'kconfig';
 
@@ -255,8 +302,8 @@ function renderKconfigEntry(entry) {
     name.className = 'pre';
     title.appendChild(name);
 
-    const nameText = document.createTextNode(entry.name);
-    name.appendChild(nameText);
+    const highlightedName = highlightText(entry.name, highlightIndices.name);
+    name.appendChild(highlightedName);
 
     const permalink = document.createElement('a');
     permalink.className = 'headerlink';
@@ -277,12 +324,12 @@ function renderKconfigEntry(entry) {
     const promptTitle = document.createElement('em');
     prompt.appendChild(promptTitle);
 
-    const promptTitleText = document.createTextNode('');
-    promptTitle.appendChild(promptTitleText);
     if (entry.prompt) {
-        promptTitleText.nodeValue = entry.prompt;
+        const highlightedPrompt = highlightText(entry.prompt, highlightIndices.prompt);
+        promptTitle.appendChild(highlightedPrompt);
     } else {
-        promptTitleText.nodeValue = 'No prompt - not directly user assignable.';
+        const promptTitleText = document.createTextNode('No prompt - not directly user assignable.');
+        promptTitle.appendChild(promptTitleText);
     }
 
     if (entry.help) {
@@ -347,29 +394,58 @@ function doSearch() {
 
     /* perform search */
     const regexes = input.value.trim().split(/\s+/).map(
-        element => new RegExp(element.toLowerCase())
+        element => new RegExp(element, 'i')
     );
     let count = 0;
 
-    const searchResults = db.filter(entry => {
-        let matches = 0;
-        const name = entry.name.toLowerCase();
-        const prompt = entry.prompt ? entry.prompt.toLowerCase() : "";
+    const searchResults = [];
 
+    db.forEach(entry => {
+        const name = entry.name;
+        const prompt = entry.prompt ? entry.prompt : "";
+        const highlightIndices = {
+            name: [],
+            prompt: []
+        };
+
+        /* check if each regex matches in name or prompt */
+        let matchCount = 0;
         regexes.forEach(regex => {
-            if (name.search(regex) >= 0 || prompt.search(regex) >= 0) {
-                matches++;
+            const regexGlobal = new RegExp(regex.source, regex.flags + 'g');
+            let foundMatch = false;
+
+            /* check name matches */
+            let match;
+            while ((match = regexGlobal.exec(name)) !== null) {
+                highlightIndices.name.push([match.index, match.index + match[0].length]);
+                foundMatch = true;
+                if (match.index === regexGlobal.lastIndex) {
+                    regexGlobal.lastIndex++;
+                }
+            }
+
+            /* check prompt matches */
+            regexGlobal.lastIndex = 0;
+            while ((match = regexGlobal.exec(prompt)) !== null) {
+                highlightIndices.prompt.push([match.index, match.index + match[0].length]);
+                foundMatch = true;
+                if (match.index === regexGlobal.lastIndex) {
+                    regexGlobal.lastIndex++;
+                }
+            }
+
+            if (foundMatch) {
+                matchCount++;
             }
         });
 
-        if (matches === regexes.length) {
+        /* all regexes must have at least one match */
+        if (matchCount === regexes.length) {
             count++;
             if (count > searchOffset && count <= (searchOffset + maxResults)) {
-                return true;
+                searchResults.push({ entry, highlightIndices });
             }
         }
-
-        return false;
     });
 
     /* show results count and search tools */
@@ -387,8 +463,8 @@ function doSearch() {
 
     /* render Kconfig entries */
     results.replaceChildren();
-    searchResults.forEach(entry => {
-        results.appendChild(renderKconfigEntry(entry));
+    searchResults.forEach(result => {
+        results.appendChild(renderKconfigEntry(result.entry, result.highlightIndices));
     });
 }
 
