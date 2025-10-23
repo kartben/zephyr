@@ -6,6 +6,53 @@
  * Application overlay for i2c devices
  */
 
+ #include <zephyr/dt-bindings/sensor/lsm6dsv16x.h>
+/* ... all your other includes ... */
+#include <zephyr/dt-bindings/sensor/tmp114.h>
+
+/* === MACROS FOR AUTO-INCREMENTING I2C ADDRESSES === */
+/*
+ * These macros use Zephyr's internal preprocessor utilities
+ * to maintain a counter. This avoids merge conflicts by
+ * automatically assigning the next available 'reg' address.
+ *
+ * NOTE: The counter is decimal. The device tree compiler
+ * handles decimal or hex addresses identically.
+ */
+#include <zephyr/sys/util_internal.h> /* For Z_INC */
+#include <zephyr/sys/util_macro.h>   /* For UTIL_CAT */
+
+/*
+ * Initialize counter. The last manually-defined address
+ * is 0xbf, which is 191 in decimal.
+ */
+#define I2C_TEST_REG_COUNTER 191
+
+/**
+ * @brief Defines the node label and unit address.
+ *
+ * This macro *increments* the global counter and must be
+ * used before AUTO_I2C_REG().
+ *
+ * @param name The node name (e.g., adt7420)
+ */
+#define AUTO_I2C_NODE_LABEL(name) \
+	/* 1. Increment the counter by redefining it */ \
+	#undef I2C_TEST_REG_COUNTER \
+	#define I2C_TEST_REG_COUNTER Z_INC(I2C_TEST_REG_COUNTER) \
+	/* 2. Create the node label and unit address */ \
+	UTIL_CAT(test_i2c_, name): UTIL_CAT(name, @) I2C_TEST_REG_COUNTER
+
+/**
+ * @brief Defines the 'reg' property.
+ *
+ * This macro *uses* the counter's current value. It must be
+ * used *inside* the node defined by AUTO_I2C_NODE_LABEL().
+ */
+#define AUTO_I2C_REG() \
+	reg = <I2C_TEST_REG_COUNTER>
+/* === END OF AUTO-INCREMENT MACROS === */
+
 #include <zephyr/dt-bindings/sensor/lsm6dsv16x.h>
 #include <zephyr/dt-bindings/sensor/lsm6dso.h>
 #include <zephyr/dt-bindings/sensor/lsm6dso16is.h>
@@ -32,7 +79,7 @@
  **************************************
  */
 
-test_i2c_adt7420: adt7420@0 {
+ test_i2c_adt7420: adt7420@0 {
 	compatible = "adi,adt7420";
 	reg = <0x0>;
 	int-gpios = <&test_gpio 0 0>;
@@ -1438,3 +1485,7 @@ test_i2c_veml6046: veml6046@bf {
 	compatible = "vishay,veml6046";
 	reg = <0xbf>;
 };
+
+AUTO_I2C_NODE_LABEL(bla) {
+	AUTO_I2C_REG();
+ }
