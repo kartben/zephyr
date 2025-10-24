@@ -1009,6 +1009,13 @@ Other notable changes
   Any more descriptive subsystem or driver changes. Do you really want to write
   a paragraph or is it enough to link to the api/driver/Kconfig/board page above?
 
+* Documentation
+
+  * The :zephyr:board-catalog:`` now supports filtering by compatible devices.
+  * The :ref:`documentation for devicetree bindings <devicetree_binding_index>` now featurs a
+    backlink to the board catalog page allowing to quickly browse the boards that include a given
+    compatible.
+
 * Nordic Semiconductor nRF54L09 PDK (``nrf54l09pdk``), which only targeted an emulator, has been removed
   from the tree. It will be replaced with a proper board definition as soon as it's available.
 
