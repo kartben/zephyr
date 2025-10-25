@@ -1,0 +1,420 @@
+<!-- Simple landing page layout without Tailwind CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+<style>
+   /* Hide the auto-generated h1 title */
+   #zephyr-project-documentation>h1 {
+      display: none !important;
+   }
+
+   /* Reset margins for main content */
+   main ul {
+      margin-bottom: 0 !important;
+   }
+
+   main ul li {
+      margin-left: 0 !important;
+      list-style: none !important;
+   }
+
+   main ul li>* {
+      margin-bottom: 0 !important;
+   }
+
+   main h1,
+   main h2,
+   main h3 {
+      margin-bottom: 0 !important;
+      border-left: none !important;
+   }
+
+   main a {
+      color: var(--navbar-level-1-color) !important;
+   }
+
+   a:hover {
+      text-decoration: none !important;
+   }
+
+   /* Container */
+   .landing-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 1rem;
+   }
+
+   /* Welcome message */
+   .landing-welcome {
+      margin-bottom: 2rem;
+   }
+
+   /* Section spacing */
+   .landing-section {
+      margin-bottom: 3rem;
+   }
+
+   .landing-section-title {
+      text-align: center;
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+   }
+
+   .landing-section-subtitle {
+      text-align: center;
+      color: var(--navbar-level-1-color);
+      opacity: 0.8;
+      margin-bottom: 2rem;
+   }
+
+   /* Card grid */
+   .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+   }
+
+   /* Card styles */
+   .card {
+      background: var(--navbar-background-color);
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+      display: block;
+      position: relative;
+      padding-top: 3rem;
+   }
+
+   .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+   }
+
+   .card-icon {
+      position: absolute;
+      top: -0.75rem;
+      left: 1.5rem;
+      width: 3rem;
+      height: 3rem;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      color: white;
+   }
+
+   .card-icon.blue { background: #3b82f6; }
+   .card-icon.green { background: #10b981; }
+   .card-icon.yellow { background: #f59e0b; }
+   .card-icon.sky { background: #0ea5e9; }
+   .card-icon.violet { background: #8b5cf6; }
+   .card-icon.emerald { background: #059669; }
+   .card-icon.purple { background: #a855f7; }
+   .card-icon.red { background: #ef4444; }
+   .card-icon.orange { background: #f97316; }
+
+   .card-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+   }
+
+   .card-description {
+      color: var(--navbar-level-1-color);
+      opacity: 0.9;
+      margin-bottom: 1rem;
+      font-weight: 300;
+   }
+
+   .card-links {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+   }
+
+   .card-links li {
+      margin-bottom: 0.5rem;
+   }
+
+   .card-links a {
+      display: flex;
+      align-items: center;
+      transition: transform 0.2s;
+   }
+
+   .card-links a:hover {
+      transform: translateX(4px);
+   }
+
+   .card-links i {
+      margin-right: 0.5rem;
+      font-size: 0.75rem;
+   }
+
+   /* Reference cards - simpler layout */
+   .ref-card {
+      background: var(--navbar-background-color);
+      border-radius: 0.5rem;
+      padding: 1.25rem;
+      transition: transform 0.2s;
+      display: block;
+   }
+
+   .ref-card:hover {
+      transform: translateY(-2px);
+   }
+
+   .ref-card-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.75rem;
+   }
+
+   .ref-card-icon {
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 1rem;
+      font-size: 1.25rem;
+   }
+
+   .ref-card-icon.blue { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+   .ref-card-icon.green { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+   .ref-card-icon.purple { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
+   .ref-card-icon.red { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+   .ref-card-icon.orange { background: rgba(249, 115, 22, 0.2); color: #fb923c; }
+
+   .ref-card-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin: 0;
+   }
+
+   .ref-card-subtitle {
+      color: var(--navbar-level-1-color);
+      opacity: 0.8;
+      font-size: 0.875rem;
+      margin: 0;
+      font-weight: 300;
+   }
+
+   .ref-card-footer {
+      text-align: right;
+      margin-top: 1rem;
+      transition: transform 0.2s;
+   }
+
+   .ref-card:hover .ref-card-footer {
+      transform: translateX(0.5rem);
+   }
+
+   .ref-card-footer i {
+      margin-left: 0.5rem;
+   }
+</style>
+
+<!-- Main Content -->
+<main class="landing-container">
+   <div class="landing-welcome">
+      <strong>Welcome to the Zephyr Project's documentation for the main tree under development</strong>
+      (version 4.2.99).
+   </div>
+
+   <!-- Getting Started Section -->
+   <section class="landing-section">
+      <ul class="card-grid">
+         <li>
+            <a href="introduction/index.html" class="card">
+               <div class="card-icon blue">
+                  <i class="fas fa-book-open"></i>
+               </div>
+               <h3 class="card-title">What is Zephyr?</h3>
+               <p class="card-description">Discover the core concepts, features, and architecture.</p>
+            </a>
+         </li>
+
+         <li>
+            <a href="develop/getting_started/index.html" class="card">
+               <div class="card-icon green">
+                  <i class="fas fa-lightbulb"></i>
+               </div>
+               <h3 class="card-title">Getting Started</h3>
+               <p class="card-description">A step-by-step guide to setup your environment &amp; blink your first LED.</p>
+            </a>
+         </li>
+
+         <li>
+            <a href="boards/index.html" class="card">
+               <div class="card-icon yellow">
+                  <i class="fas fa-microchip"></i>
+               </div>
+               <h3 class="card-title">Supported Hardware</h3>
+               <p class="card-description">Browse 1,000+ supported boards and shields.</p>
+            </a>
+         </li>
+      </ul>
+   </section>
+
+   <!-- Persona Pathways Section -->
+   <section class="landing-section">
+      <h2 class="landing-section-title">Choose Your Learning Path</h2>
+      <p class="landing-section-subtitle">Find documentation tailored to your role.</p>
+
+      <ul class="card-grid">
+         <li>
+            <div class="card">
+               <div class="card-icon sky">
+                  <span style="font-family: monospace; font-size: 2rem; font-weight: bold;">{ }</span>
+               </div>
+               <h3 class="card-title">Application Developer</h3>
+               <p class="card-description">Build software with Zephyr APIs.</p>
+               <ul class="card-links">
+                  <li><a href="develop/application/index.html"><i class="fa-solid fa-chevron-right"></i>Application architecture</a></li>
+                  <li><a href="kernel/index.html"><i class="fa-solid fa-chevron-right"></i>RTOS Kernel</a></li>
+                  <li><a href="services/index.html"><i class="fa-solid fa-chevron-right"></i>Services</a></li>
+                  <li><a href="develop/index.html"><i class="fa-solid fa-chevron-right"></i>Building &amp; debugging</a></li>
+                  <li><a href="samples/index.html"><i class="fa-solid fa-chevron-right"></i>Code samples</a></li>
+               </ul>
+            </div>
+         </li>
+
+         <li>
+            <div class="card">
+               <div class="card-icon violet">
+                  <i class="fa-solid fa-microchip"></i>
+               </div>
+               <h3 class="card-title">Hardware Engineer</h3>
+               <p class="card-description">Porting Zephyr to new hardware.</p>
+               <ul class="card-links">
+                  <li><a href="hardware/porting/board_porting.html"><i class="fa-solid fa-chevron-right"></i>Board Porting Guide</a></li>
+                  <li><a href="kernel/drivers/index.html"><i class="fa-solid fa-chevron-right"></i>Device Driver Model</a></li>
+                  <li><a href="services/pm/index.html"><i class="fa-solid fa-chevron-right"></i>Power Management</a></li>
+                  <li><a href="build/dts/index.html"><i class="fa-solid fa-chevron-right"></i>DeviceTree Guide</a></li>
+               </ul>
+            </div>
+         </li>
+
+         <li>
+            <div class="card">
+               <div class="card-icon emerald">
+                  <i class="fa-solid fa-rocket"></i>
+               </div>
+               <h3 class="card-title">Product Maker</h3>
+               <p class="card-description">Considerations for using Zephyr in your product.</p>
+               <ul class="card-links">
+                  <li><a href="project/index.html#licensing"><i class="fa-solid fa-chevron-right"></i>Licensing</a></li>
+                  <li><a href="security/index.html"><i class="fa-solid fa-chevron-right"></i>Security</a></li>
+                  <li><a href="safety/index.html"><i class="fa-solid fa-chevron-right"></i>Safety</a></li>
+                  <li><a href="project/index.html#long-term-support-lts"><i class="fa-solid fa-chevron-right"></i>Long-term Support</a></li>
+                  <li><a href="https://www.zephyrproject.org/products-running-zephyr/"><i class="fa-solid fa-chevron-right"></i>Product Showcase</a></li>
+               </ul>
+            </div>
+         </li>
+      </ul>
+   </section>
+
+   <!-- Core Reference Section -->
+   <section class="landing-section">
+      <h2 class="landing-section-title">Core Reference</h2>
+      <p class="landing-section-subtitle">Essential resources for in-depth information</p>
+
+      <ul class="card-grid">
+         <li>
+            <a href="doxygen/html/index.html" class="ref-card">
+               <div class="ref-card-header">
+                  <div class="ref-card-icon blue">
+                     <i class="fas fa-book"></i>
+                  </div>
+                  <div>
+                     <h3 class="ref-card-title">API Reference</h3>
+                     <p class="ref-card-subtitle">Complete C API docs</p>
+                  </div>
+               </div>
+               <div class="ref-card-footer">
+                  <span>Browse APIs</span>
+                  <i class="fas fa-arrow-right"></i>
+               </div>
+            </a>
+         </li>
+
+         <li>
+            <a href="kconfig.html" class="ref-card">
+               <div class="ref-card-header">
+                  <div class="ref-card-icon green">
+                     <i class="fas fa-sliders"></i>
+                  </div>
+                  <div>
+                     <h3 class="ref-card-title">Kconfig</h3>
+                     <p class="ref-card-subtitle">Configuration system</p>
+                  </div>
+               </div>
+               <div class="ref-card-footer">
+                  <span>View Options</span>
+                  <i class="fas fa-arrow-right"></i>
+               </div>
+            </a>
+         </li>
+
+         <li>
+            <a href="build/dts/api/bindings.html" class="ref-card">
+               <div class="ref-card-header">
+                  <div class="ref-card-icon purple">
+                     <i class="fas fa-sitemap"></i>
+                  </div>
+                  <div>
+                     <h3 class="ref-card-title">DeviceTree</h3>
+                     <p class="ref-card-subtitle">Hardware bindings</p>
+                  </div>
+               </div>
+               <div class="ref-card-footer">
+                  <span>View Bindings</span>
+                  <i class="fas fa-arrow-right"></i>
+               </div>
+            </a>
+         </li>
+
+         <li>
+            <a href="project/west/index.html" class="ref-card">
+               <div class="ref-card-header">
+                  <div class="ref-card-icon red">
+                     <i class="fas fa-w"></i>
+                  </div>
+                  <div>
+                     <h3 class="ref-card-title">West Tool</h3>
+                     <p class="ref-card-subtitle">Build &amp; flash utility</p>
+                  </div>
+               </div>
+               <div class="ref-card-footer">
+                  <span>Learn West</span>
+                  <i class="fas fa-arrow-right"></i>
+               </div>
+            </a>
+         </li>
+
+         <li>
+            <a href="glossary.html" class="ref-card">
+               <div class="ref-card-header">
+                  <div class="ref-card-icon orange">
+                     <i class="fas fa-spell-check"></i>
+                  </div>
+                  <div>
+                     <h3 class="ref-card-title">Glossary</h3>
+                     <p class="ref-card-subtitle">Key terms definitions</p>
+                  </div>
+               </div>
+               <div class="ref-card-footer">
+                  <span>Browse Terms</span>
+                  <i class="fas fa-arrow-right"></i>
+               </div>
+            </a>
+         </li>
+      </ul>
+   </section>
+</main>
