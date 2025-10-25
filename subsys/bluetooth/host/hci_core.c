@@ -1077,9 +1077,16 @@ static void hci_disconn_complete(struct net_buf *buf)
 		 * If only for one connection session bond was set, clear keys
 		 * database row for this connection.
 		 */
-		if (conn->type == BT_CONN_TYPE_BR && conn->br.link_key != NULL &&
-		    atomic_test_and_clear_bit(conn->flags, BT_CONN_BR_NOBOND)) {
-			bt_keys_link_key_clear(conn->br.link_key);
+		if (conn->type == BT_CONN_TYPE_BR && conn->br.link_key != NULL) {
+			/*
+			 * If the connection link is paired but not bond, remove
+			 * the link key upon disconnection.
+			 */
+			if (atomic_test_and_clear_bit(conn->flags, BT_CONN_BR_NOBOND)) {
+				bt_keys_link_key_clear(conn->br.link_key);
+			}
+
+			conn->br.link_key->enc_key_size = 0;
 		}
 #endif
 		bt_conn_unref(conn);
@@ -3076,6 +3083,10 @@ static const struct event_handler normal_events[] = {
 		      sizeof(struct bt_hci_evt_remote_ext_features)),
 	EVENT_HANDLER(BT_HCI_EVT_ROLE_CHANGE, bt_hci_role_change,
 		      sizeof(struct bt_hci_evt_role_change)),
+#if defined(CONFIG_BT_POWER_MODE_CONTROL)
+	EVENT_HANDLER(BT_HCI_EVT_MODE_CHANGE, bt_hci_link_mode_change,
+		      sizeof(struct bt_hci_evt_mode_change)),
+#endif /* CONFIG_BT_POWER_MODE_CONTROL */
 	EVENT_HANDLER(BT_HCI_EVT_SYNC_CONN_COMPLETE, bt_hci_synchronous_conn_complete,
 		      sizeof(struct bt_hci_evt_sync_conn_complete)),
 #endif /* CONFIG_BT_CLASSIC */
@@ -4650,6 +4661,10 @@ int bt_disable(void)
 	bt_periodic_sync_disable();
 #endif /* CONFIG_BT_PER_ADV_SYNC */
 
+	if (IS_ENABLED(CONFIG_BT_ISO)) {
+		bt_iso_reset();
+	}
+
 #if defined(CONFIG_BT_CONN)
 	if (IS_ENABLED(CONFIG_BT_SMP)) {
 		bt_pub_key_hci_disrupted();
@@ -4703,10 +4718,6 @@ int bt_disable(void)
 
 	/* If random address was set up - clear it */
 	bt_addr_le_copy(&bt_dev.random_addr, BT_ADDR_LE_ANY);
-
-	if (IS_ENABLED(CONFIG_BT_ISO)) {
-		bt_iso_reset();
-	}
 
 	bt_monitor_send(BT_MONITOR_CLOSE_INDEX, NULL, 0);
 
