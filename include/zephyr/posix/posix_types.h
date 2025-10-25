@@ -134,7 +134,7 @@ typedef uint32_t pthread_barrier_t;
 
 typedef struct pthread_barrierattr {
 	int pshared;
-} pthread_barrierattr_t;
+} __aligned(4) pthread_barrierattr_t;
 
 typedef uint32_t pthread_rwlockattr_t;
 
