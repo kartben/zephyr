@@ -67,6 +67,11 @@ The easiest way to run CitrineOS is using Docker:
 Building and Running
 ********************
 
+There are two ways to build the CitrineOS demo:
+
+Option 1: Using overlay configuration (recommended for testing)
+================================================================
+
 Build the CitrineOS demo application:
 
 .. zephyr-app-commands::
@@ -84,6 +89,21 @@ For example, to build for the STM32F769I Discovery board:
      -DOVERLAY_CONFIG=overlay-citrineos.conf \
      -DCONFIG_NET_SAMPLE_OCPP_SERVER=\"192.168.1.100\" \
      -DCONFIG_NET_SAMPLE_SNTP_SERVER=\"pool.ntp.org\"
+
+Option 2: Using dedicated CitrineOS configuration file
+=======================================================
+
+Alternatively, use the dedicated prj_citrineos.conf:
+
+.. code-block:: console
+
+   west build -b stm32f769i_disco samples/net/ocpp -- \
+     -DCONF_FILE=prj_citrineos.conf \
+     -DCONFIG_NET_SAMPLE_OCPP_SERVER=\"192.168.1.100\" \
+     -DCONFIG_NET_SAMPLE_SNTP_SERVER=\"pool.ntp.org\"
+
+Flashing
+========
 
 Flash the board:
 

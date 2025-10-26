@@ -8,3 +8,13 @@ tests:
     tags:
       - net
       - ocpp
+  sample.net.ocpp.citrineos:
+    harness: net
+    depends_on: netif
+    tags:
+      - net
+      - ocpp
+      - citrineos
+    extra_args:
+      - OVERLAY_CONFIG=overlay-citrineos.conf
+      - USE_CITRINEOS_DEMO=y
