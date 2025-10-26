@@ -55,6 +55,29 @@ Alternatively you can run this using QEMU:
    :gen-args: '-DQEMU_SOCKET=y'
    :compact:
 
+Alternative Configurations
+==========================
+
+The sample includes alternative project configurations to demonstrate different
+instrumentation modes:
+
+* **prj.conf** - Default configuration with both tracing and profiling enabled
+* **prj_trace_only.conf** - Trace (callgraph) mode only for minimal overhead
+* **prj_profile_only.conf** - Profile (statistical) mode only for performance analysis
+
+To build with an alternative configuration:
+
+.. zephyr-app-commands::
+   :zephyr-app: samples/subsys/instrumentation
+   :host-os: unix
+   :board: mps2/an385
+   :goals: build
+   :gen-args: '-DCONF_FILE=prj_trace_only.conf'
+   :compact:
+
+Running and Using the Sample
+=============================
+
 After the sample is flashed to the target (or QEMU is running), it must be possible to
 collect and visualize traces and profiling info using the instrumentation CLI
 tool, :zephyr_file:`scripts/instrumentation/zaru.py`.
