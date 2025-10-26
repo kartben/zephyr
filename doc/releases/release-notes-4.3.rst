@@ -33,6 +33,41 @@ We are pleased to announce the release of Zephyr version 4.3.0.
 
 Major enhancements with this release include:
 
+**Intel Control-flow Enforcement Technology (CET)**
+  The x86 architecture now supports Intel CET, providing hardware-based security features including
+  Indirect Branch Tracking (IBT) and shadow stacks to protect against control-flow hijacking attacks.
+
+**Hardware Shadow Stack Support**
+  Cross-architecture support for hardware shadow stacks has been added to the kernel, enhancing
+  security by providing hardware-enforced protection against return-oriented programming (ROP) attacks.
+
+**Dynamic CPU Frequency Scaling**
+  A new experimental :ref:`CPUFreq subsystem <cpu_freq>` enables dynamic CPU frequency scaling,
+  allowing applications to optimize power consumption by adjusting processor frequencies at runtime.
+
+**NVMEM Subsystem**
+  The new :ref:`Non-Volatile Memory (NVMEM) <nvmem>` subsystem provides a unified interface for
+  accessing non-volatile memory cells from various storage backends including EEPROMs, allowing
+  consistent device-tree-based configuration across different hardware.
+
+**Operational Amplifier (Opamp) Driver Support**
+  New device driver APIs for operational amplifiers enable configuration and control of analog
+  signal conditioning circuits through both devicetree and runtime vendor-specific APIs.
+
+**Rate-Limited Logging**
+  The logging subsystem now includes rate-limited logging macros to prevent log flooding in
+  high-frequency scenarios, following the Linux ``printk_ratelimited`` pattern with per-call-site
+  tracking.
+
+**Secure Storage Stable Release**
+  The secure storage subsystem graduates from experimental to stable status, providing production-ready
+  encrypted storage capabilities.
+
+**Expanded Board Support**
+  Support for 83 :ref:`new boards <boards_added_in_zephyr_4_3>` has been added in this release,
+  including new platforms from Adafruit, AMD, Arduino, Espressif, Nordic Semiconductor, NXP, Renesas,
+  STMicroelectronics, and many others.
+
 An overview of the changes required or recommended when migrating your application from Zephyr
 v4.2.0 to Zephyr v4.3.0 can be found in the separate :ref:`migration guide<migration_4.3>`.
 
@@ -333,6 +368,8 @@ New APIs and options
   * :c:func:`video_transfer_buffer`
 
 .. zephyr-keep-sorted-stop
+
+.. _boards_added_in_zephyr_4_3:
 
 New Boards
 **********
