@@ -23,6 +23,21 @@ The sample includes scenarios that trigger different types of Devicetree errors 
 Building and Running
 ********************
 
+Quick Start
+===========
+
+For a quick demonstration of dtdoctor:
+
+1. Use the provided ``src/main_error.c`` file (rename it to ``main.c`` or modify CMakeLists.txt)
+2. Copy one of the overlay files from ``boards/`` to your board directory
+3. Build with dtdoctor enabled:
+
+   .. code-block:: shell
+
+      west build -b reel_board samples/dtdoctor_demo -- -DZEPHYR_SCA_VARIANT=dtdoctor
+
+4. Observe dtdoctor's diagnostic output explaining the error
+
 Basic Build
 ===========
 
@@ -164,6 +179,26 @@ This demo works on any board that has:
 
 For demonstrating the error scenarios, you'll need to create appropriate board
 overlays as described above.
+
+Sample Files
+************
+
+The demo includes the following files:
+
+- ``src/main.c`` - The default application that safely checks for devicetree nodes
+- ``src/main_error.c`` - Alternative version that unconditionally references nodes,
+  triggering errors for demonstration
+- ``boards/disabled_sensor.overlay`` - Overlay with a disabled sensor node
+- ``boards/missing_driver.overlay`` - Overlay with an enabled sensor missing driver Kconfig
+
+To use the error demonstration version, either:
+
+1. Rename ``src/main_error.c`` to ``src/main.c``, or
+2. Modify ``CMakeLists.txt`` to use ``main_error.c`` instead:
+
+   .. code-block:: cmake
+
+      target_sources(app PRIVATE src/main_error.c)
 
 Tips
 ****
