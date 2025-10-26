@@ -3,7 +3,7 @@
    :relevant-api: ocpp_api
 
    Implement an OCPP charge point that connects to a Central System server and
-   simulates the meter readings.
+   simulates the meter readings with a nice LVGL graphical user interface.
 
 Overview
 ********
@@ -14,6 +14,16 @@ management system, also known as a charging station network.
 
 This ocpp sample application for Zephyr implements the OCPP library
 and establishes a connection to an Central System server using the web socket
+protocol.
+
+The sample includes a beautiful LVGL-based graphical user interface that displays:
+
+- Connection status and IP address
+- Two connector status cards with visual indicators
+- Real-time charging state (Idle, Authorizing, Charging, Error)
+- ID tag information for each connector
+- Meter values in watt-hours
+- Animated visual feedback using color-coded arcs
 
 The source code for this sample application can be found at:
 :zephyr_file:`samples/net/ocpp`.
@@ -22,9 +32,12 @@ Requirements
 ************
 
 - Linux machine
-- STM32 Discovery kit (32F769IDISCOVERY) or any network interface device
+- STM32 Discovery kit (32F769IDISCOVERY) with built-in LCD display
 - SteVe Demo Server (<https://github.com/steve-community/steve/blob/master/README.md>)
 - LAN for testing purposes (Ethernet)
+
+The STM32F769I Discovery kit features a 4" capacitive touch LCD display which is
+used to show the LVGL graphical user interface.
 
 Building and Running
 ********************
@@ -50,6 +63,8 @@ The output of sample is:
 
 	*** Booting Zephyr OS build v3.6.0-rc1-37-g8c035d8f24cf ***
 	OCPP sample stm32f769i_disco
+	[00:00:00.145,000] <inf> gui: Initializing LVGL GUI
+	[00:00:00.234,000] <inf> gui: LVGL GUI initialized successfully
 	[00:00:02.642,000] <inf> net_dhcpv4: Received: 192.168.1.101
 	[00:00:02.642,000] <inf> main: net mgr cb
 	[00:00:02.642,000] <inf> main: Your address: 192.168.1.101
@@ -67,3 +82,17 @@ The output of sample is:
 	[00:00:17.255,000] <inf> main: ocpp start charging connector id 2
 	[00:01:07.064,000] <inf> main: ocpp stop charging connector id 1
 	[00:01:08.063,000] <inf> main: ocpp stop charging connector id 2
+
+The LCD display will show:
+
+- A header card with "OCPP Charge Point" title
+- Connection status and IP address
+- Two connector cards side-by-side showing:
+  
+  - Connector number (1 or 2)
+  - Visual arc indicator (color-coded by state)
+  - Current state (Idle, Authorizing, Charging, Error)
+  - ID tag being used
+  - Energy meter reading in watt-hours
+
+The GUI updates in real-time as the OCPP charging sessions progress.
