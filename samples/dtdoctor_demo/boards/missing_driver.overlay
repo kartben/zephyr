@@ -1,0 +1,26 @@
+/*
+ * Example overlay demonstrating an ENABLED node with MISSING driver scenario.
+ * 
+ * To use this overlay:
+ * 1. Copy this file to your build directory as an overlay
+ * 2. Modify src/main.c to remove the #if guards around SENSOR_NODE usage
+ * 3. Build WITHOUT CONFIG_BME280 enabled
+ * 4. Build with: west build -b <board> -- -DZEPHYR_SCA_VARIANT=dtdoctor
+ * 
+ * dtdoctor will help diagnose the linker error by suggesting which
+ * Kconfig options need to be enabled.
+ */
+
+/ {
+	aliases {
+		demo-sensor = &demo_sensor;
+	};
+};
+
+&i2c0 {
+	demo_sensor: sensor@40 {
+		compatible = "bosch,bme280";
+		reg = <0x40>;
+		status = "okay";  /* Enabled but driver Kconfig is missing */
+	};
+};
