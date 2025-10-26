@@ -37,6 +37,15 @@ static void fill_buffer_argb8888(uint32_t color, uint8_t *buf, size_t buf_size)
 	}
 }
 
+static void fill_buffer_rgb888(uint32_t color, uint8_t *buf, size_t buf_size)
+{
+	for (size_t idx = 0; idx < buf_size; idx += 3) {
+		*(buf + idx + 0) = (color >> 16) & 0xFF;
+		*(buf + idx + 1) = (color >> 8) & 0xFF;
+		*(buf + idx + 2) = color & 0xFF;
+	}
+}
+
 int main(void)
 {
 	const struct device *display_dev;
@@ -110,6 +119,8 @@ int main(void)
 		fill_buffer_rgb565(0xF800, buf, buf_size); /* Red in RGB565 */
 	} else if (capabilities.current_pixel_format == PIXEL_FORMAT_ARGB_8888) {
 		fill_buffer_argb8888(0xFFFF0000, buf, buf_size); /* Red in ARGB8888 */
+	} else if (capabilities.current_pixel_format == PIXEL_FORMAT_RGB_888) {
+		fill_buffer_rgb888(0x00FF0000, buf, buf_size); /* Red in RGB888 */
 	}
 
 	display_write(display_dev, 0, 0, &buf_desc, buf);
