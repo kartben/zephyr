@@ -20,7 +20,7 @@ This demo provides multiple ways to build and run the OCPP charge point with Cit
 - **`overlay-citrineos.conf`** - Minimal overlay to adapt base config for CitrineOS
 
 ### Documentation
-- **`README_CITRINEOS.rst`** - Comprehensive setup and usage guide
+- **`README_CITRINEOS.rst`** - CitrineOS-specific setup and configuration guide
 - **`CITRINEOS_QUICKSTART.md`** - Quick start guide with step-by-step instructions
 - **`ARCHITECTURE.md`** - System architecture and design documentation
 - **`README.md`** - This file
@@ -102,7 +102,7 @@ screen /dev/ttyACM0 115200
 
 For different needs, choose the appropriate documentation:
 
-- **New to OCPP?** Start with `README_CITRINEOS.rst` for comprehensive overview
+- **New to OCPP?** Start with `README.rst` for foundational OCPP concepts, then `README_CITRINEOS.rst` for CitrineOS-specific setup
 - **Want to get running quickly?** Use `CITRINEOS_QUICKSTART.md`
 - **Need to understand the code?** Read `ARCHITECTURE.md`
 - **Looking for build options?** Check `build_citrineos.sh`
@@ -123,12 +123,13 @@ For different needs, choose the appropriate documentation:
 
 ## Supported Boards
 
-Any Zephyr board with network capability:
-- STM32F769I Discovery (tested)
-- QEMU x86 (for testing)
-- ESP32 (with WiFi)
-- nRF boards (with Ethernet/WiFi)
-- And more...
+Any Zephyr board with network capability should work. The following have been confirmed or are commonly used:
+- **STM32F769I Discovery** (tested with original OCPP sample)
+- QEMU x86 (for testing without hardware)
+- ESP32 (with WiFi support)
+- nRF boards (with Ethernet/WiFi shields)
+
+Note: CitrineOS-specific testing was done with QEMU x86. Other boards should work identically to the standard OCPP sample.
 
 ## Extending the Demo
 
@@ -159,10 +160,10 @@ The demo can be extended to:
 
 ## Resources
 
-- [CitrineOS Documentation](https://github.com/citrineos/citrineos-core)
-- [OCPP 1.6 Specification](https://www.openchargealliance.org/)
-- [Zephyr OCPP API](https://docs.zephyrproject.org/latest/connectivity/networking/api/ocpp.html)
-- [Zephyr Getting Started](https://docs.zephyrproject.org/latest/develop/getting_started/)
+- [CitrineOS GitHub Repository](https://github.com/citrineos/citrineos-core) - Source code and setup instructions
+- [OCPP 1.6 Specification](https://www.openchargealliance.org/) - Protocol specification
+- [Zephyr OCPP API](https://docs.zephyrproject.org/latest/connectivity/networking/api/ocpp.html) - API documentation
+- [Zephyr Getting Started](https://docs.zephyrproject.org/latest/develop/getting_started/) - Development environment setup
 
 ## License
 
