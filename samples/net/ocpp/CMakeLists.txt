@@ -6,4 +6,11 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(ocpp)
 
 include(${ZEPHYR_BASE}/samples/net/common/common.cmake)
-target_sources(app PRIVATE src/main.c)
+
+# Select demo source file
+# To use CitrineOS demo: -DUSE_CITRINEOS_DEMO=y
+if(DEFINED USE_CITRINEOS_DEMO)
+  target_sources(app PRIVATE src/main_citrineos.c)
+else()
+  target_sources(app PRIVATE src/main.c)
+endif()

@@ -18,6 +18,8 @@ and establishes a connection to an Central System server using the web socket
 The source code for this sample application can be found at:
 :zephyr_file:`samples/net/ocpp`.
 
+For a demo specifically configured for CitrineOS, see :ref:`ocpp_citrineos`.
+
 Requirements
 ************
 
