@@ -1,0 +1,53 @@
+# Sample display capture configuration for the display_capture harness demo
+#
+# This configuration file demonstrates the structure needed for the
+# display_capture harness. In a real testing environment, you would:
+#
+# 1. Set up a camera to capture the display output
+# 2. Generate fingerprints using the camera_shield tool
+# 3. Configure the paths and parameters below
+# 4. Set DISPLAY_TEST_DIR environment variable to point to the directory
+#    containing this config and the fingerprints folder
+#
+# For detailed instructions, see:
+# scripts/pylib/display-twister-harness/camera_shield/README.rst
+
+case_config:
+  device_id: 0      # Camera device index (try different values if camera not found)
+  res_x: 1280       # Camera horizontal resolution
+  res_y: 720        # Camera vertical resolution
+  fps: 30           # Frames per second for analysis
+  run_time: 20      # Duration to capture video (seconds)
+
+test:
+  timeout: 30       # Timeout to wait for the prompt (seconds)
+  prompt: "Display starts"  # String to wait for before starting capture
+  expect: ["sample.pytest.display_capture"]  # Expected test result
+
+plugins:
+  - name: signature
+    module: .plugins.signature_plugin
+    class: VideoSignaturePlugin
+    status: "enable"
+    config:
+      # Operation mode: 'generate' to create fingerprints, 'compare' to test
+      operations: "compare"
+      metadata:
+        # Name should match the test case name
+        name: "sample.pytest.display_capture"
+        # Platform the fingerprint was generated on
+        platform: "native_sim"
+      # Directory containing fingerprints (relative to DISPLAY_TEST_DIR)
+      directory: "./fingerprints"
+      # Number of frames to analyze
+      duration: 100
+      # Signature comparison method
+      method: "combined"  # Options: 'phash', 'dhash', 'histogram', 'combined'
+      # Similarity threshold (0.0 to 1.0)
+      threshold: 0.65
+      # Weights for combined method
+      phash_weight: 0.35
+      dhash_weight: 0.25
+      histogram_weight: 0.2
+      edge_ratio_weight: 0.1
+      gradient_hist_weight: 0.1
