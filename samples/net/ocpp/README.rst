@@ -3,7 +3,7 @@
    :relevant-api: ocpp_api
 
    Implement an OCPP charge point that connects to a Central System server and
-   simulates the meter readings with a nice LVGL graphical user interface.
+   simulates the meter readings with a comprehensive LVGL-based graphical user interface.
 
 Overview
 ********
@@ -16,7 +16,7 @@ This ocpp sample application for Zephyr implements the OCPP library
 and establishes a connection to an Central System server using the web socket
 protocol.
 
-The sample includes a beautiful LVGL-based graphical user interface that displays:
+The sample includes a comprehensive LVGL-based graphical user interface that displays:
 
 - Connection status and IP address
 - Two connector status cards with visual indicators
