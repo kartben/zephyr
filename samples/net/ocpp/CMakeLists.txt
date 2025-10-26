@@ -6,4 +6,4 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(ocpp)
 
 include(${ZEPHYR_BASE}/samples/net/common/common.cmake)
-target_sources(app PRIVATE src/main.c)
+target_sources(app PRIVATE src/main.c src/gui.c)

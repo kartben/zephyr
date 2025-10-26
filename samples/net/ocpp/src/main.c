@@ -17,6 +17,7 @@
 #include <zephyr/zbus/zbus.h>
 
 #include "net_sample_common.h"
+#include "gui.h"
 
 #if __POSIX_VISIBLE < 200809
 char    *strdup(const char *);
@@ -26,10 +27,13 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
 #define NO_OF_CONN 2
 K_KERNEL_STACK_ARRAY_DEFINE(cp_stk, NO_OF_CONN, 2 * 1024);
+K_KERNEL_STACK_DEFINE(gui_stack, 4096);
 
 static struct k_thread tinfo[NO_OF_CONN];
 static k_tid_t tid[NO_OF_CONN];
 static char idtag[NO_OF_CONN][25];
+static struct k_thread gui_thread;
+static k_tid_t gui_tid;
 
 static int ocpp_get_time_from_sntp(void)
 {
@@ -97,6 +101,9 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 			LOG_DBG("mtr reading val %s con %d", io->meter_val.val,
 				io->meter_val.id_con);
 
+			/* Update GUI with meter value */
+			gui_update_connector_meter(io->meter_val.id_con, wh + io->meter_val.id_con);
+
 			return 0;
 		}
 		break;
@@ -158,8 +165,13 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	ret = ocpp_session_open(&sh);
 	if (ret < 0) {
 		LOG_ERR("ocpp open ses idcon %d> res %d\n", idcon, ret);
+		gui_update_connector_state(idcon, GUI_CONNECTOR_ERROR);
 		return;
 	}
+
+	/* Update GUI with ID tag */
+	gui_update_connector_idtag(idcon, idtag);
+	gui_update_connector_state(idcon, GUI_CONNECTOR_AUTHORIZING);
 
 	while (1) {
 		/* Avoid quick retry since authorization request is possible only
@@ -184,6 +196,7 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	if (status != OCPP_AUTH_ACCEPTED) {
 		LOG_ERR("ocpp start idcon %d> not authorized status %d\n",
 			idcon, status);
+		gui_update_connector_state(idcon, GUI_CONNECTOR_ERROR);
 		return;
 	}
 
@@ -193,6 +206,7 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		union ocpp_io_value io;
 
 		LOG_INF("ocpp start charging connector id %d\n", idcon);
+		gui_update_connector_state(idcon, GUI_CONNECTOR_CHARGING);
 		memset(&io, 0xff, sizeof(io));
 
 		/* wait for stop charging event from main or remote CS */
@@ -211,10 +225,12 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	ret = ocpp_stop_transaction(sh, sys_rand32_get(), timeout_ms);
 	if (ret < 0) {
 		LOG_ERR("ocpp stop txn idcon %d> %d\n", idcon, ret);
+		gui_update_connector_state(idcon, GUI_CONNECTOR_ERROR);
 		return;
 	}
 
 	LOG_INF("ocpp stop charging connector id %d\n", idcon);
+	gui_update_connector_state(idcon, GUI_CONNECTOR_IDLE);
 	k_sleep(K_SECONDS(1));
 	ocpp_session_close(sh);
 	tid[idcon - 1] = NULL;
@@ -296,7 +312,25 @@ int main(void)
 
 	printk("OCPP sample %s\n", CONFIG_BOARD);
 
+	/* Initialize GUI early */
+	ret = gui_init();
+	if (ret < 0) {
+		LOG_ERR("GUI init failed %d\n", ret);
+		return ret;
+	}
+
+	/* Start GUI task thread */
+	gui_tid = k_thread_create(&gui_thread, gui_stack,
+				  K_KERNEL_STACK_SIZEOF(gui_stack),
+				  (k_thread_entry_t)gui_task, NULL, NULL, NULL,
+				  5, 0, K_NO_WAIT);
+	k_thread_name_set(gui_tid, "gui");
+
+	gui_update_status("Waiting for network...");
+
 	wait_for_network();
+
+	gui_update_status("Network connected");
 
 	ret = ocpp_getaddrinfo(CONFIG_NET_SAMPLE_OCPP_SERVER, CONFIG_NET_SAMPLE_OCPP_PORT, &ip);
 	if (ret < 0) {
@@ -305,16 +339,26 @@ int main(void)
 
 	csi.cs_ip = ip;
 
+	/* Update GUI with IP address */
+	if (ip) {
+		gui_update_ip(ip);
+	}
+
+	gui_update_status("Getting time from SNTP...");
 	ocpp_get_time_from_sntp();
 
+	gui_update_status("Initializing OCPP...");
 	ret = ocpp_init(&cpi,
 			&csi,
 			user_notify_cb,
 			NULL);
 	if (ret < 0) {
 		LOG_ERR("ocpp init failed %d\n", ret);
+		gui_update_status("OCPP init failed");
 		return ret;
 	}
+
+	gui_update_status("OCPP Connected - Ready");
 
 	/* Spawn threads for each connector */
 	for (i = 0; i < NO_OF_CONN; i++) {
