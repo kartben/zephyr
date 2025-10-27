@@ -92,6 +92,12 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 	int idx;
 	int i;
 
+	LOG_DBG("user_notify_cb reason %d", reason);
+	LOG_DBG("io->meter_val.mes %d", io->meter_val.mes);
+	LOG_DBG("io->meter_val.id_con %d", io->meter_val.id_con);
+	LOG_DBG("io->meter_val.val %s", io->meter_val.val);
+	LOG_DBG("io->meter_val.val %s", io->meter_val.val);
+
 	switch (reason) {
 	case OCPP_USR_GET_METER_VALUE:
 		if (OCPP_OMM_ACTIVE_ENERGY_TO_EV == io->meter_val.mes) {
@@ -99,20 +105,21 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 				 wh + io->meter_val.id_con);
 
 			wh++;
-			
+
 			/* Update GUI with energy reading */
 			if (io->meter_val.id_con > 0 && io->meter_val.id_con <= NO_OF_CONN) {
-				connector_energy[io->meter_val.id_con - 1] = 
+				connector_energy[io->meter_val.id_con - 1] =
 					wh + io->meter_val.id_con;
 #if IS_ENABLED(CONFIG_LVGL)
-				ocpp_gui_update_connector_energy(io->meter_val.id_con, 
+				ocpp_gui_update_connector_energy(
+					io->meter_val.id_con,
 					connector_energy[io->meter_val.id_con - 1]);
 				/* Simulate power reading (energy delta * 3600 for hourly rate) */
-				ocpp_gui_update_connector_power(io->meter_val.id_con, 
-					3600); /* Approx 3.6 kW */
+				ocpp_gui_update_connector_power(io->meter_val.id_con,
+								3600); /* Approx 3.6 kW */
 #endif
 			}
-			
+
 			LOG_DBG("mtr reading val %s con %d", io->meter_val.val,
 				io->meter_val.id_con);
 
@@ -326,10 +333,7 @@ int main(void)
 	char *ip = NULL;
 
 	struct ocpp_cp_info cpi = { "basic", "zephyr", .num_of_con = NO_OF_CONN };
-	struct ocpp_cs_info csi = { NULL,
-				    "/steve/websocket/CentralSystemService/zephyr",
-				    CONFIG_NET_SAMPLE_OCPP_PORT,
-				    AF_INET };
+	struct ocpp_cs_info csi = {NULL, "/zephyr", CONFIG_NET_SAMPLE_OCPP_PORT, AF_INET};
 
 	printk("OCPP sample %s\n", CONFIG_BOARD);
 
@@ -403,7 +407,7 @@ int main(void)
 
 #if IS_ENABLED(CONFIG_LVGL)
 	ocpp_gui_update_status("Ready for remote control");
-	
+
 	/* Keep GUI running and updating */
 	while (1) {
 		ocpp_gui_task();
