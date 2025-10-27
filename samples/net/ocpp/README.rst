@@ -106,3 +106,31 @@ The GUI features a modern EV charging station theme with:
 - Color-coded status indicators (green for active, amber for warnings, gray for idle)
 - Real-time updates as charging sessions progress
 
+GUI Screenshots
+***************
+
+Initial State (Both Connectors Idle):
+
+.. image:: doc/ocpp_gui_idle.png
+   :align: center
+   :alt: OCPP GUI - Idle State
+
+Connector Authorizing:
+
+.. image:: doc/ocpp_gui_authorizing.png
+   :align: center
+   :alt: OCPP GUI - Authorizing
+
+Both Connectors Charging:
+
+.. image:: doc/ocpp_gui_charging.png
+   :align: center
+   :alt: OCPP GUI - Charging
+
+Mixed State (One Charging, One Idle):
+
+.. image:: doc/ocpp_gui_mixed.png
+   :align: center
+   :alt: OCPP GUI - Mixed State
+
+
