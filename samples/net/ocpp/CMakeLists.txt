@@ -7,3 +7,8 @@ project(ocpp)
 
 include(${ZEPHYR_BASE}/samples/net/common/common.cmake)
 target_sources(app PRIVATE src/main.c)
+
+if(CONFIG_LVGL)
+  target_sources(app PRIVATE src/ocpp_gui.c)
+endif()
+
