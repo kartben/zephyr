@@ -81,4 +81,6 @@ config OCPP_PROFILE_FIRMWARE_MGNT
 	  Enables the OCPP library to support the Firmware Management of
 	  Charge Point as optional profile.
 
+source "subsys/net/lib/ocpp/Kconfig.shell"
+
 endif # OCPP
