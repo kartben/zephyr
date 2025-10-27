@@ -30,11 +30,6 @@ static struct k_thread tinfo[NO_OF_CONN];
 static k_tid_t tid[NO_OF_CONN];
 static char idtag[NO_OF_CONN][25];
 
-/* Simple semaphores to signal stop charging to each connector thread */
-static K_SEM_DEFINE(stop_sem_0, 0, 1);
-static K_SEM_DEFINE(stop_sem_1, 0, 1);
-static struct k_sem *stop_sems[NO_OF_CONN] = {&stop_sem_0, &stop_sem_1};
-
 /* Simulated meter readings for realistic charging simulation */
 static struct {
 	int active_energy_wh;  /* Total energy delivered in Wh */
@@ -147,7 +142,7 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 	case OCPP_USR_STOP_CHARGING:
 		idx = io->stop_charge.id_con - 1;
 		if (idx >= 0 && idx < NO_OF_CONN) {
-			k_sem_give(stop_sems[idx]);
+			meter_data[idx].charging = false;
 		}
 		return 0;
 
@@ -224,11 +219,6 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 			/* Vary current slightly to be more realistic */
 			if (sys_rand32_get() % 10 == 0) {
 				meter_data[idx].current_amps = 155 + (sys_rand32_get() % 10);
-			}
-
-			/* Check if stop was signaled */
-			if (k_sem_take(stop_sems[idx], K_NO_WAIT) == 0) {
-				break;
 			}
 		}
 
@@ -359,7 +349,7 @@ int main(void)
 
 	/* Send stop charging to threads */
 	for (i = 0; i < NO_OF_CONN; i++) {
-		k_sem_give(stop_sems[i]);
+		meter_data[i].charging = false;
 		k_sleep(K_SECONDS(1));
 	}
 
