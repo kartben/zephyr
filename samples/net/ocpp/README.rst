@@ -33,6 +33,12 @@ LVGL GUI Screenshots
 
 The LVGL GUI provides a modern, dark-themed interface optimized for embedded displays:
 
+.. image:: screenshots/ocpp_gui_showcase.png
+   :alt: OCPP GUI - All states showcase
+   :width: 800px
+
+*Complete showcase of all GUI states*
+
 .. image:: screenshots/ocpp_gui_idle.png
    :alt: OCPP GUI - Idle state with both connectors available
    :width: 320px
