@@ -3,7 +3,7 @@
    :relevant-api: ocpp_api
 
    Implement an OCPP charge point that connects to a Central System server and
-   simulates the meter readings.
+   simulates the meter readings. Features an optional modern LVGL graphical interface.
 
 Overview
 ********
@@ -14,20 +14,63 @@ management system, also known as a charging station network.
 
 This ocpp sample application for Zephyr implements the OCPP library
 and establishes a connection to an Central System server using the web socket
+protocol.
+
+The sample includes an optional LVGL-based graphical user interface that displays:
+
+- Real-time charging station status
+- Individual connector states (Available, Preparing, Charging, Finishing)
+- Energy meter readings (Wh) for each connector
+- Power consumption (W) for active charging sessions
+- Central System connection status
+- Visual indicators with color-coded borders (blue for available, green for charging, orange for preparing)
 
 The source code for this sample application can be found at:
 :zephyr_file:`samples/net/ocpp`.
+
+LVGL GUI Screenshots
+********************
+
+The LVGL GUI provides a modern, dark-themed interface optimized for embedded displays:
+
+.. image:: screenshots/ocpp_gui_idle.png
+   :alt: OCPP GUI - Idle state with both connectors available
+   :width: 320px
+
+*Idle state: Both connectors available, connected to Central System*
+
+.. image:: screenshots/ocpp_gui_preparing.png
+   :alt: OCPP GUI - Connector preparing
+   :width: 320px
+
+*Preparing state: Connector 1 authorizing before charging*
+
+.. image:: screenshots/ocpp_gui_single_charging.png
+   :alt: OCPP GUI - Single connector charging
+   :width: 320px
+
+*Single charging: Connector 1 actively charging*
+
+.. image:: screenshots/ocpp_gui_charging.png
+   :alt: OCPP GUI - Both connectors charging
+   :width: 320px
+
+*Dual charging: Both connectors actively charging*
 
 Requirements
 ************
 
 - Linux machine
-- STM32 Discovery kit (32F769IDISCOVERY) or any network interface device
-- SteVe Demo Server (<https://github.com/steve-community/steve/blob/master/README.md>)
+- STM32 Discovery kit (32F769IDISCOVERY) or any network interface device with display (for LVGL GUI)
+- native_sim board (for testing LVGL GUI without hardware)
+- SteVe Demo Server (https://github.com/steve-community/steve/blob/master/README.md)
 - LAN for testing purposes (Ethernet)
 
 Building and Running
 ********************
+
+Standard Build (without GUI)
+=============================
 
 Build the ocpp sample application like this:
 
@@ -43,6 +86,35 @@ The sample application is to built and tested on
 
 	west build -b stm32f769i_disco
 	west flash
+
+Building with LVGL GUI
+=======================
+
+The LVGL GUI is automatically enabled when building for boards with display support.
+For native_sim (simulator with SDL display):
+
+.. code-block:: console
+
+	west build -b native_sim samples/net/ocpp
+
+The GUI will display on your host machine using SDL. This is useful for:
+
+- Demonstrating the GUI design without hardware
+- Testing UI updates and state transitions
+- Taking screenshots for documentation
+
+For hardware with display support:
+
+.. code-block:: console
+
+	west build -b <board_with_display>
+	west flash
+
+The LVGL configuration is controlled via Kconfig options in the board-specific
+configuration files (``boards/native_sim.conf``).
+
+Sample Output
+*************
 
 The output of sample is:
 
