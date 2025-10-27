@@ -14,7 +14,6 @@
 #include <zephyr/net/sntp.h>
 #include <zephyr/net/ocpp.h>
 #include <zephyr/random/random.h>
-#include <zephyr/zbus/zbus.h>
 
 #include "net_sample_common.h"
 
@@ -30,6 +29,18 @@ K_KERNEL_STACK_ARRAY_DEFINE(cp_stk, NO_OF_CONN, 2 * 1024);
 static struct k_thread tinfo[NO_OF_CONN];
 static k_tid_t tid[NO_OF_CONN];
 static char idtag[NO_OF_CONN][25];
+
+/* Simple semaphores to signal stop charging to each connector thread */
+static K_SEM_DEFINE(stop_sem_0, 0, 1);
+static K_SEM_DEFINE(stop_sem_1, 0, 1);
+static struct k_sem *stop_sems[NO_OF_CONN] = {&stop_sem_0, &stop_sem_1};
+
+/* Simulated meter readings for realistic charging simulation */
+static struct {
+	int active_energy_wh;  /* Total energy delivered in Wh */
+	int current_amps;      /* Current being delivered in Amps (x10 for precision) */
+	bool charging;
+} meter_data[NO_OF_CONN];
 
 static int ocpp_get_time_from_sntp(void)
 {
@@ -65,37 +76,37 @@ static int ocpp_get_time_from_sntp(void)
 	return 0;
 }
 
-ZBUS_CHAN_DEFINE(ch_event, /* Name */
-		 union ocpp_io_value,
-		 NULL,			/* Validator */
-		 NULL,			/* User data */
-		 ZBUS_OBSERVERS_EMPTY,	/* observers */
-		 ZBUS_MSG_INIT(0) /* Initial value {0} */
-);
-
-ZBUS_SUBSCRIBER_DEFINE(cp_thread0, 5);
-ZBUS_SUBSCRIBER_DEFINE(cp_thread1, 5);
-struct zbus_observer *obs[NO_OF_CONN] = {(struct zbus_observer *)&cp_thread0,
-					 (struct zbus_observer *)&cp_thread1};
-
 static void ocpp_cp_entry(void *p1, void *p2, void *p3);
 static int user_notify_cb(enum ocpp_notify_reason reason,
 			  union ocpp_io_value *io,
 			  void *user_data)
 {
-	static int wh = 6 + NO_OF_CONN;
 	int idx;
 	int i;
 
 	switch (reason) {
 	case OCPP_USR_GET_METER_VALUE:
-		if (OCPP_OMM_ACTIVE_ENERGY_TO_EV == io->meter_val.mes) {
-			snprintf(io->meter_val.val, CISTR50, "%u",
-				 wh + io->meter_val.id_con);
+		idx = io->meter_val.id_con - 1;
+		if (idx < 0 || idx >= NO_OF_CONN) {
+			return -EINVAL;
+		}
 
-			wh++;
-			LOG_DBG("mtr reading val %s con %d", io->meter_val.val,
-				io->meter_val.id_con);
+		if (OCPP_OMM_ACTIVE_ENERGY_TO_EV == io->meter_val.mes) {
+			snprintf(io->meter_val.val, CISTR50, "%d",
+				 meter_data[idx].active_energy_wh);
+
+			LOG_DBG("mtr reading energy %s Wh con %d",
+				io->meter_val.val, io->meter_val.id_con);
+
+			return 0;
+		} else if (OCPP_OMM_CURRENT_TO_EV == io->meter_val.mes) {
+			/* Return current in Amps (divide by 10 for actual value) */
+			snprintf(io->meter_val.val, CISTR50, "%d.%d",
+				 meter_data[idx].current_amps / 10,
+				 meter_data[idx].current_amps % 10);
+
+			LOG_DBG("mtr reading current %s A con %d",
+				io->meter_val.val, io->meter_val.id_con);
 
 			return 0;
 		}
@@ -127,14 +138,17 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 			tid[idx] = k_thread_create(&tinfo[idx], cp_stk[idx],
 						   sizeof(cp_stk[idx]), ocpp_cp_entry,
 						   (void *)(uintptr_t)(idx + 1), idtag[idx],
-						   obs[idx], 7, 0, K_NO_WAIT);
+						   NULL, 7, 0, K_NO_WAIT);
 
 			return 0;
 		}
 		break;
 
 	case OCPP_USR_STOP_CHARGING:
-		zbus_chan_pub(&ch_event, io, K_MSEC(100));
+		idx = io->stop_charge.id_con - 1;
+		if (idx >= 0 && idx < NO_OF_CONN) {
+			k_sem_give(stop_sems[idx]);
+		}
 		return 0;
 
 	case OCPP_USR_UNLOCK_CONNECTOR:
@@ -150,10 +164,15 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	int ret;
 	int idcon = (int)(uintptr_t)p1;
 	char *idtag = (char *)p2;
-	struct zbus_observer *obs = (struct zbus_observer *)p3;
+	int idx = idcon - 1;
 	ocpp_session_handle_t sh = NULL;
 	enum ocpp_auth_status status;
 	const uint32_t timeout_ms = 500;
+
+	/* Initialize meter data for this connector */
+	meter_data[idx].active_energy_wh = 0;
+	meter_data[idx].current_amps = 0;
+	meter_data[idx].charging = false;
 
 	ret = ocpp_session_open(&sh);
 	if (ret < 0) {
@@ -187,28 +206,37 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		return;
 	}
 
-	ret = ocpp_start_transaction(sh, sys_rand32_get(), idcon, timeout_ms);
+	ret = ocpp_start_transaction(sh, meter_data[idx].active_energy_wh, idcon, timeout_ms);
 	if (ret == 0) {
-		const struct zbus_channel *chan;
-		union ocpp_io_value io;
-
 		LOG_INF("ocpp start charging connector id %d\n", idcon);
-		memset(&io, 0xff, sizeof(io));
 
-		/* wait for stop charging event from main or remote CS */
-		zbus_chan_add_obs(&ch_event, obs, K_SECONDS(1));
-		do {
-			zbus_sub_wait(obs, &chan, K_FOREVER);
-			zbus_chan_read(chan, &io, K_SECONDS(1));
+		/* Simulate realistic charging */
+		meter_data[idx].charging = true;
+		meter_data[idx].current_amps = 160;  /* Start with 16.0 Amps */
 
-			if (io.stop_charge.id_con == idcon) {
-				break;
+		/* Wait for stop charging signal or simulate charging for a period */
+		while (meter_data[idx].charging) {
+			/* Simulate energy accumulation: ~3.7 kW at 230V, 16A */
+			/* Every second adds ~1 Wh (3700W / 3600s ≈ 1 Wh/s) */
+			k_sleep(K_SECONDS(1));
+			meter_data[idx].active_energy_wh += 1;
+
+			/* Vary current slightly to be more realistic */
+			if (sys_rand32_get() % 10 == 0) {
+				meter_data[idx].current_amps = 155 + (sys_rand32_get() % 10);
 			}
 
-		} while (1);
+			/* Check if stop was signaled */
+			if (k_sem_take(stop_sems[idx], K_NO_WAIT) == 0) {
+				break;
+			}
+		}
+
+		meter_data[idx].charging = false;
+		meter_data[idx].current_amps = 0;
 	}
 
-	ret = ocpp_stop_transaction(sh, sys_rand32_get(), timeout_ms);
+	ret = ocpp_stop_transaction(sh, meter_data[idx].active_energy_wh, timeout_ms);
 	if (ret < 0) {
 		LOG_ERR("ocpp stop txn idcon %d> %d\n", idcon, ret);
 		return;
@@ -217,7 +245,7 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	LOG_INF("ocpp stop charging connector id %d\n", idcon);
 	k_sleep(K_SECONDS(1));
 	ocpp_session_close(sh);
-	tid[idcon - 1] = NULL;
+	tid[idx] = NULL;
 	k_sleep(K_SECONDS(1));
 	k_thread_abort(k_current_get());
 }
@@ -323,19 +351,15 @@ int main(void)
 		tid[i] = k_thread_create(&tinfo[i], cp_stk[i],
 					 sizeof(cp_stk[i]),
 					 ocpp_cp_entry, (void *)(uintptr_t)(i + 1),
-					 idtag[i], obs[i], 7, 0, K_NO_WAIT);
+					 idtag[i], NULL, 7, 0, K_NO_WAIT);
 	}
 
 	/* Active charging session */
 	k_sleep(K_SECONDS(30));
 
-	/* Send stop charging to thread */
+	/* Send stop charging to threads */
 	for (i = 0; i < NO_OF_CONN; i++) {
-		union ocpp_io_value io = {0};
-
-		io.stop_charge.id_con = i + 1;
-
-		zbus_chan_pub(&ch_event, &io, K_MSEC(100));
+		k_sem_give(stop_sems[i]);
 		k_sleep(K_SECONDS(1));
 	}
 
