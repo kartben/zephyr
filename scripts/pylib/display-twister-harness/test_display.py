@@ -17,9 +17,14 @@ def test_config(request):
 
 
 def get_prompt(config):
-    '''
-    get_prompt: get prompt string
-    '''
+    """Get prompt string from config file.
+
+    Args:
+        config: Path to configuration file
+
+    Returns:
+        Dictionary containing test configuration
+    """
     with open(config) as yaml_file:
         data = yaml.safe_load(yaml_file)
 
