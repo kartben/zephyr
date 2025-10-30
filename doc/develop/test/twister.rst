@@ -561,6 +561,7 @@ harness: <string>
     - ctest
     - shell
     - power
+    - display_capture
 
     See :ref:`twister_harnesses` for more information.
 
@@ -1066,6 +1067,143 @@ The harness executes the following steps:
 - **num_of_transitions** – Expected number of power state transitions in the DUT during test execution.
 - **expected_rms_values** – Target RMS values for each identified execution phase (in milliamps).
 - **tolerance_percentage** – Allowed deviation percentage from the expected RMS values.
+
+.. _twister_display_capture_harness:
+
+Display Capture
+===============
+
+The ``display_capture`` harness is used to verify display driver functionality by capturing
+and analyzing display output using a camera. It integrates with pytest to perform automated
+visual testing using video fingerprints.
+
+Hardware Setup
+--------------
+
+The display capture harness requires:
+
+- UVC compatible camera with at least 2 megapixels (e.g., 1080p resolution)
+- Light-blocking enclosure or black curtain to ensure consistent lighting
+- PC host with camera connection for capturing display output
+- DUT connected to the same PC for flashing and serial console access
+
+Configuration
+-------------
+
+The harness uses a YAML configuration file that defines camera settings, test parameters,
+and video signature analysis options. A typical configuration includes:
+
+.. code-block:: yaml
+
+    case_config:
+      device_id: 0        # Camera index
+      res_x: 1280         # Horizontal resolution
+      res_y: 720          # Vertical resolution
+      fps: 30             # Frames per second
+      run_time: 20        # Duration in seconds
+    tests:
+      timeout: 30         # Timeout in seconds
+      prompt: "screen starts"
+      expect: ["tests.drivers.display.check.shield"]
+    plugins:
+      - name: signature
+        module: plugins.signature_plugin
+        class: VideoSignaturePlugin
+        status: "enable"
+        config:
+          operations: "compare"  # or "generate"
+          metadata:
+            name: "tests.drivers.display.check.shield"
+            platform: "frdm_mcxn947"
+          directory: "./fingerprints"
+          duration: 100       # Number of frames to analyze
+          method: "combined"  # phash, dhash, histogram, or combined
+          threshold: 0.65
+          phash_weight: 0.35
+          dhash_weight: 0.25
+          histogram_weight: 0.2
+          edge_ratio_weight: 0.1
+          gradient_hist_weight: 0.1
+
+The configuration file path is specified in the test's ``testcase.yaml`` via the
+``display_capture_config`` harness configuration option using the ``DISPLAY_TEST_DIR``
+environment variable:
+
+.. code-block:: yaml
+
+    harness: display_capture
+    harness_config:
+      pytest_dut_scope: session
+      fixture: fixture_display
+      display_capture_config: "${DISPLAY_TEST_DIR}/display_config.yaml"
+
+Workflow
+--------
+
+**1. Generate Fingerprints**
+
+First, generate reference fingerprints for a known-good display output:
+
+.. code-block:: bash
+
+    # Build and flash the display test
+    west build -b <board> tests/drivers/display/display_check
+    west flash
+
+    # Install display-twister-harness dependencies
+    pip install -r scripts/requirements-run-test.txt
+
+    # Configure for fingerprint generation mode
+    # Set operations: "generate" in the config file
+
+    # Generate fingerprints
+    export DISPLAY_TEST_DIR=<path-to-config-directory>
+    scripts/twister --device-testing --hardware-map map.yml \
+        -T tests/drivers/display/display_check/
+
+Fingerprints are stored in the directory specified by the ``directory`` field in the
+configuration, organized by test name and platform as defined in the ``metadata`` section.
+
+**2. Run Tests**
+
+After generating fingerprints, run tests in comparison mode:
+
+.. code-block:: bash
+
+    # Set operations: "compare" in the config file
+    export DISPLAY_TEST_DIR=<path-to-fingerprints-parent-directory>
+    scripts/twister --device-testing --hardware-map map.yml \
+        -T tests/drivers/display/display_check/
+
+The harness compares captured video against reference fingerprints using the configured
+signature methods and thresholds.
+
+Fixtures
+--------
+
+Tests using the display capture harness require the ``fixture_display`` fixture
+(or board-specific variants like ``fixture_display_g1120b0mipi``) to be defined
+in the hardware map file:
+
+.. code-block:: yaml
+
+    - connected: true
+      platform: frdm_mcxn947/mcxn947/cpu0
+      fixtures:
+        - fixture_display
+      id: <board-id>
+      product: <product-name>
+      runner: <runner-name>
+      serial: /dev/ttyACM0
+
+Notes
+-----
+
+- The test name in the DUT's ``testcase.yaml`` must match the ``name`` field in the
+  fingerprint's metadata configuration
+- Multiple fingerprints can be stored in one directory for comprehensive validation,
+  though this increases comparison time
+- Fingerprints are specific to both the test scenario and platform
 
 .. _twister_bsim_harness:
 
