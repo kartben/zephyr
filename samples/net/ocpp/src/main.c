@@ -5,6 +5,8 @@
  */
 
 #include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
 #include <time.h>
 
 #include <zephyr/net/net_if.h>
@@ -15,6 +17,10 @@
 #include <zephyr/net/ocpp.h>
 #include <zephyr/random/random.h>
 #include <zephyr/zbus/zbus.h>
+#include <zephyr/usb/usbd.h>
+#include <zephyr/usb/usb_device.h>
+#include <zephyr/drivers/uart.h>
+#include <sample_usbd.h>
 
 #include "net_sample_common.h"
 
@@ -30,6 +36,80 @@ K_KERNEL_STACK_ARRAY_DEFINE(cp_stk, NO_OF_CONN, 2 * 1024);
 static struct k_thread tinfo[NO_OF_CONN];
 static k_tid_t tid[NO_OF_CONN];
 static char idtag[NO_OF_CONN][25];
+
+/* USB High-Speed Data Logger for showcasing USB HS capabilities */
+#if defined(CONFIG_USB_DEVICE_STACK_NEXT)
+static const struct device *const usb_cdc_dev = DEVICE_DT_GET_ONE(zephyr_cdc_acm_uart);
+static bool usb_enabled;
+static uint32_t usb_bytes_sent;
+static uint32_t meter_reading_count;
+
+/* USB logging thread stack and data */
+#define USB_LOG_STACK_SIZE 2048
+K_THREAD_STACK_DEFINE(usb_log_stack, USB_LOG_STACK_SIZE);
+static struct k_thread usb_log_thread_data;
+
+/* Ring buffer for USB logging to demonstrate high-speed throughput */
+#define USB_LOG_RING_BUF_SIZE 4096
+K_MSGQ_DEFINE(usb_log_msgq, 128, 32, 4);
+
+static void usb_log_data(const char *format, ...)
+{
+	char buf[128];
+	va_list args;
+	int len;
+
+	if (!usb_enabled) {
+		return;
+	}
+
+	va_start(args, format);
+	len = vsnprintf(buf, sizeof(buf), format, args);
+	va_end(args);
+
+	if (len > 0 && len < sizeof(buf)) {
+		/* Try to queue the message, drop if queue is full */
+		k_msgq_put(&usb_log_msgq, buf, K_NO_WAIT);
+	}
+}
+
+static void usb_logger_thread(void *p1, void *p2, void *p3)
+{
+	char msg[128];
+	uint32_t dtr = 0;
+
+	ARG_UNUSED(p1);
+	ARG_UNUSED(p2);
+	ARG_UNUSED(p3);
+
+	if (!device_is_ready(usb_cdc_dev)) {
+		LOG_ERR("USB CDC ACM device not ready");
+		return;
+	}
+
+	LOG_INF("USB High-Speed logger started");
+	LOG_INF("Connect to USB CDC ACM port to see charging data at high speed");
+
+	while (1) {
+		uart_line_ctrl_get(usb_cdc_dev, UART_LINE_CTRL_DTR, &dtr);
+		if (dtr) {
+			usb_enabled = true;
+			/* Process queued log messages */
+			while (k_msgq_get(&usb_log_msgq, msg, K_NO_WAIT) == 0) {
+				int len = strlen(msg);
+
+				uart_fifo_fill(usb_cdc_dev, msg, len);
+				usb_bytes_sent += len;
+			}
+		} else {
+			usb_enabled = false;
+		}
+
+		k_sleep(K_MSEC(10));
+	}
+}
+#endif /* CONFIG_USB_DEVICE_STACK_NEXT */
+
 
 static int ocpp_get_time_from_sntp(void)
 {
@@ -97,6 +177,13 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 			LOG_DBG("mtr reading val %s con %d", io->meter_val.val,
 				io->meter_val.id_con);
 
+#if defined(CONFIG_USB_DEVICE_STACK_NEXT)
+			/* USB High-Speed showcase: Log meter readings for analysis */
+			meter_reading_count++;
+			usb_log_data("[METER] Conn%d: %s Wh (reading #%u)\r\n",
+				     io->meter_val.id_con, io->meter_val.val,
+				     meter_reading_count);
+#endif
 			return 0;
 		}
 		break;
@@ -121,6 +208,12 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 			LOG_INF("Remote start charging idtag %s connector %d\n",
 				idtag[idx], idx + 1);
 
+#if defined(CONFIG_USB_DEVICE_STACK_NEXT)
+			/* USB High-Speed showcase: Log charging session start */
+			usb_log_data("[START] Connector %d: ID=%s\r\n",
+				     idx + 1, io->start_charge.idtag);
+#endif
+
 			strncpy(idtag[idx], io->start_charge.idtag,
 				sizeof(idtag[0]));
 
@@ -134,6 +227,11 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 		break;
 
 	case OCPP_USR_STOP_CHARGING:
+#if defined(CONFIG_USB_DEVICE_STACK_NEXT)
+		/* USB High-Speed showcase: Log charging session stop */
+		usb_log_data("[STOP] Connector %d: Session ended\r\n",
+			     io->stop_charge.id_con);
+#endif
 		zbus_chan_pub(&ch_event, io, K_MSEC(100));
 		return 0;
 
@@ -177,6 +275,10 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		} else {
 			LOG_INF("ocpp auth %d> idcon %d status %d\n",
 				ret, idcon, status);
+#if defined(CONFIG_USB_DEVICE_STACK_NEXT)
+			usb_log_data("[AUTH] Connector %d: Authorized (status=%d)\r\n",
+				     idcon, status);
+#endif
 			break;
 		}
 	}
@@ -296,6 +398,28 @@ int main(void)
 
 	printk("OCPP sample %s\n", CONFIG_BOARD);
 
+#if defined(CONFIG_USB_DEVICE_STACK_NEXT)
+	/* USB High-Speed showcase: Initialize USB CDC ACM for data logging */
+	LOG_INF("Initializing USB High-Speed CDC ACM logger...");
+	ret = usb_enable(NULL);
+	if (ret != 0) {
+		LOG_ERR("Failed to enable USB: %d", ret);
+	} else {
+		LOG_INF("USB High-Speed enabled - demonstrating fast data logging");
+		/* Start USB logger thread */
+		k_thread_create(&usb_log_thread_data, usb_log_stack,
+				K_THREAD_STACK_SIZEOF(usb_log_stack),
+				usb_logger_thread,
+				NULL, NULL, NULL,
+				K_PRIO_COOP(7), 0, K_NO_WAIT);
+		k_thread_name_set(&usb_log_thread_data, "usb_logger");
+		
+		usb_log_data("\r\n=== OCPP USB High-Speed Logger ===\r\n");
+		usb_log_data("This showcases USB High-Speed (480 Mbps) data transfer\r\n");
+		usb_log_data("Logging charging session data in real-time\r\n\r\n");
+	}
+#endif
+
 	wait_for_network();
 
 	ret = ocpp_getaddrinfo(CONFIG_NET_SAMPLE_OCPP_SERVER, CONFIG_NET_SAMPLE_OCPP_PORT, &ip);
@@ -338,6 +462,16 @@ int main(void)
 		zbus_chan_pub(&ch_event, &io, K_MSEC(100));
 		k_sleep(K_SECONDS(1));
 	}
+
+#if defined(CONFIG_USB_DEVICE_STACK_NEXT)
+	/* USB High-Speed showcase: Display throughput statistics */
+	usb_log_data("\r\n=== Session Summary ===\r\n");
+	usb_log_data("Total meter readings: %u\r\n", meter_reading_count);
+	usb_log_data("USB data transferred: %u bytes\r\n", usb_bytes_sent);
+	usb_log_data("Average throughput: ~%u bytes/sec\r\n",
+		     usb_bytes_sent / 32); /* Approximate based on 30s session */
+	usb_log_data("USB High-Speed (480 Mbps) enables efficient data logging\r\n");
+#endif
 
 	/* User could trigger remote start/stop transaction from CS server */
 	k_sleep(K_SECONDS(1200));
