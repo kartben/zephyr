@@ -74,7 +74,7 @@ CFLAGS:=-std=c11 ${COMMON_BUILD_FLAGS} ${NSI_BUILD_C_OPTIONS}
 CXXFLAGS:=${COMMON_BUILD_FLAGS} ${NSI_BUILD_CXX_OPTIONS}
 FINALLINK_FLAGS:=${NO_PIE_CO} -no-pie  ${NSI_WARNINGS} \
   -Wl,--gc-sections -ldl -pthread \
-  ${NSI_LINK_OPTIONS} -lm
+  ${NSI_LINK_OPTIONS} -Wl,--unresolved-symbols=report-all -lm
 
 no_default:
 	@echo "There is no default rule, please specify what you want to build,\
