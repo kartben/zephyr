@@ -22,6 +22,10 @@
 char    *strdup(const char *);
 #endif
 
+#ifdef CONFIG_LVGL
+#include "ocpp_gui.h"
+#endif
+
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
 #define NO_OF_CONN 2
@@ -97,6 +101,14 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 			LOG_DBG("mtr reading val %s con %d", io->meter_val.val,
 				io->meter_val.id_con);
 
+#ifdef CONFIG_LVGL
+			/* Update GUI with energy reading */
+			ocpp_gui_update_connector(io->meter_val.id_con, 
+						  "Charging",
+						  7200, /* Simulated 7.2kW power */
+						  wh + io->meter_val.id_con,
+						  NULL);
+#endif
 			return 0;
 		}
 		break;
@@ -124,6 +136,12 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 			strncpy(idtag[idx], io->start_charge.idtag,
 				sizeof(idtag[0]));
 
+#ifdef CONFIG_LVGL
+			/* Update GUI - connector preparing */
+			ocpp_gui_update_connector(idx + 1, "Preparing", 0, 0, 
+						  io->start_charge.idtag);
+#endif
+
 			tid[idx] = k_thread_create(&tinfo[idx], cp_stk[idx],
 						   sizeof(cp_stk[idx]), ocpp_cp_entry,
 						   (void *)(uintptr_t)(idx + 1), idtag[idx],
@@ -135,6 +153,10 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 
 	case OCPP_USR_STOP_CHARGING:
 		zbus_chan_pub(&ch_event, io, K_MSEC(100));
+#ifdef CONFIG_LVGL
+		/* Update GUI - connector stopping */
+		ocpp_gui_update_connector(io->stop_charge.id_con, "Idle", 0, 0, NULL);
+#endif
 		return 0;
 
 	case OCPP_USR_UNLOCK_CONNECTOR:
@@ -166,6 +188,11 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		 * after Bootnotification process (handled in lib) completed.
 		 */
 
+#ifdef CONFIG_LVGL
+		/* Update GUI - authorizing */
+		ocpp_gui_update_connector(idcon, "Authorizing", 0, 0, idtag);
+#endif
+
 		k_sleep(K_SECONDS(5));
 		ret = ocpp_authorize(sh,
 				     idtag,
@@ -193,6 +220,10 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		union ocpp_io_value io;
 
 		LOG_INF("ocpp start charging connector id %d\n", idcon);
+#ifdef CONFIG_LVGL
+		/* Update GUI - charging started */
+		ocpp_gui_update_connector(idcon, "Charging", 7200, 0, idtag);
+#endif
 		memset(&io, 0xff, sizeof(io));
 
 		/* wait for stop charging event from main or remote CS */
@@ -215,6 +246,10 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	}
 
 	LOG_INF("ocpp stop charging connector id %d\n", idcon);
+#ifdef CONFIG_LVGL
+	/* Update GUI - charging stopped */
+	ocpp_gui_update_connector(idcon, "Idle", 0, 0, NULL);
+#endif
 	k_sleep(K_SECONDS(1));
 	ocpp_session_close(sh);
 	tid[idcon - 1] = NULL;
@@ -287,6 +322,10 @@ int main(void)
 	int ret;
 	int i;
 	char *ip = NULL;
+#ifdef CONFIG_LVGL
+	uint32_t gui_counter = 0;
+	struct timespec ts;
+#endif
 
 	struct ocpp_cp_info cpi = { "basic", "zephyr", .num_of_con = NO_OF_CONN };
 	struct ocpp_cs_info csi = { NULL,
@@ -296,7 +335,19 @@ int main(void)
 
 	printk("OCPP sample %s\n", CONFIG_BOARD);
 
+#ifdef CONFIG_LVGL
+	/* Initialize GUI early */
+	ocpp_gui_init();
+	ocpp_gui_update_system_status("Initializing", false);
+	ocpp_gui_update_connector(1, "Idle", 0, 0, NULL);
+	ocpp_gui_update_connector(2, "Idle", 0, 0, NULL);
+#endif
+
 	wait_for_network();
+
+#ifdef CONFIG_LVGL
+	ocpp_gui_update_system_status("Network Ready", false);
+#endif
 
 	ret = ocpp_getaddrinfo(CONFIG_NET_SAMPLE_OCPP_SERVER, CONFIG_NET_SAMPLE_OCPP_PORT, &ip);
 	if (ret < 0) {
@@ -305,7 +356,16 @@ int main(void)
 
 	csi.cs_ip = ip;
 
+#ifdef CONFIG_LVGL
+	ocpp_gui_update_network_status(ip, true);
+#endif
+
 	ocpp_get_time_from_sntp();
+
+#ifdef CONFIG_LVGL
+	clock_gettime(CLOCK_REALTIME, &ts);
+	ocpp_gui_update_time((uint32_t)ts.tv_sec);
+#endif
 
 	ret = ocpp_init(&cpi,
 			&csi,
@@ -315,6 +375,10 @@ int main(void)
 		LOG_ERR("ocpp init failed %d\n", ret);
 		return ret;
 	}
+
+#ifdef CONFIG_LVGL
+	ocpp_gui_update_system_status("Connected", true);
+#endif
 
 	/* Spawn threads for each connector */
 	for (i = 0; i < NO_OF_CONN; i++) {
@@ -340,7 +404,21 @@ int main(void)
 	}
 
 	/* User could trigger remote start/stop transaction from CS server */
+#ifdef CONFIG_LVGL
+	/* Main loop with GUI updates */
+	while (1) {
+		k_sleep(K_MSEC(100));
+		ocpp_gui_task();
+		
+		/* Update time every 10 seconds */
+		if (++gui_counter % 100 == 0) {
+			clock_gettime(CLOCK_REALTIME, &ts);
+			ocpp_gui_update_time((uint32_t)ts.tv_sec);
+		}
+	}
+#else
 	k_sleep(K_SECONDS(1200));
+#endif
 
 	return 0;
 }

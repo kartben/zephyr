@@ -13,7 +13,10 @@ between Charge Points (Electric vehicle (EV) charging stations) and a central
 management system, also known as a charging station network.
 
 This ocpp sample application for Zephyr implements the OCPP library
-and establishes a connection to an Central System server using the web socket
+and establishes a connection to an Central System server using the web socket.
+
+An optional LVGL-based graphical user interface (GUI) is available to visualize
+the charging station status, connector states, and energy readings in real-time.
 
 The source code for this sample application can be found at:
 :zephyr_file:`samples/net/ocpp`.
@@ -67,3 +70,67 @@ The output of sample is:
 	[00:00:17.255,000] <inf> main: ocpp start charging connector id 2
 	[00:01:07.064,000] <inf> main: ocpp stop charging connector id 1
 	[00:01:08.063,000] <inf> main: ocpp stop charging connector id 2
+
+Building with LVGL GUI
+***********************
+
+To build the sample with the LVGL GUI support, use the ``prj_gui.conf`` configuration:
+
+.. zephyr-app-commands::
+   :zephyr-app: samples/net/ocpp
+   :board: native_sim
+   :goals: build
+   :gen-args: -DCONF_FILE=prj_gui.conf
+   :compact:
+
+For native_sim (simulator), you can run the application directly:
+
+.. code-block:: console
+
+	west build -b native_sim -DCONF_FILE=prj_gui.conf
+	./build/zephyr/zephyr.exe
+
+The GUI will display:
+
+- Charging station status and connection state
+- Two connector cards showing real-time status (Idle, Authorizing, Charging)
+- Power consumption in kW
+- Energy delivered in Wh/kWh
+- Network status with IP address
+- Current time display
+
+The GUI features a modern EV charging station theme with:
+
+- Dark blue background for easy viewing
+- Bright cyan accents for charging indicators
+- Color-coded status indicators (green for active, amber for warnings, gray for idle)
+- Real-time updates as charging sessions progress
+
+GUI Screenshots
+***************
+
+Initial State (Both Connectors Idle):
+
+.. image:: doc/ocpp_gui_idle.png
+   :align: center
+   :alt: OCPP GUI - Idle State
+
+Connector Authorizing:
+
+.. image:: doc/ocpp_gui_authorizing.png
+   :align: center
+   :alt: OCPP GUI - Authorizing
+
+Both Connectors Charging:
+
+.. image:: doc/ocpp_gui_charging.png
+   :align: center
+   :alt: OCPP GUI - Charging
+
+Mixed State (One Charging, One Idle):
+
+.. image:: doc/ocpp_gui_mixed.png
+   :align: center
+   :alt: OCPP GUI - Mixed State
+
+
