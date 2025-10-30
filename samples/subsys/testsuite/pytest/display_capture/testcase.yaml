@@ -1,0 +1,38 @@
+common:
+  tags:
+    - test_framework
+    - pytest
+    - display
+    - display_capture
+  filter: dt_chosen_enabled("zephyr,display")
+  integration_platforms:
+    - native_sim
+
+tests:
+  # Basic pytest test without actual display capture
+  # This demonstrates the test structure but doesn't require camera setup
+  sample.pytest.display_capture:
+    platform_allow:
+      - native_sim
+    harness: pytest
+    harness_config:
+      pytest_root:
+        - "pytest/test_display_demo.py"
+
+  # Example test using display_capture harness
+  # This shows how to configure the display_capture harness
+  # To use this test, you need to:
+  # 1. Set up a camera to capture display output
+  # 2. Generate fingerprints using camera_shield (see README.rst)
+  # 3. Set DISPLAY_TEST_DIR environment variable
+  # 4. Uncomment the test below and run on supported hardware
+  #
+  # sample.pytest.display_capture.with_camera:
+  #   platform_allow:
+  #     - frdm_mcxn947/mcxn947/cpu0
+  #   harness: display_capture
+  #   harness_config:
+  #     pytest_dut_scope: session
+  #     fixture: fixture_display
+  #     display_capture_config: "${DISPLAY_TEST_DIR}/display_config.yaml"
+  #   extra_args: SHIELD=lcd_par_s035_8080
