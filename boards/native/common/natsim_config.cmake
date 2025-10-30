@@ -17,6 +17,12 @@ if("${LINKER}" STREQUAL "lld")
   target_link_options(native_simulator INTERFACE "-fuse-ld=lld")
 endif()
 
+# Get linker launcher if set (e.g., for dtdoctor SCA wrapper)
+set(NSI_LINKER_LAUNCHER "${CMAKE_C_LINKER_LAUNCHER}")
+if(NSI_LINKER_LAUNCHER)
+  string(REPLACE ";" " " NSI_LINKER_LAUNCHER "${NSI_LINKER_LAUNCHER}")
+endif()
+
 set(nsi_config_content
   ${nsi_config_content}
   "NSI_AR:=${CMAKE_AR}"
@@ -32,6 +38,7 @@ set(nsi_config_content
   "NSI_PATH:=${NSI_DIR}/"
   "NSI_N_CPUS:=${CONFIG_NATIVE_SIMULATOR_NUMBER_MCUS}"
   "NSI_LOCALIZE_OPTIONS:=--localize-symbol=CONFIG_* $<JOIN:$<TARGET_PROPERTY:native_simulator,LOCALIZE_EXTRA_OPTIONS>,\ >"
+  "NSI_LINKER_LAUNCHER:=${NSI_LINKER_LAUNCHER}"
 )
 
 string(REPLACE ";" "\n" nsi_config_content "${nsi_config_content}")

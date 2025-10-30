@@ -52,6 +52,8 @@ SHELL?=bash
 NSI_CC?=gcc
 NSI_CXX?=g++
 NSI_LINKER?=${NSI_CC}
+#  Linker launcher wrapper (e.g., for dtdoctor SCA wrapper)
+NSI_LINKER_LAUNCHER?=
 #  Archive program (it is unlikely you'll need to change this)
 NSI_AR?=ar
 #  Objcopy program (it is unlikely you'll need to change this)
@@ -139,7 +141,7 @@ ${NSI_BUILD_PATH}/%.loc_cpusw.o: /% ${NSI_CONFIG_FILE}
 
 ${NSI_EXE}: ${NSI_BUILD_PATH}/${RUNNER_LIB} ${LOCALIZED_EMBSW} ${NSI_EXTRA_LIBS} \
  ${NSI_BUILD_PATH}/linker_script.ld
-	${NSI_LINKER} -Wl,--whole-archive ${LOCALIZED_EMBSW} ${NSI_BUILD_PATH}/${RUNNER_LIB} \
+	${NSI_LINKER_LAUNCHER} ${NSI_LINKER} -Wl,--whole-archive ${LOCALIZED_EMBSW} ${NSI_BUILD_PATH}/${RUNNER_LIB} \
 	  ${NSI_EXTRA_LIBS} -Wl,--no-whole-archive \
 	  -o $@ ${FINALLINK_FLAGS} -T ${NSI_BUILD_PATH}/linker_script.ld
 
