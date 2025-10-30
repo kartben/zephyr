@@ -9,3 +9,7 @@ zephyr_library_sources(
     ocpp_j.c
     ocpp_wamp_rpc.c
 )
+
+zephyr_library_sources_ifdef(CONFIG_OCPP_SHELL
+    ocpp_shell.c
+)
