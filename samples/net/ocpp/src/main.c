@@ -18,6 +18,10 @@
 
 #include "net_sample_common.h"
 
+#if IS_ENABLED(CONFIG_LVGL)
+#include "ocpp_gui.h"
+#endif
+
 #if __POSIX_VISIBLE < 200809
 char    *strdup(const char *);
 #endif
@@ -30,6 +34,7 @@ K_KERNEL_STACK_ARRAY_DEFINE(cp_stk, NO_OF_CONN, 2 * 1024);
 static struct k_thread tinfo[NO_OF_CONN];
 static k_tid_t tid[NO_OF_CONN];
 static char idtag[NO_OF_CONN][25];
+static int connector_energy[NO_OF_CONN] = {0, 0};
 
 static int ocpp_get_time_from_sntp(void)
 {
@@ -94,6 +99,20 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 				 wh + io->meter_val.id_con);
 
 			wh++;
+			
+			/* Update GUI with energy reading */
+			if (io->meter_val.id_con > 0 && io->meter_val.id_con <= NO_OF_CONN) {
+				connector_energy[io->meter_val.id_con - 1] = 
+					wh + io->meter_val.id_con;
+#if IS_ENABLED(CONFIG_LVGL)
+				ocpp_gui_update_connector_energy(io->meter_val.id_con, 
+					connector_energy[io->meter_val.id_con - 1]);
+				/* Simulate power reading (energy delta * 3600 for hourly rate) */
+				ocpp_gui_update_connector_power(io->meter_val.id_con, 
+					3600); /* Approx 3.6 kW */
+#endif
+			}
+			
 			LOG_DBG("mtr reading val %s con %d", io->meter_val.val,
 				io->meter_val.id_con);
 
@@ -155,6 +174,10 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	enum ocpp_auth_status status;
 	const uint32_t timeout_ms = 500;
 
+#if IS_ENABLED(CONFIG_LVGL)
+	ocpp_gui_update_connector_status(idcon, "Preparing");
+#endif
+
 	ret = ocpp_session_open(&sh);
 	if (ret < 0) {
 		LOG_ERR("ocpp open ses idcon %d> res %d\n", idcon, ret);
@@ -184,6 +207,9 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	if (status != OCPP_AUTH_ACCEPTED) {
 		LOG_ERR("ocpp start idcon %d> not authorized status %d\n",
 			idcon, status);
+#if IS_ENABLED(CONFIG_LVGL)
+		ocpp_gui_update_connector_status(idcon, "Rejected");
+#endif
 		return;
 	}
 
@@ -193,6 +219,9 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		union ocpp_io_value io;
 
 		LOG_INF("ocpp start charging connector id %d\n", idcon);
+#if IS_ENABLED(CONFIG_LVGL)
+		ocpp_gui_update_connector_status(idcon, "Charging");
+#endif
 		memset(&io, 0xff, sizeof(io));
 
 		/* wait for stop charging event from main or remote CS */
@@ -215,8 +244,16 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	}
 
 	LOG_INF("ocpp stop charging connector id %d\n", idcon);
+#if IS_ENABLED(CONFIG_LVGL)
+	ocpp_gui_update_connector_status(idcon, "Finishing");
+#endif
 	k_sleep(K_SECONDS(1));
 	ocpp_session_close(sh);
+#if IS_ENABLED(CONFIG_LVGL)
+	ocpp_gui_update_connector_status(idcon, "Available");
+	ocpp_gui_update_connector_energy(idcon, 0);
+	ocpp_gui_update_connector_power(idcon, 0);
+#endif
 	tid[idcon - 1] = NULL;
 	k_sleep(K_SECONDS(1));
 	k_thread_abort(k_current_get());
@@ -296,10 +333,23 @@ int main(void)
 
 	printk("OCPP sample %s\n", CONFIG_BOARD);
 
+#if IS_ENABLED(CONFIG_LVGL)
+	/* Initialize GUI first */
+	ocpp_gui_init();
+	ocpp_gui_update_status("Initializing...");
+#endif
+
 	wait_for_network();
+
+#if IS_ENABLED(CONFIG_LVGL)
+	ocpp_gui_update_status("Network ready");
+#endif
 
 	ret = ocpp_getaddrinfo(CONFIG_NET_SAMPLE_OCPP_SERVER, CONFIG_NET_SAMPLE_OCPP_PORT, &ip);
 	if (ret < 0) {
+#if IS_ENABLED(CONFIG_LVGL)
+		ocpp_gui_update_status("Failed to resolve server");
+#endif
 		return ret;
 	}
 
@@ -307,14 +357,26 @@ int main(void)
 
 	ocpp_get_time_from_sntp();
 
+#if IS_ENABLED(CONFIG_LVGL)
+	ocpp_gui_update_status("Connecting to CS...");
+#endif
+
 	ret = ocpp_init(&cpi,
 			&csi,
 			user_notify_cb,
 			NULL);
 	if (ret < 0) {
 		LOG_ERR("ocpp init failed %d\n", ret);
+#if IS_ENABLED(CONFIG_LVGL)
+		ocpp_gui_update_status("Connection failed");
+#endif
 		return ret;
 	}
+
+#if IS_ENABLED(CONFIG_LVGL)
+	ocpp_gui_update_cs_status(true);
+	ocpp_gui_update_status("CS connected");
+#endif
 
 	/* Spawn threads for each connector */
 	for (i = 0; i < NO_OF_CONN; i++) {
@@ -339,8 +401,18 @@ int main(void)
 		k_sleep(K_SECONDS(1));
 	}
 
+#if IS_ENABLED(CONFIG_LVGL)
+	ocpp_gui_update_status("Ready for remote control");
+	
+	/* Keep GUI running and updating */
+	while (1) {
+		ocpp_gui_task();
+		k_sleep(K_MSEC(10));
+	}
+#else
 	/* User could trigger remote start/stop transaction from CS server */
 	k_sleep(K_SECONDS(1200));
+#endif
 
 	return 0;
 }
