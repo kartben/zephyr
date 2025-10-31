@@ -95,6 +95,7 @@ extensions = [
     "zephyr.external_content",
     "zephyr.domain",
     "zephyr.api_overview",
+    "sphinxext.opengraph",
 ]
 
 # Only use image conversion when it is really needed, e.g. LaTeX build.
@@ -385,6 +386,22 @@ linkcheck_anchors = False
 
 api_overview_doxygen_out_dir = str(doxyrunner_projects["zephyr"]["outdir"])
 api_overview_base_url = "https://github.com/zephyrproject-rtos/zephyr"
+
+# -- Options for sphinxext.opengraph --------------------------------------
+
+ogp_site_url = html_baseurl
+ogp_site_name = "Zephyr Project Documentation"
+ogp_type = "website"
+ogp_image = "https://docs.zephyrproject.org/latest/_static/images/logo.svg"
+ogp_description_length = 200
+ogp_enable_meta_description = True
+
+# Custom OpenGraph metadata based on page type
+ogp_custom_meta_tags = [
+    '<meta property="og:locale" content="en_US" />',
+    '<meta name="twitter:card" content="summary_large_image" />',
+    '<meta name="twitter:site" content="@zephyriot" />',
+]
 
 def setup(app):
     # theme customizations

@@ -1412,6 +1412,83 @@ def install_static_assets_as_needed(
         app.add_js_file("js/board.js")
 
 
+def add_opengraph_metadata(
+    app: Sphinx, pagename: str, templatename: str, context: dict[str, Any], doctree: nodes.Node
+) -> None:
+    """Add custom OpenGraph metadata for boards and code samples."""
+    if not doctree:
+        return
+    
+    # Get domain data
+    domain_data = app.env.domaindata["zephyr"]
+    boards = domain_data["boards"]
+    code_samples = domain_data["code-samples"]
+    
+    # Check if this is a board page
+    if domain_data["has_board"].get(pagename, False):
+        # Find the board for this page
+        board = None
+        for board_name, board_info in boards.items():
+            if board_info.get("docname") == pagename:
+                board = board_info
+                board_id = board_name
+                break
+        
+        if board:
+            # Set OpenGraph metadata for board
+            metatags = context.setdefault("metatags", "")
+            
+            # Set og:title
+            title = board.get("full_name", board_id)
+            metatags += f'<meta property="og:title" content="{title} - Zephyr Board" />\n'
+            
+            # Set og:type
+            metatags += '<meta property="og:type" content="article" />\n'
+            
+            # Set og:description
+            description = f"{title} board support in Zephyr RTOS"
+            if board.get("socs"):
+                socs_str = ", ".join(board["socs"])
+                description += f" - SoC: {socs_str}"
+            if board.get("archs"):
+                archs_str = ", ".join(board["archs"])
+                description += f" - Architecture: {archs_str}"
+            metatags += f'<meta property="og:description" content="{description}" />\n'
+            metatags += f'<meta name="description" content="{description}" />\n'
+            
+            context["metatags"] = metatags
+    
+    # Check if this is a code sample page
+    for sample_id, sample_info in code_samples.items():
+        if sample_info.get("docname") == pagename:
+            # Set OpenGraph metadata for code sample
+            metatags = context.setdefault("metatags", "")
+            
+            # Set og:title
+            title = sample_info.get("name", sample_id)
+            metatags += f'<meta property="og:title" content="{title} - Zephyr Sample" />\n'
+            
+            # Set og:type
+            metatags += '<meta property="og:type" content="article" />\n'
+            
+            # Set og:description - extract from description node
+            description = f"{title} code sample for Zephyr RTOS"
+            if sample_info.get("description"):
+                desc_text = sample_info["description"].astext()
+                if desc_text:
+                    # Clean up and truncate description
+                    desc_text = " ".join(desc_text.split())  # normalize whitespace
+                    if len(desc_text) > 200:
+                        desc_text = desc_text[:197] + "..."
+                    description = desc_text
+            
+            metatags += f'<meta property="og:description" content="{description}" />\n'
+            metatags += f'<meta name="description" content="{description}" />\n'
+            
+            context["metatags"] = metatags
+            break
+
+
 def load_board_catalog_into_domain(app: Sphinx) -> None:
     board_catalog = get_catalog(
         generate_hw_features=(
@@ -1449,6 +1526,7 @@ def setup(app):
     app.connect("builder-inited", load_board_catalog_into_domain)
 
     app.connect("html-page-context", install_static_assets_as_needed)
+    app.connect("html-page-context", add_opengraph_metadata)
     app.connect("env-updated", compute_sample_categories_hierarchy)
 
     # monkey-patching of the DoxygenGroupDirective
