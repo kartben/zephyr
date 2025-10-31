@@ -31,6 +31,7 @@ Roles
 
 """
 
+import html
 import json
 import re
 import sys
@@ -1412,6 +1413,23 @@ def install_static_assets_as_needed(
         app.add_js_file("js/board.js")
 
 
+def _add_metatags_to_context(context: dict[str, Any], title: str, description: str, og_type: str = "article") -> None:
+    """Helper function to add OpenGraph and meta description tags to context.
+    
+    Args:
+        context: The Sphinx page context dictionary
+        title: The page title (already HTML-escaped)
+        description: The page description (already HTML-escaped)
+        og_type: The OpenGraph type (default: "article")
+    """
+    metatags = context.setdefault("metatags", "")
+    metatags += f'<meta property="og:title" content="{title}" />\n'
+    metatags += f'<meta property="og:type" content="{og_type}" />\n'
+    metatags += f'<meta property="og:description" content="{description}" />\n'
+    metatags += f'<meta name="description" content="{description}" />\n'
+    context["metatags"] = metatags
+
+
 def add_opengraph_metadata(
     app: Sphinx, pagename: str, templatename: str, context: dict[str, Any], doctree: nodes.Node
 ) -> None:
@@ -1419,62 +1437,41 @@ def add_opengraph_metadata(
     if not doctree:
         return
     
-    # Import html module for escaping
-    import html
-    
     # Get domain data
     domain_data = app.env.domaindata["zephyr"]
-    boards = domain_data["boards"]
-    code_samples = domain_data["code-samples"]
     
     # Check if this is a board page
     if domain_data["has_board"].get(pagename, False):
+        boards = domain_data["boards"]
         # Find the board for this page
-        board = None
         for board_name, board_info in boards.items():
             if board_info.get("docname") == pagename:
-                board = board_info
-                board_id = board_name
-                break
-        
-        if board:
-            # Set OpenGraph metadata for board
-            metatags = context.setdefault("metatags", "")
-            
-            # Set og:title with proper HTML escaping
-            title = html.escape(board.get("full_name", board_id))
-            metatags += f'<meta property="og:title" content="{title} - Zephyr Board" />\n'
-            
-            # Set og:type
-            metatags += '<meta property="og:type" content="article" />\n'
-            
-            # Set og:description with proper HTML escaping
-            description = f"{title} board support in Zephyr RTOS"
-            if board.get("socs"):
-                socs_str = html.escape(", ".join(board["socs"]))
-                description += f" - SoC: {socs_str}"
-            if board.get("archs"):
-                archs_str = html.escape(", ".join(board["archs"]))
-                description += f" - Architecture: {archs_str}"
-            metatags += f'<meta property="og:description" content="{description}" />\n'
-            metatags += f'<meta name="description" content="{description}" />\n'
-            
-            context["metatags"] = metatags
+                # Prepare board metadata
+                title = html.escape(board_info.get("full_name", board_name))
+                title_with_suffix = f"{title} - Zephyr Board"
+                
+                # Build description with board details
+                description = f"{title} board support in Zephyr RTOS"
+                if board_info.get("socs"):
+                    socs_str = html.escape(", ".join(board_info["socs"]))
+                    description += f" - SoC: {socs_str}"
+                if board_info.get("archs"):
+                    archs_str = html.escape(", ".join(board_info["archs"]))
+                    description += f" - Architecture: {archs_str}"
+                
+                # Add metatags to context
+                _add_metatags_to_context(context, title_with_suffix, description)
+                return
     
     # Check if this is a code sample page
+    code_samples = domain_data["code-samples"]
     for sample_id, sample_info in code_samples.items():
         if sample_info.get("docname") == pagename:
-            # Set OpenGraph metadata for code sample
-            metatags = context.setdefault("metatags", "")
-            
-            # Set og:title with proper HTML escaping
+            # Prepare sample metadata
             title = html.escape(sample_info.get("name", sample_id))
-            metatags += f'<meta property="og:title" content="{title} - Zephyr Sample" />\n'
+            title_with_suffix = f"{title} - Zephyr Sample"
             
-            # Set og:type
-            metatags += '<meta property="og:type" content="article" />\n'
-            
-            # Set og:description - extract from description node with proper HTML escaping
+            # Extract description from sample content
             description = f"{title} code sample for Zephyr RTOS"
             if sample_info.get("description"):
                 desc_text = sample_info["description"].astext()
@@ -1485,11 +1482,9 @@ def add_opengraph_metadata(
                         desc_text = desc_text[:197] + "..."
                     description = html.escape(desc_text)
             
-            metatags += f'<meta property="og:description" content="{description}" />\n'
-            metatags += f'<meta name="description" content="{description}" />\n'
-            
-            context["metatags"] = metatags
-            break
+            # Add metatags to context
+            _add_metatags_to_context(context, title_with_suffix, description)
+            return
 
 
 def load_board_catalog_into_domain(app: Sphinx) -> None:
