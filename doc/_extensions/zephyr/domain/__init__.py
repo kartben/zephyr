@@ -1418,9 +1418,13 @@ def _add_metatags_to_context(context: dict[str, Any], title: str, description: s
     
     Args:
         context: The Sphinx page context dictionary
-        title: The page title (already HTML-escaped)
-        description: The page description (already HTML-escaped)
+        title: The page title (must be HTML-escaped by caller)
+        description: The page description (must be HTML-escaped by caller)
         og_type: The OpenGraph type (default: "article")
+    
+    Note:
+        This function assumes title and description are already properly HTML-escaped.
+        It does not perform any escaping itself.
     """
     metatags = context.setdefault("metatags", "")
     metatags += f'<meta property="og:title" content="{title}" />\n'
