@@ -1419,6 +1419,9 @@ def add_opengraph_metadata(
     if not doctree:
         return
     
+    # Import html module for escaping
+    import html
+    
     # Get domain data
     domain_data = app.env.domaindata["zephyr"]
     boards = domain_data["boards"]
@@ -1438,20 +1441,20 @@ def add_opengraph_metadata(
             # Set OpenGraph metadata for board
             metatags = context.setdefault("metatags", "")
             
-            # Set og:title
-            title = board.get("full_name", board_id)
+            # Set og:title with proper HTML escaping
+            title = html.escape(board.get("full_name", board_id))
             metatags += f'<meta property="og:title" content="{title} - Zephyr Board" />\n'
             
             # Set og:type
             metatags += '<meta property="og:type" content="article" />\n'
             
-            # Set og:description
+            # Set og:description with proper HTML escaping
             description = f"{title} board support in Zephyr RTOS"
             if board.get("socs"):
-                socs_str = ", ".join(board["socs"])
+                socs_str = html.escape(", ".join(board["socs"]))
                 description += f" - SoC: {socs_str}"
             if board.get("archs"):
-                archs_str = ", ".join(board["archs"])
+                archs_str = html.escape(", ".join(board["archs"]))
                 description += f" - Architecture: {archs_str}"
             metatags += f'<meta property="og:description" content="{description}" />\n'
             metatags += f'<meta name="description" content="{description}" />\n'
@@ -1464,14 +1467,14 @@ def add_opengraph_metadata(
             # Set OpenGraph metadata for code sample
             metatags = context.setdefault("metatags", "")
             
-            # Set og:title
-            title = sample_info.get("name", sample_id)
+            # Set og:title with proper HTML escaping
+            title = html.escape(sample_info.get("name", sample_id))
             metatags += f'<meta property="og:title" content="{title} - Zephyr Sample" />\n'
             
             # Set og:type
             metatags += '<meta property="og:type" content="article" />\n'
             
-            # Set og:description - extract from description node
+            # Set og:description - extract from description node with proper HTML escaping
             description = f"{title} code sample for Zephyr RTOS"
             if sample_info.get("description"):
                 desc_text = sample_info["description"].astext()
@@ -1480,7 +1483,7 @@ def add_opengraph_metadata(
                     desc_text = " ".join(desc_text.split())  # normalize whitespace
                     if len(desc_text) > 200:
                         desc_text = desc_text[:197] + "..."
-                    description = desc_text
+                    description = html.escape(desc_text)
             
             metatags += f'<meta property="og:description" content="{description}" />\n'
             metatags += f'<meta name="description" content="{description}" />\n'
