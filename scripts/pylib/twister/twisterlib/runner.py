@@ -973,20 +973,38 @@ class ProjectBuilder(FilterBuilder):
 
         if op == "filter":
             try:
-                ret = self.cmake(filter_stages=self.instance.filter_stages)
-                if self.instance.status in [TwisterStatus.FAIL, TwisterStatus.ERROR]:
+                stages = self.instance.filter_stages
+                filter_reason = "runtime filter"
+
+                if "dts" in stages and "kconfig" in stages:
+                    # Prioritize DT filtering before Kconfig to avoid unnecessary
+                    # Kconfig processing that might fail when DT would filter anyway
+                    ret = self.cmake(filter_stages=["dts"])
+
+                    if (self.instance.status not in [TwisterStatus.FAIL,
+                                                      TwisterStatus.ERROR] and
+                        self.instance.name in ret['filter'] and
+                        ret['filter'][self.instance.name]):
+                        filter_reason = "runtime filter (DT)"
+                    elif self.instance.status not in [TwisterStatus.FAIL,
+                                                       TwisterStatus.ERROR]:
+                        # DT filtering passed, proceed with full filtering
+                        ret = self.cmake(filter_stages=stages)
+                else:
+                    ret = self.cmake(filter_stages=stages)
+
+                if self.instance.status in [TwisterStatus.FAIL,
+                                             TwisterStatus.ERROR]:
+                    next_op = 'report'
+                elif (self.instance.name in ret['filter'] and
+                      ret['filter'][self.instance.name]):
+                    self.instance.status = TwisterStatus.FILTER
+                    self.instance.reason = filter_reason
+                    results.filtered_runtime_increment()
+                    self.instance.add_missing_case_status(TwisterStatus.FILTER)
                     next_op = 'report'
                 else:
-                    # Here we check the dt/kconfig filter results coming from running cmake
-                    if self.instance.name in ret['filter'] and ret['filter'][self.instance.name]:
-                        logger.debug(f"filtering {self.instance.name}")
-                        self.instance.status = TwisterStatus.FILTER
-                        self.instance.reason = "runtime filter"
-                        results.filtered_runtime_increment()
-                        self.instance.add_missing_case_status(TwisterStatus.FILTER)
-                        next_op = 'report'
-                    else:
-                        next_op = 'cmake'
+                    next_op = 'cmake'
             except StatusAttributeError as sae:
                 logger.error(str(sae))
                 self.instance.status = TwisterStatus.ERROR
