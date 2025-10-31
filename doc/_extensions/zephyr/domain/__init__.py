@@ -383,12 +383,12 @@ class ConvertBoardNode(SphinxTransform):
                 "category": "Development Board",
                 "url": doc_url,
             }
-            
+
             # Add image if available
             if node["image"] is not None:
                 image_url = self.app.config.html_baseurl.rstrip("/") + "/" + node["image"]
                 schema_data["image"] = image_url
-            
+
             json_ld = nodes.raw(
                 "",
                 f"""<script type="application/ld+json">
