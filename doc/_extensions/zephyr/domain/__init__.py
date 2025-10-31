@@ -218,22 +218,28 @@ class ConvertCodeSampleNode(SphinxTransform):
 
             # Similarly, add a node with JSON-LD markup (only renders in HTML output) describing
             # the code sample.
+            doc_url = self.app.config.html_baseurl.rstrip("/") + "/" + self.env.docname + ".html"
+            schema_data = {
+                "@context": "https://schema.org",
+                "@type": "SoftwareSourceCode",
+                "name": node["name"],
+                "description": node.children[0].astext(),
+                "programmingLanguage": "C",
+                "codeSampleType": "full",
+                "codeRepository": gh_link_get_url(self.app, self.env.docname),
+                "license": "https://spdx.org/licenses/Apache-2.0",
+                "author": {
+                    "@type": "Organization",
+                    "name": "The Zephyr Project",
+                    "url": "https://www.zephyrproject.org",
+                },
+                "url": doc_url,
+            }
             json_ld = nodes.raw(
                 "",
                 f"""<script type="application/ld+json">
-                {
-                    json.dumps(
-                        {
-                            "@context": "http://schema.org",
-                            "@type": "SoftwareSourceCode",
-                            "name": node['name'],
-                            "description": node.children[0].astext(),
-                            "codeSampleType": "full",
-                            "codeRepository": gh_link_get_url(self.app, self.env.docname),
-                        }
-                    )
-                }
-                </script>""",
+{json.dumps(schema_data, indent=2)}
+</script>""",
                 format="html",
             )
             node.document += json_ld
@@ -342,6 +348,55 @@ class ConvertBoardNode(SphinxTransform):
             # Remove the moved siblings from their original parent
             for sibling in siblings_to_move:
                 parent.remove(sibling)
+
+            # Extract board description from the first paragraph following the board directive
+            board_description = node["full_name"]
+            for sibling in siblings_to_move:
+                if isinstance(sibling, nodes.section):
+                    for child in sibling.children:
+                        if isinstance(child, nodes.paragraph):
+                            board_description = child.astext()
+                            break
+                    break
+                elif isinstance(sibling, nodes.paragraph):
+                    board_description = sibling.astext()
+                    break
+
+            # Set board description as meta description for improved SEO
+            meta_description = nodes.meta()
+            meta_description["name"] = "description"
+            meta_description["content"] = board_description
+            node.document += meta_description
+
+            # Add JSON-LD structured data for the board
+            doc_url = self.app.config.html_baseurl.rstrip("/") + "/" + self.env.docname + ".html"
+            schema_data = {
+                "@context": "https://schema.org",
+                "@type": "Product",
+                "name": node["full_name"],
+                "description": board_description,
+                "manufacturer": {
+                    "@type": "Organization",
+                    "name": node["vendor"],
+                },
+                "model": node["id"],
+                "category": "Development Board",
+                "url": doc_url,
+            }
+            
+            # Add image if available
+            if node["image"] is not None:
+                image_url = self.app.config.html_baseurl.rstrip("/") + "/" + node["image"]
+                schema_data["image"] = image_url
+            
+            json_ld = nodes.raw(
+                "",
+                f"""<script type="application/ld+json">
+{json.dumps(schema_data, indent=2)}
+</script>""",
+                format="html",
+            )
+            node.document += json_ld
 
 
 class CodeSampleCategoriesTocPatching(SphinxPostTransform):
