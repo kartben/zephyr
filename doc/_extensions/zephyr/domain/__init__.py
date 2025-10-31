@@ -1446,33 +1446,35 @@ def add_opengraph_metadata(
         # Find the board for this page
         for board_name, board_info in boards.items():
             if board_info.get("docname") == pagename:
-                # Prepare board metadata
-                title = html.escape(board_info.get("full_name", board_name))
-                title_with_suffix = f"{title} - Zephyr Board"
+                # Get raw (unescaped) board data
+                title_raw = board_info.get("full_name", board_name)
                 
-                # Build description with board details
-                description = f"{title} board support in Zephyr RTOS"
+                # Build description with board details (unescaped)
+                description_raw = f"{title_raw} board support in Zephyr RTOS"
                 if board_info.get("socs"):
-                    socs_str = html.escape(", ".join(board_info["socs"]))
-                    description += f" - SoC: {socs_str}"
+                    socs_str = ", ".join(board_info["socs"])
+                    description_raw += f" - SoC: {socs_str}"
                 if board_info.get("archs"):
-                    archs_str = html.escape(", ".join(board_info["archs"]))
-                    description += f" - Architecture: {archs_str}"
+                    archs_str = ", ".join(board_info["archs"])
+                    description_raw += f" - Architecture: {archs_str}"
+                
+                # Escape and format for HTML
+                title_escaped = html.escape(f"{title_raw} - Zephyr Board")
+                description_escaped = html.escape(description_raw)
                 
                 # Add metatags to context
-                _add_metatags_to_context(context, title_with_suffix, description)
+                _add_metatags_to_context(context, title_escaped, description_escaped)
                 return
     
     # Check if this is a code sample page
     code_samples = domain_data["code-samples"]
     for sample_id, sample_info in code_samples.items():
         if sample_info.get("docname") == pagename:
-            # Prepare sample metadata
-            title = html.escape(sample_info.get("name", sample_id))
-            title_with_suffix = f"{title} - Zephyr Sample"
+            # Get raw (unescaped) sample data
+            title_raw = sample_info.get("name", sample_id)
             
             # Extract description from sample content
-            description = f"{title} code sample for Zephyr RTOS"
+            description_raw = f"{title_raw} code sample for Zephyr RTOS"
             if sample_info.get("description"):
                 desc_text = sample_info["description"].astext()
                 if desc_text:
@@ -1480,10 +1482,14 @@ def add_opengraph_metadata(
                     desc_text = " ".join(desc_text.split())  # normalize whitespace
                     if len(desc_text) > 200:
                         desc_text = desc_text[:197] + "..."
-                    description = html.escape(desc_text)
+                    description_raw = desc_text
+            
+            # Escape and format for HTML
+            title_escaped = html.escape(f"{title_raw} - Zephyr Sample")
+            description_escaped = html.escape(description_raw)
             
             # Add metatags to context
-            _add_metatags_to_context(context, title_with_suffix, description)
+            _add_metatags_to_context(context, title_escaped, description_escaped)
             return
 
 
