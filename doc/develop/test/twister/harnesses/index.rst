@@ -3,6 +3,27 @@
 Harnesses
 #########
 
+What is a Harness?
+******************
+
+A harness is a test execution framework used by Twister to run and evaluate tests.
+It defines how Twister interacts with the test binary, collects output, and determines
+whether a test has passed or failed. Each harness provides a specific mechanism for
+test verification:
+
+- Some harnesses parse the test output looking for specific patterns or test framework
+  messages (e.g., ``ztest``, ``gtest``, ``console``)
+- Others integrate with external test frameworks (e.g., ``pytest``, ``robot``)
+- Some provide specialized functionality like power measurement (``power``) or shell
+  command execution (``shell``)
+
+The harness is specified in the test's ``testcase.yaml`` or ``sample.yaml`` file
+using the ``harness`` keyword. Twister uses this information to select the appropriate
+handler for running and evaluating the test.
+
+Harness Selection
+*****************
+
 Harnesses ``ztest``, ``gtest`` and ``console`` are based on parsing of the
 output and matching certain phrases. ``ztest`` and ``gtest`` harnesses look
 for pass/fail/etc. frames defined in those frameworks.
@@ -40,11 +61,11 @@ Available Harnesses
 .. toctree::
    :maxdepth: 1
 
-   harness_ctest
-   harness_gtest
-   harness_pytest
-   harness_console
-   harness_robot
-   harness_power
-   harness_bsim
-   harness_shell
+   ctest
+   gtest
+   pytest
+   console
+   robot
+   power
+   bsim
+   shell
