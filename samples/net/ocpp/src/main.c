@@ -26,13 +26,8 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 #define NO_OF_CONN CONFIG_NET_SAMPLE_OCPP_NUM_CONNECTORS
 K_KERNEL_STACK_ARRAY_DEFINE(cp_stk, NO_OF_CONN, 2 * 1024);
 
-/* Stop charging event structure */
-struct stop_event {
-	int connector_id;
-};
-
-/* Message queue for stop charging events */
-K_MSGQ_DEFINE(stop_charge_msgq, sizeof(struct stop_event), 10, 4);
+/* Semaphores to signal stop charging per connector */
+static struct k_sem stop_charge_sem[NO_OF_CONN];
 
 static struct k_thread tinfo[NO_OF_CONN];
 static k_tid_t tid[NO_OF_CONN];
@@ -129,10 +124,11 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 
 	case OCPP_USR_STOP_CHARGING:
 	{
-		struct stop_event event = {
-			.connector_id = io->stop_charge.id_con
-		};
-		k_msgq_put(&stop_charge_msgq, &event, K_NO_WAIT);
+		int conn_idx = io->stop_charge.id_con - 1;
+
+		if (conn_idx >= 0 && conn_idx < NO_OF_CONN) {
+			k_sem_give(&stop_charge_sem[conn_idx]);
+		}
 		return 0;
 	}
 
@@ -187,22 +183,10 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 
 	ret = ocpp_start_transaction(sh, sys_rand32_get(), idcon, timeout_ms);
 	if (ret == 0) {
-		struct stop_event event;
-
 		LOG_INF("ocpp start charging connector id %d\n", idcon);
 
 		/* Wait for stop charging event from main or remote CS */
-		while (1) {
-			ret = k_msgq_get(&stop_charge_msgq, &event, K_FOREVER);
-			if (ret == 0) {
-				if (event.connector_id == idcon) {
-					break;
-				}
-				/* Not for this connector, put it back */
-				k_msgq_put(&stop_charge_msgq, &event, K_NO_WAIT);
-				k_yield(); /* Let other threads process */
-			}
-		}
+		k_sem_take(&stop_charge_sem[idcon - 1], K_FOREVER);
 	}
 
 	ret = ocpp_stop_transaction(sh, sys_rand32_get(), timeout_ms);
@@ -304,6 +288,11 @@ int main(void)
 
 	ocpp_get_time_from_sntp();
 
+	/* Initialize stop charging semaphores */
+	for (i = 0; i < NO_OF_CONN; i++) {
+		k_sem_init(&stop_charge_sem[i], 0, 1);
+	}
+
 	ret = ocpp_init(&cpi,
 			&csi,
 			user_notify_cb,
@@ -328,11 +317,7 @@ int main(void)
 
 	/* Send stop charging to thread */
 	for (i = 0; i < NO_OF_CONN; i++) {
-		struct stop_event event = {
-			.connector_id = i + 1
-		};
-
-		k_msgq_put(&stop_charge_msgq, &event, K_MSEC(100));
+		k_sem_give(&stop_charge_sem[i]);
 		k_sleep(K_SECONDS(1));
 	}
 
