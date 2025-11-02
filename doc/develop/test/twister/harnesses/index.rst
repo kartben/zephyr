@@ -1,3 +1,4 @@
+.. _twister_harnesses_index:
 .. _twister_harnesses:
 
 Twister Harnesses
