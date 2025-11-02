@@ -30,12 +30,10 @@ static struct k_thread tinfo[NO_OF_CONN];
 static k_tid_t tid[NO_OF_CONN];
 static char idtag[NO_OF_CONN][25];
 
-/* Message queue for stop charging events */
+/* Shared message queue for stop charging events */
 /* Alignment of 4 bytes ensures proper memory boundary for performance */
-/* Note: Message queues are defined statically for the fixed NO_OF_CONN (2) connectors */
-K_MSGQ_DEFINE(stop_charge_msgq0, sizeof(union ocpp_io_value), 5, 4);
-K_MSGQ_DEFINE(stop_charge_msgq1, sizeof(union ocpp_io_value), 5, 4);
-static struct k_msgq *msgqs[NO_OF_CONN] = {&stop_charge_msgq0, &stop_charge_msgq1};
+/* Queue size of 10 allows buffering multiple stop events for all connectors */
+K_MSGQ_DEFINE(stop_charge_msgq, sizeof(union ocpp_io_value), 10, 4);
 
 static int ocpp_get_time_from_sntp(void)
 {
@@ -126,16 +124,16 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 			tid[idx] = k_thread_create(&tinfo[idx], cp_stk[idx],
 						   sizeof(cp_stk[idx]), ocpp_cp_entry,
 						   (void *)(uintptr_t)(idx + 1), idtag[idx],
-						   msgqs[idx], 7, 0, K_NO_WAIT);
+						   NULL, 7, 0, K_NO_WAIT);
 
 			return 0;
 		}
 		break;
 
 	case OCPP_USR_STOP_CHARGING:
-		/* Send stop charging event to appropriate connector thread */
+		/* Send stop charging event to shared message queue */
 		if (io->stop_charge.id_con > 0 && io->stop_charge.id_con <= NO_OF_CONN) {
-			ret = k_msgq_put(msgqs[io->stop_charge.id_con - 1], io, K_MSEC(100));
+			ret = k_msgq_put(&stop_charge_msgq, io, K_MSEC(100));
 			if (ret != 0) {
 				LOG_ERR("Failed to send stop charging to connector %d: %d",
 					io->stop_charge.id_con, ret);
@@ -159,7 +157,6 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	int ret;
 	int idcon = (int)(uintptr_t)p1;
 	char *idtag = (char *)p2;
-	struct k_msgq *msgq = (struct k_msgq *)p3;
 	ocpp_session_handle_t sh = NULL;
 	enum ocpp_auth_status status;
 	const uint32_t timeout_ms = 500;
@@ -203,9 +200,10 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		LOG_INF("ocpp start charging connector id %d\n", idcon);
 		memset(&io, 0xff, sizeof(io));
 
-		/* Wait for stop charging event from message queue */
+		/* Wait for stop charging event from shared message queue */
+		/* Each thread filters for its own connector ID */
 		do {
-			ret = k_msgq_get(msgq, &io, K_FOREVER);
+			ret = k_msgq_get(&stop_charge_msgq, &io, K_FOREVER);
 			if (ret != 0) {
 				/* This should never happen with K_FOREVER, but check defensively */
 				LOG_ERR("Failed to get message from queue: %d", ret);
@@ -214,6 +212,8 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 			if (io.stop_charge.id_con == idcon) {
 				break;
 			}
+			/* Not for this connector, put it back for other threads */
+			k_msgq_put(&stop_charge_msgq, &io, K_NO_WAIT);
 		} while (1);
 	}
 
@@ -332,19 +332,19 @@ int main(void)
 		tid[i] = k_thread_create(&tinfo[i], cp_stk[i],
 					 sizeof(cp_stk[i]),
 					 ocpp_cp_entry, (void *)(uintptr_t)(i + 1),
-					 idtag[i], msgqs[i], 7, 0, K_NO_WAIT);
+					 idtag[i], NULL, 7, 0, K_NO_WAIT);
 	}
 
 	/* Active charging session */
 	k_sleep(K_SECONDS(30));
 
-	/* Send stop charging to thread */
+	/* Send stop charging to threads via shared queue */
 	for (i = 0; i < NO_OF_CONN; i++) {
 		union ocpp_io_value io = {0};
 
 		io.stop_charge.id_con = i + 1;
 
-		ret = k_msgq_put(msgqs[i], &io, K_MSEC(100));
+		ret = k_msgq_put(&stop_charge_msgq, &io, K_MSEC(100));
 		if (ret != 0) {
 			LOG_ERR("Failed to send stop charging to connector %d: %d", i + 1, ret);
 		}
