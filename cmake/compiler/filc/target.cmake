@@ -15,6 +15,8 @@ if(DEFINED TOOLCHAIN_HOME)
 endif()
 
 find_program(CMAKE_C_COMPILER   filc     ${find_program_filc_args})
+# fil-c is based on LLVM/Clang, so we assume the C++ compiler is named filc++
+# following the clang/clang++ naming convention
 find_program(CMAKE_CXX_COMPILER filc++   ${find_program_filc_args})
 
 if(SYSROOT_DIR)
@@ -63,7 +65,7 @@ if(NOT "${ARCH}" STREQUAL "posix")
   # or by specifying '--sysroot <path>'. Sysroot can also be passed using the
   # CMake variable SYSROOT_DIR which will append the '--sysroot <path>' flags.
   #
-  # Look for a dedicated 'newlib.cfg' or 'picolibc.cfg' and specify 
+  # Look for a dedicated 'newlib.cfg' or 'picolibc.cfg' and specify
   # '--config <spec>.cfg' if such a file is found.
   if(CONFIG_NEWLIB_LIBC)
     file(GLOB_RECURSE newlib_cfg ${FILC_TOOLCHAIN_PATH}/newlib.cfg)
