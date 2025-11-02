@@ -9,8 +9,7 @@ Testing
    ztest
    twister
    twister_statuses
-   twister/harness
-   twister/twister_blackbox
+   twister/index
    pytest
    coverage
    BabbleSim<bsim>
