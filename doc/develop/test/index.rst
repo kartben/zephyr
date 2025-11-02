@@ -9,6 +9,7 @@ Testing
    ztest
    twister
    twister_statuses
+   twister/harnesses/index
    twister/twister_blackbox
    pytest
    coverage
