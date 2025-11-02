@@ -194,8 +194,13 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		/* Wait for stop charging event from main or remote CS */
 		while (1) {
 			ret = k_msgq_get(&stop_charge_msgq, &event, K_FOREVER);
-			if (ret == 0 && event.connector_id == idcon) {
-				break;
+			if (ret == 0) {
+				if (event.connector_id == idcon) {
+					break;
+				}
+				/* Not for this connector, put it back */
+				k_msgq_put(&stop_charge_msgq, &event, K_NO_WAIT);
+				k_yield(); /* Let other threads process */
 			}
 		}
 	}
