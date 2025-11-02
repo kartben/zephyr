@@ -106,6 +106,12 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 			idx = io->start_charge.id_con - 1;
 		}
 
+		/* Validate connector index */
+		if (idx < 0 || idx >= NO_OF_CONN) {
+			LOG_ERR("Invalid connector id %d\n", io->start_charge.id_con);
+			return -EINVAL;
+		}
+
 		if (tid[idx] == NULL) {
 			LOG_INF("Remote start charging idtag %s connector %d\n",
 				idtag[idx], idx + 1);
@@ -128,6 +134,9 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 
 		if (conn_idx >= 0 && conn_idx < NO_OF_CONN) {
 			k_sem_give(&stop_charge_sem[conn_idx]);
+		} else {
+			LOG_ERR("Invalid stop charging connector id %d\n",
+				io->stop_charge.id_con);
 		}
 		return 0;
 	}
