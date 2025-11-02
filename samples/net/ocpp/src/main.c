@@ -186,7 +186,11 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		LOG_INF("ocpp start charging connector id %d\n", idcon);
 
 		/* Wait for stop charging event from main or remote CS */
-		k_sem_take(&stop_charge_sem[idcon - 1], K_FOREVER);
+		if (idcon >= 1 && idcon <= NO_OF_CONN) {
+			k_sem_take(&stop_charge_sem[idcon - 1], K_FOREVER);
+		} else {
+			LOG_ERR("Invalid connector id %d\n", idcon);
+		}
 	}
 
 	ret = ocpp_stop_transaction(sh, sys_rand32_get(), timeout_ms);
@@ -290,7 +294,7 @@ int main(void)
 
 	/* Initialize stop charging semaphores */
 	for (i = 0; i < NO_OF_CONN; i++) {
-		k_sem_init(&stop_charge_sem[i], 0, 1);
+		k_sem_init(&stop_charge_sem[i], 0, K_SEM_MAX_LIMIT);
 	}
 
 	ret = ocpp_init(&cpi,
