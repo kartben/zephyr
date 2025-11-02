@@ -31,6 +31,7 @@ static k_tid_t tid[NO_OF_CONN];
 static char idtag[NO_OF_CONN][25];
 
 /* Message queue for stop charging events */
+/* Alignment of 4 bytes ensures proper memory boundary for performance */
 K_MSGQ_DEFINE(stop_charge_msgq0, sizeof(union ocpp_io_value), 5, 4);
 K_MSGQ_DEFINE(stop_charge_msgq1, sizeof(union ocpp_io_value), 5, 4);
 static struct k_msgq *msgqs[NO_OF_CONN] = {&stop_charge_msgq0, &stop_charge_msgq1};
@@ -77,6 +78,12 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 	static int wh = 6 + NO_OF_CONN;
 	int idx;
 	int i;
+	int ret;
+
+	if (io == NULL) {
+		LOG_ERR("Received null io value in callback");
+		return -EINVAL;
+	}
 
 	switch (reason) {
 	case OCPP_USR_GET_METER_VALUE:
