@@ -37,12 +37,22 @@ Build the ocpp sample application like this:
    :goals: build
    :compact:
 
+The number of OCPP connectors can be configured using the
+``CONFIG_NET_SAMPLE_OCPP_NUM_CONNECTORS`` Kconfig option (default is 2,
+range 1-10). Each connector runs in its own thread.
+
 The sample application is to built and tested on
 
 .. code-block:: console
 
 	west build -b stm32f769i_disco
 	west flash
+
+To build with a different number of connectors (e.g., 4):
+
+.. code-block:: console
+
+	west build -b stm32f769i_disco -- -DCONFIG_NET_SAMPLE_OCPP_NUM_CONNECTORS=4
 
 The output of sample is:
 
