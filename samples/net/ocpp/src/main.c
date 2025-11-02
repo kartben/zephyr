@@ -128,6 +128,8 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 		/* Send stop charging event to appropriate connector thread */
 		if (io->stop_charge.id_con > 0 && io->stop_charge.id_con <= NO_OF_CONN) {
 			k_msgq_put(msgqs[io->stop_charge.id_con - 1], io, K_MSEC(100));
+		} else {
+			LOG_ERR("Invalid connector ID %d for stop charging", io->stop_charge.id_con);
 		}
 		return 0;
 
@@ -191,7 +193,11 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		/* Wait for stop charging event from message queue */
 		do {
 			ret = k_msgq_get(msgq, &io, K_FOREVER);
-			if (ret == 0 && io.stop_charge.id_con == idcon) {
+			if (ret != 0) {
+				LOG_ERR("Failed to get message from queue: %d", ret);
+				break;
+			}
+			if (io.stop_charge.id_con == idcon) {
 				break;
 			}
 		} while (1);
