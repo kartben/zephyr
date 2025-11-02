@@ -127,9 +127,14 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 	case OCPP_USR_STOP_CHARGING:
 		/* Send stop charging event to appropriate connector thread */
 		if (io->stop_charge.id_con > 0 && io->stop_charge.id_con <= NO_OF_CONN) {
-			k_msgq_put(msgqs[io->stop_charge.id_con - 1], io, K_MSEC(100));
+			ret = k_msgq_put(msgqs[io->stop_charge.id_con - 1], io, K_MSEC(100));
+			if (ret != 0) {
+				LOG_ERR("Failed to send stop charging to connector %d: %d",
+					io->stop_charge.id_con, ret);
+			}
 		} else {
-			LOG_ERR("Invalid connector ID %d for stop charging", io->stop_charge.id_con);
+			LOG_ERR("Invalid connector ID %d for stop charging, valid range is 1-%d",
+				io->stop_charge.id_con, NO_OF_CONN);
 		}
 		return 0;
 
@@ -330,7 +335,10 @@ int main(void)
 
 		io.stop_charge.id_con = i + 1;
 
-		k_msgq_put(msgqs[i], &io, K_MSEC(100));
+		ret = k_msgq_put(msgqs[i], &io, K_MSEC(100));
+		if (ret != 0) {
+			LOG_ERR("Failed to send stop charging to connector %d: %d", i + 1, ret);
+		}
 		k_sleep(K_SECONDS(1));
 	}
 
