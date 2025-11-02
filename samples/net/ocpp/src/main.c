@@ -32,6 +32,7 @@ static char idtag[NO_OF_CONN][25];
 
 /* Message queue for stop charging events */
 /* Alignment of 4 bytes ensures proper memory boundary for performance */
+/* Note: Message queues are defined statically for the fixed NO_OF_CONN (2) connectors */
 K_MSGQ_DEFINE(stop_charge_msgq0, sizeof(union ocpp_io_value), 5, 4);
 K_MSGQ_DEFINE(stop_charge_msgq1, sizeof(union ocpp_io_value), 5, 4);
 static struct k_msgq *msgqs[NO_OF_CONN] = {&stop_charge_msgq0, &stop_charge_msgq1};
@@ -206,6 +207,7 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		do {
 			ret = k_msgq_get(msgq, &io, K_FOREVER);
 			if (ret != 0) {
+				/* This should never happen with K_FOREVER, but check defensively */
 				LOG_ERR("Failed to get message from queue: %d", ret);
 				break;
 			}
