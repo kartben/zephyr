@@ -113,6 +113,7 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 			LOG_INF("Remote start charging idtag %s connector %d\n",
 				idtag[idx], idx + 1);
 
+			/* Copy idtag from OCPP message. Truncation is acceptable. */
 			snprintf(idtag[idx], sizeof(idtag[0]), "%s",
 				 io->start_charge.idtag);
 
@@ -187,7 +188,9 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	if (ret == 0) {
 		LOG_INF("ocpp start charging connector id %d\n", idcon);
 
-		/* wait for stop charging event from main or remote CS */
+		/* Wait for stop charging event from main or remote CS.
+		 * Reset event after waiting to allow event reuse if thread restarts.
+		 */
 		k_event_wait(stop_event, STOP_CHARGING_EVENT_BIT, true, K_FOREVER);
 	}
 
