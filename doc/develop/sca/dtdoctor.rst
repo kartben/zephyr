@@ -19,3 +19,10 @@ For example:
 .. code-block:: shell
 
    west build -b reel_board samples/basic/blinky -- -DZEPHYR_SCA_VARIANT=dtdoctor
+
+Demo
+****
+
+To see ``dtdoctor`` in action, try the :zephyr:code-sample:`dtdoctor_demo` sample. It includes
+pre-configured scenarios that demonstrate how ``dtdoctor`` diagnoses different types of
+Devicetree-related errors.
