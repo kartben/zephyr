@@ -62,7 +62,4 @@ uint32_t cpu_monitor_get_freq(void);
 void usb_status_init(void);
 bool usb_status_is_connected(void);
 
-/* Utility functions */
-void update_system_uptime(void);
-
 #endif /* OCPP_DEMO_H_ */
