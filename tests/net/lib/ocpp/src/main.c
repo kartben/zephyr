@@ -83,7 +83,7 @@ static int test_ocpp_user_notify_cb(enum ocpp_notify_reason reason,
 	case OCPP_USR_START_CHARGING:
 		TC_PRINT("start charging idtag %s connector %d\n",
 			 io->start_charge.idtag,
-			 io->stop_charge.id_con);
+			 io->start_charge.id_con);
 		return 0;
 
 	case OCPP_USR_STOP_CHARGING:
