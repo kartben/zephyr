@@ -24,13 +24,12 @@ char    *strdup(const char *);
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
 #define NO_OF_CONN CONFIG_NET_SAMPLE_OCPP_NUM_CONNECTORS
-#define STOP_CHARGING_EVENT_BIT 0x01
 K_KERNEL_STACK_ARRAY_DEFINE(cp_stk, NO_OF_CONN, 2 * 1024);
 
 static struct k_thread tinfo[NO_OF_CONN];
 static k_tid_t tid[NO_OF_CONN];
 static char idtag[NO_OF_CONN][25];
-static struct k_event stop_events[NO_OF_CONN];
+static struct k_event stop_event;
 
 static int ocpp_get_time_from_sntp(void)
 {
@@ -120,7 +119,7 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 			tid[idx] = k_thread_create(&tinfo[idx], cp_stk[idx],
 						   sizeof(cp_stk[idx]), ocpp_cp_entry,
 						   (void *)(uintptr_t)(idx + 1), idtag[idx],
-						   &stop_events[idx], 7, 0, K_NO_WAIT);
+						   NULL, 7, 0, K_NO_WAIT);
 
 			return 0;
 		}
@@ -129,7 +128,8 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 	case OCPP_USR_STOP_CHARGING:
 		idx = io->stop_charge.id_con - 1;
 		if (idx >= 0 && idx < NO_OF_CONN) {
-			k_event_post(&stop_events[idx], STOP_CHARGING_EVENT_BIT);
+			/* Post event for this specific connector using its bit */
+			k_event_post(&stop_event, BIT(idx));
 			return 0;
 		}
 		return -EINVAL;
@@ -147,10 +147,11 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	int ret;
 	int idcon = (int)(uintptr_t)p1;
 	char *idtag = (char *)p2;
-	struct k_event *stop_event = (struct k_event *)p3;
 	ocpp_session_handle_t sh = NULL;
 	enum ocpp_auth_status status;
 	const uint32_t timeout_ms = 500;
+
+	ARG_UNUSED(p3);
 
 	ret = ocpp_session_open(&sh);
 	if (ret < 0) {
@@ -189,9 +190,10 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		LOG_INF("ocpp start charging connector id %d\n", idcon);
 
 		/* Wait for stop charging event from main or remote CS.
-		 * Reset event after waiting to allow event reuse if thread restarts.
+		 * Each connector uses its own bit (bit 0 for connector 1, bit 1 for connector 2, etc.)
+		 * Reset event bit after waiting to allow event reuse if thread restarts.
 		 */
-		k_event_wait(stop_event, STOP_CHARGING_EVENT_BIT, true, K_FOREVER);
+		k_event_wait(&stop_event, BIT(idcon - 1), true, K_FOREVER);
 	}
 
 	ret = ocpp_stop_transaction(sh, sys_rand32_get(), timeout_ms);
@@ -302,10 +304,8 @@ int main(void)
 		return ret;
 	}
 
-	/* Initialize k_event for each connector */
-	for (i = 0; i < NO_OF_CONN; i++) {
-		k_event_init(&stop_events[i]);
-	}
+	/* Initialize single k_event for all connectors */
+	k_event_init(&stop_event);
 
 	/* Spawn threads for each connector */
 	for (i = 0; i < NO_OF_CONN; i++) {
@@ -314,7 +314,7 @@ int main(void)
 		tid[i] = k_thread_create(&tinfo[i], cp_stk[i],
 					 sizeof(cp_stk[i]),
 					 ocpp_cp_entry, (void *)(uintptr_t)(i + 1),
-					 idtag[i], &stop_events[i], 7, 0, K_NO_WAIT);
+					 idtag[i], NULL, 7, 0, K_NO_WAIT);
 	}
 
 	/* Active charging session */
@@ -322,8 +322,8 @@ int main(void)
 
 	/* Send stop charging to thread */
 	for (i = 0; i < NO_OF_CONN; i++) {
-		/* Post stop event directly */
-		k_event_post(&stop_events[i], STOP_CHARGING_EVENT_BIT);
+		/* Post stop event for this connector using its bit */
+		k_event_post(&stop_event, BIT(i));
 		k_sleep(K_SECONDS(1));
 	}
 
