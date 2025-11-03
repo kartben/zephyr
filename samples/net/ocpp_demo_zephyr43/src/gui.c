@@ -205,7 +205,7 @@ void gui_init(void)
 	gui_initialized = true;
 	LOG_INF("GUI initialized successfully");
 	
-	lv_task_handler();
+	lv_timer_handler();
 	display_blanking_off(display_dev);
 }
 
@@ -321,5 +321,5 @@ void gui_update_all(void)
 		gui_update_connector(i);
 	}
 	
-	lv_task_handler();
+	lv_timer_handler();
 }
