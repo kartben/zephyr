@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <time.h>
+#include <stdint.h>
 
 #include <zephyr/net/net_if.h>
 #include <zephyr/net/net_core.h>
@@ -115,9 +116,14 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 					int64_t elapsed_sec = elapsed_ms / 1000;
 					uint32_t consumed_wh = (WH_PER_SECOND * elapsed_sec) / 10;
 
-					/* Add small jitter (±3%) for realism */
-					int32_t jitter_percent = (sys_rand32_get() % 7) - 3;
-					int32_t jitter = (int32_t)(((int64_t)consumed_wh * jitter_percent) / 100);
+					/* Add small jitter (±3%) for realism if significant time elapsed */
+					int32_t jitter = 0;
+
+					if (consumed_wh > 10) {
+						int32_t jitter_percent = (sys_rand32_get() % 7) - 3;
+
+						jitter = (int32_t)(((int64_t)consumed_wh * jitter_percent) / 100);
+					}
 
 					current_wh = sessions[idx].start_meter_wh + consumed_wh + jitter;
 				} else if (sessions[idx].last_meter_wh > 0) {
@@ -265,8 +271,15 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	/* Calculate final meter value based on actual elapsed time */
 	int64_t elapsed_ms = k_uptime_get() - sessions[idx].start_time_ms;
 	int64_t elapsed_sec = elapsed_ms / 1000;
-	uint32_t consumed_wh = (WH_PER_SECOND * elapsed_sec) / 10;
-	stop_meter_wh = sessions[idx].start_meter_wh + consumed_wh;
+	int64_t consumed_wh = ((int64_t)WH_PER_SECOND * elapsed_sec) / 10;
+	int64_t final_wh = sessions[idx].start_meter_wh + consumed_wh;
+
+	/* Ensure no overflow */
+	if (final_wh > UINT32_MAX) {
+		stop_meter_wh = UINT32_MAX;
+	} else {
+		stop_meter_wh = (uint32_t)final_wh;
+	}
 
 	/* Mark session as inactive and store final meter value */
 	sessions[idx].active = false;
