@@ -161,6 +161,10 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 			}
 			idx = i;
 		} else {
+			/* Validate connector ID is in valid range */
+			if (io->start_charge.id_con < 1 || io->start_charge.id_con > NO_OF_CONN) {
+				return -EINVAL;
+			}
 			idx = io->start_charge.id_con - 1;
 		}
 

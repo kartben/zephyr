@@ -21,7 +21,7 @@ static bool usb_is_connected;
 static void usb_dc_status_cb(enum usb_dc_status_code status, const uint8_t *param)
 {
 	ARG_UNUSED(param);
-	
+
 	switch (status) {
 	case USB_DC_ERROR:
 		LOG_ERR("USB device error");
@@ -60,7 +60,7 @@ void usb_status_init(void)
 {
 #ifdef CONFIG_USB_DEVICE_STACK
 	int ret;
-	
+
 	LOG_INF("Initializing USB device stack (Next generation)");
 	
 	ret = usb_enable(usb_dc_status_cb);
