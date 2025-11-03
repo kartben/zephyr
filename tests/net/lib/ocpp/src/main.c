@@ -54,31 +54,104 @@ static int test_ocpp_user_notify_cb(enum ocpp_notify_reason reason,
 				    union ocpp_io_value *io,
 				    void *user_data)
 {
-	static int meter_wh = 1000;  /* Track meter value */
+	static int meter_wh = 1000;  /* Track active energy meter value */
 	static int64_t last_read_time_ms;
 
 	switch (reason) {
 	case OCPP_USR_GET_METER_VALUE:
-		if (OCPP_OMM_ACTIVE_ENERGY_TO_EV == io->meter_val.mes) {
+		switch (io->meter_val.mes) {
+		case OCPP_OMM_ACTIVE_ENERGY_TO_EV:
 			/* Simulate ~2 Wh/second charging */
-			int64_t current_time_ms = k_uptime_get();
+			{
+				int64_t current_time_ms = k_uptime_get();
 
-			if (last_read_time_ms > 0) {
-				int64_t elapsed_ms = current_time_ms - last_read_time_ms;
-				int elapsed_seconds = (int)(elapsed_ms / 1000);
+				if (last_read_time_ms > 0) {
+					int64_t elapsed_ms = current_time_ms - last_read_time_ms;
+					int elapsed_seconds = (int)(elapsed_ms / 1000);
 
-				meter_wh += elapsed_seconds * 2;
+					meter_wh += elapsed_seconds * 2;
+				}
+				last_read_time_ms = current_time_ms;
+
+				snprintf(io->meter_val.val, CISTR50, "%d", meter_wh);
 			}
-			last_read_time_ms = current_time_ms;
+			break;
 
-			snprintf(io->meter_val.val, CISTR50, "%d", meter_wh);
+		case OCPP_OMM_ACTIVE_ENERGY_FROM_EV:
+			snprintf(io->meter_val.val, CISTR50, "0");
+			break;
 
-			TC_PRINT("mtr reading val %s con %d",
-				 io->meter_val.val,
-				 io->meter_val.id_con);
-			return 0;
+		case OCPP_OMM_CURRENT_TO_EV:
+			snprintf(io->meter_val.val, CISTR50, "32.0");
+			break;
+
+		case OCPP_OMM_CURRENT_FROM_EV:
+			snprintf(io->meter_val.val, CISTR50, "0.0");
+			break;
+
+		case OCPP_OMM_CURRENT_MAX_OFFERED_TO_EV:
+			snprintf(io->meter_val.val, CISTR50, "32.0");
+			break;
+
+		case OCPP_OMM_ACTIVE_POWER_TO_EV:
+			snprintf(io->meter_val.val, CISTR50, "7200");
+			break;
+
+		case OCPP_OMM_ACTIVE_POWER_FROM_EV:
+			snprintf(io->meter_val.val, CISTR50, "0");
+			break;
+
+		case OCPP_OMM_POWER_MAX_OFFERED_TO_EV:
+			snprintf(io->meter_val.val, CISTR50, "7200");
+			break;
+
+		case OCPP_OMM_REACTIVE_ENERGY_TO_EV:
+			snprintf(io->meter_val.val, CISTR50, "%d", meter_wh / 10);
+			break;
+
+		case OCPP_OMM_REACTIVE_ENERGY_FROM_EV:
+			snprintf(io->meter_val.val, CISTR50, "0");
+			break;
+
+		case OCPP_OMM_REACTIVE_POWER_TO_EV:
+			snprintf(io->meter_val.val, CISTR50, "720");
+			break;
+
+		case OCPP_OMM_REACTIVE_POWER_FROM_EV:
+			snprintf(io->meter_val.val, CISTR50, "0");
+			break;
+
+		case OCPP_OMM_VOLTAGE_AC_RMS:
+			snprintf(io->meter_val.val, CISTR50, "230.0");
+			break;
+
+		case OCPP_OMM_POWERLINE_FREQ:
+			snprintf(io->meter_val.val, CISTR50, "50.0");
+			break;
+
+		case OCPP_OMM_POWER_FACTOR:
+			snprintf(io->meter_val.val, CISTR50, "0.90");
+			break;
+
+		case OCPP_OMM_TEMPERATURE:
+			snprintf(io->meter_val.val, CISTR50, "35");
+			break;
+
+		case OCPP_OMM_FAN_SPEED:
+			snprintf(io->meter_val.val, CISTR50, "1500");
+			break;
+
+		case OCPP_OMM_CHARGING_PERCENT:
+			snprintf(io->meter_val.val, CISTR50, "0");
+			break;
+
+		default:
+			return -ENOTSUP;
 		}
-		break;
+
+		TC_PRINT("mtr reading %d val %s con %d", io->meter_val.mes,
+			 io->meter_val.val, io->meter_val.id_con);
+		return 0;
 
 	case OCPP_USR_START_CHARGING:
 		TC_PRINT("start charging idtag %s connector %d\n",

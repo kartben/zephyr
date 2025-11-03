@@ -132,17 +132,106 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 
 	switch (reason) {
 	case OCPP_USR_GET_METER_VALUE:
-		if (OCPP_OMM_ACTIVE_ENERGY_TO_EV == io->meter_val.mes) {
-			int current_wh = get_current_meter_value(io->meter_val.id_con);
+		switch (io->meter_val.mes) {
+		case OCPP_OMM_ACTIVE_ENERGY_TO_EV:
+			/* Active energy delivered to EV in Wh */
+			snprintf(io->meter_val.val, CISTR50, "%d",
+				 get_current_meter_value(io->meter_val.id_con));
+			break;
 
-			snprintf(io->meter_val.val, CISTR50, "%d", current_wh);
+		case OCPP_OMM_ACTIVE_ENERGY_FROM_EV:
+			/* Energy from EV (e.g., V2G scenarios) - typically 0 */
+			snprintf(io->meter_val.val, CISTR50, "0");
+			break;
 
-			LOG_DBG("mtr reading val %s con %d", io->meter_val.val,
-				io->meter_val.id_con);
+		case OCPP_OMM_CURRENT_TO_EV:
+			/* Charging current in A - simulate 32A charging */
+			snprintf(io->meter_val.val, CISTR50, "32.0");
+			break;
 
-			return 0;
+		case OCPP_OMM_CURRENT_FROM_EV:
+			/* Current from EV - typically 0 for normal charging */
+			snprintf(io->meter_val.val, CISTR50, "0.0");
+			break;
+
+		case OCPP_OMM_CURRENT_MAX_OFFERED_TO_EV:
+			/* Maximum current available - 32A for this charger */
+			snprintf(io->meter_val.val, CISTR50, "32.0");
+			break;
+
+		case OCPP_OMM_ACTIVE_POWER_TO_EV:
+			/* Active power in W - 7200W (32A * 230V) */
+			snprintf(io->meter_val.val, CISTR50, "7200");
+			break;
+
+		case OCPP_OMM_ACTIVE_POWER_FROM_EV:
+			/* Power from EV - typically 0 */
+			snprintf(io->meter_val.val, CISTR50, "0");
+			break;
+
+		case OCPP_OMM_POWER_MAX_OFFERED_TO_EV:
+			/* Maximum power available in W */
+			snprintf(io->meter_val.val, CISTR50, "7200");
+			break;
+
+		case OCPP_OMM_REACTIVE_ENERGY_TO_EV:
+			/* Reactive energy in varh - assume low PF, ~10% of active */
+			snprintf(io->meter_val.val, CISTR50, "%d",
+				 get_current_meter_value(io->meter_val.id_con) / 10);
+			break;
+
+		case OCPP_OMM_REACTIVE_ENERGY_FROM_EV:
+			/* Reactive energy from EV - typically 0 */
+			snprintf(io->meter_val.val, CISTR50, "0");
+			break;
+
+		case OCPP_OMM_REACTIVE_POWER_TO_EV:
+			/* Reactive power in var - ~720 var (10% of 7200W) */
+			snprintf(io->meter_val.val, CISTR50, "720");
+			break;
+
+		case OCPP_OMM_REACTIVE_POWER_FROM_EV:
+			/* Reactive power from EV - typically 0 */
+			snprintf(io->meter_val.val, CISTR50, "0");
+			break;
+
+		case OCPP_OMM_VOLTAGE_AC_RMS:
+			/* AC voltage in V - standard European voltage */
+			snprintf(io->meter_val.val, CISTR50, "230.0");
+			break;
+
+		case OCPP_OMM_POWERLINE_FREQ:
+			/* Powerline frequency in Hz - 50Hz for Europe */
+			snprintf(io->meter_val.val, CISTR50, "50.0");
+			break;
+
+		case OCPP_OMM_POWER_FACTOR:
+			/* Power factor - 0.9 is typical for EV charging */
+			snprintf(io->meter_val.val, CISTR50, "0.90");
+			break;
+
+		case OCPP_OMM_TEMPERATURE:
+			/* Temperature in Celsius - simulate 35°C */
+			snprintf(io->meter_val.val, CISTR50, "35");
+			break;
+
+		case OCPP_OMM_FAN_SPEED:
+			/* Fan speed in RPM - simulate 1500 RPM */
+			snprintf(io->meter_val.val, CISTR50, "1500");
+			break;
+
+		case OCPP_OMM_CHARGING_PERCENT:
+			/* Charging percentage - not typically known by charger */
+			snprintf(io->meter_val.val, CISTR50, "0");
+			break;
+
+		default:
+			return -ENOTSUP;
 		}
-		break;
+
+		LOG_DBG("mtr reading %d val %s con %d", io->meter_val.mes,
+			io->meter_val.val, io->meter_val.id_con);
+		return 0;
 
 	case OCPP_USR_START_CHARGING:
 		if (io->start_charge.id_con < 0) {
