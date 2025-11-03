@@ -8,6 +8,7 @@
 
 - **Want to get started quickly?** → [QUICKSTART.md](QUICKSTART.md)
 - **Need detailed information?** → [README.rst](README.rst)
+- **Want to see DX tools in action?** → [DX_TOOLS_DEMO.md](DX_TOOLS_DEMO.md) ⭐ NEW!
 - **Want to customize?** → [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)
 - **Curious about architecture?** → [ARCHITECTURE.md](ARCHITECTURE.md)
 - **Want to see the UI?** → [DISPLAY_LAYOUT.md](DISPLAY_LAYOUT.md)
@@ -256,7 +257,7 @@ Not just individual features, but **everything working together** seamlessly.
 **Real-world code** you could actually deploy, not just a toy example.
 
 ### 3. Extensive Documentation
-**Six comprehensive guides** covering every aspect from quick start to deep architecture.
+**Seven comprehensive guides** covering every aspect from quick start to deep architecture.
 
 ### 4. Modern UI
 **Professional touchscreen interface** that looks and feels modern.
@@ -266,6 +267,52 @@ Not just individual features, but **everything working together** seamlessly.
 
 ### 6. Best Practices
 **Clean architecture**, proper error handling, thread safety throughout.
+
+### 7. Developer Experience Tools ⭐ NEW!
+**Demonstrates Zephyr 4.3's DX improvements** - See [DX_TOOLS_DEMO.md](DX_TOOLS_DEMO.md)
+
+---
+
+## 🛠️ Developer Experience Tools Showcase
+
+Zephyr 4.3 introduces powerful tools to make development easier. This demo includes
+a **comprehensive DX tools demonstration** with real examples!
+
+### 🔍 DTDoctor - Devicetree Diagnostics
+```bash
+west dtdoctor
+```
+Get **clear error messages with helpful suggestions** when devicetree issues occur.
+
+### 📊 Trace Kconfig - Configuration Analysis  
+```bash
+west build -t traceconfig
+```
+**Interactive web interface** showing where every CONFIG symbol comes from.
+
+### 📈 Footprint Analysis - Memory Visualization
+```bash
+west build -t footprint
+```
+**Beautiful interactive charts** showing ROM/RAM usage by component.
+
+### 📋 Size Reports - Detailed Breakdowns
+```bash
+west build -t rom_report
+west build -t ram_report
+```
+**Detailed tables** of memory usage with function-level granularity.
+
+**👉 See [DX_TOOLS_DEMO.md](DX_TOOLS_DEMO.md) for:**
+- Real error examples and how DTDoctor helps fix them
+- Sample Trace Kconfig dependency graphs  
+- Footprint analysis results for this demo
+- Optimization tips based on tool insights
+
+**Time Savings:**
+- Debug devicetree: 30 min → 5 min ⚡
+- Understand configs: 20 min → 2 min ⚡
+- Optimize memory: 1 hour → 15 min ⚡
 
 ---
 

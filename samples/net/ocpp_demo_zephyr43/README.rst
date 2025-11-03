@@ -154,25 +154,39 @@ This allows capturing call graphs and performance profiles for analysis.
 Developer Experience Features
 ******************************
 
-This demo also showcases developer tools:
+This demo prominently showcases Zephyr 4.3's new developer experience improvement tools.
 
-1. **DTDoctor**: Diagnose devicetree issues
+**See DX_TOOLS_DEMO.md for comprehensive demonstrations with examples!**
+
+Quick reference:
+
+1. **DTDoctor**: Diagnose devicetree issues with helpful error messages
    
    .. code-block:: console
    
       west dtdoctor
 
-2. **Trace Kconfig**: Understand configuration
+2. **Trace Kconfig**: Interactive configuration dependency analysis
    
    .. code-block:: console
    
       west build -t traceconfig
 
-3. **Footprint Analysis**: Visualize memory usage
+3. **Footprint Analysis**: Interactive memory usage visualization
    
    .. code-block:: console
    
       west build -t footprint
+
+4. **Size Reports**: Detailed ROM/RAM breakdowns
+   
+   .. code-block:: console
+   
+      west build -t rom_report
+      west build -t ram_report
+
+For detailed examples, use cases, and sample outputs, see the **DX_TOOLS_DEMO.md** guide
+included with this sample
 
 References
 **********
