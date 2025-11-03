@@ -42,8 +42,8 @@ static struct charging_session sessions[NO_OF_CONN];
 
 /* Typical Level 2 charger: 7.4 kW (7400 W) */
 #define CHARGING_POWER_W 7400
-/* Convert to Wh per second: 7400W / 3600s = ~2.056 Wh/s */
-#define WH_PER_SECOND ((CHARGING_POWER_W * 10) / 36000) /* Fixed point: x10 */
+/* Convert to Wh per second: 7400W / 3600s/h = ~2.056 Wh/s */
+#define WH_PER_SECOND ((CHARGING_POWER_W * 10) / 3600) /* Fixed point: x10 */
 
 static int ocpp_get_time_from_sntp(void)
 {
