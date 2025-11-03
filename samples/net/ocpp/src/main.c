@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <time.h>
+#include <stdint.h>
 
 #include <zephyr/net/net_if.h>
 #include <zephyr/net/net_core.h>
@@ -30,6 +31,26 @@ K_KERNEL_STACK_ARRAY_DEFINE(cp_stk, NO_OF_CONN, 2 * 1024);
 static struct k_thread tinfo[NO_OF_CONN];
 static k_tid_t tid[NO_OF_CONN];
 static char idtag[NO_OF_CONN][25];
+
+/* Charging session tracking per connector */
+struct charging_session {
+	int64_t start_time_ms;	/* Session start time in milliseconds */
+	uint32_t start_meter_wh; /* Starting meter value in Wh */
+	uint32_t last_meter_wh;  /* Last known meter value in Wh */
+	bool active;		/* Session active flag */
+};
+
+static struct charging_session sessions[NO_OF_CONN];
+
+/* Typical Level 2 charger: 7.4 kW (7400 W) */
+#define CHARGING_POWER_W 7400
+/* Convert to Wh per second: 7400W / 3600s/h = ~2.056 Wh/s */
+#define WH_PER_SECOND ((CHARGING_POWER_W * 10) / 3600) /* Fixed point: x10 */
+
+/* Base meter values for simulation */
+#define BASE_METER_VALUE_WH 1000  /* Starting value for first connector */
+#define CONNECTOR_OFFSET_WH 500   /* Offset between connectors */
+#define MIN_WH_FOR_JITTER 10      /* Minimum consumed Wh before applying jitter */
 
 static int ocpp_get_time_from_sntp(void)
 {
@@ -83,17 +104,56 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 			  union ocpp_io_value *io,
 			  void *user_data)
 {
-	static int wh = 6 + NO_OF_CONN;
 	int idx;
 	int i;
+	uint32_t current_wh;
 
 	switch (reason) {
 	case OCPP_USR_GET_METER_VALUE:
 		if (OCPP_OMM_ACTIVE_ENERGY_TO_EV == io->meter_val.mes) {
-			snprintf(io->meter_val.val, CISTR50, "%u",
-				 wh + io->meter_val.id_con);
+			idx = io->meter_val.id_con - 1;
 
-			wh++;
+			/* Validate connector index */
+			if (idx >= 0 && idx < NO_OF_CONN) {
+				if (sessions[idx].active) {
+					/* Active session: calculate current meter value */
+					int64_t elapsed_ms = k_uptime_get() - sessions[idx].start_time_ms;
+					int64_t elapsed_sec = elapsed_ms / 1000;
+					int64_t consumed_wh = ((int64_t)WH_PER_SECOND * elapsed_sec) / 10;
+
+					/* Add small jitter (±3%) for realism if significant time elapsed */
+					int32_t jitter = 0;
+
+					if (consumed_wh > MIN_WH_FOR_JITTER) {
+						int32_t jitter_percent = (sys_rand32_get() % 7) - 3;
+
+						jitter = (int32_t)((consumed_wh * jitter_percent) / 100);
+					}
+
+					/* Calculate final value with overflow protection */
+					int64_t final_wh = sessions[idx].start_meter_wh + consumed_wh + jitter;
+
+					if (final_wh > UINT32_MAX) {
+						current_wh = UINT32_MAX;
+					} else if (final_wh < 0) {
+						current_wh = sessions[idx].start_meter_wh;
+					} else {
+						current_wh = (uint32_t)final_wh;
+					}
+				} else if (sessions[idx].last_meter_wh > 0) {
+					/* Session ended, return last meter value */
+					current_wh = sessions[idx].last_meter_wh;
+				} else {
+					/* No session yet, return default base value */
+					current_wh = BASE_METER_VALUE_WH + (idx * CONNECTOR_OFFSET_WH);
+				}
+			} else {
+				/* Invalid connector */
+				current_wh = 0;
+			}
+
+			snprintf(io->meter_val.val, CISTR50, "%u", current_wh);
+
 			LOG_DBG("mtr reading val %s con %d", io->meter_val.val,
 				io->meter_val.id_con);
 
@@ -154,6 +214,14 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	ocpp_session_handle_t sh = NULL;
 	enum ocpp_auth_status status;
 	const uint32_t timeout_ms = 500;
+	int idx = idcon - 1;
+	uint32_t start_meter_wh, stop_meter_wh;
+
+	/* Validate connector ID */
+	if (idx < 0 || idx >= NO_OF_CONN) {
+		LOG_ERR("Invalid connector id %d\n", idcon);
+		return;
+	}
 
 	ret = ocpp_session_open(&sh);
 	if (ret < 0) {
@@ -187,7 +255,19 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		return;
 	}
 
-	ret = ocpp_start_transaction(sh, sys_rand32_get(), idcon, timeout_ms);
+	/* Initialize charging session with realistic starting value */
+	if (sessions[idx].last_meter_wh > 0) {
+		/* Continue from where the last session ended */
+		start_meter_wh = sessions[idx].last_meter_wh;
+	} else {
+		/* First session: use a base value per connector to simulate previous usage */
+		start_meter_wh = BASE_METER_VALUE_WH + (idx * CONNECTOR_OFFSET_WH);
+	}
+	sessions[idx].start_meter_wh = start_meter_wh;
+	sessions[idx].start_time_ms = k_uptime_get();
+	sessions[idx].active = true;
+
+	ret = ocpp_start_transaction(sh, start_meter_wh, idcon, timeout_ms);
 	if (ret == 0) {
 		const struct zbus_channel *chan;
 		union ocpp_io_value io;
@@ -208,7 +288,26 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		} while (1);
 	}
 
-	ret = ocpp_stop_transaction(sh, sys_rand32_get(), timeout_ms);
+	/* Calculate final meter value based on actual elapsed time */
+	int64_t elapsed_ms = k_uptime_get() - sessions[idx].start_time_ms;
+	int64_t elapsed_sec = elapsed_ms / 1000;
+	int64_t consumed_wh = ((int64_t)WH_PER_SECOND * elapsed_sec) / 10;
+	int64_t final_wh = sessions[idx].start_meter_wh + consumed_wh;
+
+	/* Ensure no overflow or underflow */
+	if (final_wh > UINT32_MAX) {
+		stop_meter_wh = UINT32_MAX;
+	} else if (final_wh < 0) {
+		stop_meter_wh = sessions[idx].start_meter_wh;
+	} else {
+		stop_meter_wh = (uint32_t)final_wh;
+	}
+
+	/* Mark session as inactive and store final meter value */
+	sessions[idx].active = false;
+	sessions[idx].last_meter_wh = stop_meter_wh;
+
+	ret = ocpp_stop_transaction(sh, stop_meter_wh, timeout_ms);
 	if (ret < 0) {
 		LOG_ERR("ocpp stop txn idcon %d> %d\n", idcon, ret);
 		return;
