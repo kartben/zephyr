@@ -24,6 +24,7 @@ char    *strdup(const char *);
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
 #define NO_OF_CONN CONFIG_NET_SAMPLE_OCPP_NUM_CONNECTORS
+#define STOP_CHARGING_EVENT_BIT 0x01
 K_KERNEL_STACK_ARRAY_DEFINE(cp_stk, NO_OF_CONN, 2 * 1024);
 
 static struct k_thread tinfo[NO_OF_CONN];
@@ -123,7 +124,7 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 	case OCPP_USR_STOP_CHARGING:
 		idx = io->stop_charge.id_con - 1;
 		if (idx >= 0 && idx < NO_OF_CONN) {
-			k_event_post(&stop_events[idx], 0x01);
+			k_event_post(&stop_events[idx], STOP_CHARGING_EVENT_BIT);
 		}
 		return 0;
 
@@ -182,7 +183,7 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		LOG_INF("ocpp start charging connector id %d\n", idcon);
 
 		/* wait for stop charging event from main or remote CS */
-		k_event_wait(stop_event, 0x01, true, K_FOREVER);
+		k_event_wait(stop_event, STOP_CHARGING_EVENT_BIT, true, K_FOREVER);
 	}
 
 	ret = ocpp_stop_transaction(sh, sys_rand32_get(), timeout_ms);
@@ -318,7 +319,7 @@ int main(void)
 		io.stop_charge.id_con = i + 1;
 
 		/* Post stop event directly */
-		k_event_post(&stop_events[i], 0x01);
+		k_event_post(&stop_events[i], STOP_CHARGING_EVENT_BIT);
 		k_sleep(K_SECONDS(1));
 	}
 
