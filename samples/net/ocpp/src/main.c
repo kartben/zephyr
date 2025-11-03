@@ -314,10 +314,6 @@ int main(void)
 
 	/* Send stop charging to thread */
 	for (i = 0; i < NO_OF_CONN; i++) {
-		union ocpp_io_value io = {0};
-
-		io.stop_charge.id_con = i + 1;
-
 		/* Post stop event directly */
 		k_event_post(&stop_events[i], STOP_CHARGING_EVENT_BIT);
 		k_sleep(K_SECONDS(1));
