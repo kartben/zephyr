@@ -1,0 +1,21 @@
+/*
+ * Copyright (c) 2025 Linumiz GmbH
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	chosen {
+		zephyr,display = &sdl_dc;
+	};
+
+	lvgl_pointer {
+		compatible = "zephyr,lvgl-pointer-input";
+		input = <&sdl_dc>;
+	};
+};
+
+&sdl_dc {
+	width = <480>;
+	height = <320>;
+};
