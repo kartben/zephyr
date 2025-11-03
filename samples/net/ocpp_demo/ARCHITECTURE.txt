@@ -1,0 +1,193 @@
+OCPP EV Charging Station Demo - Architecture
+=============================================
+
+System Overview:
+----------------
+
+                    Internet
+                        |
+                        | WebSocket (HTTP/80)
+                        |
+            +-----------v-----------+
+            |   cs.ocpp-css.com     |
+            |   (Central System)    |
+            |  - OCPP 1.6-J Server  |
+            |  - Web Interface      |
+            +-----------+-----------+
+                        |
+                        | OCPP Messages
+                        | (JSON over WebSocket)
+                        |
+            +-----------v-----------+
+            |   Zephyr OCPP Stack   |
+            |  - WebSocket Client   |
+            |  - OCPP Protocol      |
+            |  - Message Handler    |
+            +-----------+-----------+
+                        |
+            +-----------v-----------+
+            |   OCPP Demo App       |
+            |  +-----------------+  |
+            |  | Connector 1     |  |
+            |  | - Fast Charge   |  |
+            |  | - 22 kW         |  |
+            |  | - DemoTag01     |  |
+            |  +-----------------+  |
+            |  | Connector 2     |  |
+            |  | - Normal Charge |  |
+            |  | - 7.4 kW        |  |
+            |  | - DemoTag02     |  |
+            |  +-----------------+  |
+            +-----------------------+
+
+
+Charging Session Flow:
+-----------------------
+
+┌─────────────┐              ┌─────────────┐              ┌─────────────┐
+│   Vehicle   │              │  Charge     │              │  Central    │
+│  (Simulated)│              │  Point      │              │  System     │
+└─────┬───────┘              └──────┬──────┘              └──────┬──────┘
+      │                             │                            │
+      │  1. Plugin                  │                            │
+      ├────────────────────────────>│                            │
+      │                             │  2. BootNotification       │
+      │                             ├───────────────────────────>│
+      │                             │                            │
+      │                             │  3. Accepted               │
+      │                             │<───────────────────────────┤
+      │                             │                            │
+      │  4. IdTag Scan              │                            │
+      ├────────────────────────────>│                            │
+      │                             │  5. Authorize Request      │
+      │                             ├───────────────────────────>│
+      │                             │                            │
+      │                             │  6. Accepted               │
+      │                             │<───────────────────────────┤
+      │                             │                            │
+      │  7. Start Charging          │                            │
+      ├────────────────────────────>│  8. StartTransaction       │
+      │                             ├───────────────────────────>│
+      │                             │                            │
+      │                             │  9. TransactionId          │
+      │                             │<───────────────────────────┤
+      │                             │                            │
+      │  ┌──────────────────────────┼────────────────────────────┤
+      │  │ Charging Loop (every 1s) │                            │
+      │  │                          │  10. MeterValues           │
+      │  │                          ├───────────────────────────>│
+      │  │  - Power ramp-up         │      - Energy (Wh)         │
+      │  │  - Energy accumulation   │      - Power (W)           │
+      │  │  - Temperature rise      │      - Current (A)         │
+      │  │  - SoC increase          │      - Voltage (V)         │
+      │  │                          │      - Temperature (°C)    │
+      │  │                          │      - SoC (%)             │
+      │  │                          │                            │
+      │  │  Status Log (every 5s):  │                            │
+      │  │  "📊 22.0kW | 95.7A |    │                            │
+      │  │   514Wh | 28% | 41.4°C"  │                            │
+      │  └──────────────────────────┤                            │
+      │                             │                            │
+      │  11. Stop Charging          │                            │
+      │     (95% SoC or timeout)    │                            │
+      ├────────────────────────────>│  12. StopTransaction       │
+      │                             ├───────────────────────────>│
+      │                             │      - Final meter reading │
+      │                             │                            │
+      │                             │  13. Accepted              │
+      │                             │<───────────────────────────┤
+      │  14. Session Complete       │                            │
+      │<────────────────────────────┤                            │
+      │                             │                            │
+
+
+Demo Scenario Timeline:
+------------------------
+
+T=0s    : Network initialization
+          ↓
+T=2s    : DHCP address acquired
+          ↓
+T=3s    : SNTP time synchronization
+          ↓
+T=5s    : OCPP stack initialized
+          ↓
+T=5s    : Vehicle 1 arrives at Connector 1
+          - IdTag: DemoTag01
+          - Mode: FAST (22 kW)
+          ↓
+T=8s    : Vehicle 2 arrives at Connector 2
+          - IdTag: DemoTag02
+          - Mode: NORMAL (7.4 kW)
+          ↓
+T=10s   : Both vehicles authorize
+          ↓
+T=11s   : Charging starts on both connectors
+          ↓
+T=11s-71s: Active charging with:
+          - Power ramp-up (0 → target kW)
+          - Energy accumulation
+          - Temperature rise (25°C → 65°C max)
+          - SoC progression (20% → 95%)
+          - Status updates every 5 seconds
+          ↓
+T=71s   : Connector 1 reaches 95% SoC, stops
+          ↓
+T=73s   : Connector 2 reaches 95% SoC, stops
+          ↓
+T=75s   : Demo scenario complete
+          ↓
+T>75s   : Station remains connected for remote operations
+
+
+Meter Value Reporting:
+-----------------------
+
+Every 1-5 seconds during charging, the following values are reported:
+
+┌─────────────────────────┬──────────────┬──────────────┐
+│ Measurand               │ Connector 1  │ Connector 2  │
+│                         │ (Fast)       │ (Normal)     │
+├─────────────────────────┼──────────────┼──────────────┤
+│ Power (kW)              │ 0 → 22.0     │ 0 → 7.4      │
+│ Current (A)             │ 0 → 95.7     │ 0 → 32.2     │
+│ Voltage (V)             │ ~230         │ ~230         │
+│ Energy (Wh)             │ 0 → 1320+    │ 0 → 444+     │
+│ Temperature (°C)        │ 25 → 65      │ 25 → 45      │
+│ State of Charge (%)     │ 20 → 95      │ 20 → 95      │
+└─────────────────────────┴──────────────┴──────────────┘
+
+
+Remote Operations:
+-------------------
+
+The Central System can trigger:
+
+1. Remote Start Transaction
+   - Specify connector ID
+   - Specify IdTag
+   - Demo automatically handles authorization and charging
+
+2. Remote Stop Transaction
+   - Specify connector ID
+   - Demo gracefully stops charging and reports final values
+
+3. Unlock Connector
+   - Simulate physical unlock of connector
+   - Logged but no physical action in simulation
+
+
+Key Features Demonstrated:
+---------------------------
+
+✓ Dual-connector operation
+✓ Different charging speeds (Fast vs Normal)
+✓ Realistic power delivery simulation
+✓ Dynamic meter value reporting
+✓ Temperature simulation
+✓ State of Charge progression
+✓ Automatic charge completion
+✓ Remote operation support
+✓ Comprehensive logging with visual indicators
+✓ Session statistics and summaries
+✓ OCPP 1.6 core profile compliance

@@ -1,0 +1,10 @@
+sample:
+  description: Comprehensive OCPP 1.6 charge point demo with realistic EV charging simulation
+  name: OCPP EV Charging Station Demo
+tests:
+  sample.net.ocpp_demo:
+    harness: net
+    depends_on: netif
+    tags:
+      - net
+      - ocpp
