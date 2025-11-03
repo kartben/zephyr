@@ -354,10 +354,9 @@ class VideoSignaturePlugin(DetectionPlugin):
 
         # Check if fingerprints use the same method
         if fp1.get("method") != fp2.get("method"):
-            print(
-                f"Warning: Comparing fingerprints with different methods:\
-                    {fp1.get('method')} vs {fp2.get('method')}"
-            )
+            method1 = fp1.get('method')
+            method2 = fp2.get('method')
+            print(f"Warning: Comparing fingerprints with different methods: {method1} vs {method2}")
 
         method = fp1.get("method", "combined")
 

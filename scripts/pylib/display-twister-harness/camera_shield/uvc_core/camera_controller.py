@@ -259,10 +259,9 @@ class UVCCamera:
     def print_settings(self):
         """Print current camera settings"""
         print(f"Camera {self.device_id} Settings:")
-        print(
-            f"Resolution: {int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))}\
-                x{int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))}"
-        )
+        width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        print(f"Resolution: {width}x{height}")
         print(f"  FPS: {self.cap.get(cv2.CAP_PROP_FPS):.2f}")
         print(f"  Auto Focus: {'ON' if self.cap.get(cv2.CAP_PROP_AUTOFOCUS) else 'OFF'}")
         print(f"  Auto White Balance: {'ON' if self.cap.get(cv2.CAP_PROP_AUTO_WB) else 'OFF'}")
