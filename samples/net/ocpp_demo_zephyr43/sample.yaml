@@ -1,0 +1,17 @@
+sample:
+  name: Zephyr 4.3 OCPP Demo with GUI
+  description: Comprehensive demo showcasing Zephyr 4.3 features
+tests:
+  sample.net.ocpp_demo_zephyr43:
+    tags:
+      - net
+      - ocpp
+      - usb
+      - display
+      - lvgl
+      - gui
+    platform_allow:
+      - stm32f746g_disco
+    integration_platforms:
+      - stm32f746g_disco
+    harness: net

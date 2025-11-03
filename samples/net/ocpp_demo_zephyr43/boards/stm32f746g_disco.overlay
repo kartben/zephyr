@@ -1,0 +1,34 @@
+/*
+ * Copyright (c) 2025 Linumiz GmbH
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* Enable USB OTG FS for USB Device stack */
+&usb_otg_fs {
+	status = "okay";
+};
+
+/* Ensure LTDC (LCD Controller) is enabled for display */
+&ltdc {
+	status = "okay";
+};
+
+/* Touch controller */
+&i2c3 {
+	status = "okay";
+	
+	ft5336: ft5336@38 {
+		status = "okay";
+	};
+};
+
+/* External SDRAM for LVGL frame buffers */
+&fmc {
+	status = "okay";
+};
+
+/* QSPI Flash */
+&quadspi {
+	status = "okay";
+};
