@@ -35,6 +35,7 @@ static char idtag[NO_OF_CONN][25];
 struct charging_session {
 	int64_t start_time_ms;	/* Session start time in milliseconds */
 	uint32_t start_meter_wh; /* Starting meter value in Wh */
+	uint32_t last_meter_wh;  /* Last known meter value in Wh */
 	bool active;		/* Session active flag */
 };
 
@@ -106,22 +107,28 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 		if (OCPP_OMM_ACTIVE_ENERGY_TO_EV == io->meter_val.mes) {
 			idx = io->meter_val.id_con - 1;
 
-			if (idx >= 0 && idx < NO_OF_CONN && sessions[idx].active) {
-				/* Calculate elapsed time in milliseconds */
-				int64_t elapsed_ms = k_uptime_get() - sessions[idx].start_time_ms;
-				/* Convert to seconds */
-				int64_t elapsed_sec = elapsed_ms / 1000;
+			/* Validate connector index */
+			if (idx >= 0 && idx < NO_OF_CONN) {
+				if (sessions[idx].active) {
+					/* Active session: calculate current meter value */
+					int64_t elapsed_ms = k_uptime_get() - sessions[idx].start_time_ms;
+					int64_t elapsed_sec = elapsed_ms / 1000;
+					uint32_t consumed_wh = (WH_PER_SECOND * elapsed_sec) / 10;
 
-				/* Calculate energy consumed: (Wh/s * seconds) */
-				uint32_t consumed_wh = (WH_PER_SECOND * elapsed_sec) / 10;
+					/* Add small jitter (±3%) for realism */
+					int32_t jitter_percent = (sys_rand32_get() % 7) - 3;
+					int32_t jitter = (int32_t)(((int64_t)consumed_wh * jitter_percent) / 100);
 
-				/* Add small jitter (±3%) for realism */
-				int32_t jitter_percent = (sys_rand32_get() % 7) - 3; /* -3 to +3 */
-				int32_t jitter = (int32_t)(((int64_t)consumed_wh * jitter_percent) / 100);
-
-				current_wh = sessions[idx].start_meter_wh + consumed_wh + jitter;
+					current_wh = sessions[idx].start_meter_wh + consumed_wh + jitter;
+				} else if (sessions[idx].last_meter_wh > 0) {
+					/* Session ended, return last meter value */
+					current_wh = sessions[idx].last_meter_wh;
+				} else {
+					/* No session yet, return default base value */
+					current_wh = 1000 + (idx * 500);
+				}
 			} else {
-				/* Not in active session, return base value */
+				/* Invalid connector */
 				current_wh = 0;
 			}
 
@@ -223,8 +230,13 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	}
 
 	/* Initialize charging session with realistic starting value */
-	/* Use a base value of 1000 Wh per connector to simulate previous usage */
-	start_meter_wh = 1000 + (idx * 500);
+	if (sessions[idx].last_meter_wh > 0) {
+		/* Continue from where the last session ended */
+		start_meter_wh = sessions[idx].last_meter_wh;
+	} else {
+		/* First session: use a base value per connector to simulate previous usage */
+		start_meter_wh = 1000 + (idx * 500);
+	}
 	sessions[idx].start_meter_wh = start_meter_wh;
 	sessions[idx].start_time_ms = k_uptime_get();
 	sessions[idx].active = true;
@@ -250,14 +262,15 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		} while (1);
 	}
 
-	/* Mark session as inactive before stopping */
-	sessions[idx].active = false;
-
 	/* Calculate final meter value based on actual elapsed time */
 	int64_t elapsed_ms = k_uptime_get() - sessions[idx].start_time_ms;
 	int64_t elapsed_sec = elapsed_ms / 1000;
 	uint32_t consumed_wh = (WH_PER_SECOND * elapsed_sec) / 10;
 	stop_meter_wh = sessions[idx].start_meter_wh + consumed_wh;
+
+	/* Mark session as inactive and store final meter value */
+	sessions[idx].active = false;
+	sessions[idx].last_meter_wh = stop_meter_wh;
 
 	ret = ocpp_stop_transaction(sh, stop_meter_wh, timeout_ms);
 	if (ret < 0) {
