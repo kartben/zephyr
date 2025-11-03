@@ -1,0 +1,38 @@
+/*
+ * Copyright (c) 2025 Linumiz GmbH
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
+/ {
+	aliases {
+		sw0 = &button0;
+	};
+
+	keys: keys {
+		compatible = "gpio-keys";
+		button0: button0 {
+			gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
+			zephyr,code = <INPUT_KEY_R>;
+		};
+	};
+
+	lvgl_button_input {
+		compatible = "zephyr,lvgl-button-input";
+		input = <&keys>;
+		input-codes = <INPUT_KEY_R>;
+		coordinates = <160 120>;
+	};
+};
+
+&gpio0 {
+	ngpios = <2>;
+
+	sdl_gpio {
+		status = "okay";
+		compatible = "zephyr,gpio-emul-sdl";
+		scancodes = <0 21>;
+	};
+};
