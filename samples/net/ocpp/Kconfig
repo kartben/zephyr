@@ -19,4 +19,11 @@ config NET_SAMPLE_SNTP_SERVER
 	help
 	  SNTP server ip to get the time from network
 
+config NET_SAMPLE_OCPP_NUM_CONNECTORS
+	int "Number of OCPP connectors"
+	default 2
+	range 1 32
+	help
+	  Number of OCPP charge point connectors to support (1-32)
+
 source "Kconfig.zephyr"

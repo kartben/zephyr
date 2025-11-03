@@ -14,7 +14,6 @@
 #include <zephyr/net/sntp.h>
 #include <zephyr/net/ocpp.h>
 #include <zephyr/random/random.h>
-#include <zephyr/zbus/zbus.h>
 
 #include "net_sample_common.h"
 
@@ -24,12 +23,13 @@ char    *strdup(const char *);
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
-#define NO_OF_CONN 2
+#define NO_OF_CONN CONFIG_NET_SAMPLE_OCPP_NUM_CONNECTORS
 K_KERNEL_STACK_ARRAY_DEFINE(cp_stk, NO_OF_CONN, 2 * 1024);
 
 static struct k_thread tinfo[NO_OF_CONN];
 static k_tid_t tid[NO_OF_CONN];
 static char idtag[NO_OF_CONN][25];
+static struct k_event stop_events[NO_OF_CONN];
 
 static int ocpp_get_time_from_sntp(void)
 {
@@ -64,19 +64,6 @@ static int ocpp_get_time_from_sntp(void)
 	sntp_close(&ctx);
 	return 0;
 }
-
-ZBUS_CHAN_DEFINE(ch_event, /* Name */
-		 union ocpp_io_value,
-		 NULL,			/* Validator */
-		 NULL,			/* User data */
-		 ZBUS_OBSERVERS_EMPTY,	/* observers */
-		 ZBUS_MSG_INIT(0) /* Initial value {0} */
-);
-
-ZBUS_SUBSCRIBER_DEFINE(cp_thread0, 5);
-ZBUS_SUBSCRIBER_DEFINE(cp_thread1, 5);
-struct zbus_observer *obs[NO_OF_CONN] = {(struct zbus_observer *)&cp_thread0,
-					 (struct zbus_observer *)&cp_thread1};
 
 static void ocpp_cp_entry(void *p1, void *p2, void *p3);
 static int user_notify_cb(enum ocpp_notify_reason reason,
@@ -127,14 +114,17 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 			tid[idx] = k_thread_create(&tinfo[idx], cp_stk[idx],
 						   sizeof(cp_stk[idx]), ocpp_cp_entry,
 						   (void *)(uintptr_t)(idx + 1), idtag[idx],
-						   obs[idx], 7, 0, K_NO_WAIT);
+						   &stop_events[idx], 7, 0, K_NO_WAIT);
 
 			return 0;
 		}
 		break;
 
 	case OCPP_USR_STOP_CHARGING:
-		zbus_chan_pub(&ch_event, io, K_MSEC(100));
+		idx = io->stop_charge.id_con - 1;
+		if (idx >= 0 && idx < NO_OF_CONN) {
+			k_event_post(&stop_events[idx], 0x01);
+		}
 		return 0;
 
 	case OCPP_USR_UNLOCK_CONNECTOR:
@@ -150,7 +140,7 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	int ret;
 	int idcon = (int)(uintptr_t)p1;
 	char *idtag = (char *)p2;
-	struct zbus_observer *obs = (struct zbus_observer *)p3;
+	struct k_event *stop_event = (struct k_event *)p3;
 	ocpp_session_handle_t sh = NULL;
 	enum ocpp_auth_status status;
 	const uint32_t timeout_ms = 500;
@@ -189,23 +179,10 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 
 	ret = ocpp_start_transaction(sh, sys_rand32_get(), idcon, timeout_ms);
 	if (ret == 0) {
-		const struct zbus_channel *chan;
-		union ocpp_io_value io;
-
 		LOG_INF("ocpp start charging connector id %d\n", idcon);
-		memset(&io, 0xff, sizeof(io));
 
 		/* wait for stop charging event from main or remote CS */
-		zbus_chan_add_obs(&ch_event, obs, K_SECONDS(1));
-		do {
-			zbus_sub_wait(obs, &chan, K_FOREVER);
-			zbus_chan_read(chan, &io, K_SECONDS(1));
-
-			if (io.stop_charge.id_con == idcon) {
-				break;
-			}
-
-		} while (1);
+		k_event_wait(stop_event, 0x01, false, K_FOREVER);
 	}
 
 	ret = ocpp_stop_transaction(sh, sys_rand32_get(), timeout_ms);
@@ -316,6 +293,11 @@ int main(void)
 		return ret;
 	}
 
+	/* Initialize k_event for each connector */
+	for (i = 0; i < NO_OF_CONN; i++) {
+		k_event_init(&stop_events[i]);
+	}
+
 	/* Spawn threads for each connector */
 	for (i = 0; i < NO_OF_CONN; i++) {
 		snprintf(idtag[i], sizeof(idtag[0]), "ZepId%02d", i);
@@ -323,7 +305,7 @@ int main(void)
 		tid[i] = k_thread_create(&tinfo[i], cp_stk[i],
 					 sizeof(cp_stk[i]),
 					 ocpp_cp_entry, (void *)(uintptr_t)(i + 1),
-					 idtag[i], obs[i], 7, 0, K_NO_WAIT);
+					 idtag[i], &stop_events[i], 7, 0, K_NO_WAIT);
 	}
 
 	/* Active charging session */
@@ -335,7 +317,8 @@ int main(void)
 
 		io.stop_charge.id_con = i + 1;
 
-		zbus_chan_pub(&ch_event, &io, K_MSEC(100));
+		/* Post stop event directly */
+		k_event_post(&stop_events[i], 0x01);
 		k_sleep(K_SECONDS(1));
 	}
 
