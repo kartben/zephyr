@@ -103,6 +103,10 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 			idx = i;
 		} else {
 			idx = io->start_charge.id_con - 1;
+			/* Validate connector index is in valid range */
+			if (idx < 0 || idx >= NO_OF_CONN) {
+				return -EINVAL;
+			}
 		}
 
 		if (tid[idx] == NULL) {
@@ -110,7 +114,8 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 				idtag[idx], idx + 1);
 
 			strncpy(idtag[idx], io->start_charge.idtag,
-				sizeof(idtag[0]));
+				sizeof(idtag[0]) - 1);
+			idtag[idx][sizeof(idtag[0]) - 1] = '\0';
 
 			tid[idx] = k_thread_create(&tinfo[idx], cp_stk[idx],
 						   sizeof(cp_stk[idx]), ocpp_cp_entry,
