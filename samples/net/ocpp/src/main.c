@@ -113,9 +113,8 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 			LOG_INF("Remote start charging idtag %s connector %d\n",
 				idtag[idx], idx + 1);
 
-			strncpy(idtag[idx], io->start_charge.idtag,
-				sizeof(idtag[0]) - 1);
-			idtag[idx][sizeof(idtag[0]) - 1] = '\0';
+			snprintf(idtag[idx], sizeof(idtag[0]), "%s",
+				 io->start_charge.idtag);
 
 			tid[idx] = k_thread_create(&tinfo[idx], cp_stk[idx],
 						   sizeof(cp_stk[idx]), ocpp_cp_entry,
@@ -130,8 +129,9 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 		idx = io->stop_charge.id_con - 1;
 		if (idx >= 0 && idx < NO_OF_CONN) {
 			k_event_post(&stop_events[idx], STOP_CHARGING_EVENT_BIT);
+			return 0;
 		}
-		return 0;
+		return -EINVAL;
 
 	case OCPP_USR_UNLOCK_CONNECTOR:
 		LOG_INF("unlock connector %d\n", io->unlock_con.id_con);
