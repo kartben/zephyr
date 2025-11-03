@@ -114,6 +114,7 @@ static int get_current_meter_value(int connector_id)
 		int elapsed_seconds = (int)(elapsed_ms / 1000);
 		/* Simulate ~2 Wh per second charging rate */
 		int energy_added = elapsed_seconds * 2;
+
 		current_wh = meter[idx].start_wh + energy_added;
 	}
 
