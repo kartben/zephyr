@@ -47,6 +47,11 @@ static struct charging_session sessions[NO_OF_CONN];
 /* Convert to Wh per second: 7400W / 3600s/h = ~2.056 Wh/s */
 #define WH_PER_SECOND ((CHARGING_POWER_W * 10) / 3600) /* Fixed point: x10 */
 
+/* Base meter values for simulation */
+#define BASE_METER_VALUE_WH 1000  /* Starting value for first connector */
+#define CONNECTOR_OFFSET_WH 500   /* Offset between connectors */
+#define MIN_WH_FOR_JITTER 10      /* Minimum consumed Wh before applying jitter */
+
 static int ocpp_get_time_from_sntp(void)
 {
 	struct sntp_ctx ctx;
@@ -119,7 +124,7 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 					/* Add small jitter (±3%) for realism if significant time elapsed */
 					int32_t jitter = 0;
 
-					if (consumed_wh > 10) {
+					if (consumed_wh > MIN_WH_FOR_JITTER) {
 						int32_t jitter_percent = (sys_rand32_get() % 7) - 3;
 
 						jitter = (int32_t)((consumed_wh * jitter_percent) / 100);
@@ -140,7 +145,7 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 					current_wh = sessions[idx].last_meter_wh;
 				} else {
 					/* No session yet, return default base value */
-					current_wh = 1000 + (idx * 500);
+					current_wh = BASE_METER_VALUE_WH + (idx * CONNECTOR_OFFSET_WH);
 				}
 			} else {
 				/* Invalid connector */
@@ -256,7 +261,7 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		start_meter_wh = sessions[idx].last_meter_wh;
 	} else {
 		/* First session: use a base value per connector to simulate previous usage */
-		start_meter_wh = 1000 + (idx * 500);
+		start_meter_wh = BASE_METER_VALUE_WH + (idx * CONNECTOR_OFFSET_WH);
 	}
 	sessions[idx].start_meter_wh = start_meter_wh;
 	sessions[idx].start_time_ms = k_uptime_get();
@@ -289,9 +294,11 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	int64_t consumed_wh = ((int64_t)WH_PER_SECOND * elapsed_sec) / 10;
 	int64_t final_wh = sessions[idx].start_meter_wh + consumed_wh;
 
-	/* Ensure no overflow */
+	/* Ensure no overflow or underflow */
 	if (final_wh > UINT32_MAX) {
 		stop_meter_wh = UINT32_MAX;
+	} else if (final_wh < 0) {
+		stop_meter_wh = sessions[idx].start_meter_wh;
 	} else {
 		stop_meter_wh = (uint32_t)final_wh;
 	}
