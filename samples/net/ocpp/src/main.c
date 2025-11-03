@@ -182,7 +182,7 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		LOG_INF("ocpp start charging connector id %d\n", idcon);
 
 		/* wait for stop charging event from main or remote CS */
-		k_event_wait(stop_event, 0x01, false, K_FOREVER);
+		k_event_wait(stop_event, 0x01, true, K_FOREVER);
 	}
 
 	ret = ocpp_stop_transaction(sh, sys_rand32_get(), timeout_ms);
