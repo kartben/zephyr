@@ -114,7 +114,7 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 					/* Active session: calculate current meter value */
 					int64_t elapsed_ms = k_uptime_get() - sessions[idx].start_time_ms;
 					int64_t elapsed_sec = elapsed_ms / 1000;
-					uint32_t consumed_wh = (WH_PER_SECOND * elapsed_sec) / 10;
+					int64_t consumed_wh = ((int64_t)WH_PER_SECOND * elapsed_sec) / 10;
 
 					/* Add small jitter (±3%) for realism if significant time elapsed */
 					int32_t jitter = 0;
@@ -122,10 +122,19 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 					if (consumed_wh > 10) {
 						int32_t jitter_percent = (sys_rand32_get() % 7) - 3;
 
-						jitter = (int32_t)(((int64_t)consumed_wh * jitter_percent) / 100);
+						jitter = (int32_t)((consumed_wh * jitter_percent) / 100);
 					}
 
-					current_wh = sessions[idx].start_meter_wh + consumed_wh + jitter;
+					/* Calculate final value with overflow protection */
+					int64_t final_wh = sessions[idx].start_meter_wh + consumed_wh + jitter;
+
+					if (final_wh > UINT32_MAX) {
+						current_wh = UINT32_MAX;
+					} else if (final_wh < 0) {
+						current_wh = sessions[idx].start_meter_wh;
+					} else {
+						current_wh = (uint32_t)final_wh;
+					}
 				} else if (sessions[idx].last_meter_wh > 0) {
 					/* Session ended, return last meter value */
 					current_wh = sessions[idx].last_meter_wh;
@@ -202,6 +211,12 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	const uint32_t timeout_ms = 500;
 	int idx = idcon - 1;
 	uint32_t start_meter_wh, stop_meter_wh;
+
+	/* Validate connector ID */
+	if (idx < 0 || idx >= NO_OF_CONN) {
+		LOG_ERR("Invalid connector id %d\n", idcon);
+		return;
+	}
 
 	ret = ocpp_session_open(&sh);
 	if (ret < 0) {
