@@ -117,7 +117,7 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 
 				/* Add small jitter (±3%) for realism */
 				int32_t jitter_percent = (sys_rand32_get() % 7) - 3; /* -3 to +3 */
-				int32_t jitter = (consumed_wh * jitter_percent) / 100;
+				int32_t jitter = (int32_t)(((int64_t)consumed_wh * jitter_percent) / 100);
 
 				current_wh = sessions[idx].start_meter_wh + consumed_wh + jitter;
 			} else {
