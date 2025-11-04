@@ -125,9 +125,14 @@ static int ivshmem_mbox_set_enabled(const struct device *dev, mbox_channel_id_t 
 
 static int ivshmem_mbox_init(const struct device *dev)
 {
-	k_thread_create(&ivshmem_ev_loop_thread, ivshmem_ev_loop_stack,
+	k_tid_t tid;
+
+	tid = k_thread_create(&ivshmem_ev_loop_thread, ivshmem_ev_loop_stack,
 			CONFIG_MBOX_IVSHMEM_EVENT_LOOP_STACK_SIZE, ivshmem_mbox_event_loop_thread,
 			(void *)dev, NULL, NULL, CONFIG_MBOX_IVSHMEM_EVENT_LOOP_PRIO, 0, K_NO_WAIT);
+	if (tid == NULL) {
+		return -ENOMEM;
+	}
 
 	return 0;
 }
