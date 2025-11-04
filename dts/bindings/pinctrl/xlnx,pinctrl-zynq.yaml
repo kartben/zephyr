@@ -165,7 +165,7 @@ child-binding:
 
       low-power-disable:
         description: |
-          Enable HSTL input buffer. Applicable when the power-souce (IO_Type) is HSTL. Clears the
+          Enable HSTL input buffer. Applicable when the power-source (IO_Type) is HSTL. Clears the
           DisableRcvr field in the MIO_PIN_xx SLCR register.
 
       power-source:
