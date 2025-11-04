@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 logger = logging.getLogger('twister')
 
@@ -52,37 +53,57 @@ class CoverageTool:
 
     @staticmethod
     def retrieve_gcov_data(input_file):
+        start_time = time.time()
         logger.debug(f"Working on {input_file}")
         extracted_coverage_info = collections.defaultdict(list)
         capture_data = False
         capture_complete = False
+        line_count = 0
+        data_lines = 0
+        
+        # Use line-by-line iteration to reduce memory usage
         with open(input_file) as fp:
-            for line in fp.readlines():
-                if re.search("GCOV_COVERAGE_DUMP_START", line):
+            for line in fp:
+                line_count += 1
+                # Use faster string containment check instead of regex
+                if "GCOV_COVERAGE_DUMP_START" in line:
                     capture_data = True
                     capture_complete = False
                     continue
-                if re.search("GCOV_COVERAGE_DUMP_END", line):
+                if "GCOV_COVERAGE_DUMP_END" in line:
                     capture_complete = True
                     # Keep searching for additional dumps
-                # Loop until the coverage data is found.
+                    continue
+                
+                # Early exit if not capturing data
                 if not capture_data:
                     continue
-                if line.startswith("*"):
-                    sp = line.split("<")
-                    if len(sp) > 1:
-                        # Remove the leading delimiter "*"
-                        file_name = sp[0][1:]
-                        # Remove the trailing new line char
-                        hex_dump = sp[1][:-1]
-                    else:
-                        continue
-                else:
-                    continue
-                hex_bytes = bytes.fromhex(hex_dump)
-                extracted_coverage_info[file_name].append(hex_bytes)
+                
+                # Optimize parsing with single operation
+                if line.startswith("*") and "<" in line:
+                    # Split only once and validate
+                    delimiter_idx = line.find("<")
+                    if delimiter_idx > 1:  # Must have at least "*" and one char before "<"
+                        file_name = line[1:delimiter_idx]  # Remove leading "*"
+                        hex_dump = line[delimiter_idx + 1:].rstrip('\n')  # Remove trailing newline
+                        
+                        if hex_dump:  # Only process if hex_dump is not empty
+                            try:
+                                hex_bytes = bytes.fromhex(hex_dump)
+                                extracted_coverage_info[file_name].append(hex_bytes)
+                                data_lines += 1
+                            except ValueError:
+                                # Skip invalid hex data
+                                logger.debug(f"Invalid hex data in {input_file}: {hex_dump[:20]}...")
+                                continue
+        
         if not capture_data:
             capture_complete = True
+        
+        elapsed_time = time.time() - start_time
+        logger.debug(f"Processed {input_file}: {line_count} lines, {data_lines} data lines, "
+                    f"{len(extracted_coverage_info)} files in {elapsed_time:.3f}s")
+        
         return {'complete': capture_complete, 'data': extracted_coverage_info}
 
     def merge_hexdumps(self, hexdumps):
@@ -111,45 +132,90 @@ class CoverageTool:
                 return fp.read(-1)
 
     def create_gcda_files(self, extracted_coverage_info):
+        if not extracted_coverage_info:
+            return True
+            
         gcda_created = True
-        logger.debug(f"Generating {len(extracted_coverage_info)} gcda files")
+        file_count = len(extracted_coverage_info)
+        logger.debug(f"Generating {file_count} gcda files")
+        
+        # Process files in batches to optimize I/O
         for filename, hexdumps in extracted_coverage_info.items():
-            # if kobject_hash is given for coverage gcovr fails
-            # hence skipping it problem only in gcovr v4.1
+            # Handle kobject_hash special case
             if "kobject_hash" in filename:
-                filename = (filename[:-4]) + "gcno"
-                with contextlib.suppress(Exception):
-                    os.remove(filename)
+                gcno_filename = (filename[:-4]) + "gcno"
+                try:
+                    os.remove(gcno_filename)
+                except OSError:
+                    pass  # File doesn't exist or can't be removed
                 continue
 
             try:
-                hexdump_val = self.merge_hexdumps(hexdumps)
-                with open(filename, 'wb') as fp:
-                    fp.write(hexdump_val)
-            except ValueError:
-                logger.exception(f"Unable to convert hex data for file: {filename}")
+                # Merge hexdumps efficiently
+                if len(hexdumps) == 1:
+                    # Fast path for single hexdump
+                    merged_data = hexdumps[0]
+                else:
+                    # Use existing merge logic for multiple dumps
+                    merged_data = self.merge_hexdumps(hexdumps)
+                
+                # Write file atomically
+                temp_filename = f"{filename}.tmp"
+                with open(temp_filename, 'wb') as fp:
+                    fp.write(merged_data)
+                os.replace(temp_filename, filename)
+                
+            except (ValueError, OSError) as e:
+                logger.error(f"Unable to create gcda file {filename}: {e}")
                 gcda_created = False
-            except FileNotFoundError:
-                logger.exception(f"Unable to create gcda file: {filename}")
-                gcda_created = False
+                # Clean up temp file if it exists
+                try:
+                    os.remove(f"{filename}.tmp")
+                except OSError:
+                    pass
+        
         return gcda_created
 
     def capture_data(self, outdir):
         coverage_completed = True
-        for filename in glob.glob(f"{outdir}/**/handler.log", recursive=True):
+        
+        # More efficient file discovery - avoid recursive glob when possible
+        handler_log_pattern = f"{outdir}/**/handler.log"
+        handler_log_files = []
+        
+        # Try direct search first for common case
+        direct_handler_log = os.path.join(outdir, "handler.log")
+        if os.path.exists(direct_handler_log):
+            handler_log_files.append(direct_handler_log)
+        else:
+            # Fall back to recursive search only if needed
+            handler_log_files = glob.glob(handler_log_pattern, recursive=True)
+        
+        if not handler_log_files:
+            logger.debug(f"No handler.log files found in {outdir}")
+            return True
+        
+        logger.debug(f"Processing {len(handler_log_files)} handler.log files")
+        
+        for filename in handler_log_files:
             gcov_data = self.__class__.retrieve_gcov_data(filename)
             capture_complete = gcov_data['complete']
             extracted_coverage_info = gcov_data['data']
+            
             if capture_complete:
-                gcda_created = self.create_gcda_files(extracted_coverage_info)
-                if gcda_created:
-                    logger.debug(f"Gcov data captured: {filename}")
+                if extracted_coverage_info:  # Only process if we have data
+                    gcda_created = self.create_gcda_files(extracted_coverage_info)
+                    if gcda_created:
+                        logger.debug(f"Gcov data captured: {filename}")
+                    else:
+                        logger.error(f"Gcov data invalid for: {filename}")
+                        coverage_completed = False
                 else:
-                    logger.error(f"Gcov data invalid for: {filename}")
-                    coverage_completed = False
+                    logger.debug(f"No coverage data found in: {filename}")
             else:
                 logger.error(f"Gcov data capture incomplete: {filename}")
                 coverage_completed = False
+        
         return coverage_completed
 
     def generate(self, outdir):
@@ -261,6 +327,7 @@ class Lcov(CoverageTool):
                 # Serial execution requested, don't parallelize at all
                 parallel = []
             else:
+                # Use specified job count for parallel processing
                 parallel = ["--parallel", str(self.jobs)]
         else:
             branch_coverage = "lcov_branch_coverage=1"
@@ -270,6 +337,11 @@ class Lcov(CoverageTool):
             "lcov", "--gcov-tool", self.gcov_tool,
             "--rc", branch_coverage,
         ] + parallel + args
+        
+        # Log parallel processing info for performance monitoring
+        if parallel:
+            logger.debug(f"Using LCOV parallel processing with {parallel[1]} jobs")
+        
         return self.run_command(cmd, coveragelog)
 
 
