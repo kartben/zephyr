@@ -22,14 +22,35 @@
 char    *strdup(const char *);
 #endif
 
-LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
 #define NO_OF_CONN 2
+/* Charging parameters: 400V, 50A = 20kW */
+#define CHARGING_VOLTAGE_V  400
+#define CHARGING_CURRENT_A  50
+#define CHARGING_POWER_W    (CHARGING_VOLTAGE_V * CHARGING_CURRENT_A) /* 20000W = 20kW */
+/* Base meter reading per connector (Wh) */
+#define BASE_METER_WH       10000
+/* Battery capacity (assumed 50 kWh for typical EV) */
+#define BATTERY_CAPACITY_WH 50000
+/* Starting state of charge percentage */
+#define START_SOC_PERCENT   20
+
 K_KERNEL_STACK_ARRAY_DEFINE(cp_stk, NO_OF_CONN, 2 * 1024);
 
 static struct k_thread tinfo[NO_OF_CONN];
 static k_tid_t tid[NO_OF_CONN];
 static char idtag[NO_OF_CONN][25];
+
+/* Per-connector charging session state */
+struct connector_state {
+	int64_t start_time_ms;     /* Start time in milliseconds */
+	uint32_t start_meter_wh;   /* Meter reading at start (Wh) */
+	uint8_t start_soc_percent; /* State of charge at start (%) */
+	bool is_charging;          /* Whether currently charging */
+};
+
+static struct connector_state conn_state[NO_OF_CONN];
 
 static int ocpp_get_time_from_sntp(void)
 {
@@ -79,25 +100,166 @@ struct zbus_observer *obs[NO_OF_CONN] = {(struct zbus_observer *)&cp_thread0,
 					 (struct zbus_observer *)&cp_thread1};
 
 static void ocpp_cp_entry(void *p1, void *p2, void *p3);
+
+/* Calculate current meter reading with jitter */
+static uint32_t calculate_meter_value(int conn_idx)
+{
+	struct connector_state *state = &conn_state[conn_idx];
+	int64_t elapsed_ms;
+	double elapsed_hours;
+	uint32_t energy_wh;
+	uint32_t meter_value;
+
+	if (!state->is_charging || state->start_time_ms == 0) {
+		/* Not charging, return base meter reading */
+		return BASE_METER_WH + (conn_idx * 1000);
+	}
+
+	/* Calculate elapsed time since start */
+	elapsed_ms = k_uptime_get() - state->start_time_ms;
+	elapsed_hours = (double)elapsed_ms / 3600000.0; /* Convert ms to hours */
+
+	/* Calculate energy consumed: Power (W) * Time (h) = Energy (Wh) */
+	energy_wh = (uint32_t)(CHARGING_POWER_W * elapsed_hours);
+
+	/* Add jitter: ±1% of energy consumed */
+	/* Generate jitter: -1% to +1% (99% to 101% of energy) */
+	int jitter_percent = (sys_rand32_get() % 3) - 1; /* -1, 0, or +1 */
+	/* Calculate jitter as signed to handle negative values correctly */
+	int32_t jitter_wh_signed = (int32_t)(((int64_t)energy_wh * jitter_percent) / 100);
+
+	/* Current meter reading = start meter + energy consumed (with jitter) */
+	/* Use signed arithmetic to handle negative jitter, then clamp to ensure
+	 * meter value never goes below start meter value
+	 */
+	int64_t meter_value_signed =
+		(int64_t)state->start_meter_wh + (int64_t)energy_wh + jitter_wh_signed;
+	if (meter_value_signed < (int64_t)state->start_meter_wh) {
+		meter_value_signed = (int64_t)state->start_meter_wh;
+	}
+	meter_value = (uint32_t)meter_value_signed;
+
+	return meter_value;
+}
+
+/* Calculate current state of charge percentage */
+static uint8_t calculate_soc_percent(int conn_idx)
+{
+	struct connector_state *state = &conn_state[conn_idx];
+	int64_t elapsed_ms;
+	double elapsed_hours;
+	uint32_t energy_wh;
+	uint32_t soc_percent;
+
+	if (!state->is_charging || state->start_time_ms == 0) {
+		/* Not charging, return starting SOC */
+		return state->start_soc_percent;
+	}
+
+	/* Calculate elapsed time since start */
+	elapsed_ms = k_uptime_get() - state->start_time_ms;
+	elapsed_hours = (double)elapsed_ms / 3600000.0; /* Convert ms to hours */
+
+	/* Calculate energy consumed: Power (W) * Time (h) = Energy (Wh) */
+	energy_wh = (uint32_t)(CHARGING_POWER_W * elapsed_hours);
+
+	/* Calculate SOC increase: (energy_wh / battery_capacity_wh) * 100 */
+	/* SOC = start_soc + (energy_consumed / battery_capacity * 100) */
+	soc_percent =
+		state->start_soc_percent + (uint32_t)((energy_wh * 100UL) / BATTERY_CAPACITY_WH);
+
+	/* Cap SOC at 100% */
+	if (soc_percent > 100) {
+		soc_percent = 100;
+	}
+
+	return soc_percent;
+}
+
 static int user_notify_cb(enum ocpp_notify_reason reason,
 			  union ocpp_io_value *io,
 			  void *user_data)
 {
-	static int wh = 6 + NO_OF_CONN;
 	int idx;
 	int i;
+	uint32_t meter_value;
 
 	switch (reason) {
 	case OCPP_USR_GET_METER_VALUE:
+
+		switch (io->meter_val.mes) {
+		case OCPP_OMM_ACTIVE_ENERGY_TO_EV:
+			LOG_DBG("Computing active energy to EV");
+			break;
+		case OCPP_OMM_ACTIVE_POWER_TO_EV:
+			LOG_DBG("Computing active power to EV");
+			break;
+		case OCPP_OMM_CURRENT_TO_EV:
+			LOG_DBG("Computing current to EV");
+			break;
+		case OCPP_OMM_VOLTAGE_AC_RMS:
+			LOG_DBG("Computing voltage to EV");
+			break;
+		case OCPP_OMM_CHARGING_PERCENT:
+			LOG_DBG("Computing charging percentage");
+			break;
+		default:
+			LOG_ERR("Unknown meter value type: %d", io->meter_val.mes);
+			return -ENOTSUP;
+		}
+
 		if (OCPP_OMM_ACTIVE_ENERGY_TO_EV == io->meter_val.mes) {
-			snprintf(io->meter_val.val, CISTR50, "%u",
-				 wh + io->meter_val.id_con);
-
-			wh++;
-			LOG_DBG("mtr reading val %s con %d", io->meter_val.val,
-				io->meter_val.id_con);
-
+			idx = io->meter_val.id_con - 1;
+			if (idx >= 0 && idx < NO_OF_CONN) {
+				meter_value = calculate_meter_value(idx);
+				snprintf(io->meter_val.val, CISTR50, "%u", meter_value);
+				LOG_DBG("mtr reading val %s con %d", io->meter_val.val,
+					io->meter_val.id_con);
+				return 0;
+			}
+		} else if (OCPP_OMM_ACTIVE_POWER_TO_EV == io->meter_val.mes) {
+			/* Return power value with jitter */
+			int32_t power_w = CHARGING_POWER_W;
+			int32_t jitter = (sys_rand32_get() % 401) - 200; /* ±200W jitter */
+			power_w = power_w + jitter;
+			/* Ensure power doesn't go negative */
+			if (power_w < 0) {
+				power_w = 0;
+			}
+			snprintf(io->meter_val.val, CISTR50, "%d", power_w);
 			return 0;
+		} else if (OCPP_OMM_CURRENT_TO_EV == io->meter_val.mes) {
+			/* Return current value with jitter (in A) */
+			int32_t current_a = CHARGING_CURRENT_A;
+			int32_t jitter = (sys_rand32_get() % 3) - 1; /* ±1A jitter */
+			current_a = current_a + jitter;
+			/* Ensure current doesn't go negative */
+			if (current_a < 0) {
+				current_a = 0;
+			}
+			snprintf(io->meter_val.val, CISTR50, "%d", current_a);
+			return 0;
+		} else if (OCPP_OMM_VOLTAGE_AC_RMS == io->meter_val.mes) {
+			/* Return voltage value with jitter (in V) */
+			int32_t voltage_v = CHARGING_VOLTAGE_V;
+			int32_t jitter = (sys_rand32_get() % 21) - 10; /* ±10V jitter */
+			voltage_v = voltage_v + jitter;
+			/* Ensure voltage doesn't go negative */
+			if (voltage_v < 0) {
+				voltage_v = 0;
+			}
+			snprintf(io->meter_val.val, CISTR50, "%d", voltage_v);
+			return 0;
+		} else if (OCPP_OMM_CHARGING_PERCENT == io->meter_val.mes) {
+			/* Return state of charge percentage */
+			idx = io->meter_val.id_con - 1;
+			if (idx >= 0 && idx < NO_OF_CONN) {
+				uint8_t soc_percent = calculate_soc_percent(idx);
+				snprintf(io->meter_val.val, CISTR50, "%u", soc_percent);
+				LOG_DBG("SOC reading val %s con %d", io->meter_val.val,
+					io->meter_val.id_con);
+				return 0;
+			}
 		}
 		break;
 
@@ -149,6 +311,7 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 {
 	int ret;
 	int idcon = (int)(uintptr_t)p1;
+	int idx = idcon - 1;
 	char *idtag = (char *)p2;
 	struct zbus_observer *obs = (struct zbus_observer *)p3;
 	ocpp_session_handle_t sh = NULL;
@@ -187,34 +350,125 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		return;
 	}
 
-	ret = ocpp_start_transaction(sh, sys_rand32_get(), idcon, timeout_ms);
-	if (ret == 0) {
+	/* Initialize connector state and calculate start meter value */
+	idx = idcon - 1;
+	if (idx < 0 || idx >= NO_OF_CONN) {
+		LOG_ERR("ocpp start idcon %d> invalid connector id\n", idcon);
+		return;
+	}
+
+	conn_state[idx].start_time_ms = k_uptime_get();
+	/* Start meter = base + connector offset */
+	conn_state[idx].start_meter_wh = BASE_METER_WH + (idx * 1000);
+	/* Start SOC at 20% */
+	conn_state[idx].start_soc_percent = START_SOC_PERCENT;
+	conn_state[idx].is_charging = true;
+
+	ret = ocpp_start_transaction(sh, conn_state[idx].start_meter_wh, idcon, timeout_ms);
+	if (ret != 0) {
+		LOG_ERR("ocpp start transaction failed for connector %d: %d", idcon, ret);
+		conn_state[idx].is_charging = false;
+		return;
+	}
+
+	/* Transaction started successfully, wait for stop event */
+	{
 		const struct zbus_channel *chan;
 		union ocpp_io_value io;
+		int add_obs_ret;
 
-		LOG_INF("ocpp start charging connector id %d\n", idcon);
-		memset(&io, 0xff, sizeof(io));
+		LOG_INF("ocpp start charging connector id %d, start meter: %u Wh\n", idcon,
+			conn_state[idx].start_meter_wh);
+		memset(&io, 0, sizeof(io));
 
 		/* wait for stop charging event from main or remote CS */
-		zbus_chan_add_obs(&ch_event, obs, K_SECONDS(1));
+		add_obs_ret = zbus_chan_add_obs(&ch_event, obs, K_SECONDS(1));
+		if (add_obs_ret < 0) {
+			LOG_ERR("Failed to add observer for connector %d: %d", idcon, add_obs_ret);
+			conn_state[idx].is_charging = false;
+			return;
+		}
+
 		do {
-			zbus_sub_wait(obs, &chan, K_FOREVER);
-			zbus_chan_read(chan, &io, K_SECONDS(1));
+			ret = zbus_sub_wait(obs, &chan, K_FOREVER);
+			if (ret < 0) {
+				LOG_ERR("Failed to wait for stop charge event: %d", ret);
+				continue;
+			}
+
+			ret = zbus_chan_read(chan, &io, K_SECONDS(1));
+			if (ret < 0) {
+				LOG_ERR("Failed to read stop charge event: %d", ret);
+				continue;
+			}
+
+			LOG_DBG("Received stop event for connector %d, checking against %d",
+				io.stop_charge.id_con, idcon);
 
 			if (io.stop_charge.id_con == idcon) {
+				LOG_INF("Stop charge event confirmed for connector %d", idcon);
 				break;
+			} else {
+				LOG_DBG("Stop event for different connector, continuing wait");
 			}
 
 		} while (1);
 	}
 
-	ret = ocpp_stop_transaction(sh, sys_rand32_get(), timeout_ms);
+	/* Calculate end meter value */
+	idx = idcon - 1;
+	if (idx < 0 || idx >= NO_OF_CONN) {
+		LOG_ERR("ocpp stop idcon %d> invalid connector id\n", idcon);
+		/* Retry stop transaction if it returns EAGAIN (state not ready) */
+		int retry_count = 0;
+		const int max_retries = 10;
+		const int retry_delay_ms = 100;
+
+		do {
+			ret = ocpp_stop_transaction(sh, 0, timeout_ms);
+			if (ret == -EAGAIN && retry_count < max_retries) {
+				LOG_DBG("ocpp stop txn idcon %d> EAGAIN, retrying (%d/%d)", idcon,
+					retry_count + 1, max_retries);
+				k_sleep(K_MSEC(retry_delay_ms));
+				retry_count++;
+				continue;
+			}
+			break;
+		} while (1);
+
+		if (ret < 0) {
+			LOG_ERR("ocpp stop txn idcon %d> %d\n", idcon, ret);
+		}
+		return;
+	}
+
+	uint32_t end_meter_wh = calculate_meter_value(idx);
+	conn_state[idx].is_charging = false;
+
+	/* Retry stop transaction if it returns EAGAIN (state not ready) */
+	int retry_count = 0;
+	const int max_retries = 10;
+	const int retry_delay_ms = 100;
+
+	do {
+		ret = ocpp_stop_transaction(sh, end_meter_wh, timeout_ms);
+		if (ret == -EAGAIN && retry_count < max_retries) {
+			LOG_DBG("ocpp stop txn idcon %d> EAGAIN, retrying (%d/%d)", idcon,
+				retry_count + 1, max_retries);
+			k_sleep(K_MSEC(retry_delay_ms));
+			retry_count++;
+			continue;
+		}
+		break;
+	} while (1);
+
 	if (ret < 0) {
 		LOG_ERR("ocpp stop txn idcon %d> %d\n", idcon, ret);
 		return;
 	}
 
-	LOG_INF("ocpp stop charging connector id %d\n", idcon);
+	LOG_INF("ocpp stop charging connector id %d, end meter: %u Wh (start: %u Wh)\n", idcon,
+		end_meter_wh, conn_state[idx].start_meter_wh);
 	k_sleep(K_SECONDS(1));
 	ocpp_session_close(sh);
 	tid[idcon - 1] = NULL;
@@ -316,9 +570,17 @@ int main(void)
 		return ret;
 	}
 
+	/* Initialize connector states */
+	for (i = 0; i < NO_OF_CONN; i++) {
+		conn_state[i].start_time_ms = 0;
+		conn_state[i].start_meter_wh = 0;
+		conn_state[i].start_soc_percent = START_SOC_PERCENT;
+		conn_state[i].is_charging = false;
+	}
+
 	/* Spawn threads for each connector */
 	for (i = 0; i < NO_OF_CONN; i++) {
-		snprintf(idtag[i], sizeof(idtag[0]), "ZepId%02d", i);
+		snprintf(idtag[i], sizeof(idtag[0]), "ZepId%02d", i + 2);
 
 		tid[i] = k_thread_create(&tinfo[i], cp_stk[i],
 					 sizeof(cp_stk[i]),
