@@ -52,7 +52,7 @@ static int ocpp_get_time_from_sntp(void)
 		return ret;
 	}
 
-	ret = sntp_query(&ctx, 60, &stime);
+	ret = sntp_query(&ctx, 5000, &stime);
 	if (ret < 0) {
 		LOG_ERR("SNTP IPv4 request failed: %d", ret);
 		return ret;
