@@ -15,6 +15,8 @@
 #include <zephyr/net/ocpp.h>
 #include <zephyr/random/random.h>
 #include <zephyr/zbus/zbus.h>
+#include <zephyr/input/input.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
 #include "gui.h"
 
 #include "net_sample_common.h"
@@ -107,6 +109,8 @@ struct zbus_observer *obs[NO_OF_CONN] = {(struct zbus_observer *)&cp_thread0,
 
 static void ocpp_cp_entry(void *p1, void *p2, void *p3);
 static void gui_periodic_update_callback(void);
+static void button_start_session(int conn_idx);
+static void button_stop_session(int conn_idx);
 
 /* Calculate current meter reading with jitter */
 static uint32_t calculate_meter_value(int conn_idx)
@@ -191,28 +195,6 @@ static int user_notify_cb(enum ocpp_notify_reason reason, union ocpp_io_value *i
 
 	switch (reason) {
 	case OCPP_USR_GET_METER_VALUE:
-
-		switch (io->meter_val.mes) {
-		case OCPP_OMM_ACTIVE_ENERGY_TO_EV:
-			LOG_DBG("Computing active energy to EV");
-			break;
-		case OCPP_OMM_ACTIVE_POWER_TO_EV:
-			LOG_DBG("Computing active power to EV");
-			break;
-		case OCPP_OMM_CURRENT_TO_EV:
-			LOG_DBG("Computing current to EV");
-			break;
-		case OCPP_OMM_VOLTAGE_AC_RMS:
-			LOG_DBG("Computing voltage to EV");
-			break;
-		case OCPP_OMM_CHARGING_PERCENT:
-			LOG_DBG("Computing charging percentage");
-			break;
-		default:
-			LOG_ERR("Unknown meter value type: %d", io->meter_val.mes);
-			return -ENOTSUP;
-		}
-
 		if (OCPP_OMM_ACTIVE_ENERGY_TO_EV == io->meter_val.mes) {
 			idx = io->meter_val.id_con - 1;
 			if (idx >= 0 && idx < NO_OF_CONN) {
@@ -617,6 +599,102 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	k_sleep(K_SECONDS(1));
 	k_thread_abort(k_current_get());
 }
+
+/* Start a charging session on the specified connector */
+static void button_start_session(int conn_idx)
+{
+	if (conn_idx < 0 || conn_idx >= NO_OF_CONN) {
+		LOG_ERR("Invalid connector index: %d", conn_idx);
+		return;
+	}
+
+	/* Check if connector is already charging */
+	if (tid[conn_idx] != NULL) {
+		LOG_INF("Connector %d already has an active session", conn_idx + 1);
+		return;
+	}
+
+	LOG_INF("Button: Starting charging session on connector %d", conn_idx + 1);
+
+	/* Initialize connector state immediately */
+	conn_state[conn_idx].start_time_ms = k_uptime_get();
+	conn_state[conn_idx].start_meter_wh = BASE_METER_WH + (conn_idx * 1000);
+	conn_state[conn_idx].start_soc_percent = START_SOC_PERCENT;
+	conn_state[conn_idx].is_charging = true;
+
+	/* Update GUI immediately to show session is active */
+	gui_update_connector(conn_idx + 1, conn_state[conn_idx].start_meter_wh,
+			     conn_state[conn_idx].start_soc_percent, CHARGING_VOLTAGE_V,
+			     CHARGING_CURRENT_A, CHARGING_POWER_W, true);
+	gui_set_ocpp_status("OCPP: charging");
+	gui_show_notification("Charging started");
+
+	/* Create thread for the charging session */
+	tid[conn_idx] = k_thread_create(
+		&tinfo[conn_idx], cp_stk[conn_idx], sizeof(cp_stk[conn_idx]), ocpp_cp_entry,
+		(void *)(uintptr_t)(conn_idx + 1), idtag[conn_idx], obs[conn_idx], 7, 0, K_NO_WAIT);
+}
+
+/* Stop a charging session on the specified connector */
+static void button_stop_session(int conn_idx)
+{
+	if (conn_idx < 0 || conn_idx >= NO_OF_CONN) {
+		LOG_ERR("Invalid connector index: %d", conn_idx);
+		return;
+	}
+
+	/* Check if connector is actually charging */
+	if (tid[conn_idx] == NULL) {
+		LOG_INF("Connector %d has no active session", conn_idx + 1);
+		return;
+	}
+
+	LOG_INF("Button: Stopping charging session on connector %d", conn_idx + 1);
+
+	/* Send stop charging event via zbus */
+	union ocpp_io_value io = {0};
+	io.stop_charge.id_con = conn_idx + 1;
+	zbus_chan_pub(&ch_event, &io, K_MSEC(2000));
+}
+
+/* Input callback handler for button presses */
+static void button_input_handler(struct input_event *evt, void *user_data)
+{
+	ARG_UNUSED(user_data);
+
+	/* Only process key press events (value == 1 means pressed) */
+	if (evt->type != INPUT_EV_KEY || evt->value != 1) {
+		return;
+	}
+
+	LOG_INF("Button pressed: code=%d", evt->code);
+
+	/* Check which connector to toggle */
+	/* Default to connector 1 (index 0) for simplicity */
+	/* You can modify this to cycle through connectors or use button code to select */
+	int conn_idx = 0;
+
+	/* Find first available connector or first charging connector */
+	bool found_charging = false;
+	for (int i = 0; i < NO_OF_CONN; i++) {
+		if (conn_state[i].is_charging && tid[i] != NULL) {
+			conn_idx = i;
+			found_charging = true;
+			break;
+		}
+	}
+
+	if (found_charging) {
+		/* Stop the charging session */
+		button_stop_session(conn_idx);
+	} else {
+		/* Start a charging session on connector 1 */
+		button_start_session(0);
+	}
+}
+
+/* Register input callback for button events */
+INPUT_CALLBACK_DEFINE(NULL, button_input_handler, NULL);
 
 static int ocpp_getaddrinfo(char *server, int port, char **ip)
 {
