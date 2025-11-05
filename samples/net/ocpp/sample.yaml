@@ -8,3 +8,13 @@ tests:
     tags:
       - net
       - ocpp
+  sample.net.ocpp.gui:
+    harness: display_capture
+    tags:
+      - net
+      - ocpp
+      - display
+    harness_config:
+      pytest_dut_scope: session
+      fixture: fixture_display
+      display_capture_config: "display_config.yaml"

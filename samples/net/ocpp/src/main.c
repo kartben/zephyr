@@ -15,24 +15,25 @@
 #include <zephyr/net/ocpp.h>
 #include <zephyr/random/random.h>
 #include <zephyr/zbus/zbus.h>
+#include "gui.h"
 
 #include "net_sample_common.h"
 
 #if __POSIX_VISIBLE < 200809
-char    *strdup(const char *);
+char *strdup(const char *);
 #endif
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
-#define NO_OF_CONN 2
-/* Charging parameters: 400V, 50A = 20kW */
-#define CHARGING_VOLTAGE_V  400
-#define CHARGING_CURRENT_A  50
-#define CHARGING_POWER_W    (CHARGING_VOLTAGE_V * CHARGING_CURRENT_A) /* 20000W = 20kW */
+#define NO_OF_CONN          2
+
+#define CHARGING_VOLTAGE_V  480
+#define CHARGING_CURRENT_A  120
+#define CHARGING_POWER_W    (CHARGING_VOLTAGE_V * CHARGING_CURRENT_A)
 /* Base meter reading per connector (Wh) */
 #define BASE_METER_WH       10000
 /* Battery capacity (assumed 50 kWh for typical EV) */
-#define BATTERY_CAPACITY_WH 50000
+#define BATTERY_CAPACITY_WH 10000
 /* Starting state of charge percentage */
 #define START_SOC_PERCENT   20
 
@@ -52,6 +53,13 @@ struct connector_state {
 
 static struct connector_state conn_state[NO_OF_CONN];
 
+/* Last-known telemetry (for GUI updates) */
+static uint32_t gui_last_meter_wh[NO_OF_CONN];
+static uint8_t gui_last_soc_percent[NO_OF_CONN];
+static int gui_last_voltage_v[NO_OF_CONN];
+static int gui_last_current_a[NO_OF_CONN];
+static int gui_last_power_w[NO_OF_CONN];
+
 static int ocpp_get_time_from_sntp(void)
 {
 	struct sntp_ctx ctx;
@@ -66,8 +74,7 @@ static int ocpp_get_time_from_sntp(void)
 	addr.sin_port = htons(123);
 	inet_pton(AF_INET, CONFIG_NET_SAMPLE_SNTP_SERVER, &addr.sin_addr);
 
-	ret = sntp_init(&ctx, (struct sockaddr *) &addr,
-			sizeof(struct sockaddr_in));
+	ret = sntp_init(&ctx, (struct sockaddr *)&addr, sizeof(struct sockaddr_in));
 	if (ret < 0) {
 		LOG_ERR("Failed to init SNTP IPv4 ctx: %d", ret);
 		return ret;
@@ -86,12 +93,11 @@ static int ocpp_get_time_from_sntp(void)
 	return 0;
 }
 
-ZBUS_CHAN_DEFINE(ch_event, /* Name */
-		 union ocpp_io_value,
-		 NULL,			/* Validator */
-		 NULL,			/* User data */
-		 ZBUS_OBSERVERS_EMPTY,	/* observers */
-		 ZBUS_MSG_INIT(0) /* Initial value {0} */
+ZBUS_CHAN_DEFINE(ch_event,                  /* Name */
+		 union ocpp_io_value, NULL, /* Validator */
+		 NULL,                      /* User data */
+		 ZBUS_OBSERVERS_EMPTY,      /* observers */
+		 ZBUS_MSG_INIT(0)           /* Initial value {0} */
 );
 
 ZBUS_SUBSCRIBER_DEFINE(cp_thread0, 5);
@@ -100,6 +106,7 @@ struct zbus_observer *obs[NO_OF_CONN] = {(struct zbus_observer *)&cp_thread0,
 					 (struct zbus_observer *)&cp_thread1};
 
 static void ocpp_cp_entry(void *p1, void *p2, void *p3);
+static void gui_periodic_update_callback(void);
 
 /* Calculate current meter reading with jitter */
 static uint32_t calculate_meter_value(int conn_idx)
@@ -176,9 +183,7 @@ static uint8_t calculate_soc_percent(int conn_idx)
 	return soc_percent;
 }
 
-static int user_notify_cb(enum ocpp_notify_reason reason,
-			  union ocpp_io_value *io,
-			  void *user_data)
+static int user_notify_cb(enum ocpp_notify_reason reason, union ocpp_io_value *io, void *user_data)
 {
 	int idx;
 	int i;
@@ -215,6 +220,12 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 				snprintf(io->meter_val.val, CISTR50, "%u", meter_value);
 				LOG_DBG("mtr reading val %s con %d", io->meter_val.val,
 					io->meter_val.id_con);
+				gui_last_meter_wh[idx] = meter_value;
+				gui_update_connector(io->meter_val.id_con, gui_last_meter_wh[idx],
+						     gui_last_soc_percent[idx],
+						     gui_last_voltage_v[idx],
+						     gui_last_current_a[idx], gui_last_power_w[idx],
+						     conn_state[idx].is_charging);
 				return 0;
 			}
 		} else if (OCPP_OMM_ACTIVE_POWER_TO_EV == io->meter_val.mes) {
@@ -227,6 +238,15 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 				power_w = 0;
 			}
 			snprintf(io->meter_val.val, CISTR50, "%d", power_w);
+			idx = io->meter_val.id_con - 1;
+			if (idx >= 0 && idx < NO_OF_CONN) {
+				gui_last_power_w[idx] = power_w;
+				gui_update_connector(io->meter_val.id_con, gui_last_meter_wh[idx],
+						     gui_last_soc_percent[idx],
+						     gui_last_voltage_v[idx],
+						     gui_last_current_a[idx], gui_last_power_w[idx],
+						     conn_state[idx].is_charging);
+			}
 			return 0;
 		} else if (OCPP_OMM_CURRENT_TO_EV == io->meter_val.mes) {
 			/* Return current value with jitter (in A) */
@@ -237,7 +257,16 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 			if (current_a < 0) {
 				current_a = 0;
 			}
-			snprintf(io->meter_val.val, CISTR50, "%d", current_a);
+			snprintf(io->meter_val.val, CISTR50, "%d", current_a * 1000);
+			idx = io->meter_val.id_con - 1;
+			if (idx >= 0 && idx < NO_OF_CONN) {
+				gui_last_current_a[idx] = current_a;
+				gui_update_connector(io->meter_val.id_con, gui_last_meter_wh[idx],
+						     gui_last_soc_percent[idx],
+						     gui_last_voltage_v[idx],
+						     gui_last_current_a[idx], gui_last_power_w[idx],
+						     conn_state[idx].is_charging);
+			}
 			return 0;
 		} else if (OCPP_OMM_VOLTAGE_AC_RMS == io->meter_val.mes) {
 			/* Return voltage value with jitter (in V) */
@@ -248,7 +277,16 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 			if (voltage_v < 0) {
 				voltage_v = 0;
 			}
-			snprintf(io->meter_val.val, CISTR50, "%d", voltage_v);
+			snprintf(io->meter_val.val, CISTR50, "%d", voltage_v * 1000);
+			idx = io->meter_val.id_con - 1;
+			if (idx >= 0 && idx < NO_OF_CONN) {
+				gui_last_voltage_v[idx] = voltage_v;
+				gui_update_connector(io->meter_val.id_con, gui_last_meter_wh[idx],
+						     gui_last_soc_percent[idx],
+						     gui_last_voltage_v[idx],
+						     gui_last_current_a[idx], gui_last_power_w[idx],
+						     conn_state[idx].is_charging);
+			}
 			return 0;
 		} else if (OCPP_OMM_CHARGING_PERCENT == io->meter_val.mes) {
 			/* Return state of charge percentage */
@@ -258,6 +296,12 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 				snprintf(io->meter_val.val, CISTR50, "%u", soc_percent);
 				LOG_DBG("SOC reading val %s con %d", io->meter_val.val,
 					io->meter_val.id_con);
+				gui_last_soc_percent[idx] = soc_percent;
+				gui_update_connector(io->meter_val.id_con, gui_last_meter_wh[idx],
+						     gui_last_soc_percent[idx],
+						     gui_last_voltage_v[idx],
+						     gui_last_current_a[idx], gui_last_power_w[idx],
+						     conn_state[idx].is_charging);
 				return 0;
 			}
 		}
@@ -280,18 +324,28 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 		}
 
 		if (tid[idx] == NULL) {
-			LOG_INF("Remote start charging idtag %s connector %d\n",
-				idtag[idx], idx + 1);
+		LOG_INF("Remote start charging idtag %s connector %d\n", idtag[idx], idx + 1);
 
-			strncpy(idtag[idx], io->start_charge.idtag,
-				sizeof(idtag[0]));
+		strncpy(idtag[idx], io->start_charge.idtag, sizeof(idtag[0]));
 
-			tid[idx] = k_thread_create(&tinfo[idx], cp_stk[idx],
-						   sizeof(cp_stk[idx]), ocpp_cp_entry,
-						   (void *)(uintptr_t)(idx + 1), idtag[idx],
-						   obs[idx], 7, 0, K_NO_WAIT);
+		/* Initialize connector state for remote session immediately */
+		conn_state[idx].start_time_ms = k_uptime_get();
+		conn_state[idx].start_meter_wh = BASE_METER_WH + (idx * 1000);
+		conn_state[idx].start_soc_percent = START_SOC_PERCENT;
+		conn_state[idx].is_charging = true;
 
-			return 0;
+		/* Update GUI immediately to show session is active (green) */
+		gui_update_connector(idx + 1, conn_state[idx].start_meter_wh,
+				     conn_state[idx].start_soc_percent, CHARGING_VOLTAGE_V,
+				     CHARGING_CURRENT_A, CHARGING_POWER_W, true);
+		gui_set_ocpp_status("OCPP: charging");
+		gui_show_notification("Charging started");
+
+		tid[idx] = k_thread_create(&tinfo[idx], cp_stk[idx], sizeof(cp_stk[idx]),
+					   ocpp_cp_entry, (void *)(uintptr_t)(idx + 1), idtag[idx],
+					   obs[idx], 7, 0, K_NO_WAIT);
+
+		return 0;
 		}
 		break;
 
@@ -305,6 +359,50 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 	}
 
 	return -ENOTSUP;
+}
+
+/* Periodic GUI update callback - called by LVGL timer every 1 second */
+static void gui_periodic_update_callback(void)
+{
+	/* Update each connector */
+	for (int i = 0; i < NO_OF_CONN; i++) {
+		uint32_t meter_wh = calculate_meter_value(i);
+		uint8_t soc_percent = calculate_soc_percent(i);
+		int voltage_v, current_a, power_w;
+
+		if (conn_state[i].is_charging) {
+			/* Calculate with jitter similar to callback */
+			voltage_v = CHARGING_VOLTAGE_V + ((sys_rand32_get() % 21) - 10);
+			if (voltage_v < 0) {
+				voltage_v = 0;
+			}
+
+			current_a = CHARGING_CURRENT_A + ((sys_rand32_get() % 3) - 1);
+			if (current_a < 0) {
+				current_a = 0;
+			}
+
+			power_w = CHARGING_POWER_W + ((sys_rand32_get() % 401) - 200);
+			if (power_w < 0) {
+				power_w = 0;
+			}
+		} else {
+			voltage_v = 0;
+			current_a = 0;
+			power_w = 0;
+		}
+
+		/* Update GUI with current values */
+		gui_update_connector(i + 1, meter_wh, soc_percent, voltage_v, current_a, power_w,
+				     conn_state[i].is_charging);
+
+		/* Update last known values */
+		gui_last_meter_wh[i] = meter_wh;
+		gui_last_soc_percent[i] = soc_percent;
+		gui_last_voltage_v[i] = voltage_v;
+		gui_last_current_a[i] = current_a;
+		gui_last_power_w[i] = power_w;
+	}
 }
 
 static void ocpp_cp_entry(void *p1, void *p2, void *p3)
@@ -321,6 +419,17 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	ret = ocpp_session_open(&sh);
 	if (ret < 0) {
 		LOG_ERR("ocpp open ses idcon %d> res %d\n", idcon, ret);
+		/* Reset charging state and GUI if session open failed */
+		idx = idcon - 1;
+		if (idx >= 0 && idx < NO_OF_CONN) {
+			conn_state[idx].is_charging = false;
+			conn_state[idx].start_time_ms = 0;
+			gui_update_connector(idcon, 0, START_SOC_PERCENT, 0, 0, 0, false);
+			gui_set_ocpp_status("OCPP: ready");
+			gui_show_notification("Session open failed");
+		}
+		zbus_chan_rm_obs(&ch_event, obs, K_NO_WAIT);
+		tid[idcon - 1] = NULL;
 		return;
 	}
 
@@ -330,30 +439,39 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		 */
 
 		k_sleep(K_SECONDS(5));
-		ret = ocpp_authorize(sh,
-				     idtag,
-				     &status,
-				     timeout_ms);
+		ret = ocpp_authorize(sh, idtag, &status, timeout_ms);
 		if (ret < 0) {
-			LOG_ERR("ocpp auth %d> idcon %d status %d\n",
-				ret, idcon, status);
+			LOG_ERR("ocpp auth %d> idcon %d status %d\n", ret, idcon, status);
 		} else {
-			LOG_INF("ocpp auth %d> idcon %d status %d\n",
-				ret, idcon, status);
+			LOG_INF("ocpp auth %d> idcon %d status %d\n", ret, idcon, status);
 			break;
 		}
 	}
 
 	if (status != OCPP_AUTH_ACCEPTED) {
-		LOG_ERR("ocpp start idcon %d> not authorized status %d\n",
-			idcon, status);
-		return;
+	    LOG_ERR("ocpp start idcon %d> not authorized status %d\n", idcon, status);
+	    /* Reset charging state and GUI if authorization failed */
+	    idx = idcon - 1;
+	    if (idx >= 0 && idx < NO_OF_CONN) {
+		    conn_state[idx].is_charging = false;
+		    conn_state[idx].start_time_ms = 0;
+		    gui_update_connector(idcon, 0, START_SOC_PERCENT, 0, 0, 0, false);
+		    gui_set_ocpp_status("OCPP: ready");
+		    gui_show_notification("Authorization failed");
+	    }
+	    zbus_chan_rm_obs(&ch_event, obs, K_NO_WAIT);
+	    ocpp_session_close(sh);
+	    tid[idcon - 1] = NULL;
+	    return;
 	}
 
 	/* Initialize connector state and calculate start meter value */
 	idx = idcon - 1;
 	if (idx < 0 || idx >= NO_OF_CONN) {
 		LOG_ERR("ocpp start idcon %d> invalid connector id\n", idcon);
+		zbus_chan_rm_obs(&ch_event, obs, K_NO_WAIT);
+		ocpp_session_close(sh);
+		tid[idcon - 1] = NULL;
 		return;
 	}
 
@@ -368,8 +486,16 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	if (ret != 0) {
 		LOG_ERR("ocpp start transaction failed for connector %d: %d", idcon, ret);
 		conn_state[idx].is_charging = false;
+		zbus_chan_rm_obs(&ch_event, obs, K_NO_WAIT);
+		ocpp_session_close(sh);
+		tid[idcon - 1] = NULL;
 		return;
 	}
+
+	gui_set_ocpp_status("OCPP: charging");
+	gui_update_connector(idcon, conn_state[idx].start_meter_wh,
+			     conn_state[idx].start_soc_percent, CHARGING_VOLTAGE_V,
+			     CHARGING_CURRENT_A, CHARGING_POWER_W, true);
 
 	/* Transaction started successfully, wait for stop event */
 	{
@@ -381,11 +507,17 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 			conn_state[idx].start_meter_wh);
 		memset(&io, 0, sizeof(io));
 
+		/* Remove observer first in case it was left from a previous session */
+		zbus_chan_rm_obs(&ch_event, obs, K_NO_WAIT);
+
 		/* wait for stop charging event from main or remote CS */
 		add_obs_ret = zbus_chan_add_obs(&ch_event, obs, K_SECONDS(1));
 		if (add_obs_ret < 0) {
 			LOG_ERR("Failed to add observer for connector %d: %d", idcon, add_obs_ret);
 			conn_state[idx].is_charging = false;
+			ocpp_stop_transaction(sh, conn_state[idx].start_meter_wh, timeout_ms);
+			ocpp_session_close(sh);
+			tid[idcon - 1] = NULL;
 			return;
 		}
 
@@ -439,6 +571,9 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		if (ret < 0) {
 			LOG_ERR("ocpp stop txn idcon %d> %d\n", idcon, ret);
 		}
+		zbus_chan_rm_obs(&ch_event, obs, K_NO_WAIT);
+		ocpp_session_close(sh);
+		tid[idcon - 1] = NULL;
 		return;
 	}
 
@@ -464,12 +599,19 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 
 	if (ret < 0) {
 		LOG_ERR("ocpp stop txn idcon %d> %d\n", idcon, ret);
+		zbus_chan_rm_obs(&ch_event, obs, K_NO_WAIT);
+		ocpp_session_close(sh);
+		tid[idcon - 1] = NULL;
 		return;
 	}
 
 	LOG_INF("ocpp stop charging connector id %d, end meter: %u Wh (start: %u Wh)\n", idcon,
 		end_meter_wh, conn_state[idx].start_meter_wh);
+	gui_update_connector(idcon, end_meter_wh, calculate_soc_percent(idx), CHARGING_VOLTAGE_V, 0,
+			     0, false);
+	gui_set_ocpp_status("OCPP: ready");
 	k_sleep(K_SECONDS(1));
+	zbus_chan_rm_obs(&ch_event, obs, K_NO_WAIT);
 	ocpp_session_close(sh);
 	tid[idcon - 1] = NULL;
 	k_sleep(K_SECONDS(1));
@@ -484,10 +626,7 @@ static int ocpp_getaddrinfo(char *server, int port, char **ip)
 	struct sockaddr_storage b;
 	struct addrinfo *result = NULL;
 	struct addrinfo *addr;
-	struct addrinfo hints = {
-		.ai_family = AF_INET,
-		.ai_socktype = SOCK_STREAM
-	};
+	struct addrinfo hints = {.ai_family = AF_INET, .ai_socktype = SOCK_STREAM};
 
 	LOG_INF("cs server %s %d", server, port);
 	do {
@@ -505,25 +644,21 @@ static int ocpp_getaddrinfo(char *server, int port, char **ip)
 	while (addr != NULL) {
 		/* IPv4 Address. */
 		if (addr->ai_addrlen == sizeof(struct sockaddr_in)) {
-			struct sockaddr_in *broker =
-				((struct sockaddr_in *)&b);
+			struct sockaddr_in *broker = ((struct sockaddr_in *)&b);
 
 			broker->sin_addr.s_addr =
-				((struct sockaddr_in *)addr->ai_addr)
-				->sin_addr.s_addr;
+				((struct sockaddr_in *)addr->ai_addr)->sin_addr.s_addr;
 			broker->sin_family = AF_INET;
 			broker->sin_port = htons(port);
 
-			inet_ntop(AF_INET, &broker->sin_addr, addr_str,
-				  sizeof(addr_str));
+			inet_ntop(AF_INET, &broker->sin_addr, addr_str, sizeof(addr_str));
 
 			*ip = strdup(addr_str);
 			LOG_INF("IPv4 Address %s", addr_str);
 			break;
 		}
 
-		LOG_ERR("error: ai_addrlen = %u should be %u or %u",
-			(unsigned int)addr->ai_addrlen,
+		LOG_ERR("error: ai_addrlen = %u should be %u or %u", (unsigned int)addr->ai_addrlen,
 			(unsigned int)sizeof(struct sockaddr_in),
 			(unsigned int)sizeof(struct sockaddr_in6));
 
@@ -542,50 +677,56 @@ int main(void)
 	int i;
 	char *ip = NULL;
 
-	struct ocpp_cp_info cpi = { "basic", "zephyr", .num_of_con = NO_OF_CONN };
-	struct ocpp_cs_info csi = {NULL,
-				   CONFIG_NET_SAMPLE_OCPP_WS_PATH,
-				   CONFIG_NET_SAMPLE_OCPP_PORT,
-				   AF_INET};
+	struct ocpp_cp_info cpi = {"basic", "zephyr", .num_of_con = NO_OF_CONN};
+	struct ocpp_cs_info csi = {NULL, CONFIG_NET_SAMPLE_OCPP_WS_PATH,
+				   CONFIG_NET_SAMPLE_OCPP_PORT, AF_INET};
 
 	printk("OCPP sample %s\n", CONFIG_BOARD);
 
-	wait_for_network();
+	/* Initialize GUI immediately; do not block on network/OCPP */
+	gui_init();
+	gui_set_ocpp_status("OCPP: init");
+	gui_register_periodic_update_callback(gui_periodic_update_callback);
 
-	ret = ocpp_getaddrinfo(CONFIG_NET_SAMPLE_OCPP_SERVER, CONFIG_NET_SAMPLE_OCPP_PORT, &ip);
-	if (ret < 0) {
-		return ret;
-	}
+	wait_for_network();
+	gui_set_network_status(true);
+
+    ret = ocpp_getaddrinfo(CONFIG_NET_SAMPLE_OCPP_SERVER, CONFIG_NET_SAMPLE_OCPP_PORT, &ip);
+    if (ret < 0) {
+	    return ret;
+    }
 
 	csi.cs_ip = ip;
 
 	ocpp_get_time_from_sntp();
 
-	ret = ocpp_init(&cpi,
-			&csi,
-			user_notify_cb,
-			NULL);
+	ret = ocpp_init(&cpi, &csi, user_notify_cb, NULL);
 	if (ret < 0) {
 		LOG_ERR("ocpp init failed %d\n", ret);
 		return ret;
 	}
+	gui_set_ocpp_status("OCPP: ready");
 
 	/* Initialize connector states */
-	for (i = 0; i < NO_OF_CONN; i++) {
-		conn_state[i].start_time_ms = 0;
-		conn_state[i].start_meter_wh = 0;
-		conn_state[i].start_soc_percent = START_SOC_PERCENT;
-		conn_state[i].is_charging = false;
-	}
+    for (i = 0; i < NO_OF_CONN; i++) {
+	    conn_state[i].start_time_ms = 0;
+	    conn_state[i].start_meter_wh = 0;
+	    conn_state[i].start_soc_percent = START_SOC_PERCENT;
+	    conn_state[i].is_charging = false;
+	    gui_last_meter_wh[i] = 0;
+	    gui_last_soc_percent[i] = 0;
+	    gui_last_voltage_v[i] = 0;
+	    gui_last_current_a[i] = 0;
+	    gui_last_power_w[i] = 0;
+    }
 
 	/* Spawn threads for each connector */
 	for (i = 0; i < NO_OF_CONN; i++) {
-		snprintf(idtag[i], sizeof(idtag[0]), "ZepId%02d", i + 2);
+		snprintf(idtag[i], sizeof(idtag[0]), "ZepId%02d", i);
 
-		tid[i] = k_thread_create(&tinfo[i], cp_stk[i],
-					 sizeof(cp_stk[i]),
-					 ocpp_cp_entry, (void *)(uintptr_t)(i + 1),
-					 idtag[i], obs[i], 7, 0, K_NO_WAIT);
+		tid[i] = k_thread_create(&tinfo[i], cp_stk[i], sizeof(cp_stk[i]), ocpp_cp_entry,
+					 (void *)(uintptr_t)(i + 1), idtag[i], obs[i], 7, 0,
+					 K_NO_WAIT);
 	}
 
 	/* Active charging session */

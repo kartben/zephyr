@@ -1,0 +1,9 @@
+- baud: 115200
+  connected: true
+  flash_timeout: 60
+  id: 004900473234510E37333934
+  platform: stm32n6570_dk/stm32n657xx/sb
+  pre_script: /Users/kartben/zephyrproject/zephyr/boards/st/common/scripts/board_power_reset.sh
+  product: BOOT-SERIAL
+  runner: stm32cubeprogrammer
+  serial: /dev/cu.usbmodem1102
