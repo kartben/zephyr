@@ -187,7 +187,6 @@ static int stm32_ltdc_write(const struct device *dev, const uint16_t x,
 	    (desc->pitch == desc->width)) {
 		/* Use buf as ltdc frame buffer directly if it length same as ltdc frame buffer. */
 		pend_buf = buf;
-		sys_cache_data_flush_and_invd_range((void *)buf, data->frame_buffer_len);
 	} else {
 		if (CONFIG_STM32_LTDC_FB_NUM == 0)  {
 			LOG_ERR("Partial write requires internal frame buffer");
