@@ -5,6 +5,7 @@
 #include <zephyr/drivers/display.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/cpu_load.h>
 #include <lvgl.h>
 
 #include "gui.h"
@@ -39,12 +40,14 @@ struct gui_state {
 		bool is_charging;
 	} connector[NUM_CONNECTORS];
 	char notification[64];
+	uint32_t cpu_load;
 };
 
 static struct gui_state state;
 static struct connector_view views[NUM_CONNECTORS];
 static lv_obj_t *status_badge_net;
 static lv_obj_t *status_badge_ocpp;
+static lv_obj_t *cpu_load_label;
 static lv_obj_t *notif_toast;
 static const struct device *display_dev;
 static struct k_mutex state_lock;
@@ -197,6 +200,13 @@ static void layout_screen(void)
 	status_badge_ocpp = make_badge("OCPP: init", lv_color_make(200, 120, 50));
 	lv_obj_align(status_badge_ocpp, LV_ALIGN_TOP_RIGHT, -150, 20);
 
+	/* CPU Load display */
+	cpu_load_label = lv_label_create(root);
+	lv_obj_set_style_text_color(cpu_load_label, lv_color_white(), 0);
+	lv_obj_set_style_text_font(cpu_load_label, &lv_font_montserrat_12, 0);
+	lv_label_set_text(cpu_load_label, "CPU: 0%");
+	lv_obj_align(cpu_load_label, LV_ALIGN_BOTTOM_LEFT, 20, -20);
+
 	/* Connector cards side-by-side with better spacing */
 	build_connector_card(0);
 	build_connector_card(1);
@@ -262,6 +272,15 @@ static void update_notification_locked(void *unused)
 	lv_label_set_text(notif_toast, state.notification);
 }
 
+static void update_cpu_load_locked(void *unused)
+{
+	ARG_UNUSED(unused);
+	char buf[32];
+
+	snprintk(buf, sizeof(buf), "CPU: %u%%", state.cpu_load);
+	lv_label_set_text(cpu_load_label, buf);
+}
+
 static void ui_thread_entry(void *a, void *b, void *c)
 {
 	ARG_UNUSED(a);
@@ -286,14 +305,21 @@ static void ui_thread_entry(void *a, void *b, void *c)
 	with_lock(update_badges_locked, NULL);
 	with_lock(update_connectors_locked, NULL);
 	with_lock(update_notification_locked, NULL);
+	with_lock(update_cpu_load_locked, NULL);
 
 	while (1) {
+		/* Get CPU load */
+		k_mutex_lock(&state_lock, K_FOREVER);
+		state.cpu_load = cpu_load_get(0);
+		k_mutex_unlock(&state_lock);
+
 		/* Periodic GUI maintenance */
 		lv_timer_handler();
 		/* Refresh our widgets roughly every 100 ms */
 		with_lock(update_badges_locked, NULL);
 		with_lock(update_connectors_locked, NULL);
 		with_lock(update_notification_locked, NULL);
+		with_lock(update_cpu_load_locked, NULL);
 		k_sleep(K_MSEC(100));
 	}
 }
@@ -314,6 +340,7 @@ int gui_init(void)
 		state.connector[i].is_charging = false;
 	}
 	state.notification[0] = '\0';
+	state.cpu_load = 0;
 	k_mutex_unlock(&state_lock);
 
 	/* Launch UI thread immediately */
