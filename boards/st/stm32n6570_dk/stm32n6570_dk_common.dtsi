@@ -36,7 +36,7 @@
 		compatible = "zephyr,lvgl-pointer-input";
 		input = <&gt911>;
 		display = <&ltdc>;
-		invert-y;
+		// invert-y;
 	};
 
 	psram: memory@90000000 {
