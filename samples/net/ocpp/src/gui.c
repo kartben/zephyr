@@ -49,8 +49,6 @@ static lv_obj_t *notif_toast;
 static const struct device *display_dev;
 static struct k_mutex state_lock;
 static struct k_thread ui_thread;
-static gui_periodic_update_cb_t periodic_update_cb;
-static lv_timer_t *periodic_update_timer = NULL;
 K_KERNEL_STACK_DEFINE(ui_stack, 12000);
 
 static void with_lock(void (*fn)(void *), void *arg)
@@ -264,15 +262,6 @@ static void update_notification_locked(void *unused)
 	lv_label_set_text(notif_toast, state.notification);
 }
 
-/* LVGL timer callback - called every 1 second to update connector telemetry */
-static void periodic_update_timer_cb(lv_timer_t *timer)
-{
-	ARG_UNUSED(timer);
-	if (periodic_update_cb != NULL) {
-		periodic_update_cb();
-	}
-}
-
 static void ui_thread_entry(void *a, void *b, void *c)
 {
 	ARG_UNUSED(a);
@@ -299,12 +288,6 @@ static void ui_thread_entry(void *a, void *b, void *c)
 	with_lock(update_notification_locked, NULL);
 
 	while (1) {
-		/* Create periodic update timer (1 second interval) if callback is registered */
-		if (periodic_update_cb != NULL && periodic_update_timer == NULL) {
-			periodic_update_timer =
-				lv_timer_create(periodic_update_timer_cb, 1000, NULL);
-		}
-
 		/* Periodic GUI maintenance */
 		lv_timer_handler();
 		/* Refresh our widgets roughly every 100 ms */
@@ -377,10 +360,4 @@ void gui_show_notification(const char *text)
 	k_mutex_lock(&state_lock, K_FOREVER);
 	snprintk(state.notification, sizeof(state.notification), "%s", text ? text : "");
 	k_mutex_unlock(&state_lock);
-}
-
-void gui_register_periodic_update_callback(gui_periodic_update_cb_t cb)
-{
-	periodic_update_cb = cb;
-	/* Timer will be created in ui_thread_entry after GUI is initialized */
 }
