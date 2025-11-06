@@ -16,6 +16,7 @@
 #include <zephyr/drivers/uart.h>
 #include <zephyr/kernel.h>
 #include <zephyr/kernel_structs.h>
+#include <zephyr/linker/section_tags.h>
 #include <zephyr/retention/retention.h>
 #include <zephyr/sys/reboot.h>
 
@@ -65,7 +66,7 @@ struct disco_func_entry {
 
 #define MAX_NUM_DISCO_FUNC CONFIG_INSTRUMENTATION_MODE_STATISTICAL_MAX_NUM_FUNC
 static int num_disco_func;
-struct disco_func_entry disco_func[MAX_NUM_DISCO_FUNC] = { 0 };
+struct disco_func_entry __noinit disco_func[MAX_NUM_DISCO_FUNC];
 
 /* To track the number of unbalanced/spurious entry/exist pairs, for debugging */
 static int unbalanced;
@@ -131,6 +132,13 @@ int instr_init(void)
 		retention_write(instrumentation_triggers, sizeof(trigger_callee),
 				(const uint8_t *)&stopper_callee, sizeof(stopper_callee));
 	}
+
+#if defined(CONFIG_INSTRUMENTATION_MODE_STATISTICAL)
+	/* Initialize profiling data structures */
+	num_disco_func = 0;
+	unbalanced = 0;
+	memset(disco_func, 0, sizeof(disco_func));
+#endif
 
 #if defined(CONFIG_INSTRUMENTATION_MODE_CALLGRAPH)
 	/* Initialize ring buffer */
