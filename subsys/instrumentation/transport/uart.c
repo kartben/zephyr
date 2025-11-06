@@ -9,7 +9,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <zephyr/sys/__assert.h>
+#ifdef CONFIG_REBOOT
 #include <zephyr/sys/reboot.h>
+#endif
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/uart.h>
 #include <zephyr/instrumentation/instrumentation.h>
@@ -25,7 +27,12 @@ void handle_cmd(char *cmd, uint32_t length)
 	long address;
 
 	if (strncmp("reboot", cmd, length) == 0) {
+#ifdef CONFIG_REBOOT
+		printk("rebooting\n");
 		sys_reboot(SYS_REBOOT_COLD);
+#else
+		printk("reboot: not supported\n");
+#endif
 	} else if (strncmp("status", cmd, length) == 0) {
 		printk("%d %d\n", instr_tracing_supported(), instr_profiling_supported());
 	} else if (strncmp("ping", cmd, length) == 0) {
