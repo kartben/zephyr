@@ -579,6 +579,7 @@ void instr_event_handler(enum instr_event_types type, void *callee, void *caller
 		if (!IS_ENABLED(CONFIG_INSTRUMENTATION_MODE_CALLGRAPH_BUFFER_OVERWRITE) &&
 				instr_buffer_space_get() < sizeof(struct instr_record)) {
 			_instr_tracing_disabled = 1;
+			instr_enable();
 			return;
 		}
 
