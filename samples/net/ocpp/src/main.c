@@ -590,6 +590,10 @@ static void button_start_session(int conn_idx)
 	tid[conn_idx] = k_thread_create(
 		&tinfo[conn_idx], cp_stk[conn_idx], sizeof(cp_stk[conn_idx]), ocpp_cp_entry,
 		(void *)(uintptr_t)(conn_idx + 1), idtag[conn_idx], obs[conn_idx], 7, 0, K_NO_WAIT);
+
+	char thread_name[32];
+	snprintf(thread_name, sizeof(thread_name), "cp_thread_%02d", conn_idx);
+	k_thread_name_set(&tinfo[conn_idx], thread_name);
 }
 
 /* Stop a charging session on the specified connector */
