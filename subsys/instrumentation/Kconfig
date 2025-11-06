@@ -6,11 +6,11 @@
 config INSTRUMENTATION
 	bool "Compiler Instrumentation Support"
 	imply REBOOT
-	select RETAINED_MEM
-	select RETAINED_MEM_ZEPHYR_RAM
-	select RETAINED_MEM_MUTEX_FORCE_DISABLE
-	select RETENTION
-	select RETENTION_MUTEX_FORCE_DISABLE
+	imply RETENTION
+	imply RETAINED_MEM
+	select RETAINED_MEM_ZEPHYR_RAM if RETAINED_MEM
+	select RETAINED_MEM_MUTEX_FORCE_DISABLE if RETAINED_MEM
+	select RETENTION_MUTEX_FORCE_DISABLE if RETENTION
 	select UART_INTERRUPT_DRIVEN
 	help
 	  Enable compiler-managed runtime system instrumentation. This requires

@@ -36,7 +36,7 @@
  */
 
 const struct device *instrumentation_triggers =
-	DEVICE_DT_GET(DT_NODELABEL(instrumentation_triggers));
+	DEVICE_DT_GET_OR_NULL(DT_NODELABEL(instrumentation_triggers));
 
 static bool _instr_initialized;
 static bool _instr_enabled;
@@ -115,7 +115,8 @@ int instr_init(void)
 	 */
 	_instr_initialized = 1;
 
-	if (retention_is_valid(instrumentation_triggers)) {
+#ifdef CONFIG_RETENTION
+	if (instrumentation_triggers != NULL && retention_is_valid(instrumentation_triggers)) {
 		/* Retained mem is already initialized, load trigger and stopper addresses */
 		retention_read(instrumentation_triggers, 0, (uint8_t *)&trigger_callee,
 				sizeof(trigger_callee));
@@ -124,12 +125,19 @@ int instr_init(void)
 	} else {
 		/* Retained mem not initialized, so write defaults */
 		trigger_callee = k_trigger_callee;
-		retention_write(instrumentation_triggers, 0, (const uint8_t *)&trigger_callee,
-				sizeof(trigger_callee));
 		stopper_callee = k_stopper_callee;
-		retention_write(instrumentation_triggers, sizeof(trigger_callee),
-				(const uint8_t *)&stopper_callee, sizeof(stopper_callee));
+		if (instrumentation_triggers != NULL) {
+			retention_write(instrumentation_triggers, 0,
+					(const uint8_t *)&trigger_callee, sizeof(trigger_callee));
+			retention_write(instrumentation_triggers, sizeof(trigger_callee),
+					(const uint8_t *)&stopper_callee, sizeof(stopper_callee));
+		}
 	}
+#else
+	/* Retention not supported, use defaults */
+	trigger_callee = k_trigger_callee;
+	stopper_callee = k_stopper_callee;
+#endif
 
 #if defined(CONFIG_INSTRUMENTATION_MODE_CALLGRAPH)
 	/* Initialize ring buffer */
@@ -245,8 +253,12 @@ void instr_set_trigger_func(void *callee)
 	/* Update trigger_callee before updating retained mem */
 	trigger_callee = callee;
 
-	retention_write(instrumentation_triggers, 0, (const uint8_t *)&trigger_callee,
-			sizeof(trigger_callee));
+#ifdef CONFIG_RETENTION
+	if (instrumentation_triggers != NULL) {
+		retention_write(instrumentation_triggers, 0, (const uint8_t *)&trigger_callee,
+				sizeof(trigger_callee));
+	}
+#endif
 }
 
 __no_instrumentation__
@@ -255,8 +267,12 @@ void instr_set_stop_func(void *callee)
 	/* Update stopper_callee before updating retained mem */
 	stopper_callee = callee;
 
-	retention_write(instrumentation_triggers, sizeof(trigger_callee),
-			(const uint8_t *)&stopper_callee, sizeof(stopper_callee));
+#ifdef CONFIG_RETENTION
+	if (instrumentation_triggers != NULL) {
+		retention_write(instrumentation_triggers, sizeof(trigger_callee),
+				(const uint8_t *)&stopper_callee, sizeof(stopper_callee));
+	}
+#endif
 }
 
 __no_instrumentation__
