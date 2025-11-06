@@ -6,5 +6,5 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(ocpp)
 
 include(${ZEPHYR_BASE}/samples/net/common/common.cmake)
-target_sources(app PRIVATE src/main.c src/gui.c src/lv_font_spacemono_48.c
-                           src/lv_font_spacemono_70.c)
+target_sources(app PRIVATE src/main.c src/gui.c src/charge_sim.c
+                           src/lv_font_spacemono_48.c src/lv_font_spacemono_70.c)

@@ -19,6 +19,7 @@
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 #include <zephyr/kernel.h>
 #include "gui.h"
+#include "charge_sim.h"
 
 #include "net_sample_common.h"
 
@@ -30,31 +31,13 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
 #define NO_OF_CONN 2
 
-#define CHARGING_VOLTAGE_V  480
-#define CHARGING_CURRENT_A  120
-#define CHARGING_POWER_W    (CHARGING_VOLTAGE_V * CHARGING_CURRENT_A)
-/* Base meter reading per connector (Wh) */
-#define BASE_METER_WH       10000
-/* Battery capacity (assumed 50 kWh for typical EV) */
-#define BATTERY_CAPACITY_WH 10000
-/* Starting state of charge percentage */
-#define START_SOC_PERCENT   20
-
 K_KERNEL_STACK_ARRAY_DEFINE(cp_stk, NO_OF_CONN, 2 * 1024);
 
 static struct k_thread tinfo[NO_OF_CONN];
 static k_tid_t tid[NO_OF_CONN];
 static char idtag[NO_OF_CONN][25];
 
-/* Per-connector charging session state */
-struct connector_state {
-	int64_t start_time_ms;     /* Start time in milliseconds */
-	uint32_t start_meter_wh;   /* Meter reading at start (Wh) */
-	uint8_t start_soc_percent; /* State of charge at start (%) */
-	bool is_charging;          /* Whether currently charging */
-};
-
-static struct connector_state conn_state[NO_OF_CONN];
+static struct charge_sim_state conn_state[NO_OF_CONN];
 static struct k_timer gui_update_timer;
 
 static int ocpp_get_time_from_sntp(void)
@@ -108,116 +91,19 @@ static void gui_update_timer_handler(struct k_timer *timer);
 static void button_start_session(int conn_idx);
 static void button_stop_session(int conn_idx);
 
-/* Calculate current meter reading with jitter */
-static uint32_t calculate_meter_value(int conn_idx)
-{
-	struct connector_state *state = &conn_state[conn_idx];
-	int64_t elapsed_ms;
-	double elapsed_hours;
-	uint32_t energy_wh;
-	uint32_t meter_value;
-
-	if (!state->is_charging || state->start_time_ms == 0) {
-		/* Not charging, return base meter reading */
-		return BASE_METER_WH + (conn_idx * 1000);
-	}
-
-	/* Calculate elapsed time since start */
-	elapsed_ms = k_uptime_get() - state->start_time_ms;
-	elapsed_hours = (double)elapsed_ms / 3600000.0; /* Convert ms to hours */
-
-	/* Calculate energy consumed: Power (W) * Time (h) = Energy (Wh) */
-	energy_wh = (uint32_t)(CHARGING_POWER_W * elapsed_hours);
-
-	/* Add jitter: ±1% of energy consumed */
-	/* Generate jitter: -1% to +1% (99% to 101% of energy) */
-	int jitter_percent = (sys_rand32_get() % 3) - 1; /* -1, 0, or +1 */
-	/* Calculate jitter as signed to handle negative values correctly */
-	int32_t jitter_wh_signed = (int32_t)(((int64_t)energy_wh * jitter_percent) / 100);
-
-	/* Current meter reading = start meter + energy consumed (with jitter) */
-	/* Use signed arithmetic to handle negative jitter, then clamp to ensure
-	 * meter value never goes below start meter value
-	 */
-	int64_t meter_value_signed =
-		(int64_t)state->start_meter_wh + (int64_t)energy_wh + jitter_wh_signed;
-	if (meter_value_signed < (int64_t)state->start_meter_wh) {
-		meter_value_signed = (int64_t)state->start_meter_wh;
-	}
-	meter_value = (uint32_t)meter_value_signed;
-
-	return meter_value;
-}
-
-/* Calculate current state of charge percentage */
-static uint8_t calculate_soc_percent(int conn_idx)
-{
-	struct connector_state *state = &conn_state[conn_idx];
-	int64_t elapsed_ms;
-	double elapsed_hours;
-	uint32_t energy_wh;
-	uint32_t soc_percent;
-
-	if (!state->is_charging || state->start_time_ms == 0) {
-		/* Not charging, return starting SOC */
-		return state->start_soc_percent;
-	}
-
-	/* Calculate elapsed time since start */
-	elapsed_ms = k_uptime_get() - state->start_time_ms;
-	elapsed_hours = (double)elapsed_ms / 3600000.0; /* Convert ms to hours */
-
-	/* Calculate energy consumed: Power (W) * Time (h) = Energy (Wh) */
-	energy_wh = (uint32_t)(CHARGING_POWER_W * elapsed_hours);
-
-	/* Calculate SOC increase: (energy_wh / battery_capacity_wh) * 100 */
-	/* SOC = start_soc + (energy_consumed / battery_capacity * 100) */
-	soc_percent =
-		state->start_soc_percent + (uint32_t)((energy_wh * 100UL) / BATTERY_CAPACITY_WH);
-
-	/* Cap SOC at 100% */
-	if (soc_percent > 100) {
-		soc_percent = 100;
-	}
-
-	return soc_percent;
-}
-
 /* Update GUI for a specific connector by calculating current values */
 static void update_connector_gui(int conn_idx)
 {
+	struct charge_sim_params params;
+
 	if (conn_idx < 0 || conn_idx >= NO_OF_CONN) {
 		return;
 	}
 
-	uint32_t meter_wh = calculate_meter_value(conn_idx);
-	uint8_t soc_percent = calculate_soc_percent(conn_idx);
-	int voltage_v, current_a, power_w;
+	charge_sim_get_all_params(&conn_state[conn_idx], conn_idx, k_uptime_get(), &params);
 
-	if (conn_state[conn_idx].is_charging) {
-		/* Calculate with jitter similar to OCPP callbacks */
-		voltage_v = CHARGING_VOLTAGE_V + ((sys_rand32_get() % 21) - 10);
-		if (voltage_v < 0) {
-			voltage_v = 0;
-		}
-
-		current_a = CHARGING_CURRENT_A + ((sys_rand32_get() % 3) - 1);
-		if (current_a < 0) {
-			current_a = 0;
-		}
-
-		power_w = CHARGING_POWER_W + ((sys_rand32_get() % 401) - 200);
-		if (power_w < 0) {
-			power_w = 0;
-		}
-	} else {
-		voltage_v = 0;
-		current_a = 0;
-		power_w = 0;
-	}
-
-	gui_update_connector(conn_idx + 1, meter_wh, soc_percent, voltage_v, current_a, power_w,
-			     conn_state[conn_idx].is_charging);
+	gui_update_connector(conn_idx + 1, params.meter_wh, params.soc_percent, params.voltage_v,
+			     params.current_a, params.power_w, conn_state[conn_idx].is_charging);
 }
 
 /* Timer callback to periodically update all connector GUIs */
@@ -258,7 +144,8 @@ static int user_notify_cb(enum ocpp_notify_reason reason, union ocpp_io_value *i
 			LOG_INF("CPU load: %d%%", cpu_load);
 			idx = io->meter_val.id_con - 1;
 			if (idx >= 0 && idx < NO_OF_CONN) {
-				meter_value = calculate_meter_value(idx);
+				meter_value = charge_sim_get_meter_value(&conn_state[idx], idx,
+									 k_uptime_get());
 				snprintf(io->meter_val.val, CISTR50, "%u", meter_value);
 				LOG_DBG("mtr reading val %s con %d", io->meter_val.val,
 					io->meter_val.id_con);
@@ -266,42 +153,25 @@ static int user_notify_cb(enum ocpp_notify_reason reason, union ocpp_io_value *i
 			}
 		} else if (OCPP_OMM_ACTIVE_POWER_TO_EV == io->meter_val.mes) {
 			/* Return power value with jitter */
-			int32_t power_w = CHARGING_POWER_W;
-			int32_t jitter = (sys_rand32_get() % 401) - 200; /* ±200W jitter */
-			power_w = power_w + jitter;
-			/* Ensure power doesn't go negative */
-			if (power_w < 0) {
-				power_w = 0;
-			}
+			int32_t power_w = charge_sim_get_power(true);
 			snprintf(io->meter_val.val, CISTR50, "%d", power_w);
 			return 0;
 		} else if (OCPP_OMM_CURRENT_TO_EV == io->meter_val.mes) {
-			/* Return current value with jitter (in A) */
-			int32_t current_a = CHARGING_CURRENT_A;
-			int32_t jitter = (sys_rand32_get() % 3) - 1; /* ±1A jitter */
-			current_a = current_a + jitter;
-			/* Ensure current doesn't go negative */
-			if (current_a < 0) {
-				current_a = 0;
-			}
+			/* Return current value with jitter (in mA) */
+			int32_t current_a = charge_sim_get_current(true);
 			snprintf(io->meter_val.val, CISTR50, "%d", current_a * 1000);
 			return 0;
 		} else if (OCPP_OMM_VOLTAGE_AC_RMS == io->meter_val.mes) {
-			/* Return voltage value with jitter (in V) */
-			int32_t voltage_v = CHARGING_VOLTAGE_V;
-			int32_t jitter = (sys_rand32_get() % 21) - 10; /* ±10V jitter */
-			voltage_v = voltage_v + jitter;
-			/* Ensure voltage doesn't go negative */
-			if (voltage_v < 0) {
-				voltage_v = 0;
-			}
+			/* Return voltage value with jitter (in mV) */
+			int32_t voltage_v = charge_sim_get_voltage(true);
 			snprintf(io->meter_val.val, CISTR50, "%d", voltage_v * 1000);
 			return 0;
 		} else if (OCPP_OMM_CHARGING_PERCENT == io->meter_val.mes) {
 			/* Return state of charge percentage */
 			idx = io->meter_val.id_con - 1;
 			if (idx >= 0 && idx < NO_OF_CONN) {
-				uint8_t soc_percent = calculate_soc_percent(idx);
+				uint8_t soc_percent = charge_sim_get_soc_percent(&conn_state[idx],
+										 k_uptime_get());
 				snprintf(io->meter_val.val, CISTR50, "%u", soc_percent);
 				LOG_DBG("SOC reading val %s con %d", io->meter_val.val,
 					io->meter_val.id_con);
@@ -333,10 +203,7 @@ static int user_notify_cb(enum ocpp_notify_reason reason, union ocpp_io_value *i
 			strncpy(idtag[idx], io->start_charge.idtag, sizeof(idtag[0]));
 
 			/* Initialize connector state for remote session immediately */
-			conn_state[idx].start_time_ms = k_uptime_get();
-			conn_state[idx].start_meter_wh = BASE_METER_WH + (idx * 1000);
-			conn_state[idx].start_soc_percent = START_SOC_PERCENT;
-			conn_state[idx].is_charging = true;
+			charge_sim_start_session(&conn_state[idx], idx, k_uptime_get());
 
 			/* Update GUI immediately to show session is active (green) */
 			update_connector_gui(idx);
@@ -384,8 +251,7 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		/* Reset charging state and GUI if session open failed */
 		idx = idcon - 1;
 		if (idx >= 0 && idx < NO_OF_CONN) {
-			conn_state[idx].is_charging = false;
-			conn_state[idx].start_time_ms = 0;
+			charge_sim_stop_session(&conn_state[idx]);
 			update_connector_gui(idx);
 			gui_set_ocpp_status("OCPP: ready");
 			gui_show_notification("Session open failed");
@@ -415,8 +281,7 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		/* Reset charging state and GUI if authorization failed */
 		idx = idcon - 1;
 		if (idx >= 0 && idx < NO_OF_CONN) {
-			conn_state[idx].is_charging = false;
-			conn_state[idx].start_time_ms = 0;
+			charge_sim_stop_session(&conn_state[idx]);
 			update_connector_gui(idx);
 			gui_set_ocpp_status("OCPP: ready");
 			gui_show_notification("Authorization failed");
@@ -437,17 +302,13 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		return;
 	}
 
-	conn_state[idx].start_time_ms = k_uptime_get();
-	/* Start meter = base + connector offset */
-	conn_state[idx].start_meter_wh = BASE_METER_WH + (idx * 1000);
-	/* Start SOC at 20% */
-	conn_state[idx].start_soc_percent = START_SOC_PERCENT;
-	conn_state[idx].is_charging = true;
+	charge_sim_start_session(&conn_state[idx], idx, k_uptime_get());
 
-	ret = ocpp_start_transaction(sh, conn_state[idx].start_meter_wh, idcon, timeout_ms);
+	ret = ocpp_start_transaction(sh, charge_sim_get_start_meter(&conn_state[idx]), idcon,
+				     timeout_ms);
 	if (ret != 0) {
 		LOG_ERR("ocpp start transaction failed for connector %d: %d", idcon, ret);
-		conn_state[idx].is_charging = false;
+		charge_sim_stop_session(&conn_state[idx]);
 		zbus_chan_rm_obs(&ch_event, obs, K_NO_WAIT);
 		ocpp_session_close(sh);
 		tid[idcon - 1] = NULL;
@@ -464,7 +325,7 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		int add_obs_ret;
 
 		LOG_INF("ocpp start charging connector id %d, start meter: %u Wh\n", idcon,
-			conn_state[idx].start_meter_wh);
+			charge_sim_get_start_meter(&conn_state[idx]));
 		memset(&io, 0, sizeof(io));
 
 		/* Remove observer first in case it was left from a previous session */
@@ -474,8 +335,10 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		add_obs_ret = zbus_chan_add_obs(&ch_event, obs, K_SECONDS(1));
 		if (add_obs_ret < 0) {
 			LOG_ERR("Failed to add observer for connector %d: %d", idcon, add_obs_ret);
-			conn_state[idx].is_charging = false;
-			ocpp_stop_transaction(sh, conn_state[idx].start_meter_wh, timeout_ms);
+			uint32_t final_meter =
+				charge_sim_get_meter_value(&conn_state[idx], idx, k_uptime_get());
+			charge_sim_stop_session(&conn_state[idx]);
+			ocpp_stop_transaction(sh, final_meter, timeout_ms);
 			ocpp_session_close(sh);
 			tid[idcon - 1] = NULL;
 			return;
@@ -545,8 +408,8 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		return;
 	}
 
-	uint32_t end_meter_wh = calculate_meter_value(idx);
-	conn_state[idx].is_charging = false;
+	uint32_t end_meter_wh = charge_sim_get_meter_value(&conn_state[idx], idx, k_uptime_get());
+	charge_sim_stop_session(&conn_state[idx]);
 
 	/* Retry stop transaction if it returns EAGAIN (state not ready) */
 	int retry_count = 0;
@@ -602,10 +465,7 @@ static void button_start_session(int conn_idx)
 	LOG_INF("Button: Starting charging session on connector %d", conn_idx + 1);
 
 	/* Initialize connector state immediately */
-	conn_state[conn_idx].start_time_ms = k_uptime_get();
-	conn_state[conn_idx].start_meter_wh = BASE_METER_WH + (conn_idx * 1000);
-	conn_state[conn_idx].start_soc_percent = START_SOC_PERCENT;
-	conn_state[conn_idx].is_charging = true;
+	charge_sim_start_session(&conn_state[conn_idx], conn_idx, k_uptime_get());
 
 	/* Update GUI immediately to show session is active */
 	update_connector_gui(conn_idx);
@@ -777,10 +637,7 @@ int main(void)
 
 	/* Initialize connector states */
 	for (i = 0; i < NO_OF_CONN; i++) {
-		conn_state[i].start_time_ms = 0;
-		conn_state[i].start_meter_wh = 0;
-		conn_state[i].start_soc_percent = START_SOC_PERCENT;
-		conn_state[i].is_charging = false;
+		charge_sim_init_state(&conn_state[i], i);
 	}
 
 	/* Spawn threads for each connector */
