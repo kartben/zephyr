@@ -231,6 +231,20 @@ static void gui_update_timer_handler(struct k_timer *timer)
 
 #include <zephyr/sys/cpu_load.h>
 
+/* Busy-wait to simulate business processing and consume CPU for a duration */
+static void simulate_business_load(uint32_t duration_ms)
+{
+	uint64_t start_ms = k_uptime_get();
+	volatile uint64_t accumulator = 0U;
+
+	while ((k_uptime_get() - start_ms) < duration_ms) {
+		/* Deterministic integer work to keep optimizer from removing the loop */
+		accumulator += 0x9E3779B97F4A7C15ULL;
+		accumulator ^= (accumulator >> 13);
+		accumulator *= 0xff51afd7ed558ccdULL;
+	}
+}
+
 static int user_notify_cb(enum ocpp_notify_reason reason, union ocpp_io_value *io, void *user_data)
 {
 	int idx;
@@ -332,6 +346,10 @@ static int user_notify_cb(enum ocpp_notify_reason reason, union ocpp_io_value *i
 			tid[idx] = k_thread_create(&tinfo[idx], cp_stk[idx], sizeof(cp_stk[idx]),
 						   ocpp_cp_entry, (void *)(uintptr_t)(idx + 1),
 						   idtag[idx], obs[idx], 7, 0, K_NO_WAIT);
+
+			char thread_name[32];
+			snprintf(thread_name, sizeof(thread_name), "cp_thread_%02d", idx);
+			k_thread_name_set(&tinfo[idx], thread_name);
 
 			return 0;
 		}
@@ -464,7 +482,15 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		}
 
 		do {
-			ret = zbus_sub_wait(obs, &chan, K_FOREVER);
+			const k_timeout_t wait_timeout = K_MSEC(50);
+			const uint32_t busy_ms = 20;
+
+			ret = zbus_sub_wait(obs, &chan, wait_timeout);
+			if (ret == -EAGAIN) {
+				/* Timeout: burn some CPU to simulate business work */
+				simulate_business_load(busy_ms);
+				continue;
+			}
 			if (ret < 0) {
 				LOG_ERR("Failed to wait for stop charge event: %d", ret);
 				continue;
@@ -764,6 +790,10 @@ int main(void)
 		tid[i] = k_thread_create(&tinfo[i], cp_stk[i], sizeof(cp_stk[i]), ocpp_cp_entry,
 					 (void *)(uintptr_t)(i + 1), idtag[i], obs[i], 7, 0,
 					 K_NO_WAIT);
+
+		char thread_name[32];
+		snprintf(thread_name, sizeof(thread_name), "cp_thread_%02d", i);
+		k_thread_name_set(&tinfo[i], thread_name);
 	}
 
 	/* Active charging session */
