@@ -28,7 +28,7 @@ char *strdup(const char *);
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
-#define NO_OF_CONN          2
+#define NO_OF_CONN 2
 
 #define CHARGING_VOLTAGE_V  480
 #define CHARGING_CURRENT_A  120
@@ -313,26 +313,27 @@ static int user_notify_cb(enum ocpp_notify_reason reason, union ocpp_io_value *i
 		}
 
 		if (tid[idx] == NULL) {
-		LOG_INF("Remote start charging idtag %s connector %d\n", idtag[idx], idx + 1);
+			LOG_INF("Remote start charging idtag %s connector %d\n", idtag[idx],
+				idx + 1);
 
-		strncpy(idtag[idx], io->start_charge.idtag, sizeof(idtag[0]));
+			strncpy(idtag[idx], io->start_charge.idtag, sizeof(idtag[0]));
 
-		/* Initialize connector state for remote session immediately */
-		conn_state[idx].start_time_ms = k_uptime_get();
-		conn_state[idx].start_meter_wh = BASE_METER_WH + (idx * 1000);
-		conn_state[idx].start_soc_percent = START_SOC_PERCENT;
-		conn_state[idx].is_charging = true;
+			/* Initialize connector state for remote session immediately */
+			conn_state[idx].start_time_ms = k_uptime_get();
+			conn_state[idx].start_meter_wh = BASE_METER_WH + (idx * 1000);
+			conn_state[idx].start_soc_percent = START_SOC_PERCENT;
+			conn_state[idx].is_charging = true;
 
-		/* Update GUI immediately to show session is active (green) */
-		update_connector_gui(idx);
-		gui_set_ocpp_status("OCPP: charging");
-		gui_show_notification("Charging started");
+			/* Update GUI immediately to show session is active (green) */
+			update_connector_gui(idx);
+			gui_set_ocpp_status("OCPP: charging");
+			gui_show_notification("Charging started");
 
-		tid[idx] = k_thread_create(&tinfo[idx], cp_stk[idx], sizeof(cp_stk[idx]),
-					   ocpp_cp_entry, (void *)(uintptr_t)(idx + 1), idtag[idx],
-					   obs[idx], 7, 0, K_NO_WAIT);
+			tid[idx] = k_thread_create(&tinfo[idx], cp_stk[idx], sizeof(cp_stk[idx]),
+						   ocpp_cp_entry, (void *)(uintptr_t)(idx + 1),
+						   idtag[idx], obs[idx], 7, 0, K_NO_WAIT);
 
-		return 0;
+			return 0;
 		}
 		break;
 
@@ -392,20 +393,20 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	}
 
 	if (status != OCPP_AUTH_ACCEPTED) {
-	    LOG_ERR("ocpp start idcon %d> not authorized status %d\n", idcon, status);
-	    /* Reset charging state and GUI if authorization failed */
-	    idx = idcon - 1;
-	    if (idx >= 0 && idx < NO_OF_CONN) {
-		    conn_state[idx].is_charging = false;
-		    conn_state[idx].start_time_ms = 0;
-		    update_connector_gui(idx);
-		    gui_set_ocpp_status("OCPP: ready");
-		    gui_show_notification("Authorization failed");
-	    }
-	    zbus_chan_rm_obs(&ch_event, obs, K_NO_WAIT);
-	    ocpp_session_close(sh);
-	    tid[idcon - 1] = NULL;
-	    return;
+		LOG_ERR("ocpp start idcon %d> not authorized status %d\n", idcon, status);
+		/* Reset charging state and GUI if authorization failed */
+		idx = idcon - 1;
+		if (idx >= 0 && idx < NO_OF_CONN) {
+			conn_state[idx].is_charging = false;
+			conn_state[idx].start_time_ms = 0;
+			update_connector_gui(idx);
+			gui_set_ocpp_status("OCPP: ready");
+			gui_show_notification("Authorization failed");
+		}
+		zbus_chan_rm_obs(&ch_event, obs, K_NO_WAIT);
+		ocpp_session_close(sh);
+		tid[idcon - 1] = NULL;
+		return;
 	}
 
 	/* Initialize connector state and calculate start meter value */
@@ -721,17 +722,17 @@ int main(void)
 	gui_init();
 	gui_set_ocpp_status("OCPP: init");
 
-	/* Start periodic GUI update timer (1 second interval) */
+	/* Start periodic GUI update timer (reduced rate to cut CPU, 500 ms) */
 	k_timer_init(&gui_update_timer, gui_update_timer_handler, NULL);
-	k_timer_start(&gui_update_timer, K_MSEC(100), K_MSEC(100));
+	k_timer_start(&gui_update_timer, K_MSEC(500), K_MSEC(500));
 
 	wait_for_network();
 	gui_set_network_status(true);
 
-    ret = ocpp_getaddrinfo(CONFIG_NET_SAMPLE_OCPP_SERVER, CONFIG_NET_SAMPLE_OCPP_PORT, &ip);
-    if (ret < 0) {
-	    return ret;
-    }
+	ret = ocpp_getaddrinfo(CONFIG_NET_SAMPLE_OCPP_SERVER, CONFIG_NET_SAMPLE_OCPP_PORT, &ip);
+	if (ret < 0) {
+		return ret;
+	}
 
 	csi.cs_ip = ip;
 
@@ -745,12 +746,12 @@ int main(void)
 	gui_set_ocpp_status("OCPP: ready");
 
 	/* Initialize connector states */
-    for (i = 0; i < NO_OF_CONN; i++) {
-	    conn_state[i].start_time_ms = 0;
-	    conn_state[i].start_meter_wh = 0;
-	    conn_state[i].start_soc_percent = START_SOC_PERCENT;
-	    conn_state[i].is_charging = false;
-    }
+	for (i = 0; i < NO_OF_CONN; i++) {
+		conn_state[i].start_time_ms = 0;
+		conn_state[i].start_meter_wh = 0;
+		conn_state[i].start_soc_percent = START_SOC_PERCENT;
+		conn_state[i].is_charging = false;
+	}
 
 	/* Spawn threads for each connector */
 	for (i = 0; i < NO_OF_CONN; i++) {

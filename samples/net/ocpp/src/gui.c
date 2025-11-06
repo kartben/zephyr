@@ -7,6 +7,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/cpu_load.h>
 #include <lvgl.h>
+#include <string.h>
 
 #include "gui.h"
 
@@ -281,20 +282,44 @@ static void ui_thread_entry(void *a, void *b, void *c)
 	with_lock(update_notification_locked, NULL);
 	with_lock(update_cpu_load_locked, NULL);
 
+	/* Track last rendered state to avoid redundant LVGL updates */
+	struct gui_state prev_state;
+	memset(&prev_state, 0, sizeof(prev_state));
+	uint32_t last_cpu_update_ms = 0U;
+
 	while (1) {
-		/* Get CPU load */
+		bool cpu_updated = false;
+		uint32_t now = k_uptime_get_32();
+
+		/* Sample CPU load less frequently (1s) */
+		if ((now - last_cpu_update_ms) >= 1000U) {
+			k_mutex_lock(&state_lock, K_FOREVER);
+			state.cpu_load = cpu_load_get(0);
+			k_mutex_unlock(&state_lock);
+			last_cpu_update_ms = now;
+			cpu_updated = true;
+		}
+
+		/* Snapshot current state for change detection */
+		struct gui_state snapshot;
 		k_mutex_lock(&state_lock, K_FOREVER);
-		state.cpu_load = cpu_load_get(0);
+		snapshot = state;
 		k_mutex_unlock(&state_lock);
 
 		/* Periodic GUI maintenance */
 		lv_timer_handler();
-		/* Refresh our widgets roughly every 100 ms */
-		with_lock(update_badges_locked, NULL);
-		with_lock(update_connectors_locked, NULL);
-		with_lock(update_notification_locked, NULL);
-		with_lock(update_cpu_load_locked, NULL);
-		k_sleep(K_MSEC(100));
+
+		/* Only push LVGL updates when state actually changed or on CPU update tick */
+		if (cpu_updated || memcmp(&snapshot, &prev_state, sizeof(snapshot)) != 0) {
+			with_lock(update_badges_locked, NULL);
+			with_lock(update_connectors_locked, NULL);
+			with_lock(update_notification_locked, NULL);
+			with_lock(update_cpu_load_locked, NULL);
+			prev_state = snapshot;
+		}
+
+		/* Back off refresh rate to reduce CPU usage */
+		k_sleep(K_MSEC(200));
 	}
 }
 
