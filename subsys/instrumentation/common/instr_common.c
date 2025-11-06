@@ -384,6 +384,13 @@ void pop_callee_timestamp(void *callee)
 
 	for (curr_func = 0; curr_func < num_disco_func; curr_func++) {
 		if (disco_func[curr_func].addr == callee) {
+			/* Prevent underflow if call_depth is already 0 */
+			if (disco_func[curr_func].call_depth == 0) {
+				/* Track unbalanced/spurious function exits */
+				unbalanced++;
+				return;
+			}
+
 			disco_func[curr_func].call_depth--;
 
 			/* Last active function is returning */
@@ -422,9 +429,13 @@ void save_context(struct instr_record *record)
 	if (curr_thread) {
 		k_thread_name_copy(curr_thread, record->context.thread_name,
 				sizeof(record->context.thread_name));
+		/* Ensure null termination since k_thread_name_copy uses strncpy */
+		record->context.thread_name[sizeof(record->context.thread_name) - 1] = '\0';
 	} else { /* Not in a thread context */
 		strncpy(record->context.thread_name,
 				THREAD_NAME_NONE, sizeof(record->context.thread_name));
+		/* Ensure null termination */
+		record->context.thread_name[sizeof(record->context.thread_name) - 1] = '\0';
 	}
 #endif
 }
