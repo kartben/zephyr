@@ -6,9 +6,10 @@
  */
 
 #include <zephyr/sys/ring_buffer.h>
+#include <zephyr/linker/section_tags.h>
 
-static struct ring_buf instr_ring_buf;
-static uint8_t instr_buffer[CONFIG_INSTRUMENTATION_MODE_CALLGRAPH_TRACE_BUFFER_SIZE + 1];
+static struct ring_buf __noinit instr_ring_buf;
+static uint8_t __noinit instr_buffer[CONFIG_INSTRUMENTATION_MODE_CALLGRAPH_TRACE_BUFFER_SIZE + 1];
 
 uint32_t instr_buffer_put_claim(uint8_t **data, uint32_t size)
 {
