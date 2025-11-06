@@ -313,6 +313,7 @@ EXPORT_SYMBOL(z_arm_thread_is_in_user_mode);
  *
  * @param thread thread info data structure.
  */
+__no_instrumentation__
 void configure_builtin_stack_guard(struct k_thread *thread)
 {
 #if defined(CONFIG_USERSPACE)
