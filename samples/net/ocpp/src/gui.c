@@ -10,6 +10,9 @@
 
 #include "gui.h"
 
+/* External font declaration */
+LV_FONT_DECLARE(lv_font_spacemono_70);
+
 LOG_MODULE_REGISTER(gui, CONFIG_LOG_DEFAULT_LEVEL);
 
 #define NUM_CONNECTORS 2
@@ -19,12 +22,8 @@ struct connector_view {
 	lv_obj_t *title;
 	lv_obj_t *soc_bar;
 	lv_obj_t *soc_label;
-	lv_obj_t *voltage_container; /* Container for voltage number and unit */
-	lv_obj_t *voltage_value;     /* Voltage number */
-	lv_obj_t *voltage_unit;      /* Voltage unit "V" */
-	lv_obj_t *current_container; /* Container for current number and unit */
-	lv_obj_t *current_value;     /* Current number */
-	lv_obj_t *current_unit;      /* Current unit "A" */
+	lv_obj_t *voltage_label; /* Voltage value and unit */
+	lv_obj_t *current_label; /* Current value and unit */
 	bool is_charging;
 };
 
@@ -125,46 +124,21 @@ static void build_connector_card(int idx)
 	lv_obj_set_style_outline_width(v->soc_bar, 0, LV_PART_INDICATOR);
 	lv_obj_set_style_pad_bottom(v->soc_bar, 16, 0);
 
-	/* Voltage display with large font (planning for 5 digits) */
-	v->voltage_container = lv_obj_create(v->card);
-	lv_obj_remove_style(v->voltage_container, NULL, LV_PART_MAIN);
-	lv_obj_set_style_pad_all(v->voltage_container, 0, 0);
-	lv_obj_set_style_bg_opa(v->voltage_container, LV_OPA_TRANSP, 0);
-	lv_obj_set_style_border_opa(v->voltage_container, LV_OPA_TRANSP, 0);
-	lv_obj_set_flex_flow(v->voltage_container, LV_FLEX_FLOW_ROW);
-	lv_obj_set_flex_align(v->voltage_container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
-			      LV_FLEX_ALIGN_CENTER);
-	v->voltage_value = lv_label_create(v->voltage_container);
-	lv_obj_set_style_text_color(v->voltage_value, lv_color_make(200, 200, 200), 0);
-	lv_obj_set_style_text_font(v->voltage_value, &lv_font_montserrat_28, 0);
-	lv_label_set_text(v->voltage_value, "000");
-	lv_obj_set_width(v->voltage_value, 80);
-	v->voltage_unit = lv_label_create(v->voltage_container);
-	lv_obj_set_style_text_color(v->voltage_unit, lv_color_make(200, 200, 200), 0);
-	lv_obj_set_style_text_font(v->voltage_unit, &lv_font_montserrat_28,
-				   0); /* Larger font for bold effect */
-	lv_label_set_text(v->voltage_unit, " V");
-	lv_obj_set_style_pad_bottom(v->voltage_container, 8, 0);
+	/* Voltage display with large monospace font */
+	v->voltage_label = lv_label_create(v->card);
+	lv_obj_set_style_text_color(v->voltage_label, lv_color_make(200, 200, 200), 0);
+	lv_obj_set_style_text_font(v->voltage_label, &lv_font_spacemono_70, 0);
+	lv_obj_set_style_pad_top(v->voltage_label, 70, 0);
+	lv_obj_set_style_pad_left(v->voltage_label, 50, 0);
+	lv_obj_set_style_pad_bottom(v->voltage_label, 20, 0);
+	lv_label_set_text(v->voltage_label, "000 V");
 
-	/* Current display with large font (planning for 5 digits) */
-	v->current_container = lv_obj_create(v->card);
-	lv_obj_remove_style(v->current_container, NULL, LV_PART_MAIN);
-	lv_obj_set_style_pad_all(v->current_container, 0, 0);
-	lv_obj_set_style_bg_opa(v->current_container, LV_OPA_TRANSP, 0);
-	lv_obj_set_style_border_opa(v->current_container, LV_OPA_TRANSP, 0);
-	lv_obj_set_flex_flow(v->current_container, LV_FLEX_FLOW_ROW);
-	lv_obj_set_flex_align(v->current_container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
-			      LV_FLEX_ALIGN_CENTER);
-	v->current_value = lv_label_create(v->current_container);
-	lv_obj_set_style_text_color(v->current_value, lv_color_make(200, 200, 200), 0);
-	lv_obj_set_style_text_font(v->current_value, &lv_font_montserrat_28, 0);
-	lv_label_set_text(v->current_value, "000");
-	lv_obj_set_width(v->current_value, 80);
-	v->current_unit = lv_label_create(v->current_container);
-	lv_obj_set_style_text_color(v->current_unit, lv_color_make(200, 200, 200), 0);
-	lv_obj_set_style_text_font(v->current_unit, &lv_font_montserrat_28,
-				   0); /* Larger font for bold effect */
-	lv_label_set_text(v->current_unit, " A");
+	/* Current display with large monospace font */
+	v->current_label = lv_label_create(v->card);
+	lv_obj_set_style_text_color(v->current_label, lv_color_make(200, 200, 200), 0);
+	lv_obj_set_style_text_font(v->current_label, &lv_font_spacemono_70, 0);
+	lv_obj_set_style_pad_left(v->current_label, 50, 0);
+	lv_label_set_text(v->current_label, "000 A");
 
 	/* Layout inside card */
 	lv_obj_set_flex_flow(v->card, LV_FLEX_FLOW_COLUMN);
@@ -245,12 +219,12 @@ static void update_connectors_locked(void *unused)
 		lv_label_set_text(v->soc_label, buf);
 
 		/* Update voltage display */
-		snprintk(buf, sizeof(buf), "%03d", state.connector[i].voltage_v);
-		lv_label_set_text(v->voltage_value, buf);
+		snprintk(buf, sizeof(buf), "%03d V", state.connector[i].voltage_v);
+		lv_label_set_text(v->voltage_label, buf);
 
 		/* Update current display */
-		snprintk(buf, sizeof(buf), "%03d", state.connector[i].current_a);
-		lv_label_set_text(v->current_value, buf);
+		snprintk(buf, sizeof(buf), "%03d A", state.connector[i].current_a);
+		lv_label_set_text(v->current_label, buf);
 
 		/* Enhanced visual cue if charging with better contrast */
 		lv_obj_set_style_bg_color(v->card,
