@@ -5,7 +5,7 @@
 
 config INSTRUMENTATION
 	bool "Compiler Instrumentation Support"
-	select REBOOT
+	imply REBOOT
 	select RETAINED_MEM
 	select RETAINED_MEM_ZEPHYR_RAM
 	select RETAINED_MEM_MUTEX_FORCE_DISABLE

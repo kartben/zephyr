@@ -270,7 +270,24 @@ def reboot_target(port, verbose=False):
     after the reboot 'True' is returned, otherwise 'False' is returned.
     """
 
+    # Clean up possible app. output before getting command response.
+    _ = port.readlines()
+
     port.write(b'reboot\r')
+
+    # Read response to check if reboot is supported
+    response = port.readline()
+    response_str = response.decode("ascii", errors="ignore")
+
+    if "reboot: not supported" in response_str:
+        if verbose:
+            print("Reboot is not supported on this target.")
+        return False
+
+    if "rebooting" not in response_str:
+        if verbose:
+            print("Unexpected response from target, reboot may have failed.")
+        return False
 
     if verbose:
         print("Rebooting target...", end="", flush=True)

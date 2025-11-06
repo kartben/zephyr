@@ -17,7 +17,6 @@
 #include <zephyr/kernel.h>
 #include <zephyr/kernel_structs.h>
 #include <zephyr/retention/retention.h>
-#include <zephyr/sys/reboot.h>
 
 #include <kernel_internal.h>
 #include <ksched.h>
