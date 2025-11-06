@@ -39,7 +39,14 @@
 		// invert-y;
 	};
 
-	psram: memory@90000000 {
+       psram_vdb: memory@90000000 {
+               compatible = "zephyr,memory-region";
+               reg = <0x90000000 DT_SIZE_M(4)>;
+               zephyr,memory-region = "PSRAM_VDB";
+               zephyr,memory-attr = <DT_MEM_ARM(ATTR_MPU_RAM)>;
+       };
+
+       psram: memory@90400000 {
 		compatible = "zephyr,memory-region";
 		/*
 		 * Prevent access to the last 32bytes of the memory-mapped device
@@ -47,7 +54,7 @@
 		 * 2.4.5 Deadlock or data corruption when DQS is enabled and the
 		 * wrap request includes the last address of the memory
 		 */
-		reg = <0x90000000 (DT_SIZE_M(32) - 32)>;
+		reg = <0x90400000 (DT_SIZE_M(28) - 32)>;
 		zephyr,memory-region = "PSRAM";
 		zephyr,memory-attr = <DT_MEM_ARM(ATTR_MPU_RAM)>;
 	};
