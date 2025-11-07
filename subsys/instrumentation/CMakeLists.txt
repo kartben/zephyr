@@ -5,7 +5,7 @@ zephyr_sources_ifdef(CONFIG_INSTRUMENTATION
   common/instr_common.c
   timestamp/timestamp.c
   transport/uart.c
-  transport/shell.c
+  # transport/shell.c
 )
 
 zephyr_sources_ifdef(CONFIG_INSTRUMENTATION_MODE_CALLGRAPH ringbuffer/ringbuffer.c)

@@ -31,7 +31,7 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
 #define NO_OF_CONN 2
 
-K_KERNEL_STACK_ARRAY_DEFINE(cp_stk, NO_OF_CONN, 2 * 1024);
+K_KERNEL_STACK_ARRAY_DEFINE(cp_stk, NO_OF_CONN, 4 * 1024);
 
 static struct k_thread tinfo[NO_OF_CONN];
 static k_tid_t tid[NO_OF_CONN];
@@ -131,7 +131,7 @@ static void simulate_business_load(uint32_t duration_ms)
 	}
 }
 
-static int user_notify_cb(enum ocpp_notify_reason reason, union ocpp_io_value *io, void *user_data)
+int user_notify_cb(enum ocpp_notify_reason reason, union ocpp_io_value *io, void *user_data)
 {
 	int idx;
 	int i;
@@ -346,7 +346,7 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 
 		do {
 			const k_timeout_t wait_timeout = K_MSEC(50);
-			const uint32_t busy_ms = 20;
+			const uint32_t busy_ms = 1;
 
 			ret = zbus_sub_wait(obs, &chan, wait_timeout);
 			if (ret == -EAGAIN) {

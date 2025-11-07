@@ -15,7 +15,7 @@
 
 / {
 	chosen {
-		zephyr,console = &usart2;
+		zephyr,console = &usart1;
 		zephyr,shell-uart = &usart1;
 		zephyr,sram = &axisram2;
 		zephyr,canbus = &fdcan1;
