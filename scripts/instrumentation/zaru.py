@@ -43,7 +43,7 @@ LISTSETS_REPLY_PATTERN = r"(trigger|stopper): (0x[0-9A-Fa-f]+)"
 PATTERN = r"([0-9A-Fa-f]{8}).*(text).*([0-9A-Fa-f]{8})\s(.*)"
 
 
-ELF = "zephyr/zephyr.elf"
+ELF = "ocpp/zephyr/zephyr.elf"
 
 CTF_METADATA = "ctf_metadata"
 
