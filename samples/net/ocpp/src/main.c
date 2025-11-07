@@ -140,7 +140,7 @@ static int user_notify_cb(enum ocpp_notify_reason reason, union ocpp_io_value *i
 	switch (reason) {
 	case OCPP_USR_GET_METER_VALUE:
 		if (OCPP_OMM_ACTIVE_ENERGY_TO_EV == io->meter_val.mes) {
-			int cpu_load = cpu_load_get(0);
+			int cpu_load = cpu_load_metric_get(0);
 			LOG_INF("CPU load: %d%%", cpu_load);
 			idx = io->meter_val.id_con - 1;
 			if (idx >= 0 && idx < NO_OF_CONN) {

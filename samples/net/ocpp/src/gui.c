@@ -294,7 +294,7 @@ static void ui_thread_entry(void *a, void *b, void *c)
 		/* Sample CPU load less frequently (1s) */
 		if ((now - last_cpu_update_ms) >= 1000U) {
 			k_mutex_lock(&state_lock, K_FOREVER);
-			state.cpu_load = cpu_load_get(0);
+			state.cpu_load = cpu_load_metric_get(0);
 			k_mutex_unlock(&state_lock);
 			last_cpu_update_ms = now;
 			cpu_updated = true;
