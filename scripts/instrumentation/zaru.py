@@ -45,7 +45,7 @@ PATTERN = r"([0-9A-Fa-f]{8}).*(text).*([0-9A-Fa-f]{8})\s(.*)"
 
 ELF = "ocpp/zephyr/zephyr.elf"
 
-CTF_METADATA = "ctf_metadata"
+CTF_METADATA = "ocpp/ctf_metadata"
 
 
 OBJDUMP_CMD = ["objdump", "-t"]
