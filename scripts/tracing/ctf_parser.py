@@ -33,6 +33,7 @@ class EventField:
     is_array: bool = False
     array_size: int = 0
     is_string: bool = False
+    bit_size: int = 0  # for bit fields (0 means not a bit field)
 
 
 @dataclass
@@ -118,7 +119,15 @@ class CTFMetadataParser:
             
             # Determine field size based on type
             size = self._get_type_size(type_name)
-            is_string = type_name == 'ctf_bounded_string_t'
+            is_string = type_name in ['ctf_bounded_string_t', 'string_t']
+            
+            # Extract bit size from type name (e.g., uint3_t -> 3 bits)
+            bit_size = 0
+            if type_name.startswith('uint') and type_name.endswith('_t'):
+                try:
+                    bit_size = int(type_name[4:-2])
+                except ValueError:
+                    bit_size = 0
             
             fields.append(EventField(
                 name=field_name,
@@ -126,7 +135,8 @@ class CTFMetadataParser:
                 size=size,
                 is_array=is_array,
                 array_size=array_size,
-                is_string=is_string
+                is_string=is_string,
+                bit_size=bit_size
             ))
         
         return fields
@@ -150,6 +160,12 @@ class CTFMetadataParser:
             'uint64_t': 8,
             'int64_t': 8,
             'ctf_bounded_string_t': 1,  # Size per character
+            'string_t': 1,  # Size per character
+            # Bit field types - these are packed into bytes
+            'uint1_t': 0,  # Bit field - handled specially
+            'uint2_t': 0,  # Bit field - handled specially
+            'uint3_t': 0,  # Bit field - handled specially
+            'uint5_t': 0,  # Bit field - handled specially
         }
         return type_sizes.get(type_name, 4)
 
@@ -179,12 +195,9 @@ class CTFStreamParser:
         offset = 0
         
         while offset < len(stream_data):
-            # Parse event header (timestamp + event ID)
-            if offset + 5 > len(stream_data):
+            # Parse event header (just event ID)
+            if offset + 1 > len(stream_data):
                 break
-            
-            timestamp = struct.unpack_from(f'{self.endian}I', stream_data, offset)[0]
-            offset += 4
             
             event_id = struct.unpack_from('B', stream_data, offset)[0]
             offset += 1
@@ -192,16 +205,50 @@ class CTFStreamParser:
             # Get event definition
             event_def = self.metadata.events.get(event_id)
             if not event_def:
-                # Unknown event, skip
-                continue
+                # Unknown event, skip - but we can't know how many bytes to skip
+                # so we have to stop parsing
+                break
             
             # Parse event payload
             payload = {}
+            timestamp = 0
+            bit_buffer = 0
+            bit_buffer_size = 0
+            
             try:
                 for field in event_def.fields:
-                    value, bytes_read = self._parse_field(stream_data, offset, field)
+                    if field.bit_size > 0:
+                        # Handle bit field
+                        if bit_buffer_size < field.bit_size:
+                            # Need to read more bytes
+                            if offset >= len(stream_data):
+                                raise struct.error("Not enough data")
+                            byte_val = struct.unpack_from('B', stream_data, offset)[0]
+                            offset += 1
+                            bit_buffer |= (byte_val << bit_buffer_size)
+                            bit_buffer_size += 8
+                        
+                        # Extract the bits for this field
+                        mask = (1 << field.bit_size) - 1
+                        value = bit_buffer & mask
+                        bit_buffer >>= field.bit_size
+                        bit_buffer_size -= field.bit_size
+                    else:
+                        # Regular field
+                        # Flush any remaining bits
+                        if bit_buffer_size > 0:
+                            bit_buffer = 0
+                            bit_buffer_size = 0
+                        
+                        value, bytes_read = self._parse_field(stream_data, offset, field)
+                        offset += bytes_read
+                    
                     payload[field.name] = value
-                    offset += bytes_read
+                    
+                    # Extract timestamp if present
+                    if field.name == 'timestamp':
+                        timestamp = value
+                        
             except struct.error:
                 # Not enough data, stop parsing
                 break
