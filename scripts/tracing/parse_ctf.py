@@ -23,10 +23,20 @@ import datetime
 import colorama
 from colorama import Fore
 import argparse
+
+# Try to import bt2, fall back to portable CTF parser
 try:
     import bt2
+    USING_BT2 = True
 except ImportError:
-    sys.exit("Missing dependency: You need to install python bindings of babeltrace.")
+    USING_BT2 = False
+    try:
+        # Try importing from instrumentation folder
+        import os
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'instrumentation'))
+        from ctf_parser import TraceCollectionMessageIterator, _EventMessageConst
+    except ImportError:
+        sys.exit("Missing dependency: You need to install python bindings of babeltrace or use the portable CTF parser.")
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -43,7 +53,13 @@ def main():
 
     args = parse_args()
 
-    msg_it = bt2.TraceCollectionMessageIterator(args.trace)
+    if USING_BT2:
+        msg_it = bt2.TraceCollectionMessageIterator(args.trace)
+        event_msg_class = bt2._EventMessageConst
+    else:
+        msg_it = TraceCollectionMessageIterator(args.trace)
+        event_msg_class = _EventMessageConst
+    
     last_event_ns_from_origin = None
     timeline = []
 
@@ -55,10 +71,10 @@ def main():
 
     for msg in msg_it:
 
-        if not isinstance(msg, bt2._EventMessageConst):
+        if not isinstance(msg, event_msg_class):
             continue
 
-        ns_from_origin = msg.default_clock_snapshot.ns_from_origin
+        ns_from_origin = msg.default_clock_snapshot.ns_from_origin if msg.default_clock_snapshot else 0
         event = msg.event
         # Compute the time difference since the last event message.
         diff_s = 0
