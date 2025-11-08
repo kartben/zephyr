@@ -65,6 +65,7 @@ class CTFMetadataParser:
         self.metadata_file = metadata_file
         self.byte_order = ByteOrder.LITTLE_ENDIAN
         self.events: Dict[int, EventDefinition] = {}
+        self.header_fields: List[EventField] = []
         self._parse()
     
     def _parse(self):
@@ -78,6 +79,13 @@ class CTFMetadataParser:
             bo = byte_order_match.group(1)
             if bo == 'be':
                 self.byte_order = ByteOrder.BIG_ENDIAN
+        
+        # Parse event header structure
+        header_pattern = r'struct event_header\s*{([^}]*)}'
+        header_match = re.search(header_pattern, content, re.MULTILINE | re.DOTALL)
+        if header_match:
+            header_str = header_match.group(1)
+            self.header_fields = self._parse_fields(header_str)
         
         # Parse all event definitions
         event_pattern = r'event\s*{[^}]*name\s*=\s*(\w+);[^}]*id\s*=\s*(0x[0-9A-Fa-f]+|[0-9]+);[^}]*fields\s*:=\s*struct\s*{([^}]*)}[^}]*}'
@@ -106,8 +114,26 @@ class CTFMetadataParser:
         """
         fields = []
         
-        # Match field patterns: type name; or type name[size];
-        field_pattern = r'(\w+)\s+(\w+)(?:\[(\d+)\])?\s*;'
+        # Match field patterns: type name; or type name[size]; or enum : type {...} name;
+        # First try to match enum pattern
+        enum_pattern = r'enum\s*:\s*(\w+)\s*{[^}]*}\s*(\w+)\s*;'
+        for match in re.finditer(enum_pattern, fields_str):
+            type_name = match.group(1)
+            field_name = match.group(2)
+            
+            size = self._get_type_size(type_name)
+            fields.append(EventField(
+                name=field_name,
+                type_name=type_name,
+                size=size,
+                is_array=False,
+                array_size=0,
+                is_string=False,
+                bit_size=0
+            ))
+        
+        # Then match regular field patterns
+        field_pattern = r'(?<!enum\s:\s)(\w+)\s+(\w+)(?:\[(\d+)\])?\s*;'
         
         for match in re.finditer(field_pattern, fields_str):
             type_name = match.group(1)
@@ -195,12 +221,25 @@ class CTFStreamParser:
         offset = 0
         
         while offset < len(stream_data):
-            # Parse event header (just event ID)
-            if offset + 1 > len(stream_data):
-                break
+            # Parse event header based on metadata
+            header_payload = {}
+            timestamp = 0
+            event_id = 0
             
-            event_id = struct.unpack_from('B', stream_data, offset)[0]
-            offset += 1
+            try:
+                for field in self.metadata.header_fields:
+                    value, bytes_read = self._parse_field(stream_data, offset, field)
+                    header_payload[field.name] = value
+                    offset += bytes_read
+                    
+                    # Extract fields we need
+                    if field.name == 'id':
+                        event_id = value
+                    elif field.name == 'timestamp':
+                        timestamp = value
+            except struct.error:
+                # Not enough data for header
+                break
             
             # Get event definition
             event_def = self.metadata.events.get(event_id)
@@ -211,7 +250,6 @@ class CTFStreamParser:
             
             # Parse event payload
             payload = {}
-            timestamp = 0
             bit_buffer = 0
             bit_buffer_size = 0
             
