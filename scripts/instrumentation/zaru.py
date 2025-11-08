@@ -30,6 +30,8 @@ import tempfile
 
 import serial
 from colorama import Fore, Style
+from elftools.elf.elffile import ELFFile
+from elftools.elf.sections import SymbolTableSection
 from west.app.main import WestApp
 from west.configuration import Configuration, config
 from west.util import west_topdir
@@ -40,15 +42,9 @@ STATUS_REPLY_PATTERN = r"(0|1)\s(0|1)"
 LISTSETS_REPLY_PATTERN = r"(trigger|stopper): (0x[0-9A-Fa-f]+)"
 
 
-PATTERN = r"([0-9A-Fa-f]{8}).*(text).*([0-9A-Fa-f]{8})\s(.*)"
-
-
 ELF = "zephyr/zephyr.elf"
 
 CTF_METADATA = "ctf_metadata"
-
-
-OBJDUMP_CMD = ["objdump", "-t"]
 
 
 CPPFILT_CMD = ["c++filt"]
@@ -72,29 +68,37 @@ def get_symbols_from_elf(elf_file, verbose=False):
 
     assert elf_file.exists(), f"File '{elf_file}' does not exist!"
 
-    cmd = OBJDUMP_CMD + [elf_file]
-
-    try:
-        output = subprocess.check_output(cmd, text=True)
-    except subprocess.CalledProcessError:
-        cmd = " ".join(cmd)
-        print(f"'{cmd}' failed execution. Check if it is properly installed.")
-        sys.exit(2)
-    except FileNotFoundError:
-        print(f"Could not find executable '{OBJDUMP_CMD[0]}'. Please install it.")
-        sys.exit(3)
-
     if verbose:
         print(f"Reading symbols from '{pathlib.Path(elf_file).resolve()}'.")
 
-    lines = output.split("\n")
-    r = re.compile(PATTERN)
     # dict: {addr: symbol}
-    addr_to_symbol = {
-        r.match(line).group(1): r.match(line).group(4)
-        for line in lines
-        if r.match(line) is not None
-    }
+    addr_to_symbol = {}
+
+    try:
+        with open(elf_file, 'rb') as f:
+            elf = ELFFile(f)
+
+            # Iterate through symbol tables
+            for section in elf.iter_sections():
+                if isinstance(section, SymbolTableSection):
+                    for symbol in section.iter_symbols():
+                        # Only include symbols from the .text section
+                        # Check if symbol has a section index and get the section
+                        if symbol['st_shndx'] != 'SHN_UNDEF' and symbol['st_shndx'] != 'SHN_ABS':
+                            try:
+                                sym_section = elf.get_section(symbol['st_shndx'])
+                                # Filter for .text section symbols
+                                if sym_section and sym_section.name == '.text':
+                                    # Format address as 8-digit lowercase hex (without 0x prefix)
+                                    # Mask to 32 bits to match the original objdump-based behavior
+                                    addr = f'{symbol["st_value"] & 0xFFFFFFFF:08x}'
+                                    addr_to_symbol[addr] = symbol.name
+                            except (ValueError, KeyError):
+                                # Skip symbols with invalid section indices
+                                pass
+    except Exception as e:
+        print(f"Error reading ELF file '{elf_file}': {e}")
+        sys.exit(2)
 
     # '0' symbol is special and is mapped to address 0. It's used to disable
     # trigger and stopper.
