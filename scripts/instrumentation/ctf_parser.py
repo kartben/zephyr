@@ -29,6 +29,7 @@ class CTFMetadataParser:
         self.metadata_file = metadata_file
         self.events = {}
         self.byte_order = 'le'  # Default to little endian
+        self.event_header_fields = []
         self._parse_metadata()
 
     def _parse_metadata(self):
@@ -40,6 +41,33 @@ class CTFMetadataParser:
         byte_order_match = re.search(r'byte_order\s*=\s*(le|be)', content)
         if byte_order_match:
             self.byte_order = byte_order_match.group(1)
+
+        # Extract event_header structure if present
+        header_match = re.search(r'struct\s+event_header\s*\{([^}]+)\}', content, re.DOTALL)
+        if header_match:
+            header_str = header_match.group(1)
+            field_pattern = r'(\w+)\s+(\w+)(?:\[(\d+)\])?;'
+            for field_match in re.finditer(field_pattern, header_str):
+                field_type = field_match.group(1)
+                field_name = field_match.group(2)
+                field_size = int(field_match.group(3)) if field_match.group(3) else None
+                
+                # Skip enum declarations (like "enum : uint8_t { ... } id")
+                if field_type == 'enum':
+                    continue
+                
+                bit_size = None
+                if field_type.startswith('uint') and field_type.endswith('_t'):
+                    size_str = field_type[4:-2]
+                    if size_str.isdigit():
+                        bit_size = int(size_str)
+                
+                self.event_header_fields.append({
+                    'name': field_name,
+                    'type': field_type,
+                    'array_size': field_size,
+                    'bit_size': bit_size
+                })
 
         # Extract event definitions
         # Match event blocks: event { ... }; with proper brace matching
@@ -256,18 +284,25 @@ class CTFDataReader:
             self.bit_buffer = 0
             self.bit_buffer_size = 0
             
-            # Read event header
-            # For instrumentation CTF: event_header has id (uint8_t) at start
-            # Check if we have enough data
-            if offset + 1 > len(data):
-                break
-
-            # Read event ID
-            event_id = struct.unpack('B', data[offset:offset + 1])[0]
-            offset += 1
+            # Read event header fields
+            header_data = {}
+            event_id = None
+            
+            for header_field in self.metadata.event_header_fields:
+                value, offset = self._read_field(data, offset, header_field)
+                header_data[header_field['name']] = value
+                if header_field['name'] == 'id':
+                    event_id = value
+            
+            # If no event_header_fields, assume simple format with just ID
+            if not self.metadata.event_header_fields:
+                if offset + 1 > len(data):
+                    break
+                event_id = struct.unpack('B', data[offset:offset + 1])[0]
+                offset += 1
 
             # Check if this is a known event
-            if event_id not in self.metadata.events:
+            if event_id is None or event_id not in self.metadata.events:
                 # Unknown event, skip or break
                 break
 
@@ -277,7 +312,8 @@ class CTFDataReader:
             event_data = {
                 'id': event_id,
                 'name': event_def['name'],
-                'fields': {}
+                'fields': {},
+                'header': header_data
             }
 
             for field in event_def['fields']:
@@ -320,11 +356,27 @@ class CTFTraceParser:
 
 
 # Babeltrace2 API compatibility layer
+class _ClockSnapshot:
+    """Mimics bt2 clock snapshot for compatibility."""
+    
+    def __init__(self, timestamp: int):
+        # Convert timestamp to nanoseconds from origin
+        # Assuming timestamp is in some unit (depends on metadata)
+        # For tracing subsystem, it's typically in ticks
+        self.ns_from_origin = timestamp * 1000  # Rough approximation
+
+
 class _EventMessageConst:
     """Mimics bt2._EventMessageConst for compatibility."""
     
     def __init__(self, event_data: Dict[str, Any]):
         self.event = _Event(event_data)
+        # If header contains timestamp, create clock snapshot
+        header = event_data.get('header', {})
+        if 'timestamp' in header:
+            self.default_clock_snapshot = _ClockSnapshot(header['timestamp'])
+        else:
+            self.default_clock_snapshot = None
 
 
 class _Event:
