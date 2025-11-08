@@ -42,13 +42,38 @@ class CTFMetadataParser:
             self.byte_order = byte_order_match.group(1)
 
         # Extract event definitions
-        # Match event blocks: event { ... };
-        event_pattern = r'event\s*\{([^}]+)\};'
-        for match in re.finditer(event_pattern, content, re.DOTALL):
-            event_def = match.group(1)
-            event_info = self._parse_event_definition(event_def)
-            if event_info:
-                self.events[event_info['id']] = event_info
+        # Match event blocks: event { ... }; with proper brace matching
+        # Use a custom function to find matching braces
+        idx = 0
+        while True:
+            event_start = content.find('event', idx)
+            if event_start == -1:
+                break
+            
+            # Find the opening brace
+            brace_start = content.find('{', event_start)
+            if brace_start == -1:
+                break
+            
+            # Find the matching closing brace
+            brace_count = 1
+            pos = brace_start + 1
+            while pos < len(content) and brace_count > 0:
+                if content[pos] == '{':
+                    brace_count += 1
+                elif content[pos] == '}':
+                    brace_count -= 1
+                pos += 1
+            
+            if brace_count == 0:
+                # Check if followed by ;
+                if pos < len(content) and content[pos:pos+1].strip().startswith(';'):
+                    event_def = content[brace_start+1:pos-1]
+                    event_info = self._parse_event_definition(event_def)
+                    if event_info:
+                        self.events[event_info['id']] = event_info
+            
+            idx = pos
 
     def _parse_event_definition(self, event_def: str) -> Optional[Dict[str, Any]]:
         """Parse a single event definition.
