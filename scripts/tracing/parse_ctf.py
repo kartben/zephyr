@@ -23,10 +23,24 @@ import datetime
 import colorama
 from colorama import Fore
 import argparse
+
+# Try to import bt2, but fall back to pure Python CTF parser if not available
 try:
     import bt2
+    USE_BT2 = True
 except ImportError:
-    sys.exit("Missing dependency: You need to install python bindings of babeltrace.")
+    USE_BT2 = False
+    try:
+        from ctf_parser import CTFTraceIterator, _EventMessageConst
+        # Create a namespace for bt2-compatible classes
+        class bt2:
+            TraceCollectionMessageIterator = CTFTraceIterator
+            _EventMessageConst = _EventMessageConst
+    except ImportError:
+        sys.exit(
+            "Missing dependency: You need to install python bindings of babeltrace\n"
+            "or ensure ctf_parser.py is available in the same directory."
+        )
 
 def parse_args():
     parser = argparse.ArgumentParser(
