@@ -9,16 +9,15 @@
 import argparse
 import sys
 
+# Import the portable CTF parser instead of bt2
 try:
-    import bt2
+    from ctf_parser import TraceCollectionMessageIterator, _EventMessageConst
 except ImportError:
-    sys.exit(
-        "Python3 babeltrace2 module is missing. Please install it.\n"
-        "On Ubuntu, install with 'apt-get install python3-bt2\n"
-        "For other systems, please consult the Installation page of the\n"
-        "Babeltrace 2 Python bindings project:\n"
-        "https://babeltrace.org/docs/v2.0/python/bt2/installation.html"
-    )
+    # Try importing from current directory if not in path
+    import os as _os
+    import sys as _sys
+    _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+    from ctf_parser import TraceCollectionMessageIterator, _EventMessageConst
 
 import json
 import os
@@ -465,7 +464,7 @@ def get_and_print_trace(args, port, elf, demangle, annotate_ret=False, verbose=F
         metadata_file = get_ctf_metadata_file(args, args.verbose)
         shutil.copy(metadata_file, tmpdir + "/metadata")
 
-        msg_it = bt2.TraceCollectionMessageIterator(tmpdir)
+        msg_it = TraceCollectionMessageIterator(tmpdir)
 
         symbols = get_symbols_from_elf(elf, verbose)
 
@@ -473,7 +472,7 @@ def get_and_print_trace(args, port, elf, demangle, annotate_ret=False, verbose=F
         # The event returned is a dict().
         def get_trace_event_generator():
             for msg in msg_it:
-                if isinstance(msg, bt2._EventMessageConst):
+                if isinstance(msg, _EventMessageConst):
                     event = msg.event
 
                     # Entry / exit events (w/ or wo/ context) are converted to
@@ -752,7 +751,7 @@ def export_to_perfetto(args, port, elf, output_filename, demangle, verbose=False
         metadata_file = get_ctf_metadata_file(args, args.verbose)
         shutil.copy(metadata_file, tmpdir + "/metadata")
 
-        msg_it = bt2.TraceCollectionMessageIterator(tmpdir)
+        msg_it = TraceCollectionMessageIterator(tmpdir)
 
         symbols = get_symbols_from_elf(elf, verbose)
 
@@ -760,7 +759,7 @@ def export_to_perfetto(args, port, elf, output_filename, demangle, verbose=False
         # The event returned is a dict().
         def get_trace_event_generator():
             for msg in msg_it:
-                if isinstance(msg, bt2._EventMessageConst):
+                if isinstance(msg, _EventMessageConst):
                     event = msg.event
 
                     # Entry / exit events (w/ or wo/ context) are converted to
@@ -980,14 +979,14 @@ def get_and_print_profile(args, port, elf, n, verbose=False):
         metadata_file = get_ctf_metadata_file(args, args.verbose)
         shutil.copy(metadata_file, tmpdir + "/metadata")
 
-        msg_it = bt2.TraceCollectionMessageIterator(tmpdir)
+        msg_it = TraceCollectionMessageIterator(tmpdir)
 
         symbols = get_symbols_from_elf(elf, verbose)
 
         profiles = []
         acc_delta_t = 0
         for msg in msg_it:
-            if isinstance(msg, bt2._EventMessageConst):
+            if isinstance(msg, _EventMessageConst):
                 event = msg.event
 
                 # Profile events have always ID = 2. This value is defined first
