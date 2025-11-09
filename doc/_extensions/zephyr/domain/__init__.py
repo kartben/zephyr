@@ -15,8 +15,8 @@ Directives
 - ``zephyr:code-sample-category::`` - Defines a category for grouping code samples.
 - ``zephyr:code-sample-listing::`` - Shows a listing of code samples found in a given category.
 - ``zephyr:board-catalog::`` - Shows a listing of boards supported by Zephyr.
-- ``zephyr:board::`` - Flags a document as being the documentation page for a board. Optionally
-  accepts content to be used as the page's meta description for improved SEO.
+- ``zephyr:board::`` - Flags a document as being the documentation page for a board. Automatically
+  extracts the first paragraph to use as the page's meta description for improved SEO.
 - ``zephyr:board-supported-hw::`` - Shows a table of supported hardware features for all the targets
   of the board documented in the current page.
 - ``zephyr:board-supported-runners::`` - Shows a table of supported runners for the board documented
@@ -344,11 +344,29 @@ class ConvertBoardNode(SphinxTransform):
             for sibling in siblings_to_move:
                 parent.remove(sibling)
 
+            # Automatically extract the first paragraph for the meta description
+            # Look for the first paragraph node in the document content
+            description_text = None
+            for sibling in siblings_to_move:
+                # Look for section nodes (like "Overview")
+                if isinstance(sibling, nodes.section):
+                    # Find the first paragraph in the section
+                    for child in sibling.children:
+                        if isinstance(child, nodes.paragraph):
+                            description_text = child.astext()
+                            break
+                    if description_text:
+                        break
+                # Also check for direct paragraph nodes
+                elif isinstance(sibling, nodes.paragraph):
+                    description_text = sibling.astext()
+                    break
+
             # Set board description as the meta description of the document for improved SEO
-            if node.children:
+            if description_text:
                 meta_description = nodes.meta()
                 meta_description["name"] = "description"
-                meta_description["content"] = node.children[0].astext()
+                meta_description["content"] = description_text
                 node.document += meta_description
 
 
@@ -711,7 +729,7 @@ class CodeSampleListingDirective(SphinxDirective):
 
 
 class BoardDirective(SphinxDirective):
-    has_content = True
+    has_content = False
     required_arguments = 1
     optional_arguments = 0
 
@@ -752,13 +770,6 @@ class BoardDirective(SphinxDirective):
             board_node["supported_runners"] = board["supported_runners"]
             board_node["flash_runner"] = board["flash_runner"]
             board_node["debug_runner"] = board["debug_runner"]
-
-            # Parse optional description content
-            if self.content:
-                description_node = nodes.container(ids=[f"{board_name}-description"])
-                self.state.nested_parse(self.content, self.content_offset, description_node)
-                board_node += description_node
-
             return [board_node]
 
 

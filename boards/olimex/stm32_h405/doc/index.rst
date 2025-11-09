@@ -1,8 +1,5 @@
 .. zephyr:board:: olimex_stm32_h405
 
-   The OLIMEX-STM32-H405 board is based on the STMicroelectronics STM32F405RG ARM
-   Cortex-M4 CPU.
-
 Overview
 ********
 

@@ -1,9 +1,5 @@
 .. zephyr:board:: olimex_stm32_h103
 
-   The OLIMEX-STM32-H103 is a simple development board based on the
-   STMicroelectronics STM32F103RBT6 ARM Cortex-M3 CPU, with all the MCU pins
-   populated and accessible through two male 26-pin connectors.
-
 Overview
 ********
 
