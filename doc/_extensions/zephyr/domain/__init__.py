@@ -343,6 +343,13 @@ class ConvertBoardNode(SphinxTransform):
             for sibling in siblings_to_move:
                 parent.remove(sibling)
 
+            # Set board description as the meta description of the document for improved SEO
+            if node.children:
+                meta_description = nodes.meta()
+                meta_description["name"] = "description"
+                meta_description["content"] = node.children[0].astext()
+                node.document += meta_description
+
 
 class CodeSampleCategoriesTocPatching(SphinxPostTransform):
     default_priority = 5  # needs to run *before* ReferencesResolver
@@ -703,7 +710,7 @@ class CodeSampleListingDirective(SphinxDirective):
 
 
 class BoardDirective(SphinxDirective):
-    has_content = False
+    has_content = True
     required_arguments = 1
     optional_arguments = 0
 
@@ -744,6 +751,13 @@ class BoardDirective(SphinxDirective):
             board_node["supported_runners"] = board["supported_runners"]
             board_node["flash_runner"] = board["flash_runner"]
             board_node["debug_runner"] = board["debug_runner"]
+            
+            # Parse optional description content
+            if self.content:
+                description_node = nodes.container(ids=[f"{board_name}-description"])
+                self.state.nested_parse(self.content, self.content_offset, description_node)
+                board_node += description_node
+            
             return [board_node]
 
 

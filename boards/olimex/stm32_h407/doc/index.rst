@@ -1,5 +1,8 @@
 .. zephyr:board:: olimex_stm32_h407
 
+   The OLIMEX-STM32-H407 is open source hardware and is based on
+   the STMicroelectronics STM32F407ZG ARM Cortex-M4 CPU.
+
 Overview
 ********
 
