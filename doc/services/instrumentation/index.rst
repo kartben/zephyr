@@ -112,32 +112,73 @@ Usage
 *****
 
 The ``zaru.py`` command-line tool (located in :zephyr_file:`scripts/instrumentation/zaru.py`)
-provides the interface for controlling instrumentation and extracting data. Install required
-dependencies with ``pip install pyserial colorama`` and ``apt-get install python3-bt2`` (on
-Ubuntu/Debian).
+provides the interface for controlling instrumentation and extracting data from the target.
 
-Basic workflow:
+Prerequisites
+=============
+
+Install required Python packages:
 
 .. code-block:: console
 
-   # Build and flash the application
-   west build -b <your_board> samples/subsys/instrumentation
-   west flash
+   # On Ubuntu/Debian
+   sudo apt-get install python3-bt2
 
-   # Check status and set trigger function (optional)
-   zaru.py status
-   zaru.py trace -c my_function_to_trace
+   # Using pip
+   pip install pyserial colorama
 
-   # Reboot to apply configuration
-   zaru.py reboot
+Basic Workflow
+==============
 
-   # Collect traces and profiling data
-   zaru.py trace -v --perfetto --output trace.json  # For visualization at perfetto.dev
-   zaru.py profile -v -n 10  # Show top 10 functions by execution time
+1. **Build and flash** the instrumentation-enabled application:
 
-The tool supports custom serial ports (``--device``), symbol resolution, and exports to Perfetto
-and CTF formats. See the :zephyr_file:`samples/subsys/instrumentation` sample for complete usage
-examples.
+   .. code-block:: console
+
+      west build -b <your_board> samples/subsys/instrumentation
+      west flash
+
+2. **Check instrumentation status**:
+
+   .. code-block:: console
+
+      zaru.py status
+
+3. **Set trigger and stopper functions** (optional):
+
+   .. code-block:: console
+
+      zaru.py trace -c my_function_to_trace
+
+4. **Reboot** to apply configuration:
+
+   .. code-block:: console
+
+      zaru.py reboot
+
+5. **Collect traces**:
+
+   .. code-block:: console
+
+      zaru.py trace -v --perfetto --output trace.json
+
+6. **Collect profiling data**:
+
+   .. code-block:: console
+
+      zaru.py profile -v -n 10
+
+Advanced Usage
+==============
+
+The ``zaru.py`` tool supports:
+
+- **Custom serial port**: ``--device /dev/ttyUSB0``
+- **Symbol resolution**: Automatically resolves function addresses using the ELF file
+- **Perfetto export**: Generates JSON files for the Perfetto trace viewer (https://perfetto.dev)
+- **CTF export**: Outputs traces in Common Trace Format
+
+To profile a specific function, set it as the trigger/stopper, reboot, wait for execution, then
+collect the profile data to identify the top functions consuming CPU time within that function.
 
 Limitations and Considerations
 *******************************
