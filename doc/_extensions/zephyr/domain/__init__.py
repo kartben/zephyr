@@ -751,13 +751,13 @@ class BoardDirective(SphinxDirective):
             board_node["supported_runners"] = board["supported_runners"]
             board_node["flash_runner"] = board["flash_runner"]
             board_node["debug_runner"] = board["debug_runner"]
-            
+
             # Parse optional description content
             if self.content:
                 description_node = nodes.container(ids=[f"{board_name}-description"])
                 self.state.nested_parse(self.content, self.content_offset, description_node)
                 board_node += description_node
-            
+
             return [board_node]
 
 
