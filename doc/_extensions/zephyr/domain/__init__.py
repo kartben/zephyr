@@ -15,7 +15,8 @@ Directives
 - ``zephyr:code-sample-category::`` - Defines a category for grouping code samples.
 - ``zephyr:code-sample-listing::`` - Shows a listing of code samples found in a given category.
 - ``zephyr:board-catalog::`` - Shows a listing of boards supported by Zephyr.
-- ``zephyr:board::`` - Flags a document as being the documentation page for a board.
+- ``zephyr:board::`` - Flags a document as being the documentation page for a board. Optionally
+  accepts content to be used as the page's meta description for improved SEO.
 - ``zephyr:board-supported-hw::`` - Shows a table of supported hardware features for all the targets
   of the board documented in the current page.
 - ``zephyr:board-supported-runners::`` - Shows a table of supported runners for the board documented
