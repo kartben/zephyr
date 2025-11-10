@@ -49,6 +49,13 @@ config HOMEASSISTANT_UPDATE_INTERVAL
 	  Interval at which to check for Zbus channel updates and
 	  send them to Home Assistant (in milliseconds).
 
+config HOMEASSISTANT_THREAD_STACK_SIZE
+	int "Thread stack size"
+	default 4096
+	help
+	  Stack size for the Home Assistant integration thread.
+	  This thread handles HTTP communication with Home Assistant.
+
 module = HOMEASSISTANT
 module-str = homeassistant
 module-help = Enables logging for Home Assistant integration.

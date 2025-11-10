@@ -28,8 +28,8 @@ static uint8_t http_recv_buf[HTTP_RECV_BUF_SIZE];
 /* Thread for monitoring Zbus channels and updating Home Assistant */
 static void homeassistant_thread(void *arg1, void *arg2, void *arg3);
 
-K_THREAD_DEFINE(homeassistant_tid, 2048, homeassistant_thread,
-		NULL, NULL, NULL, 5, 0, 0);
+K_THREAD_DEFINE(homeassistant_tid, CONFIG_HOMEASSISTANT_THREAD_STACK_SIZE,
+		homeassistant_thread, NULL, NULL, NULL, 5, 0, 0);
 
 /**
  * @brief Format entity state as JSON payload
