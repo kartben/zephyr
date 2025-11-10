@@ -1,0 +1,18 @@
+# Copyright (c) 2025
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "Home Assistant Integration Sample"
+
+config HOMEASSISTANT_MQTT_BROKER
+	string "MQTT broker hostname"
+	default "localhost"
+	help
+	  Hostname or IP address of the MQTT broker to connect to.
+
+config HOMEASSISTANT_MQTT_PORT
+	int "MQTT broker port"
+	default 1883
+	help
+	  Port number of the MQTT broker.
+
+source "Kconfig.zephyr"
