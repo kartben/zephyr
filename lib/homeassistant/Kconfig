@@ -1,0 +1,66 @@
+# Copyright (c) 2025
+# SPDX-License-Identifier: Apache-2.0
+
+menu "Home Assistant Integration"
+
+config HOMEASSISTANT
+	bool "Home Assistant integration support [EXPERIMENTAL]"
+	select EXPERIMENTAL
+	select NET_SOCKETS
+	select HTTP_CLIENT
+	select JSON_LIBRARY
+	help
+	  Enable Home Assistant integration library for Zephyr.
+	  This library provides simple APIs to integrate Zephyr-based
+	  IoT devices with Home Assistant using MQTT discovery protocol
+	  and REST API.
+
+if HOMEASSISTANT
+
+config HOMEASSISTANT_MQTT_DISCOVERY
+	bool "Enable MQTT discovery protocol"
+	default y
+	select MQTT_LIB
+	help
+	  Enable MQTT discovery protocol support for automatic device
+	  registration with Home Assistant. Devices will publish their
+	  configuration to the discovery topic and Home Assistant will
+	  automatically detect and configure them.
+
+config HOMEASSISTANT_REST_API
+	bool "Enable REST API support"
+	default y
+	help
+	  Enable REST API support for direct communication with
+	  Home Assistant. This allows devices to update states and
+	  trigger automations via HTTP requests.
+
+config HOMEASSISTANT_DEVICE_NAME_MAX_LEN
+	int "Maximum device name length"
+	default 64
+	help
+	  Maximum length of device name string.
+
+config HOMEASSISTANT_ENTITY_ID_MAX_LEN
+	int "Maximum entity ID length"
+	default 64
+	help
+	  Maximum length of entity ID string.
+
+config HOMEASSISTANT_MAX_ENTITIES
+	int "Maximum number of entities per device"
+	default 8
+	range 1 32
+	help
+	  Maximum number of entities (sensors, switches, etc.) that
+	  can be registered per device.
+
+module=HOMEASSISTANT
+module-dep=LOG
+module-str=Log level for Home Assistant integration
+module-help=Enables Home Assistant integration debug messages.
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # HOMEASSISTANT
+
+endmenu
