@@ -28,6 +28,8 @@ struct homeassistant_client {
 	uint8_t mqtt_rx_buffer[256];
 	uint8_t mqtt_tx_buffer[256];
 	struct sockaddr_storage broker_addr;
+	struct mqtt_utf8 mqtt_username;
+	struct mqtt_utf8 mqtt_password;
 	bool mqtt_connected;
 #endif
 	/** Registered entities count */
@@ -359,19 +361,19 @@ int homeassistant_connect(struct homeassistant_client *client)
 
 	/* Add credentials if provided */
 	if (client->config.mqtt_username) {
-		mqtt->user_name =
-			(struct mqtt_utf8 *)&(struct mqtt_utf8){
-				.utf8 = (uint8_t *)client->config.mqtt_username,
-				.size = strlen(client->config.mqtt_username),
-			};
+		client->mqtt_username.utf8 =
+			(uint8_t *)client->config.mqtt_username;
+		client->mqtt_username.size =
+			strlen(client->config.mqtt_username);
+		mqtt->user_name = &client->mqtt_username;
 	}
 
 	if (client->config.mqtt_password) {
-		mqtt->password =
-			(struct mqtt_utf8 *)&(struct mqtt_utf8){
-				.utf8 = (uint8_t *)client->config.mqtt_password,
-				.size = strlen(client->config.mqtt_password),
-			};
+		client->mqtt_password.utf8 =
+			(uint8_t *)client->config.mqtt_password;
+		client->mqtt_password.size =
+			strlen(client->config.mqtt_password);
+		mqtt->password = &client->mqtt_password;
 	}
 
 	/* Connect to broker */
