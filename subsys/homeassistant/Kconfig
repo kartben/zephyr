@@ -1,0 +1,95 @@
+# Copyright (c) 2024 Benjamin Cabé
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig HOMEASSISTANT
+	bool "Home Assistant integration support"
+	select ZBUS
+	select ZBUS_RUNTIME_OBSERVERS
+	select MQTT_LIB
+	select NET_IPV4
+	select NET_SOCKETS
+	help
+	  Enable Home Assistant integration. This module provides
+	  easy integration with Home Assistant via MQTT by automatically
+	  bridging Zbus channels to MQTT topics.
+
+if HOMEASSISTANT
+
+config HOMEASSISTANT_MQTT_BROKER_HOSTNAME
+	string "MQTT broker hostname"
+	default "homeassistant.local"
+	help
+	  The hostname or IP address of the MQTT broker (typically your Home Assistant instance).
+
+config HOMEASSISTANT_MQTT_BROKER_PORT
+	int "MQTT broker port"
+	default 1883
+	help
+	  The port of the MQTT broker.
+
+config HOMEASSISTANT_MQTT_CLIENT_ID
+	string "MQTT client ID"
+	default "zephyr_device"
+	help
+	  The MQTT client ID to use when connecting to the broker.
+
+config HOMEASSISTANT_MQTT_USERNAME
+	string "MQTT username"
+	default ""
+	help
+	  The MQTT username for authentication (leave empty if not required).
+
+config HOMEASSISTANT_MQTT_PASSWORD
+	string "MQTT password"
+	default ""
+	help
+	  The MQTT password for authentication (leave empty if not required).
+
+config HOMEASSISTANT_DEVICE_NAME
+	string "Device name"
+	default "zephyr_device"
+	help
+	  The device name to use in Home Assistant.
+
+config HOMEASSISTANT_STACK_SIZE
+	int "Home Assistant thread stack size"
+	default 4096
+	help
+	  Stack size for the Home Assistant background thread.
+
+config HOMEASSISTANT_THREAD_PRIORITY
+	int "Home Assistant thread priority"
+	default 5
+	help
+	  Priority for the Home Assistant background thread.
+
+config HOMEASSISTANT_MAX_CHANNELS
+	int "Maximum number of channels to monitor"
+	default 16
+	help
+	  Maximum number of Zbus channels that can be registered with Home Assistant.
+
+config HOMEASSISTANT_MQTT_BUFFER_SIZE
+	int "MQTT buffer size"
+	default 1024
+	help
+	  Size of the MQTT TX/RX buffers.
+
+config HOMEASSISTANT_AUTO_DISCOVERY
+	bool "Enable Home Assistant auto-discovery"
+	default y
+	help
+	  Enable automatic discovery of sensors in Home Assistant via MQTT discovery protocol.
+
+config HOMEASSISTANT_DISCOVERY_PREFIX
+	string "Discovery topic prefix"
+	default "homeassistant"
+	depends on HOMEASSISTANT_AUTO_DISCOVERY
+	help
+	  The prefix for Home Assistant MQTT discovery topics.
+
+module = HOMEASSISTANT
+module-str = homeassistant
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # HOMEASSISTANT
