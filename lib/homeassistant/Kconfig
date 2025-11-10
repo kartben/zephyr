@@ -7,7 +7,6 @@ config HOMEASSISTANT
 	bool "Home Assistant integration support [EXPERIMENTAL]"
 	select EXPERIMENTAL
 	select NET_SOCKETS
-	select HTTP_CLIENT
 	select JSON_LIBRARY
 	help
 	  Enable Home Assistant integration library for Zephyr.
@@ -30,6 +29,7 @@ config HOMEASSISTANT_MQTT_DISCOVERY
 config HOMEASSISTANT_REST_API
 	bool "Enable REST API support"
 	default y
+	select HTTP_CLIENT if HTTP
 	help
 	  Enable REST API support for direct communication with
 	  Home Assistant. This allows devices to update states and
