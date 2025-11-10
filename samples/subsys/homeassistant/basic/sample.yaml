@@ -1,0 +1,21 @@
+sample:
+  name: Home Assistant Integration Basic
+  description: Demonstrates Zbus integration with Home Assistant
+common:
+  tags:
+    - homeassistant
+    - zbus
+    - networking
+    - iot
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - "Home Assistant Integration Sample"
+  integration_platforms:
+    - native_sim
+tests:
+  sample.subsys.homeassistant.basic:
+    platform_allow:
+      - native_sim
+      - qemu_x86
