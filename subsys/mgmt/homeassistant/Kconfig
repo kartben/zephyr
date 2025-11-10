@@ -1,0 +1,64 @@
+# Home Assistant integration configuration options
+
+# Copyright (c) 2025 Benjamin Cabé
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig HOMEASSISTANT
+	bool "Home Assistant Integration"
+	depends on ZBUS
+	depends on NET_TCP
+	depends on NET_SOCKETS
+	depends on HTTP_CLIENT
+	help
+	  Enable Home Assistant integration via Zbus channels.
+	  This module automatically bridges Zbus channels to Home Assistant,
+	  allowing devices to expose data without manual networking code.
+
+if HOMEASSISTANT
+
+config HOMEASSISTANT_SERVER_ADDR
+	string "Home Assistant server address"
+	default "192.168.1.100"
+	help
+	  IP address or hostname of the Home Assistant server.
+
+config HOMEASSISTANT_SERVER_PORT
+	int "Home Assistant server port"
+	default 8123
+	help
+	  Port number of the Home Assistant server (default: 8123).
+
+config HOMEASSISTANT_API_TOKEN
+	string "Home Assistant API token"
+	default ""
+	help
+	  Long-lived access token for Home Assistant API authentication.
+	  Generate this from your Home Assistant profile settings.
+
+config HOMEASSISTANT_DEVICE_NAME
+	string "Device name"
+	default "Zephyr Device"
+	help
+	  Name of the device as it will appear in Home Assistant.
+
+config HOMEASSISTANT_UPDATE_INTERVAL
+	int "Update interval in milliseconds"
+	default 5000
+	range 100 3600000
+	help
+	  Interval at which to check for Zbus channel updates and
+	  send them to Home Assistant (in milliseconds).
+
+config HOMEASSISTANT_LOG_LEVEL
+	int "Home Assistant integration log level"
+	default 3
+	range 0 4
+	help
+	  Set log level for Home Assistant integration.
+	  0 = OFF, 1 = ERROR, 2 = WARNING, 3 = INFO, 4 = DEBUG
+
+module = HOMEASSISTANT
+module-str = homeassistant
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # HOMEASSISTANT
