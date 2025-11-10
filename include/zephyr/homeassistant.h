@@ -65,7 +65,12 @@ enum homeassistant_sensor_class {
 	HOMEASSISTANT_SENSOR_CURRENT,
 };
 
-/** Home Assistant device information */
+/**
+ * Home Assistant device information
+ *
+ * @note All string fields should not contain special characters like
+ * quotes or backslashes. Use alphanumeric characters and basic punctuation.
+ */
 struct homeassistant_device {
 	/** Device name */
 	const char *name;
@@ -75,17 +80,23 @@ struct homeassistant_device {
 	const char *model;
 	/** Device software version */
 	const char *sw_version;
-	/** Device unique identifier */
+	/** Device unique identifier (alphanumeric recommended) */
 	const char *identifier;
 };
 
-/** Home Assistant entity configuration */
+/**
+ * Home Assistant entity configuration
+ *
+ * @note All string fields (name, unique_id, etc.) should not contain
+ * special characters like quotes or backslashes that could break JSON
+ * formatting. Use alphanumeric characters, underscores, and hyphens only.
+ */
 struct homeassistant_entity {
 	/** Entity type */
 	enum homeassistant_entity_type type;
-	/** Entity name */
+	/** Entity name (should not contain special JSON characters) */
 	const char *name;
-	/** Entity unique ID */
+	/** Entity unique ID (alphanumeric and underscores recommended) */
 	const char *unique_id;
 	/** Device class (type-specific) */
 	union {
