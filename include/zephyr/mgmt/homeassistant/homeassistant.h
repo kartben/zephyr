@@ -79,25 +79,26 @@ int homeassistant_init(void);
  * This macro creates a Home Assistant entity configuration and automatically
  * registers it at initialization time.
  *
- * @param _name Name of the entity
+ * @param _var_name Variable name for the entity (used internally)
+ * @param _entity_name Name of the entity as a string (e.g., "temperature")
  * @param _type Entity type (e.g., HOMEASSISTANT_ENTITY_SENSOR)
  * @param _unit Unit of measurement (or NULL)
  * @param _device_class Device class (or NULL)
  * @param _channel Zbus channel to monitor
  */
-#define HOMEASSISTANT_ENTITY_DEFINE(_name, _type, _unit, _device_class, _channel) \
-	static const struct homeassistant_entity_config _homeassistant_entity_##_name = { \
-		.name = STRINGIFY(_name), \
+#define HOMEASSISTANT_ENTITY_DEFINE(_var_name, _entity_name, _type, _unit, _device_class, _channel) \
+	static const struct homeassistant_entity_config _homeassistant_entity_##_var_name = { \
+		.name = _entity_name, \
 		.type = _type, \
 		.unit = _unit, \
 		.device_class = _device_class, \
 		.channel = &_channel, \
 	}; \
-	static int _homeassistant_entity_init_##_name(void) \
+	static int _homeassistant_entity_init_##_var_name(void) \
 	{ \
-		return homeassistant_register_entity(&_homeassistant_entity_##_name); \
+		return homeassistant_register_entity(&_homeassistant_entity_##_var_name); \
 	} \
-	SYS_INIT(_homeassistant_entity_init_##_name, APPLICATION, 91)
+	SYS_INIT(_homeassistant_entity_init_##_var_name, APPLICATION, 91)
 
 /**
  * @}

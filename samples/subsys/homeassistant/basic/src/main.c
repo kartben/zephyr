@@ -62,19 +62,22 @@ ZBUS_CHAN_DEFINE(light_switch_chan,
 /**
  * Register Home Assistant entities using the convenient macro
  */
-HOMEASSISTANT_ENTITY_DEFINE(temperature,
+HOMEASSISTANT_ENTITY_DEFINE(temp_sensor,
+			    "temperature",
 			    HOMEASSISTANT_ENTITY_SENSOR,
 			    "°C",
 			    "temperature",
 			    temperature_chan);
 
-HOMEASSISTANT_ENTITY_DEFINE(humidity,
+HOMEASSISTANT_ENTITY_DEFINE(hum_sensor,
+			    "humidity",
 			    HOMEASSISTANT_ENTITY_SENSOR,
 			    "%",
 			    "humidity",
 			    humidity_chan);
 
-HOMEASSISTANT_ENTITY_DEFINE(light,
+HOMEASSISTANT_ENTITY_DEFINE(light_switch,
+			    "light",
 			    HOMEASSISTANT_ENTITY_SWITCH,
 			    NULL,
 			    "switch",

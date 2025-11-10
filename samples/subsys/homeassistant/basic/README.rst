@@ -120,7 +120,8 @@ The sample demonstrates the simplicity of the Home Assistant integration:
 
    .. code-block:: c
 
-      HOMEASSISTANT_ENTITY_DEFINE(temperature,
+      HOMEASSISTANT_ENTITY_DEFINE(temp_sensor,
+                                  "temperature",
                                   HOMEASSISTANT_ENTITY_SENSOR,
                                   "°C",
                                   "temperature",

@@ -49,16 +49,9 @@ config HOMEASSISTANT_UPDATE_INTERVAL
 	  Interval at which to check for Zbus channel updates and
 	  send them to Home Assistant (in milliseconds).
 
-config HOMEASSISTANT_LOG_LEVEL
-	int "Home Assistant integration log level"
-	default 3
-	range 0 4
-	help
-	  Set log level for Home Assistant integration.
-	  0 = OFF, 1 = ERROR, 2 = WARNING, 3 = INFO, 4 = DEBUG
-
 module = HOMEASSISTANT
 module-str = homeassistant
+module-help = Enables logging for Home Assistant integration.
 source "subsys/logging/Kconfig.template.log_config"
 
 endif # HOMEASSISTANT

@@ -46,7 +46,8 @@ Basic usage involves three steps:
 
    .. code-block:: c
 
-      HOMEASSISTANT_ENTITY_DEFINE(my_sensor,
+      HOMEASSISTANT_ENTITY_DEFINE(temp_sensor,
+                                  "temperature",
                                   HOMEASSISTANT_ENTITY_SENSOR,
                                   "°C",
                                   "temperature",

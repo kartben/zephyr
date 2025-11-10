@@ -113,13 +113,7 @@ static int send_state_update(const struct homeassistant_entity_config *entity)
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(CONFIG_HOMEASSISTANT_SERVER_PORT);
-	ret = zsock_inet_pton(AF_INET, CONFIG_HOMEASSISTANT_SERVER_ADDR,
-			      &addr.sin_addr);
-	if (ret < 0) {
-		LOG_ERR("Invalid server address");
-		close(sock);
-		return -EINVAL;
-	}
+	inet_pton(AF_INET, CONFIG_HOMEASSISTANT_SERVER_ADDR, &addr.sin_addr);
 
 	/* Connect to Home Assistant */
 	ret = connect(sock, (struct sockaddr *)&addr, sizeof(addr));
