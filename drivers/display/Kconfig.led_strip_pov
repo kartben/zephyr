@@ -1,0 +1,38 @@
+config LED_STRIP_POV
+	bool "LED strip persistence-of-vision display"
+	depends on DT_HAS_LED_STRIP_POV_ENABLED
+	depends on SENSOR
+	select LED_STRIP
+	help
+	Enable support for persistence-of-vision displays that use a single LED
+	strip with tachometer feedback for rotational speed.
+
+if LED_STRIP_POV
+
+config LED_STRIP_POV_SENSOR_THREAD_STACK_SIZE
+	int "Sensor thread stack size"
+	default 1024
+	help
+	Stack size for the worker thread that monitors the tachometer sensor.
+
+config LED_STRIP_POV_SENSOR_THREAD_PRIORITY
+	int "Sensor thread priority"
+	default 5
+	help
+	Thread priority used for the tachometer monitoring thread.
+
+config LED_STRIP_POV_SENSOR_POLL_INTERVAL_MS
+	int "Sensor poll interval (ms)"
+	default 100
+	help
+	Interval in milliseconds between tachometer samples when determining the
+	current rotation speed.
+
+config LED_STRIP_POV_DEFAULT_RPM
+	int "Default RPM fallback"
+	default 600
+	help
+	RPM value used to derive refresh timing when the tachometer is unavailable
+	or reports zero speed.
+
+endif # LED_STRIP_POV

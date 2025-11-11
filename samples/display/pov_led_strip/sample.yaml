@@ -1,0 +1,12 @@
+sample:
+  description: Persistence-of-vision LED strip display demo
+  name: POV LED strip
+common:
+  tags:
+    - display
+    - led
+    - sensor
+  harness: console
+  harness_config:
+    type: one_line
+    regex: "POV pattern frame"

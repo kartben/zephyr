@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Persistence-of-vision display driven by a single LED strip. The strip is
+  refreshed column by column while a tachometer provides rotation speed
+  feedback. The configured height must match the LED strip chain length.
+
+compatible: "led-strip-pov"
+
+include: display-controller.yaml
+
+properties:
+  led-strip:
+    type: phandle
+    required: true
+    description: |
+      Reference to the LED strip device used to emit the column pixels. The
+      referenced strip must expose a chain-length property equal to the
+      configured display height.
+
+  tachometer:
+    type: phandle
+    required: true
+    description: |
+      Tachometer sensor that reports the rotation speed in RPM via the
+      SENSOR_CHAN_RPM channel. The driver uses this to adjust the refresh rate.
+
+  pixel-format:
+    type: int
+    enum:
+      - PANEL_PIXEL_FORMAT_RGB_888
+      - PANEL_PIXEL_FORMAT_ARGB_8888
+    default: PANEL_PIXEL_FORMAT_RGB_888
+    description: |
+      Pixel format accepted by the driver. Either RGB888 or ARGB8888 buffers are
+      supported.
+
+  default-rpm:
+    type: int
+    description: |
+      Default RPM used when the tachometer does not report a valid speed. If not
+      provided, the driver falls back to the Kconfig default.
+
+  rpm-timeout-ms:
+    type: int
+    description: |
+      Time window in milliseconds after which a missing tachometer update
+      forces the driver to revert to the default RPM.
+
+  sensor-poll-ms:
+    type: int
+    description: |
+      Interval in milliseconds between tachometer polling operations.

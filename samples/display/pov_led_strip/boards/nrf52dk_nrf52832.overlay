@@ -1,0 +1,46 @@
+#include <zephyr/dt-bindings/display/panel.h>
+#include <zephyr/dt-bindings/led/led.h>
+
+&arduino_spi {
+	compatible = "nordic,nrf-spim";
+	status = "okay";
+
+	pov_strip: ws2812@0 {
+		compatible = "worldsemi,ws2812-spi";
+		reg = <0>;
+		spi-max-frequency = <4000000>;
+		chain-length = <16>;
+		color-mapping = <LED_COLOR_ID_GREEN LED_COLOR_ID_RED LED_COLOR_ID_BLUE>;
+		spi-zero-frame = <0x40>;
+		spi-one-frame = <0x70>;
+	};
+};
+
+/ {
+	aliases {
+		led-strip = &pov_strip;
+	};
+
+	chosen {
+		zephyr,display = &pov_display;
+	};
+
+	tach0: tachometer {
+		compatible = "zephyr,tach-gpio";
+		gpios = <&arduino_header 2 GPIO_ACTIVE_HIGH>;
+		timeout-ms = <500>;
+	};
+
+	pov_display: pov_display {
+		compatible = "led-strip-pov";
+		status = "okay";
+		led-strip = <&pov_strip>;
+		tachometer = <&tach0>;
+		width = <64>;
+		height = <16>;
+		pixel-format = <PANEL_PIXEL_FORMAT_RGB_888>;
+		default-rpm = <600>;
+		rpm-timeout-ms = <750>;
+		sensor-poll-ms = <100>;
+	};
+};
