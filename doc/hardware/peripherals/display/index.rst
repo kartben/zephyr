@@ -40,6 +40,14 @@ Display API on top of a DSI link.
 As with DBI, applications never call DSI functions directly. They remain portable by using the
 generic Display API, while the driver handles the DSI transactions internally.
 
+LED Strip Persistence-of-Vision Display
+========================================
+
+The LED strip POV driver streams one column of RGB pixels at a time to a
+rotating strip while sampling a tachometer to match the refresh period.
+A sample application in :zephyr_file:`samples/display/pov_led_strip`
+shows how to connect a tachometer and strip for testing.
+
 API Reference
 *************
 
