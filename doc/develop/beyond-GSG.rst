@@ -97,61 +97,18 @@ or :envvar:`ZEPHYR_SDK_INSTALL_DIR` environment variables are already set.
 
 For more information about these environment variables in Zephyr, see :ref:`env_vars_important`.
 
-Cloning the Zephyr Repositories
-*******************************
-
-The Zephyr project source is maintained in the `GitHub zephyr repo
-<https://github.com/zephyrproject-rtos/zephyr>`_. External modules used
-by Zephyr are found in the parent `GitHub Zephyr project
-<https://github.com/zephyrproject-rtos/>`_.  Because of these
-dependencies, it's convenient to use the Zephyr-created :ref:`west
-<west>` tool to fetch and manage the Zephyr and external module source
-code.  See :ref:`west-basics` for more details.
-
-Once your development tools are installed, use :ref:`west` to create,
-initialize, and download sources from the zephyr and external module
-repos.  We'll use the name ``zephyrproject``, but you can choose any
-name that does not contain a space anywhere in the path.
-
-.. code-block:: console
-
-   west init zephyrproject
-   cd zephyrproject
-   west update
-
-The ``west update`` command fetches and keeps :ref:`modules` in the
-:file:`zephyrproject` folder in sync with the code in the local zephyr
-repo.
-
-.. warning::
-
-   You must run ``west update`` any time the :file:`zephyr/west.yml`
-   changes, caused, for example, when you pull the :file:`zephyr`
-   repository, switch branches in it, or perform a ``git bisect`` inside of
-   it.
-
 Keeping Zephyr updated
-======================
+***********************
 
-To update the Zephyr project source code, you need to get the latest
-changes via ``git``. Afterwards, run ``west update`` as mentioned in
-the previous paragraph.
-Additionally, in the case of updated or added Python dependencies, running
-``west packages pip --install`` will make sure these are up-to-date.
+After updating Zephyr source code with ``git pull``, synchronize modules and
+Python dependencies:
 
 .. code-block:: console
 
-   # replace zephyrproject with the path you gave west init
    cd zephyrproject/zephyr
    git pull
    west update
    west packages pip --install
-
-Export Zephyr CMake package
-***************************
-
-The :ref:`cmake_pkg` can be exported to CMake's user package registry if it has
-not already been done as part of :ref:`getting_started`.
 
 .. _gs-board-aliases:
 
