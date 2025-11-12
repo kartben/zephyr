@@ -41,19 +41,6 @@ is good practice to use this flag if the latest version of a package is
 required.  (Check the :zephyr_file:`scripts/requirements.txt` file to
 see if a specific Python package version is expected.)
 
-Advanced Platform Setup
-***********************
-
-Here are some alternative instructions for more advanced platform setup
-configurations for supported development platforms:
-
-.. toctree::
-   :maxdepth: 1
-
-   Linux setup alternatives <getting_started/installation_linux.rst>
-   macOS setup alternatives <getting_started/installation_mac.rst>
-   Windows setup alternatives <getting_started/installation_win.rst>
-
 .. _gs_toolchain:
 
 Install a Toolchain
