@@ -13,33 +13,21 @@ issues and alternatives.
 Python and pip
 **************
 
-Python 3 and its package manager, pip\ [#pip]_, are used extensively by Zephyr
-to install and run scripts required to compile and run Zephyr
-applications, set up and maintain the Zephyr development environment,
-and build project documentation.
+Python 3 and pip\ [#pip]_ are used extensively by Zephyr for build scripts,
+development tools, and documentation generation.
 
-Depending on your operating system, you may need to provide the
-``--user`` flag to the ``pip3`` command when installing new packages. This is
-documented throughout the instructions.
-See `Installing Packages`_ in the Python Packaging User Guide for more
-information about pip\ [#pip]_, including `information on -\\-user`_.
+When installing Python packages, you may need the ``--user`` flag depending on
+your OS. See `Installing Packages`_ for details.
 
-- On Linux, make sure ``~/.local/bin`` is at the front of your :envvar:`PATH`
-  :ref:`environment variable <env_vars>`, or programs installed with ``--user``
-  won't be found. Installing with ``--user`` avoids conflicts between pip
-  and the system package manager, and is the default on Debian-based
-  distributions.
+- **Linux**: Ensure ``~/.local/bin`` is in your :envvar:`PATH` when using
+  ``--user``, or programs won't be found. This flag avoids conflicts with
+  system package managers.
 
-- On macOS, `Homebrew disables -\\-user`_.
+- **macOS**: `Homebrew disables -\\-user`_ by default.
 
-- On Windows, see the `Installing Packages`_ information on ``--user`` if you
-  require using this option.
+- **Windows**: See `Installing Packages`_ for ``--user`` guidance.
 
-On all operating systems, pip's ``-U`` flag installs or updates the package if the
-package is already installed locally but a more recent version is available. It
-is good practice to use this flag if the latest version of a package is
-required.  (Check the :zephyr_file:`scripts/requirements.txt` file to
-see if a specific Python package version is expected.)
+Use pip's ``-U`` flag to update packages to their latest version.
 
 .. _gs_toolchain:
 
