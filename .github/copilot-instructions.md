@@ -23,10 +23,14 @@
 **ALWAYS run these commands in order before any build/test operations:**
 
 ```bash
-# 1. Install Python dependencies (choose appropriate file)
-pip install -r scripts/requirements-base.txt          # Core dependencies
-pip install -r scripts/requirements-compliance.txt    # For compliance checks
-pip install -r scripts/requirements-build-test.txt    # For building/testing
+# 1. Install Python dependencies
+# Option A: Install everything (recommended for full development)
+pip install -r scripts/requirements.txt
+
+# Option B: Install only what you need
+pip install -r scripts/requirements-base.txt          # Core dependencies only
+pip install -r scripts/requirements-compliance.txt    # Add compliance tools
+pip install -r scripts/requirements-build-test.txt    # Add build/test tools
 
 # 2. Initialize west workspace (REQUIRED - run from repo root)
 west init -l .
@@ -126,14 +130,22 @@ export ZEPHYR_BASE=$PWD
 ./scripts/ci/check_compliance.py --annotate -c origin/main..
 ```
 
-**Compliance Checks Include**:
-- Checkpatch (kernel coding style)
-- Gitlint (commit message format)
-- SPDX license tags
-- YAML linting
-- Device tree binding validation
-- Maintainer validation
-- Identity (Signed-off-by required)
+**Available Compliance Checks** (run `-l` to list):
+- **Identity** - Signed-off-by required (DCO)
+- **Gitlint** - Commit message format
+- **Checkpatch** - C code style (kernel coding standards)
+- **Ruff** - Python linting
+- **Pylint** - Additional Python checks
+- **YAMLLint** - YAML file validation
+- **DevicetreeLinting** - Device tree syntax
+- **DevicetreeBindings** - DT binding validation
+- **Kconfig/KconfigBasic** - Kconfig file validation
+- **MaintainersFormat** - MAINTAINERS.yml validation
+- **LicenseAndCopyrightCheck** - License headers
+- **GitDiffCheck** - Git diff validation
+- **KeepSorted** - Sorted list validation
+- **BoardYml** - Board YAML validation
+- **CMakeStyle** - CMake style checks
 
 **Common Compliance Failures**:
 1. Missing `Signed-off-by` line in commits
@@ -308,7 +320,7 @@ git rebase -i origin/main  # Interactive rebase to clean up
 pip install west
 west init -l .
 source zephyr-env.sh
-pip install -r scripts/requirements-base.txt
+pip install -r scripts/requirements.txt  # All dependencies
 
 # Build sample
 cd samples/hello_world
