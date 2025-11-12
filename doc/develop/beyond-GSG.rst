@@ -3,10 +3,10 @@
 Beyond the Getting Started Guide
 ################################
 
-The :ref:`getting_started` gives a straight-forward path to set up
-your Linux, macOS, or Windows environment for Zephyr development. In
-this document, we delve deeper into Zephyr development setup
-issues and alternatives.
+The :ref:`getting_started` provides a straightforward path to set up your
+development environment and build your first application. This page covers
+additional topics for maintaining your Zephyr installation and advanced
+development workflows.
 
 .. _python-pip:
 
