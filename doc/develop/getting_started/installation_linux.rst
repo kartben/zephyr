@@ -240,5 +240,38 @@ To make sure this variable is unset, run:
 
    unset ZEPHYR_SDK_INSTALL_DIR
 
+.. _setting-udev-rules:
+
+Setting udev rules
+******************
+
+On Linux, flashing and debugging tools need permissions to access USB devices.
+This is typically managed through udev rules. You need to set these up the first
+time you use a debug probe.
+
+The OpenOCD project provides a udev rules file that covers most Zephyr-supported
+boards. Install it using one of these methods:
+
+* Download the rules file from the OpenOCD project:
+
+  .. code-block:: console
+
+     wget -O 60-openocd.rules https://sf.net/p/openocd/code/ci/master/tree/contrib/60-openocd.rules?format=raw
+     sudo cp 60-openocd.rules /etc/udev/rules.d
+
+* Or, if you installed the Zephyr SDK, copy the rules file from the SDK:
+
+  .. code-block:: console
+
+     sudo cp ${ZEPHYR_SDK_INSTALL_DIR}/sysroots/x86_64-pokysdk-linux/usr/share/openocd/contrib/60-openocd.rules /etc/udev/rules.d
+
+After installing the rules, reload udev:
+
+.. code-block:: console
+
+   sudo udevadm control --reload
+
+Unplug and replug your board's USB connection for the new rules to take effect.
+
 .. _Zephyr SDK Releases: https://github.com/zephyrproject-rtos/sdk-ng/tags
 .. _CMake Downloads: https://cmake.org/download
