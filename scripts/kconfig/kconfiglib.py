@@ -4744,6 +4744,7 @@ class Symbol(object):
             self.choice.user_selection = self
             self.choice._was_set = True
             self.choice._rec_invalidate()
+            self.choice.user_loc = loc
         else:
             self._rec_invalidate_if_has_prompt()
 
@@ -5573,7 +5574,9 @@ class Choice(object):
         return None
 
     def _invalidate(self):
-        self.user_loc = self._origin = \
+        if self.user_selection is None:
+            self.user_loc = None
+        self._origin = \
         self._cached_vis = self._cached_assignable = None
         self._cached_selection = _NO_CACHED_SELECTION
 
