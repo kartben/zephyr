@@ -16,22 +16,99 @@ extern "C" {
 
 /** @defgroup thread_analyzer Thread analyzer
  *  @ingroup debug
- *  @brief Module for analyzing threads
+ *  @brief Module for analyzing thread stack usage and performance
  *
- *  This module implements functions and the configuration that simplifies
- *  thread analysis.
+ *  The thread analyzer provides comprehensive runtime analysis of thread
+ *  behavior, including stack usage, CPU utilization, and performance metrics.
+ *
+ *  ## Stack Painting
+ *
+ *  Stack painting is a technique where thread stacks are initialized with a
+ *  known pattern (0xaa) when CONFIG_INIT_STACKS is enabled. This allows the
+ *  thread analyzer to detect stack usage by scanning from the bottom of the
+ *  stack until it finds memory that has been modified. This mechanism provides
+ *  accurate measurement of:
+ *  - Current stack usage (how much stack is currently in use)
+ *  - Unused stack space (pristine stack area with 0xaa pattern)
+ *
+ *  ## High Watermark Tracking
+ *
+ *  When CONFIG_THREAD_ANALYZER_STACK_HIGH_WATERMARK is enabled, the analyzer
+ *  tracks the maximum stack usage observed for each thread since creation.
+ *  This feature helps:
+ *  - Identify worst-case stack usage patterns
+ *  - Optimize stack size configurations
+ *  - Detect intermittent stack-intensive operations
+ *  - Ensure adequate stack margins for safety
+ *
+ *  The high watermark is stored in the thread's stack_info structure and
+ *  persists across multiple analyzer runs, providing a historical view of
+ *  peak stack utilization.
+ *
+ *  ## Usage
+ *
+ *  To use the thread analyzer:
+ *  1. Enable CONFIG_THREAD_ANALYZER in your project configuration
+ *  2. Enable CONFIG_INIT_STACKS for stack painting support
+ *  3. Enable CONFIG_THREAD_ANALYZER_STACK_HIGH_WATERMARK for peak usage tracking
+ *  4. Call thread_analyzer_print() or thread_analyzer_run() to analyze threads
+ *
+ *  Alternatively, enable CONFIG_THREAD_ANALYZER_AUTO to run analysis
+ *  automatically at periodic intervals.
+ *
  *  @{
  */
 
+/**
+ * @brief Thread analyzer information structure
+ *
+ * Contains detailed information about a thread's stack usage and
+ * performance characteristics. This structure is populated by the
+ * thread analyzer and passed to callback functions.
+ */
 struct thread_analyzer_info {
-	/** The name of the thread or stringified address of the thread handle
-	 * if name is not set.
+	/** Thread name or stringified thread handle address.
+	 *
+	 * If the thread has a name set via k_thread_name_set(), this field
+	 * contains that name. Otherwise, it contains the hexadecimal string
+	 * representation of the thread structure pointer.
 	 */
 	const char *name;
-	/** The total size of the stack*/
+
+	/** Total stack size in bytes.
+	 *
+	 * Represents the total size of the stack buffer allocated for this
+	 * thread, including any reserved areas and adjustments.
+	 */
 	size_t stack_size;
-	/** Stack size in used */
+
+	/** Current stack usage in bytes.
+	 *
+	 * The amount of stack space currently used by the thread. This is
+	 * calculated by scanning the stack for the initialized pattern (0xaa)
+	 * when CONFIG_INIT_STACKS is enabled. The value represents the number
+	 * of bytes that have been modified since thread creation.
+	 */
 	size_t stack_used;
+
+#ifdef CONFIG_THREAD_ANALYZER_STACK_HIGH_WATERMARK
+	/** High watermark - maximum stack usage in bytes.
+	 *
+	 * Tracks the peak stack utilization observed since thread creation.
+	 * This field is only available when CONFIG_THREAD_ANALYZER_STACK_HIGH_WATERMARK
+	 * is enabled. The high watermark is updated each time the thread analyzer
+	 * runs if the current usage exceeds the previously recorded maximum.
+	 *
+	 * Use cases:
+	 * - Identifying worst-case stack requirements
+	 * - Optimizing stack size allocations
+	 * - Detecting stack growth patterns over time
+	 * - Ensuring adequate safety margins
+	 *
+	 * Note: Requires CONFIG_INIT_STACKS to be enabled for accurate measurement.
+	 */
+	size_t stack_high_watermark;
+#endif
 
 #ifdef CONFIG_THREAD_RUNTIME_STATS
 	unsigned int utilization;

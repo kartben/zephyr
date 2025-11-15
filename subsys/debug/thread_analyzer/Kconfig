@@ -16,6 +16,12 @@ menuconfig THREAD_ANALYZER
 	  stack size configuration to find stack overflow or to find stacks
 	  which may be optimized.
 
+	  The thread analyzer automatically enables INIT_STACKS, which implements
+	  stack painting - a technique where stacks are initialized with a known
+	  pattern (0xaa). This allows the analyzer to detect stack usage by
+	  scanning for memory that has been modified, providing accurate
+	  measurements of current and peak stack utilization.
+
 if THREAD_ANALYZER
 module = THREAD_ANALYZER
 module-str = thread analyzer
@@ -48,6 +54,27 @@ config THREAD_ANALYZER_PRIV_STACK_USAGE
 	depends on ARCH_HAS_THREAD_PRIV_STACK_SPACE_GET
 	help
 	  Print privileged stack usage for user threads.
+
+config THREAD_ANALYZER_STACK_HIGH_WATERMARK
+	bool "Track stack high watermark"
+	default y
+	help
+	  Enable tracking of stack high watermark (peak usage) for each thread.
+	  When enabled, the thread analyzer will track and display the maximum
+	  stack usage observed since thread creation or last reset. This feature
+	  requires CONFIG_INIT_STACKS to function properly, as it relies on the
+	  stack painting mechanism (initializing stack memory with 0xaa pattern)
+	  to detect stack usage.
+
+	  High watermark tracking is useful for:
+	  - Understanding worst-case stack usage patterns
+	  - Optimizing stack size configurations
+	  - Identifying threads that may need larger stacks
+	  - Debugging intermittent stack-related issues
+
+	  Note: The high watermark is stored in the thread structure and is
+	  maintained across multiple thread analyzer runs, allowing you to
+	  observe peak usage over the lifetime of the thread.
 
 config THREAD_ANALYZER_RUN_UNLOCKED
 	bool "Run analysis with interrupts unlocked"

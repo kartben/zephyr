@@ -495,6 +495,13 @@ static char *setup_thread_stack(struct k_thread *new_thread,
 	new_thread->stack_info.start = (uintptr_t)stack_buf_start;
 	new_thread->stack_info.size = stack_buf_size;
 	new_thread->stack_info.delta = delta;
+
+#ifdef CONFIG_THREAD_ANALYZER_STACK_HIGH_WATERMARK
+	/* Initialize high watermark to 0. The thread analyzer will update this
+	 * value as it tracks stack usage over time.
+	 */
+	new_thread->stack_info.high_watermark = 0;
+#endif /* CONFIG_THREAD_ANALYZER_STACK_HIGH_WATERMARK */
 #endif /* CONFIG_THREAD_STACK_INFO */
 	stack_ptr -= delta;
 

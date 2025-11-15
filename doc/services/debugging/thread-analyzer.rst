@@ -10,6 +10,50 @@ runtime statistics.
 The analysis is performed on demand when the application calls
 :c:func:`thread_analyzer_run` or :c:func:`thread_analyzer_print`.
 
+Stack painting and high watermark tracking
+*******************************************
+
+Stack painting
+==============
+
+Stack painting is a debugging technique where thread stacks are initialized
+with a known pattern (0xaa) at thread creation time. This is enabled via the
+:kconfig:option:`CONFIG_INIT_STACKS` option, which is automatically selected
+when :kconfig:option:`CONFIG_THREAD_ANALYZER` is enabled.
+
+The thread analyzer uses this known pattern to detect stack usage by scanning
+from the bottom of the stack upward until it encounters memory that has been
+modified. This allows accurate measurement of:
+
+* Current stack usage (bytes of stack that have been written to)
+* Unused stack space (bytes still containing the 0xaa pattern)
+* Stack utilization percentage
+
+High watermark tracking
+========================
+
+When :kconfig:option:`CONFIG_THREAD_ANALYZER_STACK_HIGH_WATERMARK` is enabled,
+the thread analyzer tracks the maximum stack usage observed for each thread
+since its creation. This feature provides:
+
+* Peak stack usage detection across the thread's lifetime
+* Worst-case stack usage patterns
+* Historical view of stack utilization
+* Better insight for stack size optimization
+
+The high watermark is stored in the thread's stack_info structure and is
+updated automatically each time the thread analyzer runs. This allows
+developers to identify threads that may need larger stacks or threads
+with stacks that can be safely reduced.
+
+Benefits of high watermark tracking:
+
+* **Optimization**: Identify threads with oversized stacks that can be reduced
+* **Safety**: Ensure threads have adequate stack margins for worst-case scenarios
+* **Debugging**: Detect intermittent stack-intensive operations that might be
+  missed with single-point measurements
+* **Profiling**: Understand stack growth patterns over time
+
 For example, to build the synchronization sample with Thread Analyser enabled,
 do the following:
 
@@ -68,7 +112,16 @@ Configuration
 Configure this module using the following options.
 
 :kconfig:option:`CONFIG_THREAD_ANALYZER`
-   Enable the module.
+   Enable the module. This automatically selects :kconfig:option:`CONFIG_INIT_STACKS`
+   to enable stack painting for accurate stack usage measurement.
+:kconfig:option:`CONFIG_INIT_STACKS`
+   Initialize stack areas with a known value (0xaa) for stack painting. This is
+   automatically enabled by :kconfig:option:`CONFIG_THREAD_ANALYZER`.
+:kconfig:option:`CONFIG_THREAD_ANALYZER_STACK_HIGH_WATERMARK`
+   Enable tracking of stack high watermark (peak usage) for each thread. When
+   enabled, the thread analyzer maintains a record of the maximum stack usage
+   observed for each thread, allowing detection of worst-case stack requirements.
+   Default: enabled.
 :kconfig:option:`CONFIG_THREAD_ANALYZER_USE_PRINTK`
    Use printk for thread statistics.
 :kconfig:option:`CONFIG_THREAD_ANALYZER_USE_LOG`

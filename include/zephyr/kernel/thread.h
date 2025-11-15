@@ -171,6 +171,16 @@ struct _thread_stack_info {
 		size_t sz;
 	} mapped;
 #endif /* CONFIG_THREAD_STACK_MEM_MAPPED */
+
+#if defined(CONFIG_THREAD_ANALYZER_STACK_HIGH_WATERMARK)
+	/* High watermark - maximum stack usage observed since thread creation.
+	 * This field tracks the peak stack utilization over time. When
+	 * CONFIG_INIT_STACKS is enabled, the stack is initialized with a known
+	 * pattern (0xaa), enabling accurate high watermark detection through
+	 * the thread analyzer.
+	 */
+	size_t high_watermark;
+#endif /* CONFIG_THREAD_ANALYZER_STACK_HIGH_WATERMARK */
 };
 
 typedef struct _thread_stack_info _thread_stack_info_t;

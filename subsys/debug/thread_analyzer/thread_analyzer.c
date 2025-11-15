@@ -6,6 +6,29 @@
 
 /** @file
  *  @brief Thread analyzer implementation
+ *
+ * The thread analyzer provides runtime analysis of thread stack usage and
+ * performance metrics. It enables developers to optimize stack sizes and
+ * understand thread behavior.
+ *
+ * Key features:
+ * - Stack usage tracking via stack painting (CONFIG_INIT_STACKS)
+ * - High watermark tracking for peak stack usage detection
+ * - CPU utilization statistics per thread
+ * - ISR stack usage analysis
+ * - Privilege stack usage tracking (for user mode threads)
+ *
+ * Stack Painting:
+ * When CONFIG_INIT_STACKS is enabled, thread stacks are initialized with
+ * a known pattern (0xaa). The thread analyzer scans the stack from the
+ * bottom to detect how much of the stack has been modified (used), allowing
+ * accurate measurement of stack usage.
+ *
+ * High Watermark Tracking:
+ * When CONFIG_THREAD_ANALYZER_STACK_HIGH_WATERMARK is enabled, the thread
+ * analyzer maintains a record of the maximum stack usage observed for each
+ * thread since its creation. This helps identify worst-case stack usage
+ * patterns that may not be visible during typical operation.
  */
 
 #include <zephyr/kernel.h>
@@ -56,6 +79,16 @@ static void thread_print_cb(struct thread_analyzer_info *info)
 		info->stack_size, pcnt,
 		info->utilization);
 
+#ifdef CONFIG_THREAD_ANALYZER_STACK_HIGH_WATERMARK
+	/* Display high watermark (peak stack usage) */
+	size_t hwm_pcnt = (info->stack_high_watermark * 100U) / info->stack_size;
+
+	THREAD_ANALYZER_PRINT(
+		THREAD_ANALYZER_FMT(
+			" %-20s: High watermark: %zu / %zu (%zu %%)"),
+		" ", info->stack_high_watermark, info->stack_size, hwm_pcnt);
+#endif
+
 #ifdef CONFIG_THREAD_ANALYZER_PRIV_STACK_USAGE
 	if (info->priv_stack_size > 0) {
 		pcnt = (info->priv_stack_used * 100U) / info->priv_stack_size;
@@ -89,6 +122,16 @@ static void thread_print_cb(struct thread_analyzer_info *info)
 		THREAD_ANALYZER_VSTR(info->name),
 		info->stack_size - info->stack_used, info->stack_used,
 		info->stack_size, pcnt);
+
+#ifdef CONFIG_THREAD_ANALYZER_STACK_HIGH_WATERMARK
+	/* Display high watermark (peak stack usage) */
+	size_t hwm_pcnt = (info->stack_high_watermark * 100U) / info->stack_size;
+
+	THREAD_ANALYZER_PRINT(
+		THREAD_ANALYZER_FMT(
+			" %-20s: High watermark: %zu / %zu (%zu %%)"),
+		" ", info->stack_high_watermark, info->stack_size, hwm_pcnt);
+#endif
 #endif
 }
 
@@ -133,6 +176,14 @@ static void thread_analyze_cb(const struct k_thread *cthread, void *user_data)
 	info.name = name;
 	info.stack_size = size;
 	info.stack_used = size - unused;
+
+#ifdef CONFIG_THREAD_ANALYZER_STACK_HIGH_WATERMARK
+	/* Update high watermark if current usage exceeds it */
+	if (info.stack_used > thread->stack_info.high_watermark) {
+		thread->stack_info.high_watermark = info.stack_used;
+	}
+	info.stack_high_watermark = thread->stack_info.high_watermark;
+#endif
 
 #ifdef CONFIG_THREAD_ANALYZER_PRIV_STACK_USAGE
 	ret = arch_thread_priv_stack_space_get(cthread, &size, &unused);
