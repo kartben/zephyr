@@ -106,6 +106,26 @@ information from Thread Analyzer::
 	thread_a: Hello World from cpu 0 on qemu_x86!
 	thread_b: Hello World from cpu 0 on qemu_x86!
 
+Example output with high watermark tracking
+============================================
+
+When :kconfig:option:`CONFIG_THREAD_ANALYZER_STACK_HIGH_WATERMARK` is enabled
+(default), the thread analyzer will also display the high watermark (peak stack
+usage) for each thread::
+
+	Thread analyze:
+	 thread_b            : STACK: unused 648 usage 376 / 1024 (36 %); CPU: 7 %
+	                     : High watermark: 412 / 1024 (40 %)
+	 thread_analyzer     : STACK: unused 8 usage 504 / 512 (98 %); CPU: 0 %
+	                     : High watermark: 508 / 512 (99 %)
+	 thread_a            : STACK: unused 648 usage 376 / 1024 (36 %); CPU: 9 %
+	                     : High watermark: 428 / 1024 (41 %)
+	 idle                : STACK: unused 204 usage 116 / 320 (36 %); CPU: 82 %
+	                     : High watermark: 128 / 320 (40 %)
+
+In this example, you can see that while thread_b's current usage is 376 bytes,
+it has peaked at 412 bytes at some point since creation. This information helps
+identify whether threads need more stack space or if they can be safely reduced.
 
 Configuration
 *************
