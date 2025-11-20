@@ -78,7 +78,7 @@ static int iis2dlpc_set_odr(const struct device *dev, uint16_t odr)
 }
 
 static inline void iis2dlpc_convert(struct sensor_value *val, int raw_val,
-				    float gain)
+				    uint32_t gain)
 {
 	int64_t dval;
 
