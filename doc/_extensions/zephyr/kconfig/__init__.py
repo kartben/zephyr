@@ -282,7 +282,11 @@ class KconfigDomain(Domain):
     name = "kconfig"
     label = "Kconfig"
     object_types = {"option": ObjType("option", "option")}
-    roles = {"option": XRefRole(), "option-regex": KconfigRegexRole()}
+    roles = {
+        "option": XRefRole(),
+        "option_with_help": XRefRole(),
+        "option-regex": KconfigRegexRole(),
+    }
     directives = {"search": KconfigSearch}
     initial_data: dict[str, Any] = {"options": set()}
 
@@ -291,6 +295,25 @@ class KconfigDomain(Domain):
 
     def merge_domaindata(self, docnames: list[str], otherdata: dict) -> None:
         self.data["options"].update(otherdata["options"])
+
+    def _make_option_refnode(
+        self,
+        builder: Builder,
+        fromdocname: str,
+        target: str,
+        contnode: nodes.Element,
+    ) -> nodes.Element:
+        """Create a reference node for a Kconfig option, or return contnode if not found."""
+        match = [
+            (docname, anchor)
+            for name, _, _, docname, anchor, _ in self.get_objects()
+            if name == target
+        ]
+
+        if match:
+            todocname, anchor = match[0]
+            return make_refnode(builder, fromdocname, todocname, anchor, contnode, anchor)
+        return contnode
 
     def resolve_xref(
         self,
@@ -314,20 +337,41 @@ class KconfigDomain(Domain):
             else:
                 # Fallback to plain text if no search page is found
                 return contnode
+        elif typ == "option_with_help":
+            return self._resolve_option_with_help(env, fromdocname, builder, target, contnode)
         else:
             # Handle regular option links
-            match = [
-                (docname, anchor)
-                for name, _, _, docname, anchor, _ in self.get_objects()
-                if name == target
-            ]
+            refnode = self._make_option_refnode(builder, fromdocname, target, contnode)
+            return refnode if refnode is not contnode else None
 
-            if match:
-                todocname, anchor = match[0]
+    def _resolve_option_with_help(
+        self,
+        env: BuildEnvironment,
+        fromdocname: str,
+        builder: Builder,
+        target: str,
+        contnode: nodes.Element,
+    ) -> nodes.Element:
+        dl = nodes.definition_list(classes=['kconfig-option-list'])
+        li = nodes.definition_list_item()
+        dl += li
+        term = nodes.term()
+        li += term
+        definition = nodes.definition()
+        li += definition
 
-                return make_refnode(builder, fromdocname, todocname, anchor, contnode, anchor)
-            else:
-                return None
+        refnode = self._make_option_refnode(builder, fromdocname, target, contnode)
+        term += refnode
+
+        kconfig_db = getattr(env, "kconfig_db", [])
+        option_entry = next((item for item in kconfig_db if item["name"] == target), None)
+
+        if option_entry and option_entry.get("help"):
+            para = nodes.paragraph()
+            para += nodes.Text(option_entry["help"])
+            definition += para
+
+        return dl
 
     def _find_search_docname(self, env: BuildEnvironment) -> str | None:
         """Find the document containing the kconfig search directive."""
@@ -550,6 +594,27 @@ def kconfig_install(
         app.add_js_file("kconfig.mjs", type="module")
 
 
+def merge_kconfig_options(app, doctree, docname):
+    """Merge consecutive kconfig-option-list definition lists into one."""
+    for parent in doctree.traverse(nodes.Element):
+        i = 0
+        while i < len(parent.children):
+            current = parent.children[i]
+
+            if (isinstance(current, nodes.definition_list) and
+                    'kconfig-option-list' in current.get('classes', [])):
+                # Merge all consecutive kconfig-option-list nodes into this definition list
+                while i + 1 < len(parent.children):
+                    next_node = parent.children[i + 1]
+                    if (isinstance(next_node, nodes.definition_list) and
+                            'kconfig-option-list' in next_node.get('classes', [])):
+                        current.extend(next_node.children)
+                        parent.remove(next_node)
+                    else:
+                        break
+            i += 1
+
+
 def setup(app: Sphinx):
     app.add_config_value("kconfig_generate_db", False, "env")
     app.add_config_value("kconfig_ext_paths", [], "env")
@@ -566,6 +631,7 @@ def setup(app: Sphinx):
 
     app.connect("builder-inited", kconfig_build_resources)
     app.connect("html-page-context", kconfig_install)
+    app.connect("doctree-resolved", merge_kconfig_options)
 
     return {
         "version": __version__,

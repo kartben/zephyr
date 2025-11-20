@@ -380,7 +380,7 @@ Configuration Options
 
 Related configuration options:
 
-* :kconfig:option:`CONFIG_RING_BUFFER`: Enable ring buffer.
+:kconfig:option_with_help:`CONFIG_RING_BUFFER`
 
 API Reference
 *************
