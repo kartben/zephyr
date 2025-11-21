@@ -14,6 +14,11 @@ var Scorer = {
   // For Zephyr search results, push display down for kconfig, boards,
   // and samples so "regular" docs will show up before them
 
+  // Field length normalization constants
+  FIELD_LENGTH_AVG: 200,  // Average field length baseline in characters
+  NORM_FACTOR_MIN: 0.5,   // Minimum normalization factor
+  NORM_FACTOR_MAX: 2.0,   // Maximum normalization factor
+
   score: function(result) {
     var baseScore = result[4];
     
@@ -36,13 +41,11 @@ var Scorer = {
     
     // Only apply normalization for positive scores and non-empty descriptions
     if (baseScore > 0 && fieldLength > 0) {
-      // Use an average field length of 200 characters as baseline
       // Apply square root normalization to avoid over-penalizing long documents
-      var avgLength = 200;
-      var normFactor = Math.sqrt(avgLength / fieldLength);
-      // Clamp the normalization factor to reasonable bounds (0.5 to 2.0)
-      // This prevents extreme adjustments for very short or very long documents
-      normFactor = Math.max(0.5, Math.min(2.0, normFactor));
+      var normFactor = Math.sqrt(this.FIELD_LENGTH_AVG / fieldLength);
+      // Clamp the normalization factor to prevent extreme adjustments
+      // for very short or very long documents
+      normFactor = Math.max(this.NORM_FACTOR_MIN, Math.min(this.NORM_FACTOR_MAX, normFactor));
       baseScore = baseScore * normFactor;
     }
     
