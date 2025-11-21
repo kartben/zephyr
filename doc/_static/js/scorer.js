@@ -15,18 +15,38 @@ var Scorer = {
   // and samples so "regular" docs will show up before them
 
   score: function(result) {
+    var baseScore = result[4];
+    
+    // Apply path-based adjustments first
     if (result[0].search("reference/kconfig/")>=0) {
-       return -5;
+       baseScore = -5;
     }
     else if (result[0].search("boards/")>=0) {
-       return -5;
+       baseScore = -5;
     }
     else if (result[0].search("samples/")>=0) {
-       return -5;
+       baseScore = -5;
     }
-    else {
-       return result[4];
+    
+    // Apply field length normalization
+    // Use description field (result[3]) length as a proxy for document length
+    // Shorter documents with matches are typically more relevant
+    var description = result[3] || "";
+    var fieldLength = description.length;
+    
+    // Only apply normalization for positive scores and non-empty descriptions
+    if (baseScore > 0 && fieldLength > 0) {
+      // Use an average field length of 200 characters as baseline
+      // Apply square root normalization to avoid over-penalizing long documents
+      var avgLength = 200;
+      var normFactor = Math.sqrt(avgLength / fieldLength);
+      // Clamp the normalization factor to reasonable bounds (0.5 to 2.0)
+      // This prevents extreme adjustments for very short or very long documents
+      normFactor = Math.max(0.5, Math.min(2.0, normFactor));
+      baseScore = baseScore * normFactor;
     }
+    
+    return baseScore;
   },
 
 
