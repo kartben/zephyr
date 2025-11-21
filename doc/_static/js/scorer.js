@@ -42,7 +42,8 @@ var Scorer = {
     // Only apply normalization for positive scores and non-empty descriptions
     if (baseScore > 0 && fieldLength > 0) {
       // Apply square root normalization to avoid over-penalizing long documents
-      var normFactor = Math.sqrt(this.FIELD_LENGTH_AVG / fieldLength);
+      // Additional safety check to prevent division by zero
+      var normFactor = fieldLength > 0 ? Math.sqrt(this.FIELD_LENGTH_AVG / fieldLength) : 1.0;
       // Clamp the normalization factor to prevent extreme adjustments
       // for very short or very long documents
       normFactor = Math.max(this.NORM_FACTOR_MIN, Math.min(this.NORM_FACTOR_MAX, normFactor));
