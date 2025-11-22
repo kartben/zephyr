@@ -152,6 +152,38 @@ def find_nodes_with_grandparent(edt: edtlib.EDT, grandparent_node: edtlib.Node) 
     return grandchildren
 
 
+def find_sibling_nodes(node: edtlib.Node) -> list[edtlib.Node]:
+    """
+    Find sibling nodes (nodes with the same parent) that might be accessed together
+    in a DT_FOREACH_CHILD operation.
+    """
+    if not node.parent:
+        return []
+    
+    siblings = []
+    for n in node.edt.nodes:
+        if n is not node and n.parent is node.parent:
+            siblings.append(n)
+    return siblings
+
+
+def find_nodes_by_compatible(edt: edtlib.EDT, node: edtlib.Node) -> list[edtlib.Node]:
+    """
+    Find other nodes with the same compatible string, which might be accessed
+    together in a DT_FOREACH_STATUS_OKAY operation.
+    """
+    if not hasattr(node, 'compats') or not node.compats:
+        return []
+    
+    matching = []
+    for n in edt.nodes:
+        if n is not node and hasattr(n, 'compats') and n.compats:
+            # Check if any compatible strings match
+            if any(c in node.compats for c in n.compats):
+                matching.append(n)
+    return matching[:10]  # Limit to avoid overwhelming output
+
+
 def add_macro_usage_hints(node: edtlib.Node, lines: list[str]) -> None:
     """
     Add hints about potential macro usage (DT_PARENT, DT_GPARENT, etc.) based on
@@ -180,6 +212,29 @@ def add_macro_usage_hints(node: edtlib.Node, lines: list[str]) -> None:
             lines.append(f" ... and {len(grandchildren) - 5} more")
         lines.append("\nIf you're using DT_GPARENT() to access this node from one of its grandchildren,")
         lines.append("consider the suggestions above to make this node available.")
+    
+    # Check for sibling relationships (DT_FOREACH_CHILD scenarios)
+    siblings = find_sibling_nodes(node)
+    if siblings and len(siblings) > 0:
+        lines.append("\nThis node has siblings (same parent):")
+        for sibling in siblings[:3]:  # Limit to 3 for readability
+            lines.append(f" - {format_node(sibling)}")
+        if len(siblings) > 3:
+            lines.append(f" ... and {len(siblings) - 3} more")
+        lines.append("\nIf you're iterating over children with DT_FOREACH_CHILD(), DT_FOREACH_CHILD_STATUS_OKAY(),")
+        lines.append("or similar macros, this node might be accessed as part of that iteration.")
+    
+    # Check for nodes with same compatible (DT_FOREACH_STATUS_OKAY scenarios)
+    if hasattr(node, 'compats') and node.compats:
+        matching = find_nodes_by_compatible(edt, node)
+        if matching:
+            lines.append(f"\nOther nodes with compatible '{node.compats[0]}':")
+            for match in matching[:3]:  # Limit to 3 for readability
+                lines.append(f" - {format_node(match)}")
+            if len(matching) > 3:
+                lines.append(f" ... and {len(matching) - 3} more")
+            lines.append("\nIf you're using DT_FOREACH_STATUS_OKAY() or DT_INST_FOREACH_STATUS_OKAY(),")
+            lines.append("this node might be accessed as part of iterating over instances of this compatible.")
 
 
 def handle_disabled_node(node: edtlib.Node) -> list[str]:
