@@ -134,6 +134,11 @@ def find_nodes_with_parent(edt: edtlib.EDT, parent_node: edtlib.Node) -> list[ed
     """
     Find all nodes that have the given node as their parent.
     """
+    # Use the children property if available for better performance
+    if hasattr(parent_node, 'children'):
+        return list(parent_node.children.values())
+    
+    # Fallback to iterating through all nodes
     children = []
     for node in edt.nodes:
         if node.parent is parent_node:
@@ -146,9 +151,16 @@ def find_nodes_with_grandparent(edt: edtlib.EDT, grandparent_node: edtlib.Node) 
     Find all nodes that have the given node as their grandparent.
     """
     grandchildren = []
-    for node in edt.nodes:
-        if node.parent and node.parent.parent is grandparent_node:
-            grandchildren.append(node)
+    # Use the children property for better performance
+    if hasattr(grandparent_node, 'children'):
+        for child in grandparent_node.children.values():
+            if hasattr(child, 'children'):
+                grandchildren.extend(child.children.values())
+    else:
+        # Fallback to iterating through all nodes
+        for node in edt.nodes:
+            if node.parent and node.parent.parent is grandparent_node:
+                grandchildren.append(node)
     return grandchildren
 
 
@@ -177,6 +189,11 @@ def find_sibling_nodes(node: edtlib.Node) -> list[edtlib.Node]:
     if not node.parent:
         return []
     
+    # Use the parent's children property for better performance
+    if hasattr(node.parent, 'children'):
+        return [n for n in node.parent.children.values() if n is not node]
+    
+    # Fallback to iterating through all nodes
     siblings = []
     for n in node.edt.nodes:
         if n is not node and n.parent is node.parent:
