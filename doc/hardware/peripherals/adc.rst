@@ -9,6 +9,23 @@ Overview
 An Analog-to-Digital Converter (ADC) converts analog voltage signals into digital values
 that can be processed by software.
 
+ADC Channels
+============
+
+An ADC channel is a logical entity that represents a configured ADC sampling path. Each channel
+is associated with one or more physical analog input pins and has specific configuration
+properties such as gain, reference voltage, and acquisition time.
+
+Channels can be:
+
+* **Single-ended**: Measure voltage relative to a reference (typically ground)
+* **Differential**: Measure voltage difference between two analog inputs
+
+The channel identifier (0-31) is used by the API to reference the channel in read operations.
+Depending on the hardware, the channel identifier may directly correspond to a physical input
+pin, or the physical input(s) may be explicitly specified using the ``input_positive`` and
+``input_negative`` configuration parameters.
+
 The ADC API provides methods to configure and read from ADC channels. Key features include:
 
 **Channel Configuration**
@@ -27,8 +44,9 @@ Devicetree Configuration
 ************************
 
 ADC controllers are defined in the Devicetree with channel configurations as child nodes.
-The controller node specifies the ADC hardware instance, while child nodes define channel
-properties.
+The controller node specifies the ADC hardware instance, while child nodes define each
+channel's properties including which physical input pin(s) to use and the channel's
+electrical characteristics.
 
 Example of an ADC controller with channel configuration:
 
