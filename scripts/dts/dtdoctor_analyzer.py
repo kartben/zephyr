@@ -171,16 +171,31 @@ def handle_disabled_node(node: edtlib.Node) -> list[str]:
 def main() -> int:
     args = parse_args()
 
-    m = re.search(r"__device_dts_ord_(\d+)", args.symbol)
-    if not m:
+    # Try to match ordinal-based symbol first
+    m_ord = re.search(r"__device_dts_ord_(\d+)", args.symbol)
+    # Try to match hash-based symbol (but not ord_)
+    m_hash = re.search(r"__device_dts_(?!ord_)([0-9A-Fa-f]+)", args.symbol) if not m_ord else None
+    
+    if not m_ord and not m_hash:
+        print(f"Symbol '{args.symbol}' is not a recognized devicetree symbol", file=sys.stderr)
         return 1
 
-    # Find node by ordinal amongst all nodes
+    # Find node by ordinal or hash amongst all nodes
     edt = load_edt(args.edt_pickle)
-    node = next((n for n in edt.nodes if n.dep_ordinal == int(m.group(1))), None)
-    if not node:
-        print(f"Ordinal {m.group(1)} not found in edt.pickle", file=sys.stderr)
-        return 1
+    node = None
+    
+    if m_ord:
+        ordinal = int(m_ord.group(1))
+        node = next((n for n in edt.nodes if n.dep_ordinal == ordinal), None)
+        if not node:
+            print(f"Ordinal {ordinal} not found in edt.pickle", file=sys.stderr)
+            return 1
+    elif m_hash:
+        hash_val = m_hash.group(1)
+        node = next((n for n in edt.nodes if n.hash == hash_val), None)
+        if not node:
+            print(f"Hash {hash_val} not found in edt.pickle", file=sys.stderr)
+            return 1
 
     if node.status == "okay":
         lines = handle_enabled_node(node)
