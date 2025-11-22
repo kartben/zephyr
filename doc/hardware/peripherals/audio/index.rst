@@ -158,7 +158,7 @@ Sample Rates
 Standard audio sample rates supported:
 
 * 8 kHz - Narrowband voice
-* 16 kHz - Wideband voice  
+* 16 kHz - Wideband voice
 * 44.1 kHz - CD quality audio
 * 48 kHz - Professional audio, DAT
 * 96 kHz, 192 kHz - High-resolution audio
@@ -232,7 +232,7 @@ Audio subsystem configuration options:
 
 * :kconfig:option:`CONFIG_AUDIO` - Enable audio subsystem support
 * :kconfig:option:`CONFIG_AUDIO_CODEC` - Enable audio codec support
-* :kconfig:option:`CONFIG_AUDIO_DMIC` - Enable digital microphone support  
+* :kconfig:option:`CONFIG_AUDIO_DMIC` - Enable digital microphone support
 * :kconfig:option:`CONFIG_I2S` - Enable I2S interface support
 * :kconfig:option:`CONFIG_DAI` - Enable DAI interface support
 
