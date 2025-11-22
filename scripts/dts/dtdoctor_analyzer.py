@@ -215,7 +215,7 @@ def add_macro_usage_hints(node: edtlib.Node, lines: list[str]) -> None:
     
     # Check for sibling relationships (DT_FOREACH_CHILD scenarios)
     siblings = find_sibling_nodes(node)
-    if siblings and len(siblings) > 0:
+    if siblings:
         lines.append("\nThis node has siblings (same parent):")
         for sibling in siblings[:3]:  # Limit to 3 for readability
             lines.append(f" - {format_node(sibling)}")
