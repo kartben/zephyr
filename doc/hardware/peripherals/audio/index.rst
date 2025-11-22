@@ -25,7 +25,7 @@ Digital Audio Interfaces
 
 At the lowest level are the hardware interfaces that transfer audio data:
 
-* **I2S (Inter-IC Sound)** - Serial interface for stereo PCM audio data
+* **I2S (Inter-IC Sound)** - Serial interface for PCM audio data (mono, stereo, or multi-channel)
 * **DAI (Digital Audio Interface)** - Generic interface for various digital audio formats
 
 These interfaces handle the actual transmission and reception of audio samples between
@@ -103,7 +103,7 @@ I2S (Inter-IC Sound)
 I2S is a standard serial bus interface for transferring digital audio data between integrated
 circuits. The I2S API in Zephyr supports:
 
-* Standard I2S (Philips) format
+* Standard I2S format
 * Left-justified and right-justified formats
 * PCM short and long frame sync
 * Controller and target modes
