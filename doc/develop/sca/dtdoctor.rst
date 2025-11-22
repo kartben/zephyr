@@ -32,8 +32,9 @@ What dtdoctor detects
   identifies which Kconfig options need to be enabled.
 
 * **Macro usage context**: When nodes are accessed through devicetree macros like ``DT_PARENT()``,
-  ``DT_GPARENT()``, ``DT_FOREACH_CHILD()``, or ``DT_FOREACH_STATUS_OKAY()``, ``dtdoctor``
-  provides context about the node relationships and suggests which nodes might need to be enabled.
+  ``DT_GPARENT()``, ``DT_FOREACH_CHILD()``, ``DT_FOREACH_ANCESTOR()``, or
+  ``DT_FOREACH_STATUS_OKAY()``, ``dtdoctor`` provides context about the node relationships and
+  suggests which nodes might need to be enabled.
 
 For example, if you use ``DEVICE_DT_GET(DT_PARENT(node_id))`` and the parent node doesn't have a
 device defined, ``dtdoctor`` will identify that the problematic node is the parent of other nodes

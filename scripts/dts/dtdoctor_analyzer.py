@@ -152,6 +152,23 @@ def find_nodes_with_grandparent(edt: edtlib.EDT, grandparent_node: edtlib.Node) 
     return grandchildren
 
 
+def find_nodes_with_ancestor(edt: edtlib.EDT, ancestor_node: edtlib.Node) -> list[edtlib.Node]:
+    """
+    Find all descendant nodes that have the given node as an ancestor (at any level),
+    which might be accessed in a DT_FOREACH_ANCESTOR operation.
+    """
+    descendants = []
+    for node in edt.nodes:
+        # Walk up the parent chain to check if ancestor_node is in it
+        current = node.parent
+        while current:
+            if current is ancestor_node:
+                descendants.append(node)
+                break
+            current = current.parent
+    return descendants
+
+
 def find_sibling_nodes(node: edtlib.Node) -> list[edtlib.Node]:
     """
     Find sibling nodes (nodes with the same parent) that might be accessed together
@@ -212,6 +229,20 @@ def add_macro_usage_hints(node: edtlib.Node, lines: list[str]) -> None:
             lines.append(f" ... and {len(grandchildren) - 5} more")
         lines.append("\nIf you're using DT_GPARENT() to access this node from one of its grandchildren,")
         lines.append("consider the suggestions above to make this node available.")
+    
+    # Check if this node is an ancestor of other nodes (DT_FOREACH_ANCESTOR scenarios)
+    descendants = find_nodes_with_ancestor(edt, node)
+    # Only show this if we have descendants beyond just children and grandchildren
+    # to avoid redundant information
+    other_descendants = [d for d in descendants if d not in children and d not in grandchildren]
+    if other_descendants:
+        lines.append("\nThis node is an ancestor of:")
+        for descendant in other_descendants[:3]:  # Limit to 3 for readability
+            lines.append(f" - {format_node(descendant)}")
+        if len(other_descendants) > 3:
+            lines.append(f" ... and {len(other_descendants) - 3} more")
+        lines.append("\nIf you're using DT_FOREACH_ANCESTOR() to iterate ancestors from a descendant node,")
+        lines.append("this node might be accessed as part of that iteration.")
     
     # Check for sibling relationships (DT_FOREACH_CHILD scenarios)
     siblings = find_sibling_nodes(node)
