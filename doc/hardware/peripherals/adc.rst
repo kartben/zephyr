@@ -88,13 +88,13 @@ and performing synchronous or asynchronous reads.
            .acquisition_time = ADC_ACQ_TIME_DEFAULT,
            .channel_id = 0,
        };
+       int16_t sample_buffer;
        struct adc_sequence sequence = {
            .channels = BIT(0),
            .buffer = &sample_buffer,
            .buffer_size = sizeof(sample_buffer),
            .resolution = 12,
        };
-       int16_t sample_buffer;
        int ret;
 
        if (!device_is_ready(adc_dev)) {

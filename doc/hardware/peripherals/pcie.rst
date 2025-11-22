@@ -95,19 +95,19 @@ and configuring interrupts.
            return;
        }
 
-       /* Map the device memory */
-       device_map(DEVICE_MMIO_RAM_PTR(dev), mbar.phys_addr, mbar.size,
-                  K_MEM_CACHE_NONE);
+       /* Note: Memory mapping would be done here using appropriate functions
+        * based on your specific hardware and memory management setup */
 
-       /* Configure MSI interrupt */
+       /* Configure MSI interrupt (example - actual implementation varies) */
        irq = pcie_alloc_irq(bdf);
        if (irq == PCIE_CONF_INTR_IRQ_NONE) {
            printk("Failed to allocate IRQ\n");
            return;
        }
 
-       pcie_connect_dynamic_irq(bdf, irq, 0, isr_handler, NULL, 0);
-       pcie_irq_enable(bdf, irq);
+       /* Note: Connect IRQ handler using your application's ISR function */
+       /* pcie_connect_dynamic_irq(bdf, irq, 0, your_isr_handler, NULL, 0); */
+       /* pcie_irq_enable(bdf, irq); */
 
        printk("PCIe device configured successfully\n");
    }

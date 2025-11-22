@@ -64,7 +64,7 @@ periodically feeding the watchdog to prevent system reset.
 
    #include <zephyr/drivers/watchdog.h>
 
-   static void wdt_callback(const struct device *wdt_dev, int channel_id)
+   static void wdt_callback(const struct device *wdt_dev, uint8_t channel_id)
    {
        printk("Watchdog callback - preparing for reset\n");
        /* Perform any necessary cleanup before reset */
