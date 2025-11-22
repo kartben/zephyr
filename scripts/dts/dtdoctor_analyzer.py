@@ -124,7 +124,62 @@ def handle_enabled_node(node: edtlib.Node) -> list[str]:
     else:
         lines.append("Could not determine compatible; check driver Kconfig manually.")
 
+    # Add macro usage hints
+    add_macro_usage_hints(node, lines)
+
     return lines
+
+
+def find_nodes_with_parent(edt: edtlib.EDT, parent_node: edtlib.Node) -> list[edtlib.Node]:
+    """
+    Find all nodes that have the given node as their parent.
+    """
+    children = []
+    for node in edt.nodes:
+        if node.parent is parent_node:
+            children.append(node)
+    return children
+
+
+def find_nodes_with_grandparent(edt: edtlib.EDT, grandparent_node: edtlib.Node) -> list[edtlib.Node]:
+    """
+    Find all nodes that have the given node as their grandparent.
+    """
+    grandchildren = []
+    for node in edt.nodes:
+        if node.parent and node.parent.parent is grandparent_node:
+            grandchildren.append(node)
+    return grandchildren
+
+
+def add_macro_usage_hints(node: edtlib.Node, lines: list[str]) -> None:
+    """
+    Add hints about potential macro usage (DT_PARENT, DT_GPARENT, etc.) based on
+    node relationships in the devicetree.
+    """
+    edt = node.edt
+    
+    # Check if this node is a parent of other nodes
+    children = find_nodes_with_parent(edt, node)
+    if children:
+        lines.append("\nThis node is the parent of:")
+        for child in children[:5]:  # Limit to 5 for readability
+            lines.append(f" - {format_node(child)}")
+        if len(children) > 5:
+            lines.append(f" ... and {len(children) - 5} more")
+        lines.append("\nIf you're using DT_PARENT() to access this node from one of its children,")
+        lines.append("consider the suggestions above to make this node available.")
+    
+    # Check if this node is a grandparent of other nodes
+    grandchildren = find_nodes_with_grandparent(edt, node)
+    if grandchildren:
+        lines.append("\nThis node is the grandparent of:")
+        for grandchild in grandchildren[:5]:  # Limit to 5 for readability
+            lines.append(f" - {format_node(grandchild)}")
+        if len(grandchildren) > 5:
+            lines.append(f" ... and {len(grandchildren) - 5} more")
+        lines.append("\nIf you're using DT_GPARENT() to access this node from one of its grandchildren,")
+        lines.append("consider the suggestions above to make this node available.")
 
 
 def handle_disabled_node(node: edtlib.Node) -> list[str]:
@@ -162,6 +217,9 @@ def handle_disabled_node(node: edtlib.Node) -> list[str]:
             "It is referenced by the following aliases: "
             f"""{', '.join([f"'{ref}'" for ref in sorted(alias_refs)])}"""
         )
+
+    # Add macro usage hints
+    add_macro_usage_hints(node, lines)
 
     lines.append("\nTry enabling the node by setting its 'status' property to 'okay'.")
 
