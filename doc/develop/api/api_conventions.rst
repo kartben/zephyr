@@ -104,132 +104,84 @@ example, bindings defined for regulators follow the lifecycle of the :ref:`regul
 Breaking and non-breaking changes
 **********************************
 
-This section provides guidance on what constitutes a breaking change versus a non-breaking change
-for each API type. Understanding these distinctions helps developers maintain API stability and
-properly document changes in migration guides.
+This section categorizes common changes as breaking or non-breaking for each API type.
 
-C API breaking changes
-=======================
+.. list-table:: C API Changes
+   :header-rows: 1
+   :widths: 50 50
 
-The following changes to Public or Internal C APIs are considered **breaking changes**:
+   * - Breaking Changes
+     - Non-Breaking Changes
+   * - | **Functions:**
+       | • Remove or rename function
+       | • Change return type
+       | • Add, remove, or reorder parameters
+       | • Change parameter types
+       | • Change behavior or error codes
+       |
+       | **Data types:**
+       | • Remove or rename struct/union/enum
+       | • Modify struct fields (remove, rename, reorder, change type)
+       | • Remove/rename enum values
+       | • Change enum constant values
+       |
+       | **Macros:**
+       | • Remove or rename macro
+       | • Change macro value affecting behavior
+     - | **Functions:**
+       | • Add new function
+       | • Deprecate (not remove) function
+       | • Improve documentation
+       |
+       | **Data types:**
+       | • Add new struct/union/enum
+       | • Add enum value at end
+       | • Add struct field at end (with versioning)
+       |
+       | **Macros:**
+       | • Add new macro
 
-**Function signatures:**
+.. list-table:: Kconfig Changes
+   :header-rows: 1
+   :widths: 50 50
 
-- Removing a public function
-- Renaming a public function
-- Changing the return type of a function
-- Adding, removing, or reordering function parameters
-- Changing parameter types in a way that is not backwards compatible
-- Changing a function from inline to non-inline (or vice versa)
-- Removing or changing function attributes (e.g., ``__deprecated``, ``__weak``)
+   * - Breaking Changes
+     - Non-Breaking Changes
+   * - | • Remove or rename symbol
+       | • Change symbol type (e.g., bool to int)
+       | • Remove default without migration path
+       | • Change dependencies breaking configs
+       | • Change symbol semantics
+     - | • Add new symbol
+       | • Change help text or prompt
+       | • Change default (backward compatible)
+       | • Add ranges/choices including valid values
+       | • Deprecate with migration path
 
-**Data types and structures:**
+.. list-table:: Devicetree Changes
+   :header-rows: 1
+   :widths: 50 50
 
-- Removing a public structure, union, or enum
-- Renaming a public structure, union, or enum
-- Removing, renaming, or reordering fields in a structure or union
-- Changing the type of a structure or union field
-- Changing the size of a structure or union (except when adding fields at the end with explicit versioning)
-- Removing or renaming enum values
-- Changing the numeric value of an enum constant
+   * - Breaking Changes
+     - Non-Breaking Changes
+   * - | • Remove binding file
+       | • Remove or rename required property
+       | • Change property type
+       | • Make optional property required (no default)
+       | • Change phandle-array cell meaning
+       | • Remove compatible string
+     - | • Add binding file
+       | • Add optional property
+       | • Add compatible string
+       | • Add property default
+       | • Make required property optional
+       | • Deprecate property (keep support)
 
-**Macros and constants:**
+API Lifecycle Impact
+====================
 
-- Removing a public macro
-- Renaming a public macro
-- Changing the value of a constant macro in a way that affects behavior
-- Changing a function-like macro in a way that is not backwards compatible
+Breaking changes require different handling based on API classification:
 
-**Behavioral changes:**
-
-- Changing the semantics or behavior of a function in a way that breaks existing usage
-- Changing error codes returned by a function
-- Changing the threading or interrupt context requirements for a function
-
-C API non-breaking changes
-===========================
-
-The following changes to Public or Internal C APIs are generally **non-breaking changes**:
-
-- Adding new functions with unique names
-- Adding new structures, unions, or enums with unique names
-- Adding new enum values (at the end of the enum, without changing existing values)
-- Adding fields at the end of a structure when using explicit versioning or size fields
-- Adding new macros with unique names
-- Deprecating (but not removing) functions, types, or macros using ``__deprecated``
-- Adding function attributes that don't change the ABI (e.g., ``__unused``, documentation)
-- Changing internal implementation details without affecting the API contract
-- Improving documentation or comments
-- Adding optional parameters via variadic functions or configuration structures with size/version fields
-
-Kconfig breaking changes
-=========================
-
-The following changes to Kconfig symbols are considered **breaking changes**:
-
-- Removing a Kconfig symbol
-- Renaming a Kconfig symbol
-- Changing the type of a Kconfig symbol (e.g., from bool to int)
-- Removing a Kconfig symbol's default value without providing a migration path
-- Changing the dependency tree in a way that makes previously valid configurations invalid
-- Changing the semantics of what a Kconfig symbol controls
-
-Kconfig non-breaking changes
-=============================
-
-The following changes to Kconfig symbols are generally **non-breaking changes**:
-
-- Adding new Kconfig symbols
-- Adding new dependencies to an existing symbol (if it doesn't break existing configurations)
-- Changing the help text or prompt
-- Changing the default value in a way that maintains backwards compatibility
-- Adding ranges or choices that include previously valid values
-- Deprecating a Kconfig symbol (with migration path to new symbol)
-
-Devicetree breaking changes
-============================
-
-The following changes to Devicetree bindings are considered **breaking changes**:
-
-- Removing a binding file
-- Removing a required property from a binding
-- Renaming a required property in a binding
-- Changing the type of a property in a binding
-- Removing or changing the meaning of a cell in a phandle-array or phandle property
-- Making a previously optional property required without providing a default value
-- Removing support for a compatible string
-
-Devicetree non-breaking changes
-================================
-
-The following changes to Devicetree bindings are generally **non-breaking changes**:
-
-- Adding new binding files
-- Adding new optional properties to a binding
-- Adding new compatible strings
-- Adding default values for properties
-- Making a previously required property optional
-- Deprecating a property (while maintaining support for it)
-- Changing or improving property descriptions
-- Adding new cells to phandle-arrays when properly versioned
-
-API lifecycle considerations
-=============================
-
-The impact of a breaking change depends on the API classification:
-
-**Private APIs:**
-  Breaking changes are allowed at any time without documentation. Since these APIs are internal
-  to a software component, changes are expected and applications should not depend on them.
-
-**Internal APIs:**
-  Breaking changes are allowed but must be documented in the migration guide. This helps
-  maintainers of other Zephyr components update their code accordingly.
-
-**Public APIs:**
-  Breaking changes must follow the :ref:`api_lifecycle`. This typically means:
-
-  - **Experimental APIs**: Can have breaking changes, but should be documented
-  - **Unstable APIs**: Can have breaking changes, but must be documented in migration guide
-  - **Stable APIs**: Breaking changes should be avoided. If absolutely necessary, must go through
-    deprecation period and be thoroughly documented
+- **Private APIs**: Changes allowed anytime without documentation
+- **Internal APIs**: Changes allowed but must document in migration guide
+- **Public APIs**: Must follow :ref:`api_lifecycle` (Experimental → Unstable → Stable)
