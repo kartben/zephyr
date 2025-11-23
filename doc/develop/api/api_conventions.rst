@@ -106,6 +106,11 @@ Breaking and non-breaking changes
 
 This section categorizes common changes as breaking or non-breaking for each API type.
 
+.. note::
+   This section focuses on API source compatibility. ABI (Application Binary Interface) compatibility
+   is out of scope, as it is assumed that applications recompile their entire code base when updating
+   Zephyr versions.
+
 .. list-table:: C API Changes
    :header-rows: 1
    :widths: 50 50
