@@ -88,7 +88,7 @@ documentation.
 Subsystem namespaces
 ********************
 A subsystem can define its own naming conventions for symbols as long as the scheme doesn't collide
-with Zephyr naming conventions :ref:`api_conventions.rst`. The naming convention should include a
+with Zephyr naming conventions :ref:`api_conventions`. The naming convention should include a
 namespace prefix (for example, bt\_ for Bluetooth LE, or net\_ for IP). This limits possible
 collisions with symbols defined by an application.
 

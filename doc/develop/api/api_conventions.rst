@@ -1,4 +1,4 @@
-.. _api_conventions.rst:
+.. _api_conventions:
 
 API Conventions
 ###############
