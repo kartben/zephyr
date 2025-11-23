@@ -126,7 +126,7 @@ This section categorizes common changes as breaking or non-breaking for each API
        |
        | **Data types:**
        | • Remove or rename struct/union/enum
-       | • Modify struct fields (remove, rename, reorder, change type)
+       | • Modify struct fields (remove, rename, change type)
        | • Remove/rename enum values
        | • Change enum constant values
        |
