@@ -30,7 +30,7 @@ Internal
     example, functions prefixed with `arch_` are intended for use by the Zephyr kernel to invoke
     architecture-specific code. An API is classified as internal on a case by case basis.
     Internal APIs should not be used by out-of-tree code. Internal APIs are not subject
-    to :ref:`api_lifecycle`. Therefore, can be changed or removed at any time. However, changes to the
+    to :ref:`api_lifecycle`. Therefore, they can be changed or removed at any time. However, changes to the
     internal APIs must be documented in the migration guide.
 
 Public
@@ -57,7 +57,7 @@ Private
     Due to historical reasons some APIs prefixed with ``z_`` are public.
 
 Internal
-    Functions and data types declared :zephyr_file:`include/zephyr/internal`. In addition, Internal
+    Functions and data types declared in :zephyr_file:`include/zephyr/internal`. In addition, Internal
     APIs must use ``@internal`` doxygen command.
 
 Public
