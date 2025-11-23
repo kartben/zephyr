@@ -18,7 +18,7 @@
 LOG_MODULE_REGISTER(gt911, CONFIG_INPUT_LOG_LEVEL);
 
 /* GT911 used registers */
-#define DEVICE_ID  BSWAP_16(0x8140U)
+#define REG_DEVICE_ID  BSWAP_16(0x8140U)
 #define REG_STATUS BSWAP_16(0x814EU)
 
 /* REG_TD_STATUS: Touch points. */
@@ -355,7 +355,7 @@ static int gt911_init(const struct device *dev)
 
 	/* check the Device ID first: '911' */
 	uint32_t reg_id = 0;
-	uint16_t reg_addr = DEVICE_ID;
+	uint16_t reg_addr = REG_DEVICE_ID;
 
 	if (config->alt_addr != 0x0) {
 		/*
