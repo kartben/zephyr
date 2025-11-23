@@ -7,6 +7,9 @@ if SOC_SERIES_STM32MP13X
 
 rsource "Kconfig.defconfig.stm32mp13_a7"
 
+config MMU
+	default y
+
 config CACHE_MANAGEMENT
 	default y
 
