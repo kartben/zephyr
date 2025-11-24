@@ -63,7 +63,7 @@ Network interface state management
 **********************************
 
 Zephyr distinguishes between two interface states: administrative state and
-operational state, as described in RFC 2863. The administrative state indicate
+operational state, as described in :rfc:`2863`. The administrative state indicate
 whether an interface is turned ON or OFF. This state is represented by
 :c:enumerator:`NET_IF_UP` flag and is controlled by the application. It can be
 changed by calling :c:func:`net_if_up` or :c:func:`net_if_down` functions.

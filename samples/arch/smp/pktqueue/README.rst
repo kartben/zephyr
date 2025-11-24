@@ -8,8 +8,7 @@ Overview
 
 This sample application performs a simplified network layer forwarding function
 (essentially checksum calculation from IP Header Validation) of the Internet protocol
-suite specified in RFC1812 "Requirements for IP Version 4 Routers" which
-can be found at http://www.faqs.org/rfcs/rfc1812.html. This application
+suite specified in :rfc:`1812` "Requirements for IP Version 4 Routers". This application
 provides an indication of the potential performance of a microprocessor in an
 IP router system.
 

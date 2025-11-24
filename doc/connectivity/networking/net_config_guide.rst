@@ -156,7 +156,7 @@ TCP Options
   To avoid a (low-probability) issue when delayed packets from
   previous connection get delivered to next connection reusing
   the same local/remote ports,
-  `RFC 793 <https://www.rfc-editor.org/rfc/rfc793>`_ (TCP) suggests
+    :rfc:`793` (TCP) suggests
   to keep an old, closed connection in a special *TIME_WAIT* state for
   the duration of 2*MSL (Maximum Segment Lifetime). The RFC
   suggests to use MSL of 2 minutes, but notes
@@ -183,8 +183,7 @@ TCP Options
 
   With the default value of 9, the IP stack will try to
   retransmit for up to 1:42 minutes.  This is as close as possible
-  to the minimum value recommended by
-  `RFC 1122 <https://www.rfc-editor.org/rfc/rfc1122>`_ (1:40 minutes).
+  to the minimum value recommended by :rfc:`1122` (1:40 minutes).
   Only 5 bits are dedicated for the retransmission count, so accepted
   values are in the 0-31 range.  It's highly recommended to not go
   below 9, though.

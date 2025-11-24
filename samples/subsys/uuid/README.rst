@@ -1,13 +1,13 @@
 .. zephyr:code-sample:: uuid
    :name: UUID
 
-   Manipulate UUID v4 and v5 compliant with IETF RFC 9562.
+   Manipulate UUID v4 and v5 compliant with :rfc:`9562`.
 
 Overview
 ********
 
 This sample app demonstrates the use of the :c:group:`uuid` utilities to generate and manipulate
-UUIDs accordingly to IETF RFC 9562.
+UUIDs accordingly to :rfc:`9562`.
 
 The following functionality is demonstrated:
 

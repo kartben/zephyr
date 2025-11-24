@@ -61,8 +61,8 @@ The network stack is layered and consists of the following parts:
   :ref:`IEEE 802.15.4 <ieee802154_interface>`,
   :ref:`Bluetooth <bluetooth_api>`, :ref:`CANBUS <can_api>`, etc.
   Some of these technologies support IPv6 header compression (6Lo),
-  see `RFC 6282 <https://tools.ietf.org/html/rfc6282>`_ for details.
-  For example `ARP <https://tools.ietf.org/html/rfc826>`_ for IPv4 is done by
+  see :rfc:`6282` for details.
+  For example ARP (:rfc:`826`) for IPv4 is done by
   the :ref:`Ethernet component <ethernet_interface>`.
 
 * **Network Device Drivers.** The actual low-level device drivers handle the

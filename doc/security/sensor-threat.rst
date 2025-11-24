@@ -224,7 +224,7 @@ where data or assets are communicated between entities of the system.
 
       i.   **Naming**. The certificate shall name the host and service
            the cloud service server is providing.
-           `RFC6125 <https://tools.ietf.org/html/rfc6125>`__ describes
+           :rfc:`6125` describes
            best practices for this. It is permissible for the device to
            require the certificate to be more restrictive than as
            described in this RFC, provided the service can use a
@@ -234,7 +234,7 @@ where data or assets are communicated between entities of the system.
            certificate chain has a valid signature path from a root
            certificate contained within the device, to the certificate
            presented by the service.
-           `RFC4158 <https://tools.ietf.org/html/rfc4158>`__ describes
+           :rfc:`4158` describes
            this is general. The device is permitted to require a more
            restricted path, provided the server certificate used
            complies with this restriction.
@@ -263,9 +263,8 @@ where data or assets are communicated between entities of the system.
           client to authenticate itself using the *password* field of
           the MQTT CONNECT packet. However, the secret itself must not
           be transmitted in this packet. Instead, a token-based
-          protocol, such as
-          `RFC7519 <https://tools.ietf.org/html/rfc7519>`__\ 's JSON Web
-          Token (JWT) can be used. These tokens will generally have a
+          protocol, such as :rfc:`7519` (JSON Web
+          Token (JWT)) can be used. These tokens will generally have a
           small validity period (e.g. 1 hour), to prevent them from
           being reused if they are intercepted. The token shall not be
           sent until the device has verified the identity of the server.
@@ -284,7 +283,7 @@ where data or assets are communicated between entities of the system.
    contain hardware that maintains a secure time. However, most SoCs in
    use do not have support for this, and it will be necessary to consult
    an external time service.
-   `RFC4330 <https://tools.ietf.org/html/rfc4330>`__ and referenced RFCs
+   :rfc:`4330` and referenced RFCs
    describe the Simple Network Time Protocol that can be used to query
    the current time from a network time server.
 

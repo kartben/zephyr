@@ -57,7 +57,7 @@ Nomenclature
 
 In this document, the keywords "MUST", "MUST NOT", "REQUIRED", "SHALL",
 "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and
-"OPTIONAL" are to be interpreted as described in [RFC2119]_.
+"OPTIONAL" are to be interpreted as described in :rfc:`2119`.
 
 These words are used to define absolute requirements (or prohibitions),
 highly recommended requirements, and truly optional requirements. As
