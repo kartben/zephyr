@@ -2,13 +2,19 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 
 from west import log
 
 from zspdx.util import getHashes
-from zspdx.version import SPDX_VERSION_2_3
+from zspdx.version import SPDX_VERSION_2_3, SPDX_VERSION_3_0
+
+try:
+    from spdx_python_model import v3_0_1 as spdx
+except ImportError:
+    spdx = None
 
 CPE23TYPE_REGEX = (
     r'^cpe:2\.3:[aho\*\-](:(((\?*|\*?)([a-zA-Z0-9\-\._]|(\\[\\\*\?!"#$$%&\'\(\)\+,\/:;<=>@\[\]\^'
@@ -211,6 +217,9 @@ Created: {datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
 #   2) doc: SPDX Document object to write
 #   3) spdx_version: SPDX specification version
 def writeSPDX(spdxPath, doc, spdx_version=SPDX_VERSION_2_3):
+    if spdx_version >= SPDX_VERSION_3_0:
+        return writeSPDX3(spdxPath, doc)
+
     # create and write document to disk
     try:
         log.inf(f"Writing SPDX {spdx_version} document {doc.cfg.name} to {spdxPath}")
@@ -226,5 +235,267 @@ def writeSPDX(spdxPath, doc, spdx_version=SPDX_VERSION_2_3):
         log.err("Error: created document but unable to calculate hash values")
         return False
     doc.myDocSHA1 = hashes[0]
+
+    return True
+
+def writeSPDX3(spdxPath, doc):
+    if not spdx:
+        log.err("Error: spdx-python-model not installed, cannot generate SPDX 3.0 document")
+        return False
+
+    log.inf(f"Writing SPDX 3.0 document {doc.cfg.name} to {spdxPath}")
+
+    elements = []
+
+    # Map for external document namespaces
+    ext_doc_map = {ed.cfg.docRefID: ed.cfg.namespace for ed in doc.externalDocuments}
+
+    def get_full_uri(spdx_id):
+        if ":" in spdx_id and spdx_id.startswith("DocumentRef-"):
+            doc_ref, local_id = spdx_id.split(":", 1)
+            if doc_ref in ext_doc_map:
+                ns = ext_doc_map[doc_ref]
+                return f"{ns}#{local_id}"
+            else:
+                log.wrn(f"Unknown external document reference: {doc_ref}")
+                return spdx_id
+
+        if spdx_id == "SPDXRef-DOCUMENT":
+            return f"{doc.cfg.namespace}/{doc.cfg.name}"
+
+        return f"{doc.cfg.namespace}#{spdx_id}"
+
+    # Creation Info & Tool
+    agent = spdx.Agent()
+    agent._id = f"{doc.cfg.namespace}#Agent-Zephyr-SPDX-Builder"
+    agent.name = "Zephyr SPDX Builder"
+    agent.creationInfo = f"{doc.cfg.namespace}#CreationInfo"
+    elements.append(agent)
+
+    creation_info = spdx.CreationInfo()
+    creation_info._id = f"{doc.cfg.namespace}#CreationInfo"
+    creation_info.created = datetime.now(timezone.utc)
+    creation_info.createdBy = [agent._id]
+    creation_info.specVersion = "3.0.1"
+    elements.append(creation_info)
+
+    # Document
+    spdx_doc = spdx.SpdxDocument()
+    spdx_doc._id = get_full_uri("SPDXRef-DOCUMENT")
+    spdx_doc.name = doc.cfg.name
+    spdx_doc.creationInfo = creation_info._id
+
+    lic_expr = spdx.simplelicensing_LicenseExpression()
+    lic_expr._id = f"{doc.cfg.namespace}#License-CC0-1.0"
+    lic_expr.simplelicensing_licenseExpression = "CC0-1.0"
+    lic_expr.creationInfo = creation_info._id
+    elements.append(lic_expr)
+    spdx_doc.dataLicense = lic_expr
+
+    license_cache = {}
+
+    def get_license_id(license_str):
+        if license_str in license_cache:
+            return license_cache[license_str]
+
+        # Create new license expression object
+        # Sanitize license_str for ID
+        safe_id = re.sub(r'[^a-zA-Z0-9.-]', '-', license_str)
+        lic_id = f"{doc.cfg.namespace}#License-{safe_id}"
+
+        lic = spdx.simplelicensing_LicenseExpression()
+        lic._id = lic_id
+        lic.simplelicensing_licenseExpression = license_str
+        lic.creationInfo = creation_info._id
+
+        elements.append(lic)
+        spdx_doc.element.append(lic._id)
+
+        license_cache[license_str] = lic._id
+        return lic._id
+
+    def add_license_relationship(element_id, license_str, relationship_type):
+        if not license_str or license_str == "NOASSERTION" or license_str == "NONE":
+            return
+
+        lic_id = get_license_id(license_str)
+
+        rel = spdx.Relationship()
+        # Create deterministic ID
+        rel_hash = abs(hash(element_id + lic_id + str(relationship_type)))
+        rel._id = f"{doc.cfg.namespace}#Rel-License-{rel_hash}"
+        rel.creationInfo = creation_info._id
+        rel.relationshipType = relationship_type
+        rel.from_ = element_id
+        rel.to = [lic_id]
+
+        elements.append(rel)
+        spdx_doc.element.append(rel._id)
+
+    # Helper to add relationship
+    def add_relationship(rln):
+        refA = rln.refA_spdxID if rln.refA_spdxID else _normalize_spdx_name(str(rln.refA))
+        refB = rln.refB_spdxID if rln.refB_spdxID else _normalize_spdx_name(str(rln.refB))
+
+        r_type = rln.rlnType
+        spdx_type = None
+        swap = False
+
+        if r_type == "DESCRIBES":
+            spdx_type = spdx.RelationshipType.describes
+        elif r_type == "CONTAINS":
+            spdx_type = spdx.RelationshipType.contains
+        elif r_type == "HAS_PREREQUISITE":
+            spdx_type = spdx.RelationshipType.hasPrerequisite
+        elif r_type == "STATIC_LINK":
+            spdx_type = spdx.RelationshipType.hasStaticLink
+        elif r_type == "GENERATED_FROM":
+            spdx_type = spdx.RelationshipType.generates
+            swap = True
+        else:
+            spdx_type = spdx.RelationshipType.other
+
+        from_id = get_full_uri(refA)
+        to_id = get_full_uri(refB)
+
+        if swap:
+            from_id, to_id = to_id, from_id
+
+        # Create unique ID for relationship
+        rel_hash = abs(hash(from_id + to_id + str(spdx_type)))
+        rel_id = f"{doc.cfg.namespace}#Rel-{rel_hash}"
+
+        rel = spdx.Relationship()
+        rel._id = rel_id
+        rel.creationInfo = creation_info._id
+        rel.relationshipType = spdx_type
+        rel.from_ = from_id
+        rel.to = [to_id]
+
+        elements.append(rel)
+        spdx_doc.element.append(rel._id)
+
+    # Packages
+    for pkg in doc.pkgs.values():
+        spdx_pkg = spdx.software_Package()
+        spdx_pkg._id = get_full_uri(pkg.cfg.spdxID)
+        spdx_pkg.name = pkg.cfg.name
+        spdx_pkg.creationInfo = creation_info._id
+        spdx_pkg.software_copyrightText = pkg.cfg.copyrightText
+
+        add_license_relationship(spdx_pkg._id, pkg.cfg.declaredLicense, spdx.RelationshipType.hasDeclaredLicense)
+        add_license_relationship(spdx_pkg._id, pkg.concludedLicense, spdx.RelationshipType.hasConcludedLicense)
+
+        if pkg.cfg.version:
+            spdx_pkg.software_packageVersion = pkg.cfg.version
+        elif pkg.cfg.revision:
+            spdx_pkg.software_packageVersion = pkg.cfg.revision
+
+        if pkg.cfg.url:
+            spdx_pkg.software_downloadLocation = generateDowloadUrl(pkg.cfg.url, pkg.cfg.revision)
+        else:
+            spdx_pkg.software_downloadLocation = "NOASSERTION"
+
+        if pkg.cfg.primaryPurpose:
+            purpose_map = {
+                "APPLICATION": spdx.software_SoftwarePurpose.application,
+                "LIBRARY": spdx.software_SoftwarePurpose.library,
+                "SOURCE": spdx.software_SoftwarePurpose.source,
+                "CONTAINER": spdx.software_SoftwarePurpose.container,
+                "OPERATING-SYSTEM": spdx.software_SoftwarePurpose.operatingSystem,
+                "FIRMWARE": spdx.software_SoftwarePurpose.firmware,
+                "FILE": spdx.software_SoftwarePurpose.file
+            }
+            if pkg.cfg.primaryPurpose in purpose_map:
+                spdx_pkg.software_primaryPurpose = purpose_map[pkg.cfg.primaryPurpose]
+
+        for ref in pkg.cfg.externalReferences:
+            if ref.startswith("cpe:"):
+                ext_id = spdx.ExternalIdentifier()
+                ext_id.externalIdentifierType = spdx.ExternalIdentifierType.cpe23
+                ext_id.identifier = ref
+                spdx_pkg.externalIdentifier.append(ext_id)
+            elif ref.startswith("pkg:"):
+                ext_id = spdx.ExternalIdentifier()
+                ext_id.externalIdentifierType = spdx.ExternalIdentifierType.packageUrl
+                ext_id.identifier = ref
+                spdx_pkg.externalIdentifier.append(ext_id)
+
+        elements.append(spdx_pkg)
+        spdx_doc.element.append(spdx_pkg._id)
+        spdx_doc.rootElement.append(spdx_pkg._id)
+
+        # Files
+        for f_obj in pkg.files.values():
+            spdx_file = spdx.software_File()
+            spdx_file._id = get_full_uri(f_obj.spdxID)
+            spdx_file.name = f"./{f_obj.relpath}"
+            spdx_file.creationInfo = creation_info._id
+            spdx_file.software_copyrightText = f_obj.copyrightText
+
+            add_license_relationship(spdx_file._id, f_obj.concludedLicense, spdx.RelationshipType.hasConcludedLicense)
+
+            if f_obj.sha1:
+                checksum = spdx.Hash()
+                checksum.algorithm = spdx.HashAlgorithm.sha1
+                checksum.hashValue = f_obj.sha1
+                spdx_file.verifiedUsing.append(checksum)
+            if f_obj.sha256:
+                checksum = spdx.Hash()
+                checksum.algorithm = spdx.HashAlgorithm.sha256
+                checksum.hashValue = f_obj.sha256
+                spdx_file.verifiedUsing.append(checksum)
+            if f_obj.md5:
+                checksum = spdx.Hash()
+                checksum.algorithm = spdx.HashAlgorithm.md5
+                checksum.hashValue = f_obj.md5
+                spdx_file.verifiedUsing.append(checksum)
+
+            elements.append(spdx_file)
+            spdx_doc.element.append(spdx_file._id)
+
+            # Explicit CONTAINS relationship
+            rel = spdx.Relationship()
+            pkg_id_clean = pkg.cfg.spdxID.replace('SPDXRef-', '')
+            file_id_clean = f_obj.spdxID.replace('SPDXRef-', '')
+            rel._id = f"{doc.cfg.namespace}#Rel-Contains-{pkg_id_clean}-{file_id_clean}"
+            rel.creationInfo = creation_info._id
+            rel.relationshipType = spdx.RelationshipType.contains
+            rel.from_ = spdx_pkg._id
+            rel.to = [spdx_file._id]
+            elements.append(rel)
+            spdx_doc.element.append(rel._id)
+
+            for rln in f_obj.rlns:
+                add_relationship(rln)
+
+        for rln in pkg.rlns:
+            add_relationship(rln)
+
+    for rln in doc.relationships:
+        add_relationship(rln)
+
+    elements.append(spdx_doc)
+
+    # Serialize
+    elements_data = []
+    for el in elements:
+        encoder = spdx.JSONLDEncoder()
+        state = spdx.EncodeState()
+        el.encode(encoder, state)
+        if encoder.data:
+            elements_data.append(encoder.data)
+
+    final_data = {
+        "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
+        "@graph": elements_data
+    }
+
+    try:
+        with open(spdxPath, "w") as f:
+            json.dump(final_data, f, indent=2)
+    except OSError as e:
+        log.err(f"Error: Unable to write to {spdxPath}: {str(e)}")
+        return False
 
     return True
