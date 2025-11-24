@@ -20,8 +20,6 @@ from zspdx.datatypes import (
     Package,
     PackageConfig,
     Relationship,
-    RelationshipData,
-    RelationshipDataElementType,
 )
 from zspdx.getincludes import getCIncludes
 
@@ -100,12 +98,8 @@ class Walker:
 
     def _add_describe_relationship(self, doc, cfgpackage):
         # create DESCRIBES relationship data
-        rd = RelationshipData()
-        rd.ownerType = RelationshipDataElementType.DOCUMENT
-        rd.ownerDocument = doc
-        rd.otherType = RelationshipDataElementType.PACKAGEID
-        rd.otherPackageID = cfgpackage.spdxID
-        rd.rlnType = "DESCRIBES"
+        pkg = doc.pkgs.get(cfgpackage.spdxID)
+        rd = Relationship(refA=doc, refB=pkg, rlnType="DESCRIBES")
 
         # add it to pending relationships queue
         self.pendingRelationships.append(rd)
@@ -145,6 +139,8 @@ class Walker:
         # walk through pending relationship data and create relationships
         log.inf("walking through pending relationships")
         self.walkRelationships()
+
+        self.finalizeRelationships()
 
         return True
 
@@ -201,7 +197,7 @@ class Walker:
         cfgPackageApp.primaryPurpose = "SOURCE"
         # relativeBaseDir is app sources dir
         cfgPackageApp.relativeBaseDir = self.cm.paths_source
-        pkgApp = Package(cfgPackageApp, self.docApp)
+        pkgApp = Package(cfgPackageApp)
         self.docApp.pkgs[pkgApp.cfg.spdxID] = pkgApp
 
         self._add_describe_relationship(self.docApp, cfgPackageApp)
@@ -218,12 +214,7 @@ class Walker:
 
         # the DESCRIBES relationship for the build document will be
         # with the zephyr_final package
-        rd = RelationshipData()
-        rd.ownerType = RelationshipDataElementType.DOCUMENT
-        rd.ownerDocument = self.docBuild
-        rd.otherType = RelationshipDataElementType.TARGETNAME
-        rd.otherTargetName = "zephyr_final"
-        rd.rlnType = "DESCRIBES"
+        rd = Relationship(refA=self.docBuild, refB="zephyr_final", rlnType="DESCRIBES")
 
         # add it to pending relationships queue
         self.pendingRelationships.append(rd)
@@ -276,7 +267,7 @@ class Walker:
             cpe = f'cpe:2.3:o:zephyrproject:zephyr:{cfgPackageZephyr.version}:-:*:*:*:*:*:*'
             cfgPackageZephyr.externalReferences.append(cpe)
 
-        pkgZephyr = Package(cfgPackageZephyr, self.docZephyr)
+        pkgZephyr = Package(cfgPackageZephyr)
         self.docZephyr.pkgs[pkgZephyr.cfg.spdxID] = pkgZephyr
 
         self._add_describe_relationship(self.docZephyr, cfgPackageZephyr)
@@ -304,7 +295,7 @@ class Walker:
             if module_url:
                 cfgPackageZephyrModule.url = module_url
 
-            pkgZephyrModule = Package(cfgPackageZephyrModule, self.docZephyr)
+            pkgZephyrModule = Package(cfgPackageZephyrModule)
             self.docZephyr.pkgs[pkgZephyrModule.cfg.spdxID] = pkgZephyrModule
 
             self._add_describe_relationship(self.docZephyr, cfgPackageZephyrModule)
@@ -325,16 +316,11 @@ class Walker:
         cfgPackageSDK.spdxID = "SPDXRef-sdk"
         # relativeBaseDir is SDK dir
         cfgPackageSDK.relativeBaseDir = self.sdkPath
-        pkgSDK = Package(cfgPackageSDK, self.docSDK)
+        pkgSDK = Package(cfgPackageSDK)
         self.docSDK.pkgs[pkgSDK.cfg.spdxID] = pkgSDK
 
         # create DESCRIBES relationship data
-        rd = RelationshipData()
-        rd.ownerType = RelationshipDataElementType.DOCUMENT
-        rd.ownerDocument = self.docSDK
-        rd.otherType = RelationshipDataElementType.PACKAGEID
-        rd.otherPackageID = cfgPackageSDK.spdxID
-        rd.rlnType = "DESCRIBES"
+        rd = Relationship(refA=self.docSDK, refB=pkgSDK, rlnType="DESCRIBES")
 
         # add it to pending relationships queue
         self.pendingRelationships.append(rd)
@@ -367,7 +353,7 @@ class Walker:
             for ref in module_ext_ref:
                 cfgPackageModuleExtRef.externalReferences.append(ref)
 
-            pkgModule = Package(cfgPackageModuleExtRef, self.docModulesExtRefs)
+            pkgModule = Package(cfgPackageModuleExtRef)
             self.docModulesExtRefs.pkgs[pkgModule.cfg.spdxID] = pkgModule
 
             self._add_describe_relationship(self.docModulesExtRefs, cfgPackageModuleExtRef)
@@ -436,7 +422,7 @@ class Walker:
         cfg.relativeBaseDir = self.cm.paths_build
 
         # build Package
-        pkg = Package(cfg, self.docBuild)
+        pkg = Package(cfg)
 
         # add Package to build Document
         self.docBuild.pkgs[cfg.spdxID] = pkg
@@ -461,7 +447,7 @@ class Walker:
             return None
 
         # create build File
-        bf = File(self.docBuild, pkg)
+        bf = File(pkg)
         bf.abspath = artifactPath
         bf.relpath = cfgTarget.target.artifacts[0]
         # can use nameOnDisk b/c it is just the filename w/out directory paths
@@ -510,12 +496,7 @@ class Walker:
             self.pendingSources.append(srcAbspath)
 
             # create relationship data
-            rd = RelationshipData()
-            rd.ownerType = RelationshipDataElementType.FILENAME
-            rd.ownerFileAbspath = bf.abspath
-            rd.otherType = RelationshipDataElementType.FILENAME
-            rd.otherFileAbspath = srcAbspath
-            rd.rlnType = "GENERATED_FROM"
+            rd = Relationship(refA=bf, refB=srcAbspath, rlnType="GENERATED_FROM")
 
             # add it to pending relationships queue
             self.pendingRelationships.append(rd)
@@ -536,12 +517,7 @@ class Walker:
             self.pendingSources.append(inc)
 
             # create relationship data
-            rd = RelationshipData()
-            rd.ownerType = RelationshipDataElementType.FILENAME
-            rd.ownerFileAbspath = bf.abspath
-            rd.otherType = RelationshipDataElementType.FILENAME
-            rd.otherFileAbspath = inc
-            rd.rlnType = "GENERATED_FROM"
+            rd = Relationship(refA=bf, refB=inc, rlnType="GENERATED_FROM")
 
             # add it to pending relationships queue
             self.pendingRelationships.append(rd)
@@ -590,12 +566,7 @@ class Walker:
             log.dbg(f"    - adding pending relationship for {depName}")
 
             # create relationship data between dependency packages
-            rd = RelationshipData()
-            rd.ownerType = RelationshipDataElementType.TARGETNAME
-            rd.ownerTargetName = pkg.cfg.name
-            rd.otherType = RelationshipDataElementType.TARGETNAME
-            rd.otherTargetName = depName
-            rd.rlnType = "HAS_PREREQUISITE"
+            rd = Relationship(refA=pkg, refB=depName, rlnType="HAS_PREREQUISITE")
 
             # add it to pending relationships queue
             self.pendingRelationships.append(rd)
@@ -623,12 +594,7 @@ class Walker:
                 continue
 
             # create relationship data between build files
-            rd = RelationshipData()
-            rd.ownerType = RelationshipDataElementType.FILENAME
-            rd.ownerFileAbspath = pkg.targetBuildFile.abspath
-            rd.otherType = RelationshipDataElementType.FILENAME
-            rd.otherFileAbspath = depAbspath
-            rd.rlnType = "STATIC_LINK"
+            rd = Relationship(refA=pkg.targetBuildFile, refB=depAbspath, rlnType="STATIC_LINK")
 
             # add it to pending relationships queue
             self.pendingRelationships.append(rd)
@@ -685,7 +651,7 @@ class Walker:
                 continue
 
             # create File and assign it to the Package and Document
-            sf = File(srcDoc, srcPkg)
+            sf = File(srcPkg)
             sf.abspath = srcAbspath
             sf.relpath = os.path.relpath(srcAbspath, srcPkg.cfg.relativeBaseDir)
             filenameOnly = os.path.split(srcAbspath)[1]
@@ -729,134 +695,110 @@ class Walker:
     # walk through pending RelationshipData entries, create corresponding
     # Relationships, and assign them to the applicable Files / Packages
     def walkRelationships(self):
-        for rlnData in self.pendingRelationships:
-            rln = Relationship()
-            # get left side of relationship data
-            docA, spdxIDA, rlnsA = self.getRelationshipLeft(rlnData)
-            if not docA or not spdxIDA:
+        for rln in self.pendingRelationships:
+            # Resolve refA (should be object already)
+            if isinstance(rln.refA, str):
+                log.wrn(f"Relationship refA is string: {rln.refA}")
                 continue
-            rln.refA = spdxIDA
-            # get right side of relationship data
-            spdxIDB = self.getRelationshipRight(rlnData, docA)
-            if not spdxIDB:
-                continue
-            rln.refB = spdxIDB
-            rln.rlnType = rlnData.rlnType
-            rlnsA.append(rln)
-            log.dbg(
-                f"  - adding relationship to {docA.cfg.name}: {rln.refA} {rln.rlnType} {rln.refB}"
-            )
 
-    # get owner (left side) document and SPDX ID of Relationship for given RelationshipData
-    # returns: doc, spdxID, rlnsArray (for either Document, Package, or File, as applicable)
-    def getRelationshipLeft(self, rlnData):
-        if rlnData.ownerType == RelationshipDataElementType.FILENAME:
-            # find the document for this file abspath, and then the specific file's ID
-            ownerDoc = self.allFileLinks.get(rlnData.ownerFileAbspath, None)
-            if not ownerDoc:
-                log.dbg(
-                    "  - searching for relationship, can't find document with file "
-                    f"{rlnData.ownerFileAbspath}; skipping"
-                )
-                return None, None, None
-            sf = ownerDoc.fileLinks.get(rlnData.ownerFileAbspath, None)
-            if not sf:
-                log.dbg(
-                    f"  - searching for relationship for file {rlnData.ownerFileAbspath} "
-                    f"points to document {ownerDoc.cfg.name} but file not found; skipping"
-                )
-                return None, None, None
-            # found it
-            if not sf.spdxID:
-                log.dbg(
-                    f"  - searching for relationship for file {rlnData.ownerFileAbspath} "
-                    "found file, but empty ID; skipping"
-                )
-                return None, None, None
-            return ownerDoc, sf.spdxID, sf.rlns
-        elif rlnData.ownerType == RelationshipDataElementType.TARGETNAME:
-            # find the document for this target name, and then the specific package's ID
-            # for target names, must be docBuild
-            ownerDoc = self.docBuild
-            # walk through target Packages and check names
-            for pkg in ownerDoc.pkgs.values():
-                if pkg.cfg.name == rlnData.ownerTargetName:
-                    if not pkg.cfg.spdxID:
-                        log.dbg(
-                            "  - searching for relationship for target "
-                            f"{rlnData.ownerTargetName} found package, but empty ID; skipping"
-                        )
-                        return None, None, None
-                    return ownerDoc, pkg.cfg.spdxID, pkg.rlns
-            log.dbg(
-                f"  - searching for relationship for target {rlnData.ownerTargetName}, "
-                "target not found in build document; skipping"
-            )
-            return None, None, None
-        elif rlnData.ownerType == RelationshipDataElementType.DOCUMENT:
-            # will always be SPDXRef-DOCUMENT
-            return rlnData.ownerDocument, "SPDXRef-DOCUMENT", rlnData.ownerDocument.relationships
-        else:
-            log.dbg(f"  - unknown relationship type {rlnData.ownerType}; skipping")
-            return None, None, None
+            # Resolve refB
+            if isinstance(rln.refB, str):
+                if os.path.isabs(rln.refB):
+                    # It's a file path
+                    doc = self.allFileLinks.get(rln.refB)
+                    if doc:
+                        f = doc.fileLinks.get(rln.refB)
+                        if f:
+                            rln.refB = f
+                        else:
+                            log.dbg(f"File {rln.refB} not found in doc {doc.cfg.name}")
+                    else:
+                        log.dbg(f"File {rln.refB} not found in any doc")
+                else:
+                    # It's a target name
+                    found = False
+                    for pkg in self.docBuild.pkgs.values():
+                        if pkg.cfg.name == rln.refB:
+                            rln.refB = pkg
+                            found = True
+                            break
+                    if not found:
+                        log.dbg(f"Target {rln.refB} not found in build doc")
 
-    # get other (right side) SPDX ID of Relationship for given RelationshipData
-    def getRelationshipRight(self, rlnData, docA):
-        if rlnData.otherType == RelationshipDataElementType.FILENAME:
-            # find the document for this file abspath, and then the specific file's ID
-            otherDoc = self.allFileLinks.get(rlnData.otherFileAbspath, None)
-            if not otherDoc:
-                log.dbg(
-                    "  - searching for relationship, can't find document with file "
-                    f"{rlnData.otherFileAbspath}; skipping"
-                )
-                return None
-            bf = otherDoc.fileLinks.get(rlnData.otherFileAbspath, None)
-            if not bf:
-                log.dbg(
-                    f"  - searching for relationship for file {rlnData.otherFileAbspath} "
-                    f"points to document {otherDoc.cfg.name} but file not found; skipping"
-                )
-                return None
-            # found it
-            if not bf.spdxID:
-                log.dbg(
-                    f"  - searching for relationship for file {rlnData.otherFileAbspath} "
-                    "found file, but empty ID; skipping"
-                )
-                return None
-            # figure out whether to append DocumentRef
-            spdxIDB = bf.spdxID
-            if otherDoc != docA:
-                spdxIDB = otherDoc.cfg.docRefID + ":" + spdxIDB
-                docA.externalDocuments.add(otherDoc)
-            return spdxIDB
-        elif rlnData.otherType == RelationshipDataElementType.TARGETNAME:
-            # find the document for this target name, and then the specific package's ID
-            # for target names, must be docBuild
-            otherDoc = self.docBuild
-            # walk through target Packages and check names
-            for pkg in otherDoc.pkgs.values():
-                if pkg.cfg.name == rlnData.otherTargetName:
-                    if not pkg.cfg.spdxID:
-                        log.dbg(
-                            f"  - searching for relationship for target {rlnData.otherTargetName}"
-                            " found package, but empty ID; skipping"
-                        )
-                        return None
-                    spdxIDB = pkg.cfg.spdxID
-                    if otherDoc != docA:
-                        spdxIDB = otherDoc.cfg.docRefID + ":" + spdxIDB
-                        docA.externalDocuments.add(otherDoc)
-                    return spdxIDB
-            log.dbg(
-                f"  - searching for relationship for target {rlnData.otherTargetName}, "
-                "target not found in build document; skipping"
-            )
+            # Add relationship to refA
+            if hasattr(rln.refA, 'rlns'):
+                rln.refA.rlns.append(rln)
+            elif hasattr(rln.refA, 'relationships'):
+                rln.refA.relationships.append(rln)
+
+            log.dbg(f"  - adding relationship: {rln.refA} {rln.rlnType} {rln.refB}")
+
+    def finalizeRelationships(self):
+        log.inf("finalizing relationships")
+
+        # Helper to find doc for an entity
+        def get_doc_for_entity(entity):
+            if isinstance(entity, Document):
+                return entity
+            if isinstance(entity, File):
+                return self.allFileLinks.get(entity.abspath)
+            if isinstance(entity, Package):
+                # Search in all docs
+                # This is slow but safe
+                if entity.cfg.spdxID in self.docApp.pkgs: return self.docApp
+                if entity.cfg.spdxID in self.docZephyr.pkgs: return self.docZephyr
+                if entity.cfg.spdxID in self.docBuild.pkgs: return self.docBuild
+                if self.docSDK and entity.cfg.spdxID in self.docSDK.pkgs: return self.docSDK
+                if self.docModulesExtRefs and entity.cfg.spdxID in self.docModulesExtRefs.pkgs: return self.docModulesExtRefs
             return None
-        elif rlnData.otherType == RelationshipDataElementType.PACKAGEID:
-            # will just be the package ID that was passed in
-            return rlnData.otherPackageID
+
+        # Helper to get SPDX ID
+        def get_spdx_id(entity):
+            if isinstance(entity, Document):
+                return "SPDXRef-DOCUMENT"
+            if isinstance(entity, Package):
+                return entity.cfg.spdxID
+            if isinstance(entity, File):
+                return entity.spdxID
+            return str(entity)
+
+        all_docs = [self.docApp, self.docZephyr, self.docBuild]
+        if self.docSDK: all_docs.append(self.docSDK)
+        if self.docModulesExtRefs: all_docs.append(self.docModulesExtRefs)
+
+        for doc in all_docs:
+            # Collect all relationships in this doc
+            # Relationships can be in doc.relationships, or in pkg.rlns, or file.rlns
+
+            # Doc relationships
+            for rln in doc.relationships:
+                self._resolve_rln_ids(rln, doc, get_doc_for_entity, get_spdx_id)
+
+            # Package relationships
+            for pkg in doc.pkgs.values():
+                for rln in pkg.rlns:
+                    self._resolve_rln_ids(rln, doc, get_doc_for_entity, get_spdx_id)
+
+                # File relationships
+                for f in pkg.files.values():
+                    for rln in f.rlns:
+                        self._resolve_rln_ids(rln, doc, get_doc_for_entity, get_spdx_id)
+
+    def _resolve_rln_ids(self, rln, current_doc, get_doc_fn, get_id_fn):
+        # Resolve refA
+        docA = get_doc_fn(rln.refA)
+        idA = get_id_fn(rln.refA)
+        if docA and docA != current_doc:
+            rln.refA_spdxID = f"{docA.cfg.docRefID}:{idA}"
+            current_doc.externalDocuments.add(docA)
         else:
-            log.dbg(f"  - unknown relationship type {rlnData.otherType}; skipping")
-            return None
+            rln.refA_spdxID = idA
+
+        # Resolve refB
+        docB = get_doc_fn(rln.refB)
+        idB = get_id_fn(rln.refB)
+        if docB and docB != current_doc:
+            rln.refB_spdxID = f"{docB.cfg.docRefID}:{idB}"
+            current_doc.externalDocuments.add(docB)
+        else:
+            rln.refB_spdxID = idB

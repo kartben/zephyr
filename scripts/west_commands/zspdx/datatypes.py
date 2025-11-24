@@ -105,15 +105,11 @@ class PackageConfig:
 class Package:
     # initialize with:
     # 1) PackageConfig
-    # 2) the Document that owns this Package
-    def __init__(self, cfg, doc):
+    def __init__(self, cfg):
         super().__init__()
 
         # configuration - PackageConfig
         self.cfg = cfg
-
-        # Document that owns this Package
-        self.doc = doc
 
         # verification code, calculated per section 7.9 of SPDX spec v2.3
         self.verificationCode = ""
@@ -137,79 +133,33 @@ class Package:
         self.targetBuildFile = None
 
 
-# RelationshipDataElementType defines whether a RelationshipData element
-# (e.g., the "owner" or the "other" element) is a File, a target Package,
-# a Package's ID (as other only, and only where owner type is DOCUMENT),
-# or the SPDX document itself (as owner only).
-class RelationshipDataElementType(Enum):
-    UNKNOWN = 0
-    FILENAME = 1
-    TARGETNAME = 2
-    PACKAGEID = 3
-    DOCUMENT = 4
-
-
-# RelationshipData contains the pre-analysis data about a relationship between
-# Files and/or Packages/targets. It is eventually parsed into a corresponding
-# Relationship after we have organized the SPDX Package and File data.
-@dataclass(eq=True)
-class RelationshipData:
-    # for the "owner" element (e.g., the left side of the Relationship),
-    # is it a filename or a target name (e.g., a Package in the build doc)
-    ownerType: RelationshipDataElementType = RelationshipDataElementType.UNKNOWN
-
-    # owner file absolute path (if ownerType is FILENAME)
-    ownerFileAbspath: str = ""
-
-    # owner target name (if ownerType is TARGETNAME)
-    ownerTargetName: str = ""
-
-    # owner SPDX Document (if ownerType is DOCUMENT)
-    ownerDocument: Optional['Document'] = None
-
-    # for the "other" element (e.g., the right side of the Relationship),
-    # is it a filename or a target name (e.g., a Package in the build doc)
-    otherType: RelationshipDataElementType = RelationshipDataElementType.UNKNOWN
-
-    # other file absolute path (if otherType is FILENAME)
-    otherFileAbspath: str = ""
-
-    # other target name (if otherType is TARGETNAME)
-    otherTargetName: str = ""
-
-    # other package ID (if ownerType is DOCUMENT and otherType is PACKAGEID)
-    otherPackageID: str = ""
-
-    # text string with Relationship type
-    # from table 68 in section 11.1 of SPDX spec v2.3
-    rlnType: str = ""
-
-
-# Relationship contains the post-analysis, processed data about a relationship
-# in a form suitable for creating the actual SPDX Relationship in a particular
-# Document's context.
+# Relationship contains the data about a relationship between
+# Files and/or Packages/targets.
 @dataclass(eq=True)
 class Relationship:
-    # SPDX ID for left side of relationship
-    # including "SPDXRef-" as well as "DocumentRef-" if needed
-    refA: str = ""
+    # the "owner" element (e.g., the left side of the Relationship)
+    refA: object = None
 
-    # SPDX ID for right side of relationship
-    # including "SPDXRef-" as well as "DocumentRef-" if needed
-    refB: str = ""
+    # the "other" element (e.g., the right side of the Relationship)
+    refB: object = None
 
     # text string with Relationship type
     # from table 68 in section 11.1 of SPDX spec v2.3
     rlnType: str = ""
+
+    # SPDX ID for left side (filled during resolution)
+    refA_spdxID: str = ""
+
+    # SPDX ID for right side (filled during resolution)
+    refB_spdxID: str = ""
 
 
 # File contains the data needed to create a File element in the context of a
 # particular SPDX Document and Package.
 class File:
     # initialize with:
-    # 1) Document containing this File
-    # 2) Package containing this File
-    def __init__(self, doc, pkg):
+    # 1) Package containing this File
+    def __init__(self, pkg):
         super().__init__()
 
         # absolute path to this file on disk
@@ -247,5 +197,5 @@ class File:
         # Package that owns this File
         self.pkg = pkg
 
-        # Document that owns this File
-        self.doc = doc
+
+

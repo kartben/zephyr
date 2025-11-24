@@ -26,9 +26,11 @@ def _normalize_spdx_name(name):
 #   1) f: file handle for SPDX document
 #   2) rln: Relationship object being described
 def writeRelationshipSPDX(f, rln):
+    refA = rln.refA_spdxID if rln.refA_spdxID else _normalize_spdx_name(str(rln.refA))
+    refB = rln.refB_spdxID if rln.refB_spdxID else _normalize_spdx_name(str(rln.refB))
+
     f.write(
-        f"Relationship: {_normalize_spdx_name(rln.refA)} {rln.rlnType} "
-        f"{_normalize_spdx_name(rln.refB)}\n"
+        f"Relationship: {refA} {rln.rlnType} {refB}\n"
     )
 
 # Output tag-value SPDX 2.3 content for the given File object.
