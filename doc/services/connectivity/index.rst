@@ -1,4 +1,5 @@
 .. _connectivity:
+.. _connectivity_services:
 
 Connectivity
 ############
