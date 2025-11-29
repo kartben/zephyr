@@ -59,7 +59,7 @@ properties:
         - For channel configuration, only the config bits priority and
           periph/mem datasize are used. The periph/mem datasize must be equal,
           0 is a correct value.
-         - There is no Fifo used by this DMA peripheral.
+         - There is no FIFO used by this DMA peripheral.
 
       For example dmas for TX/RX on OSPI
          dmas = <&dma1 5 41 0x10000>;
