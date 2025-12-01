@@ -288,7 +288,7 @@ static int lb_init(struct usbd_class_data *c_data)
 	return 0;
 }
 
-struct usbd_class_api lb_api = {
+static const struct usbd_class_api lb_api = {
 	.update = lb_update,
 	.control_to_host = lb_control_to_host,
 	.control_to_dev = lb_control_to_dev,

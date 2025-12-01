@@ -384,7 +384,7 @@ static int mctp_usb_class_init(struct usbd_class_data *const c_data)
 	return 0;
 }
 
-struct usbd_class_api mctp_usb_class_api = {
+static const struct usbd_class_api mctp_usb_class_api = {
 	.request = mctp_usb_class_request,
 	.enable = mctp_usb_class_enable,
 	.disable = mctp_usb_class_disable,

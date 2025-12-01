@@ -738,7 +738,7 @@ static int hid_device_init(const struct device *dev)
 	return 0;
 }
 
-struct usbd_class_api usbd_hid_api = {
+static const struct usbd_class_api usbd_hid_api = {
 	.request = usbd_hid_request,
 	.update = NULL,
 	.sof = usbd_hid_sof,

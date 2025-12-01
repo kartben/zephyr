@@ -110,7 +110,7 @@ static int coredump_mem_window_backend_cmd(enum coredump_cmd_id cmd_id,
 	return ret;
 }
 
-struct coredump_backend_api coredump_backend_intel_adsp_mem_window = {
+static const struct coredump_backend_api coredump_backend_intel_adsp_mem_window = {
 	.start = coredump_mem_window_backend_start,
 	.end = coredump_mem_window_backend_end,
 	.buffer_output = coredump_mem_window_backend_buffer_output,

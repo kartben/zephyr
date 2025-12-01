@@ -983,7 +983,7 @@ const static struct usb_desc_header *msc_bot_hs_desc_##n[] = {			\
 };
 
 
-struct usbd_class_api msc_bot_api = {
+static const struct usbd_class_api msc_bot_api = {
 	.feature_halt = msc_bot_feature_halt,
 	.control_to_dev = msc_bot_control_to_dev,
 	.control_to_host = msc_bot_control_to_host,

@@ -76,7 +76,7 @@ static int link_ipc_service_init(struct log_multidomain_link *link_remote)
 	return err;
 }
 
-struct log_multidomain_link_transport_api log_link_ipc_service_transport_api = {
+static const struct log_multidomain_link_transport_api log_link_ipc_service_transport_api = {
 	.init = link_ipc_service_init,
 	.send = link_ipc_service_send
 };

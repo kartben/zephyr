@@ -119,7 +119,7 @@ static int coredump_logging_backend_cmd(enum coredump_cmd_id cmd_id,
 }
 
 
-struct coredump_backend_api coredump_backend_logging = {
+static const struct coredump_backend_api coredump_backend_logging = {
 	.start = coredump_logging_backend_start,
 	.end = coredump_logging_backend_end,
 	.buffer_output = coredump_logging_backend_buffer_output,

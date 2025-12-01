@@ -317,7 +317,7 @@ static int link_remote_set_runtime_level(const struct log_link *link,
 	return 0;
 }
 
-struct log_link_api log_multidomain_link_api = {
+static const struct log_link_api log_multidomain_link_api = {
 	.initiate = link_remote_initiate,
 	.activate = link_remote_activate,
 	.get_domain_name = link_remote_get_domain_name,

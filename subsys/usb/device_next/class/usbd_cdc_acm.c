@@ -1155,7 +1155,7 @@ static DEVICE_API(uart, cdc_acm_uart_api) = {
 #endif
 };
 
-struct usbd_class_api usbd_cdc_acm_api = {
+static const struct usbd_class_api usbd_cdc_acm_api = {
 	.request = usbd_cdc_acm_request,
 	.update = usbd_cdc_acm_update,
 	.enable = usbd_cdc_acm_enable,

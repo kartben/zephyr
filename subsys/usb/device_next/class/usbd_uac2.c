@@ -939,7 +939,7 @@ static int uac2_init(struct usbd_class_data *const c_data)
 	return 0;
 }
 
-struct usbd_class_api uac2_api = {
+static const struct usbd_class_api uac2_api = {
 	.update = uac2_update,
 	.control_to_dev = uac2_control_to_dev,
 	.control_to_host = uac2_control_to_host,

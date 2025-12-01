@@ -158,7 +158,7 @@ static int tracing_func_init(struct usbd_class_data *c_data)
 	return 0;
 }
 
-struct usbd_class_api tracing_func_api = {
+static const struct usbd_class_api tracing_func_api = {
 	.request = tracing_func_request_handler,
 	.get_desc = tracing_func_get_desc,
 	.enable = tracing_func_enable,

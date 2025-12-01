@@ -202,7 +202,7 @@ static int dap_func_init(struct usbd_class_data *c_data)
 	return 0;
 }
 
-struct usbd_class_api dap_func_api = {
+static const struct usbd_class_api dap_func_api = {
 	.request = dap_func_request_handler,
 	.get_desc = dap_func_get_desc,
 	.enable = dap_func_enable,

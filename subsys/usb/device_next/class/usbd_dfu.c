@@ -628,7 +628,7 @@ static int runtime_mode_init(struct usbd_class_data *const c_data)
 	return 0;
 }
 
-struct usbd_class_api runtime_mode_api = {
+static const struct usbd_class_api runtime_mode_api = {
 	.control_to_host = runtime_mode_control_to_host,
 	.control_to_dev = runtime_mode_control_to_dev,
 	.get_desc = runtime_mode_get_desc,
@@ -783,7 +783,7 @@ static int dfu_mode_init(struct usbd_class_data *const c_data)
 	return data->image == NULL ? -EINVAL : 0;
 }
 
-struct usbd_class_api dfu_api = {
+static const struct usbd_class_api dfu_api = {
 	.control_to_host = dfu_mode_control_to_host,
 	.control_to_dev = dfu_mode_control_to_dev,
 	.update = dfu_mode_update,

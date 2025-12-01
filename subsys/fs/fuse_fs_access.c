@@ -213,7 +213,7 @@ static int ffa_unlink_top(const char *path)
 	return nsi_errno_to_mid(-err);
 }
 
-struct ffa_op_callbacks op_callbacks = {
+static const struct ffa_op_callbacks op_callbacks = {
 	.readdir_start = ffa_readdir_start,
 	.readdir_read_next = ffa_readdir_read_next,
 	.readdir_end = ffa_readdir_end,

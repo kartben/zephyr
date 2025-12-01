@@ -185,7 +185,7 @@ static int coredump_in_memory_backend_cmd(enum coredump_cmd_id cmd_id,
 	return 0;
 }
 
-struct coredump_backend_api coredump_backend_in_memory = {
+static const struct coredump_backend_api coredump_backend_in_memory = {
 	.start = coredump_in_memory_backend_start,
 	.end = coredump_in_memory_backend_end,
 	.buffer_output = coredump_in_memory_backend_buffer_output,

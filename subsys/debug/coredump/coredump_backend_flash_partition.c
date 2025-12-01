@@ -624,7 +624,7 @@ static int coredump_flash_backend_cmd(enum coredump_cmd_id cmd_id,
 }
 
 
-struct coredump_backend_api coredump_backend_flash_partition = {
+static const struct coredump_backend_api coredump_backend_flash_partition = {
 	.start = coredump_flash_backend_start,
 	.end = coredump_flash_backend_end,
 	.buffer_output = coredump_flash_backend_buffer_output,
