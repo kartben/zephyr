@@ -428,7 +428,7 @@ static enum ethernet_hw_caps dsa_port_get_capabilities(const struct device *dev)
 	return caps;
 }
 
-static struct dsa_api dsa_netc_api = {
+static const struct dsa_api dsa_netc_api = {
 	.port_init = dsa_netc_port_init,
 	.port_generate_random_mac = dsa_netc_port_generate_random_mac,
 	.switch_setup = dsa_netc_switch_setup,

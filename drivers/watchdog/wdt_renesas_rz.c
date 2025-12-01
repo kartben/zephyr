@@ -418,8 +418,8 @@ static wdt_extended_cfg_t g_wdt_extend_cfg = {
 		.device_state = ATOMIC_INIT(0),                                                    \
 	};                                                                                         \
                                                                                                    \
-	static struct wdt_rz_config wdt_rz_config_##inst = {.fsp_api = &g_wdt_on_wdt,              \
-							    .irq = DT_INST_IRQN(inst)};            \
+	static const struct wdt_rz_config wdt_rz_config_##inst = {.fsp_api = &g_wdt_on_wdt,        \
+								  .irq = DT_INST_IRQN(inst)};            \
                                                                                                    \
 	static int wdt_rz_init_##inst(const struct device *dev)                                    \
 	{                                                                                          \

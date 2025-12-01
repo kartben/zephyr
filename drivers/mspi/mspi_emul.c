@@ -842,7 +842,7 @@ int mspi_emul_register(const struct device *dev, struct mspi_emul *emul)
 }
 
 /* Device instantiation */
-static struct emul_mspi_driver_api emul_mspi_driver_api = {
+static const struct emul_mspi_driver_api emul_mspi_driver_api = {
 	.mspi_api = {
 			.config                = mspi_emul_config,
 			.dev_config            = mspi_emul_dev_config,

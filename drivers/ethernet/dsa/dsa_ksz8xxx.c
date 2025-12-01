@@ -1124,7 +1124,7 @@ const struct ethernet_api dsa_eth_api_funcs = {
 	.send                   = dsa_tx,
 };
 
-static struct dsa_api dsa_api_f = {
+static const struct dsa_api dsa_api_f = {
 	.switch_read = dsa_ksz8xxx_sw_read_reg,
 	.switch_write = dsa_ksz8xxx_sw_write_reg,
 	.switch_set_mac_table_entry = dsa_ksz8xxx_set_mac_table_entry,

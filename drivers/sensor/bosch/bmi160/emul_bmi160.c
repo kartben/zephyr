@@ -273,13 +273,13 @@ static int bmi160_emul_transfer_i2c(const struct emul *target, struct i2c_msg *m
 /* Device instantiation */
 
 #if BMI160_BUS_SPI
-static struct spi_emul_api bmi160_emul_api_spi = {
+static const struct spi_emul_api bmi160_emul_api_spi = {
 	.io = bmi160_emul_io_spi,
 };
 #endif
 
 #if BMI160_BUS_I2C
-static struct i2c_emul_api bmi160_emul_api_i2c = {
+static const struct i2c_emul_api bmi160_emul_api_i2c = {
 	.transfer = bmi160_emul_transfer_i2c,
 };
 #endif

@@ -121,7 +121,7 @@ static int at24_emul_transfer(const struct emul *target, struct i2c_msg *msgs,
 
 /* Device instantiation */
 
-static struct i2c_emul_api bus_api = {
+static const struct i2c_emul_api bus_api = {
 	.transfer = at24_emul_transfer,
 };
 

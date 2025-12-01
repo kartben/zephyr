@@ -104,7 +104,7 @@ static int scmi_mbox_setup_chan(const struct device *transport,
 	return 0;
 }
 
-static struct scmi_transport_api scmi_mbox_api = {
+static const struct scmi_transport_api scmi_mbox_api = {
 	.setup_chan = scmi_mbox_setup_chan,
 	.send_message = scmi_mbox_send_message,
 	.read_message = scmi_mbox_read_message,

@@ -821,7 +821,7 @@ static enum eth_xlnx_link_speed phy_xlnx_gem_ti_dp83822_poll_lspd(
  * Function pointer table for the Marvell Alaska PHY series
  * specific management functions
  */
-static struct phy_xlnx_gem_api phy_xlnx_gem_marvell_alaska_api = {
+static const struct phy_xlnx_gem_api phy_xlnx_gem_marvell_alaska_api = {
 	.phy_reset_func              = phy_xlnx_gem_marvell_alaska_reset,
 	.phy_configure_func          = phy_xlnx_gem_marvell_alaska_cfg,
 	.phy_poll_status_change_func = phy_xlnx_gem_marvell_alaska_poll_sc,
@@ -834,7 +834,7 @@ static struct phy_xlnx_gem_api phy_xlnx_gem_marvell_alaska_api = {
  * Function pointer table for the Texas Instruments TLK105 / DP83822 PHY
  * series specific management functions
  */
-static struct phy_xlnx_gem_api phy_xlnx_gem_ti_dp83822_api = {
+static const struct phy_xlnx_gem_api phy_xlnx_gem_ti_dp83822_api = {
 	.phy_reset_func              = phy_xlnx_gem_ti_dp83822_reset,
 	.phy_configure_func          = phy_xlnx_gem_ti_dp83822_cfg,
 	.phy_poll_status_change_func = phy_xlnx_gem_ti_dp83822_poll_sc,

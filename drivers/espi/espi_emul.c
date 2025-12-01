@@ -212,7 +212,7 @@ int espi_emul_register(const struct device *dev, struct espi_emul *emul)
 }
 
 /* Device instantiation */
-static struct emul_espi_driver_api emul_espi_driver_api = {
+static const struct emul_espi_driver_api emul_espi_driver_api = {
 	.espi_api = {
 		.config = espi_emul_config,
 		.get_channel_status = espi_emul_get_channel_status,

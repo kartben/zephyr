@@ -318,7 +318,7 @@ static const struct emul_sensor_driver_api bma4xx_emul_sensor_driver_api = {
 	.get_sample_range = bma4xx_emul_backend_get_sample_range,
 };
 
-static struct i2c_emul_api bma4xx_emul_api_i2c = {
+static const struct i2c_emul_api bma4xx_emul_api_i2c = {
 	.transfer = bma4xx_emul_transfer_i2c,
 };
 

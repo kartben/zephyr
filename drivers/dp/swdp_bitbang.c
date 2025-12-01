@@ -700,7 +700,7 @@ static int sw_gpio_init(const struct device *dev)
 	return 0;
 }
 
-static struct swdp_api swdp_bitbang_api = {
+static const struct swdp_api swdp_bitbang_api = {
 	.swdp_output_sequence = sw_output_sequence,
 	.swdp_input_sequence = sw_input_sequence,
 	.swdp_transfer	= sw_transfer,

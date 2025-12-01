@@ -79,7 +79,7 @@ static int dsp_ctrl_load_section(const struct device *dev, const void *base, siz
 	return 0;
 }
 
-static struct nxp_rtxxx_dsp_ctrl_api nxp_rtxxx_dsp_ctrl_api = {
+static const struct nxp_rtxxx_dsp_ctrl_api nxp_rtxxx_dsp_ctrl_api = {
 	.load_section = dsp_ctrl_load_section,
 	.enable = dsp_ctrl_enable,
 	.disable = dsp_ctrl_disable

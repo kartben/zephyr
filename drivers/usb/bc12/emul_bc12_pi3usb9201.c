@@ -278,7 +278,7 @@ static int pi3usb9201_emul_set_pd_partner_state(const struct emul *target, bool 
 
 /* Device instantiation */
 
-static struct i2c_emul_api pi3usb9201_emul_bus_api = {
+static const struct i2c_emul_api pi3usb9201_emul_bus_api = {
 	.transfer = pi3usb9201_emul_transfer,
 };
 

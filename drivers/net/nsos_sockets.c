@@ -1597,7 +1597,7 @@ static int nsos_iface_enable(const struct net_if *iface, bool enabled)
 	return 0;
 }
 
-static struct offloaded_if_api nsos_iface_offload_api = {
+static const struct offloaded_if_api nsos_iface_offload_api = {
 	.iface_api.init = nsos_iface_api_init,
 	.enable = nsos_iface_enable,
 };
@@ -1708,7 +1708,7 @@ int nsos_net_if_set_opt(struct conn_mgr_conn_binding *const binding, int optname
 	return 0;
 }
 
-static struct conn_mgr_conn_api nsos_conn_mgr_api = {
+static const struct conn_mgr_conn_api nsos_conn_mgr_api = {
 	.init = nsos_net_if_init,
 	.connect = nsos_net_connect,
 	.disconnect = nsos_net_if_disconnect,
