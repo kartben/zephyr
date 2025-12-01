@@ -150,7 +150,7 @@ struct dev_dfu_mode_descriptor {
 
 
 USBD_DEVICE_DESCR_DEFINE(secondary)
-struct dev_dfu_mode_descriptor dfu_mode_desc = {
+static const struct dev_dfu_mode_descriptor dfu_mode_desc = {
 	/* Device descriptor */
 	.device_descriptor = {
 		.bLength = sizeof(struct usb_device_descriptor),
@@ -261,7 +261,7 @@ struct usb_string_desription {
 } __packed;
 
 USBD_STRING_DESCR_DEFINE(secondary)
-struct usb_string_desription string_descr = {
+static const struct usb_string_desription string_descr = {
 	.lang_descr = {
 		.bLength = sizeof(struct usb_string_descriptor),
 		.bDescriptorType = USB_DESC_STRING,

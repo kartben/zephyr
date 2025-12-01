@@ -211,7 +211,7 @@ static const struct usbd_class_api dap_func_api = {
 };
 
 #define DAP_FUNC_DESCRIPTOR_DEFINE(n, _)					\
-static struct dap_func_desc dap_func_desc_##n = {				\
+static const struct dap_func_desc dap_func_desc_##n = {				\
 	/* Interface descriptor 0 */						\
 	.if0 = {								\
 		.bLength = sizeof(struct usb_if_descriptor),			\

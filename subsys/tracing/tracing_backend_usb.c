@@ -166,7 +166,7 @@ static const struct usbd_class_api tracing_func_api = {
 	.init = tracing_func_init,
 };
 
-static struct tracing_func_desc func_desc = {
+static const struct tracing_func_desc func_desc = {
 	.if0 = {
 		.bLength = sizeof(struct usb_if_descriptor),
 		.bDescriptorType = USB_DESC_INTERFACE,
