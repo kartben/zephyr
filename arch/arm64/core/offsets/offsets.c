@@ -92,6 +92,9 @@ GEN_ABSOLUTE_SYM(__z_arm64_fp_context_sve_ffr_OFFSET,
 #endif
 #endif
 
+GEN_OFFSET_SYM(_kernel_t, ready_q);
+GEN_OFFSET_SYM(_ready_q_t, cache);
+
 GEN_ABS_SYM_END
 
 #endif /* _ARM_OFFSETS_INC_ */

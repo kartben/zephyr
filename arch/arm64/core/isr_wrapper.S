@@ -59,7 +59,11 @@ SECTION_FUNC(TEXT, _isr_wrapper)
 
 	/* Get active IRQ number from the interrupt controller */
 #if !defined(CONFIG_ARM_CUSTOM_INTERRUPT_CONTROLLER)
+#if defined(CONFIG_GIC_V3)
+	mrs	x0, ICC_IAR1_EL1
+#else
 	bl	arm_gic_get_active
+#endif
 #else
 	bl	z_soc_irq_get_active
 #endif /* !CONFIG_ARM_CUSTOM_INTERRUPT_CONTROLLER */
@@ -110,7 +114,12 @@ spurious_continue:
 
 	/* Signal end-of-interrupt */
 #if !defined(CONFIG_ARM_CUSTOM_INTERRUPT_CONTROLLER)
+#if defined(CONFIG_GIC_V3)
+	dsb	sy
+	msr	ICC_EOIR1_EL1, x0
+#else
 	bl	arm_gic_eoi
+#endif
 #else
 	bl	z_soc_irq_eoi
 #endif /* !CONFIG_ARM_CUSTOM_INTERRUPT_CONTROLLER */
@@ -147,17 +156,39 @@ z_arm64_irq_done:
 	 * If no scheduling is necessary then NULL will be returned.
 	 */
 	str	x1, [sp, #-16]!
+
+	/*
+	 * Check if we need to perform a context switch
+	 *
+	 * Note: x0, x1, x2 are caller-saved registers, so we can use them.
+	 */
+#if !defined(CONFIG_SMP)
+	ldr	x0, =_kernel
+	add	x0, x0, #___kernel_t_ready_q_OFFSET
+	ldr	x2, [x0, #___ready_q_t_cache_OFFSET]
+	cmp	x2, x1
+	bne	2f
+
+	/* No switch needed */
+	mov	x0, xzr
+	b	z_arm64_irq_done_exit
+2:
+#endif
+
+	/* Context switch is needed */
 	mov	x0, xzr
 	bl	z_get_next_switch_handle
-	ldr	x1, [sp], #16
-	cbz	x0, exit
 
+z_arm64_irq_done_exit:
+	ldr	x1, [sp], #16
+	cbz	x0, 1f
+	bl	z_arm64_context_switch
+1:
 	/*
 	 * Switch thread
 	 * x0: new thread
 	 * x1: old thread
 	 */
-	bl	z_arm64_context_switch
 
 exit:
 #ifdef CONFIG_STACK_SENTINEL
