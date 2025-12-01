@@ -234,7 +234,7 @@ uintptr_t emul_espi_host_get_acpi_shm(const struct device *espi_dev)
 #endif
 
 /* Device instantiation */
-static struct emul_espi_device_api ap_emul_api = {
+static const struct emul_espi_device_api ap_emul_api = {
 	.set_vw = emul_host_set_vw,
 	.get_vw = emul_host_get_vw,
 	.get_acpi_shm = emul_espi_dev_get_acpi_shm,

@@ -38,7 +38,7 @@ static void *settings_zms_storage_get(struct settings_store *cs);
 static int settings_zms_get_last_hash_ids(struct settings_zms *cf);
 static ssize_t settings_zms_get_val_len(struct settings_store *cs, const char *name);
 
-static struct settings_store_itf settings_zms_itf = {.csi_load = settings_zms_load,
+static const struct settings_store_itf settings_zms_itf = {.csi_load = settings_zms_load,
 						     .csi_load_one = settings_zms_load_one,
 						     .csi_save = settings_zms_save,
 						     .csi_storage_get = settings_zms_storage_get,
