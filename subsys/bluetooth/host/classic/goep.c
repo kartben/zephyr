@@ -95,7 +95,7 @@ static void goep_rfcomm_disconnected(struct bt_rfcomm_dlc *dlc)
 	}
 }
 
-static struct bt_rfcomm_dlc_ops goep_rfcomm_ops = {
+static const struct bt_rfcomm_dlc_ops goep_rfcomm_ops = {
 	.recv = goep_rfcomm_recv,
 	.connected = goep_rfcomm_connected,
 	.disconnected = goep_rfcomm_disconnected,

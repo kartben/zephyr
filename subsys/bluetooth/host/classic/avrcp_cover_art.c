@@ -189,7 +189,7 @@ static void tg_bip_transport_disconnected(struct bt_bip *bip)
 	}
 }
 
-static struct bt_bip_transport_ops tg_bip_transport_ops = {
+static const struct bt_bip_transport_ops tg_bip_transport_ops = {
 	.connected = tg_bip_transport_connected,
 	.disconnected = tg_bip_transport_disconnected,
 };
@@ -567,7 +567,7 @@ static void ct_bip_transport_disconnected(struct bt_bip *bip)
 	}
 }
 
-static struct bt_bip_transport_ops ct_bip_transport_ops = {
+static const struct bt_bip_transport_ops ct_bip_transport_ops = {
 	.connected = ct_bip_transport_connected,
 	.disconnected = ct_bip_transport_disconnected,
 };

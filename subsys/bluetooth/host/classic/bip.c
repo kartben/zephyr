@@ -96,7 +96,7 @@ static void bip_rfcomm_disconnected(struct bt_goep *goep)
 	}
 }
 
-static struct bt_goep_transport_ops bip_rfcomm_ops = {
+static const struct bt_goep_transport_ops bip_rfcomm_ops = {
 	.connected = bip_rfcomm_connected,
 	.disconnected = bip_rfcomm_disconnected,
 };
@@ -229,7 +229,7 @@ static void bip_l2cap_disconnected(struct bt_goep *goep)
 	}
 }
 
-static struct bt_goep_transport_ops bip_l2cap_ops = {
+static const struct bt_goep_transport_ops bip_l2cap_ops = {
 	.connected = bip_l2cap_connected,
 	.disconnected = bip_l2cap_disconnected,
 };
