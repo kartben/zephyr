@@ -64,6 +64,12 @@ enabling application portability across different platforms.
 
         High-level frameworks and libraries for application development.
 
+    .. grid-item-card:: :material-twotone:`lan;36px` Connectivity
+        :link: connectivity
+        :link-type: ref
+
+        Bluetooth, networking, USB, CAN bus, and other connectivity protocols.
+
 .. toctree::
    :maxdepth: 2
    :hidden:
@@ -77,3 +83,4 @@ enabling application portability across different platforms.
    security.rst
    algorithms.rst
    application_services.rst
+   connectivity/index.rst
