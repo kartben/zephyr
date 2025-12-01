@@ -31,6 +31,7 @@ Roles
 
 """
 
+import html
 import json
 import re
 import sys
@@ -1424,6 +1425,90 @@ def install_static_assets_as_needed(
         app.add_js_file("js/board.js")
 
 
+def _add_metatags_to_context(context: dict[str, Any], title: str, description: str, og_type: str = "article") -> None:
+    """Helper function to add OpenGraph and meta description tags to context.
+    
+    Args:
+        context: The Sphinx page context dictionary
+        title: The page title (must be HTML-escaped by caller)
+        description: The page description (must be HTML-escaped by caller)
+        og_type: The OpenGraph type (default: "article")
+    
+    Note:
+        This function assumes title and description are already properly HTML-escaped.
+        It does not perform any escaping itself.
+    """
+    metatags = context.setdefault("metatags", "")
+    metatags += f'<meta property="og:title" content="{title}" />\n'
+    metatags += f'<meta property="og:type" content="{og_type}" />\n'
+    metatags += f'<meta property="og:description" content="{description}" />\n'
+    metatags += f'<meta name="description" content="{description}" />\n'
+    context["metatags"] = metatags
+
+
+def add_opengraph_metadata(
+    app: Sphinx, pagename: str, templatename: str, context: dict[str, Any], doctree: nodes.Node
+) -> None:
+    """Add custom OpenGraph metadata for boards and code samples."""
+    if not doctree:
+        return
+    
+    # Get domain data
+    domain_data = app.env.domaindata["zephyr"]
+    
+    # Check if this is a board page
+    if domain_data["has_board"].get(pagename, False):
+        boards = domain_data["boards"]
+        # Find the board for this page
+        for board_name, board_info in boards.items():
+            if board_info.get("docname") == pagename:
+                # Get raw (unescaped) board data
+                title_raw = board_info.get("full_name", board_name)
+                
+                # Build description with board details (unescaped)
+                description_raw = f"{title_raw} board support in Zephyr RTOS"
+                if board_info.get("socs"):
+                    socs_str = ", ".join(board_info["socs"])
+                    description_raw += f" - SoC: {socs_str}"
+                if board_info.get("archs"):
+                    archs_str = ", ".join(board_info["archs"])
+                    description_raw += f" - Architecture: {archs_str}"
+                
+                # Escape and format for HTML
+                title_escaped = html.escape(f"{title_raw} - Zephyr Board")
+                description_escaped = html.escape(description_raw)
+                
+                # Add metatags to context
+                _add_metatags_to_context(context, title_escaped, description_escaped)
+                return
+    
+    # Check if this is a code sample page
+    code_samples = domain_data["code-samples"]
+    for sample_id, sample_info in code_samples.items():
+        if sample_info.get("docname") == pagename:
+            # Get raw (unescaped) sample data
+            title_raw = sample_info.get("name", sample_id)
+            
+            # Extract description from sample content
+            description_raw = f"{title_raw} code sample for Zephyr RTOS"
+            if sample_info.get("description"):
+                desc_text = sample_info["description"].astext()
+                if desc_text:
+                    # Clean up and truncate description
+                    desc_text = " ".join(desc_text.split())  # normalize whitespace
+                    if len(desc_text) > 200:
+                        desc_text = desc_text[:197] + "..."
+                    description_raw = desc_text
+            
+            # Escape and format for HTML
+            title_escaped = html.escape(f"{title_raw} - Zephyr Sample")
+            description_escaped = html.escape(description_raw)
+            
+            # Add metatags to context
+            _add_metatags_to_context(context, title_escaped, description_escaped)
+            return
+
+
 def load_board_catalog_into_domain(app: Sphinx) -> None:
     board_catalog = get_catalog(
         generate_hw_features=(
@@ -1469,6 +1554,7 @@ def setup(app):
     app.connect("builder-inited", load_board_catalog_into_domain)
 
     app.connect("html-page-context", install_static_assets_as_needed)
+    app.connect("html-page-context", add_opengraph_metadata)
     app.connect("env-updated", compute_sample_categories_hierarchy)
 
     # monkey-patching of the DoxygenGroupDirective
