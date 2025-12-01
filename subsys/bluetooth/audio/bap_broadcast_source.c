@@ -238,7 +238,7 @@ static void broadcast_source_iso_disconnected(struct bt_iso_chan *chan, uint8_t 
 	}
 }
 
-static struct bt_iso_chan_ops broadcast_source_iso_ops = {
+static const struct bt_iso_chan_ops broadcast_source_iso_ops = {
 	.sent = broadcast_source_iso_sent,
 	.connected = broadcast_source_iso_connected,
 	.disconnected = broadcast_source_iso_disconnected,

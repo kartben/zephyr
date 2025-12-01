@@ -260,7 +260,7 @@ static void cap_stream_disconnected_cb(struct bt_bap_stream *bap_stream, uint8_t
 	}
 }
 
-static struct bt_bap_stream_ops bap_stream_ops = {
+static const struct bt_bap_stream_ops bap_stream_ops = {
 #if defined(CONFIG_BT_BAP_UNICAST)
 	.configured = cap_stream_configured_cb,
 	.qos_set = cap_stream_qos_set_cb,

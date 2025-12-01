@@ -1099,7 +1099,7 @@ static void ascs_iso_disconnected(struct bt_iso_chan *chan, uint8_t reason)
 	}
 }
 
-static struct bt_iso_chan_ops ascs_iso_ops = {
+static const struct bt_iso_chan_ops ascs_iso_ops = {
 #if defined(CONFIG_BT_AUDIO_RX)
 	.recv = ascs_iso_recv,
 #endif /* CONFIG_BT_AUDIO_RX */

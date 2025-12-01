@@ -430,7 +430,7 @@ static void unicast_client_iso_disconnected(struct bt_iso_chan *chan, uint8_t re
 	}
 }
 
-static struct bt_iso_chan_ops unicast_client_iso_ops = {
+static const struct bt_iso_chan_ops unicast_client_iso_ops = {
 #if defined(CONFIG_BT_AUDIO_RX)
 	.recv = unicast_client_ep_iso_recv,
 #endif /* CONFIG_BT_AUDIO_RX */
