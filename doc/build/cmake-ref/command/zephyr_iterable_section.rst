@@ -4,7 +4,8 @@ zephyr_iterable_section
 .. cmake:signature::
    zephyr_iterable_section(NAME <name> [GROUP <group>]
                           [VMA <region|group>] [LMA <region|group>]
-                          [ALIGN_WITH_INPUT] [SUBALIGN <alignment>]
+                          [ADDRESS <address>] [ALIGN_WITH_INPUT] 
+                          [NUMERIC] [SUBALIGN <alignment>]
    )
 
    Define an output section which will set up an iterable area
@@ -34,7 +35,7 @@ zephyr_iterable_section
    The options are:
 
    ``NAME <name>``
-     Name of the struct type, the output section be named
+     Name of the struct type, the output section will be named
      accordingly as: <name>_area.
 
    ``VMA <region|group>``
@@ -54,7 +55,7 @@ zephyr_iterable_section
 
    ``ALIGN_WITH_INPUT``
      The alignment difference between VMA and LMA is kept
-     in tact for this section.
+     intact for this section.
 
    ``NUMERIC``
      Use numeric sorting.
