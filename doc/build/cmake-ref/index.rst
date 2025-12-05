@@ -43,14 +43,14 @@ Utilities & Tools
    module/git
    module/yaml
 
-.. Commands
-.. --------
+Commands
+--------
 
-.. .. .. toctree::
-.. ..    :maxdepth: 1
-.. ..    :glob:
+.. toctree::
+   :maxdepth: 1
+   :glob:
 
-.. ..    command/*
+   command/*
 
 Property targets
 ----------------
