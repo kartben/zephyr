@@ -44,7 +44,7 @@ zephyr_iterable_section
    ``LMA <region|group>``
      Memory region where code / data is loaded (LMA)
      If VMA is different from LMA, the code / data will be loaded from LMA into VMA at bootup, this
-     is usually the case for global or static variables that are loaded in rom and copied to ram at
+     is usually the case for global or static variables that are loaded in ROM and copied to RAM at
      boot time.
 
    ``GROUP <group>``
