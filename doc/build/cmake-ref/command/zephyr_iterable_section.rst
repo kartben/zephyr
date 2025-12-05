@@ -4,7 +4,7 @@ zephyr_iterable_section
 .. cmake:signature::
    zephyr_iterable_section(NAME <name> [GROUP <group>]
                           [VMA <region|group>] [LMA <region|group>]
-                          [ADDRESS <address>] [ALIGN_WITH_INPUT] 
+                          [ADDRESS <address>] [ALIGN_WITH_INPUT]
                           [NUMERIC] [SUBALIGN <alignment>]
    )
 
@@ -13,7 +13,7 @@ zephyr_iterable_section
    Input sections will be sorted by name in lexicographical order.
 
    Each list for an input section will define the following linker symbols:
-   - `` _<name>_list_start``: Start of the iterable list
+   - ``_<name>_list_start``: Start of the iterable list
    - ``_<name>_list_end``: End of the iterable list
 
    The output section will be named `<name>_area` and define the following linker
@@ -36,7 +36,7 @@ zephyr_iterable_section
 
    ``NAME <name>``
      Name of the struct type, the output section will be named
-     accordingly as: <name>_area.
+     accordingly: <name>_area.
 
    ``VMA <region|group>``
      VMA Memory region where code / data is located runtime (VMA)
