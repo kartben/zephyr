@@ -22,7 +22,7 @@ Parameters
    List of additional include paths relative to ``ZEPHYR_BASE``.
 
 .. cmake:variable:: EXTRA_CPPFLAGS
-.. cmake:variable:: EXTRA_LDFLAGS  
+.. cmake:variable:: EXTRA_LDFLAGS
 .. cmake:variable:: EXTRA_CFLAGS
 .. cmake:variable:: EXTRA_CXXFLAGS
 .. cmake:variable:: EXTRA_AFLAGS

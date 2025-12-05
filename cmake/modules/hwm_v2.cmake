@@ -18,7 +18,7 @@ Generated Files
 In ``<kconfig-binary-dir>/soc``:
 
 - ``Kconfig.defconfig``: SoC defconfig files for Zephyr integration
-- ``Kconfig``: Regular SoC Kconfig files for Zephyr integration  
+- ``Kconfig``: Regular SoC Kconfig files for Zephyr integration
 - ``Kconfig.soc``: Generic SoC Kconfig files
 - ``Kconfig.sysbuild``: SoC sysbuild Kconfig files
 
