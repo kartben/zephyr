@@ -39,11 +39,11 @@ zephyr_iterable_section
      accordingly: <name>_area.
 
    ``VMA <region|group>``
-     VMA Memory region where code / data is located runtime (VMA)
+     Memory region where code/data is located at runtime (Virtual Memory Address)
 
    ``LMA <region|group>``
-     Memory region where code / data is loaded (LMA)
-     If VMA is different from LMA, the code / data will be loaded from LMA into VMA at bootup, this
+     Memory region where code/data is loaded (Load Memory Address).
+     If VMA is different from LMA, the code/data will be loaded from LMA into VMA at bootup. This
      is usually the case for global or static variables that are loaded in ROM and copied to RAM at
      boot time.
 
