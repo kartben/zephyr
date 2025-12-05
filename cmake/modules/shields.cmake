@@ -2,31 +2,59 @@
 #
 # Copyright (c) 2021, Nordic Semiconductor ASA
 
-# Validate shields and setup shields target.
-#
-# This module will validate the SHIELD argument.
-#
-# If a shield implementation is not found for one of the specified shields, an
-# error will be raised and a list of valid shields will be printed.
-#
-# Outcome:
-# The following variables will be defined when this module completes:
-# - shield_conf_files: List of shield-specific Kconfig fragments
-# - shield_dts_files : List of shield-specific devicetree files
-# - SHIELD_AS_LIST   : A CMake list of shields created from the SHIELD variable.
-# - SHIELD_DIRS      : A CMake list of directories which contain shield definitions
-#
-# The following targets will be defined when this CMake module completes:
-# - shields: when invoked, a list of valid shields will be printed
-#
-# If the SHIELD variable is changed after this module completes,
-# a warning will be printed.
-#
-# Optional variables:
-# - BOARD_ROOT: CMake list of board roots containing board implementations
-#
-# Variables set by this module and not mentioned above are for internal
-# use only, and may be removed, renamed, or re-purposed without prior notice.
+#[=======================================================================[.rst:
+shields
+-------
+
+Shield validation and discovery module.
+
+This module validates the ``SHIELD`` argument and sets up shield-related
+configuration. Shields are hardware extensions that can be attached to boards.
+
+If a shield implementation is not found, an error is raised and valid shields
+are listed.
+
+Outcome
+^^^^^^^
+
+The following variables are set when this module completes:
+
+.. cmake:variable:: shield_conf_files
+
+   List of shield-specific Kconfig fragments.
+
+.. cmake:variable:: shield_dts_files
+
+   List of shield-specific devicetree files.
+
+.. cmake:variable:: SHIELD_AS_LIST
+
+   CMake list created from the ``SHIELD`` variable.
+
+.. cmake:variable:: SHIELD_DIRS
+
+   CMake list of directories containing shield definitions.
+
+Targets
+^^^^^^^
+
+``shields``
+   When invoked, prints a list of all valid shields.
+
+Optional Variables
+^^^^^^^^^^^^^^^^^^
+
+.. cmake:variable:: BOARD_ROOT
+
+   CMake list of board roots containing board implementations.
+
+Note
+^^^^
+
+If the ``SHIELD`` variable changes after this module completes, a warning
+will be printed.
+
+#]=======================================================================]
 
 include_guard(GLOBAL)
 
