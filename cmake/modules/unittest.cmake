@@ -1,5 +1,45 @@
 # SPDX-License-Identifier: Apache-2.0
 
+#[=======================================================================[.rst:
+unittest
+--------
+
+Unit testing framework support for Zephyr.
+
+This module provides CMake infrastructure for building and running unit tests
+outside of the normal Zephyr application build. It sets up a minimal test
+environment with ztest framework support.
+
+Parameters
+^^^^^^^^^^
+
+.. cmake:variable:: SOURCES
+
+   List of source files for the unit test. Default is ``main.c``.
+
+.. cmake:variable:: INCLUDE
+
+   List of additional include paths relative to ``ZEPHYR_BASE``.
+
+.. cmake:variable:: EXTRA_CPPFLAGS
+.. cmake:variable:: EXTRA_LDFLAGS  
+.. cmake:variable:: EXTRA_CFLAGS
+.. cmake:variable:: EXTRA_CXXFLAGS
+.. cmake:variable:: EXTRA_AFLAGS
+
+   Additional compiler and linker flags for the unit test.
+
+Targets
+^^^^^^^
+
+``run``
+   Execute the test binary.
+
+``run-test``
+   Execute the test binary under valgrind (if available) with memory leak checking.
+
+#]=======================================================================]
+
 cmake_minimum_required(VERSION 3.20.0)
 
 include(extensions)

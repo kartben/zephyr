@@ -2,28 +2,39 @@
 #
 # Copyright (c) 2021, Nordic Semiconductor ASA
 
-# Configure user cache directory.
-#
-# The user cache can be used for caching of data that should be persistent
-# across builds to speed up CMake configure / build system generation and/or
-# compilation.
-#
-# Only data that can be safely re-generated should be placed in this cache.
-#
-# Zephyr build system uses this user cache to store Zephyr compiler check
-# results which significantly improve toolchain testing performance.
-# See https://github.com/zephyrproject-rtos/zephyr/pull/7102 for details.
-#
-# Outcome:
-# The following variables will be defined when this CMake module completes:
-#
-# - USER_CACHE_DIR: User cache directory in use.
-#
-# If the above variable is already set when this CMake module is loaded,
-# then no changes to the variable will happen.
-#
-# Variables set by this module and not mentioned above are considered internal
-# use only and may be removed, renamed, or re-purposed without prior notice.
+#[=======================================================================[.rst:
+user_cache
+----------
+
+Configure user cache directory for persistent build data.
+
+This module sets up a user cache directory that persists across builds to speed
+up CMake configuration and compilation. The cache stores data that can be safely
+regenerated, such as compiler check results.
+
+Outcome
+^^^^^^^
+
+The following variables are defined when this module completes:
+
+.. cmake:variable:: USER_CACHE_DIR
+
+   The user cache directory in use. If this variable is already set when
+   the module loads, it will not be modified.
+
+Platform-Specific Cache Locations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- **macOS**: ``~/Library/Caches``
+- **Windows**: ``%LOCALAPPDATA%\.cache``
+- **Linux**: ``$XDG_CACHE_HOME`` or ``~/.cache``
+
+See Also
+^^^^^^^^
+
+https://github.com/zephyrproject-rtos/zephyr/pull/7102
+
+#]=======================================================================]
 
 include_guard(GLOBAL)
 

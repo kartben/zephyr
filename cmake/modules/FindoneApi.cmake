@@ -1,16 +1,28 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # Copyright (c) 2023 Intel Corporation
-#
-# FindoneApi module for locating oneAPI compiler, icx.
-#
-# The module defines the following variables:
-#
-# 'oneApi_FOUND', 'ONEAPI_FOUND'
-# True if the oneApi toolchain/compiler, icx, was found.
-#
-# 'ONEAPI_VERSION'
-# The version of the oneAPI toolchain.
+
+#[=======================================================================[.rst:
+FindoneApi
+----------
+
+Find the Intel oneAPI compiler toolchain.
+
+This module locates the Intel oneAPI compiler (icx) and determines its version.
+
+Variables
+^^^^^^^^^
+
+.. cmake:variable:: oneApi_FOUND
+.. cmake:variable:: ONEAPI_FOUND
+
+   Set to True if the oneAPI toolchain/compiler was found.
+
+.. cmake:variable:: ONEAPI_VERSION
+
+   The version of the oneAPI toolchain.
+
+#]=======================================================================]
 
 include(FindPackageHandleStandardArgs)
 

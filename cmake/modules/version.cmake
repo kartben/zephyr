@@ -1,33 +1,46 @@
 # SPDX-License-Identifier: Apache-2.0
 
-#.rst:
-# version.cmake
-# -------------
-#
-# Inputs:
-#
-#   ``*VERSION*`` and other constants set by
-#   maintainers in ``${ZEPHYR_BASE}/VERSION``
-#
-# Outputs with examples::
-#
-#   PROJECT_VERSION                    1.14.99.7
-#   KERNEL_VERSION_STRING             "1.14.99-extraver"
-#   KERNEL_VERSION_EXTENDED_STRING    "1.14.99-extraver+7"
-#   KERNEL_VERSION_TWEAK_STRING       "1.14.99+7"
-#
-#   KERNEL_VERSION_MAJOR     1
-#   KERNEL_VERSION_MINOR     14
-#   KERNEL_PATCHLEVEL        99
-#   KERNEL_VERSION_TWEAK     7
-#   KERNELVERSION            0x10E6307
-#   KERNEL_VERSION_NUMBER    0x10E63
-#   ZEPHYR_VERSION_CODE      69219
-#
-# Most outputs are converted to C macros, see ``version.h.in``
-#
-# See also: independent and more dynamic ``BUILD_VERSION`` in
-# ``git.cmake``.
+#[=======================================================================[.rst:
+version
+-------
+
+Parse and process Zephyr version information.
+
+This module reads version information from ``${ZEPHYR_BASE}/VERSION`` and makes
+it available to the build system and C code.
+
+Inputs
+^^^^^^
+
+Version constants are read from ``${ZEPHYR_BASE}/VERSION`` file.
+
+Outputs
+^^^^^^^
+
+The following variables are set (with example values)::
+
+  PROJECT_VERSION                    1.14.99.7
+  KERNEL_VERSION_STRING             "1.14.99-extraver"
+  KERNEL_VERSION_EXTENDED_STRING    "1.14.99-extraver+7"
+  KERNEL_VERSION_TWEAK_STRING       "1.14.99+7"
+
+  KERNEL_VERSION_MAJOR     1
+  KERNEL_VERSION_MINOR     14
+  KERNEL_PATCHLEVEL        99
+  KERNEL_VERSION_TWEAK     7
+  KERNELVERSION            0x10E6307
+  KERNEL_VERSION_NUMBER    0x10E63
+  ZEPHYR_VERSION_CODE      69219
+
+Most outputs are converted to C macros in ``version.h.in``.
+
+See Also
+^^^^^^^^
+
+For build-specific version information, see ``BUILD_VERSION`` in
+:cmake:module:`git`.
+
+#]=======================================================================]
 
 # Note: version.cmake is loaded multiple times by ZephyrConfigVersion.cmake to
 # determine this Zephyr package version and thus the correct Zephyr CMake
