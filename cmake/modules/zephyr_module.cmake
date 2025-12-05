@@ -1,32 +1,49 @@
 # SPDX-License-Identifier: Apache-2.0
 
+#[=======================================================================[.rst:
+zephyr_module
+-------------
+
+Import CMakeLists.txt and Kconfig files from Zephyr modules.
+
+This module provides functionality to import build files from Zephyr modules
+into the build system. Modules can provide CMake and Kconfig integration either
+directly or via a ``MODULE_EXT_ROOT``.
+
+The module searches for ``<module>/zephyr/module.yml`` or
+``<module>/zephyr/CMakeLists.txt`` to identify and load modules. If west is
+installed, it uses west APIs to discover modules from the workspace manifest.
+
+Usage
+^^^^^
+
+Provide modules to the build system using:
+
+.. code-block:: cmake
+
+   -DZEPHYR_MODULES=<module-path>[;<additional-module(s)-path>]
+
+Module Configuration
+^^^^^^^^^^^^^^^^^^^^
+
+The ``<module>/zephyr/module.yml`` file specifies build file locations.
+
+For modules using ``MODULE_EXT_ROOT``, the following variables are set:
+
+.. cmake:variable:: ZEPHYR_<MODULE_NAME>_CMAKE_DIR
+
+   Path to the module's CMakeLists.txt for inclusion.
+
+.. cmake:variable:: ZEPHYR_<MODULE_NAME>_KCONFIG
+
+   Path to the module's Kconfig files for inclusion.
+
+#]=======================================================================]
+
 include_guard(GLOBAL)
 
 include(extensions)
 include(python)
-
-# This cmake file provides functionality to import CMakeLists.txt and Kconfig
-# files for Zephyr modules into Zephyr build system.
-#
-# CMakeLists.txt and Kconfig files can reside directly in the Zephyr module or
-# in a MODULE_EXT_ROOT.
-# The `<module>/zephyr/module.yml` file specifies whether the build files are
-# located in the Zephyr module or in a MODULE_EXT_ROOT.
-#
-# A list of Zephyr modules can be provided to the build system using:
-#   -DZEPHYR_MODULES=<module-path>[;<additional-module(s)-path>]
-#
-# It looks for: <module>/zephyr/module.yml or
-#               <module>/zephyr/CMakeLists.txt
-# to load the Zephyr module into Zephyr build system.
-# If west is installed, it uses west's APIs to obtain a list of projects to
-# search for zephyr/module.yml from the current workspace's manifest.
-#
-# If the module.yml file specifies that build files are located in a
-# MODULE_EXT_ROOT then the variables:
-# - `ZEPHYR_<MODULE_NAME>_CMAKE_DIR` is used for inclusion of the CMakeLists.txt
-# - `ZEPHYR_<MODULE_NAME>_KCONFIG` is used for inclusion of the Kconfig
-# files into the build system.
 
 # Settings used by Zephyr module but where systems may define an alternative value.
 set_ifndef(KCONFIG_BINARY_DIR ${CMAKE_BINARY_DIR}/Kconfig)

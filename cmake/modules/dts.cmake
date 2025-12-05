@@ -1,5 +1,104 @@
 # SPDX-License-Identifier: Apache-2.0
 
+#[=======================================================================[.rst:
+dts
+---
+
+Devicetree processing and code generation module.
+
+This module processes devicetree source files and makes devicetree information
+available to various parts of the build system:
+
+- To C/C++ source code via the ``<zephyr/devicetree.h>`` macro API
+- To Python scripts via serialized ``edtlib.EDT`` objects (pickle format)
+- To users as a final preprocessed ``.dts`` file for debugging
+- To CMake via devicetree extensions in :cmake:module:`extensions`
+- To Kconfig via generated symbols and extension functions
+
+The module uses the C preprocessor, the devicetree Python package, and optionally
+the ``dtc`` tool for additional validation.
+
+Outcome
+^^^^^^^
+
+The following occurs when this module completes:
+
+1. Always:
+   
+   - The :cmake:module:`pre_dt` module is included
+   - ``DTS_SOURCE`` is set to the devicetree file path
+   - ``${BINARY_DIR_INCLUDE_GENERATED}/devicetree_generated.h`` is created
+
+2. If a devicetree was found and no errors occurred:
+
+   - ``CACHED_DTS_ROOT_BINDINGS`` is cached with ``DTS_ROOT_BINDINGS`` value
+   - ``DTS_ROOT_BINDINGS`` lists all devicetree bindings locations
+   - ``${PROJECT_BINARY_DIR}/zephyr.dts`` is created
+   - ``${PROJECT_BINARY_DIR}/edt.pickle`` is created
+   - ``${KCONFIG_BINARY_DIR}/Kconfig.dts`` is created
+   - ``DTS_INCLUDE_FILES`` lists all devicetree files used (for dependency tracking)
+   - Devicetree extensions in :cmake:module:`extensions` become available
+
+Required Variables
+^^^^^^^^^^^^^^^^^^
+
+.. cmake:variable:: BINARY_DIR_INCLUDE_GENERATED
+
+   Directory for generated include files.
+
+.. cmake:variable:: DTS_ROOT
+
+   List of devicetree implementation file locations (bindings, vendor prefixes, etc.).
+
+.. cmake:variable:: DTS_ROOT_SYSTEM_INCLUDE_DIRS
+
+   Space-separated paths for C preprocessor #includes.
+
+.. cmake:variable:: KCONFIG_BINARY_DIR
+
+   Directory for generated Kconfig files.
+
+Optional Variables
+^^^^^^^^^^^^^^^^^^
+
+.. cmake:variable:: BOARD
+
+   Board name for finding ``DTS_SOURCE``.
+
+.. cmake:variable:: BOARD_DIRECTORIES
+
+   List of board directories for finding ``DTS_SOURCE``.
+
+.. cmake:variable:: BOARD_REVISION_STRING
+
+   Board revision for finding overlay files.
+
+.. cmake:variable:: CMAKE_DTS_PREPROCESSOR
+
+   Path to the C preprocessor for devicetree files.
+
+.. cmake:variable:: DTC_OVERLAY_FILE
+
+   List of devicetree overlay files.
+
+.. cmake:variable:: EXTRA_DTC_OVERLAY_FILE
+
+   Extra overlay files (applied after ``DTC_OVERLAY_FILE``).
+
+.. cmake:variable:: EXTRA_DTC_FLAGS
+
+   Extra command-line options for ``dtc``.
+
+.. cmake:variable:: DTS_EXTRA_CPPFLAGS
+
+   Extra preprocessor flags for devicetree processing.
+
+.. cmake:variable:: DTS_SOURCE
+
+   Pre-set devicetree source file path.
+
+#]=======================================================================]
+
 include_guard(GLOBAL)
 
 include(extensions)
@@ -8,91 +107,6 @@ include(boards)
 include(pre_dt)
 find_package(HostTools)
 find_package(Dtc 1.4.6)
-
-# This module makes information from the devicetree available to
-# various build stages, as well as to other arbitrary Python scripts:
-#
-#   - To Zephyr and application source code files, as a C macro API
-#     defined in <zephyr/devicetree.h>
-#
-#   - To other arbitrary Python scripts (like twister) using a
-#     serialized edtlib.EDT object in Python's pickle format
-#     (https://docs.python.org/3/library/pickle.html)
-#
-#   - To users as a final devicetree source (DTS) file which can
-#     be used for debugging
-#
-#   - To CMake files, after this module has finished running, using
-#     devicetree extensions defined in cmake/modules/extensions.cmake
-#
-#   - To Kconfig files, both using some Kconfig symbols we generate
-#     here as well as the extension functions defined in
-#     scripts/kconfig/kconfigfunctions.py
-#
-# See the specific API documentation for each of these cases for more
-# information on what is currently available to you.
-#
-# We rely on the C preprocessor, the devicetree python package, and
-# files in scripts/dts to make all this work. We also optionally will
-# run the dtc tool if it is found, in order to catch any additional
-# warnings or errors it generates.
-#
-# Outcome:
-#
-# 1. The following has happened:
-#
-#    - The pre_dt module has been included; refer to its outcome
-#      section for more information on the consequences
-#    - DTS_SOURCE: set to the path to the devicetree file which
-#      was used, if one was provided or found
-#    - ${BINARY_DIR_INCLUDE_GENERATED}/devicetree_generated.h exists
-#
-# 2. The following has happened if a devicetree was found and
-#    no errors occurred:
-#
-#    - CACHED_DTS_ROOT_BINDINGS is set in the cache to the
-#      value of DTS_ROOT_BINDINGS
-#    - DTS_ROOT_BINDINGS is set to a ;-list of locations where DT
-#      bindings were found
-#    - ${PROJECT_BINARY_DIR}/zephyr.dts exists
-#    - ${PROJECT_BINARY_DIR}/edt.pickle exists
-#    - ${KCONFIG_BINARY_DIR}/Kconfig.dts exists
-#    - DTS_INCLUDE_FILES is set to a ;-list of all devicetree files
-#      used in this build, including transitive includes (the build
-#      system will be regenerated if any of those files change)
-#    - the devicetree extensions in the extensions.cmake module
-#      will be ready for use in other CMake list files that run
-#      after this module
-#
-# Required variables:
-# - BINARY_DIR_INCLUDE_GENERATED: where to put generated include files
-# - DTS_ROOT: a deduplicated list of places where devicetree
-#   implementation files (like bindings, vendor prefixes, etc.) are
-#   found
-# - DTS_ROOT_SYSTEM_INCLUDE_DIRS: set to "PATH1 PATH2 ...",
-#   with one path per potential location where C preprocessor #includes
-#   may be found for devicetree files
-# - KCONFIG_BINARY_DIR: where to put generated Kconfig files
-#
-# Optional variables:
-# - BOARD: board name to use when looking for DTS_SOURCE
-# - BOARD_DIRECTORIES: list of board directories to use when looking for DTS_SOURCE
-# - BOARD_REVISION_STRING: used when looking for a board revision's
-#   devicetree overlay file in one of the BOARD_DIRECTORIES
-# - CMAKE_DTS_PREPROCESSOR: the path to the preprocessor to use
-#   for devicetree files
-# - DTC_OVERLAY_FILE: list of devicetree overlay files which will be
-#   used to modify or extend the base devicetree.
-# - EXTRA_DTC_OVERLAY_FILE: list of extra devicetree overlay files.
-#   This variable is similar to DTC_OVERLAY_FILE but the files in
-#   EXTRA_DTC_OVERLAY_FILE will be applied after DTC_OVERLAY_FILE and
-#   thus files specified by EXTRA_DTC_OVERLAY_FILE have higher precedence.
-# - EXTRA_DTC_FLAGS: list of extra command line options to pass to
-#   dtc when using it to check for additional errors and warnings;
-#   invalid flags are automatically filtered out of the list
-# - DTS_EXTRA_CPPFLAGS: extra command line options to pass to the
-#   C preprocessor when generating the devicetree from DTS_SOURCE
-# - DTS_SOURCE: the devicetree source file to use may be pre-set
 #   with this variable; otherwise, it defaults to
 #   ${BOARD_DIRECTORIES}/<normalized_board_target>.dts
 #

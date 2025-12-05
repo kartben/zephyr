@@ -2,35 +2,53 @@
 #
 # Copyright (c) 2021, Nordic Semiconductor ASA
 
-# Snippets support
-#
-# This module:
-#
-# - searches for snippets in zephyr and any modules
-# - validates the SNIPPET input variable, if any
-#
-# If SNIPPET contains a snippet name that is not found, an error
-# will be raised, and the list of valid snippets will be printed.
-#
-# Outcome:
-# The following variables will be defined when this module completes:
-#
-# - SNIPPET_AS_LIST: CMake list of snippet names, created from the
-#   SNIPPET variable
-# - SNIPPET_ROOT: CMake list of snippet roots, deduplicated and with
-#   ZEPHYR_BASE appended at the end
-#
-# The following variables may be updated when this module completes:
-# - DTC_OVERLAY_FILE
-# - OVERLAY_CONFIG
-#
-# The following targets will be defined when this CMake module completes:
-# - snippets: when invoked, a list of valid snippets will be printed
-#
-# Optional variables:
-# - SNIPPET_ROOT: input CMake list of snippet roots (directories containing
-#   additional snippet implementations); this should not include ZEPHYR_BASE,
-#   as that will be added by this module
+#[=======================================================================[.rst:
+snippets
+--------
+
+Snippet discovery and validation module.
+
+This module searches for snippets in Zephyr and any modules, and validates
+the ``SNIPPET`` input variable. Snippets are reusable configuration fragments
+that can be applied to applications.
+
+If ``SNIPPET`` contains an unknown snippet name, an error is raised and valid
+snippets are listed.
+
+Outcome
+^^^^^^^
+
+The following variables are set when this module completes:
+
+.. cmake:variable:: SNIPPET_AS_LIST
+
+   CMake list of snippet names from the ``SNIPPET`` variable.
+
+.. cmake:variable:: SNIPPET_ROOT
+
+   CMake list of snippet root directories (deduplicated, with ``ZEPHYR_BASE``
+   appended).
+
+The following variables may be updated:
+
+- ``DTC_OVERLAY_FILE``
+- ``OVERLAY_CONFIG``
+
+Targets
+^^^^^^^
+
+``snippets``
+   When invoked, prints a list of all valid snippets.
+
+Optional Variables
+^^^^^^^^^^^^^^^^^^
+
+.. cmake:variable:: SNIPPET_ROOT
+
+   Input list of snippet root directories. Should not include ``ZEPHYR_BASE``
+   as it is added automatically.
+
+#]=======================================================================]
 
 include_guard(GLOBAL)
 

@@ -2,22 +2,53 @@
 #
 # Copyright (c) 2021-2023, Nordic Semiconductor ASA
 
-# Convert Zephyr roots to absolute paths.
-#
-# This CMake module will convert all relative paths in existing ROOT lists to
-# absolute path relative from APPLICATION_SOURCE_DIR.
-#
-# Optional variables:
-# - ARCH_ROOT:       CMake list of arch roots containing arch implementations
-# - SOC_ROOT:        CMake list of SoC roots containing SoC implementations
-# - BOARD_ROOT:      CMake list of board roots containing board and shield implementations
-# - MODULE_EXT_ROOT: CMake list of module external roots containing module glue code
-# - SCA_ROOT:        CMake list of SCA roots containing static code analysis integration code
-# - DTS_ROOT:        CMake list of DTS roots containing device tree bindings or includes
-#
-# If a root is defined it will check the list of paths in the root and convert
-# any relative path to absolute path and update the root list.
-# If a root is undefined it will still be undefined when this module has loaded.
+#[=======================================================================[.rst:
+root
+----
+
+Convert Zephyr root paths to absolute paths.
+
+This module converts all relative paths in existing ROOT lists to absolute
+paths relative to ``APPLICATION_SOURCE_DIR``. This ensures consistent path
+handling across the build system.
+
+Optional Variables
+^^^^^^^^^^^^^^^^^^
+
+.. cmake:variable:: ARCH_ROOT
+
+   CMake list of arch roots containing architecture implementations.
+
+.. cmake:variable:: SOC_ROOT
+
+   CMake list of SoC roots containing SoC implementations.
+
+.. cmake:variable:: BOARD_ROOT
+
+   CMake list of board roots containing board and shield implementations.
+
+.. cmake:variable:: MODULE_EXT_ROOT
+
+   CMake list of module external roots containing module glue code.
+
+.. cmake:variable:: SCA_ROOT
+
+   CMake list of SCA roots containing static code analysis integration.
+
+.. cmake:variable:: DTS_ROOT
+
+   CMake list of DTS roots containing devicetree bindings or includes.
+
+Behavior
+^^^^^^^^
+
+For each defined root variable:
+
+- Relative paths are converted to absolute paths (relative to ``APPLICATION_SOURCE_DIR``)
+- The root list is updated with absolute paths
+- Undefined roots remain undefined
+
+#]=======================================================================]
 
 include_guard(GLOBAL)
 

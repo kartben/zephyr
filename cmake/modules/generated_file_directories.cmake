@@ -1,23 +1,31 @@
 # SPDX-License-Identifier: Apache-2.0
 
-include_guard(GLOBAL)
+#[=======================================================================[.rst:
+generated_file_directories
+---------------------------
 
-# This file creates locations in the build directory
-# for placing generated files.
-#
-# Outcome:
-# - BINARY_DIR_INCLUDE is set to ${PROJECT_BINARY_DIR}/include
-# - BINARY_DIR_INCLUDE_GENERATED is set to ${BINARY_DIR_INCLUDE}/generated/zephyr
-# - BINARY_DIR_INCLUDE_GENERATED is a directory
-#
-# Required variables:
-# None
-#
-# Optional variables:
-# None
-#
-# Optional environment variables:
-# None
+Create standard directories for generated files in the build directory.
+
+This module creates the directory structure used by the Zephyr build system
+for placing generated header files and other generated content.
+
+Outcome
+^^^^^^^
+
+The following variables are set when this module completes:
+
+.. cmake:variable:: BINARY_DIR_INCLUDE
+
+   Set to ``${PROJECT_BINARY_DIR}/include``.
+
+.. cmake:variable:: BINARY_DIR_INCLUDE_GENERATED
+
+   Set to ``${BINARY_DIR_INCLUDE}/generated/zephyr``. This directory is
+   created if it does not exist.
+
+#]=======================================================================]
+
+include_guard(GLOBAL)
 
 set(BINARY_DIR_INCLUDE ${PROJECT_BINARY_DIR}/include)
 set(BINARY_DIR_INCLUDE_GENERATED ${BINARY_DIR_INCLUDE}/generated/zephyr)

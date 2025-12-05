@@ -4,7 +4,8 @@ zephyr_iterable_section
 .. cmake:signature::
    zephyr_iterable_section(NAME <name> [GROUP <group>]
                           [VMA <region|group>] [LMA <region|group>]
-                          [ALIGN_WITH_INPUT] [SUBALIGN <alignment>]
+                          [ADDRESS <address>] [ALIGN_WITH_INPUT]
+                          [NUMERIC] [SUBALIGN <alignment>]
    )
 
    Define an output section which will set up an iterable area
@@ -12,7 +13,7 @@ zephyr_iterable_section
    Input sections will be sorted by name in lexicographical order.
 
    Each list for an input section will define the following linker symbols:
-   - `` _<name>_list_start``: Start of the iterable list
+   - ``_<name>_list_start``: Start of the iterable list
    - ``_<name>_list_end``: End of the iterable list
 
    The output section will be named `<name>_area` and define the following linker
@@ -34,16 +35,16 @@ zephyr_iterable_section
    The options are:
 
    ``NAME <name>``
-     Name of the struct type, the output section be named
-     accordingly as: <name>_area.
+     Name of the struct type, the output section will be named
+     accordingly: <name>_area.
 
    ``VMA <region|group>``
-     VMA Memory region where code / data is located runtime (VMA)
+     Memory region where code/data is located at runtime (Virtual Memory Address)
 
    ``LMA <region|group>``
-     Memory region where code / data is loaded (LMA)
-     If VMA is different from LMA, the code / data will be loaded from LMA into VMA at bootup, this
-     is usually the case for global or static variables that are loaded in rom and copied to ram at
+     Memory region where code/data is loaded (Load Memory Address).
+     If VMA is different from LMA, the code/data will be loaded from LMA into VMA at bootup. This
+     is usually the case for global or static variables that are loaded in ROM and copied to RAM at
      boot time.
 
    ``GROUP <group>``
@@ -54,7 +55,7 @@ zephyr_iterable_section
 
    ``ALIGN_WITH_INPUT``
      The alignment difference between VMA and LMA is kept
-     in tact for this section.
+     intact for this section.
 
    ``NUMERIC``
      Use numeric sorting.

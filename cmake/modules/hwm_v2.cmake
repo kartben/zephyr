@@ -2,20 +2,31 @@
 #
 # Copyright (c) 2023, Nordic Semiconductor ASA
 
-# This CMake module works together with the list_hardware.py script to obtain
-# all archs and SoC implementations defined in the Zephyr build system.
-#
-# The result from list_hardware.py is then used to generate Kconfig files for
-# the build system.
-#
-# The following files are generated in '<kconfig-binary-dir>/soc'
-# - Kconfig.defconfig: Contains references to SoC defconfig files for Zephyr integration.
-# - Kconfig: Contains references to regular SoC Kconfig files for Zephyr integration.
-# - Kconfig.soc: Contains references to generic SoC Kconfig files.
-# - Kconfig.sysbuild: Contains references to SoC sysbuild Kconfig files.
-#
-# The following file is generated in '<kconfig-binary-dir>/arch'
-# - Kconfig: Contains references to regular arch Kconfig files for Zephyr integration.
+#[=======================================================================[.rst:
+hwm_v2
+------
+
+Hardware model v2 Kconfig file generation.
+
+This module works with the ``list_hardware.py`` script to discover all
+architecture and SoC implementations in the Zephyr build system, then generates
+Kconfig files for build system integration.
+
+Generated Files
+^^^^^^^^^^^^^^^
+
+In ``<kconfig-binary-dir>/soc``:
+
+- ``Kconfig.defconfig``: SoC defconfig files for Zephyr integration
+- ``Kconfig``: Regular SoC Kconfig files for Zephyr integration
+- ``Kconfig.soc``: Generic SoC Kconfig files
+- ``Kconfig.sysbuild``: SoC sysbuild Kconfig files
+
+In ``<kconfig-binary-dir>/arch``:
+
+- ``Kconfig``: Regular arch Kconfig files for Zephyr integration
+
+#]=======================================================================]
 
 include_guard(GLOBAL)
 

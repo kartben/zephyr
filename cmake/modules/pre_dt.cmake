@@ -2,31 +2,57 @@
 #
 # Copyright (c) 2021, 2023 Nordic Semiconductor ASA
 
+#[=======================================================================[.rst:
+pre_dt
+------
+
+Finalize devicetree root paths before devicetree processing.
+
+This module finalizes the ``DTS_ROOT`` variable so the build system knows
+where to find all devicetree files, bindings, and vendor prefixes. It must
+be included before the main :cmake:module:`dts` module.
+
+Outcome
+^^^^^^^
+
+The following variables are set when this module completes:
+
+.. cmake:variable:: DTS_ROOT
+
+   Deduplicated list of devicetree implementation file locations (bindings,
+   vendor prefixes, etc.).
+
+.. cmake:variable:: DTS_ROOT_SYSTEM_INCLUDE_DIRS
+
+   Space-separated paths for C preprocessor #includes in devicetree files.
+
+Optional Variables
+^^^^^^^^^^^^^^^^^^
+
+.. cmake:variable:: APPLICATION_SOURCE_DIR
+
+   Application path (added to ``DTS_ROOT``).
+
+.. cmake:variable:: BOARD_DIR
+
+   Board definition directory (added to ``DTS_ROOT``).
+
+.. cmake:variable:: DTS_ROOT
+
+   Initial ``DTS_ROOT`` contents may be pre-populated.
+
+.. cmake:variable:: ZEPHYR_BASE
+
+   Zephyr repository path (added to ``DTS_ROOT``).
+
+.. cmake:variable:: SHIELD_DIRS
+
+   Shield definition paths (added to ``DTS_ROOT``).
+
+#]=======================================================================]
+
 include_guard(GLOBAL)
 include(extensions)
-
-# Finalize the value of DTS_ROOT, so we know where all our
-# DTS files, bindings, and vendor prefixes are.
-#
-# Outcome:
-# The following variables will be defined when this CMake module completes:
-#
-# - DTS_ROOT: a deduplicated list of places where devicetree
-#   implementation files (like bindings, vendor prefixes, etc.) are
-#   found
-# - DTS_ROOT_SYSTEM_INCLUDE_DIRS: set to "PATH1 PATH2 ...",
-#   with one path per potential location where C preprocessor #includes
-#   may be found for devicetree files
-#
-# Required variables:
-# None.
-#
-# Optional variables:
-# - APPLICATION_SOURCE_DIR: path to app (added to DTS_ROOT)
-# - BOARD_DIR: directory containing the board definition (added to DTS_ROOT)
-# - DTS_ROOT: initial contents may be populated here
-# - ZEPHYR_BASE: path to zephyr repository (added to DTS_ROOT)
-# - SHIELD_DIRS: paths to shield definitions (added to DTS_ROOT)
 
 # Using a function avoids polluting the parent scope unnecessarily.
 function(pre_dt_module_run)

@@ -2,11 +2,40 @@
 #
 # Copyright (c) 2021, Nordic Semiconductor ASA
 
-# This CMake module will load all Zephyr CMake modules in correct order for
-# default Zephyr build system.
-#
-# Outcome:
-# See individual CMake module descriptions
+#[=======================================================================[.rst:
+zephyr_default
+--------------
+
+Load all Zephyr CMake modules in the correct order.
+
+This module loads all required Zephyr CMake modules in the proper sequence
+for the default Zephyr build system. It serves as the main entry point for
+setting up a standard Zephyr build.
+
+The module:
+
+- Sets minimum CMake version requirements
+- Discovers workspace and application build configurations
+- Loads core Zephyr modules in dependency order
+- Sets up toolchain, board, and SoC configuration
+- Configures devicetree, Kconfig, and build targets
+
+Outcome
+^^^^^^^
+
+All standard Zephyr build system modules are loaded and configured. See
+individual module documentation for specific outcomes:
+
+- :cmake:module:`extensions`
+- :cmake:module:`root`
+- :cmake:module:`boards`
+- :cmake:module:`shields`
+- :cmake:module:`snippets`
+- :cmake:module:`kconfig`
+- :cmake:module:`dts`
+- And others
+
+#]=======================================================================]
 
 include_guard(GLOBAL)
 
