@@ -50,7 +50,7 @@ Example of a Lattice iCE40 FPGA using SPI:
 
    &spi0 {
        status = "okay";
-       
+
        fpga: fpga@0 {
            compatible = "lattice,ice40-fpga";
            reg = <0>;
@@ -83,7 +83,7 @@ Example of referencing an FPGA device:
        chosen {
            zephyr,fpga = &fpga0;
        };
-       
+
        aliases {
            fpga0 = &fpga0;
        };
@@ -100,9 +100,9 @@ Zephyr device APIs.
 
    #include <zephyr/device.h>
    #include <zephyr/drivers/fpga.h>
-   
+
    const struct device *fpga_dev = DEVICE_DT_GET(DT_NODELABEL(fpga0));
-   
+
    if (!device_is_ready(fpga_dev)) {
        printk("FPGA device is not ready\n");
        return -ENODEV;
@@ -119,27 +119,27 @@ in the application binary.
    :caption: Loading a bitstream into the FPGA
 
    #include <zephyr/drivers/fpga.h>
-   
+
    /* Bitstream data (example - typically loaded from file or embedded) */
    extern uint32_t fpga_bitstream[];
    extern uint32_t fpga_bitstream_size;
-   
+
    int ret;
-   
+
    /* Check FPGA status before loading */
    enum FPGA_status status = fpga_get_status(fpga_dev);
    if (status != FPGA_STATUS_ACTIVE) {
        printk("FPGA is not in active state\n");
        return -EBUSY;
    }
-   
+
    /* Load the bitstream */
    ret = fpga_load(fpga_dev, fpga_bitstream, fpga_bitstream_size);
    if (ret < 0) {
        printk("Failed to load bitstream: %d\n", ret);
        return ret;
    }
-   
+
    printk("Bitstream loaded successfully\n");
 
 Resetting the FPGA
@@ -156,7 +156,7 @@ to reset the FPGA.
        printk("Failed to reset FPGA: %d\n", ret);
        return ret;
    }
-   
+
    printk("FPGA reset successfully\n");
 
 Power Control
@@ -174,9 +174,9 @@ on or off.
        printk("Failed to turn on FPGA: %d\n", ret);
        return ret;
    }
-   
+
    /* Perform operations with FPGA... */
-   
+
    /* Turn off the FPGA to save power */
    ret = fpga_off(fpga_dev);
    if (ret < 0) {
@@ -199,7 +199,7 @@ You can query the FPGA's status and retrieve device information.
    } else {
        printk("FPGA is inactive\n");
    }
-   
+
    /* Get device information */
    const char *info = fpga_get_info(fpga_dev);
    printk("FPGA Info: %s\n", info);
@@ -221,41 +221,41 @@ Available shell commands:
 
 ``fpga load <device> <address> <size>``
   Load a bitstream from the specified memory address into the FPGA device.
-  
+
   Example:
-  
+
   .. code-block:: console
-  
+
      uart:~$ fpga load fpga0 0x20010000 75960
      FPGA: loading bitstream
 
 ``fpga reset <device>``
   Reset the specified FPGA device.
-  
+
   Example:
-  
+
   .. code-block:: console
-  
+
      uart:~$ fpga reset fpga0
      FPGA: resetting FPGA
 
 ``fpga status <device>``
   Display the status of the specified FPGA device.
-  
+
   Example:
-  
+
   .. code-block:: console
-  
+
      uart:~$ fpga status fpga0
      FPGA status: ACTIVE
 
 ``fpga info <device>``
   Display information about the specified FPGA device.
-  
+
   Example:
-  
+
   .. code-block:: console
-  
+
      uart:~$ fpga info fpga0
      FPGA Info: Xilinx Zynq UltraScale+ MPSoC
 
