@@ -192,6 +192,34 @@ ADC operations can also be performed directly on an ADC controller device and ex
 configuration, using :c:func:`adc_channel_setup` and :c:func:`adc_read` without
 :c:struct:`adc_dt_spec`.
 
+DMA Support
+***********
+
+Some ADC drivers support Direct Memory Access (DMA) for efficient data transfers. When enabled,
+DMA allows the ADC hardware to transfer samples directly to memory without CPU intervention,
+reducing overhead and improving performance for high-speed or continuous sampling applications.
+
+DMA support is driver-specific and typically requires:
+
+1. Enabling the appropriate Kconfig option (for example,
+   :kconfig:option:`CONFIG_ADC_STM32_DMA` for STM32 devices).
+2. Configuring the ``dmas`` property in the Devicetree to associate a DMA channel
+   with the ADC peripheral.
+
+Example Devicetree configuration for an STM32 ADC with DMA:
+
+.. code-block:: devicetree
+
+   &adc1 {
+       dmas = <&dma1 1 0 (STM32_DMA_PERIPH_RX | STM32_DMA_MEM_16BITS |
+                         STM32_DMA_PERIPH_16BITS)>;
+       dma-names = "adc";
+   };
+
+When DMA is enabled, the ADC driver automatically uses DMA transfers for :c:func:`adc_read`
+operations. The application code remains unchanged; the driver handles DMA setup and
+completion internally.
+
 Configuration Options
 *********************
 
