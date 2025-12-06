@@ -98,6 +98,49 @@ Example of an SPI controller definition:
        status = "okay";
    };
 
+Pin Control
+===========
+
+SPI controllers typically require pin control configuration to route the SPI signals
+(SCLK, MOSI, MISO) to the appropriate physical pins on the SoC. This is handled by the
+:ref:`pinctrl-guide` subsystem, which manages pin multiplexing and pin configuration
+parameters (such as pull-up/down resistors, drive strength, etc.).
+
+Pin control configuration is specified in the Devicetree using ``pinctrl-N`` and
+``pinctrl-names`` properties. The most common state is ``default``, which is applied
+when the SPI controller is initialized.
+
+Example of an SPI controller with pin control configuration:
+
+.. code-block:: devicetree
+
+   &pinctrl {
+       spi0_default: spi0_default {
+           group1 {
+               psels = <NRF_PSEL(SPIM_SCK, 0, 15)>,
+                       <NRF_PSEL(SPIM_MOSI, 0, 16)>,
+                       <NRF_PSEL(SPIM_MISO, 0, 17)>;
+           };
+       };
+   };
+
+   &spi0 {
+       compatible = "nordic,nrf-spi";
+       status = "okay";
+       pinctrl-0 = <&spi0_default>;
+       pinctrl-names = "default";
+       cs-gpios = <&gpio0 18 GPIO_ACTIVE_LOW>;
+   };
+
+The pin control subsystem ensures that the correct pins are configured before the SPI
+controller is used. For more information on pin control configuration, see the
+:ref:`pinctrl-guide` documentation.
+
+.. note::
+
+   Chip select (CS) pins are typically configured separately using the ``cs-gpios``
+   property, as they are managed by the SPI driver rather than the pin control subsystem.
+
 SPI Devices
 ===========
 
