@@ -229,9 +229,6 @@ Main configuration options:
 * :kconfig:option:`CONFIG_ADC_ASYNC`
 * :kconfig:option:`CONFIG_ADC_STREAM`
 * :kconfig:option:`CONFIG_ADC_SHELL`
-* :kconfig:option:`CONFIG_ADC_CONFIGURABLE_INPUTS`
-* :kconfig:option:`CONFIG_ADC_CONFIGURABLE_EXCITATION_CURRENT_SOURCE_PIN`
-* :kconfig:option:`CONFIG_ADC_CONFIGURABLE_VBIAS_PIN`
 
 
 API Reference
