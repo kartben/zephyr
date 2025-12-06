@@ -255,6 +255,9 @@ For read-only operations, use :c:func:`spi_read_dt`:
        printk("SPI read failed: %d\n", ret);
    }
 
+Refer to :zephyr:code-sample:`spi-nor` for a complete example of basic SPI operations using the
+:c:struct:`spi_dt_spec` structure to interact with a SPI NOR flash device.
+
 Scatter-Gather Transfers
 =========================
 
