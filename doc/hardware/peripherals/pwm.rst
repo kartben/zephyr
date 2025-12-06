@@ -40,6 +40,15 @@ PWM controllers are defined in the Devicetree as nodes with the ``pwm-controller
 The ``#pwm-cells`` property typically specifies that 3 cells are used to describe a PWM output:
 the channel number, the period in nanoseconds, and flags (such as polarity).
 
+PWM Channels
+============
+
+A PWM controller typically supports multiple independent output channels. Each channel can
+generate a PWM signal with its own duty cycle, though channels often share the same period
+(frequency) due to hardware constraints. For example, a 4-channel PWM controller might have
+channels 0-3, each capable of driving a separate output pin. When referencing a PWM channel
+in the Devicetree, you specify both the controller and the channel number.
+
 Example of a PWM controller definition:
 
 .. code-block:: devicetree
@@ -74,69 +83,15 @@ Basic Operation
 ***************
 
 PWM operations are usually performed on a :c:struct:`pwm_dt_spec` structure, which is a container
-for the PWM channel information specified in the Devicetree.
+for the PWM channel information specified in the Devicetree. This structure is typically populated
+using :c:macro:`PWM_DT_SPEC_GET` macro (or any of its variants), then used with functions like
+:c:func:`pwm_set_dt` to control the PWM signal.
 
-This structure is typically populated using :c:macro:`PWM_DT_SPEC_GET` macro (or any of its
-variants).
+PWM operations can also be performed directly on a PWM controller device using the channel number
+with functions like :c:func:`pwm_set`, which takes a device pointer and channel number as arguments.
 
-.. code-block:: c
-   :caption: Populating a pwm_dt_spec structure for a PWM output defined as alias ``pwm_led0``
-
-   #define PWM_LED0_NODE DT_ALIAS(pwm_led0)
-   static const struct pwm_dt_spec pwm_led = PWM_DT_SPEC_GET(PWM_LED0_NODE);
-
-The :c:struct:`pwm_dt_spec` structure can then be used to perform PWM operations.
-
-.. code-block:: c
-   :caption: Check if PWM device is ready and set a 50% duty cycle
-
-   int ret;
-
-   if (!pwm_is_ready_dt(&pwm_led)) {
-       printk("Error: PWM device is not ready\n");
-       return -ENODEV;
-   }
-
-   /* Set period to 20ms (50Hz) with 50% duty cycle */
-   ret = pwm_set_dt(&pwm_led, PWM_MSEC(20), PWM_MSEC(10));
-   if (ret < 0) {
-       printk("Error: failed to set PWM\n");
-       return ret;
-   }
-
-.. code-block:: c
-   :caption: Fade an LED by varying the pulse width
-
-   uint32_t period = PWM_MSEC(20);
-   uint32_t pulse_width = 0;
-
-   /* Gradually increase brightness */
-   for (int i = 0; i <= 100; i++) {
-       pulse_width = (period * i) / 100;
-       pwm_set_dt(&pwm_led, period, pulse_width);
-       k_msleep(20);
-   }
-
-PWM operations can also be performed directly on a PWM controller device using the channel number.
-In this case, you will use the PWM API functions that take a device pointer as an argument, such as
-:c:func:`pwm_set` instead of :c:func:`pwm_set_dt`.
-
-.. code-block:: c
-   :caption: Direct device operation
-
-   const struct device *pwm_dev = DEVICE_DT_GET(DT_NODELABEL(pwm0));
-   uint32_t period = PWM_MSEC(20);
-   uint32_t pulse = PWM_MSEC(10);
-
-   if (!device_is_ready(pwm_dev)) {
-       return -ENODEV;
-   }
-
-   /* Set PWM on channel 0 */
-   pwm_set(pwm_dev, 0, period, pulse, PWM_POLARITY_NORMAL);
-
-Refer to :zephyr:code-sample:`blinky_pwm` for a complete example of basic PWM operations using the
-:c:struct:`pwm_dt_spec` structure.
+For complete examples of PWM signal generation, including LED control and varying duty cycles,
+see :zephyr:code-sample:`blinky_pwm`.
 
 Period and Pulse Width Units
 =============================
@@ -192,77 +147,13 @@ Capture can be performed in two modes:
 - **Single-shot capture**: Captures a single period and/or pulse width, then stops.
 - **Continuous capture**: Continuously captures PWM signals and invokes a callback for each capture.
 
-Simple Capture Example
-=======================
+The capture API includes functions for blocking capture (:c:func:`pwm_capture_cycles`,
+:c:func:`pwm_capture_usec`, :c:func:`pwm_capture_nsec`) as well as non-blocking capture with
+callbacks (:c:func:`pwm_configure_capture`, :c:func:`pwm_enable_capture`,
+:c:func:`pwm_disable_capture`).
 
-The simplest way to capture a PWM signal is using the blocking capture functions:
-
-.. code-block:: c
-   :caption: Capture PWM signal period and pulse width
-
-   const struct device *pwm_dev = DEVICE_DT_GET(DT_NODELABEL(pwm0));
-   uint64_t period_nsec, pulse_nsec;
-   int ret;
-
-   ret = pwm_capture_nsec(pwm_dev, 0, PWM_CAPTURE_TYPE_BOTH | PWM_CAPTURE_MODE_SINGLE,
-                          &period_nsec, &pulse_nsec, K_MSEC(1000));
-   if (ret < 0) {
-       printk("PWM capture failed: %d\n", ret);
-       return ret;
-   }
-
-   printk("Period: %llu ns, Pulse: %llu ns\n", period_nsec, pulse_nsec);
-   if (period_nsec > 0) {
-       printk("Frequency: %llu Hz, Duty cycle: %llu%%\n",
-              (uint64_t)NSEC_PER_SEC / period_nsec,
-              (pulse_nsec * 100) / period_nsec);
-   }
-
-Continuous Capture with Callback
-=================================
-
-For continuous capture, you can configure a callback function that will be invoked for each
-captured PWM cycle:
-
-.. code-block:: c
-   :caption: Continuous PWM capture with callback
-
-   void pwm_capture_callback(const struct device *dev, uint32_t channel,
-                            uint32_t period_cycles, uint32_t pulse_cycles,
-                            int status, void *user_data)
-   {
-       if (status < 0) {
-           printk("Capture error: %d\n", status);
-           return;
-       }
-
-       /* Convert cycles to time units if needed */
-       printk("Captured: period=%u cycles, pulse=%u cycles\n",
-              period_cycles, pulse_cycles);
-   }
-
-   int start_continuous_capture(void)
-   {
-       const struct device *pwm_dev = DEVICE_DT_GET(DT_NODELABEL(pwm0));
-       int ret;
-
-       /* Configure capture with callback */
-       ret = pwm_configure_capture(pwm_dev, 0, PWM_CAPTURE_TYPE_BOTH | PWM_CAPTURE_MODE_CONTINUOUS,
-                                   pwm_capture_callback, NULL);
-       if (ret < 0) {
-           return ret;
-       }
-
-       /* Enable capture */
-       ret = pwm_enable_capture(pwm_dev, 0);
-       if (ret < 0) {
-           return ret;
-       }
-
-       return 0;
-   }
-
-Refer to :zephyr:code-sample:`capture` for a complete example of PWM capture functionality.
+For a complete example demonstrating both single-shot and continuous PWM capture,
+see :zephyr:code-sample:`capture`.
 
 Configuration Options
 *********************
