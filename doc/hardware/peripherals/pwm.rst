@@ -60,7 +60,6 @@ Example of referencing a PWM output:
        compatible = "pwm-leds";
        pwm_led {
            pwms = <&pwm0 0 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
-           label = "PWM LED 0";
        };
    };
 
@@ -213,9 +212,11 @@ The simplest way to capture a PWM signal is using the blocking capture functions
    }
 
    printk("Period: %llu ns, Pulse: %llu ns\n", period_nsec, pulse_nsec);
-   printk("Frequency: %llu Hz, Duty cycle: %llu%%\n",
-          (uint64_t)NSEC_PER_SEC / period_nsec,
-          (pulse_nsec * 100) / period_nsec);
+   if (period_nsec > 0) {
+       printk("Frequency: %llu Hz, Duty cycle: %llu%%\n",
+              (uint64_t)NSEC_PER_SEC / period_nsec,
+              (pulse_nsec * 100) / period_nsec);
+   }
 
 Continuous Capture with Callback
 =================================
