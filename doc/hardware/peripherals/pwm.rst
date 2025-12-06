@@ -110,7 +110,7 @@ The :c:struct:`pwm_dt_spec` structure can then be used to perform PWM operations
 
    uint32_t period = PWM_MSEC(20);
    uint32_t pulse_width = 0;
-   
+
    /* Gradually increase brightness */
    for (int i = 0; i <= 100; i++) {
        pulse_width = (period * i) / 100;
@@ -128,11 +128,11 @@ In this case, you will use the PWM API functions that take a device pointer as a
    const struct device *pwm_dev = DEVICE_DT_GET(DT_NODELABEL(pwm0));
    uint32_t period = PWM_MSEC(20);
    uint32_t pulse = PWM_MSEC(10);
-   
+
    if (!device_is_ready(pwm_dev)) {
        return -ENODEV;
    }
-   
+
    /* Set PWM on channel 0 */
    pwm_set(pwm_dev, 0, period, pulse, PWM_POLARITY_NORMAL);
 
@@ -159,7 +159,7 @@ These macros can be used both in Devicetree and in C code.
 
    /* 1 kHz PWM signal (1ms period) with 25% duty cycle */
    pwm_set_dt(&pwm_led, PWM_KHZ(1), PWM_USEC(250));
-   
+
    /* 50 Hz PWM signal (20ms period) with 75% duty cycle */
    pwm_set_dt(&pwm_led, PWM_HZ(50), PWM_MSEC(15));
 
@@ -204,7 +204,7 @@ The simplest way to capture a PWM signal is using the blocking capture functions
    const struct device *pwm_dev = DEVICE_DT_GET(DT_NODELABEL(pwm0));
    uint64_t period_nsec, pulse_nsec;
    int ret;
-   
+
    ret = pwm_capture_nsec(pwm_dev, 0,
                           PWM_CAPTURE_TYPE_BOTH | PWM_CAPTURE_MODE_SINGLE,
                           &period_nsec, &pulse_nsec, K_MSEC(1000));
@@ -212,7 +212,7 @@ The simplest way to capture a PWM signal is using the blocking capture functions
        printk("PWM capture failed: %d\n", ret);
        return ret;
    }
-   
+
    printk("Period: %llu ns, Pulse: %llu ns\n", period_nsec, pulse_nsec);
    printk("Frequency: %llu Hz, Duty cycle: %llu%%\n",
           (uint64_t)NSEC_PER_SEC / period_nsec,
@@ -235,7 +235,7 @@ captured PWM cycle:
            printk("Capture error: %d\n", status);
            return;
        }
-       
+
        /* Convert cycles to time units if needed */
        printk("Captured: period=%u cycles, pulse=%u cycles\n",
               period_cycles, pulse_cycles);
@@ -245,7 +245,7 @@ captured PWM cycle:
    {
        const struct device *pwm_dev = DEVICE_DT_GET(DT_NODELABEL(pwm0));
        int ret;
-       
+
        /* Configure capture with callback */
        ret = pwm_configure_capture(pwm_dev, 0,
                                    PWM_CAPTURE_TYPE_BOTH | PWM_CAPTURE_MODE_CONTINUOUS,
@@ -253,13 +253,13 @@ captured PWM cycle:
        if (ret < 0) {
            return ret;
        }
-       
+
        /* Enable capture */
        ret = pwm_enable_capture(pwm_dev, 0);
        if (ret < 0) {
            return ret;
        }
-       
+
        return 0;
    }
 
