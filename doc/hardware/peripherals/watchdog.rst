@@ -93,15 +93,11 @@ This defines the timeout window and reset behavior:
    :caption: Installing a basic watchdog timeout
 
    struct wdt_timeout_cfg wdt_config = {
-       /* Reset SoC when watchdog timer expires */
-       .flags = WDT_FLAG_RESET_SOC,
-       
+       .flags = WDT_FLAG_RESET_SOC,  /* Reset SoC when watchdog timer expires */
        /* Expire watchdog after 1000ms */
        .window.min = 0U,
        .window.max = 1000U,
-       
-       /* No callback */
-       .callback = NULL,
+       .callback = NULL,  /* No callback */
    };
 
    int channel_id = wdt_install_timeout(wdt, &wdt_config);
@@ -169,11 +165,8 @@ or too late (after max) will trigger the watchdog.
 
    struct wdt_timeout_cfg wdt_config = {
        .flags = WDT_FLAG_RESET_SOC,
-       
-       /* Must feed between 100ms and 1000ms */
-       .window.min = 100U,
+       .window.min = 100U,  /* Must feed between 100ms and 1000ms */
        .window.max = 1000U,
-       
        .callback = NULL,
    };
 
@@ -202,7 +195,6 @@ as logging diagnostic information.
    {
        /* This is called when timeout occurs, before reset */
        printk("Watchdog timeout on channel %d! System will reset.\n", channel_id);
-       
        /* Can perform emergency actions here */
        /* Note: Time is limited, keep actions minimal */
    }
