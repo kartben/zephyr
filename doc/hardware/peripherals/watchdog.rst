@@ -140,13 +140,13 @@ Once the watchdog is active, it must be fed periodically before the timeout expi
    while (1) {
        /* Do application work */
        do_application_work();
-       
+
        /* Feed the watchdog before timeout expires */
        ret = wdt_feed(wdt, channel_id);
        if (ret < 0) {
            printk("Watchdog feed error (err %d)\n", ret);
        }
-       
+
        /* Sleep for a duration less than the watchdog timeout */
        k_msleep(500);
    }
