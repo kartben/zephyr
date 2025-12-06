@@ -79,6 +79,52 @@ In this example:
 - ``PWM_MSEC(20)`` is the period (20 milliseconds).
 - ``PWM_POLARITY_NORMAL`` indicates normal polarity (active-high).
 
+Pin Control
+===========
+
+PWM controllers require pin control configuration to route PWM signals to physical pins.
+Pin control (pinctrl) handles the pin multiplexing and electrical configuration needed for
+the PWM output to function correctly. This includes selecting which physical pins are used
+for PWM output, configuring pin drive strength, and setting other electrical properties.
+
+Most PWM drivers require a ``pinctrl-0`` property referencing a pin configuration state,
+typically named ``default``. Some drivers may also support additional states like ``sleep``
+for power management. The pin control configuration is defined separately, usually in a
+board-specific pinctrl dtsi file.
+
+Example PWM node with pin control:
+
+.. code-block:: devicetree
+
+   &pwm0 {
+       status = "okay";
+       pinctrl-0 = <&pwm0_default>;
+       pinctrl-1 = <&pwm0_sleep>;
+       pinctrl-names = "default", "sleep";
+   };
+
+The actual pin control configuration (``pwm0_default`` and ``pwm0_sleep`` in this example)
+is defined in a separate pinctrl node specific to the SoC/board. For example:
+
+.. code-block:: devicetree
+
+   &pinctrl {
+       pwm0_default: pwm0_default {
+           group1 {
+               psels = <NRF_PSEL(PWM_OUT0, 0, 13)>;
+           };
+       };
+
+       pwm0_sleep: pwm0_sleep {
+           group1 {
+               psels = <NRF_PSEL(PWM_OUT0, 0, 13)>;
+               low-power-enable;
+           };
+       };
+   };
+
+For more information about pin control configuration, see :ref:`pinctrl-guide`.
+
 Basic Operation
 ***************
 
