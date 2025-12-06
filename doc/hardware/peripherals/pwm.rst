@@ -205,8 +205,7 @@ The simplest way to capture a PWM signal is using the blocking capture functions
    uint64_t period_nsec, pulse_nsec;
    int ret;
 
-   ret = pwm_capture_nsec(pwm_dev, 0,
-                          PWM_CAPTURE_TYPE_BOTH | PWM_CAPTURE_MODE_SINGLE,
+   ret = pwm_capture_nsec(pwm_dev, 0, PWM_CAPTURE_TYPE_BOTH | PWM_CAPTURE_MODE_SINGLE,
                           &period_nsec, &pulse_nsec, K_MSEC(1000));
    if (ret < 0) {
        printk("PWM capture failed: %d\n", ret);
@@ -247,8 +246,7 @@ captured PWM cycle:
        int ret;
 
        /* Configure capture with callback */
-       ret = pwm_configure_capture(pwm_dev, 0,
-                                   PWM_CAPTURE_TYPE_BOTH | PWM_CAPTURE_MODE_CONTINUOUS,
+       ret = pwm_configure_capture(pwm_dev, 0, PWM_CAPTURE_TYPE_BOTH | PWM_CAPTURE_MODE_CONTINUOUS,
                                    pwm_capture_callback, NULL);
        if (ret < 0) {
            return ret;
