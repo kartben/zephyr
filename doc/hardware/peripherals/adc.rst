@@ -116,20 +116,20 @@ Example of an ADC controller definition:
 
 .. code-block:: devicetree
 
-	lpadc0: lpadc@400af000 {
-		compatible = "nxp,lpc-lpadc";
-		reg = <0x400af000 0x1000>;
-		#io-channel-cells = <1>;
-	 };
+   lpadc0: lpadc@400af000 {
+       compatible = "nxp,lpc-lpadc";
+       reg = <0x400af000 0x1000>;
+       #io-channel-cells = <1>;
+   };
 
 Example of referencing an ADC channel from a consumer node:
 
 .. code-block:: devicetree
 
-	 temperature-sensor {
-		compatible = "nxp,lpadc-temp40";
-        	io-channels = <&lpadc0 0>;
-	 };
+   temperature-sensor {
+       compatible = "nxp,lpadc-temp40";
+       io-channels = <&lpadc0 0>;
+   };
 
 In this example, channel ``0`` of ``lpadc0`` is used to sample the temperature signal.
 
@@ -151,32 +151,74 @@ This structure is typically populated using :c:macro:`ADC_DT_SPEC_GET` (or any o
 The :c:struct:`adc_dt_spec` structure can then be used to perform ADC operations.
 
 .. code-block:: c
-   :caption: Configure an ADC channel and read a single sample into ``raw``
+   :caption: Configure an ADC channel and read a single sample
 
    int err;
-   int16_t raw;
+   uint16_t buf;
+   int32_t val_mv;
    struct adc_sequence sequence = {
-  		 .channels    = BIT(temp_adc.channel_id),
-  		 .buffer      = &raw,
-  		 .buffer_size = sizeof(raw),
-  		 .resolution  = 12,
+       .buffer      = &buf,
+       .buffer_size = sizeof(buf),
    };
+
+   if (!adc_is_ready_dt(&temp_adc)) {
+       return -ENODEV;
+   }
 
    err = adc_channel_setup_dt(&temp_adc);
    if (err < 0) {
-  		 return err;
+       return err;
    }
 
-   err = adc_read(temp_adc.dev, &sequence);
+   err = adc_sequence_init_dt(&temp_adc, &sequence);
    if (err < 0) {
-  		 return err;
+       return err;
    }
 
-   int32_t mv = adc_raw_to_millivolts_dt(&temp_adc, raw);
+   err = adc_read_dt(&temp_adc, &sequence);
+   if (err < 0) {
+       return err;
+   }
+
+   val_mv = (int32_t)buf;
+   err = adc_raw_to_millivolts_dt(&temp_adc, &val_mv);
+   if (err < 0) {
+       /* Conversion to mV not supported, val_mv is unchanged (still raw) */
+   } else {
+       /* val_mv now contains the voltage in millivolts */
+   }
 
 ADC operations can also be performed directly on an ADC controller device and explicit channel
 configuration, using :c:func:`adc_channel_setup` and :c:func:`adc_read` without
- :c:struct:`adc_dt_spec`.
+:c:struct:`adc_dt_spec`.
+
+DMA Support
+***********
+
+Some ADC drivers support Direct Memory Access (DMA) for efficient data transfers. When enabled,
+DMA allows the ADC hardware to transfer samples directly to memory without CPU intervention,
+reducing overhead and improving performance for high-speed or continuous sampling applications.
+
+DMA support is driver-specific and typically requires:
+
+1. Enabling the appropriate Kconfig option (for example,
+   :kconfig:option:`CONFIG_ADC_STM32_DMA` for STM32 devices).
+2. Configuring the ``dmas`` property in the Devicetree to associate a DMA channel
+   with the ADC peripheral.
+
+Example Devicetree configuration for an STM32 ADC with DMA:
+
+.. code-block:: devicetree
+
+   &adc1 {
+       dmas = <&dma1 1 0 (STM32_DMA_PERIPH_RX | STM32_DMA_MEM_16BITS |
+                         STM32_DMA_PERIPH_16BITS)>;
+       dma-names = "adc";
+   };
+
+When DMA is enabled, the ADC driver automatically uses DMA transfers for :c:func:`adc_read`
+operations. The application code remains unchanged; the driver handles DMA setup and
+completion internally.
 
 Configuration Options
 *********************
@@ -187,9 +229,6 @@ Main configuration options:
 * :kconfig:option:`CONFIG_ADC_ASYNC`
 * :kconfig:option:`CONFIG_ADC_STREAM`
 * :kconfig:option:`CONFIG_ADC_SHELL`
-* :kconfig:option:`CONFIG_ADC_CONFIGURABLE_INPUTS`
-* :kconfig:option:`CONFIG_ADC_CONFIGURABLE_EXCITATION_CURRENT_SOURCE_PIN`
-* :kconfig:option:`CONFIG_ADC_CONFIGURABLE_VBIAS_PIN`
 
 
 API Reference
