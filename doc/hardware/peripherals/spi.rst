@@ -107,10 +107,22 @@ SPI controllers typically require pin control configuration to route the SPI sig
 parameters (such as pull-up/down resistors, drive strength, etc.).
 
 Pin control configuration is specified in the Devicetree using ``pinctrl-N`` and
-``pinctrl-names`` properties. The most common state is ``default``, which is applied
-when the SPI controller is initialized.
+``pinctrl-names`` properties. Multiple pin control states can be defined to support
+different operating modes.
 
-Example of an SPI controller with pin control configuration:
+Pin Control States
+------------------
+
+The pin control subsystem defines two standard states:
+
+* **default**: Applied when the SPI controller is initialized and during normal operation.
+  This state configures the pins for active data transfer.
+
+* **sleep**: Applied when the device enters a low-power or sleep mode (when
+  :kconfig:option:`CONFIG_PM_DEVICE` is enabled). This state typically configures pins to
+  minimize power consumption, such as disabling pull resistors or switching to low-power modes.
+
+Example of an SPI controller with a single (default) pin control state:
 
 .. code-block:: devicetree
 
@@ -132,8 +144,40 @@ Example of an SPI controller with pin control configuration:
        cs-gpios = <&gpio0 18 GPIO_ACTIVE_LOW>;
    };
 
-The pin control subsystem ensures that the correct pins are configured before the SPI
-controller is used. For more information on pin control configuration, see the
+Example with both default and sleep states for power management:
+
+.. code-block:: devicetree
+
+   &pinctrl {
+       spi0_default: spi0_default {
+           group1 {
+               psels = <NRF_PSEL(SPIM_SCK, 0, 15)>,
+                       <NRF_PSEL(SPIM_MOSI, 0, 16)>,
+                       <NRF_PSEL(SPIM_MISO, 0, 17)>;
+           };
+       };
+
+       spi0_sleep: spi0_sleep {
+           group1 {
+               psels = <NRF_PSEL(SPIM_SCK, 0, 15)>,
+                       <NRF_PSEL(SPIM_MOSI, 0, 16)>,
+                       <NRF_PSEL(SPIM_MISO, 0, 17)>;
+               low-power-enable;
+           };
+       };
+   };
+
+   &spi0 {
+       compatible = "nordic,nrf-spi";
+       status = "okay";
+       pinctrl-0 = <&spi0_default>;
+       pinctrl-1 = <&spi0_sleep>;
+       pinctrl-names = "default", "sleep";
+       cs-gpios = <&gpio0 18 GPIO_ACTIVE_LOW>;
+   };
+
+The pin control subsystem automatically applies the appropriate state based on the device's
+power state. For more information on pin control states and configuration, see the
 :ref:`pinctrl-guide` documentation.
 
 .. note::
