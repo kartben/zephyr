@@ -54,11 +54,31 @@ endif()
 
 set(kconfig_soc_source_dir)
 
+# Process output line by line using forward iteration
+# This is more efficient and readable than reverse iteration
+set(remaining "${ret_hw}")
 while(TRUE)
-  string(FIND "${ret_hw}" "\n" idx REVERSE)
-  math(EXPR start "${idx} + 1")
-  string(SUBSTRING "${ret_hw}" ${start} -1 line)
-  string(SUBSTRING "${ret_hw}" 0 ${idx} ret_hw)
+  string(FIND "${remaining}" "\n" idx)
+  
+  if(idx EQUAL -1)
+    # Last line (no newline)
+    set(line "${remaining}")
+    set(remaining "")
+  else()
+    # Extract line
+    string(SUBSTRING "${remaining}" 0 ${idx} line)
+    # Remove line and newline from remaining
+    math(EXPR start "${idx} + 1")
+    string(SUBSTRING "${remaining}" ${start} -1 remaining)
+  endif()
+  
+  # Skip empty lines
+  if(NOT line)
+    if(idx EQUAL -1)
+      break()
+    endif()
+    continue()
+  endif()
 
   cmake_parse_arguments(HWM "" "TYPE" "" ${line})
   if(HWM_TYPE STREQUAL "arch")
