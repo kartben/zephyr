@@ -54,11 +54,20 @@ endif()
 
 set(kconfig_soc_source_dir)
 
+# Process lines by iterating forward through the output
 while(TRUE)
-  string(FIND "${ret_hw}" "\n" idx REVERSE)
-  math(EXPR start "${idx} + 1")
-  string(SUBSTRING "${ret_hw}" ${start} -1 line)
-  string(SUBSTRING "${ret_hw}" 0 ${idx} ret_hw)
+  string(FIND "${ret_hw}" "\n" idx)
+
+  if(idx EQUAL -1)
+    # Last line (or only line)
+    set(line "${ret_hw}")
+  else()
+    # Extract line from start to newline
+    string(SUBSTRING "${ret_hw}" 0 ${idx} line)
+    # Remove processed line from ret_hw
+    math(EXPR start "${idx} + 1")
+    string(SUBSTRING "${ret_hw}" ${start} -1 ret_hw)
+  endif()
 
   cmake_parse_arguments(HWM "" "TYPE" "" ${line})
   if(HWM_TYPE STREQUAL "arch")
