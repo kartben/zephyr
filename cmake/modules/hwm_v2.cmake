@@ -58,21 +58,22 @@ set(kconfig_soc_source_dir)
 # This is more readable and maintainable than the previous reverse iteration
 set(remaining "${ret_hw}")
 while(remaining)
-  string(FIND "${remaining}" "\n" idx)
+  string(FIND "${remaining}" "\n" newline_pos)
   
-  if(idx EQUAL -1)
+  if(newline_pos EQUAL -1)
     # Last line (no newline at end)
     set(line "${remaining}")
     set(remaining "")
   else()
     # Extract line up to newline
-    string(SUBSTRING "${remaining}" 0 ${idx} line)
+    string(SUBSTRING "${remaining}" 0 ${newline_pos} line)
     # Remove processed line and newline from remaining text
-    math(EXPR start "${idx} + 1")
+    math(EXPR start "${newline_pos} + 1")
     string(SUBSTRING "${remaining}" ${start} -1 remaining)
   endif()
   
-  # Skip empty lines
+  # Skip empty lines and lines with only whitespace
+  string(STRIP "${line}" line)
   if(NOT line)
     continue()
   endif()
