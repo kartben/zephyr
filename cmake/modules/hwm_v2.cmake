@@ -54,24 +54,15 @@ endif()
 
 set(kconfig_soc_source_dir)
 
-# Process output line by line using forward iteration
-# This is more readable and maintainable than the previous reverse iteration
-set(remaining "${ret_hw}")
-while(remaining)
-  string(FIND "${remaining}" "\n" newline_pos)
+# Process output line by line with O(n) complexity
+# Convert to list format by protecting existing semicolons, then replacing newlines
+string(REPLACE ";" "@@SEMICOLON@@" ret_hw_protected "${ret_hw}")
+string(REPLACE "\n" ";" hw_lines "${ret_hw_protected}")
 
-  if(newline_pos EQUAL -1)
-    # Last line (no newline at end)
-    set(line "${remaining}")
-    set(remaining "")
-  else()
-    # Extract line up to newline
-    string(SUBSTRING "${remaining}" 0 ${newline_pos} line)
-    # Remove processed line and newline from remaining text
-    math(EXPR start "${newline_pos} + 1")
-    string(SUBSTRING "${remaining}" ${start} -1 remaining)
-  endif()
-
+foreach(line IN LISTS hw_lines)
+  # Restore original semicolons in this line
+  string(REPLACE "@@SEMICOLON@@" ";" line "${line}")
+  
   # Skip empty lines and lines with only whitespace
   string(STRIP "${line}" line)
   if(NOT line)
@@ -105,7 +96,7 @@ while(remaining)
       set(SOC_${HWM_TYPE_UPPER}_${SOC_V2_NAME_UPPER}_DIR ${SOC_V2_DIR})
     endif()
   endif()
-endwhile()
+endforeach()
 list(REMOVE_DUPLICATES kconfig_soc_source_dir)
 
 # Support multiple ARCH_ROOT, SOC_ROOT and BOARD_ROOT
