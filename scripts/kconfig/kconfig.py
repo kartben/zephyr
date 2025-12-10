@@ -315,6 +315,10 @@ def collect_trace_data(kconf):
     # format changes in any way.
 
     trace_data = []
+    # Cache frequently used values for micro-optimization
+    config_prefix = kconf.config_prefix
+    trace_data_append = trace_data.append
+
     for node in kconf.node_iter(True):
         item = node.item
         if not isinstance(item, Symbol):
@@ -324,13 +328,13 @@ def collect_trace_data(kconf):
         if origin is None:
             continue
 
-        name = kconf.config_prefix + item.name
+        name = config_prefix + item.name
         kind, loc = origin
         value = None if kind == "unset" else item.str_value
 
         trace_entry = (name, TRI_TO_STR[item.visibility],
                        TYPE_TO_STR[item.type], value, kind, loc)
-        trace_data.append(trace_entry)
+        trace_data_append(trace_entry)
 
     return trace_data
 
@@ -341,8 +345,13 @@ def write_kconfig_filenames(kconf, kconfig_list_path):
     # removed. This file is used by CMake to look for changed Kconfig files. It
     # needs to be deterministic.
 
+    # Cache frequently used values for micro-optimization
+    srctree = kconf.srctree
+    realpath = os.path.realpath
+    path_join = os.path.join
+
     with open(kconfig_list_path, 'w') as out:
-        for path in sorted({os.path.realpath(os.path.join(kconf.srctree, path))
+        for path in sorted({realpath(path_join(srctree, path))
                             for path in set(kconf.kconfig_filenames)}):
             print(path, file=out)
 
