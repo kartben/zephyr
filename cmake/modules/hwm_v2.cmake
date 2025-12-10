@@ -59,6 +59,9 @@ set(kconfig_soc_source_dir)
 string(REPLACE ";" "@@SEMICOLON@@" ret_hw_protected "${ret_hw}")
 string(REPLACE "\n" ";" hw_lines "${ret_hw_protected}")
 
+# Reverse the list to maintain original processing order (last to first)
+list(REVERSE hw_lines)
+
 foreach(line IN LISTS hw_lines)
   # Restore original semicolons in this line
   string(REPLACE "@@SEMICOLON@@" ";" line "${line}")
