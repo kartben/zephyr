@@ -55,17 +55,17 @@ endif()
 set(kconfig_soc_source_dir)
 
 # Process output line by line with O(n) complexity
-# Convert to list format by protecting existing semicolons, then replacing newlines
-string(REPLACE ";" "@@SEMICOLON@@" ret_hw_protected "${ret_hw}")
-string(REPLACE "\n" ";" hw_lines "${ret_hw_protected}")
+# Escape existing semicolons so CMake treats them as text, not delimiters
+string(REPLACE ";" "\\;" escaped_content "${ret_hw}")
+# Convert newlines to semicolons to create the list structure
+string(REPLACE "\n" ";" hw_lines "${escaped_content}")
 
 # Reverse the list to match original behavior: the original used FIND REVERSE to
 # process lines from last to first, while foreach processes first to last
 list(REVERSE hw_lines)
 
 foreach(line IN LISTS hw_lines)
-  # Restore original semicolons in this line
-  string(REPLACE "@@SEMICOLON@@" ";" line "${line}")
+  # CMake automatically unescapes \; when iterating over lists
 
   # Skip empty lines and lines with only whitespace
   string(STRIP "${line}" line)
