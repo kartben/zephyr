@@ -59,7 +59,8 @@ set(kconfig_soc_source_dir)
 string(REPLACE ";" "@@SEMICOLON@@" ret_hw_protected "${ret_hw}")
 string(REPLACE "\n" ";" hw_lines "${ret_hw_protected}")
 
-# Reverse the list to maintain original processing order (last to first)
+# Reverse the list to match original behavior: the original used FIND REVERSE to
+# process lines from last to first, while foreach processes first to last
 list(REVERSE hw_lines)
 
 foreach(line IN LISTS hw_lines)
