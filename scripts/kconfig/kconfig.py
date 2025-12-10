@@ -150,8 +150,10 @@ def main():
 def check_no_promptless_assign(kconf):
     # Checks that no promptless symbols are assigned
 
+    # Micro-optimization: cache function to avoid repeated lookups
+    promptless_check = promptless
     for sym in kconf.unique_defined_syms:
-        if sym.user_value is not None and promptless(sym):
+        if sym.user_value is not None and promptless_check(sym):
             err(f"""\
 {sym.name_and_loc} is assigned in a configuration file, but is not directly
 user-configurable (has no prompt). It gets its value indirectly from other
@@ -163,6 +165,10 @@ def check_assigned_sym_values(kconf):
     # the symbols actually got), printing warnings otherwise. Choice symbols
     # are checked separately, in check_assigned_choice_values().
 
+    # Micro-optimization: cache constants and functions to avoid repeated lookups
+    tri_to_str = TRI_TO_STR
+    expr_val = expr_value
+    
     for sym in kconf.unique_defined_syms:
         if sym.choice:
             continue
@@ -174,7 +180,7 @@ def check_assigned_sym_values(kconf):
         # Tristate values are represented as 0, 1, 2. Having them as "n", "m",
         # "y" is more convenient here, so convert.
         if sym.type in (BOOL, TRISTATE):
-            user_value = TRI_TO_STR[user_value]
+            user_value = tri_to_str[user_value]
 
         if user_value != sym.str_value:
             msg = f"{sym.name_and_loc} was assigned the value '{user_value}'" \
@@ -192,7 +198,7 @@ def check_assigned_sym_values(kconf):
                         # 'FOO || BAR (=n)', which might be clearer.
                         estr = f"({estr})"
                     expr_strs.append(f"{estr} "
-                                     f"(={TRI_TO_STR[expr_value(expr)]})")
+                                     f"(={tri_to_str[expr_val(expr)]})")
 
                 msg += "Check these unsatisfied dependencies: " + \
                     ", ".join(expr_strs) + ". "
@@ -263,9 +269,12 @@ def check_deprecated(kconf):
     dep_expr = kconf.n if deprecated is None else deprecated.rev_dep
 
     if dep_expr is not kconf.n:
-        selectors = [s for s in split_expr(dep_expr, OR) if expr_value(s) == 2]
+        # Micro-optimization: cache functions to avoid repeated lookups
+        expr_val = expr_value
+        split = split_expr
+        selectors = [s for s in split(dep_expr, OR) if expr_val(s) == 2]
         for selector in selectors:
-            selector_name = split_expr(selector, AND)[0].name
+            selector_name = split(selector, AND)[0].name
             warn(f'Deprecated symbol {selector_name} is enabled.')
 
 
@@ -274,9 +283,12 @@ def check_experimental(kconf):
     dep_expr = kconf.n if experimental is None else experimental.rev_dep
 
     if dep_expr is not kconf.n:
-        selectors = [s for s in split_expr(dep_expr, OR) if expr_value(s) == 2]
+        # Micro-optimization: cache functions to avoid repeated lookups
+        expr_val = expr_value
+        split = split_expr
+        selectors = [s for s in split(dep_expr, OR) if expr_val(s) == 2]
         for selector in selectors:
-            selector_name = split_expr(selector, AND)[0].name
+            selector_name = split(selector, AND)[0].name
             warn(f'Experimental symbol {selector_name} is enabled.')
 
 def check_not_secure(kconf):
@@ -284,9 +296,12 @@ def check_not_secure(kconf):
     dep_expr = kconf.n if not_secure is None else not_secure.rev_dep
 
     if dep_expr is not kconf.n:
-        selectors = [s for s in split_expr(dep_expr, OR) if expr_value(s) == 2]
+        # Micro-optimization: cache functions to avoid repeated lookups
+        expr_val = expr_value
+        split = split_expr
+        selectors = [s for s in split(dep_expr, OR) if expr_val(s) == 2]
         for selector in selectors:
-            selector_name = split_expr(selector, AND)[0].name
+            selector_name = split(selector, AND)[0].name
             warn(f'Not secure symbol {selector_name} is enabled.')
 
 
@@ -314,7 +329,13 @@ def collect_trace_data(kconf):
     # under tests/kconfig/tracing. Make sure to keep them aligned if the
     # format changes in any way.
 
+    # Micro-optimization: cache lookups and use local variables
     trace_data = []
+    add_entry = trace_data.append
+    config_prefix = kconf.config_prefix
+    tri_to_str = TRI_TO_STR
+    type_to_str = TYPE_TO_STR
+    
     for node in kconf.node_iter(True):
         item = node.item
         if not isinstance(item, Symbol):
@@ -324,13 +345,13 @@ def collect_trace_data(kconf):
         if origin is None:
             continue
 
-        name = kconf.config_prefix + item.name
+        name = config_prefix + item.name
         kind, loc = origin
         value = None if kind == "unset" else item.str_value
 
-        trace_entry = (name, TRI_TO_STR[item.visibility],
-                       TYPE_TO_STR[item.type], value, kind, loc)
-        trace_data.append(trace_entry)
+        trace_entry = (name, tri_to_str[item.visibility],
+                       type_to_str[item.type], value, kind, loc)
+        add_entry(trace_entry)
 
     return trace_data
 
@@ -341,8 +362,13 @@ def write_kconfig_filenames(kconf, kconfig_list_path):
     # removed. This file is used by CMake to look for changed Kconfig files. It
     # needs to be deterministic.
 
+    # Micro-optimization: cache function calls
+    realpath = os.path.realpath
+    join = os.path.join
+    srctree = kconf.srctree
+    
     with open(kconfig_list_path, 'w') as out:
-        for path in sorted({os.path.realpath(os.path.join(kconf.srctree, path))
+        for path in sorted({realpath(join(srctree, path))
                             for path in set(kconf.kconfig_filenames)}):
             print(path, file=out)
 
