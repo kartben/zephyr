@@ -59,7 +59,7 @@ set(kconfig_soc_source_dir)
 set(remaining "${ret_hw}")
 while(remaining)
   string(FIND "${remaining}" "\n" newline_pos)
-  
+
   if(newline_pos EQUAL -1)
     # Last line (no newline at end)
     set(line "${remaining}")
@@ -71,7 +71,7 @@ while(remaining)
     math(EXPR start "${newline_pos} + 1")
     string(SUBSTRING "${remaining}" ${start} -1 remaining)
   endif()
-  
+
   # Skip empty lines and lines with only whitespace
   string(STRIP "${line}" line)
   if(NOT line)
