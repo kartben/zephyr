@@ -55,28 +55,25 @@ endif()
 set(kconfig_soc_source_dir)
 
 # Process output line by line using forward iteration
-# This is more efficient and readable than reverse iteration
+# This is more readable and maintainable than the previous reverse iteration
 set(remaining "${ret_hw}")
-while(TRUE)
+while(remaining)
   string(FIND "${remaining}" "\n" idx)
   
   if(idx EQUAL -1)
-    # Last line (no newline)
+    # Last line (no newline at end)
     set(line "${remaining}")
     set(remaining "")
   else()
-    # Extract line
+    # Extract line up to newline
     string(SUBSTRING "${remaining}" 0 ${idx} line)
-    # Remove line and newline from remaining
+    # Remove processed line and newline from remaining text
     math(EXPR start "${idx} + 1")
     string(SUBSTRING "${remaining}" ${start} -1 remaining)
   endif()
   
   # Skip empty lines
   if(NOT line)
-    if(idx EQUAL -1)
-      break()
-    endif()
     continue()
   endif()
 
@@ -106,10 +103,6 @@ while(TRUE)
       set(SOC_${HWM_TYPE}_${SOC_V2_NAME}_DIR ${SOC_V2_DIR})
       set(SOC_${HWM_TYPE_UPPER}_${SOC_V2_NAME_UPPER}_DIR ${SOC_V2_DIR})
     endif()
-  endif()
-
-  if(idx EQUAL -1)
-    break()
   endif()
 endwhile()
 list(REMOVE_DUPLICATES kconfig_soc_source_dir)
