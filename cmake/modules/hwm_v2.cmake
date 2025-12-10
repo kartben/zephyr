@@ -62,7 +62,7 @@ string(REPLACE "\n" ";" hw_lines "${ret_hw_protected}")
 foreach(line IN LISTS hw_lines)
   # Restore original semicolons in this line
   string(REPLACE "@@SEMICOLON@@" ";" line "${line}")
-  
+
   # Skip empty lines and lines with only whitespace
   string(STRIP "${line}" line)
   if(NOT line)
