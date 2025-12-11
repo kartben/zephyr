@@ -12,6 +12,12 @@
 # also note that edtlib is not meant to expose the dtlib API directly).
 # Instead, think of what API you need, and add it as a public documented API in
 # edtlib. This will keep this script simple.
+#
+# Performance optimizations:
+# - Functions str2ident() and escape() use lru_cache for memoization
+# - Node iteration loops are merged where possible to reduce passes over data
+# - Pre-filtered node lists avoid repeated filtering (e.g., status="okay" nodes)
+# - Intermediate string operation results are cached to avoid redundant calls
 
 import argparse
 from collections import defaultdict
