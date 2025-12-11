@@ -62,7 +62,7 @@ def main():
         regions = dict()
         for node in sorted_nodes:
             node.z_path_id = node_z_path_id(node)
-            
+
             # Check for duplicate "zephyr,memory-region" property values
             if 'zephyr,memory-region' in node.props:
                 region = node.props['zephyr,memory-region'].val
@@ -937,10 +937,10 @@ def write_global_macros(edt: edtlib.EDT):
 
 
     out_comment("Macros for iterating over all nodes and enabled nodes")
-    
+
     # Pre-filter okay nodes once to avoid repeated filtering
     okay_nodes_all = [node for node in edt.nodes if node.status == "okay"]
-    
+
     out_dt_define("FOREACH_HELPER(fn)",
                   " ".join(f"fn(DT_{node.z_path_id})" for node in edt.nodes))
     out_dt_define("FOREACH_OKAY_HELPER(fn)",
@@ -957,7 +957,7 @@ def write_global_macros(edt: edtlib.EDT):
         # Build bus information and other macros in a single pass
         compat_ident = str2ident(compat)
         compat_nodes_full = edt.compat2nodes[compat]
-        
+
         for node in okay_nodes:
             buses = node.on_buses
             for bus in buses:
@@ -1017,7 +1017,6 @@ def write_global_macros(edt: edtlib.EDT):
         for bus in buses:
             out_define(
                 f"DT_COMPAT_{str2ident(compat)}_BUS_{str2ident(bus)}", 1)
-
 
 
 @lru_cache(maxsize=1024)
