@@ -73,9 +73,14 @@ def format_node(node: edtlib.Node) -> str:
 
 
 def ident2str(ident: str) -> str:
-    """Convert a lowercase-and-underscores identifier back to devicetree form."""
-    # For most cases, hyphens become underscores, but we keep underscores as-is
-    # This is a best-effort conversion since the transformation is lossy
+    """
+    Convert a lowercase-and-underscores identifier back to devicetree form.
+    
+    Note: This conversion is best-effort since the transformation from DTS names
+    to C identifiers is lossy (both hyphens and underscores in DTS become
+    underscores in C). We assume the more common case where hyphens were
+    converted to underscores.
+    """
     return ident.replace('_', '-')
 
 
@@ -183,13 +188,13 @@ def find_node_by_ident(edt: edtlib.EDT, parsed: dict) -> edtlib.Node:
                 if label_ident == node_ident:
                     return node
     elif node_type == 'alias':
-        # Look up in aliases
-        aliases = getattr(edt, 'aliases', {})
-        # Try the alias with hyphens
+        # Look up in aliases - EDT always has an aliases dict
+        aliases = edt.aliases if hasattr(edt, 'aliases') else {}
+        # Try the alias with hyphens (more common in DTS)
         alias_name = ident2str(node_ident)
         if alias_name in aliases:
             return aliases[alias_name]
-        # Also try without conversion
+        # Also try without conversion (in case original had underscores)
         if node_ident in aliases:
             return aliases[node_ident]
     elif node_type == 'path':
@@ -197,7 +202,11 @@ def find_node_by_ident(edt: edtlib.EDT, parsed: dict) -> edtlib.Node:
         # Path identifiers use _S_ for / separators
         path_parts = node_ident.split('_S_')
         path = '/' + '/'.join(ident2str(part) for part in path_parts if part)
-        return edt.get_node(path)
+        try:
+            return edt.get_node(path)
+        except Exception:
+            # Invalid path or node not found
+            return None
     
     return None
 
