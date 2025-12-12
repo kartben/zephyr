@@ -5,7 +5,11 @@
 
 """
 Compiler launcher wrapper that captures what appears to be Devicetree-related build errors, and
-diagnoses them using diagnose_build_error.py.
+diagnoses them using dtdoctor_analyzer.py.
+
+The wrapper detects and diagnoses:
+- Device ordinal errors (e.g. undefined reference to __device_dts_ord_123)
+- DT macro errors (e.g. DT_N_NODELABEL_vext_P_gpios_IDX_0_VAL_pin undeclared)
 
 The tool is meant to be configured as a CMAKE_<LANG>_COMPILER_LAUNCHER or as a
 CMAKE_<LANG>_LINKER_LAUNCHER.
