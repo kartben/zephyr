@@ -44,15 +44,27 @@ def main() -> int:
     sys.stdout.write(proc.stdout)
     sys.stderr.write(proc.stderr)
 
-    # Extract __device_dts_ord_xxx symbols from errors and run diagnostics
+    # Extract symbols from errors and run diagnostics
     if proc.returncode != 0 and args.edt_pickle:
-        patterns = [
+        # Patterns for __device_dts_ord_xxx symbols
+        ord_patterns = [
             r"(__device_dts_ord_\d+).*undeclared here",  # gcc
             r"undefined reference to.*(__device_dts_ord_\d+)",  # ld
             r"use of undeclared identifier '(__device_dts_ord_\d+)'",  # LLVM/clang (ATfE)
             r"undefined symbol: \(__device_dts_ord_(\d+)",  # LLVM/lld (ATfE)
         ]
-        symbols = {m for p in patterns for m in re.findall(p, proc.stderr)}
+        
+        # Patterns for DT macro symbols like DT_N_NODELABEL_vext_P_gpios_IDX_0_VAL_pin
+        dt_macro_patterns = [
+            r"(DT_N_(?:NODELABEL|ALIAS|INST|S)_[A-Za-z0-9_]+).*undeclared",  # gcc
+            r"(DT_N_(?:NODELABEL|ALIAS|INST|S)_[A-Za-z0-9_]+).*not\s+defined",  # preprocessor
+            r"use of undeclared identifier '(DT_N_(?:NODELABEL|ALIAS|INST|S)_[A-Za-z0-9_]+)'",  # clang
+            r"undefined reference to.*(DT_N_(?:NODELABEL|ALIAS|INST|S)_[A-Za-z0-9_]+)",  # ld
+            r"'(DT_N_(?:NODELABEL|ALIAS|INST|S)_[A-Za-z0-9_]+)'.*was not declared",  # gcc
+        ]
+        
+        symbols = {m for p in ord_patterns for m in re.findall(p, proc.stderr)}
+        symbols.update({m for p in dt_macro_patterns for m in re.findall(p, proc.stderr)})
 
         diag_script = os.path.join(os.path.dirname(__file__), "dtdoctor_analyzer.py")
         for symbol in sorted(symbols):
