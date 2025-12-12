@@ -958,6 +958,9 @@ def write_global_macros(edt: edtlib.EDT):
         compat_ident = str2ident(compat)
         compat_nodes_full = edt.compat2nodes[compat]
 
+        # Pre-compute node-to-index mapping to avoid O(n) list.index() calls
+        node_to_index = {node: idx for idx, node in enumerate(compat_nodes_full)}
+
         for node in okay_nodes:
             buses = node.on_buses
             for bus in buses:
@@ -981,10 +984,10 @@ def write_global_macros(edt: edtlib.EDT):
         # conversion in the preprocessor helps to keep the macro
         # expansions simpler. That hopefully eases debugging.
         for_each_macros[f"DT_FOREACH_OKAY_INST_{compat_ident}(fn)"] = (
-            " ".join(f"fn({compat_nodes_full.index(node)})"
+            " ".join(f"fn({node_to_index[node]})"
                      for node in okay_nodes))
         for_each_macros[f"DT_FOREACH_OKAY_INST_VARGS_{compat_ident}(fn, ...)"] = (
-            " ".join(f"fn({compat_nodes_full.index(node)}, __VA_ARGS__)"
+            " ".join(f"fn({node_to_index[node]}, __VA_ARGS__)"
                      for node in okay_nodes))
 
     # Handle fixed-partitions separately
