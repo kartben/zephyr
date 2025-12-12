@@ -8,13 +8,23 @@ A script to help diagnose build errors related to Devicetree.
 
 To use this script as a standalone tool, provide the path to an edt.pickle file
 (e.g ./build/zephyr/edt.pickle) and a symbol that appeared in the build error
-message (e.g. __device_dts_ord_123).
+message.
+
+Supported symbol formats:
+ - Device ordinal: __device_dts_ord_123
+ - Node label: DT_N_NODELABEL_<label>[_P_<property>[_IDX_<index>][_VAL_<cell>]]
+ - Alias: DT_N_ALIAS_<alias>[_P_<property>[_IDX_<index>][_VAL_<cell>]]
+ - Instance: DT_N_INST_<inst>_<compat>[_P_<property>[_IDX_<index>][_VAL_<cell>]]
 
 Example usage:
 
 ./scripts/dts/dtdoctor_analyzer.py \\
     --edt-pickle ./build/zephyr/edt.pickle \\
     --symbol __device_dts_ord_123
+
+./scripts/dts/dtdoctor_analyzer.py \\
+    --edt-pickle ./build/zephyr/edt.pickle \\
+    --symbol DT_N_NODELABEL_vext_P_gpios_IDX_0_VAL_pin
 
 """
 
