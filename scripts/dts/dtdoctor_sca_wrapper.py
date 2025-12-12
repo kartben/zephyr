@@ -51,6 +51,16 @@ def main() -> int:
             r"undefined reference to.*(__device_dts_ord_\d+)",  # ld
             r"use of undeclared identifier '(__device_dts_ord_\d+)'",  # LLVM/clang (ATfE)
             r"undefined symbol: \(__device_dts_ord_(\d+)",  # LLVM/lld (ATfE)
+            # DT property symbols patterns
+            r"(DT_N_NODELABEL_\w+(?:_P_\w+(?:_IDX_\d+)?(?:_VAL_\w+)?)?)\b.*undeclared",  # gcc nodelabel
+            r"(DT_N_ALIAS_\w+(?:_P_\w+(?:_IDX_\d+)?(?:_VAL_\w+)?)?)\b.*undeclared",  # gcc alias
+            r"(DT_N_INST_\d+_\w+(?:_P_\w+(?:_IDX_\d+)?(?:_VAL_\w+)?)?)\b.*undeclared",  # gcc instance
+            r"undefined reference to.*[`']?(DT_N_NODELABEL_\w+(?:_P_\w+(?:_IDX_\d+)?(?:_VAL_\w+)?)?)",  # ld nodelabel
+            r"undefined reference to.*[`']?(DT_N_ALIAS_\w+(?:_P_\w+(?:_IDX_\d+)?(?:_VAL_\w+)?)?)",  # ld alias
+            r"undefined reference to.*[`']?(DT_N_INST_\d+_\w+(?:_P_\w+(?:_IDX_\d+)?(?:_VAL_\w+)?)?)",  # ld instance
+            r"use of undeclared identifier '(DT_N_NODELABEL_\w+(?:_P_\w+(?:_IDX_\d+)?(?:_VAL_\w+)?)?)'",  # clang nodelabel
+            r"use of undeclared identifier '(DT_N_ALIAS_\w+(?:_P_\w+(?:_IDX_\d+)?(?:_VAL_\w+)?)?)'",  # clang alias
+            r"use of undeclared identifier '(DT_N_INST_\d+_\w+(?:_P_\w+(?:_IDX_\d+)?(?:_VAL_\w+)?)?)'",  # clang instance
         ]
         symbols = {m for p in patterns for m in re.findall(p, proc.stderr)}
 
