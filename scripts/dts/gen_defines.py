@@ -12,9 +12,16 @@
 # also note that edtlib is not meant to expose the dtlib API directly).
 # Instead, think of what API you need, and add it as a public documented API in
 # edtlib. This will keep this script simple.
+#
+# Performance optimizations:
+# - Functions str2ident() and escape() use lru_cache for memoization
+# - Node iteration loops are merged where possible to reduce passes over data
+# - Pre-filtered node lists avoid repeated filtering (e.g., status="okay" nodes)
+# - Intermediate string operation results are cached to avoid redundant calls
 
 import argparse
 from collections import defaultdict
+from functools import lru_cache
 import os
 import pathlib
 import pickle
@@ -50,14 +57,13 @@ def main():
 
         sorted_nodes = sorted(edt.nodes, key=lambda node: node.dep_ordinal)
 
-        # populate all z_path_id first so any children references will
-        # work correctly.
+        # Populate all z_path_id first so any children references will
+        # work correctly. Also check for duplicate memory regions in the same pass.
+        regions = dict()
         for node in sorted_nodes:
             node.z_path_id = node_z_path_id(node)
 
-        # Check to see if we have duplicate "zephyr,memory-region" property values.
-        regions = dict()
-        for node in sorted_nodes:
+            # Check for duplicate "zephyr,memory-region" property values
             if 'zephyr,memory-region' in node.props:
                 region = node.props['zephyr,memory-region'].val
                 if region in regions:
@@ -69,17 +75,20 @@ def main():
             write_node_comment(node)
 
             out_comment("Node's full path:")
-            out_dt_define(f"{node.z_path_id}_PATH", f'"{escape(node.path)}"')
+            escaped_path = escape(node.path)
+            out_dt_define(f"{node.z_path_id}_PATH", f'"{escaped_path}"')
 
             out_comment("Node's name with unit-address:")
+            escaped_name = escape(node.name)
             out_dt_define(f"{node.z_path_id}_FULL_NAME",
-                          f'"{escape(node.name)}"')
+                          f'"{escaped_name}"')
             out_dt_define(f"{node.z_path_id}_FULL_NAME_UNQUOTED",
-                          f'{escape(node.name)}')
+                          f'{escaped_name}')
+            name_token = edtlib.str_as_token(escaped_name)
             out_dt_define(f"{node.z_path_id}_FULL_NAME_TOKEN",
-                          f'{edtlib.str_as_token(escape(node.name))}')
+                          f'{name_token}')
             out_dt_define(f"{node.z_path_id}_FULL_NAME_UPPER_TOKEN",
-                          f'{edtlib.str_as_token(escape(node.name)).upper()}')
+                          f'{name_token.upper()}')
 
             if node.parent is not None:
                 out_comment(f"Node parent ({node.parent.path}) identifier:")
@@ -475,46 +484,45 @@ def write_children(node: edtlib.Node) -> None:
 
     out_comment("Helper macros for child nodes of this node.")
 
-    out_dt_define(f"{node.z_path_id}_CHILD_NUM", len(node.children))
+    children_list = list(node.children.values())
+    out_dt_define(f"{node.z_path_id}_CHILD_NUM", len(children_list))
 
-    ok_nodes_num = 0
-    for child in node.children.values():
-        if child.status == "okay":
-            ok_nodes_num = ok_nodes_num + 1
+    # Pre-filter children with status "okay" to avoid repeated filtering
+    okay_children = [child for child in children_list if child.status == "okay"]
+    out_dt_define(f"{node.z_path_id}_CHILD_NUM_STATUS_OKAY", len(okay_children))
 
-    out_dt_define(f"{node.z_path_id}_CHILD_NUM_STATUS_OKAY", ok_nodes_num)
-
+    # Generate macros for all children
     out_dt_define(f"{node.z_path_id}_FOREACH_CHILD(fn)",
-            " ".join(f"fn(DT_{child.z_path_id})" for child in
-                node.children.values()))
+            " ".join(f"fn(DT_{child.z_path_id})" for child in children_list))
 
     out_dt_define(f"{node.z_path_id}_FOREACH_CHILD_SEP(fn, sep)",
             " DT_DEBRACKET_INTERNAL sep ".join(f"fn(DT_{child.z_path_id})"
-            for child in node.children.values()))
+            for child in children_list))
 
     out_dt_define(f"{node.z_path_id}_FOREACH_CHILD_VARGS(fn, ...)",
             " ".join(f"fn(DT_{child.z_path_id}, __VA_ARGS__)"
-            for child in node.children.values()))
+            for child in children_list))
 
     out_dt_define(f"{node.z_path_id}_FOREACH_CHILD_SEP_VARGS(fn, sep, ...)",
             " DT_DEBRACKET_INTERNAL sep ".join(f"fn(DT_{child.z_path_id}, __VA_ARGS__)"
-            for child in node.children.values()))
+            for child in children_list))
 
+    # Generate macros for children with status "okay" using pre-filtered list
     out_dt_define(f"{node.z_path_id}_FOREACH_CHILD_STATUS_OKAY(fn)",
-            " ".join(f"fn(DT_{child.z_path_id})"
-            for child in node.children.values() if child.status == "okay"))
+            " ".join(f"fn(DT_{child.z_path_id})" for child in okay_children))
 
     out_dt_define(f"{node.z_path_id}_FOREACH_CHILD_STATUS_OKAY_SEP(fn, sep)",
             " DT_DEBRACKET_INTERNAL sep ".join(f"fn(DT_{child.z_path_id})"
-            for child in node.children.values() if child.status == "okay"))
+            for child in okay_children))
 
     out_dt_define(f"{node.z_path_id}_FOREACH_CHILD_STATUS_OKAY_VARGS(fn, ...)",
             " ".join(f"fn(DT_{child.z_path_id}, __VA_ARGS__)"
-            for child in node.children.values() if child.status == "okay"))
+            for child in okay_children))
 
     out_dt_define(f"{node.z_path_id}_FOREACH_CHILD_STATUS_OKAY_SEP_VARGS(fn, sep, ...)",
             " DT_DEBRACKET_INTERNAL sep ".join(f"fn(DT_{child.z_path_id}, __VA_ARGS__)"
-            for child in node.children.values() if child.status == "okay"))
+            for child in okay_children))
+
 
 
 def write_status(node: edtlib.Node) -> None:
@@ -929,36 +937,44 @@ def write_global_macros(edt: edtlib.EDT):
 
 
     out_comment("Macros for iterating over all nodes and enabled nodes")
+
+    # Pre-filter okay nodes once to avoid repeated filtering
+    okay_nodes_all = [node for node in edt.nodes if node.status == "okay"]
+
     out_dt_define("FOREACH_HELPER(fn)",
                   " ".join(f"fn(DT_{node.z_path_id})" for node in edt.nodes))
     out_dt_define("FOREACH_OKAY_HELPER(fn)",
-                  " ".join(f"fn(DT_{node.z_path_id})" for node in edt.nodes
-                           if node.status == "okay"))
+                  " ".join(f"fn(DT_{node.z_path_id})" for node in okay_nodes_all))
     out_dt_define("FOREACH_VARGS_HELPER(fn, ...)",
                   " ".join(f"fn(DT_{node.z_path_id}, __VA_ARGS__)" for node in edt.nodes))
     out_dt_define("FOREACH_OKAY_VARGS_HELPER(fn, ...)",
-                  " ".join(f"fn(DT_{node.z_path_id}, __VA_ARGS__)" for node in edt.nodes
-                           if node.status == "okay"))
+                  " ".join(f"fn(DT_{node.z_path_id}, __VA_ARGS__)" for node in okay_nodes_all))
 
     n_okay_macros = {}
     for_each_macros = {}
     compat2buses = defaultdict(list)  # just for "okay" nodes
     for compat, okay_nodes in edt.compat2okay.items():
+        # Build bus information and other macros in a single pass
+        compat_ident = str2ident(compat)
+        compat_nodes_full = edt.compat2nodes[compat]
+
+        # Pre-compute node-to-index mapping to avoid O(n) list.index() calls
+        node_to_index = {node: idx for idx, node in enumerate(compat_nodes_full)}
+
         for node in okay_nodes:
             buses = node.on_buses
             for bus in buses:
                 if bus is not None and bus not in compat2buses[compat]:
                     compat2buses[compat].append(bus)
 
-        ident = str2ident(compat)
-        n_okay_macros[f"DT_N_INST_{ident}_NUM_OKAY"] = len(okay_nodes)
+        n_okay_macros[f"DT_N_INST_{compat_ident}_NUM_OKAY"] = len(okay_nodes)
 
         # Helpers for non-INST for-each macros that take node
         # identifiers as arguments.
-        for_each_macros[f"DT_FOREACH_OKAY_{ident}(fn)"] = (
+        for_each_macros[f"DT_FOREACH_OKAY_{compat_ident}(fn)"] = (
             " ".join(f"fn(DT_{node.z_path_id})"
                      for node in okay_nodes))
-        for_each_macros[f"DT_FOREACH_OKAY_VARGS_{ident}(fn, ...)"] = (
+        for_each_macros[f"DT_FOREACH_OKAY_VARGS_{compat_ident}(fn, ...)"] = (
             " ".join(f"fn(DT_{node.z_path_id}, __VA_ARGS__)"
                      for node in okay_nodes))
 
@@ -967,24 +983,26 @@ def write_global_macros(edt: edtlib.EDT):
         # avoiding an intermediate node_id --> instance number
         # conversion in the preprocessor helps to keep the macro
         # expansions simpler. That hopefully eases debugging.
-        for_each_macros[f"DT_FOREACH_OKAY_INST_{ident}(fn)"] = (
-            " ".join(f"fn({edt.compat2nodes[compat].index(node)})"
+        for_each_macros[f"DT_FOREACH_OKAY_INST_{compat_ident}(fn)"] = (
+            " ".join(f"fn({node_to_index[node]})"
                      for node in okay_nodes))
-        for_each_macros[f"DT_FOREACH_OKAY_INST_VARGS_{ident}(fn, ...)"] = (
-            " ".join(f"fn({edt.compat2nodes[compat].index(node)}, __VA_ARGS__)"
+        for_each_macros[f"DT_FOREACH_OKAY_INST_VARGS_{compat_ident}(fn, ...)"] = (
+            " ".join(f"fn({node_to_index[node]}, __VA_ARGS__)"
                      for node in okay_nodes))
 
-    for compat, nodes in edt.compat2nodes.items():
-        for node in nodes:
-            if compat == "fixed-partitions":
-                for child in node.children.values():
-                    if "label" in child.props:
-                        label = child.props["label"].val
-                        macro = f"COMPAT_{str2ident(compat)}_LABEL_{str2ident(label)}"
-                        val = f"DT_{child.z_path_id}"
+    # Handle fixed-partitions separately
+    if "fixed-partitions" in edt.compat2nodes:
+        compat = "fixed-partitions"
+        compat_ident = str2ident(compat)
+        for node in edt.compat2nodes[compat]:
+            for child in node.children.values():
+                if "label" in child.props:
+                    label = child.props["label"].val
+                    macro = f"COMPAT_{compat_ident}_LABEL_{str2ident(label)}"
+                    val = f"DT_{child.z_path_id}"
 
-                        out_dt_define(macro, val)
-                        out_dt_define(macro + "_EXISTS", 1)
+                    out_dt_define(macro, val)
+                    out_dt_define(macro + "_EXISTS", 1)
 
     out_comment('Macros for compatibles with status "okay" nodes\n')
     for compat, okay_nodes in edt.compat2okay.items():
@@ -1004,6 +1022,7 @@ def write_global_macros(edt: edtlib.EDT):
                 f"DT_COMPAT_{str2ident(compat)}_BUS_{str2ident(bus)}", 1)
 
 
+@lru_cache(maxsize=1024)
 def str2ident(s: str) -> str:
     # Converts 's' to a form suitable for (part of) an identifier
 
@@ -1098,6 +1117,7 @@ ESCAPE_TABLE = str.maketrans(
 )
 
 
+@lru_cache(maxsize=512)
 def escape(s: str) -> str:
     # Backslash-escapes any double quotes, backslashes, and new lines in 's'
 
