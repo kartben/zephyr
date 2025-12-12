@@ -100,9 +100,13 @@ def parse_dt_symbol(symbol: str, edt: edtlib.EDT) -> dict:
     if symbol.startswith('DT_'):
         symbol = symbol[3:]
     
-    # Check for N_NODELABEL pattern - match up to _P_ or end
-    m = re.match(r'N_NODELABEL_([^_]+(?:_[^P][^_]*)*?)(?:_P_(.+))?$', symbol)
-    if m:
+    # Check for N_NODELABEL pattern - split on _P_ to separate node identifier from property
+    # Note: _P_ (uppercase) is safe as a delimiter because str2ident() in gen_defines.py
+    # lowercases all identifiers, so _P_ can never appear in a node label identifier
+    m = re.match(r'N_NODELABEL_(.+?)(?:_P_(.+))?$', symbol)
+    if m and (not m.group(2) or not m.group(1).endswith('_P')):
+        # Make sure we didn't split on something like "label_P" at the end
+        # by checking if there's actually a _P_ separator (group 2 exists)
         label = ident2str(m.group(1))
         prop_part = m.group(2)
         
@@ -121,9 +125,9 @@ def parse_dt_symbol(symbol: str, edt: edtlib.EDT) -> dict:
         
         return result
     
-    # Check for N_ALIAS pattern - match up to _P_ or end
-    m = re.match(r'N_ALIAS_([^_]+(?:_[^P][^_]*)*?)(?:_P_(.+))?$', symbol)
-    if m:
+    # Check for N_ALIAS pattern - split on _P_ to separate node identifier from property
+    m = re.match(r'N_ALIAS_(.+?)(?:_P_(.+))?$', symbol)
+    if m and (not m.group(2) or not m.group(1).endswith('_P')):
         alias = ident2str(m.group(1))
         prop_part = m.group(2)
         
@@ -142,8 +146,8 @@ def parse_dt_symbol(symbol: str, edt: edtlib.EDT) -> dict:
         return result
     
     # Check for N_INST pattern - match instance_number_compatible_P_prop
-    m = re.match(r'N_INST_(\d+)_([^_]+(?:_[^P][^_]*)*?)(?:_P_(.+))?$', symbol)
-    if m:
+    m = re.match(r'N_INST_(\d+)_(.+?)(?:_P_(.+))?$', symbol)
+    if m and (not m.group(3) or not m.group(2).endswith('_P')):
         inst_num = int(m.group(1))
         compat = ident2str(m.group(2))
         prop_part = m.group(3)
