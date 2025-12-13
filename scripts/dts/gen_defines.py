@@ -15,6 +15,7 @@
 
 import argparse
 from collections import defaultdict
+import json
 import os
 import pathlib
 import pickle
@@ -27,6 +28,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'python-devicetree',
 
 import edtlib_logger
 from devicetree import edtlib
+
+
+# Global to store the macro database
+macro_db = {}
+# Global to store current context
+macro_context = {}
 
 
 def main():
@@ -66,6 +73,7 @@ def main():
                 regions[region] = node
 
         for node in sorted_nodes:
+            macro_context["node_path"] = node.path
             write_node_comment(node)
 
             out_comment("Node's full path:")
@@ -105,8 +113,14 @@ def main():
             write_special_props(node)
             write_vanilla_props(node)
 
+            del macro_context["node_path"]
+
         write_chosen(edt)
         write_global_macros(edt)
+
+    if args.macro_db_out:
+        with open(args.macro_db_out, "w", encoding="utf-8") as f:
+            json.dump(macro_db, f, indent=4, sort_keys=True)
 
 
 def node_z_path_id(node: edtlib.Node) -> str:
@@ -136,6 +150,8 @@ def parse_args() -> argparse.Namespace:
                         help="path to write header to")
     parser.add_argument("--edt-pickle",
                         help="path to read pickled edtlib.EDT object from")
+    parser.add_argument("--macro-db-out",
+                        help="path to write the macro database to (json)")
 
     return parser.parse_args()
 
@@ -277,15 +293,22 @@ def write_special_props(node: edtlib.Node) -> None:
 
     # Macros that are special to the devicetree specification
     out_comment("Macros for properties that are special in the specification:")
+    macro_context["prop"] = "reg"
     write_regs(node)
+    macro_context["prop"] = "ranges"
     write_ranges(node)
+    macro_context["prop"] = "interrupts"
     write_interrupts(node)
+    macro_context["prop"] = "compatible"
     write_compatibles(node)
+    macro_context["prop"] = "status"
     write_status(node)
 
     # Macros that are special to bindings inherited from Linux, which
     # we can't capture with the current bindings language.
+    macro_context["prop"] = "pinctrl"
     write_pinctrls(node)
+    del macro_context["prop"]
     write_fixed_partitions(node)
     write_gpio_hogs(node)
 
@@ -591,6 +614,7 @@ def write_vanilla_props(node: edtlib.Node) -> None:
     # namespaces. Special cases aren't special enough to break the rules.
 
     macro2val = {}
+    macro2prop = {}
     for prop_name, prop in node.props.items():
         prop_id = str2ident(prop_name)
         macro = f"{node.z_path_id}_P_{prop_id}"
@@ -598,23 +622,38 @@ def write_vanilla_props(node: edtlib.Node) -> None:
         if val is not None:
             # DT_N_<node-id>_P_<prop-id>
             macro2val[macro] = val
+            macro2prop[macro] = prop_name
 
         if prop.spec.type == 'string':
-            macro2val.update(string_macros(macro, prop.val))
+            string_m = string_macros(macro, prop.val)
+            macro2val.update(string_m)
+            for m in string_m:
+                macro2prop[m] = prop_name
             # DT_N_<node-id>_P_<prop-id>_IDX_0:
             # DT_N_<node-id>_P_<prop-id>_IDX_0_EXISTS:
             # Allows treating the string like a degenerate case of a
             # string-array of length 1.
             macro2val[f"{macro}_IDX_0"] = quote_str(prop.val)
+            macro2prop[f"{macro}_IDX_0"] = prop_name
             macro2val[f"{macro}_IDX_0_EXISTS"] = 1
+            macro2prop[f"{macro}_IDX_0_EXISTS"] = prop_name
 
         if prop.enum_indices is not None:
-            macro2val.update(enum_macros(prop, macro))
+            enum_m = enum_macros(prop, macro)
+            macro2val.update(enum_m)
+            for m in enum_m:
+                macro2prop[m] = prop_name
 
         if "phandle" in prop.type:
-            macro2val.update(phandle_macros(prop, macro))
+            phandle_m = phandle_macros(prop, macro)
+            macro2val.update(phandle_m)
+            for m in phandle_m:
+                macro2prop[m] = prop_name
         elif "array" in prop.type:
-            macro2val.update(array_macros(prop, macro))
+            array_m = array_macros(prop, macro)
+            macro2val.update(array_m)
+            for m in array_m:
+                macro2prop[m] = prop_name
 
         plen = prop_len(prop)
         if plen is not None:
@@ -622,35 +661,45 @@ def write_vanilla_props(node: edtlib.Node) -> None:
             macro2val[f"{macro}_FOREACH_PROP_ELEM(fn)"] = (
                 ' \\\n\t'.join(f'fn(DT_{node.z_path_id}, {prop_id}, {i})'
                                for i in range(plen)))
+            macro2prop[f"{macro}_FOREACH_PROP_ELEM(fn)"] = prop_name
 
             # DT_N_<node-id>_P_<prop-id>_FOREACH_PROP_ELEM_SEP
             macro2val[f"{macro}_FOREACH_PROP_ELEM_SEP(fn, sep)"] = (
                 ' DT_DEBRACKET_INTERNAL sep \\\n\t'.join(
                     f'fn(DT_{node.z_path_id}, {prop_id}, {i})'
                     for i in range(plen)))
+            macro2prop[f"{macro}_FOREACH_PROP_ELEM_SEP(fn, sep)"] = prop_name
 
             # DT_N_<node-id>_P_<prop-id>_FOREACH_PROP_ELEM_VARGS
             macro2val[f"{macro}_FOREACH_PROP_ELEM_VARGS(fn, ...)"] = (
                 ' \\\n\t'.join(
                     f'fn(DT_{node.z_path_id}, {prop_id}, {i}, __VA_ARGS__)'
                     for i in range(plen)))
+            macro2prop[f"{macro}_FOREACH_PROP_ELEM_VARGS(fn, ...)"] = prop_name
 
             # DT_N_<node-id>_P_<prop-id>_FOREACH_PROP_ELEM_SEP_VARGS
             macro2val[f"{macro}_FOREACH_PROP_ELEM_SEP_VARGS(fn, sep, ...)"] = (
                 ' DT_DEBRACKET_INTERNAL sep \\\n\t'.join(
                     f'fn(DT_{node.z_path_id}, {prop_id}, {i}, __VA_ARGS__)'
                     for i in range(plen)))
+            macro2prop[f"{macro}_FOREACH_PROP_ELEM_SEP_VARGS(fn, sep, ...)"] = prop_name
 
             # DT_N_<node-id>_P_<prop-id>_LEN
             macro2val[f"{macro}_LEN"] = plen
+            macro2prop[f"{macro}_LEN"] = prop_name
 
         # DT_N_<node-id>_P_<prop-id>_EXISTS
         macro2val[f"{macro}_EXISTS"] = 1
+        macro2prop[f"{macro}_EXISTS"] = prop_name
 
     if macro2val:
         out_comment("Generic property macros:")
         for macro, val in macro2val.items():
+            if macro in macro2prop:
+                macro_context["prop"] = macro2prop[macro]
             out_dt_define(macro, val)
+            if "prop" in macro_context:
+                del macro_context["prop"]
     else:
         out_comment("(No generic property macros)")
 
@@ -915,12 +964,28 @@ def write_chosen(edt: edtlib.EDT):
 
     out_comment("Chosen nodes\n")
     chosen = {}
+    macro2info = {}
+
+    macro_context["node_path"] = "/chosen"
+
     for name, node in edt.chosen_nodes.items():
-        chosen[f"DT_CHOSEN_{str2ident(name)}"] = f"DT_{node.z_path_id}"
-        chosen[f"DT_CHOSEN_{str2ident(name)}_EXISTS"] = 1
+        macro = f"DT_CHOSEN_{str2ident(name)}"
+        chosen[macro] = f"DT_{node.z_path_id}"
+        macro2info[macro] = name
+
+        macro_exists = f"DT_CHOSEN_{str2ident(name)}_EXISTS"
+        chosen[macro_exists] = 1
+        macro2info[macro_exists] = name
+
     max_len = max(map(len, chosen), default=0)
     for macro, value in chosen.items():
+        if macro in macro2info:
+             macro_context["prop"] = macro2info[macro]
         out_define(macro, value, width=max_len)
+        if "prop" in macro_context:
+            del macro_context["prop"]
+
+    del macro_context["node_path"]
 
 
 def write_global_macros(edt: edtlib.EDT):
@@ -941,6 +1006,7 @@ def write_global_macros(edt: edtlib.EDT):
                            if node.status == "okay"))
 
     n_okay_macros = {}
+    macro2compat = {}
     for_each_macros = {}
     compat2buses = defaultdict(list)  # just for "okay" nodes
     for compat, okay_nodes in edt.compat2okay.items():
@@ -951,28 +1017,40 @@ def write_global_macros(edt: edtlib.EDT):
                     compat2buses[compat].append(bus)
 
         ident = str2ident(compat)
-        n_okay_macros[f"DT_N_INST_{ident}_NUM_OKAY"] = len(okay_nodes)
+        macro = f"DT_N_INST_{ident}_NUM_OKAY"
+        n_okay_macros[macro] = len(okay_nodes)
+        macro2compat[macro] = compat
 
         # Helpers for non-INST for-each macros that take node
         # identifiers as arguments.
-        for_each_macros[f"DT_FOREACH_OKAY_{ident}(fn)"] = (
+        macro = f"DT_FOREACH_OKAY_{ident}(fn)"
+        for_each_macros[macro] = (
             " ".join(f"fn(DT_{node.z_path_id})"
                      for node in okay_nodes))
-        for_each_macros[f"DT_FOREACH_OKAY_VARGS_{ident}(fn, ...)"] = (
+        macro2compat[macro] = compat
+
+        macro = f"DT_FOREACH_OKAY_VARGS_{ident}(fn, ...)"
+        for_each_macros[macro] = (
             " ".join(f"fn(DT_{node.z_path_id}, __VA_ARGS__)"
                      for node in okay_nodes))
+        macro2compat[macro] = compat
 
         # Helpers for INST versions of for-each macros, which take
         # instance numbers. We emit separate helpers for these because
         # avoiding an intermediate node_id --> instance number
         # conversion in the preprocessor helps to keep the macro
         # expansions simpler. That hopefully eases debugging.
-        for_each_macros[f"DT_FOREACH_OKAY_INST_{ident}(fn)"] = (
+        macro = f"DT_FOREACH_OKAY_INST_{ident}(fn)"
+        for_each_macros[macro] = (
             " ".join(f"fn({edt.compat2nodes[compat].index(node)})"
                      for node in okay_nodes))
-        for_each_macros[f"DT_FOREACH_OKAY_INST_VARGS_{ident}(fn, ...)"] = (
+        macro2compat[macro] = compat
+
+        macro = f"DT_FOREACH_OKAY_INST_VARGS_{ident}(fn, ...)"
+        for_each_macros[macro] = (
             " ".join(f"fn({edt.compat2nodes[compat].index(node)}, __VA_ARGS__)"
                      for node in okay_nodes))
+        macro2compat[macro] = compat
 
     for compat, nodes in edt.compat2nodes.items():
         for node in nodes:
@@ -989,19 +1067,32 @@ def write_global_macros(edt: edtlib.EDT):
     out_comment('Macros for compatibles with status "okay" nodes\n')
     for compat, okay_nodes in edt.compat2okay.items():
         if okay_nodes:
+            macro_context["compatible"] = compat
             out_define(f"DT_COMPAT_HAS_OKAY_{str2ident(compat)}", 1)
+            del macro_context["compatible"]
 
     out_comment('Macros for status "okay" instances of each compatible\n')
     for macro, value in n_okay_macros.items():
+        if macro in macro2compat:
+            macro_context["compatible"] = macro2compat[macro]
         out_define(macro, value)
+        if "compatible" in macro_context:
+            del macro_context["compatible"]
+
     for macro, value in for_each_macros.items():
+        if macro in macro2compat:
+             macro_context["compatible"] = macro2compat[macro]
         out_define(macro, value)
+        if "compatible" in macro_context:
+            del macro_context["compatible"]
 
     out_comment('Bus information for status "okay" nodes of each compatible\n')
     for compat, buses in compat2buses.items():
         for bus in buses:
+            macro_context["compatible"] = compat
             out_define(
                 f"DT_COMPAT_{str2ident(compat)}_BUS_{str2ident(bus)}", 1)
+            del macro_context["compatible"]
 
 
 def str2ident(s: str) -> str:
@@ -1047,6 +1138,11 @@ def out_define(
     # Helper for out_dt_define(). Outputs "#define <macro> <val>",
     # adds a deprecation message if given, and allocates whitespace
     # unless told not to.
+
+    if macro_db is not None:
+        entry = {"val": str(val)}
+        entry.update(macro_context)
+        macro_db[macro] = entry
 
     warn = fr' __WARN("{deprecation_msg}")' if deprecation_msg else ""
 
