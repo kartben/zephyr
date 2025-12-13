@@ -27,6 +27,7 @@ Example usage:
 """
 
 import argparse
+import json
 import os
 import pickle
 import re
@@ -55,12 +56,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--symbol", required=True, help="symbol for which to obtain troubleshooting information"
     )
+    parser.add_argument(
+        "--macro-db",
+        help="path to macro database JSON file (optional, for improved diagnostics)",
+    )
     return parser.parse_args()
 
 
 def load_edt(path: str) -> edtlib.EDT:
     with open(path, "rb") as f:
         return pickle.load(f)
+
+
+def load_macro_db(path: str) -> dict:
+    """Load the macro database JSON file if available."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
 
 
 def setup_kconfig() -> kconfiglib.Kconfig:
@@ -70,6 +84,28 @@ def setup_kconfig() -> kconfiglib.Kconfig:
 
 def format_node(node: edtlib.Node) -> str:
     return f"{node.labels[0]}: {node.path}" if node.labels else node.path
+
+
+def lookup_macro_in_db(macro_db: dict, symbol: str) -> dict:
+    """
+    Look up a symbol in the macro database.
+    
+    Returns a dict with metadata if found, otherwise None.
+    """
+    if not macro_db:
+        return None
+    
+    # Try exact match first
+    if symbol in macro_db:
+        return macro_db[symbol]
+    
+    # Try with DT_ prefix if not already present
+    if not symbol.startswith("DT_"):
+        dt_symbol = f"DT_{symbol}"
+        if dt_symbol in macro_db:
+            return macro_db[dt_symbol]
+    
+    return None
 
 
 def ident2str(ident: str) -> str:
@@ -211,13 +247,67 @@ def find_node_by_ident(edt: edtlib.EDT, parsed: dict) -> edtlib.Node:
     return None
 
 
-def handle_dt_macro_error(edt: edtlib.EDT, symbol: str) -> list[str]:
+def handle_dt_macro_error(edt: edtlib.EDT, symbol: str, macro_db: dict = None) -> list[str]:
     """
     Handle diagnosis for a DT macro error.
     
     Analyzes symbols like DT_N_NODELABEL_vext_P_gpios_IDX_0_VAL_pin
     and provides meaningful diagnostics.
+    
+    Args:
+        edt: The EDT object
+        symbol: The macro symbol that caused the error
+        macro_db: Optional macro database for enhanced diagnostics
     """
+    # First, try looking up in the macro database if available
+    db_info = lookup_macro_in_db(macro_db, symbol) if macro_db else None
+    
+    if db_info:
+        # We have database info, use it for more accurate diagnostics
+        lines = []
+        node_path = db_info.get('node_path')
+        node = edt.get_node(node_path) if node_path else None
+        
+        if not node:
+            lines.append(f"Macro '{symbol}' refers to node '{node_path}' which was not found.\n")
+            lines.append("This may indicate a build configuration issue.")
+            return lines
+        
+        # Node was found, check for property/cell issues
+        prop_name = db_info.get('property')
+        if prop_name:
+            if prop_name not in node.props:
+                lines.append(f"Property '{prop_name}' not found on node '{format_node(node)}'.\n")
+                if node.props:
+                    lines.append("Available properties on this node:")
+                    for pname in sorted(node.props.keys()):
+                        lines.append(f" - {pname}")
+                return lines
+            
+            # Check for index/cell issues
+            idx = db_info.get('index')
+            cell = db_info.get('cell')
+            
+            if idx is not None and cell:
+                prop = node.props[prop_name]
+                if prop.type == 'phandle-array' and idx < len(prop.val):
+                    entry = prop.val[idx]
+                    if entry and cell not in entry.data:
+                        lines.append(
+                            f"Cell '{cell}' not found in element {idx} of property '{prop_name}' "
+                            f"on node '{format_node(node)}'.\n"
+                        )
+                        if entry.data:
+                            lines.append("Available cells:")
+                            for cname in entry.data.keys():
+                                lines.append(f" - {cname}")
+                        return lines
+        
+        # If we get here with db_info but no specific issue, return a generic message
+        lines.append(f"Macro '{symbol}' is defined but may be used incorrectly.")
+        return lines
+    
+    # Fall back to parsing-based diagnostics if no database info
     parsed = parse_dt_macro(symbol)
     
     if not parsed:
@@ -452,6 +542,9 @@ def handle_disabled_node(node: edtlib.Node) -> list[str]:
 def main() -> int:
     args = parse_args()
     edt = load_edt(args.edt_pickle)
+    
+    # Load macro database if provided
+    macro_db = load_macro_db(args.macro_db) if args.macro_db else None
 
     # Check if it's a __device_dts_ord_ error
     m = re.search(r"__device_dts_ord_(\d+)", args.symbol)
@@ -472,7 +565,7 @@ def main() -> int:
 
     # Check if it's a DT macro error (e.g., DT_N_NODELABEL_...)
     if re.match(r"DT_N_(NODELABEL|ALIAS|INST|S)_", args.symbol):
-        lines = handle_dt_macro_error(edt, args.symbol)
+        lines = handle_dt_macro_error(edt, args.symbol, macro_db)
         print(tabulate([["\n".join(lines)]], headers=["DT Doctor"], tablefmt="grid"))
         return 0
 

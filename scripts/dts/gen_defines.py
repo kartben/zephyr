@@ -15,6 +15,7 @@
 
 import argparse
 from collections import defaultdict
+import json
 import os
 import pathlib
 import pickle
@@ -32,6 +33,7 @@ from devicetree import edtlib
 def main():
     global header_file
     global flash_area_num
+    global macro_db
 
     args = parse_args()
 
@@ -41,6 +43,8 @@ def main():
         edt = pickle.load(f)
 
     flash_area_num = 0
+    # Initialize macro database only if output file is specified
+    macro_db = {} if args.macro_db_out else None
 
     # Create the generated header.
     with open(args.header_out, "w", encoding="utf-8") as header_file:
@@ -108,6 +112,11 @@ def main():
         write_chosen(edt)
         write_global_macros(edt)
 
+    # Write macro database if requested
+    if args.macro_db_out:
+        with open(args.macro_db_out, "w", encoding="utf-8") as f:
+            json.dump(macro_db, f, indent=2)
+
 
 def node_z_path_id(node: edtlib.Node) -> str:
     # Return the node specific bit of the node's path identifier:
@@ -136,6 +145,8 @@ def parse_args() -> argparse.Namespace:
                         help="path to write header to")
     parser.add_argument("--edt-pickle",
                         help="path to read pickled edtlib.EDT object from")
+    parser.add_argument("--macro-db-out",
+                        help="path to write macro database JSON file to (optional)")
 
     return parser.parse_args()
 
@@ -247,12 +258,22 @@ def write_idents_and_existence(node: edtlib.Node) -> None:
 
     out_comment("Existence and alternate IDs:")
     out_dt_define(f"{node.z_path_id}_EXISTS", 1)
+    record_macro(f"{node.z_path_id}_EXISTS", node, type="exists")
 
     # Only determine maxlen if we have any idents
     if idents:
         maxlen = max(len(f"DT_{ident}") for ident in idents)
     for ident in idents:
         out_dt_define(ident, f"DT_{node.z_path_id}", width=maxlen)
+        # Record the macro type for better diagnostics
+        if ident.startswith("N_NODELABEL_"):
+            label = ident[len("N_NODELABEL_"):]
+            record_macro(ident, node, type="nodelabel", label=label)
+        elif ident.startswith("N_ALIAS_"):
+            alias = ident[len("N_ALIAS_"):]
+            record_macro(ident, node, type="alias", alias=alias)
+        elif ident.startswith("N_INST_"):
+            record_macro(ident, node, type="instance")
 
 
 def write_bus(node: edtlib.Node) -> None:
@@ -664,6 +685,29 @@ def write_vanilla_props(node: edtlib.Node) -> None:
         out_comment("Generic property macros:")
         for macro, val in macro2val.items():
             out_dt_define(macro, val)
+            # Record property-related macros for dtdoctor
+            # Parse macro to extract property name and details
+            if "_P_" in macro:
+                parts = macro.split("_P_", 1)
+                if len(parts) == 2:
+                    prop_part = parts[1]
+                    # Extract property name (before _IDX_, _EXISTS, etc.)
+                    prop_name = prop_part.split("_")[0] if "_" in prop_part else prop_part
+                    metadata = {"type": "property", "property": prop_name}
+                    
+                    # Check for index-based access
+                    if "_IDX_" in prop_part:
+                        idx_match = re.search(r'_IDX_(\d+)', prop_part)
+                        if idx_match:
+                            metadata["index"] = int(idx_match.group(1))
+                    
+                    # Check for cell access in phandle-array
+                    if "_VAL_" in prop_part:
+                        val_match = re.search(r'_VAL_(\w+)', prop_part)
+                        if val_match:
+                            metadata["cell"] = val_match.group(1)
+                    
+                    record_macro(macro, node, **metadata)
     else:
         out_comment("(No generic property macros)")
 
@@ -1027,6 +1071,37 @@ def list2init(l: Iterable[str]) -> str:
     # Converts 'l', a Python list (or iterable), to a C array initializer
 
     return "{" + ", ".join(l) + "}"
+
+
+def record_macro(macro: str, node: edtlib.Node, **metadata) -> None:
+    # Records a macro in the macro database for dtdoctor diagnostics
+    #
+    # The macro database maps macro names to metadata about their source,
+    # making it easier for dtdoctor to provide accurate diagnostics.
+    #
+    # Args:
+    #   macro: The macro name (without DT_ prefix)
+    #   node: The EDT node this macro refers to
+    #   **metadata: Additional key-value pairs to store (e.g., property, index, cell)
+    
+    global macro_db
+    
+    if not macro_db or macro_db is None:
+        return  # Database not enabled
+    
+    full_macro = f"DT_{macro}"
+    
+    # Build the metadata dict
+    info = {
+        "node_path": node.path,
+        "node_labels": list(node.labels),
+    }
+    
+    # Add optional metadata
+    if metadata:
+        info.update(metadata)
+    
+    macro_db[full_macro] = info
 
 
 def out_dt_define(
