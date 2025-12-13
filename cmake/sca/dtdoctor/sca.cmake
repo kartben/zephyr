@@ -10,6 +10,7 @@ endif()
 
 set(dtdoctor_sca_wrapper_script ${ZEPHYR_BASE}/scripts/dts/dtdoctor_sca_wrapper.py)
 set(edt_pickle ${CMAKE_BINARY_DIR}/zephyr/edt.pickle)
+set(dt_macro_db ${CMAKE_BINARY_DIR}/zephyr/dt_macro_db.json)
 
 # Note that Kconfig settings should not be manipulated/overridden in CMake but until
 # https://github.com/zephyrproject-rtos/zephyr/issues/96199 is addressed the below has been
@@ -23,6 +24,7 @@ set(dtdoctor_wrapper_cmd
   ${PYTHON_EXECUTABLE}
   ${dtdoctor_sca_wrapper_script}
   --edt-pickle ${edt_pickle}
+  --macro-db ${dt_macro_db}
   --
 )
 

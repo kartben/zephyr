@@ -36,6 +36,9 @@ def main() -> int:
     parser.add_argument(
         "--edt-pickle", help="path to edt.pickle file corresponding to the build to analyze"
     )
+    parser.add_argument(
+        "--macro-db", help="path to macro database JSON file (optional, for improved diagnostics)"
+    )
 
     if "--" in sys.argv:
         idx = sys.argv.index("--")
@@ -72,16 +75,19 @@ def main() -> int:
 
         diag_script = os.path.join(os.path.dirname(__file__), "dtdoctor_analyzer.py")
         for symbol in sorted(symbols):
-            subprocess.run(
-                [
-                    sys.executable,
-                    diag_script,
-                    "--edt-pickle",
-                    args.edt_pickle,
-                    "--symbol",
-                    symbol,
-                ]
-            )
+            cmd_args = [
+                sys.executable,
+                diag_script,
+                "--edt-pickle",
+                args.edt_pickle,
+                "--symbol",
+                symbol,
+            ]
+            # Add macro database if provided
+            if args.macro_db and os.path.exists(args.macro_db):
+                cmd_args.extend(["--macro-db", args.macro_db])
+            
+            subprocess.run(cmd_args)
 
     return proc.returncode
 

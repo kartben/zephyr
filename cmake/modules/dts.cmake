@@ -113,6 +113,8 @@ set(EDT_PICKLE                  ${PROJECT_BINARY_DIR}/edt.pickle)
 set(ZEPHYR_DTS                  ${PROJECT_BINARY_DIR}/zephyr.dts)
 # The generated C header needed by <zephyr/devicetree.h>
 set(DEVICETREE_GENERATED_H      ${BINARY_DIR_INCLUDE_GENERATED}/devicetree_generated.h)
+# The macro database for dtdoctor diagnostics
+set(DT_MACRO_DB                 ${PROJECT_BINARY_DIR}/dt_macro_db.json)
 # Generated build system internals.
 set(DTS_POST_CPP                ${PROJECT_BINARY_DIR}/zephyr.dts.pre)
 set(DTS_DEPS                    ${PROJECT_BINARY_DIR}/zephyr.dts.d)
@@ -321,6 +323,7 @@ message(STATUS "Generated pickled edt: ${EDT_PICKLE}")
 set(CMD_GEN_DEFINES ${PYTHON_EXECUTABLE} ${GEN_DEFINES_SCRIPT}
 --header-out ${DEVICETREE_GENERATED_H}.new
 --edt-pickle ${EDT_PICKLE}
+--macro-db-out ${DT_MACRO_DB}.new
 ${EXTRA_GEN_DEFINES_ARGS}
 )
 
@@ -330,8 +333,10 @@ execute_process(
   COMMAND_ERROR_IS_FATAL ANY
   )
 zephyr_file_copy(${DEVICETREE_GENERATED_H}.new ${DEVICETREE_GENERATED_H} ONLY_IF_DIFFERENT)
-file(REMOVE ${DEVICETREE_GENERATED_H}.new)
+zephyr_file_copy(${DT_MACRO_DB}.new ${DT_MACRO_DB} ONLY_IF_DIFFERENT)
+file(REMOVE ${DEVICETREE_GENERATED_H}.new ${DT_MACRO_DB}.new)
 message(STATUS "Generated devicetree_generated.h: ${DEVICETREE_GENERATED_H}")
+message(STATUS "Generated DT macro database: ${DT_MACRO_DB}")
 
 #
 # Run GEN_DRIVER_KCONFIG_SCRIPT.
