@@ -686,28 +686,31 @@ def write_vanilla_props(node: edtlib.Node) -> None:
         for macro, val in macro2val.items():
             out_dt_define(macro, val)
             # Record property-related macros for dtdoctor
-            # Parse macro to extract property name and details
-            if "_P_" in macro:
-                parts = macro.split("_P_", 1)
-                if len(parts) == 2:
-                    prop_part = parts[1]
-                    # Extract property name (before _IDX_, _EXISTS, etc.)
-                    prop_name = prop_part.split("_")[0] if "_" in prop_part else prop_part
-                    metadata = {"type": "property", "property": prop_name}
-                    
-                    # Check for index-based access
-                    if "_IDX_" in prop_part:
-                        idx_match = re.search(r'_IDX_(\d+)', prop_part)
-                        if idx_match:
-                            metadata["index"] = int(idx_match.group(1))
-                    
-                    # Check for cell access in phandle-array
-                    if "_VAL_" in prop_part:
-                        val_match = re.search(r'_VAL_(\w+)', prop_part)
-                        if val_match:
-                            metadata["cell"] = val_match.group(1)
-                    
-                    record_macro(macro, node, **metadata)
+            if "_P_" not in macro:
+                continue
+            
+            parts = macro.split("_P_", 1)
+            if len(parts) != 2:
+                continue
+            
+            prop_part = parts[1]
+            # Extract property name (before _IDX_, _EXISTS, etc.)
+            prop_name = prop_part.split("_")[0] if "_" in prop_part else prop_part
+            metadata = {"type": "property", "property": prop_name}
+            
+            # Check for index-based access
+            if "_IDX_" in prop_part:
+                idx_match = re.search(r'_IDX_(\d+)', prop_part)
+                if idx_match:
+                    metadata["index"] = int(idx_match.group(1))
+            
+            # Check for cell access in phandle-array
+            if "_VAL_" in prop_part:
+                val_match = re.search(r'_VAL_(\w+)', prop_part)
+                if val_match:
+                    metadata["cell"] = val_match.group(1)
+            
+            record_macro(macro, node, **metadata)
     else:
         out_comment("(No generic property macros)")
 
@@ -1086,7 +1089,7 @@ def record_macro(macro: str, node: edtlib.Node, **metadata) -> None:
     
     global macro_db
     
-    if not macro_db or macro_db is None:
+    if macro_db is None:
         return  # Database not enabled
     
     full_macro = f"DT_{macro}"

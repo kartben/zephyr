@@ -290,9 +290,19 @@ def handle_dt_macro_error(edt: edtlib.EDT, symbol: str, macro_db: dict = None) -
             
             if idx is not None and cell:
                 prop = node.props[prop_name]
-                if prop.type == 'phandle-array' and idx < len(prop.val):
+                if prop.type == 'phandle-array':
+                    # Check for valid index
+                    if idx >= len(prop.val):
+                        lines.append(
+                            f"Index {idx} is out of bounds for property '{prop_name}' "
+                            f"on node '{format_node(node)}'.\n"
+                        )
+                        lines.append(f"Property has {len(prop.val)} element(s).")
+                        return lines
+                    
                     entry = prop.val[idx]
-                    if entry and cell not in entry.data:
+                    # Check entry is valid and has data attribute
+                    if entry and hasattr(entry, 'data') and cell not in entry.data:
                         lines.append(
                             f"Cell '{cell}' not found in element {idx} of property '{prop_name}' "
                             f"on node '{format_node(node)}'.\n"
