@@ -89,29 +89,29 @@ def format_node(node: edtlib.Node) -> str:
 def lookup_macro_in_db(macro_db: dict, symbol: str) -> dict:
     """
     Look up a symbol in the macro database.
-    
+
     Returns a dict with metadata if found, otherwise None.
     """
     if not macro_db:
         return None
-    
+
     # Try exact match first
     if symbol in macro_db:
         return macro_db[symbol]
-    
+
     # Try with DT_ prefix if not already present
     if not symbol.startswith("DT_"):
         dt_symbol = f"DT_{symbol}"
         if dt_symbol in macro_db:
             return macro_db[dt_symbol]
-    
+
     return None
 
 
 def ident2str(ident: str) -> str:
     """
     Convert a lowercase-and-underscores identifier back to devicetree form.
-    
+
     Note: This conversion is best-effort since the transformation from DTS names
     to C identifiers is lossy (both hyphens and underscores in DTS become
     underscores in C). We assume the more common case where hyphens were
@@ -123,7 +123,7 @@ def ident2str(ident: str) -> str:
 def parse_dt_macro(symbol: str) -> dict:
     """
     Parse a DT macro symbol and extract its components.
-    
+
     Returns a dict with keys like:
     - 'type': 'nodelabel', 'alias', 'inst', or 'path'
     - 'node_ident': the node identifier part
@@ -131,7 +131,7 @@ def parse_dt_macro(symbol: str) -> dict:
     - 'index': index in array (if applicable)
     - 'cell': cell name (if applicable for phandle-array)
     - 'exists': True if this is an _EXISTS macro
-    
+
     Example: DT_N_NODELABEL_vext_P_gpios_IDX_0_VAL_pin
     Returns: {
         'type': 'nodelabel',
@@ -142,18 +142,18 @@ def parse_dt_macro(symbol: str) -> dict:
     }
     """
     result = {}
-    
+
     # Remove DT_ prefix if present
     if symbol.startswith('DT_'):
         symbol = symbol[3:]
-    
+
     # Check if it's an _EXISTS macro
     if symbol.endswith('_EXISTS'):
         result['exists'] = True
         symbol = symbol[:-7]  # Remove _EXISTS
     else:
         result['exists'] = False
-    
+
     # Parse node identifier type
     if symbol.startswith('N_NODELABEL_'):
         result['type'] = 'nodelabel'
@@ -170,22 +170,22 @@ def parse_dt_macro(symbol: str) -> dict:
     else:
         # Unknown format
         return None
-    
+
     # Split by _P_ to separate node identifier from property access
     if '_P_' in rest:
         parts = rest.split('_P_', 1)
         result['node_ident'] = parts[0]
         prop_part = parts[1]
-        
+
         # Parse property access pattern
         # Format: <prop>_IDX_<idx>_VAL_<cell> or <prop>_IDX_<idx> or just <prop>
-        
+
         # Check for _IDX_ pattern
         idx_match = re.search(r'(.+?)_IDX_(\d+)', prop_part)
         if idx_match:
             result['property'] = idx_match.group(1)
             result['index'] = int(idx_match.group(2))
-            
+
             # Check for _VAL_ pattern after index
             val_match = re.search(r'_IDX_\d+_VAL_(\w+)', prop_part)
             if val_match:
@@ -196,25 +196,25 @@ def parse_dt_macro(symbol: str) -> dict:
     else:
         # No property access, just node identifier
         result['node_ident'] = rest
-    
+
     return result
 
 
 def find_node_by_ident(edt: edtlib.EDT, parsed: dict) -> edtlib.Node:
     """
     Find a node in the EDT based on the parsed identifier.
-    
+
     Returns the node if found, None otherwise.
     """
     if not parsed:
         return None
-    
+
     node_type = parsed.get('type')
     node_ident = parsed.get('node_ident')
-    
+
     if not node_type or not node_ident:
         return None
-    
+
     if node_type == 'nodelabel':
         # Search for node with this label
         for node in edt.nodes:
@@ -234,26 +234,40 @@ def find_node_by_ident(edt: edtlib.EDT, parsed: dict) -> edtlib.Node:
         if node_ident in aliases:
             return aliases[node_ident]
     elif node_type == 'path':
-        # Reconstruct path from path identifier
-        # Path identifiers use _S_ for / separators
-        path_parts = node_ident.split('_S_')
-        path = '/' + '/'.join(ident2str(part) for part in path_parts if part)
-        try:
-            return edt.get_node(path)
-        except Exception:
-            # Invalid path or node not found
-            return None
-    
+        # Search for node whose path matches this identifier
+        # Path identifiers are constructed as:
+        # - Root: "N" (already handled as specialized case typically, but strictly node_ident would be empty/special)
+        # - Others: "soc_S_uart_4000c000" <-> /soc/uart@4000c000
+        # We reconstruct the identifier for each node and check for match
+
+        target_ident = node_ident
+
+        for node in edt.nodes:
+            # Reconstruct identifier for this node
+            components = []
+            if node.parent is None:
+               # Root node, but usually "N" isn't passed here as N_S_...
+               continue
+
+            # Check path components
+            # Note: The logic here must match gen_defines.py node_z_path_id
+            parts = node.path.split("/")[1:]
+            ident_parts = [edtlib.str_as_token(p) for p in parts]
+            reconstructed = "_S_".join(ident_parts)
+
+            if reconstructed == target_ident:
+                return node
+
     return None
 
 
 def handle_dt_macro_error(edt: edtlib.EDT, symbol: str, macro_db: dict = None) -> list[str]:
     """
     Handle diagnosis for a DT macro error.
-    
+
     Analyzes symbols like DT_N_NODELABEL_vext_P_gpios_IDX_0_VAL_pin
     and provides meaningful diagnostics.
-    
+
     Args:
         edt: The EDT object
         symbol: The macro symbol that caused the error
@@ -261,18 +275,18 @@ def handle_dt_macro_error(edt: edtlib.EDT, symbol: str, macro_db: dict = None) -
     """
     # First, try looking up in the macro database if available
     db_info = lookup_macro_in_db(macro_db, symbol) if macro_db else None
-    
+
     if db_info:
         # We have database info, use it for more accurate diagnostics
         lines = []
         node_path = db_info.get('node_path')
         node = edt.get_node(node_path) if node_path else None
-        
+
         if not node:
             lines.append(f"Macro '{symbol}' refers to node '{node_path}' which was not found.\n")
             lines.append("This may indicate a build configuration issue.")
             return lines
-        
+
         # Node was found, check for property/cell issues
         prop_name = db_info.get('property')
         if prop_name:
@@ -283,11 +297,11 @@ def handle_dt_macro_error(edt: edtlib.EDT, symbol: str, macro_db: dict = None) -
                     for pname in sorted(node.props.keys()):
                         lines.append(f" - {pname}")
                 return lines
-            
+
             # Check for index/cell issues
             idx = db_info.get('index')
             cell = db_info.get('cell')
-            
+
             if idx is not None and cell:
                 prop = node.props[prop_name]
                 if prop.type == 'phandle-array':
@@ -299,7 +313,7 @@ def handle_dt_macro_error(edt: edtlib.EDT, symbol: str, macro_db: dict = None) -
                         )
                         lines.append(f"Property has {len(prop.val)} element(s).")
                         return lines
-                    
+
                     entry = prop.val[idx]
                     # Check entry is valid and has data attribute
                     if entry and hasattr(entry, 'data') and cell not in entry.data:
@@ -312,27 +326,27 @@ def handle_dt_macro_error(edt: edtlib.EDT, symbol: str, macro_db: dict = None) -
                             for cname in entry.data.keys():
                                 lines.append(f" - {cname}")
                         return lines
-        
+
         # If we get here with db_info but no specific issue, return a generic message
         lines.append(f"Macro '{symbol}' is defined but may be used incorrectly.")
         return lines
-    
+
     # Fall back to parsing-based diagnostics if no database info
     parsed = parse_dt_macro(symbol)
-    
+
     if not parsed:
         return [f"Unable to parse devicetree symbol: {symbol}"]
-    
+
     lines = []
-    
+
     # Try to find the node
     node = find_node_by_ident(edt, parsed)
-    
+
     if not node:
         # Node not found
         node_type = parsed.get('type')
         node_ident = parsed.get('node_ident')
-        
+
         if node_type == 'nodelabel':
             lines.append(f"Node with label '{ident2str(node_ident)}' not found in devicetree.\n")
             lines.append("Possible causes:")
@@ -345,17 +359,17 @@ def handle_dt_macro_error(edt: edtlib.EDT, symbol: str, macro_db: dict = None) -
             lines.append("Check the /aliases node in your devicetree files.")
         else:
             lines.append(f"Node not found for identifier: {node_ident}")
-        
+
         return lines
-    
+
     # Node was found, check if it's a property/cell access issue
     if 'property' in parsed:
         prop_name = ident2str(parsed['property'])
-        
+
         # Check if property exists
         if prop_name not in node.props:
             lines.append(f"Property '{prop_name}' not found on node '{format_node(node)}'.\n")
-            
+
             # List available properties
             if node.props:
                 lines.append("Available properties on this node:")
@@ -363,16 +377,16 @@ def handle_dt_macro_error(edt: edtlib.EDT, symbol: str, macro_db: dict = None) -
                     lines.append(f" - {pname}")
             else:
                 lines.append("This node has no properties.")
-            
+
             lines.append("\nCheck your devicetree binding and node definition.")
             return lines
-        
+
         prop = node.props[prop_name]
-        
+
         # Check index access
         if 'index' in parsed:
             idx = parsed['index']
-            
+
             # For phandle-array properties, check if index is valid
             if prop.type == 'phandle-array':
                 if idx >= len(prop.val):
@@ -382,7 +396,7 @@ def handle_dt_macro_error(edt: edtlib.EDT, symbol: str, macro_db: dict = None) -
                     )
                     lines.append(f"Property has {len(prop.val)} element(s), valid indices are 0-{len(prop.val)-1}.")
                     return lines
-                
+
                 # Check if the element at this index is None (unspecified)
                 if prop.val[idx] is None:
                     lines.append(
@@ -391,24 +405,24 @@ def handle_dt_macro_error(edt: edtlib.EDT, symbol: str, macro_db: dict = None) -
                     )
                     lines.append("This means the phandle-array has a gap at this position.")
                     return lines
-                
+
                 # Check cell access
                 if 'cell' in parsed:
                     cell_name = ident2str(parsed['cell'])
                     entry = prop.val[idx]
-                    
+
                     if cell_name not in entry.data:
                         lines.append(
                             f"Cell '{cell_name}' not found in element {idx} of "
                             f"property '{prop_name}' on node '{format_node(node)}'.\n"
                         )
-                        
+
                         # Show available cells
                         if entry.data:
                             lines.append("Available cells:")
                             for cname in entry.data.keys():
                                 lines.append(f" - {cname}")
-                        
+
                         # Show the controller node's binding info
                         if entry.controller:
                             lines.append(
@@ -421,7 +435,7 @@ def handle_dt_macro_error(edt: edtlib.EDT, symbol: str, macro_db: dict = None) -
                                         f"Expected cells based on binding: "
                                         f"{', '.join(binding.specifier_cells)}"
                                     )
-                        
+
                         return lines
             else:
                 # Not a phandle-array but trying to use index access
@@ -431,7 +445,7 @@ def handle_dt_macro_error(edt: edtlib.EDT, symbol: str, macro_db: dict = None) -
                 )
                 lines.append("Index-based access with _IDX_ is only valid for phandle-array properties.")
                 return lines
-    
+
     # If we get here, the macro exists but there might be another issue
     lines.append(f"Devicetree symbol '{symbol}' appears to be correctly formed.\n")
     lines.append(
@@ -441,7 +455,7 @@ def handle_dt_macro_error(edt: edtlib.EDT, symbol: str, macro_db: dict = None) -
     lines.append(" - Using the symbol in an unsupported context")
     lines.append(" - Macro expansion or preprocessor issues")
     lines.append(" - Check that you're using the correct macro for your use case")
-    
+
     return lines
 
 
@@ -552,7 +566,7 @@ def handle_disabled_node(node: edtlib.Node) -> list[str]:
 def main() -> int:
     args = parse_args()
     edt = load_edt(args.edt_pickle)
-    
+
     # Load macro database if provided
     macro_db = load_macro_db(args.macro_db) if args.macro_db else None
 

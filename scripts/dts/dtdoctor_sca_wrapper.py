@@ -83,10 +83,10 @@ def main() -> int:
                 "--symbol",
                 symbol,
             ]
-            # Add macro database if provided
+            # Add macro database if provided and exists
             if args.macro_db and os.path.exists(args.macro_db):
                 cmd_args.extend(["--macro-db", args.macro_db])
-            
+
             subprocess.run(cmd_args)
 
     return proc.returncode
