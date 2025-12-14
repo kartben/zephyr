@@ -59,7 +59,7 @@ static int flash_rpi_write(const struct device *dev, off_t offset, const void *d
 {
 	uint32_t key;
 	size_t bytes_to_write;
-	uint8_t *data_pointer = (uint8_t *)data;
+	const uint8_t *data_pointer = (const uint8_t *)data;
 
 	ARG_UNUSED(dev);
 
