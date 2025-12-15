@@ -54,11 +54,24 @@ endif()
 
 set(kconfig_soc_source_dir)
 
-while(TRUE)
-  string(FIND "${ret_hw}" "\n" idx REVERSE)
-  math(EXPR start "${idx} + 1")
-  string(SUBSTRING "${ret_hw}" ${start} -1 line)
-  string(SUBSTRING "${ret_hw}" 0 ${idx} ret_hw)
+# Process output line by line with O(n) complexity
+# Escape existing semicolons so CMake treats them as text, not delimiters
+string(REPLACE ";" "\\;" escaped_content "${ret_hw}")
+# Convert newlines to semicolons to create the list structure
+string(REPLACE "\n" ";" hw_lines "${escaped_content}")
+
+# Reverse the list to match original behavior: the original used FIND REVERSE to
+# process lines from last to first, while foreach processes first to last
+list(REVERSE hw_lines)
+
+foreach(line IN LISTS hw_lines)
+  # CMake automatically unescapes \; when iterating over lists
+
+  # Skip empty lines and lines with only whitespace
+  string(STRIP "${line}" line)
+  if(NOT line)
+    continue()
+  endif()
 
   cmake_parse_arguments(HWM "" "TYPE" "" ${line})
   if(HWM_TYPE STREQUAL "arch")
@@ -87,11 +100,7 @@ while(TRUE)
       set(SOC_${HWM_TYPE_UPPER}_${SOC_V2_NAME_UPPER}_DIR ${SOC_V2_DIR})
     endif()
   endif()
-
-  if(idx EQUAL -1)
-    break()
-  endif()
-endwhile()
+endforeach()
 list(REMOVE_DUPLICATES kconfig_soc_source_dir)
 
 # Support multiple ARCH_ROOT, SOC_ROOT and BOARD_ROOT
