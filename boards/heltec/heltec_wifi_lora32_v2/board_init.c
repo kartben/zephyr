@@ -8,6 +8,8 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/init.h>
 
+#if DT_NODE_EXISTS(DT_NODELABEL(vext)) && DT_NODE_EXISTS(DT_NODELABEL(oledrst))
+
 #define VEXT_PIN  DT_GPIO_PIN(DT_NODELABEL(vext), gpios)
 #define OLED_RST  DT_GPIO_PIN(DT_NODELABEL(oledrst), gpios)
 
@@ -32,3 +34,5 @@ static int board_heltec_wifi_lora32_v2_init(void)
 }
 
 SYS_INIT(board_heltec_wifi_lora32_v2_init, PRE_KERNEL_2, CONFIG_GPIO_INIT_PRIORITY);
+
+#endif /* DT_NODE_EXISTS(DT_NODELABEL(vext)) && DT_NODE_EXISTS(DT_NODELABEL(oledrst)) */
