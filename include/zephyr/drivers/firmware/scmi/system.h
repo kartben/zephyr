@@ -32,11 +32,17 @@ extern "C" {
  * @brief System protocol command message IDs
  */
 enum scmi_system_message {
+	/** Get protocol version */
 	SCMI_SYSTEM_MSG_PROTOCOL_VERSION = 0x0,
+	/** Get protocol attributes */
 	SCMI_SYSTEM_MSG_PROTOCOL_ATTRIBUTES = 0x1,
+	/** Get message attributes */
 	SCMI_SYSTEM_MSG_MESSAGE_ATTRIBUTES = 0x2,
+	/** Set system power state */
 	SCMI_SYSTEM_MSG_POWER_STATE_SET = 0x3,
+	/** System power state notification support */
 	SCMI_SYSTEM_MSG_POWER_STATE_NOTIFY = 0x5,
+	/** Negotiate protocol version */
 	SCMI_SYSTEM_MSG_NEGOTIATE_PROTOCOL_VERSION = 0x10,
 };
 
@@ -99,7 +105,9 @@ enum scmi_system_message {
  * @brief System power state configuration
  */
 struct scmi_system_power_state_config {
+	/** System power state configuration flags */
 	uint32_t flags;
+	/** System power state */
 	uint32_t system_state;
 };
 

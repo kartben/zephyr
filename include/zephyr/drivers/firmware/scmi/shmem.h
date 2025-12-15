@@ -28,11 +28,19 @@
 #define SCMI_SHMEM_CHAN_FLAG_IRQ_BIT BIT(0)
 
 struct scmi_shmem_layout {
-	volatile uint32_t res0;
+	/** @cond INTERNAL_HIDDEN */
+	volatile uint32_t res0;	/* Reserved. Must be zero */
+	/** @endcond */
+	/** Channel status */
 	volatile uint32_t chan_status;
-	volatile uint32_t res1[2];
+	/** @cond INTERNAL_HIDDEN */
+	volatile uint32_t res1[2];	/* Reserved. Implementation defined. */
+	/** @endcond */
+	/** Channel flags */
 	volatile uint32_t chan_flags;
+	/** Length of the payload */
 	volatile uint32_t len;
+	/** Message header */
 	volatile uint32_t msg_hdr;
 };
 
@@ -78,6 +86,7 @@ void scmi_shmem_update_flags(const struct device *shmem,
  * @brief Read a channel's status
  *
  * @param shmem pointer to shmem device
+ * @return uint32_t channel status
  */
 uint32_t scmi_shmem_channel_status(const struct device *shmem);
 

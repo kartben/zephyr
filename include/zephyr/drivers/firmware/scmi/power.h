@@ -69,8 +69,11 @@
  * command
  */
 struct scmi_power_state_config {
+	/** Power state set flags */
 	uint32_t flags;
+	/** Identifier for the power domain */
 	uint32_t domain_id;
+	/** Power state to set */
 	uint32_t power_state;
 };
 

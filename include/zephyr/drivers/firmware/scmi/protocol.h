@@ -60,17 +60,29 @@ enum scmi_message_type {
  * @brief SCMI status codes
  */
 enum scmi_status_code {
+	/** Successful completion of the command */
 	SCMI_SUCCESS = 0,
+	/** The command or feature is not supported */
 	SCMI_NOT_SUPPORTED = -1,
+	/** One or more parameters passed to the command are invalid */
 	SCMI_INVALID_PARAMETERS = -2,
+	/** The caller is not permitted to perform the specific action */
 	SCMI_DENIED = -3,
+	/** The entity that is being accessed does not exist */
 	SCMI_NOT_FOUND = -4,
+	/** Requested settings are outside the legal range */
 	SCMI_OUT_OF_RANGE = -5,
+	/** The platform is out of resources and thus unable to process a command */
 	SCMI_BUSY = -6,
+	/** The message could not be correctly transmitted */
 	SCMI_COMMS_ERROR = -7,
+	/** Unspecified fault within the platform */
 	SCMI_GENERIC_ERROR = -8,
+	/** Hardware error in a platform component */
 	SCMI_HARDWARE_ERROR = -9,
+	/** The caller has violated the protocol specification */
 	SCMI_PROTOCOL_ERROR = -10,
+	/** The resource is currently in use and cannot be operated upon */
 	SCMI_IN_USE = -11,
 };
 
@@ -78,9 +90,13 @@ enum scmi_status_code {
  * @brief SCMI common command
  */
 enum scmi_common_cmd {
+	/** Returns the version of the protocol */
 	SCMI_MSG_PROTOCOL_VERSION = 0x0,
+	/** Returns the attributes of the protocol */
 	SCMI_MSG_PROTOCOL_ATTRIBUTES = 0x1,
+	/** Returns the attributes of a specific message */
 	SCMI_MSG_MESSAGE_ATTRIBUTES = 0x2,
+	/** Negotiates the protocol version with the platform */
 	SCMI_MSG_NEGOTIATE_PROTOCOL_VERSION = 0x10,
 };
 
@@ -108,8 +124,11 @@ struct scmi_protocol {
  * @brief SCMI message structure
  */
 struct scmi_message {
+	/** Message header */
 	uint32_t hdr;
+	/** Length of the message */
 	uint32_t len;
+	/** Pointer to the message payload */
 	void *content;
 };
 
