@@ -154,6 +154,8 @@ example, ``POWER_STATE_GET`` and ``POWER_STATE_SET``.
 	This driver is vendor-agnostic. As such, it may be used on any
 	system that uses SCMI for power domain management operations.
 
+.. doxygengroup:: scmi_power
+
 System power management protocol
 ********************************
 
@@ -163,6 +165,8 @@ of functions implementing various commands, for example, ``SYSTEM_POWER_STATE_SE
 .. note::
 	This driver is vendor-agnostic. As such, it may be used on any
 	system that uses SCMI for system power management operations.
+
+.. doxygengroup:: scmi_system_power
 
 Clock management protocol
 *************************
@@ -177,6 +181,8 @@ management driver.
 	This driver is vendor-agnostic. As such, it may be used on any
 	system that uses SCMI for clock management operations.
 
+.. doxygengroup:: scmi_clock
+
 Pin Control protocol
 ********************
 
@@ -190,6 +196,8 @@ supported command is ``PINCTRL_SETTINGS_CONFIGURE``.
 	their own definition of :code:`pinctrl_configure_pins`, which should
 	call into the SCMI pin control protocol function implementing the
 	``PINCTRL_SETTINGS_CONFIGURE`` command.
+
+.. doxygengroup:: scmi_pinctrl
 
 NXP - CPU domain management
 ***************************
