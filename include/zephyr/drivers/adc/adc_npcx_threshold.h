@@ -4,33 +4,63 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @ingroup adc_npcx_threshold
+ * @brief API for NPCX ADC threshold detection.
+ */
+
 #ifndef _ADC_NPCX_THRESHOLD_H_
 #define _ADC_NPCX_THRESHOLD_H_
 
+/**
+ * @brief NPCX ADC Threshold Detection API
+ * @defgroup adc_npcx_threshold NPCX ADC Threshold
+ * @ingroup adc_interface
+ * @{
+ */
+
 #include <zephyr/device.h>
 
+/**
+ * @brief ADC threshold comparison mode
+ *
+ * Defines the relation between the measured value and the threshold value
+ * that triggers the threshold event.
+ */
 enum adc_npcx_threshold_param_l_h {
-	ADC_NPCX_THRESHOLD_PARAM_L_H_HIGHER,
-	ADC_NPCX_THRESHOLD_PARAM_L_H_LOWER,
+	ADC_NPCX_THRESHOLD_PARAM_L_H_HIGHER, /**< Trigger when measured value is higher */
+	ADC_NPCX_THRESHOLD_PARAM_L_H_LOWER,  /**< Trigger when measured value is lower */
 };
 
+/**
+ * @brief ADC threshold parameter types
+ *
+ * Defines the types of parameters that can be configured for ADC threshold
+ * detection.
+ */
 enum adc_npcx_threshold_param_type {
-	/* Selects ADC channel to be used for measurement */
+	/** Selects ADC channel to be used for measurement */
 	ADC_NPCX_THRESHOLD_PARAM_CHNSEL,
-	/* Sets relation between measured value and assetion threshold value.*/
+	/** Sets relation between measured value and assertion threshold value */
 	ADC_NPCX_THRESHOLD_PARAM_L_H,
-	/* Sets the threshold value to which measured data is compared. */
+	/** Sets the threshold value to which measured data is compared */
 	ADC_NPCX_THRESHOLD_PARAM_THVAL,
-	/* Sets worker queue thread to be notified */
+	/** Sets worker queue thread to be notified */
 	ADC_NPCX_THRESHOLD_PARAM_WORK,
 
-	ADC_NPCX_THRESHOLD_PARAM_MAX,
+	ADC_NPCX_THRESHOLD_PARAM_MAX, /**< Maximum threshold parameter type */
 };
 
+/**
+ * @brief ADC threshold parameter structure
+ *
+ * Structure used to configure threshold detection parameters.
+ */
 struct adc_npcx_threshold_param {
-	/* Threshold ocntrol parameter */
+	/** Threshold control parameter type */
 	enum adc_npcx_threshold_param_type type;
-	/* Parameter value */
+	/** Parameter value */
 	uint32_t val;
 };
 
@@ -86,5 +116,9 @@ int adc_npcx_threshold_ctrl_set_param(const struct device *dev,
  */
 int adc_npcx_threshold_ctrl_enable(const struct device *dev, uint8_t th_sel,
 				   const bool enable);
+
+/**
+ * @}
+ */
 
 #endif /*_ADC_NPCX_THRESHOLD_H_ */

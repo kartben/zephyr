@@ -4,22 +4,41 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @ingroup adc_current_sense_amplifier
+ * @brief API for ADC current sense amplifier.
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_ADC_CURRENT_SENSE_AMPLIFIER_H_
 #define ZEPHYR_INCLUDE_DRIVERS_ADC_CURRENT_SENSE_AMPLIFIER_H_
+
+/**
+ * @brief ADC Current Sense Amplifier API
+ * @defgroup adc_current_sense_amplifier ADC Current Sense Amplifier
+ * @ingroup adc_interface
+ * @{
+ */
 
 #include <zephyr/drivers/adc.h>
 #include <zephyr/drivers/gpio.h>
 
+/**
+ * @brief Current sense amplifier configuration structure
+ *
+ * Contains the configuration parameters for a current sense amplifier
+ * connected to an ADC.
+ */
 struct current_sense_amplifier_dt_spec {
-	struct adc_dt_spec port;
-	struct gpio_dt_spec power_gpio;
-	uint32_t sense_milli_ohms;
-	uint16_t sense_gain_mult;
-	uint16_t sense_gain_div;
-	uint16_t noise_threshold;
-	int16_t zero_current_voltage_mv;
-	enum adc_gain gain_extended_range;
-	bool enable_calibration;
+	struct adc_dt_spec port;            /**< ADC port configuration */
+	struct gpio_dt_spec power_gpio;     /**< Power control GPIO */
+	uint32_t sense_milli_ohms;          /**< Sense resistor value in milliohms */
+	uint16_t sense_gain_mult;           /**< Sense amplifier gain multiplier */
+	uint16_t sense_gain_div;            /**< Sense amplifier gain divisor */
+	uint16_t noise_threshold;           /**< Noise threshold for filtering */
+	int16_t zero_current_voltage_mv;    /**< Voltage at zero current in millivolts */
+	enum adc_gain gain_extended_range;  /**< Extended range gain setting */
+	bool enable_calibration;            /**< Enable calibration */
 };
 
 /**
@@ -30,7 +49,7 @@ struct current_sense_amplifier_dt_spec {
  *
  * @param node_id Devicetree node identifier.
  *
- * @return Static initializer for an current_sense_amplifier_dt_spec structure.
+ * @return Static initializer for a current_sense_amplifier_dt_spec structure.
  */
 #define CURRENT_SENSE_AMPLIFIER_DT_SPEC_GET(node_id)                                               \
 	{                                                                                          \
@@ -47,6 +66,9 @@ struct current_sense_amplifier_dt_spec {
 
 /**
  * @brief Calculates the actual amperage from the measured voltage
+ *
+ * Converts the measured voltage to the corresponding current value based on
+ * the sense resistor value and amplifier gain.
  *
  * @param[in] spec current sensor specification from Devicetree.
  * @param[in,out] v_to_i Pointer to the measured voltage in millivolts on input, and the
@@ -69,12 +91,15 @@ current_sense_amplifier_scale_dt(const struct current_sense_amplifier_dt_spec *s
 }
 
 /**
- * @brief Calculates the actual amperage from the measured voltage
+ * @brief Calculates the actual amperage from the measured voltage in microvolts
+ *
+ * Converts the measured voltage in microvolts to the corresponding current value
+ * in microamps based on the sense resistor value and amplifier gain.
  *
  * @param spec Current sensor specification from Devicetree.
  * @param microvolts Measured voltage in microvolts.
  *
- * @return int32_t Corresponding scaled output current in microamps.
+ * @return Corresponding scaled output current in microamps.
  */
 static inline int32_t
 current_sense_amplifier_scale_ua_dt(const struct current_sense_amplifier_dt_spec *spec,
@@ -93,5 +118,9 @@ current_sense_amplifier_scale_ua_dt(const struct current_sense_amplifier_dt_spec
 	/* Perform final divisions */
 	return scaled / spec->sense_gain_mult / spec->sense_milli_ohms;
 }
+
+/**
+ * @}
+ */
 
 #endif /* ZEPHYR_INCLUDE_DRIVERS_ADC_CURRENT_SENSE_AMPLIFIER_H_ */
