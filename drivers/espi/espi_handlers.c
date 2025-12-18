@@ -40,7 +40,7 @@ static inline int z_vrfy_espi_read_lpc_request(const struct device *dev,
 	K_OOPS(K_SYSCALL_DRIVER_ESPI(dev, read_lpc_request));
 
 	ret = z_impl_espi_read_lpc_request(dev, op, &data_copy);
-	K_OOPS(k_usermode_to_copy(data, &data_copy, sizeof(uint8_t)));
+	K_OOPS(k_usermode_to_copy(data, &data_copy, sizeof(uint32_t)));
 
 	return ret;
 }
@@ -169,7 +169,7 @@ static inline int z_vrfy_espi_read_flash(const struct device *dev,
 				sizeof(struct espi_flash_packet)));
 	K_OOPS(K_SYSCALL_MEMORY_WRITE(pckt->buf, pckt->len));
 
-	ret = z_impl_espi_read_flash(dev, pckt);
+	ret = z_impl_espi_read_flash(dev, &pckt_copy);
 	K_OOPS(k_usermode_to_copy(pckt, &pckt_copy,
 			      sizeof(struct espi_flash_packet)));
 
