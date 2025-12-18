@@ -41,6 +41,16 @@ static inline int z_vrfy_peci_transfer(const struct device *dev,
 	K_OOPS(K_SYSCALL_DRIVER_PECI(dev, transfer));
 	K_OOPS(k_usermode_from_copy(&msg_copy, msg, sizeof(*msg)));
 
+	/* Validate tx buffer if present */
+	if (msg_copy.tx_buffer.buf != NULL) {
+		K_OOPS(K_SYSCALL_MEMORY_READ(msg_copy.tx_buffer.buf, msg_copy.tx_buffer.len));
+	}
+
+	/* Validate rx buffer if present */
+	if (msg_copy.rx_buffer.buf != NULL) {
+		K_OOPS(K_SYSCALL_MEMORY_WRITE(msg_copy.rx_buffer.buf, msg_copy.rx_buffer.len));
+	}
+
 	return z_impl_peci_transfer(dev, &msg_copy);
 }
 #include <zephyr/syscalls/peci_transfer_mrsh.c>
