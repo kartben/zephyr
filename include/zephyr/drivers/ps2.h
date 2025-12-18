@@ -42,28 +42,73 @@ extern "C" {
 typedef void (*ps2_callback_t)(const struct device *dev, uint8_t data);
 
 /**
- * @cond INTERNAL_HIDDEN
- *
- * PS2 driver API definition and system call entry points
- *
- * (Internal use only.)
+ * @def_driverbackendgroup{PS/2,ps2_interface}
+ * @{
+ */
+
+/**
+ * @typedef ps2_config_t
+ * @brief Callback API for configuring the PS/2 instance
+ * @see ps2_config() for argument descriptions.
  */
 typedef int (*ps2_config_t)(const struct device *dev,
 			    ps2_callback_t callback_isr);
+
+/**
+ * @typedef ps2_read_t
+ * @brief Callback API for reading from PS/2 device
+ * @see ps2_read() for argument descriptions.
+ */
 typedef int (*ps2_read_t)(const struct device *dev, uint8_t *value);
+
+/**
+ * @typedef ps2_write_t
+ * @brief Callback API for writing to PS/2 device
+ * @see ps2_write() for argument descriptions.
+ */
 typedef int (*ps2_write_t)(const struct device *dev, uint8_t value);
+
+/**
+ * @typedef ps2_disable_callback_t
+ * @brief Callback API for disabling PS/2 callback
+ * @see ps2_disable_callback() for argument descriptions.
+ */
 typedef int (*ps2_disable_callback_t)(const struct device *dev);
+
+/**
+ * @typedef ps2_enable_callback_t
+ * @brief Callback API for enabling PS/2 callback
+ * @see ps2_enable_callback() for argument descriptions.
+ */
 typedef int (*ps2_enable_callback_t)(const struct device *dev);
 
+/**
+ * @driver_ops{PS/2}
+ */
 __subsystem struct ps2_driver_api {
+	/**
+	 * @driver_ops_mandatory @copybrief ps2_config_t
+	 */
 	ps2_config_t config;
+	/**
+	 * @driver_ops_mandatory @copybrief ps2_read_t
+	 */
 	ps2_read_t read;
+	/**
+	 * @driver_ops_mandatory @copybrief ps2_write_t
+	 */
 	ps2_write_t write;
+	/**
+	 * @driver_ops_optional @copybrief ps2_disable_callback_t
+	 */
 	ps2_disable_callback_t disable_callback;
+	/**
+	 * @driver_ops_optional @copybrief ps2_enable_callback_t
+	 */
 	ps2_enable_callback_t enable_callback;
 };
 /**
- * @endcond
+ * @}
  */
 
 /**

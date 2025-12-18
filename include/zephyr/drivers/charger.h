@@ -332,10 +332,14 @@ union charger_propval {
 };
 
 /**
+ * @def_driverbackendgroup{Charger,charger_interface}
+ * @{
+ */
+
+/**
  * @typedef charger_get_property_t
  * @brief Callback API for getting a charger property.
- *
- * See charger_get_property() for argument description
+ * @see charger_get_prop() for argument descriptions.
  */
 typedef int (*charger_get_property_t)(const struct device *dev, const charger_prop_t prop,
 				      union charger_propval *val);
@@ -343,8 +347,7 @@ typedef int (*charger_get_property_t)(const struct device *dev, const charger_pr
 /**
  * @typedef charger_set_property_t
  * @brief Callback API for setting a charger property.
- *
- * See charger_set_property() for argument description
+ * @see charger_set_prop() for argument descriptions.
  */
 typedef int (*charger_set_property_t)(const struct device *dev, const charger_prop_t prop,
 				      const union charger_propval *val);
@@ -352,21 +355,30 @@ typedef int (*charger_set_property_t)(const struct device *dev, const charger_pr
 /**
  * @typedef charger_charge_enable_t
  * @brief Callback API enabling or disabling a charge cycle.
- *
- * See charger_charge_enable() for argument description
+ * @see charger_charge_enable() for argument descriptions.
  */
 typedef int (*charger_charge_enable_t)(const struct device *dev, const bool enable);
 
 /**
- * @brief Charging device API
- *
- * Caching is entirely on the onus of the client
+ * @driver_ops{Charger}
  */
 __subsystem struct charger_driver_api {
+	/**
+	 * @driver_ops_mandatory @copybrief charger_get_property_t
+	 */
 	charger_get_property_t get_property;
+	/**
+	 * @driver_ops_mandatory @copybrief charger_set_property_t
+	 */
 	charger_set_property_t set_property;
+	/**
+	 * @driver_ops_mandatory @copybrief charger_charge_enable_t
+	 */
 	charger_charge_enable_t charge_enable;
 };
+/**
+ * @}
+ */
 
 /**
  * @brief Fetch a battery charger property

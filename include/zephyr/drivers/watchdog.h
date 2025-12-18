@@ -112,41 +112,63 @@ struct wdt_timeout_cfg {
 	uint8_t flags;
 };
 
-/** @cond INTERNAL_HIDDEN */
+/**
+ * @def_driverbackendgroup{Watchdog,watchdog_interface}
+ * @{
+ */
 
 /**
+ * @typedef wdt_api_setup
  * @brief Callback API for setting up watchdog instance.
- * @see wdt_setup().
+ * @see wdt_setup() for argument descriptions.
  */
 typedef int (*wdt_api_setup)(const struct device *dev, uint8_t options);
 
 /**
+ * @typedef wdt_api_disable
  * @brief Callback API for disabling watchdog instance.
- * @see wdt_disable().
+ * @see wdt_disable() for argument descriptions.
  */
 typedef int (*wdt_api_disable)(const struct device *dev);
 
 /**
+ * @typedef wdt_api_install_timeout
  * @brief Callback API for installing new timeout.
- * @see wdt_install_timeout().
+ * @see wdt_install_timeout() for argument descriptions.
  */
 typedef int (*wdt_api_install_timeout)(const struct device *dev,
 				       const struct wdt_timeout_cfg *cfg);
 
 /**
+ * @typedef wdt_api_feed
  * @brief Callback API for feeding specified watchdog timeout.
- * @see wdt_feed().
+ * @see wdt_feed() for argument descriptions.
  */
 typedef int (*wdt_api_feed)(const struct device *dev, int channel_id);
 
+/**
+ * @driver_ops{Watchdog}
+ */
 __subsystem struct wdt_driver_api {
+	/**
+	 * @driver_ops_mandatory @copybrief wdt_api_setup
+	 */
 	wdt_api_setup setup;
+	/**
+	 * @driver_ops_mandatory @copybrief wdt_api_disable
+	 */
 	wdt_api_disable disable;
+	/**
+	 * @driver_ops_mandatory @copybrief wdt_api_install_timeout
+	 */
 	wdt_api_install_timeout install_timeout;
+	/**
+	 * @driver_ops_mandatory @copybrief wdt_api_feed
+	 */
 	wdt_api_feed feed;
 };
 /**
- * @endcond
+ * @}
  */
 
 /**

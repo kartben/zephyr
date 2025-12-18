@@ -53,6 +53,11 @@ struct led_info {
 };
 
 /**
+ * @def_driverbackendgroup{LED,led_interface}
+ * @{
+ */
+
+/**
  * @typedef led_api_blink()
  * @brief Callback API for blinking an LED
  *
@@ -115,19 +120,44 @@ typedef int (*led_api_write_channels)(const struct device *dev,
 				      const uint8_t *buf);
 
 /**
- * @brief LED driver API
+ * @driver_ops{LED}
  */
 __subsystem struct led_driver_api {
-	/* Mandatory callbacks, either on/off or set_brightness. */
+	/**
+	 * @driver_ops_optional @copybrief led_api_on
+	 * @note Either on/off or set_brightness must be implemented.
+	 */
 	led_api_on on;
+	/**
+	 * @driver_ops_optional @copybrief led_api_off
+	 * @note Either on/off or set_brightness must be implemented.
+	 */
 	led_api_off off;
+	/**
+	 * @driver_ops_optional @copybrief led_api_set_brightness
+	 * @note Either on/off or set_brightness must be implemented.
+	 */
 	led_api_set_brightness set_brightness;
-	/* Optional callbacks. */
+	/**
+	 * @driver_ops_optional @copybrief led_api_blink
+	 */
 	led_api_blink blink;
+	/**
+	 * @driver_ops_optional @copybrief led_api_get_info
+	 */
 	led_api_get_info get_info;
+	/**
+	 * @driver_ops_optional @copybrief led_api_set_color
+	 */
 	led_api_set_color set_color;
+	/**
+	 * @driver_ops_optional @copybrief led_api_write_channels
+	 */
 	led_api_write_channels write_channels;
 };
+/**
+ * @}
+ */
 
 /**
  * @brief Blink an LED

@@ -55,6 +55,11 @@ struct led_rgb {
 };
 
 /**
+ * @def_driverbackendgroup{LED Strip,led_strip_interface}
+ * @{
+ */
+
+/**
  * @typedef led_api_update_rgb
  * @brief Callback API for updating an RGB LED strip
  *
@@ -83,15 +88,25 @@ typedef int (*led_api_update_channels)(const struct device *dev,
 typedef size_t (*led_api_length)(const struct device *dev);
 
 /**
- * @brief LED strip driver API
- *
- * This is the mandatory API any LED strip driver needs to expose.
+ * @driver_ops{LED Strip}
  */
 __subsystem struct led_strip_driver_api {
+	/**
+	 * @driver_ops_mandatory @copybrief led_api_update_rgb
+	 */
 	led_api_update_rgb update_rgb;
+	/**
+	 * @driver_ops_optional @copybrief led_api_update_channels
+	 */
 	led_api_update_channels update_channels;
+	/**
+	 * @driver_ops_mandatory @copybrief led_api_length
+	 */
 	led_api_length length;
 };
+/**
+ * @}
+ */
 
 /**
  * @brief		Mandatory function to update an LED strip with the given RGB array.

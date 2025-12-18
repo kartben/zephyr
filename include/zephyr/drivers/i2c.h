@@ -203,26 +203,57 @@ struct i2c_msg {
 typedef void (*i2c_callback_t)(const struct device *dev, int result, void *data);
 
 /**
- * @cond INTERNAL_HIDDEN
- *
- * These are for internal use only, so skip these in
- * public documentation.
+ * @def_driverbackendgroup{I2C,i2c_interface}
+ * @{
  */
 struct i2c_target_config;
 
+/**
+ * @typedef i2c_api_configure_t
+ * @brief Callback API for configuring I2C controller
+ * @see i2c_configure() for argument descriptions.
+ */
 typedef int (*i2c_api_configure_t)(const struct device *dev,
 				   uint32_t dev_config);
+
+/**
+ * @typedef i2c_api_get_config_t
+ * @brief Callback API for getting I2C controller configuration
+ * @see i2c_get_config() for argument descriptions.
+ */
 typedef int (*i2c_api_get_config_t)(const struct device *dev,
 				    uint32_t *dev_config);
+
+/**
+ * @typedef i2c_api_full_io_t
+ * @brief Callback API for I2C data transfer
+ * @see i2c_transfer() for argument descriptions.
+ */
 typedef int (*i2c_api_full_io_t)(const struct device *dev,
 				 struct i2c_msg *msgs,
 				 uint8_t num_msgs,
 				 uint16_t addr);
+
+/**
+ * @typedef i2c_api_target_register_t
+ * @brief Callback API for registering I2C target
+ * @see i2c_target_register() for argument descriptions.
+ */
 typedef int (*i2c_api_target_register_t)(const struct device *dev,
 					struct i2c_target_config *cfg);
+
+/**
+ * @typedef i2c_api_target_unregister_t
+ * @brief Callback API for unregistering I2C target
+ * @see i2c_target_unregister() for argument descriptions.
+ */
 typedef int (*i2c_api_target_unregister_t)(const struct device *dev,
 					  struct i2c_target_config *cfg);
-#ifdef CONFIG_I2C_CALLBACK
+#if defined(CONFIG_I2C_CALLBACK) || defined(__DOXYGEN__)
+/**
+ * @typedef i2c_api_transfer_cb_t
+ * @brief Callback API for asynchronous I2C data transfer
+ */
 typedef int (*i2c_api_transfer_cb_t)(const struct device *dev,
 				 struct i2c_msg *msgs,
 				 uint8_t num_msgs,
@@ -240,33 +271,84 @@ typedef void (*i2c_api_iodev_submit)(const struct device *dev,
 				     struct rtio_iodev_sqe *iodev_sqe);
 #endif /* CONFIG_I2C_RTIO */
 
+/**
+ * @typedef i2c_api_recover_bus_t
+ * @brief Callback API for recovering I2C bus
+ * @see i2c_recover_bus() for argument descriptions.
+ */
 typedef int (*i2c_api_recover_bus_t)(const struct device *dev);
 
+/**
+ * @driver_ops{I2C}
+ */
 __subsystem struct i2c_driver_api {
+	/**
+	 * @driver_ops_mandatory @copybrief i2c_api_configure_t
+	 */
 	i2c_api_configure_t configure;
+	/**
+	 * @driver_ops_optional @copybrief i2c_api_get_config_t
+	 */
 	i2c_api_get_config_t get_config;
+	/**
+	 * @driver_ops_mandatory @copybrief i2c_api_full_io_t
+	 */
 	i2c_api_full_io_t transfer;
+	/**
+	 * @driver_ops_optional @copybrief i2c_api_target_register_t
+	 */
 	i2c_api_target_register_t target_register;
+	/**
+	 * @driver_ops_optional @copybrief i2c_api_target_unregister_t
+	 */
 	i2c_api_target_unregister_t target_unregister;
-#ifdef CONFIG_I2C_CALLBACK
+#if defined(CONFIG_I2C_CALLBACK) || defined(__DOXYGEN__)
+	/**
+	 * @driver_ops_optional @copybrief i2c_api_transfer_cb_t
+	 * @kconfig_dep{CONFIG_I2C_CALLBACK}
+	 */
 	i2c_api_transfer_cb_t transfer_cb;
 #endif
-#ifdef CONFIG_I2C_RTIO
+#if defined(CONFIG_I2C_RTIO) || defined(__DOXYGEN__)
+	/**
+	 * @driver_ops_optional @copybrief i2c_api_iodev_submit
+	 * @kconfig_dep{CONFIG_I2C_RTIO}
+	 */
 	i2c_api_iodev_submit iodev_submit;
 #endif
+	/**
+	 * @driver_ops_optional @copybrief i2c_api_recover_bus_t
+	 */
 	i2c_api_recover_bus_t recover_bus;
 };
 
+/**
+ * @typedef i2c_target_api_register_t
+ * @brief Callback API for registering I2C target device
+ */
 typedef int (*i2c_target_api_register_t)(const struct device *dev);
-typedef int (*i2c_target_api_unregister_t)(const struct device *dev);
-
-__subsystem struct i2c_target_driver_api {
-	i2c_target_api_register_t driver_register;
-	i2c_target_api_unregister_t driver_unregister;
-};
 
 /**
- * @endcond
+ * @typedef i2c_target_api_unregister_t
+ * @brief Callback API for unregistering I2C target device
+ */
+typedef int (*i2c_target_api_unregister_t)(const struct device *dev);
+
+/**
+ * @driver_ops{I2C Target}
+ */
+__subsystem struct i2c_target_driver_api {
+	/**
+	 * @driver_ops_mandatory @copybrief i2c_target_api_register_t
+	 */
+	i2c_target_api_register_t driver_register;
+	/**
+	 * @driver_ops_mandatory @copybrief i2c_target_api_unregister_t
+	 */
+	i2c_target_api_unregister_t driver_unregister;
+};
+/**
+ * @}
  */
 
 /** Target device responds to 10-bit addressing. */

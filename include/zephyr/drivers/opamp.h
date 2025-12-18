@@ -53,18 +53,29 @@ enum opamp_gain {
 };
 
 /**
- * @cond INTERNAL_HIDDEN
- *
- * For internal use only, skip these in public documentation.
+ * @def_driverbackendgroup{OPAMP,opamp_interface}
+ * @{
  */
 
+/**
+ * @typedef opamp_api_set_gain_t
+ * @brief Callback API for setting OPAMP gain
+ * @see opamp_set_gain() for argument descriptions.
+ */
 typedef int (*opamp_api_set_gain_t)(const struct device *dev, enum opamp_gain gain);
 
+/**
+ * @driver_ops{OPAMP}
+ */
 __subsystem struct opamp_driver_api {
+	/**
+	 * @driver_ops_mandatory @copybrief opamp_api_set_gain_t
+	 */
 	opamp_api_set_gain_t set_gain;
 };
-
-/** @endcond */
+/**
+ * @}
+ */
 
 /**
  * @brief Set opamp gain.
