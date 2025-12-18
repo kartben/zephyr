@@ -12,7 +12,7 @@ static inline int z_vrfy_ps2_config(const struct device *dev,
 {
 	K_OOPS(K_SYSCALL_DRIVER_PS2(dev, config));
 	K_OOPS(K_SYSCALL_VERIFY_MSG(callback_isr == NULL,
-				    "callback not be set from user mode"));
+				    "callbacks may not be set from user mode"));
 	return z_impl_ps2_config(dev, callback_isr);
 }
 #include <zephyr/syscalls/ps2_config_mrsh.c>
