@@ -79,8 +79,8 @@ int escp_printer_form_feed(const struct device *dev)
 
 int escp_printer_set_bold(const struct device *dev, bool enable)
 {
-	/* ESC E - Turn emphasized (bold) mode on/off */
-	uint8_t cmd[] = {ESCP_ESC, 'E', enable ? 1 : 0};
+	/* ESC E - Turn emphasized (bold) mode on, ESC F - Turn emphasized mode off */
+	uint8_t cmd[] = {ESCP_ESC, enable ? 'E' : 'F'};
 
 	LOG_DBG("Setting bold: %s", enable ? "on" : "off");
 	return escp_send_bytes(dev, cmd, sizeof(cmd));
