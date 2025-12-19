@@ -1,0 +1,8 @@
+# Copyright (c) 2025 Zephyr Project
+# SPDX-License-Identifier: Apache-2.0
+
+description: Epson ESC/P printer
+
+compatible: "epson,escp"
+
+include: uart-device.yaml

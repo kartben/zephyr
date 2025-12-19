@@ -1,0 +1,8 @@
+sample:
+  name: Epson ESC/P Printer Sample
+tests:
+  sample.drivers.misc.escp_printer:
+    tags:
+      - drivers
+    depends_on: serial
+    filter: dt_compat_enabled("epson,escp")
