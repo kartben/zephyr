@@ -1,0 +1,8 @@
+sample:
+  name: ESC/POS Thermal Printer Sample
+tests:
+  sample.drivers.misc.escpos:
+    tags:
+      - drivers
+    depends_on: serial
+    filter: dt_compat_enabled("epson,escpos")

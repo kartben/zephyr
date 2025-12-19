@@ -2,4 +2,4 @@
 
 zephyr_library()
 
-zephyr_library_sources(escp_printer.c)
+zephyr_library_sources(escpos.c)

@@ -5,12 +5,12 @@
  */
 
 /**
- * @file escp_printer.h
- * @brief Public API for Epson ESC/P printers
+ * @file escpos.h
+ * @brief Public API for ESC/POS thermal printers
  */
 
-#ifndef ZEPHYR_INCLUDE_DRIVERS_MISC_ESCP_PRINTER_H_
-#define ZEPHYR_INCLUDE_DRIVERS_MISC_ESCP_PRINTER_H_
+#ifndef ZEPHYR_INCLUDE_DRIVERS_MISC_ESCPOS_H_
+#define ZEPHYR_INCLUDE_DRIVERS_MISC_ESCPOS_H_
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -22,8 +22,8 @@ extern "C" {
 #endif
 
 /**
- * @brief Epson ESC/P printer driver APIs
- * @defgroup escp_printer Epson ESC/P printer
+ * @brief ESC/POS thermal printer driver APIs
+ * @defgroup escpos ESC/POS thermal printer
  * @ingroup misc_interfaces
  * @{
  */
@@ -38,7 +38,7 @@ extern "C" {
  * @retval 0 on success
  * @retval -errno on failure
  */
-int escp_printer_init(const struct device *dev);
+int escpos_init(const struct device *dev);
 
 /**
  * @brief Print text to the printer
@@ -50,7 +50,7 @@ int escp_printer_init(const struct device *dev);
  * @retval 0 on success
  * @retval -errno on failure
  */
-int escp_printer_print(const struct device *dev, const char *data, uint32_t size);
+int escpos_print(const struct device *dev, const char *data, uint32_t size);
 
 /**
  * @brief Print text followed by a line feed
@@ -62,7 +62,7 @@ int escp_printer_print(const struct device *dev, const char *data, uint32_t size
  * @retval 0 on success
  * @retval -errno on failure
  */
-int escp_printer_println(const struct device *dev, const char *data, uint32_t size);
+int escpos_println(const struct device *dev, const char *data, uint32_t size);
 
 /**
  * @brief Perform a line feed
@@ -72,17 +72,19 @@ int escp_printer_println(const struct device *dev, const char *data, uint32_t si
  * @retval 0 on success
  * @retval -errno on failure
  */
-int escp_printer_line_feed(const struct device *dev);
+int escpos_line_feed(const struct device *dev);
 
 /**
- * @brief Perform a form feed (eject page)
+ * @brief Cut the paper
+ *
+ * Performs a full paper cut on printers with a cutter.
  *
  * @param dev Pointer to device structure for driver instance.
  *
  * @retval 0 on success
  * @retval -errno on failure
  */
-int escp_printer_form_feed(const struct device *dev);
+int escpos_cut_paper(const struct device *dev);
 
 /**
  * @brief Set bold printing mode
@@ -93,18 +95,7 @@ int escp_printer_form_feed(const struct device *dev);
  * @retval 0 on success
  * @retval -errno on failure
  */
-int escp_printer_set_bold(const struct device *dev, bool enable);
-
-/**
- * @brief Set italic printing mode
- *
- * @param dev Pointer to device structure for driver instance.
- * @param enable true to enable italic, false to disable
- *
- * @retval 0 on success
- * @retval -errno on failure
- */
-int escp_printer_set_italic(const struct device *dev, bool enable);
+int escpos_set_bold(const struct device *dev, bool enable);
 
 /**
  * @brief Set underline printing mode
@@ -115,7 +106,7 @@ int escp_printer_set_italic(const struct device *dev, bool enable);
  * @retval 0 on success
  * @retval -errno on failure
  */
-int escp_printer_set_underline(const struct device *dev, bool enable);
+int escpos_set_underline(const struct device *dev, bool enable);
 
 /**
  * @}
@@ -125,4 +116,4 @@ int escp_printer_set_underline(const struct device *dev, bool enable);
 }
 #endif
 
-#endif /* ZEPHYR_INCLUDE_DRIVERS_MISC_ESCP_PRINTER_H_ */
+#endif /* ZEPHYR_INCLUDE_DRIVERS_MISC_ESCPOS_H_ */

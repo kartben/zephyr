@@ -1,14 +1,14 @@
-.. zephyr:code-sample:: escp-printer
-   :name: Epson ESC/P Printer
-   :relevant-api: escp_printer
+.. zephyr:code-sample:: escpos
+   :name: ESC/POS Thermal Printer
+   :relevant-api: escpos
 
-   Print text and demonstrate text formatting on an Epson ESC/P printer.
+   Print text and demonstrate text formatting on an ESC/POS thermal printer.
 
 Overview
 ********
 
-This sample demonstrates how to use the Epson ESC/P printer driver to print
-text with various formatting options such as bold, italic, and underline.
+This sample demonstrates how to use the ESC/POS thermal printer driver to print
+text with various formatting options such as bold and underline.
 
 Requirements
 ************
@@ -16,7 +16,7 @@ Requirements
 To use this sample, the following hardware is required:
 
 * A board with UART support
-* An Epson ESC/P compatible printer
+* An ESC/POS compatible thermal printer
 
 Wiring
 ******
@@ -37,15 +37,15 @@ Example overlay:
    &uart1 {
        status = "okay";
 
-       escp: escp {
-           compatible = "epson,escp";
+       escpos: escpos {
+           compatible = "epson,escpos";
        };
    };
 
 Then build and flash:
 
 .. zephyr-app-commands::
-   :zephyr-app: samples/drivers/misc/escp_printer
+   :zephyr-app: samples/drivers/misc/escpos
    :board: <your_board>
    :goals: flash
    :compact:
@@ -58,5 +58,6 @@ formatting options:
 
 * Normal text
 * Bold text
-* Italic text
 * Underlined text
+
+After printing, the paper is automatically cut (if the printer has a cutter).
