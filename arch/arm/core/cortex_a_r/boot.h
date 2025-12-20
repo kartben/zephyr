@@ -35,7 +35,10 @@ extern void __start(void);
 
 #endif /* _ASMLANGUAGE */
 
-/* Offsets into the boot_params structure */
+/**
+ * @name Boot Parameters Structure Offsets
+ * @{
+ */
 
 /** @brief Offset to Multiprocessor ID (MPID) in boot parameters */
 #define BOOT_PARAM_MPID_OFFSET		0
@@ -53,5 +56,7 @@ extern void __start(void);
 #define BOOT_PARAM_SYS_SP_OFFSET	24
 /** @brief Offset to voting/synchronization field in boot parameters */
 #define BOOT_PARAM_VOTING_OFFSET	28
+
+/** @} */
 
 #endif /* _BOOT_H_ */

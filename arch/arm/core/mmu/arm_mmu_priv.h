@@ -153,100 +153,124 @@
  * interpretation options for section mappings and page table pointers.
  */
 union arm_mmu_l1_page_table_entry {
+	/** @brief 1MB section mapping */
 	struct {
-		uint32_t id			: 2;  /* [00] */
-		uint32_t bufferable		: 1;
-		uint32_t cacheable		: 1;
-		uint32_t exec_never		: 1;
-		uint32_t domain			: 4;
-		uint32_t impl_def		: 1;
-		uint32_t acc_perms10		: 2;
-		uint32_t tex			: 3;
-		uint32_t acc_perms2		: 1;
-		uint32_t shared			: 1;
-		uint32_t not_global		: 1;
-		uint32_t zero			: 1;
-		uint32_t non_sec		: 1;
-		uint32_t base_address		: 12; /* [31] */
+		uint32_t id			: 2;  /**< Entry type ID [1:0] */
+		uint32_t bufferable		: 1;  /**< Bufferable memory attribute */
+		uint32_t cacheable		: 1;  /**< Cacheable memory attribute */
+		uint32_t exec_never		: 1;  /**< Execute never flag (XN) */
+		uint32_t domain			: 4;  /**< Domain field [8:5] */
+		uint32_t impl_def		: 1;  /**< Implementation defined bit */
+		uint32_t acc_perms10		: 2;  /**< Access permissions AP[1:0] */
+		uint32_t tex			: 3;  /**< Type extension field [14:12] */
+		uint32_t acc_perms2		: 1;  /**< Access permission AP[2] */
+		uint32_t shared			: 1;  /**< Shareable attribute */
+		uint32_t not_global		: 1;  /**< Not global flag (nG) */
+		uint32_t zero			: 1;  /**< Should be zero */
+		uint32_t non_sec		: 1;  /**< Non-secure bit (NS) */
+		uint32_t base_address		: 12; /**< Section base address [31:20] */
 	} l1_section_1m;
+	/** @brief Reference to Level 2 page table */
 	struct {
-		uint32_t id			: 2;  /* [00] */
-		uint32_t zero0			: 1;  /* PXN if avail. */
-		uint32_t non_sec		: 1;
-		uint32_t zero1			: 1;
-		uint32_t domain			: 4;
-		uint32_t impl_def		: 1;
-		uint32_t l2_page_table_address	: 22; /* [31] */
+		uint32_t id			: 2;  /**< Entry type ID [1:0] */
+		uint32_t zero0			: 1;  /**< Should be zero (PXN if available) */
+		uint32_t non_sec		: 1;  /**< Non-secure bit (NS) */
+		uint32_t zero1			: 1;  /**< Should be zero */
+		uint32_t domain			: 4;  /**< Domain field [8:5] */
+		uint32_t impl_def		: 1;  /**< Implementation defined bit */
+		uint32_t l2_page_table_address	: 22; /**< L2 page table address [31:10] */
 	} l2_page_table_ref;
+	/** @brief Undefined/invalid entry */
 	struct {
-		uint32_t id			: 2;  /* [00] */
-		uint32_t reserved		: 30; /* [31] */
+		uint32_t id			: 2;  /**< Entry type ID [1:0] */
+		uint32_t reserved		: 30; /**< Reserved bits [31:2] */
 	} undefined;
-	uint32_t word;
+	uint32_t word;  /**< Raw 32-bit word value */
 };
 
-struct arm_mmu_l1_page_table {
-	union arm_mmu_l1_page_table_entry entries[ARM_MMU_PT_L1_NUM_ENTRIES];
-};
-
-union arm_mmu_l2_page_table_entry {
-	struct {
-		uint32_t id			: 2;  /* [00] */
-		uint32_t bufferable		: 1;
-		uint32_t cacheable		: 1;
-		uint32_t acc_perms10		: 2;
-		uint32_t tex			: 3;
-		uint32_t acc_perms2		: 1;
-		uint32_t shared			: 1;
-		uint32_t not_global		: 1;
-		uint32_t pa_base		: 20; /* [31] */
-	} l2_page_4k;
-	struct {
-		uint32_t id			: 2;  /* [00] */
-		uint32_t bufferable		: 1;
-		uint32_t cacheable		: 1;
-		uint32_t acc_perms10		: 2;
-		uint32_t zero			: 3;
-		uint32_t acc_perms2		: 1;
-		uint32_t shared			: 1;
-		uint32_t not_global		: 1;
-		uint32_t tex			: 3;
-		uint32_t exec_never		: 1;
-		uint32_t pa_base		: 16; /* [31] */
-	} l2_page_64k;
-	struct {
-		uint32_t id			: 2;  /* [00] */
-		uint32_t reserved		: 30; /* [31] */
-	} undefined;
-	uint32_t word;
-};
-
-struct arm_mmu_l2_page_table {
-	union arm_mmu_l2_page_table_entry entries[ARM_MMU_PT_L2_NUM_ENTRIES];
-};
-
-/*
- * Data structure for L2 table usage tracking, contains a
- * L1 index reference if the respective L2 table is in use.
+/**
+ * @brief Level 1 page table
+ *
+ * Contains the complete L1 page table with all entries.
  */
-
-struct arm_mmu_l2_page_table_status {
-	uint32_t l1_index : 12;
-	uint32_t entries  : 9;
-	uint32_t reserved : 11;
+struct arm_mmu_l1_page_table {
+	union arm_mmu_l1_page_table_entry entries[ARM_MMU_PT_L1_NUM_ENTRIES];  /**< L1 page table entries */
 };
 
-/*
- * Data structure used to describe memory areas defined by the
- * current Zephyr image, for which an identity mapping (pa = va)
- * will be set up. Those memory areas are processed during the
- * MMU initialization.
+/**
+ * @brief Level 2 page table entry
+ *
+ * Union representing a Level 2 (L2) page table entry with different
+ * page size options (4KB and 64KB pages).
+ */
+union arm_mmu_l2_page_table_entry {
+	/** @brief 4KB small page mapping */
+	struct {
+		uint32_t id			: 2;  /**< Entry type ID [1:0] */
+		uint32_t bufferable		: 1;  /**< Bufferable memory attribute */
+		uint32_t cacheable		: 1;  /**< Cacheable memory attribute */
+		uint32_t acc_perms10		: 2;  /**< Access permissions AP[1:0] */
+		uint32_t tex			: 3;  /**< Type extension field [8:6] */
+		uint32_t acc_perms2		: 1;  /**< Access permission AP[2] */
+		uint32_t shared			: 1;  /**< Shareable attribute */
+		uint32_t not_global		: 1;  /**< Not global flag (nG) */
+		uint32_t pa_base		: 20; /**< Physical address base [31:12] */
+	} l2_page_4k;
+	/** @brief 64KB large page mapping */
+	struct {
+		uint32_t id			: 2;  /**< Entry type ID [1:0] */
+		uint32_t bufferable		: 1;  /**< Bufferable memory attribute */
+		uint32_t cacheable		: 1;  /**< Cacheable memory attribute */
+		uint32_t acc_perms10		: 2;  /**< Access permissions AP[1:0] */
+		uint32_t zero			: 3;  /**< Should be zero [8:6] */
+		uint32_t acc_perms2		: 1;  /**< Access permission AP[2] */
+		uint32_t shared			: 1;  /**< Shareable attribute */
+		uint32_t not_global		: 1;  /**< Not global flag (nG) */
+		uint32_t tex			: 3;  /**< Type extension field [14:12] */
+		uint32_t exec_never		: 1;  /**< Execute never flag (XN) */
+		uint32_t pa_base		: 16; /**< Physical address base [31:16] */
+	} l2_page_64k;
+	/** @brief Undefined/invalid entry */
+	struct {
+		uint32_t id			: 2;  /**< Entry type ID [1:0] */
+		uint32_t reserved		: 30; /**< Reserved bits [31:2] */
+	} undefined;
+	uint32_t word;  /**< Raw 32-bit word value */
+};
+
+/**
+ * @brief Level 2 page table
+ *
+ * Contains the complete L2 page table with all entries.
+ */
+struct arm_mmu_l2_page_table {
+	union arm_mmu_l2_page_table_entry entries[ARM_MMU_PT_L2_NUM_ENTRIES];  /**< L2 page table entries */
+};
+
+/**
+ * @brief Level 2 page table usage tracking
+ *
+ * Data structure for tracking L2 table usage, contains an L1 index
+ * reference if the respective L2 table is in use.
+ */
+struct arm_mmu_l2_page_table_status {
+	uint32_t l1_index : 12;  /**< L1 page table index reference */
+	uint32_t entries  : 9;   /**< Number of entries in use */
+	uint32_t reserved : 11;  /**< Reserved for future use */
+};
+
+/**
+ * @brief Flat memory range descriptor
+ *
+ * Data structure used to describe memory areas defined by the current
+ * Zephyr image, for which an identity mapping (pa = va) will be set up.
+ * These memory areas are processed during MMU initialization.
  */
 struct arm_mmu_flat_range {
-	const char	*name;
-	uint32_t	start;
-	uint32_t	end;
-	uint32_t	attrs;
+	const char	*name;   /**< Descriptive name of the memory range */
+	uint32_t	start;   /**< Start address of the range */
+	uint32_t	end;     /**< End address of the range */
+	uint32_t	attrs;   /**< Memory attributes for the range */
 };
 
 /*
