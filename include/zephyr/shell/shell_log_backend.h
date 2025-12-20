@@ -32,10 +32,10 @@ extern const struct log_backend_api log_backend_shell_api;
  * @brief Shell log backend states.
  */
 enum shell_log_backend_state {
-	SHELL_LOG_BACKEND_UNINIT,  /**< Backend not initialized. */
-	SHELL_LOG_BACKEND_ENABLED, /**< Backend enabled. */
-	SHELL_LOG_BACKEND_DISABLED,/**< Backend disabled. */
-	SHELL_LOG_BACKEND_PANIC,   /**< Backend in panic mode. */
+	SHELL_LOG_BACKEND_UNINIT,   /**< Backend not initialized. */
+	SHELL_LOG_BACKEND_ENABLED,  /**< Backend enabled. */
+	SHELL_LOG_BACKEND_DISABLED, /**< Backend disabled. */
+	SHELL_LOG_BACKEND_PANIC,    /**< Backend in panic mode. */
 };
 
 /**
