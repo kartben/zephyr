@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Shell string conversion utilities.
+ */
+
 #ifndef ZEPHYR_INCLUDE_SHELL_STRING_CONV_H_
 #define ZEPHYR_INCLUDE_SHELL_STRING_CONV_H_
 
@@ -14,7 +19,13 @@
 extern "C" {
 #endif
 
-/** @brief String to long conversion with error check.
+/**
+ * @addtogroup shell_api
+ * @{
+ */
+
+/**
+ * @brief String to long conversion with error check.
  *
  * @warning On success the passed err reference will not be altered
  * to avoid err check bloating. Passed err reference should be initialized
@@ -24,14 +35,15 @@ extern "C" {
  * @param base Conversion base.
  * @param err Error code pointer:
  *         -EINVAL on invalid string input.
- *         -ERANGE if numeric string input is to large to convert.
+ *         -ERANGE if numeric string input is too large to convert.
  *         Unchanged on success.
  *
  * @return Converted long value.
  */
 long shell_strtol(const char *str, int base, int *err);
 
-/** @brief String to unsigned long conversion with error check.
+/**
+ * @brief String to unsigned long conversion with error check.
  *
  * @warning On success the passed err reference will not be altered
  * to avoid err check bloating. Passed err reference should be initialized
@@ -41,14 +53,15 @@ long shell_strtol(const char *str, int base, int *err);
  * @param base Conversion base.
  * @param err Error code pointer:
  *         Set to -EINVAL on invalid string input.
- *         Set to -ERANGE if numeric string input is to large to convert.
+ *         Set to -ERANGE if numeric string input is too large to convert.
  *         Unchanged on success.
  *
  * @return Converted unsigned long value.
  */
 unsigned long shell_strtoul(const char *str, int base, int *err);
 
-/** @brief String to unsigned long long conversion with error check.
+/**
+ * @brief String to unsigned long long conversion with error check.
  *
  * @warning On success the passed err reference will not be altered
  * to avoid err check bloating. Passed err reference should be initialized
@@ -58,14 +71,15 @@ unsigned long shell_strtoul(const char *str, int base, int *err);
  * @param base Conversion base.
  * @param err Error code pointer:
  *         Set to -EINVAL on invalid string input.
- *         Set to -ERANGE if numeric string input is to large to convert.
+ *         Set to -ERANGE if numeric string input is too large to convert.
  *         Unchanged on success.
  *
  * @return Converted unsigned long long value.
  */
 unsigned long long shell_strtoull(const char *str, int base, int *err);
 
-/** @brief String to boolean conversion with error check.
+/**
+ * @brief String to boolean conversion with error check.
  *
  * @warning On success the passed err reference will not be altered
  * to avoid err check bloating. Passed err reference should be initialized
@@ -75,12 +89,16 @@ unsigned long long shell_strtoull(const char *str, int base, int *err);
  * @param base Conversion base.
  * @param err Error code pointer:
  *         Set to -EINVAL on invalid string input.
- *         Set to -ERANGE if numeric string input is to large to convert.
+ *         Set to -ERANGE if numeric string input is too large to convert.
  *         Unchanged on success.
  *
  * @return Converted boolean value.
  */
 bool shell_strtobool(const char *str, int base, int *err);
+
+/**
+ * @}
+ */
 
 #ifdef __cplusplus
 }
