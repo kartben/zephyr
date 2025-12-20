@@ -18,6 +18,8 @@ extern "C" {
 
 /**
  * @brief VT100 color codes for shell output.
+ *
+ * These color codes can be used with shell color-related APIs.
  */
 enum shell_vt100_color {
 	SHELL_VT100_COLOR_BLACK,   /**< Black color. */
@@ -30,7 +32,7 @@ enum shell_vt100_color {
 	SHELL_VT100_COLOR_WHITE,   /**< White color. */
 	SHELL_VT100_COLOR_DEFAULT, /**< Default terminal color. */
 	/** @cond INTERNAL_HIDDEN */
-	VT100_COLOR_END
+	VT100_COLOR_END            /**< End marker (internal use only). */
 	/** @endcond */
 };
 
