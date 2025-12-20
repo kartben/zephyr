@@ -21,8 +21,6 @@
 extern "C" {
 #endif
 
-/** @cond INTERNAL_HIDDEN */
-
 extern const struct log_backend_api log_backend_shell_api;
 
 /** @brief Shell log backend states. */
@@ -126,8 +124,6 @@ void z_shell_log_backend_disable(const struct shell_log_backend *backend);
  * @return True if message was processed, false if FIFO was empty
  */
 bool z_shell_log_backend_process(const struct shell_log_backend *backend);
-
-/** @endcond */
 
 #ifdef __cplusplus
 }

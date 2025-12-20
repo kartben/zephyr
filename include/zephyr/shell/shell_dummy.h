@@ -22,11 +22,6 @@ extern "C" {
 
 extern const struct shell_transport_api shell_dummy_transport_api;
 
-/** @cond INTERNAL_HIDDEN */
-
-/**
- * @brief Shell dummy structure.
- */
 struct shell_dummy {
 	bool initialized;
 
@@ -43,8 +38,6 @@ struct shell_dummy {
 		.api = &shell_dummy_transport_api,			\
 		.ctx = (struct shell_dummy *)&_name##_shell_dummy	\
 	}
-
-/** @endcond */
 
 /**
  * @brief This function shall not be used directly. It provides pointer to shell

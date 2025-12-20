@@ -21,8 +21,6 @@
 extern "C" {
 #endif
 
-/** @cond INTERNAL_HIDDEN */
-
 #define SHELL_WEBSOCKET_SERVICE_COUNT CONFIG_SHELL_WEBSOCKET_BACKEND_COUNT
 
 /** Line buffer structure. */
@@ -152,8 +150,6 @@ int shell_websocket_enable(const struct shell *sh);
 
 #define WEBSOCKET_CONSOLE_ENABLE(_service)				\
 	(void)shell_websocket_enable(&GET_WS_SHELL_NAME(_service))
-
-/** @endcond */
 
 #ifdef __cplusplus
 }

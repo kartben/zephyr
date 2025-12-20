@@ -22,8 +22,6 @@ extern "C" {
 
 extern const struct shell_transport_api shell_rpmsg_transport_api;
 
-/** @cond INTERNAL_HIDDEN */
-
 /** RPMsg received message placeholder */
 struct shell_rpmsg_rx {
 	/** Pointer to the data held by RPMsg endpoint */
@@ -68,8 +66,6 @@ struct shell_rpmsg {
 		.api = &shell_rpmsg_transport_api,			\
 		.ctx = (struct shell_rpmsg *)&_name##_shell_rpmsg,	\
 	}
-
-/** @endcond */
 
 /**
  * @brief Initialize the Shell backend using the provided @p rpmsg_dev device.

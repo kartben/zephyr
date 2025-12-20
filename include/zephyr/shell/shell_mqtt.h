@@ -25,8 +25,6 @@
 extern "C" {
 #endif
 
-/** @cond INTERNAL_HIDDEN */
-
 #define RX_RB_SIZE CONFIG_SHELL_MQTT_RX_BUF_SIZE
 #define TX_BUF_SIZE CONFIG_SHELL_MQTT_TX_BUF_SIZE
 #define SH_MQTT_BUFFER_SIZE 64
@@ -35,15 +33,8 @@ extern "C" {
 #define SH_MQTT_TOPIC_RX_MAX_SIZE DEVICE_ID_HEX_MAX_SIZE + sizeof(CONFIG_SHELL_MQTT_TOPIC_RX_ID)
 #define SH_MQTT_TOPIC_TX_MAX_SIZE DEVICE_ID_HEX_MAX_SIZE + sizeof(CONFIG_SHELL_MQTT_TOPIC_TX_ID)
 
-/** @endcond */
-
 extern const struct shell_transport_api shell_mqtt_transport_api;
 
-/** @cond INTERNAL_HIDDEN */
-
-/**
- * @brief Shell MQTT TX buffer structure.
- */
 struct shell_mqtt_tx_buf {
 	/** tx buffer. */
 	char buf[TX_BUF_SIZE];
@@ -123,8 +114,6 @@ struct shell_mqtt {
 	static struct shell_mqtt _name##_shell_mqtt;                                               \
 	struct shell_transport _name = { .api = &shell_mqtt_transport_api,                         \
 					 .ctx = (struct shell_mqtt *)&_name##_shell_mqtt }
-
-/** @endcond */
 
 /**
  * @brief This function provides pointer to shell mqtt backend instance.

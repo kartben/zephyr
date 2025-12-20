@@ -20,23 +20,14 @@
 extern "C" {
 #endif
 
-/** @cond INTERNAL_HIDDEN */
-
-/**
- * @brief Shell fprintf write function type.
- */
 typedef void (*shell_fprintf_fwrite)(const void *user_ctx,
 				     const char *data,
 				     size_t length);
 
-/**
- * @brief Shell fprintf control block structure.
- */
 struct shell_fprintf_control_block {
 	size_t buffer_cnt;
 	bool autoflush;
 };
-
 /**
  * @brief fprintf context
  */
@@ -89,8 +80,6 @@ void z_shell_fprintf_fmt(const struct shell_fprintf *sh_fprintf,
  * @param sh_fprintf	fprintf instance
  */
 void z_shell_fprintf_buffer_flush(const struct shell_fprintf *sh_fprintf);
-
-/** @endcond */
 
 #ifdef __cplusplus
 }

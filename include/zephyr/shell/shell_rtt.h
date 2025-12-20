@@ -20,11 +20,6 @@ extern "C" {
 
 extern const struct shell_transport_api shell_rtt_transport_api;
 
-/** @cond INTERNAL_HIDDEN */
-
-/**
- * @brief Shell RTT structure.
- */
 struct shell_rtt {
 	shell_transport_handler_t handler;
 	struct k_timer timer;
@@ -37,8 +32,6 @@ struct shell_rtt {
 		.api = &shell_rtt_transport_api,			\
 		.ctx = (struct shell_rtt *)&_name##_shell_rtt		\
 	}
-
-/** @endcond */
 
 /**
  * @brief Function provides pointer to shell rtt backend instance.

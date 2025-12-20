@@ -21,8 +21,6 @@ extern "C" {
 
 extern const struct shell_transport_api shell_adsp_memory_window_transport_api;
 
-/** @cond INTERNAL_HIDDEN */
-
 struct sys_winstream;
 
 /** Memwindow based shell transport. */
@@ -51,8 +49,6 @@ struct shell_adsp_memory_window {
 		.api = &shell_adsp_memory_window_transport_api,		\
 		.ctx = &_name##_shell_adsp_memory_window,	\
 	}
-
-/** @endcond */
 
 /**
  * @brief This function provides pointer to shell ADSP memory window backend instance.
