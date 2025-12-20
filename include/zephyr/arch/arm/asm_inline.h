@@ -1,9 +1,18 @@
-/* ARM AArch32 inline assembler functions and macros for public functions */
-
 /*
  * Copyright (c) 2015, Wind River Systems, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
+ * @file
+ * @brief ARM AArch32 inline assembler functions and macros
+ *
+ * This header provides toolchain-independent inline assembler functions
+ * and macros for ARM AArch32 public functions. It selects the appropriate
+ * toolchain-specific implementation header.
+ *
+ * @note This file must not be included directly. Include kernel.h instead.
  */
 
 #ifndef ZEPHYR_INCLUDE_ARCH_ARM_ASM_INLINE_H_
