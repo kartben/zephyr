@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Shell ADSP memory window transport backend header
+ */
+
 #ifndef SHELL_ADSP_MEMORY_WINDOW_H__
 #define SHELL_ADSP_MEMORY_WINDOW_H__
 

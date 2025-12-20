@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Shell string conversion utilities header
+ */
+
 #ifndef ZEPHYR_INCLUDE_SHELL_STRING_CONV_H_
 #define ZEPHYR_INCLUDE_SHELL_STRING_CONV_H_
 

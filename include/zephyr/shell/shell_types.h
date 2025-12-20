@@ -3,6 +3,12 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Shell types header
+ */
+
 #ifndef ZEPHYR_INCLUDE_SHELL_TYPES_H_
 #define ZEPHYR_INCLUDE_SHELL_TYPES_H_
 

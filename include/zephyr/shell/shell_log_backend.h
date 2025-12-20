@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Shell log backend header
+ */
+
 #ifndef ZEPHYR_INCLUDE_SHELL_LOG_BACKEND_H_
 #define ZEPHYR_INCLUDE_SHELL_LOG_BACKEND_H_
 
