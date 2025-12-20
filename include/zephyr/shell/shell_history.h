@@ -85,8 +85,8 @@ bool z_shell_history_get(struct shell_history *history, bool up,
  * If history is full, oldest entry (or entries) is removed.
  *
  * @param history	Shell history instance.
- * @param line		Data.
- * @param len		Data length.
+ * @param line		Command line data to store.
+ * @param len		Command line data length.
  */
 void z_shell_history_put(struct shell_history *history, uint8_t *line,
 			 size_t len);
