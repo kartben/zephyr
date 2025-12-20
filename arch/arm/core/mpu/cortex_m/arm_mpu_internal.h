@@ -3,10 +3,23 @@
  * Copyright (c) 2019 Lexmark International, Inc.
  */
 
+/**
+ * @file
+ * @brief ARM Cortex-M MPU internal helper functions
+ *
+ * Internal helper functions for ARM Cortex-M MPU configuration and management.
+ * These functions provide low-level access to the MPU hardware registers.
+ */
+
 #include <zephyr/sys/math_extras.h>
 
 /**
- *  Get the number of supported MPU regions.
+ * @brief Get the number of supported MPU regions
+ *
+ * Reads the MPU TYPE register to determine how many memory protection
+ * regions are available in the hardware.
+ *
+ * @return Number of supported MPU regions
  */
 static inline uint8_t get_num_regions(void)
 {
@@ -17,11 +30,27 @@ static inline uint8_t get_num_regions(void)
 	return (uint8_t)type;
 }
 
+/**
+ * @brief Set the MPU region number for subsequent operations
+ *
+ * Selects which MPU region will be accessed by subsequent reads or writes
+ * to the MPU configuration registers.
+ *
+ * @param index MPU region index to select
+ */
 static inline void set_region_number(uint32_t index)
 {
 	MPU->RNR = index;
 }
 
+/**
+ * @brief Get the base address of an MPU region
+ *
+ * Retrieves the base address of the specified MPU region.
+ *
+ * @param index MPU region index
+ * @return Base address of the region
+ */
 static inline uint32_t mpu_region_get_base(uint32_t index)
 {
 	MPU->RNR = index;
@@ -29,8 +58,13 @@ static inline uint32_t mpu_region_get_base(uint32_t index)
 }
 
 /**
+ * @brief Convert MPU RASR SIZE field to actual size in bytes
+ *
  * This internal function converts the SIZE field value of MPU_RASR
  * to the region size (in bytes).
+ *
+ * @param rasr_size SIZE field value from MPU_RASR register
+ * @return Region size in bytes
  */
 static inline uint32_t mpu_rasr_size_to_size(uint32_t rasr_size)
 {
