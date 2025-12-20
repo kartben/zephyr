@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Shell history internal API.
+ */
+
 #ifndef ZEPHYR_INCLUDE_SHELL_HISTORY_H_
 #define ZEPHYR_INCLUDE_SHELL_HISTORY_H_
 
@@ -17,11 +22,17 @@
 extern "C" {
 #endif
 
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 
+/**
+ * @brief Shell history structure.
+ */
 struct shell_history {
-	struct k_heap *heap;
-	sys_dlist_t list;
-	sys_dnode_t *current;
+	struct k_heap *heap;   /**< Heap for history entries. */
+	sys_dlist_t list;      /**< List of history entries. */
+	sys_dnode_t *current;  /**< Current history entry. */
 };
 
 /**
@@ -43,7 +54,6 @@ struct shell_history {
  * Function clears whole shell command history.
  *
  * @param history Shell history instance.
- *
  */
 void z_shell_history_purge(struct shell_history *history);
 
@@ -77,7 +87,6 @@ bool z_shell_history_get(struct shell_history *history, bool up,
  * @param history	Shell history instance.
  * @param line		Data.
  * @param len		Data length.
- *
  */
 void z_shell_history_put(struct shell_history *history, uint8_t *line,
 			 size_t len);
@@ -93,6 +102,10 @@ static inline bool z_shell_history_active(struct shell_history *history)
 {
 	return (history->current) ? true : false;
 }
+
+/**
+ * @endcond
+ */
 
 #ifdef __cplusplus
 }
