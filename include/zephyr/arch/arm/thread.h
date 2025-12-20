@@ -23,60 +23,85 @@
 #ifndef _ASMLANGUAGE
 #include <zephyr/types.h>
 
+/**
+ * @brief ARM callee-saved register context
+ *
+ * Structure containing the callee-saved registers that must be preserved
+ * across function calls and context switches according to the ARM AAPCS.
+ */
 struct _callee_saved {
-	uint32_t v1;  /* r4 */
-	uint32_t v2;  /* r5 */
-	uint32_t v3;  /* r6 */
-	uint32_t v4;  /* r7 */
-	uint32_t v5;  /* r8 */
-	uint32_t v6;  /* r9 */
-	uint32_t v7;  /* r10 */
-	uint32_t v8;  /* r11 */
-	uint32_t psp; /* r13 */
+	uint32_t v1;  /**< General purpose register r4 */
+	uint32_t v2;  /**< General purpose register r5 */
+	uint32_t v3;  /**< General purpose register r6 */
+	uint32_t v4;  /**< General purpose register r7 */
+	uint32_t v5;  /**< General purpose register r8 */
+	uint32_t v6;  /**< General purpose register r9 */
+	uint32_t v7;  /**< General purpose register r10 */
+	uint32_t v8;  /**< General purpose register r11 */
+	uint32_t psp; /**< Process stack pointer r13 */
 #ifdef CONFIG_USE_SWITCH
-	uint32_t lr;  /* lr */
+	uint32_t lr;  /**< Link register (return address) */
 #endif
 };
 
 typedef struct _callee_saved _callee_saved_t;
 
 #if defined(CONFIG_FPU) && defined(CONFIG_FPU_SHARING)
+/**
+ * @brief ARM FPU preemptible floating-point register context
+ *
+ * Structure containing floating-point registers s16-s31 that are not
+ * automatically saved by the Cortex-M hardware and must be preserved
+ * when preempting a thread using the FPU.
+ */
 struct _preempt_float {
-	float  s16;
-	float  s17;
-	float  s18;
-	float  s19;
-	float  s20;
-	float  s21;
-	float  s22;
-	float  s23;
-	float  s24;
-	float  s25;
-	float  s26;
-	float  s27;
-	float  s28;
-	float  s29;
-	float  s30;
-	float  s31;
+	float  s16;  /**< FPU register s16 */
+	float  s17;  /**< FPU register s17 */
+	float  s18;  /**< FPU register s18 */
+	float  s19;  /**< FPU register s19 */
+	float  s20;  /**< FPU register s20 */
+	float  s21;  /**< FPU register s21 */
+	float  s22;  /**< FPU register s22 */
+	float  s23;  /**< FPU register s23 */
+	float  s24;  /**< FPU register s24 */
+	float  s25;  /**< FPU register s25 */
+	float  s26;  /**< FPU register s26 */
+	float  s27;  /**< FPU register s27 */
+	float  s28;  /**< FPU register s28 */
+	float  s29;  /**< FPU register s29 */
+	float  s30;  /**< FPU register s30 */
+	float  s31;  /**< FPU register s31 */
 };
 #endif
 
 #if defined(CONFIG_ARM_PAC_PER_THREAD)
+/**
+ * @brief ARM Pointer Authentication Code (PAC) keys
+ *
+ * Structure containing per-thread PAC keys used for pointer authentication
+ * on ARM processors with PAC support.
+ */
 struct pac_keys {
-	uint32_t key_0;
-	uint32_t key_1;
-	uint32_t key_2;
-	uint32_t key_3;
+	uint32_t key_0;  /**< PAC key 0 */
+	uint32_t key_1;  /**< PAC key 1 */
+	uint32_t key_2;  /**< PAC key 2 */
+	uint32_t key_3;  /**< PAC key 3 */
 };
 #endif
 
+/**
+ * @brief ARM thread architecture-specific state
+ *
+ * Architecture-specific thread state for ARM processors. This structure
+ * contains interrupt locking state, context switch values, FPU context,
+ * exception depth tracking, privilege mode status, and userspace stack
+ * information.
+ */
 struct _thread_arch {
 
-	/* interrupt locking key */
-	uint32_t basepri;
+	uint32_t basepri;  /**< Interrupt locking key (BASEPRI value) */
 
-	/* r0 in stack frame cannot be written to reliably */
-	uint32_t swap_return_value;
+	uint32_t swap_return_value;  /**< Return value for context switches (r0 cannot be written reliably) */
 
 #if defined(CONFIG_FPU) && defined(CONFIG_FPU_SHARING)
 	/*
@@ -84,11 +109,11 @@ struct _thread_arch {
 	 * the Cortex-M as it automatically saves the necessary registers
 	 * in its exception stack frame.
 	 */
-	struct _preempt_float  preempt_float;
+	struct _preempt_float  preempt_float;  /**< Preemptible FPU register context */
 #endif
 
 #if defined(CONFIG_CPU_AARCH32_CORTEX_A) || defined(CONFIG_CPU_AARCH32_CORTEX_R)
-	int8_t exception_depth;
+	int8_t exception_depth;  /**< Current exception nesting depth */
 #endif
 
 #if defined(CONFIG_ARM_STORE_EXC_RETURN) || defined(CONFIG_USERSPACE)
@@ -124,29 +149,30 @@ struct _thread_arch {
 	 *            switched in again, the value is restored to LR before
 	 *            exiting the PendSV handler.
 	 */
+	/** @brief Thread mode and exception return state */
 	union {
-		uint32_t mode;
+		uint32_t mode;  /**< Combined mode field */
 
 #if defined(CONFIG_ARM_STORE_EXC_RETURN)
 		struct {
-			uint8_t mode_bits;
-			uint8_t mode_exc_return;
-			uint16_t mode_reserved2;
+			uint8_t mode_bits;        /**< Privilege and FPU mode bits */
+			uint8_t mode_exc_return;  /**< EXC_RETURN value (LSB) */
+			uint16_t mode_reserved2;  /**< Reserved for future use */
 		};
 #endif
 	};
 
 #if defined(CONFIG_USERSPACE)
-	uint32_t priv_stack_start;
-	uint32_t priv_stack_end;
+	uint32_t priv_stack_start;  /**< Start of privileged mode stack */
+	uint32_t priv_stack_end;    /**< End of privileged mode stack */
 #if defined(CONFIG_CPU_AARCH32_CORTEX_R)
-	uint32_t sp_usr;
+	uint32_t sp_usr;  /**< User mode stack pointer (Cortex-R only) */
 #endif
 #endif
 #endif
 
 #if defined(CONFIG_ARM_PAC_PER_THREAD)
-	struct pac_keys pac_keys;
+	struct pac_keys pac_keys;  /**< Per-thread pointer authentication keys */
 #endif
 };
 
