@@ -27,6 +27,18 @@ extern "C" {
  */
 bool z_arm_debug_monitor_event_error_check(void);
 
+/**
+ * @brief Enable null pointer detection using debug monitor
+ *
+ * Configures the ARM Data Watchpoint and Trace (DWT) unit to detect
+ * null pointer dereferences by setting up a watchpoint at address 0.
+ * When enabled, any access to address 0 will trigger a debug monitor
+ * exception.
+ *
+ * This feature is only available on Cortex-M processors with DWT support.
+ *
+ * @return 0 on success, negative error code on failure
+ */
 int z_arm_debug_enable_null_pointer_detection(void);
 
 #ifdef __cplusplus

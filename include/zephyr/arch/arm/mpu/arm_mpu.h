@@ -3,6 +3,15 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief ARM Memory Protection Unit (MPU) interface
+ *
+ * Common MPU interface for ARM Cortex-M and Cortex-R processors.
+ * Provides structures and macros for configuring MPU regions.
+ */
+
 #ifndef ZEPHYR_INCLUDE_ARCH_ARM_MPU_ARM_MPU_H_
 #define ZEPHYR_INCLUDE_ARCH_ARM_MPU_ARM_MPU_H_
 
@@ -35,29 +44,43 @@
 #ifndef _ASMLANGUAGE
 #include <stdint.h>
 
-/* Region definition data structure */
+/**
+ * @brief ARM MPU region definition
+ *
+ * Structure defining a single MPU region with its base address,
+ * name, optional size (for Cortex-R), and memory attributes.
+ */
 struct arm_mpu_region {
-	/* Region Base Address */
-	uint32_t base;
-	/* Region Name */
-	const char *name;
+	uint32_t base;  /**< Region base address (must be aligned) */
+	const char *name;  /**< Human-readable region name for debugging */
 #if defined(CONFIG_CPU_AARCH32_CORTEX_R)
-	/* Region Size */
-	uint32_t size;
+	uint32_t size;  /**< Region size in bytes (Cortex-R only) */
 #endif
-	/* Region Attributes */
-	arm_mpu_region_attr_t attr;
+	arm_mpu_region_attr_t attr;  /**< Region attributes (permissions, cacheability, etc.) */
 };
 
-/* MPU configuration data structure */
+/**
+ * @brief ARM MPU configuration
+ *
+ * Structure containing the complete MPU configuration with all
+ * static regions to be programmed at initialization.
+ */
 struct arm_mpu_config {
-	/* Number of regions */
-	uint32_t num_regions;
-	/* Regions */
-	const struct arm_mpu_region *mpu_regions;
+	uint32_t num_regions;  /**< Number of regions in the configuration */
+	const struct arm_mpu_region *mpu_regions;  /**< Array of MPU region definitions */
 };
 
 #if defined(CONFIG_ARMV7_R)
+/**
+ * @brief Define an MPU region entry (Cortex-R variant)
+ *
+ * Macro to define an MPU region for ARMv7-R with name, base, size, and attributes.
+ *
+ * @param _name Region name string
+ * @param _base Base address of the region
+ * @param _size Size of the region in bytes
+ * @param _attr Region attributes
+ */
 #define MPU_REGION_ENTRY(_name, _base, _size, _attr)                                               \
 	{                                                                                          \
 		.name = _name,                                                                     \
@@ -66,6 +89,15 @@ struct arm_mpu_config {
 		.attr = _attr,                                                                     \
 	}
 #else
+/**
+ * @brief Define an MPU region entry (Cortex-M variant)
+ *
+ * Macro to define an MPU region for ARMv6/7/8-M with name, base, and attributes.
+ *
+ * @param _name Region name string
+ * @param _base Base address of the region
+ * @param _attr Region attributes
+ */
 #define MPU_REGION_ENTRY(_name, _base, _attr)                                                      \
 	{                                                                                          \
 		.name = _name,                                                                     \
@@ -74,7 +106,8 @@ struct arm_mpu_config {
 	}
 #endif
 
-/* Reference to the MPU configuration.
+/**
+ * @brief Reference to the MPU configuration
  *
  * This struct is defined and populated for each SoC (in the SoC definition),
  * and holds the build-time configuration information for the fixed MPU
@@ -86,18 +119,19 @@ extern const struct arm_mpu_config mpu_config;
 
 #if defined(CONFIG_CPU_CORTEX_M)
 /**
- * @brief MPU context structure to retain MPU register state across deep sleep.
+ * @brief MPU context retained across deep sleep
  *
  * This structure holds the MPU region base and attribute registers,
  * as well as the MPU control register and a valid region count.
+ * Used to save and restore MPU state across deep sleep modes.
  *
  * The implemented architecture dictates which MPU registers exist:
  * - ARMv8-M has per-region RBAR+RLAR, and global MAIR0~1
  * - ARMv6/v7-M have per-region RBAR+RASR
  */
 struct z_mpu_context_retained {
-	uint32_t rbar[Z_ARM_MPU_MAX_REGIONS];
-	uint32_t rasr_rlar[Z_ARM_MPU_MAX_REGIONS];
+	uint32_t rbar[Z_ARM_MPU_MAX_REGIONS];  /**< Region Base Address Registers */
+	uint32_t rasr_rlar[Z_ARM_MPU_MAX_REGIONS];  /**< Region Attribute/Limit Registers */
 #if Z_ARM_CPU_HAS_PMSAV8_MPU
 	uint32_t mair[2];
 #endif

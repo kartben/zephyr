@@ -17,9 +17,13 @@
 #ifndef ZEPHYR_INCLUDE_ARCH_ARM_SYSCALL_H_
 #define ZEPHYR_INCLUDE_ARCH_ARM_SYSCALL_H_
 
+/** @brief SVC call number for context switch */
 #define _SVC_CALL_CONTEXT_SWITCH	0
+/** @brief SVC call number for IRQ offload */
 #define _SVC_CALL_IRQ_OFFLOAD		1
+/** @brief SVC call number for runtime exception */
 #define _SVC_CALL_RUNTIME_EXCEPT	2
+/** @brief SVC call number for system call */
 #define _SVC_CALL_SYSTEM_CALL		3
 
 #ifdef CONFIG_USERSPACE
@@ -35,8 +39,20 @@ extern "C" {
 #endif
 
 
-/* Syscall invocation macros. arm-specific machine constraints used to ensure
- * args land in the proper registers.
+/**
+ * @brief Invoke a system call with 6 arguments
+ *
+ * Performs a system call by executing an SVC instruction with the arguments
+ * properly positioned in ARM registers according to AAPCS.
+ *
+ * @param arg1 First argument (r0)
+ * @param arg2 Second argument (r1)
+ * @param arg3 Third argument (r2)
+ * @param arg4 Fourth argument (r3)
+ * @param arg5 Fifth argument (r4)
+ * @param arg6 Sixth argument (r5)
+ * @param call_id System call ID (r6)
+ * @return Return value from the system call
  */
 static inline uintptr_t arch_syscall_invoke6(uintptr_t arg1, uintptr_t arg2,
 					     uintptr_t arg3, uintptr_t arg4,
@@ -62,6 +78,17 @@ static inline uintptr_t arch_syscall_invoke6(uintptr_t arg1, uintptr_t arg2,
 	return ret;
 }
 
+/**
+ * @brief Invoke a system call with 5 arguments
+ *
+ * @param arg1 First argument (r0)
+ * @param arg2 Second argument (r1)
+ * @param arg3 Third argument (r2)
+ * @param arg4 Fourth argument (r3)
+ * @param arg5 Fifth argument (r4)
+ * @param call_id System call ID (r6)
+ * @return Return value from the system call
+ */
 static inline uintptr_t arch_syscall_invoke5(uintptr_t arg1, uintptr_t arg2,
 					     uintptr_t arg3, uintptr_t arg4,
 					     uintptr_t arg5,
@@ -85,6 +112,16 @@ static inline uintptr_t arch_syscall_invoke5(uintptr_t arg1, uintptr_t arg2,
 	return ret;
 }
 
+/**
+ * @brief Invoke a system call with 4 arguments
+ *
+ * @param arg1 First argument (r0)
+ * @param arg2 Second argument (r1)
+ * @param arg3 Third argument (r2)
+ * @param arg4 Fourth argument (r3)
+ * @param call_id System call ID (r6)
+ * @return Return value from the system call
+ */
 static inline uintptr_t arch_syscall_invoke4(uintptr_t arg1, uintptr_t arg2,
 					     uintptr_t arg3, uintptr_t arg4,
 					     uintptr_t call_id)
@@ -106,6 +143,15 @@ static inline uintptr_t arch_syscall_invoke4(uintptr_t arg1, uintptr_t arg2,
 	return ret;
 }
 
+/**
+ * @brief Invoke a system call with 3 arguments
+ *
+ * @param arg1 First argument (r0)
+ * @param arg2 Second argument (r1)
+ * @param arg3 Third argument (r2)
+ * @param call_id System call ID (r6)
+ * @return Return value from the system call
+ */
 static inline uintptr_t arch_syscall_invoke3(uintptr_t arg1, uintptr_t arg2,
 					     uintptr_t arg3,
 					     uintptr_t call_id)
@@ -125,6 +171,14 @@ static inline uintptr_t arch_syscall_invoke3(uintptr_t arg1, uintptr_t arg2,
 	return ret;
 }
 
+/**
+ * @brief Invoke a system call with 2 arguments
+ *
+ * @param arg1 First argument (r0)
+ * @param arg2 Second argument (r1)
+ * @param call_id System call ID (r6)
+ * @return Return value from the system call
+ */
 static inline uintptr_t arch_syscall_invoke2(uintptr_t arg1, uintptr_t arg2,
 					     uintptr_t call_id)
 {
@@ -142,6 +196,13 @@ static inline uintptr_t arch_syscall_invoke2(uintptr_t arg1, uintptr_t arg2,
 	return ret;
 }
 
+/**
+ * @brief Invoke a system call with 1 argument
+ *
+ * @param arg1 First argument (r0)
+ * @param call_id System call ID (r6)
+ * @return Return value from the system call
+ */
 static inline uintptr_t arch_syscall_invoke1(uintptr_t arg1,
 					     uintptr_t call_id)
 {
@@ -157,6 +218,12 @@ static inline uintptr_t arch_syscall_invoke1(uintptr_t arg1,
 	return ret;
 }
 
+/**
+ * @brief Invoke a system call with no arguments
+ *
+ * @param call_id System call ID (r6)
+ * @return Return value from the system call
+ */
 static inline uintptr_t arch_syscall_invoke0(uintptr_t call_id)
 {
 	register uint32_t ret __asm__("r0");
@@ -172,6 +239,15 @@ static inline uintptr_t arch_syscall_invoke0(uintptr_t call_id)
 	return ret;
 }
 
+/**
+ * @brief Check if currently executing in user context
+ *
+ * Determines if the current execution context is user mode (unprivileged).
+ * On Cortex-M, checks for handler mode first, then CONTROL.nPRIV.
+ * On Cortex-A/R, checks the processor mode bits in CPSR.
+ *
+ * @return true if in user context, false if in privileged/kernel context
+ */
 static inline bool arch_is_user_context(void)
 {
 #if defined(CONFIG_CPU_CORTEX_M)

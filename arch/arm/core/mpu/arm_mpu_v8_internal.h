@@ -6,6 +6,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief ARMv8-M/ARMv8-R MPU internal implementation
+ *
+ * Internal implementation of the Memory Protection Unit (MPU) driver for
+ * ARMv8-M architecture (Cortex-M23, M33, M52, M55, M85) and ARMv8-R
+ * architecture. This file contains low-level functions for configuring MPU
+ * regions, validating memory partitions, and checking user accessibility.
+ *
+ * ARMv8-M/R MPU uses a different programming model than ARMv7-M, with
+ * separate RBAR (Region Base Address Register) and RLAR (Region Limit
+ * Address Register) for each region.
+ */
+
 #ifndef ZEPHYR_ARCH_ARM_CORE_AARCH32_MPU_ARM_MPU_V8_INTERNAL_H_
 #define ZEPHYR_ARCH_ARM_CORE_AARCH32_MPU_ARM_MPU_V8_INTERNAL_H_
 
@@ -16,54 +30,111 @@
 #include <zephyr/sys/barrier.h>
 
 /**
- * @brief internal structure holding information of
- *        memory areas where dynamic MPU programming
- *        is allowed.
+ * @brief Information about dynamic MPU region areas
+ *
+ * Internal structure holding information of memory areas where dynamic
+ * MPU programming is allowed. Used for tracking which MPU regions can
+ * be modified at runtime for thread-specific memory protection.
  */
 struct dynamic_region_info {
-	int index;
-	struct arm_mpu_region region_conf;
+	int index;  /**< MPU region index */
+	struct arm_mpu_region region_conf;  /**< Region configuration */
 };
 
 /**
- * Global array, holding the MPU region index of
- * the memory region inside which dynamic memory
- * regions may be configured.
+ * @brief Global array of dynamic MPU region information
+ *
+ * Holds the MPU region index of the memory regions inside which dynamic
+ * memory regions may be configured at runtime (e.g., thread stacks,
+ * memory domains).
  */
 static struct dynamic_region_info dyn_reg_info[MPU_DYNAMIC_REGION_AREAS_NUM];
 #if defined(CONFIG_CPU_CORTEX_M23) || defined(CONFIG_CPU_CORTEX_M33) || \
 	defined(CONFIG_CPU_CORTEX_M52) || defined(CONFIG_CPU_CORTEX_M55) || \
 	defined(CONFIG_CPU_CORTEX_M85)
+
+/**
+ * @brief Set MPU MAIR0 register
+ *
+ * Configures the Memory Attribute Indirection Register 0 which defines
+ * memory attributes referenced by MPU regions.
+ *
+ * @param mair0 MAIR0 register value to set
+ */
 static inline void mpu_set_mair0(uint32_t mair0)
 {
 	MPU->MAIR0 = mair0;
 }
 
+/**
+ * @brief Set MPU region number
+ *
+ * Selects which MPU region will be accessed by subsequent operations.
+ *
+ * @param rnr Region number to select
+ */
 static inline void mpu_set_rnr(uint32_t rnr)
 {
 	MPU->RNR = rnr;
 }
 
+/**
+ * @brief Set MPU region base address register
+ *
+ * Configures the base address and attributes for the currently selected
+ * MPU region.
+ *
+ * @param rbar RBAR register value to set
+ */
 static inline void mpu_set_rbar(uint32_t rbar)
 {
 	MPU->RBAR = rbar;
 }
 
+/**
+ * @brief Get MPU region base address register
+ *
+ * Reads the base address and attributes of the currently selected MPU region.
+ *
+ * @return RBAR register value
+ */
 static inline uint32_t mpu_get_rbar(void)
 {
 	return MPU->RBAR;
 }
 
+/**
+ * @brief Set MPU region limit address register
+ *
+ * Configures the limit address and memory attribute index for the currently
+ * selected MPU region.
+ *
+ * @param rlar RLAR register value to set
+ */
 static inline void mpu_set_rlar(uint32_t rlar)
 {
 	MPU->RLAR = rlar;
 }
 
+/**
+ * @brief Get MPU region limit address register
+ *
+ * Reads the limit address and attributes of the currently selected MPU region.
+ *
+ * @return RLAR register value
+ */
 static inline uint32_t mpu_get_rlar(void)
 {
 	return MPU->RLAR;
 }
 
+/**
+ * @brief Get number of MPU regions
+ *
+ * Reads the MPU TYPE register to determine how many regions are supported.
+ *
+ * @return Number of supported MPU regions
+ */
 static inline uint8_t mpu_get_num_regions(void)
 {
 	uint32_t type = MPU->TYPE;
@@ -73,6 +144,13 @@ static inline uint8_t mpu_get_num_regions(void)
 	return (uint8_t)type;
 }
 
+/**
+ * @brief Clear (disable) an MPU region
+ *
+ * Disables the specified MPU region.
+ *
+ * @param rnr Region number to clear
+ */
 static inline void mpu_clear_region(uint32_t rnr)
 {
 	ARM_MPU_ClrRegion(rnr);
@@ -86,12 +164,26 @@ static inline void mpu_set_mair0(uint32_t mair0)
 	barrier_isync_fence_full();
 }
 
+/**
+ * @brief Set MPU region number (ARMv8-R)
+ *
+ * Selects which MPU region will be accessed by subsequent operations.
+ *
+ * @param rnr Region number to select
+ */
 static inline void mpu_set_rnr(uint32_t rnr)
 {
 	write_prselr(rnr);
 	barrier_dsync_fence_full();
 }
 
+/**
+ * @brief Set MPU region base address (ARMv8-R)
+ *
+ * Configures the base address for the currently selected MPU region.
+ *
+ * @param rbar Base address value to set
+ */
 static inline void mpu_set_rbar(uint32_t rbar)
 {
 	write_prbar(rbar);
@@ -99,11 +191,25 @@ static inline void mpu_set_rbar(uint32_t rbar)
 	barrier_isync_fence_full();
 }
 
+/**
+ * @brief Get MPU region base address (ARMv8-R)
+ *
+ * Reads the base address of the currently selected MPU region.
+ *
+ * @return Region base address value
+ */
 static inline uint32_t mpu_get_rbar(void)
 {
 	return read_prbar();
 }
 
+/**
+ * @brief Set MPU region limit address (ARMv8-R)
+ *
+ * Configures the limit address for the currently selected MPU region.
+ *
+ * @param rlar Limit address value to set
+ */
 static inline void mpu_set_rlar(uint32_t rlar)
 {
 	write_prlar(rlar);
@@ -111,11 +217,25 @@ static inline void mpu_set_rlar(uint32_t rlar)
 	barrier_isync_fence_full();
 }
 
+/**
+ * @brief Get MPU region limit address (ARMv8-R)
+ *
+ * Reads the limit address of the currently selected MPU region.
+ *
+ * @return Region limit address value
+ */
 static inline uint32_t mpu_get_rlar(void)
 {
 	return read_prlar();
 }
 
+/**
+ * @brief Get number of MPU regions (ARMv8-R)
+ *
+ * Reads the MPU configuration to determine how many regions are supported.
+ *
+ * @return Number of supported MPU regions
+ */
 static inline uint8_t mpu_get_num_regions(void)
 {
 	uint32_t type = read_mpuir();
@@ -125,6 +245,13 @@ static inline uint8_t mpu_get_num_regions(void)
 	return (uint8_t)type;
 }
 
+/**
+ * @brief Clear (disable) an MPU region (ARMv8-R)
+ *
+ * Disables the specified MPU region by clearing its configuration.
+ *
+ * @param rnr Region number to clear
+ */
 static inline void mpu_clear_region(uint32_t rnr)
 {
 	mpu_set_rnr(rnr);
@@ -136,7 +263,13 @@ static inline void mpu_clear_region(uint32_t rnr)
 #error "Unsupported ARM CPU"
 #endif
 
-/* Global MPU configuration at system initialization. */
+/**
+ * @brief Initialize the MPU hardware
+ *
+ * Performs global MPU initialization by configuring the Memory Attribute
+ * Indirection Register (MAIR) with cache-ability attributes for different
+ * memory types.
+ */
 static void mpu_init(void)
 {
 	/* Configure the cache-ability attributes for all the
@@ -145,6 +278,16 @@ static void mpu_init(void)
 	mpu_set_mair0(MPU_MAIR_ATTRS);
 }
 
+/**
+ * @brief Configure an MPU region with base and limit addresses
+ *
+ * Programs an MPU region with the specified base address, attributes, and
+ * limit address.
+ *
+ * @param rnr Region number to configure
+ * @param rbar Region Base Address Register value
+ * @param rlar Region Limit Address Register value
+ */
 static void mpu_set_region(uint32_t rnr, uint32_t rbar, uint32_t rlar)
 {
 	mpu_set_rnr(rnr);
@@ -152,10 +295,18 @@ static void mpu_set_region(uint32_t rnr, uint32_t rbar, uint32_t rlar)
 	mpu_set_rlar(rlar);
 }
 
-/* This internal function performs MPU region initialization.
+/**
+ * @brief Initialize an MPU region with the given configuration
+ *
+ * This internal function performs MPU region initialization by programming
+ * the region's base address, attributes, limit address, and memory attribute
+ * index into the MPU hardware registers.
  *
  * Note:
  *   The caller must provide a valid region index.
+ *
+ * @param index MPU region index to configure
+ * @param region_conf Pointer to region configuration structure
  */
 static void region_init(const uint32_t index,
 	const struct arm_mpu_region *region_conf)
@@ -184,14 +335,19 @@ static void region_init(const uint32_t index,
 			region_conf->attr.mair_idx, region_conf->attr.r_limit);
 }
 
-/* @brief Partition sanity check
+/**
+ * @brief Validate an MPU partition configuration
  *
- * This internal function performs run-time sanity check for
- * MPU region start address and size.
+ * This internal function performs run-time sanity check for MPU region
+ * start address and size. For ARMv8-M/R MPU:
+ * - Size must be >= minimum MPU region size
+ * - Size must be a multiple of minimum MPU region size
+ * - Start address must be aligned to minimum MPU region size
  *
  * @param part Pointer to the data structure holding the partition
- *             information (must be valid).
- * */
+ *             information (must be valid)
+ * @return 1 if partition is valid, 0 otherwise
+ */
 static int mpu_partition_is_valid(const struct z_arm_mpu_partition *part)
 {
 	/* Partition size must be a multiple of the minimum MPU region
