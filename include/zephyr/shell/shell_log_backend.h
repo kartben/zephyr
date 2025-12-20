@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Shell log backend header
+ */
+
 #ifndef ZEPHYR_INCLUDE_SHELL_LOG_BACKEND_H_
 #define ZEPHYR_INCLUDE_SHELL_LOG_BACKEND_H_
 
@@ -15,6 +20,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/** @cond INTERNAL_HIDDEN */
 
 extern const struct log_backend_api log_backend_shell_api;
 
@@ -119,6 +126,8 @@ void z_shell_log_backend_disable(const struct shell_log_backend *backend);
  * @return True if message was processed, false if FIFO was empty
  */
 bool z_shell_log_backend_process(const struct shell_log_backend *backend);
+
+/** @endcond */
 
 #ifdef __cplusplus
 }

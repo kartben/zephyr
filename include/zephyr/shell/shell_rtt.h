@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Shell RTT transport backend header
+ */
+
 #ifndef ZEPHYR_INCLUDE_SHELL_RTT_H_
 #define ZEPHYR_INCLUDE_SHELL_RTT_H_
 
@@ -15,6 +20,11 @@ extern "C" {
 
 extern const struct shell_transport_api shell_rtt_transport_api;
 
+/** @cond INTERNAL_HIDDEN */
+
+/**
+ * @brief Shell RTT structure.
+ */
 struct shell_rtt {
 	shell_transport_handler_t handler;
 	struct k_timer timer;
@@ -28,6 +38,8 @@ struct shell_rtt {
 		.ctx = (struct shell_rtt *)&_name##_shell_rtt		\
 	}
 
+/** @endcond */
+
 /**
  * @brief Function provides pointer to shell rtt backend instance.
  *
@@ -37,6 +49,7 @@ struct shell_rtt {
  * @returns Pointer to the shell instance.
  */
 const struct shell *shell_backend_rtt_get_ptr(void);
+
 #ifdef __cplusplus
 }
 #endif

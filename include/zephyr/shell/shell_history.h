@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Shell history header
+ */
+
 #ifndef ZEPHYR_INCLUDE_SHELL_HISTORY_H_
 #define ZEPHYR_INCLUDE_SHELL_HISTORY_H_
 
@@ -17,7 +22,11 @@
 extern "C" {
 #endif
 
+/** @cond INTERNAL_HIDDEN */
 
+/**
+ * @brief Shell history structure.
+ */
 struct shell_history {
 	struct k_heap *heap;
 	sys_dlist_t list;
@@ -93,6 +102,8 @@ static inline bool z_shell_history_active(struct shell_history *history)
 {
 	return (history->current) ? true : false;
 }
+
+/** @endcond */
 
 #ifdef __cplusplus
 }

@@ -3,6 +3,12 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Shell types header
+ */
+
 #ifndef ZEPHYR_INCLUDE_SHELL_TYPES_H_
 #define ZEPHYR_INCLUDE_SHELL_TYPES_H_
 
@@ -11,6 +17,10 @@
 extern "C" {
 #endif
 
+/** @cond INTERNAL_HIDDEN */
+/**
+ * @brief VT100 color enumeration.
+ */
 enum shell_vt100_color {
 	SHELL_VT100_COLOR_BLACK,
 	SHELL_VT100_COLOR_RED,
@@ -26,11 +36,17 @@ enum shell_vt100_color {
 	VT100_COLOR_END
 };
 
+/**
+ * @brief VT100 color structure.
+ */
 struct shell_vt100_colors {
 	enum shell_vt100_color col; /*!< Text color. */
 	enum shell_vt100_color bgcol; /*!< Background color. */
 };
 
+/**
+ * @brief Shell multiline console structure.
+ */
 struct shell_multiline_cons {
 	uint16_t cur_x;     /*!< horizontal cursor position in edited command line.*/
 	uint16_t cur_x_end; /*!< horizontal cursor position at the end of command.*/
@@ -41,11 +57,15 @@ struct shell_multiline_cons {
 	uint8_t name_len;   /*!<console name length.*/
 };
 
+/**
+ * @brief Shell VT100 context structure.
+ */
 struct shell_vt100_ctx {
 	struct shell_multiline_cons cons;
 	struct shell_vt100_colors col;
 	uint16_t printed_cmd;  /*!< printed commands counter */
 };
+/** @endcond */
 
 #ifdef __cplusplus
 }

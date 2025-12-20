@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Shell Websocket transport backend header
+ */
+
 #ifndef ZEPHYR_INCLUDE_SHELL_WEBSOCKET_H_
 #define ZEPHYR_INCLUDE_SHELL_WEBSOCKET_H_
 
@@ -15,6 +20,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/** @cond INTERNAL_HIDDEN */
 
 #define SHELL_WEBSOCKET_SERVICE_COUNT CONFIG_SHELL_WEBSOCKET_BACKEND_COUNT
 
@@ -145,6 +152,8 @@ int shell_websocket_enable(const struct shell *sh);
 
 #define WEBSOCKET_CONSOLE_ENABLE(_service)				\
 	(void)shell_websocket_enable(&GET_WS_SHELL_NAME(_service))
+
+/** @endcond */
 
 #ifdef __cplusplus
 }

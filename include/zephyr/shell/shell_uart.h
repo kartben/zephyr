@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Shell UART transport backend header
+ */
+
 #ifndef ZEPHYR_INCLUDE_SHELL_UART_H_
 #define ZEPHYR_INCLUDE_SHELL_UART_H_
 
@@ -16,6 +21,8 @@ extern "C" {
 #endif
 
 extern const struct shell_transport_api shell_uart_transport_api;
+
+/** @cond INTERNAL_HIDDEN */
 
 #ifndef CONFIG_SHELL_BACKEND_SERIAL_RX_RING_BUFFER_SIZE
 #define CONFIG_SHELL_BACKEND_SERIAL_RX_RING_BUFFER_SIZE 0
@@ -37,6 +44,9 @@ extern const struct shell_transport_api shell_uart_transport_api;
 		(CONFIG_SHELL_BACKEND_SERIAL_ASYNC_RX_BUFFER_SIZE + \
 		 UART_ASYNC_RX_BUF_OVERHEAD))
 
+/**
+ * @brief Shell UART common structure.
+ */
 struct shell_uart_common {
 	const struct device *dev;
 	shell_transport_handler_t handler;
@@ -47,6 +57,9 @@ struct shell_uart_common {
 #endif /* CONFIG_MCUMGR_TRANSPORT_SHELL */
 };
 
+/**
+ * @brief Shell UART interrupt driven structure.
+ */
 struct shell_uart_int_driven {
 	struct shell_uart_common common;
 	struct ring_buf tx_ringbuf;
@@ -57,6 +70,9 @@ struct shell_uart_int_driven {
 	atomic_t tx_busy;
 };
 
+/**
+ * @brief Shell UART async structure.
+ */
 struct shell_uart_async {
 	struct shell_uart_common common;
 	struct k_sem tx_sem;
@@ -66,6 +82,9 @@ struct shell_uart_async {
 	uint8_t rx_data[ASYNC_RX_BUF_SIZE];
 };
 
+/**
+ * @brief Shell UART polling structure.
+ */
 struct shell_uart_polling {
 	struct shell_uart_common common;
 	struct ring_buf rx_ringbuf;
@@ -80,6 +99,8 @@ struct shell_uart_polling {
 #else
 #define SHELL_UART_STRUCT struct shell_uart_int_driven
 #endif
+
+/** @endcond */
 
 /**
  * @brief Macro for creating shell UART transport instance named @p _name

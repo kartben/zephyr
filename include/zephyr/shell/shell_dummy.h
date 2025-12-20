@@ -6,6 +6,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Shell dummy backend header
+ */
+
 #ifndef ZEPHYR_INCLUDE_SHELL_DUMMY_H_
 #define ZEPHYR_INCLUDE_SHELL_DUMMY_H_
 
@@ -17,6 +22,11 @@ extern "C" {
 
 extern const struct shell_transport_api shell_dummy_transport_api;
 
+/** @cond INTERNAL_HIDDEN */
+
+/**
+ * @brief Shell dummy structure.
+ */
 struct shell_dummy {
 	bool initialized;
 
@@ -33,6 +43,8 @@ struct shell_dummy {
 		.api = &shell_dummy_transport_api,			\
 		.ctx = (struct shell_dummy *)&_name##_shell_dummy	\
 	}
+
+/** @endcond */
 
 /**
  * @brief This function shall not be used directly. It provides pointer to shell

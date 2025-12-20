@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Shell RPMsg transport backend header
+ */
+
 #ifndef ZEPHYR_INCLUDE_SHELL_RPMSG_H_
 #define ZEPHYR_INCLUDE_SHELL_RPMSG_H_
 
@@ -16,6 +21,8 @@ extern "C" {
 #endif
 
 extern const struct shell_transport_api shell_rpmsg_transport_api;
+
+/** @cond INTERNAL_HIDDEN */
 
 /** RPMsg received message placeholder */
 struct shell_rpmsg_rx {
@@ -61,6 +68,8 @@ struct shell_rpmsg {
 		.api = &shell_rpmsg_transport_api,			\
 		.ctx = (struct shell_rpmsg *)&_name##_shell_rpmsg,	\
 	}
+
+/** @endcond */
 
 /**
  * @brief Initialize the Shell backend using the provided @p rpmsg_dev device.

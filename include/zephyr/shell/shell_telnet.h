@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Shell Telnet transport backend header
+ */
+
 #ifndef ZEPHYR_INCLUDE_SHELL_TELNET_H_
 #define ZEPHYR_INCLUDE_SHELL_TELNET_H_
 
@@ -15,6 +20,8 @@ extern "C" {
 #endif
 
 extern const struct shell_transport_api shell_telnet_transport_api;
+
+/** @cond INTERNAL_HIDDEN */
 
 #define SHELL_TELNET_POLLFD_COUNT 3
 #define SHELL_TELNET_MAX_CMD_SIZE 3
@@ -70,6 +77,8 @@ struct shell_telnet {
 		.api = &shell_telnet_transport_api,			\
 		.ctx = (struct shell_telnet *)&_name##_shell_telnet	\
 	}
+
+/** @endcond */
 
 /**
  * @brief This function provides pointer to shell telnet backend instance.

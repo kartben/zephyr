@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Shell API header
+ */
+
 #ifndef SHELL_H__
 #define SHELL_H__
 
@@ -43,8 +48,11 @@ extern "C" {
 #define CONFIG_SHELL_HISTORY_BUFFER 0
 #endif
 
+/** @cond INTERNAL_HIDDEN */
 #define Z_SHELL_CMD_ROOT_LVL		(0u)
+/** @endcond */
 
+/** @brief Number of bytes displayed per line in hexdump output. */
 #define SHELL_HEXDUMP_BYTES_IN_LINE	16
 
 /**
@@ -267,6 +275,7 @@ typedef int (*shell_cmd_handler)(const struct shell *sh,
 typedef int (*shell_dict_cmd_handler)(const struct shell *sh, size_t argc,
 				      char **argv, void *data);
 
+/** @cond INTERNAL_HIDDEN */
 /* When entries are added to the memory section a padding is applied for
  * the posix architecture with 64bits builds and x86_64 targets. Adding padding to allow handle data
  * in the memory section as array.
@@ -276,8 +285,9 @@ typedef int (*shell_dict_cmd_handler)(const struct shell *sh, size_t argc,
 #else
 #define Z_SHELL_STATIC_ENTRY_PADDING 0
 #endif
+/** @endcond */
 
-/*
+/**
  * @brief Shell static command descriptor.
  */
 struct shell_static_entry {
@@ -483,6 +493,7 @@ static inline bool shell_help_is_structured(const char *help)
 		.entry = shell_##name					\
 	}
 
+/** @cond INTERNAL_HIDDEN */
 #define Z_SHELL_UNDERSCORE(x) _##x
 #define Z_SHELL_SUBCMD_NAME(...) \
 	UTIL_CAT(shell_subcmds, MACRO_MAP_CAT(Z_SHELL_UNDERSCORE, __VA_ARGS__))
@@ -491,6 +502,7 @@ static inline bool shell_help_is_structured(const char *help)
 	Z_SHELL_SUBCMD_SECTION_TAG(NUM_VA_ARGS_LESS_1 x, __DEBRACKET x)
 #define Z_SHELL_SUBCMD_ADD_SECTION_TAG(x, y) \
 	Z_SHELL_SUBCMD_SECTION_TAG(NUM_VA_ARGS_LESS_1 x, __DEBRACKET x, y)
+/** @endcond */
 
 /** @brief Create set of subcommands.
  *
@@ -690,6 +702,7 @@ static inline bool shell_help_is_structured(const char *help)
 #define SHELL_EXPR_CMD(_expr, _syntax, _subcmd, _help, _handler) \
 	SHELL_EXPR_CMD_ARG(_expr, _syntax, _subcmd, _help, _handler, 0, 0)
 
+/** @cond INTERNAL_HIDDEN */
 /* Internal macro used for creating handlers for dictionary commands. */
 #define Z_SHELL_CMD_DICT_HANDLER_CREATE(_data, _handler)		\
 static int UTIL_CAT(UTIL_CAT(cmd_dict_, UTIL_CAT(_handler, _)),		\
@@ -705,6 +718,7 @@ static int UTIL_CAT(UTIL_CAT(cmd_dict_, UTIL_CAT(_handler, _)),		\
 	SHELL_CMD_ARG(GET_ARG_N(1, __DEBRACKET _data), NULL, GET_ARG_N(3, __DEBRACKET _data),	\
 		UTIL_CAT(UTIL_CAT(cmd_dict_, UTIL_CAT(_handler, _)),	\
 			GET_ARG_N(1, __DEBRACKET _data)), 1, 0)
+/** @endcond */
 
 /**
  * @brief Initializes shell dictionary commands.
@@ -747,8 +761,9 @@ static int UTIL_CAT(UTIL_CAT(cmd_dict_, UTIL_CAT(_handler, _)),		\
 		SHELL_SUBCMD_SET_END					\
 	)
 
+/** @cond INTERNAL_HIDDEN */
 /**
- * @internal @brief Internal shell state in response to data received from the
+ * @brief Internal shell state in response to data received from the
  * terminal.
  */
 enum shell_receive_state {
@@ -759,7 +774,7 @@ enum shell_receive_state {
 };
 
 /**
- * @internal @brief Internal shell state.
+ * @brief Internal shell state.
  */
 enum shell_state {
 	SHELL_STATE_UNINITIALIZED,
@@ -768,6 +783,7 @@ enum shell_state {
 	SHELL_STATE_PANIC_MODE_ACTIVE,  /*!< Panic activated.*/
 	SHELL_STATE_PANIC_MODE_INACTIVE /*!< Panic requested, not supported.*/
 };
+/** @endcond */
 
 /** @brief Shell transport event. */
 enum shell_transport_evt {
@@ -888,6 +904,7 @@ struct shell_stats {
 	atomic_t log_lost_cnt; /*!< Lost log counter.*/
 };
 
+/** @cond INTERNAL_HIDDEN */
 #ifdef CONFIG_SHELL_STATS
 #define Z_SHELL_STATS_DEFINE(_name) static struct shell_stats _name##_stats
 #define Z_SHELL_STATS_PTR(_name) (&(_name##_stats))
@@ -897,7 +914,7 @@ struct shell_stats {
 #endif /* CONFIG_SHELL_STATS */
 
 /**
- * @internal @brief Flags for shell backend configuration.
+ * @brief Flags for shell backend configuration.
  */
 struct shell_backend_config_flags {
 	uint32_t insert_mode :1; /*!< Controls insert mode for text introduction */
@@ -912,7 +929,7 @@ BUILD_ASSERT((sizeof(struct shell_backend_config_flags) == sizeof(uint32_t)),
 	     "Structure must fit in 4 bytes");
 
 /**
- * @internal @brief Default backend configuration.
+ * @brief Default backend configuration.
  */
 #define SHELL_DEFAULT_BACKEND_CONFIG_FLAGS				\
 {									\
@@ -924,6 +941,9 @@ BUILD_ASSERT((sizeof(struct shell_backend_config_flags) == sizeof(uint32_t)),
 	.use_vt100	= 1,						\
 };
 
+/**
+ * @brief Flags for shell backend context.
+ */
 struct shell_backend_ctx_flags {
 	uint32_t processing   :1; /*!< Shell is executing process function */
 	uint32_t tx_rdy       :1;
@@ -939,7 +959,7 @@ BUILD_ASSERT((sizeof(struct shell_backend_ctx_flags) == sizeof(uint32_t)),
 	     "Structure must fit in 4 bytes");
 
 /**
- * @internal @brief Union for internal shell usage.
+ * @brief Union for internal shell usage.
  */
 union shell_backend_cfg {
 	atomic_t value;
@@ -947,13 +967,16 @@ union shell_backend_cfg {
 };
 
 /**
- * @internal @brief Union for internal shell usage.
+ * @brief Union for internal shell usage.
  */
 union shell_backend_ctx {
 	uint32_t value;
 	struct shell_backend_ctx_flags flags;
 };
 
+/**
+ * @brief Shell signal flags.
+ */
 enum shell_signal {
 	SHELL_SIGNAL_RXRDY = BIT(0),
 	SHELL_SIGNAL_LOG_MSG = BIT(1),
@@ -1025,8 +1048,11 @@ struct shell_ctx {
 	k_tid_t tid;
 	int ret_val;
 };
+/** @endcond */
 
+/** @cond INTERNAL_HIDDEN */
 extern const struct log_backend_api log_backend_shell_api;
+/** @endcond */
 
 /**
  * @brief Flags for setting shell output newline sequence.
@@ -1062,10 +1088,12 @@ struct shell {
 	k_thread_stack_t *stack;
 };
 
+/** @cond INTERNAL_HIDDEN */
 extern void z_shell_print_stream(const void *user_ctx, const char *data,
 				 size_t data_len);
 
-/** @brief Internal macro for defining a shell instance.
+/**
+ * @brief Internal macro for defining a shell instance.
  *
  * As it does not create the default shell logging backend it allows to use
  * custom approach for integrating logging with shell.
@@ -1098,6 +1126,7 @@ extern void z_shell_print_stream(const void *user_ctx, const char *data,
 		.log_backend = _log_backend,                                                       \
 		LOG_INSTANCE_PTR_INIT(log, shell, _name).name =                                    \
 			STRINGIFY(_name), .thread = &_name##_thread, .stack = _name##_stack}
+/** @endcond */
 
 /**
  * @brief Macro for defining a shell instance.
