@@ -273,23 +273,25 @@ struct arm_mmu_flat_range {
 	uint32_t	attrs;   /**< Memory attributes for the range */
 };
 
-/*
- * Data structure containing the memory attributes and permissions
- * data derived from a memory region's attr flags word in the format
- * required for setting up the corresponding PTEs.
+/**
+ * @brief MMU memory permissions and attributes
+ *
+ * Data structure containing the memory attributes and permissions data
+ * derived from a memory region's attribute flags word in the format
+ * required for setting up the corresponding Page Table Entries (PTEs).
  */
 struct arm_mmu_perms_attrs {
-	uint32_t acc_perms	: 2;
-	uint32_t bufferable	: 1;
-	uint32_t cacheable	: 1;
-	uint32_t not_global	: 1;
-	uint32_t non_sec	: 1;
-	uint32_t shared		: 1;
-	uint32_t tex		: 3;
-	uint32_t exec_never	: 1;
-	uint32_t id_mask	: 2;
-	uint32_t domain		: 4;
-	uint32_t reserved	: 15;
+	uint32_t acc_perms	: 2;   /**< Access permissions bits */
+	uint32_t bufferable	: 1;   /**< Bufferable memory attribute */
+	uint32_t cacheable	: 1;   /**< Cacheable memory attribute */
+	uint32_t not_global	: 1;   /**< Not global flag (nG) */
+	uint32_t non_sec	: 1;   /**< Non-secure bit (NS) */
+	uint32_t shared		: 1;   /**< Shareable attribute */
+	uint32_t tex		: 3;   /**< Type extension field */
+	uint32_t exec_never	: 1;   /**< Execute never flag (XN) */
+	uint32_t id_mask	: 2;   /**< Entry type ID mask */
+	uint32_t domain		: 4;   /**< Domain field */
+	uint32_t reserved	: 15;  /**< Reserved for future use */
 };
 
 #endif /* ZEPHYR_ARCH_AARCH32_ARM_MMU_PRIV_H_ */
