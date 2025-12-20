@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Shell WebSocket transport backend.
+ */
+
 #ifndef ZEPHYR_INCLUDE_SHELL_WEBSOCKET_H_
 #define ZEPHYR_INCLUDE_SHELL_WEBSOCKET_H_
 
@@ -16,66 +21,95 @@
 extern "C" {
 #endif
 
+/**
+ * @addtogroup shell_api
+ * @{
+ */
+
+/**
+ * @cond INTERNAL_HIDDEN
+ */
+
 #define SHELL_WEBSOCKET_SERVICE_COUNT CONFIG_SHELL_WEBSOCKET_BACKEND_COUNT
 
-/** Line buffer structure. */
+/**
+ * @brief Line buffer structure for WebSocket output.
+ */
 struct shell_websocket_line_buf {
-	/** Line buffer. */
-	char buf[CONFIG_SHELL_WEBSOCKET_LINE_BUF_SIZE];
-
-	/** Current line length. */
-	uint16_t len;
+	char buf[CONFIG_SHELL_WEBSOCKET_LINE_BUF_SIZE]; /**< Line buffer. */
+	uint16_t len;                                   /**< Current line length. */
 };
 
-/** WEBSOCKET-based shell transport. */
+/**
+ * @brief WebSocket-based shell transport context.
+ */
 struct shell_websocket {
-	/** Handler function registered by shell. */
-	shell_transport_handler_t shell_handler;
-
-	/** Context registered by shell. */
-	void *shell_context;
-
-	/** Buffer for outgoing line. */
-	struct shell_websocket_line_buf line_out;
-
-	/** Array for sockets used by the websocket service. */
-	struct zsock_pollfd fds[1];
-
-	/** Input buffer. */
-	uint8_t rx_buf[CONFIG_SHELL_CMD_BUFF_SIZE];
-
-	/** Number of data bytes within the input buffer. */
-	size_t rx_len;
-
-	/** Mutex protecting the input buffer access. */
-	struct k_mutex rx_lock;
-
-	/** The delayed work is used to send non-lf terminated output that has
-	 *  been around for "too long". This will prove to be useful
-	 *  to send the shell prompt for instance.
-	 */
-	struct k_work_delayable send_work;
-	struct k_work_sync work_sync;
-
-	/** If set, no output is sent to the WEBSOCKET client. */
-	bool output_lock;
+	shell_transport_handler_t shell_handler; /**< Handler function registered by shell. */
+	void *shell_context;                     /**< Context registered by shell. */
+	struct shell_websocket_line_buf line_out; /**< Buffer for outgoing line. */
+	struct zsock_pollfd fds[1];              /**< Sockets array. */
+	uint8_t rx_buf[CONFIG_SHELL_CMD_BUFF_SIZE]; /**< Input buffer. */
+	size_t rx_len;                           /**< Number of bytes in input buffer. */
+	struct k_mutex rx_lock;                  /**< Mutex protecting input buffer. */
+	struct k_work_delayable send_work;       /**< Delayed work for output. */
+	struct k_work_sync work_sync;            /**< Work sync object. */
+	bool output_lock;                        /**< If set, no output is sent. */
 };
 
 extern const struct shell_transport_api shell_websocket_transport_api;
+
+/**
+ * @endcond
+ */
+
+/**
+ * @brief Set up WebSocket shell transport.
+ *
+ * @param ws_socket     WebSocket socket.
+ * @param request_ctx   HTTP request context.
+ * @param user_data     User data.
+ *
+ * @return 0 on success, negative error code on failure.
+ */
 int shell_websocket_setup(int ws_socket, struct http_request_ctx *request_ctx, void *user_data);
+
+/**
+ * @brief Enable WebSocket shell backend.
+ *
+ * @param sh Shell instance.
+ *
+ * @return 0 on success, negative error code on failure.
+ */
 int shell_websocket_enable(const struct shell *sh);
+
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 
 #define GET_WS_NAME(_service) ws_ctx_##_service
 #define GET_WS_SHELL_NAME(_name) shell_websocket_##_name
 #define GET_WS_TRANSPORT_NAME(_service) transport_shell_ws_##_service
 #define GET_WS_DETAIL_NAME(_service) ws_res_detail_##_service
 
+/**
+ * @endcond
+ */
+
+/**
+ * @brief Macro for creating shell WebSocket transport instance.
+ *
+ * @param _service HTTP service name.
+ */
 #define SHELL_WEBSOCKET_DEFINE(_service)					\
 	static struct shell_websocket GET_WS_NAME(_service);			\
 	static struct shell_transport GET_WS_TRANSPORT_NAME(_service) = {	\
 		.api = &shell_websocket_transport_api,				\
 		.ctx = &GET_WS_NAME(_service),					\
 	}
+
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 
 #define SHELL_WS_PORT_NAME(_service)	http_service_##_service
 #define SHELL_WS_BUF_NAME(_service)	ws_recv_buffer_##_service
@@ -145,6 +179,14 @@ int shell_websocket_enable(const struct shell *sh);
 
 #define WEBSOCKET_CONSOLE_ENABLE(_service)				\
 	(void)shell_websocket_enable(&GET_WS_SHELL_NAME(_service))
+
+/**
+ * @endcond
+ */
+
+/**
+ * @}
+ */
 
 #ifdef __cplusplus
 }

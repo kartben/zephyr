@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Shell ADSP memory window transport backend.
+ */
+
 #ifndef SHELL_ADSP_MEMORY_WINDOW_H__
 #define SHELL_ADSP_MEMORY_WINDOW_H__
 
@@ -14,30 +19,40 @@
 extern "C" {
 #endif
 
+/**
+ * @addtogroup shell_api
+ * @{
+ */
+
+/**
+ * @cond INTERNAL_HIDDEN
+ */
+
 extern const struct shell_transport_api shell_adsp_memory_window_transport_api;
 
 struct sys_winstream;
 
-/** Memwindow based shell transport. */
+/**
+ * @brief Memory window based shell transport context.
+ */
 struct shell_adsp_memory_window {
-	/** Handler function registered by shell. */
-	shell_transport_handler_t shell_handler;
-
-	struct k_timer timer;
-
-	/** Context registered by shell. */
-	void *shell_context;
-
-	/** Receive winstream object */
-	struct sys_winstream *ws_rx;
-
-	/** Transmit winstream object */
-	struct sys_winstream *ws_tx;
-
-	/** Last read sequence number */
-	uint32_t read_seqno;
+	shell_transport_handler_t shell_handler; /**< Handler function. */
+	struct k_timer timer;                    /**< Polling timer. */
+	void *shell_context;                     /**< Context registered by shell. */
+	struct sys_winstream *ws_rx;             /**< Receive winstream object. */
+	struct sys_winstream *ws_tx;             /**< Transmit winstream object. */
+	uint32_t read_seqno;                     /**< Last read sequence number. */
 };
 
+/**
+ * @endcond
+ */
+
+/**
+ * @brief Macro for creating shell ADSP memory window transport instance.
+ *
+ * @param _name Instance name.
+ */
 #define SHELL_ADSP_MEMORY_WINDOW_DEFINE(_name)				\
 	static struct shell_adsp_memory_window _name##_shell_adsp_memory_window;\
 	struct shell_transport _name = {					\
@@ -46,14 +61,18 @@ struct shell_adsp_memory_window {
 	}
 
 /**
- * @brief This function provides pointer to shell ADSP memory window backend instance.
+ * @brief Get pointer to the shell ADSP memory window backend instance.
  *
- * Function returns pointer to the shell ADSP memory window instance. This instance can be
- * next used with shell_execute_cmd function in order to test commands behavior.
+ * This function returns a pointer to the shell ADSP memory window instance.
+ * This instance can be used with shell_execute_cmd() to test command behavior.
  *
- * @returns Pointer to the shell instance.
+ * @return Pointer to the shell instance.
  */
 const struct shell *shell_backend_adsp_memory_window_get_ptr(void);
+
+/**
+ * @}
+ */
 
 #ifdef __cplusplus
 }
