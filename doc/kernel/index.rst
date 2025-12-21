@@ -35,41 +35,34 @@ different platforms.
 
    drivers/index.rst
 
-User Mode and Memory Protection
-*******************************
+Memory Management and Protection
+********************************
 
-User mode enables running threads with reduced privileges, providing memory
-isolation and protection on systems with MPU or MMU hardware.
-
-.. toctree::
-   :maxdepth: 1
-
-   usermode/index.rst
-
-Memory Management
-*****************
-
-Memory management services provide dynamic memory allocation strategies
-suitable for resource-constrained embedded systems.
+These sections cover memory allocation strategies for resource-constrained
+systems and user mode capabilities that provide memory isolation and
+protection on systems with MPU or MMU hardware.
 
 .. toctree::
    :maxdepth: 1
 
    memory_management/index.rst
+   usermode/index.rst
 
-Data Structures
-***************
+Data Structures and Utilities
+*****************************
 
 The kernel provides a library of common data structures including lists,
-trees, and ring buffers for use in applications and kernel internals.
+trees, and ring buffers, as well as miscellaneous utility functions and macros
+for use in applications and kernel internals.
 
 .. toctree::
    :maxdepth: 1
 
    data_structures/index.rst
+   util/index.rst
 
-Timing and Time Utilities
-*************************
+Timing
+******
 
 Timing services provide mechanisms for measuring code execution time and
 converting between different time representations.
@@ -80,8 +73,8 @@ converting between different time representations.
    timing_functions/index.rst
    timeutil.rst
 
-Debugging and Instrumentation
-*****************************
+Object Cores and Debugging
+**************************
 
 Object cores provide a kernel debugging facility for identifying and
 operating on registered kernel objects.
@@ -91,15 +84,14 @@ operating on registered kernel objects.
 
    object_cores/index.rst
 
-OS Developer Utilities
-**********************
+Code and Data Placement
+***********************
 
-These utilities support advanced OS development tasks such as code relocation
-and working with linker-defined iterable sections.
+These features enable precise control over code and data placement in memory
+through linker-defined iterable sections and relocation mechanisms.
 
 .. toctree::
    :maxdepth: 1
 
-   util/index.rst
    iterable_sections/index.rst
    code-relocation.rst
