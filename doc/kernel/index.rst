@@ -48,17 +48,15 @@ protection on systems with MPU or MMU hardware.
    memory_management/index.rst
    usermode/index.rst
 
-Data Structures and Utilities
-*****************************
+Utilities
+*********
 
-The kernel provides a library of common data structures including lists,
-trees, and ring buffers, as well as miscellaneous utility functions and macros
-for use in applications and kernel internals.
+Miscellaneous utility functions and macros for use in applications and
+kernel internals.
 
 .. toctree::
    :maxdepth: 1
 
-   data_structures/index.rst
    util/index.rst
 
 Timing
