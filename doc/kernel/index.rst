@@ -3,6 +3,10 @@
 Kernel
 ######
 
+This section covers the Zephyr kernel primitives and services used to build
+applications: threads, scheduling, synchronization, memory management, and
+the device driver model.
+
 .. toctree::
    :maxdepth: 1
 
