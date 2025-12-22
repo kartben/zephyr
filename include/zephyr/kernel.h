@@ -2305,15 +2305,29 @@ static inline uint64_t k_cycle_get_64(void)
  * @}
  */
 
+/**
+ * @brief Queue structure
+ *
+ * A queue is a kernel object for passing data between threads and ISRs.
+ * Items are added to the tail and removed from the head (FIFO ordering).
+ *
+ * @cond INTERNAL_HIDDEN
+ */
 struct k_queue {
+	/** Underlying singly-linked FIFO list */
 	sys_sflist_t data_q;
+	/** Spinlock protecting queue operations */
 	struct k_spinlock lock;
+	/** Wait queue for threads waiting for data */
 	_wait_q_t wait_q;
 
 	Z_DECL_POLL_EVENT
 
 	SYS_PORT_TRACING_TRACKING_FIELD(k_queue)
 };
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
 
 /**
  * @cond INTERNAL_HIDDEN
@@ -2926,12 +2940,24 @@ static inline uint32_t k_event_test(struct k_event *event, uint32_t events_mask)
 
 /** @} */
 
+/**
+ * @brief FIFO structure
+ *
+ * A FIFO is a kernel object for passing data in first-in, first-out order.
+ * It is a specialized version of k_queue.
+ *
+ * @cond INTERNAL_HIDDEN
+ */
 struct k_fifo {
+	/** Underlying queue implementation */
 	struct k_queue _queue;
 #ifdef CONFIG_OBJ_CORE_FIFO
 	struct k_obj_core  obj_core;
 #endif
 };
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
 
 /**
  * @cond INTERNAL_HIDDEN
@@ -3167,12 +3193,24 @@ struct k_fifo {
 
 /** @} */
 
+/**
+ * @brief LIFO structure
+ *
+ * A LIFO is a kernel object for passing data in last-in, first-out order.
+ * It is a specialized version of k_queue with LIFO semantics.
+ *
+ * @cond INTERNAL_HIDDEN
+ */
 struct k_lifo {
+	/** Underlying queue implementation */
 	struct k_queue _queue;
 #ifdef CONFIG_OBJ_CORE_LIFO
 	struct k_obj_core  obj_core;
 #endif
 };
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
 
 /**
  * @cond INTERNAL_HIDDEN
@@ -3297,15 +3335,35 @@ struct k_lifo {
 /**
  * @cond INTERNAL_HIDDEN
  */
+
+/**
+ * @brief Stack allocation flag
+ *
+ * Internal flag indicating the stack buffer was dynamically allocated.
+ */
 #define K_STACK_FLAG_ALLOC	((uint8_t)1)	/* Buffer was allocated */
 
+/**
+ * @brief Stack data element type
+ *
+ * Type used for elements stored in a k_stack object.
+ */
 typedef uintptr_t stack_data_t;
 
+/**
+ * @brief Stack object
+ *
+ * A stack is a kernel object that implements a LIFO queue for pointer-sized values.
+ */
 struct k_stack {
+	/** Wait queue for threads waiting for data */
 	_wait_q_t wait_q;
+	/** Spinlock protecting stack operations */
 	struct k_spinlock lock;
+	/** Base, next available, and top pointers for stack buffer */
 	stack_data_t *base, *next, *top;
 
+	/** Stack flags */
 	uint8_t flags;
 
 	SYS_PORT_TRACING_TRACKING_FIELD(k_stack)
@@ -3568,13 +3626,25 @@ __syscall int k_mutex_unlock(struct k_mutex *mutex);
  */
 
 
+/**
+ * @brief Condition variable structure
+ *
+ * A condition variable is a synchronization primitive that enables threads
+ * to wait until a particular condition occurs.
+ *
+ * @cond INTERNAL_HIDDEN
+ */
 struct k_condvar {
+	/** Wait queue for threads waiting on the condition */
 	_wait_q_t wait_q;
 
 #ifdef CONFIG_OBJ_CORE_CONDVAR
 	struct k_obj_core  obj_core;
 #endif
 };
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
 
 #define Z_CONDVAR_INITIALIZER(obj)                                             \
 	{                                                                      \
