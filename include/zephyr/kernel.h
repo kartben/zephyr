@@ -389,6 +389,11 @@ void k_thread_foreach_unlocked_filter_by_cpu(unsigned int cpu,
  * */
 #define K_ESSENTIAL (BIT(0))
 
+/**
+ * @brief Bit position for FP option flag
+ *
+ * Bit position used in K_FP_REGS thread option flag.
+ */
 #define K_FP_IDX 1
 /**
  * @brief FPU registers are managed by context switch
@@ -439,7 +444,17 @@ void k_thread_foreach_unlocked_filter_by_cpu(unsigned int cpu,
  * restore the contents of these registers when scheduling the thread.
  * No effect if @kconfig{CONFIG_DSP_SHARING} is not enabled.
  */
+/**
+ * @brief Bit position for DSP option flag
+ *
+ * Bit position used in K_DSP_REGS thread option flag.
+ */
 #define K_DSP_IDX 6
+/**
+ * @brief DSP registers thread option flag
+ *
+ * Thread option indicating DSP register context should be saved.
+ */
 #define K_DSP_REGS (BIT(K_DSP_IDX))
 
 /**
@@ -450,7 +465,17 @@ void k_thread_foreach_unlocked_filter_by_cpu(unsigned int cpu,
  * memory and DSP feature. Often used with @kconfig{CONFIG_ARC_AGU_SHARING}.
  * No effect if @kconfig{CONFIG_ARC_AGU_SHARING} is not enabled.
  */
+/**
+ * @brief Bit position for AGU option flag
+ *
+ * Bit position used in K_AGU_REGS thread option flag.
+ */
 #define K_AGU_IDX 7
+/**
+ * @brief AGU registers thread option flag
+ *
+ * Thread option indicating AGU register context should be saved.
+ */
 #define K_AGU_REGS (BIT(K_AGU_IDX))
 
 /**
@@ -3746,7 +3771,7 @@ struct k_sem {
 #ifdef CONFIG_OBJ_CORE_SEM
 	struct k_obj_core  obj_core;
 #endif
-	/** @endcond */
+	/** INTERNAL_HIDDEN @endcond */
 };
 
 /**
@@ -3762,7 +3787,7 @@ struct k_sem {
 	}
 
 /**
- * @endcond
+ * INTERNAL_HIDDEN @endcond
  */
 
 /**
