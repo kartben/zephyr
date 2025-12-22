@@ -45,19 +45,77 @@ BUILD_ASSERT(sizeof(intptr_t) == sizeof(long));
  * @}
  */
 
+/**
+ * @brief Special thread ID to match any thread
+ *
+ * Used in APIs where a thread ID can be specified to match any thread.
+ */
 #define K_ANY NULL
 
 #if (CONFIG_NUM_COOP_PRIORITIES + CONFIG_NUM_PREEMPT_PRIORITIES) == 0
 #error Zero available thread priorities defined!
 #endif
 
+/**
+ * @brief Generate cooperative thread priority value
+ *
+ * Converts a logical cooperative priority level (0 to CONFIG_NUM_COOP_PRIORITIES-1)
+ * to an actual priority value. Lower priority values have higher priority.
+ * Cooperative threads have negative priority values.
+ *
+ * @param x Cooperative priority level (0 is highest cooperative priority)
+ * @return Actual priority value
+ */
 #define K_PRIO_COOP(x) (-(CONFIG_NUM_COOP_PRIORITIES - (x)))
+
+/**
+ * @brief Generate preemptible thread priority value
+ *
+ * Converts a logical preemptible priority level (0 to CONFIG_NUM_PREEMPT_PRIORITIES-1)
+ * to an actual priority value. Preemptible threads have non-negative priority values.
+ *
+ * @param x Preemptible priority level (0 is highest preemptible priority)
+ * @return Actual priority value
+ */
 #define K_PRIO_PREEMPT(x) (x)
 
+/**
+ * @brief Highest thread priority value
+ *
+ * This is the highest (most important) thread priority value in the system.
+ * It corresponds to the highest cooperative thread priority.
+ */
 #define K_HIGHEST_THREAD_PRIO (-CONFIG_NUM_COOP_PRIORITIES)
+
+/**
+ * @brief Lowest thread priority value
+ *
+ * This is the lowest (least important) thread priority value in the system.
+ * It is reserved for the idle thread.
+ */
 #define K_LOWEST_THREAD_PRIO CONFIG_NUM_PREEMPT_PRIORITIES
+
+/**
+ * @brief Idle thread priority
+ *
+ * Priority level for the idle thread.
+ */
 #define K_IDLE_PRIO K_LOWEST_THREAD_PRIO
+
+/**
+ * @brief Highest application thread priority
+ *
+ * Highest priority that can be used by application threads.
+ * Same as K_HIGHEST_THREAD_PRIO.
+ */
 #define K_HIGHEST_APPLICATION_THREAD_PRIO (K_HIGHEST_THREAD_PRIO)
+
+/**
+ * @brief Lowest application thread priority
+ *
+ * Lowest priority that can be used by application threads.
+ * One level higher than the idle thread priority.
+ */
 #define K_LOWEST_APPLICATION_THREAD_PRIO (K_LOWEST_THREAD_PRIO - 1)
 
 #ifdef CONFIG_POLL
@@ -69,29 +127,88 @@ BUILD_ASSERT(sizeof(intptr_t) == sizeof(long));
 #define Z_DECL_POLL_EVENT
 #endif
 
+/**
+ * @brief Forward declaration of thread object
+ */
 struct k_thread;
+/**
+ * @brief Forward declaration of mutex object
+ */
 struct k_mutex;
+/**
+ * @brief Forward declaration of semaphore object
+ */
 struct k_sem;
+/**
+ * @brief Forward declaration of message queue object
+ */
 struct k_msgq;
+/**
+ * @brief Forward declaration of mailbox object
+ */
 struct k_mbox;
+/**
+ * @brief Forward declaration of pipe object
+ */
 struct k_pipe;
+/**
+ * @brief Forward declaration of queue object
+ */
 struct k_queue;
+/**
+ * @brief Forward declaration of FIFO object
+ */
 struct k_fifo;
+/**
+ * @brief Forward declaration of LIFO object
+ */
 struct k_lifo;
+/**
+ * @brief Forward declaration of stack object
+ */
 struct k_stack;
+/**
+ * @brief Forward declaration of memory slab object
+ */
 struct k_mem_slab;
+/**
+ * @brief Forward declaration of timer object
+ */
 struct k_timer;
+/**
+ * @brief Forward declaration of poll event object
+ */
 struct k_poll_event;
+/**
+ * @brief Forward declaration of poll signal object
+ */
 struct k_poll_signal;
+/**
+ * @brief Forward declaration of memory domain object
+ */
 struct k_mem_domain;
+/**
+ * @brief Forward declaration of memory partition object
+ */
 struct k_mem_partition;
+/**
+ * @brief Forward declaration of futex object
+ */
 struct k_futex;
+/**
+ * @brief Forward declaration of event object
+ */
 struct k_event;
 
+/**
+ * @brief Execution context types
+ *
+ * Enumeration of the different execution contexts in which code can run.
+ */
 enum execution_context_types {
-	K_ISR = 0,
-	K_COOP_THREAD,
-	K_PREEMPT_THREAD,
+	K_ISR = 0,         /**< Interrupt service routine context */
+	K_COOP_THREAD,     /**< Cooperative thread context */
+	K_PREEMPT_THREAD,  /**< Preemptible thread context */
 };
 
 /* private, used by k_poll and k_work_poll */
@@ -910,6 +1027,12 @@ static inline k_ticks_t z_impl_k_thread_timeout_remaining_ticks(
  * @cond INTERNAL_HIDDEN
  */
 
+/**
+ * @brief Static thread initialization data
+ *
+ * Structure containing data needed to initialize a statically defined thread.
+ * This is used internally by K_THREAD_DEFINE and K_KERNEL_THREAD_DEFINE macros.
+ */
 struct _static_thread_data {
 	struct k_thread *init_thread;
 	k_thread_stack_t *init_stack;
@@ -5483,17 +5606,36 @@ void k_mbox_data_get(struct k_mbox_msg *rx_msg, void *buffer);
  */
 __syscall void k_pipe_init(struct k_pipe *pipe, uint8_t *buffer, size_t buffer_size);
 
+/**
+ * @brief Pipe state flags
+ *
+ * Flags indicating the current state of a pipe object.
+ */
 enum pipe_flags {
-	PIPE_FLAG_OPEN = BIT(0),
-	PIPE_FLAG_RESET = BIT(1),
+	PIPE_FLAG_OPEN = BIT(0),   /**< Pipe is open and operational */
+	PIPE_FLAG_RESET = BIT(1),  /**< Pipe is being reset */
 };
 
+/**
+ * @brief Pipe object
+ *
+ * A pipe is a kernel object that allows threads to send and receive
+ * variable-length data blocks via a ring buffer.
+ *
+ * @cond INTERNAL_HIDDEN
+ */
 struct k_pipe {
+	/** Number of threads waiting on this pipe */
 	size_t waiting;
+	/** Ring buffer for pipe data */
 	struct ring_buf buf;
+	/** Spinlock protecting pipe operations */
 	struct k_spinlock lock;
+	/** Wait queue for threads waiting to read data */
 	_wait_q_t data;
+	/** Wait queue for threads waiting for space to write */
 	_wait_q_t space;
+	/** Pipe state flags */
 	uint8_t flags;
 
 	Z_DECL_POLL_EVENT
@@ -5502,6 +5644,9 @@ struct k_pipe {
 #endif
 	SYS_PORT_TRACING_TRACKING_FIELD(k_pipe)
 };
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
 
 /**
  * @cond INTERNAL_HIDDEN
@@ -5601,20 +5746,40 @@ __syscall void k_pipe_close(struct k_pipe *pipe);
 /**
  * @cond INTERNAL_HIDDEN
  */
+
+/**
+ * @brief Memory slab information structure
+ *
+ * Contains runtime statistics and configuration for a memory slab.
+ */
 struct k_mem_slab_info {
+	/** Total number of blocks in the slab */
 	uint32_t num_blocks;
+	/** Size of each block in bytes */
 	size_t   block_size;
+	/** Number of blocks currently in use */
 	uint32_t num_used;
 #ifdef CONFIG_MEM_SLAB_TRACE_MAX_UTILIZATION
+	/** Maximum number of blocks used simultaneously */
 	uint32_t max_used;
 #endif
 };
 
+/**
+ * @brief Memory slab structure
+ *
+ * A memory slab provides fixed-size memory block allocation.
+ */
 struct k_mem_slab {
+	/** Wait queue for threads waiting for a block */
 	_wait_q_t wait_q;
+	/** Spinlock protecting slab operations */
 	struct k_spinlock lock;
+	/** Pointer to the slab's memory buffer */
 	char *buffer;
+	/** Pointer to the head of the free block list */
 	char *free_list;
+	/** Memory slab runtime information */
 	struct k_mem_slab_info info;
 
 	SYS_PORT_TRACING_TRACKING_FIELD(k_mem_slab)
@@ -5908,13 +6073,24 @@ int k_mem_slab_runtime_stats_reset_max(struct k_mem_slab *slab);
  * @{
  */
 
-/* kernel synchronized heap struct */
-
+/**
+ * @brief Kernel heap structure
+ *
+ * A k_heap provides thread-safe dynamic memory allocation with optional blocking.
+ *
+ * @cond INTERNAL_HIDDEN
+ */
 struct k_heap {
+	/** Underlying system heap */
 	struct sys_heap heap;
+	/** Wait queue for threads waiting for memory */
 	_wait_q_t wait_q;
+	/** Spinlock protecting heap operations */
 	struct k_spinlock lock;
 };
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
 
 /**
  * @brief Initialize a k_heap
@@ -6296,31 +6472,124 @@ enum _poll_states_bits {
 
 /* Public polling API */
 
-/* public - values for k_poll_event.type bitfield */
+/**
+ * @brief Poll event type: ignore this event
+ *
+ * This type can be used to temporarily disable a poll event.
+ */
 #define K_POLL_TYPE_IGNORE 0
+
+/**
+ * @brief Poll event type: signal
+ *
+ * Poll for a signal from k_poll_signal_raise().
+ */
 #define K_POLL_TYPE_SIGNAL Z_POLL_TYPE_BIT(_POLL_TYPE_SIGNAL)
+
+/**
+ * @brief Poll event type: semaphore available
+ *
+ * Poll for semaphore availability.
+ */
 #define K_POLL_TYPE_SEM_AVAILABLE Z_POLL_TYPE_BIT(_POLL_TYPE_SEM_AVAILABLE)
+
+/**
+ * @brief Poll event type: data available
+ *
+ * Poll for data availability on a queue, FIFO, or LIFO.
+ */
 #define K_POLL_TYPE_DATA_AVAILABLE Z_POLL_TYPE_BIT(_POLL_TYPE_DATA_AVAILABLE)
+
+/**
+ * @brief Poll event type: FIFO data available
+ *
+ * Alias for K_POLL_TYPE_DATA_AVAILABLE for FIFO objects.
+ */
 #define K_POLL_TYPE_FIFO_DATA_AVAILABLE K_POLL_TYPE_DATA_AVAILABLE
+
+/**
+ * @brief Poll event type: message queue data available
+ *
+ * Poll for data availability on a message queue.
+ */
 #define K_POLL_TYPE_MSGQ_DATA_AVAILABLE Z_POLL_TYPE_BIT(_POLL_TYPE_MSGQ_DATA_AVAILABLE)
+
+/**
+ * @brief Poll event type: pipe data available
+ *
+ * Poll for data availability on a pipe.
+ */
 #define K_POLL_TYPE_PIPE_DATA_AVAILABLE Z_POLL_TYPE_BIT(_POLL_TYPE_PIPE_DATA_AVAILABLE)
 
-/* public - polling modes */
+/**
+ * @brief Polling modes
+ *
+ * Defines the behavior of the polling thread when an event becomes ready.
+ */
 enum k_poll_modes {
-	/* polling thread does not take ownership of objects when available */
+	/**
+	 * Polling thread does not take ownership of objects when available.
+	 * The thread is only notified of availability.
+	 */
 	K_POLL_MODE_NOTIFY_ONLY = 0,
 
-	K_POLL_NUM_MODES
+	K_POLL_NUM_MODES  /**< Number of polling modes */
 };
 
-/* public - values for k_poll_event.state bitfield */
+/**
+ * @brief Poll event state: not ready
+ *
+ * The default state when creating an event. Indicates the event is not ready.
+ */
 #define K_POLL_STATE_NOT_READY 0
+
+/**
+ * @brief Poll event state: signaled
+ *
+ * Event was signaled by k_poll_signal_raise().
+ */
 #define K_POLL_STATE_SIGNALED Z_POLL_STATE_BIT(_POLL_STATE_SIGNALED)
+
+/**
+ * @brief Poll event state: semaphore available
+ *
+ * Semaphore is available.
+ */
 #define K_POLL_STATE_SEM_AVAILABLE Z_POLL_STATE_BIT(_POLL_STATE_SEM_AVAILABLE)
+
+/**
+ * @brief Poll event state: data available
+ *
+ * Data is available to read on a queue, FIFO, or LIFO.
+ */
 #define K_POLL_STATE_DATA_AVAILABLE Z_POLL_STATE_BIT(_POLL_STATE_DATA_AVAILABLE)
+
+/**
+ * @brief Poll event state: FIFO data available
+ *
+ * Alias for K_POLL_STATE_DATA_AVAILABLE for FIFO objects.
+ */
 #define K_POLL_STATE_FIFO_DATA_AVAILABLE K_POLL_STATE_DATA_AVAILABLE
+
+/**
+ * @brief Poll event state: message queue data available
+ *
+ * Data is available to read on a message queue.
+ */
 #define K_POLL_STATE_MSGQ_DATA_AVAILABLE Z_POLL_STATE_BIT(_POLL_STATE_MSGQ_DATA_AVAILABLE)
+
+/**
+ * @brief Poll event state: pipe data available
+ *
+ * Data is available to read from a pipe.
+ */
 #define K_POLL_STATE_PIPE_DATA_AVAILABLE Z_POLL_STATE_BIT(_POLL_STATE_PIPE_DATA_AVAILABLE)
+
+/**
+ * @brief Poll event state: cancelled
+ *
+ * The queue, FIFO, or LIFO wait was cancelled.
+ */
 #define K_POLL_STATE_CANCELLED Z_POLL_STATE_BIT(_POLL_STATE_CANCELLED)
 
 /* public - poll signal object */
@@ -6338,6 +6607,13 @@ struct k_poll_signal {
 	int result;
 };
 
+/**
+ * @brief Static initializer for a poll signal object
+ *
+ * This macro can be used to initialize a poll signal object at declaration time.
+ *
+ * @param obj Name of the poll signal object
+ */
 #define K_POLL_SIGNAL_INITIALIZER(obj) \
 	{ \
 	.poll_events = SYS_DLIST_STATIC_INIT(&obj.poll_events), \
@@ -6385,6 +6661,15 @@ struct k_poll_event {
 	};
 };
 
+/**
+ * @brief Initialize a poll event at runtime
+ *
+ * This macro can be used to initialize a poll event at runtime.
+ *
+ * @param _event_type Type of event (K_POLL_TYPE_xxx)
+ * @param _event_mode Polling mode (from enum k_poll_modes)
+ * @param _event_obj Pointer to kernel object being polled
+ */
 #define K_POLL_EVENT_INITIALIZER(_event_type, _event_mode, _event_obj) \
 	{ \
 	.poller = NULL, \
@@ -6397,6 +6682,16 @@ struct k_poll_event {
 	}, \
 	}
 
+/**
+ * @brief Static initializer for a poll event
+ *
+ * This macro can be used to initialize a poll event at declaration time.
+ *
+ * @param _event_type Type of event (K_POLL_TYPE_xxx)
+ * @param _event_mode Polling mode (from enum k_poll_modes)
+ * @param _event_obj Pointer to kernel object being polled
+ * @param event_tag User-specified tag value
+ */
 #define K_POLL_EVENT_STATIC_INITIALIZER(_event_type, _event_mode, _event_obj, \
 					event_tag) \
 	{ \
