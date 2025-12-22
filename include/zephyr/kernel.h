@@ -57,6 +57,11 @@ BUILD_ASSERT(sizeof(intptr_t) == sizeof(long));
 #endif
 
 /**
+ * @name Thread Priority Helpers
+ * @{
+ */
+
+/**
  * @brief Generate cooperative thread priority value
  *
  * Converts a logical cooperative priority level (0 to CONFIG_NUM_COOP_PRIORITIES-1)
@@ -117,6 +122,8 @@ BUILD_ASSERT(sizeof(intptr_t) == sizeof(long));
  * One level higher than the idle thread priority.
  */
 #define K_LOWEST_APPLICATION_THREAD_PRIO (K_LOWEST_THREAD_PRIO - 1)
+
+/** @} */
 
 #ifdef CONFIG_POLL
 #define Z_POLL_EVENT_OBJ_INIT(obj) \
@@ -385,6 +392,11 @@ void k_thread_foreach_unlocked_filter_by_cpu(unsigned int cpu,
  */
 
 /**
+ * @name Thread Options
+ * @{
+ */
+
+/**
  * @brief system thread that must not abort
  * */
 #define K_ESSENTIAL (BIT(0))
@@ -488,6 +500,8 @@ void k_thread_foreach_unlocked_filter_by_cpu(unsigned int cpu,
  * the thread. No effect if @kconfig{CONFIG_X86_SSE} is not enabled.
  */
 #define K_SSE_REGS (BIT(7))
+
+/** @} */
 
 /* end - thread options */
 
@@ -6555,6 +6569,11 @@ enum _poll_states_bits {
 /* Public polling API */
 
 /**
+ * @name Poll Event Types
+ * @{
+ */
+
+/**
  * @brief Poll event type: ignore this event
  *
  * This type can be used to temporarily disable a poll event.
@@ -6603,6 +6622,8 @@ enum _poll_states_bits {
  */
 #define K_POLL_TYPE_PIPE_DATA_AVAILABLE Z_POLL_TYPE_BIT(_POLL_TYPE_PIPE_DATA_AVAILABLE)
 
+/** @} */
+
 /**
  * @brief Polling modes
  *
@@ -6617,6 +6638,11 @@ enum k_poll_modes {
 
 	K_POLL_NUM_MODES  /**< Number of polling modes */
 };
+
+/**
+ * @name Poll Event States
+ * @{
+ */
 
 /**
  * @brief Poll event state: not ready
@@ -6673,6 +6699,8 @@ enum k_poll_modes {
  * The queue, FIFO, or LIFO wait was cancelled.
  */
 #define K_POLL_STATE_CANCELLED Z_POLL_STATE_BIT(_POLL_STATE_CANCELLED)
+
+/** @} */
 
 /* public - poll signal object */
 struct k_poll_signal {
