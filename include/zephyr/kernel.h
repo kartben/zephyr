@@ -2335,10 +2335,9 @@ static inline uint64_t k_cycle_get_64(void)
  *
  * A queue is a kernel object for passing data between threads and ISRs.
  * Items are added to the tail and removed from the head (FIFO ordering).
- *
- * @cond INTERNAL_HIDDEN
  */
 struct k_queue {
+	/** @cond INTERNAL_HIDDEN */
 	/** Underlying singly-linked FIFO list */
 	sys_sflist_t data_q;
 	/** Spinlock protecting queue operations */
@@ -2349,10 +2348,8 @@ struct k_queue {
 	Z_DECL_POLL_EVENT
 
 	SYS_PORT_TRACING_TRACKING_FIELD(k_queue)
+	/** @endcond */
 };
-/**
- * INTERNAL_HIDDEN @endcond
- */
 
 /**
  * @cond INTERNAL_HIDDEN
@@ -2970,19 +2967,16 @@ static inline uint32_t k_event_test(struct k_event *event, uint32_t events_mask)
  *
  * A FIFO is a kernel object for passing data in first-in, first-out order.
  * It is a specialized version of k_queue.
- *
- * @cond INTERNAL_HIDDEN
  */
 struct k_fifo {
+	/** @cond INTERNAL_HIDDEN */
 	/** Underlying queue implementation */
 	struct k_queue _queue;
 #ifdef CONFIG_OBJ_CORE_FIFO
 	struct k_obj_core  obj_core;
 #endif
+	/** @endcond */
 };
-/**
- * INTERNAL_HIDDEN @endcond
- */
 
 /**
  * @cond INTERNAL_HIDDEN
@@ -3223,19 +3217,16 @@ struct k_fifo {
  *
  * A LIFO is a kernel object for passing data in last-in, first-out order.
  * It is a specialized version of k_queue with LIFO semantics.
- *
- * @cond INTERNAL_HIDDEN
  */
 struct k_lifo {
+	/** @cond INTERNAL_HIDDEN */
 	/** Underlying queue implementation */
 	struct k_queue _queue;
 #ifdef CONFIG_OBJ_CORE_LIFO
 	struct k_obj_core  obj_core;
 #endif
+	/** @endcond */
 };
-/**
- * INTERNAL_HIDDEN @endcond
- */
 
 /**
  * @cond INTERNAL_HIDDEN
@@ -3381,6 +3372,7 @@ typedef uintptr_t stack_data_t;
  * A stack is a kernel object that implements a LIFO queue for pointer-sized values.
  */
 struct k_stack {
+	/** @cond INTERNAL_HIDDEN */
 	/** Wait queue for threads waiting for data */
 	_wait_q_t wait_q;
 	/** Spinlock protecting stack operations */
@@ -3396,6 +3388,7 @@ struct k_stack {
 #ifdef CONFIG_OBJ_CORE_STACK
 	struct k_obj_core  obj_core;
 #endif
+	/** @endcond */
 };
 
 #define Z_STACK_INITIALIZER(obj, stack_buffer, stack_num_entries) \
@@ -3656,20 +3649,17 @@ __syscall int k_mutex_unlock(struct k_mutex *mutex);
  *
  * A condition variable is a synchronization primitive that enables threads
  * to wait until a particular condition occurs.
- *
- * @cond INTERNAL_HIDDEN
  */
 struct k_condvar {
+	/** @cond INTERNAL_HIDDEN */
 	/** Wait queue for threads waiting on the condition */
 	_wait_q_t wait_q;
 
 #ifdef CONFIG_OBJ_CORE_CONDVAR
 	struct k_obj_core  obj_core;
 #endif
+	/** @endcond */
 };
-/**
- * INTERNAL_HIDDEN @endcond
- */
 
 #define Z_CONDVAR_INITIALIZER(obj)                                             \
 	{                                                                      \
@@ -5716,10 +5706,9 @@ enum pipe_flags {
  *
  * A pipe is a kernel object that allows threads to send and receive
  * variable-length data blocks via a ring buffer.
- *
- * @cond INTERNAL_HIDDEN
  */
 struct k_pipe {
+	/** @cond INTERNAL_HIDDEN */
 	/** Number of threads waiting on this pipe */
 	size_t waiting;
 	/** Ring buffer for pipe data */
@@ -5738,10 +5727,8 @@ struct k_pipe {
 	struct k_obj_core  obj_core;
 #endif
 	SYS_PORT_TRACING_TRACKING_FIELD(k_pipe)
+	/** @endcond */
 };
-/**
- * INTERNAL_HIDDEN @endcond
- */
 
 /**
  * @cond INTERNAL_HIDDEN
@@ -5839,15 +5826,12 @@ __syscall void k_pipe_close(struct k_pipe *pipe);
 /** @} */
 
 /**
- * @cond INTERNAL_HIDDEN
- */
-
-/**
  * @brief Memory slab information structure
  *
  * Contains runtime statistics and configuration for a memory slab.
  */
 struct k_mem_slab_info {
+	/** @cond INTERNAL_HIDDEN */
 	/** Total number of blocks in the slab */
 	uint32_t num_blocks;
 	/** Size of each block in bytes */
@@ -5858,6 +5842,7 @@ struct k_mem_slab_info {
 	/** Maximum number of blocks used simultaneously */
 	uint32_t max_used;
 #endif
+	/** @endcond */
 };
 
 /**
@@ -5866,6 +5851,7 @@ struct k_mem_slab_info {
  * A memory slab provides fixed-size memory block allocation.
  */
 struct k_mem_slab {
+	/** @cond INTERNAL_HIDDEN */
 	/** Wait queue for threads waiting for a block */
 	_wait_q_t wait_q;
 	/** Spinlock protecting slab operations */
@@ -5882,8 +5868,12 @@ struct k_mem_slab {
 #ifdef CONFIG_OBJ_CORE_MEM_SLAB
 	struct k_obj_core  obj_core;
 #endif
+	/** @endcond */
 };
 
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 #define Z_MEM_SLAB_INITIALIZER(_slab, _slab_buffer, _slab_block_size, \
 			       _slab_num_blocks)                      \
 	{                                                             \
@@ -6172,20 +6162,17 @@ int k_mem_slab_runtime_stats_reset_max(struct k_mem_slab *slab);
  * @brief Kernel heap structure
  *
  * A k_heap provides thread-safe dynamic memory allocation with optional blocking.
- *
- * @cond INTERNAL_HIDDEN
  */
 struct k_heap {
+	/** @cond INTERNAL_HIDDEN */
 	/** Underlying system heap */
 	struct sys_heap heap;
 	/** Wait queue for threads waiting for memory */
 	_wait_q_t wait_q;
 	/** Spinlock protecting heap operations */
 	struct k_spinlock lock;
+	/** @endcond */
 };
-/**
- * INTERNAL_HIDDEN @endcond
- */
 
 /**
  * @brief Initialize a k_heap
