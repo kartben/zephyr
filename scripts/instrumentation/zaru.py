@@ -8,18 +8,6 @@
 
 import argparse
 import sys
-
-try:
-    import bt2
-except ImportError:
-    sys.exit(
-        "Python3 babeltrace2 module is missing. Please install it.\n"
-        "On Ubuntu, install with 'apt-get install python3-bt2\n"
-        "For other systems, please consult the Installation page of the\n"
-        "Babeltrace 2 Python bindings project:\n"
-        "https://babeltrace.org/docs/v2.0/python/bt2/installation.html"
-    )
-
 import json
 import os
 import pathlib
@@ -27,6 +15,30 @@ import re
 import shutil
 import subprocess
 import tempfile
+
+# Try to import bt2, but fall back to pure Python CTF parser if not available
+try:
+    import bt2
+    USE_BT2 = True
+except ImportError:
+    USE_BT2 = False
+    # Import pure Python CTF parser as fallback
+    # Add scripts/tracing to path if needed
+    tracing_path = pathlib.Path(__file__).parent.parent / 'tracing'
+    if str(tracing_path) not in sys.path:
+        sys.path.insert(0, str(tracing_path))
+    try:
+        from ctf_parser import CTFTraceIterator, is_event_message, _EventMessageConst
+        # Create a namespace for bt2-compatible classes
+        class bt2:
+            TraceCollectionMessageIterator = CTFTraceIterator
+            _EventMessageConst = _EventMessageConst
+    except ImportError:
+        sys.exit(
+            "Neither Python3 babeltrace2 module nor the fallback CTF parser is available.\n"
+            "Please install bt2 with 'apt-get install python3-bt2' on Ubuntu, or\n"
+            "ensure ctf_parser.py is present in scripts/tracing directory."
+        )
 
 import serial
 from colorama import Fore, Style
