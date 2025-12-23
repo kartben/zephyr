@@ -22,7 +22,6 @@
 #include <zephyr/net/sntp.h>
 #include <zephyr/net/ocpp.h>
 #include <zephyr/random/random.h>
-#include <zephyr/zbus/zbus.h>
 
 #include "net_sample_common.h"
 
@@ -34,6 +33,11 @@ K_KERNEL_STACK_ARRAY_DEFINE(cp_stk, NO_OF_CONN, 2 * 1024);
 static struct k_thread tinfo[NO_OF_CONN];
 static k_tid_t tid[NO_OF_CONN];
 static char idtag[NO_OF_CONN][25];
+
+/* Shared message queue for stop charging events */
+/* Alignment of 4 bytes ensures proper memory boundary for performance */
+/* Queue size of 10 allows buffering multiple stop events for all connectors */
+K_MSGQ_DEFINE(stop_charge_msgq, sizeof(union ocpp_io_value), 10, 4);
 
 static int ocpp_get_time_from_sntp(void)
 {
@@ -69,19 +73,6 @@ static int ocpp_get_time_from_sntp(void)
 	return 0;
 }
 
-ZBUS_CHAN_DEFINE(ch_event, /* Name */
-		 union ocpp_io_value,
-		 NULL,			/* Validator */
-		 NULL,			/* User data */
-		 ZBUS_OBSERVERS_EMPTY,	/* observers */
-		 ZBUS_MSG_INIT(0) /* Initial value {0} */
-);
-
-ZBUS_SUBSCRIBER_DEFINE(cp_thread0, 5);
-ZBUS_SUBSCRIBER_DEFINE(cp_thread1, 5);
-struct zbus_observer *obs[NO_OF_CONN] = {(struct zbus_observer *)&cp_thread0,
-					 (struct zbus_observer *)&cp_thread1};
-
 static void ocpp_cp_entry(void *p1, void *p2, void *p3);
 static int user_notify_cb(enum ocpp_notify_reason reason,
 			  union ocpp_io_value *io,
@@ -90,6 +81,12 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 	static int wh = 6 + NO_OF_CONN;
 	int idx;
 	int i;
+	int ret;
+
+	if (io == NULL) {
+		LOG_ERR("Received null io value in callback");
+		return -EINVAL;
+	}
 
 	switch (reason) {
 	case OCPP_USR_GET_METER_VALUE:
@@ -131,14 +128,24 @@ static int user_notify_cb(enum ocpp_notify_reason reason,
 			tid[idx] = k_thread_create(&tinfo[idx], cp_stk[idx],
 						   sizeof(cp_stk[idx]), ocpp_cp_entry,
 						   (void *)(uintptr_t)(idx + 1), idtag[idx],
-						   obs[idx], 7, 0, K_NO_WAIT);
+						   NULL, 7, 0, K_NO_WAIT);
 
 			return 0;
 		}
 		break;
 
 	case OCPP_USR_STOP_CHARGING:
-		zbus_chan_pub(&ch_event, io, K_MSEC(100));
+		/* Send stop charging event to shared message queue */
+		if (io->stop_charge.id_con > 0 && io->stop_charge.id_con <= NO_OF_CONN) {
+			ret = k_msgq_put(&stop_charge_msgq, io, K_MSEC(100));
+			if (ret != 0) {
+				LOG_ERR("Failed to send stop charging to connector %d: %d",
+					io->stop_charge.id_con, ret);
+			}
+		} else {
+			LOG_ERR("Invalid connector ID %d for stop charging, valid range is 1-%d",
+				io->stop_charge.id_con, NO_OF_CONN);
+		}
 		return 0;
 
 	case OCPP_USR_UNLOCK_CONNECTOR:
@@ -154,7 +161,6 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 	int ret;
 	int idcon = (int)(uintptr_t)p1;
 	char *idtag = (char *)p2;
-	struct zbus_observer *obs = (struct zbus_observer *)p3;
 	ocpp_session_handle_t sh = NULL;
 	enum ocpp_auth_status status;
 	const uint32_t timeout_ms = 500;
@@ -193,22 +199,25 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 
 	ret = ocpp_start_transaction(sh, sys_rand32_get(), idcon, timeout_ms);
 	if (ret == 0) {
-		const struct zbus_channel *chan;
 		union ocpp_io_value io;
 
 		LOG_INF("ocpp start charging connector id %d\n", idcon);
 		memset(&io, 0xff, sizeof(io));
 
-		/* wait for stop charging event from main or remote CS */
-		zbus_chan_add_obs(&ch_event, obs, K_SECONDS(1));
+		/* Wait for stop charging event from shared message queue */
+		/* Each thread filters for its own connector ID */
 		do {
-			zbus_sub_wait(obs, &chan, K_FOREVER);
-			zbus_chan_read(chan, &io, K_SECONDS(1));
-
+			ret = k_msgq_get(&stop_charge_msgq, &io, K_FOREVER);
+			if (ret != 0) {
+				/* This should never happen with K_FOREVER, but check defensively */
+				LOG_ERR("Failed to get message from queue: %d", ret);
+				break;
+			}
 			if (io.stop_charge.id_con == idcon) {
 				break;
 			}
-
+			/* Not for this connector, put it back for other threads */
+			k_msgq_put(&stop_charge_msgq, &io, K_NO_WAIT);
 		} while (1);
 	}
 
@@ -327,19 +336,22 @@ int main(void)
 		tid[i] = k_thread_create(&tinfo[i], cp_stk[i],
 					 sizeof(cp_stk[i]),
 					 ocpp_cp_entry, (void *)(uintptr_t)(i + 1),
-					 idtag[i], obs[i], 7, 0, K_NO_WAIT);
+					 idtag[i], NULL, 7, 0, K_NO_WAIT);
 	}
 
 	/* Active charging session */
 	k_sleep(K_SECONDS(30));
 
-	/* Send stop charging to thread */
+	/* Send stop charging to threads via shared queue */
 	for (i = 0; i < NO_OF_CONN; i++) {
 		union ocpp_io_value io = {0};
 
 		io.stop_charge.id_con = i + 1;
 
-		zbus_chan_pub(&ch_event, &io, K_MSEC(100));
+		ret = k_msgq_put(&stop_charge_msgq, &io, K_MSEC(100));
+		if (ret != 0) {
+			LOG_ERR("Failed to send stop charging to connector %d: %d", i + 1, ret);
+		}
 		k_sleep(K_SECONDS(1));
 	}
 
