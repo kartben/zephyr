@@ -9,22 +9,14 @@
 import argparse
 import sys
 
-try:
-    import bt2
-except ImportError:
-    sys.exit(
-        "Python3 babeltrace2 module is missing. Please install it.\n"
-        "On Ubuntu, install with 'apt-get install python3-bt2\n"
-        "For other systems, please consult the Installation page of the\n"
-        "Babeltrace 2 Python bindings project:\n"
-        "https://babeltrace.org/docs/v2.0/python/bt2/installation.html"
-    )
+# bt2 dependency removed - using native Python CTF parser instead
 
 import json
 import os
 import pathlib
 import re
 import shutil
+import struct
 import subprocess
 import tempfile
 
@@ -33,6 +25,169 @@ from colorama import Fore, Style
 from west.app.main import WestApp
 from west.configuration import Configuration, config
 from west.util import west_topdir
+
+
+class CTFParser:
+    """Native Python parser for CTF (Common Trace Format) binary data.
+    
+    This replaces the bt2 (babeltrace2) dependency with a lightweight parser
+    specifically for Zephyr instrumentation CTF data.
+    """
+    
+    # Event IDs from CTF metadata
+    EVENT_FUNC_ENTRY = 0
+    EVENT_FUNC_EXIT = 1
+    EVENT_PROFILE = 2
+    EVENT_SCHED_SWITCHED_IN = 3
+    EVENT_SCHED_SWITCHED_OUT = 4
+    
+    # Event names mapping
+    EVENT_NAMES = {
+        EVENT_FUNC_ENTRY: "func_entry_with_context",
+        EVENT_FUNC_EXIT: "func_exit_with_context",
+        EVENT_PROFILE: "profile",
+        EVENT_SCHED_SWITCHED_IN: "sched_switched_in",
+        EVENT_SCHED_SWITCHED_OUT: "sched_switched_out",
+    }
+    
+    def __init__(self, data_file):
+        """Initialize CTF parser with binary data file.
+        
+        Args:
+            data_file: Path to CTF binary data file
+        """
+        with open(data_file, 'rb') as f:
+            self.data = f.read()
+        self.offset = 0
+    
+    def _read_uint8(self):
+        """Read unsigned 8-bit integer."""
+        if self.offset >= len(self.data):
+            return None
+        value = self.data[self.offset]
+        self.offset += 1
+        return value
+    
+    def _read_uint32_le(self):
+        """Read unsigned 32-bit integer (little-endian)."""
+        if self.offset + 4 > len(self.data):
+            return None
+        value = struct.unpack('<I', self.data[self.offset:self.offset+4])[0]
+        self.offset += 4
+        return value
+    
+    def _read_uint64_le(self):
+        """Read unsigned 64-bit integer (little-endian)."""
+        if self.offset + 8 > len(self.data):
+            return None
+        value = struct.unpack('<Q', self.data[self.offset:self.offset+8])[0]
+        self.offset += 8
+        return value
+    
+    def _read_string(self, length):
+        """Read fixed-length ASCII string."""
+        if self.offset + length > len(self.data):
+            return None
+        string_bytes = self.data[self.offset:self.offset+length]
+        self.offset += length
+        # Decode and strip null terminators
+        return string_bytes.decode('ascii', errors='replace').rstrip('\x00')
+    
+    def _read_bitfields(self):
+        """Read packed bitfields: 3-bit mode, 3-bit cpu, 2-bit reserved.
+        
+        Returns:
+            Tuple of (mode, cpu) as integers
+        """
+        if self.offset >= len(self.data):
+            return None, None
+        byte = self.data[self.offset]
+        self.offset += 1
+        
+        # Extract bitfields from single byte
+        # Layout: [mode(3 bits)][cpu(3 bits)][rsvd(2 bits)]
+        mode = byte & 0x07  # Lower 3 bits
+        cpu = (byte >> 3) & 0x07  # Next 3 bits
+        # rsvd = (byte >> 6) & 0x03  # Upper 2 bits (unused)
+        
+        return mode, cpu
+    
+    def _parse_event_with_context(self, event_id):
+        """Parse func_entry/exit or sched_switched events.
+        
+        Args:
+            event_id: Event type ID
+            
+        Returns:
+            Event dictionary or None if parsing fails
+        """
+        callee = self._read_uint32_le()
+        caller = self._read_uint32_le()
+        timestamp = self._read_uint64_le()
+        mode, cpu = self._read_bitfields()
+        thread_id = self._read_uint32_le()
+        thread_name = self._read_string(20)
+        
+        if callee is None:
+            return None
+        
+        return {
+            'id': event_id,
+            'name': self.EVENT_NAMES[event_id],
+            'callee': callee,
+            'caller': caller,
+            'timestamp': timestamp,
+            'mode': mode,
+            'cpu': cpu,
+            'thread_id': thread_id,
+            'thread_name': thread_name,
+        }
+    
+    def _parse_profile_event(self):
+        """Parse profile event.
+        
+        Returns:
+            Event dictionary or None if parsing fails
+        """
+        callee = self._read_uint32_le()
+        delta_t = self._read_uint64_le()
+        
+        if callee is None:
+            return None
+        
+        return {
+            'id': self.EVENT_PROFILE,
+            'name': self.EVENT_NAMES[self.EVENT_PROFILE],
+            'callee': callee,
+            'delta_t': delta_t,
+        }
+    
+    def parse_events(self):
+        """Generator that yields parsed CTF events.
+        
+        Yields:
+            Event dictionaries compatible with bt2 format
+        """
+        while self.offset < len(self.data):
+            # Read event header (event ID)
+            event_id = self._read_uint8()
+            
+            if event_id is None:
+                break
+            
+            # Parse based on event type
+            if event_id in (self.EVENT_FUNC_ENTRY, self.EVENT_FUNC_EXIT, 
+                           self.EVENT_SCHED_SWITCHED_IN, self.EVENT_SCHED_SWITCHED_OUT):
+                event = self._parse_event_with_context(event_id)
+            elif event_id == self.EVENT_PROFILE:
+                event = self._parse_profile_event()
+            else:
+                # Unknown event ID, skip to next byte
+                continue
+            
+            if event:
+                yield event
+
 
 STATUS_REPLY_PATTERN = r"(0|1)\s(0|1)"
 
@@ -438,99 +593,85 @@ def get_and_print_trace(args, port, elf, demangle, annotate_ret=False, verbose=F
 
     This function uses 'port' to get the binary stream from target and 'elf'
     file to resolve the symbols and then prints the traces in it. The binary
-    stream is interpreted according to the CTF (Common Trace Format) file
-    'metadata', using library babeltrece2.
+    stream is interpreted according to the CTF (Common Trace Format) specification.
     """
 
     port.write(b"dump_trace\r")
 
-    # babeltrace2 and CTF 1.8 specification is a tad odd in the sense that
-    # TraceCollectionMessageIterator() only allows a directory to be specified, which must contain
-    # a 'data' (binary) file and 'metadata' file written in the TSDL, hence it's not possible to
-    # specify an alternative path for 'data' or 'metadata' files. Thus here a temporary dir. is
-    # created and a copy of the 'metadata' is copied to it together with the binary stream extracted
-    # from the target, which is saved as 'data' file. The tempory dir. is then passed the babeltrace
-    # methods.
+    # Save binary stream to temporary file for parsing
     with tempfile.TemporaryDirectory() as tmpdir:
         if verbose:
             print("Temporary dir:", tmpdir)
 
-        # Copy binary stream to temporary dir.
+        # Save binary stream to temporary file
         data_file = tmpdir + "/data"
         with open(data_file, "wb") as fd:
             ll = get_stream(port)
             fd.write(ll)
 
-        # Copy CTF metadata to temporary dir.
-        metadata_file = get_ctf_metadata_file(args, args.verbose)
-        shutil.copy(metadata_file, tmpdir + "/metadata")
-
-        msg_it = bt2.TraceCollectionMessageIterator(tmpdir)
-
+        # Parse CTF binary data using native parser
+        parser = CTFParser(data_file)
         symbols = get_symbols_from_elf(elf, verbose)
 
         # Generator for getting an event with symbols resolved.
         # The event returned is a dict().
         def get_trace_event_generator():
-            for msg in msg_it:
-                if isinstance(msg, bt2._EventMessageConst):
-                    event = msg.event
+            for event in parser.parse_events():
+                # Entry / exit events (w/ or wo/ context) are converted to
+                # 'entry' and 'exit' types just to simplify the matching
+                # code using them -- match against a shorter string.  It can
+                # be enhanced if necessary. Currently just handle entry /
+                # exit with context and sched switch in/out events.
+                if "entry" in event['name']:
+                    event_type = "entry"
+                elif "exit" in event['name']:
+                    event_type = "exit"
+                elif "switched_in" in event['name']:
+                    event_type = "switched_in"
+                elif "switched_out" in event['name']:
+                    event_type = "switched_out"
+                else:
+                    continue
 
-                    # Entry / exit events (w/ or wo/ context) are converted to
-                    # 'entry' and 'exit' types just to simplify the matching
-                    # code using them -- match against a shorter string.  It can
-                    # be enhanced if necessary. Currently just handle entry /
-                    # exit with context and sched switch in/out events.
-                    if "entry" in event.name:
-                        event_type = "entry"
-                    elif "exit" in event.name:
-                        event_type = "exit"
-                    elif "switched_in" in event.name:
-                        event_type = "switched_in"
-                    elif "switched_out" in event.name:
-                        event_type = "switched_out"
-                    else:
-                        continue
+                # Resolve callee symbol.
+                callee = event['callee']
+                callee = f'{callee:08x}'  # Format before lookup
+                callee_symbol = symbols.get(callee)
 
-                    # Resolve callee symbol.
-                    callee = event.payload_field.get("callee").real
-                    callee = f'{callee:08x}'  # Format before lookup
-                    callee_symbol = symbols.get(callee)
+                if callee_symbol is None:
+                    print(
+                        Fore.RED + f"Symbol address {callee} could not be resolved! "
+                        "Are you sure FW flashed matches provided zephyr.elf in build dir?\n"
+                        "Tracing will be aborted because it's unreliable when symbols can't be "
+                        "properly resolved."
+                    )
 
-                    if callee_symbol is None:
-                        print(
-                            Fore.RED + f"Symbol address {callee} could not be resolved! "
-                            "Are you sure FW flashed matches provided zephyr.elf in build dir?\n"
-                            "Tracing will be aborted because it's unreliable when symbols can't be "
-                            "properly resolved."
-                        )
+                    sys.exit(1)
 
-                        sys.exit(1)
+                thread_id = event['thread_id']
+                # When tracing non-application code usually there isn't
+                # a thread ID associated to the context, so in this case
+                # change thread ID to "none-thread".
+                if thread_id == 0:
+                    thread_id = "none-thread"
+                else:
+                    thread_id = hex(thread_id)
 
-                    thread_id = event.payload_field.get("thread_id")
-                    # When tracing non-application code usually there isn't
-                    # a thread ID associated to the context, so in this case
-                    # change thread ID to "none-thread".
-                    if thread_id == 0:
-                        thread_id = "none-thread"
-                    else:
-                        thread_id = hex(thread_id)
+                cpu = event['cpu']
+                mode = event['mode']
+                timestamp = event['timestamp']
+                thread_name = event['thread_name']
 
-                    cpu = event.payload_field.get("cpu")
-                    mode = event.payload_field.get("mode")
-                    timestamp = event.payload_field.get("timestamp").real
-                    thread_name = event.payload_field.get("thread_name")
+                e = dict()
+                e["type"] = str(event_type)
+                e["func"] = str(callee_symbol)
+                e["thread_id"] = str(thread_id)
+                e["cpu"] = str(cpu)
+                e["mode"] = str(mode)
+                e["timestamp"] = str(timestamp)
+                e["thread_name"] = str(thread_name)
 
-                    e = dict()
-                    e["type"] = str(event_type)
-                    e["func"] = str(callee_symbol)
-                    e["thread_id"] = str(thread_id)
-                    e["cpu"] = str(cpu)
-                    e["mode"] = str(mode)
-                    e["timestamp"] = str(timestamp)
-                    e["thread_name"] = str(thread_name)
-
-                    yield e  # event
+                yield e  # event
 
         ge = get_trace_event_generator()
 
@@ -724,95 +865,81 @@ def export_to_perfetto(args, port, elf, output_filename, demangle, verbose=False
 
     This function uses 'port' to get the binary stream from target and 'elf'
     file to resolve the symbols and then prints the traces in it. The binary
-    stream is interpreted according to the CTF (Common Trace Format) file
-    'metadata', using library babeltrece2. Data is then saved into a JSON file,
-    in Trace Event Format (https://tinyurl.com/45bb69s9).
+    stream is interpreted according to the CTF (Common Trace Format) specification.
+    Data is then saved into a JSON file in Trace Event Format (https://tinyurl.com/45bb69s9).
     """
 
     port.write(b"dump_trace\r")
 
-    # babeltrace2 and CTF 1.8 specification is a tad odd in the sense that
-    # TraceCollectionMessageIterator() only allows a directory to be specified, which must contain a
-    # 'data' (binary) file and 'metadata' file written in the TSDL, hence it's not possible to
-    # specify an alternative path for 'data' or 'metadata' files. Thus here a temporary dir is
-    # created and a copy of the 'metadata' is copied to it together with the binary stream extracted
-    # from the target, which is saved as 'data' file. The tempory dir is then passed to the
-    # babeltrace methods.
+    # Save binary stream to temporary file for parsing
     with tempfile.TemporaryDirectory() as tmpdir:
         if verbose:
             print("Temporary dir:", tmpdir)
 
-        # Copy binary stream to temporary dir.
+        # Save binary stream to temporary file
         data_file = tmpdir + "/data"
         with open(data_file, "wb") as fd:
             ll = get_stream(port)
             fd.write(ll)
 
-        # Copy CTF metadata to temporary dir.
-        metadata_file = get_ctf_metadata_file(args, args.verbose)
-        shutil.copy(metadata_file, tmpdir + "/metadata")
-
-        msg_it = bt2.TraceCollectionMessageIterator(tmpdir)
-
+        # Parse CTF binary data using native parser
+        parser = CTFParser(data_file)
         symbols = get_symbols_from_elf(elf, verbose)
 
         # Generator for getting an event with symbols resolved.
         # The event returned is a dict().
         def get_trace_event_generator():
-            for msg in msg_it:
-                if isinstance(msg, bt2._EventMessageConst):
-                    event = msg.event
+            for event in parser.parse_events():
+                # Entry / exit events (w/ or wo/ context) are converted to
+                # 'entry' and 'exit' types just to simplify the matching
+                # code using them -- match against a shorter string.  It can
+                # be enhanced if necessary. Currently just handle entry /
+                # exit with context and sched switch in/out events.
+                if "entry" in event['name']:
+                    event_type = "entry"
+                elif "exit" in event['name']:
+                    event_type = "exit"
+                elif "switched_in" in event['name']:
+                    event_type = "switched_in"
+                elif "switched_out" in event['name']:
+                    event_type = "switched_out"
+                else:
+                    continue
 
-                    # Entry / exit events (w/ or wo/ context) are converted to
-                    # 'entry' and 'exit' types just to simplify the matching
-                    # code using them -- match against a shorter string.  It can
-                    # be enhanced if necessary. Currently just handle entry /
-                    # exit with context and sched switch in/out events.
-                    if "entry" in event.name:
-                        event_type = "entry"
-                    elif "exit" in event.name:
-                        event_type = "exit"
-                    elif "switched_in" in event.name:
-                        event_type = "switched_in"
-                    elif "switched_out" in event.name:
-                        event_type = "switched_out"
-                    else:
-                        continue
+                # Resolve callee symbol.
+                callee = event['callee']
+                callee = f'{callee:08x}'  # Format before lookup
+                callee_symbol = symbols.get(callee)
 
-                    # Resolve callee symbol.
-                    callee = event.payload_field.get("callee").real
-                    callee = f'{callee:08x}'  # Format before lookup
-                    callee_symbol = symbols.get(callee)
+                assert callee_symbol is not None, (
+                    f"Symbol address {callee} could not be resolved! Are you sure "
+                    "FW flashed matches provided ELF file in build dir?"
+                )
 
-                    assert callee_symbol is not None, (
-                        f"Symbol address {callee} could not be resolved! Are you sure "
-                        "FW flashed matches provided ELF file in build dir?"
-                    )
+                thread_id = event['thread_id']
+                # When tracing non-application code usually there isn't
+                # a thread ID associated to the context, so in this case
+                # change thread ID to "none-thread".
+                if thread_id == 0:
+                    thread_id = "none-thread"
+                else:
+                    thread_id = hex(thread_id)
 
-                    thread_id = event.payload_field.get("thread_id")
-                    # When tracing non-application code usually there isn't
-                    # a thread ID associated to the context, so in this case
-                    # change thread ID to "none-thread".
-                    if thread_id == 0:
-                        thread_id = "none-thread"
-                    else:
-                        thread_id = hex(thread_id)
+                cpu = event['cpu']
+                mode = event['mode']
+                timestamp = event['timestamp']
+                thread_name = event['thread_name']
 
-                    cpu = event.payload_field.get("cpu")
-                    mode = event.payload_field.get("mode")
-                    timestamp = event.payload_field.get("timestamp").real
-                    thread_name = event.payload_field.get("thread_name")
+                e = dict()
+                e["type"] = str(event_type)
+                e["func"] = str(callee_symbol)
+                e["thread_id"] = str(thread_id)
+                e["cpu"] = str(cpu)
+                e["mode"] = str(mode)
+                e["timestamp"] = str(timestamp)
+                e["thread_name"] = str(thread_name)
 
-                    e = dict()
-                    e["type"] = str(event_type)
-                    e["func"] = str(callee_symbol)
-                    e["thread_id"] = str(thread_id)
-                    e["cpu"] = str(cpu)
-                    e["mode"] = str(mode)
-                    e["timestamp"] = str(timestamp)
-                    e["thread_name"] = str(thread_name)
-
-                    yield e  # event
+                yield e  # event
 
         ge = get_trace_event_generator()
 
@@ -958,47 +1085,38 @@ def get_and_print_profile(args, port, elf, n, verbose=False):
 
     This function uses 'port' to get the binary stream from target and 'elf'
     file to resolve the symbols and then prints the profile info in it. The
-    binary stream is interpreted according to the CTF (Common Trace Format) file
-    'metadata', using library babeltrece2.
+    binary stream is interpreted according to the CTF (Common Trace Format) specification.
     """
 
     port.write(b'dump_profile\r')
 
-    # See comment above in get_and_print_trace() about CTF and babeltrace2
-    # caveats.
+    # Save binary stream to temporary file for parsing
     with tempfile.TemporaryDirectory() as tmpdir:
         if verbose:
             print("Temporary dir:", tmpdir)
 
-        # Copy binary stream to temporary dir.
+        # Save binary stream to temporary file
         data_file = tmpdir + "/data"
         with open(data_file, "wb") as fd:
             ll = get_stream(port)
             fd.write(ll)
 
-        # Copy CTF metadata to temporary dir.
-        metadata_file = get_ctf_metadata_file(args, args.verbose)
-        shutil.copy(metadata_file, tmpdir + "/metadata")
-
-        msg_it = bt2.TraceCollectionMessageIterator(tmpdir)
-
+        # Parse CTF binary data using native parser
+        parser = CTFParser(data_file)
         symbols = get_symbols_from_elf(elf, verbose)
 
         profiles = []
         acc_delta_t = 0
-        for msg in msg_it:
-            if isinstance(msg, bt2._EventMessageConst):
-                event = msg.event
+        for event in parser.parse_events():
+            # Profile events have always ID = 2. This value is defined first
+            # by enum instr_event_types, in instrumentation.h, then it is
+            # defined accordingly in ctf/metadata.
+            if event['id'] == 2:
+                callee = event['callee']
+                delta_t = event['delta_t']
 
-                # Profile events have always ID = 2. This value is defined first
-                # by enum instr_event_types, in instrumentation.h, then it is
-                # defined accordingly in ctf/metadata.
-                if event.id == 2:
-                    callee = event.payload_field.get("callee").real
-                    delta_t = event.payload_field.get("delta_t").real
-
-                    profiles.append((callee, delta_t))
-                    acc_delta_t = acc_delta_t + delta_t
+                profiles.append((callee, delta_t))
+                acc_delta_t = acc_delta_t + delta_t
 
         # Sort by delta_t
         profiles.sort(key=lambda t: t[1], reverse=True)
