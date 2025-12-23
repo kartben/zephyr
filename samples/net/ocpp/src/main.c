@@ -35,6 +35,16 @@ static struct k_thread tinfo[NO_OF_CONN];
 static k_tid_t tid[NO_OF_CONN];
 static char idtag[NO_OF_CONN][25];
 
+/* Track meter values per connector for consistent charging simulation */
+struct connector_meter {
+	int start_wh;		/* Starting meter value in Wh */
+	int64_t start_time_ms;	/* Start time in milliseconds */
+	bool charging;		/* Is charging active */
+};
+
+static struct connector_meter meter[NO_OF_CONN];
+static K_MUTEX_DEFINE(meter_lock);
+
 static int ocpp_get_time_from_sntp(void)
 {
 	struct sntp_ctx ctx;
@@ -83,27 +93,149 @@ struct zbus_observer *obs[NO_OF_CONN] = {(struct zbus_observer *)&cp_thread0,
 					 (struct zbus_observer *)&cp_thread1};
 
 static void ocpp_cp_entry(void *p1, void *p2, void *p3);
+
+/* Get current meter reading for a connector in Wh.
+ * Simulates realistic charging with ~7.2 kW charging power (32A at 230V):
+ * - Approximately 7200 W = 7200 Wh per hour = 120 Wh per minute = 2 Wh per second
+ */
+static int get_current_meter_value(int connector_id)
+{
+	int idx = connector_id - 1;
+	int current_wh;
+
+	if (idx < 0 || idx >= NO_OF_CONN) {
+		return 0;
+	}
+
+	k_mutex_lock(&meter_lock, K_FOREVER);
+
+	if (!meter[idx].charging) {
+		/* Not charging, return the start value */
+		current_wh = meter[idx].start_wh;
+	} else {
+		/* Calculate energy consumed based on elapsed time */
+		int64_t elapsed_ms = k_uptime_get() - meter[idx].start_time_ms;
+		int elapsed_seconds = (int)(elapsed_ms / 1000);
+		/* Simulate ~2 Wh per second charging rate */
+		int energy_added = elapsed_seconds * 2;
+
+		current_wh = meter[idx].start_wh + energy_added;
+	}
+
+	k_mutex_unlock(&meter_lock);
+
+	return current_wh;
+}
+
 static int user_notify_cb(enum ocpp_notify_reason reason,
 			  union ocpp_io_value *io,
 			  void *user_data)
 {
-	static int wh = 6 + NO_OF_CONN;
 	int idx;
 	int i;
 
 	switch (reason) {
 	case OCPP_USR_GET_METER_VALUE:
-		if (OCPP_OMM_ACTIVE_ENERGY_TO_EV == io->meter_val.mes) {
-			snprintf(io->meter_val.val, CISTR50, "%u",
-				 wh + io->meter_val.id_con);
+		switch (io->meter_val.mes) {
+		case OCPP_OMM_ACTIVE_ENERGY_TO_EV:
+			/* Active energy delivered to EV in Wh */
+			snprintf(io->meter_val.val, CISTR50, "%d",
+				 get_current_meter_value(io->meter_val.id_con));
+			break;
 
-			wh++;
-			LOG_DBG("mtr reading val %s con %d", io->meter_val.val,
-				io->meter_val.id_con);
+		case OCPP_OMM_ACTIVE_ENERGY_FROM_EV:
+			/* Energy from EV (e.g., V2G scenarios) - typically 0 */
+			snprintf(io->meter_val.val, CISTR50, "0");
+			break;
 
-			return 0;
+		case OCPP_OMM_CURRENT_TO_EV:
+			/* Charging current in A - simulate 32A charging */
+			snprintf(io->meter_val.val, CISTR50, "32.0");
+			break;
+
+		case OCPP_OMM_CURRENT_FROM_EV:
+			/* Current from EV - typically 0 for normal charging */
+			snprintf(io->meter_val.val, CISTR50, "0.0");
+			break;
+
+		case OCPP_OMM_CURRENT_MAX_OFFERED_TO_EV:
+			/* Maximum current available - 32A for this charger */
+			snprintf(io->meter_val.val, CISTR50, "32.0");
+			break;
+
+		case OCPP_OMM_ACTIVE_POWER_TO_EV:
+			/* Active power in W - 7200W (32A * 230V) */
+			snprintf(io->meter_val.val, CISTR50, "7200");
+			break;
+
+		case OCPP_OMM_ACTIVE_POWER_FROM_EV:
+			/* Power from EV - typically 0 */
+			snprintf(io->meter_val.val, CISTR50, "0");
+			break;
+
+		case OCPP_OMM_POWER_MAX_OFFERED_TO_EV:
+			/* Maximum power available in W */
+			snprintf(io->meter_val.val, CISTR50, "7200");
+			break;
+
+		case OCPP_OMM_REACTIVE_ENERGY_TO_EV:
+			/* Reactive energy in varh - assume low PF, ~10% of active */
+			snprintf(io->meter_val.val, CISTR50, "%d",
+				 get_current_meter_value(io->meter_val.id_con) / 10);
+			break;
+
+		case OCPP_OMM_REACTIVE_ENERGY_FROM_EV:
+			/* Reactive energy from EV - typically 0 */
+			snprintf(io->meter_val.val, CISTR50, "0");
+			break;
+
+		case OCPP_OMM_REACTIVE_POWER_TO_EV:
+			/* Reactive power in var - ~720 var (10% of 7200W) */
+			snprintf(io->meter_val.val, CISTR50, "720");
+			break;
+
+		case OCPP_OMM_REACTIVE_POWER_FROM_EV:
+			/* Reactive power from EV - typically 0 */
+			snprintf(io->meter_val.val, CISTR50, "0");
+			break;
+
+		case OCPP_OMM_VOLTAGE_AC_RMS:
+			/* AC voltage in V - standard European voltage */
+			snprintf(io->meter_val.val, CISTR50, "230.0");
+			break;
+
+		case OCPP_OMM_POWERLINE_FREQ:
+			/* Powerline frequency in Hz - 50Hz for Europe */
+			snprintf(io->meter_val.val, CISTR50, "50.0");
+			break;
+
+		case OCPP_OMM_POWER_FACTOR:
+			/* Power factor - 0.9 is typical for EV charging */
+			snprintf(io->meter_val.val, CISTR50, "0.90");
+			break;
+
+		case OCPP_OMM_TEMPERATURE:
+			/* Temperature in Celsius - simulate 35°C */
+			snprintf(io->meter_val.val, CISTR50, "35");
+			break;
+
+		case OCPP_OMM_FAN_SPEED:
+			/* Fan speed in RPM - simulate 1500 RPM */
+			snprintf(io->meter_val.val, CISTR50, "1500");
+			break;
+
+		case OCPP_OMM_CHARGING_PERCENT:
+			/* Charging percentage - not typically known by charger */
+			snprintf(io->meter_val.val, CISTR50, "0");
+			break;
+
+		default:
+			return -ENOTSUP;
 		}
-		break;
+
+		LOG_DBG("mtr reading %d val %s con %d", io->meter_val.mes,
+			io->meter_val.val, io->meter_val.id_con);
+		return 0;
 
 	case OCPP_USR_START_CHARGING:
 		if (io->start_charge.id_con < 0) {
@@ -191,7 +323,21 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		return;
 	}
 
-	ret = ocpp_start_transaction(sh, sys_rand32_get(), idcon, timeout_ms);
+	/* Initialize meter tracking for this connector */
+	int idx = idcon - 1;
+	int start_meter_value;
+
+	k_mutex_lock(&meter_lock, K_FOREVER);
+	/* Use a sensible starting meter value based on connector ID
+	 * (e.g., connector 1 starts at 1000 Wh, connector 2 at 2000 Wh)
+	 */
+	meter[idx].start_wh = (idcon * 1000);
+	meter[idx].start_time_ms = k_uptime_get();
+	meter[idx].charging = true;
+	start_meter_value = meter[idx].start_wh;
+	k_mutex_unlock(&meter_lock);
+
+	ret = ocpp_start_transaction(sh, start_meter_value, idcon, timeout_ms);
 	if (ret == 0) {
 		const struct zbus_channel *chan;
 		union ocpp_io_value io;
@@ -212,7 +358,14 @@ static void ocpp_cp_entry(void *p1, void *p2, void *p3)
 		} while (1);
 	}
 
-	ret = ocpp_stop_transaction(sh, sys_rand32_get(), timeout_ms);
+	/* Mark charging as stopped and get final meter value */
+	k_mutex_lock(&meter_lock, K_FOREVER);
+	meter[idx].charging = false;
+	k_mutex_unlock(&meter_lock);
+
+	int stop_meter_value = get_current_meter_value(idcon);
+
+	ret = ocpp_stop_transaction(sh, stop_meter_value, timeout_ms);
 	if (ret < 0) {
 		LOG_ERR("ocpp stop txn idcon %d> %d\n", idcon, ret);
 		return;
