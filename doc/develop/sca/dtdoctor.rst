@@ -6,8 +6,8 @@ Devicetree diagnostics (``dtdoctor``)
 ``dtdoctor`` is a static analysis tool that helps diagnose Devicetree-related build errors.
 
 It intercepts error messages from the compiler and linker and, when they refer to unresolved
-Devicetree device symbols (e.g. ``__device_dts_ord_*``), provides detailed information about what
-might be causing the error and how to fix it.
+Devicetree device symbols (e.g. ``__device_dts_ord_*`` or ``__device_dts_*``), provides detailed 
+information about what might be causing the error and how to fix it.
 
 Using dtdoctor
 **************
