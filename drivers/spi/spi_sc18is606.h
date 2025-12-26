@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef ZEPHYR_DRIVERS_I2C_SPI_SC18IS606_H_
-#define ZEPHYR_DRIVERS_I2C_SPI_SC18IS606_H_
+#ifndef ZEPHYR_DRIVERS_SPI_SPI_SC18IS606_H_
+#define ZEPHYR_DRIVERS_SPI_SPI_SC18IS606_H_
 
 #include <stdint.h>
 
@@ -35,9 +35,9 @@ int nxp_sc18is606_claim(const struct device *dev);
  */
 int nxp_sc18is606_release(const struct device *dev);
 
-/* @brief Transfer data using I2C to or from the bridge
+/* @brief Transfer data using SPI to or from the bridge
  *
- * This routine implements the synchronization between the SPI controller and GPIO cntroller
+ * This routine implements the synchronization between the SPI controller and GPIO controller
  *
  * @param dev SC18IS606 bridge
  * @param tx_data Data to be sent out

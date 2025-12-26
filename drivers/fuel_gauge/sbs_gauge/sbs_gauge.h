@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef ZEPHYR_DRIVERS_SENSOR_SBS_GAUGE_H_
-#define ZEPHYR_DRIVERS_SENSOR_SBS_GAUGE_H_
+#ifndef ZEPHYR_DRIVERS_FUEL_GAUGE_SBS_GAUGE_H_
+#define ZEPHYR_DRIVERS_FUEL_GAUGE_SBS_GAUGE_H_
 
 #include <stdint.h>
 #include <zephyr/drivers/i2c.h>
