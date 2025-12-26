@@ -2,7 +2,7 @@
    :name: Multi-Domain Logging
    :relevant-api: logging_api ipc_service_api
 
-   Demonstrate logging in multi-core/multi-domain systems.
+   Share logs between cores using IPC in multi-domain systems.
 
 Overview
 ********

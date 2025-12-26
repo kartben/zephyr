@@ -2,7 +2,7 @@
    :name: Bluetooth Peripheral Encrypted Advertising
    :relevant-api: bluetooth
 
-   Demonstrate peripheral role in encrypted advertising.
+   Advertise with encrypted data using the peripheral role.
 
 Overview
 ********

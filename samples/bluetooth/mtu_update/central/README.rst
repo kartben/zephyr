@@ -2,7 +2,7 @@
    :name: Bluetooth Central MTU Update
    :relevant-api: bt_gatt bluetooth
 
-   Demonstrate central role in MTU exchange.
+   Act as central in MTU exchange and receive large notifications.
 
 Overview
 ********

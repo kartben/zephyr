@@ -2,7 +2,7 @@
    :name: Power Management Latency Control
    :relevant-api: pm_policy_api
 
-   Demonstrate power management latency constraint APIs.
+   Control power states using latency constraint APIs.
 
 Overview
 ********

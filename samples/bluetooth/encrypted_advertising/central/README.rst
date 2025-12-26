@@ -2,7 +2,7 @@
    :name: Bluetooth Central Encrypted Advertising
    :relevant-api: bluetooth
 
-   Demonstrate central role in decrypting encrypted advertising.
+   Scan for and decrypt encrypted advertising data.
 
 Overview
 ********

@@ -2,7 +2,7 @@
    :name: nRF System Events
    :relevant-api: nrf_sys_event
 
-   Demonstrate the nRF system event API for power management.
+   Control constant latency mode using the nRF system event API.
 
 Overview
 ********

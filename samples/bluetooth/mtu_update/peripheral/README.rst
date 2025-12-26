@@ -2,7 +2,7 @@
    :name: Bluetooth Peripheral MTU Update
    :relevant-api: bt_gatt bluetooth
 
-   Demonstrate peripheral role in MTU exchange.
+   Act as peripheral in MTU exchange and send large notifications.
 
 Overview
 ********

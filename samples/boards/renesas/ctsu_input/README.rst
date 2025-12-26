@@ -2,7 +2,7 @@
    :name: Renesas CTSU Touch Input
    :relevant-api: input_interface
 
-   Demonstrate capacitive touch sensing on Renesas boards with CTSU.
+   Read touch buttons and sliders using the Renesas CTSU.
 
 Overview
 ********

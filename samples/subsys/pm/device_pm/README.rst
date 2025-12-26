@@ -2,7 +2,7 @@
    :name: Device Power Management
    :relevant-api: device_pm_api
 
-   Demonstrate device runtime power management.
+   Suspend and resume devices automatically to save power.
 
 Overview
 ********

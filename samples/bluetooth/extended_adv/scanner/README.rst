@@ -2,7 +2,7 @@
    :name: Extended Advertising Scanner
    :relevant-api: bluetooth
 
-   Demonstrate scanner role in extended advertising.
+   Scan for and connect to extended advertising devices.
 
 Overview
 ********

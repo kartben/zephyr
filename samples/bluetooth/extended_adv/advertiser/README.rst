@@ -2,7 +2,7 @@
    :name: Extended Advertising Advertiser
    :relevant-api: bluetooth
 
-   Demonstrate advertiser role in extended advertising.
+   Advertise using Bluetooth LE extended advertising features.
 
 Overview
 ********

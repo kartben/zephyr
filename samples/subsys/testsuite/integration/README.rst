@@ -2,7 +2,7 @@
    :name: Test Suite Integration Sample
    :relevant-api: ztest_api
 
-   Demonstrate ztest framework integration in samples.
+   Integrate ztest framework with sample applications.
 
 Overview
 ********
