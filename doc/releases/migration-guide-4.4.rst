@@ -34,10 +34,39 @@ Kernel
 Boards
 ******
 
+* m5stack_fire: Removed unused pinctrl entries for UART2, and updated the UART1
+  pin mapping from GPIO32/GPIO33 to GPIO16/GPIO17 to match the documented Grove
+  PORT.C wiring.
+
+* Compile definitions 'XIP_EXTERNAL_FLASH', 'USE_HYPERRAM' and 'XIP_BOOT_HEADER_XMCD_ENABLE'
+  are only used in :zephyr_file:`boards/nxp/mimxrt1180_evk/xip/evkmimxrt1180_flexspi_nor_config.c`
+  and :zephyr_file:`boards/nxp/mimxrt1170_evk/xmcd/xmcd.c`, we have changed them to local scope
+  in the respective board CMakeLists.txt files. Applications that depended on these definitions
+  being globally available may need to be updated. (:github:`101322`)
+
 Device Drivers and Devicetree
 *****************************
 
-.. zephyr-keep-sorted-start re(^\w)
+.. zephyr-keep-sorted-start re(^\w) ignorecase
+
+ADC
+===
+
+* The :dtcompatible:`renesas,ra-adc` compatible has been replaced by
+  :dtcompatible:`renesas,ra-adc12`. Applications using the old compatible
+  must update their devicetree nodes.
+
+* The :dtcompatible:`renesas,ra-adc16` compatible was added. This must be
+  used when working with the EK-RA2A1 board, which provides a 16-bit ADC
+  resolution.
+
+* Renamed the :kconfig:option:`CONFIG_ADC_MCUX_SAR_ADC` to :kconfig:option:`CONFIG_ADC_NXP_SAR_ADC`.
+* Renamed the driver file from ``adc_mcux_sar_adc.c`` to :zephyr_file:`drivers/adc/adc_nxp_sar_adc.c`.
+* Applications using the SAR ADC driver need to update the nodes in the devicetree to include
+  ``zephyr,input-positive`` to specify the hardware channel. For SoCs that currently support SAR ADC,
+  the reference voltage should use ``ADC_REF_VDD_1`` instead of ``ADC_REF_INTERNAL``. This driver
+  update also corrects this issue, so users also need to update the value of this property in the
+  devicetree accordingly. (:github:`100978`)
 
 Controller Area Network (CAN)
 =============================
@@ -85,6 +114,45 @@ Ethernet
   is needed. There you need to specify the fixed link parameters using the ``default-speeds``
   property (:github:`100454`).
 
+* The ``reset-gpios`` property of :dtcompatible:`microchip,ksz8081` has been
+  reworked to be used as active low, you may have to set the pin as
+  ``GPIO_ACTIVE_LOW`` in devicetree (:github:`100751`).
+
+Infineon
+========
+
+* Infineon driver file names have been renamed to remove ``cat1`` from their names to support
+  reusability across multiple device categories. The following drivers have been renamed
+  (:github:`99174`):
+
+  * ``adc_ifx_cat1.c`` → ``adc_ifx.c``
+  * ``clock_control_ifx_cat1.c`` → ``clock_control_ifx.c``
+  * ``counter_ifx_cat1.c`` → ``counter_ifx.c``
+  * ``dma_ifx_cat1.c`` → ``dma_ifx.c``
+  * ``dma_ifx_cat1_pdl.c`` → ``dma_ifx_pdl.c``
+  * ``flash_ifx_cat1.c`` → ``flash_ifx.c``
+  * ``flash_ifx_cat1_qspi.c`` → ``flash_ifx_qspi.c``
+  * ``flash_ifx_cat1_qspi_mtb_hal.c`` → ``flash_ifx_qspi_mtb_hal.c``
+  * ``gpio_ifx_cat1.c`` → ``gpio_ifx.c``
+  * ``i2c_ifx_cat1.c`` → ``i2c_ifx.c``
+  * ``i2c_ifx_cat1_pdl.c`` → ``i2c_ifx_pdl.c``
+  * ``mbox_ifx_cat1.c`` → ``mbox_ifx.c``
+  * ``pinctrl_ifx_cat1.c`` → ``pinctrl_ifx.c``
+  * ``rtc_ifx_cat1.c`` → ``rtc_ifx.c``
+  * ``ifx_cat1_sdio.c`` → ``ifx_sdio.c``
+  * ``sdio_ifx_cat1_pdl.c`` → ``sdio_ifx_pdl.c``
+  * ``serial_ifx_cat1_uart.c`` → ``serial_ifx_uart.c``
+  * ``spi_ifx_cat1.c`` → ``spi_ifx.c``
+  * ``spi_ifx_cat1_pdl.c`` → ``spi_ifx_pdl.c``
+  * ``uart_ifx_cat1.c`` → ``uart_ifx.c``
+  * ``uart_ifx_cat1_pdl.c`` → ``uart_ifx_pdl.c``
+  * ``wdt_ifx_cat1.c`` → ``wdt_ifx.c``
+
+  Corresponding Kconfig symbols and binding files have also been updated:
+
+  * ``CONFIG_*_INFINEON_CAT1`` → ``CONFIG_*_INFINEON``
+  * ``compatible: "infineon,cat1-adc"`` → ``compatible: "infineon,adc"``
+
 MDIO
 ====
 
@@ -113,37 +181,6 @@ Radio
   ``radio-tx-high-power-supported`` for consistency.
 
 * Device trees and overlays using the old compatible strings must be updated to use the new names.
-
-STM32
-=====
-
-* STM32 power supply configuration is now performed using Devicetree properties.
-  New bindings :dtcompatible:`st,stm32h7-pwr`, :dtcompatible:`st,stm32h7rs-pwr`
-  and :dtcompatible:`st,stm32-dualreg-pwr` have been introduced, and all Kconfig
-  symbols related to power supply configuration have been removed:
-
-  * ``CONFIG_POWER_SUPPLY_LDO``
-
-  * ``CONFIG_POWER_SUPPLY_DIRECT_SMPS``,
-
-  * ``CONFIG_POWER_SUPPLY_SMPS_1V8_SUPPLIES_LDO``
-
-  * ``CONFIG_POWER_SUPPLY_SMPS_2V5_SUPPLIES_LDO``,
-
-  * ``CONFIG_POWER_SUPPLY_SMPS_1V8_SUPPLIES_EXT_AND_LDO``
-
-  * ``CONFIG_POWER_SUPPLY_SMPS_2V5_SUPPLIES_EXT_AND_LDO``
-
-  * ``CONFIG_POWER_SUPPLY_SMPS_1V8_SUPPLIES_EXT``
-
-  * ``CONFIG_POWER_SUPPLY_SMPS_2V5_SUPPLIES_EXT``
-
-  * ``CONFIG_POWER_SUPPLY_EXTERNAL_SOURCE``
-
-* The ST-specific chosen property ``/chosen/zephyr,ccm`` is replaced by ``/chosen/zephyr,dtcm``.
-  Attribute macros ``__ccm_data_section``, ``__ccm_bss_section`` and ``__ccm_noinit_section`` are
-  deprecated, but retained for backwards compatibility; **they will be removed in Zephyr 4.5**.
-  The generic ``__dtcm_{data,bss,noinit}_section`` macros should be used instead. (:github:`100590`)
 
 Shell
 =====
@@ -195,17 +232,58 @@ Stepper
 * :dtcompatible:`adi,tmc50xx-stepper-drv` and :dtcompatible:`adi,tmc51xx-stepper-drv` drivers implement
   :c:group:`stepper_drv_interface`.
 
+STM32
+=====
+
+* STM32 power supply configuration is now performed using Devicetree properties.
+  New bindings :dtcompatible:`st,stm32h7-pwr`, :dtcompatible:`st,stm32h7rs-pwr`
+  and :dtcompatible:`st,stm32-dualreg-pwr` have been introduced, and all Kconfig
+  symbols related to power supply configuration have been removed:
+
+  * ``CONFIG_POWER_SUPPLY_LDO``
+
+  * ``CONFIG_POWER_SUPPLY_DIRECT_SMPS``,
+
+  * ``CONFIG_POWER_SUPPLY_SMPS_1V8_SUPPLIES_LDO``
+
+  * ``CONFIG_POWER_SUPPLY_SMPS_2V5_SUPPLIES_LDO``,
+
+  * ``CONFIG_POWER_SUPPLY_SMPS_1V8_SUPPLIES_EXT_AND_LDO``
+
+  * ``CONFIG_POWER_SUPPLY_SMPS_2V5_SUPPLIES_EXT_AND_LDO``
+
+  * ``CONFIG_POWER_SUPPLY_SMPS_1V8_SUPPLIES_EXT``
+
+  * ``CONFIG_POWER_SUPPLY_SMPS_2V5_SUPPLIES_EXT``
+
+  * ``CONFIG_POWER_SUPPLY_EXTERNAL_SOURCE``
+
+* The ST-specific chosen property ``/chosen/zephyr,ccm`` is replaced by ``/chosen/zephyr,dtcm``.
+  Attribute macros ``__ccm_data_section``, ``__ccm_bss_section`` and ``__ccm_noinit_section`` are
+  deprecated, but retained for backwards compatibility; **they will be removed in Zephyr 4.5**.
+  The generic ``__dtcm_{data,bss,noinit}_section`` macros should be used instead. (:github:`100590`)
+
+* STM32 platforms now use the default MCUboot operating mode ``swap using offset``
+  (:kconfig:option:`SB_CONFIG_MCUBOOT_MODE_SWAP_USING_OFFSET`). To support this bootloader mode,
+  some changes to the board devicetrees are required. Several boards already support this mode
+  (see :github:`100385`).
+  The previous ``swap using move`` mode can still be selected in sysbuild by enabling
+  :kconfig:option:`SB_CONFIG_MCUBOOT_MODE_SWAP_USING_MOVE`.
+
 USB
 ===
 
   * :dtcompatible:`maxim,max3421e_spi` has been renamed to :dtcompatible:`maxim,max3421e-spi`.
 
-.. zephyr-keep-sorted-stop
-
 Video
-===
+=====
 
 * CONFIG_VIDEO_OV7670 is now gone and replaced by CONFIG_VIDEO_OV767X.  This allows supporting both the OV7670 and 0V7675.
+* :kconfig:option:`CONFIG_VIDEO_BUFFER_POOL_SZ_MAX` is replaced by
+  :kconfig:option:`CONFIG_VIDEO_BUFFER_POOL_HEAP_SIZE` which represent the
+  size in byte allocated for the whole video buffer pool.
+
+.. zephyr-keep-sorted-stop
 
 Bluetooth
 *********
