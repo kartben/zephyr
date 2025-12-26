@@ -3,9 +3,7 @@
 Introduction
 ############
 
-**Zephyr** is a scalable, real-time operating system (RTOS) optimized for resource-constrained 
-embedded systems. From simple sensors and wearables to sophisticated IoT gateways and industrial 
-controllers, Zephyr provides a small-footprint kernel with enterprise-grade features.
+**Zephyr** is a scalable, real-time operating system (RTOS) optimized for resource-constrained embedded systems. From simple sensors and wearables to sophisticated IoT gateways and industrial controllers, Zephyr provides a small-footprint kernel with enterprise-grade features.
 
 .. figure:: images/zephyr_architecture.svg
    :align: center
@@ -17,8 +15,7 @@ controllers, Zephyr provides a small-footprint kernel with enterprise-grade feat
 What is Zephyr?
 ***************
 
-Zephyr is a production-ready, open-source RTOS designed for the Internet of Things (IoT) and 
-embedded applications. It offers:
+Zephyr is a production-ready, open-source RTOS designed for the Internet of Things (IoT) and embedded applications. It offers:
 
 * **Small footprint**: Minimal memory requirements suitable for resource-constrained devices
 * **Real-time capabilities**: Deterministic scheduling and low-latency interrupt handling
@@ -39,8 +36,7 @@ Zephyr supports multiple CPU architectures:
 * ARC (EM, HS, HS6X)
 * SPARC V8, MIPS, and Renesas RX
 
-See :ref:`Hardware Support <hardware_support>` for detailed architecture information and the complete 
-list of :ref:`supported boards <boards>`.
+See :ref:`Hardware Support <hardware_support>` for detailed architecture information and the complete list of :ref:`supported boards <boards>`.
 
 Getting Started
 ***************
@@ -57,9 +53,7 @@ See the :ref:`developing_with_zephyr` section for comprehensive development docu
 Licensing
 *********
 
-Zephyr is permissively licensed under the `Apache 2.0 license`_ (see the ``LICENSE`` file in the 
-project's `GitHub repo`_). Some imported or reused components use other licenses as described 
-in :ref:`Zephyr_Licensing`.
+Zephyr is permissively licensed under the `Apache 2.0 license`_ (see the ``LICENSE`` file in the project's `GitHub repo`_). Some imported or reused components use other licenses as described in :ref:`Zephyr_Licensing`.
 
 .. _Apache 2.0 license:
    https://github.com/zephyrproject-rtos/zephyr/blob/main/LICENSE
@@ -84,8 +78,7 @@ Key Features
 .. _zephyr_intro_configurability:
 
 **Modular and Configurable**
-   Highly configurable kernel allows applications to include only needed capabilities, 
-   optimizing for size and performance. See :ref:`application` for configuration details.
+   Highly configurable kernel allows applications to include only needed capabilities, optimizing for size and performance. See :ref:`application` for configuration details.
 
 **Real-Time Kernel Services**
    The :ref:`Zephyr kernel <kernel>` provides essential RTOS services:
