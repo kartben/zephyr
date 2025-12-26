@@ -3,193 +3,147 @@
 Introduction
 ############
 
-The Zephyr OS is based on a small-footprint kernel designed for use on
-resource-constrained and embedded systems: from simple embedded environmental
-sensors and LED wearables to sophisticated embedded controllers, smart
-watches, and IoT wireless applications.
+**Zephyr** is a scalable, real-time operating system (RTOS) optimized for resource-constrained embedded systems. From simple sensors and wearables to sophisticated IoT gateways and industrial controllers, Zephyr provides a small-footprint kernel with enterprise-grade features.
 
-The Zephyr kernel supports multiple architectures, including:
+.. figure:: images/zephyr_architecture.svg
+   :align: center
+   :alt: Zephyr RTOS Architecture
+   :width: 90%
 
- - ARCv2 (EM and HS) and ARCv3 (HS6X)
- - ARMv6-M, ARMv7-M, and ARMv8-M (Cortex-M)
- - ARMv7-A and ARMv8-A (Cortex-A, 32- and 64-bit)
- - ARMv7-R, ARMv8-R (Cortex-R, 32- and 64-bit)
- - Intel x86 (32- and 64-bit)
- - MIPS (MIPS32 Release 1 specification)
- - Renesas RX
- - RISC-V (32- and 64-bit)
- - SPARC V8
- - Tensilica Xtensa
+   High-level architecture of the Zephyr RTOS
 
-The full list of supported boards based on these architectures can be found :ref:`here <boards>`.
+What is Zephyr?
+***************
 
-In the context of the Zephyr OS, a :term:`subsystem` refers to a logically distinct
-part of the operating system that handles specific functionality or provides
-certain services. Subsystems can include components such as networking,
-file systems, device driver classes, power management, and communication protocols,
-among others. Each subsystem is designed to be modular and can be configured,
-customized, and extended to meet the requirements of different embedded
-applications.
+Zephyr is a production-ready, open-source RTOS designed for the Internet of Things (IoT) and embedded applications. It offers:
+
+* **Small footprint**: Minimal memory requirements suitable for resource-constrained devices
+* **Real-time capabilities**: Deterministic scheduling and low-latency interrupt handling
+* **Broad hardware support**: 10+ :ref:`architectures <architecture_porting_guide>` and 350+ :ref:`boards <boards>`
+* **Rich connectivity**: :ref:`Networking <networking>`, :ref:`Bluetooth <bluetooth>`, :ref:`USB <usb>`, and more
+* **Security-focused**: Built-in :ref:`security features <security_section>` including memory protection
+* **Developer-friendly**: :ref:`Comprehensive tooling <developing_with_zephyr>` and extensive documentation
+
+Supported Architectures
+************************
+
+Zephyr supports multiple CPU architectures:
+
+* ARM (Cortex-A, Cortex-R, Cortex-M)
+* RISC-V (32-bit and 64-bit)
+* Intel x86 (32-bit and 64-bit)
+* Tensilica Xtensa
+* ARC (EM, HS, HS6X)
+* SPARC V8, MIPS, and Renesas RX
+
+See :ref:`Hardware Support <hardware_support>` for detailed architecture information and the complete list of :ref:`supported boards <boards>`.
+
+Getting Started
+***************
+
+Ready to start developing with Zephyr?
+
+1. **Installation**: Follow the :ref:`getting_started` guide to set up your development environment
+2. **First Application**: Build your first application with the :ref:`beyond-gsg` tutorial
+3. **Samples**: Explore sample applications in the ``samples/`` directory
+4. **API Documentation**: Browse the :ref:`api_overview` for detailed API references
+
+See the :ref:`developing_with_zephyr` section for comprehensive development documentation.
 
 Licensing
 *********
 
-Zephyr is permissively licensed using the `Apache 2.0 license`_
-(as found in the ``LICENSE`` file in the
-project's `GitHub repo`_).  There are some
-imported or reused components of the Zephyr project that use other licensing,
-as described in :ref:`Zephyr_Licensing`.
+Zephyr is permissively licensed under the `Apache 2.0 license`_ (see the ``LICENSE`` file in the project's `GitHub repo`_). Some imported or reused components use other licenses as described in :ref:`Zephyr_Licensing`.
 
 .. _Apache 2.0 license:
    https://github.com/zephyrproject-rtos/zephyr/blob/main/LICENSE
 
 .. _GitHub repo: https://github.com/zephyrproject-rtos/zephyr
 
+Community and Support
+*********************
 
-Distinguishing Features
-***********************
+Join the Zephyr community:
 
-Zephyr offers a large and ever growing number of features including:
+* **Discord**: Real-time discussions at https://chat.zephyrproject.org
+* **Mailing Lists**: Subscribe to users@lists.zephyrproject.org or devel@lists.zephyrproject.org
+* **GitHub**: Report issues and contribute at https://github.com/zephyrproject-rtos/zephyr
 
-**Extensive suite of Kernel services**
-   Zephyr offers a number of familiar services for development:
+See :ref:`contribute_guidelines` for information on contributing to Zephyr.
 
-   * *Multi-threading Services* for cooperative, priority-based,
-     non-preemptive, and preemptive threads with optional round robin
-     time-slicing. Includes POSIX pthreads compatible API support.
 
-   * *Interrupt Services* for compile-time registration of interrupt handlers.
-
-   * *Memory Allocation Services* for dynamic allocation and freeing of
-     fixed-size or variable-size memory blocks.
-
-   * *Inter-thread Synchronization Services* for binary semaphores,
-     counting semaphores, and mutex semaphores.
-
-   * *Inter-thread Data Passing Services* for basic message queues, enhanced
-     message queues, and byte streams.
-
-   * *Power Management Services* such as overarching, application or
-     policy-defined, System Power Management and fine-grained, driver-defined,
-     Device Power Management.
-
-**Multiple Scheduling Algorithms**
-   Zephyr provides a comprehensive set of thread scheduling choices:
-
-   * Cooperative and Preemptive Scheduling
-   * Earliest Deadline First (EDF)
-   * Meta IRQ scheduling implementing "interrupt bottom half" or "tasklet"
-     behavior
-   * Timeslicing: Enables time slicing between preemptible threads of equal
-     priority
-   * Multiple queuing strategies:
-
-     * Simple linked-list ready queue
-     * Red/black tree ready queue
-     * Traditional multi-queue ready queue
+Key Features
+************
 
 .. _zephyr_intro_configurability:
 
-**Highly configurable / Modular for flexibility**
-   Allows an application to incorporate *only* the capabilities it needs as it
-   needs them, and to specify their quantity and size.
+**Modular and Configurable**
+   Highly configurable kernel allows applications to include only needed capabilities, optimizing for size and performance. See :ref:`application` for configuration details.
 
-**Cross Architecture**
-   Supports a wide variety of :ref:`supported boards<boards>` with different CPU
-   architectures and developer tools. Contributions have added support
-   for an increasing number of SoCs, platforms, and drivers.
+**Real-Time Kernel Services**
+   The :ref:`Zephyr kernel <kernel>` provides essential RTOS services:
 
-**Memory Protection**
-   Implements configurable architecture-specific stack-overflow protection,
-   kernel object and device driver permission tracking, and thread isolation
-   with thread-level memory protection on x86, ARC, and ARM architectures,
-   userspace, and memory domains.
+   * Preemptive and cooperative :ref:`scheduling <scheduling_v2>` with multiple algorithms (priority-based, EDF, timeslicing)
+   * :ref:`Threads <threads_v2>` with POSIX pthreads compatibility
+   * :ref:`Synchronization primitives <semaphores_v2>` (semaphores, mutexes, condition variables)
+   * :ref:`Inter-thread communication <message_queues_v2>` (message queues, pipes, mailboxes)
+   * :ref:`Memory management <memory_management_api>` (static and dynamic allocation)
+   * :ref:`Interrupt handling <interrupts_v2>` with nested interrupt support
 
-   For platforms without MMU/MPU and memory constrained devices, supports
-   combining application-specific code with a custom kernel to create a
-   monolithic image that gets loaded and executed on a system's hardware. Both
-   the application code and kernel code execute in a single shared address
-   space.
+**Connectivity Stacks**
+   Production-ready :ref:`connectivity <connectivity>` options:
 
-**Compile-time resource definition**
-   Allows system resources to be defined at compile-time, which reduces code
-   size and increases performance for resource-limited systems.
+   * :ref:`Networking <networking>`: Full TCP/IP stack with BSD sockets, IPv4/IPv6, TLS, HTTP, MQTT, CoAP
+   * :ref:`Bluetooth <bluetooth>`: BLE 5.x Controller and Host, Bluetooth Mesh, qualified profiles
+   * :ref:`USB <usb>`: Device and Host support with multiple device classes
+   * Additional protocols: :ref:`CAN <canbus>`, :ref:`LoRaWAN <lora_lorawan>`, :ref:`Modbus <modbus>`
 
-**Optimized Device Driver Model**
-   Provides a consistent device model for configuring the drivers that are part
-   of the platform/system and a consistent model for initializing all the
-   drivers configured into the system and allows the reuse of drivers across
-   platforms that have common devices/IP blocks.
+**OS Services**
+   Rich set of :ref:`OS services <os_services>` for application development:
 
-**Devicetree Support**
-   Use of :ref:`devicetree <dt-guide>` to describe hardware.
-   Information from devicetree is used to create the application image.
+   * :ref:`Logging <logging_api>`: Multi-backend logging with filtering and panic mode
+   * :ref:`Shell <shell_api>`: Interactive command-line interface with autocompletion
+   * :ref:`File Systems <file_system_api>`: FAT, ext2, LittleFS support with VFS interface
+   * :ref:`Power Management <pm-guide>`: System and device-level power management
+   * :ref:`Storage <storage_reference>`: NVS, FCB, and settings subsystems for persistent data
 
-**Native Networking Stack supporting multiple protocols**
-   Networking support is fully featured and optimized, including LwM2M and BSD
-   sockets compatible support.  OpenThread support (on Nordic chipsets) is also
-   provided - a mesh network designed to securely and reliably connect hundreds
-   of products around the home.
+**Security and Safety**
+   Built-in :ref:`security features <security_section>`:
 
-**Bluetooth Low Energy 5.0 support**
-   Bluetooth 5.0 compliant (ESR10) and Bluetooth Low Energy Controller support
-   (LE Link Layer). Includes Bluetooth Mesh and a Bluetooth qualification-ready
-   Bluetooth controller.
+   * Memory protection with MMU/MPU support
+   * Userspace and memory domains for thread isolation
+   * Stack overflow protection
+   * Secure coding practices and vulnerability management
+   * Optional :ref:`TF-M integration <tfm>` for Arm TrustZone
 
-   * Generic Access Profile (GAP) with all possible LE roles
-   * Generic Attribute Profile (GATT)
-   * Pairing support, including the Secure Connections feature from Bluetooth
-     4.2
-   * Clean HCI driver abstraction
-   * Raw HCI interface to run Zephyr as a Controller instead of a full Host
-     stack
-   * Verified with multiple popular controllers
-   * Highly configurable
+**Hardware Abstraction**
+   :ref:`Device driver model <device_model_api>` with:
 
-   Mesh Support:
+   * Consistent API across platforms
+   * :ref:`Devicetree <dt-guide>` for hardware description
+   * 100+ sensor, actuator, and peripheral drivers
+   * Optimized for code reuse across SoCs
 
-   * Relay, Friend Node, Low-Power Node (LPN) and GATT Proxy features
-   * Both Provisioning bearers supported (PB-ADV & PB-GATT)
-   * Highly configurable, fitting in devices with at least 16k RAM
+**Development Tools**
+   Comprehensive :ref:`development environment <developing_with_zephyr>`:
 
-**Native Linux, macOS, and Windows Development**
-   A command-line CMake build environment runs on popular developer OS
-   systems. A native port (:zephyr:board:`native_sim <native_sim>`) lets you build and run Zephyr as a native
-   application on Linux, aiding development and testing.
-
-**Virtual File System Interface with ext2, FatFs, and LittleFS Support**
-   ext2, LittleFS and FatFS support; FCB (Flash Circular Buffer) for memory constrained
-   applications.
-
-**Powerful multi-backend logging Framework**
-   Support for log filtering, object dumping, panic mode, multiple backends
-   (memory, networking, filesystem, console, ...) and integration with the shell
-   subsystem.
-
-**User friendly and full-featured Shell interface**
-   A multi-instance shell subsystem with user-friendly features such as
-   autocompletion, wildcards, coloring, metakeys (arrows, backspace, ctrl+u,
-   etc.) and history. Support for static commands and dynamic sub-commands.
-
-**Settings on non-volatile storage**
-   The settings subsystem gives modules a way to store persistent per-device
-   configuration and runtime state. Settings items are stored as key-value pair
-   strings.
-
-**Non-volatile storage (NVS)**
-  NVS allows storage of binary blobs, strings, integers, longs, and any
-  combination of these.
-
-**Native port**
-  :zephyr:board:`Native sim <native_sim>` allows running Zephyr as a Linux application with support
-  for various subsystems and networking.
+   * Cross-platform :ref:`build system <build_overview>` (CMake/Ninja)
+   * :ref:`West <west>` meta-tool for project management
+   * Native simulation (:zephyr:board:`native_sim`) for Linux/macOS/Windows development
+   * Integration with popular IDEs and debuggers
+   * Extensive :ref:`testing infrastructure <testing>`
 
 
 .. include:: ../../README.rst
    :start-after: start_include_here
 
+Learn More
+**********
 
-Fundamental Terms and Concepts
-******************************
-
-See :ref:`glossary`
+* :ref:`Kernel Services <kernel>`: Detailed kernel documentation
+* :ref:`Connectivity <connectivity>`: Networking, Bluetooth, USB, and more
+* :ref:`OS Services <os_services>`: Logging, shell, storage, power management
+* :ref:`Hardware Support <hardware_support>`: Architecture and board documentation
+* :ref:`Security <security_section>`: Security features and best practices
+* :ref:`API Reference <api_overview>`: Complete API documentation
+* :ref:`glossary`: Definitions of key terms and concepts
