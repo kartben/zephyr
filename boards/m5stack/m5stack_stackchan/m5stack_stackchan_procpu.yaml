@@ -1,0 +1,27 @@
+identifier: m5stack_stackchan/esp32s3/procpu
+name: M5Stack StackChan (ESP32-S3)
+type: mcu
+arch: xtensa
+toolchain:
+  - zephyr
+  - espressif
+ram: 512
+flash: 16384
+supported:
+  - gpio
+  - i2c
+  - spi
+  - watchdog
+  - uart
+  - pwm
+  - counter
+  - dma
+  - rtc
+  - can
+  - adc
+  - sdhc
+  - display
+  - touch
+testing:
+  default: true
+vendor: espressif

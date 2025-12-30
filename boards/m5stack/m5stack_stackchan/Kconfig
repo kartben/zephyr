@@ -1,0 +1,7 @@
+# M5Stack StackChan board configuration
+# Copyright (c) 2024 M5Stack
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_M5STACK_STACKCHAN
+	select SOC_SERIES_ESP32S3
+	select SOC_ESP32S3_PROCPU if BOARD_M5STACK_STACKCHAN_ESP32S3_PROCPU
