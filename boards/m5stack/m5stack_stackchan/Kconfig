@@ -1,0 +1,7 @@
+# M5Stack StackChan board configuration
+# Copyright (c) 2024 M5Stack
+# SPDX-License-Identifier: Apache-2.0
+
+config HEAP_MEM_POOL_ADD_SIZE_BOARD
+	int
+	default 4096 if BOARD_M5STACK_STACKCHAN_ESP32S3_PROCPU

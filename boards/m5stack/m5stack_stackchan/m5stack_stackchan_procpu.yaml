@@ -1,0 +1,21 @@
+identifier: m5stack_stackchan/esp32s3/procpu
+name: M5Stack StackChan PROCPU
+type: mcu
+arch: xtensa
+toolchain:
+  - zephyr
+supported:
+  - gpio
+  - uart
+  - i2c
+  - spi
+  - can
+  - counter
+  - watchdog
+  - entropy
+  - pwm
+  - dma
+  - pinmux
+  - display
+  - rtc
+vendor: m5stack
