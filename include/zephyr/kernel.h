@@ -45,19 +45,55 @@ BUILD_ASSERT(sizeof(intptr_t) == sizeof(long));
  * @}
  */
 
+/**
+ * @brief Match any thread
+ *
+ * This macro is used in mailbox operations to specify that any thread
+ * may be the sender or receiver of a message.
+ */
 #define K_ANY NULL
 
 #if (CONFIG_NUM_COOP_PRIORITIES + CONFIG_NUM_PREEMPT_PRIORITIES) == 0
 #error Zero available thread priorities defined!
 #endif
 
+/**
+ * @brief Generate a cooperative thread priority value
+ *
+ * This macro generates a priority value for a cooperative thread.
+ * Cooperative threads are never preempted by threads of equal or lower
+ * priority, and only yield the CPU voluntarily.
+ *
+ * @param x Priority level within cooperative range (0 to CONFIG_NUM_COOP_PRIORITIES - 1)
+ * @return Numeric priority value for scheduling
+ */
 #define K_PRIO_COOP(x) (-(CONFIG_NUM_COOP_PRIORITIES - (x)))
+
+/**
+ * @brief Generate a preemptible thread priority value
+ *
+ * This macro generates a priority value for a preemptible thread.
+ * Preemptible threads can be preempted by threads of higher priority
+ * or by the scheduler's time slicing mechanism.
+ *
+ * @param x Priority level within preemptible range (0 to CONFIG_NUM_PREEMPT_PRIORITIES - 1)
+ * @return Numeric priority value for scheduling
+ */
 #define K_PRIO_PREEMPT(x) (x)
 
+/** @brief Highest thread priority (most urgent, numerically lowest value) */
 #define K_HIGHEST_THREAD_PRIO (-CONFIG_NUM_COOP_PRIORITIES)
+
+/** @brief Lowest thread priority (least urgent, numerically highest value) */
 #define K_LOWEST_THREAD_PRIO CONFIG_NUM_PREEMPT_PRIORITIES
+
+/** @brief Priority of the idle thread, same as K_LOWEST_THREAD_PRIO */
 #define K_IDLE_PRIO K_LOWEST_THREAD_PRIO
+
+/** @brief Highest priority available for application threads */
 #define K_HIGHEST_APPLICATION_THREAD_PRIO (K_HIGHEST_THREAD_PRIO)
+
+/** @brief Lowest priority available for application threads (one above idle) */
 #define K_LOWEST_APPLICATION_THREAD_PRIO (K_LOWEST_THREAD_PRIO - 1)
 
 #ifdef CONFIG_POLL
@@ -68,6 +104,10 @@ BUILD_ASSERT(sizeof(intptr_t) == sizeof(long));
 #define Z_POLL_EVENT_OBJ_INIT(obj)
 #define Z_DECL_POLL_EVENT
 #endif
+
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 
 struct k_thread;
 struct k_mutex;
@@ -88,9 +128,21 @@ struct k_mem_partition;
 struct k_futex;
 struct k_event;
 
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
+
+/**
+ * @brief Execution context types
+ *
+ * This enum defines the possible execution contexts in which code may run.
+ */
 enum execution_context_types {
+	/** Interrupt Service Routine context */
 	K_ISR = 0,
+	/** Cooperative thread context */
 	K_COOP_THREAD,
+	/** Preemptible thread context */
 	K_PREEMPT_THREAD,
 };
 
@@ -124,6 +176,15 @@ static inline void
 #endif
 }
 
+/**
+ * @brief Callback type for thread iteration functions
+ *
+ * This is the signature for user-defined callback functions
+ * passed to k_thread_foreach() and related APIs.
+ *
+ * @param thread Pointer to the thread being iterated.
+ * @param user_data User-provided data passed to the iteration function.
+ */
 typedef void (*k_thread_user_cb_t)(const struct k_thread *thread,
 				   void *user_data);
 
@@ -272,6 +333,7 @@ void k_thread_foreach_unlocked_filter_by_cpu(unsigned int cpu,
  * */
 #define K_ESSENTIAL (BIT(0))
 
+/** @brief Bit index for K_FP_REGS option */
 #define K_FP_IDX 1
 /**
  * @brief FPU registers are managed by context switch
@@ -323,6 +385,15 @@ void k_thread_foreach_unlocked_filter_by_cpu(unsigned int cpu,
  * No effect if @kconfig{CONFIG_DSP_SHARING} is not enabled.
  */
 #define K_DSP_IDX 6
+/**
+ * @brief DSP registers are managed by context switch
+ *
+ * @details
+ * This option indicates that the thread uses the CPU's DSP registers.
+ * This instructs the kernel to take additional steps to save and
+ * restore the contents of these registers when scheduling the thread.
+ * No effect if @kconfig{CONFIG_DSP_SHARING} is not enabled.
+ */
 #define K_DSP_REGS (BIT(K_DSP_IDX))
 
 /**
@@ -334,6 +405,14 @@ void k_thread_foreach_unlocked_filter_by_cpu(unsigned int cpu,
  * No effect if @kconfig{CONFIG_ARC_AGU_SHARING} is not enabled.
  */
 #define K_AGU_IDX 7
+/**
+ * @brief AGU registers are managed by context switch
+ *
+ * @details
+ * This option indicates that the thread uses the ARC processor's XY
+ * memory and DSP feature. Often used with @kconfig{CONFIG_ARC_AGU_SHARING}.
+ * No effect if @kconfig{CONFIG_ARC_AGU_SHARING} is not enabled.
+ */
 #define K_AGU_REGS (BIT(K_AGU_IDX))
 
 /**
@@ -2182,7 +2261,16 @@ static inline uint64_t k_cycle_get_64(void)
  * @}
  */
 
+/**
+ * @brief Queue Structure
+ *
+ * This structure is used to implement a message queue. All the members
+ * are internal and should not be accessed directly.
+ */
 struct k_queue {
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 	sys_sflist_t data_q;
 	struct k_spinlock lock;
 	_wait_q_t wait_q;
@@ -2190,6 +2278,9 @@ struct k_queue {
 	Z_DECL_POLL_EVENT
 
 	SYS_PORT_TRACING_TRACKING_FIELD(k_queue)
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
 };
 
 /**
@@ -2475,6 +2566,7 @@ __syscall void *k_queue_peek_tail(struct k_queue *queue);
  * bypasses the kernel object permission management mechanism.
  */
 struct k_futex {
+	/** Futex value that threads block on */
 	atomic_t val;
 };
 
@@ -2803,11 +2895,23 @@ static inline uint32_t k_event_test(struct k_event *event, uint32_t events_mask)
 
 /** @} */
 
+/**
+ * @brief FIFO Queue Structure
+ *
+ * This structure is used to implement a first-in first-out queue.
+ * All the members are internal and should not be accessed directly.
+ */
 struct k_fifo {
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 	struct k_queue _queue;
 #ifdef CONFIG_OBJ_CORE_FIFO
 	struct k_obj_core  obj_core;
 #endif
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
 };
 
 /**
@@ -3044,11 +3148,23 @@ struct k_fifo {
 
 /** @} */
 
+/**
+ * @brief LIFO Queue Structure
+ *
+ * This structure is used to implement a last-in first-out queue.
+ * All the members are internal and should not be accessed directly.
+ */
 struct k_lifo {
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 	struct k_queue _queue;
 #ifdef CONFIG_OBJ_CORE_LIFO
 	struct k_obj_core  obj_core;
 #endif
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
 };
 
 /**
@@ -3445,18 +3561,37 @@ __syscall int k_mutex_unlock(struct k_mutex *mutex);
  */
 
 
+/**
+ * @brief Condition Variable Structure
+ *
+ * This structure is used to implement a condition variable for
+ * synchronizing threads. All the members are internal and should
+ * not be accessed directly.
+ */
 struct k_condvar {
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 	_wait_q_t wait_q;
 
 #ifdef CONFIG_OBJ_CORE_CONDVAR
 	struct k_obj_core  obj_core;
 #endif
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
 };
 
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 #define Z_CONDVAR_INITIALIZER(obj)                                             \
 	{                                                                      \
 		.wait_q = Z_WAIT_Q_INIT(&obj.wait_q),                          \
 	}
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
 
 /**
  * @defgroup condvar_apis Condition Variables APIs
@@ -3686,6 +3821,14 @@ static inline unsigned int z_impl_k_sem_count_get(struct k_sem *sem)
 struct k_ipi_work;
 
 
+/**
+ * @brief IPI work callback function type
+ *
+ * Callback signature for functions executed as IPI (Inter-Processor Interrupt)
+ * work items on target CPUs.
+ *
+ * @param work Pointer to the IPI work item that triggered this callback.
+ */
 typedef void (*k_ipi_func_t)(struct k_ipi_work *work);
 
 /**
@@ -4353,11 +4496,10 @@ int k_work_cancel_delayable(struct k_work_delayable *dwork);
 bool k_work_cancel_delayable_sync(struct k_work_delayable *dwork,
 				  struct k_work_sync *sync);
 
-enum {
 /**
  * @cond INTERNAL_HIDDEN
  */
-
+enum {
 	/* The atomic API is used for all work and queue flags fields to
 	 * enforce sequential consistency in SMP environments.
 	 */
@@ -4433,8 +4575,18 @@ enum {
 	K_WORK_FLUSHING = BIT(K_WORK_FLUSHING_BIT),
 };
 
-/** @brief A structure used to submit work. */
+/**
+ * @brief Work item structure
+ *
+ * This structure is used to submit work to a workqueue for deferred
+ * processing in the workqueue's thread context. Work items may be submitted
+ * from thread or ISR context. All the members are internal and should not
+ * be accessed directly.
+ */
 struct k_work {
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 	/* All fields are protected by the work module spinlock.  No fields
 	 * are to be accessed except through kernel API.
 	 */
@@ -4455,14 +4607,26 @@ struct k_work {
 	 * It can be RUNNING and CANCELING simultaneously.
 	 */
 	uint32_t flags;
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
 };
 
 #define Z_WORK_INITIALIZER(work_handler) { \
 	.handler = (work_handler), \
 }
 
-/** @brief A structure used to submit work after a delay. */
+/**
+ * @brief Delayable work item structure
+ *
+ * This structure is used to submit work to a workqueue after a configurable
+ * delay. The work item will not be processed until the delay has expired.
+ * All the members are internal and should not be accessed directly.
+ */
 struct k_work_delayable {
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 	/* The work item. */
 	struct k_work work;
 
@@ -4471,6 +4635,9 @@ struct k_work_delayable {
 
 	/* The queue to which the work should be submitted. */
 	struct k_work_q *queue;
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
 };
 
 #define Z_WORK_DELAYABLE_INITIALIZER(work_handler) { \
@@ -4546,10 +4713,16 @@ struct z_work_canceller {
  * detected by runtime assertion.
  */
 struct k_work_sync {
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 	union {
 		struct z_work_flusher flusher;
 		struct z_work_canceller canceller;
 	};
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
 };
 
 /** @brief A structure holding optional configuration items for a work
@@ -4595,8 +4768,18 @@ struct k_work_queue_config {
 	uint32_t work_timeout_ms;
 };
 
-/** @brief A structure used to hold work until it can be processed. */
+/**
+ * @brief Work queue structure
+ *
+ * This structure holds work items until they can be processed by the
+ * work queue's thread. Work queues provide deferred processing in a
+ * thread context. All the members are internal and should not be
+ * accessed directly.
+ */
 struct k_work_q {
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 	/* The thread that animates the work. */
 	struct k_thread thread;
 
@@ -4626,6 +4809,9 @@ struct k_work_q {
 	struct k_work *work;
 	k_timeout_t work_timeout;
 #endif /* defined(CONFIG_WORKQUEUE_WORK_TIMEOUT) */
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
 };
 
 /* Provide the implementation for inline functions declared above */
@@ -5057,6 +5243,7 @@ struct k_msgq {
  */
 
 
+/** @brief Flag indicating message queue buffer was dynamically allocated */
 #define K_MSGQ_FLAG_ALLOC	BIT(0)
 
 /**
@@ -5347,6 +5534,7 @@ struct k_mbox {
 	_wait_q_t tx_msg_queue;
 	/** Receive message queue */
 	_wait_q_t rx_msg_queue;
+	/** Spinlock for protecting mailbox operations */
 	struct k_spinlock lock;
 
 	SYS_PORT_TRACING_TRACKING_FIELD(k_mbox)
@@ -5483,12 +5671,27 @@ void k_mbox_data_get(struct k_mbox_msg *rx_msg, void *buffer);
  */
 __syscall void k_pipe_init(struct k_pipe *pipe, uint8_t *buffer, size_t buffer_size);
 
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 enum pipe_flags {
 	PIPE_FLAG_OPEN = BIT(0),
 	PIPE_FLAG_RESET = BIT(1),
 };
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
 
+/**
+ * @brief Pipe Structure
+ *
+ * This structure is used to implement a pipe for byte stream communication.
+ * All the members are internal and should not be accessed directly.
+ */
 struct k_pipe {
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 	size_t waiting;
 	struct ring_buf buf;
 	struct k_spinlock lock;
@@ -5501,6 +5704,9 @@ struct k_pipe {
 	struct k_obj_core  obj_core;
 #endif
 	SYS_PORT_TRACING_TRACKING_FIELD(k_pipe)
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
 };
 
 /**
@@ -5908,12 +6114,22 @@ int k_mem_slab_runtime_stats_reset_max(struct k_mem_slab *slab);
  * @{
  */
 
-/* kernel synchronized heap struct */
-
+/**
+ * @brief Synchronized Heap Structure
+ *
+ * This structure is used to implement a thread-safe memory heap.
+ * All the members are internal and should not be accessed directly.
+ */
 struct k_heap {
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 	struct sys_heap heap;
 	_wait_q_t wait_q;
 	struct k_spinlock lock;
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
 };
 
 /**
@@ -6296,37 +6512,97 @@ enum _poll_states_bits {
 
 /* Public polling API */
 
-/* public - values for k_poll_event.type bitfield */
+/**
+ * @name Poll Event Types
+ * @anchor poll_event_types
+ * @brief Values for k_poll_event.type bitfield
+ * @{
+ */
+
+/** @brief Ignore this poll event (disabled) */
 #define K_POLL_TYPE_IGNORE 0
+
+/** @brief Poll on a signal event */
 #define K_POLL_TYPE_SIGNAL Z_POLL_TYPE_BIT(_POLL_TYPE_SIGNAL)
+
+/** @brief Poll for semaphore availability */
 #define K_POLL_TYPE_SEM_AVAILABLE Z_POLL_TYPE_BIT(_POLL_TYPE_SEM_AVAILABLE)
+
+/** @brief Poll for data availability (queues) */
 #define K_POLL_TYPE_DATA_AVAILABLE Z_POLL_TYPE_BIT(_POLL_TYPE_DATA_AVAILABLE)
+
+/** @brief Poll for FIFO data availability (alias for K_POLL_TYPE_DATA_AVAILABLE) */
 #define K_POLL_TYPE_FIFO_DATA_AVAILABLE K_POLL_TYPE_DATA_AVAILABLE
+
+/** @brief Poll for message queue data availability */
 #define K_POLL_TYPE_MSGQ_DATA_AVAILABLE Z_POLL_TYPE_BIT(_POLL_TYPE_MSGQ_DATA_AVAILABLE)
+
+/** @brief Poll for pipe data availability */
 #define K_POLL_TYPE_PIPE_DATA_AVAILABLE Z_POLL_TYPE_BIT(_POLL_TYPE_PIPE_DATA_AVAILABLE)
 
-/* public - polling modes */
+/** @} */
+
+/**
+ * @brief Polling modes
+ *
+ * Enum for specifying the polling behavior.
+ */
 enum k_poll_modes {
-	/* polling thread does not take ownership of objects when available */
+	/** Polling thread does not take ownership of objects when available */
 	K_POLL_MODE_NOTIFY_ONLY = 0,
 
+	/** @cond INTERNAL_HIDDEN */
 	K_POLL_NUM_MODES
+	/** @endcond */
 };
 
-/* public - values for k_poll_event.state bitfield */
+/**
+ * @name Poll Event States
+ * @anchor poll_event_states
+ * @brief Values for k_poll_event.state bitfield
+ * @{
+ */
+
+/** @brief Poll event is not ready */
 #define K_POLL_STATE_NOT_READY 0
+
+/** @brief Poll signal has been raised */
 #define K_POLL_STATE_SIGNALED Z_POLL_STATE_BIT(_POLL_STATE_SIGNALED)
+
+/** @brief Semaphore is available */
 #define K_POLL_STATE_SEM_AVAILABLE Z_POLL_STATE_BIT(_POLL_STATE_SEM_AVAILABLE)
+
+/** @brief Data is available to read (queues) */
 #define K_POLL_STATE_DATA_AVAILABLE Z_POLL_STATE_BIT(_POLL_STATE_DATA_AVAILABLE)
+
+/** @brief FIFO data is available */
 #define K_POLL_STATE_FIFO_DATA_AVAILABLE K_POLL_STATE_DATA_AVAILABLE
+
+/** @brief Message queue data is available */
 #define K_POLL_STATE_MSGQ_DATA_AVAILABLE Z_POLL_STATE_BIT(_POLL_STATE_MSGQ_DATA_AVAILABLE)
+
+/** @brief Pipe data is available */
 #define K_POLL_STATE_PIPE_DATA_AVAILABLE Z_POLL_STATE_BIT(_POLL_STATE_PIPE_DATA_AVAILABLE)
+
+/** @brief Poll was cancelled */
 #define K_POLL_STATE_CANCELLED Z_POLL_STATE_BIT(_POLL_STATE_CANCELLED)
 
-/* public - poll signal object */
+/** @} */
+
+/**
+ * @brief Poll Signal Structure
+ *
+ * This structure represents a poll signal that can be used to wake up
+ * threads waiting in k_poll().
+ */
 struct k_poll_signal {
-	/** PRIVATE - DO NOT TOUCH */
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 	sys_dlist_t poll_events;
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
 
 	/**
 	 * 1 if the event has been signaled, 0 otherwise. Stays set to 1 until
@@ -6338,40 +6614,53 @@ struct k_poll_signal {
 	int result;
 };
 
+/**
+ * @brief Statically initialize a poll signal
+ *
+ * @param obj Name of the poll signal object
+ */
 #define K_POLL_SIGNAL_INITIALIZER(obj) \
 	{ \
 	.poll_events = SYS_DLIST_STATIC_INIT(&obj.poll_events), \
 	.signaled = 0, \
 	.result = 0, \
 	}
+
 /**
  * @brief Poll Event
  *
+ * This structure represents a single poll event used by k_poll().
  */
 struct k_poll_event {
-	/** PRIVATE - DO NOT TOUCH */
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 	sys_dnode_t _node;
-
-	/** PRIVATE - DO NOT TOUCH */
 	struct z_poller *poller;
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
 
 	/** optional user-specified tag, opaque, untouched by the API */
 	uint32_t tag:8;
 
-	/** bitfield of event types (bitwise-ORed K_POLL_TYPE_xxx values) */
+	/** bitfield of event types (bitwise-ORed values from @ref poll_event_types "Poll Event Types") */
 	uint32_t type:_POLL_NUM_TYPES;
 
-	/** bitfield of event states (bitwise-ORed K_POLL_STATE_xxx values) */
+	/** bitfield of event states (bitwise-ORed values from @ref poll_event_states "Poll Event States") */
 	uint32_t state:_POLL_NUM_STATES;
 
 	/** mode of operation, from enum k_poll_modes */
 	uint32_t mode:1;
 
-	/** unused bits in 32-bit word */
+	/* unused bits in 32-bit word */
 	uint32_t unused:_POLL_EVENT_NUM_UNUSED_BITS;
 
 	/** per-type data */
 	union {
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 		/* The typed_* fields below are used by K_POLL_EVENT_*INITIALIZER() macros to ensure
 		 * type safety of polled objects.
 		 */
@@ -6382,9 +6671,21 @@ struct k_poll_event {
 		struct k_queue *queue, *typed_K_POLL_TYPE_DATA_AVAILABLE;
 		struct k_msgq *msgq, *typed_K_POLL_TYPE_MSGQ_DATA_AVAILABLE;
 		struct k_pipe *pipe, *typed_K_POLL_TYPE_PIPE_DATA_AVAILABLE;
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
 	};
 };
 
+/**
+ * @brief Initialize a poll event
+ *
+ * This macro initializes a k_poll_event structure for use with k_poll().
+ *
+ * @param _event_type Type of event (see @ref poll_event_types "Poll Event Types")
+ * @param _event_mode Polling mode (see ::k_poll_modes)
+ * @param _event_obj Pointer to the kernel object to poll
+ */
 #define K_POLL_EVENT_INITIALIZER(_event_type, _event_mode, _event_obj) \
 	{ \
 	.poller = NULL, \
@@ -6397,6 +6698,17 @@ struct k_poll_event {
 	}, \
 	}
 
+/**
+ * @brief Statically initialize a poll event with a tag
+ *
+ * This macro statically initializes a k_poll_event structure with an
+ * optional tag for use with k_poll().
+ *
+ * @param _event_type Type of event (see @ref poll_event_types "Poll Event Types")
+ * @param _event_mode Polling mode (see ::k_poll_modes)
+ * @param _event_obj Pointer to the kernel object to poll
+ * @param event_tag User-defined tag value (0-255)
+ */
 #define K_POLL_EVENT_STATIC_INITIALIZER(_event_type, _event_mode, _event_obj, \
 					event_tag) \
 	{ \
