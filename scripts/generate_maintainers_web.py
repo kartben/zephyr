@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
-import os
 import json
-from pathlib import Path
+import os
+
 from get_maintainer import Maintainers
+
 
 def get_repo_structure(start_path='.'):
     """Generate a tree structure of the repository."""
@@ -89,39 +90,52 @@ def process_structure(structure, maintainers, current_path=''):
 
             # If directory isn't directly maintained, analyze contents
             if dir_maintainer_info['status'] == 'unmaintained':
-                has_contents = False
-                all_maintained = True
-                all_odd_fixes = True
-                all_maintainers = set()
-                all_collaborators = set()
-                all_labels = set()
+                # Use a mutable container to track state across recursive calls
+                state = {
+                    'has_contents': False,
+                    'all_maintained': True,
+                    'all_odd_fixes': True,
+                    'maintainers': set(),
+                    'collaborators': set(),
+                    'labels': set(),
+                }
 
                 # Recursively check contents status
-                def check_contents_status(contents):
-                    nonlocal has_contents, all_maintained, all_odd_fixes
-                    nonlocal all_maintainers, all_collaborators, all_labels
-
+                def check_contents_status(contents, state):
                     for item in contents.values():
-                        has_contents = True
+                        state['has_contents'] = True
                         status = item['maintainer_info']['status']
 
                         # Update status flags
                         if status == 'unmaintained':
-                            all_maintained = False
-                            all_odd_fixes = False
+                            state['all_maintained'] = False
+                            state['all_odd_fixes'] = False
                         elif status == 'odd fixes':
-                            all_maintained = False
+                            state['all_maintained'] = False
 
                         # Collect maintainers from contents
-                        all_maintainers.update(item['maintainer_info'].get('maintainers', []))
-                        all_collaborators.update(item['maintainer_info'].get('collaborators', []))
-                        all_labels.update(item['maintainer_info'].get('labels', []))
+                        state['maintainers'].update(
+                            item['maintainer_info'].get('maintainers', [])
+                        )
+                        state['collaborators'].update(
+                            item['maintainer_info'].get('collaborators', [])
+                        )
+                        state['labels'].update(
+                            item['maintainer_info'].get('labels', [])
+                        )
 
                         # If it's a directory, check its contents too
                         if item['type'] == 'directory' and 'contents' in item:
-                            check_contents_status(item['contents'])
+                            check_contents_status(item['contents'], state)
 
-                check_contents_status(processed_contents)
+                check_contents_status(processed_contents, state)
+
+                has_contents = state['has_contents']
+                all_maintained = state['all_maintained']
+                all_odd_fixes = state['all_odd_fixes']
+                all_maintainers = state['maintainers']
+                all_collaborators = state['collaborators']
+                all_labels = state['labels']
 
                 # Update directory status based on contents
                 if has_contents:
@@ -165,11 +179,13 @@ def generate_html(data):
         <title>Zephyr Repository Maintainership</title>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+              rel="stylesheet">
         <style>
             body {
                 background-color: #f8f9fa;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                             "Helvetica Neue", Arial, sans-serif;
             }
             .tree-view {
                 font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
@@ -368,12 +384,15 @@ def generate_html(data):
         <div class="container-fluid py-4">
             <h1>Zephyr Repository Maintainership</h1>
             <div class="alert alert-info" role="alert">
-                This visualization is automatically updated daily. Last update: <span id="last-update"></span>
+                This visualization is automatically updated daily.
+                Last update: <span id="last-update"></span>
             </div>
             <div class="row">
                 <div class="col-md-8">
                     <div class="search-container">
-                        <input type="text" class="search-input" placeholder="Search files and directories (min 2 chars)..." id="search-input">
+                        <input type="text" class="search-input"
+                               placeholder="Search files and directories (min 2 chars)..."
+                               id="search-input">
                         <div class="search-results" id="search-results"></div>
                     </div>
                     <div id="tree-view" class="tree-view">
@@ -388,7 +407,8 @@ def generate_html(data):
                                 <span class="maintained legend-item">Maintained</span>
                             </div>
                             <div class="mb-2">
-                                <span class="maintained inherited legend-item">Maintained (inherited)</span>
+                                <span class="maintained inherited legend-item">
+                                    Maintained (inherited)</span>
                             </div>
                             <div class="mb-2">
                                 <span class="odd-fixes legend-item">Odd Fixes</span>
@@ -427,8 +447,10 @@ def generate_html(data):
                 init() {
                     // Single event delegation listener
                     this.container.addEventListener('click', this.handleClick.bind(this));
-                    this.container.addEventListener('mouseenter', this.handleMouseEnter.bind(this), true);
-                    this.container.addEventListener('mouseleave', this.handleMouseLeave.bind(this), true);
+                    this.container.addEventListener('mouseenter',
+                        this.handleMouseEnter.bind(this), true);
+                    this.container.addEventListener('mouseleave',
+                        this.handleMouseLeave.bind(this), true);
 
                     // Search functionality
                     this.searchInput.addEventListener('input', this.handleSearch.bind(this));
@@ -444,7 +466,9 @@ def generate_html(data):
 
                 async loadData() {
                     try {
-                        const response = await fetch(new URL('maintainers_data.json', window.location.href).href);
+                        const dataUrl = new URL(
+                            'maintainers_data.json', window.location.href).href;
+                        const response = await fetch(dataUrl);
                         const jsonData = await response.json();
 
                         // Extract metadata and data
@@ -463,7 +487,8 @@ def generate_html(data):
                         this.render();
                     } catch (error) {
                         console.error('Error loading data:', error);
-                        this.container.innerHTML = '<div class="alert alert-danger">Error loading data. Please try again later.</div>';
+                        this.container.innerHTML = '<div class="alert alert-danger">' +
+                            'Error loading data. Please try again later.</div>';
                     }
                 }
 
@@ -502,9 +527,12 @@ def generate_html(data):
                      if (total > 0) {
                          summary = `
                              <span class="status-summary">
-                                 <span class="status-count maintained">${counts.maintained}</span>
-                                 <span class="status-count odd-fixes">${counts['odd fixes']}</span>
-                                 <span class="status-count unmaintained">${counts.unmaintained}</span>
+                                 <span class="status-count maintained">
+                                     ${counts.maintained}</span>
+                                 <span class="status-count odd-fixes">
+                                     ${counts['odd fixes']}</span>
+                                 <span class="status-count unmaintained">
+                                     ${counts.unmaintained}</span>
                              </span>
                          `;
                      }
@@ -571,12 +599,21 @@ def generate_html(data):
                         top = window.innerHeight - 220;
                     }
 
-                                         this.tooltip.innerHTML = `
-                         <strong>Status:</strong> ${maintainerInfo.status}${maintainerInfo.inherited ? ' (inherited from ' + maintainerInfo.inherited_from + ')' : ''}<br>
-                         <strong>Maintainers:</strong> ${maintainerInfo.maintainers.join(', ') || 'None'}${maintainerInfo.inherited ? ' (inherited)' : ''}<br>
-                         <strong>Collaborators:</strong> ${maintainerInfo.collaborators.join(', ') || 'None'}${maintainerInfo.inherited ? ' (inherited)' : ''}<br>
-                         <strong>Labels:</strong> ${maintainerInfo.labels.join(', ') || 'None'}${maintainerInfo.inherited ? ' (inherited)' : ''}
-                     `;
+                    const inheritedSuffix = maintainerInfo.inherited
+                        ? ' (inherited from ' + maintainerInfo.inherited_from + ')'
+                        : '';
+                    const inheritedNote = maintainerInfo.inherited
+                        ? ' (inherited)'
+                        : '';
+                    this.tooltip.innerHTML = `
+                        <strong>Status:</strong> ${maintainerInfo.status}${inheritedSuffix}<br>
+                        <strong>Maintainers:</strong> ${
+                            maintainerInfo.maintainers.join(', ') || 'None'}${inheritedNote}<br>
+                        <strong>Collaborators:</strong> ${
+                            maintainerInfo.collaborators.join(', ') || 'None'}${inheritedNote}<br>
+                        <strong>Labels:</strong> ${
+                            maintainerInfo.labels.join(', ') || 'None'}${inheritedNote}
+                    `;
 
                     this.tooltip.style.left = left + 'px';
                     this.tooltip.style.top = top + 'px';
@@ -713,10 +750,14 @@ def generate_html(data):
                     });
 
                     for (const [name, info] of entries) {
-                                                 const path = currentPath ? `${currentPath}/${name}` : name;
+                        const path = currentPath
+                            ? `${currentPath}/${name}`
+                            : name;
 
                         // Skip non-matching items in search mode
-                        if (this.searchMode && !this.searchMatches.has(path) && !this.hasMatchingChildren(info, path)) {
+                        if (this.searchMode &&
+                            !this.searchMatches.has(path) &&
+                            !this.hasMatchingChildren(info, path)) {
                             continue;
                         }
 
@@ -769,11 +810,16 @@ def generate_html(data):
                     const nameClass = 'item-name';
                     const matchClass = isMatch ? 'search-match' : '';
 
-                                        item.innerHTML = `
+                    const toggleVisibility = info.type === 'directory'
+                        ? 'visible'
+                        : 'hidden';
+                    item.innerHTML = `
                         <div class="item-wrapper ${matchClass}">
-                            <div class="toggle" style="visibility: ${info.type === 'directory' ? 'visible' : 'hidden'}">${toggleSymbol}</div>
+                            <div class="toggle" style="visibility: ${toggleVisibility}">
+                                ${toggleSymbol}</div>
                             <div class="item-content">
-                                <span class="${statusClass} ${nameClass}">${prefix}${name}</span>
+                                <span class="${statusClass} ${nameClass}">
+                                    ${prefix}${name}</span>
                                 ${statusSummary}
                             </div>
                         </div>
