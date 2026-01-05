@@ -5,7 +5,11 @@
 
 """
 Compiler launcher wrapper that captures what appears to be Devicetree-related build errors, and
-diagnoses them using diagnose_build_error.py.
+diagnoses them using dtdoctor_analyzer.py.
+
+The wrapper detects and diagnoses:
+- Device ordinal errors (e.g. undefined reference to __device_dts_ord_123)
+- DT macro errors (e.g. DT_N_NODELABEL_vext_P_gpios_IDX_0_VAL_pin undeclared)
 
 The tool is meant to be configured as a CMAKE_<LANG>_COMPILER_LAUNCHER or as a
 CMAKE_<LANG>_LINKER_LAUNCHER.
@@ -32,6 +36,9 @@ def main() -> int:
     parser.add_argument(
         "--edt-pickle", help="path to edt.pickle file corresponding to the build to analyze"
     )
+    parser.add_argument(
+        "--macro-db", help="path to macro database JSON file (optional, for improved diagnostics)"
+    )
 
     if "--" in sys.argv:
         idx = sys.argv.index("--")
@@ -44,28 +51,43 @@ def main() -> int:
     sys.stdout.write(proc.stdout)
     sys.stderr.write(proc.stderr)
 
-    # Extract __device_dts_ord_xxx symbols from errors and run diagnostics
+    # Extract symbols from errors and run diagnostics
     if proc.returncode != 0 and args.edt_pickle:
-        patterns = [
+        # Patterns for __device_dts_ord_xxx symbols
+        ord_patterns = [
             r"(__device_dts_ord_\d+).*undeclared here",  # gcc
             r"undefined reference to.*(__device_dts_ord_\d+)",  # ld
             r"use of undeclared identifier '(__device_dts_ord_\d+)'",  # LLVM/clang (ATfE)
             r"undefined symbol: \(__device_dts_ord_(\d+)",  # LLVM/lld (ATfE)
         ]
-        symbols = {m for p in patterns for m in re.findall(p, proc.stderr)}
+        
+        # Patterns for DT macro symbols like DT_N_NODELABEL_vext_P_gpios_IDX_0_VAL_pin
+        dt_macro_patterns = [
+            r"(DT_N_(?:NODELABEL|ALIAS|INST|S)_[A-Za-z0-9_]+).*undeclared",  # gcc
+            r"(DT_N_(?:NODELABEL|ALIAS|INST|S)_[A-Za-z0-9_]+).*not\s+defined",  # preprocessor
+            r"use of undeclared identifier '(DT_N_(?:NODELABEL|ALIAS|INST|S)_[A-Za-z0-9_]+)'",  # clang
+            r"undefined reference to.*(DT_N_(?:NODELABEL|ALIAS|INST|S)_[A-Za-z0-9_]+)",  # ld
+            r"'(DT_N_(?:NODELABEL|ALIAS|INST|S)_[A-Za-z0-9_]+)'.*was not declared",  # gcc
+        ]
+        
+        symbols = {m for p in ord_patterns for m in re.findall(p, proc.stderr)}
+        symbols.update({m for p in dt_macro_patterns for m in re.findall(p, proc.stderr)})
 
         diag_script = os.path.join(os.path.dirname(__file__), "dtdoctor_analyzer.py")
         for symbol in sorted(symbols):
-            subprocess.run(
-                [
-                    sys.executable,
-                    diag_script,
-                    "--edt-pickle",
-                    args.edt_pickle,
-                    "--symbol",
-                    symbol,
-                ]
-            )
+            cmd_args = [
+                sys.executable,
+                diag_script,
+                "--edt-pickle",
+                args.edt_pickle,
+                "--symbol",
+                symbol,
+            ]
+            # Add macro database if provided and exists
+            if args.macro_db and os.path.exists(args.macro_db):
+                cmd_args.extend(["--macro-db", args.macro_db])
+
+            subprocess.run(cmd_args)
 
     return proc.returncode
 
