@@ -15,6 +15,7 @@
 
 import argparse
 from collections import defaultdict
+import json
 import os
 import pathlib
 import pickle
@@ -29,11 +30,21 @@ import edtlib_logger
 from devicetree import edtlib
 
 
+macro_records = None
+current_node = None
+current_prop = None
+
+
 def main():
     global header_file
     global flash_area_num
+    global macro_records
+    global current_node
 
     args = parse_args()
+
+    if args.macros_out:
+        macro_records = []
 
     edtlib_logger.setup_edtlib_logging()
 
@@ -66,6 +77,7 @@ def main():
                 regions[region] = node
 
         for node in sorted_nodes:
+            current_node = node
             write_node_comment(node)
 
             out_comment("Node's full path:")
@@ -105,8 +117,14 @@ def main():
             write_special_props(node)
             write_vanilla_props(node)
 
+        current_node = None
+
         write_chosen(edt)
         write_global_macros(edt)
+
+    if args.macros_out:
+        with open(args.macros_out, "w", encoding="utf-8") as f:
+            json.dump(macro_records, f, sort_keys=True, indent=4)
 
 
 def node_z_path_id(node: edtlib.Node) -> str:
@@ -134,6 +152,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(allow_abbrev=False)
     parser.add_argument("--header-out", required=True,
                         help="path to write header to")
+    parser.add_argument("--macros-out",
+                        help="path to write the database of generated macros to")
     parser.add_argument("--edt-pickle",
                         help="path to read pickled edtlib.EDT object from")
 
@@ -295,6 +315,9 @@ def write_ranges(node: edtlib.Node) -> None:
     # #size-cells of parent and child, and can therefore pack the
     # child & parent addresses and sizes correctly
 
+    global current_prop
+    current_prop = "ranges"
+
     idx_vals = []
     path_id = node.z_path_id
 
@@ -333,11 +356,16 @@ def write_ranges(node: edtlib.Node) -> None:
     out_dt_define(f"{path_id}_FOREACH_RANGE(fn)",
             " ".join(f"fn(DT_{path_id}, {i})" for i,range in enumerate(node.ranges)))
 
+    current_prop = None
+
 
 def write_regs(node: edtlib.Node) -> None:
     # reg property: edtlib knows the right #address-cells and
     # #size-cells, and can therefore pack the register base addresses
     # and sizes correctly
+
+    global current_prop
+    current_prop = "reg"
 
     idx_vals = []
     name_vals = []
@@ -370,6 +398,8 @@ def write_regs(node: edtlib.Node) -> None:
     for macro, val in name_vals:
         out_dt_define(macro, val)
 
+    current_prop = None
+
 
 def write_interrupts(node: edtlib.Node) -> None:
     # interrupts property: we have some hard-coded logic for interrupt
@@ -377,6 +407,9 @@ def write_interrupts(node: edtlib.Node) -> None:
     #
     # TODO: can we push map_arm_gic_irq_type() out of Python and into C with
     # macro magic in devicetree.h?
+
+    global current_prop
+    current_prop = "interrupts"
 
     def map_arm_gic_irq_type(irq, irq_num):
         # Maps ARM GIC IRQ (type)+(index) combo to linear IRQ number
@@ -437,6 +470,8 @@ def write_interrupts(node: edtlib.Node) -> None:
         out_dt_define(macro, val)
     for macro, val in name_vals:
         out_dt_define(macro, val)
+
+    current_prop = None
 
 
 def write_compatibles(node: edtlib.Node) -> None:
@@ -537,6 +572,9 @@ def write_status(node: edtlib.Node) -> None:
 def write_pinctrls(node: edtlib.Node) -> None:
     # Write special macros for pinctrl-<index> and pinctrl-names properties.
 
+    global current_prop
+    current_prop = "pinctrl"
+
     out_comment("Pin control (pinctrl-<i>, pinctrl-names) properties:")
 
     out_dt_define(f"{node.z_path_id}_PINCTRL_NUM", len(node.pinctrls))
@@ -562,6 +600,8 @@ def write_pinctrls(node: edtlib.Node) -> None:
         for idx, ph in enumerate(pinctrl.conf_nodes):
             out_dt_define(f"{node.z_path_id}_PINCTRL_NAME_{name}_IDX_{idx}_PH",
                           f"DT_{ph.z_path_id}")
+
+    current_prop = None
 
 
 def write_fixed_partitions(node: edtlib.Node) -> None:
@@ -603,11 +643,16 @@ def write_vanilla_props(node: edtlib.Node) -> None:
     # write_special_props() macros, because they're in different
     # namespaces. Special cases aren't special enough to break the rules.
 
+    global current_prop
+
     macro2val = {}
+    macro2prop = {}
     for prop_name, prop in node.props.items():
         prop_id = str2ident(prop_name)
         macro = f"{node.z_path_id}_P_{prop_id}"
         val = prop2value(prop)
+        start_keys = set(macro2val.keys())
+
         if val is not None:
             # DT_N_<node-id>_P_<prop-id>
             macro2val[macro] = val
@@ -660,10 +705,17 @@ def write_vanilla_props(node: edtlib.Node) -> None:
         # DT_N_<node-id>_P_<prop-id>_EXISTS
         macro2val[f"{macro}_EXISTS"] = 1
 
+        new_keys = set(macro2val.keys()) - start_keys
+        for k in new_keys:
+            macro2prop[k] = prop_name
+
     if macro2val:
         out_comment("Generic property macros:")
         for macro, val in macro2val.items():
+            current_prop = macro2prop.get(macro)
             out_dt_define(macro, val)
+
+        current_prop = None
     else:
         out_comment("(No generic property macros)")
 
@@ -926,14 +978,23 @@ def controller_and_data_macros(entry: edtlib.ControllerAndData, i: int, macro: s
 def write_chosen(edt: edtlib.EDT):
     # Tree-wide information such as chosen nodes is printed here.
 
+    global current_node
+
     out_comment("Chosen nodes\n")
     chosen = {}
+    node_map = {}
     for name, node in edt.chosen_nodes.items():
         chosen[f"DT_CHOSEN_{str2ident(name)}"] = f"DT_{node.z_path_id}"
         chosen[f"DT_CHOSEN_{str2ident(name)}_EXISTS"] = 1
+        node_map[f"DT_CHOSEN_{str2ident(name)}"] = node
+        node_map[f"DT_CHOSEN_{str2ident(name)}_EXISTS"] = node
+
     max_len = max(map(len, chosen), default=0)
     for macro, value in chosen.items():
+        current_node = node_map.get(macro)
         out_define(macro, value, width=max_len)
+
+    current_node = None
 
 
 def write_global_macros(edt: edtlib.EDT):
@@ -990,6 +1051,7 @@ def write_global_macros(edt: edtlib.EDT):
     for compat, nodes in edt.compat2nodes.items():
         for node in nodes:
             if compat == "fixed-partitions":
+                current_node = node
                 for child in node.children.values():
                     if "label" in child.props:
                         label = child.props["label"].val
@@ -998,6 +1060,7 @@ def write_global_macros(edt: edtlib.EDT):
 
                         out_dt_define(macro, val)
                         out_dt_define(macro + "_EXISTS", 1)
+                current_node = None
 
     out_comment('Macros for compatibles with status "okay" nodes\n')
     for compat, okay_nodes in edt.compat2okay.items():
@@ -1069,6 +1132,14 @@ def out_define(
         s = f"#define {macro}{warn} {val}"
 
     print(s, file=header_file)
+
+    if macro_records is not None:
+        macro_records.append({
+            "name": macro,
+            "value": str(val),
+            "node_path": current_node.path if current_node else None,
+            "prop": current_prop,
+        })
 
 
 def out_comment(s: str, blank_before=True) -> None:
