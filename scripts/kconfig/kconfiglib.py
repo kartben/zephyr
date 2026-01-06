@@ -1699,12 +1699,16 @@ class Kconfig(object):
         chunks = [header]  # "".join()ed later
         add = chunks.append
 
+        # Micro-optimization: cache function and constant lookups
+        expr_val = expr_value
+        bool_type = BOOL
+        
         for sym in self.unique_defined_syms:
             # Skip symbols that cannot be changed. Only check
             # non-choice symbols, as selects don't affect choice
             # symbols.
             if not sym.choice and \
-               sym.visibility <= expr_value(sym.rev_dep):
+               sym.visibility <= expr_val(sym.rev_dep):
                 continue
 
             # Skip symbols whose value matches their default
@@ -1718,7 +1722,7 @@ class Kconfig(object):
             if sym.choice and \
                not sym.choice.is_optional and \
                sym.choice._selection_from_defaults() is sym and \
-               sym.orig_type is BOOL and \
+               sym.orig_type is bool_type and \
                sym.tri_value == 2:
                 continue
 
@@ -1794,6 +1798,10 @@ class Kconfig(object):
         # Load old values from auto.conf, if any
         self._load_old_vals(path)
 
+        # Micro-optimization: cache function and constant lookups
+        touch_dep = _touch_dep_file
+        bool_tristate = _BOOL_TRISTATE
+        
         for sym in self.unique_defined_syms:
             # _write_to_conf is determined when the value is calculated. This
             # is a hidden function call due to property magic.
@@ -1808,7 +1816,7 @@ class Kconfig(object):
 
             if sym._write_to_conf:
                 if sym._old_val is None and \
-                   sym.orig_type in _BOOL_TRISTATE and \
+                   sym.orig_type in bool_tristate and \
                    val == "n":
                     # No old value (the symbol was missing or n), new value n.
                     # No change.
@@ -1826,7 +1834,7 @@ class Kconfig(object):
                 continue
 
             # 'sym' has a new value. Flag it.
-            _touch_dep_file(path, sym.name)
+            touch_dep(path, sym.name)
 
         # Remember the current values as the "new old" values.
         #
@@ -1854,17 +1862,21 @@ class Kconfig(object):
                 return
             raise
 
+        # Micro-optimization: cache lookups
+        set_match = self._set_match
+        syms = self.syms
+        
         with auto_conf as f:
             for line in f:
-                match = self._set_match(line)
+                match = set_match(line)
                 if not match:
                     # We only expect CONFIG_FOO=... (and possibly a header
                     # comment) in auto.conf
                     continue
 
                 name, val = match.groups()
-                if name in self.syms:
-                    sym = self.syms[name]
+                if name in syms:
+                    sym = syms[name]
 
                     if sym.orig_type is STRING:
                         match = _conf_string_match(val)
@@ -5029,19 +5041,22 @@ class Symbol(object):
         # the same algorithm as the C implementation (though a bit cleaned up),
         # for compatibility.
 
+        # Micro-optimization: cache function and constant lookups
+        expr_val = expr_value
+        
         if self.orig_type in _BOOL_TRISTATE:
             val = 0
 
             # Defaults, selects, and implies do not affect choice symbols
             if not self.choice:
                 for default, cond, _ in self.defaults:
-                    cond_val = expr_value(cond)
+                    cond_val = expr_val(cond)
                     if cond_val:
-                        val = min(expr_value(default), cond_val)
+                        val = min(expr_val(default), cond_val)
                         break
 
-                val = max(expr_value(self.rev_dep),
-                          expr_value(self.weak_rev_dep),
+                val = max(expr_val(self.rev_dep),
+                          expr_val(self.weak_rev_dep),
                           val)
 
                 # Transpose mod to yes if type is bool (possibly due to modules
@@ -5053,7 +5068,7 @@ class Symbol(object):
 
         if self.orig_type:  # STRING/INT/HEX
             for default, cond, _ in self.defaults:
-                if expr_value(cond):
+                if expr_val(cond):
                     return default.str_value
 
         return ""
@@ -5064,15 +5079,20 @@ class Symbol(object):
         # and menus) is selected by some other symbol. Also warn if a symbol
         # whose direct dependencies evaluate to m is selected to y.
 
+        # Micro-optimization: cache function and constant lookups
+        expr_val = expr_value
+        tri_to_str = TRI_TO_STR
+        split = split_expr
+        
         msg = "{} has direct dependencies {} with value {}, but is " \
               "currently being {}-selected by the following symbols:" \
               .format(self.name_and_loc, expr_str(self.direct_dep),
-                      TRI_TO_STR[expr_value(self.direct_dep)],
-                      TRI_TO_STR[expr_value(self.rev_dep)])
+                      tri_to_str[expr_val(self.direct_dep)],
+                      tri_to_str[expr_val(self.rev_dep)])
 
         # The reverse dependencies from each select are ORed together
-        for select in split_expr(self.rev_dep, OR):
-            if expr_value(select) <= expr_value(self.direct_dep):
+        for select in split(self.rev_dep, OR):
+            if expr_val(select) <= expr_val(self.direct_dep):
                 # Only include selects that exceed the direct dependencies
                 continue
 
@@ -5080,19 +5100,19 @@ class Symbol(object):
             # - 'select A' just turns into A
             #
             # In both cases, we can split on AND and pick the first operand
-            selecting_sym = split_expr(select, AND)[0]
+            selecting_sym = split(select, AND)[0]
 
             msg += "\n - {}, with value {}, direct dependencies {} " \
                    "(value: {})" \
                    .format(selecting_sym.name_and_loc,
                            selecting_sym.str_value,
                            expr_str(selecting_sym.direct_dep),
-                           TRI_TO_STR[expr_value(selecting_sym.direct_dep)])
+                           tri_to_str[expr_val(selecting_sym.direct_dep)])
 
             if select.__class__ is tuple:
                 msg += ", and select condition {} (value: {})" \
                        .format(expr_str(select[2]),
-                               TRI_TO_STR[expr_value(select[2])])
+                               tri_to_str[expr_val(select[2])])
 
         self.kconfig._warn(msg)
 
