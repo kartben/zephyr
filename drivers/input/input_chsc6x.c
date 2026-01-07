@@ -26,15 +26,17 @@ struct chsc6x_data {
 #define CHSC6X_READ_ADDR             0
 #define CHSC6X_READ_LENGTH           5
 #define CHSC6X_OUTPUT_POINTS_PRESSED 0
-#define CHSC6X_OUTPUT_COL            2
-#define CHSC6X_OUTPUT_ROW            4
+#define CHSC6X_OUTPUT_X_HIGH         1
+#define CHSC6X_OUTPUT_X_LOW          2
+#define CHSC6X_OUTPUT_Y_HIGH         3
+#define CHSC6X_OUTPUT_Y_LOW          4
 
 LOG_MODULE_REGISTER(chsc6x, CONFIG_INPUT_LOG_LEVEL);
 
 static int chsc6x_process(const struct device *dev)
 {
 	uint8_t output[CHSC6X_READ_LENGTH];
-	uint8_t row, col;
+	uint16_t row, col;
 	bool is_pressed;
 	int ret;
 
@@ -47,8 +49,8 @@ static int chsc6x_process(const struct device *dev)
 	}
 
 	is_pressed = output[CHSC6X_OUTPUT_POINTS_PRESSED];
-	col = output[CHSC6X_OUTPUT_COL];
-	row = output[CHSC6X_OUTPUT_ROW];
+	col = ((output[CHSC6X_OUTPUT_X_HIGH] & 0x0F) << 8) | output[CHSC6X_OUTPUT_X_LOW];
+	row = ((output[CHSC6X_OUTPUT_Y_HIGH] & 0x0F) << 8) | output[CHSC6X_OUTPUT_Y_LOW];
 
 	if (is_pressed) {
 		input_report_abs(dev, INPUT_ABS_X, col, false, K_FOREVER);

@@ -3,10 +3,9 @@
 Overview
 ********
 
-The VIEWE UEDX24320028E-WB-A is a 2.8" 240x320 IPS TFT display module with
-ESP32-S3 MCU and capacitive touch. It features WiFi and Bluetooth Low Energy
-connectivity, making it suitable for IoT applications with graphical user
-interfaces.
+The VIEWE UEDX24320028E-WB-A is a 2.8" 240x320 IPS TFT display module with ESP32-S3 MCU and
+capacitive touch. It features Wi-Fi and Bluetooth Low Energy connectivity, making it suitable for
+IoT applications with graphical user interfaces.
 
 Key features include:
 
@@ -29,29 +28,6 @@ Supported Features
 ==================
 
 .. zephyr:board-supported-hw::
-
-Connections and IOs
-===================
-
-The UEDX24320028E-WB-A has the following pin assignments:
-
-Display (SPI):
-  - SCK: GPIO40
-  - MOSI: GPIO45
-  - CS: GPIO42
-  - DC: GPIO41
-  - RST: GPIO39
-  - Backlight: GPIO13
-
-Touch (I2C):
-  - SDA: GPIO1
-  - SCL: GPIO3
-  - INT: GPIO4
-  - RST: GPIO2
-
-UART0 (Console):
-  - TX: GPIO43
-  - RX: GPIO44
 
 System Requirements
 *******************
