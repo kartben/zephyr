@@ -353,11 +353,14 @@ static int st7796s_init(const struct device *dev)
 	int ret;
 	uint8_t param;
 
+	printk("ST7796S initialization started.\n");
+
 	/* Since VDDI comes up before reset pin is low, we must reset display
 	 * state. Pulse for 100 MS, per datasheet
 	 */
 	ret = mipi_dbi_reset(config->mipi_dbi, 100);
 	if (ret < 0) {
+		LOG_ERR("Could not reset MIPI DBI (%d)", ret);
 		return ret;
 	}
 	/* Delay an additional 100ms after reset */
@@ -376,18 +379,21 @@ static int st7796s_init(const struct device *dev)
 		ret = st7796s_send_cmd(dev, ST7796S_CMD_INVOFF, NULL, 0);
 	}
 	if (ret < 0) {
+		LOG_ERR("Could not set display inversion (%d)", ret);
 		return ret;
 	}
 
 	param = ST7796S_CONTROL_16BIT;
 	ret = st7796s_send_cmd(dev, ST7796S_CMD_COLMOD, &param, sizeof(param));
 	if (ret < 0) {
+		LOG_ERR("Could not set color mode (%d)", ret);
 		return ret;
 	}
 
 	param = config->madctl;
 	ret = st7796s_send_cmd(dev, ST7796S_CMD_MADCTL, &param, sizeof(param));
 	if (ret < 0) {
+		LOG_ERR("Could not set memory access control (%d)", ret);
 		return ret;
 	}
 
@@ -397,6 +403,8 @@ static int st7796s_init(const struct device *dev)
 	k_msleep(5);
 	/* Turn on display */
 	st7796s_send_cmd(dev, ST7796S_CMD_DISPON, NULL, 0);
+
+	printk("ST7796S initialization done.\n");
 
 	return 0;
 }
@@ -409,46 +417,41 @@ static DEVICE_API(display, st7796s_api) = {
 	.set_orientation = st7796s_set_orientation,
 };
 
-
-#define ST7796S_INIT(n)								\
-	static const struct st7796s_config st7796s_config_##n = {		\
-		.mipi_dbi = DEVICE_DT_GET(DT_INST_PARENT(n)),			\
-		.dbi_config = {							\
-			.config = MIPI_DBI_SPI_CONFIG_DT(			\
-						DT_DRV_INST(n),			\
-						SPI_OP_MODE_MASTER |		\
-						SPI_WORD_SET(8),		\
-						0),				\
-			.mode = DT_INST_STRING_UPPER_TOKEN_OR(n, mipi_mode,     \
-						MIPI_DBI_MODE_SPI_4WIRE),	\
-		},								\
-		.width = DT_INST_PROP(n, width),				\
-		.height = DT_INST_PROP(n, height),				\
-		.inverted = DT_INST_PROP(n, color_invert),			\
-		.dic = DT_INST_ENUM_IDX(n, invert_mode),			\
-		.frmctl1 = DT_INST_PROP(n, frmctl1),				\
-		.frmctl2 = DT_INST_PROP(n, frmctl2),				\
-		.frmctl3 = DT_INST_PROP(n, frmctl3),				\
-		.bpc = DT_INST_PROP(n, bpc),					\
-		.dfc = DT_INST_PROP(n, dfc),					\
-		.pwr1 = DT_INST_PROP(n, pwr1),					\
-		.pwr2 = DT_INST_PROP(n, pwr2),					\
-		.pwr3 = DT_INST_PROP(n, pwr3),					\
-		.vcmpctl = DT_INST_PROP(n, vcmpctl),				\
-		.doca = DT_INST_PROP(n, doca),					\
-		.pgc = DT_INST_PROP(n, pgc),					\
-		.ngc = DT_INST_PROP(n, ngc),					\
-		.madctl = DT_INST_PROP(n, madctl),				\
-		.rgb_is_inverted = DT_INST_PROP(n, rgb_is_inverted),		\
-		.te_mode = MIPI_DBI_TE_MODE_DT_INST(n, te_mode),                \
-		.te_delay = DT_INST_PROP(n, te_delay),                          \
-	};									\
-										\
-	DEVICE_DT_INST_DEFINE(n, st7796s_init,					\
-			NULL,							\
-			NULL,							\
-			&st7796s_config_##n,					\
-			POST_KERNEL, CONFIG_DISPLAY_INIT_PRIORITY,		\
-			&st7796s_api);
+#define ST7796S_INIT(n)                                                                            \
+	static const struct st7796s_config st7796s_config_##n = {                                  \
+		.mipi_dbi = DEVICE_DT_GET(DT_INST_PARENT(n)),                                      \
+		.dbi_config =                                                                      \
+			{                                                                          \
+				.config = MIPI_DBI_SPI_CONFIG_DT(                                  \
+					DT_DRV_INST(n), SPI_OP_MODE_MASTER | SPI_WORD_SET(8), 0),  \
+				.mode = DT_INST_STRING_UPPER_TOKEN_OR(n, mipi_mode,                \
+								      MIPI_DBI_MODE_SPI_4WIRE),    \
+			},                                                                         \
+		.width = DT_INST_PROP(n, width),                                                   \
+		.height = DT_INST_PROP(n, height),                                                 \
+		.inverted = DT_INST_PROP(n, color_invert),                                         \
+		.dic = DT_INST_ENUM_IDX(n, invert_mode),                                           \
+		.frmctl1 = DT_INST_PROP(n, frmctl1),                                               \
+		.frmctl2 = DT_INST_PROP(n, frmctl2),                                               \
+		.frmctl3 = DT_INST_PROP(n, frmctl3),                                               \
+		.bpc = DT_INST_PROP(n, bpc),                                                       \
+		.dfc = DT_INST_PROP(n, dfc),                                                       \
+		.pwr1 = DT_INST_PROP(n, pwr1),                                                     \
+		.pwr2 = DT_INST_PROP(n, pwr2),                                                     \
+		.pwr3 = DT_INST_PROP(n, pwr3),                                                     \
+		.vcmpctl = DT_INST_PROP(n, vcmpctl),                                               \
+		.doca = DT_INST_PROP(n, doca),                                                     \
+		.pgc = DT_INST_PROP(n, pgc),                                                       \
+		.ngc = DT_INST_PROP(n, ngc),                                                       \
+		.madctl = DT_INST_PROP(n, madctl),                                                 \
+		.rgb_is_inverted = DT_INST_PROP(n, rgb_is_inverted),                               \
+		.te_mode = MIPI_DBI_TE_MODE_DT_INST(n, te_mode),                                   \
+		.te_delay = DT_INST_PROP(n, te_delay),                                             \
+	};                                                                                         \
+                                                                                                   \
+	static struct st7796s_data st7796s_data_##n;                                               \
+                                                                                                   \
+	DEVICE_DT_INST_DEFINE(n, st7796s_init, NULL, &st7796s_data_##n, &st7796s_config_##n,       \
+			      POST_KERNEL, CONFIG_DISPLAY_INIT_PRIORITY, &st7796s_api);
 
 DT_INST_FOREACH_STATUS_OKAY(ST7796S_INIT)
