@@ -51,8 +51,14 @@ def main() -> int:
             r"undefined reference to.*(__device_dts_ord_\d+)",  # ld
             r"use of undeclared identifier '(__device_dts_ord_\d+)'",  # LLVM/clang (ATfE)
             r"undefined symbol: \(__device_dts_ord_(\d+)",  # LLVM/lld (ATfE)
+            r"'(__device_dts_ord_\d+)'.*undeclared",  # Additional gcc pattern
+            r"(__device_dts_ord_\d+).*not declared",  # Additional pattern
         ]
         symbols = {m for p in patterns for m in re.findall(p, proc.stderr)}
+        
+        # Also look in stdout for some compilers
+        for p in patterns:
+            symbols.update(re.findall(p, proc.stdout))
 
         diag_script = os.path.join(os.path.dirname(__file__), "dtdoctor_analyzer.py")
         for symbol in sorted(symbols):
