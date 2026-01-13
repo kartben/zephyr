@@ -1,0 +1,21 @@
+# Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+title: Epson ESC/POS thermal printer
+
+description: |
+    Epson ESC/POS compatible thermal printer driver.
+
+    ESC/POS is a command system for controlling receipt
+    printers, commonly used in point-of-sale systems.
+
+    Example:
+      &uart1 {
+          escpos: escpos {
+              compatible = "epson,escpos";
+          };
+      };
+
+compatible: "epson,escpos"
+
+include: uart-device.yaml
