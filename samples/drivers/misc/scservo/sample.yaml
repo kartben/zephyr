@@ -1,0 +1,19 @@
+# Copyright (c) 2025 Benjamin Cabé <benjamin@zephyrproject.org>
+# SPDX-License-Identifier: Apache-2.0
+
+sample:
+  name: SCServo Demo
+  description: Demonstrate the FeeeTech SCServo serial bus servo driver
+tests:
+  sample.drivers.scservo:
+    tags:
+      - drivers
+      - scservo
+    depends_on:
+      - scservo
+    filter: dt_compat_enabled("feetech,scservo")
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - ".*SCServo sample started.*"

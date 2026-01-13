@@ -1,0 +1,63 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * StackChan common DTSI - includes CoreS3 common and adds StackChan-specific changes.
+ */
+
+/dts-v1/;
+
+#include "../m5stack_cores3/m5stack_cores3_procpu_common.dtsi"
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
+/ {
+	model = "M5Stack StackChan PROCPU";
+	compatible = "m5stack,stackchan";
+};
+
+/*
+ * StackChan uses UART1 for SCS0009 feedback servo motors instead of
+ * the standard CoreS3 UART1 configuration.
+ */
+&pinctrl {
+	/* Override UART1 pins for servo motor serial bus */
+	uart1_default: uart1_default {
+		group1 {
+			pinmux = <UART1_TX_GPIO6>;
+			output-high;
+		};
+
+		group2 {
+			pinmux = <UART1_RX_GPIO7>;
+			bias-pull-up;
+		};
+	};
+};
+
+/* Head touch sensor (3 zones: left, center, right) */
+&i2c0 {
+	si12t: si12t@68 {
+		compatible = "csmic,si12t";
+		reg = <0x68>;
+		threshold-windows = "narrow", "narrow", "narrow";
+		threshold-midpoints = [ 03 03 03 ];
+		input-codes = <INPUT_BTN_LEFT INPUT_BTN_MIDDLE INPUT_BTN_RIGHT>;
+	};
+};
+
+/* Servo motor serial bus (SCS0009 feedback servos) - 1MHz baud rate */
+&uart1 {
+	current-speed = <1000000>;
+
+	/* Pan servo (360° continuous rotation) */
+	servo_pan: scservo-pan {
+		compatible = "feetech,scservo";
+		servo-id = <1>;
+	};
+
+	/* Tilt servo (90° movement) */
+	servo_tilt: scservo-tilt {
+		compatible = "feetech,scservo";
+		servo-id = <2>;
+	};
+};
