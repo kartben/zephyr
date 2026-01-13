@@ -1,0 +1,9 @@
+# M5Stack StackChan board configuration
+
+# Copyright (c) 2025 Benjamin Cabé <benjamin@zephyrproject.org>
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_STACKCHAN
+	select SOC_ESP32S3
+	select SOC_ESP32S3_PROCPU if BOARD_STACKCHAN_ESP32S3_PROCPU
+	select SOC_ESP32S3_APPCPU if BOARD_STACKCHAN_ESP32S3_APPCPU

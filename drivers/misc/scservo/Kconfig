@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: Apache-2.0
+
+config SCSERVO
+	bool "SCServo serial bus servo driver"
+	default y
+	depends on DT_HAS_FEETECH_SCSERVO_ENABLED
+	depends on SERIAL
+	help
+	  Enable driver for FeeeTech SCServo (SCSCL/STS series) serial
+	  bus servos. These smart servos communicate over a half-duplex
+	  UART bus and support position control, velocity control,
+	  and feedback (position, temperature, voltage, load).
+
+if SCSERVO
+
+config SCSERVO_INIT_PRIORITY
+	int "SCServo driver initialization priority"
+	default 90
+	help
+	  SCServo driver initialization priority. Should be lower than
+	  the UART driver priority.
+
+config SCSERVO_TIMEOUT_MS
+	int "Default communication timeout in milliseconds"
+	default 100
+	help
+	  Default timeout for servo responses. Increase this value if
+	  experiencing communication issues on slower buses.
+
+module = SCSERVO
+module-str = scservo
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # SCSERVO
