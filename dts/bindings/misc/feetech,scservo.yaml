@@ -1,0 +1,16 @@
+# Copyright (c) 2026 Your Name
+# SPDX-License-Identifier: Apache-2.0
+
+description: FeeeTech SCServo serial bus servo
+
+compatible: "feetech,scservo"
+
+include: uart-device.yaml
+
+properties:
+  servo-id:
+    type: int
+    required: true
+    description: |
+      The servo ID on the serial bus (0-253).
+      ID 254 (0xFE) is the broadcast address.
