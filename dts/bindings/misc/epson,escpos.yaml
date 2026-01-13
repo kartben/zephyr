@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: Epson ESC/POS thermal printer
+
+compatible: "epson,escpos"
+
+include: uart-device.yaml
+
+properties:
+  baudrate:
+    type: int
+    default: 9600
+    description: UART baudrate for communication with the printer

@@ -1,0 +1,20 @@
+# Epson ESC/POS thermal printer driver configuration options
+
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config ESCPOS
+	bool "Epson ESC/POS thermal printer driver"
+	default y
+	depends on DT_HAS_EPSON_ESCPOS_ENABLED
+	help
+	  Enable driver for Epson ESC/POS compatible thermal printers.
+	  These printers are commonly used in point-of-sale systems.
+
+if ESCPOS
+
+module = ESCPOS
+module-str = escpos
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # ESCPOS
