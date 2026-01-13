@@ -18,48 +18,6 @@ LOG_MODULE_REGISTER(escpos, CONFIG_ESCPOS_LOG_LEVEL);
 #define ESC 0x1B
 #define GS  0x1D
 
-/* Command sequences */
-#define CMD_INIT                                                                                   \
-	{                                                                                          \
-		ESC, '@'                                                                           \
-	}
-#define CMD_ALIGN                                                                                  \
-	{                                                                                          \
-		ESC, 'a'                                                                           \
-	}
-#define CMD_BOLD_ON                                                                                \
-	{                                                                                          \
-		ESC, 'E', 1                                                                        \
-	}
-#define CMD_BOLD_OFF                                                                               \
-	{                                                                                          \
-		ESC, 'E', 0                                                                        \
-	}
-#define CMD_UNDERLINE_ON                                                                           \
-	{                                                                                          \
-		ESC, '-', 1                                                                        \
-	}
-#define CMD_UNDERLINE_OFF                                                                          \
-	{                                                                                          \
-		ESC, '-', 0                                                                        \
-	}
-#define CMD_FONT_SIZE                                                                              \
-	{                                                                                          \
-		GS, '!'                                                                            \
-	}
-#define CMD_CUT_FULL                                                                               \
-	{                                                                                          \
-		GS, 'V', 0                                                                         \
-	}
-#define CMD_CUT_PARTIAL                                                                            \
-	{                                                                                          \
-		GS, 'V', 1                                                                         \
-	}
-#define CMD_FEED_LINES                                                                             \
-	{                                                                                          \
-		ESC, 'd'                                                                           \
-	}
-
 struct escpos_config {
 	const struct device *uart_dev;
 };
@@ -90,7 +48,7 @@ static int escpos_write_cmd(const struct device *dev, const uint8_t *cmd, size_t
 
 int escpos_init(const struct device *dev)
 {
-	uint8_t cmd[] = CMD_INIT;
+	uint8_t cmd[] = {ESC, '@'};
 
 	return escpos_write_cmd(dev, cmd, sizeof(cmd));
 }
@@ -129,11 +87,11 @@ int escpos_cut_paper(const struct device *dev, bool partial)
 
 int escpos_set_align(const struct device *dev, enum escpos_align align)
 {
-	uint8_t cmd[] = {ESC, 'a', (uint8_t)align};
-
 	if (align > ESCPOS_ALIGN_RIGHT) {
 		return -EINVAL;
 	}
+
+	uint8_t cmd[] = {ESC, 'a', (uint8_t)align};
 
 	return escpos_write_cmd(dev, cmd, sizeof(cmd));
 }
