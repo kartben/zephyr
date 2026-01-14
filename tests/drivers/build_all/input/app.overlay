@@ -321,6 +321,15 @@
 				reg = <0xd>;
 				int-gpios = <&test_gpio 0 0>;
 			};
+
+			tsm12@e {
+				compatible = "adsemi,tsm12";
+				reg = <0xe>;
+				int-gpios = <&test_gpio 0 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+				input-codes = <0 1 2>;
+				threshold-windows = "narrow", "wide", "narrow";
+				threshold-midpoints = [03 00 07];
+			};
 		};
 
 		spi@2 {
