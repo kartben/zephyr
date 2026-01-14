@@ -1,0 +1,61 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: Nanjing Zhongke Microelectronics Si12T capacitive touch sensor
+
+compatible: "csmic,si12t"
+
+include: i2c-device.yaml
+
+properties:
+  interrupt-gpios:
+    type: phandle-array
+    description: |
+      The interrupt line is asserted when at least one "key" is pressed.
+
+  threshold-windows:
+    type: string-array
+    required: true
+    description: |
+      Array of threshold windows for touch detection. Length must match input-codes.
+
+      Values:
+      - "narrow": Narrower detection window around the midpoint. Requires a firmer or stronger touch
+        to register (i.e. less sensitive).
+      - "wide": Wider detection window. Detects smaller capacitance changes, making it more
+        sensitive to light touches.
+
+  threshold-midpoints:
+    type: uint8-array
+    required: true
+    description: |
+      Array of threshold midpoints (0-7, M[2:0]). Higher values = more sensitive.
+      Length must match input-codes.
+
+      The sensor reports touch strength based on capacitance change relative to
+      the midpoint:
+
+      - 0 (none): below lower bound
+      - 1 (low touch): between lower bound and midpoint
+      - 2 (medium touch): at or near midpoint
+      - 3 (high touch): above midpoint toward upper bound
+
+      Example thresholds (capacitance change %) for "wide" (1) window:
+
+        Level | Low bound | Midpoint | High bound
+        ------|-----------|----------|------------
+          0   |   0.40%   |   0.50%  |   0.60%
+          3   |   0.95%   |   1.20%  |   1.45%
+          7   |   2.85%   |   3.55%  |   4.30%
+
+  input-codes:
+
+    type: array
+    required: true
+    description: |
+      Array of input event key codes (INPUT_KEY_* or INPUT_BTN_*).
+
+      The Si12T supports up to 12 capacitive touch channels. Each index in this
+      array corresponds to a channel (0-11).
+      Input events report touch strength as the value (0=none, 1=low, 2=medium, 3=high).
+
