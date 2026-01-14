@@ -12,6 +12,7 @@ OS Services
    cpu_load/index.rst
    crc/index.rst
    crypto/index
+   data_structures/index.rst
    debugging/index.rst
    device_mgmt/index
    dsp/index.rst
