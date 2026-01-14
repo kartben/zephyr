@@ -95,6 +95,7 @@ extensions = [
     "zephyr.external_content",
     "zephyr.domain",
     "zephyr.api_overview",
+    "sphinxcontrib.moderncmakedomain",
     "sphinx.ext.intersphinx",
 ]
 
