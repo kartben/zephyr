@@ -205,6 +205,7 @@ void z_arm_configure_static_mpu_regions(void)
  * This function is not inherently thread-safe, but the memory domain
  * spinlock needs to be held anyway.
  */
+__no_instrumentation__
 void z_arm_configure_dynamic_mpu_regions(struct k_thread *thread)
 {
 	/* Define an array of z_arm_mpu_partition objects to hold the configuration
