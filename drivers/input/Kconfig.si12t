@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig INPUT_SI12T
+	bool "Si12T touch sensor"
+	default y
+	depends on DT_HAS_CSMIC_SI12T_ENABLED
+	select I2C
+	help
+	  Enable driver for Nanjing Zhongke Microelectronics Si12T
+	  capacitive touch sensor.
+
+if INPUT_SI12T
+
+config INPUT_SI12T_PERIOD_MS
+	int "Sample period"
+	depends on !INPUT_SI12T_INTERRUPT
+	default 50
+	help
+	  Sample period in milliseconds when in polling mode.
+
+config INPUT_SI12T_INTERRUPT
+	bool "Interrupt"
+	help
+	  Enable interrupt support (requires GPIO).
+
+endif # INPUT_SI12T
