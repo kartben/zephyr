@@ -335,12 +335,23 @@ static int cmd_send(const struct shell *sh, size_t argc, char **argv)
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(
-	sub_mailbox, SHELL_CMD_ARG(reg, NULL, "<service>", cmd_reg, 2, 0),
-	SHELL_CMD_ARG(unreg, NULL, NULL, cmd_unreg, 1, 0),
-	SHELL_CMD_ARG(open, NULL, "[<timeout_msec>]", cmd_open, 1, 1),
-	SHELL_CMD_ARG(close, NULL, NULL, cmd_close, 1, 0),
+	sub_mailbox,
+	SHELL_CMD_ARG(reg, NULL,
+		      SHELL_HELP("Register mailbox client", "<service>"),
+		      cmd_reg, 2, 0),
+	SHELL_CMD_ARG(unreg, NULL,
+		      SHELL_HELP("Unregister mailbox client", ""),
+		      cmd_unreg, 1, 0),
+	SHELL_CMD_ARG(open, NULL,
+		      SHELL_HELP("Open mailbox client", "[<timeout_msec>]"),
+		      cmd_open, 1, 1),
+	SHELL_CMD_ARG(close, NULL,
+		      SHELL_HELP("Close mailbox client", ""),
+		      cmd_close, 1, 0),
 	SHELL_CMD_ARG(send, NULL,
-		      "<hex list, example (SYNC): \"2001 11223344 aabbccdd\"> [<timeout_msec>]",
+		      SHELL_HELP("Send mailbox command",
+				 "<hex_list> [<timeout_msec>]\n"
+				 "Example (SYNC): \"2001 11223344 aabbccdd\""),
 		      cmd_send, 2, 1),
 	SHELL_SUBCMD_SET_END);
 

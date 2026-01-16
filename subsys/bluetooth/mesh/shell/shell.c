@@ -1764,8 +1764,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 #endif /* CONFIG_BT_MESH_PROVISIONEE */
 
 #if defined(CONFIG_BT_MESH_PROVISIONER)
-	SHELL_CMD(auth-method, &auth_cmds, "Authentication methods", bt_mesh_shell_mdl_cmds_help),
-	SHELL_CMD_ARG(remote-pub-key, NULL, "<PubKey>", cmd_remote_pub_key_set, 2, 0),
+	SHELL_CMD(auth-method, &auth_cmds, SHELL_HELP("Authentication methods", "<subcommand>"), bt_mesh_shell_mdl_cmds_help),
+	SHELL_CMD_ARG(remote-pub-key, NULL, SHELL_HELP("Set remote public key", "<PubKey>"), cmd_remote_pub_key_set, 2, 0),
 	SHELL_CMD_ARG(remote-adv, NULL,
 		      "<UUID(1-16 hex)> <NetKeyIdx> <Addr> "
 		      "<AttDur(s)>",
@@ -1800,7 +1800,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(test_cmds,
 #endif
 	SHELL_CMD_ARG(rpl-clear, NULL, NULL, cmd_rpl_clear, 1, 0),
 #if defined(CONFIG_BT_MESH_SHELL_HEALTH_SRV_INSTANCE)
-	SHELL_CMD(health-srv, &health_srv_cmds, "Health Server test", bt_mesh_shell_mdl_cmds_help),
+	SHELL_CMD(health-srv, &health_srv_cmds, SHELL_HELP("Health Server test", "<subcommand>"), bt_mesh_shell_mdl_cmds_help),
 #endif
 	SHELL_SUBCMD_SET_END);
 #endif /* CONFIG_BT_MESH_SHELL_TEST */
@@ -1854,34 +1854,34 @@ SHELL_SUBCMD_SET_CREATE(model_cmds, (mesh, models));
  * list.
  */
 SHELL_STATIC_SUBCMD_SET_CREATE(mesh_cmds,
-	SHELL_CMD_ARG(init, NULL, NULL, cmd_init, 1, 0),
-	SHELL_CMD_ARG(reset-local, NULL, NULL, cmd_reset, 1, 0),
+	SHELL_CMD_ARG(init, NULL, SHELL_HELP("Initialize Mesh shell", ""), cmd_init, 1, 0),
+	SHELL_CMD_ARG(reset-local, NULL, SHELL_HELP("Reset local node", ""), cmd_reset, 1, 0),
 
-	SHELL_CMD(models, &model_cmds, "Model commands", bt_mesh_shell_mdl_cmds_help),
+	SHELL_CMD(models, &model_cmds, SHELL_HELP("Model commands", "<subcommand>"), bt_mesh_shell_mdl_cmds_help),
 
 #if defined(CONFIG_BT_MESH_SHELL_LOW_POWER)
-	SHELL_CMD(lpn, &low_pwr_cmds, "Low Power commands", bt_mesh_shell_mdl_cmds_help),
+	SHELL_CMD(lpn, &low_pwr_cmds, SHELL_HELP("Low Power commands", "<subcommand>"), bt_mesh_shell_mdl_cmds_help),
 #endif
 
 #if defined(CONFIG_BT_MESH_SHELL_CDB)
-	SHELL_CMD(cdb, &cdb_cmds, "Configuration Database", bt_mesh_shell_mdl_cmds_help),
+	SHELL_CMD(cdb, &cdb_cmds, SHELL_HELP("Configuration Database", "<subcommand>"), bt_mesh_shell_mdl_cmds_help),
 #endif
 
 #if defined(CONFIG_BT_MESH_SHELL_GATT_PROXY)
-	SHELL_CMD(proxy, &proxy_cmds, "Proxy commands", bt_mesh_shell_mdl_cmds_help),
+	SHELL_CMD(proxy, &proxy_cmds, SHELL_HELP("Proxy commands", "<subcommand>"), bt_mesh_shell_mdl_cmds_help),
 #endif
 
 #if defined(CONFIG_BT_MESH_SHELL_PROV)
-	SHELL_CMD(prov, &prov_cmds, "Provisioning commands", bt_mesh_shell_mdl_cmds_help),
+	SHELL_CMD(prov, &prov_cmds, SHELL_HELP("Provisioning commands", "<subcommand>"), bt_mesh_shell_mdl_cmds_help),
 #endif
 
 #if defined(CONFIG_BT_MESH_SHELL_TEST)
-	SHELL_CMD(test, &test_cmds, "Test commands", bt_mesh_shell_mdl_cmds_help),
+	SHELL_CMD(test, &test_cmds, SHELL_HELP("Test commands", "<subcommand>"), bt_mesh_shell_mdl_cmds_help),
 #endif
-	SHELL_CMD(target, &target_cmds, "Target commands", bt_mesh_shell_mdl_cmds_help),
+	SHELL_CMD(target, &target_cmds, SHELL_HELP("Target commands", "<subcommand>"), bt_mesh_shell_mdl_cmds_help),
 
 #if defined(CONFIG_BT_MESH_STATISTIC)
-	SHELL_CMD(stat, &stat_cmds, "Statistic commands", bt_mesh_shell_mdl_cmds_help),
+	SHELL_CMD(stat, &stat_cmds, SHELL_HELP("Statistic commands", "<subcommand>"), bt_mesh_shell_mdl_cmds_help),
 #endif
 
 	SHELL_SUBCMD_SET_END

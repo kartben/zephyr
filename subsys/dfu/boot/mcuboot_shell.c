@@ -239,12 +239,19 @@ static int cmd_mcuboot_info(const struct shell *sh, size_t argc,
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(mcuboot_cmds,
-	SHELL_CMD_ARG(confirm, NULL, "confirm", cmd_mcuboot_confirm, 1, 0),
-	SHELL_CMD_ARG(erase, NULL, "erase <area_id>", cmd_mcuboot_erase, 2, 0),
-	SHELL_CMD_ARG(request_upgrade, NULL, "request_upgrade [permanent]",
+	SHELL_CMD_ARG(confirm, NULL,
+		      SHELL_HELP("Confirm current image", ""),
+		      cmd_mcuboot_confirm, 1, 0),
+	SHELL_CMD_ARG(erase, NULL,
+		      SHELL_HELP("Erase flash area", "<area_id>"),
+		      cmd_mcuboot_erase, 2, 0),
+	SHELL_CMD_ARG(request_upgrade, NULL,
+		      SHELL_HELP("Request upgrade", "[permanent]"),
 		      cmd_mcuboot_request_upgrade, 1, 1),
 #ifdef CONFIG_RETENTION_BOOT_MODE
-	SHELL_CMD_ARG(serial_recovery, NULL, "serial_recovery", cmd_mcuboot_serial_recovery, 1, 0),
+	SHELL_CMD_ARG(serial_recovery, NULL,
+		      SHELL_HELP("Enter serial recovery mode", ""),
+		      cmd_mcuboot_serial_recovery, 1, 0),
 #endif
 	SHELL_SUBCMD_SET_END /* Array terminated. */
 );

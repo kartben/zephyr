@@ -375,11 +375,25 @@ static int cmd_info(const struct shell *sh, size_t argc, char **argv)
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(
-	sub_sip_svc, SHELL_CMD_ARG(reg, NULL, "<method>", cmd_reg, 2, 0),
-	SHELL_CMD_ARG(unreg, NULL, "<method> <token>", cmd_unreg, 3, 0),
-	SHELL_CMD_ARG(open, NULL, "<method> <token> <[timeout_msec]>", cmd_open, 3, 1),
-	SHELL_CMD_ARG(close, NULL, "<method> <token>", cmd_close, 3, 0),
-	SHELL_CMD_ARG(send, NULL, "<method> <token> <a0> [<a1> <a2> ... <a7>]", cmd_send, 4, 7),
-	SHELL_CMD_ARG(info, NULL, "<method>", cmd_info, 2, 0), SHELL_SUBCMD_SET_END);
+	sub_sip_svc,
+	SHELL_CMD_ARG(reg, NULL,
+		      SHELL_HELP("Register SiP service client", "<method>"),
+		      cmd_reg, 2, 0),
+	SHELL_CMD_ARG(unreg, NULL,
+		      SHELL_HELP("Unregister SiP service client", "<method> <token>"),
+		      cmd_unreg, 3, 0),
+	SHELL_CMD_ARG(open, NULL,
+		      SHELL_HELP("Open SiP service client", "<method> <token> [<timeout_msec>]"),
+		      cmd_open, 3, 1),
+	SHELL_CMD_ARG(close, NULL,
+		      SHELL_HELP("Close SiP service client", "<method> <token>"),
+		      cmd_close, 3, 0),
+	SHELL_CMD_ARG(send, NULL,
+		      SHELL_HELP("Send SiP service request", "<method> <token> <a0> [<a1> <a2> ... <a7>]"),
+		      cmd_send, 4, 7),
+	SHELL_CMD_ARG(info, NULL,
+		      SHELL_HELP("Get SiP service information", "<method>"),
+		      cmd_info, 2, 0),
+	SHELL_SUBCMD_SET_END);
 
 SHELL_CMD_REGISTER(sip_svc, &sub_sip_svc, "ARM SiP services commands", NULL);

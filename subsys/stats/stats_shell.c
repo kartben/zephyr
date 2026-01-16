@@ -44,7 +44,9 @@ static int cmd_stats_list(const struct shell *sh, size_t argc,
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_stats,
-			       SHELL_CMD(list, NULL, "List stats", cmd_stats_list),
+			       SHELL_CMD(list, NULL,
+					 SHELL_HELP("List all statistics groups", ""),
+					 cmd_stats_list),
 			       SHELL_SUBCMD_SET_END /* Array terminated. */
 			       );
 

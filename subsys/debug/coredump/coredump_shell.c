@@ -596,27 +596,32 @@ static int cmd_coredump_erase_stored_dump(const struct shell *sh,
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_coredump_error,
-	SHELL_CMD(clear, NULL, "Clear Coredump error",
+	SHELL_CMD(clear, NULL,
+		  SHELL_HELP("Clear coredump backend error", ""),
 		  cmd_coredump_error_clear),
-	SHELL_CMD(get, NULL, "Get Coredump error", cmd_coredump_error_get),
+	SHELL_CMD(get, NULL,
+		  SHELL_HELP("Get coredump backend error", ""),
+		  cmd_coredump_error_get),
 	SHELL_SUBCMD_SET_END /* Array terminated. */
 );
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_coredump,
 	SHELL_CMD(error, &sub_coredump_error,
-		  "Get/clear backend error.", NULL),
+		  SHELL_HELP("Get or clear backend error", "<clear|get>"),
+		  NULL),
 	SHELL_CMD(erase, NULL,
-		  "Erase stored coredump",
+		  SHELL_HELP("Erase stored coredump", ""),
 		  cmd_coredump_erase_stored_dump),
 	SHELL_CMD(find, NULL,
-		  "Query if there is a stored coredump",
+		  SHELL_HELP("Query if there is a stored coredump", ""),
 		  cmd_coredump_has_stored_dump),
 	SHELL_CMD(print, NULL,
-		  "Print stored coredump to shell "
-		  "(use option 'pretty' to get human readable output)",
+		  SHELL_HELP("Print stored coredump to shell",
+			     "[pretty]\n"
+			     "Use option 'pretty' to get human readable output"),
 		  cmd_coredump_print_stored_dump),
 	SHELL_CMD(verify, NULL,
-		  "Verify stored coredump",
+		  SHELL_HELP("Verify stored coredump", ""),
 		  cmd_coredump_verify_stored_dump),
 	SHELL_SUBCMD_SET_END /* Array terminated. */
 );
