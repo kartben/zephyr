@@ -233,13 +233,17 @@ SHELL_DYNAMIC_CMD_CREATE(dsub_device_name, device_name_get);
 
 SHELL_STATIC_SUBCMD_SET_CREATE(eeprom_cmds,
 	SHELL_CMD_ARG(read, &dsub_device_name,
-		      "<device> <offset> <length>", cmd_read, 4, 0),
+		      SHELL_HELP("Read from EEPROM", "<device> <offset> <length>"),
+		      cmd_read, 4, 0),
 	SHELL_CMD_ARG(write, &dsub_device_name,
-		      "<device> <offset> [byte0] <byte1> .. <byteN>", cmd_write,
-		      4, CONFIG_EEPROM_SHELL_BUFFER_SIZE - 1),
-	SHELL_CMD_ARG(size, &dsub_device_name, "<device>", cmd_size, 2, 0),
+		      SHELL_HELP("Write to EEPROM", "<device> <offset> [byte0] <byte1> .. <byteN>"),
+		      cmd_write, 4, CONFIG_EEPROM_SHELL_BUFFER_SIZE - 1),
+	SHELL_CMD_ARG(size, &dsub_device_name,
+		      SHELL_HELP("Get EEPROM size", "<device>"),
+		      cmd_size, 2, 0),
 	SHELL_CMD_ARG(fill, &dsub_device_name,
-		      "<device> <offset> <length> <pattern>", cmd_fill, 5, 0),
+		      SHELL_HELP("Fill EEPROM with pattern", "<device> <offset> <length> <pattern>"),
+		      cmd_fill, 5, 0),
 	SHELL_SUBCMD_SET_END
 );
 
