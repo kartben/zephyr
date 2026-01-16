@@ -141,4 +141,15 @@ static int cmd_crc(const struct shell *sh, size_t argc, char **argv)
 	return 0;
 }
 
-SHELL_CMD_ARG_REGISTER(crc, NULL, NULL, cmd_crc, 0, 12);
+SHELL_CMD_ARG_REGISTER(crc, NULL,
+		       SHELL_HELP("Compute CRC checksum",
+				  "[-f] [-l] [-p <poly>] [-r] [-s <seed>] [-t <type>] <address> <size>\n"
+				  "-f         This is the first packet\n"
+				  "-l         This is the last packet\n"
+				  "-p <poly>  Use polynomial 'poly'\n"
+				  "-r         Reflect\n"
+				  "-s <seed>  Use 'seed' as the initial value\n"
+				  "-t <type>  Compute the CRC described by 'type'\n"
+				  "           Supported types: 4, 4_ti, 7_be, 8, 8_ccitt, 8_rohc,\n"
+				  "           16, 16_ansi, 16_ccitt, 16_itu_t, 24_pgp, 32_c, 32_ieee, 32_k_4_2"),
+		       cmd_crc, 0, 12);

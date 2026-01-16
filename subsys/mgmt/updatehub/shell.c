@@ -95,9 +95,13 @@ updatehub_shell_error:
 	return ret;
 }
 
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_updatehub, SHELL_CMD(info, NULL, "Dump UpdateHub information",
-							cmd_info),
-			       SHELL_CMD(run, NULL, "Trigger an UpdateHub update run", cmd_run),
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_updatehub,
+			       SHELL_CMD(info, NULL,
+					 SHELL_HELP("Dump UpdateHub information", ""),
+					 cmd_info),
+			       SHELL_CMD(run, NULL,
+					 SHELL_HELP("Trigger an UpdateHub update run", ""),
+					 cmd_run),
 			       SHELL_SUBCMD_SET_END);
 
 SHELL_CMD_REGISTER(updatehub, &sub_updatehub, "UpdateHub commands", NULL);

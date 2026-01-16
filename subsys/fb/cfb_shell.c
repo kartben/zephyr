@@ -15,14 +15,14 @@
 #include <zephyr/shell/shell.h>
 #include <zephyr/display/cfb.h>
 
-#define HELP_NONE "[none]"
-#define HELP_INIT "call \"cfb init\" first"
-#define HELP_PRINT "<col: pos> <row: pos> \"<text>\""
-#define HELP_DRAW_POINT "<x> <y>"
-#define HELP_DRAW_LINE "<x0> <y0> <x1> <y1>"
-#define HELP_DRAW_RECT "<x0> <y0> <x1> <y1>"
-#define HELP_DRAW_CIRCLE "<x> <y> <radius>"
-#define HELP_INVERT "[<x> <y> <width> <height>]"
+#define HELP_NONE SHELL_HELP("", "")
+#define HELP_INIT SHELL_HELP("Initialize character framebuffer", "")
+#define HELP_PRINT SHELL_HELP("Print text to framebuffer", "<col> <row> <text>")
+#define HELP_DRAW_POINT SHELL_HELP("Draw a point", "<x> <y>")
+#define HELP_DRAW_LINE SHELL_HELP("Draw a line", "<x0> <y0> <x1> <y1>")
+#define HELP_DRAW_RECT SHELL_HELP("Draw a rectangle", "<x0> <y0> <x1> <y1>")
+#define HELP_DRAW_CIRCLE SHELL_HELP("Draw a circle", "<x> <y> <radius>")
+#define HELP_INVERT SHELL_HELP("Invert framebuffer or area", "[<x> <y> <width> <height>]")
 
 static const struct device *const dev =
 	DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
@@ -510,12 +510,24 @@ static int cmd_init(const struct shell *sh, size_t argc, char *argv[])
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_cmd_get_param,
 
-	SHELL_CMD_ARG(all, NULL, NULL, cmd_get_param_all, 1, 0),
-	SHELL_CMD_ARG(height, NULL, NULL, cmd_get_param_height, 1, 0),
-	SHELL_CMD_ARG(width, NULL, NULL, cmd_get_param_width, 1, 0),
-	SHELL_CMD_ARG(ppt, NULL, NULL, cmd_get_param_ppt, 1, 0),
-	SHELL_CMD_ARG(rows, NULL, NULL, cmd_get_param_rows, 1, 0),
-	SHELL_CMD_ARG(cols, NULL, NULL, cmd_get_param_cols, 1, 0),
+	SHELL_CMD_ARG(all, NULL,
+		      SHELL_HELP("Get all display parameters", ""),
+		      cmd_get_param_all, 1, 0),
+	SHELL_CMD_ARG(height, NULL,
+		      SHELL_HELP("Get display height", ""),
+		      cmd_get_param_height, 1, 0),
+	SHELL_CMD_ARG(width, NULL,
+		      SHELL_HELP("Get display width", ""),
+		      cmd_get_param_width, 1, 0),
+	SHELL_CMD_ARG(ppt, NULL,
+		      SHELL_HELP("Get pixels per tile", ""),
+		      cmd_get_param_ppt, 1, 0),
+	SHELL_CMD_ARG(rows, NULL,
+		      SHELL_HELP("Get number of rows", ""),
+		      cmd_get_param_rows, 1, 0),
+	SHELL_CMD_ARG(cols, NULL,
+		      SHELL_HELP("Get number of columns", ""),
+		      cmd_get_param_cols, 1, 0),
 	SHELL_SUBCMD_SET_END
 );
 
@@ -536,19 +548,33 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_cmd_draw,
 );
 
 SHELL_STATIC_SUBCMD_SET_CREATE(cfb_cmds,
-	SHELL_CMD_ARG(init, NULL, HELP_NONE, cmd_init, 1, 0),
-	SHELL_CMD_ARG(get_device, NULL, HELP_NONE, cmd_get_device, 1, 0),
+	SHELL_CMD_ARG(init, NULL, HELP_INIT, cmd_init, 1, 0),
+	SHELL_CMD_ARG(get_device, NULL,
+		      SHELL_HELP("Get framebuffer device name", ""),
+		      cmd_get_device, 1, 0),
 	SHELL_CMD(get_param, &sub_cmd_get_param,
-		  "<all, height, width, ppt, rows, cols>", NULL),
-	SHELL_CMD_ARG(get_fonts, NULL, HELP_NONE, cmd_get_fonts, 1, 0),
-	SHELL_CMD_ARG(set_font, NULL, "<idx>", cmd_set_font, 2, 0),
-	SHELL_CMD_ARG(set_kerning, NULL, "<kerning>", cmd_set_kerning, 2, 0),
+		  SHELL_HELP("Get display parameters", "<all|height|width|ppt|rows|cols>"),
+		  NULL),
+	SHELL_CMD_ARG(get_fonts, NULL,
+		      SHELL_HELP("List available fonts", ""),
+		      cmd_get_fonts, 1, 0),
+	SHELL_CMD_ARG(set_font, NULL,
+		      SHELL_HELP("Set font by index", "<idx>"),
+		      cmd_set_font, 2, 0),
+	SHELL_CMD_ARG(set_kerning, NULL,
+		      SHELL_HELP("Set font kerning", "<kerning>"),
+		      cmd_set_kerning, 2, 0),
 	SHELL_CMD_ARG(invert, NULL, HELP_INVERT, cmd_invert, 1, 5),
 	SHELL_CMD_ARG(print, NULL, HELP_PRINT, cmd_print, 4, 0),
-	SHELL_CMD(scroll, &sub_cmd_scroll, "scroll a text in vertical or "
-		  "horizontal direction", NULL),
-	SHELL_CMD(draw, &sub_cmd_draw, "drawing text", NULL),
-	SHELL_CMD_ARG(clear, NULL, HELP_NONE, cmd_clear, 1, 0),
+	SHELL_CMD(scroll, &sub_cmd_scroll,
+		  SHELL_HELP("Scroll text", "<vertical|horizontal>"),
+		  NULL),
+	SHELL_CMD(draw, &sub_cmd_draw,
+		  SHELL_HELP("Draw text or shapes", "<text|point|line|rect|circle>"),
+		  NULL),
+	SHELL_CMD_ARG(clear, NULL,
+		      SHELL_HELP("Clear framebuffer", ""),
+		      cmd_clear, 1, 0),
 	SHELL_SUBCMD_SET_END
 );
 

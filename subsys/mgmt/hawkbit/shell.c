@@ -159,22 +159,38 @@ static int cmd_set_token(const struct shell *sh, size_t argc, char **argv)
 
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	sub_hawkbit_set,
-	SHELL_CMD(addr, NULL, "Set hawkBit server address", cmd_set_addr),
-	SHELL_CMD(port, NULL, "Set hawkBit server port", cmd_set_port),
+	SHELL_CMD(addr, NULL,
+		  SHELL_HELP("Set hawkBit server address", "<address>"),
+		  cmd_set_addr),
+	SHELL_CMD(port, NULL,
+		  SHELL_HELP("Set hawkBit server port", "<port>"),
+		  cmd_set_port),
 #ifndef CONFIG_HAWKBIT_DDI_NO_SECURITY
-	SHELL_CMD(ddi_token, NULL, "Set hawkBit DDI Security token", cmd_set_token),
+	SHELL_CMD(ddi_token, NULL,
+		  SHELL_HELP("Set hawkBit DDI security token", "<token>"),
+		  cmd_set_token),
 #endif
 	SHELL_SUBCMD_SET_END);
 #endif /* CONFIG_HAWKBIT_SET_SETTINGS_RUNTIME */
 
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	sub_hawkbit,
-	SHELL_CMD(info, NULL, "Dump hawkBit information", cmd_info),
-	SHELL_CMD(init, NULL, "Initialize hawkBit", cmd_init),
-	SHELL_CMD(run, NULL, "Trigger an hawkBit update run", cmd_run),
-	SHELL_CMD(reset, NULL, "Reset the hawkBit action id", cmd_reset),
+	SHELL_CMD(info, NULL,
+		  SHELL_HELP("Dump hawkBit information", ""),
+		  cmd_info),
+	SHELL_CMD(init, NULL,
+		  SHELL_HELP("Initialize hawkBit", ""),
+		  cmd_init),
+	SHELL_CMD(run, NULL,
+		  SHELL_HELP("Trigger an hawkBit update run", ""),
+		  cmd_run),
+	SHELL_CMD(reset, NULL,
+		  SHELL_HELP("Reset the hawkBit action id", ""),
+		  cmd_reset),
 #ifdef CONFIG_HAWKBIT_SET_SETTINGS_RUNTIME
-	SHELL_CMD(set, &sub_hawkbit_set, "Set hawkBit settings", NULL),
+	SHELL_CMD(set, &sub_hawkbit_set,
+		  SHELL_HELP("Set hawkBit settings", "<addr|port|ddi_token>"),
+		  NULL),
 #endif
 	SHELL_SUBCMD_SET_END);
 

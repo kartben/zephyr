@@ -58,7 +58,9 @@ static int cmd_flash_map_list(const struct shell *sh, size_t argc, char **argv)
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_flash_map,
 	/* Alphabetically sorted. */
-	SHELL_CMD(list, NULL, "List flash areas", cmd_flash_map_list),
+	SHELL_CMD(list, NULL,
+		  SHELL_HELP("List flash areas", ""),
+		  cmd_flash_map_list),
 	SHELL_SUBCMD_SET_END /* Array terminated. */
 );
 
