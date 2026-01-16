@@ -1900,7 +1900,7 @@ void zperf_shell_init(void)
 #ifdef CONFIG_NET_ZPERF_SERVER
 
 SHELL_STATIC_SUBCMD_SET_CREATE(zperf_cmd_tcp_download,
-	SHELL_CMD(stop, NULL, "Stop TCP server\n", cmd_tcp_download_stop),
+	SHELL_CMD(stop, NULL, SHELL_HELP("Stop TCP server", ""), cmd_tcp_download_stop),
 	SHELL_SUBCMD_SET_END
 );
 
@@ -1908,68 +1908,16 @@ SHELL_STATIC_SUBCMD_SET_CREATE(zperf_cmd_tcp_download,
 
 SHELL_STATIC_SUBCMD_SET_CREATE(zperf_cmd_tcp,
 	SHELL_CMD(upload, NULL,
-		  "[<options>] <dest ip> <dest port> <duration> <packet size>[K]\n"
-		  "<options>     command options (optional): [-S tos -a]\n"
-		  "<dest ip>     IP destination\n"
-		  "<dest port>   port destination\n"
-		  "<duration>    of the test in seconds "
-							"(default " DEF_DURATION_SECONDS_STR ")\n"
-		  "<packet size> in byte or kilobyte "
-							"(with suffix K) "
-							"(default " DEF_PACKET_SIZE_STR ")\n"
-		  "Available options:\n"
-		  "-S tos: Specify IPv4/6 type of service\n"
-		  "-a: Asynchronous call (shell will not block for the upload)\n"
-		  "-i sec: Periodic reporting interval in seconds (async only)\n"
-		  "-n: Disable Nagle's algorithm\n"
-#ifdef CONFIG_ZPERF_SESSION_PER_THREAD
-		  "-t: Specify custom thread priority\n"
-		  "-w: Wait for start signal before starting the tests\n"
-#endif /* CONFIG_ZPERF_SESSION_PER_THREAD */
-#ifdef CONFIG_NET_CONTEXT_PRIORITY
-		  "-p: Specify custom packet priority\n"
-#endif /* CONFIG_NET_CONTEXT_PRIORITY */
-		  "Example: tcp upload 192.0.2.2 1111 1 1K\n"
-		  "Example: tcp upload 2001:db8::2\n",
+		  SHELL_HELP("Upload TCP data",
+			     "[<options>] <dest ip> <dest port> <duration> <packet size>[K]"),
 		  cmd_tcp_upload),
 	SHELL_CMD(upload2, NULL,
-		  "[<options>] v6|v4 <duration> <packet size>[K]\n"
-		  "<options>     command options (optional): [-S tos -a]\n"
-		  "<v6|v4>:      Use either IPv6 or IPv4\n"
-		  "<duration>    of the test in seconds "
-							"(default " DEF_DURATION_SECONDS_STR ")\n"
-		  "<packet size> in byte or kilobyte "
-							"(with suffix K) "
-							"(default " DEF_PACKET_SIZE_STR ")\n"
-		  "Available options:\n"
-		  "-S tos: Specify IPv4/6 type of service\n"
-		  "-a: Asynchronous call (shell will not block for the upload)\n"
-		  "-i sec: Periodic reporting interval in seconds (async only)\n"
-		  "-n: Disable Nagle's algorithm\n"
-#ifdef CONFIG_ZPERF_SESSION_PER_THREAD
-		  "-t: Specify custom thread priority\n"
-		  "-w: Wait for start signal before starting the tests\n"
-#endif /* CONFIG_ZPERF_SESSION_PER_THREAD */
-#ifdef CONFIG_NET_CONTEXT_PRIORITY
-		  "-p: Specify custom packet priority\n"
-#endif /* CONFIG_NET_CONTEXT_PRIORITY */
-		  "Example: tcp upload2 v6 1 1K\n"
-		  "Example: tcp upload2 v4\n"
-#if defined(CONFIG_NET_IPV6) && defined(MY_IP6ADDR_SET)
-		  "Default IPv6 address is " MY_IP6ADDR
-		  ", destination [" DST_IP6ADDR "]:" DEF_PORT_STR "\n"
-#endif
-#if defined(CONFIG_NET_IPV4) && defined(MY_IP4ADDR_SET)
-		  "Default IPv4 address is " MY_IP4ADDR
-		  ", destination " DST_IP4ADDR ":" DEF_PORT_STR "\n"
-#endif
-		  ,
+		  SHELL_HELP("Upload TCP data with default address",
+			     "[<options>] v6|v4 <duration> <packet size>[K]"),
 		  cmd_tcp_upload2),
 #ifdef CONFIG_NET_ZPERF_SERVER
 	SHELL_CMD(download, &zperf_cmd_tcp_download,
-		  "[<port>]:  Server port to listen on/connect to\n"
-		  "[<host>]:  Bind to <host>, an interface address\n"
-		  "Example: tcp download 5001 192.168.0.1\n",
+		  SHELL_HELP("Start TCP server", "[<port>] [<host>]"),
 		  cmd_tcp_download),
 #endif
 	SHELL_SUBCMD_SET_END
@@ -1977,113 +1925,53 @@ SHELL_STATIC_SUBCMD_SET_CREATE(zperf_cmd_tcp,
 
 #ifdef CONFIG_NET_ZPERF_SERVER
 SHELL_STATIC_SUBCMD_SET_CREATE(zperf_cmd_udp_download,
-	SHELL_CMD(stop, NULL, "Stop UDP server\n", cmd_udp_download_stop),
+	SHELL_CMD(stop, NULL, SHELL_HELP("Stop UDP server", ""), cmd_udp_download_stop),
 	SHELL_SUBCMD_SET_END
 );
 #endif
 
 SHELL_STATIC_SUBCMD_SET_CREATE(zperf_cmd_udp,
 	SHELL_CMD(upload, NULL,
-		  "[<options>] <dest ip> [<dest port> <duration> <packet size>[K] "
-							"<baud rate>[K|M]]\n"
-		  "<options>     command options (optional): [-S tos -a]\n"
-		  "<dest ip>     IP destination\n"
-		  "<dest port>   port destination\n"
-		  "<duration>    of the test in seconds "
-							"(default " DEF_DURATION_SECONDS_STR ")\n"
-		  "<packet size> in byte or kilobyte "
-							"(with suffix K) "
-							"(default " DEF_PACKET_SIZE_STR ")\n"
-		  "<baud rate>   in kilobyte or megabyte "
-							"(default " DEF_RATE_KBPS_STR "K)\n"
-		  "Available options:\n"
-		  "-S tos: Specify IPv4/6 type of service\n"
-		  "-a: Asynchronous call (shell will not block for the upload)\n"
-#ifdef CONFIG_ZPERF_SESSION_PER_THREAD
-		  "-t: Specify custom thread priority\n"
-		  "-w: Wait for start signal before starting the tests\n"
-#endif /* CONFIG_ZPERF_SESSION_PER_THREAD */
-#ifdef CONFIG_NET_CONTEXT_PRIORITY
-		  "-p: Specify custom packet priority\n"
-#endif /* CONFIG_NET_CONTEXT_PRIORITY */
-		  "-I: Specify host interface name\n"
-		  "Example: udp upload 192.0.2.2 1111 1 1K 1M\n"
-		  "Example: udp upload 2001:db8::2\n",
+		  SHELL_HELP("Upload UDP data",
+			     "[<options>] <dest ip> [<dest port> <duration> <packet size>[K] <baud rate>[K|M]]"),
 		  cmd_udp_upload),
 	SHELL_CMD(upload2, NULL,
-		  "[<options>] v6|v4 [<duration> <packet size>[K] <baud rate>[K|M]]\n"
-		  "<options>     command options (optional): [-S tos -a]\n"
-		  "<v6|v4>:      Use either IPv6 or IPv4\n"
-		  "<duration>    of the test in seconds "
-							"(default " DEF_DURATION_SECONDS_STR ")\n"
-		  "<packet size> in byte or kilobyte "
-							"(with suffix K) "
-							"(default " DEF_PACKET_SIZE_STR ")\n"
-		  "<baud rate>   in kilobyte or megabyte "
-							"(default " DEF_RATE_KBPS_STR "K)\n"
-		  "Available options:\n"
-		  "-S tos: Specify IPv4/6 type of service\n"
-		  "-a: Asynchronous call (shell will not block for the upload)\n"
-#ifdef CONFIG_ZPERF_SESSION_PER_THREAD
-		  "-t: Specify custom thread priority\n"
-		  "-w: Wait for start signal before starting the tests\n"
-#endif /* CONFIG_ZPERF_SESSION_PER_THREAD */
-#ifdef CONFIG_NET_CONTEXT_PRIORITY
-		  "-p: Specify custom packet priority\n"
-#endif /* CONFIG_NET_CONTEXT_PRIORITY */
-		  "-I: Specify host interface name\n"
-		  "Example: udp upload2 v4 1 1K 1M\n"
-		  "Example: udp upload2 v6\n"
-#if defined(CONFIG_NET_IPV6) && defined(MY_IP6ADDR_SET)
-		  "Default IPv6 address is " MY_IP6ADDR
-		  ", destination [" DST_IP6ADDR "]:" DEF_PORT_STR "\n"
-#endif
-#if defined(CONFIG_NET_IPV4) && defined(MY_IP4ADDR_SET)
-		  "Default IPv4 address is " MY_IP4ADDR
-		  ", destination " DST_IP4ADDR ":" DEF_PORT_STR "\n"
-#endif
-		  ,
+		  SHELL_HELP("Upload UDP data with default address",
+			     "[<options>] v6|v4 [<duration> <packet size>[K] <baud rate>[K|M]]"),
 		  cmd_udp_upload2),
 #ifdef CONFIG_NET_ZPERF_SERVER
 	SHELL_CMD(download, &zperf_cmd_udp_download,
-		  "[<options>] command options (optional): [-I eth0]\n"
-		  "[<port>]:  Server port to listen on/connect to\n"
-		  "[<host>]:  Bind to <host>, an interface address\n"
-		  "Available options:\n"
-		  "-I <interface name>: Specify host interface name\n"
-		  "Example: udp download 5001 192.168.0.1\n",
+		  SHELL_HELP("Start UDP server", "[<options>] [<port>] [<host>]"),
 		  cmd_udp_download),
 #endif
 	SHELL_SUBCMD_SET_END
 );
 
 SHELL_STATIC_SUBCMD_SET_CREATE(zperf_cmd_jobs,
-	SHELL_CMD(all, NULL, "Show all statistics", cmd_jobs_all),
-	SHELL_CMD(clear, NULL, "Clear all statistics", cmd_jobs_clear),
-	SHELL_CMD(start, NULL, "Start waiting jobs", cmd_jobs_start),
+	SHELL_CMD(all, NULL, SHELL_HELP("Show all statistics", ""), cmd_jobs_all),
+	SHELL_CMD(clear, NULL, SHELL_HELP("Clear all statistics", ""), cmd_jobs_clear),
+	SHELL_CMD(start, NULL, SHELL_HELP("Start waiting jobs", ""), cmd_jobs_start),
+	SHELL_SUBCMD_SET_END
 );
 
 SHELL_STATIC_SUBCMD_SET_CREATE(zperf_commands,
 	SHELL_CMD(connectap, NULL,
-		  "Connect to AP",
+		  SHELL_HELP("Connect to AP", ""),
 		  cmd_connectap),
 	SHELL_CMD(jobs, &zperf_cmd_jobs,
-		  "Show currently active tests",
+		  SHELL_HELP("Show currently active tests", "<subcommand>"),
 		  cmd_jobs),
 	SHELL_CMD(setip, NULL,
-		  "Set IP address\n"
-		  "<my ip> <prefix len>\n"
-		  "Example setip 2001:db8::2 64\n"
-		  "Example setip 192.0.2.2\n",
+		  SHELL_HELP("Set IP address", "<my ip> [<prefix len>]"),
 		  cmd_setip),
 	SHELL_CMD(tcp, &zperf_cmd_tcp,
-		  "Upload/Download TCP data",
+		  SHELL_HELP("Upload/Download TCP data", "<subcommand>"),
 		  cmd_tcp),
 	SHELL_CMD(udp, &zperf_cmd_udp,
-		  "Upload/Download UDP data",
+		  SHELL_HELP("Upload/Download UDP data", "<subcommand>"),
 		  cmd_udp),
 	SHELL_CMD(version, NULL,
-		  "Zperf version",
+		  SHELL_HELP("Zperf version", ""),
 		  cmd_version),
 	SHELL_SUBCMD_SET_END
 );

@@ -841,23 +841,22 @@ cleanup:
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(tls_cred_buf_cmds,
-	SHELL_CMD(clear, NULL, "Clear the credential buffer", tls_cred_cmd_buf_clear),
-	SHELL_CMD(load, NULL, "Load credential directly to buffer so it can be added.",
+	SHELL_CMD(clear, NULL, SHELL_HELP("Clear the credential buffer", ""), tls_cred_cmd_buf_clear),
+	SHELL_CMD(load, NULL, SHELL_HELP("Load credential directly to buffer so it can be added", ""),
 		      tls_cred_cmd_buf_load),
 	SHELL_SUBCMD_SET_END
 );
 
 SHELL_STATIC_SUBCMD_SET_CREATE(tls_cred_cmds,
-	SHELL_CMD_ARG(buf, &tls_cred_buf_cmds, "Buffer in credential data so it can be added.",
+	SHELL_CMD_ARG(buf, &tls_cred_buf_cmds, SHELL_HELP("Buffer in credential data so it can be added", "<subcommand>"),
 		      tls_cred_cmd_buf, 2, 0),
-	SHELL_CMD_ARG(add, NULL, "Add a TLS credential.",
+	SHELL_CMD_ARG(add, NULL, SHELL_HELP("Add a TLS credential", "<sectag> <type_str> [<buf_size>]"),
 		      tls_cred_cmd_add, 5, 1),
-	SHELL_CMD_ARG(del, NULL, "Delete a TLS credential.",
+	SHELL_CMD_ARG(del, NULL, SHELL_HELP("Delete a TLS credential", "<sectag> <type_str>"),
 		      tls_cred_cmd_del, 3, 0),
-	SHELL_CMD_ARG(get, NULL, "Retrieve the contents of a TLS credential",
+	SHELL_CMD_ARG(get, NULL, SHELL_HELP("Retrieve the contents of a TLS credential", "<sectag> <type_str> [<outfile>]"),
 		      tls_cred_cmd_get, 4, 0),
-	SHELL_CMD_ARG(list, NULL, "List stored TLS credentials, optionally filtering by type "
-				  "or sectag.",
+	SHELL_CMD_ARG(list, NULL, SHELL_HELP("List stored TLS credentials", "[<type_str> | <sectag>]"),
 		      tls_cred_cmd_list, 1, 2),
 	SHELL_SUBCMD_SET_END
 );

@@ -913,26 +913,26 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_fs_mount,
 #endif
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_fs,
-	SHELL_CMD(cd, NULL, "Change working directory", cmd_cd),
-	SHELL_CMD(ls, NULL, "List files in current directory", cmd_ls),
-	SHELL_CMD_ARG(mkdir, NULL, "Create directory", cmd_mkdir, 2, 0),
+	SHELL_CMD(cd, NULL, SHELL_HELP("Change working directory", ""), cmd_cd),
+	SHELL_CMD(ls, NULL, SHELL_HELP("List files in current directory", ""), cmd_ls),
+	SHELL_CMD_ARG(mkdir, NULL, SHELL_HELP("Create directory", "<directory>"), cmd_mkdir, 2, 0),
 #ifdef CONFIG_FILE_SYSTEM_SHELL_MOUNT_COMMAND
 	SHELL_CMD(mount, &sub_fs_mount,
-		  "<Mount fs, syntax:- fs mount <fs type> <mount-point>", NULL),
+		  SHELL_HELP("Mount fs", "<fs type> <mount-point>"), NULL),
 #endif
-	SHELL_CMD(pwd, NULL, "Print current working directory", cmd_pwd),
-	SHELL_CMD_ARG(read, NULL, "Read from file", cmd_read, 2, 255),
+	SHELL_CMD(pwd, NULL, SHELL_HELP("Print current working directory", ""), cmd_pwd),
+	SHELL_CMD_ARG(read, NULL, SHELL_HELP("Read from file", "<file> [count] [offset]"), cmd_read, 2, 255),
 	SHELL_CMD_ARG(cat, NULL,
-		"Concatenate files and print on the standard output",
+		SHELL_HELP("Concatenate files and print on the standard output", "<file> [files...]"),
 		cmd_cat, 2, 255),
-	SHELL_CMD_ARG(rm, NULL, "Remove file", cmd_rm, 2, 0),
-	SHELL_CMD_ARG(cp, NULL, "Copy file", cmd_cp, 3, 0),
-	SHELL_CMD_ARG(statvfs, NULL, "Show file system state", cmd_statvfs, 2, 0),
-	SHELL_CMD_ARG(trunc, NULL, "Truncate file", cmd_trunc, 2, 255),
-	SHELL_CMD_ARG(write, NULL, "Write file", cmd_write, 3, 255),
+	SHELL_CMD_ARG(rm, NULL, SHELL_HELP("Remove file", "<file>"), cmd_rm, 2, 0),
+	SHELL_CMD_ARG(cp, NULL, SHELL_HELP("Copy file", "<source> <destination>"), cmd_cp, 3, 0),
+	SHELL_CMD_ARG(statvfs, NULL, SHELL_HELP("Show file system state", "<path>"), cmd_statvfs, 2, 0),
+	SHELL_CMD_ARG(trunc, NULL, SHELL_HELP("Truncate file", "<file> [length]"), cmd_trunc, 2, 255),
+	SHELL_CMD_ARG(write, NULL, SHELL_HELP("Write file", "<file> [-o <offset>] <hex data...>"), cmd_write, 3, 255),
 #ifdef CONFIG_FILE_SYSTEM_SHELL_TEST_COMMANDS
-	SHELL_CMD_ARG(read_test, NULL, "Read file test", cmd_read_test, 2, 2),
-	SHELL_CMD_ARG(erase_write_test, NULL, "Erase/write file test", cmd_erase_write_test, 3, 3),
+	SHELL_CMD_ARG(read_test, NULL, SHELL_HELP("Read file test", "<path> <repeat>"), cmd_read_test, 2, 2),
+	SHELL_CMD_ARG(erase_write_test, NULL, SHELL_HELP("Erase/write file test", "<path> <size> <repeat>"), cmd_erase_write_test, 3, 3),
 #endif
 	SHELL_SUBCMD_SET_END
 );
