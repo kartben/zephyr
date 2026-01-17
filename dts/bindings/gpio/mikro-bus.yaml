@@ -20,7 +20,7 @@ description: |
                             Reset - RST    INT - Hardware Interrupt
                   SPI Chip Select - CS      RX - UART Receive
                         SPI Clock - SCK     TX - UART Transmit
-    SPI Master Input Slave Output - MISO   SCL - I2C Clock
+    SPI Controller Input Peripheral Output - MISO   SCL - I2C Clock
     SPI Master Output Slave Input - MOSI   SDA - I2C Data
                    VCC-3.3V power - +3.3V  +5V - VCC-5V power
                  Reference Ground - GND    GND - Reference Ground

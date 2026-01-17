@@ -17,12 +17,12 @@ properties:
   mosi-gpios:
     type: phandle-array
     description: |
-      Output pin for Master Out Slave In.
+      Output pin for Controller Out Peripheral In.
 
   miso-gpios:
     type: phandle-array
     description: |
-      Input pin for Master In Slave Out.
+      Input pin for Controller In Peripheral Out.
 
   sio-gpios:
     type: phandle-array

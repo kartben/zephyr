@@ -128,7 +128,7 @@ static void omap_mcspi_set_mode(const struct device *dev, bool is_peripheral)
 	/* disable system test mode */
 	modulctrl &= ~(OMAP_MCSPI_MODULCTRL_SYSTEST);
 
-	/* set controller or peripheral (master/slave) */
+	/* set controller or peripheral mode */
 	if (is_peripheral) {
 		modulctrl |= OMAP_MCSPI_MODULCTRL_MS;
 	} else {

@@ -427,7 +427,7 @@ static int spi_cdns_configure(const struct device *dev, const struct spi_config 
 
 	conf_val = SPI_CONF_PCSL_MASK | SPI_CONF_MCSE;
 
-	/* Configure for Master or Slave */
+	/* Configure for Controller or Peripheral */
 	if (config->operation & SPI_OP_MODE_SLAVE) {
 		conf_val &= ~(SPI_CONF_MSEL);
 	} else {

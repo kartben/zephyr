@@ -214,7 +214,7 @@ static int spi_mcux_configure(const struct device *dev,
 	}
 
 	/*
-	 * Do master or slave initialisation, depending on the
+	 * Do controller or peripheral initialisation, depending on the
 	 * mode requested.
 	 */
 	if (SPI_OP_MODE_GET(spi_cfg->operation) == SPI_OP_MODE_MASTER) {

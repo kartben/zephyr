@@ -249,7 +249,7 @@ static int spi_bflb_configure(const struct device *dev, const struct spi_config 
 	}
 
 	tmp = sys_read32(cfg->base + SPI_CONFIG_OFFSET);
-	/* detrigger SPI slave and master*/
+	/* detrigger SPI peripheral and controller*/
 	tmp &= ~SPI_CR_SPI_S_EN;
 	tmp &= ~SPI_CR_SPI_M_EN;
 
@@ -321,7 +321,7 @@ static int spi_bflb_configure(const struct device *dev, const struct spi_config 
 	} else if (framesize == 32) {
 		tmp |= 3 << SPI_CR_SPI_FRAME_SIZE_SHIFT;
 	}
-	/* detrigger SPI slave and master*/
+	/* detrigger SPI peripheral and controller*/
 	tmp &= ~SPI_CR_SPI_S_EN;
 	tmp &= ~SPI_CR_SPI_M_EN;
 
@@ -496,7 +496,7 @@ static int spi_bflb_deinit(const struct device *dev)
 	uint32_t tmp;
 
 	tmp = sys_read32(cfg->base + SPI_CONFIG_OFFSET);
-	/* detrigger SPI slave and master*/
+	/* detrigger SPI peripheral and controller*/
 	tmp &= ~SPI_CR_SPI_S_EN;
 	tmp &= ~SPI_CR_SPI_M_EN;
 	sys_write32(tmp, cfg->base + SPI_CONFIG_OFFSET);

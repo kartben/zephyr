@@ -190,7 +190,7 @@ static int xlnx_quadspi_configure(const struct device *dev,
 	/* Reset FIFOs, SPI IOs enabled */
 	spicr = SPICR_TX_FIFO_RESET | SPICR_RX_FIFO_RESET | SPICR_SPE;
 
-	/* Master mode, inhibit master transmit, manual slave select */
+	/* Controller mode, inhibit controller transmit, manual peripheral select */
 	if (!IS_ENABLED(CONFIG_SPI_SLAVE) ||
 	    (spi_cfg->operation & SPI_OP_MODE_SLAVE) == 0U) {
 		spicr |= SPICR_MASTER | SPICR_MASTER_XFER_INH | SPICR_MANUAL_SS;

@@ -317,7 +317,7 @@ static int ifx_cat1_spi_init(const struct device *dev)
 		return ret;
 	}
 
-	/* Configure slave select (master) */
+	/* Configure peripheral select (controller) */
 	spi_context_cs_configure_all(&data->ctx);
 
 	spi_context_unlock_unconditionally(&data->ctx);

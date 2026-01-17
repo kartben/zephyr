@@ -443,7 +443,7 @@ struct spi_config {
 	 *
 	 * It is a bit field with the following parts:
 	 *
-	 * - 0:      Master or slave.
+	 * - 0:      Controller or peripheral.
 	 * - 1..3:   Clock polarity, phase and loop mode.
 	 * - 4:      LSB or MSB first.
 	 * - 5..10:  Size of a data frame (word) in bits.
