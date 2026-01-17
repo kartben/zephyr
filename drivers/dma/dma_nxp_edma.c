@@ -60,7 +60,7 @@ static void edma_isr(const void *parameter)
 		}
 	}
 
-	/* TODO: are there any sanity checks we have to perform before invoking
+	/* TODO: are there any validation checks we have to perform before invoking
 	 * the registered callback?
 	 */
 	if (chan->cb) {

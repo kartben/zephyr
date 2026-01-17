@@ -4271,7 +4271,7 @@ static enum net_verdict tcp_input(struct net_conn *net_conn,
 			conn = context->tcp;
 			tcp_endpoint_set(&conn->dst, pkt, TCP_EP_SRC);
 			tcp_endpoint_set(&conn->src, pkt, TCP_EP_DST);
-			/* Make an extra reference, the sanity check suite
+			/* Make an extra reference, the validation check suite
 			 * will delete the connection explicitly
 			 */
 			tcp_conn_ref(conn);
@@ -4784,7 +4784,7 @@ void net_tcp_init(void)
 	int i;
 	int rto;
 #if defined(CONFIG_NET_TEST_PROTOCOL)
-	/* Register inputs for TTCN-3 based TCP sanity check */
+	/* Register inputs for TTCN-3 based TCP validation check */
 	test_cb_register(NET_AF_INET,  NET_NET_SOCK_STREAM, NET_IPPROTO_TCP,
 			 4242, 4242, tcp_input);
 	test_cb_register(NET_AF_INET6, NET_NET_SOCK_STREAM, NET_IPPROTO_TCP,

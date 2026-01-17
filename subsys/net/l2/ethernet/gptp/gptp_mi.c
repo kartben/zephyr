@@ -2022,7 +2022,7 @@ void gptp_mi_state_machines(void)
 	 * not grand-master capable. Current implementation of ClockMasterSyncSend
 	 * state machine send sync indication to the PortSync entities, instead of
 	 * sending it to the SiteSyncSync entity. And the SiteSyncSync state machine
-	 * does not make sanity check.
+	 * does not make validation check.
 	 */
 	if (memcmp(GPTP_GLOBAL_DS()->gm_priority.root_system_id.grand_master_id,
 			   GPTP_DEFAULT_DS()->clk_id, GPTP_CLOCK_ID_LEN) == 0 &&

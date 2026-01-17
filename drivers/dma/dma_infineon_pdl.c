@@ -423,7 +423,7 @@ static uint32_t get_transferred_size(const struct device *dev, uint32_t channel)
 	cy_stc_dma_descriptor_t *curr_descr =
 		Cy_DMA_Channel_GetCurrentDescriptor(cfg->regs, channel);
 
-	/* Sanity */
+	/* Validation */
 	if (next_descr == NULL || curr_descr == NULL) {
 		return 0;
 	}

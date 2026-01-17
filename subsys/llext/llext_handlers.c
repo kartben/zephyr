@@ -49,7 +49,7 @@ ssize_t z_impl_llext_get_fn_table(struct llext *ext, bool is_init, void *buf, si
 			       ext->mem[LLEXT_MEM_FINI], ext->mem_size[LLEXT_MEM_FINI]);
 		}
 
-		/* Sanity check: pointers in this table must map inside the
+		/* Validation check: pointers in this table must map inside the
 		 * text region of the extension. If this fails, something went
 		 * wrong during the relocation process.
 		 * Using "char *" for these simplifies pointer arithmetic.
