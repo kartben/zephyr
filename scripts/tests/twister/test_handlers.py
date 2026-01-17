@@ -1470,7 +1470,7 @@ def test_devicehandler_handle(
 
     harness = mock.Mock()
 
-    openpty_mock = mock.Mock(return_value=('master', 'slave'))
+    openpty_mock = mock.Mock(return_value=('controller', 'peripheral'))
     ttyname_mock = mock.Mock(side_effect=lambda x: x + ' name')
 
     with mock.patch('builtins.open', mock.mock_open(read_data='')), \
