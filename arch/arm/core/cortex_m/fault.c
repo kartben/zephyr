@@ -404,7 +404,7 @@ static int bus_fault(struct arch_esf *esf, int from_hard_fault, bool *recoverabl
 			PR_FAULT_INFO("    Mode: %s, %s Address: 0x%x",
 				      edr & BIT(2) ? "Supervisor" : "User",
 				      edr & BIT(1) ? "Data" : "Instruction", ear);
-			PR_FAULT_INFO("    Type: %s, Master: %d, Regions: 0x%x",
+			PR_FAULT_INFO("    Type: %s, Bus controller: %d, Regions: 0x%x",
 				      edr & BIT(0) ? "Write" : "Read", EMN(edr), EACD(edr));
 
 			/* When stack protection is enabled, we need to assess
