@@ -6,7 +6,7 @@
 # pylint: disable=unused-import
 #
 # Set of code that other projects can also import to do things on
-# Zephyr's sanity check testcases.
+# Zephyr's validation check testcases.
 
 import logging
 import yaml

@@ -114,7 +114,7 @@
 	enet1g_phy: phy@f {
 		compatible = "nxp,tja1103";
 		reg = <0xf>;
-		master-slave = "master";
+		primary-secondary = "master";
 	};
 };
 

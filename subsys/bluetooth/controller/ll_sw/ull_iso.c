@@ -742,7 +742,7 @@ static isoal_status_t ll_iso_test_sdu_emit(const struct isoal_sink             *
 	/* In BT_HCI_ISO_TEST_ZERO_SIZE_SDU mode, all SDUs must have length 0 and there is
 	 * no sdu_counter field. In the other modes, the first 4 bytes must contain a
 	 * packet counter, which is used as SDU counter. The sdu_counter is extracted
-	 * regardless of mode as a sanity check, unless the length does not allow it.
+	 * regardless of mode as a validation check, unless the length does not allow it.
 	 */
 	if (length >= ISO_TEST_PACKET_COUNTER_SIZE) {
 		sdu_counter = sys_get_le32(buf->data);

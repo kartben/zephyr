@@ -102,7 +102,7 @@
 #define UART_GECKO_HW_FLOW_CONTROL
 #endif
 
-/* Sanity check for hardware flow control */
+/* Validation check for hardware flow control */
 #if defined(UART_GECKO_HW_FLOW_CONTROL) &&				\
 	(!(defined(HW_FLOWCONTROL_IS_SUPPORTED_BY_SOC)))
 #error "Hardware flow control is activated for at least one UART/USART,	\

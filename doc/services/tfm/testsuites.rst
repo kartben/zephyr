@@ -15,7 +15,7 @@ TF-M Regression Tests
 The regression test suite can be run via the :ref:`tfm_regression_test` sample.
 
 This sample tests various services and communication mechanisms across the
-NS/S boundary via the PSA APIs. They provide a useful sanity check for proper
+NS/S boundary via the PSA APIs. They provide a useful validation check for proper
 integration between the NS RTOS (Zephyr in this case) and the secure
 application (TF-M).
 

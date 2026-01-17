@@ -12,7 +12,7 @@
  * |--------------------------------------------------------------------------|
  * | VW idx | SLV reg | Wire Bit 3   | Wire Bit 2   | Wire Bit 1| Wire Bit 0  |
  * |--------------------------------------------------------------------------|
- * |       Output (Slave-to-Master) Virtual Wires (High at reset state)       |
+ * |       Output (Target-to-Controller) Virtual Wires (High at reset state)       |
  * |--------------------------------------------------------------------------|
  * | 50h[P] | VWGPSM0 | SLV_GPIO_3   | SLV_GPIO_2   | SLV_GPIO_1| SLV_GPIO_0  |
  * | 51h[P] | VWGPSM1 | SLV_GPIO_7   | SLV_GPIO_6   | SLV_GPIO_5| SLV_GPIO_4  |

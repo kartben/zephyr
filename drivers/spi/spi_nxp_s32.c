@@ -298,7 +298,7 @@ static int spi_nxp_s32_configure(const struct device *dev,
 	cs_active_high	= !!(spi_cfg->operation & SPI_CS_ACTIVE_HIGH);
 
 	if (slave_mode == (!!(config->spi_hw_cfg->Mcr & SPI_MCR_MSTR_MASK))) {
-		LOG_ERR("SPI mode (master/slave) must be same as configured in DT");
+		LOG_ERR("SPI mode (controller/peripheral) must be same as configured in DT");
 		return -ENOTSUP;
 	}
 

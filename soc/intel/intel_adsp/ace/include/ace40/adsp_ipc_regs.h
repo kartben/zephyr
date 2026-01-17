@@ -53,7 +53,7 @@ struct intel_adsp_ipc {
  * @brief ACE SoC family Intra DSP Communication.
  *
  * ACE SoC platform family provides an array of IPC endpoints to be used for
- * peer-to-peer communication between DSP cores - master to slave and backwards.
+ * peer-to-peer communication between DSP cores - initiator to target and backwards.
  * Given endpoint can be accessed by:
  * @code
  * IDC[slave_core_id].agents[agent_id].ipc;
@@ -63,7 +63,7 @@ struct ace_idc {
 	/**
 	 * @brief IPC Agent Endpoints.
 	 *
-	 * Each connection is organized into two "agents" ("A" - master core and "B" - slave core).
+	 * Each connection is organized into two "agents" ("A" - initiator core and "B" - target core).
 	 * Each agent is wired to its own interrupt.
 	 * Agents array represents mutually exclusive IPC endpoint access:
 	 * (A=1/B=0) - agents[0].

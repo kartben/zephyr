@@ -29,7 +29,7 @@ config I2S_SAM_SSC_0_PIN_RF_EN
 	help
 	  If enabled RF signal is connected to RF pin. It will be configured as
 	  an output or an input depending on whether the receiver is working
-	  in master or slave mode.
+	  in controller or peripheral mode.
 
 	  If disabled RF signal is disconnected from RF pin and connected
 	  internally to TF (Transmitter Frame Synchro signal).
@@ -40,7 +40,7 @@ config I2S_SAM_SSC_0_PIN_RK_EN
 	help
 	  If enabled RK signal is connected to RK pin. It will be configured as
 	  an output or an input depending on whether the receiver is working
-	  in master or slave mode.
+	  in controller or peripheral mode.
 
 	  If disabled RK signal is disconnected from RK pin and connected
 	  internally to TK (Transmitter Clock signal).

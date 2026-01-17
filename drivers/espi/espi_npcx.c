@@ -141,7 +141,7 @@ struct espi_bus_isr {
 	.wake_en_bit = NPCX_ESPIWE_##event##WE,  \
 	.bus_isr = isr }
 
-/* eSPI Virtual Wire Input (Master-to-Slave) signals configuration structure */
+/* eSPI Virtual Wire Input (Controller-to-Target) signals configuration structure */
 struct npcx_vw_in_config {
 	enum espi_vwire_signal sig; /* Virtual Wire signal */
 	uint8_t  reg_idx; /* register index for VW signal */
@@ -149,7 +149,7 @@ struct npcx_vw_in_config {
 	struct npcx_wui vw_wui; /* WUI mapping in MIWU modules for VW signal */
 };
 
-/* eSPI Virtual Wire Output (Slave-to-Master) signals configuration structure */
+/* eSPI Virtual Wire Output (Target-to-Controller) signals configuration structure */
 struct npcx_vw_out_config {
 	enum espi_vwire_signal sig; /* Virtual Wire signal */
 	uint8_t  reg_idx; /* register index for VW signal */

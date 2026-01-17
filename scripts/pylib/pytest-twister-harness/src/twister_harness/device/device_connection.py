@@ -255,7 +255,7 @@ class SerialConnection(DeviceConnection):
             return None
 
         try:
-            master, slave = pty.openpty()
+            controller, peripheral = pty.openpty()
         except NameError as exc:
             logger.exception('PTY module is not available.')
             raise exc

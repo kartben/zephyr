@@ -442,7 +442,7 @@ int llext_link(struct llext_loader *ldr, struct llext *ext, const struct llext_l
 
 		if (shdr->sh_info >= ext->sect_cnt ||
 		    shdr->sh_size % shdr->sh_entsize != 0) {
-			LOG_ERR("Sanity checks failed for section %d "
+			LOG_ERR("Validation checks failed for section %d "
 				"(info %zd, size %zd, entsize %zd)", i,
 				(size_t)shdr->sh_info,
 				(size_t)shdr->sh_size,

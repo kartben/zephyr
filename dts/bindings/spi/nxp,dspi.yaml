@@ -45,7 +45,7 @@ properties:
   ctar:
     type: int
     description: |
-      ctar register selection range form 0-1 for master mode, 0 for slave mode
+      ctar register selection range form 0-1 for controller mode, 0 for peripheral mode
 
   sample-point:
     type: int

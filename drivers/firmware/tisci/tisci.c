@@ -146,7 +146,7 @@ static int tisci_get_response(const struct device *dev, struct tisci_xfer *xfer)
 	memcpy(xfer->rx_message.buf, data->rx_message.buf, xfer->rx_message.size);
 	hdr = (struct tisci_msg_hdr *)xfer->rx_message.buf;
 
-	/* Sanity check for message response */
+	/* Validation check for message response */
 	if (hdr->seq != data->seq) {
 		LOG_ERR("HDR seq != data seq [%d != %d]\n", hdr->seq, data->seq);
 		return -EINVAL;

@@ -593,13 +593,13 @@ struct espi_reg {
 	/* 0x0F1: NPCX specific eSPI Register2 */
 	volatile uint8_t NPCX_ONLY_ESPI_REG2;
 	volatile uint16_t reserved3[7];
-	/* 0x100 - 127: Virtual Wire Event Slave-to-Master 0 - 9 */
+	/* 0x100 - 127: Virtual Wire Event Target-to-Controller 0 - 9 */
 	volatile uint32_t VWEVSM[10];
 	volatile uint32_t reserved4[6];
-	/* 0x140 - 16F: Virtual Wire Event Master-to-Slave 0 - 11 */
+	/* 0x140 - 16F: Virtual Wire Event Controller-to-Target 0 - 11 */
 	volatile uint32_t VWEVMS[12];
 	volatile uint32_t reserved5[4];
-	/* 0x180 - 1BF: Virtual Wire GPIO Event Master-to-Slave 0 - 15 */
+	/* 0x180 - 1BF: Virtual Wire GPIO Event Controller-to-Target 0 - 15 */
 	volatile uint32_t VWGPSM[16];
 	volatile uint32_t reserved6[79];
 	/* 0x2FC: Virtual Wire Channel Control */

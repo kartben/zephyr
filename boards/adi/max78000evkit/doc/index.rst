@@ -25,7 +25,7 @@ Hardware
     - 32-Bit RISC-V Coprocessor up to 60MHz
     - Up to 52 General-Purpose I/O Pins
     - 12-Bit Parallel Camera Interface
-    - One I2S Master/Slave for Digital Audio Interface
+    - One I2S Controller/Peripheral for Digital Audio Interface
 
   - Neural Network Accelerator
 

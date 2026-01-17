@@ -58,7 +58,7 @@ static int api_read_bit(const struct device *dev)
 	ret = MXC_OWM_ReadBit();
 	if (ret < 0) {
 		if (MXC_OWM_GetPresenceDetect() == 0) {
-			/* if no slave connected to the bus, read bits shall be logical ones */
+			/* if no target connected to the bus, read bits shall be logical ones */
 			ret = 1;
 		} else {
 			return -EIO;
@@ -75,7 +75,7 @@ static int api_write_bit(const struct device *dev, bool bit)
 	ret = MXC_OWM_WriteBit(bit);
 	if (ret < 0) {
 		if (MXC_OWM_GetPresenceDetect() == 0) {
-			/* if no slave connected to the bus, write shall success */
+			/* if no target connected to the bus, write shall success */
 			ret = 0;
 		} else {
 			return -EIO;
@@ -92,7 +92,7 @@ static int api_read_byte(const struct device *dev)
 	ret = MXC_OWM_ReadByte();
 	if (ret < 0) {
 		if (MXC_OWM_GetPresenceDetect() == 0) {
-			/* if no slave connected to the bus, read bits shall be logical ones */
+			/* if no target connected to the bus, read bits shall be logical ones */
 			ret = 0xff;
 		} else {
 			return -EIO;
@@ -109,7 +109,7 @@ static int api_write_byte(const struct device *dev, uint8_t byte)
 	ret = MXC_OWM_WriteByte(byte);
 	if (ret < 0) {
 		if (MXC_OWM_GetPresenceDetect() == 0) {
-			/* if no slave connected to the bus, write shall success */
+			/* if no target connected to the bus, write shall success */
 			ret = 0;
 		} else {
 			return -EIO;

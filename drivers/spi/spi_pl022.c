@@ -88,7 +88,7 @@ LOG_MODULE_REGISTER(spi_pl022);
 #define SSP_CR1_MASK_LBM SSP_MASK(CR1, LBM)
 /* Port Enable */
 #define SSP_CR1_MASK_SSE SSP_MASK(CR1, SSE)
-/* Controller/Peripheral (Master/Slave) select */
+/* Controller/Peripheral select */
 #define SSP_CR1_MASK_MS SSP_MASK(CR1, MS)
 /* Peripheral (Slave) mode output disabled */
 #define SSP_CR1_MASK_SOD SSP_MASK(CR1, SOD)

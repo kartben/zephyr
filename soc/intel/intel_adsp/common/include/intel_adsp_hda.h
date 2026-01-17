@@ -139,7 +139,7 @@ static inline void intel_adsp_hda_init(uint32_t base, uint32_t regblock_size, ui
 /**
  * @brief Set the buffer, size, and element size for an HDA stream
  *
- * Sanity checks that the buffer address and size are valid and that the
+ * Validation checks that the buffer address and size are valid and that the
  * stream isn't enabled or busy.
  *
  * Prior to enabling an HDA stream to/from the host this is the minimum configuration

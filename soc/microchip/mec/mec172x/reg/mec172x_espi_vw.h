@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-/* Master to Slave VW register: 96-bit (3 32 bit registers) */
+/* Controller to Target VW register: 96-bit (3 32 bit registers) */
 /* 32-bit word 0 (bits[31:0]) */
 #define ESPI_M2SW0_OFS			0u
 #define ESPI_M2SW0_IDX_POS		0
@@ -74,7 +74,7 @@
 #define ESPI_IRQ_SEL_FEDGE	0x0eu
 #define ESPI_IRQ_SEL_BEDGE	0x0fu
 
-/* Slave to Master VW register: 64-bit (2 32 bit registers) */
+/* Target to Controller VW register: 64-bit (2 32 bit registers) */
 /* 32-bit word 0 (bits[31:0]) */
 #define ESPI_S2MW0_OFS			0
 #define ESPI_S2MW0_IDX_POS		0
@@ -140,7 +140,7 @@
  */
 #define MEC_ESPI_MSVW_NUM_GIRQS     2u
 
-/* Master-to-Slave VW byte indices(offsets) */
+/* Controller-to-Target VW byte indices(offsets) */
 #define MSVW_INDEX_OFS		0u
 #define MSVW_MTOS_OFS		1u
 #define MSVW_SRC0_ISEL_OFS	4u
@@ -152,7 +152,7 @@
 #define MSVW_SRC2_OFS		10u
 #define MSVW_SRC3_OFS		11u
 
-/* Slave-to-Master VW byte indices(offsets) */
+/* Target-to-Controller VW byte indices(offsets) */
 #define SMVW_INDEX_OFS		0u
 #define SMVW_STOM_OFS		1u
 #define SMVW_CHANGED_OFS	2u
@@ -162,7 +162,7 @@
 #define SMVW_SRC3_OFS		7u
 
 
-/* Master-to-Slave Virtual Wire 96-bit register */
+/* Controller-to-Target Virtual Wire 96-bit register */
 #define MEC_MSVW_SRC0_IRQ_SEL_POS	0u
 #define MEC_MSVW_SRC1_IRQ_SEL_POS	8u
 #define MEC_MSVW_SRC2_IRQ_SEL_POS	16u
@@ -211,7 +211,7 @@
 #define MEC_MSVW_SRC_VAL(src, val)	\
 	((uint32_t)(val & 0x01u) << ((src) * 8u))
 
-/* Slave-to-Master Virtual Wire 64-bit register */
+/* Target-to-Controller Virtual Wire 64-bit register */
 
 /* MSVW helper inline functions */
 

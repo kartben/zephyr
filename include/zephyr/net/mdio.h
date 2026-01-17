@@ -142,7 +142,7 @@ enum mdio_opcode {
 #define MDIO_AN_T1_ADV_L_PAUSE_CAP	BIT(10)
 /** Pause Ability */
 #define MDIO_AN_T1_ADV_L_PAUSE_ASYM	BIT(11)
-/** Force Master/Slave Configuration */
+/** Force Primary/Secondary Configuration */
 #define MDIO_AN_T1_ADV_L_FORCE_MS	BIT(12)
 /** Remote Fault */
 #define MDIO_AN_T1_ADV_L_REMOTE_FAULT	BIT(13)
@@ -154,7 +154,7 @@ enum mdio_opcode {
 /* BASE-T1 Auto-negotiation Advertisement register [31:16] */
 /** 10BASE-T1L Ability */
 #define MDIO_AN_T1_ADV_M_B10L		BIT(14)
-/** Master/slave Configuration */
+/** Primary/secondary Configuration */
 #define MDIO_AN_T1_ADV_M_MST		BIT(4)
 
 /* BASE-T1 Auto-negotiation Advertisement register [47:32] */
@@ -164,7 +164,7 @@ enum mdio_opcode {
 #define MDIO_AN_T1_ADV_H_10L_TX_HI	BIT(13)
 
 /* BASE-T1 PMA/PMD control register */
-/** BASE-T1 master/slave configuration */
+/** BASE-T1 primary/secondary configuration */
 #define MDIO_PMA_PMD_BT1_CTRL_CFG_MST	BIT(14)
 
 

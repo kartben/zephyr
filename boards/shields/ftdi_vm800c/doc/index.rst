@@ -6,7 +6,7 @@ Overview
 
 The VM800C is a development module for FTDI’s FT800, which is used to develop
 and demonstrate the functionality of the FT800 Embedded Video Engine, EVE. This
-module behaves as an SPI slave, and requires a SPI Master for proper
+module behaves as an SPI slave, and requires a SPI Controller for proper
 microcontroller interfacing and system integration.
 
 .. image:: VM800C_top.jpg
@@ -41,9 +41,9 @@ Pins Assignment of the Arduino Shield Modules
 +---------+--------+-------------------------------------+
 |   D10   |  CS#   | SPI Chip Select                     |
 +---------+--------+-------------------------------------+
-|   D11   |  MOSI  | SPI Master Out / Slave In           |
+|   D11   |  MOSI  | SPI Controller Out / Peripheral In           |
 +---------+--------+-------------------------------------+
-|   D12   |  MISO  | SPI Master In / Slave Out           |
+|   D12   |  MISO  | SPI Controller In / Peripheral Out           |
 +---------+--------+-------------------------------------+
 |   D13   |  SCLK  | SPI Clock                           |
 +---------+--------+-------------------------------------+

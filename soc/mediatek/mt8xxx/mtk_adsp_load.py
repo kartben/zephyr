@@ -237,7 +237,7 @@ class Winstream:
         r.END = 0x08
         r.SEQ = 0x0C
         r.freeze()
-        # Sanity-check, the 32M size limit isn't a rule, but seems reasonable
+        # Validation check, the 32M size limit isn't a rule, but seems reasonable
         if r.WLEN > 0x2000000 or (r.START >= r.WLEN) or (r.END >= r.WLEN):
             raise RuntimeError("Invalid winstream")
         self.regs = r

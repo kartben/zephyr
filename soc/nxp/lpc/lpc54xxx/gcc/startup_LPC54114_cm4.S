@@ -57,18 +57,18 @@ get_current_core_id:
     bne     get_master_status
     mov     r4, r5                          /* Set flag for master core (1) */
 
-    /* Determine if M4 core is the master or slave */
+    /* Determine if M4 core is the primary or secondary */
     /* r3 = ((*cpu_ctrl) & 1); (0 == m0+, 1 == M4) */
 get_master_status:
     ldr     r0, [r6, #4]
     ldr     r3, [r0]                        /* r3 = SYSCON co-processor CPU control status */
 
-    ands    r3, r3, r5                      /* r3 = (Bit 0: 1 = M4 is master, 0 = M4 is slave) */
+    ands    r3, r3, r5                      /* r3 = (Bit 0: 1 = M4 is primary, 0 = M4 is secondary) */
 
     /* Select boot based on selected master core and core ID */
 
 select_boot:
-    eors    r3, r3, r4                      /* r4 = (Bit 0: 0 = master, 1 = slave) */
+    eors    r3, r3, r4                      /* r4 = (Bit 0: 0 = primary, 1 = secondary) */
 
     bne     slave_boot
     b       normal_boot
@@ -90,7 +90,7 @@ slave_boot:
     /* slave vector table in boot memory */
     bx      r2                              /* Jump to slave boot address */
 
-    /* Slave isn't yet setup for system boot from the master */
+    /* Secondary isn't yet setup for system boot from the primary */
     /* so sleep until the master sets it up and then reboots it */
 cpu_sleep:
     mov     sp, r5                          /* Will force exception if something happens */

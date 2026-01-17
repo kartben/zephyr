@@ -55,9 +55,9 @@ Pins Assignment of the RZ600 Module
 +---------+--------+-------------------------------------+
 |    5    |   CS   | SPI Chip Select                     |
 +---------+--------+-------------------------------------+
-|    6    |  MOSI  | SPI Master Out / Slave In           |
+|    6    |  MOSI  | SPI Controller Out / Peripheral In           |
 +---------+--------+-------------------------------------+
-|    7    |  MISO  | SPI Master In / Slave Out           |
+|    7    |  MISO  | SPI Controller In / Peripheral Out           |
 +---------+--------+-------------------------------------+
 |    8    |  SCLK  | SPI Clock                           |
 +---------+--------+-------------------------------------+
@@ -112,9 +112,9 @@ Pins Assignment of the REB233-XPRO Module
 +---------+--------+-------------------------------------+
 |   15    |   CS   | SPI Chip Select                     |
 +---------+--------+-------------------------------------+
-|   16    |  MOSI  | SPI Master Out / Slave In           |
+|   16    |  MOSI  | SPI Controller Out / Peripheral In           |
 +---------+--------+-------------------------------------+
-|   17    |  MISO  | SPI Master In / Slave Out           |
+|   17    |  MISO  | SPI Controller In / Peripheral Out           |
 +---------+--------+-------------------------------------+
 |   18    |  SCLK  | SPI Clock                           |
 +---------+--------+-------------------------------------+
@@ -159,9 +159,9 @@ Pins Assignment of the Arduino Shield Modules
 +---------+--------+-------------------------------------+
 |   D10   |   CS   | SPI Chip Select                     |
 +---------+--------+-------------------------------------+
-|   D11   |  MOSI  | SPI Master Out / Slave In           |
+|   D11   |  MOSI  | SPI Controller Out / Peripheral In           |
 +---------+--------+-------------------------------------+
-|   D12   |  MISO  | SPI Master In / Slave Out           |
+|   D12   |  MISO  | SPI Controller In / Peripheral Out           |
 +---------+--------+-------------------------------------+
 |   D13   |  SCLK  | SPI Clock                           |
 +---------+--------+-------------------------------------+
@@ -196,9 +196,9 @@ Pins Assignment of the MikroBus Shield Modules
 +---------+--------+-------------------------------------+
 |   SCK   |  SCLK  | SPI Clock                           |
 +---------+--------+-------------------------------------+
-|  MISO   |  MISO  | SPI Master In / Slave Out           |
+|  MISO   |  MISO  | SPI Controller In / Peripheral Out           |
 +---------+--------+-------------------------------------+
-|  MOSI   |  MOSI  | SPI Master Out / Slave In           |
+|  MOSI   |  MOSI  | SPI Controller Out / Peripheral In           |
 +---------+--------+-------------------------------------+
 | VCC-3.3 |  VDD   |  POWER +3.3V                        |
 +---------+--------+-------------------------------------+

@@ -11,7 +11,7 @@
  * |--------------------------------------------------------------------------|
  * | VW idx | SLV reg | Wire Bit 3   | Wire Bit 2   | Wire Bit 1| Wire Bit 0  |
  * |--------------------------------------------------------------------------|
- * |                 Input (Master-to-Slave) Virtual Wires                    |
+ * |                 Input (Controller-to-Target) Virtual Wires                    |
  * |--------------------------------------------------------------------------|
  * | 02h[S] | VWEVMS0 | Reserved     | SLP_S5#      | SLP_S4#   | SLP_S3#     |
  * | 03h[S] | VWEVMS1 | Reserved     | OOB_RST_WARN | PLTRST#   | SUS_STAT#   |
@@ -19,7 +19,7 @@
  * | 41h[P] | VWEVMS3 | SLP_A#       | Reserved     | SUS_PDNACK| SUS_WARN#   |
  * | 42h[P] | VWEVMS4 | Reserved     | Reserved     | SLP_WLAN# | SLP_LAN#    |
  * |--------------------------------------------------------------------------|
- * |                Output (Slave-to-Master) Virtual Wires                    |
+ * |                Output (Target-to-Controller) Virtual Wires                    |
  * |--------------------------------------------------------------------------|
  * | 04h[S] | VWEVSM0 | PME#         | WAKE#        | Reserved  | OOB_RST_ACK |
  * | 05h[S] | VWEVSM1 | SLV_BOOT_STS | ERR_NONFATAL | ERR_FATAL | SLV_BT_DONE |

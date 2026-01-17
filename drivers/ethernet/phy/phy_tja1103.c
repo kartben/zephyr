@@ -345,7 +345,7 @@ static int phy_tja1103_init(const struct device *dev)
 		return ret;
 	}
 
-	/* Change master/slave mode if need */
+	/* Change primary/secondary mode if need */
 	if (cfg->master_slave == MASTER_SLAVE_MASTER) {
 		val |= MDIO_PMA_PMD_BT1_CTRL_CFG_MST;
 	} else if (cfg->master_slave == MASTER_SLAVE_SLAVE) {

@@ -407,7 +407,7 @@ class Binding:
 
     def _check(self, require_compatible: bool, require_description: bool,
                require_title: bool):
-        # Does sanity checking on the binding.
+        # Does validation checking on the binding.
 
         raw = self.raw
 
@@ -3354,7 +3354,7 @@ def _slice(node: dtlib_Node,
 
 
 def _check_dt(dt: DT) -> None:
-    # Does devicetree sanity checks. dtlib is meant to be general and
+    # Does devicetree validation checks. dtlib is meant to be general and
     # anything-goes except for very special properties like phandle, but in
     # edtlib we can be pickier.
 

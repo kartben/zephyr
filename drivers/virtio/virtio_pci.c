@@ -522,7 +522,7 @@ static int virtio_pci_init_common(const struct device *dev)
 	/*
 	 * In case of PCI this should never happen because legacy device would've been caught
 	 * earlier in VIRTIO_PCI_CAP_COMMON_CFG check as this capability shouldn't be present
-	 * in legacy devices, but we are leaving it here as a sanity check
+	 * in legacy devices, but we are leaving it here as a validation check
 	 */
 	if (!virtio_pci_read_device_feature_bit(dev, VIRTIO_F_VERSION_1)) {
 		LOG_ERR(

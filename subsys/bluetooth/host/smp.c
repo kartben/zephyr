@@ -4131,7 +4131,7 @@ static uint8_t smp_id_add_replace(struct bt_smp *smp, struct bt_keys *new_bond)
 {
 	struct bt_keys *conflict;
 
-	/* Sanity check: It does not make sense to finalize a bond before we
+	/* Validation check: It does not make sense to finalize a bond before we
 	 * have the remote identity.
 	 */
 	__ASSERT_NO_MSG(!(smp->remote_dist & BT_SMP_DIST_ID_KEY));

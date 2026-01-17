@@ -240,7 +240,7 @@ static bool netkey_check(uint16_t net_idx1, uint16_t net_idx2)
 int bt_mesh_brg_cfg_tbl_add(uint8_t direction, uint16_t net_idx1, uint16_t net_idx2, uint16_t addr1,
 			    uint16_t addr2, uint8_t *status)
 {
-	/* Sanity checks */
+	/* Validation checks */
 	if (!BT_MESH_ADDR_IS_UNICAST(addr1) || net_idx1 == net_idx2 || addr1 == addr2 ||
 	    net_idx1 > BT_MESH_BRG_CFG_KEY_INDEX_MAX || net_idx2 > BT_MESH_BRG_CFG_KEY_INDEX_MAX) {
 		return -EINVAL;
@@ -321,7 +321,7 @@ int bt_mesh_brg_cfg_tbl_remove(uint16_t net_idx1, uint16_t net_idx2, uint16_t ad
 {
 	int first_removed = -1;
 
-	/* Sanity checks */
+	/* Validation checks */
 	if ((!BT_MESH_ADDR_IS_UNICAST(addr1) && addr1 != BT_MESH_ADDR_UNASSIGNED) ||
 	    (BT_MESH_ADDR_IS_UNICAST(addr1) && addr1 == addr2) || addr2 == BT_MESH_ADDR_ALL_NODES) {
 		return -EINVAL;

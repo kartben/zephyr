@@ -38,7 +38,7 @@ extern "C" {
 /*
  * Count the number of slaves expected on the bus.
  * This can be used to decide if the bus has a multidrop topology or
- * only a single slave is present.
+ * only a single target is present.
  * There is a comma after each ordinal (including the last)
  * Hence FOR_EACH adds "+1" once too often which has to be subtracted in the end.
  */
@@ -186,7 +186,7 @@ static inline int w1_unlock_bus(const struct device *dev)
  * @param[in] dev Pointer to the device structure for the driver instance.
  *
  * @retval 0      If no slaves answer with a present pulse.
- * @retval 1      If at least one slave answers with a present pulse.
+ * @retval 1      If at least one target answers with a present pulse.
  * @retval -errno Negative error code on error.
  */
 __syscall int w1_reset_bus(const struct device *dev);
@@ -353,13 +353,13 @@ static inline int z_impl_w1_configure(const struct device *dev,
  */
 
 /**
- * This command allows the bus master to read the slave devices without
+ * This command allows the bus master to read the target devices without
  * providing their ROM code.
  */
 #define W1_CMD_SKIP_ROM			0xCC
 
 /**
- * This command allows the bus master to address a specific slave device by
+ * This command allows the bus master to address a specific target device by
  * providing its ROM code.
  */
 #define W1_CMD_MATCH_ROM		0x55
@@ -371,16 +371,16 @@ static inline int z_impl_w1_configure(const struct device *dev,
 #define W1_CMD_RESUME			0xA5
 
 /**
- * This command allows the bus master to read the ROM code from a single slave
+ * This command allows the bus master to read the ROM code from a single target
  * device.
- * This command should be used when there is only a single slave device on the
+ * This command should be used when there is only a single target device on the
  * bus.
  */
 #define W1_CMD_READ_ROM			0x33
 
 /**
  * This command allows the bus master to discover the addresses (i.e., ROM
- * codes) of all slave devices on the bus.
+ * codes) of all target devices on the bus.
  */
 #define W1_CMD_SEARCH_ROM		0xF0
 
@@ -433,7 +433,7 @@ static inline int z_impl_w1_configure(const struct device *dev,
  * @brief w1_rom struct.
  */
 struct w1_rom {
-	/** @brief The 1-Wire family code identifying the slave device type.
+	/** @brief The 1-Wire family code identifying the target device type.
 	 *
 	 * An incomplete list of family codes is available at:
 	 * https://www.analog.com/en/resources/technical-articles/1wire-software-resource-guide-device-description.html
@@ -450,7 +450,7 @@ struct w1_rom {
  * @brief Node specific 1-wire configuration struct.
  *
  * This struct is passed to network functions, such that they can configure
- * the bus to address the specific slave using the selected speed.
+ * the bus to address the specific target using the selected speed.
  */
 struct w1_slave_config {
 	/** Unique 1-Wire ROM. */
@@ -466,7 +466,7 @@ struct w1_slave_config {
  * @brief Define the application callback handler function signature
  *        for searches.
  *
- * @param rom found The ROM of the found slave.
+ * @param rom found The ROM of the found target.
  * @param user_data User data provided to the w1_search_bus() call.
  */
 typedef void (*w1_search_callback_t)(struct w1_rom rom, void *user_data);
@@ -484,44 +484,44 @@ typedef void (*w1_search_callback_t)(struct w1_rom rom, void *user_data);
  * @param[out] rom Pointer to the ROM structure.
  *
  * @retval 0       If successful.
- * @retval -ENODEV In case no slave responds to reset.
+ * @retval -ENODEV In case no target responds to reset.
  * @retval -errno  Other negative error code in case of invalid crc and
  *         communication errors.
  */
 int w1_read_rom(const struct device *dev, struct w1_rom *rom);
 
 /**
- * @brief Select a specific slave by broadcasting a selected ROM.
+ * @brief Select a specific target by broadcasting a selected ROM.
  *
- * This routine allows the 1-Wire bus master to select a slave
+ * This routine allows the 1-Wire bus master to select a target
  * identified by its unique ROM, such that the next command will target only
- * this single selected slave.
+ * this single selected target.
  *
  * This command is only necessary in multidrop environments, otherwise the
  * Skip ROM command can be issued.
- * Once a slave has been selected, to reduce the communication overhead, the
+ * Once a target has been selected, to reduce the communication overhead, the
  * resume command can be used instead of this command to communicate with the
- * selected slave.
+ * selected target.
  *
  * @param[in] dev    Pointer to the device structure for the driver instance.
- * @param[in] config Pointer to the slave specific 1-Wire config.
+ * @param[in] config Pointer to the target specific 1-Wire config.
  *
  * @retval 0       If successful.
- * @retval -ENODEV In case no slave responds to reset.
+ * @retval -ENODEV In case no target responds to reset.
  * @retval -errno  Other negative error code on error.
  */
 int w1_match_rom(const struct device *dev, const struct w1_slave_config *config);
 
 /**
- * @brief Select the slave last addressed with a Match ROM or Search ROM command.
+ * @brief Select the target last addressed with a Match ROM or Search ROM command.
  *
- * This routine allows the 1-Wire bus master to re-select a slave
+ * This routine allows the 1-Wire bus master to re-select a target
  * device that was already addressed using a Match ROM or Search ROM command.
  *
  * @param dev     Pointer to the device structure for the driver instance.
  *
  * @retval 0       If successful.
- * @retval -ENODEV In case no slave responds to reset.
+ * @retval -ENODEV In case no target responds to reset.
  * @retval -errno  Other negative error code on error.
  */
 int w1_resume_command(const struct device *dev);
@@ -532,13 +532,13 @@ int w1_resume_command(const struct device *dev);
  * This routine sets up the bus slaves to receive a command.
  * It is usually used when there is only one peripheral on the bus
  * to avoid the overhead of the Match ROM command.
- * But it can also be used to concurrently write to all slave devices.
+ * But it can also be used to concurrently write to all target devices.
  *
  * @param[in] dev    Pointer to the device structure for the driver instance.
- * @param[in] config Pointer to the slave specific 1-Wire config.
+ * @param[in] config Pointer to the target specific 1-Wire config.
  *
  * @retval 0       If successful.
- * @retval -ENODEV In case no slave responds to reset.
+ * @retval -ENODEV In case no target responds to reset.
  * @retval -errno  Other negative error code on error.
  */
 int w1_skip_rom(const struct device *dev, const struct w1_slave_config *config);
@@ -548,29 +548,29 @@ int w1_skip_rom(const struct device *dev, const struct w1_slave_config *config);
  *        Match ROM command.
  *
  * @param[in] dev    Pointer to the device structure for the driver instance.
- * @param[in] config Pointer to the slave specific 1-Wire config.
+ * @param[in] config Pointer to the target specific 1-Wire config.
  *
  * @retval 0       If successful.
- * @retval -ENODEV In case no slave responds to reset.
+ * @retval -ENODEV In case no target responds to reset.
  * @retval -errno  Other negative error code on error.
  */
 int w1_reset_select(const struct device *dev, const struct w1_slave_config *config);
 
 /**
- * @brief Write then read data from the 1-Wire slave with matching ROM.
+ * @brief Write then read data from the 1-Wire target with matching ROM.
  *
  * This routine uses w1_reset_select to select the given ROM.
- * Then writes given data and reads the response back from the slave.
+ * Then writes given data and reads the response back from the target.
  *
  * @param[in] dev       Pointer to the device structure for the driver instance.
- * @param[in] config    Pointer to the slave specific 1-Wire config.
+ * @param[in] config    Pointer to the target specific 1-Wire config.
  * @param[in] write_buf Pointer to the data to be written.
  * @param write_len     Number of bytes to write.
  * @param[out] read_buf Pointer to storage for read data.
  * @param read_len      Number of bytes to read.
  *
  * @retval 0       If successful.
- * @retval -ENODEV In case no slave responds to reset.
+ * @retval -ENODEV In case no target responds to reset.
  * @retval -errno  Other negative error code on error.
  */
 int w1_write_read(const struct device *dev, const struct w1_slave_config *config,
@@ -582,7 +582,7 @@ int w1_write_read(const struct device *dev, const struct w1_slave_config *config
  *
  * This function searches slaves on the 1-wire bus, with the possibility
  * to search either all slaves or only slaves that have an active alarm state.
- * If a callback is passed, the callback is called for each found slave.
+ * If a callback is passed, the callback is called for each found target.
  *
  * The algorithm mostly follows the suggestions of
  * https://www.analog.com/en/resources/app-notes/1wire-search-algorithm.html
@@ -594,7 +594,7 @@ int w1_write_read(const struct device *dev, const struct w1_slave_config *config
  * @param family        W1_SEARCH_ALL_FAMILIES searcheas all families,
  *                      filtering on a specific family is not yet supported.
  * @param callback      Application callback handler function to be called
- *                      for each found slave.
+ *                      for each found target.
  * @param[in] user_data User data to pass to the application callback handler
  *                      function.
  *
@@ -606,14 +606,14 @@ __syscall int w1_search_bus(const struct device *dev, uint8_t command,
 			    void *user_data);
 
 /**
- * @brief Search for 1-Wire slave on bus.
+ * @brief Search for 1-Wire target on bus.
  *
  * This routine can discover unknown slaves on the bus by scanning for the
  * unique 64-bit registration number.
  *
  * @param[in] dev       Pointer to the device structure for the driver instance.
  * @param callback      Application callback handler function to be called
- *                      for each found slave.
+ *                      for each found target.
  * @param[in] user_data User data to pass to the application callback handler
  *                      function.
  *
@@ -635,7 +635,7 @@ static inline int w1_search_rom(const struct device *dev,
  *
  * @param[in] dev       Pointer to the device structure for the driver instance.
  * @param callback      Application callback handler function to be called
- *                      for each found slave.
+ *                      for each found target.
  * @param[in] user_data User data to pass to the application callback handler
  *                      function.
  *

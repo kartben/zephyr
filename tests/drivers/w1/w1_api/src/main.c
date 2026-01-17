@@ -18,7 +18,7 @@ const struct device *get_w1_master_dev(void)
 {
 	const struct device *const master_dev = DEVICE_DT_GET(W1_MASTER);
 
-	zassert_true(device_is_ready(master_dev), "W1 master not found");
+	zassert_true(device_is_ready(master_dev), "W1 controller not found");
 
 	return master_dev;
 }
@@ -65,8 +65,8 @@ ZTEST_USER(w1_api, test_w1_basic)
 	int slave1_family = DT_PROP(W1_SLAVE_1, family_code);
 	bool slave1_overdrive = DT_PROP(W1_SLAVE_1, overdrive_speed);
 
-	zassert_equal(slave1_family, 0x28, "slave 1 family code not matching");
-	zassert_true(slave1_overdrive, "slave 1 overdrive param. not matching");
+	zassert_equal(slave1_family, 0x28, "target 1 family code not matching");
+	zassert_true(slave1_overdrive, "target 1 overdrive param. not matching");
 
 	zassert_equal(w1_lock_bus(master_dev), 0, "Fail lock 1");
 	zassert_equal(w1_lock_bus(master_dev), 0, "Fail lock 2");

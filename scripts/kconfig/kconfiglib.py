@@ -1101,7 +1101,7 @@ class Kconfig(object):
         self.unique_defined_syms = _ordered_unique(self.defined_syms)
         self.unique_choices = _ordered_unique(self.choices)
 
-        # Do sanity checks. Some of these depend on everything being finalized.
+        # Do validation checks. Some of these depend on everything being finalized.
         self._check_sym_sanity()
         self._check_choice_sanity()
 

@@ -437,7 +437,7 @@ uint8_t ll_terminate_ind_send(uint16_t handle, uint8_t reason)
 			/* CIS is not connected - get the unconnected instance */
 			cis = ll_conn_iso_stream_get(handle);
 
-			/* Sanity-check instance to make sure it's created but not connected */
+			/* Validation check instance to make sure it's created but not connected */
 			if (cis->group && cis->lll.handle == handle && !cis->established) {
 				struct ll_conn_iso_group *cig = cis->group;
 

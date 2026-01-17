@@ -21,7 +21,7 @@ properties:
     type: string
     required: true
     description: |
-      100BASE-T1 Specifies that either phy has to run in master / slave mode
+      100BASE-T1 Specifies that either phy has to run in primary / secondary mode
       Default selects the mode set by the pinstrapping on the hardware design.
     enum:
       - "default"

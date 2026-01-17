@@ -39,7 +39,7 @@ Hardware
     - Three SPI Master (60MHz)/Slave (48MHz)
     - One QuadSPI Master (60MHz)/Slave (48MHz)
     - Up to Three 4Mbaud UARTs with Flow Control
-    - Two 1MHz I2C Master/Slave
+    - Two 1MHz I2C Controller/Target
     - I2S Slave
     - Four-Channel, 7.8ksps, 10-bit Delta-Sigma ADC
     - USB 2.0 Hi-Speed Device Interface with PHY

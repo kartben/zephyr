@@ -44,9 +44,9 @@ Hardware
     - 4.4μA at 3.0V Retention Current for 32KB
     - Selectable SRAM Retention + RTC in Low-Power Modes
   - Multiple Peripherals for System Control
-    - Up to Two High-Speed SPI Master/Slave
-    - Up to Three High-Speed I2C Master/Slave (3.4Mbps)
-    - Up to Four UART, One I2S Master/Slave
+    - Up to Two High-Speed SPI Controller/Peripheral
+    - Up to Three High-Speed I2C Controller/Target (3.4Mbps)
+    - Up to Four UART, One I2S Controller/Peripheral
     - Up to 8-Input, 10-Bit Sigma-Delta ADC 7.8ksps
     - Up to Four Micro-Power Comparators
     - Timers: Up to Two Four 32-Bit, Two LP, TwoWatchdog Timers

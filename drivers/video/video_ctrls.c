@@ -134,7 +134,7 @@ int video_init_ctrl(struct video_ctrl *ctrl, const struct device *dev, uint32_t 
 		return -EINVAL;
 	}
 
-	/* Sanity checks */
+	/* Validation checks */
 	if (id < VIDEO_CID_BASE) {
 		return -EINVAL;
 	}

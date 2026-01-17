@@ -255,7 +255,7 @@ static int spi_dw_configure(const struct device *dev,
 	spi->ctx.config = config;
 
 	if (!spi_dw_is_slave(spi)) {
-		/* Baud rate and Slave select, for master only */
+		/* Baud rate and Peripheral select, for controller only */
 		write_baudr(dev, SPI_DW_CLK_DIVIDER(info->clock_frequency,
 						    config->frequency));
 	}

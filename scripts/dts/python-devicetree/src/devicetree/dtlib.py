@@ -1833,7 +1833,7 @@ class DT:
         # Registers any manually-inserted phandle properties in
         # self.phandle2node, so that we can avoid allocating any phandles from
         # that set. Also checks the format of the phandles and does misc.
-        # sanity checking.
+        # validation checking.
 
         for node in self.node_iter():
             phandle = node.props.get("phandle")

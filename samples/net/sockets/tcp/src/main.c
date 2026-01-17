@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/* TCP Sample for TTCN-3 based Sanity Check */
+/* TCP Sample for TTCN-3 based Validation Check */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,14 +25,14 @@ do {									\
 } while (0)								\
 
 /*
- * This application is used together with the TTCN-3 based sanity check
+ * This application is used together with the TTCN-3 based validation check
  * to validate the functionality of the TCP.
  *
  * samples/net/sockets/tcp/README.rst
  *
  * Eventually UDP based test protocol might be terminated in the user space
  * (see udp() below), but at the moment it's just a dummy loop
- * to keep the sample running in order to execute TTCN-3 TCP sanity check.
+ * to keep the sample running in order to execute TTCN-3 TCP validation check.
  */
 int main(void)
 {

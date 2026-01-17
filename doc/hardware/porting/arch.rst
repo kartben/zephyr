@@ -397,7 +397,7 @@ Device Drivers
 
 The kernel requires very few hardware devices to function. In theory, the only
 required device is the interrupt controller, since the kernel can run without a
-system clock. In practice, to get access to most, if not all, of the sanity
+system clock. In practice, to get access to most, if not all, of the validity
 check test suite, a system clock is needed as well. Since these two are usually
 tied to the architecture, they are part of the architecture port.
 

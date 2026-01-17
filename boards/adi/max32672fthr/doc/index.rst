@@ -54,12 +54,12 @@ Hardware
   - Optimal Peripheral Mix Provides Platform Scalability
 
     - Up to 42 General-Purpose I/O Pins
-    - Up to Three SPI Master/Slave (up to 50Mbps)
+    - Up to Three SPI Controller/Peripheral (up to 50Mbps)
     - Up to Three 4-Wire UART
-    - Up to Three I2C Master/Slave 3.4Mbps High Speed
+    - Up to Three I2C Controller/Target 3.4Mbps High Speed
     - Up to Four 32-Bit Timers (TMR)
     - Up to Two Low-Power 32-Bit Timers (LPTMR)
-    - One I2S Master/Slave for Digital Audio Interface
+    - One I2S Controller/Peripheral for Digital Audio Interface
     - 12-Channel, 12-Bit, 1Msps SAR ADC with On-DieTemperature Sensor
 
   - Security and Integrity

@@ -686,7 +686,7 @@ static inline void hal_radio_sw_switch_ppi_group_setup(void)
 		SW_SWITCH_TIMER_TASK_GROUP(1));
 #endif /* !CONFIG_BT_CTLR_PHY_CODED */
 
-	/* Sanity build-time check that RADIO Enable and Group Disable
+	/* Validation build-time check that RADIO Enable and Group Disable
 	 * tasks are going to be subscribed on the same PPIs.
 	 */
 	BUILD_ASSERT(

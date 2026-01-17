@@ -161,7 +161,7 @@ int osdp_phy_packet_finalize(struct osdp_pd *pd, uint8_t *buf,
 	uint16_t crc16;
 	struct osdp_packet_header *pkt;
 
-	/* Do a sanity check only; we expect header to be pre-filled */
+	/* Do a validation check only; we expect header to be pre-filled */
 	if ((unsigned long)len <= sizeof(struct osdp_packet_header)) {
 		LOG_ERR("PKT_F: Invalid header");
 		return OSDP_ERR_PKT_FMT;

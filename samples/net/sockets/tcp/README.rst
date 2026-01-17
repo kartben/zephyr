@@ -1,5 +1,5 @@
 .. zephyr:code-sample:: sockets-tcp-sample
-   :name: TCP sample for TTCN-3 based sanity check
+   :name: TCP sample for TTCN-3 based validation check
    :relevant-api: bsd_sockets
 
    Use TTCN-3 to validate the functionality of the TCP stack.
@@ -7,10 +7,10 @@
 Overview
 ********
 
-This application is used together with the TTCN-3 based sanity check
+This application is used together with the TTCN-3 based validation check
 to validate the functionality of the TCP.
 
-Building, Running and executing TTCN-3 based Sanity Check for TCP
+Building, Running and executing TTCN-3 based Validation Check for TCP
 *****************************************************************
 
 Compile and start the `net-test-tools`_:
@@ -30,7 +30,7 @@ Build the TCP sample app:
    cmake -DBOARD=qemu_x86 -DEXTRA_CONF_FILE="overlay-slip.conf" ..
    make run
 
-Compile and run the TCP sanity check `net-test-suites`_:
+Compile and run the TCP validation check `net-test-suites`_:
 
 .. code-block:: console
 

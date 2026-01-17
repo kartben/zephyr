@@ -215,7 +215,7 @@ def main():
 
         suite_name = test_name_sep.join([plan[r_plan][n] if n in plan[r_plan] else '' for n in test_name_parts])
 
-        # Just some sanity checks of the 'application' in the current ZEPHYR_BASE
+        # Just some validation checks of the 'application' in the current ZEPHYR_BASE
         if args.testsuite_check:
             suite_type = plan[r_plan]['application'].split('/')
             if len(suite_type) and suite_type[0] in TESTSUITE_FILENAME:

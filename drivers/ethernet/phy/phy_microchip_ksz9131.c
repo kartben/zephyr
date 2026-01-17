@@ -366,13 +366,13 @@ static int phy_mchp_ksz9131_gigabit(const struct device *dev, enum phy_link_spee
 	uint16_t mssr = 0;
 	int ret = 0;
 
-	/* Read AUTO-NEGOTIATION MASTER SLAVE CONTROL REGISTER */
+	/* Read AUTO-NEGOTIATION PRIMARY SECONDARY CONTROL REGISTER */
 	ret = ksz9131_read(dev, MII_1KTCR, &mscr);
 	if (ret < 0) {
 		return ret;
 	}
 
-	/* Read AUTO-NEGOTIATION MASTER SLAVE STATUS REGISTER */
+	/* Read AUTO-NEGOTIATION PRIMARY SECONDARY STATUS REGISTER */
 	ret = ksz9131_read(dev, MII_1KSTSR, &mssr);
 	if (ret < 0) {
 		return ret;
