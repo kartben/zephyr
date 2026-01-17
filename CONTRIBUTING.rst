@@ -31,7 +31,7 @@ documentation.
 
 * A Continuous Integration (CI) system runs on every Pull Request (PR)
   to verify several aspects of the PR including Git commit formatting,
-  Coding Style, sanity checks builds, and documentation builds.
+  Coding Style, validation checks builds, and documentation builds.
 
 * The `Zephyr devel mailing list`_ is a great place to engage with the
   community, ask questions, discuss issues, and help each other.

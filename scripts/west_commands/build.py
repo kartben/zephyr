@@ -543,9 +543,9 @@ class Build(Forceable):
             'the application source directory)')
 
     def _sanity_check(self):
-        # Sanity check the build configuration.
+        # Validate the build configuration.
         # Side effect: may update cmake_cache attribute.
-        self.dbg('sanity checking the build', level=Verbosity.DBG_EXTREME)
+        self.dbg('validating the build', level=Verbosity.DBG_EXTREME)
         self._sanity_check_source_dir()
 
         if not self.cmake_cache:
