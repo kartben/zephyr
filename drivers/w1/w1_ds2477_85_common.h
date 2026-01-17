@@ -195,7 +195,7 @@ typedef int (*variant_w1_script_cmd_fn)(const struct device *dev,
 					uint8_t rx_len);
 
 struct w1_ds2477_85_config {
-	/** w1 master config, common to all drivers */
+	/** w1 controller config, common to all drivers */
 	struct w1_master_config master_config;
 	/** I2C device */
 	const struct i2c_dt_spec i2c_spec;
@@ -216,9 +216,9 @@ struct w1_ds2477_85_config {
 };
 
 struct w1_ds2477_85_data {
-	/** w1 master data, common to all drivers */
+	/** w1 controller data, common to all drivers */
 	struct w1_master_data master_data;
-	/** master specific runtime configuration */
+	/** controller specific runtime configuration */
 	union master_config_reg master_reg;
 };
 

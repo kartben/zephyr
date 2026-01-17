@@ -11,7 +11,7 @@
  *
  * This driver implements the 1-Wire interface using an uart.
  * The driver uses a uart peripheral with a baudrate of 115.2 kBd to send
- * and receive data bits and a baurade of 9.6 kBd for slave reset and
+ * and receive data bits and a baurade of 9.6 kBd for target reset and
  * presence detection as suggested for normal speed operating mode in:
  * https://www.analog.com/en/resources/technical-articles/using-a-uart-to-implement-a-1wire-bus-master.html
  * For overdrive speed communication baudrates of 1 MBd and 115.2 kBd
@@ -118,7 +118,7 @@ static int serial_tx_rx_byte(const struct device *dev, uint8_t tx_byte,
 	*rx_byte = 0;
 	for (int i = 0; i < 8; ++i) {
 		/*
-		 * rx-byte different from 0xFF indicates that a slave has
+		 * rx-byte different from 0xFF indicates that a target has
 		 * pulled line low to transmit a 0 bit, otherwise a 1 bit.
 		 */
 		*rx_byte |= (uint8_t)(byte_representation[i] == 0xFF) << i;
@@ -262,7 +262,7 @@ static int w1_serial_init(const struct device *dev)
 
 	data->overdrive_active = false;
 
-	LOG_DBG("w1-serial initialized, with %d slave devices",
+	LOG_DBG("w1-serial initialized, with %d target devices",
 		cfg->master_config.slave_count);
 	return 0;
 }

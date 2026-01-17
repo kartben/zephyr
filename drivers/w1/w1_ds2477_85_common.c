@@ -302,7 +302,7 @@ int w1_ds2477_85_init(const struct device *dev)
 	/* RPUP/BUF configuration is applied after a bus reset */
 	(void)ds2477_85_reset_bus(dev);
 
-	LOG_DBG("w1-ds2477/85 init; %d slave devices",
+	LOG_DBG("w1-ds2477/85 init; %d target devices",
 		cfg->master_config.slave_count);
 
 	return 0;

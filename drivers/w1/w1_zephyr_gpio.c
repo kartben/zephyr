@@ -91,14 +91,14 @@ struct w1_gpio_timing {
 };
 
 struct w1_gpio_config {
-	/** w1 master config, common to all drivers */
+	/** w1 controller config, common to all drivers */
 	struct w1_master_config master_config;
 	/** GPIO device used for 1-Wire communication */
 	const struct gpio_dt_spec spec;
 };
 
 struct w1_gpio_data {
-	/** w1 master data, common to all drivers */
+	/** w1 controller data, common to all drivers */
 	struct w1_master_data master_data;
 	/** timing parameters for 1-Wire communication */
 	const struct w1_gpio_timing *timing;
@@ -303,7 +303,7 @@ static int w1_gpio_init(const struct device *dev)
 	data->timing = &std;
 	data->overdrive_active = false;
 
-	LOG_DBG("w1-gpio initialized, with %d slave devices", cfg->master_config.slave_count);
+	LOG_DBG("w1-gpio initialized, with %d target devices", cfg->master_config.slave_count);
 	return 0;
 }
 

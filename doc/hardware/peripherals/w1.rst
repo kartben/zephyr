@@ -10,7 +10,7 @@ Overview
 ground for both data transmission and device power supply.
 Similarly to I2C, 1-Wire uses a bidirectional open-collector data line,
 and is a single master multidrop bus. This means one master initiates all data
-exchanges with the slave devices.
+exchanges with the target devices.
 The 1-Wire bus supports longer bus lines than I2C, while it reaches speeds of up
 to 15.4 kbps in standard mode and up to 125 kbps in overdrive mode.
 Reliable communication in standard speed configuration is possible with 10 nodes
@@ -27,12 +27,12 @@ The implementation details are specified in the `BOOK OF IBUTTON STANDARDS`_.
    A typical 1-Wire bus topology
 
 
-.. _w1-master-api:
+.. _w1-controller-api:
 
-W1 Master API
+W1 Controller API
 =================
 
-Zephyr's 1-Wire Master API is used to interact with 1-Wire slave devices like
+Zephyr's 1-Wire Controller API is used to interact with 1-Wire target devices like
 temperature sensors and serial memories.
 
 In Zephyr this API is split into the following layers.
@@ -48,7 +48,7 @@ In Zephyr this API is split into the following layers.
   arbitration.
   This includes ROM commands like Match ROM, or Search ROM.
 
-   * All slave devices have a unique 64-bit identification number, which
+   * All target devices have a unique 64-bit identification number, which
      includes a 8-bit `1-Wire Family Code`_ and a 8-bit CRC.
    * In order to find slaves on the bus, the standard specifies an search
      algorithm which successively detects all slaves on the bus.

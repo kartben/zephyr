@@ -22,23 +22,23 @@ LOG_MODULE_REGISTER(w1, CONFIG_W1_LOG_LEVEL);
 #define W1_SEARCH_LAST_SLAVE	   65
 #define W1_SEARCH_NO_SLAVE	   66
 
-/* @brief Search bus for next slave.
+/* @brief Search bus for next target.
  *
- * This function searches the next 1-Wire slave on the bus.
+ * This function searches the next 1-Wire target on the bus.
  * It sets the found ROM and the last discrepancy in case more than one
- * slave took part in the search.
- * In case only one slave took part in the search, the discrepancy is set to
- * W1_SEARCH_LAST_SLAVE, and in case no slave participated in the search,
+ * target took part in the search.
+ * In case only one target took part in the search, the discrepancy is set to
+ * W1_SEARCH_LAST_SLAVE, and in case no target participated in the search,
  * the discrepancy is set to W1_SEARCH_NO_SLAVE.
  *
  * The implementation is similar to that suggested in the Maxim Integrated
  * application note 187.
  * @see https://www.analog.com/media/en/technical-documentation/app-notes/1wire-search-algorithm.pdf
- * The master reads the first ROM bit and its complementary value of all slaves.
+ * The controller reads the first ROM bit and its complementary value of all slaves.
  * Due to physical characteristics, the value received is a
  * logical AND of all slaves' 1st bit. Slaves only continue to
- * participate in the search procedure if the next bit the master sends matches
- * their own addresses' bit. This allows the master to branch through 64-bit
+ * participate in the search procedure if the next bit the controller sends matches
+ * their own addresses' bit. This allows the controller to branch through 64-bit
  * addresses in order to detect all slaves.
 
  * The 1st bit received is stored in bit 1 of rom_inv_64, the 2nd in bit 2 and so
@@ -103,10 +103,10 @@ static int search_slave(const struct device *dev, uint8_t command,
 
 		if (last_id_bit && last_complement_id_bit) {
 			/*
-			 * No slave participating:
+			 * No target participating:
 			 * We can stop following the branch.
 			 */
-			LOG_DBG("No slave paricipating");
+			LOG_DBG("No target paricipating");
 			*last_discrepancy = W1_SEARCH_NO_SLAVE;
 			return 0;
 		} else if (last_id_bit != last_complement_id_bit) {

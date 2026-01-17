@@ -13,12 +13,12 @@
 #include <zephyr/drivers/w1.h>
 
 struct w1_vnd_config {
-	/** w1 master config, common to all drivers */
+	/** w1 controller config, common to all drivers */
 	struct w1_master_config master_config;
 };
 
 struct w1_vnd_data {
-	/** w1 master data, common to all drivers */
+	/** w1 controller data, common to all drivers */
 	struct w1_master_data master_data;
 };
 
