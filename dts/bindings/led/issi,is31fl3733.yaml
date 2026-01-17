@@ -32,7 +32,7 @@ properties:
       - "master"
       - "slave"
     description: |
-      This property configures the LED controller as a master or slave
+      This property configures the LED controller as a primary or secondary
       clock device. This can be used to synchronize the output of multiple
       LED controllers. See SYNC bits in led configuration register for more
       information.

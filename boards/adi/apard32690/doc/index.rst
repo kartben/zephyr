@@ -48,8 +48,8 @@ Hardware
       - 16-Channel DMA
       - Up To Five Quad SPI Master (60MHz)/Slave (48MHz)
       - Up To Four 1Mbaud UARTs with Flow Control
-      - Up To Two 1MHz I2C Master/Slave
-      - I2S Master/Slave
+      - Up To Two 1MHz I2C Controller/Target
+      - I2S Controller/Peripheral
       - Eight External Channel, 12-bit 1MSPS SAR ADC w/ on-die temperature sensor
       - USB 2.0 Hi-Speed Device
       - 16 Pulse Train Engines

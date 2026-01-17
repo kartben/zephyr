@@ -29,7 +29,7 @@ extern "C" {
  * The same function registers endpoints for both master and slave devices.
  *
  * @param name String containing the name of the endpoint. Must be identical
- *             for master and slave
+ *             for primary and secondary
  * @param cb Callback executed when data are available on given endpoint
  *
  * @retval >=0 id of registered endpoint on success;

@@ -135,7 +135,7 @@ void cache_instr_disable(void)
 		/**
 		 * Wait until the ICACHE is disabled (CR.EN=0), at which point
 		 * all requests bypass the cache and are forwarded directly
-		 * from the ICACHE slave port to the ICACHE master port(s).
+		 * from the ICACHE secondary port to the ICACHE primary port(s).
 		 *
 		 * The cache invalidation will start once disabled, but we allow
 		 * it to proceed in the background since it doesn't need to be

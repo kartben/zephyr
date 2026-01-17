@@ -52,10 +52,10 @@ Hardware
   - Optimal Peripheral Mix Provides Platform Scalability
 
     - Up to 31 General-Purpose I/O Pins
-    - Up to Three SPI Master/Slave (up to 50MHz)
+    - Up to Three SPI Controller/Peripheral (up to 50MHz)
     - Up to Three 4-Wire UART
     - One Low-Power UART (LPUART)
-    - Up to Three I2C Master/Slave 3.4Mbps High Speed
+    - Up to Three I2C Controller/Target 3.4Mbps High Speed
     - 8-Channel Standard DMA Controller
     - Up to Four 32-Bit Timers (TMR)
     - Up to Two Low-Power 32-Bit Timers (LPTMR)

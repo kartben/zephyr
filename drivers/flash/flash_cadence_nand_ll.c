@@ -445,7 +445,7 @@ int cdns_nand_init(struct cadence_nand_params *params)
  * @param mem_ptr system memory pointer
  * @param ctype Command type (read/write/erase)
  * @param cmd_cnt counter for commands
- * @param dma_sel select DMA engine (0 - slave DMA, 1 - master DMA)
+ * @param dma_sel select DMA engine (0 - secondary DMA, 1 - primary DMA)
  * @param vol_id specify target volume ID
  *
  */

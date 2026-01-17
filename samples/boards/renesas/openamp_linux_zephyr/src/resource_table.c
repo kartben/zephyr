@@ -9,7 +9,7 @@
  * to match the work behaviour of master device. According to the commit:
  * 25ec73986b (lib: open-amp: add helper to add resource table in project)
  * vring RX and TX addresses should be allocated by master processor.
- * Current Master Sample implementation expects slave to provide valid
+ * Current Primary Sample implementation expects secondary to provide valid
  * rsc_table so update vring addresses here.
  *
  * Dependencies:

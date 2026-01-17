@@ -53,9 +53,9 @@ Hardware
 
   - Multiple Peripherals for System Control
 
-    - Three QSPI Master/Slave with Three Chip Selects Each
+    - Three QSPI Controller/Peripheral with Three Chip Selects Each
     - Three 4-Wire UARTs
-    - Three I2C Master/Slave
+    - Three I2C Controller/Target
     - Up to 50 GPIO
     - QSPI (SPIXF) with Real-Time Flash Decryption
     - QSPI (SPIXR) RAM Interface Provides SRAMExpansion
