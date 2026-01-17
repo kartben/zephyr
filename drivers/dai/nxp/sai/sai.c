@@ -140,7 +140,7 @@ static const struct dai_properties
 
 #ifdef CONFIG_SAI_IMX93_ERRATA_051421
 /* notes:
- *	1) TX and RX operate in the same mode: master/slave. As such,
+ *	1) TX and RX operate in the same mode: controller/peripheral. As such,
  *	there's no need to check the mode for both directions.
  *
  *	2) Only one of the directions can operate in SYNC mode at a
@@ -386,7 +386,7 @@ static int sai_config_set(const struct device *dev,
 	SAI_TxSetConfig(UINT_TO_I2S(data->regmap), tx_config);
 
 	/* a few notes here:
-	 *	1) TX and RX operate in the same mode: master or slave.
+	 *	1) TX and RX operate in the same mode: controller or peripheral.
 	 *	2) Setting BCLK's rate needs to be performed explicitly
 	 *	since SetConfig() doesn't do it for us.
 	 *	3) Setting BCLK's rate has to be performed after the
