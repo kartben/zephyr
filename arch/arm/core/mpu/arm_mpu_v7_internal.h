@@ -52,9 +52,9 @@ static void region_init(const uint32_t index,
 #endif
 }
 
-/* @brief Partition sanity check
+/* @brief Partition validation check
  *
- * This internal function performs run-time sanity check for
+ * This internal function performs run-time validation check for
  * MPU region start address and size.
  *
  * @param part Pointer to the data structure holding the partition
