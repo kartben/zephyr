@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Shell API
+ */
+
 #ifndef SHELL_H__
 #define SHELL_H__
 
@@ -27,6 +32,19 @@
 extern "C" {
 #endif
 
+/**
+ * @brief Shell API
+ * @defgroup shell_api Shell API
+ * @since 1.14
+ * @version 1.0.0
+ * @ingroup os_services
+ * @{
+ */
+
+/**
+ * @cond INTERNAL_HIDDEN
+ */
+
 #ifndef CONFIG_SHELL_PROMPT_BUFF_SIZE
 #define CONFIG_SHELL_PROMPT_BUFF_SIZE 0
 #endif
@@ -45,6 +63,13 @@ extern "C" {
 
 #define Z_SHELL_CMD_ROOT_LVL		(0u)
 
+/**
+ * @endcond
+ */
+
+/**
+ * @brief Number of bytes per line for shell hexdump output.
+ */
 #define SHELL_HEXDUMP_BYTES_IN_LINE	16
 
 /**
@@ -71,19 +96,12 @@ extern "C" {
  */
 #define SHELL_OPT_ARG_MAX		(0xFD)
 
-/**
- * @brief Shell API
- * @defgroup shell_api Shell API
- * @since 1.14
- * @version 1.0.0
- * @ingroup os_services
- * @{
- */
-
 struct shell_static_entry;
 
 /**
- * @brief Shell dynamic command descriptor.
+ * @brief Shell dynamic command callback.
+ *
+ * Callback function for generating dynamic command entries.
  *
  * @details Function shall fill the received shell_static_entry structure
  * with requested (idx) dynamic subcommand data. If there is more than
@@ -92,15 +110,21 @@ struct shell_static_entry;
  * If idx exceeds the available dynamic subcommands, the function must
  * write to entry->syntax NULL value. This will indicate to the shell
  * module that there are no more dynamic commands to read.
+ *
+ * @param idx Index of the dynamic command to retrieve.
+ * @param entry Pointer to shell_static_entry structure to fill with command data.
  */
 typedef void (*shell_dynamic_get)(size_t idx,
 				  struct shell_static_entry *entry);
 
 /**
- * @brief Shell command descriptor.
+ * @brief Shell command descriptor union.
+ *
+ * This union holds either a pointer to a dynamic command function or
+ * a pointer to a static command array.
  */
 union shell_cmd_entry {
-	/** Pointer to function returning dynamic commands.*/
+	/** Pointer to function returning dynamic commands. */
 	shell_dynamic_get dynamic_get;
 
 	/** Pointer to array of static commands. */
@@ -109,13 +133,16 @@ union shell_cmd_entry {
 
 struct shell;
 
+/**
+ * @brief Shell static command arguments descriptor.
+ */
 struct shell_static_args {
-	uint8_t mandatory; /*!< Number of mandatory arguments. */
-	uint8_t optional;  /*!< Number of optional arguments. */
+	uint8_t mandatory; /**< Number of mandatory arguments. */
+	uint8_t optional;  /**< Number of optional arguments. */
 };
 
 /**
- * @brief Get by index a device that matches .
+ * @brief Get a device by index.
  *
  * This can be used, for example, to identify I2C_1 as the second I2C
  * device.
@@ -123,36 +150,37 @@ struct shell_static_args {
  * Devices that failed to initialize or do not have a non-empty name
  * are excluded from the candidates for a match.
  *
- * @param idx the device number starting from zero.
+ * @param idx The device number starting from zero.
+ * @param prefix Optional name prefix used to restrict candidate devices.
+ *               Indexing is done relative to devices with names that
+ *               start with this text. Pass NULL if no prefix match is required.
  *
- * @param prefix optional name prefix used to restrict candidate
- * devices.  Indexing is done relative to devices with names that
- * start with this text.  Pass null if no prefix match is required.
+ * @return Pointer to the device, or NULL if no matching device found.
  */
 const struct device *shell_device_lookup(size_t idx,
 					 const char *prefix);
 
 /**
- * @brief Get by index a device that matches .
+ * @brief Get a device by index, including non-ready devices.
  *
  * This can be used, for example, to identify I2C_1 as the second I2C
  * device.
  *
- * Devices that failed to initialize - or deferred to be - are included
- * from the candidates for a match, minus the ones who do not have
- * a non-empty name.
+ * Devices that failed to initialize or deferred are included in the
+ * candidates for a match, minus the ones who do not have a non-empty name.
  *
- * @param idx the device number starting from zero.
+ * @param idx The device number starting from zero.
+ * @param prefix Optional name prefix used to restrict candidate devices.
+ *               Indexing is done relative to devices with names that
+ *               start with this text. Pass NULL if no prefix match is required.
  *
- * @param prefix optional name prefix used to restrict candidate
- * devices.  Indexing is done relative to devices with names that
- * start with this text.  Pass null if no prefix match is required.
+ * @return Pointer to the device, or NULL if no matching device found.
  */
 const struct device *shell_device_lookup_all(size_t idx,
 					     const char *prefix);
 
 /**
- * @brief Get by index a non-initialized device that matches .
+ * @brief Get by index a non-initialized device.
  *
  * This can be used, for example, to identify I2C_1 as the second I2C
  * device.
@@ -160,24 +188,26 @@ const struct device *shell_device_lookup_all(size_t idx,
  * Devices that initialized successfully or do not have a non-empty name
  * are excluded.
  *
- * @param idx the device number starting from zero.
+ * @param idx The device number starting from zero.
+ * @param prefix Optional name prefix used to restrict candidate devices.
+ *               Indexing is done relative to devices with names that
+ *               start with this text. Pass NULL if no prefix match is required.
  *
- * @param prefix optional name prefix used to restrict candidate
- * devices.  Indexing is done relative to devices with names that
- * start with this text.  Pass null if no prefix match is required.
+ * @return Pointer to the device, or NULL if no matching device found.
  */
 const struct device *shell_device_lookup_non_ready(size_t idx,
 						   const char *prefix);
 
 /**
- * @brief Filter callback type, for use with shell_device_lookup_filter
+ * @brief Filter callback type, for use with shell_device_filter().
  *
- * This is used as an argument of shell_device_lookup_filter to only return
+ * This is used as an argument of shell_device_filter() to only return
  * devices that match a specific condition, implemented by the filter.
  *
- * @param dev pointer to a struct device.
+ * @param dev Pointer to a struct device.
  *
- * @return bool, true if the filter matches the device type.
+ * @retval true if the filter matches the device type.
+ * @retval false if the filter does not match the device type.
  */
 typedef bool (*shell_device_filter_t)(const struct device *dev);
 
@@ -189,10 +219,11 @@ typedef bool (*shell_device_filter_t)(const struct device *dev);
  * Devices that the filter returns false for, failed to initialize or do not
  * have a non-empty name are excluded from the candidates for a match.
  *
- * @param idx the device number starting from zero.
+ * @param idx The device number starting from zero.
+ * @param filter Pointer to a shell_device_filter_t function that returns
+ *               true if the device matches the filter.
  *
- * @param filter a pointer to a shell_device_filter_t function that returns
- * true if the device matches the filter.
+ * @return Pointer to the device, or NULL if no matching device found.
  */
 const struct device *shell_device_filter(size_t idx,
 					 shell_device_filter_t filter);
@@ -267,6 +298,10 @@ typedef int (*shell_cmd_handler)(const struct shell *sh,
 typedef int (*shell_dict_cmd_handler)(const struct shell *sh, size_t argc,
 				      char **argv, void *data);
 
+/**
+ * @cond INTERNAL_HIDDEN
+ */
+
 /* When entries are added to the memory section a padding is applied for
  * the posix architecture with 64bits builds and x86_64 targets. Adding padding to allow handle data
  * in the memory section as array.
@@ -277,16 +312,22 @@ typedef int (*shell_dict_cmd_handler)(const struct shell *sh, size_t argc,
 #define Z_SHELL_STATIC_ENTRY_PADDING 0
 #endif
 
-/*
+/**
+ * @endcond
+ */
+
+/**
  * @brief Shell static command descriptor.
  */
 struct shell_static_entry {
-	const char *syntax;			/*!< Command syntax strings. */
-	const char *help;			/*!< Command help string. */
-	const union shell_cmd_entry *subcmd;	/*!< Pointer to subcommand. */
-	shell_cmd_handler handler;		/*!< Command handler. */
-	struct shell_static_args args;		/*!< Command arguments. */
+	const char *syntax;			/**< Command syntax strings. */
+	const char *help;			/**< Command help string. */
+	const union shell_cmd_entry *subcmd;	/**< Pointer to subcommand. */
+	shell_cmd_handler handler;		/**< Command handler. */
+	struct shell_static_args args;		/**< Command arguments. */
+	/** @cond INTERNAL_HIDDEN */
 	uint8_t padding[Z_SHELL_STATIC_ENTRY_PADDING];
+	/** @endcond */
 };
 
 /**
@@ -297,11 +338,11 @@ struct shell_static_entry {
  * consistent and easier to read.
  */
 struct shell_cmd_help {
-	/* @cond INTERNAL_HIDDEN */
+	/** @cond INTERNAL_HIDDEN */
 	uint32_t magic;
-	/* @endcond */
-	const char *description; /*!< Command description */
-	const char *usage;       /*!< Command usage string */
+	/** @endcond */
+	const char *description; /**< Command description. */
+	const char *usage;       /**< Command usage string. */
 };
 
 /**
@@ -483,6 +524,9 @@ static inline bool shell_help_is_structured(const char *help)
 		.entry = shell_##name					\
 	}
 
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 #define Z_SHELL_UNDERSCORE(x) _##x
 #define Z_SHELL_SUBCMD_NAME(...) \
 	UTIL_CAT(shell_subcmds, MACRO_MAP_CAT(Z_SHELL_UNDERSCORE, __VA_ARGS__))
@@ -491,6 +535,9 @@ static inline bool shell_help_is_structured(const char *help)
 	Z_SHELL_SUBCMD_SECTION_TAG(NUM_VA_ARGS_LESS_1 x, __DEBRACKET x)
 #define Z_SHELL_SUBCMD_ADD_SECTION_TAG(x, y) \
 	Z_SHELL_SUBCMD_SECTION_TAG(NUM_VA_ARGS_LESS_1 x, __DEBRACKET x, y)
+/**
+ * @endcond
+ */
 
 /** @brief Create set of subcommands.
  *
@@ -690,6 +737,10 @@ static inline bool shell_help_is_structured(const char *help)
 #define SHELL_EXPR_CMD(_expr, _syntax, _subcmd, _help, _handler) \
 	SHELL_EXPR_CMD_ARG(_expr, _syntax, _subcmd, _help, _handler, 0, 0)
 
+/**
+ * @cond INTERNAL_HIDDEN
+ */
+
 /* Internal macro used for creating handlers for dictionary commands. */
 #define Z_SHELL_CMD_DICT_HANDLER_CREATE(_data, _handler)		\
 static int UTIL_CAT(UTIL_CAT(cmd_dict_, UTIL_CAT(_handler, _)),		\
@@ -705,6 +756,10 @@ static int UTIL_CAT(UTIL_CAT(cmd_dict_, UTIL_CAT(_handler, _)),		\
 	SHELL_CMD_ARG(GET_ARG_N(1, __DEBRACKET _data), NULL, GET_ARG_N(3, __DEBRACKET _data),	\
 		UTIL_CAT(UTIL_CAT(cmd_dict_, UTIL_CAT(_handler, _)),	\
 			GET_ARG_N(1, __DEBRACKET _data)), 1, 0)
+
+/**
+ * @endcond
+ */
 
 /**
  * @brief Initializes shell dictionary commands.
@@ -748,8 +803,11 @@ static int UTIL_CAT(UTIL_CAT(cmd_dict_, UTIL_CAT(_handler, _)),		\
 	)
 
 /**
- * @internal @brief Internal shell state in response to data received from the
- * terminal.
+ * @cond INTERNAL_HIDDEN
+ */
+
+/**
+ * @brief Internal shell state in response to data received from the terminal.
  */
 enum shell_receive_state {
 	SHELL_RECEIVE_DEFAULT,
@@ -759,33 +817,52 @@ enum shell_receive_state {
 };
 
 /**
- * @internal @brief Internal shell state.
+ * @brief Internal shell state.
  */
 enum shell_state {
 	SHELL_STATE_UNINITIALIZED,
 	SHELL_STATE_INITIALIZED,
 	SHELL_STATE_ACTIVE,
-	SHELL_STATE_PANIC_MODE_ACTIVE,  /*!< Panic activated.*/
-	SHELL_STATE_PANIC_MODE_INACTIVE /*!< Panic requested, not supported.*/
+	SHELL_STATE_PANIC_MODE_ACTIVE,  /**< Panic activated. */
+	SHELL_STATE_PANIC_MODE_INACTIVE /**< Panic requested, not supported. */
 };
 
-/** @brief Shell transport event. */
+/**
+ * @endcond
+ */
+
+/**
+ * @brief Shell transport event.
+ */
 enum shell_transport_evt {
-	SHELL_TRANSPORT_EVT_RX_RDY,
-	SHELL_TRANSPORT_EVT_TX_RDY
+	SHELL_TRANSPORT_EVT_RX_RDY, /**< Data received and ready to read. */
+	SHELL_TRANSPORT_EVT_TX_RDY  /**< Transmit complete, ready to send. */
 };
 
+/**
+ * @brief Shell transport event handler callback.
+ *
+ * @param evt Transport event type.
+ * @param context User context.
+ */
 typedef void (*shell_transport_handler_t)(enum shell_transport_evt evt,
 					  void *context);
 
-
+/**
+ * @brief Shell uninitialization callback.
+ *
+ * @param sh Pointer to shell instance.
+ * @param res Result code.
+ */
 typedef void (*shell_uninit_cb_t)(const struct shell *sh, int res);
 
-/** @brief Bypass callback.
+/**
+ * @brief Bypass callback.
  *
  * @param sh Shell instance.
- * @param data  Raw data from transport.
- * @param len   Data length.
+ * @param data Raw data from transport.
+ * @param len Data length.
+ * @param user_data User data.
  */
 typedef void (*shell_bypass_cb_t)(const struct shell *sh,
 				  uint8_t *data,
@@ -795,7 +872,6 @@ typedef void (*shell_bypass_cb_t)(const struct shell *sh,
 struct shell_transport;
 
 /**
- * @struct shell_transport_api
  * @brief Unified shell transport interface.
  */
 struct shell_transport_api {
@@ -833,7 +909,7 @@ struct shell_transport_api {
 	 * @param blocking_tx If true, the transport TX is enabled in blocking
 	 *		      mode.
 	 *
-	 * @return NRF_SUCCESS on successful enabling, error otherwise (also if
+	 * @return 0 on successful enabling, error otherwise (also if
 	 * not supported).
 	 */
 	int (*enable)(const struct shell_transport *transport,
@@ -876,17 +952,24 @@ struct shell_transport_api {
 
 };
 
+/**
+ * @brief Shell transport instance.
+ */
 struct shell_transport {
-	const struct shell_transport_api *api;
-	void *ctx;
+	const struct shell_transport_api *api; /**< Transport API. */
+	void *ctx;                             /**< Transport context. */
 };
 
 /**
  * @brief Shell statistics structure.
  */
 struct shell_stats {
-	atomic_t log_lost_cnt; /*!< Lost log counter.*/
+	atomic_t log_lost_cnt; /**< Lost log counter. */
 };
+
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 
 #ifdef CONFIG_SHELL_STATS
 #define Z_SHELL_STATS_DEFINE(_name) static struct shell_stats _name##_stats
@@ -897,22 +980,22 @@ struct shell_stats {
 #endif /* CONFIG_SHELL_STATS */
 
 /**
- * @internal @brief Flags for shell backend configuration.
+ * @brief Flags for shell backend configuration.
  */
 struct shell_backend_config_flags {
-	uint32_t insert_mode :1; /*!< Controls insert mode for text introduction */
-	uint32_t echo        :1; /*!< Controls shell echo */
-	uint32_t obscure     :1; /*!< If echo on, print asterisk instead */
-	uint32_t mode_delete :1; /*!< Operation mode of backspace key */
-	uint32_t use_colors  :1; /*!< Controls colored syntax */
-	uint32_t use_vt100   :1; /*!< Controls VT100 commands usage in shell */
+	uint32_t insert_mode :1; /**< Controls insert mode for text introduction. */
+	uint32_t echo        :1; /**< Controls shell echo. */
+	uint32_t obscure     :1; /**< If echo on, print asterisk instead. */
+	uint32_t mode_delete :1; /**< Operation mode of backspace key. */
+	uint32_t use_colors  :1; /**< Controls colored syntax. */
+	uint32_t use_vt100   :1; /**< Controls VT100 commands usage in shell. */
 };
 
 BUILD_ASSERT((sizeof(struct shell_backend_config_flags) == sizeof(uint32_t)),
 	     "Structure must fit in 4 bytes");
 
 /**
- * @internal @brief Default backend configuration.
+ * @brief Default backend configuration.
  */
 #define SHELL_DEFAULT_BACKEND_CONFIG_FLAGS				\
 {									\
@@ -924,22 +1007,25 @@ BUILD_ASSERT((sizeof(struct shell_backend_config_flags) == sizeof(uint32_t)),
 	.use_vt100	= 1,						\
 };
 
+/**
+ * @brief Flags for shell backend context.
+ */
 struct shell_backend_ctx_flags {
-	uint32_t processing   :1; /*!< Shell is executing process function */
-	uint32_t tx_rdy       :1;
-	uint32_t history_exit :1; /*!< Request to exit history mode */
-	uint32_t last_nl      :8; /*!< Last received new line character */
-	uint32_t cmd_ctx      :1; /*!< Shell is executing command */
-	uint32_t print_noinit :1; /*!< Print request from not initialized shell */
-	uint32_t sync_mode    :1; /*!< Shell in synchronous mode */
-	uint32_t handle_log   :1; /*!< Shell is handling logger backend */
+	uint32_t processing   :1; /**< Shell is executing process function. */
+	uint32_t tx_rdy       :1; /**< Transmit ready. */
+	uint32_t history_exit :1; /**< Request to exit history mode. */
+	uint32_t last_nl      :8; /**< Last received new line character. */
+	uint32_t cmd_ctx      :1; /**< Shell is executing command. */
+	uint32_t print_noinit :1; /**< Print request from not initialized shell. */
+	uint32_t sync_mode    :1; /**< Shell in synchronous mode. */
+	uint32_t handle_log   :1; /**< Shell is handling logger backend. */
 };
 
 BUILD_ASSERT((sizeof(struct shell_backend_ctx_flags) == sizeof(uint32_t)),
 	     "Structure must fit in 4 bytes");
 
 /**
- * @internal @brief Union for internal shell usage.
+ * @brief Union for internal shell usage.
  */
 union shell_backend_cfg {
 	atomic_t value;
@@ -947,18 +1033,21 @@ union shell_backend_cfg {
 };
 
 /**
- * @internal @brief Union for internal shell usage.
+ * @brief Union for internal shell usage.
  */
 union shell_backend_ctx {
 	uint32_t value;
 	struct shell_backend_ctx_flags flags;
 };
 
+/**
+ * @brief Shell signal flags.
+ */
 enum shell_signal {
-	SHELL_SIGNAL_RXRDY = BIT(0),
-	SHELL_SIGNAL_LOG_MSG = BIT(1),
-	SHELL_SIGNAL_KILL = BIT(2),
-	SHELL_SIGNAL_TXDONE = BIT(3),
+	SHELL_SIGNAL_RXRDY = BIT(0),   /**< RX ready signal. */
+	SHELL_SIGNAL_LOG_MSG = BIT(1), /**< Log message signal. */
+	SHELL_SIGNAL_KILL = BIT(2),    /**< Kill signal. */
+	SHELL_SIGNAL_TXDONE = BIT(3),  /**< TX done signal. */
 };
 
 /**
@@ -966,24 +1055,24 @@ enum shell_signal {
  */
 struct shell_ctx {
 #if defined(CONFIG_SHELL_PROMPT_CHANGE) && CONFIG_SHELL_PROMPT_CHANGE
-	char prompt[CONFIG_SHELL_PROMPT_BUFF_SIZE]; /*!< shell current prompt. */
+	char prompt[CONFIG_SHELL_PROMPT_BUFF_SIZE]; /**< Shell current prompt. */
 #else
-	const char *prompt;
+	const char *prompt;                         /**< Shell current prompt. */
 #endif
 
-	enum shell_state state; /*!< Internal module state.*/
-	enum shell_receive_state receive_state;/*!< Escape sequence indicator.*/
+	enum shell_state state;                     /**< Internal module state. */
+	enum shell_receive_state receive_state;     /**< Escape sequence indicator. */
 
-	/** Currently executed command.*/
+	/** Currently executed command. */
 	struct shell_static_entry active_cmd;
 
 	/** New root command. If NULL shell uses default root commands. */
 	const struct shell_static_entry *selected_cmd;
 
-	/** VT100 color and cursor position, terminal width.*/
+	/** VT100 color and cursor position, terminal width. */
 	struct shell_vt100_ctx vt100_ctx;
 
-	/** Callback called from shell thread context when unitialization is
+	/** Callback called from shell thread context when uninitialization is
 	 * completed just before aborting shell thread.
 	 */
 	shell_uninit_cb_t uninit_cb;
@@ -994,26 +1083,23 @@ struct shell_ctx {
 	/** When bypass is set, this user data pointer is passed to the callback. */
 	void *bypass_user_data;
 
-	/*!< Logging level for a backend. */
-	uint32_t log_level;
+	uint32_t log_level; /**< Logging level for a backend. */
 
 #if defined CONFIG_SHELL_GETOPT
-	/*!< getopt context for a shell backend. */
-	struct sys_getopt_state getopt;
+	struct sys_getopt_state getopt; /**< getopt context for a shell backend. */
 #endif
 
-	uint16_t cmd_buff_len; /*!< Command length.*/
-	uint16_t cmd_buff_pos; /*!< Command buffer cursor position.*/
+	uint16_t cmd_buff_len;     /**< Command length. */
+	uint16_t cmd_buff_pos;     /**< Command buffer cursor position. */
+	uint16_t cmd_tmp_buff_len; /**< Command length in tmp buffer. */
 
-	uint16_t cmd_tmp_buff_len; /*!< Command length in tmp buffer.*/
-
-	/** Command input buffer.*/
+	/** Command input buffer. */
 	char cmd_buff[CONFIG_SHELL_CMD_BUFF_SIZE];
 
-	/** Command temporary buffer.*/
+	/** Command temporary buffer. */
 	char temp_buff[CONFIG_SHELL_CMD_BUFF_SIZE];
 
-	/** Printf buffer size.*/
+	/** Printf buffer. */
 	char printf_buff[CONFIG_SHELL_PRINTF_BUFF_SIZE];
 
 	volatile union shell_backend_cfg cfg;
@@ -1026,46 +1112,47 @@ struct shell_ctx {
 	int ret_val;
 };
 
+/**
+ * @endcond
+ */
+
 extern const struct log_backend_api log_backend_shell_api;
 
 /**
  * @brief Flags for setting shell output newline sequence.
  */
 enum shell_flag {
-	SHELL_FLAG_CRLF_DEFAULT	= (1<<0),	/*!< Do not map CR or LF */
-	SHELL_FLAG_OLF_CRLF	= (1<<1)	/*!< Map LF to CRLF on output */
+	SHELL_FLAG_CRLF_DEFAULT	= (1<<0), /**< Do not map CR or LF. */
+	SHELL_FLAG_OLF_CRLF	= (1<<1)  /**< Map LF to CRLF on output. */
 };
 
 /**
- * @brief Shell instance internals.
+ * @brief Shell instance structure.
  */
 struct shell {
-	const char *default_prompt; /*!< shell default prompt. */
-
-	const struct shell_transport *iface; /*!< Transport interface.*/
-	struct shell_ctx *ctx; /*!< Internal context.*/
-
-	struct shell_history *history;
-
-	const enum shell_flag shell_flag;
-
-	const struct shell_fprintf *fprintf_ctx;
-
-	struct shell_stats *stats;
-
-	const struct shell_log_backend *log_backend;
-
+	const char *default_prompt;              /**< Shell default prompt. */
+	const struct shell_transport *iface;     /**< Transport interface. */
+	struct shell_ctx *ctx;                   /**< Internal context. */
+	struct shell_history *history;           /**< Command history. */
+	const enum shell_flag shell_flag;        /**< Shell flags. */
+	const struct shell_fprintf *fprintf_ctx; /**< fprintf context. */
+	struct shell_stats *stats;               /**< Shell statistics. */
+	const struct shell_log_backend *log_backend; /**< Log backend. */
 	LOG_INSTANCE_PTR_DECLARE(log);
-
-	const char *name;
-	struct k_thread *thread;
-	k_thread_stack_t *stack;
+	const char *name;                        /**< Shell instance name. */
+	struct k_thread *thread;                 /**< Shell thread. */
+	k_thread_stack_t *stack;                 /**< Shell thread stack. */
 };
+
+/**
+ * @cond INTERNAL_HIDDEN
+ */
 
 extern void z_shell_print_stream(const void *user_ctx, const char *data,
 				 size_t data_len);
 
-/** @brief Internal macro for defining a shell instance.
+/**
+ * @brief Internal macro for defining a shell instance.
  *
  * As it does not create the default shell logging backend it allows to use
  * custom approach for integrating logging with shell.
@@ -1098,6 +1185,10 @@ extern void z_shell_print_stream(const void *user_ctx, const char *data,
 		.log_backend = _log_backend,                                                       \
 		LOG_INSTANCE_PTR_INIT(log, shell, _name).name =                                    \
 			STRINGIFY(_name), .thread = &_name##_thread, .stack = _name##_stack}
+
+/**
+ * @endcond
+ */
 
 /**
  * @brief Macro for defining a shell instance.

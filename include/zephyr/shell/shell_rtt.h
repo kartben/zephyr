@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Shell RTT transport backend.
+ */
+
 #ifndef ZEPHYR_INCLUDE_SHELL_RTT_H_
 #define ZEPHYR_INCLUDE_SHELL_RTT_H_
 
@@ -13,14 +18,35 @@
 extern "C" {
 #endif
 
+/**
+ * @addtogroup shell_api
+ * @{
+ */
+
+/**
+ * @cond INTERNAL_HIDDEN
+ */
+
 extern const struct shell_transport_api shell_rtt_transport_api;
 
+/**
+ * @brief Shell RTT transport context.
+ */
 struct shell_rtt {
-	shell_transport_handler_t handler;
-	struct k_timer timer;
-	void *context;
+	shell_transport_handler_t handler; /**< Transport handler. */
+	struct k_timer timer;              /**< Polling timer. */
+	void *context;                     /**< Handler context. */
 };
 
+/**
+ * @endcond
+ */
+
+/**
+ * @brief Macro for creating shell RTT transport instance.
+ *
+ * @param _name Instance name.
+ */
 #define SHELL_RTT_DEFINE(_name)					\
 	static struct shell_rtt _name##_shell_rtt;			\
 	struct shell_transport _name = {				\
@@ -29,14 +55,19 @@ struct shell_rtt {
 	}
 
 /**
- * @brief Function provides pointer to shell rtt backend instance.
+ * @brief Get pointer to the shell RTT backend instance.
  *
- * Function returns pointer to the shell rtt instance. This instance can be
- * next used with shell_execute_cmd function in order to test commands behavior.
+ * This function returns a pointer to the shell RTT instance. This instance
+ * can be used with shell_execute_cmd() to test command behavior.
  *
- * @returns Pointer to the shell instance.
+ * @return Pointer to the shell instance.
  */
 const struct shell *shell_backend_rtt_get_ptr(void);
+
+/**
+ * @}
+ */
+
 #ifdef __cplusplus
 }
 #endif
