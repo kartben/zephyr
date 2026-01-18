@@ -107,7 +107,7 @@ static inline bool spi_context_configured(struct spi_context *ctx,
 }
 
 /* Returns true if the spi configuration stored for this context
- * specifies a slave mode configuration, returns false otherwise
+ * specifies a peripheral mode configuration, returns false otherwise
  */
 static inline bool spi_context_is_slave(struct spi_context *ctx)
 {
@@ -181,7 +181,7 @@ static inline size_t spi_context_total_rx_len(struct spi_context *ctx);
  *
  * The exact way this function is used may depend on driver implementation, but
  * essentially this will block waiting for a signal from spi_context_complete,
- * unless the transfer is asynchronous, in which case it does nothing in master mode.
+ * unless the transfer is asynchronous, in which case it does nothing in controller mode.
  */
 static inline int spi_context_wait_for_completion(struct spi_context *ctx)
 {
@@ -198,7 +198,7 @@ static inline int spi_context_wait_for_completion(struct spi_context *ctx)
 		k_timeout_t timeout;
 		uint32_t timeout_ms;
 
-		/* Do not use any timeout in the slave mode, as in this case
+		/* Do not use any timeout in the peripheral mode, as in this case
 		 * it is not known when the transfer will actually start and
 		 * what the frequency will be.
 		 */
@@ -222,7 +222,7 @@ static inline int spi_context_wait_for_completion(struct spi_context *ctx)
 		}
 #else
 		if (timeout_ms == UINT32_MAX) {
-			/* In slave mode, we wait indefinitely, so we can go idle. */
+			/* In peripheral mode, we wait indefinitely, so we can go idle. */
 			unsigned int key = irq_lock();
 
 			while (!atomic_get(&ctx->ready)) {
@@ -360,7 +360,7 @@ static inline int _spi_context_cs_pm_all(struct spi_context *ctx, bool get)
 }
 
 /* This function should be called by drivers to pm get all the chip select lines in
- * master mode in the case of any CS being a GPIO. This should be called from the
+ * controller mode in the case of any CS being a GPIO. This should be called from the
  * drivers pm action hook on pm resume.
  */
 static inline int spi_context_cs_get_all(struct spi_context *ctx)
@@ -369,7 +369,7 @@ static inline int spi_context_cs_get_all(struct spi_context *ctx)
 }
 
 /* This function should be called by drivers to pm put all the chip select lines in
- * master mode in the case of any CS being a GPIO. This should be called from the
+ * controller mode in the case of any CS being a GPIO. This should be called from the
  * drivers pm action hook on pm suspend.
  */
 static inline int spi_context_cs_put_all(struct spi_context *ctx)
@@ -397,7 +397,7 @@ static inline void _spi_context_cs_control(struct spi_context *ctx,
 	}
 }
 
-/* This function should be called by drivers to control the chip select line in master mode
+/* This function should be called by drivers to control the chip select line in controller mode
  * in the case of the CS being a GPIO. The de facto usage of the zephyr SPI API expects that the
  * chip select be asserted throughout the entire transfer specified by a transceive call,
  * ie all buffers in a spi_buf_set should be finished before deasserting CS. And usually

@@ -106,7 +106,7 @@ static int lpc11u6x_i2c_transfer(const struct device *dev,
 	}
 	data->transfer.status = LPC11U6X_I2C_STATUS_INACTIVE;
 
-	/* If a slave is registered, put the controller in slave mode */
+	/* If a slave is registered, put the controller in target mode */
 	if (data->slave) {
 		cfg->base->con_set = LPC11U6X_I2C_CONTROL_AA;
 	}

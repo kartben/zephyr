@@ -201,12 +201,12 @@ static int spi_dw_configure(const struct device *dev,
 	/* Verify if requested op mode is relevant to this controller */
 	if (config->operation & SPI_OP_MODE_SLAVE) {
 		if (!(info->serial_target)) {
-			LOG_ERR("Slave mode not supported");
+			LOG_ERR("Peripheral mode not supported");
 			return -ENOTSUP;
 		}
 	} else {
 		if (info->serial_target) {
-			LOG_ERR("Master mode not supported");
+			LOG_ERR("Controller mode not supported");
 			return -ENOTSUP;
 		}
 	}

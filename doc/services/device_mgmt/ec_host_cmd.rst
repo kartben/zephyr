@@ -76,14 +76,14 @@ SoCs, modify the compatible string as shown.
        ...
    };
 
-The chip that runs Zephyr is a SPI slave and the ``cs-gpios`` property is used to point our CS pin.
+The chip that runs Zephyr is a SPI peripheral and the ``cs-gpios`` property is used to point our CS pin.
 For the SPI, it is required to set the backend chosen node ``zephyr,host-cmd-spi-backend``.
 
 The supported backend and peripheral drivers:
 
 * Simulator
 * SHI - ITE and NPCX
-* eSPI - any eSPI slave driver that support :kconfig:option:`CONFIG_ESPI_PERIPHERAL_EC_HOST_CMD` and
+* eSPI - any eSPI peripheral driver that support :kconfig:option:`CONFIG_ESPI_PERIPHERAL_EC_HOST_CMD` and
   :kconfig:option:`CONFIG_ESPI_PERIPHERAL_CUSTOM_OPCODE`
 * UART - any UART driver that supports the asynchronous API
 * SPI - STM32

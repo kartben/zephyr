@@ -384,7 +384,7 @@ void i2c_stm32_event(const struct device *dev)
 	if (LL_I2C_IsActiveFlag_NACK(i2c)) {
 		LL_I2C_ClearFlag_NACK(i2c);
 		/*
-		 * AutoEndMode is always disabled in master mode,
+		 * AutoEndMode is always disabled in controller mode,
 		 * so send a stop condition manually
 		 */
 		LL_I2C_GenerateStopCondition(i2c);

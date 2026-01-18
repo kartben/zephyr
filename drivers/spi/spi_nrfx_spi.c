@@ -105,7 +105,7 @@ static int configure(const struct device *dev,
 	}
 
 	if (SPI_OP_MODE_GET(spi_cfg->operation) != SPI_OP_MODE_MASTER) {
-		LOG_ERR("Slave mode is not supported on %s", dev->name);
+		LOG_ERR("Peripheral mode is not supported on %s", dev->name);
 		return -EINVAL;
 	}
 

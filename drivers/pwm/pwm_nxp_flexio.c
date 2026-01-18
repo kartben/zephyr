@@ -100,7 +100,7 @@ static int pwm_nxp_flexio_set_cycles(const struct device *dev,
 	struct nxp_flexio_child *child = (struct nxp_flexio_child *)(config->child);
 	enum pwm_nxp_flexio_polarity polarity;
 
-	/* Check received parameters for sanity */
+	/* Check received parameters for validity */
 	if (channel >= config->pulse_info->pwm_pulse_channels) {
 		LOG_ERR("Invalid channel");
 		return -EINVAL;

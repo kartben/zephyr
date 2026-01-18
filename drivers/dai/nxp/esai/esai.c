@@ -39,7 +39,7 @@ static int esai_get_clock_rate_config(uint32_t extal_rate, uint32_t hclk_rate,
 {
 	uint32_t hclk_div_ratio, bclk_div_ratio;
 
-	/* sanity checks */
+	/* validations */
 	if (!cfg) {
 		LOG_ERR("got NULL clock configuration");
 		return -EINVAL;
@@ -246,7 +246,7 @@ static int esai_get_proto_config(const struct dai_config *cfg,
 static int esai_get_slot_format(uint32_t slot_width, uint32_t word_width,
 				struct esai_transceiver_config *cfg)
 {
-	/* sanity check */
+	/* validation */
 	if (!ESAI_SLOT_WORD_WIDTH_IS_VALID(slot_width, word_width)) {
 		LOG_ERR("invalid slot %d word %d width configuration",
 			slot_width, word_width);

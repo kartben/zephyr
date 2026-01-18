@@ -1830,7 +1830,7 @@ static bool pdu_validate_periodic_sync_ind(struct pdu_data *pdu)
 typedef bool (*pdu_param_validate_t)(struct pdu_data *pdu);
 
 struct pdu_validate {
-	/* TODO can be just size if no other sanity checks here */
+	/* TODO can be just size if no other validations here */
 	pdu_param_validate_t validate_cb;
 };
 

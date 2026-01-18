@@ -125,7 +125,7 @@ static void i2c_cc32xx_prime_transfer(const struct device *dev,
 	/* Start transfer in Transmit mode */
 	if (IS_I2C_MSG_WRITE(data->msg.flags)) {
 
-		/* Specify the I2C slave address */
+		/* Specify the I2C target address */
 		MAP_I2CMasterSlaveAddrSet(base, addr, false);
 
 		/* Update the I2C state */
@@ -139,7 +139,7 @@ static void i2c_cc32xx_prime_transfer(const struct device *dev,
 
 	} else {
 		/* Start transfer in Receive mode */
-		/* Specify the I2C slave address */
+		/* Specify the I2C target address */
 		MAP_I2CMasterSlaveAddrSet(base, addr, true);
 
 		/* Update the I2C mode */

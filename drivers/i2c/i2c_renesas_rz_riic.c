@@ -136,7 +136,7 @@ static int i2c_rz_riic_configure(const struct device *dev, uint32_t dev_config)
 	fsp_err_t err;
 
 	if (!(dev_config & I2C_MODE_CONTROLLER)) {
-		LOG_ERR("Only I2C Master mode supported.");
+		LOG_ERR("Only I2C Controller mode supported.");
 		return -EIO;
 	}
 

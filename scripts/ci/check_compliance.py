@@ -698,7 +698,7 @@ class KconfigCheck(ComplianceTest):
         Get a list of modules and put them in a file that is parsed by
         Kconfig
 
-        This is needed to complete Kconfig sanity tests.
+        This is needed to complete Kconfig consistency tests.
 
         """
         # Invoke the script directly using the Python executable since this is
@@ -771,7 +771,7 @@ class KconfigCheck(ComplianceTest):
         Get lists of v2 boards and SoCs and put them in a file that is parsed by
         Kconfig
 
-        This is needed to complete Kconfig sanity tests.
+        This is needed to complete Kconfig consistency tests.
         """
         os.environ['HWM_SCHEME'] = 'v2'
         os.environ["KCONFIG_BOARD_DIR"] = os.path.join(kconfig_dir, 'boards')

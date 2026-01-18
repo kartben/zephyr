@@ -262,7 +262,7 @@ reg
       ``address`` is usually the base address of the I/O register space, and
       ``length`` is the number of bytes occupied by the registers.
     - I2C devices (like ``apds9960@39`` and its siblings):
-      ``address`` is a slave address on the I2C bus. There is no ``length``
+      ``address`` is a target address on the I2C bus. There is no ``length``
       value.
     - SPI devices: ``address`` is a chip select line number; there is no
       ``length``.

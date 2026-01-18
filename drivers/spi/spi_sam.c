@@ -111,7 +111,7 @@ static int spi_sam_configure(const struct device *dev,
 	}
 
 	if (SPI_OP_MODE_GET(config->operation) != SPI_OP_MODE_MASTER) {
-		/* Slave mode is not implemented. */
+		/* Peripheral mode is not implemented. */
 		return -ENOTSUP;
 	}
 
@@ -121,7 +121,7 @@ static int spi_sam_configure(const struct device *dev,
 		return -EINVAL;
 	}
 
-	/* Set master mode, disable mode fault detection, set fixed peripheral
+	/* Set controller mode, disable mode fault detection, set fixed peripheral
 	 * select mode.
 	 */
 	spi_mr |= (SPI_MR_MSTR | SPI_MR_MODFDIS);

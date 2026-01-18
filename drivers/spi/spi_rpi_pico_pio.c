@@ -279,7 +279,7 @@ static int spi_pico_pio_configure(const struct spi_pico_pio_config *dev_cfg,
 	}
 
 	if (spi_cfg->operation & SPI_OP_MODE_SLAVE) {
-		LOG_ERR("Slave mode not supported");
+		LOG_ERR("Peripheral mode not supported");
 		return -ENOTSUP;
 	}
 

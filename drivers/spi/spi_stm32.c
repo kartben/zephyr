@@ -594,7 +594,7 @@ static void spi_stm32_msg_start(const struct device *dev, bool is_rx_empty)
 
 #if DT_HAS_COMPAT_STATUS_OKAY(st_stm32h7_spi)
 	/* With the STM32MP1, STM32U5 and the STM32H7,
-	 * if the device is the SPI master,
+	 * if the device is the SPI controller,
 	 * we need to enable the start of the transfer with
 	 * LL_SPI_StartMasterTransfer(spi)
 	 */
@@ -1199,7 +1199,7 @@ static int spi_stm32_half_duplex_switch_to_receive(const struct spi_stm32_config
 
 #if DT_HAS_COMPAT_STATUS_OKAY(st_stm32h7_spi)
 		/* With the STM32MP1, STM32U5 and the STM32H7,
-		 * if the device is the SPI master,
+		 * if the device is the SPI controller,
 		 * we need to enable the start of the transfer with
 		 * LL_SPI_StartMasterTransfer(spi).
 		 */
@@ -1351,7 +1351,7 @@ static int wait_dma_rx_tx_done(const struct device *dev)
 	k_timeout_t timeout;
 
 	/*
-	 * In slave mode we do not know when the transaction will start. Hence,
+	 * In peripheral mode we do not know when the transaction will start. Hence,
 	 * it doesn't make sense to have timeout in this case.
 	 */
 	if (IS_ENABLED(CONFIG_SPI_SLAVE) && spi_context_is_slave(&data->ctx)) {

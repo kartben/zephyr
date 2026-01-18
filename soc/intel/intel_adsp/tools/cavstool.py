@@ -152,7 +152,7 @@ class HDAStream:
                                                 buf1_len)
         dpib_off = bdl_off+32
 
-        # ensure buffer is initialized, sanity
+        # ensure buffer is initialized, validity
         for i in range(0, buf_len*2):
             mem[i] = 0
 

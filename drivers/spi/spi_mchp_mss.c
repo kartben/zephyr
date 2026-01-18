@@ -440,7 +440,7 @@ static int mss_spi_init(const struct device *dev)
 	control &= ~MSS_SPI_CONTROL_RESET;
 	mss_spi_write(cfg, MSS_SPI_REG_CONTROL, control);
 
-	/* Set master mode */
+	/* Set controller mode */
 	mss_spi_disable_controller(cfg);
 	xfer->control = (MSS_SPI_CONTROL_SPS | MSS_SPI_CONTROL_BIGFIFO | MSS_SPI_CONTROL_MASTER |
 			 MSS_SPI_CONTROL_CLKMODE);

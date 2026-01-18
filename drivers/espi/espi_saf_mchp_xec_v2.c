@@ -605,7 +605,7 @@ static void saf_qmspi_ldma_cfg(const struct espi_saf_xec_config * const xcfg)
  * Configure SAF and QMSPI for SAF operation based upon the
  * number and characteristics of local SPI flash devices.
  * NOTE: SAF is configured but not activated. SAF should be
- * activated only when eSPI master sends Flash Channel enable
+ * activated only when eSPI controller sends Flash Channel enable
  * message with MAF/SAF select flag.
  */
 static int espi_saf_xec_configuration(const struct device *dev,

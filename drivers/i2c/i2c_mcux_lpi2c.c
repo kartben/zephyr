@@ -320,7 +320,7 @@ static void mcux_lpi2c_slave_irq_handler(const struct device *dev)
 	uint32_t flags;
 	uint8_t i2c_data;
 
-	/* Note- the HAL provides a callback-based I2C slave API, but
+	/* Note- the HAL provides a callback-based I2C target API, but
 	 * the API expects the user to provide a transmit buffer of
 	 * a fixed length at the first byte received, and will not signal
 	 * the user callback until this buffer is exhausted. This does not

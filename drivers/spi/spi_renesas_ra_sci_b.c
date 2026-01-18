@@ -100,7 +100,7 @@ static inline void _renesas_ra_spi_context_cs_control(const struct device *dev, 
 }
 
 /*
- * This function should be called by drivers to control the chip select line in master mode
+ * This function should be called by drivers to control the chip select line in controller mode
  * in the case of the CS being a GPIO, help to control the cs gpio when changing the CS GPIO
  * active state in runtime.
  */
@@ -319,7 +319,7 @@ static int spi_renesas_ra_sci_b_configure(const struct device *dev, const struct
 	}
 
 	if ((config->operation & SPI_OP_MODE_SLAVE) && !IS_ENABLED(CONFIG_SPI_SLAVE)) {
-		LOG_ERR("Kconfig for enable SPI in slave mode is not enabled");
+		LOG_ERR("Kconfig for enable SPI in peripheral mode is not enabled");
 		return -ENOTSUP;
 	}
 

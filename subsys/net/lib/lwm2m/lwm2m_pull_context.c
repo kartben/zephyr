@@ -422,7 +422,7 @@ int lwm2m_pull_context_start_transfer(char *uri, struct requesting_object req, k
 	int ret;
 
 	if (!req.write_cb || !req.result_cb) {
-		LOG_DBG("Context failed sanity check. Verify initialization!");
+		LOG_DBG("Context failed validation. Verify initialization!");
 		return -EINVAL;
 	}
 

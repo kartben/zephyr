@@ -70,7 +70,7 @@ extern "C" {
  *                 +-----------------+
  *                          |
  *+-----------------------------------------------------------------------+
- *|  eSPI slave                                                           |
+ *|  eSPI peripheral                                                           |
  *|                                                                       |
  *|       CH0         |     CH1      |      CH2      |    CH3             |
  *|   eSPI endpoint   |    VWIRE     |      OOB      |   Flash            |
@@ -176,11 +176,11 @@ __subsystem struct espi_saf_driver_api {
  *
  * If this eSPI controller is acting as slave, the values set here
  * will be discovered as part through the GET_CONFIGURATION command
- * issued by the eSPI master during initialization.
+ * issued by the eSPI controller during initialization.
  *
  * If this eSPI controller is acting as master, the values set here
- * will be used by eSPI master to determine minimum common capabilities with
- * eSPI slave then send via SET_CONFIGURATION command.
+ * will be used by eSPI controller to determine minimum common capabilities with
+ * eSPI peripheral then send via SET_CONFIGURATION command.
  *
  * @code
  * +--------+   +---------+     +------+          +---------+   +---------+
@@ -214,7 +214,7 @@ __subsystem struct espi_saf_driver_api {
  * @retval 0 If successful.
  * @retval -EIO General input / output error, failed to configure device.
  * @retval -EINVAL invalid capabilities, failed to configure device.
- * @retval -ENOTSUP capability not supported by eSPI slave.
+ * @retval -ENOTSUP capability not supported by eSPI peripheral.
  */
 __syscall int espi_saf_config(const struct device *dev,
 			      const struct espi_saf_cfg *cfg);
@@ -240,7 +240,7 @@ static inline int z_impl_espi_saf_config(const struct device *dev,
  * @retval 0 If successful.
  * @retval -EIO General input / output error, failed to configure device.
  * @retval -EINVAL invalid capabilities, failed to configure device.
- * @retval -ENOTSUP capability not supported by eSPI slave.
+ * @retval -ENOTSUP capability not supported by eSPI peripheral.
  */
 __syscall int espi_saf_set_protection_regions(
 				const struct device *dev,
@@ -303,7 +303,7 @@ static inline bool z_impl_espi_saf_get_channel_status(
  * @brief Sends a read request packet for slave attached flash.
  *
  * This routines provides an interface to send a request to read the flash
- * component shared between the eSPI master and eSPI slaves.
+ * component shared between the eSPI controller and eSPI peripherals.
  *
  * @param dev Pointer to the device structure for the driver instance.
  * @param pckt Address of the representation of read flash transaction.
@@ -332,7 +332,7 @@ static inline int z_impl_espi_saf_flash_read(const struct device *dev,
  * @brief Sends a write request packet for slave attached flash.
  *
  * This routines provides an interface to send a request to write to the flash
- * components shared between the eSPI master and eSPI slaves.
+ * components shared between the eSPI controller and eSPI peripherals.
  *
  * @param dev Pointer to the device structure for the driver instance.
  * @param pckt Address of the representation of write flash transaction.
@@ -361,7 +361,7 @@ static inline int z_impl_espi_saf_flash_write(const struct device *dev,
  * @brief Sends a write request packet for slave attached flash.
  *
  * This routines provides an interface to send a request to write to the flash
- * components shared between the eSPI master and eSPI slaves.
+ * components shared between the eSPI controller and eSPI peripherals.
  *
  * @param dev Pointer to the device structure for the driver instance.
  * @param pckt Address of the representation of erase flash transaction.

@@ -225,7 +225,7 @@ static int spi_rz_rspi_configure(const struct device *dev, const struct spi_conf
 		data->fsp_ctrl->bit_width = SPI_BIT_WIDTH_8_BITS;
 	}
 
-	/* SPI slave select polarity */
+	/* SPI peripheral select polarity */
 	if (spi_cfg->operation & SPI_CS_ACTIVE_HIGH) {
 		data->fsp_extend_config.ssl_polarity = RSPI_SSLP_HIGH;
 	} else {

@@ -327,7 +327,7 @@ static int spi_b91_config(const struct device *dev,
 		mode = SPI_MODE3;
 	}
 
-	/* init SPI master */
+	/* init SPI controller */
 	spi_master_init(b91_config->peripheral_id,
 			clk_src * 1000000 / (2 * config->frequency) - 1, mode);
 	spi_master_config(b91_config->peripheral_id, SPI_NOMAL);

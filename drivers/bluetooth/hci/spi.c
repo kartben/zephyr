@@ -47,7 +47,7 @@ LOG_MODULE_REGISTER(bt_driver);
 /* Max SPI buffer length for transceive operations.
  *
  * Buffer size needs to be at least the size of the larger RX/TX buffer
- * required by the SPI slave, as the legacy spi_transceive requires both RX/TX
+ * required by the SPI peripheral, as the legacy spi_transceive requires both RX/TX
  * to be the same length. Size also needs to be compatible with the
  * slave device used (e.g. nRF5X max buffer length for SPIS is 255).
  */

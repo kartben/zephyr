@@ -163,7 +163,7 @@ static int spi_rz_configure(const struct device *dev, const struct spi_config *s
 		return -ENOTSUP;
 	}
 
-	/* SPI slave select polarity */
+	/* SPI peripheral select polarity */
 	if (spi_cfg->operation & SPI_CS_ACTIVE_HIGH) {
 		spi_extend->ssl_polarity = SPI_SSLP_HIGH;
 	} else {
@@ -186,7 +186,7 @@ static int spi_rz_configure(const struct device *dev, const struct spi_config *s
 	if (spi_cs_is_gpio(spi_cfg) || !IS_ENABLED(CONFIG_SPI_USE_HW_SS)) {
 		if ((spi_cfg->operation & SPI_OP_MODE_SLAVE) &&
 		    (data->fsp_config->clk_phase == SPI_CLK_PHASE_EDGE_ODD)) {
-			LOG_DEV_ERR(dev, "The CPHA bit must be set to 1 slave mode");
+			LOG_DEV_ERR(dev, "The CPHA bit must be set to 1 peripheral mode");
 			return -EIO;
 		}
 		spi_extend->spi_clksyn = SPI_SSL_MODE_CLK_SYN;

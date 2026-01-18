@@ -730,7 +730,7 @@ static int lsm6dso_init_chip(const struct device *dev)
 		return -EIO;
 	}
 
-	/* Per AN5192 §7.2.1, "… when applying the software reset procedure, the I2C master
+	/* Per AN5192 §7.2.1, "… when applying the software reset procedure, the I2C controller
 	 * must be disabled, followed by a 300 μs wait."
 	 */
 	if (lsm6dso_sh_master_get(ctx, &master_on) < 0) {

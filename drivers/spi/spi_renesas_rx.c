@@ -140,7 +140,7 @@ void rx_rspi_spti_sub(const struct device *dev)
 	if ((!spi_context_rx_on(&data->ctx)) && (tx_count == rspi_tcb->xfr_length - 1)) {
 		data->preg->SPCR2.BIT.SPIIE = 1;
 
-		/* If the SPI is in slave mode */
+		/* If the SPI is in peripheral mode */
 		if (spi_context_is_slave(&data->ctx)) {
 			/* Disable RSPI */
 			data->preg->SPCR.BIT.SPE = 0;
@@ -204,7 +204,7 @@ static int rx_rspi_configure(const struct device *dev, const struct spi_config *
 		if (data->channel_setting.master_slave_mode == RSPI_MS_MODE_MASTER) {
 			data->command_word.cpha = RSPI_SPCMD_CPHA_SAMPLE_ODD;
 		} else {
-			/* In slave mode cpha must be 1 */
+			/* In peripheral mode cpha must be 1 */
 			LOG_ERR("Invalid clock phase");
 			return -EINVAL;
 		}
@@ -656,7 +656,7 @@ static void rx_rspi_spri_isr(const struct device *dev)
 		if (rx_count == rspi_tcb->xfr_length) {
 			data->preg->SPCR2.BIT.SPIIE = 1;
 
-			/* If the SPI is in slave mode */
+			/* If the SPI is in peripheral mode */
 			if (spi_context_is_slave(&data->ctx)) {
 				spi_context_update_rx(&data->ctx, data->dfs, data->data_len);
 				/* Disable RSPI */
@@ -702,8 +702,8 @@ static void rx_rspi_spti_isr(const struct device *dev)
 		}
 
 /**
- * If master mode then disable further SPTI interrupts on first transmit.
- * If slave mode then we do two transmits to fill the double buffer,
+ * If controller mode then disable further SPTI interrupts on first transmit.
+ * If peripheral mode then we do two transmits to fill the double buffer,
  * then disable SPTI interrupts.
  * The receive interrupt will handle any remaining data.
  */

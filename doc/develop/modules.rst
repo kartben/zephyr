@@ -96,7 +96,7 @@ Module Repositories
   .. note::
 
      It is not required in module repositories to maintain a 'master'
-     branch mirroring the master branch of the external repository. It
+     branch mirroring the main branch of the external repository. It
      is not recommended as this may generate confusion around the module's
      main branch, which should be 'zephyr'.
 
@@ -1158,7 +1158,7 @@ however, we require specifying the pull request number in the revision field to
 allow building the zephyr main tree with the changes submitted to the
 module.
 
-To avoid merging changes to master with pull request information, the pull
+To avoid merging changes to main with pull request information, the pull
 request should be marked as ``DNM`` (Do Not Merge) or preferably a draft pull
 request to make sure it is not merged by mistake and to allow for the module to
 be merged first and be assigned a permanent commit hash. Drafts reduce noise by

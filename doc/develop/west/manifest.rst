@@ -341,7 +341,7 @@ so far using ``defaults`` is:
        - name: proj1
          description: the first example project
          path: extra/project-1
-         revision: master
+         revision: main
        - name: proj2
          description: |
            A multi-line description of the second example

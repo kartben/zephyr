@@ -21,7 +21,7 @@ static int cmd_cpu_states(const struct shell *sh, size_t argc, char **argv)
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
 
-	/* sanity check for first */
+	/* validation for first */
 	if (ARRAY_SIZE(residency_info) == 0U) {
 		shell_warn(sh, "No pm states");
 		return -EINVAL;
@@ -47,7 +47,7 @@ static int cmd_cpu_available(const struct shell *sh, size_t argc, char **argv)
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
 
-	/* sanity check for first */
+	/* validation for first */
 	if (ARRAY_SIZE(residency_info) == 0U) {
 		shell_warn(sh, "No pm states");
 		return -EINVAL;

@@ -93,7 +93,7 @@ static int spi_sam0_configure(const struct device *dev,
 	}
 
 	if (SPI_OP_MODE_GET(config->operation) != SPI_OP_MODE_MASTER) {
-		/* Slave mode is not implemented. */
+		/* Peripheral mode is not implemented. */
 		return -ENOTSUP;
 	}
 

@@ -137,7 +137,7 @@ static ssize_t offload_sendto(void *obj, const void *buf, size_t len, int flags,
 		return -EINVAL;
 	}
 
-	/* Do some sanity checks. */
+	/* Do some validations. */
 	if (!buf || len == 0) {
 		errno = EINVAL;
 		return -1;

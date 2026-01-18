@@ -86,7 +86,7 @@ static int configure(const struct device *dev,
 	}
 
 	if (SPI_OP_MODE_GET(spi_cfg->operation) == SPI_OP_MODE_MASTER) {
-		LOG_ERR("Master mode is not supported on %s", dev->name);
+		LOG_ERR("Controller mode is not supported on %s", dev->name);
 		return -EINVAL;
 	}
 

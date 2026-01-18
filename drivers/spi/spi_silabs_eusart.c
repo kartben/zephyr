@@ -128,7 +128,7 @@ static int spi_silabs_eusart_configure(const struct device *dev, const struct sp
 	}
 
 	if (config->operation & SPI_OP_MODE_SLAVE) {
-		LOG_ERR("Slave mode not supported");
+		LOG_ERR("Peripheral mode not supported");
 		return -ENOTSUP;
 	}
 

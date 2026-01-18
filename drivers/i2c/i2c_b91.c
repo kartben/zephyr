@@ -42,7 +42,7 @@ static int i2c_b91_configure(const struct device *dev, uint32_t dev_config)
 
 	/* check I2C Master/Slave configuration */
 	if (!(dev_config & I2C_MODE_CONTROLLER)) {
-		LOG_ERR("I2C slave is not implemented");
+		LOG_ERR("I2C target is not implemented");
 		return -ENOTSUP;
 	}
 

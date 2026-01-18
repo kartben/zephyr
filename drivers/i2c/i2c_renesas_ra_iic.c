@@ -67,7 +67,7 @@ static int i2c_ra_iic_configure(const struct device *dev, uint32_t dev_config)
 	struct i2c_ra_iic_data *data = (struct i2c_ra_iic_data *const)dev->data;
 
 	if (!(dev_config & I2C_MODE_CONTROLLER)) {
-		LOG_ERR("Only I2C Master mode supported.");
+		LOG_ERR("Only I2C Controller mode supported.");
 		return -EIO;
 	}
 

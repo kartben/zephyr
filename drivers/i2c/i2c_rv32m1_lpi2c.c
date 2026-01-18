@@ -49,8 +49,8 @@ static int rv32m1_lpi2c_configure(const struct device *dev,
 	int err;
 
 	if (!(I2C_MODE_CONTROLLER & dev_config)) {
-		/* Slave mode not supported - yet */
-		LOG_ERR("Slave mode not supported");
+		/* Target mode not supported - yet */
+		LOG_ERR("Target mode not supported");
 		return -ENOTSUP;
 	}
 

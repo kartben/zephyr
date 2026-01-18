@@ -621,7 +621,7 @@ int i2c_stm32_error(const struct device *dev)
 		goto end;
 	}
 
-	/* Don't end a transaction on bus error in master mode
+	/* Don't end a transaction on bus error in controller mode
 	 * as errata sheet says that spurious false detections
 	 * of BERR can happen which shall be ignored.
 	 * If a real Bus Error occurs, transaction will time out.

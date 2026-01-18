@@ -150,7 +150,7 @@ static const uint8_t intensity_registers[16] = { 0x2a, 0x2d, 0x30, 0x33,
 						 0x56, 0x5b, 0x60, 0x65 };
 
 /**
- * @brief Write a big-endian word to an internal address of an I2C slave.
+ * @brief Write a big-endian word to an internal address of an I2C target.
  *
  * @param dev Pointer to the I2C bus spec.
  * @param reg_addr Address of the internal register being written.
@@ -168,7 +168,7 @@ static inline int i2c_reg_write_word_be(const struct i2c_dt_spec *bus,
 }
 
 /**
- * @brief Write a big-endian byte to an internal address of an I2C slave.
+ * @brief Write a big-endian byte to an internal address of an I2C target.
  *
  * @param bus Pointer to the I2C bus spec.
  * @param reg_addr Address of the internal register being written.

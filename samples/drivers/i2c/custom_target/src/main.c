@@ -12,7 +12,7 @@ static const struct device *bus = DEVICE_DT_GET(DT_NODELABEL(flexcomm4));
 static char last_byte;
 
 /*
- * @brief Callback which is called when a write request is received from the master.
+ * @brief Callback which is called when a write request is received from the controller.
  * @param config Pointer to the target configuration.
  */
 int sample_target_write_requested_cb(struct i2c_target_config *config)
@@ -22,9 +22,9 @@ int sample_target_write_requested_cb(struct i2c_target_config *config)
 }
 
 /*
- * @brief Callback which is called when a write is received from the master.
+ * @brief Callback which is called when a write is received from the controller.
  * @param config Pointer to the target configuration.
- * @param val The byte received from the master.
+ * @param val The byte received from the controller.
  */
 int sample_target_write_received_cb(struct i2c_target_config *config, uint8_t val)
 {
@@ -34,9 +34,9 @@ int sample_target_write_received_cb(struct i2c_target_config *config, uint8_t va
 }
 
 /*
- * @brief Callback which is called when a read request is received from the master.
+ * @brief Callback which is called when a read request is received from the controller.
  * @param config Pointer to the target configuration.
- * @param val Pointer to the byte to be sent to the master.
+ * @param val Pointer to the byte to be sent to the controller.
  */
 int sample_target_read_requested_cb(struct i2c_target_config *config, uint8_t *val)
 {
@@ -46,9 +46,9 @@ int sample_target_read_requested_cb(struct i2c_target_config *config, uint8_t *v
 }
 
 /*
- * @brief Callback which is called when a read is processed from the master.
+ * @brief Callback which is called when a read is processed from the controller.
  * @param config Pointer to the target configuration.
- * @param val Pointer to the next byte to be sent to the master.
+ * @param val Pointer to the next byte to be sent to the controller.
  */
 int sample_target_read_processed_cb(struct i2c_target_config *config, uint8_t *val)
 {
@@ -58,7 +58,7 @@ int sample_target_read_processed_cb(struct i2c_target_config *config, uint8_t *v
 }
 
 /*
- * @brief Callback which is called when the master sends a stop condition.
+ * @brief Callback which is called when the controller sends a stop condition.
  * @param config Pointer to the target configuration.
  */
 int sample_target_stop_cb(struct i2c_target_config *config)

@@ -206,7 +206,7 @@ static int omap_mcspi_configure(const struct device *dev, const struct spi_confi
 	}
 
 	if (is_peripheral && !IS_ENABLED(CONFIG_SPI_SLAVE)) {
-		LOG_ERR("Kconfig for SPI slave mode is not enabled");
+		LOG_ERR("Kconfig for SPI peripheral mode is not enabled");
 		return -ENOTSUP;
 	}
 

@@ -303,12 +303,12 @@ static int spi_nxp_s32_configure(const struct device *dev,
 	}
 
 	if (slave_mode && !IS_ENABLED(CONFIG_SPI_SLAVE)) {
-		LOG_ERR("Kconfig for enable SPI in slave mode is not enabled");
+		LOG_ERR("Kconfig for enable SPI in peripheral mode is not enabled");
 		return -ENOTSUP;
 	}
 
 	if (slave_mode && lsb) {
-		LOG_ERR("SPI does not support to shifting out with LSB in slave mode");
+		LOG_ERR("SPI does not support to shifting out with LSB in peripheral mode");
 		return -ENOTSUP;
 	}
 

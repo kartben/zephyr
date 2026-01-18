@@ -25,7 +25,7 @@ LOG_MODULE_REGISTER(lpd880x);
 #include <zephyr/sys/util.h>
 
 /*
- * LPD880X SPI master configuration:
+ * LPD880X SPI controller configuration:
  *
  * - mode 0 (the default), 8 bit, MSB first, one-line SPI
  * - no shenanigans (no CS hold, release device lock, not an EEPROM)

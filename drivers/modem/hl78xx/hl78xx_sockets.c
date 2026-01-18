@@ -289,7 +289,7 @@ static inline struct hl78xx_socket_data *hl78xx_socket_data_from_sock(struct mod
 			(struct hl78xx_socket_data *)((char *)sock -
 						      (ptrdiff_t)(sockets_off +
 								  (size_t)i * elem_size));
-		/* Quick sanity: does candidate->sockets[i] point back to sock? */
+		/* Quick check: does candidate->sockets[i] point back to sock? */
 		if ((struct modem_socket *)&candidate->sockets[i] != sock) {
 			continue;
 		}
@@ -2127,7 +2127,7 @@ static ssize_t offload_sendto(void *obj, const void *buf, size_t len, int flags,
 		LOG_ERR("Modem currently not attached to the network!");
 		return -EAGAIN;
 	}
-	/* Do some sanity checks. */
+	/* Do some validations. */
 	if (!buf || len == 0) {
 		errno = EINVAL;
 		return -1;
@@ -2165,7 +2165,7 @@ static int offload_ioctl(void *obj, unsigned int request, va_list args)
 	struct zsock_pollfd *pfd;
 	struct k_poll_event **pev;
 	struct k_poll_event *pev_end;
-	/* sanity check: does parent == parent->offload_dev->data ? */
+	/* validation: does parent == parent->offload_dev->data ? */
 	if (socket_data && socket_data->offload_dev &&
 	    socket_data->offload_dev->data != socket_data) {
 		LOG_WRN("parent mismatch: parent != offload_dev->data (%p != %p)", socket_data,
