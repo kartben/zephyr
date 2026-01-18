@@ -9,7 +9,7 @@
  * @file
  * @brief ARM AArch32 specific syscall header
  *
- * This header contains the ARM AArch32 specific syscall interface.  It is
+ * This header contains the ARM AArch32 specific syscall interface. It is
  * included by the syscall interface architecture-abstraction header
  * (include/arch/syscall.h)
  */
@@ -17,9 +17,13 @@
 #ifndef ZEPHYR_INCLUDE_ARCH_ARM_SYSCALL_H_
 #define ZEPHYR_INCLUDE_ARCH_ARM_SYSCALL_H_
 
+/** @brief SVC call ID for context switch */
 #define _SVC_CALL_CONTEXT_SWITCH	0
+/** @brief SVC call ID for IRQ offload */
 #define _SVC_CALL_IRQ_OFFLOAD		1
+/** @brief SVC call ID for runtime exception */
 #define _SVC_CALL_RUNTIME_EXCEPT	2
+/** @brief SVC call ID for system call */
 #define _SVC_CALL_SYSTEM_CALL		3
 
 #ifdef CONFIG_USERSPACE
@@ -34,9 +38,22 @@
 extern "C" {
 #endif
 
-
-/* Syscall invocation macros. arm-specific machine constraints used to ensure
- * args land in the proper registers.
+/**
+ * @brief Invoke a system call with 6 arguments
+ *
+ * Performs an ARM SVC instruction to invoke a system call from user mode.
+ * Uses ARM-specific machine constraints to ensure arguments are placed
+ * in the proper registers (r0-r5 for args, r6 for call_id).
+ *
+ * @param arg1 First argument to the system call.
+ * @param arg2 Second argument to the system call.
+ * @param arg3 Third argument to the system call.
+ * @param arg4 Fourth argument to the system call.
+ * @param arg5 Fifth argument to the system call.
+ * @param arg6 Sixth argument to the system call.
+ * @param call_id The system call identifier.
+ *
+ * @return The return value from the system call.
  */
 static inline uintptr_t arch_syscall_invoke6(uintptr_t arg1, uintptr_t arg2,
 					     uintptr_t arg3, uintptr_t arg4,
@@ -62,6 +79,20 @@ static inline uintptr_t arch_syscall_invoke6(uintptr_t arg1, uintptr_t arg2,
 	return ret;
 }
 
+/**
+ * @brief Invoke a system call with 5 arguments
+ *
+ * Performs an ARM SVC instruction to invoke a system call from user mode.
+ *
+ * @param arg1 First argument to the system call.
+ * @param arg2 Second argument to the system call.
+ * @param arg3 Third argument to the system call.
+ * @param arg4 Fourth argument to the system call.
+ * @param arg5 Fifth argument to the system call.
+ * @param call_id The system call identifier.
+ *
+ * @return The return value from the system call.
+ */
 static inline uintptr_t arch_syscall_invoke5(uintptr_t arg1, uintptr_t arg2,
 					     uintptr_t arg3, uintptr_t arg4,
 					     uintptr_t arg5,
@@ -85,6 +116,19 @@ static inline uintptr_t arch_syscall_invoke5(uintptr_t arg1, uintptr_t arg2,
 	return ret;
 }
 
+/**
+ * @brief Invoke a system call with 4 arguments
+ *
+ * Performs an ARM SVC instruction to invoke a system call from user mode.
+ *
+ * @param arg1 First argument to the system call.
+ * @param arg2 Second argument to the system call.
+ * @param arg3 Third argument to the system call.
+ * @param arg4 Fourth argument to the system call.
+ * @param call_id The system call identifier.
+ *
+ * @return The return value from the system call.
+ */
 static inline uintptr_t arch_syscall_invoke4(uintptr_t arg1, uintptr_t arg2,
 					     uintptr_t arg3, uintptr_t arg4,
 					     uintptr_t call_id)
@@ -106,6 +150,18 @@ static inline uintptr_t arch_syscall_invoke4(uintptr_t arg1, uintptr_t arg2,
 	return ret;
 }
 
+/**
+ * @brief Invoke a system call with 3 arguments
+ *
+ * Performs an ARM SVC instruction to invoke a system call from user mode.
+ *
+ * @param arg1 First argument to the system call.
+ * @param arg2 Second argument to the system call.
+ * @param arg3 Third argument to the system call.
+ * @param call_id The system call identifier.
+ *
+ * @return The return value from the system call.
+ */
 static inline uintptr_t arch_syscall_invoke3(uintptr_t arg1, uintptr_t arg2,
 					     uintptr_t arg3,
 					     uintptr_t call_id)
@@ -125,6 +181,17 @@ static inline uintptr_t arch_syscall_invoke3(uintptr_t arg1, uintptr_t arg2,
 	return ret;
 }
 
+/**
+ * @brief Invoke a system call with 2 arguments
+ *
+ * Performs an ARM SVC instruction to invoke a system call from user mode.
+ *
+ * @param arg1 First argument to the system call.
+ * @param arg2 Second argument to the system call.
+ * @param call_id The system call identifier.
+ *
+ * @return The return value from the system call.
+ */
 static inline uintptr_t arch_syscall_invoke2(uintptr_t arg1, uintptr_t arg2,
 					     uintptr_t call_id)
 {
@@ -142,6 +209,16 @@ static inline uintptr_t arch_syscall_invoke2(uintptr_t arg1, uintptr_t arg2,
 	return ret;
 }
 
+/**
+ * @brief Invoke a system call with 1 argument
+ *
+ * Performs an ARM SVC instruction to invoke a system call from user mode.
+ *
+ * @param arg1 First argument to the system call.
+ * @param call_id The system call identifier.
+ *
+ * @return The return value from the system call.
+ */
 static inline uintptr_t arch_syscall_invoke1(uintptr_t arg1,
 					     uintptr_t call_id)
 {
@@ -157,6 +234,15 @@ static inline uintptr_t arch_syscall_invoke1(uintptr_t arg1,
 	return ret;
 }
 
+/**
+ * @brief Invoke a system call with no arguments
+ *
+ * Performs an ARM SVC instruction to invoke a system call from user mode.
+ *
+ * @param call_id The system call identifier.
+ *
+ * @return The return value from the system call.
+ */
 static inline uintptr_t arch_syscall_invoke0(uintptr_t call_id)
 {
 	register uint32_t ret __asm__("r0");
@@ -172,6 +258,15 @@ static inline uintptr_t arch_syscall_invoke0(uintptr_t call_id)
 	return ret;
 }
 
+/**
+ * @brief Check if the current execution context is user mode
+ *
+ * Determines whether the calling code is running in user (unprivileged)
+ * mode. On Cortex-M, this first checks if we're in handler mode (which
+ * is always privileged), then checks the thread's privilege level.
+ *
+ * @return true if running in user context, false if in privileged context.
+ */
 static inline bool arch_is_user_context(void)
 {
 #if defined(CONFIG_CPU_CORTEX_M)
