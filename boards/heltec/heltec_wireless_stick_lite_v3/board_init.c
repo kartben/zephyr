@@ -9,6 +9,8 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/init.h>
 
+#if DT_NODE_EXISTS(DT_NODELABEL(vext))
+
 #define VEXT_PIN  DT_GPIO_PIN(DT_NODELABEL(vext), gpios)
 
 static int board_heltec_wireless_stick_lite_v3_init(void)
@@ -28,3 +30,5 @@ static int board_heltec_wireless_stick_lite_v3_init(void)
 }
 
 SYS_INIT(board_heltec_wireless_stick_lite_v3_init, PRE_KERNEL_2, CONFIG_GPIO_INIT_PRIORITY);
+
+#endif /* DT_NODE_EXISTS(DT_NODELABEL(vext)) */
