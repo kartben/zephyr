@@ -1,0 +1,18 @@
+# Copyright (c) 2025 Zephyr Project
+# SPDX-License-Identifier: Apache-2.0
+
+config ESCPOS
+	bool "ESC/POS thermal printer driver"
+	default y
+	depends on DT_HAS_EPSON_ESCPOS_ENABLED
+	depends on SERIAL
+	help
+	  Enable driver support for ESC/POS thermal printers connected via UART.
+
+if ESCPOS
+
+module = ESCPOS
+module-str = escpos
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # ESCPOS
