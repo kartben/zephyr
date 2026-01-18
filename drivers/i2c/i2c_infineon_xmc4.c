@@ -220,7 +220,7 @@ static int ifx_xmc4_i2c_transfer(const struct device *dev, struct i2c_msg *msg, 
 
 		for (uint32_t buf_index = 0u; buf_index < msg[msg_index].len; buf_index++) {
 			if (cmd_type == XMC_I2C_CH_CMD_WRITE) {
-				/* Transmit next command from I2C master to I2C slave */
+				/* Transmit next command from I2C controller to I2C target */
 				XMC_I2C_CH_MasterTransmit(config->i2c,
 							  msg[msg_index].buf[buf_index]);
 

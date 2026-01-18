@@ -44,7 +44,7 @@ static inline int get_clock_encoding(const struct device *dev,
 		return 0;
 	}
 
-	/* sanity check */
+	/* validation */
 	if (clock_name >= cfg->clock_num) {
 		return -EINVAL;
 	}

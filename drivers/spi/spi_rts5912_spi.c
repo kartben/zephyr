@@ -55,7 +55,7 @@ static int spi_rts5912_configure(const struct device *dev, const struct spi_conf
 	LOG_DBG("chip select: %d, operation: 0x%x", spi_cfg->slave, spi_cfg->operation);
 
 	if (SPI_OP_MODE_GET(spi_cfg->operation) == SPI_OP_MODE_SLAVE) {
-		LOG_ERR("Unsupported SPI slave mode");
+		LOG_ERR("Unsupported SPI peripheral mode");
 		return -ENOTSUP;
 	}
 

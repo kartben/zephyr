@@ -388,7 +388,7 @@ i2c_stop:
 	I2C_SET_CONTROL_REG(i2c_base, I2C_CTL0_STO_Msk | I2C_CTL0_SI_Msk);
 
 #ifdef CONFIG_I2C_TARGET
-	/* Enable slave mode if one slave is registered */
+	/* Enable target mode if one slave is registered */
 	if (data->slave_xfer.slave_config) {
 		I2C_SET_CONTROL_REG(i2c_base, I2C_CTL0_SI_Msk | I2C_CTL0_AA_Msk);
 	}
@@ -438,7 +438,7 @@ static int i2c_numaker_slave_register(const struct device *dev,
 	/* Slave address state */
 	data->slave_xfer.slave_addressed = false;
 
-	/* Enable slave mode */
+	/* Enable target mode */
 	I2C_SET_CONTROL_REG(i2c_base, I2C_CTL0_SI_Msk | I2C_CTL0_AA_Msk);
 
 cleanup:
@@ -484,7 +484,7 @@ static int i2c_numaker_slave_unregister(const struct device *dev,
 	/* Slave address state */
 	data->slave_xfer.slave_addressed = false;
 
-	/* Disable slave mode */
+	/* Disable target mode */
 	I2C_SET_CONTROL_REG(i2c_base, I2C_CTL0_SI_Msk);
 	data->slave_xfer.slave_config = NULL;
 
@@ -590,7 +590,7 @@ static void i2c_numaker_isr(const struct device *dev)
 		m_numaker_i2c_master_xfer_end(dev, true);
 		break;
 #ifdef CONFIG_I2C_TARGET
-	/* NOTE: Don't disable interrupt here because slave mode relies on */
+	/* NOTE: Don't disable interrupt here because target mode relies on */
 	/* for passive transfer in ISR. */
 
 	/* Slave Transmit */

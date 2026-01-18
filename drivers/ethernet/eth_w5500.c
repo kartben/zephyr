@@ -530,7 +530,7 @@ static int w5500_init(const struct device *dev)
 	ctx->link_up = false;
 
 	if (!spi_is_ready_dt(&config->spi)) {
-		LOG_ERR("SPI master port %s not ready", config->spi.bus->name);
+		LOG_ERR("SPI controller port %s not ready", config->spi.bus->name);
 		return -EINVAL;
 	}
 

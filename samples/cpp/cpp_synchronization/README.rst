@@ -9,7 +9,7 @@ The sample project illustrates usage of pure virtual class, member
 functions with different types of arguments, global objects constructor
 invocation.
 
-A simple application demonstrates basic sanity of the kernel.  The main thread
+A simple application demonstrates basic functionality of the kernel.  The main thread
 and a cooperative thread take turns printing a greeting message to the console,
 and use timers and semaphores to control the rate at which messages are
 generated. This demonstrates that kernel scheduling, communication, and

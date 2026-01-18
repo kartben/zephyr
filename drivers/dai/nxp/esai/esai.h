@@ -331,7 +331,7 @@ static int esai_parse_clock_config(const struct esai_config *cfg,
 		crt_clock = cfg->clock_cfg[i];
 		crt_dir = cfg->clock_cfg[i + 1];
 
-		/* sanity checks */
+		/* validations */
 		if (crt_clock > ESAI_CLOCK_FST) {
 			LOG_ERR("invalid clock configuration ID: %d", crt_clock);
 			return -EINVAL;

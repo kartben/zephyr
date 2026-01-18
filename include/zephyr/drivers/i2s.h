@@ -178,13 +178,13 @@ typedef uint8_t i2s_opt_t;
 #define I2S_OPT_BIT_CLK_CONT                (0 << 0)
 /** Run bit clock when sending data only */
 #define I2S_OPT_BIT_CLK_GATED               BIT(0)
-/** I2S driver is bit clock master */
+/** I2S driver is bit clock provider */
 #define I2S_OPT_BIT_CLK_MASTER              (0 << 1)
-/** I2S driver is bit clock slave */
+/** I2S driver is bit clock consumer */
 #define I2S_OPT_BIT_CLK_SLAVE               BIT(1)
-/** I2S driver is frame clock master */
+/** I2S driver is frame clock provider */
 #define I2S_OPT_FRAME_CLK_MASTER            (0 << 2)
-/** I2S driver is frame clock slave */
+/** I2S driver is frame clock consumer */
 #define I2S_OPT_FRAME_CLK_SLAVE             BIT(2)
 
 /** @brief Loop back mode.

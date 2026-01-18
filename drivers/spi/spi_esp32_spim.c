@@ -426,7 +426,7 @@ static int IRAM_ATTR spi_esp32_configure(const struct device *dev,
 	}
 
 	if (spi_cfg->operation & SPI_OP_MODE_SLAVE) {
-		LOG_ERR("Slave mode not supported");
+		LOG_ERR("Peripheral mode not supported");
 		return -ENOTSUP;
 	}
 

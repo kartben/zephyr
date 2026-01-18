@@ -144,7 +144,7 @@ static int sc18is606_spi_configure(const struct device *dev, const struct spi_co
 	uint8_t buffer[2];
 
 	if ((config->operation & SPI_OP_MODE_SLAVE) != 0U) {
-		LOG_ERR("SC18IS606 does not support Slave mode");
+		LOG_ERR("SC18IS606 does not support Peripheral mode");
 		return -ENOTSUP;
 	}
 

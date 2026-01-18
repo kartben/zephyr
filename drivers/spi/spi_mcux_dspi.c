@@ -139,7 +139,7 @@ static int spi_mcux_transfer_next_packet(const struct device *dev)
 	DSPI_StartTransfer(base);
 
 	if (config->is_dma_chn_shared) {
-		/* in master mode start tx */
+		/* in controller mode start tx */
 		dma_start(data->tx_dma_config.dma_dev, data->tx_dma_config.dma_channel);
 		/* TBD kDSPI_TxFifoFillRequestFlag */
 		DSPI_EnableInterrupts(base,

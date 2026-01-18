@@ -35,7 +35,7 @@ LOG_MODULE_REGISTER(ws2812_spi);
 #define BITS_PER_COLOR_CHANNEL 8
 
 /*
- * SPI master configuration:
+ * SPI controller configuration:
  *
  * - mode 0 (the default), 8 bit, MSB first (arbitrary), one-line SPI
  * - no shenanigans (don't hold CS, don't hold the device lock, this

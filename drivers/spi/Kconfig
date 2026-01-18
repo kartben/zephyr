@@ -60,7 +60,7 @@ config SPI_SLAVE
 	bool "Slave support [EXPERIMENTAL]"
 	select EXPERIMENTAL
 	help
-	  Enables Driver SPI slave operations. Slave support depends
+	  Enables Driver SPI peripheral operations. Slave support depends
 	  on the driver and the hardware it runs on.
 
 config SPI_EXTENDED_MODES

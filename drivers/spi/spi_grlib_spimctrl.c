@@ -81,7 +81,7 @@ static int spi_config(struct spi_context *ctx, const struct spi_config *config)
 	}
 
 	if (config->operation & SPI_OP_MODE_SLAVE) {
-		LOG_ERR("Slave mode not supported");
+		LOG_ERR("Peripheral mode not supported");
 		return -ENOTSUP;
 	}
 

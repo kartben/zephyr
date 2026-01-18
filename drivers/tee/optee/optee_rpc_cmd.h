@@ -89,18 +89,18 @@
  *				16 bit field.
  * [in]     value[0].c	    The I2C chip (a.k.a address).
  *				16 bit field (either 7 or 10 bit effective).
- * [in]     value[1].a	    The I2C master control flags (ie, 10 bit address).
+ * [in]     value[1].a	    The I2C controller control flags (ie, 10 bit address).
  *				16 bit field.
  * [in/out] memref[2]	    Buffer used for data transfers.
  * [out]    value[3].a	    Number of bytes transferred by the REE.
  */
 #define OPTEE_RPC_CMD_I2C_TRANSFER	21
 
-/* I2C master transfer modes */
+/* I2C controller transfer modes */
 #define OPTEE_RPC_I2C_TRANSFER_RD	0
 #define OPTEE_RPC_I2C_TRANSFER_WR	1
 
-/* I2C master control flags */
+/* I2C controller control flags */
 #define OPTEE_RPC_I2C_FLAGS_TEN_BIT	BIT(0)
 
 #endif /*__OPTEE_RPC_CMD_H*/

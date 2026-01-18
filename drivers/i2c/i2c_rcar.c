@@ -269,7 +269,7 @@ static int i2c_rcar_configure(const struct device *dev, uint32_t dev_config)
 	const struct i2c_rcar_cfg *config = dev->config;
 	uint8_t cdf, scgd;
 
-	/* We only support Master mode */
+	/* We only support Controller mode */
 	if ((dev_config & I2C_MODE_CONTROLLER) != I2C_MODE_CONTROLLER) {
 		return -ENOTSUP;
 	}
@@ -297,13 +297,13 @@ static int i2c_rcar_configure(const struct device *dev, uint32_t dev_config)
 	/* Setting ICCCR to recommended value */
 	i2c_rcar_write(config, RCAR_I2C_ICCCR, (scgd << 3) | cdf);
 
-	/* Reset slave mode */
+	/* Reset target mode */
 	i2c_rcar_write(config, RCAR_I2C_ICSIER, 0);
 	i2c_rcar_write(config, RCAR_I2C_ICSAR, 0);
 	i2c_rcar_write(config, RCAR_I2C_ICSCR, 0);
 	i2c_rcar_write(config, RCAR_I2C_ICSSR, 0);
 
-	/* Reset master mode */
+	/* Reset controller mode */
 	i2c_rcar_write(config, RCAR_I2C_ICMIER, 0);
 	i2c_rcar_write(config, RCAR_I2C_ICMCR, 0);
 	i2c_rcar_write(config, RCAR_I2C_ICMSR, 0);

@@ -57,7 +57,7 @@ LOG_MODULE_REGISTER(i2c_cadence, CONFIG_I2C_LOG_LEVEL);
  * I2C Address Register Bit mask definitions
  * Normal addressing mode uses [6:0] bits.
  * Extended addressing mode uses [9:0] bits.
- * A write access to this register always initiates a transfer if the I2C is in master mode.
+ * A write access to this register always initiates a transfer if the I2C is in controller mode.
  */
 #define CDNS_I2C_ADDR_MASK		0x000003FFU /* I2C Address Mask */
 
@@ -139,7 +139,7 @@ LOG_MODULE_REGISTER(i2c_cadence, CONFIG_I2C_LOG_LEVEL);
  * enum cdns_i2c_mode - I2C Controller current operating mode
  *
  * @CDNS_I2C_MODE_TARGET: I2C controller operating in target mode
- * @CDNS_I2C_MODE_MASTER: I2C controller operating in master mode
+ * @CDNS_I2C_MODE_MASTER: I2C controller operating in controller mode
  */
 enum cdns_i2c_mode {
 	CDNS_I2C_MODE_TARGET = 0,
@@ -532,7 +532,7 @@ static void cdns_i2c_set_mode(enum cdns_i2c_mode mode, struct cdns_i2c_data *i2c
 				  CDNS_I2C_CR_MASTER_EN_MASK,
 				  CDNS_I2C_CR_OFFSET);
 
-		/* Allow time for master mode to stabilize */
+		/* Allow time for controller mode to stabilize */
 		(void)k_usleep(120);
 	} else {
 		/* Enable i2c target */
@@ -710,7 +710,7 @@ static void cdns_i2c_target_isr(struct cdns_i2c_data *i2c_bus)
 #endif /* CONFIG_I2C_TARGET */
 
 /**
- * cdns_i2c_master_handle_receive_interrupt - Handles I2C master receive interrupts
+ * cdns_i2c_master_handle_receive_interrupt - Handles I2C controller receive interrupts
  * @i2c_bus: Pointer to the I2C data structure
  * @isr_status: Interrupt status, indicating the cause of the interrupt
  */
@@ -781,7 +781,7 @@ static void cdns_i2c_master_handle_receive_interrupt(struct cdns_i2c_data *i2c_b
 }
 
 /**
- * cdns_i2c_master_handle_transmit_interrupt - Handles I2C master transmit interrupts
+ * cdns_i2c_master_handle_transmit_interrupt - Handles I2C controller transmit interrupts
  * @i2c_bus: Pointer to the I2C data structure
  * @isr_status: Interrupt status, indicating the cause of the interrupt
  */
@@ -834,7 +834,7 @@ static void cdns_i2c_master_handle_transmit_interrupt(struct cdns_i2c_data *i2c_
  * @i2c_bus: Pointer to I2C device private data structure
  *
  * This function handles various interrupt events including data received,
- * transfer complete, and error interrupts for the I2C master role.
+ * transfer complete, and error interrupts for the I2C controller role.
  */
 static void cdns_i2c_master_isr(struct cdns_i2c_data *i2c_bus)
 {
@@ -871,7 +871,7 @@ static void cdns_i2c_master_isr(struct cdns_i2c_data *i2c_bus)
  * @dev: Pointer to I2C device
  *
  * If the controller is in target mode, target ISR is invoked
- * If the controller is in master mode, master ISR is invoked
+ * If the controller is in controller mode, master ISR is invoked
  */
 static void cdns_i2c_isr(const struct device *dev)
 {
@@ -884,7 +884,7 @@ static void cdns_i2c_isr(const struct device *dev)
 		return;
 	}
 #endif /* CONFIG_I2C_TARGET */
-	/* Handle the interrupt for master mode */
+	/* Handle the interrupt for controller mode */
 	cdns_i2c_master_isr(i2c_bus);
 }
 
@@ -1043,10 +1043,10 @@ static void cdns_i2c_msend(struct cdns_i2c_data *i2c_bus, uint16_t msg_addr)
 }
 
 /**
- * cdns_i2c_master_reset - Reset the I2C master interface
+ * cdns_i2c_master_reset - Reset the I2C controller interface
  * @i2c_bus: Pointer to the i2c driver instance
  *
- * This function performs a full reset of the I2C master interface
+ * This function performs a full reset of the I2C controller interface
  * The reset ensures that the interface is returned to a known idle state.
  */
 static void cdns_i2c_master_reset(struct cdns_i2c_data *i2c_bus)
@@ -1188,7 +1188,7 @@ static bool cdns_i2c_wait_for_bus_free(struct cdns_i2c_data *i2c_bus, uint32_t t
 }
 
 /**
- * cdns_i2c_master_handle_repeated_start - Handle repeated start during I2C master transfer
+ * cdns_i2c_master_handle_repeated_start - Handle repeated start during I2C controller transfer
  * @i2c_bus: Pointer to the I2C data structure that holds bus state information
  * @msgs: Array of I2C messages to be processed
  * @num_msgs: Number of messages in the @msgs array
@@ -1229,7 +1229,7 @@ static int32_t cdns_i2c_master_handle_repeated_start(struct cdns_i2c_data *i2c_b
 }
 
 /**
- * cdns_i2c_master_handle_transfer_error - Handle errors during I2C master transfer.
+ * cdns_i2c_master_handle_transfer_error - Handle errors during I2C controller transfer.
  * @i2c_bus: Pointer to the I2C data structure
  *
  * Return: -EIO or -ENXIO.
@@ -1238,7 +1238,7 @@ static int32_t cdns_i2c_master_handle_transfer_error(struct cdns_i2c_data *i2c_b
 {
 	int32_t ret;
 
-	/* Perform a reset of the I2C master to clear the error condition */
+	/* Perform a reset of the I2C controller to clear the error condition */
 	cdns_i2c_master_reset(i2c_bus);
 
 	if ((i2c_bus->err_status & CDNS_I2C_IXR_NACK) != 0U) {
@@ -1251,7 +1251,7 @@ static int32_t cdns_i2c_master_handle_transfer_error(struct cdns_i2c_data *i2c_b
 }
 
 /**
- * cdns_i2c_master_transfer - Performs an I2C master transfer using the Cadence I2C controller.
+ * cdns_i2c_master_transfer - Performs an I2C controller transfer using the Cadence I2C controller.
  * @dev: Pointer to the device structure representing the I2C controller.
  * @msgs: Array of I2C message structures representing the messages to be sent/received.
  * @num_msgs: Number of messages in the msgs array.
@@ -1274,7 +1274,7 @@ static int32_t cdns_i2c_master_transfer(const struct device *dev, struct i2c_msg
 	(void)k_mutex_lock(&i2c_bus->bus_mutex, K_FOREVER);
 
 #if defined(CONFIG_I2C_TARGET)
-	/* Switch to master mode if operating in target mode */
+	/* Switch to controller mode if operating in target mode */
 	if (i2c_bus->dev_mode == CDNS_I2C_MODE_TARGET) {
 		if (i2c_bus->target_state != CDNS_I2C_TARGET_STATE_IDLE) {
 			ret = -EAGAIN;
@@ -1390,7 +1390,7 @@ static int32_t cdns_i2c_target_unregister(const struct device *dev, struct i2c_t
 	/* Clear target information */
 	i2c_bus->target = NULL;
 
-	/* Switch to I2C master mode */
+	/* Switch to I2C controller mode */
 	cdns_i2c_set_mode(CDNS_I2C_MODE_MASTER, i2c_bus);
 
 	(void)k_mutex_unlock(&i2c_bus->bus_mutex);

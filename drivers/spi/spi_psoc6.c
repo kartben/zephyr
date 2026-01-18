@@ -260,7 +260,7 @@ static int spi_psoc6_configure(const struct device *dev,
 
 		data->ctx.config = spi_cfg;
 	} else {
-		/* Slave mode is not implemented yet. */
+		/* Peripheral mode is not implemented yet. */
 		return -ENOTSUP;
 	}
 

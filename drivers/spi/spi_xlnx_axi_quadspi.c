@@ -124,7 +124,7 @@ static void xlnx_quadspi_cs_control(const struct device *dev, bool on)
 	uint32_t spissr = BIT_MASK(config->num_ss_bits);
 
 	if (IS_ENABLED(CONFIG_SPI_SLAVE) && spi_context_is_slave(ctx)) {
-		/* Skip slave select assert/de-assert in slave mode */
+		/* Skip slave select assert/de-assert in peripheral mode */
 		return;
 	}
 
@@ -176,7 +176,7 @@ static int xlnx_quadspi_configure(const struct device *dev,
 
 	if (!IS_ENABLED(CONFIG_SPI_SLAVE) && \
 	    (spi_cfg->operation & SPI_OP_MODE_SLAVE)) {
-		LOG_ERR("slave mode support not enabled");
+		LOG_ERR("peripheral mode support not enabled");
 		return -ENOTSUP;
 	}
 
@@ -190,7 +190,7 @@ static int xlnx_quadspi_configure(const struct device *dev,
 	/* Reset FIFOs, SPI IOs enabled */
 	spicr = SPICR_TX_FIFO_RESET | SPICR_RX_FIFO_RESET | SPICR_SPE;
 
-	/* Master mode, inhibit master transmit, manual slave select */
+	/* Controller mode, inhibit master transmit, manual slave select */
 	if (!IS_ENABLED(CONFIG_SPI_SLAVE) ||
 	    (spi_cfg->operation & SPI_OP_MODE_SLAVE) == 0U) {
 		spicr |= SPICR_MASTER | SPICR_MASTER_XFER_INH | SPICR_MANUAL_SS;

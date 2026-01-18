@@ -1,6 +1,6 @@
 sample:
   description: A simple application that demonstrates
-    basic sanity of the kernel.
+    basic functionality of the kernel.
   name: Synchronization Sample
 tests:
   sample.kernel.synchronization:

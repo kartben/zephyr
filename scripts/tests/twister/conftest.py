@@ -48,7 +48,7 @@ def tesenv_obj(test_data, testsuites_dir, tmpdir_factory):
     env.test_roots = [os.path.join(testsuites_dir, 'tests'),
                       os.path.join(testsuites_dir, 'samples')]
     env.test_config = os.path.join(test_data, "test_config.yaml")
-    env.outdir = tmpdir_factory.mktemp("sanity_out_demo")
+    env.outdir = tmpdir_factory.mktemp("twister_out_demo")
     return env
 
 

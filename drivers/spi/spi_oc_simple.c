@@ -48,9 +48,9 @@ static int spi_oc_simple_configure(const struct spi_oc_simple_cfg *info,
 		return -ENOTSUP;
 	}
 
-	/* Simple SPI only supports master mode */
+	/* Simple SPI only supports controller mode */
 	if (spi_context_is_slave(&spi->ctx)) {
-		LOG_ERR("Slave mode not supported");
+		LOG_ERR("Peripheral mode not supported");
 		return -ENOTSUP;
 	}
 

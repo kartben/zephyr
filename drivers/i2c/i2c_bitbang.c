@@ -295,7 +295,7 @@ int i2c_bitbang_recover_bus(struct i2c_bitbang *context)
 	 * The Linux kernel I2C bitbang recovery functionality issues
 	 * a START condition followed by 9 STOP conditions.
 	 *
-	 * Other I2C slave devices (e.g. Microchip ATSHA204a) suggest
+	 * Other I2C target devices (e.g. Microchip ATSHA204a) suggest
 	 * issuing a START condition followed by 9 SCL clock pulses
 	 * with SDA held high/floating, a REPEATED START condition,
 	 * and a STOP condition.

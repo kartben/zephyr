@@ -548,7 +548,7 @@ static void mqtt_sn_do_register(struct mqtt_sn_client *client, struct mqtt_sn_to
 /**
  * @brief Internal function to send a PUBLISH message.
  *
- * Note that this function does not do sanity checks regarding the pub's topic.
+ * Note that this function does not do validations regarding the pub's topic.
  *
  * @param client
  * @param pub

@@ -72,7 +72,7 @@ static int spi_numaker_configure(const struct device *dev, const struct spi_conf
 	}
 
 	if (SPI_OP_MODE_GET(config->operation) == SPI_OP_MODE_SLAVE) {
-		LOG_ERR("Slave mode not support");
+		LOG_ERR("Peripheral mode not support");
 		return -ENOTSUP;
 	}
 

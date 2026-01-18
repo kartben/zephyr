@@ -170,10 +170,10 @@ static int i2c_esp32_config_pin(const struct device *dev)
 }
 #endif
 
-/* Some slave device will die by accident and keep the SDA in low level,
- * in this case, master should send several clock to make the slave release the bus.
- * Slave mode of ESP32 might also get in wrong state that held the SDA low,
- * in this case, master device could send a stop signal to make esp32 slave release the bus.
+/* Some target device will die by accident and keep the SDA in low level,
+ * in this case, controller should send several clock to make the target release the bus.
+ * Target mode of ESP32 might also get in wrong state that held the SDA low,
+ * in this case, controller device could send a stop signal to make esp32 target release the bus.
  **/
 static void IRAM_ATTR i2c_master_clear_bus(const struct device *dev)
 {
@@ -186,8 +186,8 @@ static void IRAM_ATTR i2c_master_clear_bus(const struct device *dev)
 
 	gpio_pin_configure_dt(&config->scl.gpio, GPIO_OUTPUT);
 	gpio_pin_configure_dt(&config->sda.gpio, GPIO_OUTPUT | GPIO_INPUT);
-	/* If a SLAVE device was in a read operation when the bus was interrupted, */
-	/* the SLAVE device is controlling SDA. If the slave is sending a stream of ZERO bytes, */
+	/* If a TARGET device was in a read operation when the bus was interrupted, */
+	/* the TARGET device is controlling SDA. If the target is sending a stream of ZERO bytes, */
 	/* it will only release SDA during the  ACK bit period. So, this reset code needs */
 	/* to synchronize the bit stream with either the ACK bit, or a 1 bit to correctly */
 	/* generate a STOP condition. */
@@ -316,7 +316,7 @@ static int i2c_esp32_configure(const struct device *dev, uint32_t dev_config)
 	uint32_t bitrate;
 
 	if (!(dev_config & I2C_MODE_CONTROLLER)) {
-		LOG_ERR("Only I2C Master mode supported.");
+		LOG_ERR("Only I2C Controller mode supported.");
 		return -ENOTSUP;
 	}
 
@@ -381,7 +381,7 @@ static int IRAM_ATTR i2c_esp32_transmit(const struct device *dev)
 
 	ret = k_sem_take(&data->cmd_sem, K_MSEC(I2C_TRANSFER_TIMEOUT_MSEC));
 	if (ret != 0) {
-		/* If the I2C slave is powered off or the SDA/SCL is */
+		/* If the I2C target is powered off or the SDA/SCL is */
 		/* connected to ground, for example, I2C hw FSM would get */
 		/* stuck in wrong state, we have to reset the I2C module in this case. */
 		i2c_hw_fsm_reset(dev);
@@ -474,7 +474,7 @@ static int IRAM_ATTR i2c_esp32_master_read(const struct device *dev, struct i2c_
 	while (msg_len) {
 		rd_filled = (msg_len > SOC_I2C_FIFO_LEN) ? SOC_I2C_FIFO_LEN : (msg_len - 1);
 
-		/* I2C master won't acknowledge the last byte read from the
+		/* I2C controller won't acknowledge the last byte read from the
 		 * slave device. Divide the read command in two segments as
 		 * recommended by the ESP32 Technical Reference Manual.
 		 */

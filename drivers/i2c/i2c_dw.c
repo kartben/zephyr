@@ -653,7 +653,7 @@ static int i2c_dw_setup(const struct device *dev, uint16_t slave_address)
 	/* Clear interrupts */
 	value = read_clr_intr(reg_base);
 
-	/* Set master or slave mode - (initialization = slave) */
+	/* Set master or target mode - (initialization = slave) */
 	if (I2C_MODE_CONTROLLER & dw->app_config) {
 		/*
 		 * Make sure to set both the master_mode and slave_disable_bit
@@ -743,7 +743,7 @@ static int i2c_dw_setup(const struct device *dev, uint16_t slave_address)
 		write_sar(slave_address, reg_base);
 	}
 
-	/* If I2C is being operated in master mode and I2C_DYNAMIC_TAR_UPDATE
+	/* If I2C is being operated in controller mode and I2C_DYNAMIC_TAR_UPDATE
 	 * configuration parameter is set to Yes (1), the ic_10bitaddr_master
 	 * bit in ic_tar register would control whether the DW_apb_i2c starts
 	 * its transfers in 7-bit or 10-bit addressing mode.
@@ -1049,7 +1049,7 @@ static int i2c_dw_runtime_configure(const struct device *dev, uint32_t config)
 	/*
 	 * TEMPORARY HACK - The I2C does not work in any mode other than Master
 	 * currently.  This "hack" forces us to always be configured for master
-	 * mode, until we can verify that Slave mode works correctly.
+	 * mode, until we can verify that Target mode works correctly.
 	 */
 	dw->app_config |= I2C_MODE_CONTROLLER;
 

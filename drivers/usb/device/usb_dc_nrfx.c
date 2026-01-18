@@ -1364,7 +1364,7 @@ int usb_dc_set_address(const uint8_t addr)
 
 	/**
 	 * Nothing to do here. The USBD HW already takes care of initiating
-	 * STATUS stage. Just double check the address for sanity.
+	 * STATUS stage. Just double check the address for validity.
 	 */
 	__ASSERT(addr == (uint8_t)NRF_USBD->USBADDR, "USB Address incorrect!");
 

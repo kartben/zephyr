@@ -153,7 +153,7 @@ static int mc_me_set_mode(enum mc_me_power_mode mode)
  *
  * SYS_REBOOT_WARM (Functional Reset):
  * - Leads all the communication peripherals and cores to reset. The communication
- *   protocols' sanity is not guaranteed and they are assumed to be reinitialized
+ *   protocols' validity is not guaranteed and they are assumed to be reinitialized
  *   after reset. The SRAM content, and the functionality of certain modules, is
  *   preserved across functional reset.
  * - The volatile registers are not reset; in case of a reset event, the

@@ -1101,9 +1101,9 @@ class Kconfig(object):
         self.unique_defined_syms = _ordered_unique(self.defined_syms)
         self.unique_choices = _ordered_unique(self.choices)
 
-        # Do sanity checks. Some of these depend on everything being finalized.
-        self._check_sym_sanity()
-        self._check_choice_sanity()
+        # Do validity checks. Some of these depend on everything being finalized.
+        self._check_sym_validity()
+        self._check_choice_validity()
 
         # KCONFIG_STRICT is an older alias for KCONFIG_WARN_UNDEF, supported
         # for backwards compatibility
@@ -3755,7 +3755,7 @@ class Kconfig(object):
     # Misc.
     #
 
-    def _check_sym_sanity(self):
+    def _check_sym_validity(self):
         # Checks various symbol properties that are handiest to check after
         # parsing. Only generates errors and warnings.
 
@@ -3845,7 +3845,7 @@ class Kconfig(object):
                                                low.name_and_loc,
                                                high.name_and_loc))
 
-    def _check_choice_sanity(self):
+    def _check_choice_validity(self):
         # Checks various choice properties that are handiest to check after
         # parsing. Only generates errors and warnings.
 

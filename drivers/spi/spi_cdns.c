@@ -203,7 +203,7 @@ static inline void spi_cdns_cs_control(const struct device *dev, bool on)
 	struct spi_cdns_data *data = dev->data;
 
 	if (IS_ENABLED(CONFIG_SPI_SLAVE) && spi_context_is_slave(&data->ctx)) {
-		/* Skip slave select assert/de-assert in slave mode */
+		/* Skip slave select assert/de-assert in peripheral mode */
 		return;
 	}
 
@@ -409,7 +409,7 @@ static int spi_cdns_configure(const struct device *dev, const struct spi_config 
 	}
 
 	if ((config->operation & SPI_OP_MODE_SLAVE) && !IS_ENABLED(CONFIG_SPI_SLAVE)) {
-		LOG_ERR("Kconfig for enable SPI in slave mode is not enabled");
+		LOG_ERR("Kconfig for enable SPI in peripheral mode is not enabled");
 		return -ENOTSUP;
 	}
 

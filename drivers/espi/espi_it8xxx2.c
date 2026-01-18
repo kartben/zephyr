@@ -396,7 +396,7 @@ struct pmc_regs {
 #define PMC_MBXCTRL_DINT BIT(5)
 
 /*
- * eSPI slave registers
+ * eSPI peripheral registers
  */
 struct espi_slave_regs {
 	/* 0x00-0x03: Reserved1 */
@@ -677,7 +677,7 @@ IT8XXX2_ESPI_REG_OFFSET_CHECK(pmc_regs, PM3CTL, 0x23);
 IT8XXX2_ESPI_REG_OFFSET_CHECK(pmc_regs, PM3IC, 0x24);
 IT8XXX2_ESPI_REG_OFFSET_CHECK(pmc_regs, PM3IE, 0x25);
 
-/* eSPI slave register structure check */
+/* eSPI peripheral register structure check */
 IT8XXX2_ESPI_REG_SIZE_CHECK(espi_slave_regs, 0xd8);
 IT8XXX2_ESPI_REG_OFFSET_CHECK(espi_slave_regs, GCAPCFG1, 0x05);
 IT8XXX2_ESPI_REG_OFFSET_CHECK(espi_slave_regs, CH_PC_CAPCFG3, 0x0b);
@@ -2642,7 +2642,7 @@ static void espi_it8xxx2_isr(const struct device *dev)
 		espi_it8xxx2_upstream_channel_disable_isr(dev);
 	}
 
-	/* The eSPI slave has received a PUT_OOB message. */
+	/* The eSPI peripheral has received a PUT_OOB message. */
 	if (slave_reg->ESOCTRL0 & IT8XXX2_ESPI_PUT_OOB_STATUS) {
 		espi_it8xxx2_put_oob_status_isr(dev);
 	}
