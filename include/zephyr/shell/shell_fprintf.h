@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Shell fprintf header
+ */
+
 #ifndef ZEPHYR_INCLUDE_SHELL_FPRINTF_H_
 #define ZEPHYR_INCLUDE_SHELL_FPRINTF_H_
 

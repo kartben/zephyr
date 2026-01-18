@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Shell MQTT transport backend header
+ */
+
 #ifndef ZEPHYR_INCLUDE_SHELL_MQTT_H_
 #define ZEPHYR_INCLUDE_SHELL_MQTT_H_
 

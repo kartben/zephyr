@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Shell API header
+ */
+
 #ifndef SHELL_H__
 #define SHELL_H__
 
@@ -45,6 +50,7 @@ extern "C" {
 
 #define Z_SHELL_CMD_ROOT_LVL		(0u)
 
+/** @brief Number of bytes displayed per line in hexdump output. */
 #define SHELL_HEXDUMP_BYTES_IN_LINE	16
 
 /**
@@ -277,7 +283,7 @@ typedef int (*shell_dict_cmd_handler)(const struct shell *sh, size_t argc,
 #define Z_SHELL_STATIC_ENTRY_PADDING 0
 #endif
 
-/*
+/**
  * @brief Shell static command descriptor.
  */
 struct shell_static_entry {
@@ -897,7 +903,7 @@ struct shell_stats {
 #endif /* CONFIG_SHELL_STATS */
 
 /**
- * @internal @brief Flags for shell backend configuration.
+ * @brief Flags for shell backend configuration.
  */
 struct shell_backend_config_flags {
 	uint32_t insert_mode :1; /*!< Controls insert mode for text introduction */
@@ -912,7 +918,7 @@ BUILD_ASSERT((sizeof(struct shell_backend_config_flags) == sizeof(uint32_t)),
 	     "Structure must fit in 4 bytes");
 
 /**
- * @internal @brief Default backend configuration.
+ * @brief Default backend configuration.
  */
 #define SHELL_DEFAULT_BACKEND_CONFIG_FLAGS				\
 {									\
@@ -924,6 +930,9 @@ BUILD_ASSERT((sizeof(struct shell_backend_config_flags) == sizeof(uint32_t)),
 	.use_vt100	= 1,						\
 };
 
+/**
+ * @brief Flags for shell backend context.
+ */
 struct shell_backend_ctx_flags {
 	uint32_t processing   :1; /*!< Shell is executing process function */
 	uint32_t tx_rdy       :1;
@@ -939,7 +948,7 @@ BUILD_ASSERT((sizeof(struct shell_backend_ctx_flags) == sizeof(uint32_t)),
 	     "Structure must fit in 4 bytes");
 
 /**
- * @internal @brief Union for internal shell usage.
+ * @brief Union for internal shell usage.
  */
 union shell_backend_cfg {
 	atomic_t value;
@@ -947,13 +956,16 @@ union shell_backend_cfg {
 };
 
 /**
- * @internal @brief Union for internal shell usage.
+ * @brief Union for internal shell usage.
  */
 union shell_backend_ctx {
 	uint32_t value;
 	struct shell_backend_ctx_flags flags;
 };
 
+/**
+ * @brief Shell signal flags.
+ */
 enum shell_signal {
 	SHELL_SIGNAL_RXRDY = BIT(0),
 	SHELL_SIGNAL_LOG_MSG = BIT(1),
@@ -1065,7 +1077,8 @@ struct shell {
 extern void z_shell_print_stream(const void *user_ctx, const char *data,
 				 size_t data_len);
 
-/** @brief Internal macro for defining a shell instance.
+/**
+ * @brief Internal macro for defining a shell instance.
  *
  * As it does not create the default shell logging backend it allows to use
  * custom approach for integrating logging with shell.
