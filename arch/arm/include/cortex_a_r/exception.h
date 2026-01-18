@@ -32,6 +32,15 @@ extern "C" {
 extern volatile irq_offload_routine_t offload_routine;
 #endif
 
+/**
+ * @brief Check if running in interrupt context
+ *
+ * Determines if the CPU is currently executing in interrupt context by
+ * checking the nested exception counter. For Cortex-A/R processors, this
+ * is tracked by the per-CPU nested field.
+ *
+ * @return true if in interrupt context, false otherwise
+ */
 static ALWAYS_INLINE bool arch_is_in_isr(void)
 {
 	uint32_t nested;
@@ -47,6 +56,16 @@ static ALWAYS_INLINE bool arch_is_in_isr(void)
 	return nested != 0U;
 }
 
+/**
+ * @brief Check if a nested exception occurred
+ *
+ * Determines if the current exception was triggered while already handling
+ * another exception (nested exception). This is determined by checking the
+ * exception depth counter.
+ *
+ * @param esf Exception stack frame (unused in this implementation)
+ * @return true if nested exception, false otherwise
+ */
 static ALWAYS_INLINE bool arch_is_in_nested_exception(const struct arch_esf *esf)
 {
 	return (_current_cpu->arch.exc_depth > 1U) ? (true) : (false);
@@ -62,9 +81,15 @@ static ALWAYS_INLINE void z_arm_set_fault_sp(const struct arch_esf *esf, uint32_
 {}
 
 #if defined(CONFIG_USERSPACE)
-/*
- * This function is used by privileged code to determine if the thread
- * associated with the stack frame is in user mode.
+/**
+ * @brief Check if preempted thread was in user mode
+ *
+ * Determines if the thread that was preempted by the current exception was
+ * running in unprivileged (user) mode by examining the saved processor status
+ * register (xPSR) in the exception stack frame.
+ *
+ * @param esf Exception stack frame containing saved processor state
+ * @return true if the preempted thread was in user mode, false otherwise
  */
 static ALWAYS_INLINE bool z_arm_preempted_thread_in_user_mode(const struct arch_esf *esf)
 {
@@ -73,6 +98,13 @@ static ALWAYS_INLINE bool z_arm_preempted_thread_in_user_mode(const struct arch_
 #endif
 
 #ifndef CONFIG_USE_SWITCH
+/**
+ * @brief Supervisor call handler for context switching
+ *
+ * Handles supervisor call (SVC) exceptions used for voluntary context
+ * switches on Cortex-R processors when not using the switch-based
+ * context switch implementation.
+ */
 extern void z_arm_cortex_r_svc(void);
 #endif
 

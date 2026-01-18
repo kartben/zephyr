@@ -35,9 +35,41 @@ GTEXT(z_soc_irq_eoi)
 #else
 
 #if !defined(CONFIG_ARM_CUSTOM_INTERRUPT_CONTROLLER)
+/**
+ * @brief Enable an interrupt line
+ *
+ * Enables the specified interrupt in the interrupt controller.
+ *
+ * @param irq IRQ number to enable
+ */
 extern void arm_irq_enable(unsigned int irq);
+
+/**
+ * @brief Disable an interrupt line
+ *
+ * Disables the specified interrupt in the interrupt controller.
+ *
+ * @param irq IRQ number to disable
+ */
 extern void arm_irq_disable(unsigned int irq);
+
+/**
+ * @brief Check if an interrupt is enabled
+ *
+ * @param irq IRQ number to check
+ * @return Non-zero if enabled, 0 if disabled
+ */
 extern int arm_irq_is_enabled(unsigned int irq);
+
+/**
+ * @brief Set interrupt priority
+ *
+ * Sets the priority level for the specified interrupt.
+ *
+ * @param irq IRQ number
+ * @param prio Priority level
+ * @param flags Additional flags (e.g., IRQ_ZERO_LATENCY)
+ */
 extern void arm_irq_priority_set(unsigned int irq, unsigned int prio, uint32_t flags);
 #if !defined(CONFIG_MULTI_LEVEL_INTERRUPTS)
 #define arch_irq_enable(irq)                     arm_irq_enable(irq)
@@ -54,15 +86,61 @@ extern void arm_irq_priority_set(unsigned int irq, unsigned int prio, uint32_t f
  * control functions.
  */
 
+/**
+ * @brief Initialize SoC interrupt controller
+ *
+ * SoC-specific interrupt controller initialization.
+ */
 void z_soc_irq_init(void);
+
+/**
+ * @brief Enable an interrupt (SoC-specific)
+ *
+ * @param irq IRQ number to enable
+ */
 void z_soc_irq_enable(unsigned int irq);
+
+/**
+ * @brief Disable an interrupt (SoC-specific)
+ *
+ * @param irq IRQ number to disable
+ */
 void z_soc_irq_disable(unsigned int irq);
+
+/**
+ * @brief Check if interrupt is enabled (SoC-specific)
+ *
+ * @param irq IRQ number to check
+ * @return Non-zero if enabled, 0 if disabled
+ */
 int z_soc_irq_is_enabled(unsigned int irq);
 
+/**
+ * @brief Set interrupt priority (SoC-specific)
+ *
+ * @param irq IRQ number
+ * @param prio Priority level
+ * @param flags Additional flags
+ */
 void z_soc_irq_priority_set(
 	unsigned int irq, unsigned int prio, unsigned int flags);
 
+/**
+ * @brief Get active interrupt number
+ *
+ * Returns the IRQ number of the currently active interrupt.
+ *
+ * @return Active IRQ number
+ */
 unsigned int z_soc_irq_get_active(void);
+
+/**
+ * @brief Signal end of interrupt
+ *
+ * Signals the interrupt controller that interrupt processing is complete.
+ *
+ * @param irq IRQ number being acknowledged
+ */
 void z_soc_irq_eoi(unsigned int irq);
 
 #define arch_irq_enable(irq)		z_soc_irq_enable(irq)
@@ -74,8 +152,19 @@ void z_soc_irq_eoi(unsigned int irq);
 
 #endif
 
+/**
+ * @brief Exit from interrupt context
+ *
+ * Performs architecture-specific operations when exiting an interrupt,
+ * including potential context switches.
+ */
 extern void z_arm_int_exit(void);
 
+/**
+ * @brief Initialize ARM interrupt handling
+ *
+ * Performs architecture-specific interrupt initialization.
+ */
 extern void z_arm_interrupt_init(void);
 
 /* Flags for use with IRQ_CONNECT() */

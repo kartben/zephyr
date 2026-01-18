@@ -24,6 +24,17 @@ extern "C" {
 
 #else
 
+/**
+ * @brief Initialize CPU stacks for different ARM modes
+ *
+ * This function initializes the stack pointers for the different ARM
+ * processor modes (FIQ, IRQ, Abort, Undefined, SVC, System) on Cortex-A
+ * and Cortex-R processors. Each mode has its own dedicated stack to ensure
+ * proper exception handling.
+ *
+ * Must be called during early system initialization before exceptions
+ * are enabled.
+ */
 extern void z_arm_init_stacks(void);
 
 #endif /* _ASMLANGUAGE */

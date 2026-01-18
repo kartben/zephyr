@@ -5,6 +5,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief ARMv7-M MPU internal implementation
+ *
+ * Internal implementation of the Memory Protection Unit (MPU) driver for
+ * ARMv7-M architecture (Cortex-M3, M4, M7). This file contains the low-level
+ * functions for configuring MPU regions, validating memory partitions, and
+ * checking user accessibility.
+ */
+
 #ifndef ZEPHYR_ARCH_ARM_CORE_AARCH32_MPU_ARM_MPU_V7_INTERNAL_H_
 #define ZEPHYR_ARCH_ARM_CORE_AARCH32_MPU_ARM_MPU_V7_INTERNAL_H_
 
@@ -15,16 +25,30 @@
 #define LOG_LEVEL CONFIG_MPU_LOG_LEVEL
 #include <zephyr/logging/log.h>
 
-/* Global MPU configuration at system initialization. */
+/**
+ * @brief Initialize the MPU hardware
+ *
+ * Performs global MPU initialization. For ARMv7-M, this is a no-op as
+ * no specific initialization is required beyond what is done during
+ * region configuration.
+ */
 static void mpu_init(void)
 {
 	/* No specific configuration at init for ARMv7-M MPU. */
 }
 
-/* This internal function performs MPU region initialization.
+/**
+ * @brief Initialize an MPU region with the given configuration
+ *
+ * This internal function performs MPU region initialization by programming
+ * the region's base address, attributes, and size into the MPU hardware
+ * registers.
  *
  * Note:
  *   The caller must provide a valid region index.
+ *
+ * @param index MPU region index to configure
+ * @param region_conf Pointer to region configuration structure
  */
 static void region_init(const uint32_t index,
 	const struct arm_mpu_region *region_conf)
@@ -52,13 +76,18 @@ static void region_init(const uint32_t index,
 #endif
 }
 
-/* @brief Partition sanity check
+/**
+ * @brief Validate an MPU partition configuration
  *
- * This internal function performs run-time sanity check for
- * MPU region start address and size.
+ * This internal function performs run-time sanity check for MPU region
+ * start address and size. For ARMv7-M MPU:
+ * - Size must be a power of two
+ * - Size must be >= minimum MPU region size
+ * - Start address must be aligned to size
  *
  * @param part Pointer to the data structure holding the partition
- *             information (must be valid).
+ *             information (must be valid)
+ * @return 1 if partition is valid, 0 otherwise
  */
 static int mpu_partition_is_valid(const struct z_arm_mpu_partition *part)
 {
@@ -78,12 +107,17 @@ static int mpu_partition_is_valid(const struct z_arm_mpu_partition *part)
 }
 
 /**
- * This internal function converts the region size to
- * the SIZE field value of MPU_RASR.
+ * @brief Convert region size to MPU RASR SIZE field value
+ *
+ * This internal function converts the region size (in bytes) to
+ * the SIZE field value of MPU_RASR register.
  *
  * Note: If size is not a power-of-two, it is rounded-up to the next
  * power-of-two value, and the returned SIZE field value corresponds
  * to that power-of-two value.
+ *
+ * @param size Region size in bytes
+ * @return SIZE field value for MPU_RASR register
  */
 static inline uint32_t size_to_mpu_rasr_size(uint32_t size)
 {
