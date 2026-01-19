@@ -104,6 +104,51 @@ is notified to CS with meter reading and connector id using ocpp_start_transacti
 Once the start transaction is success, user callback is invoked to get meter
 readings from the library. callback should be not be hold for longer time.
 
+Shell Commands
+**************
+
+The OCPP library provides shell commands for testing and debugging when
+:kconfig:option:`CONFIG_OCPP_SHELL` is enabled. The shell commands allow
+interactive management of OCPP sessions and transactions.
+
+Available Commands
+==================
+
+- ``ocpp info`` - Display OCPP status and active sessions
+- ``ocpp session open`` - Open a new OCPP session
+- ``ocpp session close <session_index>`` - Close an OCPP session
+- ``ocpp authorize <session_index> <idtag> <timeout_ms>`` - Authorize an ID tag
+- ``ocpp start <session_index> <meter_val> <connector_id> <timeout_ms>`` - Start a transaction
+- ``ocpp stop <session_index> <meter_val> <timeout_ms>`` - Stop a transaction
+
+Example Usage
+=============
+
+.. code-block:: console
+
+   uart:~$ ocpp info
+   OCPP Shell Info:
+     Max sessions: 4
+     Active sessions: 0
+
+   uart:~$ ocpp session open
+   Session opened: index=0, handle=0x20001234
+
+   uart:~$ ocpp authorize 0 MyIDTag 500
+   Authorizing idtag 'MyIDTag' on session 0...
+   Authorization status: Accepted (1)
+
+   uart:~$ ocpp start 0 100 1 500
+   Starting transaction on session 0, connector 1...
+   Transaction started successfully
+
+   uart:~$ ocpp stop 0 200 500
+   Stopping transaction on session 0...
+   Transaction stopped successfully
+
+   uart:~$ ocpp session close 0
+   Session 0 closed
+
 API Reference
 *************
 
