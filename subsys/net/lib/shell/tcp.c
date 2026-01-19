@@ -396,19 +396,20 @@ static int cmd_net_tcp(const struct shell *sh, size_t argc, char *argv[])
 
 SHELL_STATIC_SUBCMD_SET_CREATE(net_cmd_tcp,
 	SHELL_CMD(connect, NULL,
-		  "'net tcp connect <address> <port>' connects to TCP peer.",
+		  SHELL_HELP("Connect to TCP peer.", "<address> <port>"),
 		  cmd_net_tcp_connect),
 	SHELL_CMD(send, NULL,
-		  "'net tcp send <data>' sends data to peer using TCP.",
+		  SHELL_HELP("Send data to peer using TCP.", "<data>"),
 		  cmd_net_tcp_send),
 	SHELL_CMD(recv, NULL,
-		  "'net tcp recv' receives data using TCP.",
+		  SHELL_HELP("Receive data using TCP.", NULL),
 		  cmd_net_tcp_recv),
 	SHELL_CMD(close, NULL,
-		  "'net tcp close' closes TCP connection.", cmd_net_tcp_close),
+		  SHELL_HELP("Close TCP connection.", NULL),
+		  cmd_net_tcp_close),
 	SHELL_SUBCMD_SET_END
 );
 
 SHELL_SUBCMD_ADD((net), tcp, &net_cmd_tcp,
-		 "Connect/send/close TCP connection.",
+		 SHELL_HELP("Connect/send/close TCP connection.", NULL),
 		 cmd_net_tcp, 1, 0);
