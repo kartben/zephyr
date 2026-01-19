@@ -33,7 +33,7 @@ specifying the signature of a callback:
 An exception to providing ``user_data`` as the last parameter may be
 allowed when the callback itself was provided through a structure that
 will be embedded in another structure.  An example of such a case is
-:c:struct:`gpio_callback`, normally defined within a data structure
+:c:type:`gpio_callback`, normally defined within a data structure
 specific to the code that also defines the callback function.  In those
 cases further context can accessed by the callback indirectly by
 :c:macro:`CONTAINER_OF`.
@@ -47,7 +47,7 @@ Examples
     void handle_timeout(struct k_timer *timer)
     { ... }
 
-  The assumption here, as with :c:struct:`gpio_callback`, is that the
+  The assumption here, as with :c:type:`gpio_callback`, is that the
   timer is embedded in a structure reachable from
   :c:macro:`CONTAINER_OF` that can provide additional context to the
   callback.
@@ -64,7 +64,7 @@ Examples
   This provides more complete useful information, including which
   counter channel timed-out and the counter value at which the timeout
   occurred, as well as user context which may or may not be the
-  :c:struct:`counter_alarm_cfg` used to register the callback, depending
+  :c:type:`counter_alarm_cfg` used to register the callback, depending
   on user needs.
 
 Conditional Data and APIs
@@ -105,8 +105,19 @@ See :ref:`doxygen_conditional_code` for details on
 how to ensure conditional code is visible to Doxygen and included in the
 public API documentation.
 
+Subsystem namespaces
+********************
+
+A subsystem can define its own naming conventions for symbols as long as the scheme doesn't collide
+with Zephyr naming conventions :ref:`api_conventions`. The naming convention should include a
+namespace prefix (for example, bt\_ for Bluetooth LE, or net\_ for IP). This limits possible
+collisions with symbols defined by an application.
+
 Return Codes
 ************
+
+Zephyr uses the standard codes in ``errno.h`` for all APIs. As a general rule, 0 indicates success;
+a negative ``errno.h`` code indicates an error condition.
 
 Implementations of an API, for example an API for accessing a peripheral might
 implement only a subset of the functions that is required for minimal operation.
