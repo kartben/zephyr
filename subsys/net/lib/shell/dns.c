@@ -530,22 +530,24 @@ static int cmd_net_dns_service(const struct shell *sh, size_t argc, char *argv[]
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(net_cmd_dns,
-	SHELL_CMD(cancel, NULL, "Cancel all pending requests.",
+	SHELL_CMD(cancel, NULL,
+		  SHELL_HELP("Cancel all pending requests.", NULL),
 		  cmd_net_dns_cancel),
 	SHELL_CMD(query, NULL,
-		  "'net dns <hostname> [A or AAAA]' queries IPv4 address "
-		  "(default) or IPv6 address for a host name.",
+		  SHELL_HELP("Query IPv4 address (default) or IPv6 address for a host name.",
+			     "<hostname> [A|AAAA]"),
 		  cmd_net_dns_query),
 	SHELL_CMD(list, NULL,
-		  "List local DNS service records.",
+		  SHELL_HELP("List local DNS service records.", NULL),
 		  cmd_net_dns_list),
 	SHELL_CMD(service, NULL,
-		  "'net dns service <service-description>\n"
-		  "Execute DNS service discovery query.",
+		  SHELL_HELP("Execute DNS service discovery query.",
+			     "<service-description>"),
 		  cmd_net_dns_service),
 	SHELL_SUBCMD_SET_END
 );
 
 SHELL_SUBCMD_ADD((net), dns, &net_cmd_dns,
-		 "Show how DNS is configured. Optionally do a query using a given name.",
+		 SHELL_HELP("Show how DNS is configured. Optionally query a name.",
+			    "[<hostname> [A|AAAA]]"),
 		 cmd_net_dns, 1, 2);
