@@ -312,8 +312,12 @@ EXPORT_SYMBOL(z_arm_thread_is_in_user_mode);
  * the built-in Process Stack Pointer Limit Register (PSPLIM).
  * The functionality is meant to be used during context switch.
  *
+ * Note: This function must not be instrumented to avoid stack overhead
+ * and additional function calls during critical stack guard configuration.
+ *
  * @param thread thread info data structure.
  */
+__no_instrumentation__
 void configure_builtin_stack_guard(struct k_thread *thread)
 {
 #if defined(CONFIG_USERSPACE)
