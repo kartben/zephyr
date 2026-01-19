@@ -115,6 +115,7 @@ def convert_from_uf2(buf):
     """
     UF2_MAGIC_START0 = 0x0A324655  # First magic number ('UF2\n')
     UF2_MAGIC_START1 = 0x9E5D5157  # Second magic number
+    PADDING_SIZE = 4  # Word alignment
     numblocks = len(buf) // 512
     curraddr = None
     outp = []
@@ -135,11 +136,11 @@ def convert_from_uf2(buf):
         if curraddr is None:
             curraddr = newaddr
         padding = newaddr - curraddr
-        if padding < 0 or padding > 10*1024*1024 or padding % 4 != 0:
+        if padding < 0 or padding > 10*1024*1024 or padding % PADDING_SIZE != 0:
             continue
         while padding > 0:
-            padding -= 4
-            outp.extend(b'\x00\x00\x00\x00')
+            padding -= PADDING_SIZE
+            outp.extend(b'\x00' * PADDING_SIZE)
         outp.append(block[32 : 32 + datalen])
         curraddr = newaddr + datalen
 
@@ -223,7 +224,8 @@ class Stropt(WestCommand):
                 magic = f.read(4)
                 if magic == b'\x7fELF':
                     return 'elf'
-                elif magic[:2] == b'UF':
+                # UF2 magic: 'UF2\n' (0x0A324655 in little-endian)
+                elif magic == b'UF2\n':
                     return 'uf2'
             return 'bin'
 
