@@ -171,20 +171,19 @@ static int cmd_virtual_detach(const struct shell *sh, size_t argc, char *argv[])
 
 SHELL_STATIC_SUBCMD_SET_CREATE(virtual_commands,
 	SHELL_CMD_ARG(attach, NULL,
-		  "Attach a network interface to another interface.\n"
-		  "'virtual attach <upper virtual iface index> <lower iface index>'",
+		  SHELL_HELP("Attach a network interface to another interface.",
+			     "<upper virtual iface index> <lower iface index>"),
 		  cmd_virtual_attach, 3, 0),
 	SHELL_CMD_ARG(detach, NULL,
-		  "Detach a network interface from another interface.\n"
-		  "'virtual detach <upper virtual iface index>'",
+		  SHELL_HELP("Detach a network interface from another interface.",
+			     "<upper virtual iface index>"),
 		  cmd_virtual_detach, 2, 0),
 	SHELL_CMD_ARG(show, NULL,
-		  "Show virtual interface information.\n"
-		  "'virtual show'",
+		  SHELL_HELP("Show virtual interface information.", NULL),
 		  cmd_virtual_show, 1, 1),
 	SHELL_SUBCMD_SET_END
 );
 
 SHELL_SUBCMD_ADD((net), virtual, &virtual_commands,
-		 "Show/manipulate virtual network interfaces.",
+		 SHELL_HELP("Show/manipulate virtual network interfaces.", NULL),
 		 cmd_virtual_show, 1, 1);
