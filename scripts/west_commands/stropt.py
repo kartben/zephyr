@@ -460,7 +460,12 @@ class Stropt(WestCommand):
             # Show the strings in the group
             for occurrences, string in group:
                 preview = string[:50] + '...' if len(string) > 50 else string
+                # Show offsets where this string appears
+                offset_list = ', '.join(f'0x{off:x}' for off in occurrences[:5])
+                if len(occurrences) > 5:
+                    offset_list += f', ... ({len(occurrences) - 5} more)'
                 self.inf(f'    [{len(occurrences)}x] "{preview}"')
+                self.inf(f'        Offsets: {offset_list}')
 
             # Suggest unified string
             suggested = self.suggest_unified_string(group)
