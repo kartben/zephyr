@@ -1842,18 +1842,18 @@ static int i2c_it51xxx_init(const struct device *dev)
 				data->target_shared_fifo);
 
 			data->fifo_size_list = fifo_size_table;
-			for (int i = 0; i <= ARRAY_SIZE(fifo_size_table); i++) {
-				if (i == ARRAY_SIZE(fifo_size_table)) {
-					LOG_ERR("I2CS ch%d: Unsupported target FIFO size %d",
-						config->port, sizeof(data->target_shared_fifo));
-					return -ENOTSUP;
-				}
-
+			int i;
+			for (i = 0; i < ARRAY_SIZE(fifo_size_table); i++) {
 				if (sizeof(data->target_shared_fifo) ==
 				    data->fifo_size_list[i].fifo_size) {
 					target_fifo_size_val = data->fifo_size_list[i].value;
 					break;
 				}
+			}
+			if (i == ARRAY_SIZE(fifo_size_table)) {
+				LOG_ERR("I2CS ch%d: Unsupported target FIFO size %d",
+					config->port, sizeof(data->target_shared_fifo));
+				return -ENOTSUP;
 			}
 			/* Shared FIFO size for target A, B, C */
 			ssfifoc = sys_read8(config->target_base + SMB_SSFIFOCn);

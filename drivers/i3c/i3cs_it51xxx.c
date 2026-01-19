@@ -584,12 +584,8 @@ static int it51xxx_i3cs_init(const struct device *dev)
 		     (uint32_t)&data->fifo.rx_data);
 
 	/* set tx and rx fifo size */
-	for (uint8_t i = 0; i <= ARRAY_SIZE(fifo_size_table); i++) {
-		if (i == ARRAY_SIZE(fifo_size_table)) {
-			LOG_INST_ERR(cfg->log, "unknown rx fifo size %d",
-				     sizeof(data->fifo.rx_data));
-			return -ENOTSUP;
-		}
+	uint8_t i;
+	for (i = 0; i < ARRAY_SIZE(fifo_size_table); i++) {
 		if (sizeof(data->fifo.rx_data) == fifo_size_table[i].fifo_size) {
 			sys_write8(FIELD_PREP(I3CS_RX_FIFO_SIZE_MASK, fifo_size_table[i].value),
 				   cfg->base + I3CS7A_RX_FIFO_SIZE);
@@ -597,18 +593,23 @@ static int it51xxx_i3cs_init(const struct device *dev)
 			break;
 		}
 	}
-	for (uint8_t i = 0; i <= ARRAY_SIZE(fifo_size_table); i++) {
-		if (i == ARRAY_SIZE(fifo_size_table)) {
-			LOG_INST_ERR(cfg->log, "unknown tx fifo size %d",
-				     sizeof(data->fifo.tx_data));
-			return -ENOTSUP;
-		}
+	if (i == ARRAY_SIZE(fifo_size_table)) {
+		LOG_INST_ERR(cfg->log, "unknown rx fifo size %d",
+			     sizeof(data->fifo.rx_data));
+		return -ENOTSUP;
+	}
+	for (i = 0; i < ARRAY_SIZE(fifo_size_table); i++) {
 		if (sizeof(data->fifo.tx_data) == fifo_size_table[i].fifo_size) {
 			sys_write8(FIELD_PREP(I3CS_TX_FIFO_SIZE_MASK, fifo_size_table[i].value),
 				   cfg->base + I3CS4A_TX_FIFO_SIZE);
 			set_mrl_value(dev, sizeof(data->fifo.tx_data));
 			break;
 		}
+	}
+	if (i == ARRAY_SIZE(fifo_size_table)) {
+		LOG_INST_ERR(cfg->log, "unknown tx fifo size %d",
+			     sizeof(data->fifo.tx_data));
+		return -ENOTSUP;
 	}
 
 	ret = it51xxx_i3cs_set_fifo_address(dev);
