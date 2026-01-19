@@ -640,12 +640,12 @@ static int cmd_net_gptp(const struct shell *sh, size_t argc, char *argv[])
 
 SHELL_STATIC_SUBCMD_SET_CREATE(net_cmd_gptp,
 	SHELL_CMD(port, NULL,
-		  "'net gptp [<port>]' prints detailed information about "
-		  "gPTP port.",
+		  SHELL_HELP("Print detailed information about gPTP port.",
+			     "<port>"),
 		  cmd_net_gptp_port),
 	SHELL_SUBCMD_SET_END
 );
 
 SHELL_SUBCMD_ADD((net), gptp, &net_cmd_gptp,
-		 "Print information about gPTP support.",
+		 SHELL_HELP("Print information about gPTP support.", "<port>"),
 		 cmd_net_gptp, 1, 1);
