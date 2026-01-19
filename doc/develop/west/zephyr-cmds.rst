@@ -445,3 +445,133 @@ each individual commit associated with the given pull request.
     │   ├── second-commit-from-pr.patch
     │   └── third-commit-from-pr.patch
     └── patches.yml
+
+.. _west-stropt:
+
+String optimization analysis: ``west stropt``
+*********************************************
+
+The ``stropt`` command analyzes binary firmware to identify similar strings
+and suggest optimizations to reduce binary size. This tool is useful for:
+
+- Finding duplicate or near-duplicate strings that could be consolidated
+- Identifying strings with common prefixes/suffixes that could be refactored
+- Estimating potential size savings from string homogenization
+
+To use this command, provide a path to a binary firmware file:
+
+.. code-block:: bash
+
+   west stropt path/to/zephyr.elf
+
+The command supports multiple binary formats:
+
+- ELF (``.elf``)
+- Intel HEX (``.hex``)
+- Raw binary (``.bin``)
+- UF2 (``.uf2``)
+
+The file type is automatically detected based on the file extension, or you can
+specify it explicitly:
+
+.. code-block:: bash
+
+   west stropt zephyr.bin --file-type bin
+
+Command options
+===============
+
+The ``stropt`` command provides several options to control the analysis:
+
+``--min-length LENGTH``
+  Minimum string length to extract (default: 4). Shorter strings are ignored.
+
+  .. code-block:: bash
+
+     west stropt zephyr.elf --min-length 8
+
+``--similarity THRESHOLD``
+  Similarity threshold between 0.0 and 1.0 (default: 0.7). Strings with
+  similarity above this threshold are grouped together. Higher values require
+  strings to be more similar.
+
+  .. code-block:: bash
+
+     west stropt zephyr.elf --similarity 0.8
+
+``--min-savings BYTES``
+  Minimum bytes saved to report a group (default: 10). Groups with less
+  potential savings are filtered out.
+
+  .. code-block:: bash
+
+     west stropt zephyr.elf --min-savings 20
+
+``--max-groups COUNT``
+  Maximum number of groups to display (default: 20). Only the top groups by
+  potential savings are shown.
+
+  .. code-block:: bash
+
+     west stropt zephyr.elf --max-groups 10
+
+Example output
+==============
+
+.. code-block:: console
+
+   $ west stropt build/zephyr/zephyr.elf --similarity 0.6
+   Analyzing build/zephyr/zephyr.elf...
+   Extracting strings (min length: 4)...
+   Found 342 strings
+   Analyzing similarity (threshold: 0.6)...
+
+   Found 12 groups of similar strings
+   Total potential savings: 156 bytes
+
+   Group 1: 3 similar strings, 5 total occurrences
+     Potential savings: 42 bytes
+       [2x] "Error: Connection failed"
+       [2x] "Error: Connection timeout"
+       [1x] "Error: Connection refused"
+     Suggested unified string: "Error: Connection timeout"
+
+   Group 2: 4 similar strings, 4 total occurrences
+     Potential savings: 28 bytes
+       [1x] "Warning: Low memory"
+       [1x] "Warning: Low battery"
+       [1x] "Warning: Low disk space"
+       [1x] "Warning: Low voltage"
+     Suggested unified string: "Warning: Low memory"
+
+   ...
+
+Understanding the results
+=========================
+
+The command uses Levenshtein distance to calculate similarity between strings.
+When similar strings are found, it estimates the potential byte savings from
+refactoring them to use a common base string with format specifiers.
+
+For example, these three strings:
+
+- ``"Error: Connection failed"`` (26 bytes)
+- ``"Error: Connection timeout"`` (27 bytes)
+- ``"Error: Connection refused"`` (27 bytes)
+
+Could be refactored to use a common format string:
+
+- ``"Error: Connection %s"`` (20 bytes) + individual suffixes
+
+This type of refactoring reduces the total storage required while maintaining
+the same functionality.
+
+Dependencies
+============
+
+This command requires the following Python packages:
+
+- ``pyelftools`` - for ELF file parsing
+- ``intelhex`` - for Intel HEX file parsing
+
+These are typically included in Zephyr's Python requirements.
