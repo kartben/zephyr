@@ -153,13 +153,18 @@ class StringOptimize(WestCommand):
         self.output_file = args.output
 
         # Extract strings based on source
-        strings = set()
+        # Dictionary mapping strings to list of source files
+        string_origins = {}
 
         if args.source in ['elf', 'both']:
             elf_file = self.find_elf_file()
             if elf_file:
                 self.inf(f"Extracting strings from ELF: {elf_file}")
-                strings.update(self.extract_strings_from_elf(elf_file))
+                elf_strings = self.extract_strings_from_elf(elf_file)
+                for string in elf_strings:
+                    if string not in string_origins:
+                        string_origins[string] = []
+                    string_origins[string].append(str(elf_file.relative_to(self.build_dir)))
             else:
                 self.wrn("No ELF file found in build directory")
 
@@ -168,19 +173,27 @@ class StringOptimize(WestCommand):
             if obj_files:
                 self.inf(f"Extracting strings from {len(obj_files)} object files")
                 for obj_file in obj_files:
-                    strings.update(self.extract_strings_from_object(obj_file))
+                    obj_strings = self.extract_strings_from_object(obj_file)
+                    for string in obj_strings:
+                        if string not in string_origins:
+                            string_origins[string] = []
+                        origin = str(obj_file.relative_to(self.build_dir))
+                        if origin not in string_origins[string]:
+                            string_origins[string].append(origin)
             else:
                 self.wrn("No object files found in build directory")
 
-        if not strings:
+        if not string_origins:
             self.die("No strings found to analyze")
 
         # Filter strings by minimum length
-        filtered_strings = [s for s in strings if len(s) >= self.min_length]
+        filtered_strings = {
+            s: origins for s, origins in string_origins.items() if len(s) >= self.min_length
+        }
         self.inf(f"Analyzing {len(filtered_strings)} strings (min length: {self.min_length})")
 
         # Find similar strings
-        similar_groups = self.find_similar_strings(filtered_strings)
+        similar_groups = self.find_similar_strings(list(filtered_strings.keys()))
 
         # Generate report
         self.generate_report(similar_groups, filtered_strings)
@@ -301,14 +314,14 @@ class StringOptimize(WestCommand):
 
         return similar_pairs
 
-    def generate_report(self, similar_groups, all_strings):
+    def generate_report(self, similar_groups, string_origins):
         """Generate and output the optimization report."""
         if self.format == 'json':
-            self.generate_json_report(similar_groups, all_strings)
+            self.generate_json_report(similar_groups, string_origins)
         else:
-            self.generate_text_report(similar_groups, all_strings)
+            self.generate_text_report(similar_groups, string_origins)
 
-    def generate_text_report(self, similar_groups, all_strings):
+    def generate_text_report(self, similar_groups, string_origins):
         """Generate a text report of findings."""
         output_lines = []
 
@@ -316,7 +329,7 @@ class StringOptimize(WestCommand):
         output_lines.append("String Optimization Analysis Report")
         output_lines.append("=" * 80)
         output_lines.append("")
-        output_lines.append(f"Total strings analyzed: {len(all_strings)}")
+        output_lines.append(f"Total strings analyzed: {len(string_origins)}")
         output_lines.append(f"Similarity threshold: {self.threshold}")
         output_lines.append(f"Minimum string length: {self.min_length}")
         output_lines.append("")
@@ -333,7 +346,26 @@ class StringOptimize(WestCommand):
             for i, (similarity, s1, s2) in enumerate(similar_groups, 1):
                 output_lines.append(f"{i}. Similarity: {similarity:.2%}")
                 output_lines.append(f"   String 1: \"{s1}\"")
+                # Show origin of string 1
+                if s1 in string_origins:
+                    origins = string_origins[s1]
+                    if len(origins) == 1:
+                        output_lines.append(f"   Origin: {origins[0]}")
+                    else:
+                        output_lines.append(f"   Origins: {', '.join(origins[:3])}")
+                        if len(origins) > 3:
+                            output_lines.append(f"            ... and {len(origins) - 3} more")
+
                 output_lines.append(f"   String 2: \"{s2}\"")
+                # Show origin of string 2
+                if s2 in string_origins:
+                    origins = string_origins[s2]
+                    if len(origins) == 1:
+                        output_lines.append(f"   Origin: {origins[0]}")
+                    else:
+                        output_lines.append(f"   Origins: {', '.join(origins[:3])}")
+                        if len(origins) > 3:
+                            output_lines.append(f"            ... and {len(origins) - 3} more")
 
                 # Estimate potential savings
                 # If we homogenize these strings, we save the length of the shorter one
@@ -368,13 +400,13 @@ class StringOptimize(WestCommand):
         else:
             print(report)
 
-    def generate_json_report(self, similar_groups, all_strings):
+    def generate_json_report(self, similar_groups, string_origins):
         """Generate a JSON report of findings."""
         import json
 
         report = {
             'summary': {
-                'total_strings': len(all_strings),
+                'total_strings': len(string_origins),
                 'threshold': self.threshold,
                 'min_length': self.min_length,
                 'similar_pairs': len(similar_groups),
@@ -388,14 +420,16 @@ class StringOptimize(WestCommand):
             savings = min(len(s1), len(s2))
             total_potential_savings += savings
 
-            report['similar_strings'].append(
-                {
-                    'similarity': round(similarity, 4),
-                    'string1': s1,
-                    'string2': s2,
-                    'potential_savings_bytes': savings,
-                }
-            )
+            pair_info = {
+                'similarity': round(similarity, 4),
+                'string1': s1,
+                'string1_origins': string_origins.get(s1, []),
+                'string2': s2,
+                'string2_origins': string_origins.get(s2, []),
+                'potential_savings_bytes': savings,
+            }
+
+            report['similar_strings'].append(pair_info)
 
         report['summary']['total_potential_savings_bytes'] = total_potential_savings
 
