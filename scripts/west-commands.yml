@@ -99,3 +99,8 @@ west-commands:
       - name: gtags
         class: Gtags
         help: create a GNU global tags file for the current workspace
+  - file: scripts/west_commands/stropt.py
+    commands:
+      - name: stropt
+        class: Stropt
+        help: diagnose similar strings in binary firmware
