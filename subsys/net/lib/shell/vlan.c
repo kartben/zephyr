@@ -203,16 +203,16 @@ usage:
 
 SHELL_STATIC_SUBCMD_SET_CREATE(net_cmd_vlan,
 	SHELL_CMD_ARG(add, NULL,
-		      "'net vlan add <tag> <index>' adds VLAN tag to the "
-		      "network interface.",
+		      SHELL_HELP("Add VLAN tag to the network interface.",
+				 "<tag> <index>"),
 		      cmd_net_vlan_add, 3, 0),
 	SHELL_CMD_ARG(del, NULL,
-		      "'net vlan del <tag>' deletes VLAN tag from the network "
-		      "interface.",
+		      SHELL_HELP("Delete VLAN tag from the network interface.",
+				 "<tag>"),
 		      cmd_net_vlan_del, 2, 0),
 	SHELL_SUBCMD_SET_END
 );
 
 SHELL_SUBCMD_ADD((net), vlan, &net_cmd_vlan,
-		 "Show VLAN information.",
+		 SHELL_HELP("Show VLAN information.", NULL),
 		 cmd_net_vlan, 1, 0);
