@@ -73,23 +73,26 @@ static int cmd_net_dhcpv6_client_stop(const struct shell *sh, size_t argc, char 
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(net_cmd_dhcpv6_client,
-	SHELL_CMD_ARG(start, NULL, "Start the Dhcpv6 client operation on the interface.\n"
-		      "'net dhcpv6 client start <index>'\n"
-		      "<index> is the network interface index.",
+	SHELL_CMD_ARG(start, NULL,
+		      SHELL_HELP("Start the DHCPv6 client operation on the interface.",
+				 "<index>\n"
+				 "<index> is the network interface index."),
 		      cmd_net_dhcpv6_client_start, 2, 0),
-	SHELL_CMD_ARG(stop, NULL, "Stop the Dhcpv6 client operation on the interface.\n"
-		      "'net dhcpv6 client stop <index>'\n"
-		      "<index> is the network interface index.",
+	SHELL_CMD_ARG(stop, NULL,
+		      SHELL_HELP("Stop the DHCPv6 client operation on the interface.",
+				 "<index>\n"
+				 "<index> is the network interface index."),
 		      cmd_net_dhcpv6_client_stop, 2, 0),
 	SHELL_SUBCMD_SET_END
 );
 
 SHELL_STATIC_SUBCMD_SET_CREATE(net_cmd_dhcpv6,
 	SHELL_CMD(client, &net_cmd_dhcpv6_client,
-		  "Dhcpv6 client management.",
+		  SHELL_HELP("DHCPv6 client management.", NULL),
 		  NULL),
 	SHELL_SUBCMD_SET_END
 );
 
-SHELL_SUBCMD_ADD((net), dhcpv6, &net_cmd_dhcpv6, "Manage DHPCv6 services.",
+SHELL_SUBCMD_ADD((net), dhcpv6, &net_cmd_dhcpv6,
+		 SHELL_HELP("Manage DHCPv6 services.", NULL),
 		 NULL, 1, 0);
