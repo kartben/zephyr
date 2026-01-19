@@ -295,18 +295,18 @@ static int cmd_net_udp(const struct shell *sh, size_t argc, char *argv[])
 
 SHELL_STATIC_SUBCMD_SET_CREATE(net_cmd_udp,
 	SHELL_CMD(bind, NULL,
-		  "'net udp bind <addr> <port>' binds to UDP local port.",
+		  SHELL_HELP("Bind to UDP local port.", "<addr> <port>"),
 		  cmd_net_udp_bind),
 	SHELL_CMD(close, NULL,
-		  "'net udp close' closes previously bound port.",
+		  SHELL_HELP("Close previously bound port.", NULL),
 		  cmd_net_udp_close),
 	SHELL_CMD(send, NULL,
-		  "'net udp send <host> <port> <payload>' "
-		  "sends UDP packet to a network host.",
+		  SHELL_HELP("Send UDP packet to a network host.",
+			     "<host> <port> <payload>"),
 		  cmd_net_udp_send),
 	SHELL_SUBCMD_SET_END
 );
 
 SHELL_SUBCMD_ADD((net), udp, &net_cmd_udp,
-		 "Send/recv UDP packet",
+		 SHELL_HELP("Send/recv UDP packet.", NULL),
 		 cmd_net_udp, 1, 0);
