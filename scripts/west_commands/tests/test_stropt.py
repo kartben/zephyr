@@ -5,7 +5,6 @@
 """Tests for the stropt west command."""
 
 import pytest
-import tempfile
 from pathlib import Path
 
 from stropt import (

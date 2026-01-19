@@ -139,7 +139,7 @@ def convert_from_uf2(buf):
             continue
         while padding > 0:
             padding -= 4
-            outp += b'\x00\x00\x00\x00'
+            outp.extend(b'\x00\x00\x00\x00')
         outp.append(block[32 : 32 + datalen])
         curraddr = newaddr + datalen
     
