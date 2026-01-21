@@ -527,6 +527,33 @@ void z_shell_vt100_colors_restore(const struct shell *sh,
 	vt100_bgcolor_set(sh, color->bgcol);
 }
 
+void z_shell_vt100_style_set(const struct shell *sh, enum shell_vt100_style style)
+{
+	if (!IS_ENABLED(CONFIG_SHELL_VT100_COLORS) || !z_flag_use_colors_get(sh)) {
+		return;
+	}
+
+	if (style == SHELL_VT100_STYLE_NORMAL) {
+		Z_SHELL_VT100_CMD(sh, SHELL_VT100_MODESOFF);
+		return;
+	}
+
+	if (style & SHELL_VT100_STYLE_BOLD) {
+		Z_SHELL_VT100_CMD(sh, SHELL_VT100_BOLD);
+	}
+	if (style & SHELL_VT100_STYLE_DIM) {
+		Z_SHELL_VT100_CMD(sh, SHELL_VT100_LOWINT);
+	}
+	if (style & SHELL_VT100_STYLE_UNDERLINE) {
+		Z_SHELL_VT100_CMD(sh, SHELL_VT100_UNDERLINE);
+	}
+}
+
+void z_shell_vt100_style_reset(const struct shell *sh)
+{
+	z_shell_vt100_style_set(sh, SHELL_VT100_STYLE_NORMAL);
+}
+
 void z_shell_vfprintf(const struct shell *sh, enum shell_vt100_color color,
 		      const char *fmt, va_list args)
 {

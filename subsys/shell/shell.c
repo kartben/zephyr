@@ -1615,6 +1615,26 @@ void shell_fprintf_error(const struct shell *sh, const char *fmt, ...)
 	va_end(args);
 }
 
+void shell_fprintf_styled_impl(const struct shell *sh, enum shell_vt100_color color,
+			       enum shell_vt100_style style, const char *fmt, ...)
+{
+	va_list args;
+
+	z_shell_vt100_style_set(sh, style);
+	va_start(args, fmt);
+	shell_vfprintf(sh, color, fmt, args);
+	va_end(args);
+	z_shell_vt100_style_reset(sh);
+}
+
+void shell_vfprintf_styled(const struct shell *sh, enum shell_vt100_color color,
+			   enum shell_vt100_style style, const char *fmt, va_list args)
+{
+	z_shell_vt100_style_set(sh, style);
+	shell_vfprintf(sh, color, fmt, args);
+	z_shell_vt100_style_reset(sh);
+}
+
 void shell_hexdump_line(const struct shell *sh, unsigned int offset,
 			const uint8_t *data, size_t len)
 {

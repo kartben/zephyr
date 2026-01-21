@@ -124,7 +124,10 @@ static void formatted_structured_help_print(const struct shell *sh, const char *
 
 	if (structured->usage) {
 		z_shell_op_cursor_horiz_move(sh, terminal_offset);
-		z_shell_fprintf(sh, SHELL_NORMAL, "Usage: %s ", item_name);
+		z_shell_vt100_style_set(sh, SHELL_VT100_STYLE_DIM | SHELL_VT100_STYLE_UNDERLINE);
+		z_shell_fprintf(sh, SHELL_NORMAL, "Usage:");
+		z_shell_vt100_style_reset(sh);
+		z_shell_fprintf(sh, SHELL_NORMAL, " %s ", item_name);
 		formatted_text_print(sh, structured->usage, terminal_offset + 7, false);
 	}
 }

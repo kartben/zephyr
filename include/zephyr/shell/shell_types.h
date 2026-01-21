@@ -26,6 +26,16 @@ enum shell_vt100_color {
 	VT100_COLOR_END
 };
 
+/**
+ * @brief VT100 text style attributes.
+ */
+enum shell_vt100_style {
+	SHELL_VT100_STYLE_NORMAL    = 0,       /**< Reset all styles */
+	SHELL_VT100_STYLE_BOLD      = BIT(0),  /**< Bold/bright text */
+	SHELL_VT100_STYLE_DIM       = BIT(1),  /**< Dim/low intensity text */
+	SHELL_VT100_STYLE_UNDERLINE = BIT(2),  /**< Underlined text */
+};
+
 struct shell_vt100_colors {
 	enum shell_vt100_color col; /*!< Text color. */
 	enum shell_vt100_color bgcol; /*!< Background color. */

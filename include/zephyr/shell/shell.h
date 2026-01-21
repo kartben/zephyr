@@ -1219,6 +1219,48 @@ void shell_vfprintf(const struct shell *sh, enum shell_vt100_color color,
 		   const char *fmt, va_list args);
 
 /**
+ * @brief printf-like function which sends styled, formatted data to the shell.
+ *
+ * This function prints text with the specified color and style attributes.
+ * Style attributes are automatically reset after printing.
+ *
+ * This function can be used from the command handler or from threads, but not
+ * from an interrupt context.
+ *
+ * @param[in] sh	Pointer to the shell instance.
+ * @param[in] color	Printed text color.
+ * @param[in] style	Text style attributes (can be combined with bitwise OR).
+ * @param[in] fmt	Format string.
+ * @param[in] ...	List of parameters to print.
+ */
+void __printf_like(4, 5) shell_fprintf_styled_impl(const struct shell *sh,
+						   enum shell_vt100_color color,
+						   enum shell_vt100_style style,
+						   const char *fmt, ...);
+
+#define shell_fprintf_styled(sh, color, style, fmt, ...) \
+	shell_fprintf_styled_impl(sh, color, style, fmt, ##__VA_ARGS__)
+
+/**
+ * @brief vprintf-like function which sends styled, formatted data to the shell.
+ *
+ * This function prints text with the specified color and style attributes.
+ * Style attributes are automatically reset after printing.
+ *
+ * This function can be used from the command handler or from threads, but not
+ * from an interrupt context. It is similar to shell_fprintf_styled() but takes
+ * a va_list instead of variable arguments.
+ *
+ * @param[in] sh	Pointer to the shell instance.
+ * @param[in] color	Printed text color.
+ * @param[in] style	Text style attributes (can be combined with bitwise OR).
+ * @param[in] fmt	Format string.
+ * @param[in] args	List of parameters to print.
+ */
+void shell_vfprintf_styled(const struct shell *sh, enum shell_vt100_color color,
+			   enum shell_vt100_style style, const char *fmt, va_list args);
+
+/**
  * @brief Print a line of data in hexadecimal format.
  *
  * Each line shows the offset, bytes and then ASCII representation.

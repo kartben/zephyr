@@ -363,6 +363,12 @@ static inline void z_shell_vt100_colors_store(const struct shell *sh,
 void z_shell_vt100_colors_restore(const struct shell *sh,
 				  const struct shell_vt100_colors *color);
 
+/** @internal @brief Function for setting text style attribute */
+void z_shell_vt100_style_set(const struct shell *sh, enum shell_vt100_style style);
+
+/** @internal @brief Function for resetting text style to normal */
+void z_shell_vt100_style_reset(const struct shell *sh);
+
 /* This function can be called only within shell thread but not from command
  * handlers.
  */
