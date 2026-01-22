@@ -28,7 +28,7 @@ bool copyOutput(const TfLiteTensor &src, InferenceProcess::DataPtr &dst)
 	}
 
 	if (src.bytes > dst.size) {
-		printf("Tensor size mismatch (bytes): actual=%d, expected%d.\n", src.bytes,
+		printf("Tensor size mismatch (bytes): actual=%d, expected=%d.\n", src.bytes,
 		       dst.size);
 		return true;
 	}
