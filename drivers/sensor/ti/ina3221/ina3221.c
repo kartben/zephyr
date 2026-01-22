@@ -217,7 +217,7 @@ static int ina3221_sample_fetch(const struct device *dev, enum sensor_channel ch
 		}
 	}
 
-	return ret;
+	return 0;
 }
 
 static int ina3221_channel_get(const struct device *dev, enum sensor_channel chan,
