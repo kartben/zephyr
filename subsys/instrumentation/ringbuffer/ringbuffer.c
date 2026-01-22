@@ -43,7 +43,7 @@ uint32_t instr_buffer_get(uint8_t *data, uint32_t size)
 void instr_buffer_init(void)
 {
 	ring_buf_init(&instr_ring_buf,
-		      sizeof(instr_buffer), instr_buffer);
+		      CONFIG_INSTRUMENTATION_MODE_CALLGRAPH_TRACE_BUFFER_SIZE, instr_buffer);
 }
 
 bool instr_buffer_is_empty(void)
