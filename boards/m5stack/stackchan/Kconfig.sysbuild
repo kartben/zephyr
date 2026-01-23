@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_STACKCHAN
+	bool
+	default y
+	depends on BOARD_STACKCHAN_ESP32S3_PROCPU || BOARD_STACKCHAN_ESP32S3_APPCPU

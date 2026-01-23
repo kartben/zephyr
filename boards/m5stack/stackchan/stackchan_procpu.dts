@@ -1,0 +1,16 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * This includes CoreS3 common and adds StackChan-specific changes.
+ */
+
+/dts-v1/;
+
+#include "../m5stack_cores3/m5stack_cores3_procpu.dts"
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
+/ {
+	model = "M5Stack StackChan PROCPU";
+	compatible = "m5stack,stackchan";
+};
