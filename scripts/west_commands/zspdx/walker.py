@@ -152,6 +152,32 @@ class Walker:
             self.compilerPath = self.cmakeCache.get("CMAKE_C_COMPILER", "")
             self.sdkPath = self.cmakeCache.get("ZEPHYR_SDK_INSTALL_DIR", "")
             self.metaFile =  self.cmakeCache.get("KERNEL_META_PATH", "")
+            
+            # Store build information in SBOM metadata for SPDX 3.0 Build Profile
+            build_info = {
+                "cmake_compiler": self.cmakeCache.get("CMAKE_C_COMPILER", ""),
+                "cmake_cxx_compiler": self.cmakeCache.get("CMAKE_CXX_COMPILER", ""),
+                "cmake_build_type": self.cmakeCache.get("CMAKE_BUILD_TYPE", ""),
+                "cmake_system_name": self.cmakeCache.get("CMAKE_SYSTEM_NAME", ""),
+                "cmake_generator": self.cmakeCache.get("CMAKE_GENERATOR", ""),
+                "cmake_system_processor": self.cmakeCache.get("CMAKE_SYSTEM_PROCESSOR", ""),
+            }
+            # Try to get CMake version (check common keys)
+            cmake_version_keys = ["CMAKE_VERSION", "CMAKE_MAJOR_VERSION", "CMAKE_MINOR_VERSION", "CMAKE_PATCH_VERSION"]
+            cmake_version = None
+            if "CMAKE_VERSION" in self.cmakeCache:
+                cmake_version = self.cmakeCache.get("CMAKE_VERSION")
+            elif all(k in self.cmakeCache for k in ["CMAKE_MAJOR_VERSION", "CMAKE_MINOR_VERSION", "CMAKE_PATCH_VERSION"]):
+                major = self.cmakeCache.get("CMAKE_MAJOR_VERSION", "")
+                minor = self.cmakeCache.get("CMAKE_MINOR_VERSION", "")
+                patch = self.cmakeCache.get("CMAKE_PATCH_VERSION", "")
+                if major and minor:
+                    cmake_version = f"{major}.{minor}"
+                    if patch:
+                        cmake_version += f".{patch}"
+            if cmake_version:
+                build_info["cmake_version"] = cmake_version
+            self.sbom_data.metadata["build_info"] = build_info
 
     # determine path from build dir to CMake file-based API index file, then
     # parse it and return the Codemodel
