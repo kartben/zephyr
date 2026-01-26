@@ -9,7 +9,13 @@ from datetime import datetime
 
 from west import log
 
-from zspdx.model import ComponentPurpose, SBOMComponent, SBOMData, SBOMFile
+from zspdx.model import (
+    ComponentPurpose,
+    SBOMComponent,
+    SBOMData,
+    SBOMExternalReference,
+    SBOMFile,
+)
 from zspdx.util import getHashes
 from zspdx.version import SPDX_VERSION_2_2, SPDX_VERSION_2_3
 
@@ -138,6 +144,12 @@ class SPDX2Serializer:
         for doc_name in self.documents.keys():
             self.document_refs[doc_name] = f"DocumentRef-{doc_name}"
 
+    def _normalize_external_reference(self, ref):
+        """Return (ref_type, locator) for external references."""
+        if isinstance(ref, SBOMExternalReference):
+            return (ref.reference_type or "").lower(), ref.locator
+        return "", ref
+
     def _write_document_first_pass(self, doc_name, components, output_path):
         """Write a single SPDX 2.x document (first pass, without external refs)."""
         try:
@@ -194,7 +206,7 @@ class SPDX2Serializer:
 
     def _write_document_header(self, f, doc_name):
         """Write SPDX document header."""
-        namespace = f"{self.sbom_data.namespace_prefix}/{doc_name}"
+        namespace = f"{self.sbom_data.id_namespace}/{doc_name}"
         normalized_name = _normalize_spdx_name(doc_name)
 
         f.write(f"""SPDXVersion: SPDX-{self.spdx_version}
@@ -217,7 +229,7 @@ Created: {datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
         if ext_refs:
             ext_refs.sort(key=lambda x: x[1])  # Sort by DocumentRef ID
             for other_doc_name, doc_ref_id in ext_refs:
-                namespace = f"{self.sbom_data.namespace_prefix}/{other_doc_name}"
+                namespace = f"{self.sbom_data.id_namespace}/{other_doc_name}"
                 f.write(
                     f"ExternalDocumentRef: {doc_ref_id} {namespace} "
                     f"SHA1: {self.document_hashes[other_doc_name]}\n"
@@ -262,8 +274,11 @@ Created: {datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
         supplier = component.supplier
         package_version = component.version
         for ref in component.external_references:
-            if re.fullmatch(CPE23TYPE_REGEX, ref):
-                metadata = ref.split(':', 6)
+            ref_type, locator = self._normalize_external_reference(ref)
+            if not locator or not isinstance(locator, str):
+                continue
+            if ref_type in ("cpe", "cpe23", "cpe23type") or re.fullmatch(CPE23TYPE_REGEX, locator):
+                metadata = locator.split(':', 6)
                 # metadata: [cpe,2.3,a,arm,mbed_tls,3.5.1,*:*:*:*:*:*]
                 if len(metadata) > 5:
                     supplier = metadata[3] if not supplier else supplier
@@ -306,12 +321,15 @@ PackageCopyrightText: {component.copyright_text}
 
         # External references
         for ref in component.external_references:
-            if re.fullmatch(CPE23TYPE_REGEX, ref):
-                f.write(f"ExternalRef: SECURITY cpe23Type {ref}\n")
-            elif re.fullmatch(PURL_REGEX, ref):
-                f.write(f"ExternalRef: PACKAGE-MANAGER purl {ref}\n")
+            ref_type, locator = self._normalize_external_reference(ref)
+            if not locator or not isinstance(locator, str):
+                continue
+            if ref_type in ("cpe", "cpe23", "cpe23type") or re.fullmatch(CPE23TYPE_REGEX, locator):
+                f.write(f"ExternalRef: SECURITY cpe23Type {locator}\n")
+            elif ref_type in ("purl", "packageurl", "package-url") or re.fullmatch(PURL_REGEX, locator):
+                f.write(f"ExternalRef: PACKAGE-MANAGER purl {locator}\n")
             else:
-                log.wrn(f"Unknown external reference ({ref})")
+                log.wrn(f"Unknown external reference ({locator})")
 
         # Files analyzed and verification code
         if len(component.files) > 0:
@@ -454,13 +472,32 @@ LicenseComment: Corresponds to the license ID `{lic}` detected in an SPDX-Licens
 
     def _purpose_to_spdx_string(self, purpose):
         """Convert ComponentPurpose enum to SPDX 2.x string."""
-        purpose_map = {
-            ComponentPurpose.APPLICATION: "APPLICATION",
-            ComponentPurpose.LIBRARY: "LIBRARY",
-            ComponentPurpose.SOURCE: "SOURCE",
-            ComponentPurpose.FILE: "FILE",
+        if isinstance(purpose, ComponentPurpose):
+            purpose_str = purpose.value
+        elif isinstance(purpose, str):
+            purpose_str = purpose.strip().upper()
+        else:
+            return ""
+
+        allowed = {
+            "APPLICATION",
+            "FRAMEWORK",
+            "LIBRARY",
+            "CONTAINER",
+            "OPERATING_SYSTEM",
+            "DEVICE",
+            "FIRMWARE",
+            "SOURCE",
+            "ARCHIVE",
+            "FILE",
+            "INSTALL",
+            "OTHER",
         }
-        return purpose_map.get(purpose, "")
+        if purpose_str in allowed:
+            return purpose_str
+        if purpose_str == "PLATFORM":
+            return "OTHER"
+        return ""
 
     def _generate_build_tool_ids(self):
         """Generate SPDX IDs for build tool packages."""
