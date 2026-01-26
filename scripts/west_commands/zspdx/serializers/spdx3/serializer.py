@@ -40,6 +40,11 @@ class SPDX3Serializer:
         self.creation_info = None
         self.documents = {}  # doc_name -> SpdxDocument
 
+        # Build tools and information
+        self.build_tools = {}  # tool_name -> Tool/Agent
+        # Extract build information from metadata if available
+        self.build_info = sbom_data.metadata.get('build_info', {}) if sbom_data.metadata else {}
+
         # Track file IDs for uniqueness
         self.filename_counts = sbom_data.filename_counts.copy() if sbom_data.filename_counts else {}
 
@@ -107,6 +112,67 @@ class SPDX3Serializer:
         }
         return purpose_map.get(purpose, spdx.software_SoftwarePurpose.library)
 
+    def _create_build_tools(self):
+        """Create Tool/Agent elements for build tools (CMake, compilers, etc.)."""
+        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        
+        # Create CMake tool
+        if self.build_info.get("cmake_version") or self.build_info.get("cmake_generator"):
+            cmake_tool = spdx.Agent()
+            cmake_tool._id = f"{namespace}/agents/cmake"
+            cmake_name = "CMake"
+            if self.build_info.get("cmake_version"):
+                cmake_name += f" {self.build_info['cmake_version']}"
+            if self.build_info.get("cmake_generator"):
+                cmake_name += f" ({self.build_info['cmake_generator']})"
+            cmake_tool.name = cmake_name
+            cmake_tool.creationInfo = self.creation_info._id
+            # Add build type as external identifier
+            if self.build_info.get("cmake_build_type"):
+                ext_id = spdx.ExternalIdentifier()
+                ext_id.externalIdentifierType = spdx.ExternalIdentifierType.other
+                ext_id.identifier = f"build-type:{self.build_info['cmake_build_type']}"
+                cmake_tool.externalIdentifier.append(ext_id)
+            self.elements.append(cmake_tool)
+            self.build_tools["cmake"] = cmake_tool
+        
+        # Create C compiler tool
+        compiler_path = self.build_info.get("cmake_compiler", "")
+        if compiler_path:
+            compiler_name = os.path.basename(compiler_path)
+            compiler_tool = spdx.Agent()
+            compiler_tool._id = f"{namespace}/agents/c-compiler"
+            compiler_tool.name = f"C Compiler ({compiler_name})"
+            compiler_tool.creationInfo = self.creation_info._id
+            # Add external identifier for compiler path
+            ext_id = spdx.ExternalIdentifier()
+            ext_id.externalIdentifierType = spdx.ExternalIdentifierType.other
+            ext_id.identifier = compiler_path
+            compiler_tool.externalIdentifier.append(ext_id)
+            # Add system processor if available
+            if self.build_info.get("cmake_system_processor"):
+                sys_ext_id = spdx.ExternalIdentifier()
+                sys_ext_id.externalIdentifierType = spdx.ExternalIdentifierType.other
+                sys_ext_id.identifier = f"target-arch:{self.build_info['cmake_system_processor']}"
+                compiler_tool.externalIdentifier.append(sys_ext_id)
+            self.elements.append(compiler_tool)
+            self.build_tools["c-compiler"] = compiler_tool
+        
+        # Create C++ compiler tool
+        cxx_compiler_path = self.build_info.get("cmake_cxx_compiler", "")
+        if cxx_compiler_path and cxx_compiler_path != compiler_path:
+            cxx_compiler_name = os.path.basename(cxx_compiler_path)
+            cxx_compiler_tool = spdx.Agent()
+            cxx_compiler_tool._id = f"{namespace}/agents/cxx-compiler"
+            cxx_compiler_tool.name = f"C++ Compiler ({cxx_compiler_name})"
+            cxx_compiler_tool.creationInfo = self.creation_info._id
+            ext_id = spdx.ExternalIdentifier()
+            ext_id.externalIdentifierType = spdx.ExternalIdentifierType.other
+            ext_id.identifier = cxx_compiler_path
+            cxx_compiler_tool.externalIdentifier.append(ext_id)
+            self.elements.append(cxx_compiler_tool)
+            self.build_tools["cxx-compiler"] = cxx_compiler_tool
+
     def _initialize_shared_objects(self):
         """Initialize shared Tool and CreationInfo objects."""
         if self.tool is None:
@@ -125,6 +191,9 @@ class SPDX3Serializer:
             self.creation_info.createdBy.append(self.tool._id)
             self.creation_info.specVersion = "3.0.1"
             self.elements.append(self.creation_info)
+        
+        # Create build tool agents if build info is available
+        self._create_build_tools()
 
     def _create_software_package(self, component: SBOMComponent) -> spdx.software_Package:
         """Convert SBOMComponent to SPDX 3.0 software_Package."""
@@ -344,6 +413,9 @@ class SPDX3Serializer:
 
         # Add profile conformance
         document.profileConformance.append(spdx.ProfileIdentifierType.core)
+        # Add build profile if we have build information
+        if self.build_info:
+            document.profileConformance.append(spdx.ProfileIdentifierType.build)
 
         # Collect elements that belong to this document
         document_component_names = {comp.name for comp in components}
@@ -399,6 +471,9 @@ class SPDX3Serializer:
         # Add tool and data license
         if self.tool:
             document_element_ids.add(self.tool._id)
+        # Add build tools
+        for tool in self.build_tools.values():
+            document_element_ids.add(tool._id)
         data_license = self._create_license_expression("CC0-1.0")
         if data_license:
             document_element_ids.add(data_license._id)
@@ -499,6 +574,37 @@ class SPDX3Serializer:
                             contains_rel.creationInfo = self.creation_info._id
                             self.elements.append(contains_rel)
                             self.relationship_elements.append(contains_rel)
+
+            # Create buildToolOf relationships for build artifacts
+            # Link build tools to build artifact files
+            for component in self.sbom_data.components.values():
+                # Only process build target components (not source components)
+                if component.name not in ["app-sources", "zephyr-sources", "sdk-sources"] and not component.name.endswith("-deps"):
+                    package = self.component_elements.get(component.name)
+                    if package and component.target_build_file:
+                        build_file = self.file_elements.get(component.target_build_file.path)
+                        if build_file:
+                            # Link CMake to build file
+                            if "cmake" in self.build_tools:
+                                rel = spdx.Relationship()
+                                rel._id = self._generate_relationship_id(len(self.relationship_elements))
+                                rel.relationshipType = spdx.RelationshipType.usesTool
+                                rel.from_ = build_file._id
+                                rel.to = [self.build_tools["cmake"]._id]
+                                rel.creationInfo = self.creation_info._id
+                                self.elements.append(rel)
+                                self.relationship_elements.append(rel)
+                            
+                            # Link compiler to build file
+                            if "c-compiler" in self.build_tools:
+                                rel = spdx.Relationship()
+                                rel._id = self._generate_relationship_id(len(self.relationship_elements))
+                                rel.relationshipType = spdx.RelationshipType.usesTool
+                                rel.from_ = build_file._id
+                                rel.to = [self.build_tools["c-compiler"]._id]
+                                rel.creationInfo = self.creation_info._id
+                                self.elements.append(rel)
+                                self.relationship_elements.append(rel)
 
             # Create license relationships for packages
             for component in self.sbom_data.components.values():
