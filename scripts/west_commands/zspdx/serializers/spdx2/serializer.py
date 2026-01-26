@@ -4,33 +4,22 @@
 
 import os
 import re
-from collections import defaultdict
 from datetime import datetime
 
 from west import log
 
 from zspdx.model import ComponentPurpose, SBOMComponent, SBOMData, SBOMFile
+from zspdx.serializers.helpers import (
+    CPE23TYPE_REGEX,
+    PURL_REGEX,
+    generate_download_url,
+    get_document_name,
+    group_components_into_documents,
+    get_standard_licenses,
+    normalize_spdx_name,
+)
 from zspdx.util import getHashes
 from zspdx.version import SPDX_VERSION_2_2, SPDX_VERSION_2_3
-
-CPE23TYPE_REGEX = (
-    r'^cpe:2\.3:[aho\*\-](:(((\?*|\*?)([a-zA-Z0-9\-\._]|(\\[\\\*\?!"#$$%&\'\(\)\+,\/:;<=>@\[\]\^'
-    r"`\{\|}~]))+(\?*|\*?))|[\*\-])){5}(:(([a-zA-Z]{2,3}(-([a-zA-Z]{2}|[0-9]{3}))?)|[\*\-]))(:(((\?*"
-    r'|\*?)([a-zA-Z0-9\-\._]|(\\[\\\*\?!"#$$%&\'\(\)\+,\/:;<=>@\[\]\^`\{\|}~]))+(\?*|\*?))|[\*\-])){4}$'
-)
-PURL_REGEX = r"^pkg:.+(\/.+)?\/.+(@.+)?(\?.+)?(#.+)?$"
-
-
-def _normalize_spdx_name(name):
-    """Replace '_' by '-' since it's not allowed in SPDX ID."""
-    return name.replace("_", "-")
-
-
-def _generate_download_url(url, revision):
-    """Generate download URL with revision if available."""
-    if not revision:
-        return url
-    return f'git+{url}@{revision}'
 
 
 class SPDX2Serializer:
@@ -51,34 +40,7 @@ class SPDX2Serializer:
         self.build_info = sbom_data.metadata.get('build_info', {}) if sbom_data.metadata else {}
 
         # Group components into documents
-        self.documents = self._group_components_into_documents()
-
-    def _group_components_into_documents(self):
-        """Group components into SPDX 2.x documents based on their names/purposes."""
-        documents = defaultdict(list)
-
-        for component in self.sbom_data.components.values():
-            doc_name = self._get_document_name(component)
-            documents[doc_name].append(component)
-
-        return dict(documents)
-
-    def _get_document_name(self, component):
-        """Determine which document a component belongs to."""
-        name = component.name
-
-        if name == "app-sources":
-            return "app"
-        elif name == "sdk-sources":
-            return "sdk"
-        elif name == "zephyr-sources" or name.endswith("-sources"):
-            # zephyr-sources and module sources (e.g., "module-name-sources")
-            return "zephyr"
-        elif name.endswith("-deps"):
-            return "modules-deps"
-        else:
-            # Build targets go into build document
-            return "build"
+        self.documents = group_components_into_documents(self.sbom_data.components)
 
     def serialize(self, output_dir):
         """Serialize SBOMData to SPDX 2.x format files."""
@@ -116,14 +78,14 @@ class SPDX2Serializer:
         """Generate SPDX IDs for all components and files."""
         # Generate component IDs
         for component in self.sbom_data.components.values():
-            spdx_id = f"SPDXRef-{_normalize_spdx_name(component.name)}"
+            spdx_id = f"SPDXRef-{normalize_spdx_name(component.name)}"
             self.component_ids[component.name] = spdx_id
 
         # Generate file IDs (tracking filename counts for uniqueness)
         filename_counts = {}
         for file_path, file_obj in self.sbom_data.files.items():
             filename_only = os.path.basename(file_path)
-            safe_name = _normalize_spdx_name(filename_only)
+            safe_name = normalize_spdx_name(filename_only)
             count = filename_counts.get(safe_name, 0) + 1
             filename_counts[safe_name] = count
 
@@ -195,7 +157,7 @@ class SPDX2Serializer:
     def _write_document_header(self, f, doc_name):
         """Write SPDX document header."""
         namespace = f"{self.sbom_data.namespace_prefix}/{doc_name}"
-        normalized_name = _normalize_spdx_name(doc_name)
+        normalized_name = normalize_spdx_name(doc_name)
 
         f.write(f"""SPDXVersion: SPDX-{self.spdx_version}
 DataLicense: CC0-1.0
@@ -240,7 +202,7 @@ Created: {datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
     def _write_packages(self, f, components):
         """Write all packages in this document."""
         # Write build tool packages first if this is the build document
-        if self._get_document_name(components[0]) if components else None == "build":
+        if get_document_name(components[0]) if components else None == "build":
             self._write_build_tools(f)
         
         for component in components:
@@ -253,7 +215,7 @@ Created: {datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
         if not spdx_id:
             log.err(f"Component {component.name} not found in component_ids")
             # Generate ID on the fly as fallback
-            spdx_id = f"SPDXRef-{_normalize_spdx_name(component.name)}"
+            spdx_id = f"SPDXRef-{normalize_spdx_name(component.name)}"
             self.component_ids[component.name] = spdx_id
 
         # Update component metadata based on CPE references
@@ -270,7 +232,7 @@ Created: {datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
                     package_name = metadata[4] if len(metadata) > 4 else package_name
                     package_version = metadata[5] if len(metadata) > 5 and not package_version else package_version
 
-        normalized_name = _normalize_spdx_name(package_name)
+        normalized_name = normalize_spdx_name(package_name)
 
         f.write(f"""##### Package: {normalized_name}
 
@@ -289,7 +251,7 @@ PackageCopyrightText: {component.copyright_text}
 
         # Download location
         if component.url:
-            download_url = _generate_download_url(component.url, component.revision)
+            download_url = generate_download_url(component.url, component.revision)
             f.write(f"PackageDownloadLocation: {download_url}\n")
         else:
             f.write("PackageDownloadLocation: NOASSERTION\n")
@@ -323,7 +285,7 @@ PackageCopyrightText: {component.copyright_text}
             f.write(f"FilesAnalyzed: true\nPackageVerificationCode: {component.verification_code}\n")
             
             # Add build info comment for build target packages
-            if self._get_document_name(component) == "build" and self.build_info:
+            if get_document_name(component) == "build" and self.build_info:
                 build_comment = self._format_build_info_comment()
                 if build_comment:
                     f.write(f"PackageComment: {build_comment}\n")
@@ -342,7 +304,7 @@ PackageCopyrightText: {component.copyright_text}
             self._write_relationship(f, rel, component.name, "component")
         
         # Add build tool relationships for build target packages
-        if self._get_document_name(component) == "build" and len(component.files) > 0:
+        if get_document_name(component) == "build" and len(component.files) > 0:
             self._write_build_tool_relationships(f, component)
 
         # Package files
@@ -400,13 +362,13 @@ FileChecksum: SHA1: {file_obj.hashes.get('SHA1', '')}
             if isinstance(to_elem, SBOMComponent):
                 to_id = self.component_ids.get(to_elem.name, "")
                 # Check if it's in a different document
-                to_doc = self._get_document_name(to_elem)
+                to_doc = get_document_name(to_elem)
                 if to_doc != self._get_document_name_from_identifier(from_identifier, from_type):
                     doc_ref = self.document_refs.get(to_doc, "")
             elif isinstance(to_elem, SBOMFile):
                 to_id = self.file_ids.get(to_elem.path, "")
                 # Check if it's in a different document
-                to_doc = self._get_document_name(to_elem.component) if to_elem.component else None
+                to_doc = get_document_name(to_elem.component) if to_elem.component else None
                 from_doc = self._get_document_name_from_identifier(from_identifier, from_type)
                 if to_doc and to_doc != from_doc:
                     doc_ref = self.document_refs.get(to_doc, "")
@@ -421,21 +383,22 @@ FileChecksum: SHA1: {file_obj.hashes.get('SHA1', '')}
         if identifier_type == "component":
             component = self.sbom_data.get_component(identifier)
             if component:
-                return self._get_document_name(component)
+                return get_document_name(component)
         else:  # file
             file_obj = self.sbom_data.get_file(identifier)
             if file_obj and file_obj.component:
-                return self._get_document_name(file_obj.component)
+                return get_document_name(file_obj.component)
         return None
 
     def _write_custom_licenses(self, f, doc_name):
         """Write custom license declarations."""
         # Get custom licenses from components in this document
         custom_licenses = set()
+        standard_licenses = get_standard_licenses()
         for component in self.documents.get(doc_name, []):
             for file_obj in component.files.values():
                 for lic in file_obj.license_info_in_file:
-                    if lic not in self._get_standard_licenses():
+                    if lic not in standard_licenses:
                         custom_licenses.add(lic)
 
         if custom_licenses:
@@ -445,12 +408,6 @@ ExtractedText: {lic}
 LicenseName: {lic}
 LicenseComment: Corresponds to the license ID `{lic}` detected in an SPDX-License-Identifier: tag.
 """)
-
-    def _get_standard_licenses(self):
-        """Get set of standard SPDX license IDs."""
-        # Import here to avoid circular dependency
-        from zspdx.licenses import LICENSES
-        return LICENSES
 
     def _purpose_to_spdx_string(self, purpose):
         """Convert ComponentPurpose enum to SPDX 2.x string."""

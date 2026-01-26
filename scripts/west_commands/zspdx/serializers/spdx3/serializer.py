@@ -5,21 +5,22 @@
 import json
 import os
 import re
-from collections import defaultdict
 from datetime import datetime, timezone
 
 from spdx_python_model import v3_0_1 as spdx
 from west import log
 
 from zspdx.model import ComponentPurpose, SBOMComponent, SBOMData, SBOMFile, SBOMRelationship
-from zspdx.spdxids import getUniqueFileID
-
-CPE23TYPE_REGEX = (
-    r'^cpe:2\.3:[aho\*\-](:(((\?*|\*?)([a-zA-Z0-9\-\._]|(\\[\\\*\?!"#$$%&\'\(\)\+,\/:;<=>@\[\]\^'
-    r"`\{\|}~]))+(\?*|\*?))|[\*\-])){5}(:(([a-zA-Z]{2,3}(-([a-zA-Z]{2}|[0-9]{3}))?)|[\*\-]))(:(((\?*"
-    r'|\*?)([a-zA-Z0-9\-\._]|(\\[\\\*\?!"#$$%&\'\(\)\+,\/:;<=>@\[\]\^`\{\|}~]))+(\?*|\*?))|[\*\-])){4}$'
+from zspdx.serializers.helpers import (
+    CPE23TYPE_REGEX,
+    PURL_REGEX,
+    generate_download_url,
+    get_document_name,
+    group_components_into_documents,
+    get_standard_licenses,
+    normalize_spdx_name,
 )
-PURL_REGEX = r"^pkg:.+(\/.+)?\/.+(@.+)?(\?.+)?(#.+)?$"
+from zspdx.spdxids import getUniqueFileID
 
 
 class SPDX3Serializer:
@@ -49,42 +50,11 @@ class SPDX3Serializer:
         self.filename_counts = sbom_data.filename_counts.copy() if sbom_data.filename_counts else {}
 
         # Group components into documents (similar to SPDX 2.x)
-        self.component_groups = self._group_components_into_documents()
-
-    def _normalize_name(self, name):
-        """Normalize component/file names for use in URIs."""
-        return name.replace("_", "-").replace(" ", "-")
-
-    def _group_components_into_documents(self):
-        """Group components into SPDX 3.0 documents based on their names/purposes."""
-        documents = defaultdict(list)
-
-        for component in self.sbom_data.components.values():
-            doc_name = self._get_document_name(component)
-            documents[doc_name].append(component)
-
-        return dict(documents)
-
-    def _get_document_name(self, component):
-        """Determine which document a component belongs to."""
-        name = component.name
-
-        if name == "app-sources":
-            return "app"
-        elif name == "sdk-sources":
-            return "sdk"
-        elif name == "zephyr-sources" or name.endswith("-sources"):
-            # zephyr-sources and module sources (e.g., "module-name-sources")
-            return "zephyr"
-        elif name.endswith("-deps"):
-            return "modules-deps"
-        else:
-            # Build targets go into build document
-            return "build"
+        self.component_groups = group_components_into_documents(self.sbom_data.components)
 
     def _generate_package_id(self, component_name: str) -> str:
         """Generate URI-based ID for a package."""
-        normalized = self._normalize_name(component_name)
+        normalized = normalize_spdx_name(component_name)
         namespace = self.sbom_data.namespace_prefix.rstrip("/")
         return f"{namespace}/packages/{normalized}"
 
@@ -211,10 +181,7 @@ class SPDX3Serializer:
 
         # Download location
         if component.url:
-            if component.revision:
-                package.software_downloadLocation = f"git+{component.url}@{component.revision}"
-            else:
-                package.software_downloadLocation = component.url
+            package.software_downloadLocation = generate_download_url(component.url, component.revision)
         else:
             package.software_downloadLocation = "NOASSERTION"
 
@@ -353,19 +320,13 @@ class SPDX3Serializer:
         self.relationship_elements.append(relationship)
         return relationship
 
-    def _get_standard_licenses(self):
-        """Get set of standard SPDX license IDs."""
-        # Import here to avoid circular dependency
-        from zspdx.licenses import LICENSES
-        return set(LICENSES)
-
     def _create_license_expression(self, license_str: str) -> spdx.simplelicensing_LicenseExpression:
         """Create a license expression object and add it to elements."""
         if not license_str or license_str == "NOASSERTION":
             return None
 
         license_expr = spdx.simplelicensing_LicenseExpression()
-        standard_licenses = self._get_standard_licenses()
+        standard_licenses = get_standard_licenses()
 
         # Check if it's a standard license ID
         if license_str in standard_licenses:
@@ -374,7 +335,7 @@ class SPDX3Serializer:
             # Custom license - use a namespace-based ID
             namespace = self.sbom_data.namespace_prefix.rstrip("/")
             # Normalize the license string for use in URI
-            normalized = license_str.replace(" ", "-").replace("(", "").replace(")", "")
+            normalized = normalize_spdx_name(license_str.replace(" ", "-").replace("(", "").replace(")", ""))
             license_expr._id = f"{namespace}/licenses/{normalized}"
 
         license_expr.simplelicensing_licenseExpression = license_str
