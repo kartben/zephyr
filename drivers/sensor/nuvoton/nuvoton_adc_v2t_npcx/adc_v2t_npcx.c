@@ -10,6 +10,7 @@
 #include <zephyr/drivers/sensor/adc_v2t_npcx.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/util.h>
 
 #define DT_DRV_COMPAT nuvoton_npcx_adc_v2t
 
@@ -112,19 +113,18 @@ static int adc_v2t_npcx_channel_get(const struct device *dev, enum sensor_channe
 				    struct sensor_value *val)
 {
 	struct adc_v2t_npcx_data *data = dev->data;
+	int16_t raw;
+	int32_t temp_millic;
 
 	if (chan != SENSOR_CHAN_AMBIENT_TEMP) {
 		return -ENOTSUP;
 	}
 
-	/* Convert register data to temperature in degree Celsius */
-	/* Integer part */
-	val->val1 = (int8_t)GET_FIELD(data->buffer, NPCX_V2T_TCHNDAT_DAT);
-	/* Fraction part*/
-	val->val2 = GET_FIELD(data->buffer, NPCX_V2T_TCHNDAT_DAT_FRACION) *
-			NPCX_V2T_FRAC_STEP_MILLIC;
+	/* Convert register data to temperature in degree Celsius (Q8.3, 0.125C steps) */
+	raw = (int16_t)sign_extend(GET_FIELD(data->buffer, NPCX_V2T_TCHNDAT_DAT_FULL), 10);
+	temp_millic = (int32_t)raw * NPCX_V2T_FRAC_STEP_MILLIC;
 
-	return 0;
+	return sensor_value_from_milli(val, temp_millic);
 }
 
 static int adc_v2t_npcx_init(const struct device *dev)
