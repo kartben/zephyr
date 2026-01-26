@@ -16,7 +16,7 @@ from zspdx.walker import Walker, WalkerConfig
 # SBOM maker subcomponents.
 @dataclass(eq=True)
 class SBOMConfig:
-    # prefix for Document namespaces; should not end with "/"
+    # base namespace for generated IDs; should not end with "/"
     namespacePrefix: str = ""
 
     # location of build directory

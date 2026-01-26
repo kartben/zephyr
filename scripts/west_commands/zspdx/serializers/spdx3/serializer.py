@@ -11,7 +11,14 @@ from datetime import datetime, timezone
 from spdx_python_model import v3_0_1 as spdx
 from west import log
 
-from zspdx.model import ComponentPurpose, SBOMComponent, SBOMData, SBOMFile, SBOMRelationship
+from zspdx.model import (
+    ComponentPurpose,
+    SBOMComponent,
+    SBOMData,
+    SBOMExternalReference,
+    SBOMFile,
+    SBOMRelationship,
+)
 from zspdx.spdxids import getUniqueFileID
 
 CPE23TYPE_REGEX = (
@@ -46,7 +53,7 @@ class SPDX3Serializer:
         self.build_info = sbom_data.metadata.get('build_info', {}) if sbom_data.metadata else {}
 
         # Track file IDs for uniqueness
-        self.filename_counts = sbom_data.filename_counts.copy() if sbom_data.filename_counts else {}
+        self.filename_counts = {}
 
         # Group components into documents (similar to SPDX 2.x)
         self.component_groups = self._group_components_into_documents()
@@ -85,7 +92,7 @@ class SPDX3Serializer:
     def _generate_package_id(self, component_name: str) -> str:
         """Generate URI-based ID for a package."""
         normalized = self._normalize_name(component_name)
-        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        namespace = self.sbom_data.id_namespace.rstrip("/")
         return f"{namespace}/packages/{normalized}"
 
     def _generate_file_id(self, file_path: str) -> str:
@@ -94,27 +101,47 @@ class SPDX3Serializer:
         unique_id = getUniqueFileID(filename_only, self.filename_counts)
         # Remove "SPDXRef-" prefix and normalize
         normalized_id = unique_id.replace("SPDXRef-", "").replace("_", "-")
-        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        namespace = self.sbom_data.id_namespace.rstrip("/")
         return f"{namespace}/files/{normalized_id}"
 
     def _generate_relationship_id(self, index: int) -> str:
         """Generate URI-based ID for a relationship."""
-        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        namespace = self.sbom_data.id_namespace.rstrip("/")
         return f"{namespace}/relationships/{index}"
 
-    def _purpose_to_spdx3(self, purpose: ComponentPurpose) -> spdx.software_SoftwarePurpose:
-        """Convert ComponentPurpose enum to SPDX 3.0 SoftwarePurpose."""
+    def _purpose_to_spdx3(self, purpose) -> spdx.software_SoftwarePurpose:
+        """Convert component purpose to SPDX 3.0 SoftwarePurpose."""
+        if isinstance(purpose, ComponentPurpose):
+            purpose_str = purpose.value
+        elif isinstance(purpose, str):
+            purpose_str = purpose.strip().upper()
+        else:
+            return spdx.software_SoftwarePurpose.library
+
         purpose_map = {
-            ComponentPurpose.APPLICATION: spdx.software_SoftwarePurpose.application,
-            ComponentPurpose.LIBRARY: spdx.software_SoftwarePurpose.library,
-            ComponentPurpose.SOURCE: spdx.software_SoftwarePurpose.source,
-            ComponentPurpose.FILE: spdx.software_SoftwarePurpose.file,
+            "APPLICATION": "application",
+            "FRAMEWORK": "framework",
+            "LIBRARY": "library",
+            "CONTAINER": "container",
+            "OPERATING_SYSTEM": "operatingSystem",
+            "DEVICE": "device",
+            "FIRMWARE": "firmware",
+            "SOURCE": "source",
+            "ARCHIVE": "archive",
+            "FILE": "file",
+            "INSTALL": "installation",
+            "PLATFORM": "platform",
+            "OTHER": "other",
+            "UNKNOWN": "other",
         }
-        return purpose_map.get(purpose, spdx.software_SoftwarePurpose.library)
+        attr = purpose_map.get(purpose_str)
+        if attr and hasattr(spdx.software_SoftwarePurpose, attr):
+            return getattr(spdx.software_SoftwarePurpose, attr)
+        return spdx.software_SoftwarePurpose.library
 
     def _create_build_tools(self):
         """Create Tool/Agent elements for build tools (CMake, compilers, etc.)."""
-        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        namespace = self.sbom_data.id_namespace.rstrip("/")
         
         # Create CMake tool
         if self.build_info.get("cmake_version") or self.build_info.get("cmake_generator"):
@@ -177,7 +204,7 @@ class SPDX3Serializer:
         """Initialize shared Tool and CreationInfo objects."""
         if self.tool is None:
             self.tool = spdx.Agent()
-            namespace = self.sbom_data.namespace_prefix.rstrip("/")
+            namespace = self.sbom_data.id_namespace.rstrip("/")
             self.tool._id = f"{namespace}/agents/west-spdx-tool"
             self.tool.name = "West SPDX Tool"
             self.tool.creationInfo = f"{namespace}/creationinfo"
@@ -185,7 +212,7 @@ class SPDX3Serializer:
 
         if self.creation_info is None:
             self.creation_info = spdx.CreationInfo()
-            namespace = self.sbom_data.namespace_prefix.rstrip("/")
+            namespace = self.sbom_data.id_namespace.rstrip("/")
             self.creation_info._id = f"{namespace}/creationinfo"
             self.creation_info.created = datetime.now(timezone.utc)
             self.creation_info.createdBy.append(self.tool._id)
@@ -194,6 +221,12 @@ class SPDX3Serializer:
         
         # Create build tool agents if build info is available
         self._create_build_tools()
+
+    def _normalize_external_reference(self, ref):
+        """Return (ref_type, locator) for external references."""
+        if isinstance(ref, SBOMExternalReference):
+            return (ref.reference_type or "").lower(), ref.locator
+        return "", ref
 
     def _create_software_package(self, component: SBOMComponent) -> spdx.software_Package:
         """Convert SBOMComponent to SPDX 3.0 software_Package."""
@@ -225,21 +258,22 @@ class SPDX3Serializer:
 
         # External references (CPE, PURL)
         for ref in component.external_references:
-            if not ref or not isinstance(ref, str):
-                log.wrn(f"Invalid external reference: {ref}")
+            ref_type, locator = self._normalize_external_reference(ref)
+            if not locator or not isinstance(locator, str):
+                log.wrn(f"Invalid external reference: {locator}")
                 continue
-            if re.fullmatch(CPE23TYPE_REGEX, ref):
+            if ref_type in ("cpe", "cpe23", "cpe23type") or re.fullmatch(CPE23TYPE_REGEX, locator):
                 ext_id = spdx.ExternalIdentifier()
                 ext_id.externalIdentifierType = spdx.ExternalIdentifierType.cpe23
-                ext_id.identifier = ref
+                ext_id.identifier = locator
                 package.externalIdentifier.append(ext_id)
-            elif re.fullmatch(PURL_REGEX, ref):
+            elif ref_type in ("purl", "packageurl", "package-url") or re.fullmatch(PURL_REGEX, locator):
                 ext_id = spdx.ExternalIdentifier()
                 ext_id.externalIdentifierType = spdx.ExternalIdentifierType.packageUrl
-                ext_id.identifier = ref
+                ext_id.identifier = locator
                 package.externalIdentifier.append(ext_id)
             else:
-                log.wrn(f"Unknown external reference format: {ref}")
+                log.wrn(f"Unknown external reference format: {locator}")
 
         # Verification code (if available)
         # Note: SPDX 3.0 may handle verification codes differently than SPDX 2.x
@@ -372,7 +406,7 @@ class SPDX3Serializer:
             license_expr._id = f"https://spdx.org/licenses/{license_str}"
         else:
             # Custom license - use a namespace-based ID
-            namespace = self.sbom_data.namespace_prefix.rstrip("/")
+            namespace = self.sbom_data.id_namespace.rstrip("/")
             # Normalize the license string for use in URI
             normalized = license_str.replace(" ", "-").replace("(", "").replace(")", "")
             license_expr._id = f"{namespace}/licenses/{normalized}"
@@ -392,7 +426,7 @@ class SPDX3Serializer:
         self._initialize_shared_objects()
 
         document = spdx.SpdxDocument()
-        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        namespace = self.sbom_data.id_namespace.rstrip("/")
         document._id = f"{namespace}/documents/{doc_name}-spdx3"
         
         # Set document name based on type
@@ -508,8 +542,8 @@ class SPDX3Serializer:
                 log.err("SBOMData is None or empty")
                 return False
 
-            if not self.sbom_data.namespace_prefix:
-                log.err("Namespace prefix is required for SPDX 3.0")
+            if not self.sbom_data.id_namespace:
+                log.err("ID namespace is required for SPDX 3.0")
                 return False
 
             if not os.path.exists(output_dir):

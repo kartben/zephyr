@@ -17,6 +17,7 @@ from zspdx.model import (
     ComponentPurpose,
     SBOMComponent,
     SBOMData,
+    SBOMExternalReference,
     SBOMFile,
     SBOMRelationship,
 )
@@ -25,7 +26,7 @@ from zspdx.model import (
 # WalkerConfig contains configuration data for the Walker.
 @dataclass(eq=True)
 class WalkerConfig:
-    # prefix for Document namespaces; should not end with "/"
+    # base namespace for generated IDs; should not end with "/"
     namespacePrefix: str = ""
 
     # location of build directory
@@ -51,7 +52,7 @@ class Walker:
 
         # SBOM data container
         self.sbom_data = SBOMData()
-        self.sbom_data.namespace_prefix = cfg.namespacePrefix
+        self.sbom_data.id_namespace = cfg.namespacePrefix
         self.sbom_data.build_dir = cfg.buildDir
 
         # Component references for easy access
@@ -276,7 +277,9 @@ class Walker:
                 purl = self._build_purl(zephyr_url, tag)
 
                 if purl:
-                    component.external_references.append(purl)
+                    component.external_references.append(
+                        SBOMExternalReference(reference_type="purl", locator=purl)
+                    )
 
                 # Extract version from tag once
                 if component.version == "" and version:
@@ -284,7 +287,9 @@ class Walker:
 
         if len(component.version) > 0:
             cpe = f'cpe:2.3:o:zephyrproject:zephyr:{component.version}:-:*:*:*:*:*:*'
-            component.external_references.append(cpe)
+            component.external_references.append(
+                SBOMExternalReference(reference_type="cpe23", locator=cpe)
+            )
 
         self.sbom_data.add_component(component)
         self.component_zephyr = component

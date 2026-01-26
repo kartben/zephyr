@@ -2,23 +2,69 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+"""Serializer-agnostic SBOM data model.
+
+These classes capture SBOM data without assuming a specific output format.
+Serializer-specific data should live in the metadata dictionaries.
+"""
+
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Union
 
 
 class ComponentPurpose(Enum):
-    """Format-agnostic component purpose types."""
+    """Normalized component purposes for serializer mapping.
+
+    Values are uppercase to align with SPDX-style purposes.
+    """
     APPLICATION = "APPLICATION"
+    FRAMEWORK = "FRAMEWORK"
     LIBRARY = "LIBRARY"
+    CONTAINER = "CONTAINER"
+    OPERATING_SYSTEM = "OPERATING_SYSTEM"
+    DEVICE = "DEVICE"
+    FIRMWARE = "FIRMWARE"
     SOURCE = "SOURCE"
+    ARCHIVE = "ARCHIVE"
     FILE = "FILE"
-    # Add more as needed
+    INSTALL = "INSTALL"
+    PLATFORM = "PLATFORM"
+    OTHER = "OTHER"
+    UNKNOWN = "UNKNOWN"
+
+
+@dataclass
+class SBOMExternalReference:
+    """Typed external reference (reference_type + locator)."""
+    # Reference type (e.g., "purl", "cpe23", "vcs", "website")
+    reference_type: str = ""
+
+    # Locator or identifier value (URL, URN, CPE, PURL, etc.)
+    locator: str = ""
+
+    # Optional human-readable note
+    comment: str = ""
+
+    # Flexible metadata storage for format-specific needs
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+# Type aliases used by serializer-agnostic interfaces.
+PurposeType = Union[ComponentPurpose, str]
+ExternalReference = Union[SBOMExternalReference, str]
+ElementRef = Union["SBOMComponent", "SBOMFile", str]
 
 
 @dataclass
 class SBOMFile:
-    """Format-agnostic representation of a file in the SBOM."""
+    """File element in the SBOM.
+
+    path is absolute; relative_path is relative to component.base_dir.
+    """
+    # Optional stable identifier (serializer-specific or user-provided)
+    element_id: str = ""
+
     # Absolute path to the file on disk
     path: str = ""
 
@@ -44,30 +90,40 @@ class SBOMFile:
     component: Optional['SBOMComponent'] = None
 
     # Flexible metadata storage for format-specific needs
-    metadata: Dict[str, any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class SBOMRelationship:
-    """Format-agnostic representation of a relationship between SBOM elements."""
+    """Relationship between SBOM elements.
+
+    from/to may be model objects or identifier strings.
+    """
+    # Optional stable identifier (serializer-specific or user-provided)
+    element_id: str = ""
+
     # Source element (can be SBOMComponent, SBOMFile, or string identifier)
-    from_element: any = None
+    from_element: Optional[ElementRef] = None
 
     # Target element(s) (can be SBOMComponent, SBOMFile, or string identifier)
-    # For SPDX 2.x compatibility, this is typically a single element
-    # For SPDX 3.0, this can be a list
-    to_elements: List[any] = field(default_factory=list)
+    to_elements: List[ElementRef] = field(default_factory=list)
 
-    # Relationship type (e.g., "GENERATED_FROM", "HAS_PREREQUISITE", "STATIC_LINK", "CONTAINS")
+    # Relationship type (e.g., "GENERATED_FROM", "DEPENDS_ON", "CONTAINS")
     relationship_type: str = ""
 
     # Flexible metadata storage for format-specific needs
-    metadata: Dict[str, any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class SBOMComponent:
-    """Format-agnostic representation of a component (package) in the SBOM."""
+    """Component/package element in the SBOM.
+
+    base_dir anchors file relative paths and files maps to SBOMFile entries.
+    """
+    # Optional stable identifier (serializer-specific or user-provided)
+    element_id: str = ""
+
     # Component name
     name: str = ""
 
@@ -81,7 +137,7 @@ class SBOMComponent:
     url: str = ""
 
     # Component purpose
-    purpose: ComponentPurpose = ComponentPurpose.LIBRARY
+    purpose: PurposeType = ComponentPurpose.LIBRARY
 
     # Base directory for calculating relative paths of files
     base_dir: str = ""
@@ -108,8 +164,8 @@ class SBOMComponent:
     # Copyright text
     copyright_text: str = "NOASSERTION"
 
-    # External references (CPE, PURL, etc.)
-    external_references: List[str] = field(default_factory=list)
+    # External references (typed references or raw locator strings)
+    external_references: List[ExternalReference] = field(default_factory=list)
 
     # Supplier/vendor information
     supplier: str = ""
@@ -118,14 +174,17 @@ class SBOMComponent:
     target_build_file: Optional[SBOMFile] = None
 
     # Flexible metadata storage for format-specific needs
-    metadata: Dict[str, any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class SBOMData:
-    """Format-agnostic container for all SBOM data."""
+    """Root container for all SBOM data.
+
+    components are keyed by name; files are keyed by absolute path.
+    """
     # Components (packages) in the SBOM
-    # Key: component name/identifier, Value: SBOMComponent
+    # Key: component name, Value: SBOMComponent
     components: Dict[str, SBOMComponent] = field(default_factory=dict)
 
     # All files in the SBOM (indexed by absolute path)
@@ -138,35 +197,43 @@ class SBOMData:
     # Custom license IDs that need to be declared
     custom_license_ids: Set[str] = field(default_factory=set)
 
-    # Namespace prefix for generating IDs (format-specific serializers will use this)
-    namespace_prefix: str = ""
+    # Optional base namespace for generating stable IDs (serializer-specific)
+    id_namespace: str = ""
 
     # Build directory path
     build_dir: str = ""
 
     # Flexible metadata storage for format-specific needs
-    metadata: Dict[str, any] = field(default_factory=dict)
-
-    # Track filename occurrences for generating unique IDs (format-specific)
-    # Key: filename (basename), Value: count
-    filename_counts: Dict[str, int] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
     def add_component(self, component: SBOMComponent) -> None:
-        """Add a component to the SBOM."""
+        """Add a component keyed by its name."""
         self.components[component.name] = component
 
     def add_file(self, file: SBOMFile) -> None:
-        """Add a file to the SBOM."""
+        """Add a file keyed by its absolute path."""
         self.files[file.path] = file
 
     def add_relationship(self, relationship: SBOMRelationship) -> None:
-        """Add a relationship to the SBOM."""
+        """Add a top-level relationship."""
         self.relationships.append(relationship)
 
     def get_component(self, name: str) -> Optional[SBOMComponent]:
-        """Get a component by name."""
-        return self.components.get(name)
+        """Get a component by name or element_id."""
+        component = self.components.get(name)
+        if component:
+            return component
+        for comp in self.components.values():
+            if comp.name == name or comp.element_id == name:
+                return comp
+        return None
 
     def get_file(self, path: str) -> Optional[SBOMFile]:
-        """Get a file by absolute path."""
-        return self.files.get(path)
+        """Get a file by absolute path or element_id."""
+        file_obj = self.files.get(path)
+        if file_obj:
+            return file_obj
+        for f in self.files.values():
+            if f.path == path or f.element_id == path:
+                return f
+        return None
