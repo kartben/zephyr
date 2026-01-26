@@ -11,6 +11,7 @@
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/mfd/rv3032.h>
+#include <zephyr/sys/util.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(rv3032_temp, CONFIG_SENSOR_LOG_LEVEL);
@@ -36,16 +37,24 @@ static int rv3032_temp_sample_fetch(const struct device *dev, enum sensor_channe
 	struct rv3032_temp_data *data = dev->data;
 	const struct rv3032_temp_config *config = dev->config;
 	uint8_t temp[2];
-	int16_t tmp_val1;
+	int ret;
 
-	int ret = mfd_rv3032_read_regs(config->parent, RV3032_REG_TEMPERATURE_LSB, temp,
-				       sizeof(temp));
+	if (chan != SENSOR_CHAN_ALL && chan != SENSOR_CHAN_DIE_TEMP) {
+		return -ENOTSUP;
+	}
 
-	data->val.val2 = ((temp[0] & 0xf0) >> 4)  * 625;
-	tmp_val1 = (temp[1] << 4) * 0.0625;
-	data->val.val1 = tmp_val1 < 0 ? -(tmp_val1 & 0xef) : tmp_val1;
+	ret = mfd_rv3032_read_regs(config->parent, RV3032_REG_TEMPERATURE_LSB, temp,
+				   sizeof(temp));
+	if (ret) {
+		return ret;
+	}
 
-	return ret;
+	uint16_t raw = ((uint16_t)temp[1] << 4) |
+		       ((temp[0] & RV3032_TEMPERATURE_TEMP_LSB) >> 4);
+	int16_t temp_raw = (int16_t)sign_extend(raw, 11);
+	int32_t temp_micro = (int32_t)((int64_t)temp_raw * 1000000LL / 16);
+
+	return sensor_value_from_micro(&data->val, temp_micro);
 }
 
 static int rv3032_temp_channel_get(const struct device *dev, enum sensor_channel chan,
@@ -67,6 +76,7 @@ static int rv3032_temp_attr_set(const struct device *dev, enum sensor_channel ch
 				enum sensor_attribute attr, const struct sensor_value *val)
 {
 	const struct rv3032_temp_config *config = dev->config;
+	int ret;
 
 	if (chan != SENSOR_CHAN_ALL && chan != SENSOR_CHAN_DIE_TEMP) {
 		return -ENOTSUP;
@@ -78,10 +88,16 @@ static int rv3032_temp_attr_set(const struct device *dev, enum sensor_channel ch
 
 	switch (attr) {
 	case SENSOR_ATTR_LOWER_THRESH:
-		mfd_rv3032_write_reg8(config->parent, RV3032_REG_TEMP_LOW_THLD, val->val1);
+		ret = mfd_rv3032_write_reg8(config->parent, RV3032_REG_TEMP_LOW_THLD, val->val1);
+		if (ret) {
+			return ret;
+		}
 		break;
 	case SENSOR_ATTR_UPPER_THRESH:
-		mfd_rv3032_write_reg8(config->parent, RV3032_REG_TEMP_HIGH_THLD, val->val1);
+		ret = mfd_rv3032_write_reg8(config->parent, RV3032_REG_TEMP_HIGH_THLD, val->val1);
+		if (ret) {
+			return ret;
+		}
 		break;
 	default:
 		return -ENOTSUP;
@@ -95,20 +111,26 @@ static int rv3032_temp_attr_get(const struct device *dev, enum sensor_channel ch
 {
 	struct rv3032_temp_data *data = dev->data;
 	const struct rv3032_temp_config *config = dev->config;
+	int ret;
 
 	if (chan != SENSOR_CHAN_DIE_TEMP) {
 		return -ENOTSUP;
 	}
 
-	/* TODO: Add error checks */
-	mfd_rv3032_read_reg8(config->parent, RV3032_REG_TEMP_LOW_THLD, &data->tlow);
-	mfd_rv3032_read_reg8(config->parent, RV3032_REG_TEMP_HIGH_THLD, &data->thigh);
-
 	switch (attr) {
 	case SENSOR_ATTR_LOWER_THRESH:
+		ret = mfd_rv3032_read_reg8(config->parent, RV3032_REG_TEMP_LOW_THLD, &data->tlow);
+		if (ret) {
+			return ret;
+		}
 		val->val1 = data->tlow;
 		break;
 	case SENSOR_ATTR_UPPER_THRESH:
+		ret = mfd_rv3032_read_reg8(config->parent, RV3032_REG_TEMP_HIGH_THLD,
+					   &data->thigh);
+		if (ret) {
+			return ret;
+		}
 		val->val1 = data->thigh;
 		break;
 	default:
