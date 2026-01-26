@@ -7,10 +7,9 @@ from dataclasses import dataclass
 
 from west import log
 
-from zspdx.scanner import ScannerConfig, scanDocument
-from zspdx.version import SPDX_VERSION_2_3
+from zspdx.scanner import ScannerConfig, scanSBOMData
+from zspdx.version import SPDX_VERSION_2_2, SPDX_VERSION_2_3
 from zspdx.walker import Walker, WalkerConfig
-from zspdx.writer import writeSPDX
 
 
 # SBOMConfig contains settings that will be passed along to the various
@@ -26,8 +25,8 @@ class SBOMConfig:
     # location of SPDX document output directory
     spdxDir: str = ""
 
-    # SPDX specification version to use
-    spdxVersion: str = SPDX_VERSION_2_3
+    # SPDX specification version to use (Version object from packaging.version)
+    spdxVersion = SPDX_VERSION_2_3
 
     # should also analyze for included header files?
     analyzeIncludes: bool = False
@@ -82,57 +81,30 @@ def makeSPDX(cfg):
     walkerCfg.analyzeIncludes = cfg.analyzeIncludes
     walkerCfg.includeSDK = cfg.includeSDK
 
-    # make and run the walker
+    # make and run the walker to collect SBOM data
     w = Walker(walkerCfg)
-    retval = w.makeDocuments()
-    if not retval:
+    sbom_data = w.collectSBOMData()
+    if not sbom_data:
         log.err("SPDX walker failed; bailing")
         return False
 
     # set up scanner configuration
     scannerCfg = ScannerConfig()
 
-    # scan each document from walker
-    if cfg.includeSDK:
-        scanDocument(scannerCfg, w.docSDK)
-    scanDocument(scannerCfg, w.docApp)
-    scanDocument(scannerCfg, w.docZephyr)
-    scanDocument(scannerCfg, w.docBuild)
+    # scan SBOM data
+    scanSBOMData(scannerCfg, sbom_data)
 
-    # write each document, in this particular order so that the
-    # hashes for external references are calculated
+    # route to appropriate serializer based on version
+    if cfg.spdxVersion.major == 2:
+        # Use SPDX 2.x serializer
+        from zspdx.serializers.spdx2 import SPDX2Serializer
 
-    # write SDK document, if we made one
-    if cfg.includeSDK:
-        retval = writeSPDX(os.path.join(cfg.spdxDir, "sdk.spdx"), w.docSDK, cfg.spdxVersion)
-        if not retval:
-            log.err("SPDX writer failed for SDK document; bailing")
-            return False
-
-    # write app document
-    retval = writeSPDX(os.path.join(cfg.spdxDir, "app.spdx"), w.docApp, cfg.spdxVersion)
-    if not retval:
-        log.err("SPDX writer failed for app document; bailing")
+        serializer = SPDX2Serializer(sbom_data, cfg.spdxVersion)
+        return serializer.serialize(cfg.spdxDir)
+    elif cfg.spdxVersion.major == 3:
+        # Use SPDX 3.0 serializer (to be implemented)
+        log.err("SPDX 3.0 serializer not yet implemented")
         return False
-
-    # write zephyr document
-    retval = writeSPDX(os.path.join(cfg.spdxDir, "zephyr.spdx"), w.docZephyr, cfg.spdxVersion)
-    if not retval:
-        log.err("SPDX writer failed for zephyr document; bailing")
+    else:
+        log.err(f"Unsupported SPDX version: {cfg.spdxVersion}")
         return False
-
-    # write build document
-    retval = writeSPDX(os.path.join(cfg.spdxDir, "build.spdx"), w.docBuild, cfg.spdxVersion)
-    if not retval:
-        log.err("SPDX writer failed for build document; bailing")
-        return False
-
-    # write modules document
-    retval = writeSPDX(
-        os.path.join(cfg.spdxDir, "modules-deps.spdx"), w.docModulesExtRefs, cfg.spdxVersion
-    )
-    if not retval:
-        log.err("SPDX writer failed for modules-deps document; bailing")
-        return False
-
-    return True
