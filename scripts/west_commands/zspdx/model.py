@@ -2,13 +2,22 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+"""Serializer-agnostic SBOM data model.
+
+These classes capture SBOM data without assuming a specific output format.
+Serializer-specific data should live in the metadata dictionaries.
+"""
+
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
 
 
 class ComponentPurpose(Enum):
-    """Format-agnostic component purpose types."""
+    """Normalized component purposes for serializer mapping.
+
+    Values are uppercase to align with SPDX-style purposes.
+    """
     APPLICATION = "APPLICATION"
     FRAMEWORK = "FRAMEWORK"
     LIBRARY = "LIBRARY"
@@ -27,7 +36,7 @@ class ComponentPurpose(Enum):
 
 @dataclass
 class SBOMExternalReference:
-    """Format-agnostic external reference for components."""
+    """Typed external reference (reference_type + locator)."""
     # Reference type (e.g., "purl", "cpe23", "vcs", "website")
     reference_type: str = ""
 
@@ -41,6 +50,7 @@ class SBOMExternalReference:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
+# Type aliases used by serializer-agnostic interfaces.
 PurposeType = Union[ComponentPurpose, str]
 ExternalReference = Union[SBOMExternalReference, str]
 ElementRef = Union["SBOMComponent", "SBOMFile", str]
@@ -48,7 +58,10 @@ ElementRef = Union["SBOMComponent", "SBOMFile", str]
 
 @dataclass
 class SBOMFile:
-    """Format-agnostic representation of a file in the SBOM."""
+    """File element in the SBOM.
+
+    path is absolute; relative_path is relative to component.base_dir.
+    """
     # Optional stable identifier (serializer-specific or user-provided)
     element_id: str = ""
 
@@ -82,7 +95,10 @@ class SBOMFile:
 
 @dataclass
 class SBOMRelationship:
-    """Format-agnostic representation of a relationship between SBOM elements."""
+    """Relationship between SBOM elements.
+
+    from/to may be model objects or identifier strings.
+    """
     # Optional stable identifier (serializer-specific or user-provided)
     element_id: str = ""
 
@@ -101,7 +117,10 @@ class SBOMRelationship:
 
 @dataclass
 class SBOMComponent:
-    """Format-agnostic representation of a component (package) in the SBOM."""
+    """Component/package element in the SBOM.
+
+    base_dir anchors file relative paths and files maps to SBOMFile entries.
+    """
     # Optional stable identifier (serializer-specific or user-provided)
     element_id: str = ""
 
@@ -160,7 +179,10 @@ class SBOMComponent:
 
 @dataclass
 class SBOMData:
-    """Format-agnostic container for all SBOM data."""
+    """Root container for all SBOM data.
+
+    components are keyed by name; files are keyed by absolute path.
+    """
     # Components (packages) in the SBOM
     # Key: component name, Value: SBOMComponent
     components: Dict[str, SBOMComponent] = field(default_factory=dict)
@@ -185,19 +207,19 @@ class SBOMData:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def add_component(self, component: SBOMComponent) -> None:
-        """Add a component to the SBOM."""
+        """Add a component keyed by its name."""
         self.components[component.name] = component
 
     def add_file(self, file: SBOMFile) -> None:
-        """Add a file to the SBOM."""
+        """Add a file keyed by its absolute path."""
         self.files[file.path] = file
 
     def add_relationship(self, relationship: SBOMRelationship) -> None:
-        """Add a relationship to the SBOM."""
+        """Add a top-level relationship."""
         self.relationships.append(relationship)
 
     def get_component(self, name: str) -> Optional[SBOMComponent]:
-        """Get a component by name or identifier."""
+        """Get a component by name or element_id."""
         component = self.components.get(name)
         if component:
             return component
@@ -207,7 +229,7 @@ class SBOMData:
         return None
 
     def get_file(self, path: str) -> Optional[SBOMFile]:
-        """Get a file by absolute path or identifier."""
+        """Get a file by absolute path or element_id."""
         file_obj = self.files.get(path)
         if file_obj:
             return file_obj
