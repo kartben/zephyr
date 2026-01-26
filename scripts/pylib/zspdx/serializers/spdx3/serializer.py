@@ -5,6 +5,7 @@
 import json
 import os
 import re
+from collections import defaultdict
 from datetime import datetime, timezone
 
 from spdx_python_model import v3_0_1 as spdx
@@ -37,14 +38,44 @@ class SPDX3Serializer:
         # Shared objects
         self.tool = None
         self.creation_info = None
-        self.document = None
+        self.documents = {}  # doc_name -> SpdxDocument
 
         # Track file IDs for uniqueness
         self.filename_counts = sbom_data.filename_counts.copy() if sbom_data.filename_counts else {}
 
+        # Group components into documents (similar to SPDX 2.x)
+        self.component_groups = self._group_components_into_documents()
+
     def _normalize_name(self, name):
         """Normalize component/file names for use in URIs."""
         return name.replace("_", "-").replace(" ", "-")
+
+    def _group_components_into_documents(self):
+        """Group components into SPDX 3.0 documents based on their names/purposes."""
+        documents = defaultdict(list)
+
+        for component in self.sbom_data.components.values():
+            doc_name = self._get_document_name(component)
+            documents[doc_name].append(component)
+
+        return dict(documents)
+
+    def _get_document_name(self, component):
+        """Determine which document a component belongs to."""
+        name = component.name
+
+        if name == "app-sources":
+            return "app"
+        elif name == "sdk-sources":
+            return "sdk"
+        elif name == "zephyr-sources" or name.endswith("-sources"):
+            # zephyr-sources and module sources (e.g., "module-name-sources")
+            return "zephyr"
+        elif name.endswith("-deps"):
+            return "modules-deps"
+        else:
+            # Build targets go into build document
+            return "build"
 
     def _generate_package_id(self, component_name: str) -> str:
         """Generate URI-based ID for a package."""
@@ -287,14 +318,23 @@ class SPDX3Serializer:
 
         return license_expr
 
-    def _create_document(self) -> spdx.SpdxDocument:
-        """Create the main SPDX 3.0 document."""
+    def _create_document(self, doc_name: str, components: list) -> spdx.SpdxDocument:
+        """Create an SPDX 3.0 document for a specific group of components."""
         self._initialize_shared_objects()
 
         document = spdx.SpdxDocument()
         namespace = self.sbom_data.namespace_prefix.rstrip("/")
-        document._id = f"{namespace}/documents/zephyr-spdx3"
-        document.name = "Zephyr SPDX 3.0 SBOM"
+        document._id = f"{namespace}/documents/{doc_name}-spdx3"
+        
+        # Set document name based on type
+        doc_names = {
+            "app": "Zephyr Application SPDX 3.0 SBOM",
+            "zephyr": "Zephyr RTOS SPDX 3.0 SBOM",
+            "build": "Zephyr Build Artifacts SPDX 3.0 SBOM",
+            "modules-deps": "Zephyr Module Dependencies SPDX 3.0 SBOM",
+            "sdk": "Zephyr SDK SPDX 3.0 SBOM",
+        }
+        document.name = doc_names.get(doc_name, f"Zephyr {doc_name.capitalize()} SPDX 3.0 SBOM")
         document.creationInfo = self.creation_info
 
         # Set data license
@@ -305,9 +345,65 @@ class SPDX3Serializer:
         # Add profile conformance
         document.profileConformance.append(spdx.ProfileIdentifierType.core)
 
-        # Add all elements to document
-        # Note: CreationInfo is not an Element, and document shouldn't include itself
-        # The encoder should handle Element objects and serialize them as references
+        # Collect elements that belong to this document
+        document_component_names = {comp.name for comp in components}
+        document_component_ids = set()
+        document_file_paths = set()
+        document_file_ids = set()
+        
+        # Get component and file IDs for this document
+        for component in components:
+            if component.name in self.component_elements:
+                document_component_ids.add(self.component_elements[component.name]._id)
+            for file_obj in component.files.values():
+                document_file_paths.add(file_obj.path)
+                if file_obj.path in self.file_elements:
+                    document_file_ids.add(self.file_elements[file_obj.path]._id)
+
+        # Collect all element IDs that belong to this document
+        document_element_ids = set(document_component_ids)
+        document_element_ids.update(document_file_ids)
+        
+        # Collect license expression IDs used by our components and files
+        license_ids = set()
+        for component in components:
+            if component.concluded_license and component.concluded_license != "NOASSERTION":
+                license_expr = self._create_license_expression(component.concluded_license)
+                if license_expr:
+                    license_ids.add(license_expr._id)
+            if component.declared_license and component.declared_license != "NOASSERTION":
+                license_expr = self._create_license_expression(component.declared_license)
+                if license_expr:
+                    license_ids.add(license_expr._id)
+            for file_obj in component.files.values():
+                if file_obj.concluded_license and file_obj.concluded_license != "NOASSERTION":
+                    license_expr = self._create_license_expression(file_obj.concluded_license)
+                    if license_expr:
+                        license_ids.add(license_expr._id)
+                for lic in file_obj.license_info_in_file:
+                    if lic != "NONE":
+                        license_expr = self._create_license_expression(lic)
+                        if license_expr:
+                            license_ids.add(license_expr._id)
+        document_element_ids.update(license_ids)
+
+        # Collect relationship IDs that involve our elements
+        relationship_ids = set()
+        for rel in self.relationship_elements:
+            from_id = getattr(rel, 'from_', None)
+            to_ids = getattr(rel, 'to', [])
+            if from_id in document_element_ids or any(to_id in document_element_ids for to_id in to_ids):
+                relationship_ids.add(rel._id)
+        document_element_ids.update(relationship_ids)
+
+        # Add tool and data license
+        if self.tool:
+            document_element_ids.add(self.tool._id)
+        data_license = self._create_license_expression("CC0-1.0")
+        if data_license:
+            document_element_ids.add(data_license._id)
+
+        # Add relevant elements to document
         document_id = document._id
         for element in self.elements:
             # Only add Element types (not CreationInfo or other non-Element types)
@@ -315,22 +411,18 @@ class SPDX3Serializer:
             if (isinstance(element, spdx.Element) and 
                 hasattr(element, '_id') and element._id and 
                 element._id != document_id and
-                not isinstance(element, spdx.SpdxDocument)):  # Explicitly exclude SpdxDocument
-                document.element.append(element)
+                not isinstance(element, spdx.SpdxDocument)):
+                
+                if element._id in document_element_ids:
+                    document.element.append(element)
 
-        # Set root elements (main packages: app-sources, zephyr-sources, etc.)
-        root_component_names = ["app-sources", "zephyr-sources", "sdk-sources"]
-        for comp_name in root_component_names:
-            if comp_name in self.component_elements:
-                document.rootElement.append(self.component_elements[comp_name])
-
-        # Also add modules-deps components as root elements
-        for comp_name, component in self.sbom_data.components.items():
-            if comp_name.endswith("-deps") and comp_name in self.component_elements:
-                document.rootElement.append(self.component_elements[comp_name])
+        # Set root elements (components in this document)
+        for component in components:
+            if component.name in self.component_elements:
+                document.rootElement.append(self.component_elements[component.name])
 
         self.elements.append(document)
-        self.document = document
+        self.documents[doc_name] = document
         return document
 
     def serialize(self, output_dir: str) -> bool:
@@ -470,16 +562,21 @@ class SPDX3Serializer:
                                     self.elements.append(rel)
                                     self.relationship_elements.append(rel)
 
-            # Create the document
-            self._create_document()
+            # Create documents for each group
+            for doc_name, components in self.component_groups.items():
+                if not components:
+                    continue
+                self._create_document(doc_name, components)
 
-            # Serialize to JSON-LD
-            jsonld_path = os.path.join(output_dir, "zephyr-spdx3.jsonld")
-            self._serialize_to_jsonld(jsonld_path)
+            # Serialize each document to separate files
+            for doc_name, document in self.documents.items():
+                # Serialize to JSON-LD
+                jsonld_path = os.path.join(output_dir, f"{doc_name}-spdx3.jsonld")
+                self._serialize_document_to_jsonld(document, jsonld_path)
 
-            # Serialize to JSON
-            json_path = os.path.join(output_dir, "zephyr-spdx3.json")
-            self._serialize_to_json(json_path)
+                # Serialize to JSON
+                json_path = os.path.join(output_dir, f"{doc_name}-spdx3.json")
+                self._serialize_document_to_json(document, json_path)
 
             log.inf(f"SPDX 3.0 documents written to {output_dir}")
             return True
@@ -490,10 +587,35 @@ class SPDX3Serializer:
             log.dbg(traceback.format_exc())
             return False
 
-    def _serialize_to_jsonld(self, output_path: str):
-        """Serialize to JSON-LD format."""
+    def _serialize_document_to_jsonld(self, document: spdx.SpdxDocument, output_path: str):
+        """Serialize a single document to JSON-LD format."""
+        # Collect all elements referenced by this document
+        # document.element contains Element objects, so extract their IDs
+        document_element_ids = set()
+        if hasattr(document, 'element'):
+            for elem in document.element:
+                if hasattr(elem, '_id') and elem._id:
+                    document_element_ids.add(elem._id)
+        
+        # Always include the document itself, creation info, and tool
+        elements_to_serialize = [document]
+        if self.creation_info:
+            elements_to_serialize.append(self.creation_info)
+        if self.tool:
+            elements_to_serialize.append(self.tool)
+        
+        # Add all elements referenced by the document
+        for elem_id in document_element_ids:
+            # Find the element in our elements list
+            for elem in self.elements:
+                if hasattr(elem, '_id') and elem._id == elem_id:
+                    if elem not in elements_to_serialize:
+                        elements_to_serialize.append(elem)
+                    break
+        
+        # Serialize all elements
         elements_data = []
-        for element in self.elements:
+        for element in elements_to_serialize:
             try:
                 encoder = spdx.JSONLDEncoder()
                 state = spdx.EncodeState()
@@ -509,7 +631,6 @@ class SPDX3Serializer:
         }
 
         # Post-process: Convert document.element and rootElement from full objects to ID references
-        # This is required for validators that expect element references as IDs
         for elem in elements_data:
             if elem.get("type") == "SpdxDocument":
                 # Convert element references to IDs
@@ -518,17 +639,11 @@ class SPDX3Serializer:
                     element_ids = []
                     for ref in element_refs:
                         if isinstance(ref, dict):
-                            # Extract the ID from the object
                             elem_id = ref.get("spdxId") or ref.get("@id")
                             if elem_id:
                                 element_ids.append(elem_id)
-                            else:
-                                log.wrn(f"Could not extract ID from element object: {ref}")
                         elif isinstance(ref, str):
-                            # Already an ID
                             element_ids.append(ref)
-                        else:
-                            log.wrn(f"Unexpected element reference type: {type(ref)}")
                     elem["element"] = element_ids
 
                 # Convert rootElement references to IDs
@@ -537,17 +652,11 @@ class SPDX3Serializer:
                     root_ids = []
                     for ref in root_refs:
                         if isinstance(ref, dict):
-                            # Extract the ID from the object
                             root_id = ref.get("spdxId") or ref.get("@id")
                             if root_id:
                                 root_ids.append(root_id)
-                            else:
-                                log.wrn(f"Could not extract ID from rootElement object: {ref}")
                         elif isinstance(ref, str):
-                            # Already an ID
                             root_ids.append(ref)
-                        else:
-                            log.wrn(f"Unexpected rootElement reference type: {type(ref)}")
                     elem["rootElement"] = root_ids
 
         with open(output_path, "w") as f:
@@ -555,13 +664,31 @@ class SPDX3Serializer:
 
         log.inf(f"Written SPDX 3.0 JSON-LD to {output_path}")
 
-    def _serialize_to_json(self, output_path: str):
-        """Serialize to plain JSON format."""
-        # For JSON format, use JSONLDEncoder but create a simpler structure
-        # Note: SPDX 3.0 spec primarily uses JSON-LD, but we'll provide a JSON version
-        # that's easier to parse without JSON-LD context
+    def _serialize_document_to_json(self, document: spdx.SpdxDocument, output_path: str):
+        """Serialize a single document to plain JSON format."""
+        # Collect all elements referenced by this document (same as JSON-LD)
+        # document.element contains Element objects, so extract their IDs
+        document_element_ids = set()
+        if hasattr(document, 'element'):
+            for elem in document.element:
+                if hasattr(elem, '_id') and elem._id:
+                    document_element_ids.add(elem._id)
+        
+        elements_to_serialize = [document]
+        if self.creation_info:
+            elements_to_serialize.append(self.creation_info)
+        if self.tool:
+            elements_to_serialize.append(self.tool)
+        
+        for elem_id in document_element_ids:
+            for elem in self.elements:
+                if hasattr(elem, '_id') and elem._id == elem_id:
+                    if elem not in elements_to_serialize:
+                        elements_to_serialize.append(elem)
+                    break
+        
         elements_data = []
-        for element in self.elements:
+        for element in elements_to_serialize:
             try:
                 encoder = spdx.JSONLDEncoder()
                 state = spdx.EncodeState()
