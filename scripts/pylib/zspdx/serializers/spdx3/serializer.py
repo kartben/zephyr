@@ -15,9 +15,8 @@ from zspdx.serializers.helpers import (
     CPE23TYPE_REGEX,
     PURL_REGEX,
     generate_download_url,
-    get_document_name,
-    group_components_into_documents,
     get_standard_licenses,
+    group_components_into_documents,
     normalize_spdx_name,
 )
 from zspdx.spdxids import getUniqueFileID
@@ -85,7 +84,7 @@ class SPDX3Serializer:
     def _create_build_tools(self):
         """Create Tool/Agent elements for build tools (CMake, compilers, etc.)."""
         namespace = self.sbom_data.namespace_prefix.rstrip("/")
-        
+
         # Create CMake tool
         if self.build_info.get("cmake_version") or self.build_info.get("cmake_generator"):
             cmake_tool = spdx.Agent()
@@ -105,7 +104,7 @@ class SPDX3Serializer:
                 cmake_tool.externalIdentifier.append(ext_id)
             self.elements.append(cmake_tool)
             self.build_tools["cmake"] = cmake_tool
-        
+
         # Create C compiler tool
         compiler_path = self.build_info.get("cmake_compiler", "")
         if compiler_path:
@@ -127,7 +126,7 @@ class SPDX3Serializer:
                 compiler_tool.externalIdentifier.append(sys_ext_id)
             self.elements.append(compiler_tool)
             self.build_tools["c-compiler"] = compiler_tool
-        
+
         # Create C++ compiler tool
         cxx_compiler_path = self.build_info.get("cmake_cxx_compiler", "")
         if cxx_compiler_path and cxx_compiler_path != compiler_path:
@@ -161,7 +160,7 @@ class SPDX3Serializer:
             self.creation_info.createdBy.append(self.tool._id)
             self.creation_info.specVersion = "3.0.1"
             self.elements.append(self.creation_info)
-        
+
         # Create build tool agents if build info is available
         self._create_build_tools()
 
@@ -181,7 +180,9 @@ class SPDX3Serializer:
 
         # Download location
         if component.url:
-            package.software_downloadLocation = generate_download_url(component.url, component.revision)
+            package.software_downloadLocation = generate_download_url(
+                component.url, component.revision
+            )
         else:
             package.software_downloadLocation = "NOASSERTION"
 
@@ -320,7 +321,9 @@ class SPDX3Serializer:
         self.relationship_elements.append(relationship)
         return relationship
 
-    def _create_license_expression(self, license_str: str) -> spdx.simplelicensing_LicenseExpression:
+    def _create_license_expression(
+        self, license_str: str
+    ) -> spdx.simplelicensing_LicenseExpression:
         """Create a license expression object and add it to elements."""
         if not license_str or license_str == "NOASSERTION":
             return None
@@ -335,7 +338,9 @@ class SPDX3Serializer:
             # Custom license - use a namespace-based ID
             namespace = self.sbom_data.namespace_prefix.rstrip("/")
             # Normalize the license string for use in URI
-            normalized = normalize_spdx_name(license_str.replace(" ", "-").replace("(", "").replace(")", ""))
+            normalized = normalize_spdx_name(
+                license_str.replace(" ", "-").replace("(", "").replace(")", "")
+            )
             license_expr._id = f"{namespace}/licenses/{normalized}"
 
         license_expr.simplelicensing_licenseExpression = license_str
@@ -355,7 +360,7 @@ class SPDX3Serializer:
         document = spdx.SpdxDocument()
         namespace = self.sbom_data.namespace_prefix.rstrip("/")
         document._id = f"{namespace}/documents/{doc_name}-spdx3"
-        
+
         # Set document name based on type
         doc_names = {
             "app": "Zephyr Application SPDX 3.0 SBOM",
@@ -383,7 +388,7 @@ class SPDX3Serializer:
         document_component_ids = set()
         document_file_paths = set()
         document_file_ids = set()
-        
+
         # Get component and file IDs for this document
         for component in components:
             if component.name in self.component_elements:
@@ -396,7 +401,7 @@ class SPDX3Serializer:
         # Collect all element IDs that belong to this document
         document_element_ids = set(document_component_ids)
         document_element_ids.update(document_file_ids)
-        
+
         # Collect license expression IDs used by our components and files
         license_ids = set()
         for component in components:
@@ -425,7 +430,9 @@ class SPDX3Serializer:
         for rel in self.relationship_elements:
             from_id = getattr(rel, 'from_', None)
             to_ids = getattr(rel, 'to', [])
-            if from_id in document_element_ids or any(to_id in document_element_ids for to_id in to_ids):
+            if from_id in document_element_ids or any(
+                to_id in document_element_ids for to_id in to_ids
+            ):
                 relationship_ids.add(rel._id)
         document_element_ids.update(relationship_ids)
 
@@ -444,11 +451,13 @@ class SPDX3Serializer:
         for element in self.elements:
             # Only add Element types (not CreationInfo or other non-Element types)
             # Also exclude the document itself from its own element list
-            if (isinstance(element, spdx.Element) and 
-                hasattr(element, '_id') and element._id and 
-                element._id != document_id and
-                not isinstance(element, spdx.SpdxDocument)):
-                
+            if (
+                isinstance(element, spdx.Element)
+                and hasattr(element, '_id')
+                and element._id
+                and element._id != document_id
+                and not isinstance(element, spdx.SpdxDocument)
+            ):
                 if element._id in document_element_ids:
                     document.element.append(element)
 
@@ -528,7 +537,9 @@ class SPDX3Serializer:
                         file_element = self.file_elements.get(file_obj.path)
                         if file_element:
                             contains_rel = spdx.Relationship()
-                            contains_rel._id = self._generate_relationship_id(len(self.relationship_elements))
+                            contains_rel._id = self._generate_relationship_id(
+                                len(self.relationship_elements)
+                            )
                             contains_rel.relationshipType = spdx.RelationshipType.contains
                             contains_rel.from_ = package._id
                             contains_rel.to = [file_element._id]
@@ -540,7 +551,11 @@ class SPDX3Serializer:
             # Link build tools to build artifact files
             for component in self.sbom_data.components.values():
                 # Only process build target components (not source components)
-                if component.name not in ["app-sources", "zephyr-sources", "sdk-sources"] and not component.name.endswith("-deps"):
+                if component.name not in [
+                    "app-sources",
+                    "zephyr-sources",
+                    "sdk-sources",
+                ] and not component.name.endswith("-deps"):
                     package = self.component_elements.get(component.name)
                     if package and component.target_build_file:
                         build_file = self.file_elements.get(component.target_build_file.path)
@@ -548,18 +563,22 @@ class SPDX3Serializer:
                             # Link CMake to build file
                             if "cmake" in self.build_tools:
                                 rel = spdx.Relationship()
-                                rel._id = self._generate_relationship_id(len(self.relationship_elements))
+                                rel._id = self._generate_relationship_id(
+                                    len(self.relationship_elements)
+                                )
                                 rel.relationshipType = spdx.RelationshipType.usesTool
                                 rel.from_ = build_file._id
                                 rel.to = [self.build_tools["cmake"]._id]
                                 rel.creationInfo = self.creation_info._id
                                 self.elements.append(rel)
                                 self.relationship_elements.append(rel)
-                            
+
                             # Link compiler to build file
                             if "c-compiler" in self.build_tools:
                                 rel = spdx.Relationship()
-                                rel._id = self._generate_relationship_id(len(self.relationship_elements))
+                                rel._id = self._generate_relationship_id(
+                                    len(self.relationship_elements)
+                                )
                                 rel.relationshipType = spdx.RelationshipType.usesTool
                                 rel.from_ = build_file._id
                                 rel.to = [self.build_tools["c-compiler"]._id]
@@ -576,7 +595,9 @@ class SPDX3Serializer:
                         license_expr = self._create_license_expression(component.concluded_license)
                         if license_expr:
                             rel = spdx.Relationship()
-                            rel._id = self._generate_relationship_id(len(self.relationship_elements))
+                            rel._id = self._generate_relationship_id(
+                                len(self.relationship_elements)
+                            )
                             rel.relationshipType = spdx.RelationshipType.hasConcludedLicense
                             rel.from_ = package._id
                             rel.to = [license_expr._id]
@@ -589,7 +610,9 @@ class SPDX3Serializer:
                         license_expr = self._create_license_expression(component.declared_license)
                         if license_expr:
                             rel = spdx.Relationship()
-                            rel._id = self._generate_relationship_id(len(self.relationship_elements))
+                            rel._id = self._generate_relationship_id(
+                                len(self.relationship_elements)
+                            )
                             rel.relationshipType = spdx.RelationshipType.hasDeclaredLicense
                             rel.from_ = package._id
                             rel.to = [license_expr._id]
@@ -606,7 +629,9 @@ class SPDX3Serializer:
                         license_expr = self._create_license_expression(file_obj.concluded_license)
                         if license_expr:
                             rel = spdx.Relationship()
-                            rel._id = self._generate_relationship_id(len(self.relationship_elements))
+                            rel._id = self._generate_relationship_id(
+                                len(self.relationship_elements)
+                            )
                             rel.relationshipType = spdx.RelationshipType.hasConcludedLicense
                             rel.from_ = file_element._id
                             rel.to = [license_expr._id]
@@ -621,7 +646,9 @@ class SPDX3Serializer:
                                 license_expr = self._create_license_expression(lic)
                                 if license_expr:
                                     rel = spdx.Relationship()
-                                    rel._id = self._generate_relationship_id(len(self.relationship_elements))
+                                    rel._id = self._generate_relationship_id(
+                                        len(self.relationship_elements)
+                                    )
                                     rel.relationshipType = spdx.RelationshipType.hasDeclaredLicense
                                     rel.from_ = file_element._id
                                     rel.to = [license_expr._id]
@@ -651,6 +678,7 @@ class SPDX3Serializer:
         except Exception as e:
             log.err(f"Failed to serialize SPDX 3.0 document: {e}")
             import traceback
+
             log.dbg(traceback.format_exc())
             return False
 
@@ -663,14 +691,14 @@ class SPDX3Serializer:
             for elem in document.element:
                 if hasattr(elem, '_id') and elem._id:
                     document_element_ids.add(elem._id)
-        
+
         # Always include the document itself, creation info, and tool
         elements_to_serialize = [document]
         if self.creation_info:
             elements_to_serialize.append(self.creation_info)
         if self.tool:
             elements_to_serialize.append(self.tool)
-        
+
         # Add all elements referenced by the document
         for elem_id in document_element_ids:
             # Find the element in our elements list
@@ -679,7 +707,7 @@ class SPDX3Serializer:
                     if elem not in elements_to_serialize:
                         elements_to_serialize.append(elem)
                     break
-        
+
         # Serialize all elements
         elements_data = []
         for element in elements_to_serialize:
@@ -740,20 +768,20 @@ class SPDX3Serializer:
             for elem in document.element:
                 if hasattr(elem, '_id') and elem._id:
                     document_element_ids.add(elem._id)
-        
+
         elements_to_serialize = [document]
         if self.creation_info:
             elements_to_serialize.append(self.creation_info)
         if self.tool:
             elements_to_serialize.append(self.tool)
-        
+
         for elem_id in document_element_ids:
             for elem in self.elements:
                 if hasattr(elem, '_id') and elem._id == elem_id:
                     if elem not in elements_to_serialize:
                         elements_to_serialize.append(elem)
                     break
-        
+
         elements_data = []
         for element in elements_to_serialize:
             try:
