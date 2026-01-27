@@ -5,7 +5,9 @@
       "Bash(ruff check:*)",
       "Bash(ruff format:*)",
       "Bash(ls:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(pip show:*)",
+      "Bash(source:*)"
     ]
   }
 }
