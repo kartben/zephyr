@@ -28,14 +28,14 @@
 LOG_MODULE_REGISTER(EXAMPLE_SENSOR, CONFIG_SENSOR_LOG_LEVEL);
 
 /* Register definitions for hypothetical sensor */
-#define EXAMPLE_REG_TEMP		0x00
-#define EXAMPLE_REG_HUMIDITY		0x01
-#define EXAMPLE_REG_CONFIG		0x02
-#define EXAMPLE_REG_STATUS		0x03
+#define EXAMPLE_REG_TEMP     0x00
+#define EXAMPLE_REG_HUMIDITY 0x01
+#define EXAMPLE_REG_CONFIG   0x02
+#define EXAMPLE_REG_STATUS   0x03
 
 /* Config register bits */
-#define EXAMPLE_CONFIG_ENABLE		BIT(0)
-#define EXAMPLE_CONFIG_CONTINUOUS	BIT(1)
+#define EXAMPLE_CONFIG_ENABLE     BIT(0)
+#define EXAMPLE_CONFIG_CONTINUOUS BIT(1)
 
 /**
  * Driver data structure
@@ -142,18 +142,30 @@ static int example_sensor_fetch_all(const struct device *dev)
 	return example_sensor_fetch_humidity(dev);
 }
 
-/*
- * Generate sample_fetch function with channel dispatch:
- * - example_sensor_sample_fetch()
+/**
+ * Fetch sensor samples
  *
- * This macro creates a sample_fetch function that routes to the appropriate
- * fetch function based on the requested channel. It automatically handles
- * the switch statement and error return for unsupported channels.
+ * Routes to the appropriate fetch function based on the requested channel.
+ * This is manually implemented using a switch statement pattern that is
+ * common across sensor drivers.
+ *
+ * @param dev Pointer to the device structure
+ * @param chan Sensor channel to fetch
+ * @return 0 on success, negative errno on failure
  */
-SENSOR_SAMPLE_FETCH_SIMPLE(example_sensor,
-	SENSOR_CHAN_ALL, example_sensor_fetch_all,
-	SENSOR_CHAN_AMBIENT_TEMP, example_sensor_fetch_temp,
-	SENSOR_CHAN_HUMIDITY, example_sensor_fetch_humidity)
+static int example_sensor_sample_fetch(const struct device *dev, enum sensor_channel chan)
+{
+	switch (chan) {
+	case SENSOR_CHAN_ALL:
+		return example_sensor_fetch_all(dev);
+	case SENSOR_CHAN_AMBIENT_TEMP:
+		return example_sensor_fetch_temp(dev);
+	case SENSOR_CHAN_HUMIDITY:
+		return example_sensor_fetch_humidity(dev);
+	default:
+		return -ENOTSUP;
+	}
+}
 
 /**
  * Get channel reading
@@ -167,8 +179,7 @@ SENSOR_SAMPLE_FETCH_SIMPLE(example_sensor,
  * @param val Pointer to store the sensor value
  * @return 0 on success, negative errno on failure
  */
-static int example_sensor_channel_get(const struct device *dev,
-				      enum sensor_channel chan,
+static int example_sensor_channel_get(const struct device *dev, enum sensor_channel chan,
 				      struct sensor_value *val)
 {
 	struct example_sensor_data *data = dev->data;
@@ -261,13 +272,10 @@ static int example_sensor_init(const struct device *dev)
  * Without this macro, you would need approximately 7-10 lines of
  * repetitive code per device instance.
  */
-#define EXAMPLE_SENSOR_DEFINE(inst)					\
-	SENSOR_DEVICE_DT_INST_I2C_DEFINE(example_sensor, inst,		\
-					 example_sensor_data,		\
-					 example_sensor_config,		\
-					 example_sensor_init,		\
-					 example_sensor_pm_action,	\
-					 example_sensor_driver_api)
+#define EXAMPLE_SENSOR_DEFINE(inst)                                                                \
+	SENSOR_DEVICE_DT_INST_I2C_DEFINE(example_sensor, inst, example_sensor_data,                \
+					 example_sensor_config, example_sensor_init,               \
+					 example_sensor_pm_action, example_sensor_driver_api)
 
 /* Instantiate a device for each enabled device tree node */
 DT_INST_FOREACH_STATUS_OKAY(EXAMPLE_SENSOR_DEFINE)

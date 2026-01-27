@@ -53,23 +53,21 @@ extern "C" {
  * // Generates: lm75_reg_read() and lm75_reg_write()
  * @endcode
  */
-#define SENSOR_I2C_REG_ACCESS(prefix, config_type, i2c_field)			\
-	static inline int prefix##_reg_read(const struct device *dev,		\
-					    uint8_t reg, uint8_t *buf,		\
-					    uint32_t size)			\
-	{									\
-		const struct config_type *cfg = dev->config;			\
-										\
-		return i2c_burst_read_dt(&cfg->i2c_field, reg, buf, size);	\
-	}									\
-										\
-	static inline int prefix##_reg_write(const struct device *dev,		\
-					     uint8_t reg, const uint8_t *buf,	\
-					     uint32_t size)			\
-	{									\
-		const struct config_type *cfg = dev->config;			\
-										\
-		return i2c_burst_write_dt(&cfg->i2c_field, reg, buf, size);	\
+#define SENSOR_I2C_REG_ACCESS(prefix, config_type, i2c_field)                                      \
+	static inline int prefix##_reg_read(const struct device *dev, uint8_t reg, uint8_t *buf,   \
+					    uint32_t size)                                         \
+	{                                                                                          \
+		const struct config_type *cfg = dev->config;                                       \
+                                                                                                   \
+		return i2c_burst_read_dt(&cfg->i2c_field, reg, buf, size);                         \
+	}                                                                                          \
+                                                                                                   \
+	static inline int prefix##_reg_write(const struct device *dev, uint8_t reg,                \
+					     const uint8_t *buf, uint32_t size)                    \
+	{                                                                                          \
+		const struct config_type *cfg = dev->config;                                       \
+                                                                                                   \
+		return i2c_burst_write_dt(&cfg->i2c_field, reg, buf, size);                        \
 	}
 
 /**
@@ -88,34 +86,31 @@ extern "C" {
  * // Generates: bme280_reg_read() and bme280_reg_write()
  * @endcode
  */
-#define SENSOR_SPI_REG_ACCESS(prefix, config_type, spi_field)			\
-	static inline int prefix##_reg_read(const struct device *dev,		\
-					    uint8_t reg, uint8_t *buf,		\
-					    uint32_t size)			\
-	{									\
-		const struct config_type *cfg = dev->config;			\
-		uint8_t tx_buf[2] = {reg | 0x80, 0};				\
-		const struct spi_buf tx = {.buf = tx_buf, .len = 2};		\
-		const struct spi_buf_set tx_set = {.buffers = &tx, .count = 1};\
-		struct spi_buf rx[2] = {{.buf = NULL, .len = 1},		\
-					{.buf = buf, .len = size}};		\
-		const struct spi_buf_set rx_set = {.buffers = rx, .count = 2};	\
-										\
-		return spi_transceive_dt(&cfg->spi_field, &tx_set, &rx_set);	\
-	}									\
-										\
-	static inline int prefix##_reg_write(const struct device *dev,		\
-					     uint8_t reg, const uint8_t *buf,	\
-					     uint32_t size)			\
-	{									\
-		const struct config_type *cfg = dev->config;			\
-		uint8_t tx_buf[size + 1];					\
-		tx_buf[0] = reg & 0x7F;						\
-		memcpy(&tx_buf[1], buf, size);					\
-		const struct spi_buf tx = {.buf = tx_buf, .len = size + 1};	\
-		const struct spi_buf_set tx_set = {.buffers = &tx, .count = 1};\
-										\
-		return spi_write_dt(&cfg->spi_field, &tx_set);			\
+#define SENSOR_SPI_REG_ACCESS(prefix, config_type, spi_field)                                      \
+	static inline int prefix##_reg_read(const struct device *dev, uint8_t reg, uint8_t *buf,   \
+					    uint32_t size)                                         \
+	{                                                                                          \
+		const struct config_type *cfg = dev->config;                                       \
+		uint8_t tx_buf[2] = {reg | 0x80, 0};                                               \
+		const struct spi_buf tx = {.buf = tx_buf, .len = 2};                               \
+		const struct spi_buf_set tx_set = {.buffers = &tx, .count = 1};                    \
+		struct spi_buf rx[2] = {{.buf = NULL, .len = 1}, {.buf = buf, .len = size}};       \
+		const struct spi_buf_set rx_set = {.buffers = rx, .count = 2};                     \
+                                                                                                   \
+		return spi_transceive_dt(&cfg->spi_field, &tx_set, &rx_set);                       \
+	}                                                                                          \
+                                                                                                   \
+	static inline int prefix##_reg_write(const struct device *dev, uint8_t reg,                \
+					     const uint8_t *buf, uint32_t size)                    \
+	{                                                                                          \
+		const struct config_type *cfg = dev->config;                                       \
+		uint8_t tx_buf[size + 1];                                                          \
+		tx_buf[0] = reg & 0x7F;                                                            \
+		memcpy(&tx_buf[1], buf, size);                                                     \
+		const struct spi_buf tx = {.buf = tx_buf, .len = size + 1};                        \
+		const struct spi_buf_set tx_set = {.buffers = &tx, .count = 1};                    \
+                                                                                                   \
+		return spi_write_dt(&cfg->spi_field, &tx_set);                                     \
 	}
 
 /* ============================================================================
@@ -143,12 +138,12 @@ extern "C" {
  * }
  * @endcode
  */
-#define SENSOR_DEVICE_I2C_BUS_READY_CHECK(dev, cfg, i2c_field)			\
-	do {									\
-		if (!device_is_ready((cfg)->i2c_field.bus)) {			\
-			LOG_ERR("I2C bus not ready");				\
-			return -ENODEV;						\
-		}								\
+#define SENSOR_DEVICE_I2C_BUS_READY_CHECK(dev, cfg, i2c_field)                                     \
+	do {                                                                                       \
+		if (!device_is_ready((cfg)->i2c_field.bus)) {                                      \
+			LOG_ERR("I2C bus not ready");                                              \
+			return -ENODEV;                                                            \
+		}                                                                                  \
 	} while (0)
 
 /**
@@ -161,12 +156,12 @@ extern "C" {
  * @param cfg Pointer to the device config structure
  * @param spi_field Name of the SPI DT spec field in the config structure
  */
-#define SENSOR_DEVICE_SPI_BUS_READY_CHECK(dev, cfg, spi_field)			\
-	do {									\
-		if (!device_is_ready((cfg)->spi_field.bus)) {			\
-			LOG_ERR("SPI bus not ready");				\
-			return -ENODEV;						\
-		}								\
+#define SENSOR_DEVICE_SPI_BUS_READY_CHECK(dev, cfg, spi_field)                                     \
+	do {                                                                                       \
+		if (!device_is_ready((cfg)->spi_field.bus)) {                                      \
+			LOG_ERR("SPI bus not ready");                                              \
+			return -ENODEV;                                                            \
+		}                                                                                  \
 	} while (0)
 
 /**
@@ -187,8 +182,8 @@ extern "C" {
  * }
  * @endcode
  */
-#define SENSOR_DEVICE_PM_INIT(dev)						\
-	do {									\
+#define SENSOR_DEVICE_PM_INIT(dev)                                                                 \
+	do {                                                                                       \
 		IF_ENABLED(CONFIG_PM_DEVICE_RUNTIME, (				\
 			pm_device_init_suspended(dev);				\
 			int _ret = pm_device_runtime_enable(dev);		\
@@ -196,7 +191,7 @@ extern "C" {
 				LOG_ERR("Failed to enable runtime PM");	\
 				return _ret;					\
 			}							\
-		))								\
+		))                                        \
 	} while (0)
 
 /* ============================================================================
@@ -204,72 +199,12 @@ extern "C" {
  * ============================================================================
  */
 
-/**
- * @brief Define a simple channel get function with dispatch table
- *
- * Generates a channel_get function that dispatches based on a table of
- * channel-to-data mappings for simple sensors with a small number of channels.
- *
- * @param prefix Driver-specific function name prefix
- * @param data_type Name of the driver's data structure type
- * @param ... Pairs of (channel, data_field) for each supported channel
- *
- * Example usage:
- * @code{.c}
- * // For a temperature sensor with a single channel
- * SENSOR_CHANNEL_GET_SIMPLE(lm75, lm75_data,
- *     SENSOR_CHAN_AMBIENT_TEMP, temp)
- * @endcode
+/*
+ * Note: Complex variadic macro-based dispatch helpers have been omitted
+ * from this initial implementation to maintain compatibility and simplicity.
+ * Drivers should implement sample_fetch and channel_get functions manually
+ * using standard switch statements, as shown in the example driver.
  */
-#define SENSOR_CHANNEL_GET_SIMPLE(prefix, data_type, ...)			\
-	static int prefix##_channel_get(const struct device *dev,		\
-					enum sensor_channel chan,		\
-					struct sensor_value *val)		\
-	{									\
-		struct data_type *data = dev->data;				\
-										\
-		switch (chan) {							\
-		MAP_LIST_0(SENSOR_CHANNEL_CASE, (;), __VA_ARGS__)		\
-		default:							\
-			return -ENOTSUP;					\
-		}								\
-		return 0;							\
-	}
-
-/* Helper for channel case generation - not intended for direct use */
-#define SENSOR_CHANNEL_CASE(chan, field) \
-	case chan: *val = data->field; break
-
-/**
- * @brief Define a simple sample fetch function with channel dispatch
- *
- * Generates a sample_fetch function that dispatches to different fetch
- * functions based on the requested channel.
- *
- * @param prefix Driver-specific function name prefix
- * @param ... Pairs of (channel, fetch_func) for each supported channel
- *
- * Example usage:
- * @code{.c}
- * SENSOR_SAMPLE_FETCH_SIMPLE(lm75,
- *     SENSOR_CHAN_ALL, lm75_fetch_temp,
- *     SENSOR_CHAN_AMBIENT_TEMP, lm75_fetch_temp)
- * @endcode
- */
-#define SENSOR_SAMPLE_FETCH_SIMPLE(prefix, ...)					\
-	static int prefix##_sample_fetch(const struct device *dev,		\
-					 enum sensor_channel chan)		\
-	{									\
-		switch (chan) {							\
-		MAP_LIST_0(SENSOR_FETCH_CASE, (;), __VA_ARGS__)			\
-		default:							\
-			return -ENOTSUP;					\
-		}								\
-	}
-
-/* Helper for fetch case generation - not intended for direct use */
-#define SENSOR_FETCH_CASE(chan, func) \
-	case chan: return func(dev)
 
 /* ============================================================================
  * Power Management Helpers
@@ -291,7 +226,7 @@ extern "C" {
  * // Generates: lm75_pm_action() that returns 0 for standard actions
  * @endcode
  */
-#define SENSOR_PM_ACTION_NOOP(prefix)						\
+#define SENSOR_PM_ACTION_NOOP(prefix)                                                              \
 	IF_ENABLED(CONFIG_PM_DEVICE, (						\
 	static int prefix##_pm_action(const struct device *dev,		\
 				      enum pm_device_action action)		\
@@ -352,42 +287,37 @@ extern "C" {
  * #endif
  * @endcode
  */
-#define SENSOR_TRIGGER_GPIO_INIT(data, cfg, gpio_field, callback_func,		\
-				 work_func, workq_field, stack_field,		\
-				 stack_size_config, prio_config, thread_name)	\
-	do {									\
-		if ((cfg)->gpio_field.port != NULL) {				\
-			(data)->dev = dev;					\
-			k_work_queue_start(&(data)->workq_field,		\
-					   (data)->stack_field,			\
-					   K_THREAD_STACK_SIZEOF((data)->stack_field),\
-					   prio_config, NULL);			\
-			k_thread_name_set(&(data)->workq_field.thread,		\
-					  thread_name);				\
-			k_work_init(&(data)->work, work_func);			\
-										\
-			if (!device_is_ready((cfg)->gpio_field.port)) {		\
-				LOG_ERR("GPIO not ready");			\
-				return -ENODEV;					\
-			}							\
-										\
-			int _ret = gpio_pin_configure_dt(&(cfg)->gpio_field,	\
-							  GPIO_INPUT);		\
-			if (_ret < 0) {						\
-				LOG_ERR("Failed to configure GPIO");		\
-				return _ret;					\
-			}							\
-										\
-			gpio_init_callback(&(data)->gpio_cb, callback_func,	\
-					   BIT((cfg)->gpio_field.pin));		\
-										\
-			_ret = gpio_add_callback((cfg)->gpio_field.port,	\
-						 &(data)->gpio_cb);		\
-			if (_ret < 0) {						\
-				LOG_ERR("Failed to add GPIO callback");	\
-				return _ret;					\
-			}							\
-		}								\
+#define SENSOR_TRIGGER_GPIO_INIT(data, cfg, gpio_field, callback_func, work_func, workq_field,     \
+				 stack_field, stack_size_config, prio_config, thread_name)         \
+	do {                                                                                       \
+		if ((cfg)->gpio_field.port != NULL) {                                              \
+			(data)->dev = dev;                                                         \
+			k_work_queue_start(&(data)->workq_field, (data)->stack_field,              \
+					   K_THREAD_STACK_SIZEOF((data)->stack_field),             \
+					   prio_config, NULL);                                     \
+			k_thread_name_set(&(data)->workq_field.thread, thread_name);               \
+			k_work_init(&(data)->work, work_func);                                     \
+                                                                                                   \
+			if (!device_is_ready((cfg)->gpio_field.port)) {                            \
+				LOG_ERR("GPIO not ready");                                         \
+				return -ENODEV;                                                    \
+			}                                                                          \
+                                                                                                   \
+			int _ret = gpio_pin_configure_dt(&(cfg)->gpio_field, GPIO_INPUT);          \
+			if (_ret < 0) {                                                            \
+				LOG_ERR("Failed to configure GPIO");                               \
+				return _ret;                                                       \
+			}                                                                          \
+                                                                                                   \
+			gpio_init_callback(&(data)->gpio_cb, callback_func,                        \
+					   BIT((cfg)->gpio_field.pin));                            \
+                                                                                                   \
+			_ret = gpio_add_callback((cfg)->gpio_field.port, &(data)->gpio_cb);        \
+			if (_ret < 0) {                                                            \
+				LOG_ERR("Failed to add GPIO callback");                            \
+				return _ret;                                                       \
+			}                                                                          \
+		}                                                                                  \
 	} while (0)
 
 /**
@@ -405,17 +335,14 @@ extern "C" {
  * // Generates: lm75_trigger_work_handler()
  * @endcode
  */
-#define SENSOR_TRIGGER_WORK_HANDLER(prefix, data_type)				\
-	static void prefix##_trigger_work_handler(struct k_work *item)		\
-	{									\
-		struct data_type *data = CONTAINER_OF(item,			\
-						      struct data_type,		\
-						      work);			\
-										\
-		if (data->trigger_handler != NULL) {				\
-			data->trigger_handler(data->dev,			\
-					      (struct sensor_trigger *)data->trigger);\
-		}								\
+#define SENSOR_TRIGGER_WORK_HANDLER(prefix, data_type)                                             \
+	static void prefix##_trigger_work_handler(struct k_work *item)                             \
+	{                                                                                          \
+		struct data_type *data = CONTAINER_OF(item, struct data_type, work);               \
+                                                                                                   \
+		if (data->trigger_handler != NULL) {                                               \
+			data->trigger_handler(data->dev, (struct sensor_trigger *)data->trigger);  \
+		}                                                                                  \
 	}
 
 /**
@@ -432,19 +359,16 @@ extern "C" {
  * // Generates: lm75_gpio_callback()
  * @endcode
  */
-#define SENSOR_TRIGGER_GPIO_CALLBACK(prefix, data_type)				\
-	static void prefix##_gpio_callback(const struct device *port,		\
-					   struct gpio_callback *cb,		\
-					   gpio_port_pins_t pins)		\
-	{									\
-		struct data_type *data = CONTAINER_OF(cb,			\
-						      struct data_type,		\
-						      gpio_cb);			\
-										\
-		ARG_UNUSED(port);						\
-		ARG_UNUSED(pins);						\
-										\
-		k_work_submit_to_queue(&data->workq, &data->work);		\
+#define SENSOR_TRIGGER_GPIO_CALLBACK(prefix, data_type)                                            \
+	static void prefix##_gpio_callback(const struct device *port, struct gpio_callback *cb,    \
+					   gpio_port_pins_t pins)                                  \
+	{                                                                                          \
+		struct data_type *data = CONTAINER_OF(cb, struct data_type, gpio_cb);              \
+                                                                                                   \
+		ARG_UNUSED(port);                                                                  \
+		ARG_UNUSED(pins);                                                                  \
+                                                                                                   \
+		k_work_submit_to_queue(&data->workq, &data->work);                                 \
 	}
 
 /* ============================================================================
@@ -482,22 +406,15 @@ extern "C" {
  * DT_INST_FOREACH_STATUS_OKAY(LM75_INST)
  * @endcode
  */
-#define SENSOR_DEVICE_DT_INST_I2C_DEFINE(prefix, inst, data_type,		\
-					 config_type, init_func, pm_func,	\
-					 api_struct, ...)			\
-	static struct data_type prefix##_data_##inst;				\
-	static const struct config_type prefix##_config_##inst = {		\
-		.i2c = I2C_DT_SPEC_INST_GET(inst),				\
-		__VA_ARGS__							\
-	};									\
-	PM_DEVICE_DT_INST_DEFINE(inst, pm_func);				\
-	SENSOR_DEVICE_DT_INST_DEFINE(inst, init_func,				\
-				     PM_DEVICE_DT_INST_GET(inst),		\
-				     &prefix##_data_##inst,			\
-				     &prefix##_config_##inst,			\
-				     POST_KERNEL,				\
-				     CONFIG_SENSOR_INIT_PRIORITY,		\
-				     &api_struct)
+#define SENSOR_DEVICE_DT_INST_I2C_DEFINE(prefix, inst, data_type, config_type, init_func, pm_func, \
+					 api_struct, ...)                                          \
+	static struct data_type prefix##_data_##inst;                                              \
+	static const struct config_type prefix##_config_##inst = {                                 \
+		.i2c = I2C_DT_SPEC_INST_GET(inst), __VA_ARGS__};                                   \
+	PM_DEVICE_DT_INST_DEFINE(inst, pm_func);                                                   \
+	SENSOR_DEVICE_DT_INST_DEFINE(inst, init_func, PM_DEVICE_DT_INST_GET(inst),                 \
+				     &prefix##_data_##inst, &prefix##_config_##inst, POST_KERNEL,  \
+				     CONFIG_SENSOR_INIT_PRIORITY, &api_struct)
 
 /**
  * @brief Define device instances for an SPI sensor
@@ -513,25 +430,17 @@ extern "C" {
  * @param api_struct Name of the driver API structure
  * @param ... Additional config structure initializers (optional)
  */
-#define SENSOR_DEVICE_DT_INST_SPI_DEFINE(prefix, inst, data_type,		\
-					 config_type, init_func, pm_func,	\
-					 api_struct, ...)			\
-	static struct data_type prefix##_data_##inst;				\
-	static const struct config_type prefix##_config_##inst = {		\
-		.spi = SPI_DT_SPEC_INST_GET(inst,				\
-					    SPI_OP_MODE_MASTER |		\
-					    SPI_TRANSFER_MSB |			\
-					    SPI_WORD_SET(8), 0),		\
-		__VA_ARGS__							\
-	};									\
-	PM_DEVICE_DT_INST_DEFINE(inst, pm_func);				\
-	SENSOR_DEVICE_DT_INST_DEFINE(inst, init_func,				\
-				     PM_DEVICE_DT_INST_GET(inst),		\
-				     &prefix##_data_##inst,			\
-				     &prefix##_config_##inst,			\
-				     POST_KERNEL,				\
-				     CONFIG_SENSOR_INIT_PRIORITY,		\
-				     &api_struct)
+#define SENSOR_DEVICE_DT_INST_SPI_DEFINE(prefix, inst, data_type, config_type, init_func, pm_func, \
+					 api_struct, ...)                                          \
+	static struct data_type prefix##_data_##inst;                                              \
+	static const struct config_type prefix##_config_##inst = {                                 \
+		.spi = SPI_DT_SPEC_INST_GET(                                                       \
+			inst, SPI_OP_MODE_MASTER | SPI_TRANSFER_MSB | SPI_WORD_SET(8), 0),         \
+		__VA_ARGS__};                                                                      \
+	PM_DEVICE_DT_INST_DEFINE(inst, pm_func);                                                   \
+	SENSOR_DEVICE_DT_INST_DEFINE(inst, init_func, PM_DEVICE_DT_INST_GET(inst),                 \
+				     &prefix##_data_##inst, &prefix##_config_##inst, POST_KERNEL,  \
+				     CONFIG_SENSOR_INIT_PRIORITY, &api_struct)
 
 /**
  * @brief Define device instances for an I2C sensor with GPIO trigger support
@@ -549,25 +458,17 @@ extern "C" {
  * @param gpio_prop Device tree GPIO property name (e.g., "int_gpios")
  * @param ... Additional config structure initializers (optional)
  */
-#define SENSOR_DEVICE_DT_INST_I2C_DEFINE_WITH_TRIGGER(prefix, inst,		\
-						      data_type, config_type,	\
-						      init_func, pm_func,	\
-						      api_struct, gpio_prop,	\
-						      ...)			\
-	static struct data_type prefix##_data_##inst;				\
-	static const struct config_type prefix##_config_##inst = {		\
-		.i2c = I2C_DT_SPEC_INST_GET(inst),				\
-		.int_gpio = GPIO_DT_SPEC_INST_GET_OR(inst, gpio_prop, {0}),	\
-		__VA_ARGS__							\
-	};									\
-	PM_DEVICE_DT_INST_DEFINE(inst, pm_func);				\
-	SENSOR_DEVICE_DT_INST_DEFINE(inst, init_func,				\
-				     PM_DEVICE_DT_INST_GET(inst),		\
-				     &prefix##_data_##inst,			\
-				     &prefix##_config_##inst,			\
-				     POST_KERNEL,				\
-				     CONFIG_SENSOR_INIT_PRIORITY,		\
-				     &api_struct)
+#define SENSOR_DEVICE_DT_INST_I2C_DEFINE_WITH_TRIGGER(                                             \
+	prefix, inst, data_type, config_type, init_func, pm_func, api_struct, gpio_prop, ...)      \
+	static struct data_type prefix##_data_##inst;                                              \
+	static const struct config_type prefix##_config_##inst = {                                 \
+		.i2c = I2C_DT_SPEC_INST_GET(inst),                                                 \
+		.int_gpio = GPIO_DT_SPEC_INST_GET_OR(inst, gpio_prop, {0}),                        \
+		__VA_ARGS__};                                                                      \
+	PM_DEVICE_DT_INST_DEFINE(inst, pm_func);                                                   \
+	SENSOR_DEVICE_DT_INST_DEFINE(inst, init_func, PM_DEVICE_DT_INST_GET(inst),                 \
+				     &prefix##_data_##inst, &prefix##_config_##inst, POST_KERNEL,  \
+				     CONFIG_SENSOR_INIT_PRIORITY, &api_struct)
 
 /**
  * @}
