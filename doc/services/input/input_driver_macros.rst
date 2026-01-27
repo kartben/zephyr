@@ -265,6 +265,13 @@ Code Style Considerations
 * Add driver-specific comments where macros are used
 * Don't nest macro calls unless the result is still readable
 
+**Note on Flow Control in Macros**: Some macros intentionally use flow control
+(``return`` statements) to reduce boilerplate error handling. While this
+generates checkpatch warnings (``MACRO_WITH_FLOW_CONTROL``), it's an accepted
+pattern for these helper macros as the benefits in reduced code and improved
+readability outweigh the warning. The macros are carefully designed to be used
+only in appropriate contexts (driver init functions).
+
 Maintenance
 ***********
 

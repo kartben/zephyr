@@ -1,0 +1,204 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
+ * @file
+ * @brief Example demonstrating input driver helper macros
+ *
+ * This file shows a minimal I2C touch sensor driver using the input driver
+ * helper macros to reduce boilerplate code. This is for demonstration purposes.
+ *
+ * WITHOUT MACROS, the driver would need approximately 50+ additional lines
+ * of repetitive error checking and initialization code.
+ */
+
+#define DT_DRV_COMPAT example_touch_sensor
+
+#include <zephyr/device.h>
+#include <zephyr/drivers/i2c.h>
+#include <zephyr/drivers/gpio.h>
+#include <zephyr/input/input.h>
+#include <zephyr/input/input_driver.h>
+#include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
+
+LOG_MODULE_REGISTER(example_touch, CONFIG_INPUT_LOG_LEVEL);
+
+/* Register definitions for the example sensor */
+#define REG_STATUS      0x00
+#define REG_X_LOW       0x01
+#define REG_X_HIGH      0x02
+#define REG_Y_LOW       0x03
+#define REG_Y_HIGH      0x04
+
+#define STATUS_TOUCHED  BIT(0)
+
+struct example_touch_config {
+	struct i2c_dt_spec i2c;
+	struct gpio_dt_spec int_gpio;
+};
+
+struct example_touch_data {
+	const struct device *dev;
+	struct k_work work;
+	struct gpio_callback int_gpio_cb;
+};
+
+/**
+ * Process touch sensor data and report input events
+ */
+static int example_touch_process(const struct device *dev)
+{
+	const struct example_touch_config *cfg = dev->config;
+	uint8_t status;
+	uint8_t coords[4];
+	uint16_t x, y;
+	int ret;
+
+	/* Read sensor status */
+	ret = i2c_reg_read_byte_dt(&cfg->i2c, REG_STATUS, &status);
+	if (ret < 0) {
+		LOG_ERR("Failed to read status: %d", ret);
+		return ret;
+	}
+
+	if (!(status & STATUS_TOUCHED)) {
+		/* No touch detected, report release */
+		input_report_key(dev, INPUT_BTN_TOUCH, 0, true, K_FOREVER);
+		return 0;
+	}
+
+	/* Read coordinates */
+	ret = i2c_burst_read_dt(&cfg->i2c, REG_X_LOW, coords, sizeof(coords));
+	if (ret < 0) {
+		LOG_ERR("Failed to read coordinates: %d", ret);
+		return ret;
+	}
+
+	x = (coords[1] << 8) | coords[0];
+	y = (coords[3] << 8) | coords[2];
+
+	LOG_DBG("Touch detected at (%d, %d)", x, y);
+
+	/* Report touch position */
+	input_report_abs(dev, INPUT_ABS_X, x, false, K_FOREVER);
+	input_report_abs(dev, INPUT_ABS_Y, y, false, K_FOREVER);
+	input_report_key(dev, INPUT_BTN_TOUCH, 1, true, K_FOREVER);
+
+	return 0;
+}
+
+/**
+ * Work handler called from interrupt context
+ */
+static void example_touch_work_handler(struct k_work *work)
+{
+	struct example_touch_data *data = CONTAINER_OF(work,
+							struct example_touch_data,
+							work);
+	example_touch_process(data->dev);
+}
+
+/**
+ * GPIO interrupt handler
+ */
+static void example_touch_gpio_handler(const struct device *port,
+				       struct gpio_callback *cb,
+				       uint32_t pins)
+{
+	struct example_touch_data *data = CONTAINER_OF(cb,
+							struct example_touch_data,
+							int_gpio_cb);
+	INPUT_WORK_SUBMIT(&data->work);
+}
+
+/**
+ * Driver initialization
+ *
+ * NOTE: This function is drastically simplified by using the input driver
+ * helper macros. Without them, this would require:
+ * - Explicit device_is_ready() check with error logging
+ * - gpio_is_ready_dt() check with error logging
+ * - gpio_pin_configure_dt() with error handling
+ * - gpio_init_callback() call
+ * - gpio_add_callback_dt() with error handling
+ * - gpio_pin_interrupt_configure_dt() with error handling
+ * - k_work_init() call
+ * - Storing device pointer in data
+ *
+ * All of this is reduced to just 3 lines with the macros!
+ */
+static int example_touch_init(const struct device *dev)
+{
+	const struct example_touch_config *cfg = dev->config;
+	struct example_touch_data *data = dev->data;
+
+	/*
+	 * CHECK I2C BUS: Replaces ~4 lines of code
+	 * Checks if I2C controller is ready, logs error if not, returns -ENODEV
+	 */
+	INPUT_I2C_CHECK_READY(&cfg->i2c);
+
+	/*
+	 * INITIALIZE INTERRUPT-DRIVEN INPUT: Replaces ~25 lines of code
+	 * This single macro:
+	 * 1. Stores device pointer in data->dev
+	 * 2. Initializes work queue with handler
+	 * 3. Checks GPIO device is ready
+	 * 4. Configures GPIO pin as input
+	 * 5. Initializes GPIO callback structure
+	 * 6. Adds callback to GPIO port
+	 * 7. Enables edge-triggered interrupt
+	 * All with proper error checking and logging!
+	 */
+	INPUT_COMMON_INIT_INTERRUPT(dev, data, work, example_touch_work_handler,
+				    int_gpio_cb, example_touch_gpio_handler,
+				    &cfg->int_gpio, GPIO_INT_EDGE_TO_ACTIVE);
+
+	LOG_INF("Example touch sensor initialized");
+	return 0;
+}
+
+/* Device instantiation macro */
+#define EXAMPLE_TOUCH_INIT(inst)                                               \
+	static const struct example_touch_config example_touch_config_##inst = { \
+		.i2c = I2C_DT_SPEC_INST_GET(inst),                             \
+		.int_gpio = GPIO_DT_SPEC_INST_GET(inst, int_gpios),            \
+	};                                                                     \
+	static struct example_touch_data example_touch_data_##inst;            \
+	DEVICE_DT_INST_DEFINE(inst, example_touch_init, NULL,                 \
+			      &example_touch_data_##inst,                      \
+			      &example_touch_config_##inst,                    \
+			      POST_KERNEL, CONFIG_INPUT_INIT_PRIORITY, NULL);
+
+DT_INST_FOREACH_STATUS_OKAY(EXAMPLE_TOUCH_INIT)
+
+/*
+ * COMPARISON: Code Size with vs without Macros
+ * ============================================
+ *
+ * WITHOUT MACROS (Traditional approach):
+ * - example_touch_init(): ~50-60 lines
+ *   - I2C ready check: 4 lines
+ *   - GPIO ready check: 4 lines
+ *   - GPIO pin configure: 5 lines
+ *   - Work queue init: 1 line
+ *   - GPIO callback init: 1 line
+ *   - GPIO add callback: 5 lines
+ *   - GPIO interrupt configure: 5 lines
+ *   - Device pointer storage: 1 line
+ *   - Additional error handling and logging: 20+ lines
+ *
+ * WITH MACROS (This approach):
+ * - example_touch_init(): ~10 lines
+ *   - I2C ready check: 1 line (INPUT_I2C_CHECK_READY)
+ *   - Everything else: 1 line (INPUT_COMMON_INIT_INTERRUPT)
+ *   - Comments and logging: 8 lines
+ *
+ * CODE REDUCTION: ~80% less boilerplate!
+ * READABILITY: Much improved - intent is clear at a glance
+ * MAINTAINABILITY: Centralized error handling and logging
+ * ERROR RESISTANCE: Less chance of forgetting error checks
+ */
