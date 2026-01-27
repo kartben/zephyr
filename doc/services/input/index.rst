@@ -92,6 +92,7 @@ Detailed Driver Documentation
    :maxdepth: 1
 
    gpio-kbd.rst
+   input_driver_macros.rst
 
 
 API Reference
