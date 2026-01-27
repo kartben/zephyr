@@ -91,7 +91,7 @@ static int example_touch_process(const struct device *dev)
 }
 
 /**
- * Work handler called from interrupt context
+ * Work handler executed by work queue system to process touch sensor data
  */
 static void example_touch_work_handler(struct k_work *work)
 {

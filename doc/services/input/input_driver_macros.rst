@@ -186,9 +186,31 @@ Example showing SPI device with reset GPIO configuration:
        struct gpio_dt_spec motion_gpio;
    };
 
+   struct my_spi_sensor_data {
+       const struct device *dev;
+       struct k_work work;
+       struct gpio_callback motion_cb;
+   };
+
+   static void my_work_handler(struct k_work *work)
+   {
+       /* Process sensor data */
+   }
+
+   static void my_motion_handler(const struct device *port,
+                                 struct gpio_callback *cb,
+                                 uint32_t pins)
+   {
+       struct my_spi_sensor_data *data = CONTAINER_OF(cb,
+                                                       struct my_spi_sensor_data,
+                                                       motion_cb);
+       INPUT_WORK_SUBMIT(&data->work);
+   }
+
    static int my_spi_sensor_init(const struct device *dev)
    {
        const struct my_spi_sensor_config *cfg = dev->config;
+       struct my_spi_sensor_data *data = dev->data;
 
        /* Check SPI bus readiness */
        INPUT_SPI_CHECK_READY(&cfg->spi);
@@ -200,6 +222,10 @@ Example showing SPI device with reset GPIO configuration:
            k_sleep(K_MSEC(10));
            gpio_pin_set_dt(&cfg->reset_gpio, 0);
        }
+
+       /* Initialize work queue */
+       data->dev = dev;
+       INPUT_WORK_INIT(&data->work, my_work_handler);
 
        /* Setup motion detection interrupt */
        INPUT_GPIO_INTERRUPT_INIT(&cfg->motion_gpio, &data->motion_cb,
@@ -214,6 +240,36 @@ Dual Mode (Interrupt/Polling) Support
 Example of a driver supporting both interrupt and polling modes:
 
 .. code-block:: c
+
+   struct my_dual_mode_data {
+       const struct device *dev;
+       struct k_work work;
+       struct gpio_callback int_gpio_cb;
+       struct k_timer timer;
+   };
+
+   static void my_work_handler(struct k_work *work)
+   {
+       /* Process sensor data */
+   }
+
+   static void my_gpio_handler(const struct device *port,
+                               struct gpio_callback *cb,
+                               uint32_t pins)
+   {
+       struct my_dual_mode_data *data = CONTAINER_OF(cb,
+                                                      struct my_dual_mode_data,
+                                                      int_gpio_cb);
+       INPUT_WORK_SUBMIT(&data->work);
+   }
+
+   static void my_timer_handler(struct k_timer *timer)
+   {
+       struct my_dual_mode_data *data = CONTAINER_OF(timer,
+                                                      struct my_dual_mode_data,
+                                                      timer);
+       INPUT_WORK_SUBMIT(&data->work);
+   }
 
    static int my_dual_mode_init(const struct device *dev)
    {

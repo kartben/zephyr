@@ -143,21 +143,30 @@ extern "C" {
  * common pattern in input drivers that use GPIO interrupts.
  *
  * @param _gpio_spec Pointer to struct gpio_dt_spec
- * @param _cb_data Pointer to struct gpio_callback
+ * @param _cb_data Pointer to struct gpio_callback to be initialized
  * @param _handler GPIO callback handler function
  * @param _mode Interrupt mode (e.g., GPIO_INT_EDGE_TO_ACTIVE, GPIO_INT_EDGE_BOTH)
  *
  * Example usage:
  * @code{.c}
+ * struct my_driver_data {
+ *     struct gpio_callback int_gpio_cb;  // Callback structure
+ *     struct k_work work;
+ * };
+ *
  * static void my_gpio_handler(const struct device *port,
  *                             struct gpio_callback *cb, uint32_t pins) {
- *     // handle interrupt
+ *     struct my_driver_data *data = CONTAINER_OF(cb,
+ *                                                 struct my_driver_data,
+ *                                                 int_gpio_cb);
+ *     // Handle interrupt - typically submit work to work queue
  * }
  *
  * static int my_driver_init(const struct device *dev) {
  *     const struct my_driver_config *cfg = dev->config;
  *     struct my_driver_data *data = dev->data;
  *
+ *     // Initialize the gpio_callback structure and setup interrupt
  *     INPUT_GPIO_INTERRUPT_INIT(&cfg->int_gpio, &data->int_gpio_cb,
  *                               my_gpio_handler, GPIO_INT_EDGE_TO_ACTIVE);
  *     // ... rest of init
