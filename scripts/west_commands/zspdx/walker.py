@@ -2,9 +2,19 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+"""
+CMake codemodel walker for SBOM generation.
+
+This module provides the Walker class, which traverses the CMake codemodel
+and build artifacts to gather information needed to build SBOM documents.
+"""
+
+from __future__ import annotations
+
 import os
 import re
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import yaml
 from west import log
@@ -13,66 +23,93 @@ from west.util import WestNotFound, west_topdir
 import zspdx.spdxids
 from zspdx.cmakecache import parseCMakeCacheFile
 from zspdx.cmakefileapijson import parseReply
-from zspdx.datatypes import (
-    Document,
-    DocumentConfig,
-    File,
-    Package,
-    PackageConfig,
-    Relationship,
-    RelationshipData,
-    RelationshipDataElementType,
-)
 from zspdx.getincludes import getCIncludes
+from zspdx.model import (
+    DocumentMetadata,
+    ElementRegistry,
+    ExternalReference,
+    PackagePurpose,
+    PendingRelationship,
+    PendingRelationshipElementType,
+    RelationshipType,
+    SBOMDocument,
+    SBOMFile,
+    SBOMPackage,
+    SBOMRelationship,
+)
+
+if TYPE_CHECKING:
+    from zspdx.cmakefileapi import ConfigTarget
 
 
-# WalkerConfig contains configuration data for the Walker.
 @dataclass(eq=True)
 class WalkerConfig:
-    # prefix for Document namespaces; should not end with "/"
+    """
+    Configuration data for the Walker.
+
+    Attributes:
+        namespacePrefix: Prefix for Document namespaces; should not end with "/".
+        buildDir: Location of build directory.
+        analyzeIncludes: Whether to analyze for included header files.
+        includeSDK: Whether to add an SPDX document for the SDK.
+    """
+
     namespacePrefix: str = ""
-
-        # location of build directory
     buildDir: str = ""
-
-    # should also analyze for included header files?
     analyzeIncludes: bool = False
-
-    # should also add an SPDX document for the SDK?
     includeSDK: bool = False
 
-# Walker is the main analysis class: it walks through the CMake codemodel,
-# build files, and corresponding source and SDK files, and gathers the
-# information needed to build the SPDX data classes.
+
 class Walker:
-    # initialize with WalkerConfig
-    def __init__(self, cfg):
+    """
+    Main analysis class for SBOM generation.
+
+    The Walker traverses the CMake codemodel, build files, and corresponding
+    source and SDK files, gathering information needed to build the SBOM
+    data structures.
+
+    Attributes:
+        cfg: WalkerConfig with configuration settings.
+        docBuild: Build document (build artifacts).
+        docZephyr: Zephyr sources document.
+        docApp: Application sources document.
+        docSDK: SDK document (optional).
+        docModulesExtRefs: Module external references document.
+        registry: ElementRegistry for cross-document element tracking.
+    """
+
+    def __init__(self, cfg: WalkerConfig) -> None:
+        """
+        Initialize the Walker with configuration.
+
+        Args:
+            cfg: WalkerConfig with settings for this walk.
+        """
         super().__init__()
 
-        # configuration - WalkerConfig
         self.cfg = cfg
 
-        # the various Documents that we will be building
-        self.docBuild = None
-        self.docZephyr = None
-        self.docApp = None
-        self.docSDK = None
-        self.docModulesExtRefs = None
+        # The various Documents that we will be building
+        self.docBuild: SBOMDocument | None = None
+        self.docZephyr: SBOMDocument | None = None
+        self.docApp: SBOMDocument | None = None
+        self.docSDK: SBOMDocument | None = None
+        self.docModulesExtRefs: SBOMDocument | None = None
 
-        # dict of absolute file path => the Document that owns that file
-        self.allFileLinks = {}
+        # Element registry for cross-document lookups
+        self.registry = ElementRegistry()
 
-        # queue of pending source Files to create, process and assign
-        self.pendingSources = []
+        # Queue of pending source file paths to create, process and assign
+        self.pendingSources: list[str] = []
 
-        # queue of pending relationships to create, process and assign
-        self.pendingRelationships = []
+        # Queue of pending relationships to create after elements exist
+        self.pendingRelationships: list[PendingRelationship] = []
 
-        # parsed CMake codemodel
+        # Parsed CMake codemodel
         self.cm = None
 
-        # parsed CMake cache dict, once we have the build path
-        self.cmakeCache = {}
+        # Parsed CMake cache dict, once we have the build path
+        self.cmakeCache: dict[str, str] = {}
 
         # C compiler path from parsed CMake cache
         self.compilerPath = ""
@@ -80,207 +117,279 @@ class Walker:
         # SDK install path from parsed CMake cache
         self.sdkPath = ""
 
-    def _build_purl(self, url, version=None):
+        # Meta file path
+        self.metaFile = ""
+
+    def _build_purl(self, url: str, version: str | None = None) -> str | None:
+        """
+        Build a Package URL (PURL) from a git URL.
+
+        Args:
+            url: Git repository URL.
+            version: Optional version string (tag or commit).
+
+        Returns:
+            PURL string or None if URL doesn't match expected pattern.
+        """
         if not url:
             return None
 
         purl = None
-        # This is designed to match repository with the following url pattern:
-        # '<protocol><type>/<namespace>/<package>
-        COMMON_GIT_URL_REGEX=r'((git@|http(s)?:\/\/)(?P<type>[\w\.@]+)(\.\w+)(\/|:))(?P<namespace>[\w,\-,\_\/]+)\/(?P<package>[\w,\-,\_]+)(.git){0,1}((\/){0,1})$'
+        # Match: <protocol><type>/<namespace>/<package>
+        common_git_url_regex = (
+            r"((git@|http(s)?:\/\/)(?P<type>[\w\.@]+)(\.\w+)(\/|:))"
+            r"(?P<namespace>[\w,\-,\_\/]+)\/(?P<package>[\w,\-,\_]+)"
+            r"(.git){0,1}((\/){0,1})$"
+        )
 
-        match = re.fullmatch(COMMON_GIT_URL_REGEX, url)
+        match = re.fullmatch(common_git_url_regex, url)
         if match:
-            purl = f'pkg:{match.group("type")}/{match.group("namespace")}/{match.group("package")}'
+            purl = (
+                f'pkg:{match.group("type")}/{match.group("namespace")}/'
+                f'{match.group("package")}'
+            )
 
-        if purl and (version or len(version) > 0):
-            purl += f'@{version}'
+        if purl and version:
+            purl += f"@{version}"
 
         return purl
 
-    def _add_describe_relationship(self, doc, cfgpackage):
-        # create DESCRIBES relationship data
-        rd = RelationshipData()
-        rd.ownerType = RelationshipDataElementType.DOCUMENT
-        rd.ownerDocument = doc
-        rd.otherType = RelationshipDataElementType.PACKAGEID
-        rd.otherPackageID = cfgpackage.spdxID
-        rd.rlnType = "DESCRIBES"
+    def _add_describe_relationship(
+        self, doc: SBOMDocument, pkg: SBOMPackage
+    ) -> None:
+        """
+        Add a DESCRIBES relationship from document to package.
 
-        # add it to pending relationships queue
-        self.pendingRelationships.append(rd)
+        Args:
+            doc: The document that describes the package.
+            pkg: The package being described.
+        """
+        rln = SBOMRelationship(
+            internal_id=f"rln-{doc.internal_id}-describes-{pkg.internal_id}",
+            source=doc,
+            target=pkg,
+            relationship_type=RelationshipType.DESCRIBES,
+        )
+        doc.relationships.append(rln)
 
-    # primary entry point
-    def makeDocuments(self):
-        # parse CMake cache file and get compiler path
+    def makeDocuments(self) -> bool:
+        """
+        Primary entry point for document creation.
+
+        Parses the CMake codemodel and builds all SBOM documents.
+
+        Returns:
+            True if successful, False otherwise.
+        """
+        # Parse CMake cache file and get compiler path
         log.inf("parsing CMake Cache file")
         self.getCacheFile()
 
-        # check if meta file is generated
+        # Check if meta file is generated
         if not self.metaFile:
-            log.err("CONFIG_BUILD_OUTPUT_META must be enabled to generate spdx files; bailing")
+            log.err(
+                "CONFIG_BUILD_OUTPUT_META must be enabled to generate spdx files; "
+                "bailing"
+            )
             return False
 
-        # parse codemodel from Walker cfg's build dir
+        # Parse codemodel from Walker cfg's build dir
         log.inf("parsing CMake Codemodel files")
         self.cm = self.getCodemodel()
         if not self.cm:
             log.err("could not parse codemodel from CMake API reply; bailing")
             return False
 
-        # set up Documents
+        # Set up Documents
         log.inf("setting up SPDX documents")
         retval = self.setupDocuments()
         if not retval:
             return False
 
-        # walk through targets in codemodel to gather information
+        # Walk through targets in codemodel to gather information
         log.inf("walking through targets")
         self.walkTargets()
 
-        # walk through pending sources and create corresponding files
+        # Walk through pending sources and create corresponding files
         log.inf("walking through pending sources files")
         self.walkPendingSources()
 
-        # walk through pending relationship data and create relationships
+        # Walk through pending relationship data and create relationships
         log.inf("walking through pending relationships")
         self.walkRelationships()
 
         return True
 
-    # parse cache file and pull out relevant data
-    def getCacheFile(self):
+    def getCacheFile(self) -> None:
+        """Parse cache file and extract relevant data."""
         cacheFilePath = os.path.join(self.cfg.buildDir, "CMakeCache.txt")
         self.cmakeCache = parseCMakeCacheFile(cacheFilePath)
         if self.cmakeCache:
             self.compilerPath = self.cmakeCache.get("CMAKE_C_COMPILER", "")
             self.sdkPath = self.cmakeCache.get("ZEPHYR_SDK_INSTALL_DIR", "")
-            self.metaFile =  self.cmakeCache.get("KERNEL_META_PATH", "")
+            self.metaFile = self.cmakeCache.get("KERNEL_META_PATH", "")
 
-    # determine path from build dir to CMake file-based API index file, then
-    # parse it and return the Codemodel
     def getCodemodel(self):
+        """
+        Get the CMake codemodel from API reply files.
+
+        Returns:
+            Parsed Codemodel object or None if not found.
+        """
         log.dbg("getting codemodel from CMake API reply files")
 
-        # make sure the reply directory exists
-        cmakeReplyDirPath = os.path.join(self.cfg.buildDir, ".cmake", "api", "v1", "reply")
+        # Make sure the reply directory exists
+        cmakeReplyDirPath = os.path.join(
+            self.cfg.buildDir, ".cmake", "api", "v1", "reply"
+        )
         if not os.path.exists(cmakeReplyDirPath):
-            log.err(f'cmake api reply directory {cmakeReplyDirPath} does not exist')
-            log.err('was query directory created before cmake build ran?')
+            log.err(f"cmake api reply directory {cmakeReplyDirPath} does not exist")
+            log.err("was query directory created before cmake build ran?")
             return None
         if not os.path.isdir(cmakeReplyDirPath):
-            log.err(f'cmake api reply directory {cmakeReplyDirPath} exists but is not a directory')
+            log.err(
+                f"cmake api reply directory {cmakeReplyDirPath} exists but is not "
+                "a directory"
+            )
             return None
 
-        # find file with "index" prefix; there should only be one
+        # Find file with "index" prefix; there should only be one
         indexFilePath = ""
         for f in os.listdir(cmakeReplyDirPath):
             if f.startswith("index"):
                 indexFilePath = os.path.join(cmakeReplyDirPath, f)
                 break
         if indexFilePath == "":
-            # didn't find it
-            log.err(f'cmake api reply index file not found in {cmakeReplyDirPath}')
+            log.err(f"cmake api reply index file not found in {cmakeReplyDirPath}")
             return None
 
-        # parse it
         return parseReply(indexFilePath)
 
-    def setupAppDocument(self):
-        # set up app document
-        cfgApp = DocumentConfig()
-        cfgApp.name = "app-sources"
-        cfgApp.namespace = self.cfg.namespacePrefix + "/app"
-        cfgApp.docRefID = "DocumentRef-app"
-        self.docApp = Document(cfgApp)
+    def setupAppDocument(self) -> None:
+        """Set up the application sources document."""
+        doc = SBOMDocument(
+            internal_id="app",
+            name="app-sources",
+        )
+        doc.metadata = DocumentMetadata(
+            name="app-sources",
+            namespace_prefix=self.cfg.namespacePrefix + "/app",
+            doc_ref_id="DocumentRef-app",
+        )
+        self.docApp = doc
+        self.registry.register_document(doc)
 
-        # also set up app sources package
-        cfgPackageApp = PackageConfig()
-        cfgPackageApp.name = "app-sources"
-        cfgPackageApp.spdxID = "SPDXRef-app-sources"
-        cfgPackageApp.primaryPurpose = "SOURCE"
-        # relativeBaseDir is app sources dir
-        cfgPackageApp.relativeBaseDir = self.cm.paths_source
-        pkgApp = Package(cfgPackageApp, self.docApp)
-        self.docApp.pkgs[pkgApp.cfg.spdxID] = pkgApp
+        # Also set up app sources package
+        pkg = SBOMPackage(
+            internal_id="app-sources",
+            name="app-sources",
+            purpose=PackagePurpose.SOURCE,
+            relative_base_dir=self.cm.paths_source,
+        )
+        doc.add_package(pkg)
+        self.registry.register_package(pkg)
 
-        self._add_describe_relationship(self.docApp, cfgPackageApp)
+        self._add_describe_relationship(doc, pkg)
 
-    def setupBuildDocument(self):
-        # set up build document
-        cfgBuild = DocumentConfig()
-        cfgBuild.name = "build"
-        cfgBuild.namespace = self.cfg.namespacePrefix + "/build"
-        cfgBuild.docRefID = "DocumentRef-build"
-        self.docBuild = Document(cfgBuild)
+    def setupBuildDocument(self) -> None:
+        """Set up the build document."""
+        doc = SBOMDocument(
+            internal_id="build",
+            name="build",
+        )
+        doc.metadata = DocumentMetadata(
+            name="build",
+            namespace_prefix=self.cfg.namespacePrefix + "/build",
+            doc_ref_id="DocumentRef-build",
+        )
+        self.docBuild = doc
+        self.registry.register_document(doc)
 
-        # we'll create the build packages in walkTargets()
+        # Build packages are created in walkTargets()
+        # The DESCRIBES relationship will be with zephyr_final package
+        pending = PendingRelationship(
+            source_type=PendingRelationshipElementType.DOCUMENT,
+            source_identifier="build",
+            source_document=doc,
+            target_type=PendingRelationshipElementType.PACKAGE_NAME,
+            target_identifier="zephyr_final",
+            relationship_type=RelationshipType.DESCRIBES,
+        )
+        self.pendingRelationships.append(pending)
 
-        # the DESCRIBES relationship for the build document will be
-        # with the zephyr_final package
-        rd = RelationshipData()
-        rd.ownerType = RelationshipDataElementType.DOCUMENT
-        rd.ownerDocument = self.docBuild
-        rd.otherType = RelationshipDataElementType.TARGETNAME
-        rd.otherTargetName = "zephyr_final"
-        rd.rlnType = "DESCRIBES"
+    def setupZephyrDocument(self, zephyr: dict, modules: list) -> bool:
+        """
+        Set up the Zephyr sources document.
 
-        # add it to pending relationships queue
-        self.pendingRelationships.append(rd)
+        Args:
+            zephyr: Zephyr metadata from meta file.
+            modules: List of module metadata from meta file.
 
-    def setupZephyrDocument(self, zephyr, modules):
-        # set up zephyr document
-        cfgZephyr = DocumentConfig()
-        cfgZephyr.name = "zephyr-sources"
-        cfgZephyr.namespace = self.cfg.namespacePrefix + "/zephyr"
-        cfgZephyr.docRefID = "DocumentRef-zephyr"
-        self.docZephyr = Document(cfgZephyr)
+        Returns:
+            True if successful, False otherwise.
+        """
+        doc = SBOMDocument(
+            internal_id="zephyr",
+            name="zephyr-sources",
+        )
+        doc.metadata = DocumentMetadata(
+            name="zephyr-sources",
+            namespace_prefix=self.cfg.namespacePrefix + "/zephyr",
+            doc_ref_id="DocumentRef-zephyr",
+        )
+        self.docZephyr = doc
+        self.registry.register_document(doc)
 
-        # relativeBaseDir is Zephyr sources topdir
+        # Get relativeBaseDir from west topdir
         try:
             relativeBaseDir = west_topdir(self.cm.paths_source)
         except WestNotFound:
-            log.err("cannot find west_topdir for CMake Codemodel sources path "
-                    f"{self.cm.paths_source}; bailing")
+            log.err(
+                "cannot find west_topdir for CMake Codemodel sources path "
+                f"{self.cm.paths_source}; bailing"
+            )
             return False
 
-        # set up zephyr sources package
-        cfgPackageZephyr = PackageConfig()
-        cfgPackageZephyr.name = "zephyr-sources"
-        cfgPackageZephyr.spdxID = "SPDXRef-zephyr-sources"
-        cfgPackageZephyr.relativeBaseDir = relativeBaseDir
+        # Set up zephyr sources package
+        pkg = SBOMPackage(
+            internal_id="zephyr-sources",
+            name="zephyr-sources",
+            relative_base_dir=relativeBaseDir,
+        )
 
         zephyr_url = zephyr.get("remote", "")
         if zephyr_url:
-            cfgPackageZephyr.url = zephyr_url
+            pkg.download_url = zephyr_url
 
         if zephyr.get("revision"):
-            cfgPackageZephyr.revision = zephyr.get("revision")
+            pkg.revision = zephyr.get("revision")
 
-        purl = None
         zephyr_tags = zephyr.get("tags", "")
         if zephyr_tags:
-            # Find tag vX.Y.Z
             for tag in zephyr_tags:
-                version = re.fullmatch(r'^v(?P<version>\d+\.\d+\.\d+)$', tag)
+                version_match = re.fullmatch(r"^v(?P<version>\d+\.\d+\.\d+)$", tag)
                 purl = self._build_purl(zephyr_url, tag)
 
                 if purl:
-                    cfgPackageZephyr.externalReferences.append(purl)
+                    pkg.external_references.append(
+                        ExternalReference(ref_type="purl", locator=purl)
+                    )
 
                 # Extract version from tag once
-                if cfgPackageZephyr.version == "" and version:
-                    cfgPackageZephyr.version = version.group('version')
+                if pkg.version == "" and version_match:
+                    pkg.version = version_match.group("version")
 
-        if len(cfgPackageZephyr.version) > 0:
-            cpe = f'cpe:2.3:o:zephyrproject:zephyr:{cfgPackageZephyr.version}:-:*:*:*:*:*:*'
-            cfgPackageZephyr.externalReferences.append(cpe)
+        if pkg.version:
+            cpe = f"cpe:2.3:o:zephyrproject:zephyr:{pkg.version}:-:*:*:*:*:*:*"
+            pkg.external_references.append(
+                ExternalReference(ref_type="cpe23", locator=cpe)
+            )
 
-        pkgZephyr = Package(cfgPackageZephyr, self.docZephyr)
-        self.docZephyr.pkgs[pkgZephyr.cfg.spdxID] = pkgZephyr
+        doc.add_package(pkg)
+        self.registry.register_package(pkg)
+        self._add_describe_relationship(doc, pkg)
 
-        self._add_describe_relationship(self.docZephyr, cfgPackageZephyr)
-
+        # Set up module packages
         for module in modules:
             module_name = module.get("name", None)
             module_path = module.get("path", None)
@@ -291,61 +400,67 @@ class Walker:
                 log.err("cannot find module name in meta file; bailing")
                 return False
 
-            # set up zephyr sources package
-            cfgPackageZephyrModule = PackageConfig()
-            cfgPackageZephyrModule.name = module_name + "-sources"
-            cfgPackageZephyrModule.spdxID = "SPDXRef-" + module_name + "-sources"
-            cfgPackageZephyrModule.relativeBaseDir = module_path
-            cfgPackageZephyrModule.primaryPurpose = "SOURCE"
+            module_pkg = SBOMPackage(
+                internal_id=f"{module_name}-sources",
+                name=f"{module_name}-sources",
+                relative_base_dir=module_path or "",
+                purpose=PackagePurpose.SOURCE,
+            )
 
             if module_revision:
-                cfgPackageZephyrModule.revision = module_revision
+                module_pkg.revision = module_revision
 
             if module_url:
-                cfgPackageZephyrModule.url = module_url
+                module_pkg.download_url = module_url
 
-            pkgZephyrModule = Package(cfgPackageZephyrModule, self.docZephyr)
-            self.docZephyr.pkgs[pkgZephyrModule.cfg.spdxID] = pkgZephyrModule
-
-            self._add_describe_relationship(self.docZephyr, cfgPackageZephyrModule)
+            doc.add_package(module_pkg)
+            self.registry.register_package(module_pkg)
+            self._add_describe_relationship(doc, module_pkg)
 
         return True
 
-    def setupSDKDocument(self):
-        # set up SDK document
-        cfgSDK = DocumentConfig()
-        cfgSDK.name = "sdk"
-        cfgSDK.namespace = self.cfg.namespacePrefix + "/sdk"
-        cfgSDK.docRefID = "DocumentRef-sdk"
-        self.docSDK = Document(cfgSDK)
+    def setupSDKDocument(self) -> None:
+        """Set up the SDK document."""
+        doc = SBOMDocument(
+            internal_id="sdk",
+            name="sdk",
+        )
+        doc.metadata = DocumentMetadata(
+            name="sdk",
+            namespace_prefix=self.cfg.namespacePrefix + "/sdk",
+            doc_ref_id="DocumentRef-sdk",
+        )
+        self.docSDK = doc
+        self.registry.register_document(doc)
 
-        # also set up zephyr sdk package
-        cfgPackageSDK = PackageConfig()
-        cfgPackageSDK.name = "sdk"
-        cfgPackageSDK.spdxID = "SPDXRef-sdk"
-        # relativeBaseDir is SDK dir
-        cfgPackageSDK.relativeBaseDir = self.sdkPath
-        pkgSDK = Package(cfgPackageSDK, self.docSDK)
-        self.docSDK.pkgs[pkgSDK.cfg.spdxID] = pkgSDK
+        # Set up SDK package
+        pkg = SBOMPackage(
+            internal_id="sdk",
+            name="sdk",
+            relative_base_dir=self.sdkPath,
+        )
+        doc.add_package(pkg)
+        self.registry.register_package(pkg)
+        self._add_describe_relationship(doc, pkg)
 
-        # create DESCRIBES relationship data
-        rd = RelationshipData()
-        rd.ownerType = RelationshipDataElementType.DOCUMENT
-        rd.ownerDocument = self.docSDK
-        rd.otherType = RelationshipDataElementType.PACKAGEID
-        rd.otherPackageID = cfgPackageSDK.spdxID
-        rd.rlnType = "DESCRIBES"
+    def setupModulesDocument(self, modules: list) -> None:
+        """
+        Set up the modules external references document.
 
-        # add it to pending relationships queue
-        self.pendingRelationships.append(rd)
-
-    def setupModulesDocument(self, modules):
-        # set up zephyr document
-        cfgModuleExtRef = DocumentConfig()
-        cfgModuleExtRef.name = "modules-deps"
-        cfgModuleExtRef.namespace = self.cfg.namespacePrefix + "/modules-deps"
-        cfgModuleExtRef.docRefID = "DocumentRef-modules-deps"
-        self.docModulesExtRefs = Document(cfgModuleExtRef)
+        Args:
+            modules: List of module metadata from meta file.
+        """
+        doc = SBOMDocument(
+            internal_id="modules-deps",
+            name="modules-deps",
+        )
+        doc.metadata = DocumentMetadata(
+            name="modules-deps",
+            namespace_prefix=self.cfg.namespacePrefix + "/modules-deps",
+            doc_ref_id="DocumentRef-modules-deps",
+        )
+        self.docModulesExtRefs = doc
+        self.registry.register_document(doc)
 
         for module in modules:
             module_name = module.get("name", None)
@@ -353,28 +468,33 @@ class Walker:
 
             if not module_name:
                 log.err("cannot find module name in meta file; bailing")
-                return False
+                continue
 
             module_ext_ref = []
             if module_security:
-                module_ext_ref = module_security.get("external-references")
+                module_ext_ref = module_security.get("external-references", [])
 
-            # set up zephyr sources package
-            cfgPackageModuleExtRef = PackageConfig()
-            cfgPackageModuleExtRef.name = module_name + "-deps"
-            cfgPackageModuleExtRef.spdxID = "SPDXRef-" + module_name + "-deps"
+            pkg = SBOMPackage(
+                internal_id=f"{module_name}-deps",
+                name=f"{module_name}-deps",
+            )
 
             for ref in module_ext_ref:
-                cfgPackageModuleExtRef.externalReferences.append(ref)
+                pkg.external_references.append(
+                    ExternalReference(ref_type="unknown", locator=ref)
+                )
 
-            pkgModule = Package(cfgPackageModuleExtRef, self.docModulesExtRefs)
-            self.docModulesExtRefs.pkgs[pkgModule.cfg.spdxID] = pkgModule
+            doc.add_package(pkg)
+            self.registry.register_package(pkg)
+            self._add_describe_relationship(doc, pkg)
 
-            self._add_describe_relationship(self.docModulesExtRefs, cfgPackageModuleExtRef)
+    def setupDocuments(self) -> bool:
+        """
+        Set up all placeholder documents.
 
-
-    # set up Documents before beginning
-    def setupDocuments(self):
+        Returns:
+            True if successful, False otherwise.
+        """
         log.dbg("setting up placeholder documents")
 
         self.setupBuildDocument()
@@ -385,7 +505,9 @@ class Walker:
                 if not self.setupZephyrDocument(content["zephyr"], content["modules"]):
                     return False
         except (FileNotFoundError, yaml.YAMLError):
-            log.err("cannot find a valid zephyr.meta required for SPDX generation; bailing")
+            log.err(
+                "cannot find a valid zephyr.meta required for SPDX generation; bailing"
+            )
             return False
 
         self.setupAppDocument()
@@ -397,176 +519,206 @@ class Walker:
 
         return True
 
-    # walk through targets and gather information
-    def walkTargets(self):
+    def walkTargets(self) -> None:
+        """Walk through targets and gather information."""
         log.dbg("walking targets from codemodel")
 
-        # assuming just one configuration; consider whether this is incorrect
+        # Assuming just one configuration
         cfgTargets = self.cm.configurations[0].configTargets
         for cfgTarget in cfgTargets:
-            # build the Package for this target
+            # Build the Package for this target
             pkg = self.initConfigTargetPackage(cfgTarget)
 
-            # see whether this target has any build artifacts at all
+            # See whether this target has any build artifacts at all
             if len(cfgTarget.target.artifacts) > 0:
-                # add its build file
+                # Add its build file
                 bf = self.addBuildFile(cfgTarget, pkg)
-                if pkg.cfg.name == "zephyr_final":
-                    pkg.cfg.primaryPurpose = "APPLICATION"
+                if pkg.name == "zephyr_final":
+                    pkg.purpose = PackagePurpose.APPLICATION
                 else:
-                    pkg.cfg.primaryPurpose = "LIBRARY"
+                    pkg.purpose = PackagePurpose.LIBRARY
 
-                # get its source files if build file is found
+                # Get its source files if build file is found
                 if bf:
                     self.collectPendingSourceFiles(cfgTarget, pkg, bf)
             else:
                 log.dbg(f"  - target {cfgTarget.name} has no build artifacts")
 
-            # get its target dependencies
+            # Get its target dependencies
             self.collectTargetDependencies(cfgTargets, cfgTarget, pkg)
 
-    # build a Package in the Build doc for the given ConfigTarget
-    def initConfigTargetPackage(self, cfgTarget):
+    def initConfigTargetPackage(self, cfgTarget: ConfigTarget) -> SBOMPackage:
+        """
+        Create a Package for the given ConfigTarget.
+
+        Args:
+            cfgTarget: The CMake target to create a package for.
+
+        Returns:
+            The created SBOMPackage.
+        """
         log.dbg(f"  - initializing Package for target: {cfgTarget.name}")
 
-        # create target Package's config
-        cfg = PackageConfig()
-        cfg.name = cfgTarget.name
-        cfg.spdxID = "SPDXRef-" + zspdx.spdxids.convertToSPDXIDSafe(cfgTarget.name)
-        cfg.relativeBaseDir = self.cm.paths_build
+        pkg = SBOMPackage(
+            internal_id=zspdx.spdxids.convertToSPDXIDSafe(cfgTarget.name),
+            name=cfgTarget.name,
+            relative_base_dir=self.cm.paths_build,
+        )
 
-        # build Package
-        pkg = Package(cfg, self.docBuild)
-
-        # add Package to build Document
-        self.docBuild.pkgs[cfg.spdxID] = pkg
+        # Add Package to build Document
+        self.docBuild.add_package(pkg)
+        self.registry.register_package(pkg)
         return pkg
 
-    # create a target's build product File and add it to its Package
-    # call with:
-    #   1) ConfigTarget
-    #   2) Package for that target
-    # returns: File
-    def addBuildFile(self, cfgTarget, pkg):
-        # assumes only one artifact in each target
-        artifactPath = os.path.join(pkg.cfg.relativeBaseDir, cfgTarget.target.artifacts[0])
+    def addBuildFile(
+        self, cfgTarget: ConfigTarget, pkg: SBOMPackage
+    ) -> SBOMFile | None:
+        """
+        Create a target's build product File and add it to its Package.
+
+        Args:
+            cfgTarget: The CMake target.
+            pkg: The Package for that target.
+
+        Returns:
+            The created SBOMFile, or None if artifact doesn't exist.
+        """
+        # Assumes only one artifact in each target
+        artifactPath = os.path.join(
+            pkg.relative_base_dir, cfgTarget.target.artifacts[0]
+        )
         log.dbg(f"  - adding File {artifactPath}")
-        log.dbg(f"    - relativeBaseDir: {pkg.cfg.relativeBaseDir}")
+        log.dbg(f"    - relativeBaseDir: {pkg.relative_base_dir}")
         log.dbg(f"    - artifacts[0]: {cfgTarget.target.artifacts[0]}")
 
-        # don't create build File if artifact path points to nonexistent file
+        # Don't create build File if artifact path points to nonexistent file
         if not os.path.exists(artifactPath):
-            log.dbg(f"  - target {cfgTarget.name} lists build artifact {artifactPath} "
-                    "but file not found after build; skipping")
+            log.dbg(
+                f"  - target {cfgTarget.name} lists build artifact {artifactPath} "
+                "but file not found after build; skipping"
+            )
             return None
 
-        # create build File
-        bf = File(self.docBuild, pkg)
-        bf.abspath = artifactPath
-        bf.relpath = cfgTarget.target.artifacts[0]
-        # can use nameOnDisk b/c it is just the filename w/out directory paths
-        bf.spdxID = zspdx.spdxids.getUniqueFileID(cfgTarget.target.nameOnDisk,
-                                                  self.docBuild.timesSeen)
-        # don't fill hashes / licenses / rlns now, we'll do that after walking
+        # Generate unique file ID
+        file_id = zspdx.spdxids.getUniqueFileID(
+            cfgTarget.target.nameOnDisk, self.docBuild._element_counts
+        )
 
-        # add File to Package
-        pkg.files[bf.spdxID] = bf
+        bf = SBOMFile(
+            internal_id=file_id,
+            name=cfgTarget.target.nameOnDisk,
+            absolute_path=artifactPath,
+            relative_path=cfgTarget.target.artifacts[0],
+        )
 
-        # add file path link to Document and global links
-        self.docBuild.fileLinks[bf.abspath] = bf
-        self.allFileLinks[bf.abspath] = self.docBuild
+        # Add File to Package
+        pkg.add_file(bf)
 
-        # also set this file as the target package's build product file
-        pkg.targetBuildFile = bf
+        # Register file in document and registry
+        self.registry.register_file(bf, self.docBuild)
+
+        # Also set this file as the target package's build product file
+        pkg.primary_build_file = bf
 
         return bf
 
-    # collect a target's source files, add to pending sources queue, and
-    # create pending relationship data entry
-    # call with:
-    #   1) ConfigTarget
-    #   2) Package for that target
-    #   3) build File for that target
-    def collectPendingSourceFiles(self, cfgTarget, pkg, bf):
+    def collectPendingSourceFiles(
+        self, cfgTarget: ConfigTarget, pkg: SBOMPackage, bf: SBOMFile
+    ) -> None:
+        """
+        Collect a target's source files and create pending relationships.
+
+        Args:
+            cfgTarget: The CMake target.
+            pkg: The Package for that target.
+            bf: The build File for that target.
+        """
         log.dbg("  - collecting source files and adding to pending queue")
 
-        targetIncludesSet = set()
+        targetIncludesSet: set[str] = set()
 
-        # walk through target's sources
+        # Walk through target's sources
         for src in cfgTarget.target.sources:
             log.dbg(f"    - add pending source file and relationship for {src.path}")
-            # get absolute path if we don't have it
+            # Get absolute path if we don't have it
             srcAbspath = src.path
             if not os.path.isabs(src.path):
                 srcAbspath = os.path.join(self.cm.paths_source, src.path)
 
-            # check whether it even exists
+            # Check whether it even exists
             if not (os.path.exists(srcAbspath) and os.path.isfile(srcAbspath)):
-                log.dbg(f"  - {srcAbspath} does not exist but is referenced in sources for "
-                        f"target {pkg.cfg.name}; skipping")
+                log.dbg(
+                    f"  - {srcAbspath} does not exist but is referenced in sources "
+                    f"for target {pkg.name}; skipping"
+                )
                 continue
 
-            # add it to pending source files queue
+            # Add it to pending source files queue
             self.pendingSources.append(srcAbspath)
 
-            # create relationship data
-            rd = RelationshipData()
-            rd.ownerType = RelationshipDataElementType.FILENAME
-            rd.ownerFileAbspath = bf.abspath
-            rd.otherType = RelationshipDataElementType.FILENAME
-            rd.otherFileAbspath = srcAbspath
-            rd.rlnType = "GENERATED_FROM"
+            # Create pending relationship
+            pending = PendingRelationship(
+                source_type=PendingRelationshipElementType.FILE_PATH,
+                source_identifier=bf.absolute_path,
+                target_type=PendingRelationshipElementType.FILE_PATH,
+                target_identifier=srcAbspath,
+                relationship_type=RelationshipType.GENERATED_FROM,
+            )
+            self.pendingRelationships.append(pending)
 
-            # add it to pending relationships queue
-            self.pendingRelationships.append(rd)
-
-            # collect this source file's includes
+            # Collect this source file's includes
             if self.cfg.analyzeIncludes and self.compilerPath:
                 includes = self.collectIncludes(cfgTarget, pkg, bf, src)
                 for inc in includes:
                     targetIncludesSet.add(inc)
 
-        # make relationships for the overall included files,
-        # avoiding duplicates for multiple source files including
-        # the same headers
-        targetIncludesList = list(targetIncludesSet)
-        targetIncludesList.sort()
+        # Make relationships for the overall included files
+        targetIncludesList = sorted(targetIncludesSet)
         for inc in targetIncludesList:
-            # add it to pending source files queue
             self.pendingSources.append(inc)
 
-            # create relationship data
-            rd = RelationshipData()
-            rd.ownerType = RelationshipDataElementType.FILENAME
-            rd.ownerFileAbspath = bf.abspath
-            rd.otherType = RelationshipDataElementType.FILENAME
-            rd.otherFileAbspath = inc
-            rd.rlnType = "GENERATED_FROM"
+            pending = PendingRelationship(
+                source_type=PendingRelationshipElementType.FILE_PATH,
+                source_identifier=bf.absolute_path,
+                target_type=PendingRelationshipElementType.FILE_PATH,
+                target_identifier=inc,
+                relationship_type=RelationshipType.GENERATED_FROM,
+            )
+            self.pendingRelationships.append(pending)
 
-            # add it to pending relationships queue
-            self.pendingRelationships.append(rd)
+    def collectIncludes(
+        self, cfgTarget: ConfigTarget, pkg: SBOMPackage, bf: SBOMFile, src
+    ) -> list[str]:
+        """
+        Collect the include files for a source file.
 
-    # collect the include files corresponding to this source file
-    # call with:
-    #   1) ConfigTarget
-    #   2) Package for this target
-    #   3) build File for this target
-    #   4) TargetSource entry for this source file
-    # returns: sorted list of include files for this source file
-    def collectIncludes(self, cfgTarget, pkg, bf, src):
-        # get the right compile group for this source file
+        Args:
+            cfgTarget: The CMake target.
+            pkg: The Package for this target.
+            bf: The build File for this target.
+            src: The TargetSource entry for this source file.
+
+        Returns:
+            Sorted list of include file paths.
+        """
+        # Get the right compile group for this source file
         if len(cfgTarget.target.compileGroups) < (src.compileGroupIndex + 1):
-            log.dbg(f"    - {cfgTarget.target.name} has compileGroupIndex {src.compileGroupIndex} "
-                    f"but only {len(cfgTarget.target.compileGroups)} found; "
-                    "skipping included files search")
+            log.dbg(
+                f"    - {cfgTarget.target.name} has compileGroupIndex "
+                f"{src.compileGroupIndex} but only "
+                f"{len(cfgTarget.target.compileGroups)} found; "
+                "skipping included files search"
+            )
             return []
         cg = cfgTarget.target.compileGroups[src.compileGroupIndex]
 
-        # currently only doing C includes
+        # Currently only doing C includes
         if cg.language != "C":
-            log.dbg(f"    - {cfgTarget.target.name} has compile group language {cg.language} "
-                    "but currently only searching includes for C files; "
-                    "skipping included files search")
+            log.dbg(
+                f"    - {cfgTarget.target.name} has compile group language "
+                f"{cg.language} but currently only searching includes for C files; "
+                "skipping included files search"
+            )
             return []
 
         srcAbspath = src.path
@@ -574,289 +726,321 @@ class Walker:
             srcAbspath = os.path.join(self.cm.paths_source, src.path)
         return getCIncludes(self.compilerPath, srcAbspath, cg)
 
-    # collect relationships for dependencies of this target Package
-    # call with:
-    #   1) all ConfigTargets from CodeModel
-    #   2) this particular ConfigTarget
-    #   3) Package for this Target
-    def collectTargetDependencies(self, cfgTargets, cfgTarget, pkg):
-        log.dbg(f"  - collecting target dependencies for {pkg.cfg.name}")
+    def collectTargetDependencies(
+        self, cfgTargets: list, cfgTarget: ConfigTarget, pkg: SBOMPackage
+    ) -> None:
+        """
+        Collect relationships for dependencies of this target Package.
 
-        # walk through target's dependencies
+        Args:
+            cfgTargets: All ConfigTargets from CodeModel.
+            cfgTarget: This particular ConfigTarget.
+            pkg: Package for this Target.
+        """
+        log.dbg(f"  - collecting target dependencies for {pkg.name}")
+
+        # Walk through target's dependencies
         for dep in cfgTarget.target.dependencies:
-            # extract dep name from its id
+            # Extract dep name from its id
             depFragments = dep.id.split(":")
             depName = depFragments[0]
             log.dbg(f"    - adding pending relationship for {depName}")
 
-            # create relationship data between dependency packages
-            rd = RelationshipData()
-            rd.ownerType = RelationshipDataElementType.TARGETNAME
-            rd.ownerTargetName = pkg.cfg.name
-            rd.otherType = RelationshipDataElementType.TARGETNAME
-            rd.otherTargetName = depName
-            rd.rlnType = "HAS_PREREQUISITE"
+            # Create relationship between dependency packages
+            pending = PendingRelationship(
+                source_type=PendingRelationshipElementType.PACKAGE_NAME,
+                source_identifier=pkg.name,
+                target_type=PendingRelationshipElementType.PACKAGE_NAME,
+                target_identifier=depName,
+                relationship_type=RelationshipType.HAS_PREREQUISITE,
+            )
+            self.pendingRelationships.append(pending)
 
-            # add it to pending relationships queue
-            self.pendingRelationships.append(rd)
-
-            # if this is a target with any build artifacts (e.g. non-UTILITY),
-            # also create STATIC_LINK relationship for dependency build files,
-            # together with this Package's own target build file
+            # If this is a target with build artifacts, also create STATIC_LINK
             if len(cfgTarget.target.artifacts) == 0:
                 continue
 
-            # find the filename for the dependency's build product, using the
-            # codemodel (since we might not have created this dependency's
-            # Package or File yet)
+            # Find the dependency's build product file path
             depAbspath = ""
             for ct in cfgTargets:
                 if ct.name == depName:
-                    # skip utility targets
+                    # Skip utility targets
                     if len(ct.target.artifacts) == 0:
                         continue
-                    # all targets use the same relativeBaseDir, so this works
-                    # even though pkg is the owner package
-                    depAbspath = os.path.join(pkg.cfg.relativeBaseDir, ct.target.artifacts[0])
+                    depAbspath = os.path.join(
+                        pkg.relative_base_dir, ct.target.artifacts[0]
+                    )
                     break
             if depAbspath == "":
                 continue
 
-            # create relationship data between build files
-            rd = RelationshipData()
-            rd.ownerType = RelationshipDataElementType.FILENAME
-            rd.ownerFileAbspath = pkg.targetBuildFile.abspath
-            rd.otherType = RelationshipDataElementType.FILENAME
-            rd.otherFileAbspath = depAbspath
-            rd.rlnType = "STATIC_LINK"
+            # Create relationship between build files
+            pending = PendingRelationship(
+                source_type=PendingRelationshipElementType.FILE_PATH,
+                source_identifier=pkg.primary_build_file.absolute_path,
+                target_type=PendingRelationshipElementType.FILE_PATH,
+                target_identifier=depAbspath,
+                relationship_type=RelationshipType.STATIC_LINK,
+            )
+            self.pendingRelationships.append(pending)
 
-            # add it to pending relationships queue
-            self.pendingRelationships.append(rd)
+    def walkPendingSources(self) -> None:
+        """
+        Walk through pending sources and create corresponding files.
 
-    # walk through pending sources and create corresponding files,
-    # assigning them to the appropriate Document and Package
-    def walkPendingSources(self):
+        Files are assigned to the appropriate Document and Package based
+        on their path.
+        """
         log.dbg("walking pending sources")
 
-        # only one package in each doc; get it
-        pkgZephyr = list(self.docZephyr.pkgs.values())[0]
-        pkgApp = list(self.docApp.pkgs.values())[0]
+        # Get the single package from each doc (for most docs)
+        pkgApp = list(self.docApp.packages.values())[0]
+        pkgSDK = None
         if self.cfg.includeSDK:
-            pkgSDK = list(self.docSDK.pkgs.values())[0]
+            pkgSDK = list(self.docSDK.packages.values())[0]
 
         for srcAbspath in self.pendingSources:
-            # check whether we've already seen it
-            srcDoc = self.allFileLinks.get(srcAbspath, None)
-            srcPkg = None
-            if srcDoc:
-                log.dbg(f"  - {srcAbspath}: already seen, assigned to {srcDoc.cfg.name}")
+            # Check whether we've already seen it
+            if self.registry.find_document_for_file(srcAbspath):
+                log.dbg(f"  - {srcAbspath}: already seen")
                 continue
 
-            # not yet assigned; figure out where it goes
+            # Figure out where it goes
+            srcDoc: SBOMDocument | None = None
+            srcPkg: SBOMPackage | None = None
+
             pkgBuild = self.findBuildPackage(srcAbspath)
-            pkgZephyr = self.findZephyrPackage(srcAbspath)
+            pkgZephyrMatch = self.findZephyrPackage(srcAbspath)
 
             if pkgBuild:
-                log.dbg(f"  - {srcAbspath}: assigning to build document, "
-                        f"package {pkgBuild.cfg.name}")
+                log.dbg(
+                    f"  - {srcAbspath}: assigning to build document, "
+                    f"package {pkgBuild.name}"
+                )
                 srcDoc = self.docBuild
                 srcPkg = pkgBuild
             elif (
-                self.cfg.includeSDK
-                and os.path.commonpath([srcAbspath, pkgSDK.cfg.relativeBaseDir])
-                == pkgSDK.cfg.relativeBaseDir
+                pkgSDK
+                and os.path.commonpath([srcAbspath, pkgSDK.relative_base_dir])
+                == pkgSDK.relative_base_dir
             ):
                 log.dbg(f"  - {srcAbspath}: assigning to sdk document")
                 srcDoc = self.docSDK
                 srcPkg = pkgSDK
             elif (
-                os.path.commonpath([srcAbspath, pkgApp.cfg.relativeBaseDir])
-                == pkgApp.cfg.relativeBaseDir
+                os.path.commonpath([srcAbspath, pkgApp.relative_base_dir])
+                == pkgApp.relative_base_dir
             ):
                 log.dbg(f"  - {srcAbspath}: assigning to app document")
                 srcDoc = self.docApp
                 srcPkg = pkgApp
-            elif pkgZephyr:
+            elif pkgZephyrMatch:
                 log.dbg(f"  - {srcAbspath}: assigning to zephyr document")
                 srcDoc = self.docZephyr
-                srcPkg = pkgZephyr
+                srcPkg = pkgZephyrMatch
             else:
-                log.dbg(f"  - {srcAbspath}: can't determine which document should own; skipping")
+                log.dbg(
+                    f"  - {srcAbspath}: can't determine which document should own; "
+                    "skipping"
+                )
                 continue
 
-            # create File and assign it to the Package and Document
-            sf = File(srcDoc, srcPkg)
-            sf.abspath = srcAbspath
-            sf.relpath = os.path.relpath(srcAbspath, srcPkg.cfg.relativeBaseDir)
+            # Create File and assign it to the Package and Document
             filenameOnly = os.path.split(srcAbspath)[1]
-            sf.spdxID = zspdx.spdxids.getUniqueFileID(filenameOnly, srcDoc.timesSeen)
-            # don't fill hashes / licenses / rlns now, we'll do that after walking
+            file_id = zspdx.spdxids.getUniqueFileID(
+                filenameOnly, srcDoc._element_counts
+            )
 
-            # add File to Package
-            srcPkg.files[sf.spdxID] = sf
+            sf = SBOMFile(
+                internal_id=file_id,
+                name=filenameOnly,
+                absolute_path=srcAbspath,
+                relative_path=os.path.relpath(srcAbspath, srcPkg.relative_base_dir),
+            )
 
-            # add file path link to Document and global links
-            srcDoc.fileLinks[sf.abspath] = sf
-            self.allFileLinks[sf.abspath] = srcDoc
+            # Add File to Package
+            srcPkg.add_file(sf)
 
-    # figure out which Package contains the given file, if any
-    # call with:
-    #   1) absolute path for source filename being searched
-    def findPackageFromSrcAbsPath(self, document, srcAbspath):
-        # Multiple target Packages might "contain" the file path, if they
-        # are nested. If so, the one with the longest path would be the
-        # most deeply-nested target directory, so that's the one which
-        # should get the file path.
+            # Register file in registry
+            self.registry.register_file(sf, srcDoc)
+
+    def findPackageFromSrcAbsPath(
+        self, document: SBOMDocument, srcAbspath: str
+    ) -> SBOMPackage | None:
+        """
+        Find which Package contains the given file path.
+
+        Multiple packages might "contain" the file path if nested. The one
+        with the longest path (most deeply nested) is returned.
+
+        Args:
+            document: The document to search in.
+            srcAbspath: Absolute path for source filename being searched.
+
+        Returns:
+            The matching Package, or None if not found.
+        """
         pkgLongestMatch = None
-        for pkg in document.pkgs.values():
-            if os.path.commonpath([srcAbspath, pkg.cfg.relativeBaseDir]) == pkg.cfg.relativeBaseDir:
-                # the package does contain this file; is it the deepest?
+        for pkg in document.packages.values():
+            if not pkg.relative_base_dir:
+                continue
+            if (
+                os.path.commonpath([srcAbspath, pkg.relative_base_dir])
+                == pkg.relative_base_dir
+            ):
+                # The package does contain this file; is it the deepest?
                 if pkgLongestMatch:
-                    if len(pkg.cfg.relativeBaseDir) > len(pkgLongestMatch.cfg.relativeBaseDir):
+                    if len(pkg.relative_base_dir) > len(
+                        pkgLongestMatch.relative_base_dir
+                    ):
                         pkgLongestMatch = pkg
                 else:
-                    # first package containing it, so assign it
                     pkgLongestMatch = pkg
 
         return pkgLongestMatch
 
-    def findBuildPackage(self, srcAbspath):
+    def findBuildPackage(self, srcAbspath: str) -> SBOMPackage | None:
+        """Find which build Package contains the given file path."""
         return self.findPackageFromSrcAbsPath(self.docBuild, srcAbspath)
 
-    def findZephyrPackage(self, srcAbspath):
+    def findZephyrPackage(self, srcAbspath: str) -> SBOMPackage | None:
+        """Find which Zephyr Package contains the given file path."""
         return self.findPackageFromSrcAbsPath(self.docZephyr, srcAbspath)
 
-    # walk through pending RelationshipData entries, create corresponding
-    # Relationships, and assign them to the applicable Files / Packages
-    def walkRelationships(self):
-        for rlnData in self.pendingRelationships:
-            rln = Relationship()
-            # get left side of relationship data
-            docA, spdxIDA, rlnsA = self.getRelationshipLeft(rlnData)
-            if not docA or not spdxIDA:
+    def walkRelationships(self) -> None:
+        """
+        Walk through pending relationships and create actual relationships.
+
+        Converts PendingRelationship entries to SBOMRelationship objects
+        and attaches them to the appropriate elements.
+        """
+        for pending in self.pendingRelationships:
+            # Get left side of relationship
+            source_result = self.getRelationshipLeft(pending)
+            if source_result is None:
                 continue
-            rln.refA = spdxIDA
-            # get right side of relationship data
-            spdxIDB = self.getRelationshipRight(rlnData, docA)
-            if not spdxIDB:
+            source_element, source_doc, source_rlns = source_result
+
+            # Get right side of relationship
+            target_result = self.getRelationshipRight(pending, source_doc)
+            if target_result is None:
                 continue
-            rln.refB = spdxIDB
-            rln.rlnType = rlnData.rlnType
-            rlnsA.append(rln)
-            log.dbg(
-                f"  - adding relationship to {docA.cfg.name}: {rln.refA} {rln.rlnType} {rln.refB}"
+            target_element, target_doc = target_result
+
+            # Create the relationship
+            rln = SBOMRelationship(
+                internal_id=f"rln-{source_element.internal_id}-{target_element.internal_id}",
+                source=source_element,
+                target=target_element,
+                relationship_type=pending.relationship_type,
             )
 
-    # get owner (left side) document and SPDX ID of Relationship for given RelationshipData
-    # returns: doc, spdxID, rlnsArray (for either Document, Package, or File, as applicable)
-    def getRelationshipLeft(self, rlnData):
-        if rlnData.ownerType == RelationshipDataElementType.FILENAME:
-            # find the document for this file abspath, and then the specific file's ID
-            ownerDoc = self.allFileLinks.get(rlnData.ownerFileAbspath, None)
-            if not ownerDoc:
-                log.dbg(
-                    "  - searching for relationship, can't find document with file "
-                    f"{rlnData.ownerFileAbspath}; skipping"
-                )
-                return None, None, None
-            sf = ownerDoc.fileLinks.get(rlnData.ownerFileAbspath, None)
-            if not sf:
-                log.dbg(
-                    f"  - searching for relationship for file {rlnData.ownerFileAbspath} "
-                    f"points to document {ownerDoc.cfg.name} but file not found; skipping"
-                )
-                return None, None, None
-            # found it
-            if not sf.spdxID:
-                log.dbg(
-                    f"  - searching for relationship for file {rlnData.ownerFileAbspath} "
-                    "found file, but empty ID; skipping"
-                )
-                return None, None, None
-            return ownerDoc, sf.spdxID, sf.rlns
-        elif rlnData.ownerType == RelationshipDataElementType.TARGETNAME:
-            # find the document for this target name, and then the specific package's ID
-            # for target names, must be docBuild
-            ownerDoc = self.docBuild
-            # walk through target Packages and check names
-            for pkg in ownerDoc.pkgs.values():
-                if pkg.cfg.name == rlnData.ownerTargetName:
-                    if not pkg.cfg.spdxID:
-                        log.dbg(
-                            "  - searching for relationship for target "
-                            f"{rlnData.ownerTargetName} found package, but empty ID; skipping"
-                        )
-                        return None, None, None
-                    return ownerDoc, pkg.cfg.spdxID, pkg.rlns
-            log.dbg(
-                f"  - searching for relationship for target {rlnData.ownerTargetName}, "
-                "target not found in build document; skipping"
-            )
-            return None, None, None
-        elif rlnData.ownerType == RelationshipDataElementType.DOCUMENT:
-            # will always be SPDXRef-DOCUMENT
-            return rlnData.ownerDocument, "SPDXRef-DOCUMENT", rlnData.ownerDocument.relationships
-        else:
-            log.dbg(f"  - unknown relationship type {rlnData.ownerType}; skipping")
-            return None, None, None
+            # Set external document reference if needed
+            if target_doc and target_doc != source_doc:
+                rln.external_document = target_doc
+                source_doc.external_documents.add(target_doc)
 
-    # get other (right side) SPDX ID of Relationship for given RelationshipData
-    def getRelationshipRight(self, rlnData, docA):
-        if rlnData.otherType == RelationshipDataElementType.FILENAME:
-            # find the document for this file abspath, and then the specific file's ID
-            otherDoc = self.allFileLinks.get(rlnData.otherFileAbspath, None)
-            if not otherDoc:
-                log.dbg(
-                    "  - searching for relationship, can't find document with file "
-                    f"{rlnData.otherFileAbspath}; skipping"
-                )
-                return None
-            bf = otherDoc.fileLinks.get(rlnData.otherFileAbspath, None)
-            if not bf:
-                log.dbg(
-                    f"  - searching for relationship for file {rlnData.otherFileAbspath} "
-                    f"points to document {otherDoc.cfg.name} but file not found; skipping"
-                )
-                return None
-            # found it
-            if not bf.spdxID:
-                log.dbg(
-                    f"  - searching for relationship for file {rlnData.otherFileAbspath} "
-                    "found file, but empty ID; skipping"
-                )
-                return None
-            # figure out whether to append DocumentRef
-            spdxIDB = bf.spdxID
-            if otherDoc != docA:
-                spdxIDB = otherDoc.cfg.docRefID + ":" + spdxIDB
-                docA.externalDocuments.add(otherDoc)
-            return spdxIDB
-        elif rlnData.otherType == RelationshipDataElementType.TARGETNAME:
-            # find the document for this target name, and then the specific package's ID
-            # for target names, must be docBuild
-            otherDoc = self.docBuild
-            # walk through target Packages and check names
-            for pkg in otherDoc.pkgs.values():
-                if pkg.cfg.name == rlnData.otherTargetName:
-                    if not pkg.cfg.spdxID:
-                        log.dbg(
-                            f"  - searching for relationship for target {rlnData.otherTargetName}"
-                            " found package, but empty ID; skipping"
-                        )
-                        return None
-                    spdxIDB = pkg.cfg.spdxID
-                    if otherDoc != docA:
-                        spdxIDB = otherDoc.cfg.docRefID + ":" + spdxIDB
-                        docA.externalDocuments.add(otherDoc)
-                    return spdxIDB
+            source_rlns.append(rln)
             log.dbg(
-                f"  - searching for relationship for target {rlnData.otherTargetName}, "
-                "target not found in build document; skipping"
+                f"  - adding relationship to {source_doc.name}: "
+                f"{source_element.internal_id} {pending.relationship_type.name} "
+                f"{target_element.internal_id}"
+            )
+
+    def getRelationshipLeft(
+        self, pending: PendingRelationship
+    ) -> tuple | None:
+        """
+        Get owner (left side) element of relationship.
+
+        Args:
+            pending: The pending relationship data.
+
+        Returns:
+            Tuple of (element, document, relationships_list) or None if not found.
+        """
+        if pending.source_type == PendingRelationshipElementType.FILE_PATH:
+            result = self.registry.find_file_by_path(pending.source_identifier)
+            if not result:
+                log.dbg(
+                    f"  - searching for relationship, can't find file "
+                    f"{pending.source_identifier}; skipping"
+                )
+                return None
+            sf, doc = result
+            return (sf, doc, sf.relationships)
+
+        elif pending.source_type == PendingRelationshipElementType.PACKAGE_NAME:
+            # For package names, must be in docBuild
+            for pkg in self.docBuild.packages.values():
+                if pkg.name == pending.source_identifier:
+                    return (pkg, self.docBuild, pkg.relationships)
+            log.dbg(
+                f"  - searching for relationship for target "
+                f"{pending.source_identifier}, target not found; skipping"
             )
             return None
-        elif rlnData.otherType == RelationshipDataElementType.PACKAGEID:
-            # will just be the package ID that was passed in
-            return rlnData.otherPackageID
+
+        elif pending.source_type == PendingRelationshipElementType.DOCUMENT:
+            doc = pending.source_document
+            if not doc:
+                doc = self.registry.find_document_by_id(pending.source_identifier)
+            if not doc:
+                log.dbg(
+                    f"  - searching for relationship, can't find document "
+                    f"{pending.source_identifier}; skipping"
+                )
+                return None
+            return (doc, doc, doc.relationships)
+
         else:
-            log.dbg(f"  - unknown relationship type {rlnData.otherType}; skipping")
+            log.dbg(f"  - unknown relationship source type {pending.source_type}")
+            return None
+
+    def getRelationshipRight(
+        self, pending: PendingRelationship, source_doc: SBOMDocument
+    ) -> tuple | None:
+        """
+        Get other (right side) element of relationship.
+
+        Args:
+            pending: The pending relationship data.
+            source_doc: The document containing the source element.
+
+        Returns:
+            Tuple of (element, document) or None if not found.
+        """
+        if pending.target_type == PendingRelationshipElementType.FILE_PATH:
+            result = self.registry.find_file_by_path(pending.target_identifier)
+            if not result:
+                log.dbg(
+                    f"  - searching for relationship, can't find file "
+                    f"{pending.target_identifier}; skipping"
+                )
+                return None
+            return result
+
+        elif pending.target_type == PendingRelationshipElementType.PACKAGE_NAME:
+            # For package names, must be in docBuild
+            for pkg in self.docBuild.packages.values():
+                if pkg.name == pending.target_identifier:
+                    return (pkg, self.docBuild)
+            log.dbg(
+                f"  - searching for relationship for target "
+                f"{pending.target_identifier}, target not found; skipping"
+            )
+            return None
+
+        elif pending.target_type == PendingRelationshipElementType.PACKAGE_ID:
+            # Look up package by internal ID
+            pkg = self.registry.find_package_by_name(pending.target_identifier)
+            if pkg:
+                # Find which document contains this package
+                for doc in self.registry.documents.values():
+                    if pending.target_identifier in doc.packages:
+                        return (pkg, doc)
+            return None
+
+        else:
+            log.dbg(f"  - unknown relationship target type {pending.target_type}")
             return None

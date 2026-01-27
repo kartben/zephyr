@@ -2,64 +2,89 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+"""
+SBOM file scanner for license detection and hash calculation.
+
+This module provides functions to scan files for licenses, calculate
+cryptographic hashes, and extract copyright information.
+"""
+
+from __future__ import annotations
+
 import hashlib
 import os
 import re
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from reuse.project import Project
 from west import log
 
 from zspdx.licenses import LICENSES
+from zspdx.model.file import FileHashes
 from zspdx.util import getHashes
 
+if TYPE_CHECKING:
+    from zspdx.model.document import SBOMDocument
 
-# ScannerConfig contains settings used to configure how the SPDX
-# Document scanning should occur.
+
 @dataclass(eq=True)
 class ScannerConfig:
-    # when assembling a Package's data, should we auto-conclude the
-    # Package's license, based on the licenses of its Files?
+    """
+    Configuration for SPDX Document scanning.
+
+    Attributes:
+        shouldConcludePackageLicense: When assembling a Package's data,
+            should we auto-conclude the Package's license based on the
+            licenses of its Files?
+        shouldConcludeFileLicenses: When assembling a Package's Files' data,
+            should we auto-conclude each File's license based on its
+            detected license(s)?
+        numLinesScanned: Number of lines to scan for SPDX-License-Identifier
+            (0 = scan all lines). Defaults to 20.
+        doSHA256: Should we calculate SHA256 hashes for each Package's Files?
+            Note that SHA1 hashes are mandatory per SPDX 2.3.
+        doMD5: Should we calculate MD5 hashes for each Package's Files?
+    """
+
     shouldConcludePackageLicense: bool = True
-
-    # when assembling a Package's Files' data, should we auto-conclude
-    # each File's license, based on its detected license(s)?
     shouldConcludeFileLicenses: bool = True
-
-    # number of lines to scan for SPDX-License-Identifier (0 = all)
-    # defaults to 20
     numLinesScanned: int = 20
-
-    # should we calculate SHA256 hashes for each Package's Files?
-    # note that SHA1 hashes are mandatory, per SPDX 2.3
     doSHA256: bool = True
-
-    # should we calculate MD5 hashes for each Package's Files?
     doMD5: bool = False
 
 
-def parseLineForExpression(line):
-    """Return parsed SPDX expression if tag found in line, or None otherwise."""
+def parseLineForExpression(line: str) -> str | None:
+    """
+    Parse a line for an SPDX license expression.
+
+    Args:
+        line: A single line of text to check.
+
+    Returns:
+        Parsed SPDX expression if tag found, None otherwise.
+    """
     p = line.partition("SPDX-License-Identifier:")
     if p[2] == "":
         return None
-    # strip away trailing comment marks and whitespace, if any
+    # Strip away trailing comment marks and whitespace
     expression = p[2].strip()
     expression = expression.rstrip("/*")
     expression = expression.strip()
     return expression
 
 
-def getExpressionData(filePath, numLines):
+def getExpressionData(filePath: str, numLines: int) -> str | None:
     """
-    Scans the specified file for the first SPDX-License-Identifier:
-    tag in the file.
+    Scan a file for the first SPDX-License-Identifier tag.
 
-    Arguments:
-        - filePath: path to file to scan.
-        - numLines: number of lines to scan for an expression before
-                    giving up. If 0, will scan the entire file.
-    Returns: parsed expression if found; None if not found.
+    Args:
+        filePath: Path to file to scan.
+        numLines: Number of lines to scan for an expression before
+            giving up. If 0, will scan the entire file.
+
+    Returns:
+        Parsed expression if found, None if not found.
     """
     log.dbg(f"  - getting licenses for {filePath}")
 
@@ -72,100 +97,113 @@ def getExpressionData(filePath, numLines):
                 if expression is not None:
                     return expression
         except UnicodeDecodeError:
-            # invalid UTF-8 content
+            # Invalid UTF-8 content
             return None
 
-    # if we get here, we didn't find an expression
+    # Didn't find an expression
     return None
 
 
-def splitExpression(expression):
+def splitExpression(expression: str) -> list[str]:
     """
     Parse a license expression into its constituent identifiers.
 
-    Arguments:
-        - expression: SPDX license expression
-    Returns: array of split identifiers
+    Args:
+        expression: SPDX license expression.
+
+    Returns:
+        Sorted array of split identifiers.
     """
-    # remove parens and plus sign
-    e2 = re.sub(r'\(|\)|\+', "", expression, flags=re.IGNORECASE)
+    # Remove parens and plus sign
+    e2 = re.sub(r"\(|\)|\+", "", expression, flags=re.IGNORECASE)
 
-    # remove word operators, ignoring case, leaving a blank space
-    e3 = re.sub(r' AND | OR | WITH ', " ", e2, flags=re.IGNORECASE)
+    # Remove word operators, ignoring case, leaving a blank space
+    e3 = re.sub(r" AND | OR | WITH ", " ", e2, flags=re.IGNORECASE)
 
-    # and split on space
+    # Split on space
     e4 = e3.split(" ")
 
     return sorted(e4)
 
 
-def calculateVerificationCode(pkg):
+def calculateVerificationCode(pkg) -> str:
     """
     Calculate the SPDX Package Verification Code for all files in the package.
 
-    Arguments:
-        - pkg: Package
-    Returns: verification code as string
+    This is calculated per section 7.9 of SPDX spec v2.3.
+
+    Args:
+        pkg: SBOMPackage to calculate verification code for.
+
+    Returns:
+        Verification code as hex string.
     """
     hashes = []
     for f in pkg.files.values():
-        hashes.append(f.sha1)
+        hashes.append(f.hashes.sha1)
     hashes.sort()
     filelist = "".join(hashes)
 
     hSHA1 = hashlib.sha1(usedforsecurity=False)
-    hSHA1.update(filelist.encode('utf-8'))
+    hSHA1.update(filelist.encode("utf-8"))
     return hSHA1.hexdigest()
 
 
-def checkLicenseValid(lic, doc):
+def checkLicenseValid(lic: str, doc: SBOMDocument) -> None:
     """
-    Check whether this license ID is a valid SPDX license ID, and add it
-    to the custom license IDs set for this Document if it isn't.
+    Check if a license ID is a valid SPDX license ID.
 
-    Arguments:
-        - lic: detected license ID
-        - doc: Document
+    If the license is not in the standard SPDX license list, it is added
+    to the document's custom license IDs set.
+
+    Args:
+        lic: Detected license ID.
+        doc: SBOMDocument to add custom license to if needed.
     """
     if lic not in LICENSES:
-        doc.customLicenseIDs.add(lic)
+        doc.custom_license_ids.add(lic)
 
 
-def getPackageLicenses(pkg):
+def getPackageLicenses(pkg) -> tuple[list[str], list[str]]:
     """
     Extract lists of all concluded and infoInFile licenses seen.
 
-    Arguments:
-        - pkg: Package
-    Returns: sorted list of concluded license exprs,
-             sorted list of infoInFile ID's
+    Args:
+        pkg: SBOMPackage to extract licenses from.
+
+    Returns:
+        Tuple of (sorted concluded license expressions,
+                  sorted infoInFile IDs).
     """
     licsConcluded = set()
     licsFromFiles = set()
     for f in pkg.files.values():
-        licsConcluded.add(f.concludedLicense)
-        for licInfo in f.licenseInfoInFile:
+        licsConcluded.add(f.concluded_license)
+        for licInfo in f.license_info_in_file:
             licsFromFiles.add(licInfo)
     return sorted(list(licsConcluded)), sorted(list(licsFromFiles))
 
 
-def normalizeExpression(licsConcluded):
+def normalizeExpression(licsConcluded: list[str]) -> str:
     """
-    Combine array of license expressions into one AND'd expression,
-    adding parens where needed.
+    Combine array of license expressions into one AND'd expression.
 
-    Arguments:
-        - licsConcluded: array of license expressions
-    Returns: string with single AND'd expression.
+    Adds parentheses where needed for expressions containing spaces.
+
+    Args:
+        licsConcluded: Array of license expressions.
+
+    Returns:
+        Single AND'd expression string.
     """
-    # return appropriate for simple cases
+    # Return appropriate for simple cases
     if len(licsConcluded) == 0:
         return "NOASSERTION"
     if len(licsConcluded) == 1:
         return licsConcluded[0]
 
-    # more than one, so we'll need to combine them
-    # if and only if an expression has spaces, it needs parens
+    # More than one, so we'll need to combine them
+    # If and only if an expression has spaces, it needs parens
     revised = []
     for lic in licsConcluded:
         if lic in ["NONE", "NOASSERTION"]:
@@ -177,14 +215,15 @@ def normalizeExpression(licsConcluded):
     return " AND ".join(revised)
 
 
-def getCopyrightInfo(filePath):
+def getCopyrightInfo(filePath: str) -> list[str]:
     """
-    Scans the specified file for copyright information using REUSE tools.
+    Scan a file for copyright information using REUSE tools.
 
-    Arguments:
-        - filePath: path to file to scan
+    Args:
+        filePath: Path to file to scan.
 
-    Returns: list of copyright statements if found; empty list if not found
+    Returns:
+        List of copyright statements if found, empty list if not found.
     """
     log.dbg(f"  - getting copyright info for {filePath}")
 
@@ -203,52 +242,55 @@ def getCopyrightInfo(filePath):
         return []
 
 
-def scanDocument(cfg, doc):
+def scanDocument(cfg: ScannerConfig, doc: SBOMDocument) -> None:
     """
-    Scan for licenses and calculate hashes for all Files and Packages
-    in this Document.
+    Scan for licenses and calculate hashes for all Files and Packages.
 
-    Arguments:
-        - cfg: ScannerConfig
-        - doc: Document
+    This function populates file hashes, license information, and copyright
+    text for all files in the document. It also calculates package-level
+    verification codes and concluded licenses.
+
+    Args:
+        cfg: ScannerConfig with scan settings.
+        doc: SBOMDocument to scan.
     """
-    for pkg in doc.pkgs.values():
-        log.inf(f"scanning files in package {pkg.cfg.name} in document {doc.cfg.name}")
+    for pkg in doc.packages.values():
+        log.inf(f"scanning files in package {pkg.name} in document {doc.name}")
 
-        # first, gather File data for this package
+        # First, gather File data for this package
         for f in pkg.files.values():
-            # set relpath based on package's relativeBaseDir
-            f.relpath = os.path.relpath(f.abspath, pkg.cfg.relativeBaseDir)
+            # Set relpath based on package's relativeBaseDir
+            f.relative_path = os.path.relpath(f.absolute_path, pkg.relative_base_dir)
 
-            # get hashes for file
-            hashes = getHashes(f.abspath)
+            # Get hashes for file
+            hashes = getHashes(f.absolute_path)
             if not hashes:
-                log.wrn(f"unable to get hashes for file {f.abspath}; skipping")
+                log.wrn(f"unable to get hashes for file {f.absolute_path}; skipping")
                 continue
             hSHA1, hSHA256, hMD5 = hashes
-            f.sha1 = hSHA1
-            if cfg.doSHA256:
-                f.sha256 = hSHA256
-            if cfg.doMD5:
-                f.md5 = hMD5
+            f.hashes = FileHashes(
+                sha1=hSHA1,
+                sha256=hSHA256 if cfg.doSHA256 else "",
+                md5=hMD5 if cfg.doMD5 else "",
+            )
 
-            # get licenses for file
-            expression = getExpressionData(f.abspath, cfg.numLinesScanned)
+            # Get licenses for file
+            expression = getExpressionData(f.absolute_path, cfg.numLinesScanned)
             if expression:
                 if cfg.shouldConcludeFileLicenses:
-                    f.concludedLicense = expression
-                f.licenseInfoInFile = splitExpression(expression)
+                    f.concluded_license = expression
+                f.license_info_in_file = splitExpression(expression)
 
-            if copyrights := getCopyrightInfo(f.abspath):
-                f.copyrightText = "<text>\n" + "\n".join(copyrights) + "\n</text>"
+            if copyrights := getCopyrightInfo(f.absolute_path):
+                f.copyright_text = "<text>\n" + "\n".join(copyrights) + "\n</text>"
 
-            # check if any custom license IDs should be flagged for document
-            for lic in f.licenseInfoInFile:
+            # Check if any custom license IDs should be flagged for document
+            for lic in f.license_info_in_file:
                 checkLicenseValid(lic, doc)
 
-        # now, assemble the Package data
+        # Now, assemble the Package data
         licsConcluded, licsFromFiles = getPackageLicenses(pkg)
         if cfg.shouldConcludePackageLicense:
-            pkg.concludedLicense = normalizeExpression(licsConcluded)
-        pkg.licenseInfoFromFiles = licsFromFiles
-        pkg.verificationCode = calculateVerificationCode(pkg)
+            pkg.concluded_license = normalizeExpression(licsConcluded)
+        pkg.license_info_from_files = licsFromFiles
+        pkg.verification_code = calculateVerificationCode(pkg)
