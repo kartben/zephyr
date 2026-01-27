@@ -253,14 +253,3 @@ def scanSBOMData(cfg, sbom_data):
             component.concluded_license = normalizeExpression(licsConcluded)
         component.license_info_from_files = licsFromFiles
         component.verification_code = calculateVerificationCode(component)
-
-
-# Backward compatibility alias (deprecated)
-def scanDocument(cfg, doc):
-    """
-    Deprecated: Use scanSBOMData instead.
-    This function is kept for backward compatibility during migration.
-    """
-    # This would need to convert Document to SBOMData, but since we're
-    # migrating away from Document, this should not be called in new code.
-    raise NotImplementedError("scanDocument is deprecated. Use scanSBOMData with SBOMData instead.")
