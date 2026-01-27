@@ -8,18 +8,18 @@ from datetime import datetime
 
 from west import log
 
-from zspdx.model import ComponentPurpose, SBOMComponent, SBOMData, SBOMFile
+from zspdx.model import ComponentPurpose, SBOMComponent, SBOMFile
 from zspdx.serializers.helpers import (
     CPE23TYPE_REGEX,
     PURL_REGEX,
     generate_download_url,
     get_document_name,
-    group_components_into_documents,
     get_standard_licenses,
+    group_components_into_documents,
     normalize_spdx_name,
 )
 from zspdx.util import getHashes
-from zspdx.version import SPDX_VERSION_2_2, SPDX_VERSION_2_3
+from zspdx.version import SPDX_VERSION_2_3
 
 
 class SPDX2Serializer:
@@ -83,7 +83,7 @@ class SPDX2Serializer:
 
         # Generate file IDs (tracking filename counts for uniqueness)
         filename_counts = {}
-        for file_path, file_obj in self.sbom_data.files.items():
+        for file_path, _ in self.sbom_data.files.items():
             filename_only = os.path.basename(file_path)
             safe_name = normalize_spdx_name(filename_only)
             count = filename_counts.get(safe_name, 0) + 1
@@ -97,7 +97,7 @@ class SPDX2Serializer:
             self.file_ids[file_path] = spdx_id
 
         # Generate document reference IDs
-        for doc_name in self.documents.keys():
+        for doc_name in self.documents:
             self.document_refs[doc_name] = f"DocumentRef-{doc_name}"
 
     def _write_document_first_pass(self, doc_name, components, output_path):
@@ -114,7 +114,9 @@ class SPDX2Serializer:
             # Calculate document hash
             hashes = getHashes(output_path)
             if not hashes:
-                log.err(f"Error: created document but unable to calculate hash values for {output_path}")
+                log.err(
+                    f"Error: created document but unable to calculate hash values for {output_path}"
+                )
                 return False
             self.document_hashes[doc_name] = hashes[0]
 
@@ -127,7 +129,7 @@ class SPDX2Serializer:
         """Rewrite document with external document references (second pass)."""
         try:
             # Read the first pass content
-            with open(output_path, "r") as f:
+            with open(output_path) as f:
                 lines = f.readlines()
 
             # Find where to insert external document refs (after header, before relationships)
@@ -172,7 +174,7 @@ Created: {datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
     def _write_external_document_refs(self, f, doc_name):
         """Write external document references."""
         ext_refs = []
-        for other_doc_name in self.documents.keys():
+        for other_doc_name in self.documents:
             if other_doc_name != doc_name and other_doc_name in self.document_hashes:
                 ext_refs.append((other_doc_name, self.document_refs[other_doc_name]))
 
@@ -192,7 +194,7 @@ Created: {datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
         if doc_name == "build":
             for tool_id in self.build_tool_ids.values():
                 f.write(f"Relationship: SPDXRef-DOCUMENT DESCRIBES {tool_id}\n")
-        
+
         for component in components:
             component_id = self.component_ids[component.name]
             f.write(f"Relationship: SPDXRef-DOCUMENT DESCRIBES {component_id}\n")
@@ -204,7 +206,7 @@ Created: {datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
         # Write build tool packages first if this is the build document
         if get_document_name(components[0]) if components else None == "build":
             self._write_build_tools(f)
-        
+
         for component in components:
             self._write_package(f, component)
 
@@ -230,7 +232,11 @@ Created: {datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
                 if len(metadata) > 5:
                     supplier = metadata[3] if not supplier else supplier
                     package_name = metadata[4] if len(metadata) > 4 else package_name
-                    package_version = metadata[5] if len(metadata) > 5 and not package_version else package_version
+                    package_version = (
+                        metadata[5]
+                        if len(metadata) > 5 and not package_version
+                        else package_version
+                    )
 
         normalized_name = normalize_spdx_name(package_name)
 
@@ -282,8 +288,10 @@ PackageCopyrightText: {component.copyright_text}
                     f.write(f"PackageLicenseInfoFromFiles: {lic}\n")
             else:
                 f.write("PackageLicenseInfoFromFiles: NOASSERTION\n")
-            f.write(f"FilesAnalyzed: true\nPackageVerificationCode: {component.verification_code}\n")
-            
+            f.write(
+                f"FilesAnalyzed: true\nPackageVerificationCode: {component.verification_code}\n"
+            )
+
             # Add build info comment for build target packages
             if get_document_name(component) == "build" and self.build_info:
                 build_comment = self._format_build_info_comment()
@@ -302,7 +310,7 @@ PackageCopyrightText: {component.copyright_text}
         # Package relationships
         for rel in component.relationships:
             self._write_relationship(f, rel, component.name, "component")
-        
+
         # Add build tool relationships for build target packages
         if get_document_name(component) == "build" and len(component.files) > 0:
             self._write_build_tool_relationships(f, component)
@@ -423,17 +431,17 @@ LicenseComment: Corresponds to the license ID `{lic}` detected in an SPDX-Licens
         """Generate SPDX IDs for build tool packages."""
         if not self.build_info:
             return
-        
+
         # CMake
         if self.build_info.get("cmake_version") or self.build_info.get("cmake_generator"):
             self.build_tool_ids["cmake"] = "SPDXRef-build-tool-cmake"
             self.component_ids["build-tool-cmake"] = "SPDXRef-build-tool-cmake"
-        
+
         # C compiler
         if self.build_info.get("cmake_compiler"):
             self.build_tool_ids["c-compiler"] = "SPDXRef-build-tool-c-compiler"
             self.component_ids["build-tool-c-compiler"] = "SPDXRef-build-tool-c-compiler"
-        
+
         # C++ compiler
         cxx_compiler_path = self.build_info.get("cmake_cxx_compiler", "")
         compiler_path = self.build_info.get("cmake_compiler", "")
@@ -445,14 +453,14 @@ LicenseComment: Corresponds to the license ID `{lic}` detected in an SPDX-Licens
         """Write build tool packages for the build document."""
         if not self.build_info:
             return
-        
+
         # Create CMake tool package
         if self.build_info.get("cmake_version") or self.build_info.get("cmake_generator"):
             cmake_id = "SPDXRef-build-tool-cmake"
             cmake_name = "CMake"
             cmake_version = self.build_info.get("cmake_version", "")
             cmake_generator = self.build_info.get("cmake_generator", "")
-            
+
             f.write(f"""##### Package: CMake
 
 PackageName: {cmake_name}
@@ -461,23 +469,27 @@ PackageLicenseConcluded: NOASSERTION
 PackageLicenseDeclared: NOASSERTION
 PackageCopyrightText: NOASSERTION
 """)
-            
+
             if cmake_version:
                 f.write(f"PackageVersion: {cmake_version}\n")
             f.write("PackageDownloadLocation: https://cmake.org/\n")
-            
+
             if cmake_generator:
-                f.write(f"FilesAnalyzed: false\nPackageComment: <text>Build tool: CMake {cmake_version or ''} with generator {cmake_generator}</text>\n\n")
+                f.write(
+                    f"FilesAnalyzed: false\nPackageComment: <text>Build tool: CMake {cmake_version or ''} with generator {cmake_generator}</text>\n\n"
+                )
             else:
-                f.write(f"FilesAnalyzed: false\nPackageComment: <text>Build tool: CMake {cmake_version or ''}</text>\n\n")
-        
+                f.write(
+                    f"FilesAnalyzed: false\nPackageComment: <text>Build tool: CMake {cmake_version or ''}</text>\n\n"
+                )
+
         # Create C compiler tool package
         compiler_path = self.build_info.get("cmake_compiler", "")
         if compiler_path:
             compiler_id = "SPDXRef-build-tool-c-compiler"
             compiler_name = os.path.basename(compiler_path)
             system_processor = self.build_info.get("cmake_system_processor", "")
-            
+
             f.write(f"""##### Package: C-Compiler
 
 PackageName: {compiler_name}
@@ -487,21 +499,23 @@ PackageLicenseDeclared: NOASSERTION
 PackageCopyrightText: NOASSERTION
 PackageDownloadLocation: NOASSERTION
 """)
-            
+
             comment_parts = [f"Build tool: C compiler ({compiler_name})"]
             if compiler_path:
                 comment_parts.append(f"Path: {compiler_path}")
             if system_processor:
                 comment_parts.append(f"Target architecture: {system_processor}")
-            
-            f.write(f"FilesAnalyzed: false\nPackageComment: <text>{' | '.join(comment_parts)}</text>\n\n")
-        
+
+            f.write(
+                f"FilesAnalyzed: false\nPackageComment: <text>{' | '.join(comment_parts)}</text>\n\n"
+            )
+
         # Create C++ compiler tool package
         cxx_compiler_path = self.build_info.get("cmake_cxx_compiler", "")
         if cxx_compiler_path and cxx_compiler_path != compiler_path:
             cxx_compiler_id = "SPDXRef-build-tool-cxx-compiler"
             cxx_compiler_name = os.path.basename(cxx_compiler_path)
-            
+
             f.write(f"""##### Package: CXX-Compiler
 
 PackageName: {cxx_compiler_name}
@@ -511,32 +525,34 @@ PackageLicenseDeclared: NOASSERTION
 PackageCopyrightText: NOASSERTION
 PackageDownloadLocation: NOASSERTION
 """)
-            
+
             comment_parts = [f"Build tool: C++ compiler ({cxx_compiler_name})"]
             if cxx_compiler_path:
                 comment_parts.append(f"Path: {cxx_compiler_path}")
-            
-            f.write(f"FilesAnalyzed: false\nPackageComment: <text>{' | '.join(comment_parts)}</text>\n\n")
+
+            f.write(
+                f"FilesAnalyzed: false\nPackageComment: <text>{' | '.join(comment_parts)}</text>\n\n"
+            )
 
     def _write_build_tool_relationships(self, f, component):
         """Write relationships linking build artifacts to build tools."""
         if not self.build_tool_ids:
             return
-        
+
         component_id = self.component_ids.get(component.name)
         if not component_id:
             return
-        
+
         # Link to CMake if available
         if "cmake" in self.build_tool_ids:
             cmake_id = self.build_tool_ids["cmake"]
             f.write(f"Relationship: {component_id} GENERATED_FROM {cmake_id}\n")
-        
+
         # Link to C compiler if available
         if "c-compiler" in self.build_tool_ids:
             compiler_id = self.build_tool_ids["c-compiler"]
             f.write(f"Relationship: {component_id} GENERATED_FROM {compiler_id}\n")
-        
+
         # Link to C++ compiler if available
         if "cxx-compiler" in self.build_tool_ids:
             cxx_compiler_id = self.build_tool_ids["cxx-compiler"]
@@ -546,9 +562,9 @@ PackageDownloadLocation: NOASSERTION
         """Format build information as a PackageComment."""
         if not self.build_info:
             return None
-        
+
         parts = []
-        
+
         if self.build_info.get("cmake_version"):
             parts.append(f"CMake {self.build_info['cmake_version']}")
         if self.build_info.get("cmake_generator"):
@@ -561,7 +577,7 @@ PackageDownloadLocation: NOASSERTION
             parts.append(f"C++ compiler: {cxx_compiler_name}")
         if self.build_info.get("cmake_system_processor"):
             parts.append(f"target: {self.build_info['cmake_system_processor']}")
-        
+
         if parts:
             return f"<text>Built with: {', '.join(parts)}</text>"
         return None
