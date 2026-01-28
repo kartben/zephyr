@@ -76,6 +76,10 @@ extern "C" {
  * Generates inline helper functions for SPI register access that retrieve
  * the SPI spec from the device config structure.
  *
+ * Note: This implementation uses a variable-length array (VLA) for the write
+ * buffer, which may not be suitable for very large transfers. Maximum transfer
+ * size should be kept reasonable (typically < 64 bytes) to avoid stack issues.
+ *
  * @param prefix Driver-specific function name prefix
  * @param config_type Name of the driver's config structure type
  * @param spi_field Name of the SPI DT spec field in the config structure
@@ -105,6 +109,7 @@ extern "C" {
 	{                                                                                          \
 		const struct config_type *cfg = dev->config;                                       \
 		uint8_t tx_buf[size + 1];                                                          \
+                                                                                                   \
 		tx_buf[0] = reg & 0x7F;                                                            \
 		memcpy(&tx_buf[1], buf, size);                                                     \
 		const struct spi_buf tx = {.buf = tx_buf, .len = size + 1};                        \
@@ -124,7 +129,7 @@ extern "C" {
  * Checks if the I2C bus specified in the device config is ready.
  * Logs an error and returns -ENODEV if not ready.
  *
- * @param dev Pointer to the device structure
+ * @param dev Pointer to the device structure (unused but kept for consistency)
  * @param cfg Pointer to the device config structure
  * @param i2c_field Name of the I2C DT spec field in the config structure
  *
@@ -140,6 +145,7 @@ extern "C" {
  */
 #define SENSOR_DEVICE_I2C_BUS_READY_CHECK(dev, cfg, i2c_field)                                     \
 	do {                                                                                       \
+		ARG_UNUSED(dev);                                                                   \
 		if (!device_is_ready((cfg)->i2c_field.bus)) {                                      \
 			LOG_ERR("I2C bus not ready");                                              \
 			return -ENODEV;                                                            \
@@ -152,12 +158,13 @@ extern "C" {
  * Checks if the SPI bus specified in the device config is ready.
  * Logs an error and returns -ENODEV if not ready.
  *
- * @param dev Pointer to the device structure
+ * @param dev Pointer to the device structure (unused but kept for consistency)
  * @param cfg Pointer to the device config structure
  * @param spi_field Name of the SPI DT spec field in the config structure
  */
 #define SENSOR_DEVICE_SPI_BUS_READY_CHECK(dev, cfg, spi_field)                                     \
 	do {                                                                                       \
+		ARG_UNUSED(dev);                                                                   \
 		if (!device_is_ready((cfg)->spi_field.bus)) {                                      \
 			LOG_ERR("SPI bus not ready");                                              \
 			return -ENODEV;                                                            \
@@ -182,16 +189,16 @@ extern "C" {
  * }
  * @endcode
  */
-#define SENSOR_DEVICE_PM_INIT(dev)                                                                 \
-	do {                                                                                       \
-		IF_ENABLED(CONFIG_PM_DEVICE_RUNTIME, (				\
-			pm_device_init_suspended(dev);				\
-			int _ret = pm_device_runtime_enable(dev);		\
-			if (_ret < 0 && _ret != -ENOTSUP) {			\
-				LOG_ERR("Failed to enable runtime PM");	\
-				return _ret;					\
-			}							\
-		))                                        \
+#define SENSOR_DEVICE_PM_INIT(dev)                                                                   \
+	do {                                                                                         \
+		IF_ENABLED(CONFIG_PM_DEVICE_RUNTIME, (                                             \
+			pm_device_init_suspended(dev);                                             \
+			int _ret = pm_device_runtime_enable(dev);                                  \
+			if (_ret < 0 && _ret != -ENOTSUP) {                                        \
+				LOG_ERR("Failed to enable runtime PM");                            \
+				return _ret;                                                       \
+			}                                                                          \
+		)) \
 	} while (0)
 
 /* ============================================================================
@@ -326,6 +333,10 @@ extern "C" {
  * Generates a work handler function that calls the user's trigger handler
  * if one has been set.
  *
+ * Note: The trigger pointer is const in the data structure but is cast to
+ * non-const when passed to the handler to match the sensor API signature.
+ * Handlers should not modify the trigger structure.
+ *
  * @param prefix Driver-specific function name prefix
  * @param data_type Name of the driver's data structure type
  *
@@ -341,6 +352,7 @@ extern "C" {
 		struct data_type *data = CONTAINER_OF(item, struct data_type, work);               \
                                                                                                    \
 		if (data->trigger_handler != NULL) {                                               \
+			/* Cast away const to match API - handlers should not modify */            \
 			data->trigger_handler(data->dev, (struct sensor_trigger *)data->trigger);  \
 		}                                                                                  \
 	}

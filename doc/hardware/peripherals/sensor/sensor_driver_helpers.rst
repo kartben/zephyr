@@ -79,13 +79,32 @@ Here's a minimal example for a simple I2C temperature sensor:
        return 0;
    }
 
-   /* Use helper macros for channel handling */
-   SENSOR_SAMPLE_FETCH_SIMPLE(example,
-       SENSOR_CHAN_ALL, example_fetch_temp,
-       SENSOR_CHAN_AMBIENT_TEMP, example_fetch_temp)
+   static int example_sample_fetch(const struct device *dev,
+                                   enum sensor_channel chan)
+   {
+       switch (chan) {
+       case SENSOR_CHAN_ALL:
+       case SENSOR_CHAN_AMBIENT_TEMP:
+           return example_fetch_temp(dev);
+       default:
+           return -ENOTSUP;
+       }
+   }
 
-   SENSOR_CHANNEL_GET_SIMPLE(example, example_data,
-       SENSOR_CHAN_AMBIENT_TEMP, temp)
+   static int example_channel_get(const struct device *dev,
+                                  enum sensor_channel chan,
+                                  struct sensor_value *val)
+   {
+       struct example_data *data = dev->data;
+
+       switch (chan) {
+       case SENSOR_CHAN_AMBIENT_TEMP:
+           *val = data->temp;
+           return 0;
+       default:
+           return -ENOTSUP;
+       }
+   }
 
    /* Define driver API */
    static DEVICE_API(sensor, example_driver_api) = {
@@ -105,7 +124,8 @@ Here's a minimal example for a simple I2C temperature sensor:
        SENSOR_DEVICE_PM_INIT(dev);
 
        /* Sensor-specific initialization */
-       return example_reg_write(dev, CONFIG_REG, &(uint8_t){0x01}, 1);
+       uint8_t config_val = 0x01;
+       return example_reg_write(dev, 0x02, &config_val, 1);
    }
 
    /* Device instantiation */
@@ -393,7 +413,7 @@ Code Style
 ==========
 
 * Helper macros follow Zephyr coding style guidelines
-* Generated code uses C89-style comments
+* Generated code uses the same comment style as your driver code
 * Indentation uses 8-character tabs
 
 Performance Considerations
@@ -409,6 +429,11 @@ Limitations
 * Some macros use variadic arguments, which may not work with very old compilers
 * Complex custom initialization logic may not fit the macro patterns
 * Macros are designed for common cases; edge cases may require custom code
+* SPI register write macro uses VLA (variable-length array), limiting transfer sizes
+* The trigger work handler casts away const to match API signature
+
+For detailed API documentation on each macro, see the header file comments in
+:file:`include/zephyr/drivers/sensor/sensor_driver_helpers.h`.
 
 See Also
 ********
