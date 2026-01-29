@@ -4,8 +4,9 @@
 description: |
   Input double tap pseudo-device
 
-  Listens for key events as an input and produces key events as output
-  corresponding to double taps and optionally single taps.
+  Transforms key press events into distinct events for single and double taps.
+  Listens for key events from an input device and generates output events based
+  on tap patterns within a configurable time window.
 
   Can optionally be associated to a specific device to listen for events
   only from that device.
@@ -22,6 +23,23 @@ description: |
           single-tap-codes = <INPUT_KEY_C>, <INPUT_KEY_D>;
           double-tap-delay-ms = <300>;
   };
+
+  Example output:
+
+  # double tap
+  input event: dev=buttons          SYN type= 1 code= 11 value=1 # INPUT_KEY_0 press
+  input event: dev=buttons          SYN type= 1 code= 11 value=0 # INPUT_KEY_0 release
+  # second press within 300ms
+  input event: dev=buttons          SYN type= 1 code= 11 value=1 # INPUT_KEY_0 press
+  input event: dev=double_tap       SYN type= 1 code= 30 value=1 # INPUT_KEY_A press
+  input event: dev=double_tap       SYN type= 1 code= 30 value=0 # INPUT_KEY_A release
+
+  # single tap (when single-tap-codes is configured)
+  input event: dev=buttons          SYN type= 1 code= 11 value=1 # INPUT_KEY_0 press
+  input event: dev=buttons          SYN type= 1 code= 11 value=0 # INPUT_KEY_0 release
+  # no second press within 300ms
+  input event: dev=double_tap       SYN type= 1 code= 47 value=1 # INPUT_KEY_C press
+  input event: dev=double_tap       SYN type= 1 code= 47 value=0 # INPUT_KEY_C release
 
 compatible: "zephyr,input-double-tap"
 
