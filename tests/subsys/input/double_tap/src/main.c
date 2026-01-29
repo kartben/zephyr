@@ -75,4 +75,52 @@ ZTEST(double_tap, test_double_tap_test)
 	zassert_equal(last_events[0].value, 0);
 }
 
+ZTEST(double_tap, test_single_tap)
+{
+	event_count = 0;
+	memset(last_events, 0, sizeof(last_events));
+
+	/* single tap: press, release, wait for timeout */
+	input_report_key(fake_dev, INPUT_KEY_0, 1, true, K_FOREVER);
+	k_sleep(K_MSEC(50));
+	input_report_key(fake_dev, INPUT_KEY_0, 0, true, K_FOREVER);
+
+	/* no events yet, waiting for delay to expire */
+	zassert_equal(event_count, 0);
+
+	k_sleep(K_MSEC(400));
+
+	/* single tap event should have fired */
+	zassert_equal(event_count, 2);
+	zassert_equal(last_events[1].type, INPUT_EV_KEY);
+	zassert_equal(last_events[1].code, INPUT_KEY_A);
+	zassert_equal(last_events[1].value, 1);
+	zassert_equal(last_events[0].type, INPUT_EV_KEY);
+	zassert_equal(last_events[0].code, INPUT_KEY_A);
+	zassert_equal(last_events[0].value, 0);
+}
+
+ZTEST(double_tap, test_single_tap_no_event_on_double)
+{
+	event_count = 0;
+	memset(last_events, 0, sizeof(last_events));
+
+	/* double tap: should produce double-tap event, not single-tap */
+	input_report_key(fake_dev, INPUT_KEY_0, 1, true, K_FOREVER);
+	k_sleep(K_MSEC(50));
+	input_report_key(fake_dev, INPUT_KEY_0, 0, true, K_FOREVER);
+	k_sleep(K_MSEC(50));
+	input_report_key(fake_dev, INPUT_KEY_0, 1, true, K_FOREVER);
+	k_sleep(K_MSEC(50));
+	input_report_key(fake_dev, INPUT_KEY_0, 0, true, K_FOREVER);
+
+	zassert_equal(event_count, 2);
+	zassert_equal(last_events[1].code, INPUT_KEY_X);
+	zassert_equal(last_events[0].code, INPUT_KEY_X);
+
+	/* wait past the delay - no additional single tap events */
+	k_sleep(K_MSEC(400));
+	zassert_equal(event_count, 2);
+}
+
 ZTEST_SUITE(double_tap, NULL, NULL, NULL, NULL, NULL);
