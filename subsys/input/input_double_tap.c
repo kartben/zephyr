@@ -18,6 +18,7 @@ struct double_tap_config {
 	struct double_tap_data_entry *entries;
 	const uint16_t *input_codes;
 	const uint16_t *double_tap_codes;
+	const uint16_t *single_tap_codes;
 	uint32_t double_tap_delay_ms;
 	uint8_t num_codes;
 };
@@ -34,8 +35,15 @@ static void double_tap_deferred(struct k_work *work)
 	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
 	struct double_tap_data_entry *entry =
 		CONTAINER_OF(dwork, struct double_tap_data_entry, work);
+	const struct device *dev = entry->dev;
+	const struct double_tap_config *cfg = dev->config;
 
 	entry->first_tap = false;
+
+	if (cfg->single_tap_codes != NULL) {
+		input_report_key(dev, cfg->single_tap_codes[entry->index], 1, true, K_FOREVER);
+		input_report_key(dev, cfg->single_tap_codes[entry->index], 0, true, K_FOREVER);
+	}
 }
 
 static void double_tap_cb(struct input_event *evt, void *user_data)
@@ -98,6 +106,9 @@ static int double_tap_init(const struct device *dev)
 #define INPUT_DOUBLE_TAP_DEFINE(inst)                                                              \
 	BUILD_ASSERT(DT_INST_PROP_LEN(inst, input_codes) ==                                        \
 		     DT_INST_PROP_LEN(inst, double_tap_codes));                                    \
+	BUILD_ASSERT((DT_INST_PROP_LEN(inst, input_codes) ==                                       \
+		      DT_INST_PROP_LEN_OR(inst, single_tap_codes, 0)) ||                           \
+		      !DT_INST_NODE_HAS_PROP(inst, single_tap_codes));                             \
                                                                                                    \
 	INPUT_CALLBACK_DEFINE_NAMED(DEVICE_DT_GET_OR_NULL(DT_INST_PHANDLE(inst, input)),           \
 				    double_tap_cb, (void *)DEVICE_DT_INST_GET(inst),               \
@@ -107,6 +118,11 @@ static int double_tap_init(const struct device *dev)
                                                                                                    \
 	static const uint16_t double_tap_codes_##inst[] = DT_INST_PROP(inst, double_tap_codes);    \
                                                                                                    \
+	IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, single_tap_codes), (                                \
+	static const uint16_t double_tap_single_codes_##inst[] =                                   \
+		DT_INST_PROP(inst, single_tap_codes);                                              \
+	));                                                                                        \
+                                                                                                   \
 	static struct double_tap_data_entry                                                        \
 		double_tap_data_entries_##inst[DT_INST_PROP_LEN(inst, input_codes)];               \
                                                                                                    \
@@ -115,6 +131,9 @@ static int double_tap_init(const struct device *dev)
 		.entries = double_tap_data_entries_##inst,                                         \
 		.input_codes = double_tap_input_codes_##inst,                                      \
 		.double_tap_codes = double_tap_codes_##inst,                                       \
+		IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, single_tap_codes), (                        \
+		.single_tap_codes = double_tap_single_codes_##inst,                                \
+		))                                                                                 \
 		.num_codes = DT_INST_PROP_LEN(inst, input_codes),                                  \
 		.double_tap_delay_ms = DT_INST_PROP(inst, double_tap_delay_ms),                    \
 	};                                                                                         \
