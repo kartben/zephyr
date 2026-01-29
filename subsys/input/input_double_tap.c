@@ -38,6 +38,10 @@ static void double_tap_deferred(struct k_work *work)
 	const struct device *dev = entry->dev;
 	const struct double_tap_config *cfg = dev->config;
 
+	if (!entry->first_tap) {
+		return;
+	}
+
 	entry->first_tap = false;
 
 	if (cfg->single_tap_codes != NULL) {
