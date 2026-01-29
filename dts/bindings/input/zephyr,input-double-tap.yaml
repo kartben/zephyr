@@ -4,11 +4,18 @@
 description: |
   Input double tap pseudo-device
 
-  Listens for key events as an input and produces key events as output
-  corresponding to double taps.
+  Listens for key events as an input and translates them to different key events
+  as output, distinguishing between single and double taps. Each input code maps
+  to a corresponding double-tap code (and optionally a single-tap code) in the
+  output.
 
-  Can be optionally be associated to a specific device to listen for events
-  only from that device.
+  When an input key is pressed, the device waits for the configured delay period.
+  If a second press occurs within this window, a double-tap event is generated.
+  If the delay expires without a second press and single-tap-codes are configured,
+  a single-tap event is generated instead.
+
+  Can optionally be associated to a specific device to listen for events only
+  from that device.
 
   Example configuration:
 
@@ -22,6 +29,23 @@ description: |
           single-tap-codes = <INPUT_KEY_X>, <INPUT_KEY_Y>;
           double-tap-delay-ms = <300>;
   };
+
+  Example output:
+
+  # single tap (with single-tap-codes configured)
+  input event: dev=buttons          SYN type= 1 code= 11 value=1 # INPUT_KEY_0 press
+  input event: dev=buttons          SYN type= 1 code= 11 value=0 # INPUT_KEY_0 release
+  # wait for double-tap-delay-ms (300ms) without second press
+  input event: dev=double_tap       SYN type= 1 code= 45 value=1 # INPUT_KEY_X press
+  input event: dev=double_tap       SYN type= 1 code= 45 value=0 # INPUT_KEY_X release
+
+  # double tap
+  input event: dev=buttons          SYN type= 1 code= 11 value=1 # INPUT_KEY_0 press
+  input event: dev=buttons          SYN type= 1 code= 11 value=0 # INPUT_KEY_0 release
+  # second press within double-tap-delay-ms (300ms)
+  input event: dev=buttons          SYN type= 1 code= 11 value=1 # INPUT_KEY_0 press
+  input event: dev=double_tap       SYN type= 1 code= 30 value=1 # INPUT_KEY_A press
+  input event: dev=double_tap       SYN type= 1 code= 30 value=0 # INPUT_KEY_A release
 
 compatible: "zephyr,input-double-tap"
 
