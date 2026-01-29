@@ -16,6 +16,7 @@
 		compatible = "zephyr,input-double-tap";
 		input-codes = <INPUT_KEY_0>, <INPUT_KEY_1>;
 		double-tap-codes = <INPUT_KEY_X>, <INPUT_KEY_Y>;
+		single-tap-codes = <INPUT_KEY_A>, <INPUT_KEY_B>;
 		double-tap-delay-ms = <300>;
 	};
 };
