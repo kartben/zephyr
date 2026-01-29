@@ -73,6 +73,36 @@ ZTEST(double_tap, test_double_tap_test)
 	zassert_equal(last_events[0].type, INPUT_EV_KEY);
 	zassert_equal(last_events[0].code, INPUT_KEY_Y);
 	zassert_equal(last_events[0].value, 0);
+
+	/* single tap - wait for timeout */
+	input_report_key(fake_dev, INPUT_KEY_0, 1, true, K_FOREVER);
+	k_sleep(K_MSEC(50));
+	input_report_key(fake_dev, INPUT_KEY_0, 0, true, K_FOREVER);
+	k_sleep(K_MSEC(50));
+	zassert_equal(event_count, 4);
+	k_sleep(K_MSEC(250));
+	zassert_equal(event_count, 6);
+	zassert_equal(last_events[1].type, INPUT_EV_KEY);
+	zassert_equal(last_events[1].code, INPUT_KEY_A);
+	zassert_equal(last_events[1].value, 1);
+	zassert_equal(last_events[0].type, INPUT_EV_KEY);
+	zassert_equal(last_events[0].code, INPUT_KEY_A);
+	zassert_equal(last_events[0].value, 0);
+
+	/* single tap - other key */
+	input_report_key(fake_dev, INPUT_KEY_1, 1, true, K_FOREVER);
+	k_sleep(K_MSEC(50));
+	input_report_key(fake_dev, INPUT_KEY_1, 0, true, K_FOREVER);
+	k_sleep(K_MSEC(50));
+	zassert_equal(event_count, 6);
+	k_sleep(K_MSEC(250));
+	zassert_equal(event_count, 8);
+	zassert_equal(last_events[1].type, INPUT_EV_KEY);
+	zassert_equal(last_events[1].code, INPUT_KEY_B);
+	zassert_equal(last_events[1].value, 1);
+	zassert_equal(last_events[0].type, INPUT_EV_KEY);
+	zassert_equal(last_events[0].code, INPUT_KEY_B);
+	zassert_equal(last_events[0].value, 0);
 }
 
 ZTEST_SUITE(double_tap, NULL, NULL, NULL, NULL, NULL);
