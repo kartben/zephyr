@@ -122,9 +122,69 @@ class SBOMComponent:
 
 
 @dataclass
+class SBomDocument:
+    """Format-agnostic representation of an SBOM document.
+
+    A document groups related components together and provides document-level
+    metadata such as namespace, external document references, and custom licenses.
+    """
+
+    # Document name (e.g., "app", "build", "zephyr", "modules-deps", "sdk")
+    name: str = ""
+
+    # Document namespace (full URI for the document)
+    namespace: str = ""
+
+    # Components contained in this document
+    # Key: component name, Value: SBOMComponent
+    components: Dict[str, 'SBOMComponent'] = field(default_factory=dict)
+
+    # Document-level relationships (e.g., DESCRIBES)
+    relationships: List['SBOMRelationship'] = field(default_factory=list)
+
+    # References to other documents (for cross-document relationships)
+    # Key: document name, Value: SBomDocument
+    external_documents: Dict[str, 'SBomDocument'] = field(default_factory=dict)
+
+    # Custom license IDs that need to be declared in this document
+    custom_license_ids: Set[str] = field(default_factory=set)
+
+    # Document hash (populated during serialization for SPDX 2.x)
+    doc_hash: str = ""
+
+    # Flexible metadata storage for format-specific needs
+    metadata: Dict[str, any] = field(default_factory=dict)
+
+    def add_component(self, component: 'SBOMComponent') -> None:
+        """Add a component to this document."""
+        self.components[component.name] = component
+
+    def get_component(self, name: str) -> Optional['SBOMComponent']:
+        """Get a component by name from this document."""
+        return self.components.get(name)
+
+    def add_external_document(self, doc: 'SBomDocument') -> None:
+        """Register an external document reference."""
+        if doc.name and doc.name != self.name:
+            self.external_documents[doc.name] = doc
+
+    def get_all_files(self) -> Dict[str, 'SBOMFile']:
+        """Get all files from all components in this document."""
+        all_files = {}
+        for component in self.components.values():
+            all_files.update(component.files)
+        return all_files
+
+
+@dataclass
 class SBOMData:
     """Format-agnostic container for all SBOM data."""
-    # Components (packages) in the SBOM
+
+    # Documents in the SBOM (organized groups of components)
+    # Key: document name (e.g., "app", "build", "zephyr"), Value: SBomDocument
+    documents: Dict[str, SBomDocument] = field(default_factory=dict)
+
+    # Components (packages) in the SBOM (flat index for quick lookup)
     # Key: component name/identifier, Value: SBOMComponent
     components: Dict[str, SBOMComponent] = field(default_factory=dict)
 
@@ -151,9 +211,24 @@ class SBOMData:
     # Key: filename (basename), Value: count
     filename_counts: Dict[str, int] = field(default_factory=dict)
 
-    def add_component(self, component: SBOMComponent) -> None:
-        """Add a component to the SBOM."""
+    def add_document(self, document: SBomDocument) -> None:
+        """Add a document to the SBOM."""
+        self.documents[document.name] = document
+
+    def get_document(self, name: str) -> Optional[SBomDocument]:
+        """Get a document by name."""
+        return self.documents.get(name)
+
+    def add_component(self, component: SBOMComponent, document_name: str = None) -> None:
+        """Add a component to the SBOM.
+
+        Args:
+            component: The component to add
+            document_name: Optional document name to add the component to
+        """
         self.components[component.name] = component
+        if document_name and document_name in self.documents:
+            self.documents[document_name].add_component(component)
 
     def add_file(self, file: SBOMFile) -> None:
         """Add a file to the SBOM."""

@@ -10,20 +10,26 @@ from datetime import datetime, timezone
 from spdx_python_model import v3_0_1 as spdx
 from west import log
 
-from zspdx.model import ComponentPurpose, SBOMComponent, SBOMData, SBOMFile, SBOMRelationship
+from zspdx.model import (
+    ComponentPurpose,
+    SBOMComponent,
+    SBOMData,
+    SBOMFile,
+    SBOMRelationship,
+    SBomDocument,
+)
 from zspdx.serializers.helpers import (
     CPE23TYPE_REGEX,
     PURL_REGEX,
     generate_download_url,
     get_standard_licenses,
-    group_components_into_documents,
     normalize_spdx_name,
 )
 from zspdx.spdxids import getUniqueFileID
 
 
 class SPDX3Serializer:
-    """Serializer that converts SBOMData to SPDX 3.0 format (JSON-LD and JSON)."""
+    """Serializer that converts SBOMData to SPDX 3.0 format (JSON-LD)."""
 
     def __init__(self, sbom_data: SBOMData, spdx_version=None):
         self.sbom_data = sbom_data
@@ -47,9 +53,6 @@ class SPDX3Serializer:
 
         # Track file IDs for uniqueness
         self.filename_counts = sbom_data.filename_counts.copy() if sbom_data.filename_counts else {}
-
-        # Group components into documents (similar to SPDX 2.x)
-        self.component_groups = group_components_into_documents(self.sbom_data.components)
 
     def _generate_package_id(self, component_name: str) -> str:
         """Generate URI-based ID for a package."""
@@ -254,23 +257,25 @@ class SPDX3Serializer:
         self.file_elements[file_obj.path] = file_element
         return file_element
 
-    def _map_relationship_type(self, rel_type: str) -> spdx.RelationshipType:
-        """Map relationship type string to SPDX 3.0 RelationshipType enum."""
+    def _map_relationship_type(self, rel_type: str) -> tuple[spdx.RelationshipType, bool]:
+        """Map relationship type string to SPDX 3.0 RelationshipType enum.
+        Returns a tuple of (RelationshipType, reversed).
+        """
         # Map SPDX 2.x relationship types to SPDX 3.0 RelationshipType
         type_map = {
-            "GENERATED_FROM": spdx.RelationshipType.generates,
-            "HAS_PREREQUISITE": spdx.RelationshipType.dependsOn,
-            "STATIC_LINK": spdx.RelationshipType.hasStaticLink,
-            "CONTAINS": spdx.RelationshipType.contains,
-            "DESCRIBES": spdx.RelationshipType.describes,
-            "DEPENDS_ON": spdx.RelationshipType.dependsOn,
-            "DYNAMIC_LINK": spdx.RelationshipType.hasDynamicLink,
-            "BUILD_TOOL_OF": spdx.RelationshipType.usesTool,
-            "DEV_TOOL_OF": spdx.RelationshipType.usesTool,
-            "TEST_TOOL_OF": spdx.RelationshipType.usesTool,
-            "OTHER": spdx.RelationshipType.other,
+            "GENERATED_FROM": (spdx.RelationshipType.generates, True),
+            "HAS_PREREQUISITE": (spdx.RelationshipType.dependsOn, False),
+            "STATIC_LINK": (spdx.RelationshipType.hasStaticLink, False),
+            "CONTAINS": (spdx.RelationshipType.contains, False),
+            "DESCRIBES": (spdx.RelationshipType.describes, False),
+            "DEPENDS_ON": (spdx.RelationshipType.dependsOn, False),
+            "DYNAMIC_LINK": (spdx.RelationshipType.hasDynamicLink, False),
+            "BUILD_TOOL_OF": (spdx.RelationshipType.usesTool, True),
+            "DEV_TOOL_OF": (spdx.RelationshipType.usesTool, True),
+            "TEST_TOOL_OF": (spdx.RelationshipType.usesTool, True),
+            "OTHER": (spdx.RelationshipType.other, False),
         }
-        return type_map.get(rel_type, spdx.RelationshipType.other)
+        return type_map.get(rel_type, (spdx.RelationshipType.other, False))
 
     def _get_element_id(self, element):
         """Get SPDX 3.0 element ID from various element types."""
@@ -310,11 +315,20 @@ class SPDX3Serializer:
             log.wrn(f"No valid to_elements found for relationship: {rel.relationship_type}")
             return None
 
+        rel_type, is_reversed = self._map_relationship_type(rel.relationship_type)
+
         relationship = spdx.Relationship()
         relationship._id = self._generate_relationship_id(len(self.relationship_elements))
-        relationship.relationshipType = self._map_relationship_type(rel.relationship_type)
-        relationship.from_ = from_id
-        relationship.to = to_ids
+        relationship.relationshipType = rel_type
+        if is_reversed:
+            # Swap from/to for reversed relationships (e.g., A GENERATED_FROM B -> B generates A)
+            if len(to_ids) > 1:
+                log.wrn(f"Reversed relationship {rel.relationship_type} with multiple to_elements is not well-defined for swapping. Using first element.")
+            relationship.from_ = to_ids[0]
+            relationship.to = [from_id]
+        else:
+            relationship.from_ = from_id
+            relationship.to = to_ids
         relationship.creationInfo = self.creation_info._id
 
         self.elements.append(relationship)
@@ -353,13 +367,18 @@ class SPDX3Serializer:
 
         return license_expr
 
-    def _create_document(self, doc_name: str, components: list) -> spdx.SpdxDocument:
-        """Create an SPDX 3.0 document for a specific group of components."""
+    def _create_document(self, sbom_doc: SBomDocument) -> spdx.SpdxDocument:
+        """Create an SPDX 3.0 document for a specific SBomDocument."""
         self._initialize_shared_objects()
 
         document = spdx.SpdxDocument()
-        namespace = self.sbom_data.namespace_prefix.rstrip("/")
-        document._id = f"{namespace}/documents/{doc_name}-spdx3"
+        # Use document's namespace if set, otherwise generate from prefix
+        namespace = (
+            sbom_doc.namespace.rstrip("/")
+            if sbom_doc.namespace
+            else self.sbom_data.namespace_prefix.rstrip("/")
+        )
+        document._id = f"{namespace}/documents/{sbom_doc.name}-spdx3"
 
         # Set document name based on type
         doc_names = {
@@ -369,7 +388,9 @@ class SPDX3Serializer:
             "modules-deps": "Zephyr Module Dependencies SPDX 3.0 SBOM",
             "sdk": "Zephyr SDK SPDX 3.0 SBOM",
         }
-        document.name = doc_names.get(doc_name, f"Zephyr {doc_name.capitalize()} SPDX 3.0 SBOM")
+        document.name = doc_names.get(
+            sbom_doc.name, f"Zephyr {sbom_doc.name.capitalize()} SPDX 3.0 SBOM"
+        )
         document.creationInfo = self.creation_info
 
         # Set data license
@@ -379,14 +400,13 @@ class SPDX3Serializer:
 
         # Add profile conformance
         document.profileConformance.append(spdx.ProfileIdentifierType.core)
-        # Add build profile if we have build information
-        if self.build_info:
+        # Add build profile if we have build information and this is the build document
+        if self.build_info and sbom_doc.name == "build":
             document.profileConformance.append(spdx.ProfileIdentifierType.build)
 
         # Collect elements that belong to this document
-        document_component_names = {comp.name for comp in components}
+        components = sbom_doc.components.values()
         document_component_ids = set()
-        document_file_paths = set()
         document_file_ids = set()
 
         # Get component and file IDs for this document
@@ -394,7 +414,6 @@ class SPDX3Serializer:
             if component.name in self.component_elements:
                 document_component_ids.add(self.component_elements[component.name]._id)
             for file_obj in component.files.values():
-                document_file_paths.add(file_obj.path)
                 if file_obj.path in self.file_elements:
                     document_file_ids.add(self.file_elements[file_obj.path]._id)
 
@@ -425,23 +444,32 @@ class SPDX3Serializer:
                             license_ids.add(license_expr._id)
         document_element_ids.update(license_ids)
 
+        # Also include custom license IDs stored in the document
+        for lic in sbom_doc.custom_license_ids:
+            license_expr = self._create_license_expression(lic)
+            if license_expr:
+                license_ids.add(license_expr._id)
+
         # Collect relationship IDs that involve our elements
         relationship_ids = set()
         for rel in self.relationship_elements:
             from_id = getattr(rel, 'from_', None)
             to_ids = getattr(rel, 'to', [])
-            if from_id in document_element_ids or any(
-                to_id in document_element_ids for to_id in to_ids
-            ):
+            # Only include relationships where the 'from' element is in this document.
+            # This is more consistent with how SPDX 2.x documents are structured.
+            # Relationships pointing TO elements in this document from elsewhere should
+            # be in the document that owns the 'from' element.
+            if from_id in document_element_ids:
                 relationship_ids.add(rel._id)
         document_element_ids.update(relationship_ids)
 
         # Add tool and data license
         if self.tool:
             document_element_ids.add(self.tool._id)
-        # Add build tools
-        for tool in self.build_tools.values():
-            document_element_ids.add(tool._id)
+        # Add build tools only for the build document
+        if sbom_doc.name == "build":
+            for tool in self.build_tools.values():
+                document_element_ids.add(tool._id)
         data_license = self._create_license_expression("CC0-1.0")
         if data_license:
             document_element_ids.add(data_license._id)
@@ -467,11 +495,11 @@ class SPDX3Serializer:
                 document.rootElement.append(self.component_elements[component.name])
 
         self.elements.append(document)
-        self.documents[doc_name] = document
+        self.documents[sbom_doc.name] = document
         return document
 
     def serialize(self, output_dir: str) -> bool:
-        """Serialize SBOMData to SPDX 3.0 format (JSON-LD and JSON)."""
+        """Serialize SBOMData to SPDX 3.0 format (JSON-LD)."""
         try:
             # Validate input
             if not self.sbom_data:
@@ -567,6 +595,10 @@ class SPDX3Serializer:
                                     len(self.relationship_elements)
                                 )
                                 rel.relationshipType = spdx.RelationshipType.usesTool
+                                # Agent usesTool File? No, Process usesTool Agent.
+                                # In Software profile, maybe File usesTool Agent is okay if it means "was used to create"
+                                # But wait, 'usesTool' usually means the subject uses the tool.
+                                # So File usesTool Agent is better than Agent usesTool File.
                                 rel.from_ = build_file._id
                                 rel.to = [self.build_tools["cmake"]._id]
                                 rel.creationInfo = self.creation_info._id
@@ -657,20 +689,16 @@ class SPDX3Serializer:
                                     self.relationship_elements.append(rel)
 
             # Create documents for each group
-            for doc_name, components in self.component_groups.items():
-                if not components:
+            for sbom_doc in self.sbom_data.documents.values():
+                if not sbom_doc.components:
                     continue
-                self._create_document(doc_name, components)
+                self._create_document(sbom_doc)
 
             # Serialize each document to separate files
             for doc_name, document in self.documents.items():
                 # Serialize to JSON-LD
                 jsonld_path = os.path.join(output_dir, f"{doc_name}-spdx3.jsonld")
                 self._serialize_document_to_jsonld(document, jsonld_path)
-
-                # Serialize to JSON
-                json_path = os.path.join(output_dir, f"{doc_name}-spdx3.json")
-                self._serialize_document_to_json(document, json_path)
 
             log.inf(f"SPDX 3.0 documents written to {output_dir}")
             return True
@@ -758,47 +786,3 @@ class SPDX3Serializer:
             json.dump(complete_dict, f, indent=2)
 
         log.inf(f"Written SPDX 3.0 JSON-LD to {output_path}")
-
-    def _serialize_document_to_json(self, document: spdx.SpdxDocument, output_path: str):
-        """Serialize a single document to plain JSON format."""
-        # Collect all elements referenced by this document (same as JSON-LD)
-        # document.element contains Element objects, so extract their IDs
-        document_element_ids = set()
-        if hasattr(document, 'element'):
-            for elem in document.element:
-                if hasattr(elem, '_id') and elem._id:
-                    document_element_ids.add(elem._id)
-
-        elements_to_serialize = [document]
-        if self.creation_info:
-            elements_to_serialize.append(self.creation_info)
-        if self.tool:
-            elements_to_serialize.append(self.tool)
-
-        for elem_id in document_element_ids:
-            for elem in self.elements:
-                if hasattr(elem, '_id') and elem._id == elem_id:
-                    if elem not in elements_to_serialize:
-                        elements_to_serialize.append(elem)
-                    break
-
-        elements_data = []
-        for element in elements_to_serialize:
-            try:
-                encoder = spdx.JSONLDEncoder()
-                state = spdx.EncodeState()
-                element.encode(encoder, state)
-                if encoder.data:
-                    elements_data.append(encoder.data)
-            except Exception as e:
-                log.wrn(f"Failed to encode element {getattr(element, '_id', 'unknown')}: {e}")
-
-        complete_dict = {
-            "spdxVersion": "SPDX-3.0.1",
-            "elements": elements_data,
-        }
-
-        with open(output_path, "w") as f:
-            json.dump(complete_dict, f, indent=2)
-
-        log.inf(f"Written SPDX 3.0 JSON to {output_path}")

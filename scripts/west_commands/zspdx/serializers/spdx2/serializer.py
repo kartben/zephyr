@@ -8,14 +8,12 @@ from datetime import datetime
 
 from west import log
 
-from zspdx.model import ComponentPurpose, SBOMComponent, SBOMFile
+from zspdx.model import ComponentPurpose, SBomDocument, SBOMComponent, SBOMFile
 from zspdx.serializers.helpers import (
     CPE23TYPE_REGEX,
     PURL_REGEX,
     generate_download_url,
-    get_document_name,
     get_standard_licenses,
-    group_components_into_documents,
     normalize_spdx_name,
 )
 from zspdx.util import getHashes
@@ -33,14 +31,10 @@ class SPDX2Serializer:
         self.component_ids = {}  # component_name -> SPDX ID
         self.file_ids = {}  # file_path -> SPDX ID
         self.document_refs = {}  # document_name -> DocumentRef ID
-        self.document_hashes = {}  # document_name -> SHA1 hash
 
         # Build tool packages (created for build document)
         self.build_tool_ids = {}  # tool_name -> SPDX ID
         self.build_info = sbom_data.metadata.get('build_info', {}) if sbom_data.metadata else {}
-
-        # Group components into documents
-        self.documents = group_components_into_documents(self.sbom_data.components)
 
     def serialize(self, output_dir):
         """Serialize SBOMData to SPDX 2.x format files."""
@@ -51,25 +45,25 @@ class SPDX2Serializer:
 
         # First pass: write all documents to calculate hashes
         written_docs = {}
-        for doc_name, components in self.documents.items():
-            if not components:
+        for doc in self.sbom_data.documents.values():
+            if not doc.components:
                 continue
 
-            output_path = os.path.join(output_dir, f"{doc_name}.spdx")
-            if self._write_document_first_pass(doc_name, components, output_path):
-                written_docs[doc_name] = output_path
+            output_path = os.path.join(output_dir, f"{doc.name}.spdx")
+            if self._write_document_first_pass(doc, output_path):
+                written_docs[doc.name] = output_path
             else:
-                log.err(f"Failed to write document {doc_name}")
+                log.err(f"Failed to write document {doc.name}")
                 return False
 
         # Second pass: rewrite documents with external document references
-        for doc_name, components in self.documents.items():
-            if not components or doc_name not in written_docs:
+        for doc in self.sbom_data.documents.values():
+            if not doc.components or doc.name not in written_docs:
                 continue
 
-            output_path = written_docs[doc_name]
-            if not self._write_document_second_pass(doc_name, components, output_path):
-                log.err(f"Failed to rewrite document {doc_name} with external references")
+            output_path = written_docs[doc.name]
+            if not self._write_document_second_pass(doc, output_path):
+                log.err(f"Failed to rewrite document {doc.name} with external references")
                 return False
 
         return True
@@ -97,69 +91,65 @@ class SPDX2Serializer:
             self.file_ids[file_path] = spdx_id
 
         # Generate document reference IDs
-        for doc_name in self.documents:
+        for doc_name in self.sbom_data.documents:
             self.document_refs[doc_name] = f"DocumentRef-{doc_name}"
 
-    def _write_document_first_pass(self, doc_name, components, output_path):
+    def _write_document_first_pass(self, doc: SBomDocument, output_path):
         """Write a single SPDX 2.x document (first pass, without external refs)."""
         try:
-            log.inf(f"Writing SPDX {self.spdx_version} document {doc_name} to {output_path}")
+            log.inf(f"Writing SPDX {self.spdx_version} document {doc.name} to {output_path}")
             with open(output_path, "w") as f:
-                self._write_document_header(f, doc_name)
+                self._write_document_header(f, doc)
                 # Skip external document refs in first pass
-                self._write_document_relationships(f, doc_name, components)
-                self._write_packages(f, components)
-                self._write_custom_licenses(f, doc_name)
+                self._write_document_relationships(f, doc)
+                self._write_packages(f, doc)
+                self._write_custom_licenses(f, doc)
 
-            # Calculate document hash
+            # Calculate document hash and store it in the document object
             hashes = getHashes(output_path)
             if not hashes:
                 log.err(
                     f"Error: created document but unable to calculate hash values for {output_path}"
                 )
                 return False
-            self.document_hashes[doc_name] = hashes[0]
+            doc.doc_hash = hashes[0]
 
             return True
         except OSError as e:
             log.err(f"Error: Unable to write to {output_path}: {str(e)}")
             return False
 
-    def _write_document_second_pass(self, doc_name, components, output_path):
+    def _write_document_second_pass(self, doc: SBomDocument, output_path):
         """Rewrite document with external document references (second pass)."""
         try:
-            # Read the first pass content
-            with open(output_path) as f:
-                lines = f.readlines()
-
-            # Find where to insert external document refs (after header, before relationships)
             # Write the updated document
             with open(output_path, "w") as f:
                 # Write header
-                self._write_document_header(f, doc_name)
+                self._write_document_header(f, doc)
                 # Write external document refs (now we have all hashes)
-                self._write_external_document_refs(f, doc_name)
+                self._write_external_document_refs(f, doc)
                 # Write the rest (relationships, packages, licenses)
-                self._write_document_relationships(f, doc_name, components)
-                self._write_packages(f, components)
-                self._write_custom_licenses(f, doc_name)
+                self._write_document_relationships(f, doc)
+                self._write_packages(f, doc)
+                self._write_custom_licenses(f, doc)
 
             # Recalculate hash after adding external refs
             hashes = getHashes(output_path)
             if not hashes:
                 log.err(f"Error: unable to recalculate hash for {output_path}")
                 return False
-            self.document_hashes[doc_name] = hashes[0]
+            doc.doc_hash = hashes[0]
 
             return True
         except OSError as e:
             log.err(f"Error: Unable to rewrite {output_path}: {str(e)}")
             return False
 
-    def _write_document_header(self, f, doc_name):
+    def _write_document_header(self, f, doc: SBomDocument):
         """Write SPDX document header."""
-        namespace = f"{self.sbom_data.namespace_prefix}/{doc_name}"
-        normalized_name = normalize_spdx_name(doc_name)
+        # Use document's namespace if set, otherwise generate from prefix
+        namespace = doc.namespace or f"{self.sbom_data.namespace_prefix}/{doc.name}"
+        normalized_name = normalize_spdx_name(doc.name)
 
         f.write(f"""SPDXVersion: SPDX-{self.spdx_version}
 DataLicense: CC0-1.0
@@ -171,46 +161,46 @@ Created: {datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
 
 """)
 
-    def _write_external_document_refs(self, f, doc_name):
+    def _write_external_document_refs(self, f, doc: SBomDocument):
         """Write external document references."""
         ext_refs = []
-        for other_doc_name in self.documents:
-            if other_doc_name != doc_name and other_doc_name in self.document_hashes:
-                ext_refs.append((other_doc_name, self.document_refs[other_doc_name]))
+        # Use document's external_documents which were populated during walking
+        for ext_doc in doc.external_documents.values():
+            if ext_doc.doc_hash:  # Only include if hash has been calculated
+                ext_refs.append(
+                    (ext_doc, self.document_refs.get(ext_doc.name, f"DocumentRef-{ext_doc.name}"))
+                )
 
         if ext_refs:
             ext_refs.sort(key=lambda x: x[1])  # Sort by DocumentRef ID
-            for other_doc_name, doc_ref_id in ext_refs:
-                namespace = f"{self.sbom_data.namespace_prefix}/{other_doc_name}"
-                f.write(
-                    f"ExternalDocumentRef: {doc_ref_id} {namespace} "
-                    f"SHA1: {self.document_hashes[other_doc_name]}\n"
-                )
+            for ext_doc, doc_ref_id in ext_refs:
+                namespace = ext_doc.namespace or f"{self.sbom_data.namespace_prefix}/{ext_doc.name}"
+                f.write(f"ExternalDocumentRef: {doc_ref_id} {namespace} SHA1: {ext_doc.doc_hash}\n")
             f.write("\n")
 
-    def _write_document_relationships(self, f, doc_name, components):
+    def _write_document_relationships(self, f, doc: SBomDocument):
         """Write document-level relationships (DESCRIBES)."""
         # Include build tool packages in document relationships for build document
-        if doc_name == "build":
+        if doc.name == "build":
             for tool_id in self.build_tool_ids.values():
                 f.write(f"Relationship: SPDXRef-DOCUMENT DESCRIBES {tool_id}\n")
 
-        for component in components:
+        for component in doc.components.values():
             component_id = self.component_ids[component.name]
             f.write(f"Relationship: SPDXRef-DOCUMENT DESCRIBES {component_id}\n")
-        if components or (doc_name == "build" and self.build_tool_ids):
+        if doc.components or (doc.name == "build" and self.build_tool_ids):
             f.write("\n")
 
-    def _write_packages(self, f, components):
+    def _write_packages(self, f, doc: SBomDocument):
         """Write all packages in this document."""
         # Write build tool packages first if this is the build document
-        if get_document_name(components[0]) if components else None == "build":
+        if doc.name == "build":
             self._write_build_tools(f)
 
-        for component in components:
-            self._write_package(f, component)
+        for component in doc.components.values():
+            self._write_package(f, component, doc)
 
-    def _write_package(self, f, component):
+    def _write_package(self, f, component, doc: SBomDocument):
         """Write a single package."""
         # Get SPDX ID first, before any name modifications
         spdx_id = self.component_ids.get(component.name)
@@ -293,7 +283,7 @@ PackageCopyrightText: {component.copyright_text}
             )
 
             # Add build info comment for build target packages
-            if get_document_name(component) == "build" and self.build_info:
+            if doc.name == "build" and self.build_info:
                 build_comment = self._format_build_info_comment()
                 if build_comment:
                     f.write(f"PackageComment: {build_comment}\n")
@@ -309,10 +299,10 @@ PackageCopyrightText: {component.copyright_text}
 
         # Package relationships
         for rel in component.relationships:
-            self._write_relationship(f, rel, component.name, "component")
+            self._write_relationship(f, rel, component.name, "component", doc)
 
         # Add build tool relationships for build target packages
-        if get_document_name(component) == "build" and len(component.files) > 0:
+        if doc.name == "build" and len(component.files) > 0:
             self._write_build_tool_relationships(f, component)
 
         # Package files
@@ -320,9 +310,9 @@ PackageCopyrightText: {component.copyright_text}
             files_list = list(component.files.values())
             files_list.sort(key=lambda x: x.relative_path)
             for file_obj in files_list:
-                self._write_file(f, file_obj)
+                self._write_file(f, file_obj, doc)
 
-    def _write_file(self, f, file_obj):
+    def _write_file(self, f, file_obj, doc: SBomDocument):
         """Write a single file."""
         spdx_id = self.file_ids[file_obj.path]
 
@@ -348,9 +338,9 @@ FileChecksum: SHA1: {file_obj.hashes.get('SHA1', '')}
 
         # File relationships
         for rel in file_obj.relationships:
-            self._write_relationship(f, rel, file_obj.path, "file")
+            self._write_relationship(f, rel, file_obj.path, "file", doc)
 
-    def _write_relationship(self, f, rel, from_identifier, from_type):
+    def _write_relationship(self, f, rel, from_identifier, from_type, current_doc: SBomDocument):
         """Write a relationship."""
         # Get from ID
         if from_type == "component":
@@ -370,44 +360,42 @@ FileChecksum: SHA1: {file_obj.hashes.get('SHA1', '')}
             if isinstance(to_elem, SBOMComponent):
                 to_id = self.component_ids.get(to_elem.name, "")
                 # Check if it's in a different document
-                to_doc = get_document_name(to_elem)
-                if to_doc != self._get_document_name_from_identifier(from_identifier, from_type):
-                    doc_ref = self.document_refs.get(to_doc, "")
+                to_doc_name = self._get_document_name_for_component(to_elem.name)
+                if to_doc_name and to_doc_name != current_doc.name:
+                    doc_ref = self.document_refs.get(to_doc_name, "")
             elif isinstance(to_elem, SBOMFile):
                 to_id = self.file_ids.get(to_elem.path, "")
                 # Check if it's in a different document
-                to_doc = get_document_name(to_elem.component) if to_elem.component else None
-                from_doc = self._get_document_name_from_identifier(from_identifier, from_type)
-                if to_doc and to_doc != from_doc:
-                    doc_ref = self.document_refs.get(to_doc, "")
+                if to_elem.component:
+                    to_doc_name = self._get_document_name_for_component(to_elem.component.name)
+                    if to_doc_name and to_doc_name != current_doc.name:
+                        doc_ref = self.document_refs.get(to_doc_name, "")
 
             if to_id:
                 if doc_ref:
                     to_id = f"{doc_ref}:{to_id}"
                 f.write(f"Relationship: {from_id} {rel.relationship_type} {to_id}\n")
 
-    def _get_document_name_from_identifier(self, identifier, identifier_type):
-        """Get document name for an identifier."""
-        if identifier_type == "component":
-            component = self.sbom_data.get_component(identifier)
-            if component:
-                return get_document_name(component)
-        else:  # file
-            file_obj = self.sbom_data.get_file(identifier)
-            if file_obj and file_obj.component:
-                return get_document_name(file_obj.component)
+    def _get_document_name_for_component(self, component_name: str) -> str:
+        """Get document name for a component."""
+        for doc in self.sbom_data.documents.values():
+            if component_name in doc.components:
+                return doc.name
         return None
 
-    def _write_custom_licenses(self, f, doc_name):
+    def _write_custom_licenses(self, f, doc: SBomDocument):
         """Write custom license declarations."""
         # Get custom licenses from components in this document
         custom_licenses = set()
         standard_licenses = get_standard_licenses()
-        for component in self.documents.get(doc_name, []):
+        for component in doc.components.values():
             for file_obj in component.files.values():
                 for lic in file_obj.license_info_in_file:
                     if lic not in standard_licenses:
                         custom_licenses.add(lic)
+
+        # Also include any custom licenses stored in the document
+        custom_licenses.update(doc.custom_license_ids)
 
         if custom_licenses:
             for lic in sorted(custom_licenses):
