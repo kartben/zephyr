@@ -54,11 +54,26 @@ class SPDX3Serializer:
         # Track file IDs for uniqueness
         self.filename_counts = sbom_data.filename_counts.copy() if sbom_data.filename_counts else {}
 
+        # Namespace prefixes for shortened IDs
+        self.namespace_prefixes = {}
+        if self.sbom_data.namespace_prefix:
+            prefix = "zephyr"
+            uri = self.sbom_data.namespace_prefix.rstrip("/") + "/"
+            self.namespace_prefixes[uri] = prefix
+
+    def _shorten_id(self, full_uri: str) -> str:
+        """Shorten a URI-based ID using known namespace prefixes."""
+        for ns_uri, prefix in self.namespace_prefixes.items():
+            if full_uri.startswith(ns_uri):
+                return full_uri.replace(ns_uri, f"{prefix}:", 1)
+        return full_uri
+
     def _generate_package_id(self, component_name: str) -> str:
         """Generate URI-based ID for a package."""
         normalized = normalize_spdx_name(component_name)
         namespace = self.sbom_data.namespace_prefix.rstrip("/")
-        return f"{namespace}/packages/{normalized}"
+        full_uri = f"{namespace}/packages/{normalized}"
+        return self._shorten_id(full_uri)
 
     def _generate_file_id(self, file_path: str) -> str:
         """Generate URI-based ID for a file."""
@@ -67,12 +82,14 @@ class SPDX3Serializer:
         # Remove "SPDXRef-" prefix and normalize
         normalized_id = unique_id.replace("SPDXRef-", "").replace("_", "-")
         namespace = self.sbom_data.namespace_prefix.rstrip("/")
-        return f"{namespace}/files/{normalized_id}"
+        full_uri = f"{namespace}/files/{normalized_id}"
+        return self._shorten_id(full_uri)
 
     def _generate_relationship_id(self, index: int) -> str:
         """Generate URI-based ID for a relationship."""
         namespace = self.sbom_data.namespace_prefix.rstrip("/")
-        return f"{namespace}/relationships/{index}"
+        full_uri = f"{namespace}/relationships/{index}"
+        return self._shorten_id(full_uri)
 
     def _purpose_to_spdx3(self, purpose: ComponentPurpose) -> spdx.software_SoftwarePurpose:
         """Convert ComponentPurpose enum to SPDX 3.0 SoftwarePurpose."""
@@ -91,7 +108,7 @@ class SPDX3Serializer:
         # Create CMake tool
         if self.build_info.get("cmake_version") or self.build_info.get("cmake_generator"):
             cmake_tool = spdx.Agent()
-            cmake_tool._id = f"{namespace}/agents/cmake"
+            cmake_tool._id = self._shorten_id(f"{namespace}/agents/cmake")
             cmake_name = "CMake"
             if self.build_info.get("cmake_version"):
                 cmake_name += f" {self.build_info['cmake_version']}"
@@ -113,7 +130,7 @@ class SPDX3Serializer:
         if compiler_path:
             compiler_name = os.path.basename(compiler_path)
             compiler_tool = spdx.Agent()
-            compiler_tool._id = f"{namespace}/agents/c-compiler"
+            compiler_tool._id = self._shorten_id(f"{namespace}/agents/c-compiler")
             compiler_tool.name = f"C Compiler ({compiler_name})"
             compiler_tool.creationInfo = self.creation_info._id
             # Add external identifier for compiler path
@@ -135,7 +152,7 @@ class SPDX3Serializer:
         if cxx_compiler_path and cxx_compiler_path != compiler_path:
             cxx_compiler_name = os.path.basename(cxx_compiler_path)
             cxx_compiler_tool = spdx.Agent()
-            cxx_compiler_tool._id = f"{namespace}/agents/cxx-compiler"
+            cxx_compiler_tool._id = self._shorten_id(f"{namespace}/agents/cxx-compiler")
             cxx_compiler_tool.name = f"C++ Compiler ({cxx_compiler_name})"
             cxx_compiler_tool.creationInfo = self.creation_info._id
             ext_id = spdx.ExternalIdentifier()
@@ -150,15 +167,15 @@ class SPDX3Serializer:
         if self.tool is None:
             self.tool = spdx.Agent()
             namespace = self.sbom_data.namespace_prefix.rstrip("/")
-            self.tool._id = f"{namespace}/agents/west-spdx-tool"
+            self.tool._id = self._shorten_id(f"{namespace}/agents/west-spdx-tool")
             self.tool.name = "West SPDX Tool"
-            self.tool.creationInfo = f"{namespace}/creationinfo"
+            self.tool.creationInfo = self._shorten_id(f"{namespace}/creationinfo")
             self.elements.append(self.tool)
 
         if self.creation_info is None:
             self.creation_info = spdx.CreationInfo()
             namespace = self.sbom_data.namespace_prefix.rstrip("/")
-            self.creation_info._id = f"{namespace}/creationinfo"
+            self.creation_info._id = self._shorten_id(f"{namespace}/creationinfo")
             self.creation_info.created = datetime.now(timezone.utc)
             self.creation_info.createdBy.append(self.tool._id)
             self.creation_info.specVersion = "3.0.1"
@@ -355,7 +372,7 @@ class SPDX3Serializer:
             normalized = normalize_spdx_name(
                 license_str.replace(" ", "-").replace("(", "").replace(")", "")
             )
-            license_expr._id = f"{namespace}/licenses/{normalized}"
+            license_expr._id = self._shorten_id(f"{namespace}/licenses/{normalized}")
 
         license_expr.simplelicensing_licenseExpression = license_str
         license_expr.creationInfo = self.creation_info._id
@@ -378,7 +395,14 @@ class SPDX3Serializer:
             if sbom_doc.namespace
             else self.sbom_data.namespace_prefix.rstrip("/")
         )
-        document._id = f"{namespace}/documents/{sbom_doc.name}-spdx3"
+        document._id = self._shorten_id(f"{namespace}/documents/{sbom_doc.name}-spdx3")
+
+        # Add NamespaceMap entries
+        for uri, prefix in self.namespace_prefixes.items():
+            ns_map = spdx.NamespaceMap()
+            ns_map.prefix = prefix
+            ns_map.namespace = uri
+            document.namespaceMap.append(ns_map)
 
         # Set document name based on type
         doc_names = {
