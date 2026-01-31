@@ -19,6 +19,7 @@ from zspdx.model import (
     SBOMData,
     SBOMFile,
     SBOMRelationship,
+    SBomDocument,
 )
 
 
@@ -60,6 +61,13 @@ class Walker:
         self.component_sdk = None
         self.component_build_targets = {}  # target_name -> SBOMComponent
         self.component_modules_deps = {}  # module_name -> SBOMComponent
+
+        # Document references for easy access
+        self.doc_app = None
+        self.doc_zephyr = None
+        self.doc_sdk = None
+        self.doc_build = None
+        self.doc_modules_deps = None
 
         # queue of pending source file paths to create, process and assign
         self.pendingSources = []
@@ -152,7 +160,7 @@ class Walker:
             self.compilerPath = self.cmakeCache.get("CMAKE_C_COMPILER", "")
             self.sdkPath = self.cmakeCache.get("ZEPHYR_SDK_INSTALL_DIR", "")
             self.metaFile =  self.cmakeCache.get("KERNEL_META_PATH", "")
-            
+
             # Store build information in SBOM metadata for SPDX 3.0 Build Profile
             build_info = {
                 "cmake_compiler": self.cmakeCache.get("CMAKE_C_COMPILER", ""),
@@ -208,9 +216,34 @@ class Walker:
         # parse it
         return parseReply(indexFilePath)
 
+    def _create_document(self, name: str) -> SBomDocument:
+        """Create a document with the given name and register it with SBOM data."""
+        doc = SBomDocument()
+        doc.name = name
+        doc.namespace = f"{self.cfg.namespacePrefix}/{name}"
+        self.sbom_data.add_document(doc)
+        return doc
+
+    def setupDocuments(self):
+        """Set up all SBOM documents."""
+        log.dbg("setting up SBOM documents")
+
+        # Create core documents
+        self.doc_app = self._create_document("app")
+        self.doc_zephyr = self._create_document("zephyr")
+        self.doc_build = self._create_document("build")
+        self.doc_modules_deps = self._create_document("modules-deps")
+
+        # SDK document is optional
+        if self.cfg.includeSDK:
+            self.doc_sdk = self._create_document("sdk")
+
     def setupComponents(self):
         """Set up all SBOM components from meta file and configuration."""
         log.dbg("setting up SBOM components")
+
+        # First set up documents
+        self.setupDocuments()
 
         try:
             with open(self.metaFile) as file:
@@ -239,7 +272,8 @@ class Walker:
         component.declared_license = "NOASSERTION"
         component.copyright_text = "NOASSERTION"
 
-        self.sbom_data.add_component(component)
+        self.sbom_data.add_component(component, "app")
+        self.doc_app.add_component(component)
         self.component_app = component
 
     def setupZephyrComponent(self, zephyr, modules):
@@ -286,7 +320,8 @@ class Walker:
             cpe = f'cpe:2.3:o:zephyrproject:zephyr:{component.version}:-:*:*:*:*:*:*'
             component.external_references.append(cpe)
 
-        self.sbom_data.add_component(component)
+        self.sbom_data.add_component(component, "zephyr")
+        self.doc_zephyr.add_component(component)
         self.component_zephyr = component
 
         return True
@@ -300,7 +335,8 @@ class Walker:
         component.declared_license = "NOASSERTION"
         component.copyright_text = "NOASSERTION"
 
-        self.sbom_data.add_component(component)
+        self.sbom_data.add_component(component, "sdk")
+        self.doc_sdk.add_component(component)
         self.component_sdk = component
 
     def setupModulesDepsComponent(self, modules):
@@ -327,7 +363,8 @@ class Walker:
             for ref in module_ext_ref:
                 component.external_references.append(ref)
 
-            self.sbom_data.add_component(component)
+            self.sbom_data.add_component(component, "modules-deps")
+            self.doc_modules_deps.add_component(component)
             self.component_modules_deps[module_name] = component
 
         return True
@@ -371,8 +408,9 @@ class Walker:
         component.declared_license = "NOASSERTION"
         component.copyright_text = "NOASSERTION"
 
-        # add Component to SBOM data
-        self.sbom_data.add_component(component)
+        # add Component to SBOM data and build document
+        self.sbom_data.add_component(component, "build")
+        self.doc_build.add_component(component)
         self.component_build_targets[cfgTarget.name] = component
         return component
 
@@ -601,6 +639,26 @@ class Walker:
 
         return None
 
+    def _get_document_for_component(self, component_name: str) -> SBomDocument:
+        """Get the document that contains the given component."""
+        for doc in self.sbom_data.documents.values():
+            if component_name in doc.components:
+                return doc
+        return None
+
+    def _get_document_for_file(self, file_path: str) -> SBomDocument:
+        """Get the document that contains the given file."""
+        file_obj = self.sbom_data.get_file(file_path)
+        if file_obj and file_obj.component:
+            return self._get_document_for_component(file_obj.component.name)
+        return None
+
+    def _register_external_document_ref(self, from_doc: SBomDocument, to_doc: SBomDocument):
+        """Register an external document reference if documents are different."""
+        if from_doc and to_doc and from_doc.name != to_doc.name:
+            from_doc.add_external_document(to_doc)
+            log.dbg(f"  - registered external document ref: {from_doc.name} -> {to_doc.name}")
+
     # walk through pending relationship data and create relationships
     def walkRelationships(self):
         log.dbg("walking pending relationships")
@@ -640,7 +698,19 @@ class Walker:
             elif isinstance(from_elem, SBOMFile):
                 from_elem.relationships.append(rel)
 
-            # Also add to SBOM data relationships if it's a top-level relationship
-            # (for now, we add all relationships to the from element)
+            # Detect and register cross-document relationships
+            from_doc = None
+            to_doc = None
+            if from_type == "component":
+                from_doc = self._get_document_for_component(from_id)
+            elif from_type == "file":
+                from_doc = self._get_document_for_file(from_id)
+
+            if to_type == "component":
+                to_doc = self._get_document_for_component(to_id)
+            elif to_type == "file":
+                to_doc = self._get_document_for_file(to_id)
+
+            self._register_external_document_ref(from_doc, to_doc)
 
             log.dbg(f"  - added relationship: {from_type}:{from_id} {rln_type} {to_type}:{to_id}")
