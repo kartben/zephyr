@@ -165,6 +165,9 @@ class Walker:
             build_info = {
                 "cmake_compiler": self.cmakeCache.get("CMAKE_C_COMPILER", ""),
                 "cmake_cxx_compiler": self.cmakeCache.get("CMAKE_CXX_COMPILER", ""),
+                "cmake_asm_compiler": self.cmakeCache.get("CMAKE_ASM_COMPILER", ""),
+                "cmake_linker": self.cmakeCache.get("CMAKE_LINKER", ""),
+                "cmake_ar": self.cmakeCache.get("CMAKE_AR", ""),
                 "cmake_build_type": self.cmakeCache.get("CMAKE_BUILD_TYPE", ""),
                 "cmake_system_name": self.cmakeCache.get("CMAKE_SYSTEM_NAME", ""),
                 "cmake_generator": self.cmakeCache.get("CMAKE_GENERATOR", ""),

@@ -162,6 +162,51 @@ class SPDX3Serializer:
             self.elements.append(cxx_compiler_tool)
             self.build_tools["cxx-compiler"] = cxx_compiler_tool
 
+        # Create Assembler tool
+        asm_compiler_path = self.build_info.get("cmake_asm_compiler", "")
+        if asm_compiler_path:
+            asm_compiler_name = os.path.basename(asm_compiler_path)
+            asm_compiler_tool = spdx.Agent()
+            asm_compiler_tool._id = self._shorten_id(f"{namespace}/agents/asm-compiler")
+            asm_compiler_tool.name = f"Assembler ({asm_compiler_name})"
+            asm_compiler_tool.creationInfo = self.creation_info._id
+            ext_id = spdx.ExternalIdentifier()
+            ext_id.externalIdentifierType = spdx.ExternalIdentifierType.other
+            ext_id.identifier = asm_compiler_path
+            asm_compiler_tool.externalIdentifier.append(ext_id)
+            self.elements.append(asm_compiler_tool)
+            self.build_tools["asm-compiler"] = asm_compiler_tool
+
+        # Create Linker tool
+        linker_path = self.build_info.get("cmake_linker", "")
+        if linker_path:
+            linker_name = os.path.basename(linker_path)
+            linker_tool = spdx.Agent()
+            linker_tool._id = self._shorten_id(f"{namespace}/agents/linker")
+            linker_tool.name = f"Linker ({linker_name})"
+            linker_tool.creationInfo = self.creation_info._id
+            ext_id = spdx.ExternalIdentifier()
+            ext_id.externalIdentifierType = spdx.ExternalIdentifierType.other
+            ext_id.identifier = linker_path
+            linker_tool.externalIdentifier.append(ext_id)
+            self.elements.append(linker_tool)
+            self.build_tools["linker"] = linker_tool
+
+        # Create Archiver tool
+        ar_path = self.build_info.get("cmake_ar", "")
+        if ar_path:
+            ar_name = os.path.basename(ar_path)
+            ar_tool = spdx.Agent()
+            ar_tool._id = self._shorten_id(f"{namespace}/agents/archiver")
+            ar_tool.name = f"Archiver ({ar_name})"
+            ar_tool.creationInfo = self.creation_info._id
+            ext_id = spdx.ExternalIdentifier()
+            ext_id.externalIdentifierType = spdx.ExternalIdentifierType.other
+            ext_id.identifier = ar_path
+            ar_tool.externalIdentifier.append(ext_id)
+            self.elements.append(ar_tool)
+            self.build_tools["archiver"] = ar_tool
+
     def _initialize_shared_objects(self):
         """Initialize shared Tool and CreationInfo objects."""
         if self.tool is None:
@@ -629,15 +674,90 @@ class SPDX3Serializer:
                                 self.elements.append(rel)
                                 self.relationship_elements.append(rel)
 
-                            # Link compiler to build file
-                            if "c-compiler" in self.build_tools:
-                                rel = spdx.Relationship()
+                            # Determine used languages
+                            has_c = False
+                            has_cxx = False
+                            has_asm = False
+
+                            for f in component.files.values():
+                                ext = os.path.splitext(f.path)[1]
+                                if ext in [".c", ".C"]:
+                                    has_c = True
+                                elif ext in [".cpp", ".cxx", ".cc", ".c++", ".cp"]:
+                                    has_cxx = True
+                                elif ext in [".S", ".s", ".asm"]:
+                                    has_asm = True
+
+                            # Link C compiler to build file
+                            if "c-compiler" in self.build_tools and has_c:
+                                rel = spdx.LifecycleScopedRelationship()
                                 rel._id = self._generate_relationship_id(
                                     len(self.relationship_elements)
                                 )
                                 rel.relationshipType = spdx.RelationshipType.usesTool
                                 rel.from_ = build_file._id
                                 rel.to = [self.build_tools["c-compiler"]._id]
+                                rel.scope = spdx.LifecycleScopeType.build
+                                rel.creationInfo = self.creation_info._id
+                                self.elements.append(rel)
+                                self.relationship_elements.append(rel)
+
+                            # Link C++ compiler to build file
+                            if "cxx-compiler" in self.build_tools and has_cxx:
+                                rel = spdx.LifecycleScopedRelationship()
+                                rel._id = self._generate_relationship_id(
+                                    len(self.relationship_elements)
+                                )
+                                rel.relationshipType = spdx.RelationshipType.usesTool
+                                rel.from_ = build_file._id
+                                rel.to = [self.build_tools["cxx-compiler"]._id]
+                                rel.scope = spdx.LifecycleScopeType.build
+                                rel.creationInfo = self.creation_info._id
+                                self.elements.append(rel)
+                                self.relationship_elements.append(rel)
+
+                            # Link assembler to build file
+                            if "asm-compiler" in self.build_tools and has_asm:
+                                rel = spdx.LifecycleScopedRelationship()
+                                rel._id = self._generate_relationship_id(
+                                    len(self.relationship_elements)
+                                )
+                                rel.relationshipType = spdx.RelationshipType.usesTool
+                                rel.from_ = build_file._id
+                                rel.to = [self.build_tools["asm-compiler"]._id]
+                                rel.scope = spdx.LifecycleScopeType.build
+                                rel.creationInfo = self.creation_info._id
+                                self.elements.append(rel)
+                                self.relationship_elements.append(rel)
+
+                            # Link linker to build file
+                            # Only link if it's an application or ends in .elf
+                            is_executable = component.purpose == ComponentPurpose.APPLICATION or component.target_build_file.path.endswith(".elf")
+                            if "linker" in self.build_tools and is_executable:
+                                rel = spdx.LifecycleScopedRelationship()
+                                rel._id = self._generate_relationship_id(
+                                    len(self.relationship_elements)
+                                )
+                                rel.relationshipType = spdx.RelationshipType.usesTool
+                                rel.from_ = build_file._id
+                                rel.to = [self.build_tools["linker"]._id]
+                                rel.scope = spdx.LifecycleScopeType.build
+                                rel.creationInfo = self.creation_info._id
+                                self.elements.append(rel)
+                                self.relationship_elements.append(rel)
+
+                            # Link archiver to build file
+                            # Only link if it's a LIBRARY component or ends in .a/.lib
+                            is_library = component.purpose == ComponentPurpose.LIBRARY or component.target_build_file.path.endswith((".a", ".lib"))
+                            if "archiver" in self.build_tools and is_library:
+                                rel = spdx.LifecycleScopedRelationship()
+                                rel._id = self._generate_relationship_id(
+                                    len(self.relationship_elements)
+                                )
+                                rel.relationshipType = spdx.RelationshipType.usesTool
+                                rel.from_ = build_file._id
+                                rel.to = [self.build_tools["archiver"]._id]
+                                rel.scope = spdx.LifecycleScopeType.build
                                 rel.creationInfo = self.creation_info._id
                                 self.elements.append(rel)
                                 self.relationship_elements.append(rel)
