@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 from typing import Dict, List, Optional, Set
 
@@ -175,6 +176,31 @@ class SBomDocument:
             all_files.update(component.files)
         return all_files
 
+@dataclass
+class SBOMBuild:
+    """Format-agnostic representation of a build instance."""
+    # Build ID
+    id: str = ""
+
+    # Build type (URI)
+    build_type: str = ""
+
+    # Build start time (UTC)
+    started_at: Optional[datetime] = None
+
+    # Build end time (UTC)
+    finished_at: Optional[datetime] = None
+
+    # Tools used in the build
+    # Key: tool name/identifier, Value: tool details (flexible)
+    tools: Dict[str, any] = field(default_factory=dict)
+
+    # Build artifacts (targets)
+    # List of SBOMFile objects that are the result of the build
+    targets: List[SBOMFile] = field(default_factory=list)
+
+    # Flexible metadata storage for format-specific needs
+    metadata: Dict[str, any] = field(default_factory=dict)
 
 @dataclass
 class SBOMData:
@@ -203,6 +229,9 @@ class SBOMData:
 
     # Build directory path
     build_dir: str = ""
+
+    # Build information
+    build: Optional[SBOMBuild] = None
 
     # Flexible metadata storage for format-specific needs
     metadata: Dict[str, any] = field(default_factory=dict)

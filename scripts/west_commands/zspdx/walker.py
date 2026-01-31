@@ -15,12 +15,14 @@ from zspdx.cmakefileapijson import parseReply
 from zspdx.getincludes import getCIncludes
 from zspdx.model import (
     ComponentPurpose,
+    SBOMBuild,
     SBOMComponent,
     SBOMData,
     SBOMFile,
     SBOMRelationship,
     SBomDocument,
 )
+from datetime import datetime, timezone
 
 
 # WalkerConfig contains configuration data for the Walker.
@@ -189,6 +191,24 @@ class Walker:
             if cmake_version:
                 build_info["cmake_version"] = cmake_version
             self.sbom_data.metadata["build_info"] = build_info
+
+            # Populate SBOMBuild object
+            build = SBOMBuild(
+                id=f"build-{self.cfg.namespacePrefix.split('/')[-1]}",  # Simple ID based on namespace
+                build_type=build_info.get("cmake_build_type", ""),
+            )
+
+            # Using current time as fallback if we can't get file time,
+            # or try to get file time of cacheFilePath
+            try:
+                ts = os.path.getmtime(cacheFilePath)
+                build.started_at = datetime.fromtimestamp(ts, tz=timezone.utc)
+                # finished_at is roughly now since we are running spdx generation after build
+                build.finished_at = datetime.now(timezone.utc)
+            except OSError:
+                pass
+
+            self.sbom_data.build = build
 
     # determine path from build dir to CMake file-based API index file, then
     # parse it and return the Codemodel
