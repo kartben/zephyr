@@ -11,30 +11,55 @@ import zspdx.cmakefileapi
 
 
 def parseReply(replyIndexPath):
+    """Parse CMake file-based API reply files and return a CMakeFileApiReply object.
+
+    This parses the index file and all available reply files (codemodel, cache, toolchains).
+    """
     replyDir, _ = os.path.split(replyIndexPath)
 
-    # first we need to find the codemodel reply file
     try:
         with open(replyIndexPath) as indexFile:
             js = json.load(indexFile)
+
+            result = zspdx.cmakefileapi.CMakeFileApiReply()
+
+            # Parse cmake info from the index file
+            result.cmake_info = parseCMakeInfo(js)
 
             # get reply object
             reply_dict = js.get("reply", {})
             if reply_dict == {}:
                 log.err('no "reply" field found in index file')
                 return None
-            # get codemodel object
+
+            # Parse codemodel (required)
             cm_dict = reply_dict.get("codemodel-v2", {})
             if cm_dict == {}:
                 log.err('no "codemodel-v2" field found in "reply" object in index file')
                 return None
-            # and get codemodel filename
             jsonFile = cm_dict.get("jsonFile", "")
             if jsonFile == "":
                 log.err('no "jsonFile" field found in "codemodel-v2" object in index file')
                 return None
+            result.codemodel = parseCodemodel(replyDir, jsonFile)
+            if not result.codemodel:
+                return None
 
-            return parseCodemodel(replyDir, jsonFile)
+            # Parse cache (optional but preferred)
+            cache_dict = reply_dict.get("cache-v2", {})
+            if cache_dict:
+                cacheJsonFile = cache_dict.get("jsonFile", "")
+                if cacheJsonFile:
+                    result.cache = parseCache(replyDir, cacheJsonFile)
+
+            # Parse toolchains (optional but preferred)
+            toolchains_dict = reply_dict.get("toolchains-v1", {})
+            if toolchains_dict:
+                toolchainsJsonFile = toolchains_dict.get("jsonFile", "")
+                if toolchainsJsonFile:
+                    result.toolchains = parseToolchains(replyDir, toolchainsJsonFile)
+
+            return result
 
     except OSError as e:
         log.err(f"Error loading {replyIndexPath}: {str(e)}")
@@ -42,6 +67,124 @@ def parseReply(replyIndexPath):
     except json.decoder.JSONDecodeError as e:
         log.err(f"Error parsing JSON in {replyIndexPath}: {str(e)}")
         return None
+
+
+def parseCMakeInfo(js):
+    """Parse CMake info from the index file."""
+    cmake_info = zspdx.cmakefileapi.CMakeInfo()
+
+    cmake_dict = js.get("cmake", {})
+    if cmake_dict:
+        # Generator info
+        generator_dict = cmake_dict.get("generator", {})
+        cmake_info.generator_name = generator_dict.get("name", "")
+        cmake_info.generator_multiConfig = generator_dict.get("multiConfig", False)
+
+        # CMake paths
+        paths_dict = cmake_dict.get("paths", {})
+        cmake_info.cmake_path = paths_dict.get("cmake", "")
+        cmake_info.cpack_path = paths_dict.get("cpack", "")
+        cmake_info.ctest_path = paths_dict.get("ctest", "")
+        cmake_info.cmake_root = paths_dict.get("root", "")
+
+        # CMake version
+        version_dict = cmake_dict.get("version", {})
+        cmake_info.version_major = version_dict.get("major", 0)
+        cmake_info.version_minor = version_dict.get("minor", 0)
+        cmake_info.version_patch = version_dict.get("patch", 0)
+        cmake_info.version_string = version_dict.get("string", "")
+
+    return cmake_info
+
+
+def parseCache(replyDir, cacheFile):
+    """Parse cache-v2 reply file."""
+    cachePath = os.path.join(replyDir, cacheFile)
+    cache = zspdx.cmakefileapi.Cache()
+
+    try:
+        with open(cachePath) as f:
+            js = json.load(f)
+
+            # Verify kind and version
+            kind = js.get("kind", "")
+            if kind != "cache":
+                log.wrn(f'Expected "kind":"cache" in {cachePath}, got {kind}')
+
+            # Parse entries
+            entries_arr = js.get("entries", [])
+            for entry_dict in entries_arr:
+                entry = zspdx.cmakefileapi.CacheEntry()
+                entry.name = entry_dict.get("name", "")
+                entry.value = entry_dict.get("value", "")
+                entry.type = entry_dict.get("type", "")
+
+                if entry.name:
+                    cache.entries[entry.name] = entry
+
+            log.dbg(f"parsed {len(cache.entries)} cache entries from CMake file API")
+            return cache
+
+    except OSError as e:
+        log.wrn(f"Could not load cache file {cachePath}: {str(e)}")
+        return cache
+    except json.decoder.JSONDecodeError as e:
+        log.wrn(f"Error parsing JSON in {cachePath}: {str(e)}")
+        return cache
+
+
+def parseToolchains(replyDir, toolchainsFile):
+    """Parse toolchains-v1 reply file."""
+    toolchainsPath = os.path.join(replyDir, toolchainsFile)
+    toolchains = zspdx.cmakefileapi.Toolchains()
+
+    try:
+        with open(toolchainsPath) as f:
+            js = json.load(f)
+
+            # Verify kind and version
+            kind = js.get("kind", "")
+            if kind != "toolchains":
+                log.wrn(f'Expected "kind":"toolchains" in {toolchainsPath}, got {kind}')
+
+            # Parse toolchains
+            toolchains_arr = js.get("toolchains", [])
+            for tc_dict in toolchains_arr:
+                tc = zspdx.cmakefileapi.Toolchain()
+                tc.language = tc_dict.get("language", "")
+                tc.sourceFileExtensions = tc_dict.get("sourceFileExtensions", [])
+
+                # Parse compiler info
+                compiler_dict = tc_dict.get("compiler", {})
+                if compiler_dict:
+                    compiler = zspdx.cmakefileapi.ToolchainCompiler()
+                    compiler.path = compiler_dict.get("path", "")
+                    compiler.id = compiler_dict.get("id", "")
+                    compiler.version = compiler_dict.get("version", "")
+                    compiler.target = compiler_dict.get("target", "")
+
+                    # Parse implicit directories
+                    implicit_dict = compiler_dict.get("implicit", {})
+                    if implicit_dict:
+                        compiler.implicit_include_directories = implicit_dict.get("includeDirectories", [])
+                        compiler.implicit_link_directories = implicit_dict.get("linkDirectories", [])
+                        compiler.implicit_link_framework_directories = implicit_dict.get("linkFrameworkDirectories", [])
+                        compiler.implicit_link_libraries = implicit_dict.get("linkLibraries", [])
+
+                    tc.compiler = compiler
+
+                if tc.language:
+                    toolchains.toolchains[tc.language] = tc
+
+            log.dbg(f"parsed toolchains for languages: {list(toolchains.toolchains.keys())}")
+            return toolchains
+
+    except OSError as e:
+        log.wrn(f"Could not load toolchains file {toolchainsPath}: {str(e)}")
+        return toolchains
+    except json.decoder.JSONDecodeError as e:
+        log.wrn(f"Error parsing JSON in {toolchainsPath}: {str(e)}")
+        return toolchains
 
 def parseCodemodel(replyDir, codemodelFile):
     codemodelPath = os.path.join(replyDir, codemodelFile)
