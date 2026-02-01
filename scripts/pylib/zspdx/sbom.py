@@ -36,7 +36,7 @@ class SBOMConfig:
     includeSDK: bool = False
 
 
-# create Cmake file-based API directories and query file
+# create Cmake file-based API directories and query files
 # Arguments:
 #   1) build_dir: build directory
 def setupCmakeQuery(build_dir):
@@ -53,19 +53,22 @@ def setupCmakeQuery(build_dir):
         # create the directory
         os.makedirs(cmakeApiDirPath, exist_ok=False)
 
-    # check that codemodel-v2 exists as a file, or else create it
-    queryFilePath = os.path.join(cmakeApiDirPath, "codemodel-v2")
-    if os.path.exists(queryFilePath):
-        if not os.path.isfile(queryFilePath):
-            _logger.error("cmake api query file %s exists and is not a directory", queryFilePath)
-            return False
-        # file exists, we're good
-        return True
-    else:
-        # file doesn't exist, let's create an empty file
-        with open(queryFilePath, "w"):
-            pass
-        return True
+    # Query files to create: codemodel-v2, cache-v2, and toolchains-v1
+    query_files = ["codemodel-v2", "cache-v2", "toolchains-v1"]
+
+    for query_file in query_files:
+        queryFilePath = os.path.join(cmakeApiDirPath, query_file)
+        if os.path.exists(queryFilePath):
+            if not os.path.isfile(queryFilePath):
+                _logger.error("cmake api query file %s exists and is not a file", queryFilePath)
+                return False
+            # file exists, we're good
+        else:
+            # file doesn't exist, let's create an empty file
+            with open(queryFilePath, "w"):
+                pass
+
+    return True
 
 
 # main entry point for SBOM maker

@@ -11,7 +11,6 @@ from dataclasses import dataclass
 import yaml
 from west.util import WestNotFound, west_topdir
 
-from zspdx.cmakecache import parseCMakeCacheFile
 from zspdx.cmakefileapijson import parseReply
 from zspdx.getincludes import getCIncludes
 from zspdx.model import (
@@ -80,7 +79,7 @@ def get_tool_version(tool_path: str) -> str:
 
         return ""
     except (subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
-        log.dbg(f"Could not get version for {tool_path}: {e}")
+        _logger.debug(f"Could not get version for {tool_path}: {e}")
         return ""
 
 
@@ -138,16 +137,22 @@ class Walker:
         # Types: "component", "file"
         self.pendingRelationships = []
 
-        # parsed CMake codemodel
+        # parsed CMake file API reply (contains codemodel, cache, toolchains)
+        self.cmakeApiReply = None
+
+        # parsed CMake codemodel (shortcut reference)
         self.cm = None
 
-        # parsed CMake cache dict, once we have the build path
-        self.cmakeCache = {}
+        # CMake cache (shortcut reference)
+        self.cmakeCache = None
 
-        # C compiler path from parsed CMake cache
+        # CMake toolchains (shortcut reference)
+        self.toolchains = None
+
+        # C compiler path from CMake file API
         self.compilerPath = ""
 
-        # SDK install path from parsed CMake cache
+        # SDK install path from CMake cache
         self.sdkPath = ""
 
         # Meta file path
@@ -177,20 +182,25 @@ class Walker:
         Collect SBOM data from CMake codemodel and build artifacts.
         Returns SBOMData object containing all collected information.
         """
-        # parse CMake cache file and get compiler path
-        _logger.info("parsing CMake Cache file")
-        self.getCacheFile()
+        # parse CMake file API reply (codemodel, cache, toolchains)
+        _logger.info("parsing CMake file API reply")
+        self.cmakeApiReply = self.getFileApiReply()
+        if not self.cmakeApiReply:
+            _logger.error("could not parse CMake file API reply; bailing")
+            return None
+
+        # set up shortcut references
+        self.cm = self.cmakeApiReply.codemodel
+        self.cmakeCache = self.cmakeApiReply.cache
+        self.toolchains = self.cmakeApiReply.toolchains
+
+        # extract build info from file API data
+        _logger.info("extracting build information from CMake file API")
+        self.extractBuildInfo()
 
         # check if meta file is generated
         if not self.metaFile:
             _logger.error("CONFIG_BUILD_OUTPUT_META must be enabled to generate spdx files; bailing")
-            return None
-
-        # parse codemodel from Walker cfg's build dir
-        _logger.info("parsing CMake Codemodel files")
-        self.cm = self.getCodemodel()
-        if not self.cm:
-            _logger.error("could not parse codemodel from CMake API reply; bailing")
             return None
 
         # set up components
@@ -213,34 +223,61 @@ class Walker:
 
         return self.sbom_data
 
-    # parse cache file and pull out relevant data
-    def getCacheFile(self):
-        cacheFilePath = os.path.join(self.cfg.buildDir, "CMakeCache.txt")
-        self.cmakeCache = parseCMakeCacheFile(cacheFilePath)
+    # extract build info from CMake file API data
+    def extractBuildInfo(self):
+        """Extract build information from CMake file API (cache and toolchains)."""
+        # Get compiler path from toolchains (preferred) or cache (fallback)
+        if self.toolchains:
+            self.compilerPath = self.toolchains.get_compiler_path("C")
+            _logger.debug(f"C compiler path from toolchains: {self.compilerPath}")
+
+        # Get paths from cache as fallback or for values not in toolchains
         if self.cmakeCache:
-            self.compilerPath = self.cmakeCache.get("CMAKE_C_COMPILER", "")
+            if not self.compilerPath:
+                self.compilerPath = self.cmakeCache.get("CMAKE_C_COMPILER", "")
+                _logger.debug(f"C compiler path from cache: {self.compilerPath}")
+
             self.sdkPath = self.cmakeCache.get("ZEPHYR_SDK_INSTALL_DIR", "")
-            self.metaFile =  self.cmakeCache.get("KERNEL_META_PATH", "")
+            self.metaFile = self.cmakeCache.get("KERNEL_META_PATH", "")
 
             # Store build information in SBOM metadata for SPDX 3.0 Build Profile
-            build_info = {
-                "cmake_compiler": self.cmakeCache.get("CMAKE_C_COMPILER", ""),
-                "cmake_cxx_compiler": self.cmakeCache.get("CMAKE_CXX_COMPILER", ""),
-                "cmake_asm_compiler": self.cmakeCache.get("CMAKE_ASM_COMPILER", ""),
-                "cmake_linker": self.cmakeCache.get("CMAKE_LINKER", ""),
-                "cmake_ar": self.cmakeCache.get("CMAKE_AR", ""),
-                "cmake_build_type": self.cmakeCache.get("CMAKE_BUILD_TYPE", ""),
-                "cmake_system_name": self.cmakeCache.get("CMAKE_SYSTEM_NAME", ""),
-                "cmake_generator": self.cmakeCache.get("CMAKE_GENERATOR", ""),
-                "cmake_system_processor": self.cmakeCache.get("CMAKE_SYSTEM_PROCESSOR", ""),
-            }
+            build_info = {}
 
-            # Capture tool versions by running --version on each tool
-            log.dbg("capturing build tool versions")
+            # Get compiler paths from toolchains (more accurate) or cache
+            if self.toolchains:
+                build_info["cmake_compiler"] = self.toolchains.get_compiler_path("C")
+                build_info["cmake_cxx_compiler"] = self.toolchains.get_compiler_path("CXX")
+                build_info["cmake_asm_compiler"] = self.toolchains.get_compiler_path("ASM")
+                # Get compiler versions directly from toolchains (no need to run --version)
+                build_info["c_compiler_version"] = self.toolchains.get_compiler_version("C")
+                build_info["c_compiler_id"] = self.toolchains.get_compiler_id("C")
+                build_info["cxx_compiler_version"] = self.toolchains.get_compiler_version("CXX")
+                build_info["cxx_compiler_id"] = self.toolchains.get_compiler_id("CXX")
+                build_info["asm_compiler_version"] = self.toolchains.get_compiler_version("ASM")
+                build_info["asm_compiler_id"] = self.toolchains.get_compiler_id("ASM")
+            else:
+                # Fallback to cache
+                build_info["cmake_compiler"] = self.cmakeCache.get("CMAKE_C_COMPILER", "")
+                build_info["cmake_cxx_compiler"] = self.cmakeCache.get("CMAKE_CXX_COMPILER", "")
+                build_info["cmake_asm_compiler"] = self.cmakeCache.get("CMAKE_ASM_COMPILER", "")
+
+            # These are always from cache
+            build_info["cmake_linker"] = self.cmakeCache.get("CMAKE_LINKER", "")
+            build_info["cmake_ar"] = self.cmakeCache.get("CMAKE_AR", "")
+            build_info["cmake_build_type"] = self.cmakeCache.get("CMAKE_BUILD_TYPE", "")
+            build_info["cmake_system_name"] = self.cmakeCache.get("CMAKE_SYSTEM_NAME", "")
+            build_info["cmake_system_processor"] = self.cmakeCache.get("CMAKE_SYSTEM_PROCESSOR", "")
+
+            # Get CMake info from the file API index
+            if self.cmakeApiReply and self.cmakeApiReply.cmake_info:
+                cmake_info = self.cmakeApiReply.cmake_info
+                build_info["cmake_generator"] = cmake_info.generator_name
+                build_info["cmake_version"] = cmake_info.version_string
+                build_info["cmake_path"] = cmake_info.cmake_path
+
+            # Capture tool versions for linker and ar (not in toolchains)
+            _logger.debug("capturing build tool versions for linker and ar")
             tool_paths = {
-                "c_compiler_version": build_info.get("cmake_compiler", ""),
-                "cxx_compiler_version": build_info.get("cmake_cxx_compiler", ""),
-                "asm_compiler_version": build_info.get("cmake_asm_compiler", ""),
                 "linker_version": build_info.get("cmake_linker", ""),
                 "ar_version": build_info.get("cmake_ar", ""),
             }
@@ -250,32 +287,16 @@ class Walker:
                     if version:
                         build_info[version_key] = version
 
-            # Try to get CMake version (check common keys)
-            cmake_version_keys = ["CMAKE_VERSION", "CMAKE_MAJOR_VERSION", "CMAKE_MINOR_VERSION", "CMAKE_PATCH_VERSION"]
-            cmake_version = None
-            if "CMAKE_VERSION" in self.cmakeCache:
-                cmake_version = self.cmakeCache.get("CMAKE_VERSION")
-            elif all(k in self.cmakeCache for k in ["CMAKE_MAJOR_VERSION", "CMAKE_MINOR_VERSION", "CMAKE_PATCH_VERSION"]):
-                major = self.cmakeCache.get("CMAKE_MAJOR_VERSION", "")
-                minor = self.cmakeCache.get("CMAKE_MINOR_VERSION", "")
-                patch = self.cmakeCache.get("CMAKE_PATCH_VERSION", "")
-                if major and minor:
-                    cmake_version = f"{major}.{minor}"
-                    if patch:
-                        cmake_version += f".{patch}"
-            if cmake_version:
-                build_info["cmake_version"] = cmake_version
             self.sbom_data.metadata["build_info"] = build_info
 
             # Populate SBOMBuild object
             build = SBOMBuild(
-                id=f"build-{self.cfg.namespacePrefix.split('/')[-1]}",  # Simple ID based on namespace
+                id=f"build-{self.cfg.namespacePrefix.split('/')[-1]}",
                 build_type=build_info.get("cmake_build_type", ""),
             )
 
             # Note on build timestamps:
             # We cannot accurately determine build start/end times from the build directory.
-            # CMakeCache.txt mtime represents CMake configuration time, not build time.
             # Per SPDX 3.0 spec, these fields are optional and may be omitted for reproducibility.
             # We leave them unpopulated rather than providing inaccurate timestamps.
             # If accurate timestamps are needed, the build system should record them explicitly.
@@ -283,9 +304,9 @@ class Walker:
             self.sbom_data.build = build
 
     # determine path from build dir to CMake file-based API index file, then
-    # parse it and return the Codemodel
-    def getCodemodel(self):
-        _logger.debug("getting codemodel from CMake API reply files")
+    # parse it and return the CMakeFileApiReply
+    def getFileApiReply(self):
+        _logger.debug("getting CMake file API reply files")
 
         # make sure the reply directory exists
         cmakeReplyDirPath = os.path.join(self.cfg.buildDir, ".cmake", "api", "v1", "reply")
@@ -321,7 +342,7 @@ class Walker:
 
     def setupDocuments(self):
         """Set up all SBOM documents."""
-        log.dbg("setting up SBOM documents")
+        _logger.debug("setting up SBOM documents")
 
         # Create core documents
         self.doc_app = self._create_document("app")
@@ -531,7 +552,7 @@ class Walker:
             if target.archive_commandFragments:
                 bf.metadata["is_archive"] = True
 
-        log.dbg(f"    - build metadata: type={target.type.name}, "
+        _logger.debug(f"    - build metadata: type={target.type.name}, "
                 f"languages={compile_languages}, link={target.link_language}")
 
     # build a Component for the given ConfigTarget
@@ -794,7 +815,7 @@ class Walker:
         """Register an external document reference if documents are different."""
         if from_doc and to_doc and from_doc.name != to_doc.name:
             from_doc.add_external_document(to_doc)
-            log.dbg(f"  - registered external document ref: {from_doc.name} -> {to_doc.name}")
+            _logger.debug(f"  - registered external document ref: {from_doc.name} -> {to_doc.name}")
 
     # walk through pending relationship data and create relationships
     def walkRelationships(self):
