@@ -42,6 +42,11 @@ class SPDX3Serializer:
         self.file_elements = {}  # file_path -> software_File
         self.relationship_elements = []  # List of Relationship objects
 
+        # Track original from_id for relationships (before reversal)
+        # This is used to assign cross-document relationships to the correct document
+        # Key: relationship._id, Value: original from_id
+        self.relationship_original_from = {}
+
         # Shared objects
         self.tool = None  # Tool element for createdUsing
         self.creator_agent = None  # SoftwareAgent for createdBy
@@ -554,6 +559,11 @@ class SPDX3Serializer:
             relationship.to = to_ids
         relationship.creationInfo = self.creation_info._id
 
+        # Store original from_id for document assignment (before reversal)
+        # This ensures cross-document relationships are placed in the document
+        # of the original "from" element, matching SPDX 2.x behavior
+        self.relationship_original_from[relationship._id] = from_id
+
         self.elements.append(relationship)
         self.relationship_elements.append(relationship)
         return relationship
@@ -685,11 +695,13 @@ class SPDX3Serializer:
         for rel in self.relationship_elements:
             from_id = getattr(rel, 'from_', None)
             to_ids = getattr(rel, 'to', [])
-            # Only include relationships where the 'from' element is in this document.
-            # This is more consistent with how SPDX 2.x documents are structured.
-            # Relationships pointing TO elements in this document from elsewhere should
-            # be in the document that owns the 'from' element.
-            if from_id in document_element_ids:
+            # Use the original from_id (before any reversal) to determine document ownership.
+            # This ensures cross-document relationships are placed in the document that
+            # originally owned the "from" element, matching SPDX 2.x behavior.
+            # For example, if ".a GENERATED_FROM .c" is reversed to ".c generates .a",
+            # we still want the relationship in the document containing the .a file.
+            original_from_id = self.relationship_original_from.get(rel._id, from_id)
+            if original_from_id in document_element_ids or from_id in document_element_ids:
                 relationship_ids.add(rel._id)
         document_element_ids.update(relationship_ids)
 
