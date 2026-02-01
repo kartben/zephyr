@@ -116,12 +116,106 @@ class SPDX3Serializer:
 
         return True
 
+    def _create_build_config_element(self, component: SBOMComponent,
+                                       config_type: str) -> spdx.software_File:
+        """Create a software_File element representing build configuration for a target.
+
+        This captures compilation flags, defines, and includes as a configuration
+        artifact that can be linked via configures relationship.
+
+        Args:
+            component: The SBOMComponent with build metadata
+            config_type: Type of config ('compile', 'link', or 'archive')
+
+        Returns:
+            software_File element representing the build configuration, or None
+        """
+        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        normalized_name = normalize_spdx_name(component.name)
+
+        config_file = spdx.software_File()
+        config_file._id = self._shorten_id(
+            f"{namespace}/build-config/{normalized_name}-{config_type}"
+        )
+        config_file.name = f"{component.name} {config_type} configuration"
+        config_file.creationInfo = self.creation_info._id
+        config_file.software_fileKind = spdx.software_FileKindType.file
+        config_file.software_primaryPurpose = spdx.software_SoftwarePurpose.configuration
+
+        # Build description based on config type
+        if config_type == "compile":
+            flags = component.metadata.get("compile_flags", [])
+            defines = component.metadata.get("compile_defines", [])
+            languages = component.metadata.get("compile_languages", [])
+
+            if not flags and not defines:
+                return None
+
+            description_parts = []
+            if languages:
+                description_parts.append(f"Languages: {', '.join(languages)}")
+            if flags:
+                # Show flags count and first few for summary
+                if len(flags) > 10:
+                    description_parts.append(f"Flags ({len(flags)}): {' '.join(flags[:10])} ...")
+                else:
+                    description_parts.append(f"Flags: {' '.join(flags)}")
+            if defines:
+                if len(defines) > 5:
+                    description_parts.append(f"Defines ({len(defines)}): {', '.join(defines[:5])} ...")
+                else:
+                    description_parts.append(f"Defines: {', '.join(defines)}")
+
+            config_file.description = "; ".join(description_parts)
+
+            # Store full flags in comment for complete audit trail
+            config_file.comment = f"Full compile command fragments: {' '.join(flags)}"
+
+        elif config_type == "link":
+            link_flags = component.metadata.get("link_flags", [])
+            link_libs = component.metadata.get("link_libraries", [])
+            link_language = component.metadata.get("link_language", "")
+
+            if not link_flags and not link_libs:
+                return None
+
+            description_parts = []
+            if link_language:
+                description_parts.append(f"Link language: {link_language}")
+            if link_flags:
+                if len(link_flags) > 10:
+                    description_parts.append(f"Link flags ({len(link_flags)}): {' '.join(link_flags[:10])} ...")
+                else:
+                    description_parts.append(f"Link flags: {' '.join(link_flags)}")
+            if link_libs:
+                if len(link_libs) > 5:
+                    description_parts.append(f"Libraries ({len(link_libs)}): {' '.join(link_libs[:5])} ...")
+                else:
+                    description_parts.append(f"Libraries: {' '.join(link_libs)}")
+
+            config_file.description = "; ".join(description_parts)
+            config_file.comment = f"Full link flags: {' '.join(link_flags)}"
+
+        elif config_type == "archive":
+            archive_flags = component.metadata.get("archive_flags", [])
+
+            if not archive_flags:
+                return None
+
+            config_file.description = f"Archive flags: {' '.join(archive_flags)}"
+            config_file.comment = f"Full archive command fragments: {' '.join(archive_flags)}"
+
+        self.elements.append(config_file)
+        return config_file
+
     def _create_tool_lifecycle_relationships(self, component: SBOMComponent,
                                               build_file) -> None:
         """Create LifecycleScopedRelationships for tools used to build a specific artifact.
 
         Uses CMake metadata captured in walker.py to determine exactly which tools
         were used for this target, rather than heuristic-based detection.
+        Also creates build configuration elements and configures relationships
+        to capture detailed compilation flags.
 
         Args:
             component: The SBOMComponent representing the build target
@@ -136,13 +230,17 @@ class SPDX3Serializer:
         }
 
         tools_used = []
+        tool_config_map = {}  # tool -> config_type
 
         # Get compile languages from metadata (extracted from CMake compileGroups)
         compile_languages = component.metadata.get("compile_languages", [])
         for lang in compile_languages:
             tool_key = language_to_tool.get(lang)
             if tool_key and tool_key in self.build_tools:
-                tools_used.append(self.build_tools[tool_key])
+                tool = self.build_tools[tool_key]
+                if tool not in tools_used:
+                    tools_used.append(tool)
+                    tool_config_map[tool._id] = "compile"
 
         # Determine if linker was used based on target type and link_language
         target_type = component.metadata.get("target_type", "")
@@ -151,13 +249,24 @@ class SPDX3Serializer:
         if target_type in ("EXECUTABLE", "SHARED_LIBRARY", "MODULE_LIBRARY"):
             # Executables and shared libraries use the linker
             if "linker" in self.build_tools:
-                tools_used.append(self.build_tools["linker"])
+                tool = self.build_tools["linker"]
+                tools_used.append(tool)
+                tool_config_map[tool._id] = "link"
 
         # Determine if archiver was used (for static libraries)
         is_archive = component.metadata.get("is_archive", False)
         if is_archive or target_type == "STATIC_LIBRARY":
             if "archiver" in self.build_tools:
-                tools_used.append(self.build_tools["archiver"])
+                tool = self.build_tools["archiver"]
+                tools_used.append(tool)
+                tool_config_map[tool._id] = "archive"
+
+        # Create build config elements for this target
+        config_elements = {}
+        for config_type in ["compile", "link", "archive"]:
+            config_elem = self._create_build_config_element(component, config_type)
+            if config_elem:
+                config_elements[config_type] = config_elem
 
         # Create LifecycleScopedRelationship for each tool used
         for tool in tools_used:
@@ -170,6 +279,50 @@ class SPDX3Serializer:
             rel.to = [tool._id]
             rel.scope = spdx.LifecycleScopeType.build
             rel.creationInfo = self.creation_info._id
+
+            # Add description with summary of build parameters for this tool
+            config_type = tool_config_map.get(tool._id)
+            if config_type == "compile":
+                flags = component.metadata.get("compile_flags", [])
+                defines = component.metadata.get("compile_defines", [])
+                opt_flags = [f for f in flags if f.startswith('-O') or f == '-g']
+                arch_flags = [f for f in flags if f.startswith('-mcpu') or f.startswith('-march') or f.startswith('-mthumb')]
+                std_flags = [f for f in flags if f.startswith('-std=')]
+                summary_parts = opt_flags + arch_flags + std_flags
+                if summary_parts:
+                    rel.description = f"Compiled with: {' '.join(summary_parts)}"
+                    if defines:
+                        rel.description += f"; Defines: {len(defines)} macros"
+            elif config_type == "link":
+                link_flags = component.metadata.get("link_flags", [])
+                link_libs = component.metadata.get("link_libraries", [])
+                if link_flags or link_libs:
+                    parts = []
+                    if link_flags:
+                        parts.append(f"{len(link_flags)} flags")
+                    if link_libs:
+                        parts.append(f"{len(link_libs)} libraries")
+                    rel.description = f"Linked with: {', '.join(parts)}"
+            elif config_type == "archive":
+                archive_flags = component.metadata.get("archive_flags", [])
+                if archive_flags:
+                    rel.description = f"Archived with: {' '.join(archive_flags)}"
+
+            self.elements.append(rel)
+            self.relationship_elements.append(rel)
+
+        # Create configures relationships from build config elements to the artifact
+        for config_type, config_elem in config_elements.items():
+            rel = spdx.LifecycleScopedRelationship()
+            rel._id = self._generate_relationship_id(
+                len(self.relationship_elements)
+            )
+            rel.relationshipType = spdx.RelationshipType.configures
+            rel.from_ = config_elem._id
+            rel.to = [build_file._id]
+            rel.scope = spdx.LifecycleScopeType.build
+            rel.creationInfo = self.creation_info._id
+            rel.description = f"Build configuration ({config_type}) for {component.name}"
             self.elements.append(rel)
             self.relationship_elements.append(rel)
 
@@ -357,6 +510,7 @@ class SPDX3Serializer:
         Per SPDX 3.0.1 spec, the Build class represents a build instance.
         buildStartTime and buildEndTime are optional and may be omitted
         to simplify creating reproducible builds.
+        Also populates build_parameter with global build configuration information.
         """
         if self.build:
             return
@@ -392,7 +546,74 @@ class SPDX3Serializer:
             if self.sbom_data.build.finished_at:
                 self.build.build_buildEndTime = self.sbom_data.build.finished_at
 
+        # Add build_parameter with global build configuration
+        # Per SPDX 3.0.1 spec, build_parameter is a list of DictionaryEntry
+        self._add_build_parameters()
+
         self.elements.append(self.build)
+
+    def _add_build_parameters(self):
+        """Add build parameters (DictionaryEntry) to the Build object.
+
+        Captures global build configuration including:
+        - CMake configuration (generator, build type, system info)
+        - Compiler information (paths, versions, IDs)
+        - Target architecture information
+        """
+        if not self.build:
+            return
+
+        # Helper function to create DictionaryEntry
+        def add_param(key: str, value: str):
+            if value:
+                entry = spdx.DictionaryEntry()
+                entry.key = key
+                entry.value = str(value)
+                self.build.build_parameter.append(entry)
+
+        # CMake configuration
+        if self.build_info:
+            # CMake basic info
+            add_param("cmake:version", self.build_info.get("cmake_version", ""))
+            add_param("cmake:generator", self.build_info.get("cmake_generator", ""))
+            add_param("cmake:buildType", self.build_info.get("cmake_build_type", ""))
+
+            # Target system info
+            add_param("target:system", self.build_info.get("cmake_system_name", ""))
+            add_param("target:processor", self.build_info.get("cmake_system_processor", ""))
+
+            # C Compiler
+            c_compiler = self.build_info.get("cmake_compiler", "")
+            if c_compiler:
+                add_param("compiler:c:path", c_compiler)
+                add_param("compiler:c:id", self.build_info.get("c_compiler_id", ""))
+                add_param("compiler:c:version", self.build_info.get("c_compiler_version", ""))
+
+            # C++ Compiler
+            cxx_compiler = self.build_info.get("cmake_cxx_compiler", "")
+            if cxx_compiler:
+                add_param("compiler:cxx:path", cxx_compiler)
+                add_param("compiler:cxx:id", self.build_info.get("cxx_compiler_id", ""))
+                add_param("compiler:cxx:version", self.build_info.get("cxx_compiler_version", ""))
+
+            # ASM Compiler
+            asm_compiler = self.build_info.get("cmake_asm_compiler", "")
+            if asm_compiler:
+                add_param("compiler:asm:path", asm_compiler)
+                add_param("compiler:asm:id", self.build_info.get("asm_compiler_id", ""))
+                add_param("compiler:asm:version", self.build_info.get("asm_compiler_version", ""))
+
+            # Linker
+            linker = self.build_info.get("cmake_linker", "")
+            if linker:
+                add_param("linker:path", linker)
+                add_param("linker:version", self.build_info.get("linker_version", ""))
+
+            # Archiver
+            archiver = self.build_info.get("cmake_ar", "")
+            if archiver:
+                add_param("archiver:path", archiver)
+                add_param("archiver:version", self.build_info.get("ar_version", ""))
 
 
     def _create_software_package(self, component: SBOMComponent) -> spdx.software_Package:
@@ -726,6 +947,19 @@ class SPDX3Serializer:
                         # Also include tools referenced by these relationships
                         for tool_id in rel.to:
                             document_element_ids.add(tool_id)
+
+            # Include build-config elements (they have IDs containing build-config)
+            for element in self.elements:
+                if hasattr(element, '_id') and element._id:
+                    if 'build-config' in element._id:
+                        document_element_ids.add(element._id)
+                        # Also include configures relationships involving this config element
+                        for rel in self.relationship_elements:
+                            if rel.from_ == element._id:
+                                document_element_ids.add(rel._id)
+                                # Include the target of the configures relationship
+                                for to_id in rel.to:
+                                    document_element_ids.add(to_id)
         data_license = self._create_license_expression("CC0-1.0")
         if data_license:
             document_element_ids.add(data_license._id)
