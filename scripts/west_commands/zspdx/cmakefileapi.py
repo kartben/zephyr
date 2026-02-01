@@ -305,3 +305,135 @@ class Target:
 
     def __repr__(self):
         return f"Target: {self.name}"
+
+
+# CMake information from the file-based API index file
+class CMakeInfo:
+
+    def __init__(self):
+        super().__init__()
+
+        # Generator info
+        self.generator_name = ""
+        self.generator_multiConfig = False
+
+        # CMake paths
+        self.cmake_path = ""
+        self.cpack_path = ""
+        self.ctest_path = ""
+        self.cmake_root = ""
+
+        # CMake version info
+        self.version_major = 0
+        self.version_minor = 0
+        self.version_patch = 0
+        self.version_string = ""
+
+    def __repr__(self):
+        return f"CMakeInfo: version {self.version_string}, generator {self.generator_name}"
+
+
+# CMake cache entry from cache-v2 reply
+class CacheEntry:
+
+    def __init__(self):
+        super().__init__()
+
+        self.name = ""
+        self.value = ""
+        self.type = ""
+
+    def __repr__(self):
+        return f"CacheEntry: {self.name}={self.value}"
+
+
+# CMake cache from cache-v2 reply
+class Cache:
+
+    def __init__(self):
+        super().__init__()
+
+        self.entries = {}  # name -> CacheEntry
+
+    def get(self, name, default=""):
+        """Get a cache entry value by name."""
+        entry = self.entries.get(name)
+        return entry.value if entry else default
+
+    def __repr__(self):
+        return f"Cache: {len(self.entries)} entries"
+
+
+# Toolchain compiler info from toolchains-v1 reply
+class ToolchainCompiler:
+
+    def __init__(self):
+        super().__init__()
+
+        self.path = ""
+        self.id = ""
+        self.version = ""
+        self.target = ""
+        self.implicit_include_directories = []
+        self.implicit_link_directories = []
+        self.implicit_link_framework_directories = []
+        self.implicit_link_libraries = []
+
+    def __repr__(self):
+        return f"ToolchainCompiler: {self.id} {self.version} at {self.path}"
+
+
+# Toolchain from toolchains-v1 reply
+class Toolchain:
+
+    def __init__(self):
+        super().__init__()
+
+        self.language = ""
+        self.compiler = None  # ToolchainCompiler
+        self.sourceFileExtensions = []
+
+    def __repr__(self):
+        return f"Toolchain: {self.language}"
+
+
+# Collection of toolchains from toolchains-v1 reply
+class Toolchains:
+
+    def __init__(self):
+        super().__init__()
+
+        self.toolchains = {}  # language -> Toolchain
+
+    def get_compiler_path(self, language):
+        """Get the compiler path for a given language."""
+        tc = self.toolchains.get(language)
+        return tc.compiler.path if tc and tc.compiler else ""
+
+    def get_compiler_version(self, language):
+        """Get the compiler version for a given language."""
+        tc = self.toolchains.get(language)
+        return tc.compiler.version if tc and tc.compiler else ""
+
+    def get_compiler_id(self, language):
+        """Get the compiler ID for a given language."""
+        tc = self.toolchains.get(language)
+        return tc.compiler.id if tc and tc.compiler else ""
+
+    def __repr__(self):
+        return f"Toolchains: {list(self.toolchains.keys())}"
+
+
+# Combined result from parsing all CMake file API replies
+class CMakeFileApiReply:
+
+    def __init__(self):
+        super().__init__()
+
+        self.cmake_info = CMakeInfo()
+        self.codemodel = None  # Codemodel
+        self.cache = Cache()
+        self.toolchains = Toolchains()
+
+    def __repr__(self):
+        return f"CMakeFileApiReply: cmake={self.cmake_info.version_string}"
