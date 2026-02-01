@@ -43,13 +43,14 @@ class SPDX3Serializer:
         self.relationship_elements = []  # List of Relationship objects
 
         # Shared objects
-        self.tool = None
+        self.tool = None  # Tool element for createdUsing
+        self.creator_agent = None  # SoftwareAgent for createdBy
         self.creation_info = None
         self.documents = {}  # doc_name -> SpdxDocument
         self.build = None  # build_Build object
 
         # Build tools and information
-        self.build_tools = {}  # tool_name -> Tool/Agent
+        self.build_tools = {}  # tool_name -> Tool
         # Extract build information from metadata if available
         self.build_info = sbom_data.metadata.get('build_info', {}) if sbom_data.metadata else {}
 
@@ -93,6 +94,80 @@ class SPDX3Serializer:
         full_uri = f"{namespace}/relationships/{index}"
         return self._shorten_id(full_uri)
 
+    def _is_build_target_component(self, component: SBOMComponent) -> bool:
+        """Check if a component represents a build target (not source or dependency).
+
+        Build target components are those that produce build artifacts (libraries, executables).
+        Source components and dependency components are excluded.
+        """
+        # Source components are excluded
+        source_components = {"app-sources", "zephyr-sources", "sdk-sources"}
+        if component.name in source_components:
+            return False
+
+        # Dependency components (ending with -deps) are excluded
+        if component.name.endswith("-deps"):
+            return False
+
+        return True
+
+    def _create_tool_lifecycle_relationships(self, component: SBOMComponent,
+                                              build_file) -> None:
+        """Create LifecycleScopedRelationships for tools used to build a specific artifact.
+
+        Uses CMake metadata captured in walker.py to determine exactly which tools
+        were used for this target, rather than heuristic-based detection.
+
+        Args:
+            component: The SBOMComponent representing the build target
+            build_file: The SPDX file element for the build artifact
+        """
+        # Map compile languages to tool keys
+        language_to_tool = {
+            "C": "c-compiler",
+            "CXX": "cxx-compiler",
+            "ASM": "asm-compiler",
+            "ASM-ATT": "asm-compiler",
+        }
+
+        tools_used = []
+
+        # Get compile languages from metadata (extracted from CMake compileGroups)
+        compile_languages = component.metadata.get("compile_languages", [])
+        for lang in compile_languages:
+            tool_key = language_to_tool.get(lang)
+            if tool_key and tool_key in self.build_tools:
+                tools_used.append(self.build_tools[tool_key])
+
+        # Determine if linker was used based on target type and link_language
+        target_type = component.metadata.get("target_type", "")
+        link_language = component.metadata.get("link_language")
+
+        if target_type in ("EXECUTABLE", "SHARED_LIBRARY", "MODULE_LIBRARY"):
+            # Executables and shared libraries use the linker
+            if "linker" in self.build_tools:
+                tools_used.append(self.build_tools["linker"])
+
+        # Determine if archiver was used (for static libraries)
+        is_archive = component.metadata.get("is_archive", False)
+        if is_archive or target_type == "STATIC_LIBRARY":
+            if "archiver" in self.build_tools:
+                tools_used.append(self.build_tools["archiver"])
+
+        # Create LifecycleScopedRelationship for each tool used
+        for tool in tools_used:
+            rel = spdx.LifecycleScopedRelationship()
+            rel._id = self._generate_relationship_id(
+                len(self.relationship_elements)
+            )
+            rel.relationshipType = spdx.RelationshipType.usesTool
+            rel.from_ = build_file._id
+            rel.to = [tool._id]
+            rel.scope = spdx.LifecycleScopeType.build
+            rel.creationInfo = self.creation_info._id
+            self.elements.append(rel)
+            self.relationship_elements.append(rel)
+
     def _purpose_to_spdx3(self, purpose: ComponentPurpose) -> spdx.software_SoftwarePurpose:
         """Convert ComponentPurpose enum to SPDX 3.0 SoftwarePurpose."""
         purpose_map = {
@@ -103,143 +178,186 @@ class SPDX3Serializer:
         }
         return purpose_map.get(purpose, spdx.software_SoftwarePurpose.library)
 
-    def _create_build_tools(self):
-        """Create Tool/Agent elements for build tools (CMake, compilers, etc.)."""
-        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+    def _create_tool(self, key: str, name: str, path: str = None,
+                     extra_identifiers: list = None) -> spdx.Tool:
+        """Create a Tool element for a build tool.
 
+        Args:
+            key: Unique key for the tool (e.g., 'c-compiler', 'cmake')
+            name: Human-readable name for the tool
+            path: Optional file path to the tool executable
+            extra_identifiers: Optional list of (type, value) tuples for additional identifiers
+
+        Returns:
+            The created Tool element
+        """
+        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        tool = spdx.Tool()
+        tool._id = self._shorten_id(f"{namespace}/tools/{key}")
+        tool.name = name
+        tool.creationInfo = self.creation_info._id
+
+        # Add path as external identifier if provided
+        if path:
+            ext_id = spdx.ExternalIdentifier()
+            ext_id.externalIdentifierType = spdx.ExternalIdentifierType.other
+            ext_id.identifier = path
+            tool.externalIdentifier.append(ext_id)
+
+        # Add any extra identifiers
+        if extra_identifiers:
+            for id_type, id_value in extra_identifiers:
+                ext_id = spdx.ExternalIdentifier()
+                ext_id.externalIdentifierType = id_type
+                ext_id.identifier = id_value
+                tool.externalIdentifier.append(ext_id)
+
+        self.elements.append(tool)
+        self.build_tools[key] = tool
+        return tool
+
+    def _create_build_tools(self):
+        """Create Tool elements for build tools (CMake, compilers, etc.).
+
+        Per SPDX 3.0.1 spec, build tools should be Tool elements (not Agent).
+        Agent is for entities that create SPDX data, Tool is for software
+        used during the build process.
+        """
         # Create CMake tool
         if self.build_info.get("cmake_version") or self.build_info.get("cmake_generator"):
-            cmake_tool = spdx.Agent()
-            cmake_tool._id = self._shorten_id(f"{namespace}/agents/cmake")
             cmake_name = "CMake"
             if self.build_info.get("cmake_version"):
                 cmake_name += f" {self.build_info['cmake_version']}"
             if self.build_info.get("cmake_generator"):
                 cmake_name += f" ({self.build_info['cmake_generator']})"
-            cmake_tool.name = cmake_name
-            cmake_tool.creationInfo = self.creation_info._id
-            # Add build type as external identifier
+
+            extra_ids = []
             if self.build_info.get("cmake_build_type"):
-                ext_id = spdx.ExternalIdentifier()
-                ext_id.externalIdentifierType = spdx.ExternalIdentifierType.other
-                ext_id.identifier = f"build-type:{self.build_info['cmake_build_type']}"
-                cmake_tool.externalIdentifier.append(ext_id)
-            self.elements.append(cmake_tool)
-            self.build_tools["cmake"] = cmake_tool
+                extra_ids.append((
+                    spdx.ExternalIdentifierType.other,
+                    f"build-type:{self.build_info['cmake_build_type']}"
+                ))
+            self._create_tool("cmake", cmake_name, extra_identifiers=extra_ids if extra_ids else None)
 
         # Create C compiler tool
         compiler_path = self.build_info.get("cmake_compiler", "")
         if compiler_path:
             compiler_name = os.path.basename(compiler_path)
-            compiler_tool = spdx.Agent()
-            compiler_tool._id = self._shorten_id(f"{namespace}/agents/c-compiler")
-            compiler_tool.name = f"C Compiler ({compiler_name})"
-            compiler_tool.creationInfo = self.creation_info._id
-            # Add external identifier for compiler path
-            ext_id = spdx.ExternalIdentifier()
-            ext_id.externalIdentifierType = spdx.ExternalIdentifierType.other
-            ext_id.identifier = compiler_path
-            compiler_tool.externalIdentifier.append(ext_id)
-            # Add system processor if available
-            if self.build_info.get("cmake_system_processor"):
-                sys_ext_id = spdx.ExternalIdentifier()
-                sys_ext_id.externalIdentifierType = spdx.ExternalIdentifierType.other
-                sys_ext_id.identifier = f"target-arch:{self.build_info['cmake_system_processor']}"
-                compiler_tool.externalIdentifier.append(sys_ext_id)
-            self.elements.append(compiler_tool)
-            self.build_tools["c-compiler"] = compiler_tool
+            compiler_version = self.build_info.get("c_compiler_version", "")
+            tool_name = f"C Compiler ({compiler_name})"
+            if compiler_version:
+                tool_name = f"C Compiler ({compiler_name} {compiler_version})"
 
-        # Create C++ compiler tool
+            extra_ids = []
+            if self.build_info.get("cmake_system_processor"):
+                extra_ids.append((
+                    spdx.ExternalIdentifierType.other,
+                    f"target-arch:{self.build_info['cmake_system_processor']}"
+                ))
+            self._create_tool(
+                "c-compiler",
+                tool_name,
+                path=compiler_path,
+                extra_identifiers=extra_ids if extra_ids else None
+            )
+
+        # Create C++ compiler tool (only if different from C compiler)
         cxx_compiler_path = self.build_info.get("cmake_cxx_compiler", "")
         if cxx_compiler_path and cxx_compiler_path != compiler_path:
             cxx_compiler_name = os.path.basename(cxx_compiler_path)
-            cxx_compiler_tool = spdx.Agent()
-            cxx_compiler_tool._id = self._shorten_id(f"{namespace}/agents/cxx-compiler")
-            cxx_compiler_tool.name = f"C++ Compiler ({cxx_compiler_name})"
-            cxx_compiler_tool.creationInfo = self.creation_info._id
-            ext_id = spdx.ExternalIdentifier()
-            ext_id.externalIdentifierType = spdx.ExternalIdentifierType.other
-            ext_id.identifier = cxx_compiler_path
-            cxx_compiler_tool.externalIdentifier.append(ext_id)
-            self.elements.append(cxx_compiler_tool)
-            self.build_tools["cxx-compiler"] = cxx_compiler_tool
+            cxx_compiler_version = self.build_info.get("cxx_compiler_version", "")
+            tool_name = f"C++ Compiler ({cxx_compiler_name})"
+            if cxx_compiler_version:
+                tool_name = f"C++ Compiler ({cxx_compiler_name} {cxx_compiler_version})"
+            self._create_tool("cxx-compiler", tool_name, path=cxx_compiler_path)
 
         # Create Assembler tool
         asm_compiler_path = self.build_info.get("cmake_asm_compiler", "")
         if asm_compiler_path:
             asm_compiler_name = os.path.basename(asm_compiler_path)
-            asm_compiler_tool = spdx.Agent()
-            asm_compiler_tool._id = self._shorten_id(f"{namespace}/agents/asm-compiler")
-            asm_compiler_tool.name = f"Assembler ({asm_compiler_name})"
-            asm_compiler_tool.creationInfo = self.creation_info._id
-            ext_id = spdx.ExternalIdentifier()
-            ext_id.externalIdentifierType = spdx.ExternalIdentifierType.other
-            ext_id.identifier = asm_compiler_path
-            asm_compiler_tool.externalIdentifier.append(ext_id)
-            self.elements.append(asm_compiler_tool)
-            self.build_tools["asm-compiler"] = asm_compiler_tool
+            asm_compiler_version = self.build_info.get("asm_compiler_version", "")
+            tool_name = f"Assembler ({asm_compiler_name})"
+            if asm_compiler_version:
+                tool_name = f"Assembler ({asm_compiler_name} {asm_compiler_version})"
+            self._create_tool("asm-compiler", tool_name, path=asm_compiler_path)
 
         # Create Linker tool
         linker_path = self.build_info.get("cmake_linker", "")
         if linker_path:
             linker_name = os.path.basename(linker_path)
-            linker_tool = spdx.Agent()
-            linker_tool._id = self._shorten_id(f"{namespace}/agents/linker")
-            linker_tool.name = f"Linker ({linker_name})"
-            linker_tool.creationInfo = self.creation_info._id
-            ext_id = spdx.ExternalIdentifier()
-            ext_id.externalIdentifierType = spdx.ExternalIdentifierType.other
-            ext_id.identifier = linker_path
-            linker_tool.externalIdentifier.append(ext_id)
-            self.elements.append(linker_tool)
-            self.build_tools["linker"] = linker_tool
+            linker_version = self.build_info.get("linker_version", "")
+            tool_name = f"Linker ({linker_name})"
+            if linker_version:
+                tool_name = f"Linker ({linker_name} {linker_version})"
+            self._create_tool("linker", tool_name, path=linker_path)
 
         # Create Archiver tool
         ar_path = self.build_info.get("cmake_ar", "")
         if ar_path:
             ar_name = os.path.basename(ar_path)
-            ar_tool = spdx.Agent()
-            ar_tool._id = self._shorten_id(f"{namespace}/agents/archiver")
-            ar_tool.name = f"Archiver ({ar_name})"
-            ar_tool.creationInfo = self.creation_info._id
-            ext_id = spdx.ExternalIdentifier()
-            ext_id.externalIdentifierType = spdx.ExternalIdentifierType.other
-            ext_id.identifier = ar_path
-            ar_tool.externalIdentifier.append(ext_id)
-            self.elements.append(ar_tool)
-            self.build_tools["archiver"] = ar_tool
+            ar_version = self.build_info.get("ar_version", "")
+            tool_name = f"Archiver ({ar_name})"
+            if ar_version:
+                tool_name = f"Archiver ({ar_name} {ar_version})"
+            self._create_tool("archiver", tool_name, path=ar_path)
 
     def _initialize_shared_objects(self):
-        """Initialize shared Tool and CreationInfo objects."""
+        """Initialize shared Tool and CreationInfo objects.
+
+        Per SPDX 3.0.1 spec:
+        - CreationInfo.createdBy takes Agent (who created the SPDX data) - REQUIRED
+        - CreationInfo.createdUsing takes Tool (what tool created the SPDX data) - optional
+        """
+        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+
+        # Create a SoftwareAgent representing the automated SBOM generation process
+        # This satisfies the required createdBy field
         if self.tool is None:
-            self.tool = spdx.Agent()
-            namespace = self.sbom_data.namespace_prefix.rstrip("/")
-            self.tool._id = self._shorten_id(f"{namespace}/agents/west-spdx-tool")
+            # Create the creator agent (required by createdBy)
+            self.creator_agent = spdx.SoftwareAgent()
+            self.creator_agent._id = self._shorten_id(f"{namespace}/agents/west-spdx-agent")
+            self.creator_agent.name = "West SPDX Generator"
+            self.elements.append(self.creator_agent)
+
+            # Create the tool (for createdUsing)
+            self.tool = spdx.Tool()
+            self.tool._id = self._shorten_id(f"{namespace}/tools/west-spdx")
             self.tool.name = "West SPDX Tool"
-            self.tool.creationInfo = self._shorten_id(f"{namespace}/creationinfo")
             self.elements.append(self.tool)
 
         if self.creation_info is None:
             self.creation_info = spdx.CreationInfo()
-            namespace = self.sbom_data.namespace_prefix.rstrip("/")
             self.creation_info._id = self._shorten_id(f"{namespace}/creationinfo")
             self.creation_info.created = datetime.now(timezone.utc)
-            self.creation_info.createdBy.append(self.tool._id)
+            # createdBy references the Agent that created this SPDX document (REQUIRED)
+            self.creation_info.createdBy.append(self.creator_agent._id)
+            # createdUsing references the Tool that created this SPDX document (optional)
+            self.creation_info.createdUsing.append(self.tool._id)
             self.creation_info.specVersion = "3.0.1"
             self.elements.append(self.creation_info)
 
-        # Create build tool agents if build info is available
+            # Now set the tool's and agent's creationInfo
+            self.tool.creationInfo = self.creation_info._id
+            self.creator_agent.creationInfo = self.creation_info._id
+
+        # Create build tool elements if build info is available
         self._create_build_tools()
 
         # Create Build object if build info is available
         self._create_build_object()
 
     def _create_build_object(self):
-        """Create SPDX 3.0 Build object."""
+        """Create SPDX 3.0 Build object.
+
+        Per SPDX 3.0.1 spec, the Build class represents a build instance.
+        buildStartTime and buildEndTime are optional and may be omitted
+        to simplify creating reproducible builds.
+        """
         if self.build:
             return
 
-        # Only create if we have build info or SBOMData has build info
+        # Always create Build object if we have any build info
+        # This ensures consistent output structure
         if not self.build_info and not self.sbom_data.build:
             return
 
@@ -248,35 +366,26 @@ class SPDX3Serializer:
         self.build._id = self._shorten_id(f"{namespace}/builds/default")
         self.build.creationInfo = self.creation_info._id
 
-        # Set mandatory buildType
-        # Using a default if not specified, or derived from metadata
+        # Set mandatory buildType (URI per spec)
         self.build.build_buildType = "https://zephyrproject.org/build-types/standard"
 
-        # Set optional properties from metadata or SBOMBuild model
+        # Set optional properties from SBOMBuild model
         if self.sbom_data.build:
             if self.sbom_data.build.id:
                 self.build.build_buildId = self.sbom_data.build.id
             if self.sbom_data.build.build_type:
-                self.build.build_buildType = self.sbom_data.build.build_type
+                # Ensure build_type is a valid URI
+                build_type = self.sbom_data.build.build_type
+                if build_type and not build_type.startswith("http"):
+                    build_type = f"https://zephyrproject.org/build-types/{build_type}"
+                self.build.build_buildType = build_type
 
+            # Only set timestamps if explicitly provided
+            # (we no longer infer from file modification times)
             if self.sbom_data.build.started_at:
                 self.build.build_buildStartTime = self.sbom_data.build.started_at
-
             if self.sbom_data.build.finished_at:
                 self.build.build_buildEndTime = self.sbom_data.build.finished_at
-
-        # Fallback to build_info dictionary if model is empty (legacy/transition)
-        if not self.sbom_data.build and self.build_info:
-            if "start_time" in self.build_info:
-                 try:
-                     self.build.build_buildStartTime = datetime.fromisoformat(self.build_info["start_time"])
-                 except ValueError:
-                     log.wrn(f"Invalid start_time format: {self.build_info['start_time']}")
-            if "end_time" in self.build_info:
-                 try:
-                     self.build.build_buildEndTime = datetime.fromisoformat(self.build_info["end_time"])
-                 except ValueError:
-                     log.wrn(f"Invalid end_time format: {self.build_info['end_time']}")
 
         self.elements.append(self.build)
 
@@ -584,9 +693,11 @@ class SPDX3Serializer:
                 relationship_ids.add(rel._id)
         document_element_ids.update(relationship_ids)
 
-        # Add tool and data license
+        # Add tool, creator agent, and data license
         if self.tool:
             document_element_ids.add(self.tool._id)
+        if self.creator_agent:
+            document_element_ids.add(self.creator_agent._id)
         # Add build tools only for the build document
         if sbom_doc.name == "build":
             for tool in self.build_tools.values():
@@ -710,7 +821,7 @@ class SPDX3Serializer:
 
             # Create relationships involving the Build object
             if self.build:
-                # 1. Build usesTool Agent (for all build tools)
+                # 1. Build usesTool Tool (for all build tools - general relationship)
                 for tool in self.build_tools.values():
                     rel = spdx.Relationship()
                     rel._id = self._generate_relationship_id(
@@ -724,17 +835,15 @@ class SPDX3Serializer:
                     self.relationship_elements.append(rel)
 
                 # 2. Build generates Artifact (for all target build files)
+                #    Also create LifecycleScopedRelationships for specific tools used
                 for component in self.sbom_data.components.values():
-                     # Only process build target components
-                    if component.name not in [
-                        "app-sources",
-                        "zephyr-sources",
-                        "sdk-sources",
-                    ] and not component.name.endswith("-deps"):
+                    # Only process build target components (not source or dependency components)
+                    if self._is_build_target_component(component):
                         package = self.component_elements.get(component.name)
                         if package and component.target_build_file:
-                             build_file = self.file_elements.get(component.target_build_file.path)
-                             if build_file:
+                            build_file = self.file_elements.get(component.target_build_file.path)
+                            if build_file:
+                                # Build generates this artifact
                                 rel = spdx.Relationship()
                                 rel._id = self._generate_relationship_id(
                                     len(self.relationship_elements)
@@ -746,121 +855,8 @@ class SPDX3Serializer:
                                 self.elements.append(rel)
                                 self.relationship_elements.append(rel)
 
-            # Fallback: Create buildToolOf relationships for build artifacts (Legacy/No Build Object)
-            # Only if Build object is NOT present (to avoid duplication or conflict)
-            elif self.build_tools:
-                 # Link build tools to build artifact files
-                for component in self.sbom_data.components.values():
-                    # Only process build target components (not source components)
-                    if component.name not in [
-                        "app-sources",
-                        "zephyr-sources",
-                        "sdk-sources",
-                    ] and not component.name.endswith("-deps"):
-                        package = self.component_elements.get(component.name)
-                        if package and component.target_build_file:
-                            build_file = self.file_elements.get(component.target_build_file.path)
-                            if build_file:
-                                # Link CMake to build file
-                                if "cmake" in self.build_tools:
-                                    rel = spdx.Relationship()
-                                    rel._id = self._generate_relationship_id(
-                                        len(self.relationship_elements)
-                                    )
-                                    rel.relationshipType = spdx.RelationshipType.usesTool
-                                    rel.from_ = build_file._id
-                                    rel.to = [self.build_tools["cmake"]._id]
-                                    rel.creationInfo = self.creation_info._id
-                                    self.elements.append(rel)
-                                    self.relationship_elements.append(rel)
-
-                                # Determine used languages
-                                has_c = False
-                                has_cxx = False
-                                has_asm = False
-
-                                for f in component.files.values():
-                                    ext = os.path.splitext(f.path)[1]
-                                    if ext in [".c", ".C"]:
-                                        has_c = True
-                                    elif ext in [".cpp", ".cxx", ".cc", ".c++", ".cp"]:
-                                        has_cxx = True
-                                    elif ext in [".S", ".s", ".asm"]:
-                                        has_asm = True
-
-                                # Link C compiler to build file
-                                if "c-compiler" in self.build_tools and has_c:
-                                    rel = spdx.LifecycleScopedRelationship()
-                                    rel._id = self._generate_relationship_id(
-                                        len(self.relationship_elements)
-                                    )
-                                    rel.relationshipType = spdx.RelationshipType.usesTool
-                                    rel.from_ = build_file._id
-                                    rel.to = [self.build_tools["c-compiler"]._id]
-                                    rel.scope = spdx.LifecycleScopeType.build
-                                    rel.creationInfo = self.creation_info._id
-                                    self.elements.append(rel)
-                                    self.relationship_elements.append(rel)
-
-                                # Link C++ compiler to build file
-                                if "cxx-compiler" in self.build_tools and has_cxx:
-                                    rel = spdx.LifecycleScopedRelationship()
-                                    rel._id = self._generate_relationship_id(
-                                        len(self.relationship_elements)
-                                    )
-                                    rel.relationshipType = spdx.RelationshipType.usesTool
-                                    rel.from_ = build_file._id
-                                    rel.to = [self.build_tools["cxx-compiler"]._id]
-                                    rel.scope = spdx.LifecycleScopeType.build
-                                    rel.creationInfo = self.creation_info._id
-                                    self.elements.append(rel)
-                                    self.relationship_elements.append(rel)
-
-                                # Link assembler to build file
-                                if "asm-compiler" in self.build_tools and has_asm:
-                                    rel = spdx.LifecycleScopedRelationship()
-                                    rel._id = self._generate_relationship_id(
-                                        len(self.relationship_elements)
-                                    )
-                                    rel.relationshipType = spdx.RelationshipType.usesTool
-                                    rel.from_ = build_file._id
-                                    rel.to = [self.build_tools["asm-compiler"]._id]
-                                    rel.scope = spdx.LifecycleScopeType.build
-                                    rel.creationInfo = self.creation_info._id
-                                    self.elements.append(rel)
-                                    self.relationship_elements.append(rel)
-
-                                # Link linker to build file
-                                # Only link if it's an application or ends in .elf
-                                is_executable = component.purpose == ComponentPurpose.APPLICATION or component.target_build_file.path.endswith(".elf")
-                                if "linker" in self.build_tools and is_executable:
-                                    rel = spdx.LifecycleScopedRelationship()
-                                    rel._id = self._generate_relationship_id(
-                                        len(self.relationship_elements)
-                                    )
-                                    rel.relationshipType = spdx.RelationshipType.usesTool
-                                    rel.from_ = build_file._id
-                                    rel.to = [self.build_tools["linker"]._id]
-                                    rel.scope = spdx.LifecycleScopeType.build
-                                    rel.creationInfo = self.creation_info._id
-                                    self.elements.append(rel)
-                                    self.relationship_elements.append(rel)
-
-                                # Link archiver to build file
-                                # Only link if it's a LIBRARY component or ends in .a/.lib
-                                is_library = component.purpose == ComponentPurpose.LIBRARY or component.target_build_file.path.endswith((".a", ".lib"))
-                                if "archiver" in self.build_tools and is_library:
-                                    rel = spdx.LifecycleScopedRelationship()
-                                    rel._id = self._generate_relationship_id(
-                                        len(self.relationship_elements)
-                                    )
-                                    rel.relationshipType = spdx.RelationshipType.usesTool
-                                    rel.from_ = build_file._id
-                                    rel.to = [self.build_tools["archiver"]._id]
-                                    rel.scope = spdx.LifecycleScopeType.build
-                                    rel.creationInfo = self.creation_info._id
-                                    self.elements.append(rel)
-                                    self.relationship_elements.append(rel)
+                                # Create LifecycleScopedRelationships based on CMake metadata
+                                self._create_tool_lifecycle_relationships(component, build_file)
 
             # Create license relationships for packages
             for component in self.sbom_data.components.values():

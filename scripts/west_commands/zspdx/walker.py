@@ -4,6 +4,7 @@
 
 import os
 import re
+import subprocess
 from dataclasses import dataclass
 
 import yaml
@@ -23,6 +24,62 @@ from zspdx.model import (
     SBomDocument,
 )
 from datetime import datetime, timezone
+
+
+def get_tool_version(tool_path: str) -> str:
+    """Get the version string from a build tool by running it with --version.
+
+    Args:
+        tool_path: Path to the tool executable
+
+    Returns:
+        Version string if successfully extracted, empty string otherwise
+    """
+    if not tool_path or not os.path.isfile(tool_path):
+        return ""
+
+    try:
+        # Run the tool with --version flag
+        result = subprocess.run(
+            [tool_path, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=5,  # 5 second timeout to avoid hanging
+        )
+        output = result.stdout or result.stderr
+
+        if not output:
+            return ""
+
+        # Parse the version from the first line of output
+        # Common formats:
+        # - "gcc (Zephyr SDK 0.17.4) 12.2.0" -> "12.2.0"
+        # - "GNU ld (Zephyr SDK 0.17.4) 2.38" -> "2.38"
+        # - "GNU ar (Zephyr SDK 0.17.4) 2.38" -> "2.38"
+        # - "clang version 15.0.0" -> "15.0.0"
+        # - "cmake version 3.28.1" -> "3.28.1"
+        first_line = output.strip().split('\n')[0]
+
+        # Try to extract version number using common patterns
+        # Pattern 1: "version X.Y.Z" or "version X.Y"
+        match = re.search(r'version\s+(\d+\.\d+(?:\.\d+)?)', first_line, re.IGNORECASE)
+        if match:
+            return match.group(1)
+
+        # Pattern 2: Last token that looks like a version (e.g., "gcc ... 12.2.0")
+        match = re.search(r'\b(\d+\.\d+(?:\.\d+)?)\s*$', first_line)
+        if match:
+            return match.group(1)
+
+        # Pattern 3: Any version-like pattern in the line
+        match = re.search(r'\b(\d+\.\d+(?:\.\d+)?)\b', first_line)
+        if match:
+            return match.group(1)
+
+        return ""
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
+        log.dbg(f"Could not get version for {tool_path}: {e}")
+        return ""
 
 
 # WalkerConfig contains configuration data for the Walker.
@@ -175,6 +232,22 @@ class Walker:
                 "cmake_generator": self.cmakeCache.get("CMAKE_GENERATOR", ""),
                 "cmake_system_processor": self.cmakeCache.get("CMAKE_SYSTEM_PROCESSOR", ""),
             }
+
+            # Capture tool versions by running --version on each tool
+            log.dbg("capturing build tool versions")
+            tool_paths = {
+                "c_compiler_version": build_info.get("cmake_compiler", ""),
+                "cxx_compiler_version": build_info.get("cmake_cxx_compiler", ""),
+                "asm_compiler_version": build_info.get("cmake_asm_compiler", ""),
+                "linker_version": build_info.get("cmake_linker", ""),
+                "ar_version": build_info.get("cmake_ar", ""),
+            }
+            for version_key, tool_path in tool_paths.items():
+                if tool_path:
+                    version = get_tool_version(tool_path)
+                    if version:
+                        build_info[version_key] = version
+
             # Try to get CMake version (check common keys)
             cmake_version_keys = ["CMAKE_VERSION", "CMAKE_MAJOR_VERSION", "CMAKE_MINOR_VERSION", "CMAKE_PATCH_VERSION"]
             cmake_version = None
@@ -198,15 +271,12 @@ class Walker:
                 build_type=build_info.get("cmake_build_type", ""),
             )
 
-            # Using current time as fallback if we can't get file time,
-            # or try to get file time of cacheFilePath
-            try:
-                ts = os.path.getmtime(cacheFilePath)
-                build.started_at = datetime.fromtimestamp(ts, tz=timezone.utc)
-                # finished_at is roughly now since we are running spdx generation after build
-                build.finished_at = datetime.now(timezone.utc)
-            except OSError:
-                pass
+            # Note on build timestamps:
+            # We cannot accurately determine build start/end times from the build directory.
+            # CMakeCache.txt mtime represents CMake configuration time, not build time.
+            # Per SPDX 3.0 spec, these fields are optional and may be omitted for reproducibility.
+            # We leave them unpopulated rather than providing inaccurate timestamps.
+            # If accurate timestamps are needed, the build system should record them explicitly.
 
             self.sbom_data.build = build
 
@@ -411,6 +481,9 @@ class Walker:
                 else:
                     component.purpose = ComponentPurpose.LIBRARY
 
+                # capture build metadata from CMake model
+                self.captureBuildMetadata(cfgTarget, component, bf)
+
                 # get its source files if build file is found
                 if bf:
                     self.collectPendingSourceFiles(cfgTarget, component, bf)
@@ -419,6 +492,45 @@ class Walker:
 
             # get its target dependencies
             self.collectTargetDependencies(cfgTargets, cfgTarget, component)
+
+    # capture build metadata from CMake model for a target
+    def captureBuildMetadata(self, cfgTarget, component, bf):
+        """Extract build metadata from CMake target to enable accurate tool relationships.
+
+        This captures which compilers/tools were actually used based on CMake's
+        compileGroups, link_language, and archive info rather than file extension heuristics.
+        """
+        target = cfgTarget.target
+
+        # Store target type (EXECUTABLE, STATIC_LIBRARY, etc.)
+        component.metadata["target_type"] = target.type.name
+
+        # Collect languages from compile groups
+        compile_languages = set()
+        for cg in target.compileGroups:
+            if cg.language:
+                compile_languages.add(cg.language)
+        component.metadata["compile_languages"] = list(compile_languages)
+
+        # Link language (for executables and shared libraries)
+        if target.link_language:
+            component.metadata["link_language"] = target.link_language
+
+        # Archive info (for static libraries)
+        if target.archive_commandFragments:
+            component.metadata["is_archive"] = True
+
+        # Also store in the build file metadata for reference
+        if bf:
+            bf.metadata["target_type"] = target.type.name
+            bf.metadata["compile_languages"] = list(compile_languages)
+            if target.link_language:
+                bf.metadata["link_language"] = target.link_language
+            if target.archive_commandFragments:
+                bf.metadata["is_archive"] = True
+
+        log.dbg(f"    - build metadata: type={target.type.name}, "
+                f"languages={compile_languages}, link={target.link_language}")
 
     # build a Component for the given ConfigTarget
     def initConfigTargetComponent(self, cfgTarget):
