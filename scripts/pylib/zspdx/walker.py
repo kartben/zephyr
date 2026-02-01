@@ -522,38 +522,129 @@ class Walker:
 
         This captures which compilers/tools were actually used based on CMake's
         compileGroups, link_language, and archive info rather than file extension heuristics.
+        Also captures detailed compilation flags, defines, and includes for SPDX 3.0
+        LifecycleScopedRelationship generation.
         """
         target = cfgTarget.target
 
         # Store target type (EXECUTABLE, STATIC_LIBRARY, etc.)
         component.metadata["target_type"] = target.type.name
 
-        # Collect languages from compile groups
+        # Collect languages and compile data from compile groups
         compile_languages = set()
+        all_compile_flags = []
+        all_defines = []
+        all_includes = []
+        compile_data_by_language = {}  # language -> {flags, defines, includes}
+
         for cg in target.compileGroups:
             if cg.language:
                 compile_languages.add(cg.language)
+
+                # Collect compile command fragments (flags)
+                flags = list(cg.compileCommandFragments) if cg.compileCommandFragments else []
+                all_compile_flags.extend(flags)
+
+                # Collect defines
+                defines = [d.define for d in cg.defines] if cg.defines else []
+                all_defines.extend(defines)
+
+                # Collect includes with system flag
+                includes = []
+                for inc in cg.includes:
+                    inc_data = {"path": inc.path, "isSystem": inc.isSystem}
+                    includes.append(inc_data)
+                all_includes.extend(includes)
+
+                # Store per-language compile data
+                if cg.language not in compile_data_by_language:
+                    compile_data_by_language[cg.language] = {
+                        "flags": [],
+                        "defines": [],
+                        "includes": [],
+                        "sysroot": cg.sysroot or ""
+                    }
+                compile_data_by_language[cg.language]["flags"].extend(flags)
+                compile_data_by_language[cg.language]["defines"].extend(defines)
+                compile_data_by_language[cg.language]["includes"].extend(includes)
+
         component.metadata["compile_languages"] = list(compile_languages)
 
-        # Link language (for executables and shared libraries)
+        # Store deduplicated compile flags (preserve order, remove duplicates)
+        seen_flags = set()
+        unique_flags = []
+        for flag in all_compile_flags:
+            if flag not in seen_flags:
+                seen_flags.add(flag)
+                unique_flags.append(flag)
+        component.metadata["compile_flags"] = unique_flags
+
+        # Store deduplicated defines
+        seen_defines = set()
+        unique_defines = []
+        for define in all_defines:
+            if define not in seen_defines:
+                seen_defines.add(define)
+                unique_defines.append(define)
+        component.metadata["compile_defines"] = unique_defines
+
+        # Store includes (deduplicate by path)
+        seen_paths = set()
+        unique_includes = []
+        for inc in all_includes:
+            if inc["path"] not in seen_paths:
+                seen_paths.add(inc["path"])
+                unique_includes.append(inc)
+        component.metadata["compile_includes"] = unique_includes
+
+        # Store per-language compile data
+        component.metadata["compile_data_by_language"] = compile_data_by_language
+
+        # Link language and link command fragments (for executables and shared libraries)
         if target.link_language:
             component.metadata["link_language"] = target.link_language
+
+        if target.link_commandFragments:
+            link_flags = []
+            link_libraries = []
+            for frag in target.link_commandFragments:
+                if frag.role == "libraries":
+                    link_libraries.append(frag.fragment)
+                else:  # flags or other roles
+                    link_flags.append(frag.fragment)
+            component.metadata["link_flags"] = link_flags
+            component.metadata["link_libraries"] = link_libraries
+            if target.link_sysroot:
+                component.metadata["link_sysroot"] = target.link_sysroot
+            component.metadata["link_lto"] = target.link_lto
 
         # Archive info (for static libraries)
         if target.archive_commandFragments:
             component.metadata["is_archive"] = True
+            archive_flags = [frag.fragment for frag in target.archive_commandFragments]
+            component.metadata["archive_flags"] = archive_flags
+            component.metadata["archive_lto"] = target.archive_lto
 
         # Also store in the build file metadata for reference
         if bf:
             bf.metadata["target_type"] = target.type.name
             bf.metadata["compile_languages"] = list(compile_languages)
+            bf.metadata["compile_flags"] = unique_flags
+            bf.metadata["compile_defines"] = unique_defines
+            bf.metadata["compile_includes"] = unique_includes
             if target.link_language:
                 bf.metadata["link_language"] = target.link_language
+            if target.link_commandFragments:
+                bf.metadata["link_flags"] = component.metadata.get("link_flags", [])
+                bf.metadata["link_libraries"] = component.metadata.get("link_libraries", [])
             if target.archive_commandFragments:
                 bf.metadata["is_archive"] = True
+                bf.metadata["archive_flags"] = component.metadata.get("archive_flags", [])
 
         _logger.debug(f"    - build metadata: type={target.type.name}, "
-                f"languages={compile_languages}, link={target.link_language}")
+                f"languages={compile_languages}, link={target.link_language}, "
+                f"flags={len(unique_flags)}, defines={len(unique_defines)}, "
+                f"includes={len(unique_includes)}")
 
     # build a Component for the given ConfigTarget
     def initConfigTargetComponent(self, cfgTarget):
