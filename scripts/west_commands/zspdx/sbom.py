@@ -104,6 +104,9 @@ def makeSPDX(cfg):
 
     # map converted documents back to named references
     docIndex = 0
+    docSDK = None
+    docModulesExtRefs = None
+    
     if cfg.includeSDK:
         docSDK = spdxDocs[docIndex]
         docIndex += 1
@@ -120,7 +123,7 @@ def makeSPDX(cfg):
     scannerCfg = ScannerConfig()
 
     # scan each SPDX document
-    if cfg.includeSDK:
+    if docSDK:
         scanDocument(scannerCfg, docSDK)
     scanDocument(scannerCfg, docApp)
     scanDocument(scannerCfg, docZephyr)
@@ -130,7 +133,7 @@ def makeSPDX(cfg):
     # hashes for external references are calculated
 
     # write SDK document, if we made one
-    if cfg.includeSDK:
+    if docSDK:
         retval = writeSPDX(os.path.join(cfg.spdxDir, "sdk.spdx"), docSDK, cfg.spdxVersion)
         if not retval:
             log.err("SPDX writer failed for SDK document; bailing")
@@ -154,8 +157,8 @@ def makeSPDX(cfg):
         log.err("SPDX writer failed for build document; bailing")
         return False
 
-    # write modules document
-    if w.docModulesExtRefs:
+    # write modules document, if we have one
+    if docModulesExtRefs:
         retval = writeSPDX(
             os.path.join(cfg.spdxDir, "modules-deps.spdx"), docModulesExtRefs, cfg.spdxVersion
         )

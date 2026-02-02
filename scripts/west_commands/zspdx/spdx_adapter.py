@@ -40,8 +40,13 @@ class SPDXAdapter:
         Initialize the SPDX adapter.
         
         Args:
-            namespacePrefix: Prefix for SPDX Document namespaces
+            namespacePrefix: Prefix for SPDX Document namespaces (required for valid SPDX)
+        
+        Raises:
+            ValueError: If namespacePrefix is empty
         """
+        if not namespacePrefix:
+            raise ValueError("namespacePrefix is required for valid SPDX namespace generation")
         self.namespacePrefix = namespacePrefix
 
     def _generate_spdx_id(self, genericID):
@@ -81,14 +86,10 @@ class SPDXAdapter:
             
         Returns:
             DocumentConfig instance with SPDX-specific fields
-        
-        Raises:
-            ValueError: If namespacePrefix is empty (required for valid SPDX namespace)
         """
         cfg = DocumentConfig()
         cfg.name = genericCfg.name
-        if not self.namespacePrefix:
-            raise ValueError("namespacePrefix is required for SPDX namespace generation")
+        # namespacePrefix is validated in __init__, so it's always present
         cfg.namespace = f"{self.namespacePrefix}/{genericCfg.name}"
         cfg.docRefID = self._generate_doc_ref_id(genericCfg.docRefID)
         return cfg
