@@ -81,10 +81,15 @@ class SPDXAdapter:
             
         Returns:
             DocumentConfig instance with SPDX-specific fields
+        
+        Raises:
+            ValueError: If namespacePrefix is empty (required for valid SPDX namespace)
         """
         cfg = DocumentConfig()
         cfg.name = genericCfg.name
-        cfg.namespace = f"{self.namespacePrefix}/{genericCfg.name}" if self.namespacePrefix else genericCfg.name
+        if not self.namespacePrefix:
+            raise ValueError("namespacePrefix is required for SPDX namespace generation")
+        cfg.namespace = f"{self.namespacePrefix}/{genericCfg.name}"
         cfg.docRefID = self._generate_doc_ref_id(genericCfg.docRefID)
         return cfg
 
@@ -186,6 +191,8 @@ class SPDXAdapter:
 
         # Copy over basic fields
         doc.timesSeen = genericDoc.timesSeen.copy()
+        # Note: SPDX uses SHA1 for document checksums per spec, but generic
+        # structure uses 'myDocHash' for algorithm flexibility
         doc.myDocSHA1 = genericDoc.myDocHash
         doc.customLicenseIDs = genericDoc.customLicenseIDs.copy()
 

@@ -26,6 +26,10 @@ from zspdx.generic_datatypes import (
 from zspdx.getincludes import getCIncludes
 
 
+# Constants for generic SBOM elements
+GENERIC_DOCUMENT_ID = "DOCUMENT"
+
+
 # WalkerConfig contains configuration data for the Walker.
 @dataclass(eq=True)
 class WalkerConfig:
@@ -787,7 +791,7 @@ class Walker:
             return None, None, None
         elif rlnData.ownerType == GenericRelationshipDataElementType.DOCUMENT:
             # will always be DOCUMENT
-            return rlnData.ownerDocument, "DOCUMENT", rlnData.ownerDocument.relationships
+            return rlnData.ownerDocument, GENERIC_DOCUMENT_ID, rlnData.ownerDocument.relationships
         else:
             log.dbg(f"  - unknown relationship type {rlnData.ownerType}; skipping")
             return None, None, None
