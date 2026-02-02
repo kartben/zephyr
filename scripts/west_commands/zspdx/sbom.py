@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from west import log
 
 from zspdx.scanner import ScannerConfig, scanDocument
+from zspdx.spdx_adapter import SPDXAdapter
 from zspdx.version import SPDX_VERSION_2_3
 from zspdx.walker import Walker, WalkerConfig
 from zspdx.writer import writeSPDX
@@ -77,62 +78,92 @@ def makeSPDX(cfg):
 
     # set up walker configuration
     walkerCfg = WalkerConfig()
-    walkerCfg.namespacePrefix = cfg.namespacePrefix
     walkerCfg.buildDir = cfg.buildDir
     walkerCfg.analyzeIncludes = cfg.analyzeIncludes
     walkerCfg.includeSDK = cfg.includeSDK
 
-    # make and run the walker
+    # make and run the walker - produces generic SBOM structures
     w = Walker(walkerCfg)
     retval = w.makeDocuments()
     if not retval:
-        log.err("SPDX walker failed; bailing")
+        log.err("SBOM walker failed; bailing")
         return False
+
+    # create SPDX adapter to convert generic structures to SPDX format
+    adapter = SPDXAdapter(namespacePrefix=cfg.namespacePrefix)
+
+    # collect generic documents for conversion
+    genericDocs = [w.docBuild, w.docZephyr, w.docApp]
+    if cfg.includeSDK:
+        genericDocs.insert(0, w.docSDK)
+    if w.docModulesExtRefs:
+        genericDocs.append(w.docModulesExtRefs)
+
+    # convert all generic documents to SPDX format
+    spdxDocs = adapter.convert_all_documents(genericDocs)
+
+    # map converted documents back to named references
+    docIndex = 0
+    docSDK = None
+    docModulesExtRefs = None
+    
+    if cfg.includeSDK:
+        docSDK = spdxDocs[docIndex]
+        docIndex += 1
+    docBuild = spdxDocs[docIndex]
+    docIndex += 1
+    docZephyr = spdxDocs[docIndex]
+    docIndex += 1
+    docApp = spdxDocs[docIndex]
+    docIndex += 1
+    if w.docModulesExtRefs:
+        docModulesExtRefs = spdxDocs[docIndex]
 
     # set up scanner configuration
     scannerCfg = ScannerConfig()
 
-    # scan each document from walker
-    if cfg.includeSDK:
-        scanDocument(scannerCfg, w.docSDK)
-    scanDocument(scannerCfg, w.docApp)
-    scanDocument(scannerCfg, w.docZephyr)
-    scanDocument(scannerCfg, w.docBuild)
+    # scan each SPDX document
+    if docSDK:
+        scanDocument(scannerCfg, docSDK)
+    scanDocument(scannerCfg, docApp)
+    scanDocument(scannerCfg, docZephyr)
+    scanDocument(scannerCfg, docBuild)
 
     # write each document, in this particular order so that the
     # hashes for external references are calculated
 
     # write SDK document, if we made one
-    if cfg.includeSDK:
-        retval = writeSPDX(os.path.join(cfg.spdxDir, "sdk.spdx"), w.docSDK, cfg.spdxVersion)
+    if docSDK:
+        retval = writeSPDX(os.path.join(cfg.spdxDir, "sdk.spdx"), docSDK, cfg.spdxVersion)
         if not retval:
             log.err("SPDX writer failed for SDK document; bailing")
             return False
 
     # write app document
-    retval = writeSPDX(os.path.join(cfg.spdxDir, "app.spdx"), w.docApp, cfg.spdxVersion)
+    retval = writeSPDX(os.path.join(cfg.spdxDir, "app.spdx"), docApp, cfg.spdxVersion)
     if not retval:
         log.err("SPDX writer failed for app document; bailing")
         return False
 
     # write zephyr document
-    retval = writeSPDX(os.path.join(cfg.spdxDir, "zephyr.spdx"), w.docZephyr, cfg.spdxVersion)
+    retval = writeSPDX(os.path.join(cfg.spdxDir, "zephyr.spdx"), docZephyr, cfg.spdxVersion)
     if not retval:
         log.err("SPDX writer failed for zephyr document; bailing")
         return False
 
     # write build document
-    retval = writeSPDX(os.path.join(cfg.spdxDir, "build.spdx"), w.docBuild, cfg.spdxVersion)
+    retval = writeSPDX(os.path.join(cfg.spdxDir, "build.spdx"), docBuild, cfg.spdxVersion)
     if not retval:
         log.err("SPDX writer failed for build document; bailing")
         return False
 
-    # write modules document
-    retval = writeSPDX(
-        os.path.join(cfg.spdxDir, "modules-deps.spdx"), w.docModulesExtRefs, cfg.spdxVersion
-    )
-    if not retval:
-        log.err("SPDX writer failed for modules-deps document; bailing")
-        return False
+    # write modules document, if we have one
+    if docModulesExtRefs:
+        retval = writeSPDX(
+            os.path.join(cfg.spdxDir, "modules-deps.spdx"), docModulesExtRefs, cfg.spdxVersion
+        )
+        if not retval:
+            log.err("SPDX writer failed for modules-deps document; bailing")
+            return False
 
     return True
