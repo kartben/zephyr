@@ -187,7 +187,7 @@ class SPDXAdapter:
         # Copy over basic fields
         doc.timesSeen = genericDoc.timesSeen.copy()
         doc.myDocSHA1 = genericDoc.myDocHash
-        doc.customLicenseIDs = genericDoc.customLicenseIDs if hasattr(genericDoc, 'customLicenseIDs') else set()
+        doc.customLicenseIDs = genericDoc.customLicenseIDs.copy()
 
         # We'll convert packages, files, and relationships after setting up the mapping
         return doc

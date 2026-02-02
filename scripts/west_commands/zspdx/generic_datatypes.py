@@ -46,6 +46,9 @@ class GenericDocument:
         # set of other Documents that our elements' Relationships refer to
         self.externalDocuments = set()
 
+        # set of custom licenses to be declared
+        self.customLicenseIDs = set()
+
         # this Document's hash, filled in _after_ the Document has been
         # written to disk, so that others can refer to it
         self.myDocHash = ""
