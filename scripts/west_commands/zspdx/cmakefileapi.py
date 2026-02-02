@@ -60,7 +60,7 @@ class Config:
 class ConfigDir:
     """
     A directory in the build tree.
-    
+
     Uses index-based references (parentIndex, childIndexes, projectIndex, targetIndexes)
     that are resolved to object pointers (parent, children, project, targets) after loading.
     """
@@ -90,7 +90,7 @@ class ConfigDir:
 class ConfigProject:
     """
     A CMake project in the build tree.
-    
+
     Uses index-based references (parentIndex, childIndexes, directoryIndexes, targetIndexes)
     that are resolved to object pointers (parent, children, directories, targets) after loading.
     """
@@ -117,7 +117,7 @@ class ConfigProject:
 class ConfigTarget:
     """
     Reference to a build target with metadata and link to full Target data.
-    
+
     Uses index-based references (directoryIndex, projectIndex) that are resolved
     to object pointers (directory, project) after loading.
     """
@@ -195,7 +195,7 @@ class TargetDependency:
 class TargetSource:
     """
     A source file in a target.
-    
+
     Uses index-based references (compileGroupIndex, sourceGroupIndex) that are
     resolved to object pointers (compileGroup, sourceGroup) after loading.
     """
@@ -220,7 +220,7 @@ class TargetSource:
 class TargetSourceGroup:
     """
     A group of related source files in a target.
-    
+
     Uses index-based references (sourceIndexes) that are resolved to
     object pointers (sources) after loading.
     """
@@ -281,7 +281,7 @@ class TargetCompileGroupDefine:
 class TargetCompileGroup:
     """
     Compilation settings for a group of source files.
-    
+
     Uses index-based references (sourceIndexes) that are resolved to
     object pointers (sources) after loading.
     """

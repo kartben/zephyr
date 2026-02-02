@@ -55,13 +55,13 @@ def parseReply(replyIndexPath):
             if reply_dict == {}:
                 log.err(f'no "{CMAKE_REPLY_FIELD}" field found in index file')
                 return None
-            
+
             # Get codemodel object
             cm_dict = reply_dict.get(CMAKE_CODEMODEL_FIELD, {})
             if cm_dict == {}:
                 log.err(f'no "{CMAKE_CODEMODEL_FIELD}" field found in "{CMAKE_REPLY_FIELD}" object in index file')
                 return None
-            
+
             # Get codemodel filename
             jsonFile = cm_dict.get(CMAKE_JSON_FILE_FIELD, "")
             if jsonFile == "":
@@ -103,7 +103,7 @@ def parseCodemodel(replyDir, codemodelFile):
                 log.err(f'Error loading CMake API reply: expected "kind":"{CMAKE_KIND_CODEMODEL}" '
                         f'in {codemodelPath}, got {kind}')
                 return None
-            
+
             version = js.get("version", {})
             versionMajor = version.get("major", -1)
             if versionMajor != CMAKE_VERSION_MAJOR_EXPECTED:

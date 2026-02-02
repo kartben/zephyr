@@ -40,11 +40,11 @@ def parseCMakeCacheFile(filePath):
             # Parse each line looking for variable definitions
             for line in lines:
                 stripped_line = line.strip()
-                
+
                 # Skip empty lines
                 if stripped_line == "":
                     continue
-                
+
                 # Skip comment lines (both // and # style comments)
                 if stripped_line.startswith("#") or stripped_line.startswith("//"):
                     continue
@@ -55,13 +55,13 @@ def parseCMakeCacheFile(filePath):
                 if len(parts_by_colon) != 2:
                     # Malformed line without ':' separator, skip it
                     continue
-                
+
                 # Then split on '=' to separate type from value
                 parts_by_equals = parts_by_colon[1].split("=", maxsplit=1)
                 if len(parts_by_equals) != 2:
                     # Malformed line without '=' separator, skip it
                     continue
-                
+
                 # Store variable name and value (discarding the type)
                 variable_name = parts_by_colon[0]
                 variable_value = parts_by_equals[1]
