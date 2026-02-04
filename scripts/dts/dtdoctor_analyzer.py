@@ -208,6 +208,190 @@ def find_node_by_ident(edt: edtlib.EDT, parsed: dict) -> edtlib.Node:
     return None
 
 
+def _diagnose_missing_node(parsed: dict) -> list[str]:
+    node_type = parsed.get('type')
+    node_ident = parsed.get('node_ident')
+    lines = []
+
+    if node_type == 'nodelabel':
+        lines.append(f"Node with label '{ident2str(node_ident)}' not found in devicetree.\n")
+        lines.append("Possible causes:")
+        lines.append(" - The node label is misspelled")
+        lines.append(" - The node is not defined in any devicetree file")
+        lines.append(" - The devicetree overlay containing this node is not being included")
+        lines.append("\nCheck your devicetree files and overlays.")
+    elif node_type == 'alias':
+        lines.append(f"Alias '{ident2str(node_ident)}' not found in /aliases.\n")
+        lines.append("Check the /aliases node in your devicetree files.")
+    else:
+        lines.append(f"Node not found for identifier: {node_ident}")
+
+    return lines
+
+
+def _diagnose_missing_property(node: edtlib.Node, prop_name: str) -> list[str]:
+    lines = [f"Property '{prop_name}' not found on node '{format_node(node)}'.\n"]
+
+    if node.props:
+        lines.append("Available properties on this node:")
+        for pname in sorted(node.props.keys()):
+            lines.append(f" - {pname}")
+    else:
+        lines.append("This node has no properties.")
+
+    lines.append("\nCheck your devicetree binding and node definition.")
+    return lines
+
+
+def _diagnose_cell_access(
+    node: edtlib.Node, prop: edtlib.Property, idx: int, parsed: dict
+) -> list[str]:
+    cell_name = ident2str(parsed['cell'])
+    entry = prop.val[idx]
+
+    if cell_name in entry.data:
+        return []
+
+    lines = [
+        f"Cell '{cell_name}' not found in element {idx} of "
+        f"property '{prop.name}' on node '{format_node(node)}'.\n"
+    ]
+
+    if entry.data:
+        lines.append("Available cells:")
+        for cname in entry.data.keys():
+            lines.append(f" - {cname}")
+
+    if entry.controller:
+        lines.append(f"\nThe phandle points to '{format_node(entry.controller)}'.")
+        if hasattr(entry.controller, 'binding') and entry.controller.binding:
+            binding = entry.controller.binding
+            if hasattr(binding, 'specifier_cells') and binding.specifier_cells:
+                lines.append(
+                    f"Expected cells based on binding: {', '.join(binding.specifier_cells)}"
+                )
+
+    return lines
+
+
+def _diagnose_index_access(node: edtlib.Node, prop: edtlib.Property, parsed: dict) -> list[str]:
+    if prop.type != 'phandle-array':
+        return [
+            f"Property '{prop.name}' on node '{format_node(node)}' "
+            f"is of type '{prop.type}', not 'phandle-array'.\n",
+            "Index-based access with _IDX_ is only valid for phandle-array properties.",
+        ]
+
+    idx = parsed['index']
+    if idx >= len(prop.val):
+        return [
+            f"Index {idx} is out of bounds for property '{prop.name}' "
+            f"on node '{format_node(node)}'.",
+            f"Property has {len(prop.val)} element(s).",
+        ]
+
+    # Check if the element at this index is None (unspecified)
+    if prop.val[idx] is None:
+        return [
+            f"Element at index {idx} of property '{prop.name}' "
+            f"on node '{format_node(node)}' is unspecified.\n",
+            "This means the phandle-array has a gap at this position.",
+        ]
+
+    # Check cell access
+    if 'cell' in parsed:
+        return _diagnose_cell_access(node, prop, idx, parsed)
+
+    return []
+
+
+def _diagnose_property_access(node: edtlib.Node, parsed: dict) -> list[str]:
+    prop_name = ident2str(parsed['property'])
+
+    if prop_name not in node.props:
+        return _diagnose_missing_property(node, prop_name)
+
+    prop = node.props[prop_name]
+
+    if 'index' in parsed:
+        return _diagnose_index_access(node, prop, parsed)
+
+    return []
+
+
+def _diagnose_irq_access(node: edtlib.Node, parsed: dict) -> list[str]:
+    if not hasattr(node, "interrupts"):
+        return [f"Node '{format_node(node)}' has no interrupts.\n"]
+
+    interrupts = node.interrupts
+    if not interrupts:
+        return [f"Node '{format_node(node)}' has no interrupts defined.\n"]
+
+    entry = None
+
+    if 'irq_name' in parsed:
+        target_name = ident2str(parsed['irq_name'])
+
+        if 'interrupt-names' not in node.props:
+            return [
+                f"Node '{format_node(node)}' has no 'interrupt-names' property, "
+                "so IRQ access by name is not possible.\n"
+            ]
+
+        names_prop = node.props['interrupt-names'].val
+        if target_name not in names_prop:
+            lines = [
+                f"Interrupt with name '{target_name}' not found on node '{format_node(node)}'.\n"
+            ]
+            lines.append("Available interrupt names:")
+            for n in names_prop:
+                lines.append(f" - {n}")
+            return lines
+
+        idx = names_prop.index(target_name)
+        if idx < len(interrupts):
+            entry = interrupts[idx]
+        else:
+            return [f"Inconsistent EDT: name found but no interrupt entry at index {idx}."]
+
+    elif 'irq_index' in parsed:
+        idx = parsed['irq_index']
+        if idx >= len(interrupts):
+            return [
+                f"Interrupt index {idx} out of bounds for node '{format_node(node)}'.",
+                f"Node has {len(interrupts)} interrupt(s)."
+            ]
+        entry = interrupts[idx]
+
+    if not entry:
+        return ["Could not determine interrupt entry."]
+
+    if 'cell' in parsed:
+        cell_name = ident2str(parsed['cell'])
+        if cell_name in entry.data:
+            return []
+
+        lines = [
+            f"Cell '{cell_name}' not found in interrupt specifier for node "
+            f"'{format_node(node)}'.\n"
+        ]
+        if entry.data:
+            lines.append("Available cells:")
+            for cname in entry.data.keys():
+                lines.append(f" - {cname}")
+
+        if entry.controller:
+            lines.append(f"\nInterrupt controller: '{format_node(entry.controller)}'")
+            if hasattr(entry.controller, 'binding') and entry.controller.binding:
+                binding = entry.controller.binding
+                if hasattr(binding, 'interrupt_cells') and binding.interrupt_cells:
+                    lines.append(f"Expected cells: {', '.join(binding.interrupt_cells)}")
+
+        return lines
+
+    return []
+
+
 def handle_dt_macro_error(edt: edtlib.EDT, symbol: str) -> list[str]:
     """
     Handle diagnosis for a DT macro error.
@@ -215,7 +399,39 @@ def handle_dt_macro_error(edt: edtlib.EDT, symbol: str) -> list[str]:
     Analyzes symbols like DT_N_NODELABEL_vext_P_gpios_IDX_0_VAL_pin
     and provides meaningful diagnostics.
     """
-    return [f"Unable to parse devicetree symbol: {symbol}"]
+    parsed = parse_dt_macro(symbol)
+
+    if not parsed:
+        return [f"Unable to parse devicetree symbol: {symbol}"]
+
+    node = find_node_by_ident(edt, parsed)
+
+    if not node:
+        return _diagnose_missing_node(parsed)
+
+    # Node was found, check if it's a property/cell access issue
+    if 'property' in parsed:
+        error_lines = _diagnose_property_access(node, parsed)
+        if error_lines:
+            return error_lines
+
+    # Check for IRQ access issue
+    if 'irq_name' in parsed or 'irq_index' in parsed:
+        error_lines = _diagnose_irq_access(node, parsed)
+        if error_lines:
+            return error_lines
+
+    # If we get here, the macro exists but there might be another issue
+    lines = [f"Devicetree symbol '{symbol}' appears to be correctly formed.\n"]
+    lines.append(
+        "The node exists and the property/index/cell access pattern is valid. "
+        "The error may be due to:"
+    )
+    lines.append(" - Using the symbol in an unsupported context")
+    lines.append(" - Macro expansion or preprocessor issues")
+    lines.append(" - Check that you're using the correct macro for your use case")
+
+    return lines
 
 
 def find_kconfig_deps(kconf: kconfiglib.Kconfig, dt_has_symbol: str) -> set[str]:
