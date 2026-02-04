@@ -70,9 +70,22 @@ def main() -> int:
         symbols = {m for p in ord_patterns for m in re.findall(p, proc.stderr)}
         symbols.update({m for p in dt_macro_patterns for m in re.findall(p, proc.stderr)})
 
+        # Normalize: ordinal symbols that embed a DT macro (e.g.
+        # __device_dts_ord_DT_N_ALIAS_led0_P_gpios_IDX_0_PH_ORD) share the
+        # same root cause as the bare DT macro.  Replace them with the
+        # embedded macro so duplicates are eliminated naturally by the set.
+        normalized = set()
+        for sym in symbols:
+            inner = re.search(
+                r"__device_dts_ord_(DT_N_(?:NODELABEL|ALIAS|INST|S)_[A-Za-z0-9_]+)", sym
+            )
+            normalized.add(inner.group(1) if inner else sym)
+        symbols = normalized
+
         diag_script = os.path.join(os.path.dirname(__file__), "dtdoctor_analyzer.py")
+        seen_outputs = set()
         for symbol in sorted(symbols):
-            subprocess.run(
+            result = subprocess.run(
                 [
                     sys.executable,
                     diag_script,
@@ -80,8 +93,14 @@ def main() -> int:
                     args.edt_pickle,
                     "--symbol",
                     symbol,
-                ]
+                ],
+                capture_output=True,
+                text=True,
             )
+            if result.stdout not in seen_outputs:
+                seen_outputs.add(result.stdout)
+                sys.stdout.write(result.stdout)
+            sys.stderr.write(result.stderr)
 
     return proc.returncode
 
