@@ -32,6 +32,8 @@ import kconfiglib
 from devicetree import edtlib
 from tabulate import tabulate
 
+import gen_defines
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -63,6 +65,147 @@ def setup_kconfig() -> kconfiglib.Kconfig:
 
 def format_node(node: edtlib.Node) -> str:
     return f"{node.labels[0]}: {node.path}" if node.labels else node.path
+
+
+def ident2str(ident: str) -> str:
+    """
+    Convert a lowercase-and-underscores identifier back to devicetree form.
+
+    Note: This conversion is best-effort since the transformation from DTS names
+    to C identifiers is lossy (both hyphens and underscores in DTS become
+    underscores in C). We assume the more common case where hyphens were
+    converted to underscores.
+    """
+    return ident.replace('_', '-')
+
+
+def parse_dt_macro(symbol: str) -> dict:
+    """
+    Parse a DT macro symbol and extract its components.
+
+    Returns a dict with keys like:
+    - 'type': 'nodelabel', 'alias', 'inst', or 'path'
+    - 'node_ident': the node identifier part
+    - 'property': property name (if accessing a property)
+    - 'index': index in array (if applicable)
+    - 'cell': cell name (if applicable for phandle-array)
+    - 'exists': True if this is an _EXISTS macro
+
+    Example: DT_N_NODELABEL_vext_P_gpios_IDX_0_VAL_pin
+    Returns: {
+        'type': 'nodelabel',
+        'node_ident': 'vext',
+        'property': 'gpios',
+        'index': 0,
+        'cell': 'pin'
+    }
+    """
+    result = {}
+
+    # Remove DT_ prefix if present
+    if symbol.startswith('DT_'):
+        symbol = symbol[3:]
+
+    # Check if it's an _EXISTS macro
+    if symbol.endswith('_EXISTS'):
+        result['exists'] = True
+        symbol = symbol[:-7]  # Remove _EXISTS
+    else:
+        result['exists'] = False
+
+    # Parse node identifier type
+    if symbol.startswith('N_NODELABEL_'):
+        result['type'] = 'nodelabel'
+        rest = symbol[12:]  # Remove N_NODELABEL_
+    elif symbol.startswith('N_ALIAS_'):
+        result['type'] = 'alias'
+        rest = symbol[8:]  # Remove N_ALIAS_
+    elif symbol.startswith('N_INST_'):
+        result['type'] = 'inst'
+        rest = symbol[7:]  # Remove N_INST_
+    elif symbol.startswith('N_S_') or symbol == 'N' or symbol.startswith('N_P_'):
+        result['type'] = 'path'
+        rest = symbol
+    else:
+        return None
+
+    if '_P_' in rest:
+        parts = rest.split('_P_', 1)
+        result['node_ident'] = parts[0]
+        prop_part = parts[1]
+
+        # Parse property access pattern
+        # Format: <prop>_IDX_<idx>_VAL_<cell> or <prop>_IDX_<idx> or just <prop>
+
+        # Check for _IDX_ pattern
+        idx_match = re.search(r'(.+?)_IDX_(\d+)', prop_part)
+        if idx_match:
+            result['property'] = idx_match.group(1)
+            result['index'] = int(idx_match.group(2))
+
+            # Check for _VAL_ pattern after index
+            val_match = re.search(r'_IDX_\d+_VAL_(\w+)', prop_part)
+            if val_match:
+                result['cell'] = val_match.group(1)
+        else:
+            result['property'] = prop_part
+    elif '_IRQ_' in rest:
+        parts = rest.split('_IRQ_', 1)
+        result['node_ident'] = parts[0]
+        irq_part = parts[1]
+
+        # Check for NAME pattern
+        name_match = re.search(r'NAME_(.+?)_VAL_(\w+)', irq_part)
+        if name_match:
+            result['irq_name'] = name_match.group(1)
+            result['cell'] = name_match.group(2)
+        else:
+            # Check for IDX pattern
+            idx_match = re.search(r'IDX_(\d+)_VAL_(\w+)', irq_part)
+            if idx_match:
+                result['irq_index'] = int(idx_match.group(1))
+                result['cell'] = idx_match.group(2)
+    else:
+        result['node_ident'] = rest
+
+    return result
+
+
+def find_node_by_ident(edt: edtlib.EDT, parsed: dict) -> edtlib.Node:
+    """
+    Find a node in the EDT based on the parsed identifier.
+
+    Returns the node if found, None otherwise.
+    """
+    if not parsed:
+        return None
+
+    node_type = parsed.get('type')
+    node_ident = parsed.get('node_ident')
+
+    if not node_type or not node_ident:
+        return None
+
+    if node_type == 'nodelabel':
+        for node in edt.nodes:
+            for label in node.labels:
+                if gen_defines.str2ident(label) == node_ident:
+                    return node
+    elif node_type == 'alias':
+        aliases = edt.aliases if hasattr(edt, 'aliases') else {}
+        # Try the alias with hyphens (more common in DTS)
+        alias_name = ident2str(node_ident)
+        if alias_name in aliases:
+            return aliases[alias_name]
+        # Also try without conversion (in case original had underscores)
+        if node_ident in aliases:
+            return aliases[node_ident]
+    elif node_type == 'path':
+        for node in edt.nodes:
+            if gen_defines.node_z_path_id(node) == node_ident:
+                return node
+
+    return None
 
 
 def handle_dt_macro_error(edt: edtlib.EDT, symbol: str) -> list[str]:
