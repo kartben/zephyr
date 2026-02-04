@@ -556,11 +556,18 @@ def main() -> int:
         try:
             dep_ordinal = int(ord_str)
         except ValueError:
-            lines = [f"Symbol '{args.symbol}' indicates a macro expansion failure.\n"]
-            lines.append(
-                "This usually happens when DEVICE_DT_GET() is used with a node identifier "
-                "that is not valid or does not resolve to a valid node ordinal."
-            )
+            # The ordinal contains a non-numeric value, which means a DT macro
+            # failed to expand. Try to extract the embedded DT macro and
+            # diagnose the root cause instead of showing a generic message.
+            dt_macro_match = re.search(r"(DT_N_(?:NODELABEL|ALIAS|INST|S)_[A-Za-z0-9_]+)", ord_str)
+            if dt_macro_match:
+                lines = handle_dt_macro_error(edt, dt_macro_match.group(1))
+            else:
+                lines = [f"Symbol '{args.symbol}' indicates a macro expansion failure.\n"]
+                lines.append(
+                    "This usually happens when DEVICE_DT_GET() is used with a node identifier "
+                    "that is not valid or does not resolve to a valid node ordinal."
+                )
             print(tabulate([["\n".join(lines)]], headers=["DT Doctor"], tablefmt="grid"))
             return 0
 
