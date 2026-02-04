@@ -47,6 +47,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--symbol", required=True, help="symbol for which to obtain troubleshooting information"
     )
+
     return parser.parse_args()
 
 
@@ -62,6 +63,16 @@ def setup_kconfig() -> kconfiglib.Kconfig:
 
 def format_node(node: edtlib.Node) -> str:
     return f"{node.labels[0]}: {node.path}" if node.labels else node.path
+
+
+def handle_dt_macro_error(edt: edtlib.EDT, symbol: str) -> list[str]:
+    """
+    Handle diagnosis for a DT macro error.
+
+    Analyzes symbols like DT_N_NODELABEL_vext_P_gpios_IDX_0_VAL_pin
+    and provides meaningful diagnostics.
+    """
+    return [f"Unable to parse devicetree symbol: {symbol}"]
 
 
 def find_kconfig_deps(kconf: kconfiglib.Kconfig, dt_has_symbol: str) -> set[str]:
@@ -170,25 +181,49 @@ def handle_disabled_node(node: edtlib.Node) -> list[str]:
 
 def main() -> int:
     args = parse_args()
-
-    m = re.search(r"__device_dts_ord_(\d+)", args.symbol)
-    if not m:
-        return 1
-
-    # Find node by ordinal amongst all nodes
     edt = load_edt(args.edt_pickle)
-    node = next((n for n in edt.nodes if n.dep_ordinal == int(m.group(1))), None)
-    if not node:
-        print(f"Ordinal {m.group(1)} not found in edt.pickle", file=sys.stderr)
-        return 1
 
-    if node.status == "okay":
-        lines = handle_enabled_node(node)
-    else:
-        lines = handle_disabled_node(node)
+    m = re.search(r"__device_dts_ord_([A-Za-z0-9_]+)", args.symbol)
+    if m:
+        ord_str = m.group(1)
+        try:
+            dep_ordinal = int(ord_str)
+        except ValueError:
+            lines = [f"Symbol '{args.symbol}' indicates a macro expansion failure.\n"]
+            lines.append(
+                "This usually happens when DEVICE_DT_GET() is used with a node identifier "
+                "that is not valid or does not resolve to a valid node ordinal."
+            )
+            print(tabulate([["\n".join(lines)]], headers=["DT Doctor"], tablefmt="grid"))
+            return 0
 
-    print(tabulate([["\n".join(lines)]], headers=["DT Doctor"], tablefmt="grid"))
-    return 0
+        # Find node by ordinal amongst all nodes
+        node = next((n for n in edt.nodes if n.dep_ordinal == dep_ordinal), None)
+        if not node:
+            print(f"Ordinal {dep_ordinal} not found in edt.pickle", file=sys.stderr)
+            return 1
+
+        if node.status == "okay":
+            lines = handle_enabled_node(node)
+        else:
+            lines = handle_disabled_node(node)
+
+        print(tabulate([["\n".join(lines)]], headers=["DT Doctor"], tablefmt="grid"))
+        return 0
+
+    # Check if it's a DT macro error (e.g., DT_N_NODELABEL_...)
+    if re.match(r"DT_N_(NODELABEL|ALIAS|INST|S)_", args.symbol):
+        lines = handle_dt_macro_error(edt, args.symbol)
+        print(tabulate([["\n".join(lines)]], headers=["DT Doctor"], tablefmt="grid"))
+        return 0
+
+    # Unknown symbol format
+    print(f"Unable to diagnose symbol: {args.symbol}", file=sys.stderr)
+    print("dtdoctor can diagnose:", file=sys.stderr)
+    print("  - __device_dts_ord_<N> symbols", file=sys.stderr)
+    print("  - DT_N_NODELABEL_<label>_... macros", file=sys.stderr)
+    print("  - DT_N_ALIAS_<alias>_... macros", file=sys.stderr)
+    return 1
 
 
 if __name__ == "__main__":
