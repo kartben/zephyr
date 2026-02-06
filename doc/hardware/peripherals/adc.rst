@@ -53,9 +53,13 @@ The API supports three modes of operation:
 Devicetree Configuration
 *************************
 
-ADC channels are typically described in the Devicetree. A channel node is
-defined as a child of its ADC controller, with properties for gain, reference,
-acquisition time, and input pin selection:
+ADC channel configuration in Devicetree has two parts: the **channel
+definitions** under the ADC controller, and the **channel references** used by
+the application to select which channels it wants to read.
+
+Channel definitions are child nodes of the ADC controller. Each child
+describes the hardware settings for one channel -- gain, reference voltage,
+acquisition time, resolution, and which analog input pin(s) to use:
 
 .. code-block:: devicetree
 
@@ -71,19 +75,37 @@ acquisition time, and input pin selection:
            zephyr,resolution = <12>;
            zephyr,input-positive = <NRF_SAADC_AIN6>;
        };
+
+       channel@1 {
+           reg = <1>;
+           zephyr,gain = "ADC_GAIN_1_6";
+           zephyr,reference = "ADC_REF_INTERNAL";
+           zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+           zephyr,resolution = <12>;
+           zephyr,input-positive = <NRF_SAADC_AIN7>;
+       };
    };
 
-Consumer nodes (such as the application) reference ADC channels through the
-``io-channels`` property:
+The application then declares which of these channels it needs via the
+``io-channels`` property. This is typically placed in a ``zephyr,user`` node,
+which is a generic Devicetree node that Zephyr provides for applications to
+attach their own I/O mappings to. Each entry in ``io-channels`` is a phandle
+to an ADC controller followed by a channel number (matching the ``reg`` value
+of a channel child node above):
 
 .. code-block:: devicetree
 
    / {
        zephyr,user {
            io-channels = <&adc0 0>, <&adc0 1>;
-           io-channel-names = "voltage", "current";
        };
    };
+
+In the application code, macros like :c:macro:`ADC_DT_SPEC_GET_BY_IDX` use
+the ``io-channels`` list to look up both the ADC controller device and the
+corresponding channel configuration. For example,
+``ADC_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), 0)`` resolves to channel 0
+on ``adc0``, pulling in all the settings from the ``channel@0`` child node.
 
 Basic Operation
 ***************
