@@ -41,4 +41,17 @@ foreach(spdx_version ${SPDX_VERSIONS_TO_TEST})
       PROPERTIES DEPENDS spdx_gen_${version_suffix}
     )
   endforeach()
+
+  add_test(
+    NAME spdx_verify_content_${version_suffix}
+    COMMAND pytest ${CMAKE_CURRENT_SOURCE_DIR}/verify_spdx_content.py
+      --spdx-dir ${CMAKE_BINARY_DIR}/spdx
+      --spdx-version ${spdx_version}
+      -v
+  )
+
+  set_tests_properties(
+    spdx_verify_content_${version_suffix}
+    PROPERTIES DEPENDS spdx_gen_${version_suffix}
+  )
 endforeach()
