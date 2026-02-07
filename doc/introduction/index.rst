@@ -3,193 +3,279 @@
 Introduction
 ############
 
-The Zephyr OS is based on a small-footprint kernel designed for use on
-resource-constrained and embedded systems: from simple embedded environmental
-sensors and LED wearables to sophisticated embedded controllers, smart
-watches, and IoT wireless applications.
+Zephyr is an open source real-time operating system (RTOS) for resource-constrained
+devices. It is designed to be modular, secure, and portable across a wide range of
+hardware --- from tiny sensors with just a few kilobytes of memory to complex
+multi-core IoT gateways.
 
-The Zephyr kernel supports multiple architectures, including:
+Zephyr is hosted by the `Linux Foundation`_ and licensed under the
+`Apache 2.0 license`_, with some imported components using other licenses
+(see :ref:`zephyr_licensing`).
 
- - ARCv2 (EM and HS) and ARCv3 (HS6X)
- - ARMv6-M, ARMv7-M, and ARMv8-M (Cortex-M)
- - ARMv7-A and ARMv8-A (Cortex-A, 32- and 64-bit)
- - ARMv7-R, ARMv8-R (Cortex-R, 32- and 64-bit)
- - Intel x86 (32- and 64-bit)
- - MIPS (MIPS32 Release 1 specification)
- - Renesas RX
- - RISC-V (32- and 64-bit)
- - SPARC V8
- - Tensilica Xtensa
-
-The full list of supported boards based on these architectures can be found :ref:`here <boards>`.
-
-In the context of the Zephyr OS, a :term:`subsystem` refers to a logically distinct
-part of the operating system that handles specific functionality or provides
-certain services. Subsystems can include components such as networking,
-file systems, device driver classes, power management, and communication protocols,
-among others. Each subsystem is designed to be modular and can be configured,
-customized, and extended to meet the requirements of different embedded
-applications.
-
-Licensing
-*********
-
-Zephyr is permissively licensed using the `Apache 2.0 license`_
-(as found in the ``LICENSE`` file in the
-project's `GitHub repo`_).  There are some
-imported or reused components of the Zephyr project that use other licensing,
-as described in :ref:`Zephyr_Licensing`.
-
+.. _Linux Foundation: https://www.linuxfoundation.org/
 .. _Apache 2.0 license:
    https://github.com/zephyrproject-rtos/zephyr/blob/main/LICENSE
 
-.. _GitHub repo: https://github.com/zephyrproject-rtos/zephyr
-
-
-Distinguishing Features
+High-Level Architecture
 ***********************
 
-Zephyr offers a large and ever growing number of features including:
+The following diagram shows how Zephyr's components fit together, from
+the application layer down to the hardware, along with the development tools
+that support the workflow.
 
-**Extensive suite of Kernel services**
-   Zephyr offers a number of familiar services for development:
+.. raw:: html
 
-   * *Multi-threading Services* for cooperative, priority-based,
-     non-preemptive, and preemptive threads with optional round robin
-     time-slicing. Includes POSIX pthreads compatible API support.
+   <div style="max-width:820px;margin:1.5em auto;font-family:sans-serif;font-size:13px;line-height:1.3">
+     <!-- Development Tools (top bar) -->
+     <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+       <div style="flex:1;min-width:120px;border:2px solid #5b7f95;border-radius:6px;padding:8px 10px;background:#eaf2f8;text-align:center">
+         <div style="font-weight:bold;color:#2c3e50;margin-bottom:2px">west</div>
+         <div style="font-size:11px;color:#555">Meta-tool: build, flash,<br>debug, workspace mgmt</div>
+       </div>
+       <div style="flex:1;min-width:120px;border:2px solid #5b7f95;border-radius:6px;padding:8px 10px;background:#eaf2f8;text-align:center">
+         <div style="font-weight:bold;color:#2c3e50;margin-bottom:2px">Zephyr SDK</div>
+         <div style="font-size:11px;color:#555">Toolchains, QEMU,<br>OpenOCD</div>
+       </div>
+       <div style="flex:1;min-width:120px;border:2px solid #5b7f95;border-radius:6px;padding:8px 10px;background:#eaf2f8;text-align:center">
+         <div style="font-weight:bold;color:#2c3e50;margin-bottom:2px">Twister</div>
+         <div style="font-size:11px;color:#555">Test runner &amp;<br>CI framework</div>
+       </div>
+       <div style="flex:1;min-width:120px;border:2px solid #5b7f95;border-radius:6px;padding:8px 10px;background:#eaf2f8;text-align:center">
+         <div style="font-weight:bold;color:#2c3e50;margin-bottom:2px">Build System</div>
+         <div style="font-size:11px;color:#555">CMake, Kconfig,<br>Devicetree</div>
+       </div>
+     </div>
+     <!-- Main stack -->
+     <div style="border:2px solid #888;border-radius:8px;overflow:hidden">
+       <!-- Application -->
+       <div style="background:#d5e8d4;padding:10px 14px;border-bottom:2px solid #888;text-align:center">
+         <div style="font-weight:bold;color:#2c3e50;font-size:14px">Your Application</div>
+         <div style="font-size:11px;color:#555">Application code, prj.conf (Kconfig), devicetree overlays</div>
+       </div>
+       <!-- OS Services -->
+       <div style="background:#fff2cc;padding:10px 14px;border-bottom:2px solid #888">
+         <div style="font-weight:bold;color:#2c3e50;text-align:center;margin-bottom:6px;font-size:14px">OS Services &amp; Protocol Stacks</div>
+         <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center">
+           <span style="background:#ffe599;border:1px solid #d4a017;border-radius:4px;padding:3px 8px;font-size:11px">Networking (IP, LwM2M, MQTT, CoAP)</span>
+           <span style="background:#ffe599;border:1px solid #d4a017;border-radius:4px;padding:3px 8px;font-size:11px">Bluetooth (Host, Mesh)</span>
+           <span style="background:#ffe599;border:1px solid #d4a017;border-radius:4px;padding:3px 8px;font-size:11px">USB</span>
+           <span style="background:#ffe599;border:1px solid #d4a017;border-radius:4px;padding:3px 8px;font-size:11px">File Systems</span>
+           <span style="background:#ffe599;border:1px solid #d4a017;border-radius:4px;padding:3px 8px;font-size:11px">Logging</span>
+           <span style="background:#ffe599;border:1px solid #d4a017;border-radius:4px;padding:3px 8px;font-size:11px">Shell</span>
+           <span style="background:#ffe599;border:1px solid #d4a017;border-radius:4px;padding:3px 8px;font-size:11px">Device Mgmt</span>
+           <span style="background:#ffe599;border:1px solid #d4a017;border-radius:4px;padding:3px 8px;font-size:11px">Power Mgmt</span>
+           <span style="background:#ffe599;border:1px solid #d4a017;border-radius:4px;padding:3px 8px;font-size:11px">POSIX</span>
+           <span style="background:#ffe599;border:1px solid #d4a017;border-radius:4px;padding:3px 8px;font-size:11px">Crypto</span>
+         </div>
+       </div>
+       <!-- Kernel -->
+       <div style="background:#dae8fc;padding:10px 14px;border-bottom:2px solid #888">
+         <div style="font-weight:bold;color:#2c3e50;text-align:center;margin-bottom:6px;font-size:14px">Kernel</div>
+         <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center">
+           <span style="background:#b4d7ff;border:1px solid #6c8ebf;border-radius:4px;padding:3px 8px;font-size:11px">Threads &amp; Scheduling</span>
+           <span style="background:#b4d7ff;border:1px solid #6c8ebf;border-radius:4px;padding:3px 8px;font-size:11px">Synchronization (Mutexes, Semaphores)</span>
+           <span style="background:#b4d7ff;border:1px solid #6c8ebf;border-radius:4px;padding:3px 8px;font-size:11px">Data Passing (Queues, Pipes)</span>
+           <span style="background:#b4d7ff;border:1px solid #6c8ebf;border-radius:4px;padding:3px 8px;font-size:11px">Memory Management</span>
+           <span style="background:#b4d7ff;border:1px solid #6c8ebf;border-radius:4px;padding:3px 8px;font-size:11px">Timers &amp; Clocks</span>
+           <span style="background:#b4d7ff;border:1px solid #6c8ebf;border-radius:4px;padding:3px 8px;font-size:11px">Interrupt Handling</span>
+           <span style="background:#b4d7ff;border:1px solid #6c8ebf;border-radius:4px;padding:3px 8px;font-size:11px">Power Subsystem</span>
+           <span style="background:#b4d7ff;border:1px solid #6c8ebf;border-radius:4px;padding:3px 8px;font-size:11px">User Mode</span>
+         </div>
+       </div>
+       <!-- Drivers + HAL -->
+       <div style="background:#e1d5e7;padding:10px 14px;border-bottom:2px solid #888">
+         <div style="font-weight:bold;color:#2c3e50;text-align:center;margin-bottom:6px;font-size:14px">Device Drivers &amp; Hardware Abstraction</div>
+         <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center">
+           <span style="background:#d4c4e0;border:1px solid #9673a6;border-radius:4px;padding:3px 8px;font-size:11px">Devicetree</span>
+           <span style="background:#d4c4e0;border:1px solid #9673a6;border-radius:4px;padding:3px 8px;font-size:11px">GPIO, SPI, I2C, UART, ...</span>
+           <span style="background:#d4c4e0;border:1px solid #9673a6;border-radius:4px;padding:3px 8px;font-size:11px">Sensor Drivers</span>
+           <span style="background:#d4c4e0;border:1px solid #9673a6;border-radius:4px;padding:3px 8px;font-size:11px">Vendor HALs (as modules)</span>
+           <span style="background:#d4c4e0;border:1px solid #9673a6;border-radius:4px;padding:3px 8px;font-size:11px">Architecture Support (ARM, RISC-V, x86, ...)</span>
+         </div>
+       </div>
+       <!-- Hardware -->
+       <div style="background:#f5f5f5;padding:10px 14px;text-align:center">
+         <div style="font-weight:bold;color:#2c3e50;font-size:14px">Hardware</div>
+         <div style="font-size:11px;color:#555">Boards, SoCs, and peripherals from hundreds of vendors</div>
+       </div>
+     </div>
+     <!-- Legend -->
+     <div style="margin-top:8px;font-size:11px;color:#666;text-align:center">
+       ▲ Development tools operate across all layers &nbsp;│&nbsp; Stack layers are modular and configurable via Kconfig
+     </div>
+   </div>
 
-   * *Interrupt Services* for compile-time registration of interrupt handlers.
+The rest of this page describes each element in more detail. If you are new to
+Zephyr, consider starting with the :ref:`getting_started` guide.
 
-   * *Memory Allocation Services* for dynamic allocation and freeing of
-     fixed-size or variable-size memory blocks.
 
-   * *Inter-thread Synchronization Services* for binary semaphores,
-     counting semaphores, and mutex semaphores.
+What Makes Zephyr Different
+***************************
 
-   * *Inter-thread Data Passing Services* for basic message queues, enhanced
-     message queues, and byte streams.
+**Configurable and modular.**
+Applications include only the OS components they need. Every kernel feature,
+driver, and protocol stack can be enabled or disabled through :ref:`Kconfig
+<kconfig>`, keeping the final binary small and deterministic.
 
-   * *Power Management Services* such as overarching, application or
-     policy-defined, System Power Management and fine-grained, driver-defined,
-     Device Power Management.
+**Hardware described, not hard-coded.**
+Zephyr uses :ref:`Devicetree <dt-guide>` to describe hardware. Board and SoC
+details live in declarative data files rather than in C code, making it
+straightforward to retarget an application to different hardware.
 
-**Multiple Scheduling Algorithms**
-   Zephyr provides a comprehensive set of thread scheduling choices:
+**Wide architecture and board support.**
+Zephyr runs on ARM (Cortex-M, Cortex-R, Cortex-A), RISC-V, x86, ARC, Xtensa,
+MIPS, SPARC, and Renesas RX processors.
+Hundreds of boards are supported out of the box (see :ref:`boards`).
+A POSIX architecture target (:zephyr:board:`native_sim <native_sim>`) allows
+running Zephyr as a native process on the development host.
 
-   * Cooperative and Preemptive Scheduling
-   * Earliest Deadline First (EDF)
-   * Meta IRQ scheduling implementing "interrupt bottom half" or "tasklet"
-     behavior
-   * Timeslicing: Enables time slicing between preemptible threads of equal
-     priority
-   * Multiple queuing strategies:
+**Security-oriented.**
+Zephyr supports thread-level memory protection, user mode isolation, stack
+overflow detection, and is developed following secure coding guidelines
+(see :ref:`security_section`).
 
-     * Simple linked-list ready queue
-     * Red/black tree ready queue
-     * Traditional multi-queue ready queue
+**Standards-friendly.**
+A substantial :ref:`POSIX API subset <posix_support>` is available, making it
+easier to port existing code. The project also supports standard protocols
+such as BSD sockets, MQTT, CoAP, LwM2M, and Bluetooth Mesh.
 
-.. _zephyr_intro_configurability:
 
-**Highly configurable / Modular for flexibility**
-   Allows an application to incorporate *only* the capabilities it needs as it
-   needs them, and to specify their quantity and size.
+Development Tools and Ecosystem
+*******************************
 
-**Cross Architecture**
-   Supports a wide variety of :ref:`supported boards<boards>` with different CPU
-   architectures and developer tools. Contributions have added support
-   for an increasing number of SoCs, platforms, and drivers.
+Zephyr's development workflow relies on several tools that surround the OS
+itself. They are shown in the top row of the diagram above.
 
-**Memory Protection**
-   Implements configurable architecture-specific stack-overflow protection,
-   kernel object and device driver permission tracking, and thread isolation
-   with thread-level memory protection on x86, ARC, and ARM architectures,
-   userspace, and memory domains.
+west --- the meta-tool
+======================
 
-   For platforms without MMU/MPU and memory constrained devices, supports
-   combining application-specific code with a custom kernel to create a
-   monolithic image that gets loaded and executed on a system's hardware. Both
-   the application code and kernel code execute in a single shared address
-   space.
+:ref:`west` is the command-line swiss-army knife for Zephyr development.
+It manages the multi-repository workspace (Zephyr plus external
+:ref:`modules <modules>`), and provides commands for common operations:
 
-**Compile-time resource definition**
-   Allows system resources to be defined at compile-time, which reduces code
-   size and increases performance for resource-limited systems.
+* ``west build`` --- configure and compile an application
+* ``west flash`` --- program a board
+* ``west debug`` --- launch a debugger session
+* ``west update`` --- synchronize all workspace repositories
 
-**Optimized Device Driver Model**
-   Provides a consistent device model for configuring the drivers that are part
-   of the platform/system and a consistent model for initializing all the
-   drivers configured into the system and allows the reuse of drivers across
-   platforms that have common devices/IP blocks.
+See :ref:`west` for the full documentation.
 
-**Devicetree Support**
-   Use of :ref:`devicetree <dt-guide>` to describe hardware.
-   Information from devicetree is used to create the application image.
+Zephyr SDK
+==========
 
-**Native Networking Stack supporting multiple protocols**
-   Networking support is fully featured and optimized, including LwM2M and BSD
-   sockets compatible support.  OpenThread support (on Nordic chipsets) is also
-   provided - a mesh network designed to securely and reliably connect hundreds
-   of products around the home.
+The :ref:`Zephyr SDK <toolchain_zephyr_sdk>` bundles pre-built GNU toolchains
+for every supported architecture, plus host tools such as QEMU (for emulation)
+and OpenOCD (for on-chip debugging). It runs on Linux, macOS, and Windows.
 
-**Bluetooth Low Energy 5.0 support**
-   Bluetooth 5.0 compliant (ESR10) and Bluetooth Low Energy Controller support
-   (LE Link Layer). Includes Bluetooth Mesh and a Bluetooth qualification-ready
-   Bluetooth controller.
+Using the Zephyr SDK is the recommended way to get started and is required for
+running some of the automated tests.
 
-   * Generic Access Profile (GAP) with all possible LE roles
-   * Generic Attribute Profile (GATT)
-   * Pairing support, including the Secure Connections feature from Bluetooth
-     4.2
-   * Clean HCI driver abstraction
-   * Raw HCI interface to run Zephyr as a Controller instead of a full Host
-     stack
-   * Verified with multiple popular controllers
-   * Highly configurable
+Twister --- the test runner
+===========================
 
-   Mesh Support:
+:ref:`Twister <twister_script>` is Zephyr's test execution and continuous
+integration framework. It can:
 
-   * Relay, Friend Node, Low-Power Node (LPN) and GATT Proxy features
-   * Both Provisioning bearers supported (PB-ADV & PB-GATT)
-   * Highly configurable, fitting in devices with at least 16k RAM
+* Discover and run tests across many boards and emulation platforms in parallel.
+* Filter tests by platform, tag, or hardware capability.
+* Produce reports suitable for CI systems.
 
-**Native Linux, macOS, and Windows Development**
-   A command-line CMake build environment runs on popular developer OS
-   systems. A native port (:zephyr:board:`native_sim <native_sim>`) lets you build and run Zephyr as a native
-   application on Linux, aiding development and testing.
+Twister is the primary tool used by the project's CI pipelines and is equally
+useful during local development.
 
-**Virtual File System Interface with ext2, FatFs, and LittleFS Support**
-   ext2, LittleFS and FatFS support; FCB (Flash Circular Buffer) for memory constrained
-   applications.
+Build and configuration system
+==============================
 
-**Powerful multi-backend logging Framework**
-   Support for log filtering, object dumping, panic mode, multiple backends
-   (memory, networking, filesystem, console, ...) and integration with the shell
-   subsystem.
+Under the hood, Zephyr's :ref:`build system <build_overview>` combines three
+technologies:
 
-**User friendly and full-featured Shell interface**
-   A multi-instance shell subsystem with user-friendly features such as
-   autocompletion, wildcards, coloring, metakeys (arrows, backspace, ctrl+u,
-   etc.) and history. Support for static commands and dynamic sub-commands.
+* **CMake** --- orchestrates the compilation and linking steps
+  (see :ref:`cmake-details`).
+* **Kconfig** --- handles software configuration (what features to include and
+  how to tune them). See :ref:`kconfig`.
+* **Devicetree** --- describes the hardware so drivers and applications can
+  use it at compile time. See :ref:`dt-guide`.
 
-**Settings on non-volatile storage**
-   The settings subsystem gives modules a way to store persistent per-device
-   configuration and runtime state. Settings items are stored as key-value pair
-   strings.
+An application typically provides a ``CMakeLists.txt``, a ``prj.conf``
+(Kconfig fragment), and optionally devicetree overlay files.
+The :ref:`application` guide walks through this in detail.
 
-**Non-volatile storage (NVS)**
-  NVS allows storage of binary blobs, strings, integers, longs, and any
-  combination of these.
 
-**Native port**
-  :zephyr:board:`Native sim <native_sim>` allows running Zephyr as a Linux application with support
-  for various subsystems and networking.
+Inside the OS
+*************
+
+Kernel
+======
+
+The :ref:`kernel <kernel>` is Zephyr's core. It provides:
+
+* :ref:`Threads <threads_v2>` with cooperative, preemptive, and
+  EDF :ref:`scheduling <scheduling_v2>`.
+* :ref:`Synchronization primitives <kernel_api>` --- mutexes, semaphores,
+  condition variables, and events.
+* :ref:`Data-passing objects <kernel_api>` --- message queues, FIFOs,
+  pipes, and mailboxes.
+* :ref:`Memory management <memory_management_api>` --- heaps, memory slabs,
+  and memory domains for isolation.
+* Timers, interrupt management, and :ref:`power management <pm-guide>`.
+
+The kernel is intentionally small; features are compiled in only when the
+application's Kconfig enables them.
+
+Device drivers
+==============
+
+Zephyr contains a large collection of :ref:`device drivers <device_model_api>`
+covering buses (GPIO, SPI, I2C, UART, CAN, USB, ...), sensors, displays, and
+more (see :ref:`api_peripherals`). Drivers implement a common device model,
+enabling portable application code.
+
+Vendor-specific hardware abstraction layers (HALs) are pulled in as external
+:ref:`modules <modules>` through the west workspace, keeping the main
+repository hardware-neutral.
+
+OS services and protocol stacks
+===============================
+
+Above the kernel, Zephyr provides a rich set of :ref:`OS services
+<os_services>`, including:
+
+* :ref:`Networking <networking>` --- a full IP stack (IPv4/IPv6) with
+  BSD sockets, DHCPv4, DNS, MQTT, CoAP, HTTP, LwM2M, and more.
+* :ref:`Bluetooth <bluetooth>` --- a BLE 5.x host and optional controller,
+  plus Bluetooth Mesh.
+* :ref:`USB <usb>` --- device (and host) support.
+* :ref:`File systems <storage_reference>` --- VFS layer with FAT, LittleFS,
+  and ext2 back-ends.
+* :ref:`Logging <logging_api>`, :ref:`shell <shell_api>`, and
+  :ref:`tracing <tracing>` infrastructure.
+* :ref:`Device management <device_mgmt>` and firmware update (DFU) via
+  MCUboot.
+
+
+Where to Go Next
+*****************
+
+.. list-table::
+   :widths: 30 70
+   :header-rows: 0
+
+   * - :ref:`getting_started`
+     - Install the tools, build your first application, and flash it to a board.
+   * - :ref:`beyond-gsg`
+     - Understand toolchain choices and native development options after the
+       initial setup.
+   * - :ref:`application`
+     - Learn how a Zephyr application is structured and built.
+   * - :ref:`boards`
+     - Browse all supported boards and their documentation.
+   * - :ref:`kernel`
+     - Explore kernel services in depth.
+   * - :ref:`os_services`
+     - Discover networking, Bluetooth, file systems, and other OS services.
+   * - :ref:`glossary`
+     - Look up Zephyr-specific terminology.
 
 
 .. include:: ../../README.rst
    :start-after: start_include_here
-
-
-Fundamental Terms and Concepts
-******************************
-
-See :ref:`glossary`
