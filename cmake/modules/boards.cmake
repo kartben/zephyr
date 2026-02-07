@@ -199,9 +199,9 @@ if(NOT "${ret_board}" STREQUAL "")
   list(GET LIST_BOARD_DIR 0 BOARD_DIR)
   set(BOARD_DIR ${BOARD_DIR} CACHE PATH "Main board directory for board (${BOARD})" FORCE)
   set(BOARD_DIRECTORIES ${LIST_BOARD_DIR} CACHE INTERNAL "List of board directories for board (${BOARD})" FORCE)
-  foreach(dir ${BOARD_DIRECTORIES})
-    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${dir}/board.yml)
-  endforeach()
+  # Batch set_property with all board.yml paths instead of per-directory calls.
+  list(TRANSFORM BOARD_DIRECTORIES APPEND "/board.yml" OUTPUT_VARIABLE board_yml_files)
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${board_yml_files})
 
   # Create two CMake variables identifying the hw model.
   # CMake variable: HWM=v2

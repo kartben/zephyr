@@ -301,6 +301,7 @@ set(
 
 # Create a list of absolute paths to the .config sources from
 # merge_config_files, which is a mix of absolute and relative paths.
+# Path normalization and existence validation are done in a single pass.
 set(merge_config_files_with_absolute_paths "")
 foreach(f ${merge_config_files})
   if(IS_ABSOLUTE ${f})
@@ -309,15 +310,13 @@ foreach(f ${merge_config_files})
     set(path ${APPLICATION_CONFIG_DIR}/${f})
   endif()
 
+  if(NOT EXISTS ${path} OR IS_DIRECTORY ${path})
+    message(FATAL_ERROR "File not found: ${path}")
+  endif()
+
   list(APPEND merge_config_files_with_absolute_paths ${path})
 endforeach()
 set(merge_config_files ${merge_config_files_with_absolute_paths})
-
-foreach(f ${merge_config_files})
-  if(NOT EXISTS ${f} OR IS_DIRECTORY ${f})
-    message(FATAL_ERROR "File not found: ${f}")
-  endif()
-endforeach()
 
 if(KCONFIG_VARIANT_SOURCE)
   set(
@@ -412,24 +411,23 @@ endif()
 # Read out the list of 'Kconfig' sources that were used by the engine.
 file(STRINGS ${PARSED_KCONFIG_SOURCES_TXT} parsed_kconfig_sources_list ENCODING UTF-8)
 
-# Recalculate the Kconfig files' checksum, since the list of files may have
-# changed.
-set(merge_kconfig_checksum "")
-foreach(f ${parsed_kconfig_sources_list})
-  file(MD5 ${f} checksum)
-  set(merge_kconfig_checksum "${merge_kconfig_checksum}${checksum}")
-endforeach()
-
 # Force CMAKE configure when the Kconfig sources or configuration files changes.
-foreach(kconfig_input
-    ${merge_config_files}
-    ${DOTCONFIG}
-    ${parsed_kconfig_sources_list}
-    )
-  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${kconfig_input})
-endforeach()
+# Use a single set_property call with all paths instead of iterating.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+  ${merge_config_files}
+  ${DOTCONFIG}
+  ${parsed_kconfig_sources_list}
+)
 
 if(CREATE_NEW_DOTCONFIG)
+  # Recalculate the Kconfig files' checksum, since the list of files may have
+  # changed. Only needed when writing a new checksum file.
+  set(merge_kconfig_checksum "")
+  foreach(f ${parsed_kconfig_sources_list})
+    file(MD5 ${f} checksum)
+    set(merge_kconfig_checksum "${merge_kconfig_checksum}${checksum}")
+  endforeach()
+
   # Write the new configuration fragment checksum. Only do this if kconfig.py
   # succeeds, to avoid marking zephyr/.config as up-to-date when it hasn't been
   # regenerated.

@@ -1932,6 +1932,8 @@ function(import_kconfig prefix kconfig_fragment)
     ENCODING "UTF-8"
   )
 
+  set(keys)
+  set(unset_keys)
   foreach (LINE ${DOT_CONFIG_LIST})
     if("${LINE}" MATCHES "^(${prefix}[^=]+)=([ymn]|.+$)")
       # Matched a normal value assignment, like: CONFIG_NET_BUF=y
@@ -1959,7 +1961,9 @@ function(import_kconfig prefix kconfig_fragment)
       else()
         unset("${CONF_VARIABLE_NAME}" PARENT_SCOPE)
       endif()
-      list(REMOVE_ITEM keys "${CONF_VARIABLE_NAME}")
+      # Collect unset keys for batch removal after the loop, avoiding
+      # O(n) list scan per iteration.
+      list(APPEND unset_keys "${CONF_VARIABLE_NAME}")
       continue()
     endif()
 
@@ -1976,6 +1980,12 @@ function(import_kconfig prefix kconfig_fragment)
     endif()
     list(APPEND keys "${CONF_VARIABLE_NAME}")
   endforeach()
+
+  # Batch removal of keys that were later unset (handles the rare case where
+  # a symbol appears as non-n then later as n in the same fragment).
+  if(unset_keys)
+    list(REMOVE_ITEM keys ${unset_keys})
+  endif()
 
   if(DEFINED IMPORT_KCONFIG_TARGET)
     set_property(TARGET ${IMPORT_KCONFIG_TARGET} PROPERTY "kconfigs" "${keys}")
