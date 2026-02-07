@@ -301,6 +301,283 @@ Only 3 sectors are available for writes with a capacity of 944 bytes each,
 which makes it possible to store 11 key-value pairs in each sector (:math:`\frac{944}{64 + 16}`).
 Total data that could be stored in this partition for this case is :math:`11 \times 3 \times 64 = 2112 \text{ bytes}`.
 
+.. only:: html
+
+    .. raw:: html
+
+        <style>
+        .zms-calc {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: var(--admonition-note-background-color);
+            border: 1px solid var(--admonition-note-title-background-color);
+            border-radius: 4px;
+        }
+        .zms-calc h3 { margin-top: 0; }
+        .zms-calc .zms-fields {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .zms-calc label {
+            display: block;
+            margin-bottom: 0.25rem;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+        .zms-calc input,
+        .zms-calc select {
+            width: 100%;
+            padding: 0.4rem;
+            border: 1px solid var(--code-border-color);
+            border-radius: 3px;
+            background: var(--input-background-color);
+            color: var(--body-color);
+            box-sizing: border-box;
+        }
+        .zms-calc button {
+            background: var(--admonition-note-title-background-color);
+            color: var(--admonition-note-title-color);
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 3px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .zms-calc .zms-results {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--code-background-color);
+            border: 1px solid var(--code-border-color);
+            border-radius: 3px;
+            display: none;
+        }
+        .zms-calc .zms-results h4 { margin-top: 0; }
+        .zms-calc .zms-error { color: var(--admonition-danger-title-background-color); font-weight: 600; }
+        .zms-calc .zms-warn { color: var(--admonition-attention-title-background-color); }
+        .zms-calc .zms-row { margin-bottom: 0.25rem; }
+        .zms-calc .zms-indent { margin-left: 1rem; }
+        </style>
+
+        <script>
+        function zmsRoundUp(len, wbs) {
+            if (wbs <= 1) return len;
+            return (len + (wbs - 1)) & ~(wbs - 1);
+        }
+
+        function zmsValidate(sectorSize, wbs, flashType, ebs) {
+            var errors = [];
+            if (wbs < 1 || (wbs & (wbs - 1)) !== 0)
+                errors.push('Write block size must be a power of 2.');
+            if (sectorSize % wbs !== 0)
+                errors.push('Sector size must be aligned to write block size (' + wbs + ').');
+            if (flashType === 'explicit-erase') {
+                if (!ebs || ebs < 1)
+                    errors.push('Erase block size is required for explicit-erase flash.');
+                else if (sectorSize % ebs !== 0)
+                    errors.push('Sector size must be aligned to erase block size (' + ebs + ').');
+            }
+            return errors;
+        }
+
+        function zmsToggleEbs(prefix) {
+            var el = document.getElementById(prefix + '-ebs-group');
+            var ft = document.getElementById(prefix + '-flash-type').value;
+            el.style.display = ft === 'explicit-erase' ? '' : 'none';
+        }
+
+        function zmsEffectiveSize(dataSize, ateSize, wbs) {
+            return dataSize <= 8 ? ateSize : ateSize + zmsRoundUp(dataSize, wbs);
+        }
+
+        function zmsShowErrors(el, errors) {
+            el.innerHTML = errors.map(function(e) {
+                return '<div class="zms-error">' + e + '</div>';
+            }).join('');
+            el.style.display = 'block';
+        }
+        </script>
+
+        <div class="zms-calc">
+            <h3>Available Space Calculator</h3>
+            <p>Calculate the available storage space for your ZMS configuration.</p>
+            <div class="zms-fields">
+                <div>
+                    <label for="zms-space-flash-type">Flash Type</label>
+                    <select id="zms-space-flash-type" onchange="zmsToggleEbs('zms-space')">
+                        <option value="no-erase">No explicit erase (RRAM/MRAM)</option>
+                        <option value="explicit-erase">Explicit erase (NOR Flash)</option>
+                    </select>
+                </div>
+                <div id="zms-space-ebs-group" style="display:none">
+                    <label for="zms-space-ebs">Erase Block Size (bytes)</label>
+                    <input type="number" id="zms-space-ebs" value="4096" min="1">
+                </div>
+                <div>
+                    <label for="zms-space-wbs">Write Block Size (bytes)</label>
+                    <input type="number" id="zms-space-wbs" value="1" min="1">
+                </div>
+                <div>
+                    <label for="zms-space-sector-size">Sector Size (bytes)</label>
+                    <input type="number" id="zms-space-sector-size" value="1024" min="1">
+                </div>
+                <div>
+                    <label for="zms-space-sector-count">Number of Sectors</label>
+                    <input type="number" id="zms-space-sector-count" value="4" min="2">
+                </div>
+                <div>
+                    <label for="zms-space-data-size">Data Size (bytes)</label>
+                    <input type="number" id="zms-space-data-size" value="8" min="1">
+                </div>
+                <div>
+                    <label for="zms-space-data-count">Number of Data Items</label>
+                    <input type="number" id="zms-space-data-count" value="1" min="1">
+                </div>
+            </div>
+            <button onclick="zmsCalcSpace()">Calculate</button>
+            <div class="zms-results" id="zms-space-results"></div>
+        </div>
+
+        <script>
+        function zmsCalcSpace() {
+            var sectorSize = parseInt(document.getElementById('zms-space-sector-size').value);
+            var sectorCount = parseInt(document.getElementById('zms-space-sector-count').value);
+            var dataSize = parseInt(document.getElementById('zms-space-data-size').value);
+            var dataCount = parseInt(document.getElementById('zms-space-data-count').value);
+            var wbs = parseInt(document.getElementById('zms-space-wbs').value);
+            var flashType = document.getElementById('zms-space-flash-type').value;
+            var ebs = parseInt(document.getElementById('zms-space-ebs').value) || 0;
+            var res = document.getElementById('zms-space-results');
+
+            var errors = zmsValidate(sectorSize, wbs, flashType, ebs);
+            if (errors.length) { zmsShowErrors(res, errors); return; }
+
+            var ateSize = zmsRoundUp(16, wbs);
+            var headerSize = 5 * ateSize;
+            var sectorEffective = sectorSize - headerSize;
+            var effDataSize = zmsEffectiveSize(dataSize, ateSize, wbs);
+            var availableSectors = sectorCount - 1;
+            var itemsPerSector = Math.floor(sectorEffective / effDataSize);
+            var totalItems = itemsPerSector * availableSectors;
+            var totalCapacity = totalItems * dataSize;
+            var fittingItems = Math.min(dataCount, totalItems);
+
+            var h = '<h4>Results</h4>';
+            h += '<div class="zms-row"><strong>ATE Size:</strong> ' + ateSize + ' bytes</div>';
+            h += '<div class="zms-row"><strong>Header Size:</strong> ' + headerSize + ' bytes (5 &times; ' + ateSize + ')</div>';
+            h += '<div class="zms-row"><strong>Sector Effective Size:</strong> ' + sectorEffective + ' bytes</div>';
+            h += '<div class="zms-row"><strong>Effective Size per Item:</strong> ' + effDataSize + ' bytes</div>';
+            h += '<div class="zms-row"><strong>Available Sectors:</strong> ' + availableSectors + ' (' + sectorCount + ' &minus; 1 for GC)</div>';
+            h += '<div class="zms-row"><strong>Items per Sector:</strong> ' + itemsPerSector + '</div>';
+            h += '<div class="zms-row"><strong>Total Items Capacity:</strong> ' + totalItems + '</div>';
+            h += '<div class="zms-row"><strong>Total Data Capacity:</strong> ' + totalCapacity.toLocaleString() + ' bytes</div>';
+            if (dataCount > totalItems)
+                h += '<div class="zms-row zms-warn">Warning: only ' + totalItems + ' of ' + dataCount + ' requested items can fit.</div>';
+            h += '<div class="zms-row"><strong>Storage for ' + fittingItems + ' item(s):</strong> '
+                + (fittingItems * effDataSize).toLocaleString() + ' bytes used, '
+                + (fittingItems * dataSize).toLocaleString() + ' bytes of actual data</div>';
+
+            res.innerHTML = h;
+            res.style.display = 'block';
+        }
+        </script>
+
+        <div class="zms-calc">
+            <h3>Settings Subsystem Calculator</h3>
+            <p>Calculate storage space when using ZMS with the Settings subsystem.
+            Each Settings entry uses additional ATEs for the path name and linked list.</p>
+            <div class="zms-fields">
+                <div>
+                    <label for="zms-set-flash-type">Flash Type</label>
+                    <select id="zms-set-flash-type" onchange="zmsToggleEbs('zms-set')">
+                        <option value="no-erase">No explicit erase (RRAM/MRAM)</option>
+                        <option value="explicit-erase">Explicit erase (NOR Flash)</option>
+                    </select>
+                </div>
+                <div id="zms-set-ebs-group" style="display:none">
+                    <label for="zms-set-ebs">Erase Block Size (bytes)</label>
+                    <input type="number" id="zms-set-ebs" value="4096" min="1">
+                </div>
+                <div>
+                    <label for="zms-set-wbs">Write Block Size (bytes)</label>
+                    <input type="number" id="zms-set-wbs" value="1" min="1">
+                </div>
+                <div>
+                    <label for="zms-set-sector-size">Sector Size (bytes)</label>
+                    <input type="number" id="zms-set-sector-size" value="1024" min="1">
+                </div>
+                <div>
+                    <label for="zms-set-sector-count">Number of Sectors</label>
+                    <input type="number" id="zms-set-sector-count" value="4" min="2">
+                </div>
+                <div>
+                    <label for="zms-set-data-size">Average Data Size (bytes)</label>
+                    <input type="number" id="zms-set-data-size" value="8" min="1">
+                </div>
+                <div>
+                    <label for="zms-set-path-size">Average Path Size (bytes)</label>
+                    <input type="number" id="zms-set-path-size" value="10" min="1">
+                </div>
+                <div>
+                    <label for="zms-set-entry-count">Number of Settings Entries</label>
+                    <input type="number" id="zms-set-entry-count" value="10" min="1">
+                </div>
+            </div>
+            <button onclick="zmsCalcSettings()">Calculate</button>
+            <div class="zms-results" id="zms-set-results"></div>
+        </div>
+
+        <script>
+        function zmsCalcSettings() {
+            var sectorSize = parseInt(document.getElementById('zms-set-sector-size').value);
+            var sectorCount = parseInt(document.getElementById('zms-set-sector-count').value);
+            var dataSize = parseInt(document.getElementById('zms-set-data-size').value);
+            var pathSize = parseInt(document.getElementById('zms-set-path-size').value);
+            var entryCount = parseInt(document.getElementById('zms-set-entry-count').value);
+            var wbs = parseInt(document.getElementById('zms-set-wbs').value);
+            var flashType = document.getElementById('zms-set-flash-type').value;
+            var ebs = parseInt(document.getElementById('zms-set-ebs').value) || 0;
+            var res = document.getElementById('zms-set-results');
+
+            var errors = zmsValidate(sectorSize, wbs, flashType, ebs);
+            if (errors.length) { zmsShowErrors(res, errors); return; }
+
+            var ateSize = zmsRoundUp(16, wbs);
+            var headerSize = 5 * ateSize;
+            var sectorEffective = sectorSize - headerSize;
+
+            var effDataSize = zmsEffectiveSize(dataSize, ateSize, wbs);
+            var effPathSize = zmsEffectiveSize(pathSize, ateSize, wbs);
+            var effEntrySize = effDataSize + effPathSize + ateSize;
+
+            var availableSectors = sectorCount - 1;
+            var entriesPerSector = Math.floor(sectorEffective / effEntrySize);
+            var totalEntries = entriesPerSector * availableSectors;
+            var fittingEntries = Math.min(entryCount, totalEntries);
+
+            var h = '<h4>Results</h4>';
+            h += '<div class="zms-row"><strong>ATE Size:</strong> ' + ateSize + ' bytes</div>';
+            h += '<div class="zms-row"><strong>Header Size:</strong> ' + headerSize + ' bytes (5 &times; ' + ateSize + ')</div>';
+            h += '<div class="zms-row"><strong>Sector Effective Size:</strong> ' + sectorEffective + ' bytes</div>';
+            h += '<div class="zms-row"><strong>Per Settings Entry:</strong></div>';
+            h += '<div class="zms-row zms-indent">Value entry: ' + effDataSize + ' bytes</div>';
+            h += '<div class="zms-row zms-indent">Path entry: ' + effPathSize + ' bytes</div>';
+            h += '<div class="zms-row zms-indent">Linked list ATE: ' + ateSize + ' bytes</div>';
+            h += '<div class="zms-row zms-indent"><strong>Total per entry: ' + effEntrySize + ' bytes</strong></div>';
+            h += '<div class="zms-row"><strong>Available Sectors:</strong> ' + availableSectors + ' (' + sectorCount + ' &minus; 1 for GC)</div>';
+            h += '<div class="zms-row"><strong>Entries per Sector:</strong> ' + entriesPerSector + '</div>';
+            h += '<div class="zms-row"><strong>Total Entries Capacity:</strong> ' + totalEntries + '</div>';
+            if (entryCount > totalEntries)
+                h += '<div class="zms-row zms-warn">Warning: only ' + totalEntries + ' of ' + entryCount + ' requested entries can fit.</div>';
+            h += '<div class="zms-row"><strong>Fits ' + fittingEntries + ' of ' + entryCount + ' entries</strong> ('
+                + (fittingEntries * effEntrySize).toLocaleString() + ' bytes used)</div>';
+
+            res.innerHTML = h;
+            res.style.display = 'block';
+        }
+        </script>
+
 Wear leveling
 *************
 
@@ -373,6 +650,103 @@ Where:
 ``TOTAL_EFFECTIVE_SIZE``: Total effective size of the set of written data
 
 ``WR_MIN``: Number of writes of the set of data per minute
+
+.. only:: html
+
+    .. raw:: html
+
+        <div class="zms-calc">
+            <h3>Device Lifetime Calculator</h3>
+            <p>Calculate the expected lifetime of your ZMS storage device.</p>
+            <div class="zms-fields">
+                <div>
+                    <label for="zms-life-flash-type">Flash Type</label>
+                    <select id="zms-life-flash-type" onchange="zmsToggleEbs('zms-life')">
+                        <option value="no-erase">No explicit erase (RRAM/MRAM)</option>
+                        <option value="explicit-erase">Explicit erase (NOR Flash)</option>
+                    </select>
+                </div>
+                <div id="zms-life-ebs-group" style="display:none">
+                    <label for="zms-life-ebs">Erase Block Size (bytes)</label>
+                    <input type="number" id="zms-life-ebs" value="4096" min="1">
+                </div>
+                <div>
+                    <label for="zms-life-wbs">Write Block Size (bytes)</label>
+                    <input type="number" id="zms-life-wbs" value="1" min="1">
+                </div>
+                <div>
+                    <label for="zms-life-sector-size">Sector Size (bytes)</label>
+                    <input type="number" id="zms-life-sector-size" value="1024" min="1">
+                </div>
+                <div>
+                    <label for="zms-life-sector-count">Number of Sectors</label>
+                    <input type="number" id="zms-life-sector-count" value="4" min="2">
+                </div>
+                <div>
+                    <label for="zms-life-data-size">Data Size (bytes)</label>
+                    <input type="number" id="zms-life-data-size" value="8" min="1">
+                </div>
+                <div>
+                    <label for="zms-life-data-count">Number of Data Items</label>
+                    <input type="number" id="zms-life-data-count" value="1" min="1">
+                </div>
+                <div>
+                    <label for="zms-life-writes-min">Writes per Minute</label>
+                    <input type="number" id="zms-life-writes-min" value="1" min="0.01" step="0.01">
+                </div>
+                <div>
+                    <label for="zms-life-max-writes">Max Writes per Cell</label>
+                    <input type="number" id="zms-life-max-writes" value="20000" min="1">
+                </div>
+            </div>
+            <button onclick="zmsCalcLifetime()">Calculate</button>
+            <div class="zms-results" id="zms-life-results"></div>
+        </div>
+
+        <script>
+        function zmsCalcLifetime() {
+            var sectorSize = parseInt(document.getElementById('zms-life-sector-size').value);
+            var sectorCount = parseInt(document.getElementById('zms-life-sector-count').value);
+            var dataSize = parseInt(document.getElementById('zms-life-data-size').value);
+            var dataCount = parseInt(document.getElementById('zms-life-data-count').value);
+            var writesMin = parseFloat(document.getElementById('zms-life-writes-min').value);
+            var maxWrites = parseInt(document.getElementById('zms-life-max-writes').value);
+            var wbs = parseInt(document.getElementById('zms-life-wbs').value);
+            var flashType = document.getElementById('zms-life-flash-type').value;
+            var ebs = parseInt(document.getElementById('zms-life-ebs').value) || 0;
+            var res = document.getElementById('zms-life-results');
+
+            var errors = zmsValidate(sectorSize, wbs, flashType, ebs);
+            if (errors.length) { zmsShowErrors(res, errors); return; }
+
+            var ateSize = zmsRoundUp(16, wbs);
+            var headerSize = 5 * ateSize;
+            var sectorEffective = sectorSize - headerSize;
+            var effDataSize = zmsEffectiveSize(dataSize, ateSize, wbs);
+            var totalEffective = effDataSize * dataCount;
+
+            var lifetimeMinutes = (sectorEffective * sectorCount * maxWrites) / (totalEffective * writesMin);
+            var lifetimeHours = lifetimeMinutes / 60;
+            var lifetimeDays = lifetimeHours / 24;
+            var lifetimeYears = lifetimeDays / 365.25;
+
+            var h = '<h4>Results</h4>';
+            h += '<div class="zms-row"><strong>ATE Size:</strong> ' + ateSize + ' bytes</div>';
+            h += '<div class="zms-row"><strong>Header Size:</strong> ' + headerSize + ' bytes (5 &times; ' + ateSize + ')</div>';
+            h += '<div class="zms-row"><strong>Sector Effective Size:</strong> ' + sectorEffective + ' bytes</div>';
+            h += '<div class="zms-row"><strong>Effective Size per Item:</strong> ' + effDataSize + ' bytes</div>';
+            h += '<div class="zms-row"><strong>Total Effective Size:</strong> ' + totalEffective + ' bytes</div>';
+            h += '<hr style="border-color:var(--code-border-color);margin:0.75rem 0">';
+            h += '<div class="zms-row"><strong>Expected Lifetime:</strong></div>';
+            h += '<div class="zms-row zms-indent">' + lifetimeMinutes.toLocaleString(undefined, {maximumFractionDigits: 0}) + ' minutes</div>';
+            h += '<div class="zms-row zms-indent">' + lifetimeHours.toLocaleString(undefined, {maximumFractionDigits: 1}) + ' hours</div>';
+            h += '<div class="zms-row zms-indent">' + lifetimeDays.toLocaleString(undefined, {maximumFractionDigits: 1}) + ' days</div>';
+            h += '<div class="zms-row zms-indent">' + lifetimeYears.toLocaleString(undefined, {maximumFractionDigits: 2}) + ' years</div>';
+
+            res.innerHTML = h;
+            res.style.display = 'block';
+        }
+        </script>
 
 Features
 ********
