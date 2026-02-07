@@ -1465,6 +1465,10 @@ class Kconfig(object):
         chunks = [header]  # "".join()ed later
         add = chunks.append
 
+        # Cache config_prefix outside the loop to avoid repeated attribute
+        # lookups per symbol
+        prefix = self.config_prefix
+
         for sym in self.unique_defined_syms:
             # _write_to_conf is determined when the value is calculated. This
             # is a hidden function call due to property magic.
@@ -1478,23 +1482,20 @@ class Kconfig(object):
 
             if sym.orig_type in _BOOL_TRISTATE:
                 if val == "y":
-                    add("#define {}{} 1\n"
-                        .format(self.config_prefix, sym.name))
+                    add("#define " + prefix + sym.name + " 1\n")
                 elif val == "m":
-                    add("#define {}{}_MODULE 1\n"
-                        .format(self.config_prefix, sym.name))
+                    add("#define " + prefix + sym.name + "_MODULE 1\n")
 
             elif sym.orig_type is STRING:
-                add('#define {}{} "{}"\n'
-                    .format(self.config_prefix, sym.name, escape(val)))
+                add('#define ' + prefix + sym.name +
+                    ' "' + escape(val) + '"\n')
 
             else:  # sym.orig_type in _INT_HEX:
                 if sym.orig_type is HEX and \
                    not val.startswith(("0x", "0X")):
                     val = "0x" + val
 
-                add("#define {}{} {}\n"
-                    .format(self.config_prefix, sym.name, val))
+                add("#define " + prefix + sym.name + " " + val + "\n")
 
         return "".join(chunks)
 
@@ -2298,9 +2299,13 @@ class Kconfig(object):
         # Fetches the symbol 'name' from the symbol table, creating and
         # registering it if it does not exist. If '_parsing_kconfigs' is False,
         # it means we're in eval_string(), and new symbols won't be registered.
+        #
+        # Uses dict.get() to avoid double hash lookup (once for 'in', once
+        # for '[]').
 
-        if name in self.syms:
-            return self.syms[name]
+        sym = self.syms.get(name)
+        if sym is not None:
+            return sym
 
         sym = Symbol()
         sym.kconfig = self
@@ -2317,10 +2322,12 @@ class Kconfig(object):
         return sym
 
     def _lookup_const_sym(self, name):
-        # Like _lookup_sym(), for constant (quoted) symbols
+        # Like _lookup_sym(), for constant (quoted) symbols.
+        # Uses dict.get() to avoid double hash lookup.
 
-        if name in self.const_syms:
-            return self.const_syms[name]
+        sym = self.const_syms.get(name)
+        if sym is not None:
+            return sym
 
         sym = Symbol()
         sym.kconfig = self
@@ -2377,8 +2384,11 @@ class Kconfig(object):
         # The current index in the string being tokenized
         i = match.end()
 
+        # Cache the string length to avoid repeated len() calls in the loop
+        slen = len(s)
+
         # Main tokenization loop (for tokens past the first one)
-        while i < len(s):
+        while i < slen:
             # Test for an identifier/keyword first. This is the most common
             # case.
             match = _id_keyword_match(s, i)
@@ -2405,6 +2415,7 @@ class Kconfig(object):
                     if "$" in name:
                         # Macro expansion within symbol name
                         name, s, i = self._expand_name(s, i)
+                        slen = len(s)  # s may have changed
                     else:
                         i = match.end()
 
@@ -2450,6 +2461,7 @@ class Kconfig(object):
                     else:
                         # Slow path
                         s, end_i = self._expand_str(s, i)
+                        slen = len(s)  # s may have changed
 
                         # os.path.expandvars() and the $UNAME_RELEASE replace()
                         # is a backwards compatibility hack, which should be
@@ -2527,7 +2539,7 @@ class Kconfig(object):
 
 
                 # Skip trailing whitespace
-                while i < len(s) and s[i].isspace():
+                while i < slen and s[i].isspace():
                     i += 1
 
 
@@ -3549,11 +3561,16 @@ class Kconfig(object):
         # Undefined symbols never change value and don't need to be
         # invalidated, so we can just iterate over defined symbols.
         # Invalidating constant symbols would break things horribly.
+        #
+        # Inlines _invalidate() to avoid method call overhead per item.
         for sym in self.unique_defined_syms:
-            sym._invalidate()
+            sym._cached_str_val = sym._cached_tri_val = sym._cached_vis = \
+                sym._cached_assignable = None
 
         for choice in self.unique_choices:
-            choice._invalidate()
+            choice.user_loc = choice._origin = \
+                choice._cached_vis = choice._cached_assignable = None
+            choice._cached_selection = _NO_CACHED_SELECTION
 
     #
     # Post-parsing menu tree processing, including dependency propagation and
@@ -4634,20 +4651,20 @@ class Symbol(object):
         if not self._write_to_conf:
             return ""
 
+        # Cache attribute lookups to avoid repeated access in hot path
+        prefix = self.kconfig.config_prefix
+        name = self.name
+
         if self.orig_type in _BOOL_TRISTATE:
-            return "{}{}={}\n" \
-                   .format(self.kconfig.config_prefix, self.name, val) \
-                   if val != "n" else \
-                   "# {}{} is not set\n" \
-                   .format(self.kconfig.config_prefix, self.name)
+            if val != "n":
+                return prefix + name + "=" + val + "\n"
+            return "# " + prefix + name + " is not set\n"
 
         if self.orig_type in _INT_HEX:
-            return "{}{}={}\n" \
-                   .format(self.kconfig.config_prefix, self.name, val)
+            return prefix + name + "=" + val + "\n"
 
         # sym.orig_type is STRING
-        return '{}{}="{}"\n' \
-               .format(self.kconfig.config_prefix, self.name, escape(val))
+        return prefix + name + '="' + escape(val) + '"\n'
 
     @property
     def name_and_loc(self):
@@ -4971,35 +4988,56 @@ class Symbol(object):
         self._cached_assignable = None
 
     def _rec_invalidate(self):
-        # Invalidates the symbol and all items that (possibly) depend on it
+        # Invalidates the symbol and all items that (possibly) depend on it.
+        #
+        # Uses an iterative approach with an explicit stack to avoid deep
+        # recursion and Python function call overhead for large dependency
+        # trees.
 
         if self is self.kconfig.modules:
             # Invalidating MODULES has wide-ranging effects
             self.kconfig._invalidate_all()
-        else:
-            self._invalidate()
+            return
 
-            for item in self._dependents:
-                # _cached_vis doubles as a flag that tells us whether 'item'
-                # has cached values, because it's calculated as a side effect
-                # of calculating all other (non-constant) cached values.
-                #
-                # If item._cached_vis is None, it means there can't be cached
-                # values on other items that depend on 'item', because if there
-                # were, some value on 'item' would have been calculated and
-                # item._cached_vis set as a side effect. It's therefore safe to
-                # stop the invalidation at symbols with _cached_vis None.
-                #
-                # This approach massively speeds up scripts that set a lot of
-                # values, vs simply invalidating all possibly dependent symbols
-                # (even when you already have a list of all the dependent
-                # symbols, because some symbols get huge dependency trees).
-                #
-                # This gracefully handles dependency loops too, which is nice
-                # for choices, where the choice depends on the choice symbols
-                # and vice versa.
-                if item._cached_vis is not None:
-                    item._rec_invalidate()
+        self._invalidate()
+
+        # _cached_vis doubles as a flag that tells us whether 'item'
+        # has cached values, because it's calculated as a side effect
+        # of calculating all other (non-constant) cached values.
+        #
+        # If item._cached_vis is None, it means there can't be cached
+        # values on other items that depend on 'item', because if there
+        # were, some value on 'item' would have been calculated and
+        # item._cached_vis set as a side effect. It's therefore safe to
+        # stop the invalidation at symbols with _cached_vis None.
+        #
+        # This approach massively speeds up scripts that set a lot of
+        # values, vs simply invalidating all possibly dependent symbols
+        # (even when you already have a list of all the dependent
+        # symbols, because some symbols get huge dependency trees).
+        #
+        # This gracefully handles dependency loops too, which is nice
+        # for choices, where the choice depends on the choice symbols
+        # and vice versa.
+        #
+        # Uses an iterative approach with an explicit stack to avoid
+        # deep recursion for large dependency trees.
+
+        stack = []
+        for dep in self._dependents:
+            if dep._cached_vis is not None:
+                stack.append(dep)
+
+        while stack:
+            item = stack.pop()
+            if item._cached_vis is None:
+                continue
+
+            item._invalidate()
+
+            for dep in item._dependents:
+                if dep._cached_vis is not None:
+                    stack.append(dep)
 
     def _rec_invalidate_if_has_prompt(self):
         # Invalidates the symbol and its dependent symbols, but only if the
@@ -5578,13 +5616,25 @@ class Choice(object):
         self._cached_selection = _NO_CACHED_SELECTION
 
     def _rec_invalidate(self):
-        # See Symbol._rec_invalidate()
+        # See Symbol._rec_invalidate(). Uses the same iterative approach.
 
         self._invalidate()
 
-        for item in self._dependents:
-            if item._cached_vis is not None:
-                item._rec_invalidate()
+        stack = []
+        for dep in self._dependents:
+            if dep._cached_vis is not None:
+                stack.append(dep)
+
+        while stack:
+            item = stack.pop()
+            if item._cached_vis is None:
+                continue
+
+            item._invalidate()
+
+            for dep in item._dependents:
+                if dep._cached_vis is not None:
+                    stack.append(dep)
 
 
 class MenuNode(object):
@@ -6250,23 +6300,19 @@ def expr_items(expr):
 
     Passing subexpressions of expressions to this function works as expected.
     """
+    # Uses an explicit stack instead of recursion for better performance
     res = set()
+    stack = [expr]
 
-    def rec(subexpr):
-        if subexpr.__class__ is tuple:
-            # AND, OR, NOT, or relation
-
-            rec(subexpr[1])
-
-            # NOTs only have a single operand
-            if subexpr[0] is not NOT:
-                rec(subexpr[2])
-
+    while stack:
+        e = stack.pop()
+        if e.__class__ is tuple:
+            stack.append(e[1])
+            if e[0] is not NOT:
+                stack.append(e[2])
         else:
-            # Symbol or choice
-            res.add(subexpr)
+            res.add(e)
 
-    rec(expr)
     return res
 
 
@@ -6302,16 +6348,19 @@ def split_expr(expr, op):
       split_expr( (A || B) || C        , OR )  ->  [A, B, C]
       split_expr( A || (B || C)        , OR )  ->  [A, B, C]
     """
+    # Uses an explicit stack instead of recursion, pushing right before left
+    # to maintain left-to-right order (stack is LIFO)
     res = []
+    stack = [expr]
 
-    def rec(subexpr):
-        if subexpr.__class__ is tuple and subexpr[0] is op:
-            rec(subexpr[1])
-            rec(subexpr[2])
+    while stack:
+        e = stack.pop()
+        if e.__class__ is tuple and e[0] is op:
+            stack.append(e[2])
+            stack.append(e[1])
         else:
-            res.append(subexpr)
+            res.append(e)
 
-    rec(expr)
     return res
 
 
@@ -6436,6 +6485,8 @@ def _visibility(sc):
     for node in sc.nodes:
         if node.prompt:
             vis = max(vis, expr_value(node.prompt[1]))
+            if vis == 2:
+                break  # Can't get higher than y
 
     if sc.__class__ is Symbol and sc.choice:
         if sc.choice.orig_type is TRISTATE and \
@@ -6459,19 +6510,19 @@ def _depend_on(sc, expr):
     # Adds 'sc' (symbol or choice) as a "dependee" to all symbols in 'expr'.
     # Constant symbols in 'expr' are skipped as they can never change value
     # anyway.
+    #
+    # Uses an explicit stack instead of recursion to avoid Python function call
+    # overhead for deeply nested expressions.
 
-    if expr.__class__ is tuple:
-        # AND, OR, NOT, or relation
-
-        _depend_on(sc, expr[1])
-
-        # NOTs only have a single operand
-        if expr[0] is not NOT:
-            _depend_on(sc, expr[2])
-
-    elif not expr.is_constant:
-        # Non-constant symbol, or choice
-        expr._dependents.add(sc)
+    stack = [expr]
+    while stack:
+        e = stack.pop()
+        if e.__class__ is tuple:
+            stack.append(e[1])
+            if e[0] is not NOT:
+                stack.append(e[2])
+        elif not e.is_constant:
+            e._dependents.add(sc)
 
 
 def _parenthesize(expr, type_, sc_expr_str_fn):
@@ -6587,28 +6638,37 @@ def _expr_depends_on(expr, sym):
     # Reimplementation of expr_depends_symbol() from mconf.c. Used to determine
     # if a submenu should be implicitly created. This also influences which
     # items inside choice statements are considered choice items.
+    #
+    # Iterates through AND chains instead of recursing, since the parser
+    # builds left-leaning trees.
 
-    if expr.__class__ is not tuple:
-        return expr is sym
+    while True:
+        if expr.__class__ is not tuple:
+            return expr is sym
 
-    if expr[0] in _EQUAL_UNEQUAL:
-        # Check for one of the following:
-        # sym = m/y, m/y = sym, sym != n, n != sym
+        if expr[0] in _EQUAL_UNEQUAL:
+            # Check for one of the following:
+            # sym = m/y, m/y = sym, sym != n, n != sym
 
-        left, right = expr[1:]
+            left, right = expr[1:]
 
-        if right is sym:
-            left, right = right, left
-        elif left is not sym:
+            if right is sym:
+                left, right = right, left
+            elif left is not sym:
+                return False
+
+            return (expr[0] is EQUAL and right is sym.kconfig.m or
+                                         right is sym.kconfig.y) or \
+                   (expr[0] is UNEQUAL and right is sym.kconfig.n)
+
+        if expr[0] is not AND:
             return False
 
-        return (expr[0] is EQUAL and right is sym.kconfig.m or
-                                     right is sym.kconfig.y) or \
-               (expr[0] is UNEQUAL and right is sym.kconfig.n)
-
-    return expr[0] is AND and \
-           (_expr_depends_on(expr[1], sym) or
-            _expr_depends_on(expr[2], sym))
+        # Check right operand (typically a leaf in left-leaning trees)
+        # recursively, then iterate into the left operand
+        if _expr_depends_on(expr[2], sym):
+            return True
+        expr = expr[1]
 
 
 def _auto_menu_dep(node1, node2):
