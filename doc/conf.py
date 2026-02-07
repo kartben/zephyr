@@ -84,6 +84,7 @@ extensions = [
     "zephyr.link-roles",
     "sphinx_tabs.tabs",
     "sphinx_sitemap",
+    "zephyr.doxylink",
     "zephyr.doxyrunner",
     "zephyr.doxybridge",
     "zephyr.doxytooltip",
@@ -257,6 +258,18 @@ latex_documents = [
 ]
 latex_engine = "xelatex"
 
+# -- Options for zephyr.doxylink plugin -----------------------------------
+
+_doxylink_tagfile = str(ZEPHYR_BUILD / "doxylink" / "sphinx_docs.tag")
+
+doxylink_inventories = {
+    "zephyr": {
+        "url": "https://docs.zephyrproject.org/latest/objects.inv",
+        "local": str(ZEPHYR_BUILD / "html" / "objects.inv"),
+        "tagfile": _doxylink_tagfile,
+    },
+}
+
 # -- Options for zephyr.doxyrunner plugin ---------------------------------
 
 doxyrunner_doxygen = os.environ.get("DOXYGEN_EXECUTABLE", "doxygen")
@@ -268,6 +281,7 @@ doxyrunner_projects = {
         "fmt_vars": {
             "ZEPHYR_BASE": str(ZEPHYR_BASE),
             "ZEPHYR_VERSION": version,
+            "DOXYLINK_TAGFILE": _doxylink_tagfile,
         },
         "outdir_var": "DOXY_OUT",
     },
