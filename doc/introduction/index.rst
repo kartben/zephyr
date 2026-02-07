@@ -24,7 +24,7 @@ workflow from build to test.
 
 .. raw:: html
 
-   <div role="img" aria-label="Zephyr architecture: applications build on the Zephyr OS, which runs on hardware support, with west, Zephyr SDK, and Twister supporting build and test." style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:center; margin-top:12px;">
+   <div role="img" aria-label="Zephyr architecture: applications are built on the Zephyr OS, which runs on hardware support, with west, Zephyr SDK, and Twister supporting build and test." style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:center; margin-top:12px;">
      <div style="border:1px solid #6c757d; border-radius:6px; padding:12px; min-width:180px; text-align:center;">
        <strong>Applications</strong><br>
        Samples, modules, user code
@@ -50,6 +50,12 @@ workflow from build to test.
        Twister • ztest • emulators
      </div>
    </div>
+
+.. note::
+
+   Text-only view: Applications → Zephyr OS → Hardware Support, with build
+   tooling (west, CMake, Kconfig, Zephyr SDK) and test tooling (Twister, ztest,
+   emulators) supporting the workflow throughout.
 
 Core building blocks
 ********************
@@ -82,7 +88,7 @@ The Zephyr ecosystem includes companion tools that streamline development:
 - :ref:`west` is the meta-tool that manages multi-repository workspaces,
   builds, flashing, and debugging.
 - The :ref:`Zephyr SDK <toolchain_zephyr_sdk>` bundles cross-compilers and
-  host tools, and is the recommended default toolchain
+  host tools, and is the recommended toolchain for most users
   (see :ref:`toolchains`).
 - :ref:`twister_script` and the broader :ref:`testing` guide cover automated
   build-and-test workflows; unit tests use the :ref:`test-framework`.
