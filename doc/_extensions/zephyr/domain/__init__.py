@@ -67,6 +67,7 @@ sys.path.insert(0, str(Path(__file__).parents[4] / "scripts/west_commands"))
 sys.path.insert(0, str(Path(__file__).parents[3] / "_scripts"))
 
 from gen_boards_catalog import get_catalog
+from gen_devicetree_rest import load_binding_types_txt
 
 ZEPHYR_BASE = Path(__file__).parents[4]
 TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -76,7 +77,6 @@ RESOURCES_DIR = Path(__file__).parent / "static"
 BINDINGS_TXT_PATH = ZEPHYR_BASE / "dts" / "bindings" / "binding-types.txt"
 ACRONYM_PATTERN = re.compile(r'([a-zA-Z0-9-]+)\s*\((.*?)\)')
 ACRONYM_PATTERN_UPPERCASE_ONLY = re.compile(r'(\b[A-Z0-9-]+)\s*\((.*?)\)')
-BINDING_TYPE_TO_DOCUTILS_NODE = {}
 
 
 def parse_text_with_acronyms(text, uppercase_only=False):
@@ -102,14 +102,10 @@ def parse_text_with_acronyms(text, uppercase_only=False):
     return result
 
 
-with open(BINDINGS_TXT_PATH) as f:
-    for line in f:
-        line = line.strip()
-        if not line or line.startswith('#'):
-            continue
-
-        key, value = line.split('\t', 1)
-        BINDING_TYPE_TO_DOCUTILS_NODE[key] = parse_text_with_acronyms(value)
+BINDING_TYPE_TO_DOCUTILS_NODE = {
+    key: parse_text_with_acronyms(value)
+    for key, value in load_binding_types_txt(BINDINGS_TXT_PATH).items()
+}
 
 logger = logging.getLogger(__name__)
 
