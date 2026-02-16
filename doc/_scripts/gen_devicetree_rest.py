@@ -21,6 +21,9 @@ from pathlib import Path
 import gen_helpers
 from devicetree import edtlib
 
+import binding_utils
+from binding_utils import acronyms_to_rst, parse_acronyms, strip_acronym_parentheticals
+
 ZEPHYR_BASE = Path(__file__).parents[2]
 
 GENERIC_OR_VENDOR_INDEPENDENT = 'Generic or vendor-independent'
@@ -173,6 +176,87 @@ class VndLookup:
 
         return vnd2ref_target
 
+
+UNCATEGORIZED_TYPE = 'Uncategorized'
+
+
+class TypeLookup:
+    """
+    A convenience class for looking up information based on a
+    devicetree binding's type (derived from its file path).
+    """
+
+    def __init__(self, bindings, binding_types=None):
+        if binding_types is None:
+            binding_types = binding_utils.load_binding_types()
+        self.binding_types = binding_types
+        self.type2bindings = self.init_type2bindings(bindings)
+        self.type2ref_target = self.init_type2ref_target()
+
+    def type_name(self, type_key):
+        """Return the human-readable name for a type key.
+
+        For the special (UNCATEGORIZED_TYPE,) tuple key, returns
+        UNCATEGORIZED_TYPE. For known type keys, returns the full
+        description string. For unknown type keys, returns the raw key.
+        """
+        if isinstance(type_key, tuple):
+            return type_key[0]
+        return self.binding_types.get(type_key, type_key)
+
+    def type_name_rst(self, type_key):
+        """Return the human-readable name with RST ``:abbr:`` markup.
+
+        Acronyms like ``ADC (Analog to Digital Converter)`` are wrapped
+        in the ``:abbr:`` role so that they render with hover tooltips
+        in the generated HTML documentation.
+        """
+        name = self.type_name(type_key)
+        return acronyms_to_rst(parse_acronyms(name))
+
+    def target(self, type_key):
+        return self.type2ref_target.get(
+            type_key, self.type2ref_target.get((UNCATEGORIZED_TYPE,)))
+
+    def binding_type(self, binding):
+        """Return the type key for a binding."""
+        return binding_utils.binding_type_from_path(binding.path)
+
+    def init_type2bindings(self, bindings):
+        unsorted = defaultdict(list)
+        uncategorized = []
+        for binding in bindings:
+            type_key = self.binding_type(binding)
+            if type_key in self.binding_types:
+                unsorted[type_key].append(binding)
+            else:
+                uncategorized.append(binding)
+
+        def type_sort_key(type_key):
+            return self.type_name(type_key).casefold()
+
+        def binding_key(binding):
+            return binding.compatible
+
+        type2bindings = {}
+        for type_key in sorted(unsorted, key=type_sort_key):
+            type2bindings[type_key] = sorted(unsorted[type_key], key=binding_key)
+        if uncategorized:
+            type2bindings[(UNCATEGORIZED_TYPE,)] = sorted(uncategorized,
+                                                          key=binding_key)
+
+        return type2bindings
+
+    def init_type2ref_target(self):
+        type2ref_target = {}
+        for type_key in self.type2bindings:
+            if isinstance(type_key, tuple):
+                type2ref_target[type_key] = 'dt_uncategorized_type'
+            else:
+                type2ref_target[type_key] = f'dt_type_{type_key}'
+        return type2ref_target
+
+
 def main():
     args = parse_args()
     setup_logging(args.verbose)
@@ -180,8 +264,9 @@ def main():
     base_binding = load_base_binding()
     driver_sources = load_driver_sources()
     vnd_lookup = VndLookup(args.vendor_prefixes, bindings)
-    dump_content(bindings, base_binding, vnd_lookup, driver_sources, args.out_dir,
-                 args.turbo_mode)
+    type_lookup = TypeLookup(bindings)
+    dump_content(bindings, base_binding, vnd_lookup, type_lookup, driver_sources,
+                 args.out_dir, args.turbo_mode)
 
 def parse_args():
     # Parse command line arguments from sys.argv.
@@ -313,7 +398,8 @@ def load_driver_sources():
 
     return driver_sources
 
-def dump_content(bindings, base_binding, vnd_lookup, driver_sources, out_dir, turbo_mode):
+def dump_content(bindings, base_binding, vnd_lookup, type_lookup, driver_sources,
+                 out_dir, turbo_mode):
     # Dump the generated .rst files for a vnd2bindings dict.
     # Files are only written if they are changed. Existing .rst
     # files which would not be written by the 'vnd2bindings'
@@ -325,8 +411,9 @@ def dump_content(bindings, base_binding, vnd_lookup, driver_sources, out_dir, tu
     if turbo_mode:
         write_dummy_index(bindings, out_dir)
     else:
-        write_bindings_rst(vnd_lookup, out_dir)
-        write_orphans(bindings, base_binding, vnd_lookup, driver_sources, out_dir)
+        write_bindings_rst(vnd_lookup, type_lookup, out_dir)
+        write_orphans(bindings, base_binding, vnd_lookup, type_lookup,
+                      driver_sources, out_dir)
 
 def setup_bindings_dir(bindings, out_dir):
     # Make a set of all the Path objects we will be creating for
@@ -372,7 +459,7 @@ def write_dummy_index(bindings, out_dir):
     write_if_updated(out_dir / 'bindings.rst', content)
 
 
-def write_bindings_rst(vnd_lookup, out_dir):
+def write_bindings_rst(vnd_lookup, type_lookup, out_dir):
     # Write out_dir / bindings.rst, the top level index of bindings.
 
     string_io = io.StringIO()
@@ -386,6 +473,23 @@ def write_bindings_rst(vnd_lookup, out_dir):
     This page documents the available devicetree bindings.
     See {zref('dt-bindings')} for an introduction to the Zephyr bindings
     file format.
+
+    Type index
+    **********
+
+    This section contains an index of binding types (categories).
+    Click on a type name to go to the list of bindings for
+    that type.
+
+    .. rst-class:: rst-columns
+    ''', string_io)
+
+    for type_key, bindings in type_lookup.type2bindings.items():
+        if len(bindings) == 0:
+            continue
+        print(f'- :ref:`{type_lookup.target(type_key)}`', file=string_io)
+
+    print_block('''\
 
     Vendor index
     ************
@@ -401,6 +505,52 @@ def write_bindings_rst(vnd_lookup, out_dir):
         if len(bindings) == 0:
             continue
         print(f'- :ref:`{vnd_lookup.target(vnd)}`', file=string_io)
+
+    print_block('''\
+
+    Bindings by type
+    ****************
+
+    This section contains available bindings, grouped by type.
+    Within each group, bindings are listed by the "compatible" property
+    they apply to, like this:
+
+    **Type name**
+
+    .. rst-class:: rst-columns
+
+    - <compatible-A>
+    - <compatible-B> (on <bus-name> bus)
+    - <compatible-C>
+    - ...
+
+    The text "(on <bus-name> bus)" appears when bindings may behave
+    differently depending on the bus the node appears on.
+    For example, this applies to some sensor device nodes, which may
+    appear as children of either I2C or SPI bus nodes.
+    ''', string_io)
+
+    for type_key, bindings in type_lookup.type2bindings.items():
+        if isinstance(type_key, tuple):
+            title = type_key[0]
+        else:
+            title = type_lookup.type_name(type_key)
+        underline = '=' * len(title)
+
+        if len(bindings) == 0:
+            continue
+
+        print_block(f'''\
+        .. _{type_lookup.target(type_key)}:
+
+        {title}
+        {underline}
+
+        .. rst-class:: rst-columns
+        ''', string_io)
+        for binding in bindings:
+            print(f'- :ref:`{binding_ref_target(binding)}`', file=string_io)
+        print(file=string_io)
 
     print_block('''\
 
@@ -452,7 +602,8 @@ def write_bindings_rst(vnd_lookup, out_dir):
 
     write_if_updated(out_dir / 'bindings.rst', string_io.getvalue())
 
-def write_orphans(bindings, base_binding, vnd_lookup, driver_sources, out_dir):
+def write_orphans(bindings, base_binding, vnd_lookup, type_lookup,
+                  driver_sources, out_dir):
     # Write out_dir / bindings / foo / binding_page.rst for each binding
     # in 'bindings', along with any "disambiguation" pages needed when a
     # single compatible string can be handled by multiple bindings.
@@ -484,7 +635,7 @@ def write_orphans(bindings, base_binding, vnd_lookup, driver_sources, out_dir):
     for binding in bindings:
         string_io = io.StringIO()
 
-        print_binding_page(binding, base_names, vnd_lookup,
+        print_binding_page(binding, base_names, vnd_lookup, type_lookup,
                            driver_sources, dup_compat2bindings, string_io)
 
         written = write_if_updated(out_dir / 'bindings' /
@@ -513,21 +664,26 @@ def write_orphans(bindings, base_binding, vnd_lookup, driver_sources, out_dir):
     logging.info('done writing :orphan: files; %d files needed updates',
                  num_written)
 
-def make_sidebar(compatible, vendor_name, vendor_ref_target, driver_path=None):
+def make_sidebar(compatible, vendor_name, vendor_ref_target,
+                 type_name=None, type_ref_target=None, driver_path=None):
     lines = [
         ".. sidebar:: Overview",
         "",
         f"   :Name: ``{compatible}``",
         f"   :Vendor: :ref:`{vendor_name} <{vendor_ref_target}>`",
+    ]
+    if type_name and type_ref_target:
+        lines.append(f"   :Type: :ref:`{type_name} <{type_ref_target}>`")
+    lines.extend([
         f"   :Used in: :zephyr:board-catalog:`List of boards <#compatibles={compatible}>` using",
         "               this compatible",
-    ]
+    ])
     if driver_path:
         lines.append(f"   :Driver: :zephyr_file:`{driver_path}`")
     return "\n".join(lines) + "\n"
 
-def print_binding_page(binding, base_names, vnd_lookup, driver_sources,dup_compats,
-                       string_io):
+def print_binding_page(binding, base_names, vnd_lookup, type_lookup,
+                       driver_sources, dup_compats, string_io):
     # Print the rst content for 'binding' to 'string_io'. The
     # 'dup_compats' argument should support membership testing for
     # compatibles which have multiple associated bindings; if
@@ -582,10 +738,16 @@ def print_binding_page(binding, base_names, vnd_lookup, driver_sources,dup_compa
     vendor_target = vnd_lookup.target(vnd)
     driver_path = driver_sources.get(re.sub("[-,.@/+]", "_", compatible.lower()))
 
+    btype = type_lookup.binding_type(binding)
+    btype_name = type_lookup.type_name(btype)
+    btype_target = type_lookup.target(btype)
+
     sidebar_content = make_sidebar(
         compatible=compatible,
         vendor_name=vendor_name,
         vendor_ref_target=vendor_target,
+        type_name=btype_name,
+        type_ref_target=btype_target,
         driver_path=driver_path,
     )
     print_block(sidebar_content, string_io)

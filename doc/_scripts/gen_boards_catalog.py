@@ -19,8 +19,10 @@ from gen_devicetree_rest import VndLookup
 from get_maintainer import Maintainers
 from runners.core import ZephyrBinaryRunner
 
+import binding_utils
+
 ZEPHYR_BASE = Path(__file__).parents[2]
-ZEPHYR_BINDINGS = ZEPHYR_BASE / "dts/bindings"
+ZEPHYR_BINDINGS = binding_utils.ZEPHYR_BINDINGS
 EDT_PICKLE_PATHS = (
     "zephyr/edt.pickle",
     "hello_world/zephyr/edt.pickle",  # for board targets using sysbuild
@@ -330,10 +332,12 @@ def get_catalog(generate_hw_features=False, hw_features_vendor_filter=None):
 
                     binding_path = Path(node.binding_path)
                     is_custom_binding = False
-                    if binding_path.is_relative_to(ZEPHYR_BINDINGS):
-                        binding_type = binding_path.relative_to(ZEPHYR_BINDINGS).parts[0]
-                    else:
-                        binding_type = "misc"
+                    binding_type = binding_utils.binding_type_from_path(
+                        binding_path, ZEPHYR_BINDINGS
+                    )
+                    if binding_type == "misc" and not binding_path.is_relative_to(
+                        ZEPHYR_BINDINGS
+                    ):
                         is_custom_binding = True
 
                     if node.matching_compat is None:

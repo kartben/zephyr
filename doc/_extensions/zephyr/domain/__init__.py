@@ -66,6 +66,8 @@ sys.path.insert(0, str(Path(__file__).parents[4] / "scripts/dts/python-devicetre
 sys.path.insert(0, str(Path(__file__).parents[4] / "scripts/west_commands"))
 sys.path.insert(0, str(Path(__file__).parents[3] / "_scripts"))
 
+import binding_utils
+from binding_utils import AcronymSegment, parse_acronyms
 from gen_boards_catalog import get_catalog
 
 ZEPHYR_BASE = Path(__file__).parents[4]
@@ -73,43 +75,45 @@ TEMPLATES_DIR = Path(__file__).parent / "templates"
 RESOURCES_DIR = Path(__file__).parent / "static"
 
 # Load and parse binding types from text file
-BINDINGS_TXT_PATH = ZEPHYR_BASE / "dts" / "bindings" / "binding-types.txt"
-ACRONYM_PATTERN = re.compile(r'([a-zA-Z0-9-]+)\s*\((.*?)\)')
-ACRONYM_PATTERN_UPPERCASE_ONLY = re.compile(r'(\b[A-Z0-9-]+)\s*\((.*?)\)')
 BINDING_TYPE_TO_DOCUTILS_NODE = {}
 
 
-def parse_text_with_acronyms(text, uppercase_only=False):
-    """Parse text that may contain acronyms into a list of nodes."""
+def segments_to_docutils(segments):
+    """Convert parsed acronym segments into docutils nodes.
+
+    Plain text segments become ``nodes.Text``, acronym segments become
+    ``nodes.abbreviation`` (rendered as ``<abbr>`` in HTML).
+
+    Args:
+        segments: A list of ``TextSegment`` and ``AcronymSegment`` objects,
+            as returned by :func:`binding_utils.parse_acronyms`.
+
+    Returns:
+        A ``nodes.inline`` containing the appropriate child nodes.
+    """
     result = nodes.inline()
-    last_end = 0
-
-    pattern = ACRONYM_PATTERN_UPPERCASE_ONLY if uppercase_only else ACRONYM_PATTERN
-    for match in pattern.finditer(text):
-        # Add any text before the acronym
-        if match.start() > last_end:
-            result += nodes.Text(text[last_end : match.start()])
-
-        # Add the acronym
-        abbr, explanation = match.groups()
-        result += nodes.abbreviation(abbr, abbr, explanation=explanation)
-        last_end = match.end()
-
-    # Add any remaining text
-    if last_end < len(text):
-        result += nodes.Text(text[last_end:])
-
+    for segment in segments:
+        if isinstance(segment, AcronymSegment):
+            result += nodes.abbreviation(
+                segment.abbr, segment.abbr, explanation=segment.explanation
+            )
+        else:
+            result += nodes.Text(segment.text)
     return result
 
 
-with open(BINDINGS_TXT_PATH) as f:
-    for line in f:
-        line = line.strip()
-        if not line or line.startswith('#'):
-            continue
+def parse_text_with_acronyms(text, uppercase_only=False):
+    """Parse text that may contain acronyms into docutils nodes.
 
-        key, value = line.split('\t', 1)
-        BINDING_TYPE_TO_DOCUTILS_NODE[key] = parse_text_with_acronyms(value)
+    This is a convenience wrapper that calls
+    :func:`binding_utils.parse_acronyms` and converts the result into
+    docutils nodes via :func:`segments_to_docutils`.
+    """
+    return segments_to_docutils(parse_acronyms(text, uppercase_only=uppercase_only))
+
+
+for _key, _value in binding_utils.load_binding_types().items():
+    BINDING_TYPE_TO_DOCUTILS_NODE[_key] = parse_text_with_acronyms(_value)
 
 logger = logging.getLogger(__name__)
 
