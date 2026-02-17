@@ -1,0 +1,13 @@
+tests:
+  dtdoctor.disabled_node:
+    build_only: true
+    platform_allow:
+      - qemu_x86
+    extra_dtc_overlay_files:
+      - disabled.overlay
+  dtdoctor.enabled_no_driver:
+    build_only: true
+    platform_allow:
+      - qemu_x86
+    extra_dtc_overlay_files:
+      - no_driver.overlay

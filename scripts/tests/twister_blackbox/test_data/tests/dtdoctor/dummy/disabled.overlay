@@ -1,0 +1,6 @@
+/ {
+	dtdoctor_target: dtdoctor_target {
+		compatible = "zephyr,user";
+		status = "disabled";
+	};
+};

@@ -1,0 +1,9 @@
+/ {
+	dtdoctor_target: dtdoctor_target {
+		compatible = "pcie-controller";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+		status = "okay";
+	};
+};
