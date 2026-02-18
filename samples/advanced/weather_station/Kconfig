@@ -1,0 +1,50 @@
+# Copyright (c) 2026
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "Advanced Weather Station"
+
+config SAMPLE_WEATHER_SENSOR_PERIOD_MS
+	int "Sensor poll period (ms)"
+	default 2000
+	range 200 60000
+	help
+	  Sensor polling period in milliseconds.
+
+config SAMPLE_WEATHER_UI_REFRESH_MS
+	int "UI refresh period (ms)"
+	default 250
+	range 50 2000
+	help
+	  How often the UI labels and layout are refreshed.
+
+config SAMPLE_WEATHER_UI_LANDSCAPE_BREAKPOINT
+	int "Landscape breakpoint (pixels)"
+	default 360
+	range 160 2048
+	help
+	  Minimum screen width used to switch from stacked portrait cards to
+	  a two-column landscape layout.
+
+config SAMPLE_WEATHER_USE_FAHRENHEIT
+	bool "Display temperature in Fahrenheit"
+	default n
+	help
+	  If enabled, the UI shows temperature in Fahrenheit.
+
+config SAMPLE_WEATHER_ENABLE_BT
+	bool "Enable Bluetooth CTS + ESS"
+	default n
+	depends on BT && BT_PERIPHERAL && BT_CTS
+	help
+	  Enable Bluetooth advertising with Current Time Service (CTS) and
+	  Environmental Sensing Service (ESS) temperature/humidity characteristics.
+
+config SAMPLE_WEATHER_BT_NOTIFY_PERIOD_MS
+	int "Bluetooth notification period (ms)"
+	default 5000
+	range 500 60000
+	depends on SAMPLE_WEATHER_ENABLE_BT
+	help
+	  Period for CTS and ESS notifications.
+
+source "Kconfig.zephyr"

@@ -1,0 +1,15 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/ {
+	aliases {
+		dht0 = &hs300x;
+	};
+};
+
+&i2c0 {
+	hs300x: hs300x@7a {
+		compatible = "renesas,hs300x";
+		reg = <0x7a>;
+		status = "okay";
+	};
+};
