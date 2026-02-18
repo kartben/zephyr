@@ -438,7 +438,7 @@ static void st730x_get_capabilities(const struct device *dev, struct display_cap
 	caps->y_resolution = config->height;
 	caps->supported_pixel_formats = PIXEL_FORMAT_MONO01;
 	caps->current_pixel_format = PIXEL_FORMAT_MONO01;
-	caps->screen_info = 0;
+	caps->screen_info = SCREEN_INFO_MONO_X_ALIGN_12 | SCREEN_INFO_MONO_Y_ALIGN_2;
 }
 
 static int st730x_set_pixel_format(const struct device *dev, const enum display_pixel_format pf)

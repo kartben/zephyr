@@ -110,6 +110,9 @@ int weather_model_update_sensor(struct weather_model *model)
 	model->last_sample_ms = k_uptime_get();
 	model->last_sensor_error = 0;
 
+	printk("weather_model_update_sensor: temp: %d\n", model->temperature_milli_c);
+	printk("weather_model_update_sensor: humidity: %d\n", model->humidity_milli_pct);
+
 	return 0;
 }
 

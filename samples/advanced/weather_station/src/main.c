@@ -71,6 +71,7 @@ int main(void)
 	next_ble_notify = next_sensor_update;
 
 	while (1) {
+		printk("main loop\n");
 		int64_t now = k_uptime_get();
 		int64_t next_deadline;
 		uint32_t lvgl_wait;

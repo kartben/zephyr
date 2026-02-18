@@ -23,6 +23,7 @@
 		sw1 = &button1;
 		sdhc0 = &sdhc0;
 		watchdog0 = &wdt0;
+		dht0 = &shtc3;
 	};
 
 	chosen {

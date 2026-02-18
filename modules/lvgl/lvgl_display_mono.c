@@ -133,16 +133,35 @@ void lvgl_rounder_cb_mono(lv_event_t *e)
 	lv_area_t *area = lv_event_get_param(e);
 	lv_display_t *display = lv_event_get_user_data(e);
 	struct lvgl_disp_data *data = (struct lvgl_disp_data *)lv_display_get_user_data(display);
+	uint16_t x_res = data->cap.x_resolution;
+	uint16_t y_res = data->cap.y_resolution;
 
 	if (data->cap.screen_info & SCREEN_INFO_X_ALIGNMENT_WIDTH) {
 		area->x1 = 0;
-		area->x2 = data->cap.x_resolution - 1;
+		area->x2 = x_res - 1;
+	} else if (data->cap.screen_info & SCREEN_INFO_MONO_X_ALIGN_12) {
+		/* ST730x and similar: X must be aligned to 12 pixels */
+		area->x1 = (area->x1 / 12U) * 12U;
+		uint16_t w = ((area->x2 - area->x1 + 1 + 11U) / 12U) * 12U;
+		area->x2 = area->x1 + w - 1;
+		if (area->x2 >= x_res) {
+			area->x2 = x_res - 1;
+		}
 	} else {
 		area->x1 &= ~0x7;
 		area->x2 |= 0x7;
-		if (data->cap.screen_info & SCREEN_INFO_MONO_VTILED) {
-			area->y1 &= ~0x7;
-			area->y2 |= 0x7;
+	}
+
+	if (data->cap.screen_info & SCREEN_INFO_MONO_VTILED) {
+		area->y1 &= ~0x7;
+		area->y2 |= 0x7;
+	} else if (data->cap.screen_info & SCREEN_INFO_MONO_Y_ALIGN_2) {
+		/* ST730x and similar: Y must be aligned to 2 pixels */
+		area->y1 = (area->y1 / 2U) * 2U;
+		uint16_t h = ((area->y2 - area->y1 + 1 + 1U) / 2U) * 2U;
+		area->y2 = area->y1 + h - 1;
+		if (area->y2 >= y_res) {
+			area->y2 = y_res - 1;
 		}
 	}
 }

@@ -188,6 +188,14 @@ enum display_screen_info {
 	 * Screen has x alignment constrained to width.
 	 */
 	SCREEN_INFO_X_ALIGNMENT_WIDTH	= BIT(4),
+	/**
+	 * Mono display requires X axis aligned to 12 pixels (e.g. ST730x).
+	 */
+	SCREEN_INFO_MONO_X_ALIGN_12	= BIT(5),
+	/**
+	 * Mono display requires Y axis aligned to 2 pixels (e.g. ST730x).
+	 */
+	SCREEN_INFO_MONO_Y_ALIGN_2	= BIT(6),
 };
 
 /**

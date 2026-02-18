@@ -19,7 +19,11 @@ static void style_card(lv_obj_t *card, lv_color_t bg_color)
 	lv_obj_set_style_bg_color(card, bg_color, LV_PART_MAIN);
 	lv_obj_set_style_bg_opa(card, LV_OPA_90, LV_PART_MAIN);
 	lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
+#if CONFIG_LV_COLOR_DEPTH_1 == 1
+	lv_obj_set_style_border_color(card, lv_color_hex(0x000000), LV_PART_MAIN);
+#else
 	lv_obj_set_style_border_color(card, lv_color_hex(0x3d5a80), LV_PART_MAIN);
+#endif
 	lv_obj_set_style_radius(card, 14, LV_PART_MAIN);
 	lv_obj_set_style_pad_all(card, 10, LV_PART_MAIN);
 }
@@ -104,19 +108,33 @@ int weather_ui_init(struct weather_ui *ui)
 		return -ENODEV;
 	}
 
+#if CONFIG_LV_COLOR_DEPTH_1 == 1
+	/* Monochrome: light background, dark text for visibility */
+	lv_obj_set_style_bg_color(ui->screen, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+	lv_obj_set_style_bg_grad_color(ui->screen, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+	lv_obj_set_style_bg_grad_dir(ui->screen, LV_GRAD_DIR_VER, LV_PART_MAIN);
+#else
 	lv_obj_set_style_bg_color(ui->screen, lv_color_hex(0x0d1b2a), LV_PART_MAIN);
 	lv_obj_set_style_bg_grad_color(ui->screen, lv_color_hex(0x1b263b), LV_PART_MAIN);
 	lv_obj_set_style_bg_grad_dir(ui->screen, LV_GRAD_DIR_VER, LV_PART_MAIN);
+#endif
 
 	ui->header_card = lv_obj_create(ui->screen);
 	ui->temp_card = lv_obj_create(ui->screen);
 	ui->humidity_card = lv_obj_create(ui->screen);
 	ui->status_card = lv_obj_create(ui->screen);
 
+#if CONFIG_LV_COLOR_DEPTH_1 == 1
+	style_card(ui->header_card, lv_color_hex(0xFFFFFF));
+	style_card(ui->temp_card, lv_color_hex(0xF5F5F5));
+	style_card(ui->humidity_card, lv_color_hex(0xF5F5F5));
+	style_card(ui->status_card, lv_color_hex(0xF5F5F5));
+#else
 	style_card(ui->header_card, lv_color_hex(0x243b55));
 	style_card(ui->temp_card, lv_color_hex(0x2a4d69));
 	style_card(ui->humidity_card, lv_color_hex(0x1f6f8b));
 	style_card(ui->status_card, lv_color_hex(0x324a5f));
+#endif
 
 	lv_obj_set_flex_flow(ui->temp_card, LV_FLEX_FLOW_COLUMN);
 	lv_obj_set_flex_align(ui->temp_card, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER,
@@ -131,29 +149,53 @@ int weather_ui_init(struct weather_ui *ui)
 	ui->title_label = lv_label_create(ui->header_card);
 	lv_label_set_text(ui->title_label, "Weather Station");
 	lv_obj_set_style_text_font(ui->title_label, &lv_font_montserrat_20, LV_PART_MAIN);
+#if CONFIG_LV_COLOR_DEPTH_1 == 1
+	lv_obj_set_style_text_color(ui->title_label, lv_color_hex(0x000000), LV_PART_MAIN);
+#endif
 
 	ui->clock_source_label = lv_label_create(ui->header_card);
 	lv_label_set_text(ui->clock_source_label, "Clock: --");
+#if CONFIG_LV_COLOR_DEPTH_1 == 1
+	lv_obj_set_style_text_color(ui->clock_source_label, lv_color_hex(0x000000), LV_PART_MAIN);
+#endif
 
 	ui->time_label = lv_label_create(ui->header_card);
 	lv_label_set_text(ui->time_label, "time pending");
 	lv_obj_set_style_text_font(ui->time_label, &lv_font_montserrat_20, LV_PART_MAIN);
+#if CONFIG_LV_COLOR_DEPTH_1 == 1
+	lv_obj_set_style_text_color(ui->time_label, lv_color_hex(0x000000), LV_PART_MAIN);
+#endif
 
 	label = lv_label_create(ui->temp_card);
 	lv_label_set_text(label, "Temperature");
+#if CONFIG_LV_COLOR_DEPTH_1 == 1
+	lv_obj_set_style_text_color(label, lv_color_hex(0x000000), LV_PART_MAIN);
+#endif
 	ui->temp_value_label = lv_label_create(ui->temp_card);
 	lv_label_set_text(ui->temp_value_label, "--.- C");
 	lv_obj_set_style_text_font(ui->temp_value_label, &lv_font_montserrat_28, LV_PART_MAIN);
+#if CONFIG_LV_COLOR_DEPTH_1 == 1
+	lv_obj_set_style_text_color(ui->temp_value_label, lv_color_hex(0x000000), LV_PART_MAIN);
+#endif
 
 	label = lv_label_create(ui->humidity_card);
 	lv_label_set_text(label, "Humidity");
+#if CONFIG_LV_COLOR_DEPTH_1 == 1
+	lv_obj_set_style_text_color(label, lv_color_hex(0x000000), LV_PART_MAIN);
+#endif
 	ui->humidity_value_label = lv_label_create(ui->humidity_card);
 	lv_label_set_text(ui->humidity_value_label, "--.- %RH");
 	lv_obj_set_style_text_font(ui->humidity_value_label, &lv_font_montserrat_28, LV_PART_MAIN);
+#if CONFIG_LV_COLOR_DEPTH_1 == 1
+	lv_obj_set_style_text_color(ui->humidity_value_label, lv_color_hex(0x000000), LV_PART_MAIN);
+#endif
 
 	ui->status_label = lv_label_create(ui->status_card);
 	lv_label_set_long_mode(ui->status_label, LV_LABEL_LONG_WRAP);
 	lv_label_set_text(ui->status_label, "Status pending");
+#if CONFIG_LV_COLOR_DEPTH_1 == 1
+	lv_obj_set_style_text_color(ui->status_label, lv_color_hex(0x000000), LV_PART_MAIN);
+#endif
 
 	ui->last_width = -1;
 	ui->last_height = -1;
