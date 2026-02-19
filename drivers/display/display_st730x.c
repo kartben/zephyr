@@ -98,6 +98,7 @@ struct st730x_config {
 	const struct device *mipi_dev;
 	const struct mipi_dbi_config dbi_config;
 	const struct st730x_specific *specifics;
+	const struct gpio_dt_spec te_gpio;
 	uint16_t height;
 	uint16_t width;
 	uint16_t start_line;
@@ -120,6 +121,19 @@ struct st730x_config {
 	uint8_t *conversion_buf;
 	size_t conversion_buf_size;
 };
+
+struct st730x_data {
+	struct gpio_callback te_gpio_cb;
+	struct k_sem te_sem;
+};
+
+static void st730x_te_isr_handler(const struct device *gpio_dev,
+				   struct gpio_callback *cb, uint32_t pins)
+{
+	struct st730x_data *data = CONTAINER_OF(cb, struct st730x_data, te_gpio_cb);
+
+	k_sem_give(&data->te_sem);
+}
 
 static int st730x_resume(const struct device *dev)
 {
@@ -353,6 +367,7 @@ static int st730x_write(const struct device *dev, const uint16_t x, const uint16
 			 const struct display_buffer_descriptor *desc, const void *buf)
 {
 	const struct st730x_config *config = dev->config;
+	struct st730x_data *data = dev->data;
 	int err;
 	size_t buf_len;
 	uint32_t processed = 0;
@@ -399,6 +414,14 @@ static int st730x_write(const struct device *dev, const uint16_t x, const uint16
 				     y_position, 2);
 	if (err < 0) {
 		return err;
+	}
+
+	/*
+	 * If tearing effect GPIO is present, wait for the VSYNC signal before
+	 * writing new data to the display to avoid visual tearing.
+	 */
+	if (config->te_gpio.port != NULL) {
+		k_sem_take(&data->te_sem, K_FOREVER);
 	}
 
 	err = mipi_dbi_command_write(config->mipi_dev, &config->dbi_config, ST730X_WRITE, NULL, 0);
@@ -485,6 +508,7 @@ static int st730x_init_device(const struct device *dev)
 static int st730x_init(const struct device *dev)
 {
 	const struct st730x_config *config = dev->config;
+	struct st730x_data *data = dev->data;
 	int err;
 
 	LOG_DBG("Initializing device");
@@ -498,6 +522,30 @@ static int st730x_init(const struct device *dev)
 	if (err < 0) {
 		LOG_ERR("Failed to reset device!");
 		return err;
+	}
+
+	if (config->te_gpio.port != NULL) {
+		k_sem_init(&data->te_sem, 0, 1);
+
+		err = gpio_pin_configure_dt(&config->te_gpio, GPIO_INPUT);
+		if (err < 0) {
+			LOG_ERR("Could not configure TE GPIO (%d)", err);
+			return err;
+		}
+
+		err = gpio_pin_interrupt_configure_dt(&config->te_gpio, GPIO_INT_EDGE_TO_ACTIVE);
+		if (err < 0) {
+			LOG_ERR("Could not configure TE interrupt (%d)", err);
+			return err;
+		}
+
+		gpio_init_callback(&data->te_gpio_cb, st730x_te_isr_handler,
+				   BIT(config->te_gpio.pin));
+		err = gpio_add_callback(config->te_gpio.port, &data->te_gpio_cb);
+		if (err < 0) {
+			LOG_ERR("Could not add TE gpio callback (%d)", err);
+			return err;
+		}
 	}
 
 	err = st730x_init_device(dev);
@@ -563,10 +611,12 @@ static const struct st730x_specific st7306_specifics = {
 		.lpm_gate_waveform = DT_PROP(node_id, lpm_gate_waveform),                          \
 		.color_inversion = DT_PROP(node_id, inversion_on),                                 \
 		.specifics = specifics_ptr,                                                        \
+		.te_gpio = GPIO_DT_SPEC_GET_OR(node_id, te_gpios, {0}),                            \
 		.conversion_buf = conversion_buf##node_id,                                         \
 		.conversion_buf_size = sizeof(conversion_buf##node_id),                            \
 	};                                                                                         \
-	DEVICE_DT_DEFINE(node_id, st730x_init, NULL, NULL, &config##node_id,                       \
+	static struct st730x_data data##node_id;                                                   \
+	DEVICE_DT_DEFINE(node_id, st730x_init, NULL, &data##node_id, &config##node_id,             \
 			 POST_KERNEL, CONFIG_DISPLAY_INIT_PRIORITY, &st730x_driver_api);
 
 DT_FOREACH_STATUS_OKAY_VARGS(sitronix_st7305, ST730X_DEFINE_MIPI, &st7305_specifics)
