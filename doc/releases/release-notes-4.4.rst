@@ -328,10 +328,208 @@ New Boards
   that this list will be recomputed at the time of the release, so you don't *have* to update it.
   In any case, just link the board, further details go in the board description.
 
+* Adafruit Industries, LLC
+
+   * :zephyr:board:`adafruit_feather_propmaker_rp2040` (``adafruit_feather_propmaker_rp2040``)
+   * :zephyr:board:`adafruit_feather_scorpio_rp2040` (``adafruit_feather_scorpio_rp2040``)
+
+* Advanced Micro Devices (AMD), Inc.
+
+   * :zephyr:board:`versal2_apu` (``versal2_apu``)
+   * :zephyr:board:`versal_apu` (``versal_apu``)
+
 * Ai-Thinker Co., Ltd.
 
    * :zephyr:board:`ai_m61_32s_kit` (``ai_m61_32s_kit``)
-   * Rename ai_m62_12f and ai_wb2_12f to ai_m62_12f_kit and ai_wb2_12f_kit
+   * Renamed ai_m62_12f and ai_wb2_12f to ai_m62_12f_kit and ai_wb2_12f_kit
+
+* Alientek
+
+   * :zephyr:board:`dnesp32s3b` (``dnesp32s3b``)
+
+* Alif Semiconductor
+
+   * :zephyr:board:`ensemble_e8_dk` (``ensemble_e8_dk``)
+
+* Analog Devices, Inc.
+
+   * :zephyr:board:`adi_eval_adin2111d1z` (``adi_eval_adin2111d1z``)
+
+* BlackBerry Limited
+
+   * :zephyr:board:`qnxhv_vm` (``qnxhv_vm``)
+
+* Chengdu Heltec Automation Technology Co., Ltd.
+
+   * :zephyr:board:`heltec_wifi_lora32_v3` (``heltec_wifi_lora32_v3``)
+   * :zephyr:board:`heltec_wireless_tracker` (``heltec_wireless_tracker``)
+
+* Cirrus Logic, Inc.
+
+   * :zephyr:board:`crd40l50` (``crd40l50``)
+
+* Cytron Technologies
+
+   * :zephyr:board:`maker_nano_rp2040` (``maker_nano_rp2040``)
+   * :zephyr:board:`maker_pi_rp2040` (``maker_pi_rp2040``)
+   * :zephyr:board:`maker_uno_rp2040` (``maker_uno_rp2040``)
+   * :zephyr:board:`motion_2350_pro` (``motion_2350_pro``)
+
+* DFRobot
+
+   * :zephyr:board:`beetle_esp32c3` (``beetle_esp32c3``)
+   * :zephyr:board:`beetle_rp2350` (``beetle_rp2350``)
+
+* Elan Microelectronic Corp.
+
+   * :zephyr:board:`32f967_dv` (``32f967_dv``)
+
+* Ezurio
+
+   * :zephyr:board:`lyra_24_dvk_p10` (``lyra_24_dvk_p10``)
+   * :zephyr:board:`lyra_24_dvk_p20` (``lyra_24_dvk_p20``)
+   * :zephyr:board:`lyra_24_dvk_p20rf` (``lyra_24_dvk_p20rf``)
+   * :zephyr:board:`lyra_24_dvk_s10` (``lyra_24_dvk_s10``)
+   * :zephyr:board:`lyra_dvk_p` (``lyra_dvk_p``)
+   * :zephyr:board:`lyra_dvk_s` (``lyra_dvk_s``)
+   * :zephyr:board:`rm126x_dvk_rm1261` (``rm126x_dvk_rm1261``)
+   * :zephyr:board:`rm126x_dvk_rm1262` (``rm126x_dvk_rm1262``)
+
+* FocalTech Systems Co.,Ltd
+
+   * :zephyr:board:`ft9001_eval` (``ft9001_eval``)
+
+* Framework Computer, Inc.
+
+   * :zephyr:board:`framework_ledmatrix` (``framework_ledmatrix``)
+   * :zephyr:board:`framework_laptop16_keyboard` (``framework_laptop16_keyboard``)
+
+* Infineon Technologies
+
+   * :zephyr:board:`cy8ckit_041s_max` (``cy8ckit_041s_max``)
+   * :zephyr:board:`cy8cproto_041tp` (``cy8cproto_041tp``)
+   * :zephyr:board:`kit_t2g_b_h_evk` (``kit_t2g_b_h_evk``)
+   * :zephyr:board:`kit_t2g_b_h_lite` (``kit_t2g_b_h_lite``)
+
+* Intel Corporation
+
+   * :zephyr:board:`intel_wcl_crb` (``intel_wcl_crb``)
+
+* Longan Labs (Shenzhen Longan Technology Co., Ltd.)
+
+   * :zephyr:board:`canbed_rp2040` (``canbed_rp2040``)
+
+* M5Stack
+
+   * :zephyr:board:`m5stack_nanoc6` (``m5stack_nanoc6``)
+
+* Microchip Technology Inc.
+
+   * :zephyr:board:`pic32cm_pl10_cnano` (``pic32cm_pl10_cnano``)
+   * :zephyr:board:`pic32cx_sg41_cult` (``pic32cx_sg41_cult``)
+   * :zephyr:board:`pic64gx_curiosity_kit` (``pic64gx_curiosity_kit``)
+   * :zephyr:board:`sam_e54_cult` (``sam_e54_cult``)
+
+* Nordic Semiconductor
+
+   * :zephyr:board:`nrf54l15tag` (``nrf54l15tag``)
+   * :zephyr:board:`nrf7120dk` (``nrf7120dk``)
+
+* Nuvoton Technology Corporation
+
+   * :zephyr:board:`numaker_gai_m55m1` (``numaker_gai_m55m1``)
+
+* NXP Semiconductors
+
+   * :zephyr:board:`frdm_ke16z` (``frdm_ke16z``)
+   * :zephyr:board:`frdm_mcxa577` (``frdm_mcxa577``)
+   * :zephyr:board:`frdm_mcxw70` (``frdm_mcxw70``)
+   * :zephyr:board:`s32k5xxcvb` (``s32k5xxcvb``)
+
+* others
+
+   * :zephyr:board:`doit_esp32_devkit_v1` (``doit_esp32_devkit_v1``)
+   * :zephyr:board:`esp32c3_lckfb` (``esp32c3_lckfb``)
+
+* PCB Cupid
+
+   * :zephyr:board:`glyph_h2` (``glyph_h2``)
+
+* PHYTEC
+
+   * :zephyr:board:`phyboard_atlas` (``phyboard_atlas``)
+
+* Pimoroni Ltd.
+
+   * :zephyr:board:`tiny2040` (``tiny2040``)
+
+* RAKwireless Technology Limited
+
+   * :zephyr:board:`rak11160` (``rak11160``)
+
+* Realtek Semiconductor Corp.
+
+   * :zephyr:board:`rtl8721f_evb` (``rtl8721f_evb``)
+   * :zephyr:board:`rtl872xd_evb` (``rtl872xd_evb``)
+   * :zephyr:board:`rtl872xda_evb` (``rtl872xda_evb``)
+   * :zephyr:board:`rtl87x2g_evb_a` (``rtl87x2g_evb_a``)
+   * :zephyr:board:`rts5817_maa_evb` (``rts5817_maa_evb``)
+
+* Renesas Electronics Corporation
+
+   * :zephyr:board:`cpkcor_ra8d1b` (``cpkcor_ra8d1b``)
+   * :zephyr:board:`fpb_rx140` (``fpb_rx140``)
+   * :zephyr:board:`mck_ra4t1` (``mck_ra4t1``)
+   * :zephyr:board:`rsk_rx140` (``rsk_rx140``)
+
+* Shenzhen Holyiot Technology Co., Ltd.
+
+   * :zephyr:board:`holyiot_21014` (``holyiot_21014``)
+   * :zephyr:board:`holyiot_25008` (``holyiot_25008``)
+
+* Shenzhen Xunlong Software CO.,Limited
+
+   * :zephyr:board:`opi_zero` (``opi_zero``)
+
+* Shenzhen Sipeed Technology Co., Ltd.
+
+   * :zephyr:board:`maix_m0s_dock` (``maix_m0s_dock``)
+
+* Silicon Laboratories
+
+   * :zephyr:board:`efm32tg_stk3300` (``efm32tg_stk3300``)
+
+* Space Cubics Inc.
+
+   * :zephyr:board:`scobc_v1` (``scobc_v1``)
+
+* SparkFun Electronics
+
+   * :zephyr:board:`sparkfun_rp2040_mikrobus` (``sparkfun_rp2040_mikrobus``)
+
+* Texas Instruments
+
+   * :zephyr:board:`am62l_evm` (``am62l_evm``)
+
+* u-blox
+
+   * :zephyr:board:`ubx_evkninab5` (``ubx_evkninab5``)
+
+* Vicharak
+
+   * :zephyr:board:`shrike_lite` (``shrike_lite``)
+
+* Waveshare Electronics
+
+   * :zephyr:board:`rp2350_zero` (``rp2350_zero``)
+
+* WeAct Studio
+
+   * :zephyr:board:`rp2350b_core` (``rp2350b_core``)
+
+* WEMOS Electronics
+
+   * :zephyr:board:`lolin32_lite` (``lolin32_lite``)
 
 New Shields
 ***********
