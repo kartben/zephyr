@@ -335,6 +335,7 @@
 				remap-value = <0x40>;
 				panel-settings = <0x29>;
 				mipi-mode = "MIPI_DBI_MODE_SPI_4WIRE";
+				te-mode = "MIPI_DBI_TE_RISING_EDGE";
 			};
 
 			test_mipi_dbi_st7306: st7306@19 {

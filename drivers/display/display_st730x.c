@@ -117,6 +117,8 @@ struct st730x_config {
 	uint8_t hpm_gate_waveform[ST730X_HPM_GATE_WAVEFORM_LEN];
 	uint8_t lpm_gate_waveform[ST730X_LPM_GATE_WAVEFORM_LEN];
 	bool color_inversion;
+	uint8_t te_mode;
+	uint32_t te_delay;
 	uint8_t *conversion_buf;
 	size_t conversion_buf_size;
 };
@@ -280,11 +282,17 @@ static inline int st730x_set_hardware_config(const struct device *dev)
 		return err;
 	}
 
-	tmp[0] = ST730X_TEARING_OUT_VBLANK;
-	err = mipi_dbi_command_write(config->mipi_dev, &config->dbi_config,
-				     ST730X_TEARING_OUT, tmp, 1);
-	if (err < 0) {
-		return err;
+	if (config->te_mode != MIPI_DBI_TE_NO_EDGE) {
+		err = mipi_dbi_configure_te(config->mipi_dev, config->te_mode,
+					    config->te_delay);
+		if (err == 0) {
+			tmp[0] = ST730X_TEARING_OUT_VBLANK;
+			err = mipi_dbi_command_write(config->mipi_dev, &config->dbi_config,
+						     ST730X_TEARING_OUT, tmp, 1);
+			if (err < 0) {
+				return err;
+			}
+		}
 	}
 
 	tmp[0] = ST730X_AUTOPWRDOWN_ON;
@@ -562,6 +570,8 @@ static const struct st730x_specific st7306_specifics = {
 		.hpm_gate_waveform = DT_PROP(node_id, hpm_gate_waveform),                          \
 		.lpm_gate_waveform = DT_PROP(node_id, lpm_gate_waveform),                          \
 		.color_inversion = DT_PROP(node_id, inversion_on),                                 \
+		.te_mode = MIPI_DBI_TE_MODE_DT(node_id, te_mode),                                 \
+		.te_delay = DT_PROP(node_id, te_delay),                                            \
 		.specifics = specifics_ptr,                                                        \
 		.conversion_buf = conversion_buf##node_id,                                         \
 		.conversion_buf_size = sizeof(conversion_buf##node_id),                            \
