@@ -10,7 +10,7 @@ config LOG
 	  Global switch for the logger, when turned off log calls will not be
 	  compiled in.
 
-   Hardened value: n
+	  Hardened value: n
 
 if LOG
 

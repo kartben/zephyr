@@ -28,7 +28,7 @@ config TEST_RANDOM_GENERATOR
 	  device-backed random number generator, if available, will be selected by
 	  default even when CONFIG_TEST_RANDOM_GENERATOR=y.
 
-   Hardened value: n
+	  Hardened value: n
 
 config TIMER_RANDOM_INITIAL_STATE
 	int "Initial state used by clock based number generator"
@@ -58,7 +58,7 @@ config TIMER_RANDOM_GENERATOR
 	  clock. This number generator is not random and used for
 	  testing only.
 
-   Hardened value: n
+	  Hardened value: n
 
 config ENTROPY_DEVICE_RANDOM_GENERATOR
 	bool "Use entropy driver to generate random numbers"

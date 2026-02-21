@@ -9,7 +9,7 @@ config STATS
 	  and usage monitoring.  Statistics can be retrieved with the mcumgr
 	  management subsystem.
 
-   Hardened value: n
+	  Hardened value: n
 
 config STATS_NAMES
 	bool "Statistic names"

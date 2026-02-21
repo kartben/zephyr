@@ -14,7 +14,7 @@ config TEST
 	  Mark a project or an application as a test. This will enable a few
 	  test defaults.
 
-   Hardened value: n
+	  Hardened value: n
 
 config TEST_EXTRA_STACK_SIZE
 	int "Test function extra thread stack size"
@@ -32,7 +32,7 @@ config TEST_USERSPACE
 	  This option indicates that a test case puts threads in user mode,
 	  and that the build system will [override and] enable USERSPACE
 
-   Hardened value: n
+	  Hardened value: n
 	  if the platform supports it. It should be set in a .conf file on
 	  a per-test basis and is not meant to be used outside test cases.
 	  Tests with this option should also have the "userspace" filtering

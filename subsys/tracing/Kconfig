@@ -15,7 +15,7 @@ config TRACING
 	  Enable system tracing. This requires a backend such as SEGGER
 	  Systemview to be enabled as well.
 
-   Hardened value: n
+	  Hardened value: n
 
 if TRACING
 

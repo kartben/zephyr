@@ -6,9 +6,9 @@ config ZTEST
 	select TEST
 	help
 	  Enable the Zephyr testing framework. You should enable this only
-
-   Hardened value: n
 	  if you're writing automated tests.
+
+	  Hardened value: n
 
 if ZTEST
 

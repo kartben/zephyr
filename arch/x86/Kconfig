@@ -198,7 +198,7 @@ config X86_DEBUG_INFO
 	  used by debuggers in debugging the system, or enable additional
 	  debugging information to be reported at runtime.
 
-   Hardened value: n
+	  Hardened value: n
 
 config SRAM_OFFSET
 	default 0x100000 if X86_PC_COMPATIBLE
@@ -334,7 +334,7 @@ config X86_MMU
 	  and creates a set of page tables at boot time that is runtime-
 	  mutable.
 
-   Hardened value: y
+	  Hardened value: y
 
 config X86_COMMON_PAGE_TABLE
 	bool "Use a single page table for all threads"

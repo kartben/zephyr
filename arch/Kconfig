@@ -308,7 +308,7 @@ config HW_STACK_PROTECTION
 	  about the overall system state when a fault is triggered cannot be
 	  made.
 
-   Hardened value: y
+	  Hardened value: y
 
 config USERSPACE
 	bool "User mode threads"
@@ -648,7 +648,7 @@ config EXCEPTION_DEBUG
 	  This prints out the specific exception vector and any associated
 	  error codes.
 
-   Hardened value: n
+	  Hardened value: n
 
 config EXTRA_EXCEPTION_INFO
 	bool "Collect extra exception info"
