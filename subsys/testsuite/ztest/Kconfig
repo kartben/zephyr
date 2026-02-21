@@ -8,6 +8,8 @@ config ZTEST
 	  Enable the Zephyr testing framework. You should enable this only
 	  if you're writing automated tests.
 
+	  Hardened value: n
+
 if ZTEST
 
 config ZTEST_STACK_SIZE

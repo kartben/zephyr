@@ -19,6 +19,8 @@ config DEBUG
 	  only disables optimization, more debugging variants can be selected
 	  from here to allow more debugging.
 
+	  Hardened value: n
+
 config GPROF
 	bool "Generate profiling information"
 	depends on ARCH_POSIX
@@ -115,6 +117,8 @@ config STACK_USAGE
 	  Generate an extra file that specifies the maximum amount of stack used,
 	  on a per-function basis.
 
+	  Hardened value: n
+
 config STACK_SENTINEL
 	bool "Stack sentinel"
 	select THREAD_STACK_INFO
@@ -142,6 +146,8 @@ config STACK_SENTINEL
 	  for stack overflow protection, or have insufficient system resources
 	  to use that hardware support.
 
+	  Hardened value: y
+
 config PRINTK
 	bool "Send printk() to console"
 	default y
@@ -150,6 +156,8 @@ config PRINTK
 	  console device, rather than suppressing the generation
 	  of printk() output entirely. Output is sent immediately, without
 	  any mutual exclusion or buffering.
+
+	  Hardened value: n
 
 config PRINTK_BUFFER_SIZE
 	int "printk() buffer size"
@@ -169,6 +177,8 @@ config EARLY_CONSOLE
 	  initialize its driver earlier than normal, in order to get the stdout
 	  sent through the console at the earliest stage possible.
 
+	  Hardened value: n
+
 config ASSERT
 	bool "__ASSERT() macro"
 	default y if TEST
@@ -180,6 +190,8 @@ config ASSERT
 
 	  Disabling this option will cause assertions to compile to nothing,
 	  improving performance and system footprint.
+
+	  Hardened value: n
 
 if ASSERT
 
@@ -295,6 +307,8 @@ config OVERRIDE_FRAME_POINTER_DEFAULT
 	  Choose Y if you want to override the default frame pointer behavior
 	  of your compiler, otherwise choose N.
 
+	  Hardened value: y
+
 config OMIT_FRAME_POINTER
 	bool "Omit frame pointer"
 	depends on !FRAME_POINTER
@@ -334,6 +348,8 @@ config DEBUG_THREAD_INFO
 	help
 	  This option exports an array of offsets to kernel structs to allow
 	  for debugger RTOS plugins to determine the state of running threads.
+
+	  Hardened value: n
 
 rsource "coredump/Kconfig"
 rsource "symtab/Kconfig"

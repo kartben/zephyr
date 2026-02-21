@@ -10,6 +10,11 @@ menuconfig SHELL
 	imply LOG_RUNTIME_FILTERING
 	select EVENTS
 
+	help
+	  Enable the interactive shell subsystem.
+
+	  Hardened value: n
+
 if SHELL
 
 module = SHELL

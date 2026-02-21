@@ -394,6 +394,8 @@ config CORTEX_M_DEBUG_MONITOR_HOOK
 	  Enable this option to configure debug monitor exception to low priority
 	  for debugging purposes.
 
+	  Hardened value: n
+
 # enabled, which may increase ESF stacking requirements for
 # threads.
 config TEST_EXTRA_STACK_SIZE

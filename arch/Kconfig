@@ -308,6 +308,8 @@ config HW_STACK_PROTECTION
 	  about the overall system state when a fault is triggered cannot be
 	  made.
 
+	  Hardened value: y
+
 config USERSPACE
 	bool "User mode threads"
 	depends on ARCH_HAS_USERSPACE
@@ -645,6 +647,8 @@ config EXCEPTION_DEBUG
 	  make debugging them easier, at a small expense in code size.
 	  This prints out the specific exception vector and any associated
 	  error codes.
+
+	  Hardened value: n
 
 config EXTRA_EXCEPTION_INFO
 	bool "Collect extra exception info"
