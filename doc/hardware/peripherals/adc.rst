@@ -9,7 +9,7 @@ Overview
 An Analog-to-Digital Converter (ADC) samples an analog signal and produces a digital value that can
 be processed by software.
 
-The ADC API provides a generic method to interact with ADC peripherals. It allows applications to
+The ADC API provides a generic interface to interact with ADC peripherals. It allows applications to
 configure :ref:`adc_channels`, trigger single or multiple conversions, and retrieve raw samples that
 can be converted to physical units (typically voltages). Key concepts include:
 
@@ -18,7 +18,7 @@ can be converted to physical units (typically voltages). Key concepts include:
   source) to a digital sample. Channels are configured independently.
 
 **Conversion Sequence**
-  Conversions are requested using so called sequences that describe which channels to sample, the
+  Conversions are requested using sequences that describe which channels to sample, the
   resolution and oversampling settings, and the buffer to store the results.
 
 **Devicetree Integration**
@@ -59,7 +59,10 @@ Once channels are configured, sampling is controlled by an :c:struct:`adc_sequen
 The typical workflow is:
 
 1. Configure each channel once with :c:func:`adc_channel_setup`.
-2. Fill in an :c:struct:`adc_sequence` with the desired channels bitmask, resolution, and a buffer.
+2. Fill in an :c:struct:`adc_sequence` with the desired channels bitmask, resolution, and a
+   buffer. When using Devicetree-based channels, :c:func:`adc_sequence_init_dt` can be used to
+   initialize the ``channels``, ``resolution``, and ``oversampling`` fields from the
+   :c:struct:`adc_dt_spec`; the caller must still provide ``buffer`` and ``buffer_size``.
 3. Call :c:func:`adc_read` (or :c:func:`adc_read_dt`) on the ADC device.
 
 A single :c:func:`adc_read` call can sample multiple channels and, when combined with
@@ -89,7 +92,7 @@ Converting raw values to voltages
 =================================
 
 To convert raw ADC values to physical voltages, use :c:func:`adc_raw_to_millivolts_dt` (or
-:c:func:`adc_raw_to_millivolts` when not using :c:struct:`adc_dt_spec`). A
+:c:func:`adc_raw_to_millivolts` when not using :c:struct:`adc_dt_spec`). An
 :c:func:`adc_raw_to_microvolts_dt` variant is also available for higher precision.
 
 When the channel uses :c:enumerator:`ADC_REF_INTERNAL` as its reference, the reference voltage in
@@ -280,6 +283,11 @@ A minimal streaming loop looks like this:
 
 .. code-block:: c
 
+   /* Declare and populate ADC channel specifications from devicetree */
+   static const struct adc_dt_spec adc_channels[] = {
+       ADC_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), 0),
+   };
+
    /* Define triggers */
    ADC_DT_STREAM_IODEV(iodev, DT_ALIAS(adc0), adc_channels,
        {ADC_TRIG_FIFO_FULL, ADC_STREAM_DATA_INCLUDE});
@@ -288,7 +296,9 @@ A minimal streaming loop looks like this:
    RTIO_DEFINE_WITH_MEMPOOL(adc_ctx, 16, 16, 20, 256, sizeof(void *));
 
    /* Start streaming */
-   adc_stream(&iodev, &adc_ctx, NULL, &handles);
+   struct rtio_sqe *handle;
+
+   adc_stream(&iodev, &adc_ctx, NULL, &handle);
 
    while (1) {
        struct rtio_cqe *cqe = rtio_cqe_consume_block(&adc_ctx);
