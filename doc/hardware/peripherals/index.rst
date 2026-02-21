@@ -16,6 +16,7 @@ Peripherals
    bbram.rst
    bc12.rst
    biometrics.rst
+   cellular.rst
    clock_control.rst
    can/index.rst
    charger.rst
@@ -30,6 +31,7 @@ Peripherals
    espi.rst
    entropy.rst
    edac/index.rst
+   fpga.rst
    flash.rst
    fuel_gauge.rst
    gnss.rst
@@ -40,17 +42,23 @@ Peripherals
    i2c_eeprom_target.rst
    i3c.rst
    i2c.rst
+   input.rst
    ipm.rst
    led.rst
+   led_strip.rst
    mdio.rst
+   memc.rst
    mspi.rst
+   mfd.rst
    mbox.rst
    opamp.rst
    otp/index.rst
    pcie.rst
    peci.rst
+   power_domain.rst
    ps2.rst
    psi5.rst
+   ptp_clock.rst
    pwm.rst
    rtc.rst
    regulators.rst
@@ -62,9 +70,11 @@ Peripherals
    spi.rst
    stepper/index.rst
    smbus.rst
+   syscon.rst
    uart.rst
    usbc_vbus.rst
    tcpc.rst
+   tee.rst
    tgpio.rst
    video.rst
    watchdog.rst
