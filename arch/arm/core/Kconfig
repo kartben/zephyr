@@ -183,6 +183,8 @@ config FAULT_DUMP
 	  Different levels for display information when a fault occurs.
 
 	  2: The default. Display specific and verbose information. Consumes
+
+   Hardened value: 0
 		the most memory (long strings).
 
 	  1: Display general and short information. Consumes less memory
@@ -197,6 +199,8 @@ config BUILTIN_STACK_GUARD
 	help
 	  Enable Thread/Interrupt Stack Guards via built-in Stack Pointer
 	  limit checking. The functionality must be supported by HW.
+
+   Hardened value: y
 
 config ARM_STACK_PROTECTION
 	bool

@@ -10,6 +10,8 @@ config LOG
 	  Global switch for the logger, when turned off log calls will not be
 	  compiled in.
 
+   Hardened value: n
+
 if LOG
 
 config LOG_CORE_INIT_PRIORITY

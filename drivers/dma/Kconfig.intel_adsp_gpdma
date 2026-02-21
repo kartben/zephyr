@@ -31,6 +31,8 @@ config DMA_INTEL_ADSP_GPDMA_DEBUG
 	help
 	  Dump Intel ADSP GPDMA registers for debug
 
+   Hardened value: n
+
 source "drivers/dma/Kconfig.dw_common"
 
 endif # DMA_INTEL_ADSP_GPDMA

@@ -758,6 +758,8 @@ config BT_FIXED_PASSKEY
 	  bt_passkey_set() API to set a fixed passkey. If set, the
 	  pairing_confirm() callback will be called for all incoming pairings.
 
+   Hardened value: n
+
 config BT_APP_PASSKEY
 	bool "Allow the application to provide passkeys for pairing"
 	depends on !BT_FIXED_PASSKEY
@@ -777,6 +779,8 @@ config BT_USE_DEBUG_KEYS
 
 	  WARNING: This option enables anyone to decrypt on-air traffic.
 	  Use of this feature in production is strongly discouraged.
+
+   Hardened value: n
 
 config BT_BONDABLE
 	bool "Bondable Mode"
@@ -815,6 +819,8 @@ config BT_STORE_DEBUG_KEYS
 	  traffic.
 	  Use of this feature in production is strongly discouraged.
 
+   Hardened value: n
+
 config BT_SMP_ENFORCE_MITM
 	bool "Enforce MITM protection"
 	default y
@@ -822,6 +828,8 @@ config BT_SMP_ENFORCE_MITM
 	  With this option enabled, the Security Manager will set MITM option in
 	  the Authentication Requirements Flags whenever local IO Capabilities
 	  allow the generated key to be authenticated.
+
+   Hardened value: y
 
 config BT_OOB_DATA_FIXED
 	bool "Use a fixed random number for LESC OOB pairing"
@@ -833,6 +841,8 @@ config BT_OOB_DATA_FIXED
 
 	  WARNING: This option stores a hardcoded Out-of-Band value in the image.
 	  Use of this feature in production is strongly discouraged.
+
+   Hardened value: n
 
 config BT_KEYS_OVERWRITE_OLDEST
 	bool "Overwrite the oldest key if key storage is full"
@@ -1169,11 +1179,15 @@ config BT_LOG_SNIFFER_INFO
 	  the Long Term Key.
 	  Use of this feature in production is strongly discouraged
 
+   Hardened value: n
+
 config BT_TESTING
 	bool "Bluetooth Testing"
 	help
 	  This option enables custom Bluetooth testing interface.
 	  Shall only be used for testing purposes.
+
+   Hardened value: n
 
 config BT_CONN_DISABLE_SECURITY
 	bool "Disable security"
@@ -1185,6 +1199,8 @@ config BT_CONN_DISABLE_SECURITY
 
 	  WARNING: This option enables anyone to snoop on-air traffic.
 	  Use of this feature in production is strongly discouraged.
+
+   Hardened value: n
 
 config BT_SMP_LEGACY_PAIR_ONLY
 	bool "Force legacy pairing"

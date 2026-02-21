@@ -10,6 +10,9 @@ menuconfig SHELL
 	imply LOG_RUNTIME_FILTERING
 	select EVENTS
 
+	help
+	  Hardened value: n
+
 if SHELL
 
 module = SHELL

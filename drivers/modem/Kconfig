@@ -62,6 +62,8 @@ config MODEM_CONTEXT_VERBOSE_DEBUG
 	  Enabling this setting will turn on VERY heavy debugging from the
 	  modem context helper.  Do NOT leave on for production.
 
+   Hardened value: n
+
 config MODEM_IFACE_UART
 	bool "UART-based modem interface"
 	select RING_BUFFER

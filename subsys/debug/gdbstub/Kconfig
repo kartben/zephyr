@@ -10,6 +10,8 @@ menuconfig GDBSTUB
 	  This option enable support the target using GDB, or any other
 	  application that supports GDB protocol.
 
+   Hardened value: n
+
 if GDBSTUB
 
 choice

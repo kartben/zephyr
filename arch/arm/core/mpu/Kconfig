@@ -26,6 +26,8 @@ config MPU_STACK_GUARD
 	help
 	  Enable Thread Stack Guards via MPU
 
+   Hardened value: y
+
 config MPU_STACK_GUARD_MIN_SIZE_FLOAT
 	int
 	depends on MPU_STACK_GUARD

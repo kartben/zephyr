@@ -17,8 +17,26 @@ At a high-level, hardening a Zephyr application can be seen as a two-fold proces
 
 To simplify this process, Zephyr offers a **hardening tool** designed to analyze an application's
 configuration against a set of hardening preferences defined by the **Security Working Group**. The
-tool looks at the KConfig options in the build target and provides tailored suggestions and
+tool looks at the Kconfig options in the build target and provides tailored suggestions and
 recommendations to adjust security-related options.
+
+The recommended hardened value for each option is stored directly in its Kconfig help text using the
+``Hardened value: <value>`` tag. For example:
+
+.. code-block:: kconfig
+
+   config HW_STACK_PROTECTION
+   	bool "Hardware Stack Protection"
+   	depends on ARCH_HAS_STACK_PROTECTION
+   	help
+   	  Select this option to enable hardware-based platform features to
+   	  catch stack overflows when the system is running in privileged
+   	  mode.
+
+   	  Hardened value: y
+
+In addition, any Kconfig option that selects ``EXPERIMENTAL``, ``DEPRECATED``, or ``NOT_SECURE`` is
+automatically flagged with a recommended value of ``n``.
 
 Usage
 *****

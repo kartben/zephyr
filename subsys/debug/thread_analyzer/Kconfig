@@ -16,6 +16,8 @@ menuconfig THREAD_ANALYZER
 	  stack size configuration to find stack overflow or to find stacks
 	  which may be optimized.
 
+   Hardened value: n
+
 if THREAD_ANALYZER
 module = THREAD_ANALYZER
 module-str = thread analyzer

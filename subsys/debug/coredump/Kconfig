@@ -7,6 +7,8 @@ menuconfig DEBUG_COREDUMP
 	help
 	  Enable core dump so it can be used for offline debugging.
 
+   Hardened value: n
+
 if DEBUG_COREDUMP
 
 choice DEBUG_COREDUMP_BACKEND

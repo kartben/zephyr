@@ -126,6 +126,9 @@ config TFM_CMAKE_BUILD_TYPE_MINSIZEREL
 config TFM_CMAKE_BUILD_TYPE_DEBUG
 	bool "Debug build"
 
+	help
+	  Hardened value: n
+
 endchoice
 
 config TFM_ISOLATION_LEVEL
@@ -189,6 +192,8 @@ config TFM_DUMMY_PROVISIONING
 	  used by default.
 	  This option MUST not be used in production hardware, as the keys are
 	  insecure.
+
+   Hardened value: n
 
 config TFM_INITIAL_ATTESTATION_KEY
 	bool

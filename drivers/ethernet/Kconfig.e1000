@@ -26,6 +26,8 @@ config ETH_E1000_VERBOSE_DEBUG
 	  Enabling this will turn on the hexdump of the received and sent
 	  frames. Do not leave on for production.
 
+   Hardened value: n
+
 config ETH_E1000_PTP_CLOCK
 	bool "PTP clock driver support [EXPERIMENTAL]"
 	depends on PTP_CLOCK
