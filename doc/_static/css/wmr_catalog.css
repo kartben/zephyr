@@ -1,0 +1,163 @@
+/*
+ * Copyright (c) 2025 The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Styles for the wmr-catalog Sphinx directive — card-based module catalog.
+ */
+
+/* ------------------------------------------------------------------ */
+/* Catalog grid                                                       */
+/* ------------------------------------------------------------------ */
+
+.wmr-catalog {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    margin: 1.5rem 0;
+}
+
+@media (min-width: 768px) {
+    .wmr-catalog {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* Card                                                               */
+/* ------------------------------------------------------------------ */
+
+.wmr-card {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 1.25rem;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    transition: box-shadow 0.15s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.wmr-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* ------------------------------------------------------------------ */
+/* Card header — title + tags                                         */
+/* ------------------------------------------------------------------ */
+
+.wmr-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.wmr-card-title {
+    font-size: 1.1rem;
+    color: #1a1a2e;
+    word-break: break-word;
+}
+
+.wmr-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.wmr-tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    background: #e0e7ff;
+    color: #3730a3;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ */
+/* Description                                                        */
+/* ------------------------------------------------------------------ */
+
+.wmr-description {
+    color: #4b5563;
+    font-size: 0.92rem;
+    line-height: 1.55;
+    margin-bottom: 0.75rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Links row                                                          */
+/* ------------------------------------------------------------------ */
+
+.wmr-links {
+    font-size: 0.88rem;
+    margin-bottom: 0.75rem;
+}
+
+.wmr-links a {
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.wmr-links a:hover {
+    text-decoration: underline;
+}
+
+.wmr-revision {
+    font-size: 0.82rem;
+    background: #f3f4f6;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    color: #374151;
+}
+
+/* ------------------------------------------------------------------ */
+/* Snippet                                                            */
+/* ------------------------------------------------------------------ */
+
+.wmr-snippet {
+    margin-top: auto;          /* push to bottom of card */
+    padding-top: 0.5rem;
+}
+
+.wmr-snippet-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 0.25rem;
+}
+
+.wmr-snippet .wmr-snippet-code {
+    font-size: 0.8rem;
+    line-height: 1.5;
+    border-radius: 6px;
+    max-height: 12rem;
+    overflow-y: auto;
+}
+
+/* ------------------------------------------------------------------ */
+/* Detailed documentation link                                        */
+/* ------------------------------------------------------------------ */
+
+.wmr-docs-link {
+    margin-top: 0.75rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.wmr-docs-link a {
+    color: #2563eb;
+    font-weight: 500;
+    font-size: 0.9rem;
+    text-decoration: none;
+}
+
+.wmr-docs-link a:hover {
+    text-decoration: underline;
+}

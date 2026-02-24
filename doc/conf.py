@@ -22,6 +22,9 @@ sys.path.insert(0, str(ZEPHYR_BASE / "doc" / "_scripts"))
 # for autodoc directives on runners.xyz.
 sys.path.insert(0, str(ZEPHYR_BASE / "scripts" / "west_commands"))
 
+# Add the wmr-discover-extension for the WmrRegistry Python API
+sys.path.insert(0, str(ZEPHYR_BASE / ".." / "tools" / "wmr-discover-extension" / "extension"))
+
 # Add the directory which contains the pytest-twister-pytest
 sys.path.insert(0, str(ZEPHYR_BASE / "scripts" / "pylib" / "pytest-twister-harness" / "src"))
 
@@ -95,6 +98,7 @@ extensions = [
     "zephyr.external_content",
     "zephyr.domain",
     "zephyr.api_overview",
+    "zephyr.wmr_catalog",
 ]
 
 # Only use image conversion when it is really needed, e.g. LaTeX build.
@@ -387,6 +391,10 @@ linkcheck_anchors = False
 
 api_overview_doxygen_out_dir = str(doxyrunner_projects["zephyr"]["outdir"])
 api_overview_base_url = "https://github.com/zephyrproject-rtos/zephyr"
+
+# -- Options for zephyr.wmr_catalog ----------------------------------------
+
+wmr_catalog_registry_url = "https://github.com/beriberikix/west-modules-registry"
 
 def setup(app):
     # theme customizations

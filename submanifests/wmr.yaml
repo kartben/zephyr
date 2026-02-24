@@ -1,0 +1,7 @@
+manifest:
+  projects:
+    - name: wmr-discover-extension
+      url: https://github.com/beriberikix/wmr-discover-extension
+      revision: main
+      path: tools/wmr-discover-extension
+      west-commands: extension/west-commands.yml

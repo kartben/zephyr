@@ -55,15 +55,16 @@ To enable any of the modules below, use the following commands::
 External Projects/Modules
 ++++++++++++++++++++++++++
 
-The projects listed below are external and are not directly imported into the
-default manifest.
-To use any of the projects below, you will need to define your own manifest
-file which includes them.  See :ref:`west-manifest-import` for information on
+The `West Modules Registry <https://github.com/beriberikix/west-modules-registry>`_
+catalogs third-party modules compatible with Zephyr.
+Each entry below includes the :file:`west.yml` snippet needed to integrate the
+module into your workspace. See :ref:`west-manifest-import` for information on
 recommended ways to do this while still inheriting the mandatory modules from
 Zephyr's :file:`west.yml`.
 
-Use the :zephyr_file:`dedicated template file <doc/develop/manifest/external/external.rst.tmpl>`
-to contribute new external modules to the list below:
+.. wmr-catalog::
+
+You can also browse community-contributed module documentation:
 
 .. toctree::
    :titlesonly:
