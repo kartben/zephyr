@@ -55,13 +55,32 @@ with open(ZEPHYR_BASE / "VERSION") as f:
     if not m:
         sys.stderr.write("Warning: Could not extract kernel version\n")
         version = "Unknown"
+        latest_stable_version = "Unknown"
     else:
         major, minor, patch, extra = m.groups(1)
         version = ".".join((major, minor, patch))
         if extra:
             version += "-" + extra
+        if patch == "99" or extra:
+            latest_stable_version = f"{major}.{minor}.0"
+        else:
+            latest_stable_version = version
 
 release = version
+
+# Generate copy-pasteable west init commands for getting_started
+_generated_dir = ZEPHYR_BASE / "doc" / "_generated"
+_generated_dir.mkdir(exist_ok=True)
+(_generated_dir / "gs_west_init_stable.sh").write_text(
+    f"west init ~/zephyrproject --mr v{latest_stable_version}\n"
+    "cd ~/zephyrproject\n"
+    "west update\n"
+)
+(_generated_dir / "gs_west_init_release.sh").write_text(
+    f"west init ~/zephyrproject --mr v{version}\n"
+    "cd ~/zephyrproject\n"
+    "west update\n"
+)
 
 # parse SDK version from 'SDK_VERSION' file
 with open(ZEPHYR_BASE / "SDK_VERSION") as f:
@@ -156,6 +175,7 @@ rst_epilog = f"""
 .. |zephyr-version| replace:: ``{version}``
 .. |zephyr-version-ltrim| unicode:: {version}
    :ltrim:
+.. |zephyr-latest-stable| replace:: {latest_stable_version}
 .. |sdk-version-literal| replace:: ``{sdk_version}``
 .. |sdk-version-trim| unicode:: {sdk_version}
    :trim:
