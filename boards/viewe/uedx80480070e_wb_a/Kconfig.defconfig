@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_UEDX80480070E_WB_A_ESP32S3_PROCPU
+
+config LV_COLOR_16_SWAP
+	default y if LVGL
+
+if DISPLAY
+
+config REGULATOR
+	default y
+
+endif # DISPLAY
+
+endif # BOARD_UEDX80480070E_WB_A_ESP32S3_PROCPU
