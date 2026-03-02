@@ -44,8 +44,9 @@ enum veml60xx_it {
 	/** @endcond */
 };
 
-/*
- * @brief VEML60xx integration time struct.
+/** @cond INTERNAL_HIDDEN */
+/**
+ * @brief Internal mapping for integration time conversion.
  */
 struct veml60xx_it_data {
 	enum veml60xx_it num;
@@ -53,11 +54,8 @@ struct veml60xx_it_data {
 	int us;
 };
 
-/*
- * @brief VEML60xx integration time setting values.
- *
- * The enumerators of enum veml60xx_it provide indices into this array to get
- * the related value for the ALS_IT configuration bits.
+/**
+ * @brief Internal lookup table for ALS_IT register encoding.
  */
 static const struct veml60xx_it_data veml60xx_it_values[VEML60XX_IT_COUNT] = {
 	{VEML60XX_IT_3_125, 0x00, 3125}, /*   3.125 - 0b0000 */
@@ -110,6 +108,7 @@ static inline bool veml60xx_pers_in_range(int32_t pers)
 {
 	return (pers >= VEML60XX_PERS_1) && (pers <= VEML60XX_PERS_8);
 }
+/** @endcond */
 
 #ifdef __cplusplus
 }

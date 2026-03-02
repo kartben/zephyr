@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Extended public API for CCS811 Indoor Air Quality Sensor
+ * @ingroup ccs811_interface
  *
  * Some capabilities and operational requirements for this sensor
  * cannot be expressed within the sensor driver abstraction.
@@ -22,27 +23,62 @@ extern "C" {
 #include <zephyr/device.h>
 #include <zephyr/drivers/sensor.h>
 
-/* Status register fields */
+/**
+ * @brief CCS811 sensor extensions.
+ * @defgroup ccs811_interface CCS811
+ * @ingroup sensor_interface_ext
+ * @{
+ */
+
+/**
+ * @name CCS811 status register flags
+ * @{
+ */
+/** Sensor reports an error condition. */
 #define CCS811_STATUS_ERROR             BIT(0)
+/** New measurement data is available. */
 #define CCS811_STATUS_DATA_READY        BIT(3)
+/** Application firmware is valid. */
 #define CCS811_STATUS_APP_VALID         BIT(4)
+/** Device runs in application firmware mode. */
 #define CCS811_STATUS_FW_MODE           BIT(7)
+/** @} */
 
-/* Error register fields */
+/**
+ * @name CCS811 error register flags
+ * @{
+ */
+/** Invalid register write operation was attempted. */
 #define CCS811_ERROR_WRITE_REG_INVALID  BIT(0)
+/** Invalid register read operation was attempted. */
 #define CCS811_ERROR_READ_REG_INVALID   BIT(1)
+/** Invalid measurement mode configuration was provided. */
 #define CCS811_ERROR_MEASMODE_INVALID   BIT(2)
+/** Sensor exceeded maximum resistance limit. */
 #define CCS811_ERROR_MAX_RESISTANCE     BIT(3)
+/** Heater fault condition occurred. */
 #define CCS811_ERROR_HEATER_FAULT       BIT(4)
+/** Heater supply fault condition occurred. */
 #define CCS811_ERROR_HEATER_SUPPLY      BIT(5)
+/** @} */
 
-/* Measurement mode constants */
+/**
+ * @name CCS811 measurement mode constants
+ * @{
+ */
+/** Disable IAQ measurements. */
 #define CCS811_MODE_IDLE                0x00
+/** Measure IAQ every 1 second. */
 #define CCS811_MODE_IAQ_1SEC            0x10
+/** Measure IAQ every 10 seconds. */
 #define CCS811_MODE_IAQ_10SEC           0x20
+/** Measure IAQ every 60 seconds. */
 #define CCS811_MODE_IAQ_60SEC           0x30
+/** Measure IAQ every 250 milliseconds. */
 #define CCS811_MODE_IAQ_250MSEC         0x40
+/** Mask for measurement mode bits. */
 #define CCS811_MODE_MSK                 0x70
+/** @} */
 
 /** @brief Information collected from the sensor on each fetch. */
 struct ccs811_result_type {
@@ -89,9 +125,13 @@ const struct ccs811_result_type *ccs811_result(const struct device *dev);
  * firmware versions.
  */
 struct ccs811_configver_type {
+	/** Bootloader firmware version. */
 	uint16_t fw_boot_version;
+	/** Application firmware version. */
 	uint16_t fw_app_version;
+	/** Hardware version identifier. */
 	uint8_t hw_version;
+	/** Configured measurement mode. */
 	uint8_t mode;
 };
 
@@ -154,6 +194,10 @@ int ccs811_baseline_update(const struct device *dev, uint16_t baseline);
 int ccs811_envdata_update(const struct device *dev,
 			  const struct sensor_value *temperature,
 			  const struct sensor_value *humidity);
+
+/**
+ * @}
+ */
 
 #ifdef __cplusplus
 }

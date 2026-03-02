@@ -12,16 +12,32 @@
 /**
  * @file
  * @brief Extended public API for TDK MEMS sensor
+ * @ingroup tdk_apex_interface
  *
  * Some capabilities and operational requirements for this sensor
  * cannot be expressed within the sensor driver abstraction.
  */
 
-/** TDK APEX features */
+/**
+ * @brief TDK APEX feature extensions.
+ * @defgroup tdk_apex_interface TDK APEX
+ * @ingroup sensor_interface_ext
+ * @{
+ */
+
+/**
+ * @name TDK APEX feature identifiers
+ * @{
+ */
+/** Pedometer feature identifier. */
 #define TDK_APEX_PEDOMETER (1)
+/** Tilt detection feature identifier. */
 #define TDK_APEX_TILT      (2)
+/** Significant motion detection feature identifier. */
 #define TDK_APEX_SMD       (3)
+/** Wake-on-motion feature identifier. */
 #define TDK_APEX_WOM       (4)
+/** @} */
 
 /**
  * @brief Extended sensor channel for TDK MEMS supportintg APEX features
@@ -44,4 +60,8 @@ enum sensor_channel_tdk_apex {
 	/** APEX features */
 	SENSOR_CHAN_APEX_MOTION = SENSOR_CHAN_PRIV_START,
 };
+
+/**
+ * @}
+ */
 #endif /* ZEPHYR_INCLUDE_DRIVERS_SENSOR_TDK_APEX_H_ */

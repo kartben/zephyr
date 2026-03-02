@@ -32,8 +32,13 @@ enum sensor_attribute_lsm6dsvxxx {
 	SENSOR_ATTR_GET_SELF_TEST_RESULT = SENSOR_ATTR_PRIV_START,
 };
 
+/**
+ * @brief LSM6DSVXXX self-test result codes.
+ */
 enum lsm6dsvxxx_self_test_result {
+	/** Self-test passed. */
 	LSM6DSVXXX_ST_OK = 0,
+	/** Self-test failed. */
 	LSM6DSVXXX_ST_FAIL = 1,
 };
 

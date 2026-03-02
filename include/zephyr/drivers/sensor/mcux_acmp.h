@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief Extended public API for the NXP MCUX Analog Comparator (ACMP)
+ * @ingroup mcux_acmp_interface
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_SENSOR_MCUX_ACMP_H_
@@ -19,6 +20,14 @@ extern "C" {
 
 #include <zephyr/drivers/sensor.h>
 
+/**
+ * @brief NXP MCUX ACMP sensor extensions.
+ * @defgroup mcux_acmp_interface MCUX ACMP
+ * @ingroup sensor_interface_ext
+ * @{
+ */
+
+/** @cond INTERNAL_HIDDEN */
 #if defined(FSL_FEATURE_ACMP_HAS_C1_INPSEL_BIT) && (FSL_FEATURE_ACMP_HAS_C1_INPSEL_BIT == 1U)
 #define MCUX_ACMP_HAS_INPSEL 1
 #else
@@ -61,12 +70,19 @@ extern "C" {
 #else
 #define MCUX_ACMP_HAS_SAMPLE_CLOCK_SELECTION 1
 #endif
+/** @endcond */
 
+/**
+ * @brief MCUX ACMP-specific sensor channels.
+ */
 enum sensor_channel_mcux_acmp {
 	/** Analog Comparator Output. */
 	SENSOR_CHAN_MCUX_ACMP_OUTPUT = SENSOR_CHAN_PRIV_START,
 };
 
+/**
+ * @brief MCUX ACMP-specific trigger types.
+ */
 enum sensor_trigger_type_mcux_acmp {
 	/** Analog Comparator Output rising event trigger. */
 	SENSOR_TRIG_MCUX_ACMP_OUTPUT_RISING = SENSOR_TRIG_PRIV_START,
@@ -74,6 +90,9 @@ enum sensor_trigger_type_mcux_acmp {
 	SENSOR_TRIG_MCUX_ACMP_OUTPUT_FALLING,
 };
 
+/**
+ * @brief MCUX ACMP-specific sensor attributes.
+ */
 enum sensor_attribute_mcux_acmp {
 	/** Analog Comparator hard block offset. */
 	SENSOR_ATTR_MCUX_ACMP_OFFSET_LEVEL = SENSOR_ATTR_COMMON_COUNT,
@@ -111,6 +130,10 @@ enum sensor_attribute_mcux_acmp {
 	SENSOR_ATTR_MCUX_ACMP_DISCRETE_PHASE2_TIME,
 #endif
 };
+
+/**
+ * @}
+ */
 
 #ifdef __cplusplus
 }

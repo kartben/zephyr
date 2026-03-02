@@ -34,7 +34,9 @@
  */
 #define MAX32664C_MOTION_THRESHOLD(mg) ((uint8_t)((mg * 16UL) / 1000))
 
-/* MAX32664C specific channels */
+/**
+ * @brief MAX32664C-specific sensor channels.
+ */
 enum sensor_channel_max32664c {
 	/** Heart rate value (bpm) */
 	SENSOR_CHAN_MAX32664C_HEARTRATE = SENSOR_CHAN_PRIV_START,
@@ -50,7 +52,9 @@ enum sensor_channel_max32664c {
 	SENSOR_CHAN_MAX32664C_STEP_COUNTER,
 };
 
-/* MAX32664C specific attributes */
+/**
+ * @brief MAX32664C-specific sensor attributes.
+ */
 enum sensor_attribute_max32664c {
 	/** Gender of the subject being monitored */
 	SENSOR_ATTR_MAX32664C_GENDER = SENSOR_ATTR_PRIV_START,
@@ -120,6 +124,7 @@ enum max32664c_device_mode {
 enum max32664c_algo_mode {
 	MAX32664C_ALGO_MODE_CONT_HR_CONT_SPO2, /**< Continuous heart rate and continuous SpO2 */
 	MAX32664C_ALGO_MODE_CONT_HR_SHOT_SPO2, /**< Continuous heart rate and shot SpO2 */
+	/** Continuous heart rate monitor mode. */
 	MAX32664C_ALGO_MODE_CONT_HRM,
 	/* NOTE: These algorithm modes are untested */
 	/*MAX32664C_ALGO_MODE_SAMPLED_HRM,*/

@@ -26,10 +26,15 @@ extern "C" {
 
 #include <zephyr/drivers/sensor.h>
 
-/*LED color code*/
+/**
+ * @brief LED color options.
+ */
 enum r502a_led_color_idx {
+	/** Select red LED output. */
 	R502A_LED_COLOR_RED = 0x01,
+	/** Select blue LED output. */
 	R502A_LED_COLOR_BLUE,
+	/** Select purple LED output. */
 	R502A_LED_COLOR_PURPLE,
 };
 
@@ -112,7 +117,9 @@ struct r502a_sys_param {
  * This structure holds the template data for fingerprint matching.
  */
 struct r502a_template {
+	/** Buffer containing template bytes. */
 	uint8_t *data;
+	/** Number of valid bytes in @p data. */
 	size_t len;
 };
 

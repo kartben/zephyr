@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @ingroup retained_mem_interface
+ * @brief Nordic retained-memory helpers.
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_RETAINED_MEM_NRF_RETAINED_MEM_H
 #define ZEPHYR_INCLUDE_DRIVERS_RETAINED_MEM_NRF_RETAINED_MEM_H
 

@@ -5,12 +5,26 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Public API extensions for APDS9960 gesture channels.
+ * @ingroup apds9960_interface
+ */
+
 #ifndef ZEPHYR_DRIVERS_SENSOR_APDS9960_APDS9960_H_
 #define ZEPHYR_DRIVERS_SENSOR_APDS9960_APDS9960_H_
 
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/i2c.h>
 
+/**
+ * @brief APDS9960 gesture sensor extensions.
+ * @defgroup apds9960_interface APDS9960
+ * @ingroup sensor_interface_ext
+ * @{
+ */
+
+/** @cond INTERNAL_HIDDEN */
 #define APDS9960_ENABLE_REG		0x80
 #define APDS9960_ENABLE_GEN		BIT(6)
 #define APDS9960_ENABLE_PIEN		BIT(5)
@@ -235,20 +249,33 @@ struct apds9960_config {
 	struct apds9960_gesture_setup gesture_config;
 #endif
 };
+/** @endcond */
 
-/* apds9960 specific channels */
+/**
+ * @brief APDS9960-specific sensor channels.
+ */
 enum sensor_channel_apds9960 {
+	/** Report the decoded gesture result. */
 	SENSOR_CHAN_APDS9960_GESTURE = SENSOR_CHAN_PRIV_START,
 };
 
+/**
+ * @brief APDS9960 gesture decoding results.
+ */
 enum apds9960_gesture {
+	/** No gesture detected. */
 	APDS9960_GESTURE_NONE,
+	/** Upward gesture detected. */
 	APDS9960_GESTURE_UP,
+	/** Downward gesture detected. */
 	APDS9960_GESTURE_DOWN,
+	/** Leftward gesture detected. */
 	APDS9960_GESTURE_LEFT,
+	/** Rightward gesture detected. */
 	APDS9960_GESTURE_RIGHT,
 };
 
+/** @cond INTERNAL_HIDDEN */
 struct apds9960_data {
 	struct gpio_callback gpio_cb;
 	struct k_work work;
@@ -289,5 +316,10 @@ int apds9960_trigger_set(const struct device *dev,
 			 const struct sensor_trigger *trig,
 			 sensor_trigger_handler_t handler);
 #endif /* CONFIG_APDS9960_TRIGGER */
+/** @endcond */
+
+/**
+ * @}
+ */
 
 #endif /* ZEPHYR_DRIVERS_SENSOR_APDS9960_APDS9960_H_*/

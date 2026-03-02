@@ -12,13 +12,22 @@
 /**
  * @file
  * @brief Extended public API for ICM42X70 MEMS sensor
+ * @ingroup icm42x70_interface
  *
  * Some capabilities and operational requirements for this sensor
  * cannot be expressed within the sensor driver abstraction.
  */
 
-/** ICM42X70 power mode */
+/**
+ * @brief ICM42X70 sensor extensions.
+ * @defgroup icm42x70_interface ICM42X70
+ * @ingroup sensor_interface_ext
+ * @{
+ */
+
+/** Select low-noise power mode. */
 #define ICM42X70_LOW_NOISE_MODE (0)
+/** Select low-power mode. */
 #define ICM42X70_LOW_POWER_MODE (1)
 
 /**
@@ -47,4 +56,8 @@ enum sensor_attribute_icm42x70 {
 	/** Averaging configuration */
 	SENSOR_ATTR_AVERAGING,
 };
+
+/**
+ * @}
+ */
 #endif /* ZEPHYR_INCLUDE_DRIVERS_SENSOR_ICM42X70_H_ */

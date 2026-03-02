@@ -6,6 +6,7 @@
 
 /**
  * @file
+ * @ingroup conn_mgr_connectivity_impl
  * @brief API for defining conn_mgr connectivity implementations (allowing ifaces to be used with
  * conn_mgr_connectivity).
  */

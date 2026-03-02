@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Header file for extended sensor API of TMAG5273 sensor
+ * @ingroup tmag5273_interface
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_SENSOR_TMAG5273_H_

@@ -6,6 +6,7 @@
 
 /**
  * @file
+ * @ingroup conn_mgr
  * @brief API for monitoring network connections and interfaces.
  */
 
@@ -97,11 +98,13 @@ void conn_mgr_watch_l2(const struct net_l2 *l2);
 
 #else
 
+/** @cond INTERNAL_HIDDEN */
 #define conn_mgr_mon_resend_status(...)
 #define conn_mgr_ignore_iface(...)
 #define conn_mgr_watch_iface(...)
 #define conn_mgr_ignore_l2(...)
 #define conn_mgr_watch_l2(...)
+/** @endcond */
 
 #endif /* CONFIG_NET_CONNECTION_MANAGER */
 

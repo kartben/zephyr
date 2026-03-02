@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Header file for extended sensor API of XBR818 sensor
+ * @ingroup xbr818_interface
  *
  * This exposes 4 additional attributes used to configure the IC
  */

@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Battery helper API and devicetree convenience macros.
+ * @ingroup battery_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_SENSOR_BATTERY_H_
 #define ZEPHYR_INCLUDE_DRIVERS_SENSOR_BATTERY_H_
 
@@ -25,20 +31,29 @@ extern "C" {
  * @{
  */
 
-/* Battery chemistry enumeration.
- * Value names must match those from dts/bindings/battery.yaml
+/**
+ * @brief Battery chemistry values.
+ *
+ * Value names must match those in `dts/bindings/battery.yaml`.
  */
 enum battery_chemistry {
+	/** Unknown battery chemistry. */
 	BATTERY_CHEMISTRY_UNKNOWN = 0,
+	/** Nickel-cadmium chemistry. */
 	BATTERY_CHEMISTRY_NICKEL_CADMIUM,
+	/** Nickel-metal hydride chemistry. */
 	BATTERY_CHEMISTRY_NICKEL_METAL_HYDRIDE,
+	/** Lithium-ion chemistry. */
 	BATTERY_CHEMISTRY_LITHIUM_ION,
+	/** Lithium-ion polymer chemistry. */
 	BATTERY_CHEMISTRY_LITHIUM_ION_POLYMER,
+	/** Lithium iron phosphate chemistry. */
 	BATTERY_CHEMISTRY_LITHIUM_ION_IRON_PHOSPHATE,
+	/** Lithium manganese oxide chemistry. */
 	BATTERY_CHEMISTRY_LITHIUM_ION_MANGANESE_OXIDE,
 };
 
-/* Length of open circuit voltage table */
+/** Number of points in an OCV lookup table. */
 #define BATTERY_OCV_TABLE_LEN 11
 
 /**

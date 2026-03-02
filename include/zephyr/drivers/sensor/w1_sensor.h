@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Extended public API for 1-Wire Sensors
+ * @ingroup w1_sensor
  *
  * This header file exposes an attribute an helper function to allow the
  * runtime configuration of ROM IDs for 1-Wire Sensors.
@@ -29,6 +30,9 @@ extern "C" {
  * @{
  */
 
+/**
+ * @brief 1-Wire sensor-specific attributes.
+ */
 enum sensor_attribute_w1 {
 	/** Device unique 1-Wire ROM */
 	SENSOR_ATTR_W1_ROM = SENSOR_ATTR_PRIV_START,

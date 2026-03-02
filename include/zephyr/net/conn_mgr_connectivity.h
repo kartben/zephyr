@@ -6,6 +6,7 @@
 
 /**
  * @file
+ * @ingroup conn_mgr_connectivity
  * @brief API for controlling generic network association routines on network devices that
  * support it.
  */
@@ -308,7 +309,9 @@ int conn_mgr_if_set_idle_timeout(struct net_if *iface, int timeout);
  */
 void conn_mgr_if_used(struct net_if *iface);
 #else
+/** @cond INTERNAL_HIDDEN */
 #define conn_mgr_if_used(iface) (void)(iface)
+/** @endcond */
 #endif /* defined(CONFIG_NET_CONNECTION_MANAGER) || defined(__DOXYGEN__) */
 
 /**

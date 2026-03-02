@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Extended public API for AMS's TSL2591 ambient light sensor
+ * @ingroup tsl2591_interface
  *
  * This exposes attributes for the TSL2591 which can be used for
  * setting the on-chip gain, integration time, and persist filter parameters.
@@ -21,8 +22,18 @@
 extern "C" {
 #endif
 
+/**
+ * @brief TSL2591 sensor extensions.
+ * @defgroup tsl2591_interface TSL2591
+ * @ingroup sensor_interface_ext
+ * @{
+ */
+
+/**
+ * @brief TSL2591-specific sensor attributes.
+ */
 enum sensor_attribute_tsl2591 {
-	/* Sensor ADC Gain Mode
+	/** Set sensor ADC gain mode.
 	 * Rather than set this value directly, can only be set to operate in one of four modes:
 	 *
 	 * TSL2591_SENSOR_GAIN_LOW
@@ -34,14 +45,14 @@ enum sensor_attribute_tsl2591 {
 	 */
 	SENSOR_ATTR_GAIN_MODE = SENSOR_ATTR_PRIV_START + 1,
 
-	/* Sensor ADC Integration Time (in ms)
+	/** Set sensor ADC integration time in milliseconds.
 	 * Can only be set to one of six values:
 	 *
 	 * 100, 200, 300, 400, 500, or 600
 	 */
 	SENSOR_ATTR_INTEGRATION_TIME,
 
-	/* Sensor ALS Interrupt Persist Filter
+	/** Set sensor ALS interrupt persist filter.
 	 * Represents the number of consecutive sensor readings outside of a set threshold
 	 * before triggering an interrupt. Can only be set to one of sixteen values:
 	 *
@@ -54,12 +65,23 @@ enum sensor_attribute_tsl2591 {
 	SENSOR_ATTR_INT_PERSIST
 };
 
+/**
+ * @brief TSL2591 gain modes.
+ */
 enum sensor_gain_tsl2591 {
+	/** Set low gain mode. */
 	TSL2591_SENSOR_GAIN_LOW,
+	/** Set medium gain mode. */
 	TSL2591_SENSOR_GAIN_MED,
+	/** Set high gain mode. */
 	TSL2591_SENSOR_GAIN_HIGH,
+	/** Set maximum gain mode. */
 	TSL2591_SENSOR_GAIN_MAX
 };
+
+/**
+ * @}
+ */
 
 #ifdef __cplusplus
 }

@@ -5,12 +5,25 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Public API extensions for VEML7700 ambient light sensing.
+ * @ingroup veml7700_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_SENSOR_VEML7700_H_
 #define ZEPHYR_INCLUDE_DRIVERS_SENSOR_VEML7700_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * @brief VEML7700 sensor extensions.
+ * @defgroup veml7700_interface VEML7700
+ * @ingroup sensor_interface_ext
+ * @{
+ */
 
 /**
  * @brief Number of enumerators in enum veml7700_als_gain.
@@ -40,21 +53,31 @@ extern "C" {
  * @brief VEML7700 gain options for ambient light measurements.
  */
 enum veml7700_als_gain {
-	VEML7700_ALS_GAIN_1   = 0x00, /* 0b00 */
-	VEML7700_ALS_GAIN_2   = 0x01, /* 0b01 */
-	VEML7700_ALS_GAIN_1_8 = 0x02, /* 0b10 */
-	VEML7700_ALS_GAIN_1_4 = 0x03, /* 0b11 */
+	/** Set ALS gain to 1x. */
+	VEML7700_ALS_GAIN_1   = 0x00,
+	/** Set ALS gain to 2x. */
+	VEML7700_ALS_GAIN_2   = 0x01,
+	/** Set ALS gain to 1/8x. */
+	VEML7700_ALS_GAIN_1_8 = 0x02,
+	/** Set ALS gain to 1/4x. */
+	VEML7700_ALS_GAIN_1_4 = 0x03,
 };
 
 /**
  * @brief VEML7700 integration time options for ambient light measurements.
  */
 enum veml7700_als_it {
+	/** Set ALS integration time to 25 ms. */
 	VEML7700_ALS_IT_25,
+	/** Set ALS integration time to 50 ms. */
 	VEML7700_ALS_IT_50,
+	/** Set ALS integration time to 100 ms. */
 	VEML7700_ALS_IT_100,
+	/** Set ALS integration time to 200 ms. */
 	VEML7700_ALS_IT_200,
+	/** Set ALS integration time to 400 ms. */
 	VEML7700_ALS_IT_400,
+	/** Set ALS integration time to 800 ms. */
 	VEML7700_ALS_IT_800
 };
 
@@ -62,11 +85,16 @@ enum veml7700_als_it {
  * @brief VEML7700 ALS interrupt persistence protect number options.
  */
 enum veml7700_int_mode {
+	/** Disable ALS interrupt handling. */
 	VEML7700_INT_DISABLED = 0xFF,
-	VEML7700_ALS_PERS_1   = 0x00, /* 0b00 */
-	VEML7700_ALS_PERS_2   = 0x01, /* 0b01 */
-	VEML7700_ALS_PERS_4   = 0x02, /* 0b10 */
-	VEML7700_ALS_PERS_8   = 0x03, /* 0b11 */
+	/** Trigger after one threshold violation sample. */
+	VEML7700_ALS_PERS_1   = 0x00,
+	/** Trigger after two consecutive threshold violations. */
+	VEML7700_ALS_PERS_2   = 0x01,
+	/** Trigger after four consecutive threshold violations. */
+	VEML7700_ALS_PERS_4   = 0x02,
+	/** Trigger after eight consecutive threshold violations. */
+	VEML7700_ALS_PERS_8   = 0x03,
 };
 
 /**
@@ -156,6 +184,10 @@ enum sensor_channel_veml7700 {
 	 */
 	SENSOR_CHAN_VEML7700_INTERRUPT,
 };
+
+/**
+ * @}
+ */
 
 #ifdef __cplusplus
 }

@@ -1,15 +1,16 @@
-/**
- * @file
- * @brief BSD Socket service API
- *
- * API can be used to install a k_work that is called
- * if there is data received to a socket.
- */
-
 /*
  * Copyright (c) 2023 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
+ * @file
+ * @ingroup bsd_socket_service
+ * @brief BSD Socket service API
+ *
+ * API can be used to install a k_work that is called
+ * if there is data received to a socket.
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_SOCKET_SERVICE_H_
@@ -158,7 +159,7 @@ struct net_socket_service_desc {
  *
  * @retval 0 No error
  * @retval -ENOENT Service is not found.
- * @retval -ENINVAL Invalid parameter.
+ * @retval -EINVAL Invalid parameter.
  */
 __syscall int net_socket_service_register(const struct net_socket_service_desc *service,
 					  struct zsock_pollfd *fds, int len, void *user_data);
@@ -170,7 +171,7 @@ __syscall int net_socket_service_register(const struct net_socket_service_desc *
  *
  * @retval 0 No error
  * @retval -ENOENT Service is not found.
- * @retval -ENINVAL Invalid parameter.
+ * @retval -EINVAL Invalid parameter.
  */
 static inline int net_socket_service_unregister(const struct net_socket_service_desc *service)
 {
