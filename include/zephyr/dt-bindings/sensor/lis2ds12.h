@@ -1,3 +1,8 @@
+/**
+ * @file
+ * @brief ST LIS2DS12 accelerometer Devicetree constants
+ */
+
 /*
  * Copyright (c) 2023 STMicroelectronics
  *
@@ -6,24 +11,40 @@
 #ifndef ZEPHYR_INCLUDE_DT_BINDINGS_ST_LIS2DS12_H_
 #define ZEPHYR_INCLUDE_DT_BINDINGS_ST_LIS2DS12_H_
 
-/* power-modes */
-#define LIS2DS12_DT_POWER_DOWN			0
-#define LIS2DS12_DT_LOW_POWER			1
-#define LIS2DS12_DT_HIGH_RESOLUTION		2
-#define LIS2DS12_DT_HIGH_FREQUENCY		3
+/**
+ * @defgroup lis2ds12_dt_api ST LIS2DS12 Devicetree options
+ * @ingroup sensor_interface
+ * @{
+ */
 
-/* Data rate */
-#define LIS2DS12_DT_ODR_OFF			0
-#define LIS2DS12_DT_ODR_1Hz_LP			1  /* available in LP mode only */
-#define LIS2DS12_DT_ODR_12Hz5			2  /* available in LP and HR mode */
-#define LIS2DS12_DT_ODR_25Hz			3  /* available in LP and HR mode */
-#define LIS2DS12_DT_ODR_50Hz			4  /* available in LP and HR mode */
-#define LIS2DS12_DT_ODR_100Hz			5  /* available in LP and HR mode */
-#define LIS2DS12_DT_ODR_200Hz			6  /* available in LP and HR mode */
-#define LIS2DS12_DT_ODR_400Hz			7  /* available in LP and HR mode */
-#define LIS2DS12_DT_ODR_800Hz			8  /* available in LP and HR mode */
-#define LIS2DS12_DT_ODR_1600Hz			9  /* available in HF mode only */
-#define LIS2DS12_DT_ODR_3200Hz_HF		10 /* available in HF mode only */
-#define LIS2DS12_DT_ODR_6400Hz_HF		11 /* available in HF mode only */
+/**
+ * @defgroup lis2ds12_power_modes Power modes
+ * @{
+ */
+#define LIS2DS12_DT_POWER_DOWN			0 /**< Power-down */
+#define LIS2DS12_DT_LOW_POWER			1 /**< Low power mode */
+#define LIS2DS12_DT_HIGH_RESOLUTION		2 /**< High resolution mode */
+#define LIS2DS12_DT_HIGH_FREQUENCY		3 /**< High frequency mode */
+/** @} */
+
+/**
+ * @defgroup lis2ds12_odr Output data rates
+ * @{
+ */
+#define LIS2DS12_DT_ODR_OFF			0  /**< Power-down */
+#define LIS2DS12_DT_ODR_1Hz_LP			1  /**< 1 Hz (low power mode only) */
+#define LIS2DS12_DT_ODR_12Hz5			2  /**< 12.5 Hz (LP and HR modes) */
+#define LIS2DS12_DT_ODR_25Hz			3  /**< 25 Hz (LP and HR modes) */
+#define LIS2DS12_DT_ODR_50Hz			4  /**< 50 Hz (LP and HR modes) */
+#define LIS2DS12_DT_ODR_100Hz			5  /**< 100 Hz (LP and HR modes) */
+#define LIS2DS12_DT_ODR_200Hz			6  /**< 200 Hz (LP and HR modes) */
+#define LIS2DS12_DT_ODR_400Hz			7  /**< 400 Hz (LP and HR modes) */
+#define LIS2DS12_DT_ODR_800Hz			8  /**< 800 Hz (LP and HR modes) */
+#define LIS2DS12_DT_ODR_1600Hz			9  /**< 1600 Hz (high frequency mode only) */
+#define LIS2DS12_DT_ODR_3200Hz_HF		10 /**< 3200 Hz (high frequency mode only) */
+#define LIS2DS12_DT_ODR_6400Hz_HF		11 /**< 6400 Hz (high frequency mode only) */
+/** @} */
+
+/** @} */
 
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_ST_LIS2DS12_H_ */

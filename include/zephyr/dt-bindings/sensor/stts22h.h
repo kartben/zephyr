@@ -1,3 +1,8 @@
+/**
+ * @file
+ * @brief ST STTS22H temperature sensor Devicetree constants
+ */
+
 /*
  * Copyright (c) 2024 STMicroelectronics
  *
@@ -6,13 +11,25 @@
 #ifndef ZEPHYR_INCLUDE_DT_BINDINGS_ST_STTS22H_H_
 #define ZEPHYR_INCLUDE_DT_BINDINGS_ST_STTS22H_H_
 
-/* Output Data Rates */
-#define	STTS22H_POWER_DOWN	0x00
-#define	STTS22H_ONE_SHOT	0x01
-#define	STTS22H_1Hz		0x04
-#define	STTS22H_25Hz		0x02
-#define	STTS22H_50Hz		0x12
-#define	STTS22H_100Hz		0x22
-#define	STTS22H_200Hz		0x32
+/**
+ * @defgroup stts22h_dt_api ST STTS22H Devicetree options
+ * @ingroup sensor_interface
+ * @{
+ */
+
+/**
+ * @defgroup stts22h_odr Output data rates and operating modes
+ * @{
+ */
+#define	STTS22H_POWER_DOWN	0x00 /**< Power-down */
+#define	STTS22H_ONE_SHOT	0x01 /**< One-shot (single measurement) */
+#define	STTS22H_1Hz		0x04 /**< 1 Hz */
+#define	STTS22H_25Hz		0x02 /**< 25 Hz */
+#define	STTS22H_50Hz		0x12 /**< 50 Hz */
+#define	STTS22H_100Hz		0x22 /**< 100 Hz */
+#define	STTS22H_200Hz		0x32 /**< 200 Hz */
+/** @} */
+
+/** @} */
 
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_ST_STTS22H_H_ */
