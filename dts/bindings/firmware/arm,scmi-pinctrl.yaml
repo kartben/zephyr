@@ -1,7 +1,12 @@
 # Copyright 2024 NXP
 # SPDX-License-Identifier: Apache-2.0
 
-description: SCMI (System Control and Management Interface) pinctrl protocol
+title: Arm SCMI pin control
+
+description: |
+  Arm SCMI (System Control and Management Interface) pin control protocol node
+  (protocol ID: 0x19). This is a child node of the SCMI transport node and provides
+  pin multiplexing and configuration capabilities through the SCMI interface.
 
 compatible: "arm,scmi-pinctrl"
 
