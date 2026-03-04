@@ -1,7 +1,9 @@
 # Copyright 2024 NXP
 # SPDX-License-Identifier: Apache-2.0
 
-description: SCMI (System Control and Management Interface) pinctrl protocol
+title: Arm SCMI pin control protocol
+
+description: Arm System Control and Management Interface (SCMI) pin control protocol
 
 compatible: "arm,scmi-pinctrl"
 
