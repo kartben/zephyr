@@ -1,9 +1,9 @@
 # Copyright 2024 NXP
 # SPDX-License-Identifier: Apache-2.0
 
-title: Arm SCMI power protocol
+title: Arm SCMI power domain protocol
 
-description: Arm System Control and Management Interface (SCMI) power protocol
+description: Arm System Control and Management Interface (SCMI) power domain protocol
 
 compatible: "arm,scmi-power"
 
