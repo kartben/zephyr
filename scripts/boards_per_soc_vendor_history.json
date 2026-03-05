@@ -1,0 +1,1917 @@
+{
+  "generated": "2026-03-05T17:34:47.507102",
+  "zephyr_base": "/Users/kartben/zephyrproject/zephyr",
+  "snapshots": [
+    {
+      "date": "2023-01-01",
+      "commit": "8c8d41c32fb5",
+      "total_boards": 0,
+      "vendors": {}
+    },
+    {
+      "date": "2023-04-01",
+      "commit": "d82175eadd68",
+      "total_boards": 0,
+      "vendors": {}
+    },
+    {
+      "date": "2023-07-01",
+      "commit": "f6eeb9dc84be",
+      "total_boards": 0,
+      "vendors": {}
+    },
+    {
+      "date": "2023-10-01",
+      "commit": "ed7d56f04ee2",
+      "total_boards": 0,
+      "vendors": {}
+    },
+    {
+      "date": "2024-01-01",
+      "commit": "e67b12e63611",
+      "total_boards": 0,
+      "vendors": {}
+    },
+    {
+      "date": "2024-04-01",
+      "commit": "7291450151ef",
+      "total_boards": 517,
+      "vendors": {
+        "microchip": {
+          "vendor": 19,
+          "community": 14,
+          "total": 33
+        },
+        "st": {
+          "vendor": 100,
+          "community": 47,
+          "total": 147
+        },
+        "espressif": {
+          "vendor": 8,
+          "community": 18,
+          "total": 26
+        },
+        "nordic": {
+          "vendor": 18,
+          "community": 80,
+          "total": 98
+        },
+        "xlnx": {
+          "vendor": 0,
+          "community": 5,
+          "total": 5
+        },
+        "ti": {
+          "vendor": 8,
+          "community": 4,
+          "total": 12
+        },
+        "intel": {
+          "vendor": 14,
+          "community": 8,
+          "total": 22
+        },
+        "gaisler": {
+          "vendor": 3,
+          "community": 0,
+          "total": 3
+        },
+        "brcm": {
+          "vendor": 2,
+          "community": 1,
+          "total": 3
+        },
+        "raspberrypi": {
+          "vendor": 1,
+          "community": 4,
+          "total": 5
+        },
+        "openisa": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "renesas": {
+          "vendor": 7,
+          "community": 1,
+          "total": 8
+        },
+        "telink": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "ite": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "silabs": {
+          "vendor": 13,
+          "community": 0,
+          "total": 13
+        },
+        "arm": {
+          "vendor": 9,
+          "community": 2,
+          "total": 11
+        },
+        "infineon": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "renode": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "sifive": {
+          "vendor": 3,
+          "community": 2,
+          "total": 5
+        },
+        "gd": {
+          "vendor": 14,
+          "community": 1,
+          "total": 15
+        },
+        "aspeed": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "nxp": {
+          "vendor": 47,
+          "community": 14,
+          "total": 61
+        },
+        "altr": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "nuvoton": {
+          "vendor": 6,
+          "community": 0,
+          "total": 6
+        },
+        "qemu": {
+          "vendor": 4,
+          "community": 0,
+          "total": 4
+        },
+        "cdns": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "snps": {
+          "vendor": 6,
+          "community": 1,
+          "total": 7
+        },
+        "ene": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "ambiq": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "rockchip": {
+          "vendor": 0,
+          "community": 2,
+          "total": 2
+        },
+        "quicklogic": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "andestech": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "neorv32": {
+          "vendor": 0,
+          "community": 1,
+          "total": 1
+        },
+        "starfive": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "litex": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "efinix": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "lowrisc": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "native": {
+          "vendor": 0,
+          "community": 3,
+          "total": 3
+        },
+        "cypress": {
+          "vendor": 5,
+          "community": 0,
+          "total": 5
+        },
+        "xen": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        }
+      }
+    },
+    {
+      "date": "2024-07-01",
+      "commit": "0eb612b28bb9",
+      "total_boards": 564,
+      "vendors": {
+        "microchip": {
+          "vendor": 19,
+          "community": 14,
+          "total": 33
+        },
+        "st": {
+          "vendor": 106,
+          "community": 48,
+          "total": 154
+        },
+        "espressif": {
+          "vendor": 11,
+          "community": 22,
+          "total": 33
+        },
+        "nordic": {
+          "vendor": 18,
+          "community": 85,
+          "total": 103
+        },
+        "raspberrypi": {
+          "vendor": 1,
+          "community": 5,
+          "total": 6
+        },
+        "xlnx": {
+          "vendor": 0,
+          "community": 5,
+          "total": 5
+        },
+        "ti": {
+          "vendor": 8,
+          "community": 4,
+          "total": 12
+        },
+        "intel": {
+          "vendor": 14,
+          "community": 8,
+          "total": 22
+        },
+        "gaisler": {
+          "vendor": 3,
+          "community": 0,
+          "total": 3
+        },
+        "brcm": {
+          "vendor": 2,
+          "community": 2,
+          "total": 4
+        },
+        "openisa": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "renesas": {
+          "vendor": 8,
+          "community": 3,
+          "total": 11
+        },
+        "ambiq": {
+          "vendor": 4,
+          "community": 1,
+          "total": 5
+        },
+        "telink": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "ite": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "silabs": {
+          "vendor": 18,
+          "community": 0,
+          "total": 18
+        },
+        "arm": {
+          "vendor": 9,
+          "community": 2,
+          "total": 11
+        },
+        "infineon": {
+          "vendor": 6,
+          "community": 2,
+          "total": 8
+        },
+        "renode": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "sifive": {
+          "vendor": 3,
+          "community": 2,
+          "total": 5
+        },
+        "gd": {
+          "vendor": 14,
+          "community": 1,
+          "total": 15
+        },
+        "aspeed": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "nxp": {
+          "vendor": 51,
+          "community": 14,
+          "total": 65
+        },
+        "altr": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "nuvoton": {
+          "vendor": 6,
+          "community": 0,
+          "total": 6
+        },
+        "qemu": {
+          "vendor": 4,
+          "community": 0,
+          "total": 4
+        },
+        "cdns": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "snps": {
+          "vendor": 7,
+          "community": 1,
+          "total": 8
+        },
+        "ene": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "rockchip": {
+          "vendor": 0,
+          "community": 2,
+          "total": 2
+        },
+        "quicklogic": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "mediatek": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "andestech": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "neorv32": {
+          "vendor": 0,
+          "community": 1,
+          "total": 1
+        },
+        "starfive": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "litex": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "efinix": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "lowrisc": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "native": {
+          "vendor": 0,
+          "community": 3,
+          "total": 3
+        },
+        "adi": {
+          "vendor": 8,
+          "community": 0,
+          "total": 8
+        },
+        "xen": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        }
+      }
+    },
+    {
+      "date": "2024-10-01",
+      "commit": "9c0f92db475f",
+      "total_boards": 619,
+      "vendors": {
+        "microchip": {
+          "vendor": 19,
+          "community": 14,
+          "total": 33
+        },
+        "st": {
+          "vendor": 113,
+          "community": 52,
+          "total": 165
+        },
+        "espressif": {
+          "vendor": 15,
+          "community": 24,
+          "total": 39
+        },
+        "nordic": {
+          "vendor": 22,
+          "community": 85,
+          "total": 107
+        },
+        "raspberrypi": {
+          "vendor": 1,
+          "community": 5,
+          "total": 6
+        },
+        "xlnx": {
+          "vendor": 0,
+          "community": 5,
+          "total": 5
+        },
+        "ti": {
+          "vendor": 9,
+          "community": 5,
+          "total": 14
+        },
+        "intel": {
+          "vendor": 14,
+          "community": 8,
+          "total": 22
+        },
+        "gaisler": {
+          "vendor": 3,
+          "community": 0,
+          "total": 3
+        },
+        "brcm": {
+          "vendor": 2,
+          "community": 2,
+          "total": 4
+        },
+        "openisa": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "renesas": {
+          "vendor": 23,
+          "community": 3,
+          "total": 26
+        },
+        "ambiq": {
+          "vendor": 4,
+          "community": 1,
+          "total": 5
+        },
+        "telink": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "ite": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "silabs": {
+          "vendor": 19,
+          "community": 1,
+          "total": 20
+        },
+        "arm": {
+          "vendor": 9,
+          "community": 2,
+          "total": 11
+        },
+        "infineon": {
+          "vendor": 6,
+          "community": 2,
+          "total": 8
+        },
+        "renode": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "sifive": {
+          "vendor": 3,
+          "community": 2,
+          "total": 5
+        },
+        "gd": {
+          "vendor": 14,
+          "community": 1,
+          "total": 15
+        },
+        "aspeed": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "nxp": {
+          "vendor": 58,
+          "community": 14,
+          "total": 72
+        },
+        "altr": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "nuvoton": {
+          "vendor": 7,
+          "community": 0,
+          "total": 7
+        },
+        "qemu": {
+          "vendor": 4,
+          "community": 0,
+          "total": 4
+        },
+        "cdns": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "snps": {
+          "vendor": 7,
+          "community": 1,
+          "total": 8
+        },
+        "ene": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "sensry": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "rockchip": {
+          "vendor": 0,
+          "community": 2,
+          "total": 2
+        },
+        "quicklogic": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "mediatek": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "andestech": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "neorv32": {
+          "vendor": 0,
+          "community": 1,
+          "total": 1
+        },
+        "starfive": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "litex": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "efinix": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "lowrisc": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "native": {
+          "vendor": 0,
+          "community": 3,
+          "total": 3
+        },
+        "adi": {
+          "vendor": 13,
+          "community": 0,
+          "total": 13
+        },
+        "xen": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        }
+      }
+    },
+    {
+      "date": "2025-01-01",
+      "commit": "0ac9a6c5125c",
+      "total_boards": 654,
+      "vendors": {
+        "microchip": {
+          "vendor": 19,
+          "community": 15,
+          "total": 34
+        },
+        "st": {
+          "vendor": 115,
+          "community": 60,
+          "total": 175
+        },
+        "espressif": {
+          "vendor": 15,
+          "community": 31,
+          "total": 46
+        },
+        "nordic": {
+          "vendor": 21,
+          "community": 88,
+          "total": 109
+        },
+        "raspberrypi": {
+          "vendor": 2,
+          "community": 6,
+          "total": 8
+        },
+        "xlnx": {
+          "vendor": 0,
+          "community": 5,
+          "total": 5
+        },
+        "ti": {
+          "vendor": 9,
+          "community": 6,
+          "total": 15
+        },
+        "intel": {
+          "vendor": 14,
+          "community": 8,
+          "total": 22
+        },
+        "gaisler": {
+          "vendor": 3,
+          "community": 0,
+          "total": 3
+        },
+        "brcm": {
+          "vendor": 2,
+          "community": 2,
+          "total": 4
+        },
+        "openisa": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "renesas": {
+          "vendor": 24,
+          "community": 3,
+          "total": 27
+        },
+        "telink": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "ite": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "silabs": {
+          "vendor": 21,
+          "community": 2,
+          "total": 23
+        },
+        "arm": {
+          "vendor": 9,
+          "community": 2,
+          "total": 11
+        },
+        "infineon": {
+          "vendor": 7,
+          "community": 2,
+          "total": 9
+        },
+        "renode": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "sifive": {
+          "vendor": 3,
+          "community": 2,
+          "total": 5
+        },
+        "gd": {
+          "vendor": 14,
+          "community": 1,
+          "total": 15
+        },
+        "aspeed": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "nxp": {
+          "vendor": 57,
+          "community": 16,
+          "total": 73
+        },
+        "altr": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "nuvoton": {
+          "vendor": 7,
+          "community": 0,
+          "total": 7
+        },
+        "qemu": {
+          "vendor": 4,
+          "community": 0,
+          "total": 4
+        },
+        "cdns": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "snps": {
+          "vendor": 7,
+          "community": 1,
+          "total": 8
+        },
+        "ene": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "ambiq": {
+          "vendor": 4,
+          "community": 1,
+          "total": 5
+        },
+        "sensry": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "amd": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "rockchip": {
+          "vendor": 0,
+          "community": 2,
+          "total": 2
+        },
+        "quicklogic": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "mediatek": {
+          "vendor": 4,
+          "community": 0,
+          "total": 4
+        },
+        "andestech": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "neorv32": {
+          "vendor": 0,
+          "community": 1,
+          "total": 1
+        },
+        "starfive": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "litex": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "efinix": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "wch": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "lowrisc": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "native": {
+          "vendor": 0,
+          "community": 3,
+          "total": 3
+        },
+        "adi": {
+          "vendor": 14,
+          "community": 0,
+          "total": 14
+        },
+        "xen": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        }
+      }
+    },
+    {
+      "date": "2025-04-01",
+      "commit": "c3646a34fd9f",
+      "total_boards": 713,
+      "vendors": {
+        "microchip": {
+          "vendor": 19,
+          "community": 17,
+          "total": 36
+        },
+        "st": {
+          "vendor": 122,
+          "community": 64,
+          "total": 186
+        },
+        "espressif": {
+          "vendor": 15,
+          "community": 37,
+          "total": 52
+        },
+        "nordic": {
+          "vendor": 22,
+          "community": 90,
+          "total": 112
+        },
+        "raspberrypi": {
+          "vendor": 2,
+          "community": 9,
+          "total": 11
+        },
+        "renesas": {
+          "vendor": 33,
+          "community": 3,
+          "total": 36
+        },
+        "xlnx": {
+          "vendor": 0,
+          "community": 6,
+          "total": 6
+        },
+        "ti": {
+          "vendor": 11,
+          "community": 7,
+          "total": 18
+        },
+        "intel": {
+          "vendor": 15,
+          "community": 8,
+          "total": 23
+        },
+        "gaisler": {
+          "vendor": 3,
+          "community": 0,
+          "total": 3
+        },
+        "brcm": {
+          "vendor": 2,
+          "community": 2,
+          "total": 4
+        },
+        "openisa": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "telink": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "ite": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "silabs": {
+          "vendor": 24,
+          "community": 2,
+          "total": 26
+        },
+        "arm": {
+          "vendor": 9,
+          "community": 2,
+          "total": 11
+        },
+        "infineon": {
+          "vendor": 7,
+          "community": 2,
+          "total": 9
+        },
+        "renode": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "sifive": {
+          "vendor": 3,
+          "community": 2,
+          "total": 5
+        },
+        "gd": {
+          "vendor": 14,
+          "community": 1,
+          "total": 15
+        },
+        "aspeed": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "nxp": {
+          "vendor": 61,
+          "community": 16,
+          "total": 77
+        },
+        "altr": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "nuvoton": {
+          "vendor": 8,
+          "community": 1,
+          "total": 9
+        },
+        "qemu": {
+          "vendor": 4,
+          "community": 0,
+          "total": 4
+        },
+        "cdns": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "snps": {
+          "vendor": 7,
+          "community": 1,
+          "total": 8
+        },
+        "ene": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "ambiq": {
+          "vendor": 4,
+          "community": 1,
+          "total": 5
+        },
+        "sensry": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "amd": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "rockchip": {
+          "vendor": 0,
+          "community": 3,
+          "total": 3
+        },
+        "quicklogic": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "oct": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "mediatek": {
+          "vendor": 4,
+          "community": 0,
+          "total": 4
+        },
+        "andestech": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "neorv32": {
+          "vendor": 0,
+          "community": 1,
+          "total": 1
+        },
+        "starfive": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "litex": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "efinix": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "wch": {
+          "vendor": 3,
+          "community": 0,
+          "total": 3
+        },
+        "lowrisc": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "antmicro": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "native": {
+          "vendor": 0,
+          "community": 2,
+          "total": 2
+        },
+        "adi": {
+          "vendor": 20,
+          "community": 0,
+          "total": 20
+        },
+        "xen": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "realtek": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        }
+      }
+    },
+    {
+      "date": "2025-07-01",
+      "commit": "2298ec49c766",
+      "total_boards": 788,
+      "vendors": {
+        "microchip": {
+          "vendor": 21,
+          "community": 17,
+          "total": 38
+        },
+        "st": {
+          "vendor": 126,
+          "community": 71,
+          "total": 197
+        },
+        "espressif": {
+          "vendor": 13,
+          "community": 44,
+          "total": 57
+        },
+        "nordic": {
+          "vendor": 23,
+          "community": 96,
+          "total": 119
+        },
+        "raspberrypi": {
+          "vendor": 2,
+          "community": 12,
+          "total": 14
+        },
+        "renesas": {
+          "vendor": 42,
+          "community": 5,
+          "total": 47
+        },
+        "silabs": {
+          "vendor": 25,
+          "community": 4,
+          "total": 29
+        },
+        "xlnx": {
+          "vendor": 0,
+          "community": 7,
+          "total": 7
+        },
+        "ti": {
+          "vendor": 13,
+          "community": 8,
+          "total": 21
+        },
+        "bflb": {
+          "vendor": 1,
+          "community": 2,
+          "total": 3
+        },
+        "intel": {
+          "vendor": 19,
+          "community": 5,
+          "total": 24
+        },
+        "gaisler": {
+          "vendor": 3,
+          "community": 0,
+          "total": 3
+        },
+        "brcm": {
+          "vendor": 2,
+          "community": 2,
+          "total": 4
+        },
+        "openisa": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "telink": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "ite": {
+          "vendor": 3,
+          "community": 0,
+          "total": 3
+        },
+        "wch": {
+          "vendor": 5,
+          "community": 1,
+          "total": 6
+        },
+        "nxp": {
+          "vendor": 67,
+          "community": 22,
+          "total": 89
+        },
+        "arm": {
+          "vendor": 10,
+          "community": 2,
+          "total": 12
+        },
+        "infineon": {
+          "vendor": 8,
+          "community": 2,
+          "total": 10
+        },
+        "renode": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "sifive": {
+          "vendor": 4,
+          "community": 2,
+          "total": 6
+        },
+        "gd": {
+          "vendor": 14,
+          "community": 1,
+          "total": 15
+        },
+        "aspeed": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "nuvoton": {
+          "vendor": 9,
+          "community": 1,
+          "total": 10
+        },
+        "qemu": {
+          "vendor": 4,
+          "community": 0,
+          "total": 4
+        },
+        "cdns": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "snps": {
+          "vendor": 7,
+          "community": 1,
+          "total": 8
+        },
+        "ene": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "ambiq": {
+          "vendor": 5,
+          "community": 1,
+          "total": 6
+        },
+        "sensry": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "amd": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "rockchip": {
+          "vendor": 0,
+          "community": 3,
+          "total": 3
+        },
+        "quicklogic": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "openhwgroup": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "oct": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "mediatek": {
+          "vendor": 4,
+          "community": 0,
+          "total": 4
+        },
+        "andestech": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "neorv32": {
+          "vendor": 0,
+          "community": 1,
+          "total": 1
+        },
+        "starfive": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "litex": {
+          "vendor": 0,
+          "community": 1,
+          "total": 1
+        },
+        "efinix": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "lowrisc": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "antmicro": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "native": {
+          "vendor": 0,
+          "community": 2,
+          "total": 2
+        },
+        "aesc": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "adi": {
+          "vendor": 21,
+          "community": 0,
+          "total": 21
+        },
+        "xen": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "realtek": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        }
+      }
+    },
+    {
+      "date": "2025-10-01",
+      "commit": "6bb4cb592a57",
+      "total_boards": 852,
+      "vendors": {
+        "microchip": {
+          "vendor": 23,
+          "community": 17,
+          "total": 40
+        },
+        "st": {
+          "vendor": 128,
+          "community": 76,
+          "total": 204
+        },
+        "espressif": {
+          "vendor": 14,
+          "community": 46,
+          "total": 60
+        },
+        "nordic": {
+          "vendor": 21,
+          "community": 101,
+          "total": 122
+        },
+        "raspberrypi": {
+          "vendor": 3,
+          "community": 24,
+          "total": 27
+        },
+        "renesas": {
+          "vendor": 48,
+          "community": 5,
+          "total": 53
+        },
+        "silabs": {
+          "vendor": 35,
+          "community": 4,
+          "total": 39
+        },
+        "xlnx": {
+          "vendor": 0,
+          "community": 8,
+          "total": 8
+        },
+        "ti": {
+          "vendor": 15,
+          "community": 9,
+          "total": 24
+        },
+        "bflb": {
+          "vendor": 1,
+          "community": 4,
+          "total": 5
+        },
+        "intel": {
+          "vendor": 20,
+          "community": 5,
+          "total": 25
+        },
+        "gaisler": {
+          "vendor": 3,
+          "community": 0,
+          "total": 3
+        },
+        "brcm": {
+          "vendor": 2,
+          "community": 2,
+          "total": 4
+        },
+        "openisa": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "telink": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "ite": {
+          "vendor": 3,
+          "community": 0,
+          "total": 3
+        },
+        "wch": {
+          "vendor": 5,
+          "community": 1,
+          "total": 6
+        },
+        "nxp": {
+          "vendor": 75,
+          "community": 22,
+          "total": 97
+        },
+        "arm": {
+          "vendor": 10,
+          "community": 2,
+          "total": 12
+        },
+        "infineon": {
+          "vendor": 9,
+          "community": 2,
+          "total": 11
+        },
+        "renode": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "sifive": {
+          "vendor": 4,
+          "community": 2,
+          "total": 6
+        },
+        "gd": {
+          "vendor": 14,
+          "community": 1,
+          "total": 15
+        },
+        "aspeed": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "nuvoton": {
+          "vendor": 10,
+          "community": 1,
+          "total": 11
+        },
+        "qemu": {
+          "vendor": 4,
+          "community": 0,
+          "total": 4
+        },
+        "cdns": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "snps": {
+          "vendor": 7,
+          "community": 1,
+          "total": 8
+        },
+        "sifli": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "ene": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "ambiq": {
+          "vendor": 6,
+          "community": 1,
+          "total": 7
+        },
+        "sensry": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "amd": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "rockchip": {
+          "vendor": 0,
+          "community": 4,
+          "total": 4
+        },
+        "quicklogic": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "openhwgroup": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "oct": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "mediatek": {
+          "vendor": 4,
+          "community": 0,
+          "total": 4
+        },
+        "andestech": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "neorv32": {
+          "vendor": 0,
+          "community": 1,
+          "total": 1
+        },
+        "starfive": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "litex": {
+          "vendor": 0,
+          "community": 1,
+          "total": 1
+        },
+        "efinix": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "lowrisc": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "antmicro": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "native": {
+          "vendor": 0,
+          "community": 2,
+          "total": 2
+        },
+        "aesc": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "adi": {
+          "vendor": 21,
+          "community": 0,
+          "total": 21
+        },
+        "xen": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "realtek": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        }
+      }
+    },
+    {
+      "date": "2026-01-01",
+      "commit": "545c2870e935",
+      "total_boards": 922,
+      "vendors": {
+        "microchip": {
+          "vendor": 29,
+          "community": 18,
+          "total": 47
+        },
+        "st": {
+          "vendor": 129,
+          "community": 81,
+          "total": 210
+        },
+        "espressif": {
+          "vendor": 13,
+          "community": 60,
+          "total": 73
+        },
+        "nordic": {
+          "vendor": 21,
+          "community": 103,
+          "total": 124
+        },
+        "raspberrypi": {
+          "vendor": 3,
+          "community": 26,
+          "total": 29
+        },
+        "renesas": {
+          "vendor": 52,
+          "community": 5,
+          "total": 57
+        },
+        "silabs": {
+          "vendor": 48,
+          "community": 4,
+          "total": 52
+        },
+        "xlnx": {
+          "vendor": 0,
+          "community": 9,
+          "total": 9
+        },
+        "ti": {
+          "vendor": 15,
+          "community": 9,
+          "total": 24
+        },
+        "bflb": {
+          "vendor": 1,
+          "community": 6,
+          "total": 7
+        },
+        "intel": {
+          "vendor": 21,
+          "community": 5,
+          "total": 26
+        },
+        "gaisler": {
+          "vendor": 3,
+          "community": 0,
+          "total": 3
+        },
+        "brcm": {
+          "vendor": 2,
+          "community": 2,
+          "total": 4
+        },
+        "openisa": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "telink": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "ite": {
+          "vendor": 3,
+          "community": 0,
+          "total": 3
+        },
+        "wch": {
+          "vendor": 5,
+          "community": 1,
+          "total": 6
+        },
+        "nxp": {
+          "vendor": 82,
+          "community": 22,
+          "total": 104
+        },
+        "arm": {
+          "vendor": 10,
+          "community": 2,
+          "total": 12
+        },
+        "infineon": {
+          "vendor": 14,
+          "community": 2,
+          "total": 16
+        },
+        "renode": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "egis": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "sifive": {
+          "vendor": 4,
+          "community": 2,
+          "total": 6
+        },
+        "gd": {
+          "vendor": 14,
+          "community": 1,
+          "total": 15
+        },
+        "aspeed": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "nuvoton": {
+          "vendor": 11,
+          "community": 1,
+          "total": 12
+        },
+        "qemu": {
+          "vendor": 4,
+          "community": 0,
+          "total": 4
+        },
+        "cdns": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "snps": {
+          "vendor": 7,
+          "community": 1,
+          "total": 8
+        },
+        "sifli": {
+          "vendor": 1,
+          "community": 1,
+          "total": 2
+        },
+        "ene": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "ambiq": {
+          "vendor": 6,
+          "community": 1,
+          "total": 7
+        },
+        "sensry": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "amd": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "rockchip": {
+          "vendor": 0,
+          "community": 4,
+          "total": 4
+        },
+        "quicklogic": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "openhwgroup": {
+          "vendor": 2,
+          "community": 0,
+          "total": 2
+        },
+        "oct": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "mediatek": {
+          "vendor": 4,
+          "community": 0,
+          "total": 4
+        },
+        "andestech": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "neorv32": {
+          "vendor": 0,
+          "community": 1,
+          "total": 1
+        },
+        "starfive": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "litex": {
+          "vendor": 0,
+          "community": 1,
+          "total": 1
+        },
+        "efinix": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "focaltech": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "lowrisc": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "antmicro": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "native": {
+          "vendor": 0,
+          "community": 2,
+          "total": 2
+        },
+        "aesc": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "adi": {
+          "vendor": 22,
+          "community": 0,
+          "total": 22
+        },
+        "xen": {
+          "vendor": 1,
+          "community": 0,
+          "total": 1
+        },
+        "realtek": {
+          "vendor": 3,
+          "community": 0,
+          "total": 3
+        }
+      }
+    }
+  ]
+}
