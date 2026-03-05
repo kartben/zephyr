@@ -1,0 +1,3 @@
+# Dependencies for git_analytics notebooks
+# tqdm is in scripts/requirements-base.txt
+matplotlib>=3.5.0
