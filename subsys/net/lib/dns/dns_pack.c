@@ -158,6 +158,12 @@ int dns_unpack_answer(struct dns_msg_t *dns_msg, int dname_ptr, uint32_t *ttl,
 		DNS_COMMON_UINT_SIZE + /* type length */
 		DNS_TTL_LEN +
 		DNS_RDLENGTH_LEN;
+
+	/* Security fix: validate that response data fits within message buffer */
+	if (pos + len > dns_msg->msg_size) {
+		return -EINVAL;
+	}
+
 	*type = dns_answer_type(dname_len, answer);
 
 	switch (*type) {

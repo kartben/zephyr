@@ -106,7 +106,8 @@ static inline bool append_u8(struct coap_packet *cpkt, uint8_t data)
 
 static inline bool insert_u8(struct coap_packet *cpkt, uint8_t data, uint16_t offset)
 {
-	if (!enough_space(cpkt, 1)) {
+	/* Security fix: validate offset is within current packet data */
+	if (!enough_space(cpkt, 1) || offset > cpkt->offset) {
 		return false;
 	}
 
@@ -130,7 +131,8 @@ static inline bool append_be16(struct coap_packet *cpkt, uint16_t data)
 
 static inline bool insert_be16(struct coap_packet *cpkt, uint16_t data, size_t offset)
 {
-	if (!enough_space(cpkt, 2)) {
+	/* Security fix: validate offset is within current packet data */
+	if (!enough_space(cpkt, 2) || offset > cpkt->offset) {
 		return false;
 	}
 
@@ -155,7 +157,8 @@ static inline bool append(struct coap_packet *cpkt, const uint8_t *data, uint16_
 static inline bool insert(struct coap_packet *cpkt, const uint8_t *data, uint16_t len,
 			  size_t offset)
 {
-	if (data == NULL || !enough_space(cpkt, len)) {
+	/* Security fix: validate offset is within current packet data */
+	if (data == NULL || !enough_space(cpkt, len) || offset > cpkt->offset) {
 		return false;
 	}
 
