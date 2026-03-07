@@ -2936,16 +2936,6 @@ static enum net_verdict tcp_in(struct tcp *conn, struct net_pkt *pkt)
 		return NET_DROP;
 	}
 
-	/* Security fix: validate th_off before computing tcp_options_len to
-	 * prevent unsigned integer underflow in (th_off(th) - 5) * 4.
-	 */
-	if (th_off(th) < 5) {
-		net_tcp_reply_rst(pkt);
-		return NET_DROP;
-	}
-
-	tcp_options_len = (th_off(th) - 5) * 4;
-
 	/* Currently we ignore ECN and CWR flags */
 	fl = th_flags(th) & ~(ECN | CWR);
 
@@ -2962,6 +2952,18 @@ static enum net_verdict tcp_in(struct tcp *conn, struct net_pkt *pkt)
 	}
 
 	NET_DBG("[%p] %s", conn, tcp_conn_state(conn, pkt));
+
+	/* Security fix: validate th_off before computing tcp_options_len to
+	 * prevent unsigned integer underflow in (th_off(th) - 5) * 4.
+	 */
+	if (th_off(th) < 5) {
+		net_tcp_reply_rst(pkt);
+		do_close = true;
+		close_status = -ECONNRESET;
+		goto out;
+	}
+
+	tcp_options_len = (th_off(th) - 5) * 4;
 
 	len = tcp_data_len(pkt);
 
