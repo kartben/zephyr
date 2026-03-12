@@ -286,6 +286,93 @@ For function-like macros, document parameters like you would for functions.
     */
    #define DT_REG_SIZE(node_id) DT_REG_SIZE_BY_IDX(node_id, 0)
 
+.. _doxygen_driver_operations:
+
+Driver Operations
+*****************
+
+Driver subsystem APIs in Zephyr follow a three-part pattern:
+
+1. **Callback typedefs** — function pointer types that define each driver operation.
+2. **Driver operations struct** — aggregates the callbacks into a single ``__subsystem`` struct.
+3. **Public wrapper functions** — ``static inline`` or ``__syscall`` functions that application code
+   calls.
+
+Callback Typedefs
+=================
+
+Group the callback typedefs in a dedicated backend group using ``@def_driverbackendgroup``. Give
+each typedef a brief description that references the public wrapper function.
+
+.. code-block:: c
+   :caption: Callback typedefs grouped in a backend group.
+
+   /**
+    * @def_driverbackendgroup{Foo,foo_interface}
+    * @{
+    */
+
+   /**
+    * @brief Callback API for doing bar.
+    * See foo_bar() for argument description
+    */
+   typedef int (*foo_bar_t)(const struct device *dev, uint32_t value);
+
+   /** @} */
+
+Driver Operations Struct
+========================
+
+Annotate the struct with ``@driver_ops``. Mark each member with ``@driver_ops_mandatory`` or
+``@driver_ops_optional``, and use ``@copybrief`` to pull the description from the public wrapper
+function.
+
+.. code-block:: c
+   :caption: Driver operations struct with mandatory/optional annotations.
+
+   /**
+    * @driver_ops{Foo}
+    */
+   __subsystem struct foo_driver_api {
+       /**
+        * @driver_ops_mandatory @copybrief foo_bar
+        */
+       foo_bar_t bar;
+       /**
+        * @driver_ops_optional @copybrief foo_baz
+        */
+       foo_baz_t baz;
+   };
+
+Public Wrapper Functions
+========================
+
+Place the full API documentation (``@param``, ``@retval``, etc.) on the public wrapper functions,
+not on the callback typedefs. Use ``__syscall`` for functions that need to be available from
+userspace, or ``static inline`` otherwise.
+
+.. code-block:: c
+   :caption: Public wrapper function with full documentation.
+
+   /**
+    * @brief Do bar on a foo device
+    *
+    * @param dev Pointer to the foo device
+    * @param value Value to apply
+    *
+    * @retval 0 Success
+    * @retval -EINVAL Invalid value
+    * @retval -errno Negative errno code on failure
+    */
+   __syscall int foo_bar(const struct device *dev, uint32_t value);
+
+   static inline int z_impl_foo_bar(const struct device *dev, uint32_t value)
+   {
+       const struct foo_driver_api *api =
+           (const struct foo_driver_api *)dev->api;
+       return api->bar(dev, value);
+   }
+
 .. _doxygen_internals:
 
 Hiding internal details
