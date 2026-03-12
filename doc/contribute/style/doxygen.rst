@@ -211,8 +211,8 @@ Example:
     * See biometric_attr_get() for argument description
     */
    typedef int (*biometric_api_attr_get)(const struct device *dev,
-   				      enum biometric_attribute attr,
-   				      int32_t *val);
+                                         enum biometric_attribute attr,
+                                         int32_t *val);
 
    /**
     * @brief Biometric driver API
@@ -238,7 +238,7 @@ Example:
     * @retval -errno Negative errno code on failure
     */
    int biometric_attr_get(const struct device *dev, enum biometric_attribute attr,
-   		       int32_t *val);
+                          int32_t *val);
 
 .. code-block:: c
    :caption: Examples of fully documented enum, struct, and typedef.
