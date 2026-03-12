@@ -183,6 +183,63 @@ Document ``struct``, ``enum``, ``union``, and ``typedef`` definitions with a bri
 Document each member (struct field, enum value, etc.) as well. It is recommended to use ``/**<``
 trailing comments style when only a brief description is provided and it can fit on a single line.
 
+Driver operation callbacks should be documented on the callback ``typedef`` and paired with a fully
+documented public API function:
+
+- Give each callback typedef a brief description of the operation it implements.
+- When the driver callback takes the same arguments as the public API function, refer readers to the
+  public API function for parameter and return value details instead of duplicating that content.
+- If the callback typedefs and the ``__subsystem struct ..._driver_api`` are for driver
+  implementation only, wrap them in ``@cond INTERNAL_HIDDEN`` / ``@endcond`` as described in
+  :ref:`doxygen_internals`.
+- Document the public API function itself with the full ``@param`` / ``@retval`` details that
+  applications need.
+
+Example:
+
+.. code-block:: c
+   :caption: Example of documenting driver operation callbacks.
+
+   /**
+    * @cond INTERNAL_HIDDEN
+    *
+    * For internal driver use only, skip these in public documentation.
+    */
+   /**
+    * @typedef biometric_api_attr_get
+    * @brief Callback API to get a sensor attribute
+    * See biometric_attr_get() for argument description
+    */
+   typedef int (*biometric_api_attr_get)(const struct device *dev,
+   				      enum biometric_attribute attr,
+   				      int32_t *val);
+
+   /**
+    * @brief Biometric driver API
+    */
+   __subsystem struct biometric_driver_api {
+       biometric_api_attr_get attr_get;
+   };
+
+   /**
+    * @endcond
+    */
+
+   /**
+    * @brief Get a biometric sensor attribute
+    *
+    * @param dev Pointer to the biometric device
+    * @param attr Attribute to read
+    * @param[out] val Attribute value returned by the driver
+    *
+    * @retval 0 Success
+    * @retval -ENOSYS Not supported by device
+    * @retval -EINVAL Invalid attribute
+    * @retval -errno Negative errno code on failure
+    */
+   int biometric_attr_get(const struct device *dev, enum biometric_attribute attr,
+   		       int32_t *val);
+
 .. code-block:: c
    :caption: Examples of fully documented enum, struct, and typedef.
 
