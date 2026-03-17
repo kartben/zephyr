@@ -1,0 +1,64 @@
+# Copyright (c) 2025 The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config FREERTOS_COMPAT
+	bool "FreeRTOS Compatibility API"
+	depends on THREAD_NAME
+	depends on NUM_PREEMPT_PRIORITIES >= 7
+	help
+	  This enables a FreeRTOS compatibility layer which allows
+	  applications using FreeRTOS APIs to build on Zephyr.
+
+if FREERTOS_COMPAT
+
+config FREERTOS_MAX_PRIORITIES
+	int "Maximum number of FreeRTOS priority levels"
+	default 7
+	help
+	  Maps to configMAX_PRIORITIES in FreeRTOS. Must not exceed
+	  NUM_PREEMPT_PRIORITIES.
+
+config FREERTOS_TASK_MAX_COUNT
+	int "Maximum dynamically-created task count"
+	default 10
+	range 0 255
+	help
+	  Maximum number of tasks that can be created dynamically
+	  with xTaskCreate.
+
+config FREERTOS_TASK_DEFAULT_STACK_SIZE
+	int "Default task stack size in bytes"
+	default 1024
+	help
+	  Default stack size allocated for dynamically-created tasks.
+
+config FREERTOS_TIMER_MAX_COUNT
+	int "Maximum dynamically-created timer count"
+	default 5
+	range 0 255
+	help
+	  Maximum number of software timers that can be created.
+
+config FREERTOS_SEMAPHORE_MAX_COUNT
+	int "Maximum dynamically-created semaphore count"
+	default 10
+	range 0 255
+	help
+	  Maximum number of binary and counting semaphores that can
+	  be created dynamically.
+
+config FREERTOS_MUTEX_MAX_COUNT
+	int "Maximum dynamically-created mutex count"
+	default 5
+	range 0 255
+	help
+	  Maximum number of mutexes that can be created dynamically.
+
+config FREERTOS_QUEUE_MAX_COUNT
+	int "Maximum dynamically-created queue count"
+	default 5
+	range 0 255
+	help
+	  Maximum number of message queues that can be created dynamically.
+
+endif # FREERTOS_COMPAT

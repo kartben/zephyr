@@ -1,0 +1,10 @@
+tests:
+  portability.freertos:
+    platform_key:
+      - arch
+      - simulation
+    tags: freertos portability
+    min_ram: 32
+    min_flash: 34
+    integration_platforms:
+      - native_sim
