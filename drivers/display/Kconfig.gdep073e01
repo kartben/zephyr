@@ -1,0 +1,10 @@
+# Copyright (c) 2026 Benjamin Lemouzy
+# SPDX-License-Identifier: Apache-2.0
+
+config GDEP073E01
+	bool "GDEP073E01 display controller (7.3\" Spectra 6 e-paper)"
+	default y
+	depends on DT_HAS_GOODDISPLAY_GDEP073E01_ENABLED
+	select MIPI_DBI
+	help
+	  Enable driver for Good Display GDEP073E01 / Waveshare 7.3inch e-Paper (E) controller.

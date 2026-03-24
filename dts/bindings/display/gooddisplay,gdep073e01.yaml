@@ -1,0 +1,23 @@
+# Copyright (c) 2026 Benjamin Lemouzy
+# SPDX-License-Identifier: Apache-2.0
+
+title: Good Display GDEP073E01 (7.3" E Ink Spectra 6) controller
+
+description: |
+  800x480 seven-color (Spectra 6 class) electrophoretic display controller as used on
+  GDEP073E01 / Waveshare 7.3inch e-Paper (E) panels. Pixel data is 4 bits per pixel,
+  two pixels per byte (high nibble first).
+
+compatible: "gooddisplay,gdep073e01"
+
+include:
+  - display-controller.yaml
+  - name: mipi-dbi-spi-device.yaml
+    property-blocklist:
+      - te-delay
+
+properties:
+  busy-gpios:
+    type: phandle-array
+    description: |
+      Busy/status GPIO. LOW while the panel is busy, HIGH when idle (Waveshare ReadBusyH semantics).

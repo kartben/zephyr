@@ -423,6 +423,15 @@
 				flip-configuration = <0>;
 				mipi-mode = "MIPI_DBI_MODE_SPI_4WIRE";
 			};
+
+			test_gdep073e01: gdep073e01@25 {
+				compatible = "gooddisplay,gdep073e01";
+				reg = <25>;
+				mipi-max-frequency = <2000000>;
+				width = <800>;
+				height = <480>;
+				busy-gpios = <&test_gpio 0 0>;
+			};
 		};
 
 		test_mipi_dbi_xfr_16bit_write_only {

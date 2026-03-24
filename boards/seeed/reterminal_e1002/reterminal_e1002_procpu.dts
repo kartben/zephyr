@@ -23,9 +23,11 @@
 		zephyr,flash = &flash0;
 		zephyr,code-partition = &slot0_partition;
 		zephyr,bt-hci = &esp32_bt_hci;
+		zephyr,display = &gdep073e01;
 	};
 
 	aliases {
+		display0 = &gdep073e01;
 		i2c-0 = &i2c0;
 		i2c-1 = &i2c1;
 		led0 = &green_led0;
@@ -123,6 +125,34 @@
 	clock-frequency = <I2C_BITRATE_STANDARD>;
 	pinctrl-0 = <&i2c1_default>;
 	pinctrl-names = "default";
+};
+
+&spi2 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+	pinctrl-0 = <&spim2_default>;
+	pinctrl-names = "default";
+	cs-gpios = <&gpio0 10 GPIO_ACTIVE_LOW>;
+
+	epaper_mipi_dbi: epaper_mipi_dbi {
+		compatible = "zephyr,mipi-dbi-spi";
+		spi-dev = <&spi2>;
+		dc-gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;
+		write-only;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		gdep073e01: gdep073e01@0 {
+			compatible = "gooddisplay,gdep073e01";
+			reg = <0>;
+			mipi-max-frequency = <DT_FREQ_M(2)>;
+			width = <800>;
+			height = <480>;
+			busy-gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
+		};
+	};
 };
 
 &ledc0 {

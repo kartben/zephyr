@@ -34,7 +34,9 @@ extern "C" {
  * 4 bits per pixel, 2 pixels per byte (high nibble first).
  * Supports 7 colors indexed 0-6 (3-bit color palette).
  */
+#ifndef PIXEL_FORMAT_L_4
 #define PIXEL_FORMAT_L_4 (PIXEL_FORMAT_PRIV_START << 0)
+#endif
 
 /**
  * @brief Bits per pixel for AC057TC1 format
