@@ -1,0 +1,7 @@
+shield:
+  name: seeed_xiao_cob_led_driver
+  full_name: COB LED Driver Board for Seeed Studio XIAO
+  vendor: seeed
+  supported_features:
+    - led
+    - gpio

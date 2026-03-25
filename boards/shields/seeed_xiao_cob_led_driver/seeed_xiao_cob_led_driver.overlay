@@ -1,0 +1,58 @@
+/*
+ * Copyright (c) 2026 The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Seeed Studio COB LED Driver Board for XIAO — devicetree for MCU-driven outputs.
+ * https://wiki.seeedstudio.com/getting_started_with_cob_led_dirver_board/
+ */
+
+/ {
+	aliases {
+		led0 = &cob_led_fx_d2;
+		cob-led-hp-d0 = &cob_led_hp_d0;
+		cob-led-hp-d1 = &cob_led_hp_d1;
+		cob-led-fx-d2 = &cob_led_fx_d2;
+		cob-led-fx-d3 = &cob_led_fx_d3;
+		cob-led-fx-d8 = &cob_led_fx_d8;
+		cob-led-fx-d9 = &cob_led_fx_d9;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		cob_led_hp_d0: cob_led_hp_d0 {
+			gpios = <&xiao_d 0 GPIO_ACTIVE_HIGH>;
+			label = "COB high-power D0";
+		};
+
+		cob_led_hp_d1: cob_led_hp_d1 {
+			gpios = <&xiao_d 1 GPIO_ACTIVE_HIGH>;
+			label = "COB high-power D1";
+		};
+
+		cob_led_fx_d2: cob_led_fx_d2 {
+			gpios = <&xiao_d 2 GPIO_ACTIVE_LOW>;
+			label = "COB FX D2";
+		};
+
+		cob_led_fx_d3: cob_led_fx_d3 {
+			gpios = <&xiao_d 3 GPIO_ACTIVE_LOW>;
+			label = "COB FX D3";
+		};
+
+		cob_led_fx_d8: cob_led_fx_d8 {
+			gpios = <&xiao_d 8 GPIO_ACTIVE_LOW>;
+			label = "COB FX D8";
+		};
+
+		cob_led_fx_d9: cob_led_fx_d9 {
+			gpios = <&xiao_d 9 GPIO_ACTIVE_LOW>;
+			label = "COB FX D9";
+		};
+	};
+};
+
+&xiao_i2c {
+	status = "okay";
+};
