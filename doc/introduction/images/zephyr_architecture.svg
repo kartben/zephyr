@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <style>
+      .box { fill: #4A90E2; stroke: #2E5C8A; stroke-width: 2; }
+      .kernel-box { fill: #2E5C8A; stroke: #1A3A5A; stroke-width: 2; }
+      .hw-box { fill: #7B68EE; stroke: #5A4AC0; stroke-width: 2; }
+      .app-box { fill: #50C878; stroke: #3A9B5C; stroke-width: 2; }
+      .text { fill: white; font-family: Arial, sans-serif; font-size: 14px; text-anchor: middle; }
+      .title { fill: #333; font-family: Arial, sans-serif; font-size: 20px; font-weight: bold; text-anchor: middle; }
+      .subtitle { fill: #666; font-family: Arial, sans-serif; font-size: 12px; text-anchor: middle; }
+      .layer-label { fill: #333; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; }
+    </style>
+  </defs>
+  
+  <!-- Title -->
+  <text x="400" y="30" class="title">Zephyr RTOS Architecture</text>
+  
+  <!-- Application Layer -->
+  <text x="50" y="80" class="layer-label">Application</text>
+  <rect x="150" y="60" width="600" height="60" class="app-box" rx="5"/>
+  <text x="450" y="95" class="text">Your Application Code</text>
+  
+  <!-- Services Layer -->
+  <text x="50" y="160" class="layer-label">OS Services</text>
+  
+  <rect x="150" y="140" width="140" height="50" class="box" rx="5"/>
+  <text x="220" y="170" class="text">Logging &amp; Shell</text>
+  
+  <rect x="300" y="140" width="140" height="50" class="box" rx="5"/>
+  <text x="370" y="170" class="text">Storage &amp; FS</text>
+  
+  <rect x="450" y="140" width="140" height="50" class="box" rx="5"/>
+  <text x="520" y="170" class="text">Power Mgmt</text>
+  
+  <rect x="600" y="140" width="150" height="50" class="box" rx="5"/>
+  <text x="675" y="170" class="text">Device Mgmt</text>
+  
+  <!-- Connectivity Layer -->
+  <text x="50" y="240" class="layer-label">Connectivity</text>
+  
+  <rect x="150" y="220" width="140" height="50" class="box" rx="5"/>
+  <text x="220" y="245" class="text">Networking</text>
+  <text x="220" y="260" class="subtitle">(TCP/IP, BSD)</text>
+  
+  <rect x="300" y="220" width="140" height="50" class="box" rx="5"/>
+  <text x="370" y="245" class="text">Bluetooth</text>
+  <text x="370" y="260" class="subtitle">(BLE, Mesh)</text>
+  
+  <rect x="450" y="220" width="140" height="50" class="box" rx="5"/>
+  <text x="520" y="245" class="text">USB</text>
+  
+  <rect x="600" y="220" width="150" height="50" class="box" rx="5"/>
+  <text x="675" y="245" class="text">CAN, LoRa, etc.</text>
+  
+  <!-- Kernel Layer -->
+  <text x="50" y="320" class="layer-label">Kernel</text>
+  
+  <rect x="150" y="300" width="180" height="80" class="kernel-box" rx="5"/>
+  <text x="240" y="330" class="text">Scheduling</text>
+  <text x="240" y="350" class="subtitle">(Preemptive, Coop, EDF)</text>
+  <text x="240" y="370" class="text">Memory Mgmt</text>
+  
+  <rect x="340" y="300" width="180" height="80" class="kernel-box" rx="5"/>
+  <text x="430" y="330" class="text">Synchronization</text>
+  <text x="430" y="350" class="subtitle">(Semaphores, Mutexes)</text>
+  <text x="430" y="370" class="text">IPC</text>
+  
+  <rect x="530" y="300" width="220" height="80" class="kernel-box" rx="5"/>
+  <text x="640" y="325" class="text">Security</text>
+  <text x="640" y="345" class="subtitle">(Memory Protection, Userspace)</text>
+  <text x="640" y="365" class="text">Interrupts &amp; Timers</text>
+  
+  <!-- Driver Layer -->
+  <text x="50" y="430" class="layer-label">Drivers</text>
+  
+  <rect x="150" y="410" width="120" height="50" class="box" rx="5"/>
+  <text x="210" y="440" class="text">Sensor</text>
+  
+  <rect x="280" y="410" width="120" height="50" class="box" rx="5"/>
+  <text x="340" y="440" class="text">GPIO</text>
+  
+  <rect x="410" y="410" width="120" height="50" class="box" rx="5"/>
+  <text x="470" y="440" class="text">UART/SPI/I2C</text>
+  
+  <rect x="540" y="410" width="210" height="50" class="box" rx="5"/>
+  <text x="645" y="440" class="text">Display, ADC, PWM...</text>
+  
+  <!-- Hardware Abstraction -->
+  <text x="50" y="510" class="layer-label">Hardware</text>
+  <rect x="150" y="490" width="600" height="60" class="hw-box" rx="5"/>
+  <text x="450" y="515" class="text">Hardware Abstraction Layer (HAL)</text>
+  <text x="450" y="535" class="subtitle">ARM • RISC-V • x86 • Xtensa • ARC • MIPS • SPARC</text>
+  
+  <!-- Board & SoC -->
+  <rect x="150" y="570" width="600" height="20" class="hw-box" rx="5"/>
+  <text x="450" y="585" class="text">Board &amp; SoC Support (350+ boards)</text>
+</svg>
