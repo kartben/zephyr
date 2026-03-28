@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+
+config BIOMETRICS_ID809
+bool "DFRobot ID809 fingerprint sensor"
+depends on DT_HAS_DFROBOT_ID809_ENABLED
+select I2C
+help
+  Enable driver support for the DFRobot ID809 capacitive fingerprint
+  sensor over I2C.
