@@ -501,6 +501,9 @@ static int id809_attr_get(const struct device *dev, enum biometric_attribute att
 		/* ID809 does not report per-image quality scores */
 		*val = 0;
 		break;
+	case BIOMETRIC_ATTR_PRIV_START: /* Last matched template ID from 1:N search */
+		*val = (int32_t)data->last_match_id;
+		break;
 	default:
 		ret = -ENOTSUP;
 		break;
@@ -814,7 +817,7 @@ static int id809_match(const struct device *dev, enum biometric_match_mode mode,
 
 	} else { /* BIOMETRIC_MATCH_IDENTIFY */
 		uint8_t params[6] = {0};
-		uint8_t matched_id;
+		uint16_t matched_id;
 
 		/*
 		 * CMD_SEARCH: 1:N search in the full ID range.
@@ -833,7 +836,7 @@ static int id809_match(const struct device *dev, enum biometric_match_mode mode,
 			return ret;
 		}
 
-		matched_id = data->rx_pkt.buf[ID809_OFF_RXPAY];
+		matched_id = sys_get_le16(&data->rx_pkt.buf[ID809_OFF_RXPAY]);
 		data->last_match_id = matched_id;
 
 		if (result != NULL) {
