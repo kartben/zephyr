@@ -2,26 +2,25 @@
 # Copyright (c) 2025 Siratul Islam
 
 description: |
-  DFRobot ID809 Capacitive Fingerprint Sensor (SEN0348) - UART variant
+  DFRobot ID809 Capacitive Fingerprint Sensor (SEN0348) - I2C variant
 
   High-performance capacitive fingerprint scanner based on the ID809
-  processor. Communicates over UART using a fixed-frame protocol at
-  115200 bps. Supports 360-degree recognition, self-learning, duplicate
-  detection, and an RGB LED indicator.
-
-  See also: dfrobot,id809-i2c for the I2C bus variant.
+  processor. Communicates over I2C at address 0x1F (default) using the
+  same fixed-frame protocol as the UART variant. Supports 360-degree
+  recognition, self-learning, duplicate detection, and an RGB LED indicator.
 
   Example:
-    &uart0 {
-      id809: id809 {
-        compatible = "dfrobot,id809";
+    &i2c0 {
+      id809: id809@1f {
+        compatible = "dfrobot,id809-i2c";
+        reg = <0x1f>;
         max-templates = <80>;
       };
     };
 
-compatible: "dfrobot,id809"
+compatible: "dfrobot,id809-i2c"
 
-include: [uart-device.yaml]
+include: [i2c-device.yaml]
 
 properties:
   max-templates:

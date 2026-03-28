@@ -6,8 +6,24 @@
 #ifndef ZEPHYR_DRIVERS_BIOMETRICS_BIOMETRICS_ID809_H_
 #define ZEPHYR_DRIVERS_BIOMETRICS_BIOMETRICS_ID809_H_
 
-#include <zephyr/drivers/uart.h>
 #include <zephyr/drivers/biometrics.h>
+
+/* Detect which bus variants are present in the devicetree */
+#ifndef ID809_BUS_UART
+#define ID809_BUS_UART DT_HAS_COMPAT_STATUS_OKAY(dfrobot_id809)
+#endif
+
+#ifndef ID809_BUS_I2C
+#define ID809_BUS_I2C DT_HAS_COMPAT_STATUS_OKAY(dfrobot_id809_i2c)
+#endif
+
+#if ID809_BUS_UART
+#include <zephyr/drivers/uart.h>
+#endif
+
+#if ID809_BUS_I2C
+#include <zephyr/drivers/i2c.h>
+#endif
 
 /*
  * DFRobot ID809 capacitive fingerprint sensor protocol.
@@ -34,25 +50,25 @@
  */
 
 /* Packet prefix bytes (on-wire, little-endian representation) */
-#define ID809_CMD_PREFIX_B0 0x55U  /* Command packet first byte  */
-#define ID809_CMD_PREFIX_B1 0xAAU  /* Command packet second byte */
-#define ID809_RCM_PREFIX_B0 0xAAU  /* ACK response first byte    */
-#define ID809_RCM_PREFIX_B1 0x55U  /* ACK response second byte   */
-#define ID809_DAT_PREFIX_B0 0xA5U  /* Data response first byte   */
-#define ID809_DAT_PREFIX_B1 0x5AU  /* Data response second byte  */
+#define ID809_CMD_PREFIX_B0 0x55U /* Command packet first byte  */
+#define ID809_CMD_PREFIX_B1 0xAAU /* Command packet second byte */
+#define ID809_RCM_PREFIX_B0 0xAAU /* ACK response first byte    */
+#define ID809_RCM_PREFIX_B1 0x55U /* ACK response second byte   */
+#define ID809_DAT_PREFIX_B0 0xA5U /* Data response first byte   */
+#define ID809_DAT_PREFIX_B1 0x5AU /* Data response second byte  */
 
 /* Default device identifiers */
 #define ID809_SID_HOST 0x00U
 #define ID809_DID_DEV  0x00U
 
 /* Packet layout constants */
-#define ID809_HDR_SIZE     8U   /* PREFIX(2)+SID(1)+DID(1)+CMD/RCM(2)+LEN(2) */
-#define ID809_EXTHDR_SIZE  10U  /* HDR + RET(2) */
+#define ID809_HDR_SIZE     8U  /* PREFIX(2)+SID(1)+DID(1)+CMD/RCM(2)+LEN(2) */
+#define ID809_EXTHDR_SIZE  10U /* HDR + RET(2) */
 #define ID809_CKS_SIZE     2U
-#define ID809_CMD_PKT_SIZE 26U  /* Fixed command packet size */
-#define ID809_ACK_PKT_SIZE 26U  /* Fixed ACK response packet size */
-#define ID809_CMD_PAD_SIZE 16U  /* Padded payload area in command packet */
-#define ID809_ACK_PAY_SIZE 14U  /* Payload area in ACK response (after RET) */
+#define ID809_CMD_PKT_SIZE 26U /* Fixed command packet size */
+#define ID809_ACK_PKT_SIZE 26U /* Fixed ACK response packet size */
+#define ID809_CMD_PAD_SIZE 16U /* Padded payload area in command packet */
+#define ID809_ACK_PAY_SIZE 14U /* Payload area in ACK response (after RET) */
 
 /* Buffer offsets */
 #define ID809_OFF_PREFIX 0U
@@ -60,9 +76,9 @@
 #define ID809_OFF_DID    3U
 #define ID809_OFF_CMD    4U
 #define ID809_OFF_LEN    6U
-#define ID809_OFF_RET    8U   /* Only in response packets */
-#define ID809_OFF_PAY    8U   /* Payload start in command packet */
-#define ID809_OFF_RXPAY  10U  /* Payload start in response packet (after RET) */
+#define ID809_OFF_RET    8U  /* Only in response packets */
+#define ID809_OFF_PAY    8U  /* Payload start in command packet */
+#define ID809_OFF_RXPAY  10U /* Payload start in response packet (after RET) */
 
 /* Maximum buffer size: large enough for data responses */
 #define ID809_MAX_PKT_SIZE 128U
@@ -147,6 +163,9 @@
 /* UART packet timeout */
 #define ID809_UART_TIMEOUT_MS 1000U
 
+/* I2C receive timeout (ms) — only used if on I2C bus */
+#define ID809_I2C_TIMEOUT_MS 1000U
+
 /* Maximum allowed operation timeout (1 hour) */
 #define ID809_MAX_TIMEOUT_MS (3600U * 1000U)
 
@@ -166,11 +185,23 @@ enum id809_rx_error {
 	ID809_RX_INVALID_LEN,
 };
 
-/* Packet buffer (shared for TX and RX) */
+/* Packet buffer used to hold received data (and TX data for UART) */
 struct id809_packet {
 	uint8_t buf[ID809_MAX_PKT_SIZE];
 	volatile uint16_t len;
-	volatile uint16_t offset; /* TX write position for ISR */
+	volatile uint16_t offset; /* TX write position for UART ISR */
+};
+
+/* Forward declaration for function pointers in config */
+struct id809_config;
+
+/* Bus I/O function pointers — one set per transport type */
+struct id809_bus_io {
+	/** Send a 26-byte command packet and wait for it to be transmitted */
+	int (*send_cmd)(const struct device *dev, uint16_t cmd, const uint8_t *payload,
+			uint16_t payload_len);
+	/** Receive one response packet (ACK or DATA) into data->rx_pkt */
+	int (*recv_pkt)(const struct device *dev);
 };
 
 /* Driver data */
@@ -178,15 +209,19 @@ struct id809_data {
 	const struct device *dev;
 
 	struct k_mutex lock;
-	struct k_spinlock irq_lock;
 
+	/** Received packet buffer — used by all transports */
+	struct id809_packet rx_pkt;
+
+#if ID809_BUS_UART
+	/** UART-only transport state */
+	struct k_spinlock irq_lock;
 	struct k_sem uart_tx_sem;
 	struct k_sem uart_rx_sem;
-
 	struct id809_packet tx_pkt;
-	struct id809_packet rx_pkt;
 	volatile uint16_t rx_expected;
 	volatile enum id809_rx_error rx_error;
+#endif
 
 	enum id809_enroll_state enroll_state;
 	uint16_t enroll_id;
@@ -202,8 +237,28 @@ struct id809_data {
 
 /* Driver configuration */
 struct id809_config {
-	const struct device *uart_dev;
+	/** Bus-specific I/O operations */
+	const struct id809_bus_io *bus_io;
+
+	/** Bus specification — only one member is valid at runtime */
+	union {
+#if ID809_BUS_UART
+		const struct device *uart_dev;
+#endif
+#if ID809_BUS_I2C
+		struct i2c_dt_spec i2c;
+#endif
+	} bus;
+
 	uint16_t max_templates;
 };
+
+#if ID809_BUS_UART
+extern const struct id809_bus_io id809_uart_bus_io;
+#endif
+
+#if ID809_BUS_I2C
+extern const struct id809_bus_io id809_i2c_bus_io;
+#endif
 
 #endif /* ZEPHYR_DRIVERS_BIOMETRICS_BIOMETRICS_ID809_H_ */

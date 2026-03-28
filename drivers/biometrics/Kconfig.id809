@@ -4,12 +4,13 @@
 config BIOMETRICS_ID809
 	bool "DFRobot ID809 Capacitive Fingerprint Sensor"
 	default y
-	depends on DT_HAS_DFROBOT_ID809_ENABLED
-	select SERIAL
-	select UART_INTERRUPT_DRIVEN
+	depends on DT_HAS_DFROBOT_ID809_ENABLED || DT_HAS_DFROBOT_ID809_I2C_ENABLED
+	select SERIAL if DT_HAS_DFROBOT_ID809_ENABLED
+	select UART_INTERRUPT_DRIVEN if DT_HAS_DFROBOT_ID809_ENABLED
+	select I2C if DT_HAS_DFROBOT_ID809_I2C_ENABLED
 	help
 	  Enable driver for the DFRobot ID809 capacitive fingerprint sensor
-	  (SEN0348). Uses interrupt-driven UART at 115200 bps.
+	  (SEN0348). Supports both UART (interrupt-driven) and I2C bus variants.
 
 if BIOMETRICS_ID809
 

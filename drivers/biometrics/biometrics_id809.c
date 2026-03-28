@@ -7,10 +7,17 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
-#include <zephyr/drivers/uart.h>
 #include <zephyr/drivers/biometrics.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/logging/log.h>
+
+#if ID809_BUS_UART
+#include <zephyr/drivers/uart.h>
+#endif
+
+#if ID809_BUS_I2C
+#include <zephyr/drivers/i2c.h>
+#endif
 
 #include "biometrics_id809.h"
 
@@ -49,7 +56,85 @@ static int id809_ret_to_errno(uint16_t ret)
 	}
 }
 
-/* UART IRQ handlers */
+/*
+ * Shared helper: build a 26-byte command packet into buf[].
+ * buf must be at least ID809_CMD_PKT_SIZE bytes.
+ */
+static int id809_build_cmd_pkt(uint8_t *buf, uint16_t cmd, const uint8_t *payload,
+			       uint16_t payload_len)
+{
+	uint16_t cks = 0;
+
+	if (payload_len > ID809_CMD_PAD_SIZE) {
+		return -ENOMEM;
+	}
+
+	buf[0] = ID809_CMD_PREFIX_B0;
+	buf[1] = ID809_CMD_PREFIX_B1;
+	buf[ID809_OFF_SID] = ID809_SID_HOST;
+	buf[ID809_OFF_DID] = ID809_DID_DEV;
+	sys_put_le16(cmd, &buf[ID809_OFF_CMD]);
+	sys_put_le16(payload_len, &buf[ID809_OFF_LEN]);
+
+	if (payload_len > 0) {
+		memcpy(&buf[ID809_OFF_PAY], payload, payload_len);
+	}
+	memset(&buf[ID809_OFF_PAY + payload_len], 0, ID809_CMD_PAD_SIZE - payload_len);
+
+	for (uint8_t i = ID809_OFF_SID; i < ID809_OFF_PAY + ID809_CMD_PAD_SIZE; i++) {
+		cks += buf[i];
+	}
+	sys_put_le16(cks, &buf[ID809_CMD_PKT_SIZE - ID809_CKS_SIZE]);
+
+	return 0;
+}
+
+/*
+ * Shared helper: validate checksum of a fully-received packet in data->rx_pkt.
+ */
+static int id809_validate_recv_pkt(const struct device *dev)
+{
+	struct id809_data *data = dev->data;
+	uint16_t total_len = data->rx_pkt.len;
+	uint16_t recv_cks, calc_cks;
+	uint8_t b0, b1;
+
+	LOG_HEXDUMP_DBG(data->rx_pkt.buf, total_len, "RX");
+
+	b0 = data->rx_pkt.buf[0];
+	b1 = data->rx_pkt.buf[1];
+
+	if ((b0 != ID809_RCM_PREFIX_B0 || b1 != ID809_RCM_PREFIX_B1) &&
+	    (b0 != ID809_DAT_PREFIX_B0 || b1 != ID809_DAT_PREFIX_B1)) {
+		LOG_ERR("Invalid prefix: 0x%02x 0x%02x", b0, b1);
+		return -EBADMSG;
+	}
+
+	if (total_len < ID809_EXTHDR_SIZE + ID809_CKS_SIZE) {
+		LOG_ERR("Packet too short: %u bytes", total_len);
+		return -EBADMSG;
+	}
+
+	calc_cks = 0;
+	for (uint16_t i = ID809_OFF_SID; i < total_len - ID809_CKS_SIZE; i++) {
+		calc_cks += data->rx_pkt.buf[i];
+	}
+	recv_cks = sys_get_le16(&data->rx_pkt.buf[total_len - ID809_CKS_SIZE]);
+
+	if (calc_cks != recv_cks) {
+		LOG_ERR("CKS mismatch: recv=0x%04x calc=0x%04x", recv_cks, calc_cks);
+		return -EBADMSG;
+	}
+
+	return 0;
+}
+
+/* =========================================================================
+ * UART transport
+ * ========================================================================= */
+
+#if ID809_BUS_UART
+
 static void id809_uart_tx_handler(const struct device *uart_dev, struct id809_data *data)
 {
 	int sent;
@@ -96,19 +181,16 @@ static void id809_uart_rx_handler(const struct device *uart_dev, struct id809_da
 		data->rx_pkt.buf[offset++] = byte;
 
 		/*
-		 * After receiving the full extended header (10 bytes: prefix,
-		 * SID, DID, RCM, LEN, RET) we can determine the packet type
-		 * and total expected length.
+		 * After receiving the full extended header (10 bytes) we know
+		 * the packet type and can determine the total expected length.
 		 */
 		if (offset == ID809_EXTHDR_SIZE) {
 			uint8_t b0 = data->rx_pkt.buf[0];
 			uint8_t b1 = data->rx_pkt.buf[1];
 
 			if (b0 == ID809_RCM_PREFIX_B0 && b1 == ID809_RCM_PREFIX_B1) {
-				/* ACK response: fixed 26-byte packet */
 				data->rx_expected = ID809_ACK_PKT_SIZE;
 			} else if (b0 == ID809_DAT_PREFIX_B0 && b1 == ID809_DAT_PREFIX_B1) {
-				/* Data response: 10 + LEN bytes */
 				uint16_t len = sys_get_le16(&data->rx_pkt.buf[ID809_OFF_LEN]);
 				uint16_t total = ID809_EXTHDR_SIZE + len;
 
@@ -160,51 +242,30 @@ static void id809_uart_callback(const struct device *uart_dev, void *user_data)
 	}
 }
 
-/* Build and transmit a 26-byte command packet */
-static int id809_send_cmd(const struct device *dev, uint16_t cmd, const uint8_t *payload,
-			  uint16_t payload_len)
+static int id809_uart_send_cmd(const struct device *dev, uint16_t cmd, const uint8_t *payload,
+			       uint16_t payload_len)
 {
 	const struct id809_config *cfg = dev->config;
 	struct id809_data *data = dev->data;
-	uint16_t cks = 0;
 	k_spinlock_key_t key;
+	int ret;
 
-	if (payload_len > ID809_CMD_PAD_SIZE) {
-		return -ENOMEM;
+	ret = id809_build_cmd_pkt(data->tx_pkt.buf, cmd, payload, payload_len);
+	if (ret < 0) {
+		return ret;
 	}
-
-	/* Fixed 26-byte command packet layout */
-	data->tx_pkt.buf[0] = ID809_CMD_PREFIX_B0;
-	data->tx_pkt.buf[1] = ID809_CMD_PREFIX_B1;
-	data->tx_pkt.buf[ID809_OFF_SID] = ID809_SID_HOST;
-	data->tx_pkt.buf[ID809_OFF_DID] = ID809_DID_DEV;
-	sys_put_le16(cmd, &data->tx_pkt.buf[ID809_OFF_CMD]);
-	sys_put_le16(payload_len, &data->tx_pkt.buf[ID809_OFF_LEN]);
-
-	/* Payload area: copy payload and zero-pad the rest */
-	if (payload_len > 0) {
-		memcpy(&data->tx_pkt.buf[ID809_OFF_PAY], payload, payload_len);
-	}
-	memset(&data->tx_pkt.buf[ID809_OFF_PAY + payload_len], 0,
-	       ID809_CMD_PAD_SIZE - payload_len);
-
-	/* CKS = sum of bytes [2..23] stored LE in [24..25] */
-	for (uint8_t i = ID809_OFF_SID; i < ID809_OFF_PAY + ID809_CMD_PAD_SIZE; i++) {
-		cks += data->tx_pkt.buf[i];
-	}
-	sys_put_le16(cks, &data->tx_pkt.buf[ID809_CMD_PKT_SIZE - ID809_CKS_SIZE]);
 
 	key = k_spin_lock(&data->irq_lock);
 	data->tx_pkt.len = ID809_CMD_PKT_SIZE;
 	data->tx_pkt.offset = 0;
 	k_spin_unlock(&data->irq_lock, key);
 
-	LOG_HEXDUMP_DBG(data->tx_pkt.buf, ID809_CMD_PKT_SIZE, "TX");
+	LOG_HEXDUMP_DBG(data->tx_pkt.buf, ID809_CMD_PKT_SIZE, "TX(UART)");
 
-	uart_irq_tx_enable(cfg->uart_dev);
+	uart_irq_tx_enable(cfg->bus.uart_dev);
 
 	if (k_sem_take(&data->uart_tx_sem, K_MSEC(ID809_UART_TIMEOUT_MS)) != 0) {
-		uart_irq_tx_disable(cfg->uart_dev);
+		uart_irq_tx_disable(cfg->bus.uart_dev);
 		LOG_ERR("UART TX timeout");
 		return -ETIMEDOUT;
 	}
@@ -212,13 +273,10 @@ static int id809_send_cmd(const struct device *dev, uint16_t cmd, const uint8_t 
 	return 0;
 }
 
-/* Receive and validate a response packet */
-static int id809_recv_pkt(const struct device *dev)
+static int id809_uart_recv_pkt(const struct device *dev)
 {
 	const struct id809_config *cfg = dev->config;
 	struct id809_data *data = dev->data;
-	uint16_t recv_cks, calc_cks;
-	uint16_t total_len;
 	k_spinlock_key_t key;
 
 	key = k_spin_lock(&data->irq_lock);
@@ -227,10 +285,10 @@ static int id809_recv_pkt(const struct device *dev)
 	data->rx_error = ID809_RX_OK;
 	k_spin_unlock(&data->irq_lock, key);
 
-	uart_irq_rx_enable(cfg->uart_dev);
+	uart_irq_rx_enable(cfg->bus.uart_dev);
 
 	if (k_sem_take(&data->uart_rx_sem, K_MSEC(ID809_UART_TIMEOUT_MS)) != 0) {
-		uart_irq_rx_disable(cfg->uart_dev);
+		uart_irq_rx_disable(cfg->bus.uart_dev);
 		LOG_ERR("UART RX timeout");
 		return -ETIMEDOUT;
 	}
@@ -245,49 +303,128 @@ static int id809_recv_pkt(const struct device *dev)
 		return -EBADMSG;
 	}
 
-	LOG_HEXDUMP_DBG(data->rx_pkt.buf, data->rx_pkt.len, "RX");
+	return id809_validate_recv_pkt(dev);
+}
 
-	total_len = data->rx_pkt.len;
+const struct id809_bus_io id809_uart_bus_io = {
+	.send_cmd = id809_uart_send_cmd,
+	.recv_pkt = id809_uart_recv_pkt,
+};
 
-	/* Validate prefix */
+#endif /* ID809_BUS_UART */
+
+/* =========================================================================
+ * I2C transport
+ * ========================================================================= */
+
+#if ID809_BUS_I2C
+
+static int id809_i2c_send_cmd(const struct device *dev, uint16_t cmd, const uint8_t *payload,
+			      uint16_t payload_len)
+{
+	const struct id809_config *cfg = dev->config;
+	uint8_t buf[ID809_CMD_PKT_SIZE];
+	int ret;
+
+	ret = id809_build_cmd_pkt(buf, cmd, payload, payload_len);
+	if (ret < 0) {
+		return ret;
+	}
+
+	LOG_HEXDUMP_DBG(buf, ID809_CMD_PKT_SIZE, "TX(I2C)");
+
+	ret = i2c_write_dt(&cfg->bus.i2c, buf, ID809_CMD_PKT_SIZE);
+	if (ret < 0) {
+		LOG_ERR("I2C write failed: %d", ret);
+	}
+	return ret;
+}
+
+static int id809_i2c_recv_pkt(const struct device *dev)
+{
+	const struct id809_config *cfg = dev->config;
+	struct id809_data *data = dev->data;
+	uint16_t total_len;
+	uint16_t remaining;
+	int ret;
+
+	/*
+	 * Step 1: Read the 10-byte extended header to determine the packet
+	 * type (ACK vs. DATA) and the total expected length.
+	 */
+	ret = i2c_read_dt(&cfg->bus.i2c, data->rx_pkt.buf, ID809_EXTHDR_SIZE);
+	if (ret < 0) {
+		LOG_ERR("I2C header read failed: %d", ret);
+		return ret;
+	}
+
 	uint8_t b0 = data->rx_pkt.buf[0];
 	uint8_t b1 = data->rx_pkt.buf[1];
-	bool is_rcm = (b0 == ID809_RCM_PREFIX_B0 && b1 == ID809_RCM_PREFIX_B1);
-	bool is_dat = (b0 == ID809_DAT_PREFIX_B0 && b1 == ID809_DAT_PREFIX_B1);
 
-	if (!is_rcm && !is_dat) {
-		LOG_ERR("Invalid prefix: 0x%02x 0x%02x", b0, b1);
+	if (b0 == ID809_RCM_PREFIX_B0 && b1 == ID809_RCM_PREFIX_B1) {
+		/* ACK response is always ID809_ACK_PKT_SIZE bytes */
+		total_len = ID809_ACK_PKT_SIZE;
+	} else if (b0 == ID809_DAT_PREFIX_B0 && b1 == ID809_DAT_PREFIX_B1) {
+		/* Data response: 10 bytes ext-header + LEN bytes */
+		uint16_t len = sys_get_le16(&data->rx_pkt.buf[ID809_OFF_LEN]);
+		total_len = ID809_EXTHDR_SIZE + len;
+		if (total_len > ID809_MAX_PKT_SIZE) {
+			LOG_ERR("I2C: DATA response too large: %u", total_len);
+			return -EBADMSG;
+		}
+	} else {
+		LOG_ERR("I2C: Invalid prefix: 0x%02x 0x%02x", b0, b1);
 		return -EBADMSG;
 	}
 
-	if (total_len < ID809_EXTHDR_SIZE + ID809_CKS_SIZE) {
-		LOG_ERR("Packet too short: %u bytes", total_len);
-		return -EBADMSG;
+	/* Step 2: Read the remaining body bytes */
+	remaining = total_len - ID809_EXTHDR_SIZE;
+	ret = i2c_read_dt(&cfg->bus.i2c, data->rx_pkt.buf + ID809_EXTHDR_SIZE, remaining);
+	if (ret < 0) {
+		LOG_ERR("I2C body read failed: %d", ret);
+		return ret;
 	}
 
-	/* Verify CKS: sum of bytes [2..total_len-3] */
-	calc_cks = 0;
-	for (uint16_t i = ID809_OFF_SID; i < total_len - ID809_CKS_SIZE; i++) {
-		calc_cks += data->rx_pkt.buf[i];
-	}
-	recv_cks = sys_get_le16(&data->rx_pkt.buf[total_len - ID809_CKS_SIZE]);
+	data->rx_pkt.len = total_len;
 
-	if (calc_cks != recv_cks) {
-		LOG_ERR("CKS mismatch: recv=0x%04x calc=0x%04x", recv_cks, calc_cks);
-		return -EBADMSG;
-	}
+	return id809_validate_recv_pkt(dev);
+}
 
-	return 0;
+const struct id809_bus_io id809_i2c_bus_io = {
+	.send_cmd = id809_i2c_send_cmd,
+	.recv_pkt = id809_i2c_recv_pkt,
+};
+
+#endif /* ID809_BUS_I2C */
+
+/* =========================================================================
+ * Common protocol layer (bus-agnostic)
+ * ========================================================================= */
+
+static inline int id809_send_cmd(const struct device *dev, uint16_t cmd, const uint8_t *payload,
+				 uint16_t payload_len)
+{
+	const struct id809_config *cfg = dev->config;
+
+	return cfg->bus_io->send_cmd(dev, cmd, payload, payload_len);
+}
+
+static inline int id809_recv_pkt(const struct device *dev)
+{
+	const struct id809_config *cfg = dev->config;
+
+	return cfg->bus_io->recv_pkt(dev);
 }
 
 /*
  * Send a command and receive the ACK response.
- * Returns 0 on success, negative errno on error, or positive ID809 return code
- * on a protocol-level error.
+ * Returns 0 on success, negative errno on transport or protocol error.
  */
 static int id809_transceive(const struct device *dev, uint16_t cmd, const uint8_t *payload,
 			    uint16_t payload_len)
 {
+	struct id809_data *data = dev->data;
+	uint16_t rc;
 	int ret;
 
 	ret = id809_send_cmd(dev, cmd, payload, payload_len);
@@ -300,9 +437,7 @@ static int id809_transceive(const struct device *dev, uint16_t cmd, const uint8_
 		return ret;
 	}
 
-	struct id809_data *data = dev->data;
-	uint16_t rc = sys_get_le16(&data->rx_pkt.buf[ID809_OFF_RET]);
-
+	rc = sys_get_le16(&data->rx_pkt.buf[ID809_OFF_RET]);
 	if (rc != ID809_RET_SUCCESS) {
 		LOG_DBG("Command 0x%04x returned 0x%04x", cmd, rc);
 		return id809_ret_to_errno(rc);
@@ -313,29 +448,30 @@ static int id809_transceive(const struct device *dev, uint16_t cmd, const uint8_
 
 /*
  * Send a command, receive the ACK, then receive the DATA packet that follows.
- * The DATA payload (excluding RET) is copied into out_buf (up to out_len bytes).
- * On success, *actual_len is set to the number of data bytes copied.
+ * The DATA payload (after the ext-header) is copied into out_buf.
+ * On success, *actual_len holds the number of bytes copied.
  */
 static int id809_transceive_data(const struct device *dev, uint16_t cmd, const uint8_t *payload,
 				 uint16_t payload_len, uint8_t *out_buf, uint16_t out_len,
 				 uint16_t *actual_len)
 {
 	struct id809_data *data = dev->data;
+	uint16_t pkt_len;
+	uint16_t dat_len;
 	int ret;
 
-	/* First packet: ACK */
+	/* First exchange: ACK response */
 	ret = id809_transceive(dev, cmd, payload, payload_len);
 	if (ret < 0) {
 		return ret;
 	}
 
-	/* Second packet: DATA response */
+	/* Second receive: DATA response */
 	ret = id809_recv_pkt(dev);
 	if (ret < 0) {
 		return ret;
 	}
 
-	/* Verify it is a DATA response */
 	if (data->rx_pkt.buf[0] != ID809_DAT_PREFIX_B0 ||
 	    data->rx_pkt.buf[1] != ID809_DAT_PREFIX_B1) {
 		LOG_ERR("Expected DATA response, got 0x%02x 0x%02x", data->rx_pkt.buf[0],
@@ -349,14 +485,12 @@ static int id809_transceive_data(const struct device *dev, uint16_t cmd, const u
 		return id809_ret_to_errno(rc);
 	}
 
-	/* DATA payload starts after the extended header */
-	uint16_t pkt_len = sys_get_le16(&data->rx_pkt.buf[ID809_OFF_LEN]);
-
+	pkt_len = sys_get_le16(&data->rx_pkt.buf[ID809_OFF_LEN]);
 	if (pkt_len < ID809_CKS_SIZE) {
 		return -EBADMSG;
 	}
 
-	uint16_t dat_len = pkt_len - ID809_CKS_SIZE;
+	dat_len = pkt_len - ID809_CKS_SIZE;
 
 	if (out_buf != NULL && actual_len != NULL) {
 		uint16_t copy = MIN(dat_len, out_len);
@@ -382,7 +516,7 @@ static int id809_poll_finger(const struct device *dev, uint32_t timeout_ms)
 		}
 
 		/*
-		 * CMD_FINGER_DETECT always returns RET=SUCCESS.  The first byte
+		 * CMD_FINGER_DETECT returns RET=SUCCESS always. The first byte
 		 * of additional payload is 1 when a finger is present, 0 when not.
 		 */
 		if (data->rx_pkt.buf[ID809_OFF_RXPAY] != 0) {
@@ -724,7 +858,7 @@ static int id809_template_delete_all(const struct device *dev)
 }
 
 static int id809_template_list(const struct device *dev, uint16_t *ids, size_t max_count,
-				size_t *actual_count)
+			       size_t *actual_count)
 {
 	struct id809_data *data = dev->data;
 	/*
@@ -921,16 +1055,15 @@ static DEVICE_API(biometric, biometrics_id809_api) = {
 	.led_control = id809_led_control,
 };
 
-static int id809_init(const struct device *dev)
-{
-	const struct id809_config *cfg = dev->config;
-	struct id809_data *data = dev->data;
-	int ret;
+/* =========================================================================
+ * Common init code shared by both bus variants
+ * ========================================================================= */
 
-	if (!device_is_ready(cfg->uart_dev)) {
-		LOG_ERR("UART device not ready");
-		return -ENODEV;
-	}
+static int id809_common_init(const struct device *dev)
+{
+	struct id809_data *data = dev->data;
+	const struct id809_config *cfg = dev->config;
+	int ret;
 
 	data->dev = dev;
 	data->enroll_state = ID809_ENROLL_IDLE;
@@ -938,16 +1071,9 @@ static int id809_init(const struct device *dev)
 	data->timeout_ms = CONFIG_ID809_TIMEOUT_MS;
 	data->security_level = 3; /* ID809 default security level */
 	data->led_state = BIOMETRIC_LED_OFF;
-	data->rx_error = ID809_RX_OK;
 	data->last_match_id = 0;
 
 	k_mutex_init(&data->lock);
-	k_sem_init(&data->uart_tx_sem, 0, 1);
-	k_sem_init(&data->uart_rx_sem, 0, 1);
-
-	uart_irq_callback_user_data_set(cfg->uart_dev, id809_uart_callback, data);
-	uart_irq_rx_disable(cfg->uart_dev);
-	uart_irq_tx_disable(cfg->uart_dev);
 
 	/* Verify the module is reachable */
 	ret = id809_transceive(dev, ID809_CMD_TEST_CONNECTION, NULL, 0);
@@ -961,16 +1087,84 @@ static int id809_init(const struct device *dev)
 	return 0;
 }
 
-#define ID809_DEFINE(inst)                                                                         \
-	static struct id809_data id809_data_##inst;                                                \
+/* =========================================================================
+ * UART variant device definitions
+ * ========================================================================= */
+
+#if ID809_BUS_UART
+
+static int id809_uart_init(const struct device *dev)
+{
+	const struct id809_config *cfg = dev->config;
+	struct id809_data *data = dev->data;
+
+	if (!device_is_ready(cfg->bus.uart_dev)) {
+		LOG_ERR("UART device not ready");
+		return -ENODEV;
+	}
+
+	data->rx_error = ID809_RX_OK;
+	k_sem_init(&data->uart_tx_sem, 0, 1);
+	k_sem_init(&data->uart_rx_sem, 0, 1);
+
+	uart_irq_callback_user_data_set(cfg->bus.uart_dev, id809_uart_callback, data);
+	uart_irq_rx_disable(cfg->bus.uart_dev);
+	uart_irq_tx_disable(cfg->bus.uart_dev);
+
+	return id809_common_init(dev);
+}
+
+#define ID809_UART_DEFINE(inst)                                                                    \
+	static struct id809_data id809_uart_data_##inst;                                           \
                                                                                                    \
-	static const struct id809_config id809_config_##inst = {                                   \
-		.uart_dev = DEVICE_DT_GET(DT_INST_BUS(inst)),                                      \
+	static const struct id809_config id809_uart_config_##inst = {                              \
+		.bus_io = &id809_uart_bus_io,                                                      \
+		.bus.uart_dev = DEVICE_DT_GET(DT_INST_BUS(inst)),                                  \
 		.max_templates = DT_INST_PROP_OR(inst, max_templates, ID809_DEFAULT_CAPACITY),     \
 	};                                                                                         \
                                                                                                    \
-	DEVICE_DT_INST_DEFINE(inst, id809_init, NULL, &id809_data_##inst,                         \
-			      &id809_config_##inst, POST_KERNEL,                                   \
+	DEVICE_DT_INST_DEFINE(inst, id809_uart_init, NULL, &id809_uart_data_##inst,                \
+			      &id809_uart_config_##inst, POST_KERNEL,                              \
 			      CONFIG_BIOMETRICS_INIT_PRIORITY, &biometrics_id809_api);
 
-DT_INST_FOREACH_STATUS_OKAY(ID809_DEFINE)
+DT_INST_FOREACH_STATUS_OKAY(ID809_UART_DEFINE)
+
+#endif /* ID809_BUS_UART */
+
+/* =========================================================================
+ * I2C variant device definitions
+ * ========================================================================= */
+
+#if ID809_BUS_I2C
+
+#undef DT_DRV_COMPAT
+#define DT_DRV_COMPAT dfrobot_id809_i2c
+
+static int id809_i2c_init(const struct device *dev)
+{
+	const struct id809_config *cfg = dev->config;
+
+	if (!i2c_is_ready_dt(&cfg->bus.i2c)) {
+		LOG_ERR("I2C bus not ready");
+		return -ENODEV;
+	}
+
+	return id809_common_init(dev);
+}
+
+#define ID809_I2C_DEFINE(inst)                                                                     \
+	static struct id809_data id809_i2c_data_##inst;                                            \
+                                                                                                   \
+	static const struct id809_config id809_i2c_config_##inst = {                               \
+		.bus_io = &id809_i2c_bus_io,                                                       \
+		.bus.i2c = I2C_DT_SPEC_INST_GET(inst),                                             \
+		.max_templates = DT_INST_PROP_OR(inst, max_templates, ID809_DEFAULT_CAPACITY),     \
+	};                                                                                         \
+                                                                                                   \
+	DEVICE_DT_INST_DEFINE(inst, id809_i2c_init, NULL, &id809_i2c_data_##inst,                  \
+			      &id809_i2c_config_##inst, POST_KERNEL,                               \
+			      CONFIG_BIOMETRICS_INIT_PRIORITY, &biometrics_id809_api);
+
+DT_INST_FOREACH_STATUS_OKAY(ID809_I2C_DEFINE)
+
+#endif /* ID809_BUS_I2C */
