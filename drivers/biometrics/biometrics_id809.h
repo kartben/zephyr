@@ -41,14 +41,14 @@
 #define ID809_CMD_SEARCH               0x0063
 #define ID809_CMD_VERIFY               0x0064
 
-#define ID809_ERR_SUCCESS          0x00
-#define ID809_ERR_FAIL             0x01
-#define ID809_ERR_VERIFY           0x10
-#define ID809_ERR_IDENTIFY         0x11
-#define ID809_ERR_TMPL_EMPTY       0x12
-#define ID809_ERR_TMPL_NOT_EMPTY   0x13
-#define ID809_ERR_ALL_TMPL_EMPTY   0x14
-#define ID809_ERR_EMPTY_ID_NOEXIST 0x15
+#define ID809_ERR_SUCCESS           0x00
+#define ID809_ERR_FAIL              0x01
+#define ID809_ERR_VERIFY            0x10
+#define ID809_ERR_IDENTIFY          0x11
+#define ID809_ERR_TMPL_EMPTY        0x12
+#define ID809_ERR_TMPL_NOT_EMPTY    0x13
+#define ID809_ERR_ALL_TMPL_EMPTY    0x14
+#define ID809_ERR_EMPTY_ID_NOEXIST  0x15
 #define ID809_ERR_BROKEN_ID_NOEXIST 0x16
 #define ID809_ERR_INVALID_TMPL_DATA 0x17
 #define ID809_ERR_DUPLICATION_ID    0x18
@@ -74,58 +74,58 @@
 #define ID809_PARAM_BAUDRATE          0x03
 #define ID809_PARAM_SELF_LEARN        0x04
 
-#define ID809_CMD_HEADER_SIZE         8U
-#define ID809_RCM_HEADER_SIZE         10U
-#define ID809_CKS_SIZE                2U
-#define ID809_CMD_PAYLOAD_SIZE        16U
+#define ID809_CMD_HEADER_SIZE          8U
+#define ID809_RCM_HEADER_SIZE          10U
+#define ID809_CKS_SIZE                 2U
+#define ID809_CMD_PAYLOAD_SIZE         16U
 #define ID809_FIXED_RESPONSE_DATA_SIZE 14U
-#define ID809_TEMPLATE_PREFIX_SIZE    2U
+#define ID809_TEMPLATE_PREFIX_SIZE     2U
 
-#define ID809_ENROLL_SAMPLES 3U
-#define ID809_I2C_CHUNK_SIZE 32U
-#define ID809_I2C_POLL_MS    10U
-#define ID809_READY_TIMEOUT_MS 2000U
+#define ID809_ENROLL_SAMPLES      3U
+#define ID809_I2C_CHUNK_SIZE      32U
+#define ID809_I2C_POLL_MS         10U
+#define ID809_READY_TIMEOUT_MS    2000U
 #define ID809_RESPONSE_TIMEOUT_MS 5000U
-#define ID809_MAX_TIMEOUT_MS  (3600U * 1000U)
-#define ID809_MAX_TEMPLATE_SIZE 1008U
-#define ID809_MAX_TEMPLATE_ID   255U
+#define ID809_MAX_TIMEOUT_MS      (3600U * 1000U)
+#define ID809_MAX_TEMPLATE_SIZE   1008U
+#define ID809_MAX_TEMPLATE_ID     255U
 
-#define ID809_LED_MODE_BREATHING   1U
-#define ID809_LED_MODE_FAST_BLINK  2U
-#define ID809_LED_MODE_ON          3U
-#define ID809_LED_MODE_OFF         4U
+#define ID809_LED_MODE_BREATHING  1U
+#define ID809_LED_MODE_FAST_BLINK 2U
+#define ID809_LED_MODE_ON         3U
+#define ID809_LED_MODE_OFF        4U
 
 #define ID809_LED_COLOR_GREEN 1U
 #define ID809_LED_COLOR_RED   2U
 #define ID809_LED_COLOR_BLUE  4U
 
 struct id809_config {
-struct i2c_dt_spec bus;
-uint16_t max_templates;
-uint16_t template_size;
+	struct i2c_dt_spec bus;
+	uint16_t max_templates;
+	uint16_t template_size;
 };
 
 enum id809_enroll_state {
-ID809_ENROLL_IDLE,
-ID809_ENROLL_WAIT_SAMPLE_1,
-ID809_ENROLL_WAIT_SAMPLE_2,
-ID809_ENROLL_WAIT_SAMPLE_3,
-ID809_ENROLL_READY,
+	ID809_ENROLL_IDLE,
+	ID809_ENROLL_WAIT_SAMPLE_1,
+	ID809_ENROLL_WAIT_SAMPLE_2,
+	ID809_ENROLL_WAIT_SAMPLE_3,
+	ID809_ENROLL_READY,
 };
 
 struct id809_data {
-struct k_mutex lock;
-enum id809_enroll_state enroll_state;
-uint16_t enroll_id;
-int32_t match_threshold;
-int32_t enroll_quality;
-int32_t security_level;
-uint32_t timeout_ms;
-int32_t image_quality;
-uint16_t last_match_id;
-enum biometric_led_state led_state;
-uint8_t packet_buf[ID809_MAX_TEMPLATE_SIZE + ID809_CMD_HEADER_SIZE +
-   ID809_TEMPLATE_PREFIX_SIZE + ID809_CKS_SIZE];
+	struct k_mutex lock;
+	enum id809_enroll_state enroll_state;
+	uint16_t enroll_id;
+	int32_t match_threshold;
+	int32_t enroll_quality;
+	int32_t security_level;
+	uint32_t timeout_ms;
+	int32_t image_quality;
+	uint16_t last_match_id;
+	enum biometric_led_state led_state;
+	uint8_t packet_buf[ID809_MAX_TEMPLATE_SIZE + ID809_CMD_HEADER_SIZE +
+			   ID809_TEMPLATE_PREFIX_SIZE + ID809_CKS_SIZE];
 };
 
 #endif /* ZEPHYR_DRIVERS_BIOMETRICS_BIOMETRICS_ID809_H_ */

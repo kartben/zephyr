@@ -1,18 +1,9 @@
-/ {
-i2c0: i2c@400 {
-compatible = "zephyr,i2c-emul-controller";
-status = "okay";
-reg = <0x400 0x4>;
-clock-frequency = <100000>;
-#address-cells = <1>;
-#size-cells = <0>;
-
-fingerprint0: fingerprint@1f {
-compatible = "dfrobot,id809";
-reg = <0x1f>;
-status = "okay";
-max-templates = <80>;
-template-size = <1008>;
-};
-};
+&i2c0 {
+	fingerprint0: fingerprint@1f {
+		compatible = "dfrobot,id809";
+		reg = <0x1f>;
+		status = "okay";
+		max-templates = <80>;
+		template-size = <1008>;
+	};
 };
