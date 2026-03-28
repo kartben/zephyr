@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025 Siratul Islam
+
+description: |
+  DFRobot ID809 Capacitive Fingerprint Sensor (SEN0348)
+
+  High-performance capacitive fingerprint scanner based on the ID809
+  processor. Communicates over UART using a fixed-frame protocol at
+  115200 bps. Supports 360-degree recognition, self-learning, duplicate
+  detection, and an RGB LED indicator.
+
+  Example:
+    &uart0 {
+      id809: id809 {
+        compatible = "dfrobot,id809";
+        max-templates = <80>;
+      };
+    };
+
+compatible: "dfrobot,id809"
+
+include: [uart-device.yaml]
+
+properties:
+  max-templates:
+    type: int
+    default: 80
+    description: |
+      Maximum number of fingerprint templates the module can store.
+      The ID809 firmware ships with a capacity of 80 templates (default).
+      Some firmware versions support up to 200 templates.

@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025 Siratul Islam
+
+config BIOMETRICS_ID809
+	bool "DFRobot ID809 Capacitive Fingerprint Sensor"
+	default y
+	depends on DT_HAS_DFROBOT_ID809_ENABLED
+	select SERIAL
+	select UART_INTERRUPT_DRIVEN
+	help
+	  Enable driver for the DFRobot ID809 capacitive fingerprint sensor
+	  (SEN0348). Uses interrupt-driven UART at 115200 bps.
+
+if BIOMETRICS_ID809
+
+config ID809_TIMEOUT_MS
+	int "Default operation timeout in milliseconds"
+	default 10000
+	help
+	  Default timeout for fingerprint detection, enrollment, and matching
+	  operations. Can be overridden at runtime via biometric_attr_set().
+
+endif # BIOMETRICS_ID809
