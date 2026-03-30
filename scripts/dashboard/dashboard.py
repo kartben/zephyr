@@ -28,6 +28,7 @@ import sys
 import webbrowser
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 
 import jinja2
 import yaml
@@ -616,6 +617,7 @@ class ZephyrDashboard:
             loader=template_loader, autoescape=True, trim_blocks=True, lstrip_blocks=True
         )
         env.filters['display_size'] = display_size
+        env.filters['dts_url_fragment'] = lambda p: quote(p, safe='/')
 
         # Create the output directory tree.
         self.output_path.mkdir(parents=True, exist_ok=True)

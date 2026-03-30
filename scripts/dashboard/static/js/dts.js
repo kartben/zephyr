@@ -97,8 +97,47 @@
     return tt;
   }
 
+  function nodeIdFromHash() {
+    if (!location.hash || location.hash.length <= 1) {
+      return null;
+    }
+    var raw = location.hash.slice(1);
+    try {
+      return decodeURIComponent(raw);
+    } catch (e) {
+      return raw;
+    }
+  }
+
+  function findRowByNodeId(nodeId) {
+    var rows = table.querySelectorAll('tr[data-tt-id]');
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].getAttribute('data-tt-id') === nodeId) {
+        return rows[i];
+      }
+    }
+    return null;
+  }
+
+  function selectNodeFromHash() {
+    var nodeId = nodeIdFromHash();
+    if (!nodeId) {
+      return;
+    }
+    tree.select(nodeId);
+    var row = findRowByNodeId(nodeId);
+    if (row) {
+      row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }
+
   function jumpToNode (event) {
     let nodeId = event.target.attributes.href.value.substring(1);
+    try {
+      nodeId = decodeURIComponent(nodeId);
+    } catch (e) {
+      /* keep raw fragment */
+    }
     tree.select(nodeId);
 
     // Stop propagation so the click does not trigger activating the node
@@ -128,6 +167,8 @@
   document.addEventListener("DOMContentLoaded", function(event) {
     table = document.getElementById("edtTree");
     tree = initTree(table, edtTree.tree);
+    selectNodeFromHash();
+    window.addEventListener('hashchange', selectNodeFromHash);
     table.addEventListener('click', function (event) {
       if (event.target.classList.contains('node-ref')) {
         jumpToNode(event);

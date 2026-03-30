@@ -103,8 +103,8 @@ class ZephyrInitLevels:
     and defined devices.
 
     The list of devices is available in the "devices" class variable in the
-    {ordinal: Priority} format, the list of initilevels is in the "initlevels"
-    class variables in the {"level name": ["call", ...]} format.
+    {ordinal: Priority} format. "initlevels" maps each level to a list of
+    dicts with keys init_symbol, init_fn, device_symbol, ordinal.
 
     Attributes:
         file_path: path of the file to be loaded.
@@ -225,7 +225,7 @@ class ZephyrInitLevels:
                 arg1_name = self._object_name(self._initlevel_pointer(addr, 1, shidx))
 
                 ordinal = self._device_ord_from_name(arg1_name)
-                if ordinal:
+                if ordinal is not None:
                     dev_addr = self._object_addr[arg1_name]
                     _, _, shidx = self._objects[dev_addr]
                     arg0_name = self._object_name(
@@ -235,7 +235,14 @@ class ZephyrInitLevels:
                     prio = Priority(level, priority)
                     self.devices[ordinal] = (prio, arg0_name)
 
-                self.initlevels[level].append(f"{obj}: {arg0_name}({arg1_name})")
+                self.initlevels[level].append(
+                    {
+                        "init_symbol": obj,
+                        "init_fn": arg0_name,
+                        "device_symbol": arg1_name,
+                        "ordinal": ordinal,
+                    }
+                )
 
                 addr += size
                 priority += 1
@@ -252,6 +259,10 @@ class Validator:
         elf_file_path: path of the ELF file
         edt_pickle: name of the EDT pickle file
         log: a logging.Logger object
+
+    The ``initlevels`` property returns the same structure as
+    :class:`ZephyrInitLevels` ``initlevels``, with an added ``path`` key per
+    entry when the device ordinal maps in EDT.
     """
 
     def __init__(self, elf_file_path, edt_pickle, log, elf_file):
@@ -345,14 +356,25 @@ class Validator:
 
     @property
     def initlevels(self):
-        """Get the dictionary of initlevels."""
-        return self._obj.initlevels
+        """Structured init entries per level, with path when the ordinal maps in EDT."""
+        result = {}
+        for level, entries in self._obj.initlevels.items():
+            result[level] = []
+            for entry in entries:
+                path = None
+                ord_ = entry["ordinal"]
+                if ord_ is not None:
+                    node = self._ord2node.get(ord_)
+                    if node is not None:
+                        path = node.path
+                result[level].append({**entry, "path": path})
+        return result
 
     def print_initlevels(self):
-        for level, calls in self._obj.initlevels.items():
+        for level, entries in self._obj.initlevels.items():
             print(level)
-            for call in calls:
-                print(f"  {call}")
+            for entry in entries:
+                print(f"{entry['init_symbol']}: {entry['init_fn']}({entry['device_symbol']})")
 
 
 def _parse_args(argv):

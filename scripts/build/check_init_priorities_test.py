@@ -241,8 +241,28 @@ class testZephyrInitLevels(unittest.TestCase):
             {
                 "EARLY": [],
                 "PRE_KERNEL_1": [],
-                "PRE_KERNEL_2": ["a: i0(__device_dts_ord_11)", "b: i1(__device_dts_ord_22)"],
-                "POST_KERNEL": ["c: name_8_0(name_8_1)"],
+                "PRE_KERNEL_2": [
+                    {
+                        "init_symbol": "a",
+                        "init_fn": "i0",
+                        "device_symbol": "__device_dts_ord_11",
+                        "ordinal": 11,
+                    },
+                    {
+                        "init_symbol": "b",
+                        "init_fn": "i1",
+                        "device_symbol": "__device_dts_ord_22",
+                        "ordinal": 22,
+                    },
+                ],
+                "POST_KERNEL": [
+                    {
+                        "init_symbol": "c",
+                        "init_fn": "name_8_0",
+                        "device_symbol": "name_8_1",
+                        "ordinal": None,
+                    },
+                ],
                 "APPLICATION": [],
                 "SMP": [],
             },
