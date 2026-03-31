@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 The Zephyr Project Contributors
+
+description: |
+  DFRobot AI10 (e.g. SEN0677) face / palm-vein / QR recognition module.
+
+  The module communicates over UART using a binary framed protocol (not ASCII AT).
+  Default baud rate is typically 115200; set the ``current-speed`` property on the
+  UART node to match the module and the `DFRobot_AI10`_ Arduino reference.
+
+  .. _DFRobot_AI10: https://github.com/DFRobot/DFRobot_AI10/tree/master/src
+
+  Datasheet: https://dfimg.dfrobot.com/wiki/21122/SEN0677_ai-binocular-face-palm-vein-qr-code-recognition-sensor_datasheet_V1.0.pdf
+
+compatible: "dfrobot,ai10"
+
+include: [uart-device.yaml]
+
+properties:
+  max-users:
+    type: int
+    default: 100
+    description: |
+      Maximum user entries the module firmware can report when listing IDs (matches
+      the reference library list capacity).

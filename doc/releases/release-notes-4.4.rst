@@ -74,6 +74,13 @@ API Changes
       * :kconfig:option:`CONFIG_XTENSA_CACHED_REGION`
       * :kconfig:option:`CONFIG_XTENSA_UNCACHED_REGION`
 
+* Biometrics
+
+  * The biometrics API version was bumped to ``0.2.0`` (:zephyr_file:`include/zephyr/drivers/biometrics.h`).
+    :c:member:`biometric_capabilities.supported_modalities` was added for multimodal sensors.
+    :c:enumerator:`BIOMETRIC_TYPE_PALM` was added; because it is inserted before
+    :c:enumerator:`BIOMETRIC_TYPE_VOICE`, the numeric value of ``BIOMETRIC_TYPE_VOICE`` changes.
+
 * Bluetooth
 
   * Controller
@@ -215,6 +222,12 @@ New APIs and options
   * :c:macro:`PDM_DT_IO_CFG_GET`
   * :c:macro:`PDM_DT_HAS_LEFT_CHANNEL`
   * :c:macro:`PDM_DT_HAS_RIGHT_CHANNEL`
+
+* Biometrics
+
+  * :c:enumerator:`BIOMETRIC_TYPE_PALM`
+  * :c:member:`biometric_capabilities.supported_modalities`
+  * :kconfig:option:`CONFIG_BIOMETRICS_DFROBOT_AI10`
 
 * Bluetooth
 
@@ -828,6 +841,7 @@ New Drivers
 * Biometrics
 
    * :dtcompatible:`adh-tech,gt5x` (:github:`100139`)
+   * :dtcompatible:`dfrobot,ai10`
    * :dtcompatible:`zephyr,biometrics-emul` (:github:`100139`)
    * :dtcompatible:`zhiantec,zfm-x0` (:github:`100139`)
 

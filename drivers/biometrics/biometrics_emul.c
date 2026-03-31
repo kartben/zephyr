@@ -10,6 +10,7 @@
 #include <zephyr/drivers/biometrics.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/util.h>
 #include <string.h>
 
 LOG_MODULE_REGISTER(biometrics_emul, CONFIG_BIOMETRICS_LOG_LEVEL);
@@ -68,6 +69,7 @@ static int biometrics_emul_get_capabilities(const struct device *dev,
 	const struct biometrics_emul_config *cfg = dev->config;
 
 	caps->type = cfg->type;
+	caps->supported_modalities = BIT(cfg->type);
 	caps->max_templates = BIOMETRICS_EMUL_MAX_TEMPLATES;
 	caps->template_size = BIOMETRICS_EMUL_TEMPLATE_SIZE;
 	caps->storage_modes = BIOMETRIC_STORAGE_DEVICE | BIOMETRIC_STORAGE_HOST;
