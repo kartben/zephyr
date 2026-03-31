@@ -343,4 +343,45 @@ ZTEST(crc, test_crc8)
 	zassert_equal(fcs, expected, "0x%02x vs 0x%02x", fcs, expected);
 }
 
+/* CryptoAuthLib atCRC — matches RNG90 DS40002499A §5.4 examples */
+static void rng90_crc16_at(size_t length, const uint8_t *data, uint8_t *crc_le)
+{
+	uint16_t crc_register = 0;
+	const uint16_t polynom = 0x8005U;
+
+	for (size_t counter = 0; counter < length; counter++) {
+		for (uint8_t shift_register = 0x01U; shift_register != 0U; shift_register <<= 1) {
+			uint8_t data_bit = ((data[counter] & shift_register) != 0U) ? 1U : 0U;
+			uint8_t crc_bit = (uint8_t)(crc_register >> 15);
+
+			crc_register <<= 1;
+			if (data_bit != crc_bit) {
+				crc_register ^= polynom;
+			}
+		}
+	}
+
+	crc_le[0] = (uint8_t)(crc_register & 0x00FFU);
+	crc_le[1] = (uint8_t)(crc_register >> 8);
+}
+
+ZTEST(crc, test_rng90_crc_datasheet_examples)
+{
+	uint8_t crc[2];
+	uint8_t info[] = {0x07, 0x30, 0x01, 0x00, 0x00};
+	uint8_t ex2[] = {
+		0x4D, 0x49, 0x43, 0x52, 0x4F, 0x43, 0x48, 0x49,
+		0x50, 0x54, 0x45, 0x43, 0x48, 0x4E, 0x4F, 0x4C,
+		0x4F, 0x47, 0x59,
+	};
+
+	rng90_crc16_at(sizeof(info), info, crc);
+	zassert_equal(crc[0], 0x00);
+	zassert_equal(crc[1], 0xD7);
+
+	rng90_crc16_at(sizeof(ex2), ex2, crc);
+	zassert_equal(crc[0], 0xE3);
+	zassert_equal(crc[1], 0xFE);
+}
+
 ZTEST_SUITE(crc, NULL, NULL, NULL, NULL, NULL);

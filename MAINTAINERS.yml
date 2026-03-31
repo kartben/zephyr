@@ -1706,6 +1706,7 @@ Documentation Infrastructure:
     - tomi-font
   files:
     - drivers/entropy/
+    - dts/bindings/rng/microchip,rng90.yaml
     - include/zephyr/drivers/entropy.h
     - tests/drivers/entropy/
     - doc/hardware/peripherals/entropy.rst

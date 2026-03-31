@@ -1,0 +1,14 @@
+# Copyright (c) 2026 The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+title: Microchip RNG90 I2C entropy source
+
+description: |
+  Microchip RNG90 CryptoAuthentication secure random number generator (I2C).
+
+  The device exposes a fixed 7-bit I2C address of 0x40 and provides 256-bit
+  random outputs per Random command (see DS40002499A).
+
+compatible: "microchip,rng90"
+
+include: i2c-device.yaml

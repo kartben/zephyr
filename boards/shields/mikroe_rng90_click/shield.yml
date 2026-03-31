@@ -1,0 +1,9 @@
+# Copyright (c) 2026 The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+shield:
+  name: mikroe_rng90_click
+  full_name: RNG90 Click
+  vendor: mikroe
+  supported_features:
+    - crypto

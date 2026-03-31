@@ -1,0 +1,15 @@
+# Microchip RNG90 I2C entropy driver
+
+# Copyright (c) 2026 The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config ENTROPY_MICROCHIP_RNG90
+	bool "Microchip RNG90 I2C entropy driver"
+	default y
+	depends on DT_HAS_MICROCHIP_RNG90_ENABLED
+	depends on MULTITHREADING
+	select ENTROPY_HAS_DRIVER
+	depends on I2C
+	help
+	  Enable the driver for the Microchip RNG90 CryptoAuthentication secure
+	  random number generator (I2C, DS40002499A).
