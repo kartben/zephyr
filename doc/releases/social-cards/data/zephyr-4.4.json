@@ -1,0 +1,190 @@
+[
+  {
+    "slug": "openrisc-support",
+    "countdown": "T-14",
+    "title": "OpenRISC support",
+    "tagline": "Adds OpenRISC support with a QEMU board target.",
+    "linkedin_copy": "A small but important architecture update in Zephyr 4.4: OpenRISC is now supported.\n\nWhat I like here is that you can try it right away in QEMU, without hunting for hardware first. If you want to explore it, the qemu_or1k target is a good entry point.\n\n#ZephyrRTOS",
+    "accent": "blue",
+    "icon": "openrisc-support",
+    "source_ref": [
+      "doc/releases/release-notes-4.4.rst",
+      "boards/qemu/or1k/doc/index.rst"
+    ]
+  },
+  {
+    "slug": "toolchain-sdk-c17",
+    "countdown": "T-13",
+    "title": "Zephyr SDK 1.0 and C17",
+    "tagline": "Adds Zephyr SDK 1.0 support and makes C17 the minimum C standard.",
+    "linkedin_copy": "Another useful change in Zephyr 4.4: support for Zephyr SDK 1.0 is in, and C17 is now the minimum C standard.\n\nThis is the kind of release-note item that looks small, but it matters for day-to-day development, toolchain consistency, and what code you can reasonably expect to build across environments.\n\n#ZephyrRTOS",
+    "accent": "violet",
+    "icon": "toolchain-sdk-c17",
+    "source_ref": [
+      "doc/releases/release-notes-4.4.rst",
+      "doc/develop/toolchains/zephyr_sdk.rst",
+      "doc/develop/languages/c/index.rst"
+    ]
+  },
+  {
+    "slug": "wifi-p2p",
+    "countdown": "T-12",
+    "title": "Wi-Fi P2P",
+    "tagline": "Adds peer-to-peer discovery and direct connection to the Wi-Fi stack.",
+    "linkedin_copy": "Zephyr 4.4 adds Wi-Fi peer-to-peer support.\n\nIn practical terms, that means device discovery and direct connection without going through a traditional access point. If you're building device-to-device workflows, this is worth a look.\n\n#ZephyrRTOS",
+    "accent": "sky",
+    "icon": "wifi-p2p",
+    "source_ref": [
+      "doc/releases/release-notes-4.4.rst",
+      "doc/connectivity/networking/api/wifi.rst"
+    ]
+  },
+  {
+    "slug": "wireguard-vpn",
+    "countdown": "T-11",
+    "title": "WireGuard VPN",
+    "tagline": "Adds WireGuard-based VPN tunneling to the networking stack.",
+    "linkedin_copy": "WireGuard support is part of what’s coming in Zephyr 4.4.\n\nThis brings a modern VPN option to the networking stack, with a sample in tree to make it easier to understand how it fits into a Zephyr-based system.\n\n#ZephyrRTOS",
+    "accent": "blue",
+    "icon": "wireguard-vpn",
+    "source_ref": [
+      "doc/releases/release-notes-4.4.rst",
+      "samples/net/wireguard/README.rst"
+    ]
+  },
+  {
+    "slug": "usb-host",
+    "countdown": "T-10",
+    "title": "USB host and UVC",
+    "tagline": "Expands experimental USB host support with a host-class framework and UVC cameras.",
+    "linkedin_copy": "USB host support keeps moving forward in Zephyr 4.4.\n\nThe release expands the experimental host stack with a host-class driver framework and UVC camera support. If you're working on products that need to act as the USB host rather than the device, this is a useful step.\n\n#ZephyrRTOS",
+    "accent": "sky",
+    "icon": "usb-host",
+    "source_ref": [
+      "doc/releases/release-notes-4.4.rst",
+      "doc/connectivity/usb/host/api/index.rst",
+      "samples/subsys/usb/host_uvc/README.rst"
+    ]
+  },
+  {
+    "slug": "otp-memory-api",
+    "countdown": "T-09",
+    "title": "OTP memory API",
+    "tagline": "Adds a common API for reading and programming one-time programmable memory.",
+    "linkedin_copy": "One of the more quietly useful additions in Zephyr 4.4 is the new OTP memory API.\n\nIt gives you a common way to read and program one-time programmable memory, which is exactly the sort of thing that helps when you need to deal with provisioning data across different targets.\n\n#ZephyrRTOS",
+    "accent": "violet",
+    "icon": "otp-memory-api",
+    "source_ref": [
+      "doc/releases/release-notes-4.4.rst",
+      "include/zephyr/drivers/otp.h"
+    ]
+  },
+  {
+    "slug": "biometrics-api",
+    "countdown": "T-08",
+    "title": "Biometrics API",
+    "tagline": "Adds a common API for enrollment, template management, and matching.",
+    "linkedin_copy": "Zephyr 4.4 adds a biometrics API.\n\nThe interesting part here is the common interface for enrollment, template management, and matching. That kind of abstraction makes it easier to reason about biometric support without starting from vendor-specific code every time.\n\n#ZephyrRTOS",
+    "accent": "indigo",
+    "icon": "biometrics-api",
+    "source_ref": [
+      "doc/releases/release-notes-4.4.rst",
+      "doc/hardware/peripherals/biometrics.rst",
+      "drivers/biometrics/biometrics_emul.c"
+    ]
+  },
+  {
+    "slug": "zbus-proxy-agents",
+    "countdown": "T-07",
+    "title": "Zbus proxy agents",
+    "tagline": "Extends zbus messaging across CPU and domain boundaries over IPC.",
+    "linkedin_copy": "If you use zbus, this one is worth paying attention to: Zephyr 4.4 adds proxy agents.\n\nThey extend zbus messaging across CPU and domain boundaries over IPC, which makes the publish-subscribe model useful in more distributed system layouts.\n\n#ZephyrRTOS",
+    "accent": "violet",
+    "icon": "zbus-proxy-agents",
+    "source_ref": [
+      "doc/releases/release-notes-4.4.rst",
+      "doc/services/zbus/index.rst",
+      "samples/subsys/zbus/proxy_agent_ipc/README.rst"
+    ]
+  },
+  {
+    "slug": "pressure-based-cpu-frequency-scaling",
+    "countdown": "T-06",
+    "title": "Pressure-based CPU frequency scaling",
+    "tagline": "Adds a scheduler-pressure policy to the experimental CPU frequency subsystem.",
+    "linkedin_copy": "Zephyr 4.4 adds a pressure-based policy to the experimental CPU frequency subsystem.\n\nIn other words, scheduler pressure can now drive P-state selection. It’s a good example of Zephyr getting more expressive about performance and power tradeoffs.\n\n#ZephyrRTOS",
+    "accent": "sky",
+    "icon": "pressure-based-cpu-frequency-scaling",
+    "source_ref": [
+      "doc/releases/release-notes-4.4.rst",
+      "doc/services/cpu_freq/policies/pressure.rst",
+      "samples/subsys/cpu_freq/pressure/README.rst"
+    ]
+  },
+  {
+    "slug": "cortex-m-context-switching",
+    "countdown": "T-05",
+    "title": "Cortex-M context switching",
+    "tagline": "Adds an alternate Cortex-M context switch path behind CONFIG_USE_SWITCH.",
+    "linkedin_copy": "There’s also a Cortex-M scheduler/runtime change in Zephyr 4.4: an alternate context switch path behind CONFIG_USE_SWITCH.\n\nThis is one of those changes that is easy to miss in the release notes, but it matters if you care about what the kernel is doing in tight, performance-sensitive paths.\n\n#ZephyrRTOS",
+    "accent": "indigo",
+    "icon": "cortex-m-context-switching",
+    "source_ref": [
+      "doc/releases/release-notes-4.4.rst",
+      "doc/hardware/porting/arch.rst"
+    ]
+  },
+  {
+    "slug": "html-dashboard",
+    "countdown": "T-04",
+    "title": "HTML dashboard",
+    "tagline": "Builds one HTML dashboard for memory, Kconfig, init, and devicetree reports.",
+    "linkedin_copy": "One of my favorite Zephyr 4.4 additions is the HTML dashboard target.\n\nInstead of digging through several different outputs, you get memory, Kconfig, init, and devicetree reports pulled together in one place. It’s a nice example of a feature that makes Zephyr easier to teach and easier to inspect.\n\n#ZephyrRTOS",
+    "accent": "blue",
+    "icon": "html-dashboard",
+    "source_ref": [
+      "doc/releases/release-notes-4.4.rst",
+      "doc/develop/optimizations/tools.rst"
+    ]
+  },
+  {
+    "slug": "scope-based-cleanup-helpers",
+    "countdown": "T-03",
+    "title": "Scope cleanup helpers",
+    "tagline": "Adds scope guards and deferred cleanup helpers for C.",
+    "linkedin_copy": "A neat language-level addition in Zephyr 4.4: scope cleanup helpers for C.\n\nIf you’ve ever wished for something a bit closer to RAII or defer-style cleanup in plain C, this is exactly the idea. It helps make cleanup paths easier to read and harder to get wrong.\n\n#ZephyrRTOS",
+    "accent": "violet",
+    "icon": "scope-based-cleanup-helpers",
+    "source_ref": [
+      "doc/releases/release-notes-4.4.rst",
+      "doc/kernel/cleanup.rst",
+      "include/zephyr/cleanup.h"
+    ]
+  },
+  {
+    "slug": "ztest-benchmarking-framework",
+    "countdown": "T-02",
+    "title": "ztest benchmarking",
+    "tagline": "Adds cycle-accurate timing, overhead compensation, and statistical reporting to ztest.",
+    "linkedin_copy": "Zephyr 4.4 also improves ztest with a benchmarking framework.\n\nCycle-accurate timing, overhead compensation, and statistical reporting are now part of the picture, which makes performance work inside tests much more practical.\n\n#ZephyrRTOS",
+    "accent": "sky",
+    "icon": "ztest-benchmarking-framework",
+    "source_ref": [
+      "doc/releases/release-notes-4.4.rst",
+      "doc/develop/test/benchmark.rst",
+      "samples/subsys/testsuite/benchmark/src/main.c"
+    ]
+  },
+  {
+    "slug": "expanded-board-support",
+    "countdown": "T-01",
+    "title": "Expanded board support",
+    "tagline": "Adds 121 new boards and 31 new shields.",
+    "linkedin_copy": "And of course, no Zephyr release would be complete without hardware growth.\n\nZephyr 4.4 adds support for 121 new boards and 31 new shields. That kind of breadth matters because it keeps lowering the barrier to trying Zephyr on the hardware people actually have.\n\n#ZephyrRTOS",
+    "accent": "blue",
+    "icon": "expanded-board-support",
+    "source_ref": [
+      "doc/releases/release-notes-4.4.rst"
+    ]
+  }
+]

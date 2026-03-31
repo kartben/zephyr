@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zephyr 4.4 Countdown Cards</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="page-shell">
+    <header class="hero">
+      <p class="hero-kicker">Zephyr RTOS 4.4</p>
+      <h1>Countdown social cards</h1>
+      <p class="hero-copy">
+        SVG-first cards rendered from one JSON data file, a shared theme, and official Phosphor icons.
+        Each card also carries LinkedIn copy alongside the visual.
+        Use the two pilot cards first, then review the full series below.
+      </p>
+      <div class="hero-note">
+        <p>If your browser blocks local <code>file://</code> fetches, run a lightweight server from this directory:</p>
+        <pre><code>cd doc/releases/social-cards
+python3 -m http.server 8000</code></pre>
+        <p>Then open <code>http://localhost:8000/preview.html</code>.</p>
+      </div>
+    </header>
+
+    <section class="status-panel" id="status-panel">
+      <p class="status-text" id="status-text">Loading cards and assets...</p>
+    </section>
+
+    <section class="section-block">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">Pilot cards</p>
+          <h2>Template validation set</h2>
+        </div>
+        <p class="section-copy">
+          These two cards exercise the shared layout across connectivity and developer tooling.
+        </p>
+      </div>
+      <div class="card-grid" id="pilot-grid"></div>
+    </section>
+
+    <section class="section-block">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">Full series</p>
+          <h2>Fourteen-card countdown</h2>
+        </div>
+        <p class="section-copy">
+          Every card below is generated from the same SVG template and exported by the same script.
+        </p>
+      </div>
+      <div class="card-grid" id="series-grid"></div>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
