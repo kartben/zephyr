@@ -107,8 +107,8 @@ Expected output (abbreviated):
    [main]   [3] Ztest benchmark framework (see benchmark/ sub-app)
    [sensor_sim] Sensor simulation module initialised
    [alert_engine] Alert engine module initialised
-   [sensor_sim] Sensor [#0] T=22.000°C  H=52.500°C  P=101.325 kPa
-   [sensor_sim] Sensor [#5] T=26.000°C  H=57.500°C  P=101.575 kPa
+   [sensor_sim] Sensor [#0] T=22.000°C  H=52.500%  P=101.475 kPa
+   [sensor_sim] Sensor [#5] T=26.000°C  H=60.000%  P=101.725 kPa
    [alert_engine] ALERT [WARNING]  Temperature 26.000°C >= 26.000°C
    [alert_engine] ALERT [WARNING]  Humidity 57.500% >= 55.000%
    ...

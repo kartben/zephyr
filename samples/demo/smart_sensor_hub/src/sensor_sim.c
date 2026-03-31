@@ -74,8 +74,9 @@ SCOPE_VAR_DEFINE(cal, struct cal_ctx *, cal_ctx_destroy(_T),
 
 #define BASE_TEMP_MC    22000   /* 22.000 °C */
 #define BASE_HUM_MP     45000   /* 45.000 %  */
-#define BASE_PRES_MPA   101325  /* 101.325 kPa (in mPa — milli-pascal is not
-				 * SI but keeps the demo integer-only)
+#define BASE_PRES_MPA   101325  /* 101.325 kPa — stored in milli-units to keep
+				 * the demo integer-only; the field name in the
+				 * struct is `pressure_mpa` (milli-Pa).
 				 */
 
 /** Simple deterministic "noise" that varies with the sequence counter. */
