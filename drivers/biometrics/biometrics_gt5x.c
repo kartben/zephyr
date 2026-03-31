@@ -10,6 +10,7 @@
 #include <zephyr/drivers/uart.h>
 #include <zephyr/drivers/biometrics.h>
 #include <zephyr/sys/byteorder.h>
+#include <zephyr/sys/util.h>
 #include <zephyr/logging/log.h>
 
 #include "biometrics_gt5x.h"
@@ -553,6 +554,7 @@ static int gt5x_get_capabilities(const struct device *dev, struct biometric_capa
 	const struct gt5x_config *cfg = dev->config;
 
 	caps->type = BIOMETRIC_TYPE_FINGERPRINT;
+	caps->supported_modalities = BIT(BIOMETRIC_TYPE_FINGERPRINT);
 	caps->max_templates = cfg->max_templates;
 	caps->template_size = cfg->template_size;
 	caps->storage_modes = BIOMETRIC_STORAGE_DEVICE;

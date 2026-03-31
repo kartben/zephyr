@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 The Zephyr Project Contributors
+
+config BIOMETRICS_DFROBOT_AI10
+	bool "DFRobot AI10 face/palm recognition module"
+	default y
+	depends on DT_HAS_DFROBOT_AI10_ENABLED
+	select SERIAL
+	help
+	  Enable driver for the DFRobot AI10 UART biometric module (face and palm).
+
+if BIOMETRICS_DFROBOT_AI10
+
+config DFROBOT_AI10_DEFAULT_TIMEOUT_MS
+	int "Default operation timeout in milliseconds"
+	default 60000
+	help
+	  Default timeout for enrollment and matching when the application passes
+	  K_FOREVER or an equivalent default.
+
+endif # BIOMETRICS_DFROBOT_AI10

@@ -17,7 +17,7 @@
  * @brief Interfaces for biometric sensors.
  * @defgroup biometrics_interface Biometrics
  * @since 4.4
- * @version 0.1.0
+ * @version 0.2.0
  * @ingroup io_interfaces
  * @{
  */
@@ -39,6 +39,7 @@ enum biometric_sensor_type {
 	BIOMETRIC_TYPE_FINGERPRINT, /**< Fingerprint sensor */
 	BIOMETRIC_TYPE_IRIS,        /**< Iris scanner */
 	BIOMETRIC_TYPE_FACE,        /**< Face recognition */
+	BIOMETRIC_TYPE_PALM,        /**< Palm / palm-vein recognition */
 	BIOMETRIC_TYPE_VOICE,       /**< Voice recognition */
 };
 
@@ -103,6 +104,12 @@ enum biometric_attribute {
 struct biometric_capabilities {
 	/** Biometric sensor type */
 	enum biometric_sensor_type type;
+	/**
+	 * Bitmask of supported biometric modalities.
+	 * Each bit corresponds to an enumerator in @ref biometric_sensor_type,
+	 * for example @c BIT(BIOMETRIC_TYPE_FACE).
+	 */
+	uint32_t supported_modalities;
 	/** Maximum templates device can store */
 	uint16_t max_templates;
 	/** Size of each template in bytes */
