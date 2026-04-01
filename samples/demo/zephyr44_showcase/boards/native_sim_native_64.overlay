@@ -1,0 +1,25 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * native_sim devicetree overlay for the SecureVault Node demo.
+ *
+ * Adds the biometrics emulator node (new in Zephyr 4.4) so the demo
+ * runs without any physical fingerprint hardware.
+ */
+
+/ {
+	aliases {
+		/* "fingerprint" alias consumed by src/auth.c */
+		fingerprint = &biometrics_emul;
+	};
+
+	/*
+	 * [4.4 NEW] zephyr,biometrics-emul — emulated fingerprint sensor.
+	 * Backed by drivers/biometrics/biometrics_emul.c which ships in-tree.
+	 * On real hardware replace this node with e.g. a ZFM-x0 or GT5x node.
+	 */
+	biometrics_emul: biometrics-emul {
+		compatible = "zephyr,biometrics-emul";
+		status = "okay";
+	};
+};
