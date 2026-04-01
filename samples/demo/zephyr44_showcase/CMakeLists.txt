@@ -11,12 +11,13 @@ target_sources(app PRIVATE
   src/auth.c
   src/monitor.c
   src/shell.c
+  src/report.c
 )
 
-# WireGuard reporting is optional — requires the zephyr-wireguard module.
-# Build without it by passing -DCONFIG_WIREGUARD=n on the command line.
+# WireGuard stack is optional (zephyr-wireguard west module). report.c is always
+# built; the full VPN path is compiled only when CONFIG_WIREGUARD=y (see report.c).
+# Build without WireGuard: west build ... -- -DCONFIG_WIREGUARD=n
 if(CONFIG_WIREGUARD)
-  target_sources(app PRIVATE src/report.c)
   zephyr_library_include_directories(
     ${ZEPHYR_WIREGUARD_MODULE_DIR}/include
   )
