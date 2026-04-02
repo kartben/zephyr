@@ -2,10 +2,31 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+"""
+CMake File API Data Models
+
+This module defines Python data classes that mirror the structure of CMake's File API
+JSON response. The CMake File API provides detailed information about a project's build
+configuration, including targets, source files, compile groups, and dependencies.
+
+The main data model hierarchy is:
+- Codemodel: Top-level container with build/source paths and configurations
+  - Config: A build configuration (e.g., Debug, Release)
+    - ConfigDir: Directory in the build tree
+    - ConfigProject: CMake project
+    - ConfigTarget: Build target reference with link to full Target data
+      - Target: Complete target information (sources, compile settings, dependencies, etc.)
+
+Many classes use an index-based reference system where objects store indices to related
+objects (e.g., parentIndex, childIndexes). After parsing, these indices are resolved to
+direct object pointers (e.g., parent, children) by linking functions in cmakefileapijson.py.
+"""
+
 from enum import Enum
 
 
 class Codemodel:
+    """Top-level CMake codemodel containing project paths and build configurations."""
 
     def __init__(self):
         super().__init__()
@@ -17,8 +38,9 @@ class Codemodel:
     def __repr__(self):
         return f"Codemodel: source {self.paths_source}, build {self.paths_build}"
 
-# A member of the codemodel configurations array
+
 class Config:
+    """A build configuration within the codemodel."""
 
     def __init__(self):
         super().__init__()
@@ -34,8 +56,14 @@ class Config:
         else:
             return f"Config: {self.name}"
 
-# A member of the configuration.directories array
+
 class ConfigDir:
+    """
+    A directory in the build tree.
+
+    Uses index-based references (parentIndex, childIndexes, projectIndex, targetIndexes)
+    that are resolved to object pointers (parent, children, project, targets) after loading.
+    """
 
     def __init__(self):
         super().__init__()
@@ -49,7 +77,7 @@ class ConfigDir:
         self.minimumCMakeVersion = ""
         self.hasInstallRule = False
 
-        # actual items, calculated from indices after loading
+        # Resolved object pointers (calculated from indices after loading)
         self.parent = None
         self.children = []
         self.project = None
@@ -58,8 +86,14 @@ class ConfigDir:
     def __repr__(self):
         return f"ConfigDir: source {self.source}, build {self.build}"
 
-# A member of the configuration.projects array
+
 class ConfigProject:
+    """
+    A CMake project in the build tree.
+
+    Uses index-based references (parentIndex, childIndexes, directoryIndexes, targetIndexes)
+    that are resolved to object pointers (parent, children, directories, targets) after loading.
+    """
 
     def __init__(self):
         super().__init__()
@@ -70,7 +104,7 @@ class ConfigProject:
         self.directoryIndexes = []
         self.targetIndexes = []
 
-        # actual items, calculated from indices after loading
+        # Resolved object pointers (calculated from indices after loading)
         self.parent = None
         self.children = []
         self.directories = []
@@ -79,8 +113,14 @@ class ConfigProject:
     def __repr__(self):
         return f"ConfigProject: {self.name}"
 
-# A member of the configuration.configTargets array
+
 class ConfigTarget:
+    """
+    Reference to a build target with metadata and link to full Target data.
+
+    Uses index-based references (directoryIndex, projectIndex) that are resolved
+    to object pointers (directory, project) after loading.
+    """
 
     def __init__(self):
         super().__init__()
@@ -91,18 +131,19 @@ class ConfigTarget:
         self.projectIndex = -1
         self.jsonFile = ""
 
-        # actual target data, loaded from self.jsonFile
+        # Full target data loaded from self.jsonFile
         self.target = None
 
-        # actual items, calculated from indices after loading
+        # Resolved object pointers (calculated from indices after loading)
         self.directory = None
         self.project = None
 
     def __repr__(self):
         return f"ConfigTarget: {self.name}"
 
-# The available values for Target.type
+
 class TargetType(Enum):
+    """Types of build targets available in CMake."""
     UNKNOWN = 0
     EXECUTABLE = 1
     STATIC_LIBRARY = 2
@@ -111,8 +152,9 @@ class TargetType(Enum):
     OBJECT_LIBRARY = 5
     UTILITY = 6
 
-# A member of the target.install_destinations array
+
 class TargetInstallDestination:
+    """Installation destination path for a target."""
 
     def __init__(self):
         super().__init__()
@@ -123,9 +165,9 @@ class TargetInstallDestination:
     def __repr__(self):
         return f"TargetInstallDestination: {self.path}"
 
-# A member of the target.link_commandFragments and
-# archive_commandFragments array
+
 class TargetCommandFragment:
+    """Command fragment for linking or archiving targets."""
 
     def __init__(self):
         super().__init__()
@@ -136,8 +178,9 @@ class TargetCommandFragment:
     def __repr__(self):
         return f"TargetCommandFragment: {self.fragment}"
 
-# A member of the target.dependencies array
+
 class TargetDependency:
+    """Dependency on another target."""
 
     def __init__(self):
         super().__init__()
@@ -148,8 +191,14 @@ class TargetDependency:
     def __repr__(self):
         return f"TargetDependency: {self.id}"
 
-# A member of the target.sources array
+
 class TargetSource:
+    """
+    A source file in a target.
+
+    Uses index-based references (compileGroupIndex, sourceGroupIndex) that are
+    resolved to object pointers (compileGroup, sourceGroup) after loading.
+    """
 
     def __init__(self):
         super().__init__()
@@ -160,15 +209,21 @@ class TargetSource:
         self.isGenerated = False
         self.backtrace = -1
 
-        # actual items, calculated from indices after loading
+        # Resolved object pointers (calculated from indices after loading)
         self.compileGroup = None
         self.sourceGroup = None
 
     def __repr__(self):
         return f"TargetSource: {self.path}"
 
-# A member of the target.sourceGroups array
+
 class TargetSourceGroup:
+    """
+    A group of related source files in a target.
+
+    Uses index-based references (sourceIndexes) that are resolved to
+    object pointers (sources) after loading.
+    """
 
     def __init__(self):
         super().__init__()
@@ -176,14 +231,15 @@ class TargetSourceGroup:
         self.name = ""
         self.sourceIndexes = []
 
-        # actual items, calculated from indices after loading
+        # Resolved object pointers (calculated from indices after loading)
         self.sources = []
 
     def __repr__(self):
         return f"TargetSourceGroup: {self.name}"
 
-# A member of the target.compileGroups.includes array
+
 class TargetCompileGroupInclude:
+    """Include directory for a compile group."""
 
     def __init__(self):
         super().__init__()
@@ -195,8 +251,9 @@ class TargetCompileGroupInclude:
     def __repr__(self):
         return f"TargetCompileGroupInclude: {self.path}"
 
-# A member of the target.compileGroups.precompileHeaders array
+
 class TargetCompileGroupPrecompileHeader:
+    """Precompiled header for a compile group."""
 
     def __init__(self):
         super().__init__()
@@ -207,8 +264,9 @@ class TargetCompileGroupPrecompileHeader:
     def __repr__(self):
         return f"TargetCompileGroupPrecompileHeader: {self.header}"
 
-# A member of the target.compileGroups.defines array
+
 class TargetCompileGroupDefine:
+    """Preprocessor definition for a compile group."""
 
     def __init__(self):
         super().__init__()
@@ -219,8 +277,14 @@ class TargetCompileGroupDefine:
     def __repr__(self):
         return f"TargetCompileGroupDefine: {self.define}"
 
-# A member of the target.compileGroups array
+
 class TargetCompileGroup:
+    """
+    Compilation settings for a group of source files.
+
+    Uses index-based references (sourceIndexes) that are resolved to
+    object pointers (sources) after loading.
+    """
 
     def __init__(self):
         super().__init__()
@@ -233,14 +297,15 @@ class TargetCompileGroup:
         self.defines = []
         self.sysroot = ""
 
-        # actual items, calculated from indices after loading
+        # Resolved object pointers (calculated from indices after loading)
         self.sources = []
 
     def __repr__(self):
         return f"TargetCompileGroup: {self.sources}"
 
-# A member of the target.backtraceGraph_nodes array
+
 class TargetBacktraceGraphNode:
+    """Node in the backtrace graph for tracking CMake command origins."""
 
     def __init__(self):
         super().__init__()
@@ -253,9 +318,9 @@ class TargetBacktraceGraphNode:
     def __repr__(self):
         return f"TargetBacktraceGraphNode: {self.command}"
 
-# Actual data in config.target.target, loaded from
-# config.target.jsonFile
+
 class Target:
+    """Complete build target information including sources, compile settings, and dependencies."""
 
     def __init__(self):
         super().__init__()

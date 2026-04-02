@@ -2,6 +2,22 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+"""
+CMake File API JSON Parser
+
+This module parses JSON files from CMake's File API and converts them into
+Python data structures defined in cmakefileapi.py.
+
+The CMake File API generates JSON files in the build directory under
+.cmake/api/v1/reply/ containing detailed build information. This parser:
+
+1. Reads the index file to locate the codemodel file
+2. Parses the codemodel and all referenced target JSON files
+3. Resolves index-based references to create direct object pointers
+
+Main entry point: parseReply(replyIndexPath)
+"""
+
 import json
 import os
 
@@ -9,29 +25,47 @@ from west import log
 
 import zspdx.cmakefileapi
 
+# CMake File API constants
+CMAKE_REPLY_FIELD = "reply"
+CMAKE_CODEMODEL_FIELD = "codemodel-v2"
+CMAKE_JSON_FILE_FIELD = "jsonFile"
+CMAKE_KIND_CODEMODEL = "codemodel"
+CMAKE_VERSION_MAJOR_EXPECTED = 2
+
 
 def parseReply(replyIndexPath):
+    """
+    Parse a CMake File API reply index file and load the codemodel.
+
+    Args:
+        replyIndexPath: Path to the index-*.json file in .cmake/api/v1/reply/
+
+    Returns:
+        Codemodel object with full build information, or None on error
+    """
     replyDir, _ = os.path.split(replyIndexPath)
 
-    # first we need to find the codemodel reply file
+    # First find the codemodel reply file from the index
     try:
         with open(replyIndexPath) as indexFile:
             js = json.load(indexFile)
 
-            # get reply object
-            reply_dict = js.get("reply", {})
+            # Get reply object
+            reply_dict = js.get(CMAKE_REPLY_FIELD, {})
             if reply_dict == {}:
-                log.err('no "reply" field found in index file')
+                log.err(f'no "{CMAKE_REPLY_FIELD}" field found in index file')
                 return None
-            # get codemodel object
-            cm_dict = reply_dict.get("codemodel-v2", {})
+
+            # Get codemodel object
+            cm_dict = reply_dict.get(CMAKE_CODEMODEL_FIELD, {})
             if cm_dict == {}:
-                log.err('no "codemodel-v2" field found in "reply" object in index file')
+                log.err(f'no "{CMAKE_CODEMODEL_FIELD}" field found in "{CMAKE_REPLY_FIELD}" object in index file')
                 return None
-            # and get codemodel filename
-            jsonFile = cm_dict.get("jsonFile", "")
+
+            # Get codemodel filename
+            jsonFile = cm_dict.get(CMAKE_JSON_FILE_FIELD, "")
             if jsonFile == "":
-                log.err('no "jsonFile" field found in "codemodel-v2" object in index file')
+                log.err(f'no "{CMAKE_JSON_FILE_FIELD}" field found in "{CMAKE_CODEMODEL_FIELD}" object in index file')
                 return None
 
             return parseCodemodel(replyDir, jsonFile)
@@ -43,7 +77,18 @@ def parseReply(replyIndexPath):
         log.err(f"Error parsing JSON in {replyIndexPath}: {str(e)}")
         return None
 
+
 def parseCodemodel(replyDir, codemodelFile):
+    """
+    Parse the main codemodel JSON file.
+
+    Args:
+        replyDir: Directory containing the reply JSON files
+        codemodelFile: Filename of the codemodel JSON file
+
+    Returns:
+        Codemodel object with all configurations and targets, or None on error
+    """
     codemodelPath = os.path.join(replyDir, codemodelFile)
 
     try:
@@ -52,20 +97,21 @@ def parseCodemodel(replyDir, codemodelFile):
 
             cm = zspdx.cmakefileapi.Codemodel()
 
-            # for correctness, check kind and version
+            # Verify kind and version for correctness
             kind = js.get("kind", "")
-            if kind != "codemodel":
-                log.err('Error loading CMake API reply: expected "kind":"codemodel" '
+            if kind != CMAKE_KIND_CODEMODEL:
+                log.err(f'Error loading CMake API reply: expected "kind":"{CMAKE_KIND_CODEMODEL}" '
                         f'in {codemodelPath}, got {kind}')
                 return None
+
             version = js.get("version", {})
             versionMajor = version.get("major", -1)
-            if versionMajor != 2:
+            if versionMajor != CMAKE_VERSION_MAJOR_EXPECTED:
                 if versionMajor == -1:
-                    log.err("Error loading CMake API reply: expected major version 2 "
+                    log.err(f"Error loading CMake API reply: expected major version {CMAKE_VERSION_MAJOR_EXPECTED} "
                             f"in {codemodelPath}, no version found")
                     return None
-                log.err("Error loading CMake API reply: expected major version 2 "
+                log.err(f"Error loading CMake API reply: expected major version {CMAKE_VERSION_MAJOR_EXPECTED} "
                         f"in {codemodelPath}, got {versionMajor}")
                 return None
 
@@ -74,14 +120,14 @@ def parseCodemodel(replyDir, codemodelFile):
             cm.paths_source = paths_dict.get("source", "")
             cm.paths_build = paths_dict.get("build", "")
 
-            # get configurations
+            # Parse each configuration
             configs_arr = js.get("configurations", [])
             for cfg_dict in configs_arr:
                 cfg = parseConfig(cfg_dict, replyDir)
                 if cfg:
                     cm.configurations.append(cfg)
 
-            # and after parsing is done, link all the indices
+            # After parsing, link all index-based references to direct object pointers
             linkCodemodel(cm)
 
             return cm
@@ -93,11 +139,22 @@ def parseCodemodel(replyDir, codemodelFile):
         log.err(f"Error parsing JSON in {codemodelPath}: {str(e)}")
         return None
 
+
 def parseConfig(cfg_dict, replyDir):
+    """
+    Parse a configuration from the codemodel.
+
+    Args:
+        cfg_dict: Dictionary containing configuration data
+        replyDir: Directory containing target JSON files
+
+    Returns:
+        Config object with directories, projects, and targets
+    """
     cfg = zspdx.cmakefileapi.Config()
     cfg.name = cfg_dict.get("name", "")
 
-    # parse and add each directory
+    # Parse and add each directory
     dirs_arr = cfg_dict.get("directories", [])
     for dir_dict in dirs_arr:
         if dir_dict != {}:
@@ -113,7 +170,7 @@ def parseConfig(cfg_dict, replyDir):
             cfgdir.hasInstallRule = dir_dict.get("hasInstallRule", False)
             cfg.directories.append(cfgdir)
 
-    # parse and add each project
+    # Parse and add each project
     projects_arr = cfg_dict.get("projects", [])
     for prj_dict in projects_arr:
         if prj_dict != {}:
@@ -125,7 +182,7 @@ def parseConfig(cfg_dict, replyDir):
             prj.targetIndexes = prj_dict.get("targetIndexes", [])
             cfg.projects.append(prj)
 
-    # parse and add each target
+    # Parse and add each target
     cfgTargets_arr = cfg_dict.get("targets", [])
     for cfgTarget_dict in cfgTargets_arr:
         if cfgTarget_dict != {}:
@@ -145,7 +202,17 @@ def parseConfig(cfg_dict, replyDir):
 
     return cfg
 
+
 def parseTarget(targetPath):
+    """
+    Parse a target JSON file.
+
+    Args:
+        targetPath: Path to the target-*.json file
+
+    Returns:
+        Target object with full target information, or None on error
+    """
     try:
         with open(targetPath) as targetFile:
             js = json.load(targetFile)
@@ -175,7 +242,7 @@ def parseTarget(targetPath):
 
             target.isGeneratorProvided = js.get("isGeneratorProvided", False)
 
-            # call separate functions to parse subsections
+            # Parse target subsections
             parseTargetInstall(target, js)
             parseTargetLink(target, js)
             parseTargetArchive(target, js)
@@ -194,7 +261,17 @@ def parseTarget(targetPath):
         log.err(f"Error parsing JSON in {targetPath}: {str(e)}")
         return None
 
+
 def parseTargetType(targetType):
+    """
+    Convert target type string to TargetType enum.
+
+    Args:
+        targetType: Target type string from JSON
+
+    Returns:
+        TargetType enum value
+    """
     return {
         "EXECUTABLE": zspdx.cmakefileapi.TargetType.EXECUTABLE,
         "STATIC_LIBRARY": zspdx.cmakefileapi.TargetType.STATIC_LIBRARY,
@@ -204,7 +281,28 @@ def parseTargetType(targetType):
         "UTILITY": zspdx.cmakefileapi.TargetType.UTILITY,
     }.get(targetType, zspdx.cmakefileapi.TargetType.UNKNOWN)
 
+
+def _parseCommandFragments(fragments_arr):
+    """
+    Helper function to parse command fragments array.
+
+    Args:
+        fragments_arr: Array of fragment dictionaries
+
+    Returns:
+        List of TargetCommandFragment objects
+    """
+    fragments = []
+    for fragment_dict in fragments_arr:
+        fragment = zspdx.cmakefileapi.TargetCommandFragment()
+        fragment.fragment = fragment_dict.get("fragment", "")
+        fragment.role = fragment_dict.get("role", "")
+        fragments.append(fragment)
+    return fragments
+
+
 def parseTargetInstall(target, js):
+    """Parse target installation information."""
     install_dict = js.get("install", {})
     if install_dict == {}:
         return
@@ -218,7 +316,9 @@ def parseTargetInstall(target, js):
         dest.backtrace = destination_dict.get("backtrace", -1)
         target.install_destinations.append(dest)
 
+
 def parseTargetLink(target, js):
+    """Parse target linking information."""
     link_dict = js.get("link", {})
     if link_dict == {}:
         return
@@ -227,27 +327,25 @@ def parseTargetLink(target, js):
     sysroot_dict = link_dict.get("sysroot", {})
     target.link_sysroot = sysroot_dict.get("path", "")
 
+    # Use helper function to parse command fragments
     fragments_arr = link_dict.get("commandFragments", [])
-    for fragment_dict in fragments_arr:
-        fragment = zspdx.cmakefileapi.TargetCommandFragment()
-        fragment.fragment = fragment_dict.get("fragment", "")
-        fragment.role = fragment_dict.get("role", "")
-        target.link_commandFragments.append(fragment)
+    target.link_commandFragments = _parseCommandFragments(fragments_arr)
+
 
 def parseTargetArchive(target, js):
+    """Parse target archive information (for static libraries)."""
     archive_dict = js.get("archive", {})
     if archive_dict == {}:
         return
     target.archive_lto = archive_dict.get("lto", False)
 
+    # Use helper function to parse command fragments
     fragments_arr = archive_dict.get("commandFragments", [])
-    for fragment_dict in fragments_arr:
-        fragment = zspdx.cmakefileapi.TargetCommandFragment()
-        fragment.fragment = fragment_dict.get("fragment", "")
-        fragment.role = fragment_dict.get("role", "")
-        target.archive_commandFragments.append(fragment)
+    target.archive_commandFragments = _parseCommandFragments(fragments_arr)
+
 
 def parseTargetDependencies(target, js):
+    """Parse target dependencies."""
     dependencies_arr = js.get("dependencies", [])
     for dependency_dict in dependencies_arr:
         dep = zspdx.cmakefileapi.TargetDependency()
@@ -255,7 +353,9 @@ def parseTargetDependencies(target, js):
         dep.backtrace = dependency_dict.get("backtrace", -1)
         target.dependencies.append(dep)
 
+
 def parseTargetSources(target, js):
+    """Parse target source files."""
     sources_arr = js.get("sources", [])
     for source_dict in sources_arr:
         src = zspdx.cmakefileapi.TargetSource()
@@ -266,7 +366,9 @@ def parseTargetSources(target, js):
         src.backtrace = source_dict.get("backtrace", -1)
         target.sources.append(src)
 
+
 def parseTargetSourceGroups(target, js):
+    """Parse target source groups."""
     sourceGroups_arr = js.get("sourceGroups", [])
     for sourceGroup_dict in sourceGroups_arr:
         srcgrp = zspdx.cmakefileapi.TargetSourceGroup()
@@ -274,7 +376,67 @@ def parseTargetSourceGroups(target, js):
         srcgrp.sourceIndexes = sourceGroup_dict.get("sourceIndexes", [])
         target.sourceGroups.append(srcgrp)
 
+
+def _parseCompileGroupIncludes(includes_arr):
+    """
+    Helper function to parse compile group includes.
+
+    Args:
+        includes_arr: Array of include dictionaries
+
+    Returns:
+        List of TargetCompileGroupInclude objects
+    """
+    includes = []
+    for include_dict in includes_arr:
+        grpInclude = zspdx.cmakefileapi.TargetCompileGroupInclude()
+        grpInclude.path = include_dict.get("path", "")
+        grpInclude.isSystem = include_dict.get("isSystem", False)
+        grpInclude.backtrace = include_dict.get("backtrace", -1)
+        includes.append(grpInclude)
+    return includes
+
+
+def _parseCompileGroupPrecompileHeaders(headers_arr):
+    """
+    Helper function to parse compile group precompiled headers.
+
+    Args:
+        headers_arr: Array of precompiled header dictionaries
+
+    Returns:
+        List of TargetCompileGroupPrecompileHeader objects
+    """
+    headers = []
+    for header_dict in headers_arr:
+        grpHeader = zspdx.cmakefileapi.TargetCompileGroupPrecompileHeader()
+        grpHeader.header = header_dict.get("header", "")
+        grpHeader.backtrace = header_dict.get("backtrace", -1)
+        headers.append(grpHeader)
+    return headers
+
+
+def _parseCompileGroupDefines(defines_arr):
+    """
+    Helper function to parse compile group preprocessor defines.
+
+    Args:
+        defines_arr: Array of define dictionaries
+
+    Returns:
+        List of TargetCompileGroupDefine objects
+    """
+    defines = []
+    for define_dict in defines_arr:
+        grpDefine = zspdx.cmakefileapi.TargetCompileGroupDefine()
+        grpDefine.define = define_dict.get("define", "")
+        grpDefine.backtrace = define_dict.get("backtrace", -1)
+        defines.append(grpDefine)
+    return defines
+
+
 def parseTargetCompileGroups(target, js):
+    """Parse target compile groups with includes, defines, and headers."""
     compileGroups_arr = js.get("compileGroups", [])
     for compileGroup_dict in compileGroups_arr:
         cmpgrp = zspdx.cmakefileapi.TargetCompileGroup()
@@ -282,37 +444,28 @@ def parseTargetCompileGroups(target, js):
         cmpgrp.language = compileGroup_dict.get("language", "")
         cmpgrp.sysroot = compileGroup_dict.get("sysroot", "")
 
+        # Parse compile command fragments
         commandFragments_arr = compileGroup_dict.get("compileCommandFragments", [])
         for commandFragment_dict in commandFragments_arr:
             fragment = commandFragment_dict.get("fragment", "")
             if fragment != "":
                 cmpgrp.compileCommandFragments.append(fragment)
 
+        # Use helper functions to parse includes, headers, and defines
         includes_arr = compileGroup_dict.get("includes", [])
-        for include_dict in includes_arr:
-            grpInclude = zspdx.cmakefileapi.TargetCompileGroupInclude()
-            grpInclude.path = include_dict.get("path", "")
-            grpInclude.isSystem = include_dict.get("isSystem", False)
-            grpInclude.backtrace = include_dict.get("backtrace", -1)
-            cmpgrp.includes.append(grpInclude)
+        cmpgrp.includes = _parseCompileGroupIncludes(includes_arr)
 
         precompileHeaders_arr = compileGroup_dict.get("precompileHeaders", [])
-        for precompileHeader_dict in precompileHeaders_arr:
-            grpHeader = zspdx.cmakefileapi.TargetCompileGroupPrecompileHeader()
-            grpHeader.header = precompileHeader_dict.get("header", "")
-            grpHeader.backtrace = precompileHeader_dict.get("backtrace", -1)
-            cmpgrp.precompileHeaders.append(grpHeader)
+        cmpgrp.precompileHeaders = _parseCompileGroupPrecompileHeaders(precompileHeaders_arr)
 
         defines_arr = compileGroup_dict.get("defines", [])
-        for define_dict in defines_arr:
-            grpDefine = zspdx.cmakefileapi.TargetCompileGroupDefine()
-            grpDefine.define = define_dict.get("define", "")
-            grpDefine.backtrace = define_dict.get("backtrace", -1)
-            cmpgrp.defines.append(grpDefine)
+        cmpgrp.defines = _parseCompileGroupDefines(defines_arr)
 
         target.compileGroups.append(cmpgrp)
 
+
 def parseTargetBacktraceGraph(target, js):
+    """Parse target backtrace graph for tracking CMake command origins."""
     backtraceGraph_dict = js.get("backtraceGraph", {})
     if backtraceGraph_dict == {}:
         return
@@ -328,15 +481,30 @@ def parseTargetBacktraceGraph(target, js):
         node.parent = node_dict.get("parent", -1)
         target.backtraceGraph_nodes.append(node)
 
-# Create direct pointers for all Configs in Codemodel
-# takes: Codemodel
+
+# =============================================================================
+# Linking Functions - Resolve index-based references to direct object pointers
+# =============================================================================
+
+
 def linkCodemodel(cm):
+    """
+    Create direct object pointers for all Configs in Codemodel.
+
+    Args:
+        cm: Codemodel object with configurations
+    """
     for cfg in cm.configurations:
         linkConfig(cfg)
 
-# Create direct pointers for all contents of Config
-# takes: Config
+
 def linkConfig(cfg):
+    """
+    Create direct object pointers for all contents of Config.
+
+    Args:
+        cfg: Config object with directories, projects, and targets
+    """
     for cfgDir in cfg.directories:
         linkConfigDir(cfg, cfgDir)
     for cfgPrj in cfg.projects:
@@ -344,9 +512,15 @@ def linkConfig(cfg):
     for cfgTarget in cfg.configTargets:
         linkConfigTarget(cfg, cfgTarget)
 
-# Create direct pointers for ConfigDir indices
-# takes: Config and ConfigDir
+
 def linkConfigDir(cfg, cfgDir):
+    """
+    Create direct object pointers for ConfigDir indices.
+
+    Args:
+        cfg: Config object containing the directory
+        cfgDir: ConfigDir object with index-based references
+    """
     if cfgDir.parentIndex == -1:
         cfgDir.parent = None
     else:
@@ -365,9 +539,15 @@ def linkConfigDir(cfg, cfgDir):
     for targetIndex in cfgDir.targetIndexes:
         cfgDir.targets.append(cfg.configTargets[targetIndex])
 
-# Create direct pointers for ConfigProject indices
-# takes: Config and ConfigProject
+
 def linkConfigProject(cfg, cfgPrj):
+    """
+    Create direct object pointers for ConfigProject indices.
+
+    Args:
+        cfg: Config object containing the project
+        cfgPrj: ConfigProject object with index-based references
+    """
     if cfgPrj.parentIndex == -1:
         cfgPrj.parent = None
     else:
@@ -385,9 +565,15 @@ def linkConfigProject(cfg, cfgPrj):
     for targetIndex in cfgPrj.targetIndexes:
         cfgPrj.targets.append(cfg.configTargets[targetIndex])
 
-# Create direct pointers for ConfigTarget indices
-# takes: Config and ConfigTarget
+
 def linkConfigTarget(cfg, cfgTarget):
+    """
+    Create direct object pointers for ConfigTarget indices.
+
+    Args:
+        cfg: Config object containing the target
+        cfgTarget: ConfigTarget object with index-based references
+    """
     if cfgTarget.directoryIndex == -1:
         cfgTarget.directory = None
     else:
@@ -398,7 +584,7 @@ def linkConfigTarget(cfg, cfgTarget):
     else:
         cfgTarget.project = cfg.projects[cfgTarget.projectIndex]
 
-    # and link target's sources and source groups
+    # Link target's sources and source groups
     for ts in cfgTarget.target.sources:
         linkTargetSource(cfgTarget.target, ts)
     for tsg in cfgTarget.target.sourceGroups:
@@ -406,9 +592,15 @@ def linkConfigTarget(cfg, cfgTarget):
     for tcg in cfgTarget.target.compileGroups:
         linkTargetCompileGroup(cfgTarget.target, tcg)
 
-# Create direct pointers for TargetSource indices
-# takes: Target and TargetSource
+
 def linkTargetSource(target, targetSrc):
+    """
+    Create direct object pointers for TargetSource indices.
+
+    Args:
+        target: Target object containing the source
+        targetSrc: TargetSource object with index-based references
+    """
     if targetSrc.compileGroupIndex == -1:
         targetSrc.compileGroup = None
     else:
@@ -419,16 +611,28 @@ def linkTargetSource(target, targetSrc):
     else:
         targetSrc.sourceGroup = target.sourceGroups[targetSrc.sourceGroupIndex]
 
-# Create direct pointers for TargetSourceGroup indices
-# takes: Target and TargetSourceGroup
+
 def linkTargetSourceGroup(target, targetSrcGrp):
+    """
+    Create direct object pointers for TargetSourceGroup indices.
+
+    Args:
+        target: Target object containing the source group
+        targetSrcGrp: TargetSourceGroup object with index-based references
+    """
     targetSrcGrp.sources = []
     for srcIndex in targetSrcGrp.sourceIndexes:
         targetSrcGrp.sources.append(target.sources[srcIndex])
 
-# Create direct pointers for TargetCompileGroup indices
-# takes: Target and TargetCompileGroup
+
 def linkTargetCompileGroup(target, targetCmpGrp):
+    """
+    Create direct object pointers for TargetCompileGroup indices.
+
+    Args:
+        target: Target object containing the compile group
+        targetCmpGrp: TargetCompileGroup object with index-based references
+    """
     targetCmpGrp.sources = []
     for srcIndex in targetCmpGrp.sourceIndexes:
         targetCmpGrp.sources.append(target.sources[srcIndex])
