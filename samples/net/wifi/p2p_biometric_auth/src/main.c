@@ -49,7 +49,7 @@ static const struct device *const fingerprint = DEVICE_DT_GET(FINGERPRINT_NODE);
 /** Template ID used for the pre-enrolled fingerprint. */
 #define AUTH_TEMPLATE_ID 1
 
-/* ---------- Synchronisation ---------- */
+/* ---------- Synchronization ---------- */
 
 /** Semaphore given by the WiFi event handler when a peer is detected. */
 static K_SEM_DEFINE(peer_detected_sem, 0, 1);
@@ -299,7 +299,7 @@ int main(void)
 
 	LOG_INF("=== WiFi Direct Biometric Auth Demo ===");
 
-	/* --- Initialise LED --- */
+	/* --- Initialize LED --- */
 	if (!gpio_is_ready_dt(&led)) {
 		LOG_ERR("LED device not ready");
 		return -ENODEV;
@@ -311,7 +311,7 @@ int main(void)
 		return ret;
 	}
 
-	/* --- Initialise biometrics sensor --- */
+	/* --- Initialize biometrics sensor --- */
 	if (!device_is_ready(fingerprint)) {
 		LOG_ERR("Fingerprint sensor not ready");
 		return -ENODEV;

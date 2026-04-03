@@ -12,7 +12,7 @@ authentication before granting network access to connecting peers.
 
 When the application starts it:
 
-1. Initialises the GPIO-based LED (``led0`` alias) and the biometric
+1. Initializes the GPIO-based LED (``led0`` alias) and the biometric
    fingerprint sensor (``fingerprint`` alias).
 2. Pre-enrolls a fingerprint template using the biometrics API.
 3. Starts a WiFi Direct Group Owner (hotspot).  On platforms without full
