@@ -8,6 +8,8 @@ import uuid
 
 from west.commands import WestCommand
 
+from build_helpers import load_domains
+
 script_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 sys.path.insert(0, os.path.join(script_dir, "pylib/"))
 from zspdx.sbom import SBOMConfig, makeSPDX, setupCmakeQuery  # noqa: E402
@@ -21,7 +23,11 @@ Prior to the build, an empty file must be created at
 BUILDDIR/.cmake/api/v1/query/codemodel-v2 in order to enable
 the CMake file-based API, which the SPDX command relies upon.
 This can be done by calling `west spdx --init` prior to
-calling `west build`."""
+calling `west build`.
+
+For sysbuild (multi-image) builds, pass the top-level sysbuild build
+directory to `west spdx --init` and `west spdx`. The command will
+automatically find and process all images defined in domains.yaml."""
 
 class ZephyrSpdx(WestCommand):
     def __init__(self):
@@ -76,22 +82,39 @@ class ZephyrSpdx(WestCommand):
         if not args.build_dir:
             self.die("Build directory not specified; call `west spdx --init --build-dir=BUILD_DIR`")
 
-        # initialize CMake file-based API - empty query file
-        query_ready = setupCmakeQuery(args.build_dir)
-        if query_ready:
-            self.inf("initialized; run `west build` then run `west spdx`")
+        # Check if this is a sysbuild directory (has domains.yaml)
+        domains_yaml_path = os.path.join(args.build_dir, "domains.yaml")
+        if os.path.exists(domains_yaml_path):
+            # sysbuild: initialize cmake query for each domain
+            domains = load_domains(args.build_dir)
+            all_ready = True
+            for domain in domains.get_domains():
+                query_ready = setupCmakeQuery(domain.build_dir)
+                if query_ready:
+                    self.inf(f"initialized for domain '{domain.name}' "
+                             f"at {domain.build_dir}")
+                else:
+                    self.err(f"Couldn't create CMake file-based API query "
+                             f"directory for domain '{domain.name}'")
+                    all_ready = False
+            if all_ready:
+                self.inf("initialized; run `west build` then run `west spdx`")
+            else:
+                self.die("Failed to initialize CMake file-based API for one "
+                         "or more domains")
         else:
-            self.die("Couldn't create CMake file-based API query directory\n"
-                     "You can manually create an empty file at "
-                     "$BUILDDIR/.cmake/api/v1/query/codemodel-v2")
+            # single image: initialize as before
+            query_ready = setupCmakeQuery(args.build_dir)
+            if query_ready:
+                self.inf("initialized; run `west build` then run `west spdx`")
+            else:
+                self.die("Couldn't create CMake file-based API query directory\n"
+                         "You can manually create an empty file at "
+                         "$BUILDDIR/.cmake/api/v1/query/codemodel-v2")
 
-    def do_run_spdx(self, args):
-        if not args.build_dir:
-            self.die("Build directory not specified; call `west spdx --build-dir=BUILD_DIR`")
-
-        # create the SPDX files
+    def _make_spdx_config(self, args, build_dir, spdx_dir):
         cfg = SBOMConfig()
-        cfg.buildDir = args.build_dir
+        cfg.buildDir = build_dir
         try:
             version_obj = parse(args.spdx_version)
         except Exception:
@@ -104,24 +127,54 @@ class ZephyrSpdx(WestCommand):
             # note that this is intentionally _not_ an actual URL where
             # this document will be stored
             cfg.namespacePrefix = f"http://spdx.org/spdxdocs/zephyr-{str(uuid.uuid4())}"
-        if args.spdx_dir:
-            cfg.spdxDir = args.spdx_dir
-        else:
-            cfg.spdxDir = os.path.join(args.build_dir, "spdx")
+        cfg.spdxDir = spdx_dir
         if args.analyze_includes:
             cfg.analyzeIncludes = True
         if args.include_sdk:
             cfg.includeSDK = True
+        return cfg
+
+    def _run_spdx_for_build_dir(self, args, build_dir, spdx_dir):
+        cfg = self._make_spdx_config(args, build_dir, spdx_dir)
 
         # make sure SPDX directory exists, or create it if it doesn't
         if os.path.exists(cfg.spdxDir):
             if not os.path.isdir(cfg.spdxDir):
                 self.err(f'SPDX output directory {cfg.spdxDir} exists but is not a directory')
-                return
+                return False
             # directory exists, we're good
         else:
             # create the directory
             os.makedirs(cfg.spdxDir, exist_ok=False)
 
-        if not makeSPDX(cfg):
-            self.die("Failed to create SPDX output")
+        return makeSPDX(cfg)
+
+    def do_run_spdx(self, args):
+        if not args.build_dir:
+            self.die("Build directory not specified; call `west spdx --build-dir=BUILD_DIR`")
+
+        # Check if this is a sysbuild directory (has domains.yaml)
+        domains_yaml_path = os.path.join(args.build_dir, "domains.yaml")
+        if os.path.exists(domains_yaml_path):
+            # sysbuild: generate SPDX for each domain
+            domains = load_domains(args.build_dir)
+            all_ok = True
+            for domain in domains.get_domains():
+                if args.spdx_dir:
+                    spdx_dir = os.path.join(args.spdx_dir, domain.name)
+                else:
+                    spdx_dir = os.path.join(args.build_dir, "spdx", domain.name)
+                self.inf(f"generating SPDX for domain '{domain.name}'")
+                if not self._run_spdx_for_build_dir(args, domain.build_dir,
+                                                     spdx_dir):
+                    all_ok = False
+            if not all_ok:
+                self.die("Failed to create SPDX output")
+        else:
+            # single image: generate as before
+            if args.spdx_dir:
+                spdx_dir = args.spdx_dir
+            else:
+                spdx_dir = os.path.join(args.build_dir, "spdx")
+            if not self._run_spdx_for_build_dir(args, args.build_dir, spdx_dir):
+                self.die("Failed to create SPDX output")

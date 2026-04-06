@@ -80,6 +80,9 @@ class Walker:
         # SDK install path from parsed CMake cache
         self.sdkPath = ""
 
+        # path to build metadata file from parsed CMake cache
+        self.metaFile = ""
+
     def _build_purl(self, url, version=None):
         if not url:
             return None

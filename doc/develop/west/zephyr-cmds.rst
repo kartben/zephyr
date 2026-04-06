@@ -113,9 +113,20 @@ To use this command:
 
 .. note::
 
-   When building with :ref:`sysbuild`, make sure you target the actual application
-   which you want to generate the SBOM for. For example, if the application is
-   named ``hello_world``:
+   When building with :ref:`sysbuild`, you can pass the top-level sysbuild build
+   directory to ``west spdx``. The command will automatically detect all images
+   defined in :file:`domains.yaml` and process each one. For example:
+
+   .. code-block:: bash
+
+     west spdx --init -d BUILD_DIR
+     west build --sysbuild -d BUILD_DIR [...]
+     west spdx -d BUILD_DIR
+
+   This generates SPDX documents for each image under
+   :file:`BUILD_DIR/spdx/<domain_name>/`.
+
+   Alternatively, you can target a specific image's sub-directory directly:
 
    .. code-block:: bash
 
@@ -155,7 +166,8 @@ source files that are compiled to generate the built library files.
   according to the default format described in section 2.5 using a random UUID.
 
 - ``-s SPDX_DIR``: specifies an alternate directory where the SPDX documents
-  should be written instead of :file:`BUILD_DIR/spdx/`.
+  should be written instead of :file:`BUILD_DIR/spdx/`. For sysbuild builds,
+  documents are written to :file:`SPDX_DIR/<domain_name>/` for each image.
 
 - ``--spdx-version {2.2,2.3}``: specifies which SPDX specification version to use.
   Defaults to ``2.3``. SPDX 2.3 includes additional fields like ``PrimaryPackagePurpose``
