@@ -808,6 +808,7 @@ xlnx	Xilinx
 xmc	Wuhan Xinxin Semiconductor Manufacturing Co., Ltd.
 xnano	Xnano
 xptek	Shenzhen Xptek Technology Co., Ltd
+xteink	Xteink
 xuantie	Alibaba Xuantie
 xunlong	Shenzhen Xunlong Software CO.,Limited
 xylon	Xylon
