@@ -56,13 +56,13 @@ The following table shows the pin assignment for the Xteink X4:
      - Display BUSY (LOW = busy)
      - Input
    * - GPIO7
-     - SD card MISO
+     - SPI MISO (SD card data out, shared SPI bus)
      - Input
    * - GPIO8
-     - SPI SCLK (shared display + SD)
+     - SPI SCLK (shared display + SD card)
      - Output
    * - GPIO10
-     - SPI MOSI (shared display + SD)
+     - SPI MOSI (shared display + SD card)
      - Output
    * - GPIO12
      - SD card CS
