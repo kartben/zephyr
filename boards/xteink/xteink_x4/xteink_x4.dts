@@ -38,6 +38,52 @@
 			zephyr,code = <INPUT_KEY_POWER>;
 		};
 	};
+
+	/* ADC channel 1 (GPIO1): Back, Confirm, Left, Right buttons */
+	adc_keys_1: adc-keys-1 {
+		compatible = "adc-keys";
+		io-channels = <&adc0 1>;
+		keyup-threshold-mv = <3800>;
+		sample-period-ms = <50>;
+
+		back_key {
+			press-thresholds-mv = <3512>;
+			zephyr,code = <INPUT_KEY_BACK>;
+		};
+
+		confirm_key {
+			press-thresholds-mv = <2694>;
+			zephyr,code = <INPUT_KEY_ENTER>;
+		};
+
+		left_key {
+			press-thresholds-mv = <1493>;
+			zephyr,code = <INPUT_KEY_LEFT>;
+		};
+
+		right_key {
+			press-thresholds-mv = <5>;
+			zephyr,code = <INPUT_KEY_RIGHT>;
+		};
+	};
+
+	/* ADC channel 2 (GPIO2): Up, Down buttons */
+	adc_keys_2: adc-keys-2 {
+		compatible = "adc-keys";
+		io-channels = <&adc0 2>;
+		keyup-threshold-mv = <3300>;
+		sample-period-ms = <50>;
+
+		up_key {
+			press-thresholds-mv = <2242>;
+			zephyr,code = <INPUT_KEY_UP>;
+		};
+
+		down_key {
+			press-thresholds-mv = <5>;
+			zephyr,code = <INPUT_KEY_DOWN>;
+		};
+	};
 };
 
 /* 16MB flash */
@@ -50,6 +96,10 @@
 };
 
 &gpio0 {
+	status = "okay";
+};
+
+&adc0 {
 	status = "okay";
 };
 
