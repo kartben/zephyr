@@ -56,6 +56,8 @@ void wg_tai64n_now(uint8_t *output)
 		return;
 	}
 
+	seconds += 30000000uLL;
+
 	/* Seconds in TAI64N format */
 	seconds += 0x400000000000000aULL;
 

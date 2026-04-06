@@ -701,7 +701,11 @@ static int eth_nxp_enet_qos_mac_init(const struct device *dev)
 	uint32_t clk_rate;
 	int ret;
 
-	/* Used to configure timings of the MAC */
+	/* Used to configure timings of the MAC (e.g. MAC_ONEUS_TIC_COUNTER). Values are fixed at
+	 * init from the ENET module clock. If the bus/ENET clock changes later (e.g. CPUFreq DVFS),
+	 * MAC timing registers may need a coordinated update — see MDIO runtime CR refresh in the
+	 * ENET QoS MDIO driver for the related MDC case.
+	 */
 	ret = clock_control_get_rate(module_cfg->clock_dev, module_cfg->clock_subsys, &clk_rate);
 	if (ret) {
 		return ret;

@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(vpn_sample, LOG_LEVEL_DBG);
 
@@ -351,9 +352,16 @@ static void restart_echo_service(void)
 
 int main(void)
 {
+	int ret;
+
 	init_vpn();
 
-	start_echo_service();
+	ret = start_echo_service();
+	if (ret < 0) {
+		return ret;
+	}
+
+	k_sleep(K_FOREVER);
 
 	return 0;
 }

@@ -50,7 +50,7 @@ int main(void)
 		return 0;
 	}
 
-	while (message < 99) {
+	while (true) {
 		k_sem_take(&g_mbox_data_rx_sem, K_FOREVER);
 		message = g_mbox_received_data;
 

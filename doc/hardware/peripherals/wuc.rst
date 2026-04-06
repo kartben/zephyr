@@ -66,6 +66,12 @@ triggered state. When not implemented, the APIs return ``-ENOSYS``.
        (void)wuc_clear_wakeup_source_triggered_dt(&button_wuc);
    }
 
+Samples
+*******
+
+- :zephyr:code-sample:`wuc` — enables wakeup sources from Devicetree and cycles
+  through low-power sleep/wake states, logging which source triggered each wakeup.
+
 API Reference
 *************
 

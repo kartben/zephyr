@@ -12,6 +12,7 @@ choice
 	default REMOTE_BOARD_NRF54LM20A_CPUFLPR if BOARD = "nrf54lm20dk"
 	default REMOTE_BOARD_NRF54L15_CPUFLPR if BOARD = "nrf54l15dk"
 	default REMOTE_BOARD_NRF5340_CPUNET if BOARD = "nrf5340dk"
+	default REMOTE_BOARD_FRDM_MCXN947_CPU1 if BOARD = "frdm_mcxn947"
 
 config REMOTE_BOARD_NRF54H20_CPURAD
 	bool "nrf54h20dk/nrf54h20/cpurad"
@@ -25,6 +26,9 @@ config REMOTE_BOARD_NRF54L15_CPUFLPR
 config REMOTE_BOARD_NRF5340_CPUNET
 	bool "nrf5340dk/nrf5340/cpunet"
 
+config REMOTE_BOARD_FRDM_MCXN947_CPU1
+	bool "frdm_mcxn947/mcxn947/cpu1"
+
 endchoice
 
 config REMOTE_BOARD
@@ -33,3 +37,4 @@ config REMOTE_BOARD
 	default "nrf54l15dk/nrf54l15/cpuflpr" if REMOTE_BOARD_NRF54L15_CPUFLPR
 	default "nrf54lm20dk/nrf54lm20a/cpuflpr" if REMOTE_BOARD_NRF54LM20A_CPUFLPR
 	default "nrf5340dk/nrf5340/cpunet" if REMOTE_BOARD_NRF5340_CPUNET
+	default "frdm_mcxn947/mcxn947/cpu1" if REMOTE_BOARD_FRDM_MCXN947_CPU1

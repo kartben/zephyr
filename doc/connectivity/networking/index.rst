@@ -19,3 +19,4 @@ operation of the stacks and how they were implemented.
    api/index.rst
    conn_mgr/index.rst
    dsa.rst
+   wireguard.rst

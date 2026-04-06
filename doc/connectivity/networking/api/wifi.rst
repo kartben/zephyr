@@ -234,15 +234,75 @@ The test certificates in ``samples/net/wifi/test_certs/rsa2k`` are generated usi
 Wi-Fi P2P (Wi-Fi Direct)
 ************************
 
-Wi-Fi P2P or Wi-Fi Direct enables devices to communicate directly with each other without requiring
-a traditional access point. This feature is particularly useful for device-to-device communication
-scenarios.
+Wi-Fi P2P (also known as Wi-Fi Direct) allows two devices to communicate
+directly without a traditional access point.  During connection setup, a
+**GO Negotiation** phase determines which device becomes the
+**Group Owner (GO)** — which behaves like a software access point — and
+which becomes the **client**.
 
-To enable and build with Wi-Fi P2P support:
+The P2P lifecycle follows this sequence:
+
+.. code-block:: text
+
+   [Device A]                          [Device B]
+   wifi p2p find  ─── P2P probe ──►  wifi p2p find
+                  ◄── P2P response ──
+                  ─── GO Negotiation ──►
+                  ◄── GO Neg. Response ─
+                  ─── GO Neg. Confirm ──►
+                  ──── Group Formation ────►
+         (GO role)                   (Client role)
+         IP allocated via internal DHCP server
+
+P2P discovery and group management are performed through the
+``wifi p2p`` shell commands (see :ref:`wifi-shell`):
+
++-------------------------------------+-----------------------------------------+
+| Command                             | Description                             |
++=====================================+=========================================+
+| ``wifi p2p find [timeout]``         | Start P2P discovery                     |
++-------------------------------------+-----------------------------------------+
+| ``wifi p2p stop_find``              | Stop P2P discovery                      |
++-------------------------------------+-----------------------------------------+
+| ``wifi p2p peer list``              | List discovered peers                   |
++-------------------------------------+-----------------------------------------+
+| ``wifi p2p connect <MAC> pbc``      | Connect via Push Button Configuration   |
++-------------------------------------+-----------------------------------------+
+| ``wifi p2p connect <MAC> pin``      | Connect via PIN (displays or sets PIN)  |
++-------------------------------------+-----------------------------------------+
+| ``wifi p2p group_add``              | Create autonomous Group Owner           |
++-------------------------------------+-----------------------------------------+
+| ``wifi p2p group_remove <ifname>``  | Remove a P2P group                      |
++-------------------------------------+-----------------------------------------+
+| ``wifi p2p invite …``               | Invite a peer to join a group           |
++-------------------------------------+-----------------------------------------+
+| ``wifi p2p power_save <on|off>``    | Control P2P power-save mode             |
++-------------------------------------+-----------------------------------------+
+
+To enable Wi-Fi P2P support, set
+:kconfig:option:`CONFIG_WIFI_NM_WPA_SUPPLICANT_P2P`:
 
 .. code-block:: bash
 
-    $ west build -p -b <board> samples/net/wifi/shell -- -DCONFIG_WIFI_NM_WPA_SUPPLICANT_P2P=y
+    $ west build -p -b <board> samples/net/wifi/p2p -- \
+        -DCONFIG_WIFI_NM_WPA_SUPPLICANT_P2P=y
+
+See also the dedicated :zephyr:code-sample:`wifi-p2p` sample for a full
+walk-through of discovery, connection, and group management.
+
+Configuration Options
+=====================
+
+:kconfig:option:`CONFIG_WIFI_NM_WPA_SUPPLICANT_P2P`
+   Master switch to enable Wi-Fi Direct support.
+
+:kconfig:option:`CONFIG_WIFI_NM_WPA_SUPPLICANT_P2P_LISTEN_CHANNEL`
+   Social channel (1, 6, or 11) used during the P2P listen state.
+   Changing this is rarely needed unless two P2P devices have conflicting
+   default channels.
+
+:kconfig:option:`CONFIG_WIFI_NM_WPA_SUPPLICANT_P2P_OPER_CHANNEL`
+   Channel to use when this device is elected Group Owner.
 
 API Reference
 *************

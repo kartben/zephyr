@@ -1,14 +1,14 @@
 .. zephyr:code-sample:: wireguard-vpn
-   :name: Wireguard VPN
+   :name: WireGuard VPN
    :relevant-api: bsd_sockets
 
-   Implement a echo-server application that sends received packets back to
-   the sender over Wireguard VPN connection.
+   Implement an echo-server application that sends received packets back to
+   the sender over a WireGuard VPN connection.
 
-Wireguard VPN
+WireGuard VPN
 *************
 
-The Wireguard VPN demo application can be compiled and run like this for ``native_sim`` target:
+The WireGuard VPN demo application can be compiled and run like this for ``native_sim`` target:
 
 .. zephyr-app-commands::
    :zephyr-app: samples/net/wireguard
@@ -21,7 +21,7 @@ For Linux GNOME desktop, it can be useful to add
 ``-DCONFIG_NATIVE_UART_AUTOATTACH_DEFAULT_CMD="\"gnome-terminal -- screen %s\""``
 to command line compilation.
 
-Your host setup for the Wireguard VPN can be done like this:
+Your host setup for the WireGuard VPN can be done like this:
 
 .. code-block:: console
 
@@ -36,7 +36,7 @@ The example configuration will create this kind of configuration:
     address. All the network traffic to Zephyr will go through this
     interface.
 
-  * VPN interface ``zwg0`` interface is the Wireguard tunnel endpoint.
+  * VPN interface ``zwg0`` interface is the WireGuard tunnel endpoint.
     It has ``198.51.100.2`` IPv4 and ``2001:db8:100::2`` IPv6 addresses.
     All VPN traffic will go through this interface.
 
@@ -47,7 +47,7 @@ The example configuration will create this kind of configuration:
     address and it has connection to the host.
 
   * The ``wg0`` is a virtual interface. Application should send data via
-    it in order to get network traffic tunneled via Wireguard VPN.
+    it in order to get network traffic tunneled via WireGuard VPN.
     It has ``198.51.100.1/24`` IPv4 and ``2001:db8:100::1/64`` addresses.
 
   * The ``wg_ctrl`` is a VPN control interface. All the VPN virtual interfaces
@@ -88,7 +88,7 @@ and these are the routes setup in the host:
   2001:db8:100::/64 dev zwg0 metric 1024 pref medium
 
 The sample is setting up Zephyr network setup automatically. It is possible
-to do Wireguard setup manually too.
+to do WireGuard setup manually too.
 
 You need to unset these Kconfig options:
 
@@ -122,7 +122,7 @@ to connect to peer if Zephyr host is configured correctly.
    in any live network and are only meant for these network samples.
    These IPv4 and IPv6 addresses are meant for documentation use only and
    are not routable.
-   Do not use the private key found in the sample Wireguard VPN config files
+   Do not use the private key found in the sample WireGuard VPN config files
    in any real network devices. You should always generate new private key
    when needed. See `WireGuard Quick Start <https://www.wireguard.com/quickstart/>`_
    how to generate keys.

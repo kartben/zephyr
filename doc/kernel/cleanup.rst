@@ -220,6 +220,13 @@ Cleanup occurs when the variable goes out of scope, which includes:
 
     }  // Guard cleanup also happens here
 
+Samples
+*******
+
+- :zephyr:code-sample:`scope-cleanup` — demonstrates all three helper types
+  (guard, defer, and custom scoped variable) together with the LIFO cleanup
+  ordering guarantee.
+
 API Reference
 *************
 

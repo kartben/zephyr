@@ -49,6 +49,31 @@ Build System
 Kernel
 ******
 
+* A new :ref:`Cortex-M context switch implementation <arm_cortex_m_use_switch>`
+  based on :kconfig:option:`CONFIG_USE_SWITCH` is now available for all Cortex-M
+  targets (file: ``arch/arm/core/cortex_m/arm-m-switch.c``).  The option is
+  automatically required by SMP builds and is otherwise opt-in.
+
+  To enable the new path on a uniprocessor target, add to your project's
+  ``prj.conf``:
+
+  .. code-block:: kconfig
+
+     CONFIG_USE_SWITCH=y
+
+  No source-level changes are required in application code.  The new path is
+  fully compatible with all existing features, including FPU context switching,
+  :kconfig:option:`CONFIG_BUILTIN_STACK_GUARD`, and user mode
+  (:kconfig:option:`CONFIG_USERSPACE`).
+
+  .. note::
+
+     The generic :kconfig:option:`CONFIG_USE_SWITCH` Kconfig help text
+     contains a historical caveat that the ``_arch_switch`` path "may be
+     slower" on uniprocessor systems.  That caveat does **not** apply to
+     the new Cortex-M-specific implementation; benchmark results show
+     measurable improvements in context switch latency.
+
 Boards
 ******
 

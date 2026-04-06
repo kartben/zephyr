@@ -1,0 +1,17 @@
+common:
+  harness: net
+  tags:
+    - net
+    - wifi
+    - p2p
+sample:
+  description: Wi-Fi P2P (Wi-Fi Direct) peer discovery and connection sample
+  name: Wi-Fi P2P sample
+tests:
+  sample.net.wifi.p2p.nrf7002dk:
+    extra_args:
+      - CONFIG_BUILD_ONLY_NO_BLOBS=y
+    platform_allow:
+      - nrf7002dk/nrf5340/cpuapp
+    integration_platforms:
+      - nrf7002dk/nrf5340/cpuapp

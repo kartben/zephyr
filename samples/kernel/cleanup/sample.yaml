@@ -1,0 +1,21 @@
+sample:
+  name: Scope-based cleanup helpers
+  description: Demonstrate automatic resource cleanup using scope_guard, scope_defer, and scope_var
+
+tests:
+  sample.kernel.cleanup:
+    tags:
+      - kernel
+      - cleanup
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Sample complete"
+    platform_allow:
+      - native_sim
+      - native_sim/native/64
+      - qemu_x86
+      - qemu_cortex_m3
+    integration_platforms:
+      - native_sim/native/64

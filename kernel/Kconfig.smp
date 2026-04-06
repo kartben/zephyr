@@ -18,9 +18,14 @@ config USE_SWITCH
 	  The _arch_switch() API is a lower level context switching
 	  primitive than the original arch_swap mechanism.  It is required
 	  for an SMP-aware scheduler, or if the architecture does not
-	  provide arch_swap.  In uniprocess situations where the
-	  architecture provides both, _arch_switch incurs more somewhat
+	  provide arch_swap.  In uniprocessor situations where the
+	  architecture provides both, _arch_switch may incur somewhat more
 	  overhead and may be slower.
+
+	  Exception: on ARM Cortex-M the arch/arm/core/cortex_m/arm-m-switch.c
+	  implementation (added in Zephyr 4.4) is at least as fast as the
+	  legacy PendSV/swap_helper.S path and is the recommended choice
+	  for new designs.
 
 config USE_SWITCH_SUPPORTED
 	bool

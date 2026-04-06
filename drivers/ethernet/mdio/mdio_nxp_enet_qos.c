@@ -22,6 +22,9 @@ struct nxp_enet_qos_mdio_config {
 
 struct nxp_enet_qos_mdio_data {
 	struct k_mutex mdio_mutex;
+#if IS_ENABLED(CONFIG_MDIO_NXP_ENET_QOS_RUNTIME_CR_UPDATE)
+	uint32_t last_mdio_clk_hz;
+#endif
 };
 
 struct mdio_transaction {
@@ -35,7 +38,75 @@ struct mdio_transaction {
 	uint16_t regaddr_c45;
 	enet_qos_t *base;
 	struct k_mutex *mdio_bus_mutex;
+	const struct device *mdio_dev;
 };
+
+static int mdio_nxp_enet_qos_divider_from_clk_hz(uint32_t clk_hz, int *div_out)
+{
+	uint32_t mhz = clk_hz / 1000000U;
+
+	if (mhz >= 20U && mhz < 35U) {
+		*div_out = 2;
+	} else if (mhz < 60U) {
+		*div_out = 3;
+	} else if (mhz < 100U) {
+		*div_out = 0;
+	} else if (mhz < 150U) {
+		*div_out = 1;
+	} else if (mhz < 250U) {
+		*div_out = 4;
+	} else {
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+
+static int mdio_nxp_enet_qos_apply_cr(enet_qos_t *base, uint32_t clk_rate_hz)
+{
+	int divider;
+	int err = mdio_nxp_enet_qos_divider_from_clk_hz(clk_rate_hz, &divider);
+
+	if (err != 0) {
+		LOG_ERR("ENET QOS clk rate does not allow MDIO");
+		return err;
+	}
+
+	uint32_t mdio_addr = base->MAC_MDIO_ADDRESS;
+
+	mdio_addr &= ~_ENET_QOS_REG_MASK(MAC_MDIO_ADDRESS, CR);
+	mdio_addr |= ENET_QOS_REG_PREP(MAC_MDIO_ADDRESS, CR, (uint32_t)divider);
+	base->MAC_MDIO_ADDRESS = mdio_addr;
+
+	return 0;
+}
+
+#if IS_ENABLED(CONFIG_MDIO_NXP_ENET_QOS_RUNTIME_CR_UPDATE)
+static int mdio_nxp_enet_qos_refresh_cr_if_needed(const struct device *mdio_dev)
+{
+	const struct nxp_enet_qos_mdio_config *cfg = mdio_dev->config;
+	struct nxp_enet_qos_mdio_data *dd = mdio_dev->data;
+	const struct nxp_enet_qos_config *enet_cfg = ENET_QOS_MODULE_CFG(cfg->enet_dev);
+	uint32_t rate;
+	int ret;
+
+	ret = clock_control_get_rate(enet_cfg->clock_dev, enet_cfg->clock_subsys, &rate);
+	if (ret != 0) {
+		return ret;
+	}
+
+	if (dd->last_mdio_clk_hz == rate) {
+		return 0;
+	}
+
+	ret = mdio_nxp_enet_qos_apply_cr(enet_cfg->base, rate);
+	if (ret == 0) {
+		dd->last_mdio_clk_hz = rate;
+	}
+
+	return ret;
+}
+#endif
 
 static bool check_busy(enet_qos_t *base)
 {
@@ -52,6 +123,13 @@ static int do_transaction(struct mdio_transaction *mdio, bool clause45)
 	int ret;
 
 	k_mutex_lock(mdio->mdio_bus_mutex, K_FOREVER);
+
+#if IS_ENABLED(CONFIG_MDIO_NXP_ENET_QOS_RUNTIME_CR_UPDATE)
+	ret = mdio_nxp_enet_qos_refresh_cr_if_needed(mdio->mdio_dev);
+	if (ret != 0) {
+		goto done;
+	}
+#endif
 
 	if (clause45) {
 		if (mdio->op == MDIO_OP_C45_WRITE) {
@@ -146,6 +224,7 @@ static int nxp_enet_qos_mdio_read(const struct device *dev,
 		.regaddr = regaddr,
 		.base = base,
 		.mdio_bus_mutex = &data->mdio_mutex,
+		.mdio_dev = dev,
 	};
 
 	return do_transaction(&mdio_read, false);
@@ -165,6 +244,7 @@ static int nxp_enet_qos_mdio_write(const struct device *dev,
 		.regaddr = regaddr,
 		.base = base,
 		.mdio_bus_mutex = &data->mdio_mutex,
+		.mdio_dev = dev,
 	};
 
 	return do_transaction(&mdio_write, false);
@@ -184,6 +264,7 @@ static int nxp_enet_qos_mdio_read_c45(const struct device *dev, uint8_t portaddr
 		.regaddr_c45 = regaddr,
 		.base = base,
 		.mdio_bus_mutex = &data->mdio_mutex,
+		.mdio_dev = dev,
 	};
 
 	return do_transaction(&mdio_read, true);
@@ -203,6 +284,7 @@ int nxp_enet_qos_mdio_write_c45(const struct device *dev, uint8_t portaddr, uint
 		.regaddr_c45 = regaddr,
 		.base = base,
 		.mdio_bus_mutex = &data->mdio_mutex,
+		.mdio_dev = dev,
 	};
 
 	return do_transaction(&mdio_write, true);
@@ -221,38 +303,27 @@ static int nxp_enet_qos_mdio_init(const struct device *dev)
 	struct nxp_enet_qos_mdio_data *data = dev->data;
 	const struct nxp_enet_qos_config *config = ENET_QOS_MODULE_CFG(mdio_config->enet_dev);
 	uint32_t enet_module_clk_rate;
-	int ret, divider;
+	int ret;
 
 	ret = k_mutex_init(&data->mdio_mutex);
-	if (ret) {
+	if (ret != 0) {
 		return ret;
 	}
 
 	ret = clock_control_get_rate(config->clock_dev, config->clock_subsys,
 				     &enet_module_clk_rate);
-	if (ret) {
+	if (ret != 0) {
 		return ret;
 	}
 
-	enet_module_clk_rate /= 1000000;
-	if (enet_module_clk_rate >= 20 && enet_module_clk_rate < 35) {
-		divider = 2;
-	} else if (enet_module_clk_rate < 60) {
-		divider = 3;
-	} else if (enet_module_clk_rate < 100) {
-		divider = 0;
-	} else if (enet_module_clk_rate < 150) {
-		divider = 1;
-	} else if (enet_module_clk_rate < 250) {
-		divider = 4;
-	} else {
-		LOG_ERR("ENET QOS clk rate does not allow MDIO");
-		return -ENOTSUP;
+	ret = mdio_nxp_enet_qos_apply_cr(config->base, enet_module_clk_rate);
+	if (ret != 0) {
+		return ret;
 	}
 
-	config->base->MAC_MDIO_ADDRESS =
-		/* Configure the MDIO clock range / divider */
-		ENET_QOS_REG_PREP(MAC_MDIO_ADDRESS, CR, divider);
+#if IS_ENABLED(CONFIG_MDIO_NXP_ENET_QOS_RUNTIME_CR_UPDATE)
+	data->last_mdio_clk_hz = enet_module_clk_rate;
+#endif
 
 	return 0;
 }

@@ -50,7 +50,7 @@ int main(void)
 		return 0;
 	}
 
-	while (message < 100) {
+	while (true) {
 		msg.data = &message;
 		msg.size = max_transfer_size_bytes;
 
@@ -59,6 +59,8 @@ int main(void)
 			printk("mbox_send() error\n");
 			return 0;
 		}
+
+		k_sleep(K_MSEC(100));
 
 		k_sem_take(&g_mbox_data_rx_sem, K_FOREVER);
 		message = g_mbox_received_data;

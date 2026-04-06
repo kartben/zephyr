@@ -1,0 +1,20 @@
+sample:
+  name: OTP memory sample
+  description: Read and program a provisioning record in OTP memory
+
+tests:
+  sample.drivers.otp:
+    tags:
+      - drivers
+      - otp
+    filter: dt_alias_exists("otp-0")
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "OTP sample complete"
+    platform_allow:
+      - native_sim
+      - native_sim/native/64
+    integration_platforms:
+      - native_sim/native/64

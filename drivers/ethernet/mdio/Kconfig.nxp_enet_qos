@@ -28,4 +28,15 @@ config MDIO_NXP_ENET_QOS_RECHECK_TIME
 	  Timeout time is:
 	  CONFIG_MDIO_NXP_ENET_QOS_RECHECK_TIME * CONFIG_MDIO_NXP_ENET_QOS_RECHECK_COUNT
 
+config MDIO_NXP_ENET_QOS_RUNTIME_CR_UPDATE
+	bool "Refresh MDIO clock divider when ENET clock may change"
+	default y if CPU_FREQ
+	depends on CPU_FREQ
+	help
+	  When CPU frequency scaling changes the bus clock, the ENET module
+	  clock rate (and thus MDC timing) can change after driver init.
+	  Enable this option to re-read the clock and update the MAC MDIO
+	  divider (MAC_MDIO_ADDRESS.CR) before each bus transaction when
+	  the measured rate differs from the last transaction.
+
 endif

@@ -177,6 +177,78 @@ return address, as part of unstacking the exception stack frame.
 The implementation of the context-switch mechanism is present in
 :file:`arch/arm/core/cortex_m/swap_helper.S`.
 
+.. _arm_cortex_m_use_switch:
+
+``CONFIG_USE_SWITCH``: optimized context switch (Zephyr 4.4+)
+--------------------------------------------------------------
+
+Zephyr 4.4 introduced an alternative, higher-performance context switch
+implementation for ARM Cortex-M, enabled via
+:kconfig:option:`CONFIG_USE_SWITCH`.  The new implementation lives in
+:file:`arch/arm/core/cortex_m/arm-m-switch.c` and replaces most of the
+hand-written assembly in :file:`swap_helper.S` with C code.
+
+**How it differs from the legacy PendSV path**
+
+The legacy ``swap_helper.S`` path performs the context switch inside the
+PendSV handler using a dedicated synthesized exception frame.  The CPU
+enters PendSV, saves callee-saved registers, manipulates the PSP to
+point at the new thread's frame, and returns.
+
+The ``arm-m-switch.c`` path uses Zephyr's generic ``arch_switch()``
+infrastructure (``_arch_switch()``) instead.  Rather than dedicated PendSV
+handling, context switches are performed on interrupt exit: every exception
+return checks whether a higher-priority thread has become runnable during
+the interrupt, and if so converts the interrupted thread's hardware exception
+frame to Zephyr's internal ``switch_frame`` format in place (no extra copy)
+and loads the next thread's frame.
+
+Key implementation details:
+
+- **In-place frame conversion** — ``arm_m_cpu_to_switch()`` converts the
+  CPU-spilled exception frame to a ``switch_frame`` and
+  ``arm_m_switch_to_cpu()`` converts a ``switch_frame`` back to a
+  synthesized hardware frame.  Both operate directly on the stack, avoiding
+  a redundant intermediate copy.
+
+- **FPU-aware** — when FPU context switching is enabled
+  (:kconfig:option:`CONFIG_FPU`), the implementation detects whether FPU
+  caller-save registers were pushed by the CPU (lazy stacking) and spills or
+  restores them accordingly.
+
+- **ICI/IT instruction fixup** — a rare ARM errata workaround handles threads
+  interrupted mid-LDM/STM or mid-IT block by redirecting them through a UDF
+  trampoline that resumes them with the correct ``xPSR`` state.
+
+**Performance impact**
+
+For most uniprocessor Cortex-M workloads the ``arm-m-switch.c`` path
+reduces context switch overhead because:
+
+1. Fewer cycles are spent in PendSV entry/exit overhead — the switch is
+   performed inside the already-running ISR's exit path.
+2. The frame conversion does fewer memory round-trips.
+3. The C compiler can optimize the frame layout code (inlining, constant
+   propagation) better than hand-written assembly.
+
+**Enabling ``CONFIG_USE_SWITCH``**
+
+The option is available on all Cortex-M platforms that select
+``USE_SWITCH_SUPPORTED``.  It is required for SMP builds.  To enable it
+for a uniprocessor build:
+
+.. code-block:: kconfig
+
+   CONFIG_USE_SWITCH=y
+
+.. note::
+
+   The generic :kconfig:option:`CONFIG_USE_SWITCH` help text contains a
+   historical caveat that says ``_arch_switch`` "may be slower" on
+   uniprocessor systems.  That caveat does **not** apply to the Cortex-M
+   implementation added in Zephyr 4.4; the new C-based path is at least
+   as fast as the legacy assembly path in the common case.
+
 Stack limit checking (Arm v8-M)
 -------------------------------
 
