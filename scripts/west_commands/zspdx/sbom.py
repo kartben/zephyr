@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from west import log
 
+from zspdx.cmakequery import getCMakeQueryBuildDirs
 from zspdx.scanner import ScannerConfig, scanDocument
 from zspdx.version import SPDX_VERSION_2_3
 from zspdx.walker import Walker, WalkerConfig
@@ -39,7 +40,7 @@ class SBOMConfig:
 # create Cmake file-based API directories and query file
 # Arguments:
 #   1) build_dir: build directory
-def setupCmakeQuery(build_dir):
+def setupCmakeQueryDir(build_dir):
     # check that query dir exists as a directory, or else create it
     cmakeApiDirPath = os.path.join(build_dir, ".cmake", "api", "v1", "query")
     if os.path.exists(cmakeApiDirPath):
@@ -64,6 +65,14 @@ def setupCmakeQuery(build_dir):
         with open(queryFilePath, "w"):
             pass
         return True
+
+
+def setupCmakeQuery(build_dir):
+    for queryBuildDir in getCMakeQueryBuildDirs(build_dir):
+        if not setupCmakeQueryDir(queryBuildDir):
+            return False
+
+    return True
 
 
 # main entry point for SBOM maker
