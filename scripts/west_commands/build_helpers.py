@@ -24,7 +24,7 @@ import zcmake
 # twister also uses the implementation
 script_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 sys.path.insert(0, os.path.join(script_dir, "pylib/build_helpers/"))
-from domains import Domains  # noqa: E402
+from domains import Domains, zephyr_cmake_build_dir_for_spdx  # noqa: E402
 
 DEFAULT_BUILD_DIR = 'build'
 '''Name of the default Zephyr build directory.'''

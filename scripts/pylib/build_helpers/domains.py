@@ -9,7 +9,9 @@ This provides parsing of domains yaml file and creation of objects of the
 Domain class.
 '''
 
+import os
 from dataclasses import dataclass
+from pathlib import Path
 
 import yaml
 import pykwalify.core
@@ -131,3 +133,29 @@ class Domain:
 
     name: str
     build_dir: str
+
+
+def zephyr_cmake_build_dir_for_spdx(build_dir_ref):
+    '''Map a west ``-d`` build directory to the Zephyr CMake build dir for SPDX.
+
+    Sysbuild writes ``domains.yaml`` at the top-level build directory. When
+    *build_dir_ref* is that directory, returns the default image's
+    ``build_dir`` from the file. Otherwise returns *build_dir_ref* unchanged.
+
+    Returns:
+        tuple: (zephyr_image_build_dir, is_sysbuild_top) where *is_sysbuild_top*
+        is True when *build_dir_ref* was the sysbuild top dir listed in
+        ``domains.yaml``.
+    '''
+    abs_ref = os.path.abspath(build_dir_ref)
+    domains_file = Path(abs_ref) / 'domains.yaml'
+    if not domains_file.is_file():
+        return abs_ref, False
+
+    domains = Domains.from_file(str(domains_file))
+    top = os.path.abspath(domains.get_top_build_dir())
+    if top != abs_ref:
+        return abs_ref, False
+
+    default = domains.get_default_domain()
+    return os.path.abspath(default.build_dir), True

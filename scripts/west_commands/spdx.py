@@ -7,6 +7,7 @@ import uuid
 
 from west.commands import WestCommand
 
+from build_helpers import zephyr_cmake_build_dir_for_spdx
 from zspdx.sbom import SBOMConfig, makeSPDX, setupCmakeQuery
 from zspdx.version import SPDX_VERSION_2_3, SUPPORTED_SPDX_VERSIONS, parse
 
@@ -18,7 +19,12 @@ Prior to the build, an empty file must be created at
 BUILDDIR/.cmake/api/v1/query/codemodel-v2 in order to enable
 the CMake file-based API, which the SPDX command relies upon.
 This can be done by calling `west spdx --init` prior to
-calling `west build`."""
+calling `west build`.
+
+For sysbuild, pass the top-level sysbuild directory (the same path you use
+with ``west build --sysbuild -d``). The command uses ``domains.yaml`` to
+find the default image's Zephyr build directory and initializes the CMake
+API there."""
 
 class ZephyrSpdx(WestCommand):
     def __init__(self):
@@ -73,10 +79,17 @@ class ZephyrSpdx(WestCommand):
         if not args.build_dir:
             self.die("Build directory not specified; call `west spdx --init --build-dir=BUILD_DIR`")
 
+        image_dir, sysbuild_top = zephyr_cmake_build_dir_for_spdx(args.build_dir)
         # initialize CMake file-based API - empty query file
-        query_ready = setupCmakeQuery(args.build_dir)
+        query_ready = setupCmakeQuery(image_dir)
         if query_ready:
-            self.inf("initialized; run `west build` then run `west spdx`")
+            if sysbuild_top:
+                self.inf(
+                    f"sysbuild: initialized CMake API under default image {image_dir}; "
+                    "run `west build --sysbuild` then `west spdx -d` with the same top-level build dir"
+                )
+            else:
+                self.inf("initialized; run `west build` then run `west spdx`")
         else:
             self.die("Couldn't create CMake file-based API query directory\n"
                      "You can manually create an empty file at "
@@ -86,9 +99,11 @@ class ZephyrSpdx(WestCommand):
         if not args.build_dir:
             self.die("Build directory not specified; call `west spdx --build-dir=BUILD_DIR`")
 
+        image_dir, _sysbuild_top = zephyr_cmake_build_dir_for_spdx(args.build_dir)
+
         # create the SPDX files
         cfg = SBOMConfig()
-        cfg.buildDir = args.build_dir
+        cfg.buildDir = image_dir
         try:
             version_obj = parse(args.spdx_version)
         except Exception:
@@ -104,7 +119,7 @@ class ZephyrSpdx(WestCommand):
         if args.spdx_dir:
             cfg.spdxDir = args.spdx_dir
         else:
-            cfg.spdxDir = os.path.join(args.build_dir, "spdx")
+            cfg.spdxDir = os.path.join(image_dir, "spdx")
         if args.analyze_includes:
             cfg.analyzeIncludes = True
         if args.include_sdk:
