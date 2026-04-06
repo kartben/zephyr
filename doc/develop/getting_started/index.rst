@@ -626,9 +626,8 @@ the correct board-specific runner and program the image you just built:
 
 .. note::
 
-     When using Linux, you may need to configure udev rules the first time you
-     use a debug probe.
-    Please also see :ref:`setting-udev-rules`.
+   When using Linux, you may need to configure udev rules the first time you
+   use a debug probe. Please also see :ref:`setting-udev-rules`.
 
 If you're using blinky, the LED will start to blink as shown in this figure:
 
