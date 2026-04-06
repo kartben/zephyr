@@ -44,16 +44,15 @@ SPI2 is shared between the e-paper panel and the microSD socket (separate chip s
 +------------------+------------------+------------------------------------------+
 | Nav keys (ADC)   | 1, 2             | Resistor ladder; read via ADC1_CH0/CH1   |
 +------------------+------------------+------------------------------------------+
-| Battery sense    | 0                | Divided battery voltage (ADC1_CH0) [*]_  |
+| Battery sense    | 0                | Divided battery voltage (ADC1 channel 0) |
 +------------------+------------------+------------------------------------------+
 | USB charging     | 20               | Charging detect (GPIO input)             |
 +------------------+------------------+------------------------------------------+
 
-.. [*] On ESP32-C3, GPIO0 and GPIO1 both map to ADC1 channel 0 in hardware. You cannot
-   sample “battery” and the first ladder tap on channel 0 at the same time without
-   muxing or a different firmware strategy. CircuitPython exposes GPIO0 as
-   ``board.A0`` for battery monitoring; the ladder uses GPIO1 and GPIO2. Confirm
-   against your schematic if you need both simultaneously.
+On ESP32-C3, GPIO1 and GPIO2 are typically ADC1 channels 1 and 2, so battery (GPIO0 /
+channel 0) and the two ladder inputs can be sampled independently. Thresholds for
+each navigation key still need application-level calibration (see the Adafruit
+CircuitPython helper or Papyrix for reference values).
 
 References
 ==========
