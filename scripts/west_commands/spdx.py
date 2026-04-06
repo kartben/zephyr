@@ -5,8 +5,12 @@
 import os
 import uuid
 
+from pathlib import Path
+
+from west import log
 from west.commands import WestCommand
 
+from build_helpers import load_domains
 from zspdx.sbom import SBOMConfig, makeSPDX, setupCmakeQuery
 from zspdx.version import SPDX_VERSION_2_3, SUPPORTED_SPDX_VERSIONS, parse
 
@@ -18,7 +22,12 @@ Prior to the build, an empty file must be created at
 BUILDDIR/.cmake/api/v1/query/codemodel-v2 in order to enable
 the CMake file-based API, which the SPDX command relies upon.
 This can be done by calling `west spdx --init` prior to
-calling `west build`."""
+calling `west build`.
+
+For sysbuild (multi-image builds), point --build-dir at the
+top-level build directory. The --init step will initialize CMake
+file-based API queries for all images, and SPDX generation will
+produce documents for each image."""
 
 class ZephyrSpdx(WestCommand):
     def __init__(self):
@@ -67,6 +76,11 @@ class ZephyrSpdx(WestCommand):
         else:
             self.do_run_spdx(args)
 
+    @staticmethod
+    def _is_sysbuild(build_dir):
+        """Check if the build directory is a sysbuild top-level directory."""
+        return (Path(build_dir) / "domains.yaml").is_file()
+
     def do_run_init(self, args):
         self.inf("initializing CMake file-based API prior to build")
 
@@ -75,20 +89,32 @@ class ZephyrSpdx(WestCommand):
 
         # initialize CMake file-based API - empty query file
         query_ready = setupCmakeQuery(args.build_dir)
-        if query_ready:
-            self.inf("initialized; run `west build` then run `west spdx`")
-        else:
+        if not query_ready:
             self.die("Couldn't create CMake file-based API query directory\n"
                      "You can manually create an empty file at "
                      "$BUILDDIR/.cmake/api/v1/query/codemodel-v2")
 
-    def do_run_spdx(self, args):
-        if not args.build_dir:
-            self.die("Build directory not specified; call `west spdx --build-dir=BUILD_DIR`")
+        # For sysbuild, also initialize queries in each domain's build dir.
+        # domains.yaml is only available after the first build, so this
+        # handles the case where the user runs --init after a first build
+        # and before a rebuild.
+        if self._is_sysbuild(args.build_dir):
+            domains = load_domains(args.build_dir)
+            for domain in domains.get_domains():
+                if domain.build_dir != args.build_dir:
+                    domain_ready = setupCmakeQuery(domain.build_dir)
+                    if domain_ready:
+                        self.inf(f"initialized for domain: {domain.name}")
+                    else:
+                        self.wrn(f"couldn't initialize CMake file-based API "
+                                 f"for domain: {domain.name}")
 
-        # create the SPDX files
+        self.inf("initialized; run `west build` then run `west spdx`")
+
+    def _make_spdx_for_build_dir(self, args, build_dir, spdx_dir, image_name=None):
+        """Generate SPDX documents for a single build directory."""
         cfg = SBOMConfig()
-        cfg.buildDir = args.build_dir
+        cfg.buildDir = build_dir
         try:
             version_obj = parse(args.spdx_version)
         except Exception:
@@ -97,28 +123,59 @@ class ZephyrSpdx(WestCommand):
         if args.namespace_prefix:
             cfg.namespacePrefix = args.namespace_prefix
         else:
-            # create default namespace according to SPDX spec
-            # note that this is intentionally _not_ an actual URL where
-            # this document will be stored
             cfg.namespacePrefix = f"http://spdx.org/spdxdocs/zephyr-{str(uuid.uuid4())}"
-        if args.spdx_dir:
-            cfg.spdxDir = args.spdx_dir
-        else:
-            cfg.spdxDir = os.path.join(args.build_dir, "spdx")
         if args.analyze_includes:
             cfg.analyzeIncludes = True
         if args.include_sdk:
             cfg.includeSDK = True
+        cfg.spdxDir = spdx_dir
 
         # make sure SPDX directory exists, or create it if it doesn't
         if os.path.exists(cfg.spdxDir):
             if not os.path.isdir(cfg.spdxDir):
                 self.err(f'SPDX output directory {cfg.spdxDir} exists but is not a directory')
-                return
-            # directory exists, we're good
+                return False
         else:
-            # create the directory
-            os.makedirs(cfg.spdxDir, exist_ok=False)
+            os.makedirs(cfg.spdxDir, exist_ok=True)
+
+        prefix = f"[{image_name}] " if image_name else ""
+        log.inf(f"{prefix}generating SPDX documents in {cfg.spdxDir}")
 
         if not makeSPDX(cfg):
+            self.err(f"{prefix}Failed to create SPDX output")
+            return False
+
+        return True
+
+    def do_run_spdx(self, args):
+        if not args.build_dir:
+            self.die("Build directory not specified; call `west spdx --build-dir=BUILD_DIR`")
+
+        if self._is_sysbuild(args.build_dir):
+            self._do_run_spdx_sysbuild(args)
+        else:
+            self._do_run_spdx_single(args)
+
+    def _do_run_spdx_single(self, args):
+        """Generate SPDX for a single (non-sysbuild) build directory."""
+        spdx_dir = args.spdx_dir if args.spdx_dir else os.path.join(args.build_dir, "spdx")
+        if not self._make_spdx_for_build_dir(args, args.build_dir, spdx_dir):
             self.die("Failed to create SPDX output")
+
+    def _do_run_spdx_sysbuild(self, args):
+        """Generate SPDX for each domain in a sysbuild."""
+        domains = load_domains(args.build_dir)
+        all_ok = True
+
+        for domain in domains.get_domains():
+            if args.spdx_dir:
+                spdx_dir = os.path.join(args.spdx_dir, domain.name)
+            else:
+                spdx_dir = os.path.join(domain.build_dir, "spdx")
+
+            if not self._make_spdx_for_build_dir(args, domain.build_dir, spdx_dir,
+                                                  image_name=domain.name):
+                all_ok = False
+
+        if not all_ok:
+            self.die("Failed to create SPDX output for one or more images")

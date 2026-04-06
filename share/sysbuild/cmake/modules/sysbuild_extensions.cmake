@@ -707,6 +707,23 @@ function(ExternalZephyrProject_Cmake)
   file(WRITE ${dotconfigsysbuild} ${config_content})
 
   string(REPLACE "${LIST_SEPARATOR}" "\\;" CMAKE_ARGS "${CMAKE_ARGS}")
+
+  # Propagate CMake file-based API query files from sysbuild top-level
+  # build directory to sub-project build directory so that tools like
+  # `west spdx` can generate SPDX documents for each image.
+  set(parent_query_dir ${CMAKE_BINARY_DIR}/.cmake/api/v1/query)
+  if(IS_DIRECTORY ${parent_query_dir})
+    set(child_query_dir ${BINARY_DIR}/.cmake/api/v1/query)
+    file(MAKE_DIRECTORY ${child_query_dir})
+    file(GLOB query_files "${parent_query_dir}/*")
+    foreach(query_file ${query_files})
+      get_filename_component(query_filename ${query_file} NAME)
+      if(NOT EXISTS ${child_query_dir}/${query_filename})
+        file(TOUCH ${child_query_dir}/${query_filename})
+      endif()
+    endforeach()
+  endif()
+
   execute_process(
     COMMAND ${CMAKE_COMMAND}
       -G${CMAKE_GENERATOR}
