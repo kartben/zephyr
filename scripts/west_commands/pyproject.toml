@@ -3,7 +3,7 @@ ignore_missing_imports = true
 mypy_path = "."
 
 [tool.pytest.ini_options]
-pythonpath = ["."]
+pythonpath = [".", "../pylib/build_helpers"]
 
 [tool.ruff]
 extend = "../../.ruff.toml"
