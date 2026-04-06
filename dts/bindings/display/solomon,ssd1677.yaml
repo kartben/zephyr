@@ -1,0 +1,12 @@
+# Copyright (c) 2026
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Solomon Systech SSD1677 EPD display controller (e.g. Good Display GDEQ0426T82 800x480).
+
+  The SSD1677 uses 16-bit X and Y addressing for RAM window commands and expects the
+  driver output gate count to match panel height minus one.
+
+compatible: "solomon,ssd1677"
+
+include: solomon,ssd16xx-common.yaml
