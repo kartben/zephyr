@@ -385,8 +385,15 @@ int main(void)
 		goto err;
 	}
 
-	app_setup_video_frmival(video_dev, &fmt);
-	app_setup_video_controls(video_dev);
+	ret = app_setup_video_frmival(video_dev, &fmt);
+	if (ret < 0) {
+		goto err;
+	}
+
+	ret = app_setup_video_controls(video_dev);
+	if (ret < 0) {
+		goto err;
+	}
 
 	/* Alloc video buffers */
 	for (int i = 0; i < ARRAY_SIZE(buffers); i++) {
