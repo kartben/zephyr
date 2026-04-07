@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "Biometric WiFi Direct Demo"
+
+config DEMO_P2P_PEER_NAME
+	string "WiFi Direct peer device name to connect to"
+	default "MyP2PDevice"
+	help
+	  The peer's device name as advertised in P2P discovery. MAC address
+	  is resolved dynamically from NET_EVENT_WIFI_P2P_DEVICE_FOUND events,
+	  so this works correctly with MAC address rotation.
+
+config DEMO_BIOMETRIC_TEMPLATE_ID
+	int "Fingerprint template ID to enroll and match against"
+	default 1
+	range 1 200
+	help
+	  Template slot used for enrollment on first boot. The demo uses
+	  BIOMETRIC_MATCH_IDENTIFY (1:N) so any enrolled template triggers
+	  the P2P connection.
+
+config DEMO_SCAN_RETRIES
+	int "Maximum biometric identification attempts before giving up"
+	default 10
+	range 1 100
+
+source "Kconfig.zephyr"

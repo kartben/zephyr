@@ -1,0 +1,26 @@
+sample:
+  name: Biometric WiFi Direct Demo
+  description: >
+    Identifies a user via fingerprint biometrics (using the Zephyr biometrics
+    driver API), then establishes a WiFi Direct (P2P) connection to a named
+    peer. The peer MAC is resolved dynamically from P2P discovery events,
+    supporting devices with MAC address rotation. Demonstrates the kernel
+    cleanup helpers (scope_guard / scope_defer) for automatic resource
+    management.
+
+tests:
+  sample.net.wifi.biometric_wifi_direct:
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "initiating P2P connect to peer"
+    tags:
+      - net
+      - wifi
+      - biometrics
+      - p2p
+    filter: dt_alias_exists("fingerprint")
+    platform_allow:
+      - native_sim
+      - native_sim/native/64
