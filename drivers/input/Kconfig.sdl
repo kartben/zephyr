@@ -8,3 +8,12 @@ config INPUT_SDL_TOUCH
 	depends on HAS_SDL
 	help
 	  Enable driver for the SDL mouse event filter.
+
+config INPUT_SDL_KEYBOARD
+	bool "SDL keyboard input driver"
+	default y
+	depends on DT_HAS_ZEPHYR_INPUT_SDL_KEYBOARD_ENABLED
+	depends on HAS_SDL
+	help
+	  Enable driver for SDL keyboard events, mapping SDL key
+	  events to Zephyr input subsystem key events.

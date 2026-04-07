@@ -1,0 +1,17 @@
+/ {
+	sdl_dc: sdl_dc {
+		compatible = "zephyr,sdl-dc";
+		height = <240>;
+		width = <256>;
+	};
+
+	input_sdl_keyboard {
+		compatible = "zephyr,input-sdl-keyboard";
+	};
+};
+
+/ {
+	chosen {
+		zephyr,display = &sdl_dc;
+	};
+};

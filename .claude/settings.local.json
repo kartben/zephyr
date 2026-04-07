@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp '/tmp/litenes_src/include/*.h' /Users/kartben/zephyrproject/zephyr/.claude/worktrees/charming-panini/samples/modules/litenes/litenes/include/)",
+      "Bash(cp '/tmp/litenes_src/src/fce/*.c' /Users/kartben/zephyrproject/zephyr/.claude/worktrees/charming-panini/samples/modules/litenes/litenes/src/fce/)",
+      "WebSearch",
+      "Bash(curl -L -o /tmp/alter_ego.zip \"https://shiru.untergrund.net/files/nes/alter_ego.zip\")",
+      "Read(//private/tmp/**)",
+      "Bash(unzip -l alter_ego.zip)",
+      "Bash(unzip -o alter_ego.zip \"alter_ego/Alter_Ego.nes\")",
+      "Bash(cp alter_ego/Alter_Ego.nes /Users/kartben/zephyrproject/zephyr/.claude/worktrees/charming-panini/samples/modules/litenes/roms/demo.nes)",
+      "Bash(xxd -l 16 /Users/kartben/zephyrproject/zephyr/.claude/worktrees/charming-panini/samples/modules/litenes/roms/demo.nes)",
+      "Bash(unzip -o alter_ego.zip \"alter_ego/notes.txt\")",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:nes-open-db.github.io)",
+      "WebFetch(domain:nesdir.github.io)",
+      "Bash(curl -L -o /tmp/chase.zip \"https://shiru.untergrund.net/files/nes/chase.zip\")",
+      "Bash(unzip -l chase.zip)",
+      "Bash(unzip -o chase.zip \"src/game.c\")",
+      "Bash(xxd -l 16 /Users/kartben/zephyrproject/zephyr/.claude/worktrees/charming-panini/samples/modules/litenes/roms/turtles.nes)",
+      "Bash(west build:*)",
+      "Read(//opt/homebrew/Cellar/python@3.12/3.12.12/Frameworks/Python.framework/Versions/3.12/bin/**)",
+      "Read(//opt/homebrew/Cellar/python@3.13/3.13.12_1/Frameworks/Python.framework/Versions/3.13/bin/**)"
+    ]
+  }
+}

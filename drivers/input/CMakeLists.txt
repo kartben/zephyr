@@ -56,6 +56,11 @@ if(CONFIG_INPUT_SDL_TOUCH)
   target_sources(native_simulator INTERFACE input_sdl_touch_bottom.c)
 endif()
 
+if(CONFIG_INPUT_SDL_KEYBOARD)
+  zephyr_library_sources(input_sdl_keyboard.c)
+  target_sources(native_simulator INTERFACE input_sdl_keyboard_bottom.c)
+endif()
+
 if(CONFIG_NATIVE_LINUX_EVDEV)
   if(${CMAKE_HOST_SYSTEM_NAME} STREQUAL Linux)
     zephyr_library_sources(linux_evdev.c)
