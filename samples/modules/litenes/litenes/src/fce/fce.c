@@ -48,7 +48,7 @@ int fce_load_rom(char *rom)
         }
     }
     else {
-        return -1;
+        return -2; /* unsupported mapper (only NROM / CNROM implemented) */
     }
 
     // Copying CHR pages into MMC and PPU

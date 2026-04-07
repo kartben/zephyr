@@ -23,5 +23,5 @@ target_sources(app PRIVATE
 
 target_include_directories(app PRIVATE litenes/include)
 
-# Generate C array from ROM file
-generate_inc_file_for_target(app roms/turtles.nes ${ZEPHYR_BINARY_DIR}/include/generated/turtles_nes.inc)
+# nestest.nes: mapper 0 (NROM) CPU test ROM from nes-test-roms (widely used for 6502 bring-up).
+generate_inc_file_for_target(app roms/mario.nes ${ZEPHYR_BINARY_DIR}/include/generated/nestest_nes.inc)
