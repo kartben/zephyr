@@ -130,6 +130,8 @@ struct uvc_host_data {
 	struct video_format_cap format_caps[CONFIG_USBH_VIDEO_MAX_CAPS];
 	uint8_t format_caps_count;
 	struct uvc_probe probe;
+	/** VS PROBE/COMMIT control transfer length (26 / 34 / 48 per UVC version). 0 = unset. */
+	uint16_t probe_commit_ctrl_len;
 	struct uvc_ctrls ctrls;
 };
 
@@ -668,6 +670,77 @@ static uint32_t get_frame_default_interval(const struct uvc_frame_common_descrip
 	return max_interval;
 }
 
+/*
+ * Largest frame interval (100 ns units) among supported rates for this frame =
+ * lowest frame rate = least isochronous bandwidth. USB hosts often need this for
+ * SET_INTERFACE to succeed when the device default is a high frame rate.
+ */
+static uint32_t get_frame_lowest_bandwidth_interval(const struct uvc_frame_common_descriptor *frame_desc)
+{
+	uint32_t default_interval;
+	uint32_t iv;
+	uint8_t interval_type;
+
+	if (frame_desc->bDescriptorSubtype == UVC_VS_FRAME_FRAME_BASED) {
+		const struct uvc_frame_framebased_continuous_descriptor *fb_cont =
+			(const void *)frame_desc;
+
+		default_interval = sys_le32_to_cpu(fb_cont->dwDefaultFrameInterval);
+		interval_type = fb_cont->bFrameIntervalType;
+
+		if (interval_type == 0U) {
+			return sys_le32_to_cpu(fb_cont->dwMaxFrameInterval);
+		} else {
+			const struct uvc_frame_framebased_discrete_descriptor *fb_disc =
+				(const void *)frame_desc;
+			uint32_t max_iv = 0U;
+
+			for (uint8_t i = 0; i < interval_type && i < CONFIG_USBH_VIDEO_MAX_FRMIVAL; i++) {
+				iv = sys_le32_to_cpu(fb_disc->dwFrameInterval[i]);
+				if (iv > max_iv) {
+					max_iv = iv;
+				}
+			}
+			if (max_iv != 0U) {
+				return max_iv;
+			}
+			return default_interval != 0U ? default_interval
+						      : get_frame_default_interval(frame_desc);
+		}
+	}
+
+	if (frame_desc->bDescriptorSubtype == UVC_VS_FRAME_UNCOMPRESSED ||
+	    frame_desc->bDescriptorSubtype == UVC_VS_FRAME_MJPEG) {
+		const struct uvc_frame_uncomp_continuous_descriptor *std_cont =
+			(const void *)frame_desc;
+
+		default_interval = sys_le32_to_cpu(std_cont->dwDefaultFrameInterval);
+		interval_type = std_cont->bFrameIntervalType;
+
+		if (interval_type == 0U) {
+			return sys_le32_to_cpu(std_cont->dwMaxFrameInterval);
+		} else {
+			const struct uvc_frame_uncomp_discrete_descriptor *std_disc =
+				(const void *)frame_desc;
+			uint32_t max_iv = 0U;
+
+			for (uint8_t i = 0; i < interval_type && i < CONFIG_USBH_VIDEO_MAX_FRMIVAL; i++) {
+				iv = sys_le32_to_cpu(std_disc->dwFrameInterval[i]);
+				if (iv > max_iv) {
+					max_iv = iv;
+				}
+			}
+			if (max_iv != 0U) {
+				return max_iv;
+			}
+			return default_interval != 0U ? default_interval
+						      : get_frame_default_interval(frame_desc);
+		}
+	}
+
+	return get_frame_default_interval(frame_desc);
+}
+
 /* Find matching frame in specific format type */
 static int find_frame_in_format(const struct uvc_format_common_descriptor *format_header,
 				const uint16_t target_width, const uint16_t target_height,
@@ -694,8 +767,7 @@ static int find_frame_in_format(const struct uvc_format_common_descriptor *forma
 
 			if (frame_width == target_width && frame_height == target_height) {
 				*found_frame = frame_header;
-				*found_interval =
-					get_frame_default_interval(frame_header);
+				*found_interval = get_frame_lowest_bandwidth_interval(frame_header);
 
 				return 0;
 			}
@@ -784,7 +856,7 @@ static bool ep_has_enough_bandwidth(const struct usb_ep_descriptor *ep_desc,
 				    const struct usb_if_descriptor *const if_desc,
 				    const enum usb_device_speed device_speed,
 				    const uint32_t required_bandwidth,
-				    const uint32_t max_tpl)
+				    const uint32_t max_tpl, const bool enforce_max_payload)
 {
 	uint32_t ep_tpl;
 	/* Endpoint bandwidth in bytes/sec */
@@ -806,8 +878,13 @@ static bool ep_has_enough_bandwidth(const struct usb_ep_descriptor *ep_desc,
 		return false;
 	}
 
+	if (ep_desc->bInterval == 0U) {
+		LOG_WRN("Endpoint 0x%02x has invalid bInterval 0", ep_desc->bEndpointAddress);
+		return false;
+	}
+
 	/* Calculate bandwidth */
-	interval = BIT(ep_desc->bInterval - 1);
+	interval = BIT(ep_desc->bInterval - 1U);
 	ep_mps = USB_MPS_EP_SIZE(ep_desc->wMaxPacketSize);
 
 	if (device_speed == USB_SPEED_SPEED_HS) {
@@ -826,11 +903,15 @@ static bool ep_has_enough_bandwidth(const struct usb_ep_descriptor *ep_desc,
 		(device_speed == USB_SPEED_SPEED_HS) ? "uframes" : "frames", ep_bandwidth);
 
 	/* Check if this endpoint meets requirements */
-	if (ep_bandwidth >= required_bandwidth && ep_tpl >= max_tpl) {
-		return true;
+	if (ep_bandwidth < required_bandwidth) {
+		return false;
 	}
 
-	return false;
+	if (enforce_max_payload && ep_tpl < max_tpl) {
+		return false;
+	}
+
+	return true;
 }
 
 /* Calculate endpoint bandwidth */
@@ -841,7 +922,11 @@ static uint32_t get_endpoint_bandwidth(const struct usb_ep_descriptor *ep_desc,
 	uint16_t ep_mps;
 	uint8_t interval;
 
-	interval = BIT(ep_desc->bInterval - 1);
+	if (ep_desc->bInterval == 0U) {
+		return 0;
+	}
+
+	interval = BIT(ep_desc->bInterval - 1U);
 	ep_mps = USB_MPS_EP_SIZE(ep_desc->wMaxPacketSize);
 
 	if (device_speed == USB_SPEED_SPEED_HS) {
@@ -872,7 +957,7 @@ static const struct usb_ep_descriptor *
 scan_interface_endpoints(const struct usb_if_descriptor *const if_desc,
 			 const enum usb_device_speed device_speed,
 			 uint32_t required_bandwidth, uint32_t max_tpl,
-			 uint32_t *found_bandwidth)
+			 bool enforce_max_payload, uint32_t *found_bandwidth)
 {
 	const struct usb_desc_header *desc;
 	const struct usb_ep_descriptor *ep_desc;
@@ -897,8 +982,8 @@ scan_interface_endpoints(const struct usb_if_descriptor *const if_desc,
 			ep_desc = (const void *)desc;
 
 			if (ep_has_enough_bandwidth(ep_desc, if_desc, device_speed,
-						    required_bandwidth,
-						    max_tpl)) {
+						    required_bandwidth, max_tpl,
+						    enforce_max_payload)) {
 				/* Endpoint bandwidth in bytes/sec */
 				ep_bandwidth = get_endpoint_bandwidth(ep_desc, device_speed);
 
@@ -920,67 +1005,156 @@ scan_interface_endpoints(const struct usb_if_descriptor *const if_desc,
 	return best_ep;
 }
 
-/* Select streaming alternate setting based on bandwidth */
-static int select_streaming_alternate(struct uvc_host_data *const host_data,
-				      uint32_t required_bandwidth)
+struct uvc_stream_alt_candidate {
+	const struct usb_if_descriptor *iface;
+	const struct usb_ep_descriptor *ep;
+	uint32_t ep_bandwidth;
+	uint32_t ep_payload_size;
+};
+
+static void uvc_sort_streaming_candidates(struct uvc_stream_alt_candidate *cand, size_t n)
+{
+	for (size_t i = 1U; i < n; i++) {
+		struct uvc_stream_alt_candidate key = cand[i];
+		size_t j = i;
+
+		while (j > 0U) {
+			const struct uvc_stream_alt_candidate *prev = &cand[j - 1U];
+
+			if (prev->ep_payload_size > key.ep_payload_size) {
+				cand[j] = *prev;
+				j--;
+				continue;
+			}
+			if (prev->ep_payload_size == key.ep_payload_size &&
+			    prev->iface->bAlternateSetting > key.iface->bAlternateSetting) {
+				cand[j] = *prev;
+				j--;
+				continue;
+			}
+			break;
+		}
+		cand[j] = key;
+	}
+}
+
+/*
+ * SET_INTERFACE after VS COMMIT (caller must COMMIT full PROBE GET first).
+ *
+ * Alternates are valid only if the isochronous IN endpoint can carry the committed
+ * dwMaxPayloadTransferSize (strict) and meets required bandwidth. Sort by ascending
+ * endpoint payload so we try the leanest alternate that still satisfies the probe.
+ */
+static int uvc_select_streaming_alternate_and_set(struct uvc_host_data *const host_data,
+						  uint32_t required_bandwidth)
 {
 	struct uvc_stream_iface_info *const stream_info = &host_data->current_stream_iface_info;
-	uint32_t max_tpl = sys_le32_to_cpu(host_data->probe.dwMaxPayloadTransferSize);
+	const uint32_t max_tpl = sys_le32_to_cpu(host_data->probe.dwMaxPayloadTransferSize);
 	const enum usb_device_speed device_speed = host_data->udev->speed;
-	const struct usb_if_descriptor *selected_interface = NULL;
-	const struct usb_ep_descriptor *selected_endpoint = NULL;
+	struct uvc_stream_alt_candidate cand[CONFIG_USBH_VIDEO_MAX_STREAM_INTERFACE_ALT];
 	const struct usb_if_descriptor *if_desc;
 	const struct usb_ep_descriptor *ep_desc;
-	uint32_t optimal_bandwidth = UINT32_MAX;
-	uint32_t selected_payload_size = 0;
 	uint32_t ep_bandwidth;
+	size_t n_cand = 0U;
+	int last_err = -EIO;
+	const struct usb_if_descriptor *const idle_stream_iface = stream_info->iface;
+	uint8_t iface_nr;
 
-	LOG_DBG("Required bandwidth: %u bytes/sec, Max payload: %u bytes (device speed: %s)",
+	if (idle_stream_iface == NULL) {
+		LOG_ERR("Streaming interface idle descriptor missing");
+		return -EINVAL;
+	}
+
+	iface_nr = idle_stream_iface->bInterfaceNumber;
+
+	LOG_DBG("Required bandwidth: %u bytes/sec, committed max_tpl=%u (device speed: %s)",
 		required_bandwidth, max_tpl,
 		(device_speed == USB_SPEED_SPEED_HS) ? "High Speed" : "Full Speed");
 
-	/* Scan all streaming interfaces */
 	for (uint8_t i = 0;
 	     i < CONFIG_USBH_VIDEO_MAX_STREAM_INTERFACE_ALT && host_data->stream_iface_alts[i];
 	     i++) {
 		if_desc = host_data->stream_iface_alts[i];
 
-		/* Skip Alt 0 (idle state) */
-		if (if_desc->bAlternateSetting == 0) {
+		if (if_desc->bAlternateSetting == 0U) {
 			continue;
 		}
 
-		ep_desc = scan_interface_endpoints(if_desc, device_speed, required_bandwidth,
-						   max_tpl, &ep_bandwidth);
+		ep_desc = scan_interface_endpoints(if_desc, device_speed, required_bandwidth, max_tpl,
+						   true, &ep_bandwidth);
 
-		if (ep_desc && ep_bandwidth < optimal_bandwidth) {
-			optimal_bandwidth = ep_bandwidth;
-			selected_interface = if_desc;
-			selected_endpoint = ep_desc;
-			selected_payload_size =
-				get_endpoint_payload_size(ep_desc, device_speed);
-
-			LOG_DBG("Selected optimal EP: iface %u alt %u EP 0x%02x, bw=%u, payload=%u",
-				if_desc->bInterfaceNumber, if_desc->bAlternateSetting,
-				ep_desc->bEndpointAddress, ep_bandwidth, selected_payload_size);
+		if (ep_desc == NULL) {
+			continue;
 		}
+
+		if (n_cand >= ARRAY_SIZE(cand)) {
+			LOG_WRN("Streaming alternate candidate list full");
+			break;
+		}
+
+		cand[n_cand].iface = if_desc;
+		cand[n_cand].ep = ep_desc;
+		cand[n_cand].ep_bandwidth = ep_bandwidth;
+		cand[n_cand].ep_payload_size = get_endpoint_payload_size(ep_desc, device_speed);
+
+		LOG_DBG("Candidate alt %u EP 0x%02x bw=%u payload=%u", if_desc->bAlternateSetting,
+			ep_desc->bEndpointAddress, ep_bandwidth, cand[n_cand].ep_payload_size);
+		n_cand++;
 	}
 
-	if (selected_endpoint == NULL) {
-		LOG_ERR("No EP satisfies bandwidth %u and payload size %u", required_bandwidth,
-			max_tpl);
+	if (n_cand == 0U) {
+		LOG_ERR("No alternate meets committed max_tpl=%u and required_bw=%u", max_tpl,
+			required_bandwidth);
 		return -ENOTSUP;
 	}
 
-	stream_info->iface = selected_interface;
-	stream_info->ep = selected_endpoint;
-	stream_info->ep_mps_mult = selected_payload_size;
+	uvc_sort_streaming_candidates(cand, n_cand);
 
-	LOG_DBG("Selected iface %u alt %u EP 0x%02x (bw=%u, payload=%u)",
-		selected_interface->bInterfaceNumber, selected_interface->bAlternateSetting,
-		selected_endpoint->bEndpointAddress, optimal_bandwidth, selected_payload_size);
+	/* #region agent log */
+	LOG_INF(
+		"DBG4E1D95 {\"sessionId\":\"4e1d95\",\"hypothesisId\":\"H8\",\"pre_collected\":%u,\"first_alt\":%u,\"first_payload\":%u}",
+		(unsigned)n_cand, (unsigned)cand[0].iface->bAlternateSetting,
+		(unsigned)cand[0].ep_payload_size);
+	/* #endregion */
 
-	return 0;
+	for (size_t n = 0U; n < n_cand; n++) {
+		stream_info->iface = idle_stream_iface;
+
+		LOG_DBG("SET_INTERFACE try iface %u alt %u EP 0x%02x (bw=%u, payload=%u, max_tpl=%u)",
+			cand[n].iface->bInterfaceNumber, cand[n].iface->bAlternateSetting,
+			cand[n].ep->bEndpointAddress, cand[n].ep_bandwidth, cand[n].ep_payload_size,
+			max_tpl);
+
+		last_err = usbh_device_interface_set(host_data->udev, cand[n].iface->bInterfaceNumber,
+						     cand[n].iface->bAlternateSetting, false);
+		if (last_err == 0) {
+			stream_info->iface = cand[n].iface;
+			stream_info->ep = cand[n].ep;
+			stream_info->ep_mps_mult = cand[n].ep_payload_size;
+			LOG_INF("Set streaming interface %u alternate %u successfully",
+				cand[n].iface->bInterfaceNumber,
+				cand[n].iface->bAlternateSetting);
+			return 0;
+		}
+
+		LOG_WRN("SET_INTERFACE iface %u alt %u failed: %d", cand[n].iface->bInterfaceNumber,
+			cand[n].iface->bAlternateSetting, last_err);
+
+		if (!atomic_test_bit(&host_data->device_flags, UVC_DEVICE_FLAG_CONNECTED)) {
+			/* #region agent log */
+			LOG_INF(
+				"DBG4E1D95 {\"sessionId\":\"4e1d95\",\"hypothesisId\":\"H9\",\"abort\":\"disconnect_after_set_iface\"}");
+			/* #endregion */
+			return last_err;
+		}
+
+		stream_info->iface = idle_stream_iface;
+		(void)usbh_device_interface_set(host_data->udev, iface_nr, 0, false);
+	}
+
+	LOG_ERR("SET_INTERFACE failed for every candidate (probe max_tpl=%u, required_bw=%u)",
+		max_tpl, required_bandwidth);
+	return last_err;
 }
 
 /* Send VideoStreaming GET request  */
@@ -1134,6 +1308,86 @@ static int vs_request(struct uvc_host_data *const host_data, uint8_t request,
 	}
 }
 
+/* UVC 1.0 = 26 B, 1.1 = 34 B, 1.5 = 48 B for VS PROBE/COMMIT (Linux uvc_video_ctrl_size). */
+static size_t uvc_probe_commit_size_from_bcd(const uint16_t bcd_uvc)
+{
+	if (bcd_uvc < 0x0110) {
+		return 26U;
+	}
+	if (bcd_uvc < 0x0150) {
+		return 34U;
+	}
+	return sizeof(struct uvc_probe);
+}
+
+static int uvc_get_vs_ctrl_len(struct uvc_host_data *const host_data, const uint8_t selector,
+			       uint16_t *const out_len)
+{
+	uint8_t buf[2];
+	int ret;
+
+	ret = vs_request(host_data, UVC_GET_LEN, selector, buf, sizeof(buf));
+	if (ret != 0) {
+		return ret;
+	}
+
+	*out_len = sys_get_le16(buf);
+	return 0;
+}
+
+static int uvc_ensure_probe_commit_ctrl_len(struct uvc_host_data *const host_data)
+{
+	const struct uvc_control_header_descriptor *const vc = host_data->uvc_descriptors.vc_header;
+	uint16_t len_get = 0;
+	int ret;
+
+	if (host_data->probe_commit_ctrl_len != 0U) {
+		return 0;
+	}
+
+	if (vc == NULL) {
+		LOG_ERR("No VideoControl header");
+		return -EINVAL;
+	}
+
+	ret = uvc_get_vs_ctrl_len(host_data, UVC_VS_PROBE_CONTROL, &len_get);
+	if (ret == 0 && len_get >= 26U && len_get <= sizeof(struct uvc_probe)) {
+		host_data->probe_commit_ctrl_len = len_get;
+		LOG_DBG("VS PROBE/COMMIT control length from GET_LEN: %u", len_get);
+	} else {
+		const uint16_t bcd = sys_le16_to_cpu(vc->bcdUVC);
+
+		host_data->probe_commit_ctrl_len = (uint16_t)uvc_probe_commit_size_from_bcd(bcd);
+		LOG_DBG("VS PROBE/COMMIT control length from bcdUVC 0x%04x: %u", bcd,
+			host_data->probe_commit_ctrl_len);
+	}
+
+	return 0;
+}
+
+/* Lower negotiated max payload before COMMIT when Kconfig cap is set (host compatibility). */
+static void uvc_apply_host_max_payload_cap(struct uvc_host_data *const host_data)
+{
+	const uint32_t cap = (uint32_t)CONFIG_USBH_UVC_HOST_MAX_PAYLOAD_CAP;
+	uint32_t m;
+
+	if (cap == 0U) {
+		return;
+	}
+
+	m = sys_le32_to_cpu(host_data->probe.dwMaxPayloadTransferSize);
+	if (m > cap) {
+		host_data->probe.dwMaxPayloadTransferSize = sys_cpu_to_le32(cap);
+		LOG_INF("Capped dwMaxPayloadTransferSize from %u to %u (CONFIG_USBH_UVC_HOST_MAX_PAYLOAD_CAP)",
+			m, cap);
+		/* #region agent log */
+		LOG_INF(
+			"DBG4E1D95 {\"sessionId\":\"4e1d95\",\"hypothesisId\":\"H10\",\"cap\":%u,\"before\":%u,\"after\":%u}",
+			(unsigned)cap, (unsigned)m, (unsigned)cap);
+		/* #endregion */
+	}
+}
+
 /* Set UVC video format and configure streaming */
 static int set_format(struct uvc_host_data *const host_data,
 		      struct video_format *const fmt)
@@ -1144,6 +1398,7 @@ static int set_format(struct uvc_host_data *const host_data,
 	const struct uvc_frame_common_descriptor *frame;
 	uint32_t frmival;
 	uint32_t byte_per_sec;
+	uint16_t probe_len;
 	int ret;
 
 	/* Find matching format and frame descriptors */
@@ -1153,6 +1408,13 @@ static int set_format(struct uvc_host_data *const host_data,
 			fmt->width, fmt->height);
 		return ret;
 	}
+
+	ret = uvc_ensure_probe_commit_ctrl_len(host_data);
+	if (ret != 0) {
+		return ret;
+	}
+
+	probe_len = host_data->probe_commit_ctrl_len;
 
 	/* Prepare probe/commit structure */
 	memset(&host_data->probe, 0, sizeof(host_data->probe));
@@ -1165,9 +1427,9 @@ static int set_format(struct uvc_host_data *const host_data,
 		VIDEO_FOURCC_TO_STR(fmt->pixelformat), fmt->width, fmt->height,
 		format->bFormatIndex, frame->bFrameIndex, frmival);
 
-	/* PROBE SET */
+	/* PROBE SET (wLength must match UVC version: 26/34/48 bytes) */
 	ret = vs_request(host_data, UVC_SET_CUR, UVC_VS_PROBE_CONTROL,
-				  &host_data->probe, sizeof(host_data->probe));
+				  &host_data->probe, (uint8_t)probe_len);
 	if (ret == -EPIPE) {
 		LOG_WRN("Request 0x%02x not supported by device, control selector 0x%02x",
 			UVC_SET_CUR, UVC_VS_PROBE_CONTROL);
@@ -1180,7 +1442,7 @@ static int set_format(struct uvc_host_data *const host_data,
 	/* PROBE GET */
 	memset(&host_data->probe, 0, sizeof(host_data->probe));
 	ret = vs_request(host_data, UVC_GET_CUR, UVC_VS_PROBE_CONTROL,
-			 &host_data->probe, sizeof(host_data->probe));
+			 &host_data->probe, (uint8_t)probe_len);
 	if (ret == -EPIPE) {
 		LOG_WRN("Request 0x%02x not supported by device, control selector 0x%02x",
 			UVC_GET_CUR, UVC_VS_PROBE_CONTROL);
@@ -1190,9 +1452,11 @@ static int set_format(struct uvc_host_data *const host_data,
 		return ret;
 	}
 
-	/* COMMIT */
+	uvc_apply_host_max_payload_cap(host_data);
+
+	/* COMMIT must match PROBE GET (incl. dwMaxPayloadTransferSize) before SET_INTERFACE */
 	ret = vs_request(host_data, UVC_SET_CUR, UVC_VS_COMMIT_CONTROL,
-			 &host_data->probe, sizeof(host_data->probe));
+			 &host_data->probe, (uint8_t)probe_len);
 	if (ret == -EPIPE) {
 		LOG_WRN("Request 0x%02x not supported by device, control selector 0x%02x",
 			UVC_SET_CUR, UVC_VS_COMMIT_CONTROL);
@@ -1200,6 +1464,20 @@ static int set_format(struct uvc_host_data *const host_data,
 	} else if (ret != 0) {
 		LOG_ERR("COMMIT request failed: %d", ret);
 		return ret;
+	}
+
+	/* Use negotiated interval from probe when the device reports one */
+	{
+		const uint32_t probe_frmival = sys_le32_to_cpu(host_data->probe.dwFrameInterval);
+
+		if (probe_frmival != 0U) {
+			frmival = probe_frmival;
+		}
+	}
+
+	if (frmival == 0U) {
+		LOG_ERR("Invalid frame interval after probe");
+		return -EINVAL;
 	}
 
 	ret = video_estimate_fmt_size(fmt);
@@ -1218,38 +1496,40 @@ static int set_format(struct uvc_host_data *const host_data,
 	host_data->current_format.frame_ptr = frame;
 	k_mutex_unlock(&host_data->lock);
 
-	/* Calculate required bandwidth */
-	byte_per_sec = host_data->current_format.video_fmt.size *
-		       ((NSEC_PER_SEC / 100ULL) / host_data->current_format.frmival_100ns);
+	/* Calculate required bandwidth (use local @p frmival; host_data may be cleared on disconnect) */
+	byte_per_sec = fmt->size * ((NSEC_PER_SEC / 100ULL) / frmival);
 	if (byte_per_sec == 0) {
 		LOG_WRN("Cannot calculate required bandwidth");
 		return -EINVAL;
 	}
 
-	/* Select streaming interface alternate setting */
-	ret = select_streaming_alternate(host_data, byte_per_sec);
+	/* Select streaming alternate and apply SET_INTERFACE (may try several alternates) */
+	ret = uvc_select_streaming_alternate_and_set(host_data, byte_per_sec);
 	if (ret != 0) {
-		LOG_ERR("Select stream alternate failed: %d", ret);
+		/* #region agent log */
+		LOG_INF(
+			"DBG4E1D95 {\"sessionId\":\"4e1d95\",\"hypothesisId\":\"H5\",\"set_iface_err\":%d}",
+			ret);
+		/* #endregion */
+		LOG_ERR("Failed to set streaming interface: %d", ret);
 		return ret;
 	}
 
 	stream_iface = stream_info->iface;
 
-	/* Configure streaming interface */
-	ret = usbh_device_interface_set(host_data->udev, stream_iface->bInterfaceNumber,
-					stream_iface->bAlternateSetting, false);
-	if (ret != 0) {
-		LOG_ERR("Failed to set streaming interface %u alternate %u: %d",
-			stream_iface->bInterfaceNumber, stream_iface->bAlternateSetting, ret);
-		return ret;
-	}
-
-	LOG_INF("Set streaming interface %u alternate %u successfully",
-		stream_iface->bInterfaceNumber, stream_iface->bAlternateSetting);
+	/* #region agent log */
+	LOG_INF(
+		"DBG4E1D95 {\"sessionId\":\"4e1d95\",\"hypothesisId\":\"H6\",\"probe_len\":%u,\"bcdUVC\":%u,\"speed\":%u,\"frmival\":%u,\"max_tpl\":%u,\"bps\":%u,\"alt\":%u}",
+		(unsigned)probe_len,
+		(unsigned)sys_le16_to_cpu(host_data->uvc_descriptors.vc_header->bcdUVC),
+		(unsigned)host_data->udev->speed, (unsigned)frmival,
+		(unsigned)sys_le32_to_cpu(host_data->probe.dwMaxPayloadTransferSize),
+		(unsigned)byte_per_sec, (unsigned)stream_iface->bAlternateSetting);
+	/* #endregion */
 
 	LOG_INF("UVC format set successfully: %s %ux%u@%ufps",
 		VIDEO_FOURCC_TO_STR(fmt->pixelformat), fmt->width, fmt->height,
-		(NSEC_PER_SEC / 100) / host_data->current_format.frmival_100ns);
+		(NSEC_PER_SEC / 100) / frmival);
 
 	return 0;
 }
@@ -1258,16 +1538,23 @@ static int set_format(struct uvc_host_data *const host_data,
 static int set_frame_rate(const struct device *dev, uint32_t fps)
 {
 	struct uvc_host_data *const host_data = dev->data;
-	const struct usb_if_descriptor *stream_iface;
 	struct video_frmival_enum fie = {0};
 	uint32_t best_frmival = 0;
 	uint32_t byte_per_sec = 0;
 	uint32_t target_frmival = 0;
+	uint16_t probe_len;
 	int ret;
 
 	if (fps == 0) {
 		return -EINVAL;
 	}
+
+	ret = uvc_ensure_probe_commit_ctrl_len(host_data);
+	if (ret != 0) {
+		return ret;
+	}
+
+	probe_len = host_data->probe_commit_ctrl_len;
 
 	/* target_frmival in 100ns */
 	target_frmival = (NSEC_PER_SEC / 100) / fps;
@@ -1300,7 +1587,7 @@ static int set_frame_rate(const struct device *dev, uint32_t fps)
 	k_mutex_unlock(&host_data->lock);
 
 	ret = vs_request(host_data, UVC_SET_CUR, UVC_VS_PROBE_CONTROL,
-			 &host_data->probe, sizeof(host_data->probe));
+			 &host_data->probe, (uint8_t)probe_len);
 	if (ret != 0) {
 		LOG_ERR("PROBE SET request failed: %d", ret);
 		return ret;
@@ -1308,14 +1595,16 @@ static int set_frame_rate(const struct device *dev, uint32_t fps)
 
 	memset(&host_data->probe, 0, sizeof(host_data->probe));
 	ret = vs_request(host_data, UVC_GET_CUR, UVC_VS_PROBE_CONTROL,
-			 &host_data->probe, sizeof(host_data->probe));
+			 &host_data->probe, (uint8_t)probe_len);
 	if (ret != 0) {
 		LOG_ERR("PROBE GET request failed: %d", ret);
 		return ret;
 	}
 
+	uvc_apply_host_max_payload_cap(host_data);
+
 	ret = vs_request(host_data, UVC_SET_CUR, UVC_VS_COMMIT_CONTROL,
-				  &host_data->probe, sizeof(host_data->probe));
+			 &host_data->probe, (uint8_t)probe_len);
 	if (ret != 0) {
 		LOG_ERR("COMMIT request failed: %d", ret);
 		return ret;
@@ -1335,24 +1624,11 @@ static int set_frame_rate(const struct device *dev, uint32_t fps)
 		return -EINVAL;
 	}
 
-	ret = select_streaming_alternate(host_data, byte_per_sec);
+	ret = uvc_select_streaming_alternate_and_set(host_data, byte_per_sec);
 	if (ret != 0) {
-		LOG_ERR("Failed to select streaming alternate: %d", ret);
+		LOG_ERR("Failed to set streaming interface: %d", ret);
 		return ret;
 	}
-
-	stream_iface = host_data->current_stream_iface_info.iface;
-
-	ret = usbh_device_interface_set(host_data->udev, stream_iface->bInterfaceNumber,
-					stream_iface->bAlternateSetting, false);
-	if (ret != 0) {
-		LOG_ERR("Failed to set streaming interface %u alternate %u: %d",
-			stream_iface->bInterfaceNumber, stream_iface->bAlternateSetting, ret);
-		return ret;
-	}
-
-	LOG_INF("Set streaming interface %u alternate %u successfully",
-		stream_iface->bInterfaceNumber, stream_iface->bAlternateSetting);
 
 	return 0;
 }
@@ -2479,6 +2755,7 @@ static int usbh_uvc_removed(struct usbh_class_data *const c_data)
 	memset(host_data->format_caps, 0, sizeof(host_data->format_caps));
 	host_data->format_caps_count = 0;
 	memset(&host_data->probe, 0, sizeof(host_data->probe));
+	host_data->probe_commit_ctrl_len = 0U;
 
 	host_data->udev = NULL;
 

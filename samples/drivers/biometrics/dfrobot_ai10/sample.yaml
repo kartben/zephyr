@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+
+sample:
+  name: DFRobot AI10 face recognition
+  description: Face enrollment and matching using the DFRobot AI10 module and biometrics API
+
+tests:
+  sample.drivers.biometrics.dfrobot_ai10:
+    build_only: true
+    tags:
+      - drivers
+      - biometrics
+      - serial

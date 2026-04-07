@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  DFRobot AI10 (SEN0677) AI vision module — UART, 115200 8N1.
+
+  This binding supports face recognition via the Zephyr biometrics API (face
+  mode). Palm and QR are not implemented in the minimal driver.
+
+compatible: "dfrobot,ai10"
+
+include: uart-device.yaml

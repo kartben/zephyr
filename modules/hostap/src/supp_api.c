@@ -30,6 +30,10 @@
 #include "hostapd.h"
 #include "hapd_api.h"
 #include "wpa_supplicant/bss.h"
+#ifdef CONFIG_WIFI_NM_WPA_SUPPLICANT_WPS
+#include "wps_supplicant.h"
+#endif
+#include "p2p_supplicant.h"
 
 extern struct k_sem wpa_supplicant_ready_sem;
 extern struct wpa_global *global;
@@ -2695,6 +2699,43 @@ int supplicant_config_params(const struct device *dev, struct wifi_config_params
 		}
 		wpa_printf(MSG_DEBUG, "Set OKC: %d", params->okc);
 	}
+
+#ifdef CONFIG_WIFI_NM_WPA_SUPPLICANT_WPS
+	if (params->type & WIFI_CONFIG_PARAM_DEVICE_NAME) {
+		char *new_name;
+		size_t len = strlen(params->device_name);
+
+		if (len > WPS_DEV_NAME_MAX_LEN) {
+			ret = -EINVAL;
+			wpa_printf(MSG_ERROR, "device_name too long (max %u)",
+				   WPS_DEV_NAME_MAX_LEN);
+			goto out;
+		}
+		if (len == 0) {
+			os_free(wpa_s->conf->device_name);
+			wpa_s->conf->device_name = NULL;
+		} else {
+			new_name = os_strdup(params->device_name);
+			if (new_name == NULL) {
+				ret = -ENOMEM;
+				goto out;
+			}
+			os_free(wpa_s->conf->device_name);
+			wpa_s->conf->device_name = new_name;
+		}
+		wpa_s->conf->changed_parameters |= CFG_CHANGED_DEVICE_NAME;
+#ifdef CONFIG_WPS
+		wpas_wps_update_config(wpa_s);
+#endif
+		wpas_p2p_update_config(wpa_s);
+		wpa_printf(MSG_DEBUG, "Set device_name");
+	}
+#else
+	if (params->type & WIFI_CONFIG_PARAM_DEVICE_NAME) {
+		ret = -ENOTSUP;
+		goto out;
+	}
+#endif /* CONFIG_WIFI_NM_WPA_SUPPLICANT_WPS */
 
 out:
 	k_mutex_unlock(&wpa_supplicant_mutex);

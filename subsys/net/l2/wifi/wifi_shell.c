@@ -4343,10 +4343,11 @@ static int wifi_config_args_to_params(const struct shell *sh, size_t argc, char 
 	static const struct sys_getopt_option long_options[] = {
 		{"okc", sys_getopt_required_argument, 0, 'o'},
 		{"iface", sys_getopt_required_argument, 0, 'i'},
+		{"device-name", sys_getopt_required_argument, 0, 'd'},
 		{0, 0, 0, 0}};
 	long val;
 
-	while ((opt = sys_getopt_long(argc, argv, "o:i:",
+	while ((opt = sys_getopt_long(argc, argv, "o:i:d:",
 				  long_options, &opt_index)) != -1) {
 		state = sys_getopt_state_get();
 		switch (opt) {
@@ -4356,6 +4357,16 @@ static int wifi_config_args_to_params(const struct shell *sh, size_t argc, char 
 			}
 			params->okc = val;
 			params->type |= WIFI_CONFIG_PARAM_OKC;
+			break;
+		case 'd':
+			if (strlen(state->optarg) > WIFI_WPS_DEVICE_NAME_MAX_LEN) {
+				PR_ERROR("device-name too long (max %u octets)\n",
+					 WIFI_WPS_DEVICE_NAME_MAX_LEN);
+				return -EINVAL;
+			}
+			strlcpy(params->device_name, state->optarg,
+				sizeof(params->device_name));
+			params->type |= WIFI_CONFIG_PARAM_DEVICE_NAME;
 			break;
 		case 'i':
 			/* Unused, but parsing to avoid unknown option error */
@@ -4553,7 +4564,9 @@ SHELL_SUBCMD_ADD((wifi), channel, NULL,
 SHELL_SUBCMD_ADD((wifi), config, NULL,
 		 SHELL_HELP("Configure STA parameters",
 			    "[-i, --iface=<interface index>]\n"
-			    "-o, --okc=<0/1>: Opportunistic Key Caching. 0: disable, 1: enable"),
+			    "-o, --okc=<0/1>: Opportunistic Key Caching. 0: disable, 1: enable\n"
+			    "-d, --device-name=<name>: WPS / P2P friendly name (max 32 octets; "
+			    "empty clears)"),
 		 cmd_wifi_config_params,
 		 3, 12);
 

@@ -741,10 +741,15 @@ enum wifi_ap_config_param {
 	WIFI_AP_CONFIG_PARAM_VHT_CAPAB = BIT(4),
 };
 
+/** Maximum UTF-8 octets for WPS Device Name / P2P friendly name (WFA WPS 2.0) */
+#define WIFI_WPS_DEVICE_NAME_MAX_LEN 32
+
 /** @brief Wi-Fi STA mode configuration parameter */
 enum wifi_config_param {
 	/** Used for STA mode configuration parameter OKC */
 	WIFI_CONFIG_PARAM_OKC = BIT(0),
+	/** Used for STA mode WPS / P2P device name (wpa_supplicant device_name) */
+	WIFI_CONFIG_PARAM_DEVICE_NAME = BIT(1),
 };
 
 /** Helper function to get user-friendly status name for the status code. */

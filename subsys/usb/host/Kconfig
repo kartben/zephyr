@@ -24,10 +24,11 @@ config USBH_USB_DEVICE_MAX
 
 config USBH_USB_DEVICE_HEAP
 	int "Memory used to cache device descriptors"
-	default 1024
+	default 8192
 	range 256 16384
 	help
-	  Memory used to cache device descriptors.
+	  Memory used to cache device descriptors (including full configuration
+	  descriptor trees). Many devices report wTotalLength well above 1 KiB.
 
 config USBH_SHELL
 	bool "USB host shell"

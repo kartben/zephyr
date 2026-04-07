@@ -69,6 +69,16 @@ config USBH_VIDEO_MAX_FRMIVAL
 	  Max number of Frame Interval listed on a frame descriptor. The
 	  default value is selected arbitrarily to fit most situations.
 
+config USBH_UVC_HOST_MAX_PAYLOAD_CAP
+	int "Cap VS PROBE/COMMIT dwMaxPayloadTransferSize (bytes, 0 = off)"
+	range 0 4096
+	default 0
+	help
+	  After PROBE GET, optionally lower dwMaxPayloadTransferSize to this value before
+	  COMMIT. Some host controllers or cameras fail SET_INTERFACE on the highest
+	  isochronous alternate even though descriptors allow it; capping can expose a
+	  lower alternate that still meets the cap (e.g. try alt 10 before alt 11).
+
 module = USBH_UVC
 module-str = usbh uvc
 default-count = 1

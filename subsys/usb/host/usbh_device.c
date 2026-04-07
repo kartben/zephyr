@@ -229,6 +229,8 @@ int usbh_device_interface_set(struct usb_device *const udev,
 		return err;
 	}
 
+	err = 0;
+
 	if (!dry) {
 		err = usbh_req_set_alt(udev, iface, alt);
 		if (err) {
@@ -270,7 +272,7 @@ int usbh_device_interface_set(struct usb_device *const udev,
 error:
 	k_mutex_unlock(&udev->mutex);
 
-	return 0;
+	return err;
 }
 
 static int parse_configuration_descriptor(struct usb_device *const udev)
@@ -360,7 +362,7 @@ int usbh_device_set_configuration(struct usb_device *const udev, const uint8_t n
 {
 	struct usb_cfg_descriptor cfg_desc;
 	uint8_t idx;
-	int err;
+	int err = 0;
 
 	err = k_mutex_lock(&udev->mutex, K_NO_WAIT);
 	if (err) {
@@ -421,6 +423,8 @@ int usbh_device_set_configuration(struct usb_device *const udev, const uint8_t n
 	err = usbh_req_set_cfg(udev, num);
 	if (err) {
 		LOG_ERR("Set Configuration %u request failed", num);
+		k_heap_free(&usb_device_heap, udev->cfg_desc);
+		udev->cfg_desc = NULL;
 		goto error;
 	}
 
@@ -434,12 +438,14 @@ int usbh_device_set_configuration(struct usb_device *const udev, const uint8_t n
 		LOG_ERR("Failed to read configuration descriptor of %u bytes: %d",
 			cfg_desc.wTotalLength, err);
 		k_heap_free(&usb_device_heap, udev->cfg_desc);
+		udev->cfg_desc = NULL;
 		goto error;
 	}
 
 	if (memcmp(udev->cfg_desc, &cfg_desc, sizeof(cfg_desc))) {
 		LOG_ERR("Configuration descriptor read mismatch");
 		k_heap_free(&usb_device_heap, udev->cfg_desc);
+		udev->cfg_desc = NULL;
 		goto error;
 	}
 
@@ -449,6 +455,7 @@ int usbh_device_set_configuration(struct usb_device *const udev, const uint8_t n
 	err = parse_configuration_descriptor(udev);
 	if (err) {
 		k_heap_free(&usb_device_heap, udev->cfg_desc);
+		udev->cfg_desc = NULL;
 		goto error;
 	}
 

@@ -45,6 +45,10 @@ static K_THREAD_STACK_DEFINE(iface_wq_stack, CONFIG_WIFI_NM_WPA_SUPPLICANT_WQ_ST
 #include "fst/fst.h"
 #include "wpa_cli_zephyr.h"
 #include "ctrl_iface_zephyr.h"
+#ifdef CONFIG_WPS
+#include "wps_supplicant.h"
+#endif
+#include "p2p_supplicant.h"
 #ifdef CONFIG_WIFI_NM_HOSTAPD_AP
 #include "hostapd.h"
 #include "hapd_main.h"
@@ -283,6 +287,38 @@ static const char *zephyr_hostap_msg_ifname_cb(void *ctx)
 #endif
 }
 
+#ifdef CONFIG_WIFI_NM_WPA_SUPPLICANT_DEVICE_NAME
+static void zephyr_apply_kconfig_device_name(struct wpa_supplicant *wpa_s)
+{
+	char buf[WPS_DEV_NAME_MAX_LEN + 1];
+	char *new_name;
+
+	if (CONFIG_WIFI_NM_WPA_SUPPLICANT_DEVICE_NAME[0] == '\0') {
+		return;
+	}
+
+	snprintk(buf, sizeof(buf), "%s", CONFIG_WIFI_NM_WPA_SUPPLICANT_DEVICE_NAME);
+	if (strlen(CONFIG_WIFI_NM_WPA_SUPPLICANT_DEVICE_NAME) > WPS_DEV_NAME_MAX_LEN) {
+		LOG_WRN("WPA supplicant device_name truncated to %u octets",
+			(unsigned int)WPS_DEV_NAME_MAX_LEN);
+	}
+
+	new_name = os_strdup(buf);
+	if (new_name == NULL) {
+		LOG_ERR("Failed to allocate device_name");
+		return;
+	}
+
+	os_free(wpa_s->conf->device_name);
+	wpa_s->conf->device_name = new_name;
+	wpa_s->conf->changed_parameters |= CFG_CHANGED_DEVICE_NAME;
+#ifdef CONFIG_WPS
+	wpas_wps_update_config(wpa_s);
+#endif
+	wpas_p2p_update_config(wpa_s);
+}
+#endif /* CONFIG_WIFI_NM_WPA_SUPPLICANT_DEVICE_NAME */
+
 static void zephyr_hostap_ctrl_iface_msg_cb(void *ctx, int level, enum wpa_msg_type type,
 					    const char *txt, size_t len)
 {
@@ -337,6 +373,10 @@ static int add_interface(struct supplicant_context *ctx, struct net_if *iface)
 
 	wpa_s->conf->filter_ssids = 1;
 	wpa_s->conf->ap_scan = 1;
+
+#ifdef CONFIG_WIFI_NM_WPA_SUPPLICANT_DEVICE_NAME
+	zephyr_apply_kconfig_device_name(wpa_s);
+#endif
 
 	/* Default interface, kick start supplicant */
 	if (get_iface_count(ctx) > 0) {

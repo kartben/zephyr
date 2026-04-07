@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: Apache-2.0
+
+config BIOMETRICS_DFROBOT_AI10
+	bool "DFRobot AI10 face / palm / QR vision module (UART)"
+	default y
+	depends on DT_HAS_DFROBOT_AI10_ENABLED
+	select SERIAL
+	select UART_INTERRUPT_DRIVEN
+	help
+	  Enable the DFRobot AI10 (SEN0677) driver over UART (115200 8N1).
+
+	  The Zephyr biometrics API uses numeric template IDs. The module assigns
+	  its own user IDs (UIDs); use biometric_template_list() after enrollment
+	  to obtain the UIDs used for verify and delete. The ID passed to
+	  biometric_enroll_start() only selects the enrollment label string sent
+	  to the module (uNNNN).
+
+if BIOMETRICS_DFROBOT_AI10
+
+config BIOMETRICS_DFROBOT_AI10_TIMEOUT_MS
+	int "Default operation timeout in milliseconds"
+	default 30000
+	help
+	  Default for BIOMETRIC_ATTR_TIMEOUT_MS and for operations that use
+	  K_FOREVER (UART framing and host-side waits). Face enroll/verify also
+	  send a seconds field to the module (3–20 s); that follows the k_timeout_t
+	  passed into enroll_capture / match when set, not this value alone.
+
+config BIOMETRICS_DFROBOT_AI10_MAX_TEMPLATES
+	int "Reported maximum number of templates"
+	default 100
+	range 1 100000
+	help
+	  Value reported in biometric_capabilities.max_templates. The module
+	  stores users internally; this is an informational upper bound.
+
+endif # BIOMETRICS_DFROBOT_AI10

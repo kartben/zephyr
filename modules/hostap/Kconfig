@@ -321,6 +321,21 @@ config WIFI_NM_WPA_SUPPLICANT_WPS
 	bool "WPS support"
 	depends on !WIFI_NM_WPA_SUPPLICANT_CRYPTO_NONE
 
+if WIFI_NM_WPA_SUPPLICANT_WPS
+
+config WIFI_NM_WPA_SUPPLICANT_DEVICE_NAME
+	string "Default WPS device name (P2P / WPS friendly name)"
+	default "zephyr_blah"
+	help
+	  Sets wpa_supplicant's global device_name used for Wi-Fi Protected
+	  Setup (WPS) and Wi-Fi P2P (including the name peers such as phones
+	  display when you connect).
+
+	  Leave empty to keep the default (wpa_supplicant / driver behavior).
+	  Maximum length is 32 bytes (UTF-8); longer values are truncated.
+
+endif # WIFI_NM_WPA_SUPPLICANT_WPS
+
 config WIFI_NM_HOSTAPD_WPS
 	bool "WPS hostapd support"
 	depends on !WIFI_NM_WPA_SUPPLICANT_CRYPTO_NONE

@@ -1241,6 +1241,8 @@ struct wifi_config_params {
 	enum wifi_config_param type;
 	/** Parameter used for opportunistic key caching */
 	int okc;
+	/** WPS / P2P device name; used when @ref WIFI_CONFIG_PARAM_DEVICE_NAME is set */
+	char device_name[WIFI_WPS_DEVICE_NAME_MAX_LEN + 1];
 };
 
 #ifdef CONFIG_WIFI_NM_WPA_SUPPLICANT_DPP

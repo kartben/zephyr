@@ -1,0 +1,21 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * DFRobot AI10 on Arduino UART (UART1 on nRF52840 DK). Cross TX/RX with the module.
+ */
+
+/ {
+	aliases {
+		biometrics = &dfrobot_ai10;
+	};
+};
+
+&arduino_serial {
+	status = "okay";
+	current-speed = <115200>;
+
+	dfrobot_ai10: dfrobot_ai10 {
+		compatible = "dfrobot,ai10";
+		status = "okay";
+	};
+};
