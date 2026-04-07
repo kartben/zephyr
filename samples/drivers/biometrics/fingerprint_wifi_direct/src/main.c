@@ -177,7 +177,9 @@ static int connect_to_peer(struct net_if *iface)
 	scope_var(net_mgmt_cb, callback_cleanup)(&cb);
 	scope_var(p2p_discovery, discovery)(iface);
 
-	(void)callback_cleanup;
+	if (callback_cleanup == NULL) {
+		return -EINVAL;
+	}
 
 	demo_state.iface = iface;
 	k_sem_reset(&peer_found_sem);
