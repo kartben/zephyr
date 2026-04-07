@@ -25,6 +25,7 @@ supported:
   - i2s
   - entropy
   - usb_device
+  - usb_host
   - watchdog
   - counter
   - pwm
