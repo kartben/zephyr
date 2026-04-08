@@ -64,7 +64,7 @@ config NET_SAMPLE_NUM_WEBSOCKET_HANDLERS
 config NET_SAMPLE_WEBSOCKET_STATS_INTERVAL
 	int "Interval in milliseconds to send network stats over websocket"
 	depends on NET_SAMPLE_WEBSOCKET_SERVICE
-	default 200
+	default 1000
 	help
 	  This interval controls how often the net stats data shown on the web page
 	  will be updated.

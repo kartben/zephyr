@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <inttypes.h>
+#include <string.h>
 
 #include <zephyr/kernel.h>
 #include <zephyr/net/tls_credentials.h>
@@ -223,6 +224,84 @@ static struct http_resource_detail_dynamic led_resource_detail = {
 	.user_data = NULL,
 };
 
+#define THROUGHPUT_DURATION_MS 10000
+/* Larger chunks reduce HTTP handler round-trips and chunked-encoding overhead. */
+#define THROUGHPUT_CHUNK_SIZE  8192
+
+static uint8_t throughput_chunk[THROUGHPUT_CHUNK_SIZE];
+static int64_t throughput_deadline_ms = -1;
+static bool throughput_extra_headers_sent;
+
+static const struct http_header throughput_extra_headers[] = {
+	{
+		.name = "Content-Disposition",
+		.value = "attachment; filename=\"throughput.bin\"",
+	},
+	{
+		.name = "Cache-Control",
+		.value = "no-store",
+	},
+};
+
+static void throughput_session_reset(void)
+{
+	throughput_deadline_ms = -1;
+	throughput_extra_headers_sent = false;
+}
+
+static int throughput_handler(struct http_client_ctx *client, enum http_transaction_status status,
+			      const struct http_request_ctx *request_ctx,
+			      struct http_response_ctx *response_ctx, void *user_data)
+{
+	ARG_UNUSED(client);
+	ARG_UNUSED(request_ctx);
+	ARG_UNUSED(user_data);
+
+	if (status == HTTP_SERVER_TRANSACTION_ABORTED || status == HTTP_SERVER_TRANSACTION_COMPLETE) {
+		throughput_session_reset();
+		return 0;
+	}
+
+	if (status != HTTP_SERVER_REQUEST_DATA_FINAL) {
+		return 0;
+	}
+
+	if (throughput_deadline_ms < 0) {
+		throughput_deadline_ms = k_uptime_get() + THROUGHPUT_DURATION_MS;
+		throughput_extra_headers_sent = false;
+		memset(throughput_chunk, 0xa5, sizeof(throughput_chunk));
+	}
+
+	if (k_uptime_get() >= throughput_deadline_ms) {
+		response_ctx->final_chunk = true;
+		response_ctx->body = NULL;
+		response_ctx->body_len = 0;
+		return 0;
+	}
+
+	if (!throughput_extra_headers_sent) {
+		response_ctx->headers = throughput_extra_headers;
+		response_ctx->header_count = ARRAY_SIZE(throughput_extra_headers);
+		throughput_extra_headers_sent = true;
+	}
+
+	response_ctx->body = throughput_chunk;
+	response_ctx->body_len = sizeof(throughput_chunk);
+	response_ctx->final_chunk = false;
+
+	return 0;
+}
+
+static struct http_resource_detail_dynamic throughput_resource_detail = {
+	.common = {
+			.type = HTTP_RESOURCE_TYPE_DYNAMIC,
+			.bitmask_of_supported_http_methods = BIT(HTTP_GET),
+			.content_type = "application/octet-stream",
+		},
+	.cb = throughput_handler,
+	.user_data = NULL,
+};
+
 #if defined(CONFIG_NET_SAMPLE_WEBSOCKET_SERVICE)
 static uint8_t ws_echo_buffer[1024];
 
@@ -271,6 +350,9 @@ HTTP_RESOURCE_DEFINE(uptime_resource, test_http_service, "/uptime", &uptime_reso
 
 HTTP_RESOURCE_DEFINE(led_resource, test_http_service, "/led", &led_resource_detail);
 
+HTTP_RESOURCE_DEFINE(throughput_resource, test_http_service, "/throughput",
+		     &throughput_resource_detail);
+
 #if defined(CONFIG_NET_SAMPLE_WEBSOCKET_SERVICE)
 HTTP_RESOURCE_DEFINE(ws_echo_resource, test_http_service, "/ws_echo", &ws_echo_resource_detail);
 
@@ -304,6 +386,9 @@ HTTP_RESOURCE_DEFINE(echo_resource_https, test_https_service, "/dynamic", &echo_
 HTTP_RESOURCE_DEFINE(uptime_resource_https, test_https_service, "/uptime", &uptime_resource_detail);
 
 HTTP_RESOURCE_DEFINE(led_resource_https, test_https_service, "/led", &led_resource_detail);
+
+HTTP_RESOURCE_DEFINE(throughput_resource_https, test_https_service, "/throughput",
+		       &throughput_resource_detail);
 
 #if defined(CONFIG_NET_SAMPLE_WEBSOCKET_SERVICE)
 HTTP_RESOURCE_DEFINE(ws_echo_resource_https, test_https_service, "/ws_echo",

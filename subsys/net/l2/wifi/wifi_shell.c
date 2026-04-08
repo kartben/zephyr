@@ -4364,8 +4364,8 @@ static int wifi_config_args_to_params(const struct shell *sh, size_t argc, char 
 					 WIFI_WPS_DEVICE_NAME_MAX_LEN);
 				return -EINVAL;
 			}
-			strlcpy(params->device_name, state->optarg,
-				sizeof(params->device_name));
+			snprintf(params->device_name, sizeof(params->device_name), "%s",
+				 state->optarg);
 			params->type |= WIFI_CONFIG_PARAM_DEVICE_NAME;
 			break;
 		case 'i':

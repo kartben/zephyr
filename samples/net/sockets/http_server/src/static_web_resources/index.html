@@ -46,6 +46,62 @@
             padding-left: 12px;
             white-space: nowrap;
         }
+
+        .throughput-panel {
+            margin: 0 0 16px;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+
+        .throughput-readout {
+            font-size: 2rem;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            margin: 8px 0;
+            line-height: 1.2;
+        }
+
+        .throughput-sub {
+            font-size: 0.95rem;
+            color: #333;
+            margin: 0 0 12px;
+        }
+
+        .meter {
+            height: 22px;
+            border-radius: 6px;
+            background: #e8e8e8;
+            overflow: hidden;
+            margin: 6px 0 12px;
+        }
+
+        .meter-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 6px;
+            transition: width 0.08s linear;
+        }
+
+        .meter-fill.time {
+            background: linear-gradient(90deg, #1a73e8, #4fc3f7);
+        }
+
+        .meter-fill.rate {
+            background: linear-gradient(90deg, #0f9d58, #7cb342);
+        }
+
+        .meter-label {
+            font-size: 0.8rem;
+            color: #555;
+            margin: 0 0 2px;
+        }
+
+        input[type="button"]:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -60,6 +116,22 @@
     <h4>Uptime Counter</h4>
     <p>Below is the device uptime. This demonstrates dynamic handling of a GET request</p>
     <p id="uptime"></p>
+
+    <h4>Download throughput</h4>
+    <p>Streams binary data for about 10 seconds and shows live download speed. Uses a chunked GET to <code>/throughput</code>.</p>
+    <div class="throughput-panel">
+        <input id="throughput_start" type="button" value="Run 10s download test">
+        <div class="throughput-readout" id="throughput_speed">—</div>
+        <p class="throughput-sub" id="throughput_total">Total received: —</p>
+        <div class="meter-label">Time elapsed (10s)</div>
+        <div class="meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="throughput_time_meter">
+            <div class="meter-fill time" id="throughput_time_fill"></div>
+        </div>
+        <div class="meter-label">Instantaneous speed (bar capped at 100 Mbit/s)</div>
+        <div class="meter" id="throughput_rate_meter">
+            <div class="meter-fill rate" id="throughput_rate_fill"></div>
+        </div>
+    </div>
 
     <h4>Network Statistics</h4>
     <p>Below are the network statistics. This demonstrates streaming data from server to client using a websocket.</p>
