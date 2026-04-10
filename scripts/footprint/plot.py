@@ -41,6 +41,11 @@ def parse_args():
         type=int,
         default=4,
     )
+    parser.add_argument(
+        '--diff',
+        help='Reference json file to diff against (from a previous build)',
+        default=None,
+    )
 
     return parser.parse_args()
 
@@ -103,13 +108,109 @@ def generate_figure(data, depth=4):
     return fig
 
 
+def _collect_leaf_sizes(node: dict, prefix=''):
+    """Recursively collect leaf node sizes as {identifier: size}."""
+    identifier = node.get('identifier')
+    if identifier is None:
+        return {}
+
+    path = f'{prefix}/{identifier}' if prefix else identifier
+    children = node.get('children', ())
+    if not children:
+        return {path: node.get('size', 0)}
+
+    result = {}
+    for child in children:
+        result.update(_collect_leaf_sizes(child, path))
+    return result
+
+
+def generate_diff_figure(data_current, data_reference):
+    """Generate a horizontal bar chart showing size changes between two builds."""
+    ref_total = data_reference.get('total_size', 0)
+    cur_total = data_current.get('total_size', 0)
+
+    # Collect leaf sizes from both trees
+    ref_leaves = {}
+    cur_leaves = {}
+
+    for child in data_reference.get('symbols', {}).get('children', ()):
+        ref_leaves.update(_collect_leaf_sizes(child))
+
+    for child in data_current.get('symbols', {}).get('children', ()):
+        cur_leaves.update(_collect_leaf_sizes(child))
+
+    # Compute deltas
+    all_keys = set(ref_leaves.keys()) | set(cur_leaves.keys())
+    deltas = []
+    for key in all_keys:
+        old_sz = ref_leaves.get(key, 0)
+        new_sz = cur_leaves.get(key, 0)
+        delta = new_sz - old_sz
+        if delta != 0:
+            deltas.append((key, delta, old_sz, new_sz))
+
+    # Sort by absolute delta descending
+    deltas.sort(key=lambda x: abs(x[1]), reverse=True)
+
+    if not deltas:
+        fig = go.Figure()
+        fig.update_layout(
+            title='No differences found between builds',
+            xaxis_title='Size change (bytes)',
+        )
+        return fig
+
+    # Limit to top entries for readability
+    max_entries = 40
+    if len(deltas) > max_entries:
+        deltas = deltas[:max_entries]
+
+    # Reverse so largest bars are at the top of the chart
+    deltas.reverse()
+
+    symbols = [d[0].rsplit('/', 1)[-1] for d in deltas]
+    changes = [d[1] for d in deltas]
+    colors = ['#d32f2f' if d > 0 else '#388e3c' for d in changes]
+    hover = [
+        f'{d[0]}<br>old: {d[2]} bytes<br>new: {d[3]} bytes<br>delta: {d[1]:+d} bytes'
+        for d in deltas
+    ]
+
+    fig = go.Figure(
+        go.Bar(
+            y=symbols,
+            x=changes,
+            orientation='h',
+            marker_color=colors,
+            hovertext=hover,
+            hoverinfo='text',
+        )
+    )
+    fig.update_layout(
+        title=f'Memory footprint diff (total: {cur_total - ref_total:+d} bytes,'
+              f' ref: {ref_total}, cur: {cur_total})',
+        xaxis_title='Size change (bytes)',
+        yaxis_title='Symbol',
+        margin={'l': 200, 't': 50, 'r': 20, 'b': 50},
+        height=max(400, len(deltas) * 25 + 100),
+    )
+
+    return fig
+
+
 def main():
     args = parse_args()
 
     with open(args.input) as f:
         data = json.load(f)
 
-    fig = generate_figure(data, args.depth)
+    if args.diff:
+        with open(args.diff) as f:
+            data_ref = json.load(f)
+        fig = generate_diff_figure(data, data_ref)
+    else:
+        fig = generate_figure(data, args.depth)
 
     if args.html:
         fig.write_html(args.html, auto_open=False)
