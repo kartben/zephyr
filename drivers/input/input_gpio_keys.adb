@@ -163,9 +163,8 @@ package body Input_GPIO_Keys is
    --  + gpio_pin_interrupt_configure_dt(GPIO_INT_EDGE_BOTH).
    --  Returns 0 on success, negative errno on failure.
    function Acc_Configure_Interrupt
-     (Spec     : System.Address;
-      CB       : System.Address;
-      Pin_Data : System.Address) return int
+     (Spec : System.Address;
+      CB   : System.Address) return int
      with Import, Convention => C,
           External_Name => "gpio_keys_acc_configure_interrupt";
 
@@ -262,11 +261,16 @@ package body Input_GPIO_Keys is
           External_Name => "gpio_keys_log_err_interrupt_configure_failed";
 
    --------------------------------------------------------------------------
-   --  Negative errno constants (Zephyr: ENODEV=19, ENOTSUP=134)
+   --  Negative errno constants
+   --  Values match lib/libc/minimal/include/errno.h (ENODEV=19, ENOTSUP=134).
+   --  These are stable Zephyr-specific constants defined in the minimal libc
+   --  and do not change across platforms.  If Zephyr ever changes them, the
+   --  accessor function gpio_keys_acc_errno() in the C bridge should be
+   --  used instead.
    --------------------------------------------------------------------------
 
-   ENODEV  : constant int := -19;
-   ENOTSUP : constant int := -134;
+   ENODEV  : constant int := -19;   --  -ENODEV
+   ENOTSUP : constant int := -134;  --  -ENOTSUP (Zephyr value, not POSIX 95)
 
    --------------------------------------------------------------------------
    --  PM action enum values  (enum pm_device_action, 0-based)
@@ -327,7 +331,7 @@ package body Input_GPIO_Keys is
          Poll_Pin (Dev, I);
       end loop;
 
-      Acc_Work_Reschedule (Work, Acc_Debounce_Ms (Cfg));
+      Acc_Work_Reschedule (Acc_Pin_Data_Work (Pin_Data), Acc_Debounce_Ms (Cfg));
    end Poll_Pins;
 
    --------------------------------------------------------------------------
@@ -399,7 +403,7 @@ package body Input_GPIO_Keys is
 
             if Acc_Polling_Mode (Cfg) = 0 then
                Ret := Acc_Configure_Interrupt
-                 (Spec, Acc_Pin_Data_CB (Pin_Data), Pin_Data);
+                 (Spec, Acc_Pin_Data_CB (Pin_Data));
                if Ret /= 0 then
                   Log_Err_Interrupt_Config_Failed (I, Ret);
                   return Ret;
