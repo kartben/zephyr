@@ -188,8 +188,8 @@ def generate_diff_figure(data_current, data_reference):
         )
     )
     fig.update_layout(
-        title=f'Memory footprint diff (total: {cur_total - ref_total:+d} bytes,'
-              f' ref: {ref_total}, cur: {cur_total})',
+        title=(f'Memory footprint diff (total: {cur_total - ref_total:+d} bytes,'
+               f' ref: {ref_total}, cur: {cur_total})'),
         xaxis_title='Size change (bytes)',
         yaxis_title='Symbol',
         margin={'l': 200, 't': 50, 'r': 20, 'b': 50},
