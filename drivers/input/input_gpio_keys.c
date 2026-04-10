@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2022 Google LLC
- * Copyright (c) 2024 Google LLC  (Ada bridge additions)
+ * Copyright (c) 2024 Google LLC (Ada bridge additions)
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -595,7 +595,7 @@ static int gpio_keys_pm_action(const struct device *dev, enum pm_device_action a
 	DT_INST_FOREACH_CHILD_STATUS_OKAY(i, GPIO_KEYS_CFG_CHECK);                                \
                                                                                                    \
 	static const struct gpio_keys_pin_config gpio_keys_pin_config_##i[] = {                    \
-		DT_INST_FOREACH_CHILD_STATUS_OKAY_SEP(i, GPIO_KEYS_CFG_DEF, (, ))};                     \
+		DT_INST_FOREACH_CHILD_STATUS_OKAY_SEP(i, GPIO_KEYS_CFG_DEF, (,))};                      \
                                                                                                    \
 	static struct gpio_keys_pin_data                                                           \
 		gpio_keys_pin_data_##i[ARRAY_SIZE(gpio_keys_pin_config_##i)];                           \
