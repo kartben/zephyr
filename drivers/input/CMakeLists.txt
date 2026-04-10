@@ -21,7 +21,60 @@ zephyr_library_sources_ifdef(CONFIG_INPUT_ESP32_TOUCH_SENSOR input_esp32_touch_s
 zephyr_library_sources_ifdef(CONFIG_INPUT_FT5336 input_ft5336.c)
 zephyr_library_sources_ifdef(CONFIG_INPUT_FT6146 input_ft6146.c)
 zephyr_library_sources_ifdef(CONFIG_INPUT_GPIO_KBD_MATRIX input_gpio_kbd_matrix.c)
-zephyr_library_sources_ifdef(CONFIG_INPUT_GPIO_KEYS input_gpio_keys.c)
+if(CONFIG_INPUT_GPIO_KEYS)
+  # Always compile the C bridge (struct definitions, DT macros, accessor
+  # helpers, and C fallback implementations used when Ada is unavailable).
+  zephyr_library_sources(input_gpio_keys.c)
+
+  # Compile the Ada implementation when a suitable Ada compiler is available.
+  # The Ada package body (input_gpio_keys_ada.adb) and its specification
+  # (input_gpio_keys_ada.ads) implement all driver logic and export the
+  # entry-points that the C bridge's forward declarations reference.
+  # When Ada is NOT available the C file's fallback implementations are used
+  # instead (they are guarded by the absence of GPIO_KEYS_ADA_IMPL).
+  include(CheckLanguage)
+  check_language(Ada)
+  if(CMAKE_Ada_COMPILER)
+    enable_language(Ada)
+
+    # Tell the C bridge to activate the Ada-path code (accessor helpers,
+    # logging wrappers, and extern forward declarations).
+    zephyr_library_compile_definitions(GPIO_KEYS_ADA_IMPL)
+
+    # Build a small static Ada library and link it into the Zephyr library.
+    # CMake's Ada language support invokes the GNAT compiler for .adb files.
+    # The .ads spec file must live next to the .adb body (GNAT convention:
+    # package Input_GPIO_Keys lives in input_gpio_keys.ads / .adb).
+    add_library(gpio_keys_ada STATIC
+      ${CMAKE_CURRENT_SOURCE_DIR}/input_gpio_keys.adb
+    )
+
+    # Bare-metal / embedded Ada flags:
+    #   -gnat2012   – use Ada 2012 standard (supports aspect clauses)
+    #   -ffunction-sections / -fdata-sections – allow dead-code stripping
+    #   -nostdlib   – do not link the host's Ada runtime; the driver body
+    #                 only uses Interfaces.C and System which are built-in
+    target_compile_options(gpio_keys_ada PRIVATE
+      -gnat2012
+      -ffunction-sections
+      -fdata-sections
+    )
+
+    # Propagate the same CPU/FPU flags that Zephyr uses for C so the Ada
+    # object file targets the correct ISA (e.g. -mcpu=cortex-m4 -mfpu=fpv4).
+    if(DEFINED CMAKE_C_FLAGS_INIT)
+      separate_arguments(_c_flags_list UNIX_COMMAND "${CMAKE_C_FLAGS_INIT}")
+      target_compile_options(gpio_keys_ada PRIVATE ${_c_flags_list})
+    endif()
+
+    zephyr_library_link_libraries(gpio_keys_ada)
+    message(STATUS "GPIO keys driver: using Ada implementation "
+            "(${CMAKE_Ada_COMPILER})")
+  else()
+    message(STATUS "GPIO keys driver: no Ada compiler found – "
+            "using C fallback implementation")
+  endif()
+endif()
 zephyr_library_sources_ifdef(CONFIG_INPUT_GPIO_QDEC input_gpio_qdec.c)
 zephyr_library_sources_ifdef(CONFIG_INPUT_GT911 input_gt911.c)
 zephyr_library_sources_ifdef(CONFIG_INPUT_ILI2132A input_ili2132a.c)
