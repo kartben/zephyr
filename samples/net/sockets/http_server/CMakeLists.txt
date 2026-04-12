@@ -39,9 +39,14 @@ option(INCLUDE_HTML_CONTENT "Include the HTML content" ON)
 
 target_sources(app PRIVATE src/main.c)
 
+if(CONFIG_WIREGUARD)
+  zephyr_library_include_directories(${ZEPHYR_WIREGUARD_MODULE_DIR}/include)
+endif()
+
 set(gen_dir ${ZEPHYR_BINARY_DIR}/include/generated/)
 
 target_sources_ifdef(CONFIG_NET_SAMPLE_WEBSOCKET_SERVICE app PRIVATE src/ws.c)
+target_sources_ifdef(CONFIG_WIREGUARD app PRIVATE src/wg.c)
 
 if(CONFIG_USB_DEVICE_STACK_NEXT)
   include(${ZEPHYR_BASE}/samples/subsys/usb/common/common.cmake)

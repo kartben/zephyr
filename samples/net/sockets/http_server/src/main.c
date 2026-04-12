@@ -22,6 +22,10 @@
 #include <zephyr/sys/util_macro.h>
 #include <zephyr/net/net_config.h>
 
+#if IS_ENABLED(CONFIG_WIREGUARD)
+extern int init_vpn(void);
+#endif
+
 #if CONFIG_USB_DEVICE_STACK_NEXT
 #include <sample_usbd.h>
 #endif
@@ -466,6 +470,16 @@ static int init_usb(void)
 int main(void)
 {
 	init_usb();
+
+#if IS_ENABLED(CONFIG_WIREGUARD)
+	{
+		int ret = init_vpn();
+
+		if (ret < 0) {
+			return ret;
+		}
+	}
+#endif
 
 	setup_tls();
 	http_server_start();
