@@ -10,6 +10,7 @@
 #include <zephyr/drivers/biometrics_dfrobot_ai10.h>
 #include <zephyr/drivers/biometrics/emul.h>
 #include <zephyr/drivers/display.h>
+#include <zephyr/drivers/uart.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/util.h>
@@ -86,6 +87,11 @@ K_THREAD_STACK_DEFINE(worker_stack, WORKER_STACK_SIZE);
 
 static const struct device *const biometric = DEVICE_DT_GET(BIOMETRICS_NODE);
 static const struct device *const display = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
+#if DT_HAS_CHOSEN(zephyr_console)
+static const struct device *const console_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
+#else
+static const struct device *const console_dev;
+#endif
 
 static struct k_thread worker_thread;
 
@@ -430,6 +436,47 @@ static void render_splash_state(void)
 	lv_label_set_text(footer_label, "qemu_x86 RAM framebuffer with generic biometrics API");
 }
 
+static void render_console_gate_state(void)
+{
+	set_state(APP_STATE_SPLASH, 0);
+	update_stage_labels(APP_STATE_SPLASH);
+	set_ring_visual(lv_color_hex(0x5bc0eb), 12);
+	show_busy_spinner(false);
+	show_success_icon(false);
+	show_hero_ring(true);
+	show_progress_bar(false);
+	show_stage_row(false);
+	lv_bar_set_value(progress_bar, 0, LV_ANIM_OFF);
+	lv_label_set_text(title_label, "Station armed");
+	lv_label_set_text(subtitle_label,
+			  "Press any key on the Zephyr console to start the biometric flow.");
+	lv_label_set_text(metrics_label, "console gate enabled");
+	lv_label_set_text(footer_label,
+			  "This keeps the demo idle until the sensor setup is ready.");
+}
+
+static void wait_for_console_key(void)
+{
+	unsigned char ch;
+
+	if (console_dev == NULL || !device_is_ready(console_dev)) {
+		LOG_WRN("Console device unavailable, starting immediately");
+		return;
+	}
+
+	/* Drop any pending bytes so a previous terminal session does not auto-start the demo. */
+	while (uart_poll_in(console_dev, &ch) == 0) {
+	}
+
+	LOG_INF("Press any key on %s to start the station", console_dev->name);
+
+	while (uart_poll_in(console_dev, &ch) != 0) {
+		k_msleep(MIN(lv_timer_handler(), 10U));
+	}
+
+	LOG_INF("Startup key received: 0x%02x", ch);
+}
+
 #if defined(CONFIG_BIOMETRIC_STATION_ENABLE_ENROLL)
 static void render_enroll_idle_state(void)
 {
@@ -657,7 +704,7 @@ static void worker_run_identify(void)
 
 	maybe_configure_identify_behavior();
 	evt.type = UI_EVT_IDENTIFY_DONE;
-	evt.result = biometric_match(biometric, BIOMETRIC_MATCH_IDENTIFY, 0, K_SECONDS(20),
+	evt.result = biometric_match(biometric, BIOMETRIC_MATCH_IDENTIFY, 0, K_SECONDS(40),
 				     &evt.data.match);
 	if (evt.result == 0 && dfrobot_ai10_is_ready(biometric)) {
 		if (dfrobot_ai10_user_info_get(biometric, evt.data.match.template_id,
@@ -741,17 +788,21 @@ int main(void)
 		return 0;
 	}
 
-	k_thread_create(&worker_thread, worker_stack, K_THREAD_STACK_SIZEOF(worker_stack),
-			worker_entry, NULL, NULL, NULL, WORKER_PRIORITY, 0, K_NO_WAIT);
-	k_thread_name_set(&worker_thread, "bio_station");
-
 	build_ui();
-	render_splash_state();
+	render_console_gate_state();
 
 	ret = display_blanking_off(display);
 	if (ret < 0 && ret != -ENOSYS) {
 		LOG_ERR("display_blanking_off failed: %d", ret);
 	}
+
+	wait_for_console_key();
+
+	k_thread_create(&worker_thread, worker_stack, K_THREAD_STACK_SIZEOF(worker_stack),
+			worker_entry, NULL, NULL, NULL, WORKER_PRIORITY, 0, K_NO_WAIT);
+	k_thread_name_set(&worker_thread, "bio_station");
+
+	render_splash_state();
 
 	while (1) {
 		while (k_msgq_get(&ui_evt_msgq, &evt, K_NO_WAIT) == 0) {
