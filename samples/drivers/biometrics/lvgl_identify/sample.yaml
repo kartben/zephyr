@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+
+sample:
+  name: LVGL biometric identify demo
+  description: Automatic identification-only LVGL UI (no input) using the biometrics API
+common:
+  modules:
+    - lvgl
+  tags:
+    - samples
+    - display
+    - gui
+    - lvgl
+    - biometrics
+tests:
+  sample.drivers.biometrics.lvgl_identify:
+    build_only: true
+    filter: dt_alias_exists("biometrics") and dt_chosen_enabled("zephyr,display")
+    platform_allow:
+      - qemu_x86

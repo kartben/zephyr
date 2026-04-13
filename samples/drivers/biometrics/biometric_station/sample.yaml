@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+
+sample:
+  name: Biometric Station
+  description: LVGL kiosk-style biometrics demo for qemu_x86 using the generic biometrics API
+
+common:
+  modules:
+    - lvgl
+  tags:
+    - biometrics
+    - display
+    - gui
+    - lvgl
+    - samples
+
+tests:
+  sample.drivers.biometrics.biometric_station:
+    build_only: true
+    filter: dt_alias_exists("biometrics") and dt_chosen_enabled("zephyr,display")
+    platform_allow:
+      - qemu_x86

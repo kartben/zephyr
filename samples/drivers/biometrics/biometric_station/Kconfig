@@ -1,0 +1,16 @@
+# Copyright (c) 2026 The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "Biometric Station sample application"
+
+config BIOMETRIC_STATION_ENABLE_ENROLL
+	bool "Enable enrollment flow"
+	default y
+	help
+	  When enabled, the sample checks whether any template is present and runs
+	  the guided enrollment path when the database is empty.
+
+	  When disabled, the application skips enrollment entirely and removes the
+	  enrollment-specific UI so the station behaves as an identify-only kiosk.
+
+source "Kconfig.zephyr"

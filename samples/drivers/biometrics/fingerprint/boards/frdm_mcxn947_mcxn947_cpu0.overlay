@@ -1,0 +1,15 @@
+/ {
+	aliases {
+		fingerprint = &sen0677;
+	};
+};
+
+&arduino_serial {
+	status = "okay";
+	current-speed = <115200>;
+
+	sen0677: sen0677 {
+		compatible = "dfrobot,ai10";
+		status = "okay";
+	};
+};

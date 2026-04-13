@@ -7,6 +7,7 @@
 
 #include <zephyr/drivers/biometrics.h>
 #include <zephyr/drivers/uart.h>
+#include <zephyr/sys/ring_buffer.h>
 
 #define AI10_SYNC_H 0xEF
 #define AI10_SYNC_L 0xAA
@@ -15,6 +16,7 @@
 #define AI10_MID_NOTE  0x01
 
 #define AI10_CMD_RESET           0x10
+#define AI10_CMD_GET_STATUS      0x11
 #define AI10_CMD_VERIFY          0x12
 #define AI10_CMD_ENROLL_SINGLE   0x1D
 #define AI10_CMD_DEL_USER        0x20
@@ -38,8 +40,9 @@
 
 #define AI10_MAX_PAYLOAD 256U
 #define AI10_MAX_FRAME   (2U + 3U + AI10_MAX_PAYLOAD + 1U)
+#define AI10_RX_STREAM_BUF_SIZE (AI10_MAX_FRAME * 4U)
 
-#define AI10_UART_CHUNK_TIMEOUT_MS 500U
+#define AI10_UART_CHUNK_TIMEOUT_MS 500000U
 
 enum ai10_rx_error {
 	AI10_RX_OK = 0,
@@ -62,6 +65,8 @@ struct ai10_data {
 	struct k_sem uart_tx_sem;
 	struct k_sem uart_rx_sem;
 
+	struct ring_buf rx_ring;
+	uint8_t rx_ring_buf[AI10_RX_STREAM_BUF_SIZE];
 	struct ai10_packet tx_pkt;
 	struct ai10_packet rx_pkt;
 	volatile uint16_t rx_expected;

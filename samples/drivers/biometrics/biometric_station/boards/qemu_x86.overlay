@@ -1,0 +1,29 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	aliases {
+		//		biometrics = &biometrics_emul;
+		biometrics = &dfrobot_ai10;
+	};
+
+	biometrics_emul: biometrics-emul {
+		compatible = "zephyr,biometrics-emul";
+		status = "disabled";
+	};
+};
+
+/* Board default attaches BT HCI on uart1; disable so the AI10 is the sole uart1 user. */
+&bt_hci_uart {
+	status = "disabled";
+};
+
+&uart1 {
+	current-speed = <115200>;
+
+	dfrobot_ai10: dfrobot_ai10 {
+		compatible = "dfrobot,ai10";
+		status = "okay";
+	};
+};

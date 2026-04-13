@@ -1,0 +1,27 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Emulated fingerprint sensor for QEMU (see biometrics_emul driver).
+ */
+
+/ {
+	aliases {
+		// biometrics = &biometrics_emul;
+		biometrics = &dfrobot_ai10;
+	};
+
+	biometrics_emul: biometrics-emul {
+		compatible = "zephyr,biometrics-emul";
+		status = "disabled";
+	};
+};
+
+&uart1 {
+	status = "okay";
+	current-speed = <115200>;
+
+	dfrobot_ai10: dfrobot_ai10 {
+		compatible = "dfrobot,ai10";
+		status = "okay";
+	};
+};

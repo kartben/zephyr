@@ -24,7 +24,7 @@ struct patch_info {
 };
 
 #define DEV_CONSOLE DEVICE_DT_GET(DT_CHOSEN(zephyr_console))
-#define DEV_OTHER   DEVICE_DT_GET(DT_CHOSEN(uart_passthrough))
+#define DEV_OTHER   DEVICE_DT_GET(DT_NODELABEL(uart1))
 
 #define RING_BUF_SIZE 64
 

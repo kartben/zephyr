@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(socat -d -d pty,raw,echo=0 pty,raw,echo=0)",
+      "Bash(pkill -f socat)",
+      "Bash(socat -d -d pty,raw,echo=0,link=/tmp/ai10_qemu pty,raw,echo=0,link=/tmp/ai10_inject)",
+      "Read(//tmp/**)",
+      "Bash(pkill -f qemu)",
+      "Bash(socat -d -d pty,raw,echo=0,link=/dev/ttys000 pty,raw,echo=0,link=/dev/ttys002)",
+      "Bash(stty -f /dev/tty.usbserial-A900ad4y 115200 raw -echo)",
+      "Bash(stty --help)",
+      "Bash(stty -F /dev/tty.usbserial-A900ad4y 115200 raw -echo)",
+      "Bash(stty -F /dev/tty.usbserial-A900ad4y -a)",
+      "Bash(stty -F /dev/tty.usbserial-A900ad4y speed)",
+      "Bash(/bin/stty -f /dev/tty.usbserial-A900ad4y 115200 raw)",
+      "Bash(/bin/stty -f /dev/tty.usbserial-A900ad4y speed)",
+      "Bash(python3 -c ':*)",
+      "Bash(socat -h)",
+      "Bash(socat -hh)",
+      "Bash(socat -d -d /dev/cu.usbserial-A900ad4y,ispeed=115200,ospeed=115200,raw,echo=0,clocal=1 pty,raw,echo=0)",
+      "Bash(socat -d -d open:/dev/cu.usbserial-A900ad4y,ispeed=115200,ospeed=115200,raw,echo=0,nonblock pty,raw,echo=0)",
+      "Bash(ls -la /dev/ttys0*)",
+      "Bash(pkill -9 -f socat)",
+      "Bash(kill -9 16344 16331)",
+      "Bash(ioreg -p IOUSB -l)",
+      "Bash(ls /dev/*usbserial* /dev/*FTDI*)",
+      "Bash(pkill -9 -f qemu)",
+      "Bash(pkill -f serial_bridge)"
+    ]
+  }
+}

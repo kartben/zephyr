@@ -24,12 +24,26 @@
 
 LOG_MODULE_REGISTER(dfrobot_ai10, CONFIG_BIOMETRICS_LOG_LEVEL);
 
-#define AI10_FACE_UID_MAX 1000U
+// #define AI10_FACE_UID_MAX 1000U
+#define AI10_FACE_UID_MAX 2000U // temp work around to also treat palm as a face
+
+#define AI10_INIT_PROBE_DELAY_MS   1500U
+#define AI10_INIT_PROBE_RETRIES    5U
+#define AI10_INIT_PROBE_GAP_MS     500U
+#define AI10_INIT_PROBE_TIMEOUT_MS 2000U
 
 #define AI10_TIMEOUT_SEC_MIN 3U
 #define AI10_TIMEOUT_SEC_MAX 20U
 
 #define AI10_MAX_OP_TIMEOUT_MS 600000U
+
+static const struct uart_config ai10_uart_cfg = {
+	.baudrate = 115200,
+	.parity = UART_CFG_PARITY_NONE,
+	.stop_bits = UART_CFG_STOP_BITS_1,
+	.data_bits = UART_CFG_DATA_BITS_8,
+	.flow_ctrl = UART_CFG_FLOW_CTRL_NONE,
+};
 
 static uint32_t ai10_op_timeout_ms(const struct ai10_data *data, k_timeout_t op_timeout)
 {
@@ -95,72 +109,42 @@ static void ai10_uart_tx_handler(const struct device *uart_dev, struct ai10_data
 
 static void ai10_uart_rx_handler(const struct device *uart_dev, struct ai10_data *data)
 {
-	uint8_t byte;
-	uint16_t offset;
-	k_spinlock_key_t key;
+	uint8_t *buf;
+	uint32_t space;
+	int ret;
 
-	while (uart_fifo_read(uart_dev, &byte, 1) > 0) {
-		key = k_spin_lock(&data->irq_lock);
-		offset = data->rx_pkt.len;
-
-		if (offset >= AI10_MAX_FRAME) {
+	while (uart_irq_rx_ready(uart_dev)) {
+		space = ring_buf_put_claim(&data->rx_ring, &buf, AI10_RX_STREAM_BUF_SIZE);
+		if (space == 0U) {
 			data->rx_error = AI10_RX_OVERFLOW;
-			data->rx_pkt.len = 0;
 			uart_irq_rx_disable(uart_dev);
-			k_spin_unlock(&data->irq_lock, key);
 			k_sem_give(&data->uart_rx_sem);
 			return;
 		}
 
-		data->rx_pkt.buf[offset++] = byte;
-
-		if (offset == 1U && data->rx_pkt.buf[0] != AI10_SYNC_H) {
-			data->rx_pkt.len = 0;
-			k_spin_unlock(&data->irq_lock, key);
-			continue;
-		}
-
-		if (offset == 2U && data->rx_pkt.buf[1] != AI10_SYNC_L) {
-			if (data->rx_pkt.buf[1] == AI10_SYNC_H) {
-				data->rx_pkt.buf[0] = AI10_SYNC_H;
-				data->rx_pkt.len = 1;
-			} else {
-				data->rx_pkt.len = 0;
-			}
-			k_spin_unlock(&data->irq_lock, key);
-			continue;
-		}
-
-		if (offset < 5U) {
-			data->rx_pkt.len = offset;
-			k_spin_unlock(&data->irq_lock, key);
-			continue;
-		}
-
-		if (offset == 5U) {
-			uint16_t plen = sys_get_be16(&data->rx_pkt.buf[3]);
-
-			if (plen > AI10_MAX_PAYLOAD) {
-				data->rx_error = AI10_RX_BAD_LEN;
-				data->rx_pkt.len = 0;
-				uart_irq_rx_disable(uart_dev);
-				k_spin_unlock(&data->irq_lock, key);
-				k_sem_give(&data->uart_rx_sem);
-				return;
-			}
-			data->rx_expected = 6U + plen;
-		}
-
-		if (offset >= data->rx_expected) {
-			data->rx_pkt.len = offset;
+		ret = uart_fifo_read(uart_dev, buf, space);
+		if (ret < 0) {
+			data->rx_error = AI10_RX_OVERFLOW;
 			uart_irq_rx_disable(uart_dev);
-			k_spin_unlock(&data->irq_lock, key);
 			k_sem_give(&data->uart_rx_sem);
 			return;
 		}
 
-		data->rx_pkt.len = offset;
-		k_spin_unlock(&data->irq_lock, key);
+		if (ret == 0) {
+			ring_buf_put_finish(&data->rx_ring, 0);
+			return;
+		}
+
+		LOG_HEXDUMP_DBG(buf, ret, "ai10 RX chunk");
+
+		if (ring_buf_put_finish(&data->rx_ring, ret) != 0) {
+			data->rx_error = AI10_RX_OVERFLOW;
+			uart_irq_rx_disable(uart_dev);
+			k_sem_give(&data->uart_rx_sem);
+			return;
+		}
+
+		k_sem_give(&data->uart_rx_sem);
 	}
 }
 
@@ -168,16 +152,20 @@ static void ai10_uart_callback(const struct device *uart_dev, void *user_data)
 {
 	struct ai10_data *data = user_data;
 
-	if (!uart_irq_update(uart_dev)) {
-		return;
-	}
+	/*
+	 * Match IRQ-driven UART usage in samples/drivers/uart/passthrough and
+	 * drivers/bluetooth/hci/h4.c: uart_irq_update() may only refresh cached
+	 * status once per call (e.g. NS16550 IIR). After servicing TX, RX may
+	 * become visible only on a subsequent update + pending check.
+	 */
+	while (uart_irq_update(uart_dev) > 0 && uart_irq_is_pending(uart_dev) > 0) {
+		if (uart_irq_tx_ready(uart_dev)) {
+			ai10_uart_tx_handler(uart_dev, data);
+		}
 
-	if (uart_irq_tx_ready(uart_dev)) {
-		ai10_uart_tx_handler(uart_dev, data);
-	}
-
-	if (uart_irq_rx_ready(uart_dev)) {
-		ai10_uart_rx_handler(uart_dev, data);
+		if (uart_irq_rx_ready(uart_dev)) {
+			ai10_uart_rx_handler(uart_dev, data);
+		}
 	}
 }
 
@@ -215,34 +203,129 @@ static int ai10_send_frame(const struct device *dev, const uint8_t *payload, uin
 	return 0;
 }
 
-static void ai10_rx_prepare(struct ai10_data *data)
-{
-	k_spinlock_key_t key = k_spin_lock(&data->irq_lock);
-
-	data->rx_pkt.len = 0;
-	data->rx_expected = 5U;
-	data->rx_error = AI10_RX_OK;
-	k_spin_unlock(&data->irq_lock, key);
-}
-
-static int ai10_recv_frame(const struct device *dev, uint32_t timeout_ms)
+static void ai10_rx_prepare(const struct device *dev)
 {
 	const struct ai10_config *cfg = dev->config;
 	struct ai10_data *data = dev->data;
+	k_spinlock_key_t key = k_spin_lock(&data->irq_lock);
+	uint8_t discard[16];
 
-	ai10_rx_prepare(data);
+	uart_irq_rx_disable(cfg->uart_dev);
 
-	uart_irq_rx_enable(cfg->uart_dev);
-
-	if (k_sem_take(&data->uart_rx_sem, K_MSEC(timeout_ms)) != 0) {
-		uart_irq_rx_disable(cfg->uart_dev);
-		LOG_ERR("UART RX timeout");
-		return -ETIMEDOUT;
+	/* Drain stale bytes from the hardware FIFO so they do not contaminate
+	 * the next receive.  Late responses or sensor boot messages can leave
+	 * bytes sitting in the FIFO between transactions.
+	 */
+	while (uart_fifo_read(cfg->uart_dev, discard, sizeof(discard)) > 0) {
 	}
 
-	if (data->rx_error != AI10_RX_OK) {
-		LOG_ERR("UART RX error %d", data->rx_error);
-		return -EIO;
+	ring_buf_reset(&data->rx_ring);
+	data->rx_pkt.len = 0;
+	data->rx_expected = 5U;
+	data->rx_error = AI10_RX_OK;
+	k_sem_reset(&data->uart_rx_sem);
+	k_spin_unlock(&data->irq_lock, key);
+}
+
+static int ai10_rx_try_parse(struct ai10_data *data)
+{
+	uint8_t byte;
+	uint16_t offset;
+
+	while (ring_buf_get(&data->rx_ring, &byte, 1) == 1) {
+		offset = data->rx_pkt.len;
+
+		if (offset >= AI10_MAX_FRAME) {
+			data->rx_error = AI10_RX_OVERFLOW;
+			data->rx_pkt.len = 0;
+			return -EIO;
+		}
+
+		data->rx_pkt.buf[offset++] = byte;
+
+		if (offset == 1U && data->rx_pkt.buf[0] != AI10_SYNC_H) {
+			data->rx_pkt.len = 0;
+			continue;
+		}
+
+		if (offset == 2U && data->rx_pkt.buf[1] != AI10_SYNC_L) {
+			if (data->rx_pkt.buf[1] == AI10_SYNC_H) {
+				data->rx_pkt.buf[0] = AI10_SYNC_H;
+				data->rx_pkt.len = 1U;
+			} else {
+				data->rx_pkt.len = 0;
+			}
+			continue;
+		}
+
+		if (offset < 5U) {
+			data->rx_pkt.len = offset;
+			continue;
+		}
+
+		if (offset == 5U) {
+			uint16_t plen = sys_get_be16(&data->rx_pkt.buf[3]);
+
+			if (plen > AI10_MAX_PAYLOAD) {
+				data->rx_error = AI10_RX_BAD_LEN;
+				data->rx_pkt.len = 0;
+				return -EBADMSG;
+			}
+			data->rx_expected = 6U + plen;
+		}
+
+		data->rx_pkt.len = offset;
+		if (offset >= data->rx_expected) {
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+static int ai10_recv_frame_body(const struct device *dev, uint32_t timeout_ms)
+{
+	struct ai10_data *data = dev->data;
+	int64_t deadline = k_uptime_get() + (int64_t)timeout_ms;
+	int64_t remain;
+	uint32_t wait_ms;
+	int ret;
+
+	for (;;) {
+		if (data->rx_error != AI10_RX_OK) {
+			LOG_ERR("UART RX error %d", data->rx_error);
+			return -EIO;
+		}
+
+		ret = ai10_rx_try_parse(data);
+		if (ret < 0) {
+			return ret;
+		}
+
+		if (ret > 0) {
+			break;
+		}
+
+		if (timeout_ms == 0U) {
+			LOG_ERR("UART RX timeout");
+			return -ETIMEDOUT;
+		}
+
+		remain = deadline - k_uptime_get();
+		if (remain <= 0) {
+			LOG_ERR("UART RX timeout");
+			return -ETIMEDOUT;
+		}
+
+		wait_ms = (uint32_t)MIN((uint64_t)remain, (uint64_t)UINT32_MAX);
+		if (wait_ms == 0U) {
+			wait_ms = 1U;
+		}
+
+		if (k_sem_take(&data->uart_rx_sem, K_MSEC(wait_ms)) != 0) {
+			LOG_ERR("UART RX timeout");
+			return -ETIMEDOUT;
+		}
 	}
 
 	LOG_HEXDUMP_DBG(data->rx_pkt.buf, data->rx_pkt.len, "ai10 RX");
@@ -301,10 +384,21 @@ static int ai10_parse_relay(const struct device *dev, struct ai10_parsed_msg *ou
 }
 
 static int ai10_recv_until_relay(const struct device *dev, uint32_t timeout_ms,
-				 struct ai10_parsed_msg *out)
+				 struct ai10_parsed_msg *out, bool rx_already_armed)
 {
+	const struct ai10_config *cfg = dev->config;
 	struct ai10_data *data = dev->data;
 	int64_t deadline = k_uptime_get() + (int64_t)timeout_ms;
+
+	/*
+	 * Arm RX once at entry.  Between frames we only reset the packet parse
+	 * state — the ring buffer is left intact so bytes the ISR deposited
+	 * while we were processing a NOTE frame are not lost.
+	 */
+	if (!rx_already_armed) {
+		ai10_rx_prepare(dev);
+		uart_irq_rx_enable(cfg->uart_dev);
+	}
 
 	for (;;) {
 		int64_t remain = deadline - k_uptime_get();
@@ -320,7 +414,7 @@ static int ai10_recv_until_relay(const struct device *dev, uint32_t timeout_ms,
 			chunk_ms = 1U;
 		}
 
-		ret = ai10_recv_frame(dev, chunk_ms);
+		ret = ai10_recv_frame_body(dev, chunk_ms);
 		if (ret < 0) {
 			return ret;
 		}
@@ -330,7 +424,9 @@ static int ai10_recv_until_relay(const struct device *dev, uint32_t timeout_ms,
 		}
 
 		if (data->rx_pkt.buf[2] == AI10_MID_NOTE) {
-			/* Optional telemetry — ignore for minimal driver */
+			/* Reset packet state for next frame, ring buffer stays intact */
+			data->rx_pkt.len = 0;
+			data->rx_expected = 5U;
 			continue;
 		}
 
@@ -342,45 +438,55 @@ static int ai10_recv_until_relay(const struct device *dev, uint32_t timeout_ms,
 	}
 }
 
-static int ai10_drv_reset(const struct device *dev, uint32_t timeout_ms)
+static int ai10_send_recv(const struct device *dev, const uint8_t *payload, uint16_t payload_len,
+			  uint32_t timeout_ms, struct ai10_parsed_msg *out)
 {
-	const uint8_t payload[] = { AI10_CMD_RESET, 0x00, 0x00 };
-	struct ai10_parsed_msg msg;
+	const struct ai10_config *cfg = dev->config;
 	int ret;
 
-	ret = ai10_send_frame(dev, payload, sizeof(payload));
-	if (ret < 0) {
-		return ret;
-	}
-
-	ret = ai10_recv_until_relay(dev, timeout_ms, &msg);
-	if (ret < 0) {
-		return ret;
-	}
-
-	if (msg.inner_mid != AI10_CMD_RESET) {
-		return -EIO;
-	}
-
-	return 0;
-}
-
-static int ai10_transceive(const struct device *dev, const uint8_t *payload, uint16_t payload_len,
-			   uint32_t timeout_ms, struct ai10_parsed_msg *out)
-{
-	int ret;
-
-	ret = ai10_drv_reset(dev, timeout_ms);
-	if (ret < 0) {
-		return ret;
-	}
+	/*
+	 * Arm RX before TX: the module can begin its reply within microseconds of
+	 * the last TX byte. Enabling RX after bytes are already in the FIFO may
+	 * not re-trigger the IRQ on some UART drivers, causing RX timeouts.
+	 */
+	ai10_rx_prepare(dev);
+	uart_irq_rx_enable(cfg->uart_dev);
 
 	ret = ai10_send_frame(dev, payload, payload_len);
 	if (ret < 0) {
+		uart_irq_rx_disable(cfg->uart_dev);
 		return ret;
 	}
 
-	return ai10_recv_until_relay(dev, timeout_ms, out);
+	ret = ai10_recv_until_relay(dev, timeout_ms, out, true);
+	uart_irq_rx_disable(cfg->uart_dev);
+	return ret;
+}
+
+static int ai10_probe(const struct device *dev)
+{
+	static const uint8_t payload[] = {AI10_CMD_GET_STATUS, 0x00, 0x00};
+	struct ai10_parsed_msg msg;
+	int ret = -ETIMEDOUT;
+	uint32_t attempt;
+
+	for (attempt = 0U; attempt < AI10_INIT_PROBE_RETRIES; attempt++) {
+		ret = ai10_send_recv(dev, payload, sizeof(payload), AI10_INIT_PROBE_TIMEOUT_MS,
+				     &msg);
+		if (ret == 0) {
+			if (msg.inner_mid != AI10_CMD_GET_STATUS) {
+				return -EIO;
+			}
+
+			return 0;
+		}
+
+		LOG_DBG("AI10 status probe attempt %u/%u failed: %d", attempt + 1U,
+			AI10_INIT_PROBE_RETRIES, ret);
+		k_msleep(AI10_INIT_PROBE_GAP_MS);
+	}
+
+	return ret;
 }
 
 static void ai10_enroll_opts_clear(struct ai10_data *data)
@@ -551,8 +657,8 @@ static int ai10_enroll_capture(const struct device *dev, k_timeout_t timeout,
 	enroll_buf[36] = AI10_FACE_DIR_UNDEF;
 	enroll_buf[37] = sec;
 
-	ret = ai10_transceive(dev, enroll_buf, 3U + AI10_ENROLL_DATA_SIZE,
-			      ai10_op_timeout_ms(data, timeout), &msg);
+	ret = ai10_send_recv(dev, enroll_buf, 3U + AI10_ENROLL_DATA_SIZE,
+			     ai10_op_timeout_ms(data, timeout), &msg);
 	if (ret < 0) {
 		ai10_enroll_opts_clear(data);
 		data->enroll_active = false;
@@ -627,7 +733,7 @@ static int ai10_template_delete(const struct device *dev, uint16_t id)
 
 	k_mutex_lock(&data->lock, K_FOREVER);
 
-	ret = ai10_transceive(dev, payload, sizeof(payload), data->timeout_ms, &msg);
+	ret = ai10_send_recv(dev, payload, sizeof(payload), data->timeout_ms, &msg);
 	if (ret < 0) {
 		k_mutex_unlock(&data->lock);
 		return ret;
@@ -647,7 +753,7 @@ static int ai10_template_delete_all(const struct device *dev)
 
 	k_mutex_lock(&data->lock, K_FOREVER);
 
-	ret = ai10_transceive(dev, payload, sizeof(payload), data->timeout_ms, &msg);
+	ret = ai10_send_recv(dev, payload, sizeof(payload), data->timeout_ms, &msg);
 	if (ret < 0) {
 		k_mutex_unlock(&data->lock);
 		return ret;
@@ -670,7 +776,7 @@ static int ai10_template_list(const struct device *dev, uint16_t *ids, size_t ma
 
 	k_mutex_lock(&data->lock, K_FOREVER);
 
-	ret = ai10_transceive(dev, payload, sizeof(payload), data->timeout_ms, &msg);
+	ret = ai10_send_recv(dev, payload, sizeof(payload), data->timeout_ms, &msg);
 	if (ret < 0) {
 		k_mutex_unlock(&data->lock);
 		return ret;
@@ -724,8 +830,8 @@ static int ai10_match(const struct device *dev, enum biometric_match_mode mode,
 
 	k_mutex_lock(&data->lock, K_FOREVER);
 
-	ret = ai10_transceive(dev, payload, sizeof(payload), ai10_op_timeout_ms(data, timeout),
-			      &msg);
+	ret = ai10_send_recv(dev, payload, sizeof(payload), ai10_op_timeout_ms(data, timeout),
+			     &msg);
 	if (ret < 0) {
 		k_mutex_unlock(&data->lock);
 		return ret;
@@ -801,7 +907,7 @@ int dfrobot_ai10_user_info_get(const struct device *dev, uint16_t uid,
 
 	k_mutex_lock(&data->lock, K_FOREVER);
 
-	ret = ai10_transceive(dev, payload, sizeof(payload), data->timeout_ms, &msg);
+	ret = ai10_send_recv(dev, payload, sizeof(payload), data->timeout_ms, &msg);
 	if (ret < 0) {
 		k_mutex_unlock(&data->lock);
 		return ret;
@@ -889,7 +995,7 @@ int dfrobot_ai10_enroll_options_clear(const struct device *dev)
 	return 0;
 }
 
-static DEVICE_API(biometric, biometrics_dfrobot_ai10_api) = {
+DEVICE_API(biometric, biometrics_dfrobot_ai10_api) = {
 	.get_capabilities = ai10_get_capabilities,
 	.attr_set = ai10_attr_set,
 	.attr_get = ai10_attr_get,
@@ -910,10 +1016,21 @@ static int dfrobot_ai10_init(const struct device *dev)
 {
 	const struct ai10_config *cfg = dev->config;
 	struct ai10_data *data = dev->data;
+	int ret;
 
 	if (!device_is_ready(cfg->uart_dev)) {
 		LOG_ERR("UART not ready");
 		return -ENODEV;
+	}
+
+	ret = uart_configure(cfg->uart_dev, &ai10_uart_cfg);
+	if (ret < 0) {
+		if (ret == -ENOSYS) {
+			LOG_ERR("UART does not support runtime configure");
+		} else {
+			LOG_ERR("UART configure failed: %d", ret);
+		}
+		return ret;
 	}
 
 	data->dev = dev;
@@ -925,13 +1042,36 @@ static int dfrobot_ai10_init(const struct device *dev)
 	k_mutex_init(&data->lock);
 	k_sem_init(&data->uart_tx_sem, 0, 1);
 	k_sem_init(&data->uart_rx_sem, 0, 1);
+	ring_buf_init(&data->rx_ring, sizeof(data->rx_ring_buf), data->rx_ring_buf);
 
-	uart_irq_callback_user_data_set(cfg->uart_dev, ai10_uart_callback, data);
+	ret = uart_irq_callback_user_data_set(cfg->uart_dev, ai10_uart_callback, data);
+	if (ret < 0) {
+		if (ret == -ENOTSUP) {
+			LOG_ERR("Interrupt-driven UART API support not enabled");
+		} else if (ret == -ENOSYS) {
+			LOG_ERR("UART device does not support interrupt-driven API");
+		} else {
+			LOG_ERR("UART callback setup failed: %d", ret);
+		}
+		return ret;
+	}
+
 	uart_irq_rx_disable(cfg->uart_dev);
 	uart_irq_tx_disable(cfg->uart_dev);
 
-	if (ai10_drv_reset(dev, data->timeout_ms) != 0) {
-		LOG_WRN("AI10 reset handshake failed (check wiring and baud 115200)");
+	LOG_DBG("AI10 bound to UART %s at %u baud", cfg->uart_dev->name, ai10_uart_cfg.baudrate);
+
+	/*
+	 * The real module needs time to finish booting its camera / vision stack.
+	 * Probing with RESET during that window is brittle and resetting before
+	 * every command is unnecessarily disruptive. Wait briefly, then use a
+	 * cheap GET_STATUS transaction as the initial liveness check.
+	 */
+	k_msleep(AI10_INIT_PROBE_DELAY_MS);
+
+	if (ai10_probe(dev) != 0) {
+		LOG_WRN("AI10 status probe failed (check wiring, baud 115200, and sensor boot "
+			"time)");
 	}
 
 	return 0;

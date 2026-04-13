@@ -1,0 +1,26 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	aliases {
+		biometrics = &dfrobot_ai10;
+	};
+};
+
+/*
+ * On nRF7002 DK application core, uart1 is the Arduino serial port:
+ * D1 / P1.01 = TX
+ * D0 / P1.00 = RX
+ *
+ * This is separate from the board console / USB VCOM path on uart0.
+ */
+&arduino_serial {
+	status = "okay";
+	current-speed = <115200>;
+
+	dfrobot_ai10: dfrobot_ai10 {
+		compatible = "dfrobot,ai10";
+		status = "okay";
+	};
+};

@@ -439,7 +439,10 @@ list(APPEND QEMU_EXTRA_FLAGS ${env_qemu})
 if(NOT CONFIG_QEMU_EXTRA_FLAGS STREQUAL "")
   set(config_qemu_flags ${CONFIG_QEMU_EXTRA_FLAGS})
   separate_arguments(config_qemu_flags)
-  list(APPEND QEMU_EXTRA_FLAGS "${config_qemu_flags}")
+  # Unquoted append: each flag must be a separate argv (same as env QEMU_EXTRA_FLAGS).
+  # Quoted "${config_qemu_flags}" collapses a multi-arg list into one token and breaks
+  # e.g. `-serial /dev/ttys017`.
+  list(APPEND QEMU_EXTRA_FLAGS ${config_qemu_flags})
 endif()
 
 list(APPEND MORE_FLAGS_FOR_debugserver_qemu -S)

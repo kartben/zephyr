@@ -769,7 +769,7 @@ class ZephyrDashboard:
         Open the default web browser to the index page of the dashboard.
         '''
 
-        fname = self.output_path / "index.html"
+        fname = (self.output_path / "index.html").as_uri()
         webbrowser.open(str(fname))
 
 
