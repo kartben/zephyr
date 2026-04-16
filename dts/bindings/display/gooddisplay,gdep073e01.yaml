@@ -1,0 +1,8 @@
+# Copyright (c) 2026
+# SPDX-License-Identifier: Apache-2.0
+
+description: Good Display GDEP073E01 (Spectra 6, UC8159-class) EPD on UC81xx driver
+
+compatible: gooddisplay,gdep073e01
+
+include: ultrachip,uc81xx-common.yaml

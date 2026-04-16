@@ -14,6 +14,7 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/mipi_dbi.h>
 #include <zephyr/sys/byteorder.h>
+#include <zephyr/drivers/display/uc8159c.h>
 
 #include "uc81xx_regs.h"
 
@@ -23,8 +24,8 @@ LOG_MODULE_REGISTER(uc81xx, CONFIG_DISPLAY_LOG_LEVEL);
 /**
  * UC81XX compatible EPD controller driver.
  *
- * Currently only the black/white panels are supported (KW mode),
- * also first gate/source should be 0.
+ * Most parts use monochrome (KW) mode with @ref PIXEL_FORMAT_MONO10.
+ * UC8159C uses packed nibbles (two LUT indices per byte; @ref PIXEL_FORMAT_UC8159C).
  */
 
 #define UC81XX_PIXELS_PER_BYTE		8U
@@ -67,12 +68,19 @@ struct uc81xx_quirks {
 
 	bool auto_copy;
 	bool pon_after_softstart;
+	bool blanking_off_no_update;
+	bool dtm_skip_dsp;
+
+	uint8_t pixels_per_byte;
+	uint8_t dtm_write_cmd;
 
 	int (*set_cdi)(const struct device *dev, bool border);
 	int (*set_tres)(const struct device *dev);
 	int (*set_ptl)(const struct device *dev, uint16_t x, uint16_t y,
 		       uint16_t x_end_idx, uint16_t y_end_idx,
 		       const struct display_buffer_descriptor *desc);
+	int (*pre_pwr)(const struct device *dev);
+	int (*panel_init)(const struct device *dev);
 };
 
 struct uc81xx_config {
@@ -93,6 +101,7 @@ struct uc81xx_config {
 struct uc81xx_data {
 	bool blanking_on;
 	enum uc81xx_profile_type profile;
+	enum display_pixel_format pixel_format;
 };
 
 
@@ -213,12 +222,21 @@ static int uc81xx_set_profile(const struct device *dev,
 		return 0;
 	}
 
+	if (config->quirks->panel_init != NULL) {
+		data->profile = type;
+		return config->quirks->panel_init(dev);
+	}
+
 	p = config->profiles[type];
 	data->profile = type;
 
 	LOG_DBG("Initialize UC81XX controller with profile %d", type);
 
 	if (p) {
+		if (config->quirks->pre_pwr && config->quirks->pre_pwr(dev)) {
+			return -EIO;
+		}
+
 		LOG_HEXDUMP_DBG(p->pwr.data, p->pwr.len, "PWR");
 		if (uc81xx_write_array_opt(dev, UC81XX_CMD_PWR, &p->pwr)) {
 			return -EIO;
@@ -344,7 +362,6 @@ static int uc81xx_update_display(const struct device *dev)
 
 	k_sleep(K_MSEC(UC81XX_BUSY_DELAY));
 
-	/* Turn on: booster, controller, regulators, and sensor. */
 	if (uc81xx_write_cmd(dev, UC81XX_CMD_POF, NULL, 0)) {
 		return -EIO;
 	}
@@ -354,11 +371,13 @@ static int uc81xx_update_display(const struct device *dev)
 
 static int uc81xx_blanking_off(const struct device *dev)
 {
+	const struct uc81xx_config *config = dev->config;
 	struct uc81xx_data *data = dev->data;
 
 	if (data->blanking_on) {
 		/* Update EPD panel in normal mode */
-		if (uc81xx_update_display(dev)) {
+		if (!config->quirks->blanking_off_no_update &&
+		    uc81xx_update_display(dev)) {
 			return -EIO;
 		}
 	}
@@ -395,22 +414,56 @@ static int uc81xx_write(const struct device *dev, const uint16_t x, const uint16
 	size_t buf_len;
 	const uint8_t back_buffer = data->blanking_on ?
 		UC81XX_CMD_DTM1 : UC81XX_CMD_DTM2;
+	const uint8_t dsp_end = 0x00;
 
 	LOG_DBG("x %u, y %u, height %u, width %u, pitch %u",
 		x, y, desc->height, desc->width, desc->pitch);
 
 	buf_len = MIN(desc->buf_size,
-		      desc->height * desc->width / UC81XX_PIXELS_PER_BYTE);
+		      desc->height * desc->width / config->quirks->pixels_per_byte);
 	__ASSERT(desc->width <= desc->pitch, "Pitch is smaller than width");
 	__ASSERT(buf != NULL, "Buffer is not available");
 	__ASSERT(buf_len != 0U, "Buffer of length zero");
-	__ASSERT(!(desc->width % UC81XX_PIXELS_PER_BYTE),
-		 "Buffer width not multiple of %d", UC81XX_PIXELS_PER_BYTE);
+	if (config->quirks->pixels_per_byte == 2U) {
+		__ASSERT(!(desc->width % 2U),
+			 "Buffer width must be even (2 UC8159C pixels per byte)");
+	} else {
+		__ASSERT(!(desc->width % UC81XX_PIXELS_PER_BYTE),
+			 "Buffer width not multiple of %d", UC81XX_PIXELS_PER_BYTE);
+	}
 
 	if ((y_end_idx > (config->height - 1)) ||
 	    (x_end_idx > (config->width - 1))) {
 		LOG_ERR("Position out of bounds");
 		return -EINVAL;
+	}
+
+	if (config->quirks->pixels_per_byte == 2U) {
+		if (data->pixel_format != PIXEL_FORMAT_UC8159C) {
+			LOG_ERR("Set pixel format to PIXEL_FORMAT_UC8159C for UC8159C");
+			return -EINVAL;
+		}
+	} else if (data->pixel_format != PIXEL_FORMAT_MONO10) {
+		LOG_ERR("Set pixel format to PIXEL_FORMAT_MONO10 for this controller");
+		return -EINVAL;
+	}
+
+	if (config->quirks->pixels_per_byte == 2U) {
+		/* UC8159C: packed DTM1, DSP, refresh; no partial window */
+		if (uc81xx_write_cmd(dev, config->quirks->dtm_write_cmd, (uint8_t *)buf, buf_len)) {
+			return -EIO;
+		}
+
+		if (!config->quirks->dtm_skip_dsp &&
+		    uc81xx_write_cmd(dev, UC81XX_CMD_DSP, &dsp_end, 1)) {
+			return -EIO;
+		}
+
+		if (uc81xx_update_display(dev)) {
+			return -EIO;
+		}
+
+		return 0;
 	}
 
 	if (!data->blanking_on) {
@@ -438,7 +491,7 @@ static int uc81xx_write(const struct device *dev, const uint16_t x, const uint16
 		return -EIO;
 	}
 
-	if (uc81xx_write_cmd(dev, UC81XX_CMD_DTM2, (uint8_t *)buf, buf_len)) {
+	if (uc81xx_write_cmd(dev, config->quirks->dtm_write_cmd, (uint8_t *)buf, buf_len)) {
 		return -EIO;
 	}
 
@@ -486,39 +539,58 @@ static void uc81xx_get_capabilities(const struct device *dev,
 				    struct display_capabilities *caps)
 {
 	const struct uc81xx_config *config = dev->config;
+	const struct uc81xx_data *data = dev->data;
 
 	memset(caps, 0, sizeof(struct display_capabilities));
 	caps->x_resolution = config->width;
 	caps->y_resolution = config->height;
-	caps->supported_pixel_formats = PIXEL_FORMAT_MONO10;
-	caps->current_pixel_format = PIXEL_FORMAT_MONO10;
-	caps->screen_info = SCREEN_INFO_MONO_MSB_FIRST | SCREEN_INFO_EPD;
+
+	if (config->quirks->pixels_per_byte == 2U) {
+		caps->supported_pixel_formats = PIXEL_FORMAT_UC8159C;
+		caps->current_pixel_format = data->pixel_format;
+		caps->screen_info = SCREEN_INFO_EPD;
+	} else {
+		caps->supported_pixel_formats = PIXEL_FORMAT_MONO10;
+		caps->current_pixel_format = data->pixel_format;
+		caps->screen_info = SCREEN_INFO_MONO_MSB_FIRST | SCREEN_INFO_EPD;
+	}
 }
 
 static int uc81xx_set_pixel_format(const struct device *dev,
 				   const enum display_pixel_format pf)
 {
-	if (pf == PIXEL_FORMAT_MONO10) {
-		return 0;
+	const struct uc81xx_config *config = dev->config;
+	struct uc81xx_data *data = dev->data;
+
+	if (config->quirks->pixels_per_byte == 2U) {
+		if (pf != PIXEL_FORMAT_UC8159C) {
+			LOG_ERR("UC8159C supports PIXEL_FORMAT_UC8159C only");
+			return -ENOTSUP;
+		}
+	} else if (pf != PIXEL_FORMAT_MONO10) {
+		LOG_ERR("This UC81xx controller supports PIXEL_FORMAT_MONO10 only");
+		return -ENOTSUP;
 	}
 
-	LOG_ERR("not supported");
-	return -ENOTSUP;
+	data->pixel_format = pf;
+
+	return 0;
 }
 
 static int uc81xx_clear_and_write_buffer(const struct device *dev,
 					 uint8_t pattern, bool update)
 {
 	const struct uc81xx_config *config = dev->config;
-	const int size = config->width * config->height
-		/ UC81XX_PIXELS_PER_BYTE;
+	const int size = config->width * config->height / config->quirks->pixels_per_byte;
 
 	if (uc81xx_write_cmd_pattern(dev, UC81XX_CMD_DTM1, pattern, size)) {
 		return -EIO;
 	}
 
-	if (uc81xx_write_cmd_pattern(dev, UC81XX_CMD_DTM2, pattern, size)) {
-		return -EIO;
+	if (config->quirks->pixels_per_byte == UC81XX_PIXELS_PER_BYTE) {
+		if (uc81xx_write_cmd_pattern(dev, UC81XX_CMD_DTM2, pattern, size)) {
+			return -EIO;
+		}
 	}
 
 	if (update == true) {
@@ -549,7 +621,14 @@ static int uc81xx_controller_init(const struct device *dev)
 		return -EIO;
 	}
 
-	if (uc81xx_clear_and_write_buffer(dev, 0xff, false)) {
+	/* UC8159C / GDEP073: two nibbles per byte; 0xff is not two valid 0–7 indices */
+	uint8_t clear_pat = 0xff;
+
+	if (config->quirks->pixels_per_byte == 2U) {
+		clear_pat = UC8159C_PACK_PIXELS(UC8159C_PALETTE_WHITE, UC8159C_PALETTE_WHITE);
+	}
+
+	if (uc81xx_clear_and_write_buffer(dev, clear_pat, false)) {
 		return -EIO;
 	}
 
@@ -559,6 +638,7 @@ static int uc81xx_controller_init(const struct device *dev)
 static int uc81xx_init(const struct device *dev)
 {
 	const struct uc81xx_config *config = dev->config;
+	struct uc81xx_data *data = dev->data;
 
 	LOG_DBG("");
 
@@ -579,6 +659,9 @@ static int uc81xx_init(const struct device *dev)
 		LOG_ERR("Display size out of range.");
 		return -EINVAL;
 	}
+
+	data->pixel_format = (config->quirks->pixels_per_byte == 2U) ? PIXEL_FORMAT_UC8159C
+								     : PIXEL_FORMAT_MONO10;
 
 	return uc81xx_controller_init(dev);
 }
@@ -616,7 +699,8 @@ static inline int uc81xx_set_ptl_8(const struct device *dev, uint16_t x, uint16_
 }
 #endif
 
-#if DT_HAS_COMPAT_STATUS_OKAY(ultrachip_uc8176) || DT_HAS_COMPAT_STATUS_OKAY(ultrachip_uc8179)
+#if DT_HAS_COMPAT_STATUS_OKAY(ultrachip_uc8176) || DT_HAS_COMPAT_STATUS_OKAY(ultrachip_uc8179) || \
+	DT_HAS_COMPAT_STATUS_OKAY(ultrachip_uc8159c) || DT_HAS_COMPAT_STATUS_OKAY(gooddisplay_gdep073e01)
 static int uc81xx_set_tres_16(const struct device *dev)
 {
 	const struct uc81xx_config *config = dev->config;
@@ -679,10 +763,15 @@ static const struct uc81xx_quirks uc8175_quirks = {
 
 	.auto_copy = false,
 	.pon_after_softstart = false,
+	.blanking_off_no_update = false,
+
+	.pixels_per_byte = UC81XX_PIXELS_PER_BYTE,
+	.dtm_write_cmd = UC81XX_CMD_DTM2,
 
 	.set_cdi = uc8176_set_cdi,
 	.set_tres = uc81xx_set_tres_8,
 	.set_ptl = uc81xx_set_ptl_8,
+	.pre_pwr = NULL,
 };
 #endif
 
@@ -693,10 +782,15 @@ static const struct uc81xx_quirks uc8176_quirks = {
 
 	.auto_copy = false,
 	.pon_after_softstart = false,
+	.blanking_off_no_update = false,
+
+	.pixels_per_byte = UC81XX_PIXELS_PER_BYTE,
+	.dtm_write_cmd = UC81XX_CMD_DTM2,
 
 	.set_cdi = uc8176_set_cdi,
 	.set_tres = uc81xx_set_tres_16,
 	.set_ptl = uc81xx_set_ptl_16,
+	.pre_pwr = NULL,
 };
 #endif
 
@@ -771,10 +865,15 @@ static const struct uc81xx_quirks uc8151d_quirks = {
 
 	.auto_copy = false,    /* Manual copy required */
 	.pon_after_softstart = true,
+	.blanking_off_no_update = false,
+
+	.pixels_per_byte = UC81XX_PIXELS_PER_BYTE,
+	.dtm_write_cmd = UC81XX_CMD_DTM2,
 
 	.set_cdi = uc8151d_set_cdi,
 	.set_tres = uc8151d_set_tres,
 	.set_ptl = uc8151d_set_ptl,
+	.pre_pwr = NULL,
 };
 #endif
 
@@ -805,10 +904,158 @@ static const struct uc81xx_quirks uc8179_quirks = {
 
 	.auto_copy = true,
 	.pon_after_softstart = false,
+	.blanking_off_no_update = false,
+
+	.pixels_per_byte = UC81XX_PIXELS_PER_BYTE,
+	.dtm_write_cmd = UC81XX_CMD_DTM2,
 
 	.set_cdi = uc8179_set_cdi,
 	.set_tres = uc81xx_set_tres_16,
 	.set_ptl = uc81xx_set_ptl_16,
+	.pre_pwr = NULL,
+};
+#endif
+
+#if DT_HAS_COMPAT_STATUS_OKAY(ultrachip_uc8159c) || DT_HAS_COMPAT_STATUS_OKAY(gooddisplay_gdep073e01)
+static int uc8159c_set_ptl(const struct device *dev, uint16_t x, uint16_t y,
+			   uint16_t x_end_idx, uint16_t y_end_idx,
+			   const struct display_buffer_descriptor *desc)
+{
+	ARG_UNUSED(dev);
+	ARG_UNUSED(x);
+	ARG_UNUSED(y);
+	ARG_UNUSED(x_end_idx);
+	ARG_UNUSED(y_end_idx);
+	ARG_UNUSED(desc);
+
+	return 0;
+}
+
+static int uc8159c_set_cdi(const struct device *dev, bool border)
+{
+	const struct uc81xx_config *config = dev->config;
+	const struct uc81xx_data *data = dev->data;
+	const struct uc81xx_profile *p = config->profiles[data->profile];
+	uint8_t cdi = UC8159C_CDI_DEFAULT;
+
+	if (p && p->override_cdi) {
+		cdi = (UC8159C_CDI_DEFAULT & ~UC8159C_CDI_CDI_MASK) |
+		      (p->cdi & UC8159C_CDI_CDI_MASK);
+	}
+
+	if (!border) {
+		cdi = (cdi & ~UC8159C_CDI_VBD_MASK) | UC8159C_CDI_VBD_FLOATING;
+	}
+
+	LOG_DBG("CDI: %#hhx", cdi);
+	return uc81xx_write_cmd_uint8(dev, UC81XX_CMD_CDI, cdi);
+}
+#endif /* ultrachip_uc8159c || gooddisplay_gdep073e01 (shared helpers) */
+
+#if DT_HAS_COMPAT_STATUS_OKAY(ultrachip_uc8159c)
+static int uc8159c_pre_pwr(const struct device *dev)
+{
+	static uint8_t cmdh[] = { 0x49, 0x55, 0x20, 0x08, 0x09, 0x18 };
+	const struct uc81xx_dt_array arr = {
+		.data = cmdh,
+		.len = sizeof(cmdh),
+	};
+
+	BUILD_ASSERT(sizeof(cmdh) == UC8159C_CMDH_LENGTH);
+
+	return uc81xx_write_array_opt(dev, UC8159C_CMD_CMDH, &arr);
+}
+
+/*
+ * UC8159C: use @ref PIXEL_FORMAT_UC8159C and @ref UC8159C_PACK_PIXELS /
+ * @ref UC8159C_KPIX_* from uc8159c.h (same role as AC057TC1’s indexed format).
+ */
+static const struct uc81xx_quirks uc8159c_quirks = {
+	.max_width = 800,
+	.max_height = 600,
+
+	.auto_copy = false,
+	.pon_after_softstart = false,
+	.blanking_off_no_update = true,
+
+	.pixels_per_byte = 2,
+	.dtm_write_cmd = UC81XX_CMD_DTM1,
+
+	.set_cdi = uc8159c_set_cdi,
+	.set_tres = uc81xx_set_tres_16,
+	.set_ptl = uc8159c_set_ptl,
+	.pre_pwr = uc8159c_pre_pwr,
+};
+#endif
+
+#if DT_HAS_COMPAT_STATUS_OKAY(gooddisplay_gdep073e01)
+/*
+ * GDEP073E01 (Spectra 6): init from Good Display–referenced GxEPD2
+ * GxEPD2_730c_GDEP073E01::_InitDisplay (single-byte PWR 0x3F, BTST2 0x17/0x49,
+ * PLL 0x08, T_VDCS 0x01). Color saturation is mostly set by **DTM1 nibbles**;
+ * Waveshare 7IN3F index order does not match this panel’s native map (see uc8159c.h).
+ * Display update uses the common PON → DRF → POF sequence (no DSP after DTM).
+ */
+static int gdep073e01_panel_init(const struct device *dev)
+{
+	static const uint8_t cmdh[] = { 0x49, 0x55, 0x20, 0x08, 0x09, 0x18 };
+	static const uint8_t pwr[] = { 0x3F };
+	static const uint8_t psr[] = { 0x5F, 0x69 };
+	static const uint8_t pofs[] = { 0x00, 0x54, 0x00, 0x44 };
+	static const uint8_t btst1[] = { 0x40, 0x1F, 0x1F, 0x2C };
+	static const uint8_t btst2[] = { 0x6F, 0x1F, 0x17, 0x49 };
+	static const uint8_t btst3[] = { 0x6F, 0x1F, 0x1F, 0x22 };
+	static const uint8_t pll[] = { 0x08 };
+	static const uint8_t cdi[] = { 0x3F };
+	static const uint8_t tcon[] = { 0x02, 0x00 };
+	static const uint8_t tvdcs[] = { 0x01 };
+	static const uint8_t pws[] = { 0x2F };
+
+	BUILD_ASSERT(sizeof(cmdh) == UC8159C_CMDH_LENGTH);
+
+	if (uc81xx_write_cmd(dev, UC8159C_CMD_CMDH, cmdh, sizeof(cmdh)) ||
+	    uc81xx_write_cmd(dev, UC81XX_CMD_PWR, pwr, sizeof(pwr)) ||
+	    uc81xx_write_cmd(dev, UC81XX_CMD_PSR, psr, sizeof(psr)) ||
+	    uc81xx_write_cmd(dev, UC81XX_CMD_PFS, pofs, sizeof(pofs)) ||
+	    uc81xx_write_cmd(dev, GDEP073_CMD_BTST1, btst1, sizeof(btst1)) ||
+	    uc81xx_write_cmd(dev, GDEP073_CMD_BTST2, btst2, sizeof(btst2)) ||
+	    uc81xx_write_cmd(dev, GDEP073_CMD_BTST3, btst3, sizeof(btst3)) ||
+	    uc81xx_write_cmd(dev, UC81XX_CMD_PLL, pll, sizeof(pll)) ||
+	    uc81xx_write_cmd(dev, UC81XX_CMD_CDI, cdi, sizeof(cdi)) ||
+	    uc81xx_write_cmd(dev, UC81XX_CMD_TCON, tcon, sizeof(tcon)) ||
+	    uc81xx_set_tres_16(dev) ||
+	    uc81xx_write_cmd(dev, GDEP073_CMD_T_VDCS, tvdcs, sizeof(tvdcs)) ||
+	    uc81xx_write_cmd(dev, UC81XX_CMD_PWS, pws, sizeof(pws))) {
+		return -EIO;
+	}
+
+	if (uc81xx_write_cmd(dev, UC81XX_CMD_PON, NULL, 0)) {
+		return -EIO;
+	}
+
+	k_sleep(K_MSEC(UC81XX_PON_DELAY));
+	uc81xx_busy_wait(dev);
+
+	return 0;
+}
+
+static const struct uc81xx_quirks gdep073e01_quirks = {
+	.max_width = 800,
+	.max_height = 600,
+
+	.auto_copy = false,
+	.pon_after_softstart = false,
+	.blanking_off_no_update = true,
+	.dtm_skip_dsp = true,
+
+	.pixels_per_byte = 2,
+	.dtm_write_cmd = UC81XX_CMD_DTM1,
+
+	.set_cdi = uc8159c_set_cdi,
+	.set_tres = uc81xx_set_tres_16,
+	.set_ptl = uc8159c_set_ptl,
+	.pre_pwr = NULL,
+	.panel_init = gdep073e01_panel_init,
 };
 #endif
 
@@ -917,3 +1164,9 @@ DT_FOREACH_STATUS_OKAY_VARGS(ultrachip_uc8151d, UC81XX_DEFINE,
 
 DT_FOREACH_STATUS_OKAY_VARGS(ultrachip_uc8179, UC81XX_DEFINE,
 			     &uc8179_quirks);
+
+DT_FOREACH_STATUS_OKAY_VARGS(ultrachip_uc8159c, UC81XX_DEFINE,
+			     &uc8159c_quirks);
+
+DT_FOREACH_STATUS_OKAY_VARGS(gooddisplay_gdep073e01, UC81XX_DEFINE,
+			     &gdep073e01_quirks);

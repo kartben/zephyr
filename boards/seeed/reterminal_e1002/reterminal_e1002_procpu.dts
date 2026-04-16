@@ -23,10 +23,12 @@
 		zephyr,flash = &flash0;
 		zephyr,code-partition = &slot0_partition;
 		zephyr,bt-hci = &esp32_bt_hci;
+		zephyr,display = &epd_uc8159c;
 		zephyr,sdhc = &sdcard0;
 	};
 
 	aliases {
+		display0 = &epd_uc8159c;
 		i2c-0 = &i2c0;
 		i2c-1 = &i2c1;
 		led0 = &green_led0;
@@ -80,6 +82,34 @@
 			label = "Buzzer";
 		};
 	};
+
+	/*
+	 * GDEP073E01 (E Ink Spectra 6) 800x480, UC8159C. Pinout matches reTerminal E1002
+	 * (SPI2 with CS on GPIO10 for the panel, DC/RST/BUSY same line as E1001 class boards):
+	 * https://files.seeedstudio.com/wiki/reterminal_e10xx/res/202004321_reTerminal_E1002_V1_2_SCH_251120.pdf
+	 */
+	mipi_dbi_gdep073e01 {
+		compatible = "zephyr,mipi-dbi-spi";
+		spi-dev = <&spi2>;
+		dc-gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;
+		write-only;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		epd_uc8159c: gdep073e01@1 {
+			compatible = "gooddisplay,gdep073e01";
+			reg = <1>;
+			mipi-max-frequency = <4000000>;
+			width = <800>;
+			height = <480>;
+			busy-gpios = <&gpio0 13 GPIO_ACTIVE_LOW>;
+		};
+	};
+};
+
+&dma {
+	status = "okay";
 };
 
 &flash0 {
@@ -161,7 +191,7 @@
 	status = "okay";
 	pinctrl-0 = <&spim2_default>;
 	pinctrl-names = "default";
-	cs-gpios = <&gpio0 14 GPIO_ACTIVE_LOW>;
+	cs-gpios = <&gpio0 14 GPIO_ACTIVE_LOW>, <&gpio0 10 GPIO_ACTIVE_LOW>;
 
 	sdcard0: sdhc@0 {
 		compatible = "zephyr,sdhc-spi-slot";

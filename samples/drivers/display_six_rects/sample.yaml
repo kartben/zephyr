@@ -1,0 +1,18 @@
+# Copyright (c) 2026 The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+sample:
+  description: Draw six full-width horizontal color bands on the chosen display
+  name: display_six_rects
+common:
+  tags: display
+  extra_configs:
+    - CONFIG_HEAP_MEM_POOL_SIZE=262144
+tests:
+  sample.drivers.display.six_rects:
+    filter: dt_chosen_enabled("zephyr,display")
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "display_six_rects: done"

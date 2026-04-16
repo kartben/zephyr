@@ -22,6 +22,20 @@
 
 /* UC8179 only */
 #define UC81XX_CMD_DTM2				0x13
+
+/* UC8159C */
+#define UC8159C_CMD_CMDH			0xAA
+/* 6-byte payload after CMDH; not documented in all UC8159C datasheet revisions */
+#define UC8159C_CMDH_LENGTH			6U
+
+/* GDEP073E01 / SPD1656-style booster sequence (differs from single UC81XX_CMD_BTST) */
+#define GDEP073_CMD_BTST1			0x05
+#define GDEP073_CMD_BTST2			0x06
+#define GDEP073_CMD_BTST3			0x08
+#define GDEP073_CMD_T_VDCS			0x84
+#define GDEP073_CMD_AGID			0x86
+#define GDEP073_CMD_TSSET_E6			0xE6
+#define UC8159C_CMD_IPC				0x13
 #define UC81XX_CMD_DUSPI			0x15
 #define UC81XX_CMD_AUTO				0x17
 #define UC81XX_CMD_LUTOPT			0x2A
@@ -105,6 +119,14 @@
 #define UC8179_CDI_N2OCP			BIT(3)
 #define UC8179_CDI_DDX1				BIT(1)
 #define UC8179_CDI_DDX0				BIT(0)
+
+/* UC8159C CDI (R50h): VBD[2:0] @ D7-D5, DDX @ D4, CDI[3:0] @ D3-D0 */
+#define UC8159C_CDI_VBD_MASK			GENMASK(7, 5)
+#define UC8159C_CDI_DDX			BIT(4)
+#define UC8159C_CDI_CDI_MASK			GENMASK(3, 0)
+#define UC8159C_CDI_DEFAULT			0x3f
+/* VBD = 101b selects floating border output */
+#define UC8159C_CDI_VBD_FLOATING		(0x5U << 5)
 
 struct uc81xx_tres8 {
 	uint8_t hres;
