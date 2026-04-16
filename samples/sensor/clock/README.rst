@@ -15,12 +15,14 @@ Building and Running
 
 The sample below uses the :zephyr:board:`nrf52840dk` and :zephyr:board:`nrf52833dk` boards.
 
-To run this sample, ensure the following configurations:
+To run this sample, enable one of the following Kconfig options:
 
-    * Enable one of the Kconfig options:
-      :kconfig:option:`CONFIG_SENSOR_CLOCK_COUNTER`,
-      :kconfig:option:`CONFIG_SENSOR_CLOCK_RTC`, or
-      :kconfig:option:`CONFIG_SENSOR_CLOCK_SYSTEM`.
+* :kconfig:option:`CONFIG_SENSOR_CLOCK_SYSTEM`,
+* :kconfig:option:`CONFIG_SENSOR_CLOCK_COUNTER`, or
+* :kconfig:option:`CONFIG_SENSOR_CLOCK_RTC`.
+
+If you choose counter or RTC as a source, you must also define the ``zephyr,sensor-clock`` chosen
+node in Devicetree (see :ref:`sensor-clock`).
 
 Build and run the sample with the following command:
 

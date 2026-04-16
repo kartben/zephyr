@@ -489,6 +489,10 @@ device.
    * - zephyr,settings-partition
      - Fixed partition node. If defined this selects the partition used
        by the NVS and FCB settings backends.
+   * - zephyr,sensor-clock
+     - Counter device used for sensor timestamps when
+       :kconfig:option:`CONFIG_SENSOR_CLOCK_COUNTER` or :kconfig:option:`CONFIG_SENSOR_CLOCK_RTC` is
+       selected (both use the Counter driver for this device). See :ref:`sensor-clock`.
    * - zephyr,shell-uart
      - Sets UART device used by serial shell backend
    * - zephyr,sram
