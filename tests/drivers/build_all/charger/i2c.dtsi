@@ -92,3 +92,10 @@ npm10xx@8 {
 		compatible = "nordic,npm10xx-charger";
 	};
 };
+
+sy6974b@9 {
+	compatible = "silergy,sy6974b";
+	reg = <0x9>;
+	constant-charge-current-max-microamp = <1500000>;
+	constant-charge-voltage-max-microvolt = <4208000>;
+};
