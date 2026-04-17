@@ -115,6 +115,12 @@ int set_lvgl_rendering_cb(lv_display_t *display)
 		lv_display_add_event_cb(display, lvgl_rounder_cb_mono, LV_EVENT_INVALIDATE_AREA,
 					display);
 		break;
+	case PIXEL_FORMAT_I_4:
+		lv_display_set_color_format(display, LV_COLOR_FORMAT_I4);
+		lv_display_set_flush_cb(display, lvgl_flush_cb_indexed);
+		lv_display_add_event_cb(display, lvgl_rounder_cb, LV_EVENT_INVALIDATE_AREA,
+					display);
+		break;
 	default:
 		lv_display_set_flush_cb(display, NULL);
 		lv_display_add_event_cb(display, lvgl_rounder_cb, LV_EVENT_INVALIDATE_AREA,
@@ -147,4 +153,45 @@ void lvgl_flush_display(struct lvgl_display_flush *request)
 	display_write(data->display_dev, request->x, request->y, &request->desc, request->buf);
 	lv_display_flush_ready(request->display);
 #endif
+}
+
+#include <zephyr/logging/log.h>
+LOG_MODULE_DECLARE(lvgl, CONFIG_LV_Z_LOG_LEVEL);
+
+#define I4_PALETTE_SIZE 16
+
+void lvgl_set_indexed_palette(lv_display_t *display, const struct device *dev)
+{
+	uint32_t palette[I4_PALETTE_SIZE] = {0};
+	lv_draw_buf_t *draw_buf;
+	int ret;
+
+	ret = display_get_palette(dev, palette, I4_PALETTE_SIZE);
+	if (ret < 0) {
+		LOG_WRN("Display does not provide a palette (err %d), using default grayscale", ret);
+		/* Fall back to evenly spaced grayscale */
+		for (int i = 0; i < I4_PALETTE_SIZE; i++) {
+			uint8_t gray = (i * 255) / (I4_PALETTE_SIZE - 1);
+
+			palette[i] = 0xFF000000U | ((uint32_t)gray << 16) |
+				     ((uint32_t)gray << 8) | gray;
+		}
+	}
+
+	draw_buf = lv_display_get_buf_active(display);
+	if (draw_buf == NULL) {
+		LOG_ERR("No active draw buffer for palette setup");
+		return;
+	}
+
+	for (int i = 0; i < I4_PALETTE_SIZE; i++) {
+		lv_color32_t c32 = {
+			.blue = (palette[i] >> 0) & 0xFF,
+			.green = (palette[i] >> 8) & 0xFF,
+			.red = (palette[i] >> 16) & 0xFF,
+			.alpha = (palette[i] >> 24) & 0xFF,
+		};
+
+		lv_draw_buf_set_palette(draw_buf, i, c32);
+	}
 }
