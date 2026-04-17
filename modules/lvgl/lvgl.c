@@ -188,6 +188,11 @@ static int lvgl_allocate_rendering_buffers(lv_display_t *display)
 		buf_size = buf_nbr_pixels / 8 + 8;
 		buf_size += (buf_nbr_pixels % 8) == 0 ? 0 : 1;
 		break;
+	case PIXEL_FORMAT_I_4:
+		/* I4: 4 bits per pixel + 64-byte palette header (16 × ARGB8888) */
+		buf_size = buf_nbr_pixels / 2 + 16 * 4;
+		buf_size += (buf_nbr_pixels % 2) == 0 ? 0 : 1;
+		break;
 	default:
 		return -ENOTSUP;
 	}
@@ -369,6 +374,10 @@ int lvgl_init(void)
 			return err;
 		}
 #endif
+
+		if (p_disp_data->cap.current_pixel_format == PIXEL_FORMAT_I_4) {
+			lvgl_set_indexed_palette(lv_displays[i], display_dev[i]);
+		}
 
 #ifdef CONFIG_LV_Z_FULL_REFRESH
 		lv_display_set_render_mode(lv_displays[i], LV_DISPLAY_RENDER_MODE_FULL);

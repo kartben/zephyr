@@ -30,6 +30,7 @@ struct lvgl_display_flush {
 };
 
 void lvgl_flush_cb_mono(lv_display_t *display, const lv_area_t *area, uint8_t *px_map);
+void lvgl_flush_cb_indexed(lv_display_t *display, const lv_area_t *area, uint8_t *px_map);
 void lvgl_flush_cb_8bit(lv_display_t *display, const lv_area_t *area, uint8_t *px_map);
 void lvgl_flush_cb_16bit(lv_display_t *display, const lv_area_t *area, uint8_t *px_map);
 void lvgl_flush_cb_24bit(lv_display_t *display, const lv_area_t *area, uint8_t *px_map);
@@ -37,6 +38,7 @@ void lvgl_flush_cb_32bit(lv_display_t *display, const lv_area_t *area, uint8_t *
 
 void lvgl_rounder_cb_mono(lv_event_t *e);
 void lvgl_set_mono_conversion_buffer(uint8_t *buffer, uint32_t buffer_size);
+void lvgl_set_indexed_palette(lv_display_t *display, const struct device *dev);
 
 int set_lvgl_rendering_cb(lv_display_t *display);
 

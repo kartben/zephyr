@@ -216,10 +216,20 @@ enum display_pixel_format {
 	PIXEL_FORMAT_BGRA_8888 = BIT(12), /**< 32-bit BGRA */
 
 	/**
-	 * This and higher values are display specific.
-	 * Refer to the display header file.
+	 * @brief 4-bit indexed color format with 2 pixels packed per byte.
+	 *
+	 * Below shows how data are organized in memory.
+	 *
+	 * @code{.unparsed}
+	 *   Byte 0   | Byte 1   |
+	 *   7......0   7......0
+	 * | IiiiJjjj | KkkkLlll | ...
+	 * @endcode
+	 *
+	 * The high nibble stores the left pixel and the low nibble stores the
+	 * right pixel. Palette semantics are display-specific.
 	 */
-	PIXEL_FORMAT_PRIV_START = (PIXEL_FORMAT_BGRA_8888 << 1),
+	PIXEL_FORMAT_I_4 = BIT(13), /**< Packed 4-bit indexed color */
 };
 
 /**
@@ -227,8 +237,7 @@ enum display_pixel_format {
  *
  * This macro expands to the number of bits required for a given display
  * format. It can be used to allocate a framebuffer based on a given
- * display format type. This does not work with any private
- * pixel formats.
+ * display format type.
  */
 #define DISPLAY_BITS_PER_PIXEL(fmt)						\
 	((((fmt & PIXEL_FORMAT_RGB_888) >> 0) * 24U) +				\
@@ -243,7 +252,8 @@ enum display_pixel_format {
 	(((fmt & PIXEL_FORMAT_BGR_888) >> 9) * 24U) +				\
 	(((fmt & PIXEL_FORMAT_ABGR_8888) >> 10) * 32U) +			\
 	(((fmt & PIXEL_FORMAT_RGBA_8888) >> 11) * 32U) +			\
-	(((fmt & PIXEL_FORMAT_BGRA_8888) >> 12) * 32U))
+	(((fmt & PIXEL_FORMAT_BGRA_8888) >> 12) * 32U) +			\
+	(((fmt & PIXEL_FORMAT_I_4) >> 13) * 4U))
 /**
  * @brief Display screen information
  */
@@ -454,6 +464,14 @@ typedef int (*display_set_orientation_api)(const struct device *dev,
 					   orientation);
 
 /**
+ * @brief Callback API to get the color palette for indexed pixel formats.
+ * See display_get_palette() for argument description
+ */
+typedef int (*display_get_palette_api)(const struct device *dev,
+				       uint32_t *palette,
+				       size_t num_colors);
+
+/**
  * @brief Callback API to register display event callback.
  * See @ref display_register_event_cb for argument description
  */
@@ -516,6 +534,10 @@ __subsystem struct display_driver_api {
 	 * @driver_ops_optional @copybrief display_set_orientation
 	 */
 	display_set_orientation_api set_orientation;
+	/**
+	 * @driver_ops_optional @copybrief display_get_palette
+	 */
+	display_get_palette_api get_palette;
 	/**
 	 * @driver_ops_optional @copybrief display_register_event_cb
 	 */
@@ -783,6 +805,36 @@ static inline int display_set_orientation(const struct device *dev,
 	}
 
 	return api->set_orientation(dev, orientation);
+}
+
+/**
+ * @brief Get the color palette for indexed pixel formats
+ *
+ * Returns the display's color palette as an array of ARGB8888 values.
+ * Each entry maps a palette index to its corresponding color.
+ * This is used by graphics libraries to know what colors are available
+ * when rendering to displays using indexed pixel formats such as
+ * @ref PIXEL_FORMAT_I_4.
+ *
+ * @param dev Pointer to device structure
+ * @param palette Pointer to array to fill with ARGB8888 color values
+ * @param num_colors Number of palette entries to retrieve
+ *
+ * @return 0 on success else negative errno code.
+ * @retval -ENOSYS if not implemented.
+ */
+static inline int display_get_palette(const struct device *dev,
+				      uint32_t *palette,
+				      size_t num_colors)
+{
+	struct display_driver_api *api =
+		(struct display_driver_api *)dev->api;
+
+	if (api->get_palette == NULL) {
+		return -ENOSYS;
+	}
+
+	return api->get_palette(dev, palette, num_colors);
 }
 
 /**
