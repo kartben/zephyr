@@ -218,16 +218,19 @@ enum display_pixel_format {
 	/**
 	 * @brief 4-bit indexed color format with 2 pixels packed per byte.
 	 *
-	 * Below shows how data are organized in memory.
+	 * Below shows how data are organized in memory. Each letter represents
+	 * a 4-bit palette index (0-15) for a pixel.
 	 *
 	 * @code{.unparsed}
 	 *   Byte 0   | Byte 1   |
 	 *   7......0   7......0
-	 * | IiiiJjjj | KkkkLlll | ...
+	 * | AAAAbbbb | CCCCdddd | ...
 	 * @endcode
 	 *
-	 * The high nibble stores the left pixel and the low nibble stores the
-	 * right pixel. Palette semantics are display-specific.
+	 * The high nibble stores the left pixel (A, C, ...) palette index and
+	 * the low nibble stores the right pixel (b, d, ...) palette index.
+	 * Palette color semantics are display-specific; use
+	 * @ref display_get_palette to query the mapping.
 	 */
 	PIXEL_FORMAT_I_4 = BIT(13), /**< Packed 4-bit indexed color */
 };

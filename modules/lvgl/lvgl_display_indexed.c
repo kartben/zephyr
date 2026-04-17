@@ -34,7 +34,7 @@ void lvgl_flush_cb_indexed(lv_display_t *display, const lv_area_t *area, uint8_t
 	}
 
 	struct display_buffer_descriptor desc = {
-		.buf_size = (w * h) / 2U,
+		.buf_size = DIV_ROUND_UP(w * h, 2),
 		.width = w,
 		.pitch = ROUND_UP(DIV_ROUND_UP(w, 2), LV_DRAW_BUF_STRIDE_ALIGN) * 2,
 		.height = h,

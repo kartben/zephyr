@@ -190,8 +190,7 @@ static int lvgl_allocate_rendering_buffers(lv_display_t *display)
 		break;
 	case PIXEL_FORMAT_I_4:
 		/* I4: 4 bits per pixel + 64-byte palette header (16 × ARGB8888) */
-		buf_size = buf_nbr_pixels / 2 + 16 * 4;
-		buf_size += (buf_nbr_pixels % 2) == 0 ? 0 : 1;
+		buf_size = DIV_ROUND_UP(buf_nbr_pixels, 2) + 16 * 4;
 		break;
 	default:
 		return -ENOTSUP;
