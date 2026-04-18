@@ -1,0 +1,12 @@
+# Copyright (c) 2026 Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config LIBDITHER
+	bool "Image dithering library"
+	help
+	  Enable the libdither image dithering library. Provides algorithms
+	  to convert 8-bit grayscale images to 1-bit monochrome, suitable
+	  for use with monochrome displays such as OLED and e-ink panels.
+
+	  Supported algorithms: Threshold, Ordered (Bayer 4x4), and
+	  Floyd-Steinberg error diffusion.
