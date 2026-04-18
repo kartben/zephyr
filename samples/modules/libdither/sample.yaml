@@ -1,0 +1,23 @@
+sample:
+  name: libdither dithering sample
+common:
+  tags:
+    - display
+    - dithering
+    - libdither
+  modules:
+    - libdither
+  depends_on: display
+  filter: dt_chosen_enabled("zephyr,display")
+tests:
+  sample.modules.libdither:
+    platform_allow:
+      - native_sim
+      - native_sim/native/64
+    integration_platforms:
+      - native_sim
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "(.*)libdither sample done"

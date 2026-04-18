@@ -295,6 +295,10 @@ manifest:
     - name: hostap
       path: modules/lib/hostap
       revision: aa993679725360c1e370c9695960c6730cb07e8b
+    - name: libdither
+      url: https://github.com/kartben/libdither
+      revision: main
+      path: modules/lib/libdither
     - name: liblc3
       revision: 48bbd3eacd36e99a57317a0a4867002e0b09e183
       path: modules/lib/liblc3

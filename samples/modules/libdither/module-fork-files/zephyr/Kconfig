@@ -1,0 +1,13 @@
+# Copyright (c) 2026 Anthropic
+# SPDX-License-Identifier: Apache-2.0
+
+config ZEPHYR_LIBDITHER_MODULE
+	bool
+
+config LIBDITHER
+	bool "libdither image dithering library"
+	select REQUIRES_FULL_LIBC
+	help
+	  Enable the libdither library for black-and-white and color image
+	  dithering. Supports error diffusion (Floyd-Steinberg, Atkinson, and
+	  others), ordered (Bayer), pattern, and other algorithms.
