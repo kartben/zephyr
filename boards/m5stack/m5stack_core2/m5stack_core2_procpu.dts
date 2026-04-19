@@ -201,6 +201,14 @@
 	pinctrl-names = "default";
 };
 
+/* I2S0 in PDM RX mode: onboard microphone (not usable together with espressif,esp32-i2s on this unit). */
+dmic_dev: &i2s0 {
+	compatible = "espressif,esp32-i2s-pdm";
+	status = "okay";
+	pinctrl-0 = <&i2s0_pdm_default>;
+	pinctrl-names = "default";
+};
+
 &spi3 {
 	#address-cells = <1>;
 	#size-cells = <0>;

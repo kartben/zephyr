@@ -17,6 +17,7 @@
 #include <zephyr/irq.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/util.h>
 
 #include <soc.h>
 #include <esp_clk_tree.h>
@@ -31,17 +32,22 @@
 #endif /* SOC_GDMA_SUPPORTED */
 
 #if SOC_GDMA_SUPPORTED && !DT_HAS_COMPAT_STATUS_OKAY(espressif_esp32_gdma)
-#error "DMA peripheral is not enabled!"
+#error "DMA peripheral is not enabled! Enable the espressif,esp32-gdma node in your devicetree."
 #endif /* SOC_GDMA_SUPPORTED */
 
 LOG_MODULE_REGISTER(dmic_esp32, CONFIG_AUDIO_DMIC_LOG_LEVEL);
 
-#define DMIC_ESP32_CLK_SRC             I2S_CLK_SRC_DEFAULT
-/* MCLK multiplier used when computing the PDM clock tree. 128 is the
- * ESP-IDF default for PDM RX and yields a PDM clock of sample_rate * 64.
+#define DMIC_ESP32_CLK_SRC I2S_CLK_SRC_DEFAULT
+/*
+ * PDM RX clock tree must match Espressif's PDM RX rules (see ESP-IDF
+ * i2s_pdm_rx_calculate_clock): bclk = sample_rate * I2S_LL_PDM_BCK_FACTOR (64)
+ * for I2S_PDM_DSR_8S, bclk_div >= I2S_PDM_RX_BCLK_DIV_MIN (8), mclk = bclk * bclk_div.
+ * The previous implementation used mclk = rate * 128 and bclk_div = 2, which violates
+ * the minimum bclk divisor and can yield wrong PDM/PCM (e.g. pegged levels).
  */
-#define DMIC_ESP32_MCLK_MULTIPLE       128U
-#define DMIC_ESP32_PDM_DOWNSAMPLE      64U
+#define DMIC_ESP32_PDM_BCK_FACTOR      64U
+#define DMIC_ESP32_PDM_RX_BCLK_DIV_MIN 8U
+#define DMIC_ESP32_DMA_MAX_CHUNK       4092U
 
 struct dmic_esp32_queue_item {
 	void *buffer;
@@ -53,6 +59,11 @@ struct dmic_esp32_data {
 	struct k_mem_slab *mem_slab;
 	uint32_t block_size;
 	void *active_buf;
+#if SOC_GDMA_SUPPORTED
+	uint32_t chunk_idx;
+	uint32_t chunks_rem;
+	uint32_t chunk_len;
+#endif
 	struct k_msgq rx_queue;
 #if !SOC_GDMA_SUPPORTED
 	struct intr_handle_data_t *irq_handle;
@@ -81,6 +92,30 @@ struct dmic_esp32_cfg {
 static int dmic_esp32_rx_arm(const struct device *dev, void *buffer);
 static void dmic_esp32_hw_stop(const struct device *dev);
 
+#if SOC_GDMA_SUPPORTED
+static void dmic_esp32_gdma_prep_block(struct dmic_esp32_data *data)
+{
+	data->chunk_idx = 0U;
+	data->chunk_len = MIN(data->block_size, DMIC_ESP32_DMA_MAX_CHUNK);
+	data->chunks_rem = DIV_ROUND_UP(data->block_size, DMIC_ESP32_DMA_MAX_CHUNK) - 1U;
+}
+
+static void *dmic_esp32_gdma_chunk_buf(const struct dmic_esp32_data *data, void *buffer)
+{
+	return (uint8_t *)buffer + (data->chunk_idx * DMIC_ESP32_DMA_MAX_CHUNK);
+}
+
+static void dmic_esp32_gdma_advance_chunk(struct dmic_esp32_data *data)
+{
+	uint32_t remaining;
+
+	data->chunk_idx++;
+	data->chunks_rem--;
+	remaining = data->block_size - (data->chunk_idx * DMIC_ESP32_DMA_MAX_CHUNK);
+	data->chunk_len = MIN(remaining, DMIC_ESP32_DMA_MAX_CHUNK);
+}
+#endif /* SOC_GDMA_SUPPORTED */
+
 static uint32_t dmic_esp32_get_source_clk_freq(void)
 {
 	uint32_t clk_freq = 0;
@@ -93,7 +128,10 @@ static uint32_t dmic_esp32_get_source_clk_freq(void)
 static int dmic_esp32_calc_clock(uint32_t pcm_rate, i2s_hal_clock_info_t *clk_info)
 {
 	clk_info->sclk = dmic_esp32_get_source_clk_freq();
-	clk_info->mclk = pcm_rate * DMIC_ESP32_MCLK_MULTIPLE;
+	/* I2S_PDM_DSR_8S: PDM bit clock = pcm_rate * 64 (see i2s_ll_rx_set_pdm_dsr). */
+	clk_info->bclk = pcm_rate * DMIC_ESP32_PDM_BCK_FACTOR;
+	clk_info->bclk_div = DMIC_ESP32_PDM_RX_BCLK_DIV_MIN;
+	clk_info->mclk = clk_info->bclk * clk_info->bclk_div;
 	if (clk_info->mclk == 0) {
 		return -EINVAL;
 	}
@@ -102,12 +140,6 @@ static int dmic_esp32_calc_clock(uint32_t pcm_rate, i2s_hal_clock_info_t *clk_in
 	if (clk_info->mclk_div == 0) {
 		LOG_ERR("PCM rate %u too high for source clock %u",
 			(unsigned int)pcm_rate, (unsigned int)clk_info->sclk);
-		return -EINVAL;
-	}
-
-	clk_info->bclk = pcm_rate * DMIC_ESP32_PDM_DOWNSAMPLE;
-	clk_info->bclk_div = clk_info->mclk / clk_info->bclk;
-	if (clk_info->bclk_div == 0) {
 		return -EINVAL;
 	}
 
@@ -126,12 +158,36 @@ static void dmic_esp32_queue_drop(const struct device *dev)
 
 #if SOC_GDMA_SUPPORTED
 
+static int dmic_esp32_rx_reload(const struct device *dev, void *buffer)
+{
+	const struct dmic_esp32_cfg *cfg = dev->config;
+	struct dmic_esp32_data *data = dev->data;
+	const i2s_hal_context_t *hal = &cfg->hal;
+	void *chunk_buf = dmic_esp32_gdma_chunk_buf(data, buffer);
+	int err;
+
+	i2s_ll_rx_set_eof_num(hal->dev, data->chunk_len);
+
+	err = dma_reload(cfg->dma_dev, cfg->dma_channel, 0, (uint32_t)chunk_buf, data->chunk_len);
+	if (err < 0) {
+		LOG_ERR("dma_reload failed: %d", err);
+		return err;
+	}
+
+	err = dma_start(cfg->dma_dev, cfg->dma_channel);
+	if (err < 0) {
+		LOG_ERR("dma_start failed: %d", err);
+		return err;
+	}
+
+	return 0;
+}
+
 static void dmic_esp32_dma_callback(const struct device *dma_dev, void *arg,
 				    uint32_t channel, int status)
 {
 	const struct device *dev = arg;
 	struct dmic_esp32_data *data = dev->data;
-	const struct dmic_esp32_cfg *cfg = dev->config;
 	struct dmic_esp32_queue_item item;
 	void *next_buf = NULL;
 	int err;
@@ -150,6 +206,16 @@ static void dmic_esp32_dma_callback(const struct device *dma_dev, void *arg,
 		return;
 	}
 
+	if (data->chunks_rem > 0U) {
+		dmic_esp32_gdma_advance_chunk(data);
+		err = dmic_esp32_rx_reload(dev, data->active_buf);
+		if (err < 0) {
+			data->state = DMIC_STATE_ERROR;
+			dmic_esp32_hw_stop(dev);
+		}
+		return;
+	}
+
 	item.buffer = data->active_buf;
 	item.size = data->block_size;
 
@@ -159,6 +225,7 @@ static void dmic_esp32_dma_callback(const struct device *dma_dev, void *arg,
 		data->state = DMIC_STATE_ERROR;
 		dmic_esp32_hw_stop(dev);
 		k_mem_slab_free(data->mem_slab, item.buffer);
+		data->active_buf = NULL;
 		return;
 	}
 
@@ -168,19 +235,9 @@ static void dmic_esp32_dma_callback(const struct device *dma_dev, void *arg,
 	}
 
 	data->active_buf = next_buf;
-
-	err = dma_reload(cfg->dma_dev, cfg->dma_channel, 0, (uint32_t)next_buf,
-			 data->block_size);
+	dmic_esp32_gdma_prep_block(data);
+	err = dmic_esp32_rx_reload(dev, next_buf);
 	if (err < 0) {
-		LOG_ERR("dma_reload failed: %d", err);
-		data->state = DMIC_STATE_ERROR;
-		dmic_esp32_hw_stop(dev);
-		return;
-	}
-
-	err = dma_start(cfg->dma_dev, cfg->dma_channel);
-	if (err < 0) {
-		LOG_ERR("dma_start failed: %d", err);
 		data->state = DMIC_STATE_ERROR;
 		dmic_esp32_hw_stop(dev);
 	}
@@ -191,10 +248,13 @@ static int dmic_esp32_rx_arm(const struct device *dev, void *buffer)
 	const struct dmic_esp32_cfg *cfg = dev->config;
 	struct dma_config dma_cfg = {0};
 	struct dma_block_config dma_blk = {0};
+	struct dmic_esp32_data *data = dev->data;
+	const i2s_hal_context_t *hal = &cfg->hal;
+	void *chunk_buf = dmic_esp32_gdma_chunk_buf(data, buffer);
 	int err;
 
-	dma_blk.block_size = ((struct dmic_esp32_data *)dev->data)->block_size;
-	dma_blk.dest_address = (uint32_t)buffer;
+	dma_blk.block_size = data->chunk_len;
+	dma_blk.dest_address = (uint32_t)chunk_buf;
 
 	dma_cfg.source_data_size = 4;
 	dma_cfg.dest_data_size = 4;
@@ -212,6 +272,8 @@ static int dmic_esp32_rx_arm(const struct device *dev, void *buffer)
 		return err;
 	}
 
+	i2s_ll_rx_set_eof_num(hal->dev, data->chunk_len);
+
 	err = dma_start(cfg->dma_dev, cfg->dma_channel);
 	if (err < 0) {
 		LOG_ERR("dma_start failed: %d", err);
@@ -224,8 +286,6 @@ static int dmic_esp32_rx_arm(const struct device *dev, void *buffer)
 #else /* !SOC_GDMA_SUPPORTED */
 
 static void dmic_esp32_rx_isr(void *arg);
-
-#define DMIC_ESP32_DMA_MAX_CHUNK 4092U
 
 static uint32_t dmic_esp32_build_desc(const struct device *dev, void *buffer)
 {
@@ -408,27 +468,79 @@ static int dmic_esp32_configure(const struct device *dev, struct dmic_cfg *dev_c
 		return err;
 	}
 
+	LOG_INF("pcm_rate=%u sclk=%u mclk=%u bclk=%u mclk_div=%u bclk_div=%u",
+		(unsigned int)stream->pcm_rate,
+		(unsigned int)clk_info.sclk, (unsigned int)clk_info.mclk,
+		(unsigned int)clk_info.bclk,
+		(unsigned int)clk_info.mclk_div, (unsigned int)clk_info.bclk_div);
+
 	slot_cfg.data_bit_width = 16;
 	slot_cfg.slot_bit_width = 16;
 	slot_cfg.slot_mode = (channel->req_num_chan == 1) ? I2S_SLOT_MODE_MONO
 							  : I2S_SLOT_MODE_STEREO;
-	slot_cfg.pdm_rx.slot_mask = (channel->req_num_chan == 1)
-					    ? I2S_PDM_SLOT_LEFT
-					    : I2S_PDM_SLOT_BOTH;
-#if defined(SOC_I2S_HW_VERSION_2) && SOC_I2S_HW_VERSION_2
+	slot_cfg.pdm_rx.data_fmt = I2S_PDM_DATA_FMT_PCM;
+
+	/* Mono: honor Zephyr PDM L/R map (PDM mic SEL/LR pin picks the PDM time slot). */
+	if (channel->req_num_chan == 1) {
+		uint8_t pdm_idx;
+		enum pdm_lr lr;
+
+		dmic_parse_channel_map(channel->req_chan_map_lo, channel->req_chan_map_hi, 0,
+				       &pdm_idx, &lr);
+		slot_cfg.pdm_rx.slot_mask = (lr == PDM_CHAN_RIGHT) ? I2S_PDM_SLOT_RIGHT
+								   : I2S_PDM_SLOT_LEFT;
+		ARG_UNUSED(pdm_idx);
+	} else {
+		slot_cfg.pdm_rx.slot_mask = I2S_PDM_SLOT_BOTH;
+	}
+#if SOC_I2S_SUPPORTS_PDM_RX_HP_FILTER
 	slot_cfg.pdm_rx.hp_en = true;
-	slot_cfg.pdm_rx.hp_cut_off_freq_hz = 35.5f;
+	/* Cut-off frequency in Hz * 10 (HAL integer encoding; ~35.5 Hz). */
+	slot_cfg.pdm_rx.hp_cut_off_freq_hzx10 = 355U;
 	slot_cfg.pdm_rx.amplify_num = 1;
 #endif
 
+	/*
+	 * Order of operations matches ESP-IDF's i2s_pdm_rx_init() flow:
+	 *   1. Stop + reset RX/FIFO.
+	 *   2. Set the RX clock FIRST. On HW_VERSION_2 (ESP32-S3/C3/...),
+	 *      i2s_hal_set_rx_clock() is what calls _i2s_ll_rx_enable_clock() and
+	 *      _i2s_ll_mclk_bind_to_rx_clk(). Until this runs the RX submodule is
+	 *      ungated, so writes to rx_conf bits like rx_pdm_en/rx_pdm2pcm_en
+	 *      do not latch. Doing PDM enable before this leaves the peripheral
+	 *      in standard-I2S RX mode with a wildly wrong effective sample rate
+	 *      (DMA fills at FIFO speed, not at PCM-rate).
+	 *   3. Apply slot config (slot_mode, slot_mask, HP filter, etc).
+	 *   4. Switch the RX datapath to PDM and enable the PDM-to-PCM filter.
+	 *   5. Program the PDM decimator (DSR) so it matches bclk = rate * 64.
+	 */
 	i2s_hal_rx_stop(hal);
 	i2s_hal_rx_reset(hal);
 	i2s_hal_rx_reset_fifo(hal);
 
-	/* PDM RX is always master on ESP32 (it generates the PDM clock). */
-	i2s_hal_pdm_set_rx_slot(hal, false, &slot_cfg);
 	i2s_hal_set_rx_clock(hal, &clk_info, DMIC_ESP32_CLK_SRC, NULL);
-	i2s_ll_rx_enable_pdm(hal->dev);
+	i2s_hal_pdm_set_rx_slot(hal, false, &slot_cfg);
+	i2s_ll_rx_enable_pdm(hal->dev, true);
+	i2s_ll_rx_set_pdm_dsr(hal->dev, I2S_PDM_DSR_8S);
+
+#if SOC_I2S_HW_VERSION_2
+	/* Commit configuration to the peripheral and dump the latched register
+	 * state so we can verify rx_pdm_en / rx_pdm2pcm_en / rx_clk_active
+	 * actually took effect.
+	 */
+	i2s_ll_rx_update(hal->dev);
+	LOG_INF("after configure: rx_pdm_en=%u rx_pdm2pcm_en=%u rx_tdm_en=%u "
+		"rx_start=%u rx_pdm_sinc_dsr_16_en=%u",
+		(unsigned int)hal->dev->rx_conf.rx_pdm_en,
+		(unsigned int)hal->dev->rx_conf.rx_pdm2pcm_en,
+		(unsigned int)hal->dev->rx_conf.rx_tdm_en,
+		(unsigned int)hal->dev->rx_conf.rx_start,
+		(unsigned int)hal->dev->rx_conf.rx_pdm_sinc_dsr_16_en);
+	LOG_INF("  rx_clk_active=%u rx_clk_sel=%u mclk_sel=%u",
+		(unsigned int)hal->dev->rx_clkm_conf.rx_clk_active,
+		(unsigned int)hal->dev->rx_clkm_conf.rx_clk_sel,
+		(unsigned int)hal->dev->rx_clkm_conf.mclk_sel);
+#endif
 
 	data->mem_slab = stream->mem_slab;
 	data->block_size = stream->block_size;
@@ -458,6 +570,9 @@ static int dmic_esp32_start(const struct device *dev)
 	}
 
 	data->active_buf = buf;
+#if SOC_GDMA_SUPPORTED
+	dmic_esp32_gdma_prep_block(data);
+#endif
 
 	err = dmic_esp32_rx_arm(dev, buf);
 	if (err < 0) {
@@ -506,6 +621,11 @@ static int dmic_esp32_trigger(const struct device *dev, enum dmic_trigger cmd)
 			k_mem_slab_free(data->mem_slab, data->active_buf);
 			data->active_buf = NULL;
 		}
+#if SOC_GDMA_SUPPORTED
+		data->chunk_idx = 0U;
+		data->chunks_rem = 0U;
+		data->chunk_len = 0U;
+#endif
 		dmic_esp32_queue_drop(dev);
 		data->state = (cmd == DMIC_TRIGGER_RESET) ? DMIC_STATE_INITIALIZED
 							  : DMIC_STATE_CONFIGURED;
