@@ -22,15 +22,17 @@
 #include <esp_clk_tree.h>
 #include <hal/i2s_hal.h>
 
-#if defined(CONFIG_SOC_SERIES_ESP32) || defined(CONFIG_SOC_SERIES_ESP32S2)
+#if SOC_GDMA_SUPPORTED
+#include <zephyr/drivers/dma/dma_esp32.h>
+#else
 #include <soc/lldesc.h>
 #include <esp_memory_utils.h>
 #include <zephyr/drivers/interrupt_controller/intc_esp32.h>
-#define DMIC_ESP32_USE_GDMA 0
-#else
-#include <zephyr/drivers/dma/dma_esp32.h>
-#define DMIC_ESP32_USE_GDMA 1
-#endif
+#endif /* SOC_GDMA_SUPPORTED */
+
+#if SOC_GDMA_SUPPORTED && !DT_HAS_COMPAT_STATUS_OKAY(espressif_esp32_gdma)
+#error "DMA peripheral is not enabled!"
+#endif /* SOC_GDMA_SUPPORTED */
 
 LOG_MODULE_REGISTER(dmic_esp32, CONFIG_AUDIO_DMIC_LOG_LEVEL);
 
@@ -52,7 +54,7 @@ struct dmic_esp32_data {
 	uint32_t block_size;
 	void *active_buf;
 	struct k_msgq rx_queue;
-#if !DMIC_ESP32_USE_GDMA
+#if !SOC_GDMA_SUPPORTED
 	struct intr_handle_data_t *irq_handle;
 #endif
 };
@@ -63,7 +65,7 @@ struct dmic_esp32_cfg {
 	const struct pinctrl_dev_config *pcfg;
 	const struct device *clock_dev;
 	clock_control_subsys_t clock_subsys;
-#if DMIC_ESP32_USE_GDMA
+#if SOC_GDMA_SUPPORTED
 	const struct device *dma_dev;
 	uint32_t dma_channel;
 #else
@@ -122,7 +124,7 @@ static void dmic_esp32_queue_drop(const struct device *dev)
 	}
 }
 
-#if DMIC_ESP32_USE_GDMA
+#if SOC_GDMA_SUPPORTED
 
 static void dmic_esp32_dma_callback(const struct device *dma_dev, void *arg,
 				    uint32_t channel, int status)
@@ -219,7 +221,7 @@ static int dmic_esp32_rx_arm(const struct device *dev, void *buffer)
 	return 0;
 }
 
-#else /* !DMIC_ESP32_USE_GDMA */
+#else /* !SOC_GDMA_SUPPORTED */
 
 static void dmic_esp32_rx_isr(void *arg);
 
@@ -267,6 +269,7 @@ static int dmic_esp32_rx_arm(const struct device *dev, void *buffer)
 	last_chunk = dmic_esp32_build_desc(dev, buffer);
 
 	i2s_hal_rx_reset(hal);
+	i2s_hal_rx_reset_dma(hal);
 	i2s_hal_rx_reset_fifo(hal);
 	i2s_hal_clear_intr_status(hal, I2S_LL_RX_EVENT_MASK);
 	i2s_ll_rx_set_eof_num(hal->dev, last_chunk);
@@ -318,6 +321,8 @@ static void IRAM_ATTR dmic_esp32_rx_isr(void *arg)
 	if (status & I2S_LL_EVENT_RX_DSCR_ERR) {
 		LOG_ERR("RX descriptor error");
 		data->state = DMIC_STATE_ERROR;
+		k_mem_slab_free(data->mem_slab, data->active_buf);
+		data->active_buf = NULL;
 		return;
 	}
 
@@ -340,7 +345,7 @@ static void IRAM_ATTR dmic_esp32_rx_isr(void *arg)
 	(void)dmic_esp32_rx_reload(dev, next_buf);
 }
 
-#endif /* DMIC_ESP32_USE_GDMA */
+#endif /* SOC_GDMA_SUPPORTED */
 
 static void dmic_esp32_hw_stop(const struct device *dev)
 {
@@ -349,7 +354,7 @@ static void dmic_esp32_hw_stop(const struct device *dev)
 
 	i2s_hal_rx_stop(hal);
 
-#if DMIC_ESP32_USE_GDMA
+#if SOC_GDMA_SUPPORTED
 	dma_stop(cfg->dma_dev, cfg->dma_channel);
 #else
 	struct dmic_esp32_data *data = dev->data;
@@ -492,7 +497,8 @@ static int dmic_esp32_trigger(const struct device *dev, enum dmic_trigger cmd)
 
 	case DMIC_TRIGGER_STOP:
 	case DMIC_TRIGGER_RESET:
-		if (data->state == DMIC_STATE_ACTIVE || data->state == DMIC_STATE_PAUSED) {
+		if (data->state == DMIC_STATE_ACTIVE || data->state == DMIC_STATE_PAUSED ||
+		    data->state == DMIC_STATE_ERROR) {
 			data->state = DMIC_STATE_CONFIGURED;
 			dmic_esp32_hw_stop(dev);
 		}
@@ -520,7 +526,8 @@ static int dmic_esp32_read(const struct device *dev, uint8_t stream_id,
 
 	ARG_UNUSED(stream_id);
 
-	if (data->state != DMIC_STATE_ACTIVE && data->state != DMIC_STATE_PAUSED) {
+	if (data->state != DMIC_STATE_ACTIVE && data->state != DMIC_STATE_PAUSED &&
+	    data->state != DMIC_STATE_ERROR) {
 		LOG_ERR("read in invalid state: %d", data->state);
 		return -EIO;
 	}
@@ -561,7 +568,7 @@ static int dmic_esp32_init(const struct device *dev)
 	k_msgq_init(&data->rx_queue, cfg->queue_buffer,
 		    sizeof(struct dmic_esp32_queue_item), cfg->queue_depth);
 
-#if DMIC_ESP32_USE_GDMA
+#if SOC_GDMA_SUPPORTED
 	if (!device_is_ready(cfg->dma_dev)) {
 		LOG_ERR("DMA device not ready");
 		return -ENODEV;
@@ -592,7 +599,7 @@ static const struct _dmic_ops dmic_esp32_ops = {
 	.read = dmic_esp32_read,
 };
 
-#if DMIC_ESP32_USE_GDMA
+#if SOC_GDMA_SUPPORTED
 
 #define DMIC_ESP32_SANITY(n)                                                                       \
 	BUILD_ASSERT(DT_INST_DMAS_HAS_NAME(n, rx),                                                 \
@@ -603,7 +610,7 @@ static const struct _dmic_ops dmic_esp32_ops = {
 	.dma_dev = DEVICE_DT_GET(DT_INST_DMAS_CTLR_BY_NAME(n, rx)),                                \
 	.dma_channel = DT_INST_DMAS_CELL_BY_NAME(n, rx, channel),
 
-#else /* !DMIC_ESP32_USE_GDMA */
+#else /* !SOC_GDMA_SUPPORTED */
 
 #define DMIC_ESP32_SANITY(n)                                                                       \
 	BUILD_ASSERT(!DT_INST_NODE_HAS_PROP(n, dmas),                                              \
@@ -622,7 +629,7 @@ static const struct _dmic_ops dmic_esp32_ops = {
 	.irq_priority = DT_INST_IRQ(n, priority),                                                  \
 	.irq_flags = DT_INST_IRQ(n, flags),
 
-#endif /* DMIC_ESP32_USE_GDMA */
+#endif /* SOC_GDMA_SUPPORTED */
 
 #define DMIC_ESP32_INIT(n)                                                                         \
 	DMIC_ESP32_SANITY(n);                                                                      \

@@ -12,7 +12,7 @@ description: |
 
 compatible: "espressif,esp32-i2s-pdm"
 
-include: ["pdm-dmic.yaml", "pinctrl-device.yaml"]
+include: ["base.yaml", "pinctrl-device.yaml"]
 
 properties:
   reg:
