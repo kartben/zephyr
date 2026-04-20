@@ -64,6 +64,12 @@ config AUDIO_DMIC_INIT_PRIORITY
 	help
 	  Audio Digital Microphone device driver initialization priority.
 
+config AUDIO_DMIC_SHELL
+	bool "Digital Microphone shell"
+	depends on SHELL
+	help
+	  Enable the Digital Microphone shell with DMIC related commands.
+
 module = AUDIO_DMIC
 module-str = audio_dmic
 source "subsys/logging/Kconfig.template.log_config"
