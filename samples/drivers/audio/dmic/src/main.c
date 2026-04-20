@@ -111,11 +111,11 @@ static int do_pdm_transfer(const struct device *dev, struct dmic_cfg *cfg, size_
 
 		ret = dmic_read(dev, 0, &buffer, &size, READ_TIMEOUT);
 		if (ret < 0) {
-			LOG_ERR("%u - read failed: %d", (uint32_t)i, ret);
+			LOG_ERR("%zu - read failed: %d", i, ret);
 			break;
 		}
 
-		LOG_INF("%u - got buffer %p of %u bytes", (uint32_t)i, buffer, size);
+		LOG_INF("%zu - got buffer %p of %u bytes", i, buffer, size);
 
 		k_mem_slab_free(&mem_slab, buffer);
 	}
@@ -374,7 +374,7 @@ static void dmic_vu_thread(void *p1, void *p2, void *p3)
 
 	ret = k_mutex_lock(&dmic_lock, K_NO_WAIT);
 	if (ret < 0) {
-		finish_vu_meter(-EBUSY);
+		finish_vu_meter(ret);
 		return;
 	}
 
