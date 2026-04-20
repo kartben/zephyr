@@ -52,9 +52,14 @@ static int cmd_trigger(const struct shell *sh, size_t argc, char *argv[])
 		return -EINVAL;
 	}
 
-	return dmic_trigger(dev, (enum dmic_trigger)trigger);
-}
+	int ret = dmic_trigger(dev, (enum dmic_trigger)trigger);
 
+	if (ret < 0) {
+		shell_error(sh, "Failed to trigger DMIC: %d", ret);
+	}
+
+	return ret;
+}
 /* Device name autocompletion support */
 static void device_name_get(size_t idx, struct shell_static_entry *entry)
 {
