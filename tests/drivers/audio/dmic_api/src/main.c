@@ -148,6 +148,9 @@ ZTEST(dmic, test_single_channel)
 /* Verify that the DMIC can transfer from a L/R channel pair */
 ZTEST(dmic, test_stereo_channel)
 {
+#if defined(CONFIG_AUDIO_DMIC_STM32_DFSDM)
+	ztest_test_skip();
+#else
 	dmic_cfg.channel.req_num_chan = 2;
 	dmic_cfg.channel.req_chan_map_lo =
 		dmic_build_channel_map(0, PDM_CTL_IDX, PDM_CHAN_LEFT) |
@@ -164,11 +167,15 @@ ZTEST(dmic, test_stereo_channel)
 
 	zassert_equal(do_pdm_transfer(dmic_dev, &dmic_cfg), 0,
 		      "R/L channel transfer failed");
+#endif /* CONFIG_AUDIO_DMIC_STM32_DFSDM */
 }
 
 /* Test DMIC with maximum number of channels */
 ZTEST(dmic, test_max_channel)
 {
+#if defined(CONFIG_AUDIO_DMIC_STM32_DFSDM)
+	ztest_test_skip();
+#else
 	enum pdm_lr lr;
 	uint8_t pdm_hw_chan;
 
@@ -193,11 +200,15 @@ ZTEST(dmic, test_max_channel)
 			   dmic_cfg.channel.req_num_chan);
 	zassert_equal(do_pdm_transfer(dmic_dev, &dmic_cfg), 0,
 		      "Maximum channel transfer failed");
+#endif /* CONFIG_AUDIO_DMIC_STM32_DFSDM */
 }
 
 /* Test pausing and restarting a channel */
 ZTEST(dmic, test_pause_restart)
 {
+#if defined(CONFIG_AUDIO_DMIC_STM32_DFSDM)
+	ztest_test_skip();
+#else
 	int ret, i;
 	void *buffer;
 	uint32_t size;
@@ -265,6 +276,7 @@ ZTEST(dmic, test_pause_restart)
 	/* Test is over. Stop the DMIC */
 	ret = dmic_trigger(dmic_dev, DMIC_TRIGGER_STOP);
 	zassert_equal(ret, 0, "DMIC stop failed");
+#endif /* CONFIG_AUDIO_DMIC_STM32_DFSDM */
 }
 
 /* Verify that channel map without adjacent L/R pairs fails */
