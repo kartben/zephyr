@@ -44,7 +44,7 @@ LOG_MODULE_REGISTER(dmic_sample);
 K_MEM_SLAB_DEFINE_STATIC(mem_slab, MAX_BLOCK_SIZE, BLOCK_COUNT, 4);
 K_MUTEX_DEFINE(dmic_lock);
 BUILD_ASSERT((SAMPLE_BIT_WIDTH == 16) || (SAMPLE_BIT_WIDTH == 32),
-	     "The DMIC shell VU meter supports 16-bit and 32-bit PCM samples only");
+	     "This sample supports 16-bit and 32-bit PCM samples only");
 
 static const struct device *const dmic_dev = DEVICE_DT_GET(DT_NODELABEL(dmic_dev));
 
@@ -272,7 +272,7 @@ static void measure_peak_levels(const void *buffer, uint32_t size, uint8_t chann
 
 		for (size_t i = 0; i < sample_count; ++i) {
 			int64_t sample = samples[i];
-			uint64_t magnitude = (sample < 0) ? (uint64_t)(-sample) : (uint64_t)sample;
+			uint64_t magnitude = (uint64_t)llabs((long long)sample);
 			uint8_t channel = i % channels;
 
 			peaks[channel] = MAX(peaks[channel], magnitude);
@@ -284,7 +284,7 @@ static void measure_peak_levels(const void *buffer, uint32_t size, uint8_t chann
 
 		for (size_t i = 0; i < sample_count; ++i) {
 			int64_t sample = samples[i];
-			uint64_t magnitude = (sample < 0) ? (uint64_t)(-sample) : (uint64_t)sample;
+			uint64_t magnitude = (uint64_t)llabs((long long)sample);
 			uint8_t channel = i % channels;
 
 			peaks[channel] = MAX(peaks[channel], magnitude);
@@ -292,7 +292,9 @@ static void measure_peak_levels(const void *buffer, uint32_t size, uint8_t chann
 	}
 
 	for (uint8_t i = 0U; i < channels; ++i) {
-		levels[i] = (uint8_t)MIN((peaks[i] * 100U) / full_scale, 100U);
+		uint64_t percent = (peaks[i] * 100ULL) / full_scale;
+
+		levels[i] = (uint8_t)MIN(percent, 100ULL);
 	}
 }
 
