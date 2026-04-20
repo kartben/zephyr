@@ -154,6 +154,7 @@ static int parse_u32_arg(const struct shell *sh, const char *arg, const char *na
 
 	errno = 0;
 	parsed = strtoul(arg, &endptr, 0);
+	/* parsed may be wider than uint32_t on 64-bit hosts. */
 	if ((errno != 0) || (endptr == arg) || (*endptr != '\0') || (parsed > UINT32_MAX)) {
 		shell_error(sh, "Invalid %s: %s", name, arg);
 		return -EINVAL;
@@ -272,7 +273,7 @@ static void measure_peak_levels(const void *buffer, uint32_t size, uint8_t chann
 
 		for (size_t i = 0; i < sample_count; ++i) {
 			int64_t sample = samples[i];
-			uint64_t magnitude = (uint64_t)llabs((long long)sample);
+			uint64_t magnitude = (uint64_t)llabs(sample);
 			uint8_t channel = i % channels;
 
 			peaks[channel] = MAX(peaks[channel], magnitude);
@@ -284,7 +285,7 @@ static void measure_peak_levels(const void *buffer, uint32_t size, uint8_t chann
 
 		for (size_t i = 0; i < sample_count; ++i) {
 			int64_t sample = samples[i];
-			uint64_t magnitude = (uint64_t)llabs((long long)sample);
+			uint64_t magnitude = (uint64_t)llabs(sample);
 			uint8_t channel = i % channels;
 
 			peaks[channel] = MAX(peaks[channel], magnitude);
