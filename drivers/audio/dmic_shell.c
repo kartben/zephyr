@@ -81,7 +81,12 @@ static int compute_peak_pct(const void *buf, size_t size, uint8_t pcm_width,
 		for (size_t i = channel; i < num_samples; i += num_channels) {
 			int32_t v = s[i];
 
-			if (v < 0) {
+			/* Avoid undefined behaviour: negating INT32_MIN
+			 * overflows; clamp it to INT32_MAX instead.
+			 */
+			if (v == INT32_MIN) {
+				v = INT32_MAX;
+			} else if (v < 0) {
 				v = -v;
 			}
 			if (v > peak) {
@@ -144,7 +149,7 @@ static void print_vu_bar(const struct shell *sh, uint8_t channel, int level_pct)
 		shell_fprintf(sh, SHELL_NORMAL, "%s", seg);
 	}
 
-	/* End of bar: clear to end-of-line and newline so the next frame can
+	/* End of bar: clear to end of line and newline so the next frame can
 	 * overwrite without leaving stale characters.
 	 */
 	shell_fprintf(sh, SHELL_NORMAL, "| %3d%%\033[K\n", level_pct);
