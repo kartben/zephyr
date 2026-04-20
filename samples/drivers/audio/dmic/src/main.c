@@ -271,8 +271,8 @@ static void measure_peak_levels(const void *buffer, uint32_t size, uint8_t chann
 		full_scale = INT16_MAX;
 
 		for (size_t i = 0; i < sample_count; ++i) {
-			uint64_t magnitude = (samples[i] < 0) ? (uint64_t)(-(int64_t)samples[i]) :
-							      (uint64_t)samples[i];
+			int64_t sample = samples[i];
+			uint64_t magnitude = (sample < 0) ? (uint64_t)(-sample) : (uint64_t)sample;
 			uint8_t channel = i % channels;
 
 			peaks[channel] = MAX(peaks[channel], magnitude);
@@ -283,8 +283,8 @@ static void measure_peak_levels(const void *buffer, uint32_t size, uint8_t chann
 		full_scale = INT32_MAX;
 
 		for (size_t i = 0; i < sample_count; ++i) {
-			uint64_t magnitude = (samples[i] < 0) ? (uint64_t)(-(int64_t)samples[i]) :
-							      (uint64_t)samples[i];
+			int64_t sample = samples[i];
+			uint64_t magnitude = (sample < 0) ? (uint64_t)(-sample) : (uint64_t)sample;
 			uint8_t channel = i % channels;
 
 			peaks[channel] = MAX(peaks[channel], magnitude);
