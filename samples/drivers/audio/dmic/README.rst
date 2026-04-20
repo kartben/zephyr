@@ -10,7 +10,14 @@ Overview
 This is a very simple application intended to show how to use the :ref:`Audio DMIC
 API <audio_dmic_api>` and also to be an aid in developing drivers to implement this API.
 It performs two PDM transfers with different configurations (using one channel
-and two channels) but does not in any way process the received audio data.
+and two channels) at boot and also exposes shell commands for interactive capture.
+
+After the sample starts, the following shell commands are available:
+
+* ``dmic capture [blocks] [rate] [channels]`` captures a configurable number of
+  blocks and logs the buffers that were received.
+* ``dmic vu [rate] [channels]`` shows a colorized VU meter that updates in place
+  until a key is pressed.
 
 Requirements
 ************
