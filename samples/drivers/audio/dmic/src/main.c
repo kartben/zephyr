@@ -164,9 +164,14 @@ static int parse_u32_arg(const struct shell *sh, const char *arg, const char *na
 	return 0;
 }
 
+static int parse_rate_channels_args(const struct shell *sh, const char *rate_arg,
+				    const char *channels_arg, uint32_t *rate, uint8_t *channels);
+
 static int parse_capture_args(const struct shell *sh, size_t argc, char **argv, uint32_t *blocks,
 			      uint32_t *rate, uint8_t *channels)
 {
+	const char *rate_arg = NULL;
+	const char *channels_arg = NULL;
 	uint32_t parsed;
 	int ret;
 
@@ -189,7 +194,27 @@ static int parse_capture_args(const struct shell *sh, size_t argc, char **argv, 
 	}
 
 	if (argc > 2U) {
-		ret = parse_u32_arg(sh, argv[2], "sample rate", &parsed);
+		rate_arg = argv[2];
+	}
+
+	if (argc > 3U) {
+		channels_arg = argv[3];
+	}
+
+	return parse_rate_channels_args(sh, rate_arg, channels_arg, rate, channels);
+}
+
+static int parse_rate_channels_args(const struct shell *sh, const char *rate_arg,
+				    const char *channels_arg, uint32_t *rate, uint8_t *channels)
+{
+	uint32_t parsed;
+	int ret;
+
+	*rate = MAX_SAMPLE_RATE;
+	*channels = 1U;
+
+	if (rate_arg != NULL) {
+		ret = parse_u32_arg(sh, rate_arg, "sample rate", &parsed);
 		if (ret < 0) {
 			return ret;
 		}
@@ -202,8 +227,8 @@ static int parse_capture_args(const struct shell *sh, size_t argc, char **argv, 
 		*rate = parsed;
 	}
 
-	if (argc > 3U) {
-		ret = parse_u32_arg(sh, argv[3], "channel count", &parsed);
+	if (channels_arg != NULL) {
+		ret = parse_u32_arg(sh, channels_arg, "channel count", &parsed);
 		if (ret < 0) {
 			return ret;
 		}
@@ -222,41 +247,8 @@ static int parse_capture_args(const struct shell *sh, size_t argc, char **argv, 
 static int parse_vu_args(const struct shell *sh, size_t argc, char **argv, uint32_t *rate,
 			 uint8_t *channels)
 {
-	uint32_t parsed;
-	int ret;
-
-	*rate = MAX_SAMPLE_RATE;
-	*channels = 1U;
-
-	if (argc > 1U) {
-		ret = parse_u32_arg(sh, argv[1], "sample rate", &parsed);
-		if (ret < 0) {
-			return ret;
-		}
-
-		if ((parsed == 0U) || (parsed > MAX_SAMPLE_RATE)) {
-			shell_error(sh, "Sample rate must be in the range 1-%u", MAX_SAMPLE_RATE);
-			return -EINVAL;
-		}
-
-		*rate = parsed;
-	}
-
-	if (argc > 2U) {
-		ret = parse_u32_arg(sh, argv[2], "channel count", &parsed);
-		if (ret < 0) {
-			return ret;
-		}
-
-		if ((parsed == 0U) || (parsed > MAX_CHANNELS)) {
-			shell_error(sh, "Channel count must be 1 or 2");
-			return -EINVAL;
-		}
-
-		*channels = (uint8_t)parsed;
-	}
-
-	return 0;
+	return parse_rate_channels_args(sh, (argc > 1U) ? argv[1] : NULL,
+					(argc > 2U) ? argv[2] : NULL, rate, channels);
 }
 
 static void measure_peak_levels(const void *buffer, uint32_t size, uint8_t channels,
@@ -486,7 +478,7 @@ static int cmd_dmic_vu(const struct shell *sh, size_t argc, char **argv)
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	dmic_cmds,
 	SHELL_CMD_ARG(capture, NULL,
-		      "Capture DMIC blocks [blocks=8] [rate=16000] [channels=1]",
+		      "Capture DMIC blocks [blocks] [rate] [channels]",
 		      cmd_dmic_capture, 1, 3),
 	SHELL_CMD_ARG(vu, NULL,
 		      "Run a live VU meter [rate=16000] [channels=1]",
