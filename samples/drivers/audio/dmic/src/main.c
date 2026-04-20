@@ -15,7 +15,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/util.h>
 
-#if CONFIG_SHELL
+#ifdef CONFIG_SHELL
 #include <zephyr/shell/shell.h>
 #endif
 
@@ -134,7 +134,7 @@ static int do_pdm_transfer(const struct device *dev, struct dmic_cfg *cfg, size_
 	return ret;
 }
 
-#if CONFIG_SHELL
+#ifdef CONFIG_SHELL
 struct dmic_vu_ctx {
 	struct k_thread thread;
 	const struct shell *sh;
