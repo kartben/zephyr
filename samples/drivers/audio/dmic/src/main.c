@@ -301,9 +301,10 @@ static void render_bar(const struct shell *sh, const char *label, uint8_t level)
 
 	for (uint32_t i = 0U; i < VU_BAR_WIDTH; ++i) {
 		enum shell_vt100_color color = SHELL_NORMAL;
-		char bar = (i < filled) ? '#' : '.';
+		char bar = '.';
 
 		if (i < filled) {
+			bar = '#';
 			if (i < green_limit) {
 				color = SHELL_INFO;
 			} else if (i < yellow_limit) {
