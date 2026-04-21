@@ -57,8 +57,7 @@ static int mpr_read_reg(const struct device *dev)
 			return rc;
 		}
 
-		if (!(*read_buf & MPR_STATUS_MASK_POWER_ON)
-			|| (*read_buf & MPR_STATUS_MASK_INTEGRITY_TEST_FAILED)
+		if ((*read_buf & MPR_STATUS_MASK_INTEGRITY_TEST_FAILED)
 			|| (*read_buf & MPR_STATUS_MASK_MATH_SATURATION)) {
 			return -EIO;
 		}
