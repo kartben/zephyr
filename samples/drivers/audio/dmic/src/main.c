@@ -304,8 +304,13 @@ static void measure_peak_levels(const void *buffer, uint32_t size, uint8_t chann
 static void render_bar(const struct shell *sh, const char *label, uint8_t level)
 {
 	uint32_t filled = (level * VU_BAR_WIDTH) / 100U;
-	uint32_t green_limit = (VU_BAR_WIDTH * 7U) / 10U;
-	uint32_t yellow_limit = (VU_BAR_WIDTH * 9U) / 10U;
+	/* Color thresholds derived from standard dBFS zones:
+	 *   green  : below -18 dBFS  (linear ~13 % of full scale)
+	 *   yellow : -18 dBFS to -6 dBFS  (linear ~50 % of full scale)
+	 *   red    : above -6 dBFS
+	 */
+	uint32_t green_limit = (VU_BAR_WIDTH * 13U) / 100U;
+	uint32_t yellow_limit = (VU_BAR_WIDTH * 50U) / 100U;
 
 	shell_fprintf(sh, SHELL_NORMAL, "%s [", label);
 
