@@ -1,0 +1,9 @@
+# Copyright (c) 2024 Arduino SA
+# SPDX-License-Identifier: Apache-2.0
+
+config AUDIO_CODEC_NS4168
+	bool "ChipSourceTek NS4168 mono I2S Class-D amplifier"
+	default y
+	depends on DT_HAS_CHIPSOURCETEK_NS4168_ENABLED
+	help
+	  Enable support for the ChipSourceTek NS4168 mono I2S Class-D amplifier.

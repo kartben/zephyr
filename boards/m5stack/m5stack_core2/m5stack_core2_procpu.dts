@@ -25,6 +25,7 @@
 		rtc = &pfc8563_rtc;
 		led0 = &led_pwr;
 		sdhc0 = &sd0;
+		codec0 = &ns4168_codec;
 	};
 
 	chosen {
@@ -74,6 +75,12 @@
 		compatible = "regulator-fixed";
 		regulator-name = "bus_5v";
 		enable-gpios = <&axp192_gpio 5 GPIO_ACTIVE_HIGH>;
+	};
+
+	ns4168_codec: ns4168_codec {
+		compatible = "chipsourcetek,ns4168";
+		enable-gpios = <&axp192_gpio 2 GPIO_ACTIVE_HIGH>;
+		status = "okay";
 	};
 };
 
@@ -247,6 +254,12 @@
 };
 
 &esp32_bt_hci {
+	status = "okay";
+};
+
+&i2s0 {
+	pinctrl-0 = <&i2s0_default>;
+	pinctrl-names = "default";
 	status = "okay";
 };
 
