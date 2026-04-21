@@ -7,10 +7,26 @@
 #ifndef ZEPHYR_DRIVERS_SENSOR_MPR_H_
 #define ZEPHYR_DRIVERS_SENSOR_MPR_H_
 
-#include <zephyr/drivers/i2c.h>
+#include <zephyr/devicetree.h>
 
-/* MPR output measurement command */
+#define MPR_BUS_I2C DT_ANY_INST_ON_BUS_STATUS_OKAY(i2c)
+#define MPR_BUS_SPI DT_ANY_INST_ON_BUS_STATUS_OKAY(spi)
+
+#if MPR_BUS_I2C
+#include <zephyr/drivers/i2c.h>
+#endif
+#if MPR_BUS_SPI
+#include <zephyr/drivers/spi.h>
+#endif
+
+/* MPR output measurement command (I2C and SPI) */
 #define MPR_OUTPUT_MEASUREMENT_COMMAND (0xAA)
+
+/* MPR SPI read command */
+#define MPR_SPI_READ_COMMAND (0xF0)
+
+/* MPR SPI operation: mode 0, MSB first */
+#define MPR_SPI_OPERATION (SPI_WORD_SET(8) | SPI_TRANSFER_MSB | SPI_OP_MODE_MASTER)
 
 /* MPR status byte masks */
 #define MPR_STATUS_MASK_MATH_SATURATION       (0x01)
@@ -28,14 +44,39 @@
 #define MPR_REG_READ_DATA_CONV_DELAY_MS (5)
 #endif
 
+union mpr_bus {
+#if MPR_BUS_I2C
+	struct i2c_dt_spec i2c;
+#endif
+#if MPR_BUS_SPI
+	struct spi_dt_spec spi;
+#endif
+};
+
+typedef int (*mpr_bus_check_fn)(const union mpr_bus *bus);
+typedef int (*mpr_bus_request_fn)(const union mpr_bus *bus);
+typedef int (*mpr_bus_read_fn)(const union mpr_bus *bus, uint8_t *buf, size_t len);
+
+struct mpr_bus_io {
+	mpr_bus_check_fn check;
+	mpr_bus_request_fn request;
+	mpr_bus_read_fn read;
+};
+
+#if MPR_BUS_I2C
+extern const struct mpr_bus_io mpr_bus_io_i2c;
+#endif
+#if MPR_BUS_SPI
+extern const struct mpr_bus_io mpr_bus_io_spi;
+#endif
+
 struct mpr_data {
 	uint32_t reg_val;
 };
 
 struct mpr_config {
-	struct i2c_dt_spec i2c;
+	union mpr_bus bus;
+	const struct mpr_bus_io *bus_io;
 };
-
-int mpr_reg_read(const struct device *dev, uint8_t reg, uint16_t *val);
 
 #endif /* ZEPHYR_DRIVERS_SENSOR_MPR_H_ */
