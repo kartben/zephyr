@@ -29,7 +29,17 @@ LOG_MODULE_REGISTER(dmic_sample);
 #define READ_TIMEOUT     1000
 #define DEFAULT_BLOCKS   (2 * BLOCK_COUNT)
 #define MAX_CHANNELS     2
-#define VU_BAR_WIDTH     24
+
+/*
+ * Derive the bar width from the terminal width so the VU line fits on one
+ * row.  Per-channel overhead is: label "L " (2), "[" (1), "] NNN%" (7) = 10
+ * characters per channel, plus a 2-character separator between channels and
+ * the trailing "  press any key to stop" (23 characters).  Round down so both
+ * channels always get the same width.
+ */
+#define VU_BAR_OVERHEAD(_ch) (10 * (_ch) + 2 * ((_ch) - 1) + 23)
+#define VU_BAR_WIDTH \
+	((CONFIG_SHELL_DEFAULT_TERMINAL_WIDTH - VU_BAR_OVERHEAD(MAX_CHANNELS)) / MAX_CHANNELS)
 
 /* Size of a block for 100 ms of audio data. */
 #define BLOCK_SIZE(_sample_rate, _number_of_channels) \
