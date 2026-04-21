@@ -31,10 +31,23 @@
 
 #define DMIC_SHELL_BLOCK_COUNT  4U
 
-/* VU-meter bar settings */
-#define DMIC_SHELL_VU_BAR_WIDTH   40U
-#define DMIC_SHELL_VU_GREEN_PCT   50U
-#define DMIC_SHELL_VU_YELLOW_PCT  75U
+/*
+ * VU-meter bar sizing.
+ *
+ * The bar is drawn between a fixed prefix ("CH0 |", 5 chars) and a fixed
+ * suffix ("| 100% !\033[K\n", ~12 chars).  We reserve DMIC_SHELL_VU_MARGINS
+ * characters for those so the bar fills the rest of the terminal width.
+ */
+#define DMIC_SHELL_VU_MARGINS     18U
+#define DMIC_SHELL_VU_BAR_MIN     4U
+
+/*
+ * dBFS-based colour thresholds (linear amplitude as per-mille of full scale):
+ *   Green  -> Yellow at -18 dBFS: 10^(-18/20) ~= 0.1259  -> 1259/10000
+ *   Yellow -> Red    at  -6 dBFS: 10^(-6/20)  ~= 0.5012  -> 5012/10000
+ */
+#define DMIC_SHELL_VU_GREEN_PERMILLE   1259U
+#define DMIC_SHELL_VU_YELLOW_PERMILLE  5012U
 
 /* Default VU meter run duration, in milliseconds */
 #define DMIC_SHELL_VU_DEF_DURATION_MS 10000U
@@ -102,18 +115,37 @@ static int compute_peak_pct(const void *buf, size_t size, uint8_t pcm_width,
 
 /**
  * Print a single VU-meter bar for one channel.
- * The bar is split into green (0–50%), yellow (50–75%), and red (75–100%)
- * segments using ANSI colours provided by the shell colour API.
  *
- * Example output:  CH0 |####################          | 60%
+ * The bar width is derived from the current terminal width so the meter
+ * fills the available space.  Colour thresholds follow a standard digital
+ * peak-meter convention mapped to linear amplitude:
+ *
+ *   Green  (safe):     0 % … ~12.6 % linear  (0 dBFS … -18 dBFS)
+ *   Yellow (caution):  ~12.6 % … ~50 % linear (-18 dBFS … -6 dBFS)
+ *   Red    (overload): ~50 % … 100 % linear   (-6 dBFS … 0 dBFS)
+ *
+ * A clip indicator ('!') is appended when the peak reaches 0 dBFS (100 %).
+ *
+ * Example (80-column terminal, mid-level signal):
+ *   CH0 |###########################################               | 63%
  */
-static void print_vu_bar(const struct shell *sh, uint8_t channel, int level_pct)
+static void print_vu_bar(const struct shell *sh, uint8_t channel,
+			 int level_pct, int bar_width)
 {
-	int green_end = (int)(DMIC_SHELL_VU_BAR_WIDTH * DMIC_SHELL_VU_GREEN_PCT / 100U);
-	int yellow_end = (int)(DMIC_SHELL_VU_BAR_WIDTH * DMIC_SHELL_VU_YELLOW_PCT / 100U);
-	int filled = level_pct * (int)DMIC_SHELL_VU_BAR_WIDTH / 100;
-	char seg[DMIC_SHELL_VU_BAR_WIDTH + 1];
+	/* Colour transition points in bar-cell coordinates */
+	int green_end  = (int)((uint32_t)bar_width * DMIC_SHELL_VU_GREEN_PERMILLE  / 10000U);
+	int yellow_end = (int)((uint32_t)bar_width * DMIC_SHELL_VU_YELLOW_PERMILLE / 10000U);
+	int filled = level_pct * bar_width / 100;
+	/* VLAs are not available; allocate for the maximum possible bar width. */
+	char seg[CONFIG_SHELL_DEFAULT_TERMINAL_WIDTH + 1];
 	int seg_len;
+
+	/* Clamp filled to [0, bar_width] */
+	if (filled < 0) {
+		filled = 0;
+	} else if (filled > bar_width) {
+		filled = bar_width;
+	}
 
 	shell_fprintf(sh, SHELL_NORMAL, "CH%u |", channel);
 
@@ -128,9 +160,11 @@ static void print_vu_bar(const struct shell *sh, uint8_t channel, int level_pct)
 	/* Yellow segment */
 	if (filled > green_end) {
 		seg_len = MIN(filled, yellow_end) - green_end;
-		memset(seg, '#', seg_len);
-		seg[seg_len] = '\0';
-		shell_fprintf(sh, SHELL_WARNING, "%s", seg);
+		if (seg_len > 0) {
+			memset(seg, '#', seg_len);
+			seg[seg_len] = '\0';
+			shell_fprintf(sh, SHELL_WARNING, "%s", seg);
+		}
 	}
 
 	/* Red segment */
@@ -142,17 +176,19 @@ static void print_vu_bar(const struct shell *sh, uint8_t channel, int level_pct)
 	}
 
 	/* Empty (unfilled) part */
-	if (filled < (int)DMIC_SHELL_VU_BAR_WIDTH) {
-		seg_len = (int)DMIC_SHELL_VU_BAR_WIDTH - filled;
+	if (filled < bar_width) {
+		seg_len = bar_width - filled;
 		memset(seg, ' ', seg_len);
 		seg[seg_len] = '\0';
 		shell_fprintf(sh, SHELL_NORMAL, "%s", seg);
 	}
 
-	/* End of bar: clear to end of line and newline so the next frame can
-	 * overwrite without leaving stale characters.
-	 */
-	shell_fprintf(sh, SHELL_NORMAL, "| %3d%%\033[K\n", level_pct);
+	/* End of bar: level, optional clip indicator, clear to end of line */
+	if (level_pct >= 100) {
+		shell_fprintf(sh, SHELL_ERROR, "| %3d%% !\033[K\n", level_pct);
+	} else {
+		shell_fprintf(sh, SHELL_NORMAL, "| %3d%%\033[K\n", level_pct);
+	}
 }
 
 /**
@@ -362,6 +398,26 @@ static int cmd_vu(const struct shell *sh, size_t argc, char *argv[])
 	uint8_t display_lines = channels + 1U;
 	int64_t deadline = k_uptime_get() + (int64_t)duration_ms;
 
+	/*
+	 * Compute bar width from the current terminal width.
+	 * DMIC_SHELL_VU_MARGINS accounts for the fixed prefix ("CH0 |", 5 chars)
+	 * and suffix ("| 100% !\033[K\n", ~12 chars).
+	 */
+	uint16_t term_wid = sh->ctx->vt100_ctx.cons.terminal_wid;
+
+	if (term_wid == 0U) {
+		term_wid = CONFIG_SHELL_DEFAULT_TERMINAL_WIDTH;
+	}
+	int bar_width = (int)term_wid - (int)DMIC_SHELL_VU_MARGINS;
+
+	if (bar_width < (int)DMIC_SHELL_VU_BAR_MIN) {
+		bar_width = (int)DMIC_SHELL_VU_BAR_MIN;
+	}
+	/* Guard against exceeding the static segment buffer */
+	if (bar_width > (int)CONFIG_SHELL_DEFAULT_TERMINAL_WIDTH) {
+		bar_width = (int)CONFIG_SHELL_DEFAULT_TERMINAL_WIDTH;
+	}
+
 	while (k_uptime_get() < deadline) {
 		void *buf;
 		size_t size;
@@ -385,7 +441,7 @@ static int cmd_vu(const struct shell *sh, size_t argc, char *argv[])
 		for (uint8_t ch = 0; ch < channels; ch++) {
 			int pct = compute_peak_pct(buf, size, pcm_width,
 						   channels, ch);
-			print_vu_bar(sh, ch, pct);
+			print_vu_bar(sh, ch, pct, bar_width);
 		}
 
 		/* Status line – cleared to end-of-line after the text */
