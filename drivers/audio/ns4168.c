@@ -22,7 +22,7 @@ struct ns4168_config {
 static int ns4168_configure(const struct device *dev, struct audio_codec_cfg *cfg)
 {
 	if (cfg->dai_route != AUDIO_ROUTE_PLAYBACK) {
-		LOG_ERR("unsupported route %u", cfg->dai_route);
+		LOG_ERR("unsupported route %d", cfg->dai_route);
 		return -ENOTSUP;
 	}
 
@@ -37,18 +37,26 @@ static int ns4168_configure(const struct device *dev, struct audio_codec_cfg *cf
 static void ns4168_start_output(const struct device *dev)
 {
 	const struct ns4168_config *cfg = dev->config;
+	int ret;
 
 	if (cfg->enable_gpio.port != NULL) {
-		gpio_pin_set_dt(&cfg->enable_gpio, 1);
+		ret = gpio_pin_set_dt(&cfg->enable_gpio, 1);
+		if (ret < 0) {
+			LOG_ERR("Failed to enable amplifier (%d)", ret);
+		}
 	}
 }
 
 static void ns4168_stop_output(const struct device *dev)
 {
 	const struct ns4168_config *cfg = dev->config;
+	int ret;
 
 	if (cfg->enable_gpio.port != NULL) {
-		gpio_pin_set_dt(&cfg->enable_gpio, 0);
+		ret = gpio_pin_set_dt(&cfg->enable_gpio, 0);
+		if (ret < 0) {
+			LOG_ERR("Failed to disable amplifier (%d)", ret);
+		}
 	}
 }
 
