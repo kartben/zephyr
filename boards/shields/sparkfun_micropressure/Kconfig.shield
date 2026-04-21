@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
+
+config SHIELD_SPARKFUN_MICROPRESSURE
+	def_bool $(shields_list_contains,sparkfun_micropressure)
