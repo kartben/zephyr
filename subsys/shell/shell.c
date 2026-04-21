@@ -558,6 +558,7 @@ static int exec_cmd(const struct shell *sh, size_t argc, const char **argv,
 #endif
 
 		z_flag_cmd_ctx_set(sh, true);
+		sh->ctx->cmd_abort_requested = false;
 		/* Unlock thread mutex in case command would like to borrow
 		 * shell context to other thread to avoid mutex deadlock.
 		 */
@@ -566,6 +567,7 @@ static int exec_cmd(const struct shell *sh, size_t argc, const char **argv,
 							 (char **)argv);
 		/* Bring back mutex to shell thread. */
 		z_shell_lock(sh);
+		sh->ctx->cmd_abort_requested = false;
 		z_flag_cmd_ctx_set(sh, false);
 	}
 
@@ -907,14 +909,21 @@ static void ctrl_metakeys_handle(const struct shell *sh, char data)
 		break;
 
 	case SHELL_VT100_ASCII_CTRL_C: /* CTRL + C */
-		z_shell_op_cursor_end_move(sh);
-		if (!z_shell_cursor_in_empty_line(sh)) {
-			z_cursor_next_line_move(sh);
-		}
-		z_flag_history_exit_set(sh, true);
 		if (sh->ctx->readline_state == SHELL_READLINE_ACTIVE) {
+			z_shell_op_cursor_end_move(sh);
+			if (!z_shell_cursor_in_empty_line(sh)) {
+				z_cursor_next_line_move(sh);
+			}
+			z_flag_history_exit_set(sh, true);
 			sh->ctx->readline_state = SHELL_READLINE_CANCELED;
+		} else if (z_flag_cmd_ctx_get(sh)) {
+			sh->ctx->cmd_abort_requested = true;
 		} else {
+			z_shell_op_cursor_end_move(sh);
+			if (!z_shell_cursor_in_empty_line(sh)) {
+				z_cursor_next_line_move(sh);
+			}
+			z_flag_history_exit_set(sh, true);
 			state_set(sh, SHELL_STATE_ACTIVE);
 		}
 		break;
@@ -1532,6 +1541,14 @@ void shell_process(const struct shell *sh)
 
 	/* atomically clear the processing flag */
 	z_flag_processing_set(sh, false);
+}
+
+bool shell_cmd_abort_requested(const struct shell *sh)
+{
+	__ASSERT_NO_MSG(sh);
+	__ASSERT_NO_MSG(sh->ctx);
+
+	return sh->ctx->cmd_abort_requested;
 }
 
 const struct shell *shell_backend_get_by_name(const char *backend_name)

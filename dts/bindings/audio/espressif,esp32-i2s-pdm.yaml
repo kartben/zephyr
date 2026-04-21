@@ -1,0 +1,48 @@
+# Copyright (c) 2026 Espressif Systems (Shanghai) Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  ESP32 I2S peripheral in PDM RX mode (digital microphone).
+
+  This compatible binds the ESP32 I2S controller to Zephyr's DMIC API so an
+  attached PDM microphone can be read through dmic_configure() /
+  dmic_trigger() / dmic_read(). The same I2S controller cannot also be
+  exposed via the "espressif,esp32-i2s" compatible at the same time - select
+  one compatible per instance in an overlay.
+
+compatible: "espressif,esp32-i2s-pdm"
+
+include: ["base.yaml", "pinctrl-device.yaml"]
+
+properties:
+  reg:
+    required: true
+
+  clocks:
+    required: true
+
+  interrupts:
+    required: true
+
+  interrupt-parent:
+    required: true
+
+  pinctrl-0:
+    required: true
+
+  pinctrl-names:
+    required: true
+
+  unit:
+    type: int
+    required: true
+    description: I2S unit index (0 or 1 depending on the SoC).
+
+  dmas:
+    description: |
+      GDMA RX channel, required on SoCs that expose the
+      "espressif,esp32-gdma" controller (ESP32-S3/C3/C5/C6/H2/...).
+
+  dma-names:
+    description: |
+      Must contain "rx" when "dmas" is set.

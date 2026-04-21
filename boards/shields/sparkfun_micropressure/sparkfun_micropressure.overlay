@@ -1,0 +1,21 @@
+/*
+ * Copyright (c) 2026
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	aliases {
+		pressure-sensor = &sparkfun_micropressure;
+	};
+};
+
+&arduino_i2c {
+	status = "okay";
+
+	sparkfun_micropressure: mpr@18 {
+		status = "okay";
+		compatible = "honeywell,mpr";
+		reg = <0x18>;
+	};
+};

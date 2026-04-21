@@ -19,6 +19,11 @@ The board features:
 - VL53L1CBV0FY ToF Sensor
 - LSM6DSOXTR Gyro+Accelerometer Sensor
 
+The onboard microphone is connected to the STM32H747 M7 core through DFSDM1
+(``PD10`` for the clock and ``PE7`` for data). The board DTS models the
+microphone itself, but Zephyr does not yet provide a DFSDM-based DMIC driver
+for this board, so it should not be described as an I2S ``st,mpxxdtyy`` device.
+
 .. image:: img/arduino_nicla_vision.webp
      :align: center
      :alt: Arduino Nicla Vision

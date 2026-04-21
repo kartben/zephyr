@@ -59,4 +59,21 @@
 			output-enable;
 		};
 	};
+
+	/* SPI2 (HSPI): SD card bus per Seeed wiki (SCK=7, MOSI=9, MISO=8; CS=14 in board DTS). */
+	spim2_default: spim2_default {
+		group1 {
+			pinmux = <SPIM2_MISO_GPIO8>,
+				 <SPIM2_MOSI_GPIO9>,
+				 <SPIM2_SCLK_GPIO7>;
+		};
+	};
+
+	/* MSM261DHP006 PDM: DATA on GPIO41, CLK on GPIO42 (PDM_EN / MIC_PWR is GPIO38, hogged in board DTS) */
+	i2s0_pdm_default: i2s0_pdm_default {
+		group1 {
+			pinmux = <I2S0_I_SD_GPIO41>,
+				 <I2S0_I_WS_GPIO42>;
+		};
+	};
 };

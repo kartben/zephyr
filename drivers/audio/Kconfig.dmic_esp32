@@ -1,0 +1,26 @@
+# Copyright (c) 2026 Espressif Systems (Shanghai) Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+config AUDIO_DMIC_ESP32
+	bool "ESP32 I2S PDM DMIC driver"
+	default y
+	depends on DT_HAS_ESPRESSIF_ESP32_I2S_PDM_ENABLED
+	select PINCTRL
+	select DMA if DT_HAS_ESPRESSIF_ESP32_GDMA_ENABLED
+	help
+	  Enable the ESP32 DMIC driver. The driver configures an I2S
+	  peripheral in PDM RX mode and exposes the stream through Zephyr's
+	  DMIC API, allowing standard PDM microphone samples and applications
+	  to run on ESP32 family SoCs.
+
+if AUDIO_DMIC_ESP32
+
+config AUDIO_DMIC_ESP32_RX_BLOCK_COUNT
+	int "ESP32 DMIC RX block queue depth"
+	default 4
+	help
+	  Maximum number of filled PCM blocks queued between the DMA
+	  completion callback and dmic_read(). Increase if the application
+	  thread can lag behind the DMA for longer than this many blocks.
+
+endif # AUDIO_DMIC_ESP32

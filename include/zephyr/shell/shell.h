@@ -994,6 +994,9 @@ struct shell_ctx {
 	/** Field tracking the readline state for user input */
 	enum shell_readline_state readline_state;
 
+	/** Request to abort current command handler (Ctrl+C while @ref shell_cmd_abort_requested applies). */
+	bool cmd_abort_requested;
+
 	/** Currently executed command.*/
 	struct shell_static_entry active_cmd;
 
@@ -1325,6 +1328,21 @@ void __printf_like(2, 3) shell_fprintf_error(const struct shell *sh, const char 
  * @param[in] sh Pointer to the shell instance.
  */
 void shell_process(const struct shell *sh);
+
+/**
+ * @brief Test if the user requested abort of the running command handler (Ctrl+C).
+ *
+ * When @kconfig{CONFIG_SHELL_METAKEYS} is enabled, Ctrl+C while a command handler
+ * is running sets this flag instead of editing the command line. Long-running
+ * handlers should call @ref shell_process periodically and then check this API.
+ *
+ * The flag is cleared before and after each command handler invocation.
+ *
+ * @param[in] sh Shell instance.
+ *
+ * @return true if abort was requested, false otherwise.
+ */
+bool shell_cmd_abort_requested(const struct shell *sh);
 
 /**
  * @brief Change displayed shell prompt.

@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+shield:
+  name: sparkfun_micropressure
+  full_name: Sparkfun Qwiic MicroPressure Sensor Shield
+  vendor: sparkfun
+  supported_features:
+    - sensor
