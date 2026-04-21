@@ -42,12 +42,13 @@
 #define DMIC_SHELL_VU_BAR_MIN     4U
 
 /*
- * dBFS-based colour thresholds (linear amplitude as per-mille of full scale):
- *   Green  -> Yellow at -18 dBFS: 10^(-18/20) ~= 0.1259  -> 1259/10000
- *   Yellow -> Red    at  -6 dBFS: 10^(-6/20)  ~= 0.5012  -> 5012/10000
+ * dBFS-based colour thresholds expressed as parts per ten thousand of the
+ * linear full-scale amplitude (10000 = 100 %):
+ *   Green  -> Yellow at -18 dBFS: 10^(-18/20) ~= 0.1259  -> 1259 / 10000
+ *   Yellow -> Red    at  -6 dBFS: 10^(-6/20)  ~= 0.5012  -> 5012 / 10000
  */
-#define DMIC_SHELL_VU_GREEN_PERMILLE   1259U
-#define DMIC_SHELL_VU_YELLOW_PERMILLE  5012U
+#define DMIC_SHELL_VU_GREEN_PER10K   1259U
+#define DMIC_SHELL_VU_YELLOW_PER10K  5012U
 
 /* Default VU meter run duration, in milliseconds */
 #define DMIC_SHELL_VU_DEF_DURATION_MS 10000U
@@ -133,10 +134,14 @@ static void print_vu_bar(const struct shell *sh, uint8_t channel,
 			 int level_pct, int bar_width)
 {
 	/* Colour transition points in bar-cell coordinates */
-	int green_end  = (int)((uint32_t)bar_width * DMIC_SHELL_VU_GREEN_PERMILLE  / 10000U);
-	int yellow_end = (int)((uint32_t)bar_width * DMIC_SHELL_VU_YELLOW_PERMILLE / 10000U);
+	int green_end  = (int)((uint32_t)bar_width * DMIC_SHELL_VU_GREEN_PER10K  / 10000U);
+	int yellow_end = (int)((uint32_t)bar_width * DMIC_SHELL_VU_YELLOW_PER10K / 10000U);
 	int filled = level_pct * bar_width / 100;
-	/* VLAs are not available; allocate for the maximum possible bar width. */
+	/*
+	 * Static buffer sized for the maximum allowed bar width.  The caller
+	 * must ensure bar_width <= CONFIG_SHELL_DEFAULT_TERMINAL_WIDTH, which
+	 * cmd_vu() enforces before calling this function.
+	 */
 	char seg[CONFIG_SHELL_DEFAULT_TERMINAL_WIDTH + 1];
 	int seg_len;
 
@@ -403,7 +408,9 @@ static int cmd_vu(const struct shell *sh, size_t argc, char *argv[])
 	 * DMIC_SHELL_VU_MARGINS accounts for the fixed prefix ("CH0 |", 5 chars)
 	 * and suffix ("| 100% !\033[K\n", ~12 chars).
 	 */
-	uint16_t term_wid = sh->ctx->vt100_ctx.cons.terminal_wid;
+	uint16_t term_wid = (sh->ctx != NULL)
+			    ? sh->ctx->vt100_ctx.cons.terminal_wid
+			    : 0U;
 
 	if (term_wid == 0U) {
 		term_wid = CONFIG_SHELL_DEFAULT_TERMINAL_WIDTH;
