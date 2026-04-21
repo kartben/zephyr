@@ -58,4 +58,12 @@
 			output-high;
 		};
 	};
+
+	/* Onboard SPM1423 PDM mic: CLK on GPIO0, DATA on GPIO34 (M5StickC Plus schematic). */
+	i2s0_pdm_default: i2s0_pdm_default {
+		group1 {
+			pinmux = <I2S0_I_WS_GPIO0>,
+				 <I2S0_I_SD_GPIO34>;
+		};
+	};
 };

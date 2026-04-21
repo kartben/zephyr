@@ -19,6 +19,8 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/util.h>
 
+#include <math.h>
+
 #include <soc.h>
 #include <esp_clk_tree.h>
 #include <hal/i2s_hal.h>
@@ -45,8 +47,12 @@ LOG_MODULE_REGISTER(dmic_esp32, CONFIG_AUDIO_DMIC_LOG_LEVEL);
  * The previous implementation used mclk = rate * 128 and bclk_div = 2, which violates
  * the minimum bclk divisor and can yield wrong PDM/PCM (e.g. pegged levels).
  */
-#define DMIC_ESP32_PDM_BCK_FACTOR      64U
+#define DMIC_ESP32_PDM_BCK_FACTOR_8S   64U
+#define DMIC_ESP32_PDM_BCK_FACTOR_16S  128U
 #define DMIC_ESP32_PDM_RX_BCLK_DIV_MIN 8U
+#define DMIC_ESP32_HWV1_PLL_D2_CLK     80000000U
+#define DMIC_ESP32_HWV1_PDM_BCK_DIV    2U
+#define DMIC_ESP32_HWV1_PDM_CLK_FACTOR (DMIC_ESP32_PDM_BCK_FACTOR_16S)
 #define DMIC_ESP32_DMA_MAX_CHUNK       4092U
 
 struct dmic_esp32_queue_item {
@@ -116,6 +122,84 @@ static void dmic_esp32_gdma_advance_chunk(struct dmic_esp32_data *data)
 }
 #endif /* SOC_GDMA_SUPPORTED */
 
+static uint32_t dmic_esp32_u32_abs_diff(float a, float b)
+{
+	float diff = a - b;
+
+	return (uint32_t)fabsf(diff);
+}
+
+static void dmic_esp32_calc_clk_div(uint32_t *div_a, uint32_t *div_b, uint32_t *div_n,
+				    uint32_t base_clock, uint32_t target_freq)
+{
+	uint32_t save_n = 255U;
+	uint32_t save_a = 63U;
+	uint32_t save_b = 62U;
+
+	if (base_clock <= (target_freq << 1)) {
+		*div_n = 2U;
+		*div_a = 1U;
+		*div_b = 0U;
+		return;
+	}
+
+	if (target_freq != 0U) {
+		float fdiv = (float)base_clock / (float)target_freq;
+		uint32_t n = (uint32_t)fdiv;
+
+		if (n < 256U) {
+			float check_base = (float)base_clock;
+			float check_target;
+			uint32_t save_diff = UINT32_MAX;
+
+			fdiv -= n;
+
+			while ((int32_t)target_freq >= 0) {
+				target_freq <<= 1;
+				check_base *= 2.0f;
+			}
+			check_target = (float)target_freq;
+
+			if (n < 255U) {
+				save_a = 1U;
+				save_b = 0U;
+				save_n = n + 1U;
+				save_diff = dmic_esp32_u32_abs_diff(check_target,
+								     check_base / (float)save_n);
+			}
+
+			for (uint32_t a = 1U; a < 64U; ++a) {
+				uint32_t b = (uint32_t)lroundf((float)a * fdiv);
+				uint32_t diff;
+
+				if (a <= b) {
+					continue;
+				}
+
+				diff = dmic_esp32_u32_abs_diff(check_target,
+							 ((check_base * (float)a) /
+							  (float)(n * a + b)));
+				if (save_diff <= diff) {
+					continue;
+				}
+
+				save_diff = diff;
+				save_a = a;
+				save_b = b;
+				save_n = n;
+				if (diff == 0U) {
+					break;
+				}
+			}
+		}
+	}
+
+	*div_n = save_n;
+	*div_a = save_a;
+	*div_b = save_b;
+}
+
+#if SOC_I2S_HW_VERSION_2
 static uint32_t dmic_esp32_get_source_clk_freq(void)
 {
 	uint32_t clk_freq = 0;
@@ -125,11 +209,40 @@ static uint32_t dmic_esp32_get_source_clk_freq(void)
 	return clk_freq;
 }
 
-static int dmic_esp32_calc_clock(uint32_t pcm_rate, i2s_hal_clock_info_t *clk_info)
+static int dmic_esp32_calc_clock(const struct dmic_cfg *dev_config, uint32_t pcm_rate,
+				 i2s_hal_clock_info_t *clk_info, i2s_pdm_dsr_t *pdm_dsr)
 {
+	const uint32_t min_pdm_clk = dev_config->io.min_pdm_clk_freq;
+	const uint32_t max_pdm_clk = dev_config->io.max_pdm_clk_freq;
+	uint32_t bclk = 0U;
+
 	clk_info->sclk = dmic_esp32_get_source_clk_freq();
-	/* I2S_PDM_DSR_8S: PDM bit clock = pcm_rate * 64 (see i2s_ll_rx_set_pdm_dsr). */
-	clk_info->bclk = pcm_rate * DMIC_ESP32_PDM_BCK_FACTOR;
+
+	if (max_pdm_clk != 0U && min_pdm_clk > max_pdm_clk) {
+		LOG_ERR("Invalid PDM clock range: min=%u max=%u",
+			(unsigned int)min_pdm_clk, (unsigned int)max_pdm_clk);
+		return -EINVAL;
+	}
+
+	bclk = pcm_rate * DMIC_ESP32_PDM_BCK_FACTOR_8S;
+	*pdm_dsr = I2S_PDM_DSR_8S;
+	if ((min_pdm_clk != 0U && bclk < min_pdm_clk) ||
+	    (max_pdm_clk != 0U && bclk > max_pdm_clk)) {
+		uint32_t alt_bclk = pcm_rate * DMIC_ESP32_PDM_BCK_FACTOR_16S;
+
+		if ((min_pdm_clk == 0U || alt_bclk >= min_pdm_clk) &&
+		    (max_pdm_clk == 0U || alt_bclk <= max_pdm_clk)) {
+			bclk = alt_bclk;
+			*pdm_dsr = I2S_PDM_DSR_16S;
+		} else {
+			LOG_ERR("PCM rate %u cannot satisfy PDM clock range %u..%u Hz",
+				(unsigned int)pcm_rate, (unsigned int)min_pdm_clk,
+				(unsigned int)max_pdm_clk);
+			return -EINVAL;
+		}
+	}
+
+	clk_info->bclk = bclk;
 	clk_info->bclk_div = DMIC_ESP32_PDM_RX_BCLK_DIV_MIN;
 	clk_info->mclk = clk_info->bclk * clk_info->bclk_div;
 	if (clk_info->mclk == 0) {
@@ -145,6 +258,58 @@ static int dmic_esp32_calc_clock(uint32_t pcm_rate, i2s_hal_clock_info_t *clk_in
 
 	return 0;
 }
+#endif
+
+#if SOC_I2S_HW_VERSION_1
+static int dmic_esp32_configure_clock_hwv1(const struct dmic_cfg *dev_config, uint32_t pcm_rate,
+					   i2s_hal_context_t *hal)
+{
+	const uint32_t min_pdm_clk = dev_config->io.min_pdm_clk_freq;
+	const uint32_t max_pdm_clk = dev_config->io.max_pdm_clk_freq;
+	const uint32_t pdm_clk = pcm_rate * DMIC_ESP32_HWV1_PDM_CLK_FACTOR;
+	uint32_t div_a;
+	uint32_t div_b;
+	uint32_t div_n;
+
+	if (max_pdm_clk != 0U && min_pdm_clk > max_pdm_clk) {
+		LOG_ERR("Invalid PDM clock range: min=%u max=%u",
+			(unsigned int)min_pdm_clk, (unsigned int)max_pdm_clk);
+		return -EINVAL;
+	}
+
+	if ((min_pdm_clk != 0U && pdm_clk < min_pdm_clk) ||
+	    (max_pdm_clk != 0U && pdm_clk > max_pdm_clk)) {
+		LOG_ERR("PCM rate %u yields unsupported PDM clock %u Hz (range %u..%u Hz)",
+			(unsigned int)pcm_rate, (unsigned int)pdm_clk,
+			(unsigned int)min_pdm_clk, (unsigned int)max_pdm_clk);
+		return -EINVAL;
+	}
+
+	dmic_esp32_calc_clk_div(&div_a, &div_b, &div_n,
+				DMIC_ESP32_HWV1_PLL_D2_CLK / DMIC_ESP32_HWV1_PDM_CLK_FACTOR,
+				pcm_rate);
+
+	hal->dev->sample_rate_conf.rx_bck_div_num = DMIC_ESP32_HWV1_PDM_BCK_DIV;
+	hal->dev->clkm_conf.clkm_div_a = div_a;
+	hal->dev->clkm_conf.clkm_div_b = div_b;
+	hal->dev->clkm_conf.clkm_div_num = div_n;
+	hal->dev->clkm_conf.clka_en = 0U;
+
+	/* If RX is not reset here, BCK polarity can be inverted on classic ESP32. */
+	hal->dev->conf.rx_reset = 1U;
+	hal->dev->conf.rx_fifo_reset = 1U;
+	hal->dev->conf.rx_reset = 0U;
+	hal->dev->conf.rx_fifo_reset = 0U;
+
+	LOG_INF("pcm_rate=%u sclk=%u pdm_clk=%u clkm_div=%u+(%u/%u) bck_div=%u dsr=16s",
+		(unsigned int)pcm_rate, (unsigned int)DMIC_ESP32_HWV1_PLL_D2_CLK,
+		(unsigned int)pdm_clk, (unsigned int)div_n,
+		(unsigned int)div_b, (unsigned int)div_a,
+		(unsigned int)DMIC_ESP32_HWV1_PDM_BCK_DIV);
+
+	return 0;
+}
+#endif
 
 static void dmic_esp32_queue_drop(const struct device *dev)
 {
@@ -434,7 +599,10 @@ static int dmic_esp32_configure(const struct device *dev, struct dmic_cfg *dev_c
 	i2s_hal_context_t *hal = (i2s_hal_context_t *)&cfg->hal;
 	struct pdm_chan_cfg *channel = &dev_config->channel;
 	struct pcm_stream_cfg *stream = &dev_config->streams[0];
+#if SOC_I2S_HW_VERSION_2
 	i2s_hal_clock_info_t clk_info;
+	i2s_pdm_dsr_t pdm_dsr;
+#endif
 	i2s_hal_slot_config_t slot_cfg = {0};
 	int err;
 
@@ -462,17 +630,6 @@ static int dmic_esp32_configure(const struct device *dev, struct dmic_cfg *dev_c
 		LOG_ERR("Invalid stream configuration");
 		return -EINVAL;
 	}
-
-	err = dmic_esp32_calc_clock(stream->pcm_rate, &clk_info);
-	if (err < 0) {
-		return err;
-	}
-
-	LOG_INF("pcm_rate=%u sclk=%u mclk=%u bclk=%u mclk_div=%u bclk_div=%u",
-		(unsigned int)stream->pcm_rate,
-		(unsigned int)clk_info.sclk, (unsigned int)clk_info.mclk,
-		(unsigned int)clk_info.bclk,
-		(unsigned int)clk_info.mclk_div, (unsigned int)clk_info.bclk_div);
 
 	slot_cfg.data_bit_width = 16;
 	slot_cfg.slot_bit_width = 16;
@@ -518,10 +675,32 @@ static int dmic_esp32_configure(const struct device *dev, struct dmic_cfg *dev_c
 	i2s_hal_rx_reset(hal);
 	i2s_hal_rx_reset_fifo(hal);
 
+#if SOC_I2S_HW_VERSION_1
+	i2s_hal_pdm_set_rx_slot(hal, false, &slot_cfg);
+	i2s_ll_rx_enable_pdm(hal->dev, true);
+	i2s_ll_rx_set_pdm_dsr(hal->dev, I2S_PDM_DSR_16S);
+	err = dmic_esp32_configure_clock_hwv1(dev_config, stream->pcm_rate, hal);
+	if (err < 0) {
+		return err;
+	}
+#else
+	err = dmic_esp32_calc_clock(dev_config, stream->pcm_rate, &clk_info, &pdm_dsr);
+	if (err < 0) {
+		return err;
+	}
+
+	LOG_INF("pcm_rate=%u sclk=%u mclk=%u bclk=%u mclk_div=%u bclk_div=%u dsr=%s",
+		(unsigned int)stream->pcm_rate,
+		(unsigned int)clk_info.sclk, (unsigned int)clk_info.mclk,
+		(unsigned int)clk_info.bclk,
+		(unsigned int)clk_info.mclk_div, (unsigned int)clk_info.bclk_div,
+		(pdm_dsr == I2S_PDM_DSR_16S) ? "16s" : "8s");
+
 	i2s_hal_set_rx_clock(hal, &clk_info, DMIC_ESP32_CLK_SRC, NULL);
 	i2s_hal_pdm_set_rx_slot(hal, false, &slot_cfg);
 	i2s_ll_rx_enable_pdm(hal->dev, true);
-	i2s_ll_rx_set_pdm_dsr(hal->dev, I2S_PDM_DSR_8S);
+	i2s_ll_rx_set_pdm_dsr(hal->dev, pdm_dsr);
+#endif
 
 #if SOC_I2S_HW_VERSION_2
 	/* Commit configuration to the peripheral and dump the latched register

@@ -71,6 +71,88 @@ config AUDIO_DMIC_SHELL
 	  Enable the Audio DMIC shell with commands for reading audio data and
 	  displaying a live VU meter from a digital microphone device.
 
+if AUDIO_DMIC_SHELL
+
+config DMIC_SHELL_BLOCK_DURATION_MS
+	int "PCM block duration for shell buffer sizing (ms)"
+	default 50
+	range 1 1000
+	help
+	  Duration of each PCM block in milliseconds. Together with the maximum
+	  sample rate, channel count, and PCM width options, this determines the
+	  size of each block in the DMIC shell memory slab.
+
+config DMIC_SHELL_MAX_SAMPLE_RATE
+	int "Maximum sample rate for shell buffer sizing (Hz)"
+	default 48000
+	range 8000 192000
+	help
+	  Upper bound on sample rate used to size the DMIC shell memory slab.
+	  Runtime configuration passed to the dmic read/vu commands must not
+	  require a larger block than this allows.
+
+config DMIC_SHELL_MAX_CHANNELS
+	int "Maximum channel count for shell buffer sizing"
+	default 2
+	range 1 2
+	help
+	  Upper bound on channel count used to size the DMIC shell memory slab.
+
+choice DMIC_SHELL_MAX_PCM_WIDTH
+	prompt "Maximum PCM sample width for shell buffer sizing"
+	default DMIC_SHELL_MAX_PCM_WIDTH_32
+	help
+	  Upper bound on PCM width in bits used to size the DMIC shell memory slab.
+
+config DMIC_SHELL_MAX_PCM_WIDTH_16
+	bool "16-bit"
+
+config DMIC_SHELL_MAX_PCM_WIDTH_32
+	bool "32-bit"
+
+endchoice
+
+config DMIC_SHELL_BLOCK_COUNT
+	int "Number of blocks in the DMIC shell memory slab"
+	default 4
+	range 1 32
+	help
+	  Number of PCM blocks reserved in the slab (for pipelining / DMA).
+	  Increasing this raises RAM use by one maximum-sized block per unit.
+
+config DMIC_SHELL_MONO_PDM_RIGHT
+	bool "Use the right PDM slot for mono shell capture"
+	default y if BOARD_M5STICKC_PLUS
+	help
+	  Select the PDM left/right slot requested by the DMIC shell when
+	  capturing a single PCM channel. Most boards use the left slot, but
+	  some onboard PDM microphones are strapped to the right slot.
+
+config DMIC_SHELL_READ_TIMEOUT_MS
+	int "Timeout for dmic_read() in shell commands (ms)"
+	default 2000
+	range 100 60000
+
+config DMIC_SHELL_VU_DEFAULT_DURATION_MS
+	int "Default VU meter run duration (ms)"
+	default 10000
+	range 100 600000
+
+config DMIC_SHELL_VU_MARGINS
+	int "Terminal character margin for VU meter prefix and suffix"
+	default 18
+	range 4 256
+	help
+	  Characters reserved on each line so the VU bar fits between the fixed
+	  prefix (e.g. "CH0 |") and suffix (level and clip indicator).
+
+config DMIC_SHELL_VU_BAR_MIN
+	int "Minimum VU meter bar width (characters)"
+	default 4
+	range 1 256
+
+endif # AUDIO_DMIC_SHELL
+
 module = AUDIO_DMIC
 module-str = audio_dmic
 source "subsys/logging/Kconfig.template.log_config"

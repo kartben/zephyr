@@ -25,11 +25,30 @@
 	aliases {
 		led0 = &red_led;
 		led1 = &green_led;
+		dmic0 = &onboard_mic;
 	};
 
 	otghs_ulpi_phy: otghs_ulpis_phy {
 		compatible = "usb-ulpi-phy";
 		#phy-cells = <0>;
+	};
+
+	/*
+	 * The onboard MP34DT06JTR microphone is routed to DFSDM1 on the M7 core:
+	 *   PD10 = DFSDM1_CKOUT
+	 *   PE7  = DFSDM1_DATIN2
+	 * with the L/R strap tied low for a single data slot. Model the
+	 * microphone characteristics here; using an I2S "st,mpxxdtyy" child node
+	 * would misdescribe the Nicla Vision hardware.
+	 */
+	onboard_mic: microphone {
+		compatible = "zephyr,pdm-dmic";
+		status = "okay";
+		clk-frequency-min = <1200000>;
+		clk-frequency-max = <3250000>;
+		clk-duty-cycle-min = <40>;
+		clk-duty-cycle-max = <60>;
+		channel-left;
 	};
 };
 

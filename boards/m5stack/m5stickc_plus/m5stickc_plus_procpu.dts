@@ -155,6 +155,14 @@
 			lcd_logic: LDO3 {
 				regulator-init-microvolt = <3000000>;
 			};
+
+			LDOIO0 {
+				regulator-init-microvolt = <2800000>;
+				regulator-min-microvolt = <2800000>;
+				regulator-max-microvolt = <2800000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
 		};
 
 		axp192_gpio: axp192_gpio {
@@ -223,4 +231,12 @@
 
 &wifi {
 	status = "okay";
+};
+
+/* I2S0 in PDM RX mode: onboard SPM1423 (not usable as espressif,esp32-i2s on this unit). */
+dmic_dev: &i2s0 {
+	compatible = "espressif,esp32-i2s-pdm";
+	status = "okay";
+	pinctrl-0 = <&i2s0_pdm_default>;
+	pinctrl-names = "default";
 };
