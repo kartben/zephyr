@@ -41,6 +41,14 @@
 				columns = <16>;
 				rows = <2>;
 			};
+
+			test_newhaven: lcd@28 {
+				compatible = "newhaven,serial-character-lcd";
+				reg = <0x28>;
+				status = "okay";
+				columns = <16>;
+				rows = <2>;
+			};
 		};
 	};
 };

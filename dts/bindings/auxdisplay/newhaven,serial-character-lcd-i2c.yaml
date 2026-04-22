@@ -1,0 +1,8 @@
+# Copyright (c) 2026
+# SPDX-License-Identifier: Apache-2.0
+
+title: Newhaven serial character LCD on I2C
+
+compatible: "newhaven,serial-character-lcd"
+
+include: ["newhaven,serial-character-lcd-common.yaml", i2c-device.yaml]

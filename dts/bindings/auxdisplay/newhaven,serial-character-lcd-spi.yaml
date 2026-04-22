@@ -1,0 +1,12 @@
+# Copyright (c) 2026
+# SPDX-License-Identifier: Apache-2.0
+
+title: Newhaven serial character LCD on SPI
+
+compatible: "newhaven,serial-character-lcd"
+
+include: ["newhaven,serial-character-lcd-common.yaml", spi-device.yaml]
+
+description: |
+  Newhaven serial character LCD modules using the SPI serial bridge interface.
+  These modules use SPI mode 3.

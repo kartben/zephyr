@@ -39,6 +39,17 @@
 				columns = <20>;
 				rows = <2>;
 			};
+
+			test_newhaven: lcd@1 {
+				compatible = "newhaven,serial-character-lcd";
+				reg = <1>;
+				status = "okay";
+				spi-max-frequency = <100000>;
+				spi-cpol;
+				spi-cpha;
+				columns = <20>;
+				rows = <4>;
+			};
 		};
 	};
 };

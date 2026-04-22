@@ -19,12 +19,20 @@
 		test_uart: uart@55556666 {
 			compatible = "vnd,serial";
 			reg = <0x55556666 0x1000>;
+			current-speed = <9600>;
 			status = "okay";
 
 			test_uart_itron: itron {
 				compatible = "noritake,itron";
 				status = "okay";
 				columns = <20>;
+				rows = <2>;
+			};
+
+			test_newhaven: lcd {
+				compatible = "newhaven,serial-character-lcd";
+				status = "okay";
+				columns = <16>;
 				rows = <2>;
 			};
 		};

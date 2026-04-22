@@ -1,0 +1,52 @@
+# Copyright (c) 2026
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Newhaven serial character LCD modules with the Newhaven PIC serial bridge.
+
+  This binding is intended for the serial character LCD family that shares the
+  same command protocol across multiple mechanical variants, for example:
+
+    - NHD-0216K3Z-*
+    - NHD-0220D3Z-*
+    - NHD-0420D3Z-*
+
+  Use the columns, rows, and optional line-addresses properties to describe the
+  attached module geometry.
+
+include: [auxdisplay-device.yaml]
+
+properties:
+  line-addresses:
+    type: uint8-array
+    default: [0x00, 0x40, 0x14, 0x54]
+    description: |
+      DDRAM start address for each row. The default matches the standard
+      HD44780-compatible layout used by common 1x, 2x, and 4x modules.
+
+  contrast-levels:
+    type: int
+    default: 50
+    description: Maximum supported contrast level.
+
+  default-contrast:
+    type: int
+    default: 40
+    description: Contrast level programmed during driver initialization.
+
+  backlight-levels:
+    type: int
+    default: 8
+    description: Maximum supported backlight brightness level.
+
+  default-backlight-brightness:
+    type: int
+    default: 8
+    description: Backlight brightness level programmed during driver initialization.
+
+  boot-delay-ms:
+    type: int
+    default: 100
+    description: |
+      Delay after power-up before the first command is sent. The default matches
+      the PIC bridge startup time documented by Newhaven.

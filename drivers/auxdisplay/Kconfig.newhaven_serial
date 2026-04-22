@@ -1,0 +1,12 @@
+# Copyright (c) 2026
+# SPDX-License-Identifier: Apache-2.0
+
+config AUXDISPLAY_NEWHAVEN_SERIAL
+	bool "Newhaven serial character LCD driver"
+	default y
+	depends on DT_HAS_NEWHAVEN_SERIAL_CHARACTER_LCD_ENABLED
+	select I2C if $(dt_compat_on_bus,$(DT_COMPAT_NEWHAVEN_SERIAL_CHARACTER_LCD),i2c)
+	select SPI if $(dt_compat_on_bus,$(DT_COMPAT_NEWHAVEN_SERIAL_CHARACTER_LCD),spi)
+	select SERIAL if $(dt_compat_on_bus,$(DT_COMPAT_NEWHAVEN_SERIAL_CHARACTER_LCD),uart)
+	help
+	  Enable the driver for Newhaven serial character LCD modules.
