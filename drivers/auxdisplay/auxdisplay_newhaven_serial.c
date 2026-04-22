@@ -284,14 +284,19 @@ static int auxdisplay_newhaven_cursor_position_set(const struct device *dev,
 		column = (uint16_t)x;
 		row = (uint16_t)y;
 	} else if (type == AUXDISPLAY_POSITION_RELATIVE) {
-		const int new_x = ((int)data->cursor_x + x) % config->capabilities.columns;
-		const int new_y = ((int)data->cursor_y + y + x / config->capabilities.columns) %
-				  config->capabilities.rows;
-		const int wrapped_x = new_x;
-		const int wrapped_y = new_y;
+		const int columns = config->capabilities.columns;
+		const int rows = config->capabilities.rows;
+		const int total_positions = columns * rows;
+		int linear_position = (int)data->cursor_y * columns + data->cursor_x;
 
-		column = wrapped_x < 0 ? wrapped_x + config->capabilities.columns : wrapped_x;
-		row = wrapped_y < 0 ? wrapped_y + config->capabilities.rows : wrapped_y;
+		linear_position += x + (y * columns);
+		linear_position %= total_positions;
+		if (linear_position < 0) {
+			linear_position += total_positions;
+		}
+
+		column = linear_position % columns;
+		row = linear_position / columns;
 	} else {
 		return -ENOSYS;
 	}
