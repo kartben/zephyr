@@ -277,7 +277,8 @@ static int auxdisplay_newhaven_cursor_position_set(const struct device *dev,
 	int ret;
 
 	if (type == AUXDISPLAY_POSITION_ABSOLUTE) {
-		if (x < 0 || y < 0 || x >= config->capabilities.columns || y >= config->capabilities.rows) {
+		if ((uint16_t)x >= config->capabilities.columns ||
+		    (uint16_t)y >= config->capabilities.rows) {
 			return -EINVAL;
 		}
 
