@@ -1,0 +1,76 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/pinctrl/esp32s3-pinctrl.h>
+#include <zephyr/dt-bindings/pwm/pwm.h>
+
+/ {
+	aliases {
+		pwm-led0 = &cob_pwm_led0;
+		pwm-led1 = &cob_pwm_led1;
+		pwm-led2 = &cob_pwm_led2;
+		pwm-led3 = &cob_pwm_led3;
+	};
+
+	cob_pwm_leds {
+		compatible = "pwm-leds";
+
+		cob_pwm_led0: pwm_led_0 {
+			pwms = <&ledc0 0 PWM_MSEC(20) PWM_POLARITY_INVERTED>;
+		};
+
+		cob_pwm_led1: pwm_led_1 {
+			pwms = <&ledc0 1 PWM_MSEC(20) PWM_POLARITY_INVERTED>;
+		};
+
+		cob_pwm_led2: pwm_led_2 {
+			pwms = <&ledc0 2 PWM_MSEC(20) PWM_POLARITY_INVERTED>;
+		};
+
+		cob_pwm_led3: pwm_led_3 {
+			pwms = <&ledc0 3 PWM_MSEC(20) PWM_POLARITY_INVERTED>;
+		};
+	};
+};
+
+&pinctrl {
+	cob_ledc0_default: cob_ledc0_default {
+		group1 {
+			pinmux = <LEDC_CH0_GPIO3>,
+				 <LEDC_CH1_GPIO4>,
+				 <LEDC_CH2_GPIO7>,
+				 <LEDC_CH3_GPIO8>;
+			output-enable;
+		};
+	};
+};
+
+&ledc0 {
+	pinctrl-0 = <&cob_ledc0_default>;
+	pinctrl-names = "default";
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	channel0@0 {
+		reg = <0x0>;
+		timer = <0>;
+	};
+
+	channel1@1 {
+		reg = <0x1>;
+		timer = <0>;
+	};
+
+	channel2@2 {
+		reg = <0x2>;
+		timer = <1>;
+	};
+
+	channel3@3 {
+		reg = <0x3>;
+		timer = <1>;
+	};
+};
