@@ -22,6 +22,7 @@ LOG_MODULE_REGISTER(t133a01, CONFIG_DISPLAY_LOG_LEVEL);
 #define T133A01_RESET_DELAY_MS      20U
 #define T133A01_RESET_WAIT_MS       20U
 #define T133A01_BUSY_TIMEOUT_MS     5000U
+#define T133A01_DEEP_SLEEP_DELAY_MS 1U
 #define T133A01_REFRESH_TIMEOUT_MS  40000U
 #define T133A01_POWER_STEP_DELAY_MS 30U
 #define T133A01_INIT_STEP_DELAY_MS  10U
@@ -437,7 +438,7 @@ static int t133a01_deep_sleep(const struct device *dev)
 		return ret;
 	}
 
-	k_msleep(1);
+	k_msleep(T133A01_DEEP_SLEEP_DELAY_MS);
 
 	return t133a01_wait_until_ready(dev, T133A01_BUSY_TIMEOUT_MS);
 }
@@ -465,7 +466,7 @@ static int t133a01_write_half(const struct device *dev, enum t133a01_target targ
 				uint8_t first = t133a01_map_color((pixel_pair >> 4) & 0x0F);
 				uint8_t second = t133a01_map_color(pixel_pair & 0x0F);
 
-				converted[i] = (uint8_t)((first << 4) | second);
+				converted[i] = (first << 4) | second;
 			}
 
 			ret = t133a01_transfer(dev, target, 1U, converted, chunk_len);
