@@ -1,0 +1,85 @@
+# Copyright (c) 2026 The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+title: ITE IT8951 e-paper display controller
+
+description: |
+  ITE IT8951 e-paper display controller, communicating via SPI with a custom
+  16-bit preamble-based host-interface protocol.
+
+  The controller is suitable for large reflective e-paper panels such as the
+  E Ink ED103TC2 (10.3-inch, 1872 × 1404 pixels, 16 grey levels).
+
+  The SPI bus must be configured in mode 0 (CPOL=0, CPHA=0), MSB-first.
+  The maximum supported SPI clock frequency is 24 MHz.
+
+  Example board-level DTS fragment (IT8951 driving an ED103TC2 panel):
+
+    #include <zephyr/dt-bindings/display/it8951.h>
+
+    &spi1 {
+        epd: it8951@0 {
+            compatible = "ite,it8951";
+            reg = <0>;
+            spi-max-frequency = <12000000>;
+            width = <1872>;
+            height = <1404>;
+            hrdy-gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
+            reset-gpios = <&gpio0 6 GPIO_ACTIVE_LOW>;
+            waveform-mode = <IT8951_WAVEFORM_GC16>;
+        };
+    };
+
+compatible: "ite,it8951"
+
+include:
+  - display-controller.yaml
+  - spi-device.yaml
+
+properties:
+  hrdy-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      Hardware-ready (HRDY) GPIO.
+
+      The IT8951 asserts this pin high when it is ready to accept the next SPI
+      transaction and drives it low while processing a command or data.  The
+      pin must therefore be configured as GPIO_ACTIVE_HIGH in the devicetree
+      node.
+
+  reset-gpios:
+    type: phandle-array
+    description: |
+      Active-low hardware reset GPIO.
+
+      When present the driver toggles this pin during initialisation to perform
+      a full hardware reset of the IT8951 before issuing any SPI commands.
+      When absent the driver skips the hardware-reset step; the IT8951 must
+      then already be in a known state at boot (e.g. from a power-on reset).
+
+  waveform-mode:
+    type: int
+    default: 2
+    description: |
+      Default waveform (display-update algorithm) mode used when refreshing
+      the e-paper panel.  Use the IT8951_WAVEFORM_* defines from
+      <zephyr/dt-bindings/display/it8951.h>.
+
+      The default (2 = IT8951_WAVEFORM_GC16) selects the GC16 algorithm,
+      which delivers full 16-level greyscale quality.  Choose a faster mode
+      such as IT8951_WAVEFORM_DU (1) when display latency matters more than
+      image quality, or IT8951_WAVEFORM_INIT (0) to clear the panel to white
+      on the first write.
+
+  width:
+    default: 1872
+    description: |
+      Panel width in pixels.  Defaults to 1872, the native horizontal
+      resolution of the E Ink ED103TC2 10.3-inch panel.
+
+  height:
+    default: 1404
+    description: |
+      Panel height in pixels.  Defaults to 1404, the native vertical
+      resolution of the E Ink ED103TC2 10.3-inch panel.
