@@ -463,10 +463,10 @@ static int t133a01_write_half(const struct device *dev, enum t133a01_target targ
 
 			for (size_t i = 0U; i < chunk_len; i++) {
 				uint8_t pixel_pair = buf[row_offset + col + i];
-				uint8_t first = t133a01_map_color((pixel_pair >> 4) & 0x0F);
-				uint8_t second = t133a01_map_color(pixel_pair & 0x0F);
+				uint8_t upper_nibble = t133a01_map_color((pixel_pair >> 4) & 0x0F);
+				uint8_t lower_nibble = t133a01_map_color(pixel_pair & 0x0F);
 
-				converted[i] = (first << 4) | second;
+				converted[i] = (upper_nibble << 4) | lower_nibble;
 			}
 
 			ret = t133a01_transfer(dev, target, 1U, converted, chunk_len);
