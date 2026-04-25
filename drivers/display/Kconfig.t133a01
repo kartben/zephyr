@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
 # SPDX-License-Identifier: Apache-2.0
 
-config T133A01
-	bool "T133A01 display controller"
+config DISPLAY_T133A01
+	bool "T133A01 display driver"
 	default y
 	depends on DT_HAS_EINK_T133A01_ENABLED
 	select MIPI_DBI
