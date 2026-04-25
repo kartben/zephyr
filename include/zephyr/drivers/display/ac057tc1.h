@@ -29,15 +29,11 @@ extern "C" {
 #endif
 
 /**
- * @brief AC057TC1 private pixel format
- *
- * 4 bits per pixel, 2 pixels per byte (high nibble first).
- * Supports 7 colors indexed 0-6 (3-bit color palette).
- */
-#define PIXEL_FORMAT_L_4 (PIXEL_FORMAT_PRIV_START << 0)
-
-/**
  * @brief Bits per pixel for AC057TC1 format
+ *
+ * The driver reports PIXEL_FORMAT_L_4: 2 pixels per byte (high nibble
+ * first). The 4-bit value is interpreted as a palette index 0-6
+ * selecting one of the panel's 7 colors (see AC057TC1_COLOR_*).
  */
 #define AC057TC1_BITS_PER_PIXEL 4
 

@@ -216,10 +216,20 @@ enum display_pixel_format {
 	PIXEL_FORMAT_BGRA_8888 = BIT(12), /**< 32-bit BGRA */
 
 	/**
+	 * 4-bit luminance / grayscale, 2 pixels per byte.
+	 *
+	 * The high nibble of each byte holds the left pixel; values
+	 * 0x0..0xF map to black..white. Drivers free to interpret the
+	 * 4-bit value as a palette index when their panel does not
+	 * render true grayscale.
+	 */
+	PIXEL_FORMAT_L_4 = BIT(13),
+
+	/**
 	 * This and higher values are display specific.
 	 * Refer to the display header file.
 	 */
-	PIXEL_FORMAT_PRIV_START = (PIXEL_FORMAT_BGRA_8888 << 1),
+	PIXEL_FORMAT_PRIV_START = (PIXEL_FORMAT_L_4 << 1),
 };
 
 /**
@@ -243,7 +253,8 @@ enum display_pixel_format {
 	(((fmt & PIXEL_FORMAT_BGR_888) >> 9) * 24U) +				\
 	(((fmt & PIXEL_FORMAT_ABGR_8888) >> 10) * 32U) +			\
 	(((fmt & PIXEL_FORMAT_RGBA_8888) >> 11) * 32U) +			\
-	(((fmt & PIXEL_FORMAT_BGRA_8888) >> 12) * 32U))
+	(((fmt & PIXEL_FORMAT_BGRA_8888) >> 12) * 32U) +			\
+	(((fmt & PIXEL_FORMAT_L_4) >> 13) * 4U))
 /**
  * @brief Display screen information
  */
