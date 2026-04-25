@@ -97,6 +97,11 @@ static const uint8_t t133a01_rb1[] = {0x02};
 static const uint8_t t133a01_rb6[] = {0x07};
 static const uint8_t t133a01_rb7[] = {0x01};
 
+/*
+ * The public API uses the same palette indices as the other Zephyr multi-color
+ * e-paper drivers, while the T133A01 wire encoding uses controller-specific
+ * nibble values for those colors.
+ */
 static uint8_t t133a01_map_color(uint8_t color)
 {
 	switch (color) {
