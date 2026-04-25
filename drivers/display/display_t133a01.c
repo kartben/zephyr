@@ -469,6 +469,7 @@ static int t133a01_write_half(const struct device *dev, enum t133a01_target targ
 			col += chunk_len;
 		}
 
+		/* Advance to the next full source row, then keep the same controller half. */
 		row_offset += row_bytes * 2U;
 	}
 
@@ -564,6 +565,7 @@ static int t133a01_write(const struct device *dev, uint16_t x, uint16_t y,
 
 	k_msleep(T133A01_INIT_STEP_DELAY_MS);
 
+	/* 4-bit pixels are packed two per byte, and each controller gets half a row. */
 	row_bytes = config->width / 4U;
 
 	ret = t133a01_write_half(dev, T133A01_TARGET_PRIMARY, bytes, row_bytes, config->height);
