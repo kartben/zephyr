@@ -1,0 +1,37 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+title: E-Ink T133A01 Display Controller
+
+description: |
+  Controller for T133A01 13.3-inch full-color electrophoretic displays.
+
+compatible: "eink,t133a01"
+
+include:
+  - display-controller.yaml
+  - name: mipi-dbi-spi-device.yaml
+    property-blocklist:
+      - te-delay
+
+properties:
+  busy-gpios:
+    type: phandle-array
+    required: true
+    description: Busy/status GPIO.
+
+  primary-cs-gpios:
+    type: phandle-array
+    description: |
+      Optional GPIO used as the primary controller chip select. If omitted,
+      the driver uses the chip select derived from the parent MIPI-DBI SPI bus
+      and the child node's reg value.
+
+  secondary-cs-gpios:
+    type: phandle-array
+    required: true
+    description: GPIO used as the secondary controller chip select.
+
+  enable-gpios:
+    type: phandle-array
+    description: Optional panel enable GPIO.

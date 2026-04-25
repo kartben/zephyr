@@ -433,6 +433,17 @@
 				height = <480>;
 				busy-gpios = <&test_gpio 0 0>;
 			};
+
+			test_mipi_dbi_t133a01: t133a01@26 {
+				compatible = "eink,t133a01";
+				reg = <0x26>;
+				mipi-max-frequency = <4000000>;
+				width = <1200>;
+				height = <1600>;
+				primary-cs-gpios = <&test_gpio 0 10>;
+				secondary-cs-gpios = <&test_gpio 0 11>;
+				busy-gpios = <&test_gpio 0 0>;
+			};
 		};
 
 		test_mipi_dbi_xfr_16bit_write_only {

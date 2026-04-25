@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config T133A01
+	bool "T133A01 display controller"
+	default y
+	depends on DT_HAS_EINK_T133A01_ENABLED
+	select MIPI_DBI
+	help
+	  Enable driver for the T133A01 full-color e-paper display controller.
