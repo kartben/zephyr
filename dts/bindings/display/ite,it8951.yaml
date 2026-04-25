@@ -1,0 +1,113 @@
+# Copyright (c) 2026 The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+title: ITE IT8951 E-Paper TCON
+
+description: |
+  IT8951 timing controller for SPI-connected electrophoretic displays.
+
+  The ED103TC2 panel used by Seeed reTerminal E1003-style hardware is one
+  supported panel. Set width = <1872> and height = <1404> for that panel.
+
+compatible: "ite,it8951"
+
+include:
+  - display-controller.yaml
+  - spi-device.yaml
+
+properties:
+  busy-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      Host-ready/busy GPIO.
+
+      The IT8951 HRDY/BUSY signal is active low. If connected directly the
+      MCU pin should be configured as active low.
+
+  reset-gpios:
+    type: phandle-array
+    required: true
+    description: Reset GPIO.
+
+  enable-gpios:
+    type: phandle-array
+    description: Optional display power-enable GPIO.
+
+  ite-enable-gpios:
+    type: phandle-array
+    description: Optional IT8951/controller power-enable GPIO.
+
+  vcom-mv:
+    type: int
+    required: true
+    description: |
+      Panel VCOM voltage in millivolts, encoded as the positive millivolt
+      magnitude expected by the IT8951 VCOM command.
+
+      This is intentionally required instead of defaulted: VCOM is panel-lot
+      specific and an incorrect value can cause poor image quality or panel
+      damage.
+
+  refresh-mode:
+    type: int
+    default: 2
+    description: |
+      IT8951 waveform mode used after writes. Include
+      <zephyr/dt-bindings/display/it8951.h> and use IT8951_DISPLAY_MODE_*.
+
+      The default is IT8951_DISPLAY_MODE_GC16 because the driver exposes
+      4-bit grayscale (PIXEL_FORMAT_I_4) data and Seeed's ED103TC2 reference
+      driver uses waveform mode 2 for grayscale full updates.
+    enum:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+
+  pixel-format:
+    type: int
+    default: 2
+    description: |
+      IT8951 load-image pixel format. Include
+      <zephyr/dt-bindings/display/it8951.h> and use IT8951_PIXEL_FORMAT_*.
+
+      The default is IT8951_PIXEL_FORMAT_4BPP because this Zephyr driver
+      accepts display PIXEL_FORMAT_I_4 buffers and targets ED103TC2 16-level
+      grayscale operation.
+    enum:
+      - 2
+
+  reset-delay-ms:
+    type: int
+    default: 10
+    description: |
+      Reset pulse width in milliseconds.
+
+      This follows the Seeed ED103TC2 reference initialization sequence.
+
+  reset-wait-ms:
+    type: int
+    default: 10
+    description: |
+      Delay after reset release in milliseconds.
+
+      This follows the Seeed ED103TC2 reference initialization sequence.
+
+  ready-timeout-ms:
+    type: int
+    default: 5000
+    description: |
+      Timeout for command-ready waits in milliseconds.
+
+      Five seconds matches common Zephyr e-paper driver command timeouts and
+      leaves margin for the IT8951 to become ready after reset.
+
+  refresh-timeout-ms:
+    type: int
+    default: 40000
+    description: |
+      Timeout for display refresh completion in milliseconds.
+
+      Forty seconds matches existing Zephyr e-paper full-refresh timeouts.

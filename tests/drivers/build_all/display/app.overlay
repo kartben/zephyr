@@ -435,6 +435,17 @@
 			};
 		};
 
+		test_it8951: it8951@a {
+			compatible = "ite,it8951";
+			reg = <0xa>;
+			spi-max-frequency = <10000000>;
+			width = <1872>;
+			height = <1404>;
+			busy-gpios = <&test_gpio 0 0>;
+			reset-gpios = <&test_gpio 0 0>;
+			vcom-mv = <1400>;
+		};
+
 		test_mipi_dbi_xfr_16bit_write_only {
 			compatible = "zephyr,mipi-dbi-spi";
 			status = "okay";
