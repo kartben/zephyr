@@ -290,126 +290,128 @@ static int t133a01_hw_init(const struct device *dev)
 		return ret;
 	}
 
-	ret = t133a01_write_cmd(dev, T133A01_TARGET_PRIMARY, T133A01_CMD_UNKNOWN_74, t133a01_r74,
-			       ARRAY_SIZE(t133a01_r74));
+	ret = t133a01_write_cmd(dev, T133A01_TARGET_PRIMARY, T133A01_CMD_UNKNOWN_74,
+				t133a01_r74, ARRAY_SIZE(t133a01_r74));
 	if (ret < 0) {
 		return ret;
 	}
 
-	ret = t133a01_write_cmd(dev, T133A01_TARGET_BOTH, T133A01_CMD_UNKNOWN_F0, t133a01_rf0,
-			       ARRAY_SIZE(t133a01_rf0));
-	if (ret < 0) {
-		return ret;
-	}
-
-	k_msleep(T133A01_INIT_STEP_DELAY_MS);
-
-	ret = t133a01_write_cmd(dev, T133A01_TARGET_BOTH, T133A01_CMD_PANEL_SETTING, t133a01_psr,
-			       ARRAY_SIZE(t133a01_psr));
+	ret = t133a01_write_cmd(dev, T133A01_TARGET_BOTH, T133A01_CMD_UNKNOWN_F0,
+				t133a01_rf0, ARRAY_SIZE(t133a01_rf0));
 	if (ret < 0) {
 		return ret;
 	}
 
 	k_msleep(T133A01_INIT_STEP_DELAY_MS);
 
-	ret = t133a01_write_cmd(dev, T133A01_TARGET_PRIMARY, T133A01_CMD_DCDC, t133a01_dcdc,
-			       ARRAY_SIZE(t133a01_dcdc));
+	ret = t133a01_write_cmd(dev, T133A01_TARGET_BOTH, T133A01_CMD_PANEL_SETTING,
+				t133a01_psr, ARRAY_SIZE(t133a01_psr));
 	if (ret < 0) {
 		return ret;
 	}
 
 	k_msleep(T133A01_INIT_STEP_DELAY_MS);
 
-	ret = t133a01_write_cmd(dev, T133A01_TARGET_BOTH, T133A01_CMD_CDI, t133a01_cdi,
-			       ARRAY_SIZE(t133a01_cdi));
+	ret = t133a01_write_cmd(dev, T133A01_TARGET_PRIMARY, T133A01_CMD_DCDC,
+				t133a01_dcdc, ARRAY_SIZE(t133a01_dcdc));
 	if (ret < 0) {
 		return ret;
 	}
 
 	k_msleep(T133A01_INIT_STEP_DELAY_MS);
 
-	ret = t133a01_write_cmd(dev, T133A01_TARGET_BOTH, T133A01_CMD_TCON, t133a01_r60,
-			       ARRAY_SIZE(t133a01_r60));
+	ret = t133a01_write_cmd(dev, T133A01_TARGET_BOTH, T133A01_CMD_CDI,
+				t133a01_cdi, ARRAY_SIZE(t133a01_cdi));
 	if (ret < 0) {
 		return ret;
 	}
 
 	k_msleep(T133A01_INIT_STEP_DELAY_MS);
 
-	ret = t133a01_write_cmd(dev, T133A01_TARGET_BOTH, T133A01_CMD_UNKNOWN_86, t133a01_r86,
-			       ARRAY_SIZE(t133a01_r86));
+	ret = t133a01_write_cmd(dev, T133A01_TARGET_BOTH, T133A01_CMD_TCON,
+				t133a01_r60, ARRAY_SIZE(t133a01_r60));
 	if (ret < 0) {
 		return ret;
 	}
 
 	k_msleep(T133A01_INIT_STEP_DELAY_MS);
 
-	ret = t133a01_write_cmd(dev, T133A01_TARGET_BOTH, T133A01_CMD_PWS, t133a01_pws,
-			       ARRAY_SIZE(t133a01_pws));
+	ret = t133a01_write_cmd(dev, T133A01_TARGET_BOTH, T133A01_CMD_UNKNOWN_86,
+				t133a01_r86, ARRAY_SIZE(t133a01_r86));
 	if (ret < 0) {
 		return ret;
 	}
 
 	k_msleep(T133A01_INIT_STEP_DELAY_MS);
 
-	ret = t133a01_write_cmd(dev, T133A01_TARGET_BOTH, T133A01_CMD_RESOLUTION, resolution,
-			       ARRAY_SIZE(resolution));
+	ret = t133a01_write_cmd(dev, T133A01_TARGET_BOTH, T133A01_CMD_PWS,
+				t133a01_pws, ARRAY_SIZE(t133a01_pws));
 	if (ret < 0) {
 		return ret;
 	}
 
 	k_msleep(T133A01_INIT_STEP_DELAY_MS);
 
-	ret = t133a01_write_cmd(dev, T133A01_TARGET_PRIMARY, T133A01_CMD_POWER_SETTING, t133a01_pwr,
-			       ARRAY_SIZE(t133a01_pwr));
+	ret = t133a01_write_cmd(dev, T133A01_TARGET_BOTH, T133A01_CMD_RESOLUTION,
+				resolution, ARRAY_SIZE(resolution));
 	if (ret < 0) {
 		return ret;
 	}
 
 	k_msleep(T133A01_INIT_STEP_DELAY_MS);
 
-	ret = t133a01_write_cmd(dev, T133A01_TARGET_PRIMARY, T133A01_CMD_UNKNOWN_B6, t133a01_rb6,
-			       ARRAY_SIZE(t133a01_rb6));
+	ret = t133a01_write_cmd(dev, T133A01_TARGET_PRIMARY, T133A01_CMD_POWER_SETTING,
+				t133a01_pwr, ARRAY_SIZE(t133a01_pwr));
 	if (ret < 0) {
 		return ret;
 	}
 
 	k_msleep(T133A01_INIT_STEP_DELAY_MS);
 
-	ret = t133a01_write_cmd(dev, T133A01_TARGET_PRIMARY, T133A01_CMD_BOOSTER_SOFTSTART_P,
-			       t133a01_btst_p, ARRAY_SIZE(t133a01_btst_p));
+	ret = t133a01_write_cmd(dev, T133A01_TARGET_PRIMARY, T133A01_CMD_UNKNOWN_B6,
+				t133a01_rb6, ARRAY_SIZE(t133a01_rb6));
 	if (ret < 0) {
 		return ret;
 	}
 
 	k_msleep(T133A01_INIT_STEP_DELAY_MS);
 
-	ret = t133a01_write_cmd(dev, T133A01_TARGET_PRIMARY, T133A01_CMD_UNKNOWN_B7, t133a01_rb7,
-			       ARRAY_SIZE(t133a01_rb7));
+	ret = t133a01_write_cmd(dev, T133A01_TARGET_PRIMARY,
+				T133A01_CMD_BOOSTER_SOFTSTART_P, t133a01_btst_p,
+				ARRAY_SIZE(t133a01_btst_p));
 	if (ret < 0) {
 		return ret;
 	}
 
 	k_msleep(T133A01_INIT_STEP_DELAY_MS);
 
-	ret = t133a01_write_cmd(dev, T133A01_TARGET_PRIMARY, T133A01_CMD_BOOSTER_SOFTSTART_N,
-			       t133a01_btst_n, ARRAY_SIZE(t133a01_btst_n));
+	ret = t133a01_write_cmd(dev, T133A01_TARGET_PRIMARY, T133A01_CMD_UNKNOWN_B7,
+				t133a01_rb7, ARRAY_SIZE(t133a01_rb7));
 	if (ret < 0) {
 		return ret;
 	}
 
 	k_msleep(T133A01_INIT_STEP_DELAY_MS);
 
-	ret = t133a01_write_cmd(dev, T133A01_TARGET_PRIMARY, T133A01_CMD_UNKNOWN_B0, t133a01_rb0,
-			       ARRAY_SIZE(t133a01_rb0));
+	ret = t133a01_write_cmd(dev, T133A01_TARGET_PRIMARY,
+				T133A01_CMD_BOOSTER_SOFTSTART_N, t133a01_btst_n,
+				ARRAY_SIZE(t133a01_btst_n));
 	if (ret < 0) {
 		return ret;
 	}
 
 	k_msleep(T133A01_INIT_STEP_DELAY_MS);
 
-	ret = t133a01_write_cmd(dev, T133A01_TARGET_PRIMARY, T133A01_CMD_UNKNOWN_B1, t133a01_rb1,
-			       ARRAY_SIZE(t133a01_rb1));
+	ret = t133a01_write_cmd(dev, T133A01_TARGET_PRIMARY, T133A01_CMD_UNKNOWN_B0,
+				t133a01_rb0, ARRAY_SIZE(t133a01_rb0));
+	if (ret < 0) {
+		return ret;
+	}
+
+	k_msleep(T133A01_INIT_STEP_DELAY_MS);
+
+	ret = t133a01_write_cmd(dev, T133A01_TARGET_PRIMARY, T133A01_CMD_UNKNOWN_B1,
+				t133a01_rb1, ARRAY_SIZE(t133a01_rb1));
 	if (ret < 0) {
 		return ret;
 	}
@@ -425,7 +427,7 @@ static int t133a01_deep_sleep(const struct device *dev)
 	int ret;
 
 	ret = t133a01_write_cmd(dev, T133A01_TARGET_PRIMARY, T133A01_CMD_DEEP_SLEEP,
-			       &deep_sleep, sizeof(deep_sleep));
+				&deep_sleep, sizeof(deep_sleep));
 	if (ret < 0) {
 		return ret;
 	}
@@ -493,7 +495,7 @@ static int t133a01_update_display(const struct device *dev)
 	k_msleep(T133A01_POWER_STEP_DELAY_MS);
 
 	ret = t133a01_write_cmd(dev, T133A01_TARGET_BOTH, T133A01_CMD_DISPLAY_REFRESH,
-			       t133a01_drf, ARRAY_SIZE(t133a01_drf));
+				t133a01_drf, ARRAY_SIZE(t133a01_drf));
 	if (ret < 0) {
 		return ret;
 	}
@@ -505,8 +507,8 @@ static int t133a01_update_display(const struct device *dev)
 
 	k_msleep(T133A01_POWER_STEP_DELAY_MS);
 
-	ret = t133a01_write_cmd(dev, T133A01_TARGET_BOTH, T133A01_CMD_POWER_OFF, t133a01_pof,
-			       ARRAY_SIZE(t133a01_pof));
+	ret = t133a01_write_cmd(dev, T133A01_TARGET_BOTH, T133A01_CMD_POWER_OFF,
+				t133a01_pof, ARRAY_SIZE(t133a01_pof));
 	if (ret < 0) {
 		return ret;
 	}
@@ -553,7 +555,8 @@ static int t133a01_write(const struct device *dev, uint16_t x, uint16_t y,
 	}
 
 	ret = t133a01_write_cmd(dev, T133A01_TARGET_BOTH, T133A01_CMD_CCSET,
-			       t133a01_ccset_current, ARRAY_SIZE(t133a01_ccset_current));
+				t133a01_ccset_current,
+				ARRAY_SIZE(t133a01_ccset_current));
 	if (ret < 0) {
 		return ret;
 	}
@@ -573,8 +576,8 @@ static int t133a01_write(const struct device *dev, uint16_t x, uint16_t y,
 		return ret;
 	}
 
-	ret = t133a01_write_half(dev, T133A01_TARGET_SECONDARY, bytes + row_bytes, row_bytes,
-				config->height);
+	ret = t133a01_write_half(dev, T133A01_TARGET_SECONDARY, bytes + row_bytes,
+				 row_bytes, config->height);
 	if (ret < 0) {
 		return ret;
 	}
@@ -751,7 +754,8 @@ static DEVICE_API(display, t133a01_api) = {
 		    (MIPI_DBI_SPI_CS_GPIOS_DT_SPEC_GET(DT_DRV_INST(inst))))
 
 #define T133A01_DEFINE(inst)                                                                 \
-	BUILD_ASSERT((DT_INST_PROP(inst, width) % 4) == 0, "T133A01 width must be multiple of 4"); \
+	BUILD_ASSERT((DT_INST_PROP(inst, width) % 4) == 0,                                \
+		     "T133A01 width must be a multiple of 4");                          \
 	BUILD_ASSERT((DT_INST_PROP(inst, height) % 2) == 0, "T133A01 height must be even");  \
 	static const struct t133a01_config t133a01_cfg_##inst = {                          \
 		.spi_bus = DEVICE_DT_GET(MIPI_DBI_DT_SPI_DEV(DT_DRV_INST(inst))),          \

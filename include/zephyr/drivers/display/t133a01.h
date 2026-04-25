@@ -6,7 +6,7 @@
 /**
  * @file
  * @ingroup display_interface
- * @brief Palette definitions for T133A01 full-color e-ink display
+ * @brief Palette definitions for T133A01 full-color e-paper display
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_DISPLAY_T133A01_H_
@@ -14,7 +14,7 @@
 
 /**
  * @defgroup t133a01_display_interface T133A01 display controller
- * @brief T133A01 full-color e-ink display controller device-specific API extension
+ * @brief T133A01 full-color e-paper display controller device-specific API extension
  * @since 4.5.0
  * @version 0.1.0
  * @ingroup display_interface
