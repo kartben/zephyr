@@ -224,7 +224,7 @@ static int t133a01_wait_until_ready(const struct device *dev, uint32_t timeout_m
 		return ret;
 	}
 
-	if (ret != 0) {
+	if (ret == 0) {
 		return 0;
 	}
 
