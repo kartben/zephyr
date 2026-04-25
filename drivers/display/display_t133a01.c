@@ -26,6 +26,7 @@ LOG_MODULE_REGISTER(t133a01, CONFIG_DISPLAY_LOG_LEVEL);
 #define T133A01_REFRESH_TIMEOUT_MS  40000U
 #define T133A01_POWER_STEP_DELAY_MS 30U
 #define T133A01_INIT_STEP_DELAY_MS  10U
+#define T133A01_SPI_DELAY_MS        0U
 #define T133A01_STREAM_CHUNK_SIZE   64U
 
 #define T133A01_CMD_PANEL_SETTING        0x00
@@ -230,7 +231,7 @@ static int t133a01_wait_until_ready(const struct device *dev, uint32_t timeout_m
 
 	k_sem_reset(&data->busy_sem);
 
-	ret = gpio_pin_interrupt_configure_dt(&config->busy_gpio, GPIO_INT_EDGE_TO_ACTIVE);
+	ret = gpio_pin_interrupt_configure_dt(&config->busy_gpio, GPIO_INT_EDGE_TO_INACTIVE);
 	if (ret < 0) {
 		LOG_ERR("Failed to configure busy GPIO interrupt: %d", ret);
 		return ret;
@@ -767,7 +768,7 @@ static DEVICE_API(display, t133a01_api) = {
 		.spi_bus = DEVICE_DT_GET(MIPI_DBI_DT_SPI_DEV(DT_DRV_INST(inst))),          \
 		.spi_config =                                                               \
 			MIPI_DBI_SPI_CONFIG_DT_INST(inst, SPI_OP_MODE_MASTER | SPI_WORD_SET(8), \
-						    0),                                         \
+						    T133A01_SPI_DELAY_MS),                      \
 		.primary_cs_gpio = T133A01_PRIMARY_CS_SPEC(inst),                           \
 		.secondary_cs_gpio = GPIO_DT_SPEC_INST_GET(inst, secondary_cs_gpios),       \
 		.dc_gpio = GPIO_DT_SPEC_GET(DT_PARENT(DT_DRV_INST(inst)), dc_gpios),        \
