@@ -473,6 +473,9 @@ static int it8951_write_pixels(const struct device *dev, uint16_t x, uint16_t y,
 						   (uint16_t)IT8951_TX_CHUNK_WORDS);
 
 			for (uint16_t i = 0U; i < chunk_words; i++) {
+				/* IT8951 expects host-provided 8bpp pixels in reversed
+				 * 16-bit word order within each scan line.
+				 */
 				uint16_t src_word = word_count - 1U - (word_base + i);
 				uint16_t src_idx = src_word * 2U;
 				uint8_t first_pixel = (src_idx < desc->width) ? row_buf[src_idx] : 0U;
