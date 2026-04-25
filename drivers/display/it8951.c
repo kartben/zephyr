@@ -66,7 +66,7 @@ struct it8951_config {
 	uint16_t height;
 	int16_t  vcom_mv;
 	uint8_t  default_waveform;
-	uint8_t  pixel_format;       /* enum display_pixel_format */
+	uint32_t pixel_format;       /* enum display_pixel_format */
 	uint8_t  rotation;           /* 0..3, IT8951 hardware rotation */
 	uint8_t *line_buf;
 	size_t   line_buf_size;
@@ -379,10 +379,24 @@ static int it8951_write(const struct device *dev, const uint16_t x, const uint16
 		return -EINVAL;
 	}
 
-	if (data->pixel_format == PIXEL_FORMAT_L_8) {
+	/* 4bpp packing requires X and width on byte (2-pixel) boundaries. */
+	if (((x | w) & 1U) != 0U) {
+		LOG_ERR("X (%u) and width (%u) must be 2-pixel aligned", x, w);
+		return -EINVAL;
+	}
+
+	switch (data->pixel_format) {
+	case PIXEL_FORMAT_L_4:
+		src_stride = DIV_ROUND_UP(desc->pitch, 2U);
+		break;
+	case PIXEL_FORMAT_L_8:
 		src_stride = desc->pitch;
-	} else {
+		break;
+	case PIXEL_FORMAT_MONO01:
 		src_stride = DIV_ROUND_UP(desc->pitch, 8U);
+		break;
+	default:
+		return -ENOTSUP;
 	}
 
 	if ((size_t)src_stride * h > desc->buf_size) {
@@ -408,17 +422,28 @@ static int it8951_write(const struct device *dev, const uint16_t x, const uint16
 	}
 
 	for (uint16_t row = 0; row < h; row++) {
+		const uint8_t *row_src = &src[row * src_stride];
+		const uint8_t *tx;
 		size_t packed_len;
 
-		if (data->pixel_format == PIXEL_FORMAT_L_8) {
-			packed_len = it8951_pack_line_l8(cfg->line_buf,
-							 &src[row * src_stride], w);
-		} else {
-			packed_len = it8951_pack_line_mono01(cfg->line_buf,
-							     &src[row * src_stride], w);
+		switch (data->pixel_format) {
+		case PIXEL_FORMAT_L_4:
+			/* Native wire format: send the source row directly. */
+			tx = row_src;
+			packed_len = (size_t)w / 2U;
+			break;
+		case PIXEL_FORMAT_L_8:
+			packed_len = it8951_pack_line_l8(cfg->line_buf, row_src, w);
+			tx = cfg->line_buf;
+			break;
+		case PIXEL_FORMAT_MONO01:
+		default:
+			packed_len = it8951_pack_line_mono01(cfg->line_buf, row_src, w);
+			tx = cfg->line_buf;
+			break;
 		}
 
-		ret = it8951_write_pixels(dev, cfg->line_buf, packed_len);
+		ret = it8951_write_pixels(dev, tx, packed_len);
 		if (ret < 0) {
 			return ret;
 		}
@@ -445,7 +470,8 @@ static void it8951_get_capabilities(const struct device *dev,
 	memset(caps, 0, sizeof(*caps));
 	caps->x_resolution = data->panel_w ? data->panel_w : cfg->width;
 	caps->y_resolution = data->panel_h ? data->panel_h : cfg->height;
-	caps->supported_pixel_formats = PIXEL_FORMAT_L_8 | PIXEL_FORMAT_MONO01;
+	caps->supported_pixel_formats =
+		PIXEL_FORMAT_L_4 | PIXEL_FORMAT_L_8 | PIXEL_FORMAT_MONO01;
 	caps->current_pixel_format = data->pixel_format;
 	caps->current_orientation = data->orientation;
 	caps->screen_info = SCREEN_INFO_EPD | SCREEN_INFO_MONO_MSB_FIRST;
@@ -480,7 +506,7 @@ static int it8951_set_pixel_format(const struct device *dev,
 {
 	struct it8951_data *data = dev->data;
 
-	if (pf != PIXEL_FORMAT_L_8 && pf != PIXEL_FORMAT_MONO01) {
+	if (pf != PIXEL_FORMAT_L_4 && pf != PIXEL_FORMAT_L_8 && pf != PIXEL_FORMAT_MONO01) {
 		return -ENOTSUP;
 	}
 
@@ -653,6 +679,7 @@ static DEVICE_API(display, it8951_api) = {
 	.set_orientation = it8951_set_orientation,
 };
 
+#define IT8951_PIXEL_FORMAT_l4     PIXEL_FORMAT_L_4
 #define IT8951_PIXEL_FORMAT_l8     PIXEL_FORMAT_L_8
 #define IT8951_PIXEL_FORMAT_mono01 PIXEL_FORMAT_MONO01
 #define IT8951_PIXEL_FORMAT(n)                                                                     \
