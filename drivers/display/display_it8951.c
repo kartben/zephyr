@@ -129,6 +129,47 @@ static int it8951_spi_transceive(const struct device *dev, const uint8_t *tx_buf
 	return spi_transceive_dt(&config->spi, &tx_set, &rx_set);
 }
 
+static int it8951_spi_write_with_config(const struct device *dev, const uint8_t *tx_buf, size_t len,
+					const struct spi_config *spi_config)
+{
+	const struct it8951_config *config = dev->config;
+	const struct spi_buf tx = {
+		.buf = (void *)tx_buf,
+		.len = len,
+	};
+	const struct spi_buf_set tx_set = {
+		.buffers = &tx,
+		.count = 1,
+	};
+
+	return spi_write(config->spi.bus, spi_config, &tx_set);
+}
+
+static int it8951_spi_transceive_with_config(const struct device *dev, const uint8_t *tx_buf,
+					     uint8_t *rx_buf, size_t len,
+					     const struct spi_config *spi_config)
+{
+	const struct it8951_config *config = dev->config;
+	const struct spi_buf tx = {
+		.buf = (void *)tx_buf,
+		.len = len,
+	};
+	const struct spi_buf rx = {
+		.buf = rx_buf,
+		.len = len,
+	};
+	const struct spi_buf_set tx_set = {
+		.buffers = &tx,
+		.count = 1,
+	};
+	const struct spi_buf_set rx_set = {
+		.buffers = &rx,
+		.count = 1,
+	};
+
+	return spi_transceive(config->spi.bus, spi_config, &tx_set, &rx_set);
+}
+
 static int it8951_transfer_word(const struct device *dev, uint16_t tx_word, uint16_t *rx_word)
 {
 	uint8_t tx_buf[2];
@@ -147,6 +188,15 @@ static int it8951_transfer_word(const struct device *dev, uint16_t tx_word, uint
 	}
 
 	return 0;
+}
+
+static int it8951_write_word_with_config(const struct device *dev, uint16_t word,
+					 const struct spi_config *spi_config)
+{
+	uint8_t tx_buf[2];
+
+	sys_put_be16(word, tx_buf);
+	return it8951_spi_write_with_config(dev, tx_buf, sizeof(tx_buf), spi_config);
 }
 
 static int it8951_write_preamble_word(const struct device *dev, uint16_t preamble, uint16_t word)
@@ -185,6 +235,9 @@ static int it8951_write_data(const struct device *dev, uint16_t data)
 static int it8951_read_data(const struct device *dev, uint16_t *data)
 {
 	const struct it8951_config *config = dev->config;
+	struct spi_config spi_config = config->spi.config;
+	uint8_t tx_buf[4];
+	uint8_t rx_buf[4];
 	int ret;
 
 	ret = it8951_wait_ready(dev, config->ready_timeout_ms);
@@ -192,22 +245,29 @@ static int it8951_read_data(const struct device *dev, uint16_t *data)
 		return ret;
 	}
 
-	ret = it8951_transfer_word(dev, IT8951_PREAMBLE_READ_DATA, NULL);
+	spi_config.operation |= SPI_HOLD_ON_CS | SPI_LOCK_ON;
+	sys_put_be16(IT8951_PREAMBLE_READ_DATA, tx_buf);
+	sys_put_be16(0x0000U, tx_buf + sizeof(uint16_t));
+	ret = it8951_spi_transceive_with_config(dev, tx_buf, rx_buf, sizeof(tx_buf), &spi_config);
 	if (ret < 0) {
-		return ret;
-	}
-
-	ret = it8951_transfer_word(dev, 0x0000U, NULL);
-	if (ret < 0) {
+		spi_release(config->spi.bus, &spi_config);
 		return ret;
 	}
 
 	ret = it8951_wait_ready(dev, config->ready_timeout_ms);
 	if (ret < 0) {
+		spi_release(config->spi.bus, &spi_config);
 		return ret;
 	}
 
-	return it8951_transfer_word(dev, 0x0000U, data);
+	sys_put_be16(0x0000U, tx_buf);
+	ret = it8951_spi_transceive_with_config(dev, tx_buf, rx_buf, sizeof(uint16_t), &spi_config);
+	if (ret == 0) {
+		*data = sys_get_be16(rx_buf);
+	}
+
+	spi_release(config->spi.bus, &spi_config);
+	return ret;
 }
 
 static int it8951_send_cmd_args(const struct device *dev, uint16_t cmd, const uint16_t *args,
@@ -309,6 +369,7 @@ static int it8951_write_packed_l4(const struct device *dev, const uint8_t *buf, 
 {
 	const struct it8951_config *config = dev->config;
 	struct it8951_data *data = dev->data;
+	struct spi_config spi_config = config->spi.config;
 	uint16_t load_arg = (IT8951_ENDIAN_LITTLE << 8) | (config->pixel_format << 4) |
 			    IT8951_ROTATE_0;
 	uint16_t args[] = {load_arg, x, y, width, height};
@@ -330,7 +391,9 @@ static int it8951_write_packed_l4(const struct device *dev, const uint8_t *buf, 
 		return ret;
 	}
 
-	ret = it8951_transfer_word(dev, IT8951_PREAMBLE_WRITE_DATA, NULL);
+	spi_config.operation |= SPI_HOLD_ON_CS | SPI_LOCK_ON;
+
+	ret = it8951_write_word_with_config(dev, IT8951_PREAMBLE_WRITE_DATA, &spi_config);
 	if (ret < 0) {
 		return ret;
 	}
@@ -346,12 +409,15 @@ static int it8951_write_packed_l4(const struct device *dev, const uint8_t *buf, 
 				value = it8951_reverse_bits_16(value);
 			}
 
-			ret = it8951_transfer_word(dev, value, NULL);
+			ret = it8951_write_word_with_config(dev, value, &spi_config);
 			if (ret < 0) {
+				spi_release(config->spi.bus, &spi_config);
 				return ret;
 			}
 		}
 	}
+
+	spi_release(config->spi.bus, &spi_config);
 
 	return it8951_write_cmd(dev, IT8951_CMD_LOAD_END);
 }
@@ -552,8 +618,8 @@ static void it8951_get_capabilities(const struct device *dev, struct display_cap
 	memset(caps, 0, sizeof(*caps));
 	caps->x_resolution = config->width;
 	caps->y_resolution = config->height;
-	caps->supported_pixel_formats = PIXEL_FORMAT_I_4;
-	caps->current_pixel_format = PIXEL_FORMAT_I_4;
+	caps->supported_pixel_formats = PIXEL_FORMAT_L_4;
+	caps->current_pixel_format = PIXEL_FORMAT_L_4;
 	caps->screen_info = SCREEN_INFO_EPD;
 }
 
@@ -561,7 +627,7 @@ static int it8951_set_pixel_format(const struct device *dev, const enum display_
 {
 	ARG_UNUSED(dev);
 
-	if (pf == PIXEL_FORMAT_I_4) {
+	if (pf == PIXEL_FORMAT_L_4) {
 		return 0;
 	}
 

@@ -74,7 +74,7 @@ properties:
       <zephyr/dt-bindings/display/it8951.h> and use IT8951_PIXEL_FORMAT_*.
 
       The default is IT8951_PIXEL_FORMAT_4BPP because this Zephyr driver
-      accepts display PIXEL_FORMAT_I_4 buffers and targets ED103TC2 16-level
+      accepts display PIXEL_FORMAT_L_4 buffers and targets ED103TC2 16-level
       grayscale operation.
     enum:
       - 2
