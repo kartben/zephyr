@@ -475,11 +475,12 @@ static int it8951_write_pixels(const struct device *dev, uint16_t x, uint16_t y,
 			for (uint16_t i = 0U; i < chunk_words; i++) {
 				uint16_t src_word = word_count - 1U - (word_base + i);
 				uint16_t src_idx = src_word * 2U;
-				uint8_t low = (src_idx < desc->width) ? row_buf[src_idx] : 0U;
-				uint8_t high = (src_idx + 1U < desc->width) ? row_buf[src_idx + 1U] : 0U;
+				uint8_t first_pixel = (src_idx < desc->width) ? row_buf[src_idx] : 0U;
+				uint8_t second_pixel =
+					(src_idx + 1U < desc->width) ? row_buf[src_idx + 1U] : 0U;
 
-				tx[i * 2U] = high;
-				tx[i * 2U + 1U] = low;
+				tx[i * 2U] = second_pixel;
+				tx[i * 2U + 1U] = first_pixel;
 			}
 
 			ret = it8951_spi_write_locked(dev, tx, chunk_words * 2U);
