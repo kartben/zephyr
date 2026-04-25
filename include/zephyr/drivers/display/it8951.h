@@ -22,21 +22,10 @@
 
 #include <stdint.h>
 #include <zephyr/device.h>
-#include <zephyr/drivers/display.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/**
- * @brief IT8951 native 4bpp grayscale pixel format.
- *
- * 16 grey levels, 2 pixels per byte. The high nibble holds the left
- * pixel; values 0x0..0xF map to black..white. This is the native wire
- * format of the IT8951, so writes using PIXEL_FORMAT_L_4 buffers skip
- * per-line repacking.
- */
-#define PIXEL_FORMAT_L_4 (PIXEL_FORMAT_PRIV_START << 0)
 
 /**
  * @name IT8951 waveform modes

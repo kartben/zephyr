@@ -52,15 +52,12 @@ properties:
     default: "l4"
     enum:
       - "l4"
-      - "l8"
       - "mono01"
     description: |
       Pixel format reported through the display API.
         "l4"     - PIXEL_FORMAT_L_4, 16 grey levels packed 2 pixels per
                    byte (high nibble = left pixel). Native IT8951 wire
-                   format; no per-line repacking. Recommended.
-        "l8"     - PIXEL_FORMAT_L_8, 8-bit grayscale; the high nibble of
-                   each input byte is sent on the wire.
+                   format; no per-line repacking.
         "mono01" - PIXEL_FORMAT_MONO01, 1 bit per pixel expanded to
                    4bpp; pair with the A2 waveform for fast binary
                    updates.
