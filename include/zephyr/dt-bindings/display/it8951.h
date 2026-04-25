@@ -22,7 +22,7 @@
  * @{
  */
 
-/** Full initialisation — clears the panel to white before applying image. */
+/** Full initialization — clears the panel to white before applying image. */
 #define IT8951_WAVEFORM_INIT  0
 /** Direct update — fast 2-level (black/white) update. */
 #define IT8951_WAVEFORM_DU    1

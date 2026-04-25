@@ -53,7 +53,7 @@ properties:
     description: |
       Active-low hardware reset GPIO.
 
-      When present the driver toggles this pin during initialisation to perform
+      When present the driver toggles this pin during initialization to perform
       a full hardware reset of the IT8951 before issuing any SPI commands.
       When absent the driver skips the hardware-reset step; the IT8951 must
       then already be in a known state at boot (e.g. from a power-on reset).
@@ -67,7 +67,7 @@ properties:
       <zephyr/dt-bindings/display/it8951.h>.
 
       The default (2 = IT8951_WAVEFORM_GC16) selects the GC16 algorithm,
-      which delivers full 16-level greyscale quality.  Choose a faster mode
+      which delivers full 16-level grayscale quality.  Choose a faster mode
       such as IT8951_WAVEFORM_DU (1) when display latency matters more than
       image quality, or IT8951_WAVEFORM_INIT (0) to clear the panel to white
       on the first write.

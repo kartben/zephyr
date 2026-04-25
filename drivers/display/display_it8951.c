@@ -338,7 +338,7 @@ static int it8951_sys_run(const struct device *dev)
 }
 
 /*
- * Perform a full hardware initialisation of the IT8951.
+ * Perform a full hardware initialization of the IT8951.
  *
  * Sequence:
  *   1. Hardware reset (if reset-gpios is present).
