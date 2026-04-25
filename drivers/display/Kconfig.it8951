@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+
+config IT8951
+	bool "IT8951 e-paper display controller"
+	default y
+	depends on DT_HAS_ITEAD_IT8951_ENABLED
+	select GPIO
+	select SPI
+	help
+	  Enable the IT8951 SPI e-paper timing controller driver.

@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: Apache-2.0
+
+title: ITEAD IT8951 e-paper controller
+
+description: |
+  IT8951 is a timing controller used by grayscale e-paper display modules.
+  The host communicates with the controller over SPI and uploads image data
+  into the controller's image buffer before requesting a display refresh.
+
+compatible: "itead,it8951"
+
+include: [spi-device.yaml, display-controller.yaml]
+
+properties:
+  busy-gpios:
+    type: phandle-array
+    required: true
+    description: Busy/ready signal from the controller.
+
+  reset-gpios:
+    type: phandle-array
+    description: Optional reset signal connected to the controller reset pin.
+
+  vcom:
+    type: int
+    default: 1400
+    description: |
+      VCOM setting in millivolts, expressed as a positive absolute value.
+
+  update-mode:
+    type: int
+    default: 2
+    enum:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+    description: Waveform mode used when refreshing the panel.
