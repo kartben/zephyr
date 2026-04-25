@@ -1,0 +1,66 @@
+# Copyright (c) 2026 The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  ITE IT8951 e-paper timing controller (SPI)
+
+  The IT8951 is an e-paper timing controller used by Waveshare's 6"-13.3"
+  SPI e-paper HAT panels. It exposes an I80-style command interface over
+  SPI using 16-bit preambles (0x6000 command, 0x0000 data write,
+  0x1000 data read) and a HRDY line indicating when the controller can
+  accept the next transaction.
+
+compatible: "ite,it8951"
+
+include: [spi-device.yaml, display-controller.yaml]
+
+properties:
+  reset-gpios:
+    type: phandle-array
+    required: true
+    description: Active-low RESET_N pin.
+
+  busy-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      HRDY (host ready) pin. The host must wait for this pin to go high
+      before initiating any SPI transaction.
+
+  vcom-mv:
+    type: int
+    description: |
+      Panel VCOM in millivolts (negative). Each Waveshare panel ships with
+      its own VCOM value printed on the FPC. If this property is omitted,
+      the factory VCOM stored in the panel is left unchanged. Setting a
+      wrong VCOM degrades contrast and may stress the panel.
+
+  waveform-mode:
+    type: int
+    default: 2
+    enum: [0, 1, 2, 3, 4]
+    description: |
+      Default waveform mode used by display_write():
+        0 = INIT (full clear)
+        1 = DU   (direct update, monochrome)
+        2 = GC16 (16 grey levels, full refresh)
+        3 = GL16 (16 grey levels, ghosting reduction)
+        4 = A2   (fast binary partial refresh)
+
+  pixel-format:
+    type: string
+    default: "l8"
+    enum:
+      - "l8"
+      - "mono01"
+    description: |
+      Pixel format reported through the display API. "l8" maps to
+      PIXEL_FORMAT_L_8 and is packed to 4bpp on the wire. "mono01" maps
+      to PIXEL_FORMAT_MONO01 and is sent as 1bpp paired with the A2
+      waveform for fast binary updates.
+
+  rotation:
+    type: int
+    default: 0
+    enum: [0, 90, 180, 270]
+    description: Hardware rotation applied by the IT8951 image loader.

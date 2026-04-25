@@ -1,0 +1,23 @@
+# Copyright (c) 2026 The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config IT8951
+	bool "IT8951 e-paper controller"
+	default y
+	depends on DT_HAS_ITE_IT8951_ENABLED
+	select SPI
+	select GPIO
+	help
+	  SPI driver for the ITE IT8951 timing controller used on
+	  Waveshare 6"-13.3" e-paper HAT panels.
+
+if IT8951
+
+config IT8951_BUSY_TIMEOUT_MS
+	int "HRDY (busy) wait timeout in ms"
+	default 5000
+	help
+	  Worst-case full-screen refresh on the 13.3" panel exceeds 1 s.
+	  Increase if your panel times out during refresh.
+
+endif # IT8951
