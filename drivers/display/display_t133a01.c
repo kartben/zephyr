@@ -202,11 +202,11 @@ static int t133a01_write_cmd(const struct device *dev, enum t133a01_target targe
 	return t133a01_transfer(dev, target, 1U, data, len);
 }
 
-static void t133a01_busy_cb(const struct device *gpio_dev, struct gpio_callback *cb, uint32_t pins)
+static void t133a01_busy_cb(const struct device *port, struct gpio_callback *cb, uint32_t pins)
 {
 	struct t133a01_data *data = CONTAINER_OF(cb, struct t133a01_data, busy_cb);
 
-	ARG_UNUSED(gpio_dev);
+	ARG_UNUSED(port);
 	ARG_UNUSED(pins);
 
 	k_sem_give(&data->busy_sem);
