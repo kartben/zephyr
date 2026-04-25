@@ -23,9 +23,12 @@ properties:
 
   vcom:
     type: int
-    default: 1400
+    required: true
     description: |
-      VCOM setting in millivolts, expressed as a positive absolute value.
+      VCOM voltage in millivolts, expressed as a positive absolute value.
+      This is a panel-specific parameter that must match the VCOM rating
+      printed on the panel's FPC cable (e.g. -1.45 V is written as 1450).
+      Using an incorrect value can permanently damage the e-paper panel.
 
   update-mode:
     type: int
@@ -38,6 +41,10 @@ properties:
       - 4 # IT8951_DT_UPDATE_MODE_GLR16
     description: |
       Waveform mode used when refreshing the panel.
+      GC16 (mode 2) is the default as it delivers full 16-level grayscale
+      quality and is suitable for most display content. Use DU for the
+      fastest monochrome updates or INIT for a full-screen clear that
+      removes ghosting after prolonged use.
       Use the IT8951_DT_UPDATE_MODE_* constants from
       <zephyr/dt-bindings/display/it8951.h>.
 
