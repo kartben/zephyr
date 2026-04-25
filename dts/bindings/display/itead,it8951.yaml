@@ -31,9 +31,30 @@ properties:
     type: int
     default: 2
     enum:
-      - 0
-      - 1
-      - 2
-      - 3
-      - 4
-    description: Waveform mode used when refreshing the panel.
+      - 0 # IT8951_DT_UPDATE_MODE_INIT
+      - 1 # IT8951_DT_UPDATE_MODE_DU
+      - 2 # IT8951_DT_UPDATE_MODE_GC16
+      - 3 # IT8951_DT_UPDATE_MODE_GL16
+      - 4 # IT8951_DT_UPDATE_MODE_GLR16
+    description: |
+      Waveform mode used when refreshing the panel.
+      Use the IT8951_DT_UPDATE_MODE_* constants from
+      <zephyr/dt-bindings/display/it8951.h>.
+
+examples:
+  - |
+    #include <zephyr/dt-bindings/display/it8951.h>
+
+    &spi0 {
+      it8951: it8951@0 {
+        compatible = "itead,it8951";
+        reg = <0>;
+        spi-max-frequency = <12000000>;
+        width = <1872>;
+        height = <1404>;
+        busy-gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
+        reset-gpios = <&gpio0 6 GPIO_ACTIVE_LOW>;
+        vcom = <1400>;
+        update-mode = <IT8951_DT_UPDATE_MODE_GC16>;
+      };
+    };
