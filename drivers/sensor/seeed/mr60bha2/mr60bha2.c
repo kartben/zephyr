@@ -97,7 +97,7 @@ static bool mr60bha2_validate_checksum(const uint8_t *buf, size_t len, uint8_t e
 	return mr60bha2_checksum(buf, len) == expected;
 }
 
-static float mr60bha2_parse_float_le(const uint8_t *buf)
+static float mr60bha2_decode_float_le(const uint8_t *buf)
 {
 	uint32_t raw = sys_get_le32(buf);
 	float value;
@@ -139,7 +139,7 @@ static void mr60bha2_handle_frame(struct mr60bha2_data *data)
 	case MR60BHA2_TYPE_DISTANCE:
 		if (payload_len >= 8U) {
 			if (sys_get_le32(payload) != 0U) {
-				data->distance_m = mr60bha2_parse_float_le(&payload[4]);
+				data->distance_m = mr60bha2_decode_float_le(&payload[4]);
 				data->distance_valid = true;
 			} else {
 				data->distance_m = 0.0f;
@@ -150,14 +150,14 @@ static void mr60bha2_handle_frame(struct mr60bha2_data *data)
 		break;
 	case MR60BHA2_TYPE_BREATH_RATE:
 		if (payload_len >= 4U) {
-			data->breath_rate_bpm = mr60bha2_parse_float_le(payload);
+			data->breath_rate_bpm = mr60bha2_decode_float_le(payload);
 			data->breath_rate_valid = true;
 			notify = true;
 		}
 		break;
 	case MR60BHA2_TYPE_HEART_RATE:
 		if (payload_len >= 4U) {
-			data->heart_rate_bpm = mr60bha2_parse_float_le(payload);
+			data->heart_rate_bpm = mr60bha2_decode_float_le(payload);
 			data->heart_rate_valid = true;
 			notify = true;
 		}
@@ -252,6 +252,7 @@ static int mr60bha2_sample_fetch(const struct device *dev, enum sensor_channel c
 
 	rc = k_sem_take(&data->frame_sem, K_MSEC(CONFIG_MR60BHA2_UART_TIMEOUT_MS));
 	if (rc != 0) {
+		LOG_DBG("Timed out waiting for MR60BHA2 frame");
 		return -ETIMEDOUT;
 	}
 

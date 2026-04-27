@@ -19,7 +19,8 @@
 #define SAMPLE_PERIOD_MS 1000
 #define RETRY_DELAY_MS   250
 
-static void print_channel(const struct device *dev, const char *label, enum sensor_channel chan)
+static void print_channel_value(const struct device *dev, const char *label,
+			       enum sensor_channel chan)
 {
 	struct sensor_value val;
 	int rc = sensor_channel_get(dev, chan, &val);
@@ -69,11 +70,11 @@ int main(void)
 
 		printk("MR60BHA2 Sensor Report\n");
 		printk("======================\n\n");
-		print_channel(radar, "Presence", SENSOR_CHAN_PROX);
-		print_channel(radar, "Distance (m)", SENSOR_CHAN_DISTANCE);
-		print_channel(radar, "Breath rate", SENSOR_CHAN_MR60BHA2_BREATH_RATE);
-		print_channel(radar, "Heart rate", SENSOR_CHAN_MR60BHA2_HEART_RATE);
-		print_channel(radar, "Targets", SENSOR_CHAN_MR60BHA2_TARGET_COUNT);
+		print_channel_value(radar, "Presence", SENSOR_CHAN_PROX);
+		print_channel_value(radar, "Distance (m)", SENSOR_CHAN_DISTANCE);
+		print_channel_value(radar, "Breath rate", SENSOR_CHAN_MR60BHA2_BREATH_RATE);
+		print_channel_value(radar, "Heart rate", SENSOR_CHAN_MR60BHA2_HEART_RATE);
+		print_channel_value(radar, "Targets", SENSOR_CHAN_MR60BHA2_TARGET_COUNT);
 		printk("\n");
 
 		k_sleep(K_MSEC(SAMPLE_PERIOD_MS));
