@@ -168,7 +168,7 @@ static void mr60bha2_handle_frame(struct mr60bha2_data *data)
 			uint32_t target_count = sys_get_le32(payload);
 
 			if (target_count > MR60BHA2_MAX_TARGETS) {
-				LOG_DBG("Clamping reported target count %u to %u", target_count,
+				LOG_WRN("Clamping reported target count %u to %u", target_count,
 					MR60BHA2_MAX_TARGETS);
 				target_count = MR60BHA2_MAX_TARGETS;
 			}
