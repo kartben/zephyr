@@ -1,0 +1,20 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	aliases {
+		radar0 = &seeed_xiao_mr60bha2;
+	};
+};
+
+&xiao_serial {
+	status = "okay";
+	current-speed = <115200>;
+
+	seeed_xiao_mr60bha2: mr60bha2 {
+		compatible = "seeed,mr60bha2";
+		status = "okay";
+	};
+};

@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config MR60BHA2
+	bool "Seeed Studio MR60BHA2 60 GHz mmWave breathing and heartbeat sensor"
+	default y
+	depends on DT_HAS_SEEED_MR60BHA2_ENABLED
+	depends on UART_INTERRUPT_DRIVEN
+	select UART
+	help
+	  Enable driver for the Seeed Studio MR60BHA2 60 GHz mmWave UART radar
+	  that reports human presence, breathing rate, and heartbeat rate.
+
+config MR60BHA2_UART_TIMEOUT_MS
+	int "UART frame collection timeout in milliseconds"
+	default 500
+	depends on MR60BHA2
+	help
+	  Duration for which UART RX is enabled during sample_fetch to collect
+	  multiple frame types from the continuously-streaming sensor. The sensor
+	  outputs all frame categories at roughly 10 Hz, so 500 ms is sufficient
+	  to receive a complete data set. The semaphore is signalled as soon as
+	  all three key frame types (presence, breathing rate, heartbeat rate)
+	  are received, so the actual wait is usually much shorter.

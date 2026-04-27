@@ -1,0 +1,6 @@
+shield:
+  name: seeed_xiao_mr60bha2
+  full_name: 60GHz mmWave Breathing and Heartbeat Sensor for XIAO
+  vendor: seeed
+  supported_features:
+    - sensor

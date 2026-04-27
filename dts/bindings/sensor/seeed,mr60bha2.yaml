@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Seeed Studio MR60BHA2 60 GHz mmWave breathing and heartbeat radar sensor.
+
+compatible: "seeed,mr60bha2"
+
+include: [sensor-device.yaml, uart-device.yaml]

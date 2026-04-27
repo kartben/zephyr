@@ -1,0 +1,13 @@
+sample:
+  name: Seeed Studio MR60BHA2 sample
+tests:
+  sample.sensor.mr60bha2:
+    tags:
+      - sensors
+      - shield
+    extra_args: SHIELD=seeed_xiao_mr60bha2
+    platform_allow:
+      - xiao_esp32c6/esp32c6/hpcore
+    integration_platforms:
+      - xiao_esp32c6/esp32c6/hpcore
+    filter: dt_compat_enabled("seeed,mr60bha2")
