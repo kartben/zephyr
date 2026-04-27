@@ -142,6 +142,7 @@ static void mr60bha2_handle_frame(struct mr60bha2_data *data)
 				data->distance_m = mr60bha2_parse_float_le(&payload[4]);
 				data->distance_valid = true;
 			} else {
+				data->distance_m = 0.0f;
 				data->distance_valid = false;
 			}
 			notify = true;
@@ -251,12 +252,7 @@ static int mr60bha2_sample_fetch(const struct device *dev, enum sensor_channel c
 
 	rc = k_sem_take(&data->frame_sem, K_MSEC(CONFIG_MR60BHA2_UART_TIMEOUT_MS));
 	if (rc != 0) {
-		if (rc == -EAGAIN) {
-			return -ETIMEDOUT;
-		}
-
-		LOG_ERR("k_sem_take failed: %d", rc);
-		return rc;
+		return -ETIMEDOUT;
 	}
 
 	return 0;

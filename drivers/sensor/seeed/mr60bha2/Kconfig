@@ -6,7 +6,6 @@ config MR60BHA2
 	default y
 	depends on DT_HAS_SEEED_MR60BHA2_ENABLED
 	depends on UART_INTERRUPT_DRIVEN
-	select UART
 	help
 	  Enable the driver for the Seeed MR60BHA2 UART radar.
 
