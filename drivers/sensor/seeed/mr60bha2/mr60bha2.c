@@ -89,7 +89,7 @@ static uint8_t mr60bha2_checksum(const uint8_t *buf, size_t len)
 		checksum ^= buf[i];
 	}
 
-	return (uint8_t)~checksum;
+	return ~checksum;
 }
 
 static bool mr60bha2_validate_checksum(const uint8_t *buf, size_t len, uint8_t expected)
@@ -166,8 +166,10 @@ static void mr60bha2_handle_frame(struct mr60bha2_data *data)
 		if (payload_len >= 4U) {
 			uint32_t targets = sys_get_le32(payload);
 
-			if (targets > UINT16_MAX) {
-				targets = UINT16_MAX;
+			if (targets > MR60BHA2_MAX_TARGETS) {
+				LOG_DBG("Clamping reported target count %u to %u", targets,
+					MR60BHA2_MAX_TARGETS);
+				targets = MR60BHA2_MAX_TARGETS;
 			}
 
 			data->target_count = (uint16_t)targets;
@@ -249,7 +251,12 @@ static int mr60bha2_sample_fetch(const struct device *dev, enum sensor_channel c
 
 	rc = k_sem_take(&data->frame_sem, K_MSEC(CONFIG_MR60BHA2_UART_TIMEOUT_MS));
 	if (rc != 0) {
-		return (rc == -EAGAIN) ? -ETIMEDOUT : rc;
+		if (rc == -EAGAIN) {
+			return -ETIMEDOUT;
+		}
+
+		LOG_ERR("k_sem_take failed: %d", rc);
+		return rc;
 	}
 
 	return 0;
@@ -329,7 +336,7 @@ static int mr60bha2_init(const struct device *dev)
 	int rc;
 
 	if (!device_is_ready(config->uart_dev)) {
-		LOG_ERR_DEVICE_NOT_READY(config->uart_dev);
+		LOG_ERR("UART device %s is not ready", config->uart_dev->name);
 		return -ENODEV;
 	}
 
