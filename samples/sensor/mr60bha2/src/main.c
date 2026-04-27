@@ -20,10 +20,10 @@
 #define RETRY_DELAY_MS   250
 
 static void print_channel_value(const struct device *dev, const char *label,
-			       enum sensor_channel chan)
+				enum sensor_channel channel)
 {
 	struct sensor_value val;
-	int rc = sensor_channel_get(dev, chan, &val);
+	int rc = sensor_channel_get(dev, channel, &val);
 
 	printk("  %-19s ", label);
 
@@ -35,7 +35,7 @@ static void print_channel_value(const struct device *dev, const char *label,
 		return;
 	}
 
-	switch ((uint32_t)chan) {
+	switch ((uint32_t)channel) {
 	case SENSOR_CHAN_PROX:
 		printk("%s\n", val.val1 ? "occupied" : "clear");
 		break;

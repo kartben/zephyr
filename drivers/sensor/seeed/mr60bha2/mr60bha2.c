@@ -165,15 +165,15 @@ static void mr60bha2_handle_frame(struct mr60bha2_data *data)
 	case MR60BHA2_TYPE_TARGET_INFO:
 	case MR60BHA2_TYPE_POINT_CLOUD:
 		if (payload_len >= 4U) {
-			uint32_t targets = sys_get_le32(payload);
+			uint32_t target_count = sys_get_le32(payload);
 
-			if (targets > MR60BHA2_MAX_TARGETS) {
-				LOG_DBG("Clamping reported target count %u to %u", targets,
+			if (target_count > MR60BHA2_MAX_TARGETS) {
+				LOG_DBG("Clamping reported target count %u to %u", target_count,
 					MR60BHA2_MAX_TARGETS);
-				targets = MR60BHA2_MAX_TARGETS;
+				target_count = MR60BHA2_MAX_TARGETS;
 			}
 
-			data->target_count = (uint16_t)targets;
+			data->target_count = (uint16_t)target_count;
 			data->target_count_valid = true;
 			notify = true;
 		}
@@ -210,9 +210,10 @@ static void mr60bha2_uart_isr(const struct device *uart_dev, void *user_data)
 		case MR60BHA2_RX_READ_HEADER:
 			data->rx_buf[data->rx_pos++] = byte;
 			if (data->rx_pos == MR60BHA2_HEADER_SIZE) {
-				uint16_t payload_len = sys_get_be16(&data->rx_buf[3]);
+				uint16_t rx_payload_len = sys_get_be16(&data->rx_buf[3]);
 
-				if (payload_len == 0U || payload_len > MR60BHA2_MAX_PAYLOAD_SIZE) {
+				if (rx_payload_len == 0U ||
+				    rx_payload_len > MR60BHA2_MAX_PAYLOAD_SIZE) {
 					mr60bha2_rx_reset(data);
 					if (byte == MR60BHA2_SOF) {
 						data->rx_buf[0] = byte;
@@ -222,7 +223,7 @@ static void mr60bha2_uart_isr(const struct device *uart_dev, void *user_data)
 					break;
 				}
 
-				data->frame_len = MR60BHA2_HEADER_SIZE + payload_len +
+				data->frame_len = MR60BHA2_HEADER_SIZE + rx_payload_len +
 						MR60BHA2_DATA_CHECKSUM_SIZE;
 				data->rx_state = MR60BHA2_RX_READ_BODY;
 			}
