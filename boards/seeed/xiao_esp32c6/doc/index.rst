@@ -10,6 +10,10 @@ It has a 320KB ROM, a 512KB SRAM, and works with external flash.
 This board integrates complete Wi-Fi, Bluetooth LE, Zigbee, and Thread functions.
 For more information, check `Seeed Studio XIAO ESP32C6`_ .
 
+The :ref:`mr60bha2 kit variant <xiao_esp32c6_mr60bha2>` combines the XIAO ESP32C6
+with the Seeed MR60BHA2 60 GHz mmWave radar, a BH1750 ambient light sensor,
+and an onboard WS2812 RGB LED. For hardware details, see the `Seeed Studio MR60BHA2 kit`_.
+
 Hardware
 ********
 
@@ -60,9 +64,32 @@ Debugging
 .. include:: ../../../espressif/common/openocd-debugging.rst
    :start-after: espressif-openocd-debugging
 
+Board Variants
+**************
+
+.. _xiao_esp32c6_mr60bha2:
+
+XIAO ESP32C6 MR60BHA2 kit
+=========================
+
+This variant models the pre-assembled MR60BHA2 breathing and heartbeat kit.
+In addition to the base XIAO ESP32C6 features, it enables:
+
+* the MR60BHA2 UART radar on ``xiao_serial``
+* the BH1750 ambient light sensor on ``i2c0``
+* the onboard WS2812 RGB LED on the I2S peripheral
+
+To build for the kit variant:
+
+.. zephyr-app-commands::
+   :zephyr-app: samples/hello_world
+   :board: xiao_esp32c6/esp32c6/hpcore/mr60bha2
+   :goals: build
+
 References
 **********
 
 .. target-notes::
 
 .. _`Seeed Studio XIAO ESP32C6`: https://wiki.seeedstudio.com/xiao_esp32c6_getting_started/
+.. _`Seeed Studio MR60BHA2 kit`: https://wiki.seeedstudio.com/getting_started_with_mr60bha2_mmwave_kit/

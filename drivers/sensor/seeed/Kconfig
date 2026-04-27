@@ -4,4 +4,5 @@
 # zephyr-keep-sorted-start
 source "drivers/sensor/seeed/grove/Kconfig"
 source "drivers/sensor/seeed/hm330x/Kconfig"
+source "drivers/sensor/seeed/mr60bha2/Kconfig"
 # zephyr-keep-sorted-stop

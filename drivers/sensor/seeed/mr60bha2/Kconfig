@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config MR60BHA2
+	bool "Seeed MR60BHA2 60 GHz mmWave sensor"
+	default y
+	depends on DT_HAS_SEEED_MR60BHA2_ENABLED
+	depends on UART_INTERRUPT_DRIVEN
+	select UART
+	help
+	  Enable the driver for the Seeed MR60BHA2 UART radar.
+
+config MR60BHA2_UART_TIMEOUT_MS
+	int "UART frame timeout in milliseconds"
+	default 200
+	depends on MR60BHA2
+	help
+	  Timeout used while waiting for the first valid MR60BHA2 report.

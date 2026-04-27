@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Seeed MR60BHA2 60 GHz mmWave breathing, heartbeat, and presence radar.
+
+compatible: "seeed,mr60bha2"
+
+include: [sensor-device.yaml, uart-device.yaml]

@@ -4,3 +4,6 @@ board:
   vendor: seeed
   socs:
   - name: esp32c6
+    variants:
+    - name: mr60bha2
+      cpucluster: hpcore

@@ -1,0 +1,65 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+
+#include "xiao_esp32c6_hpcore_common.dtsi"
+#include <zephyr/dt-bindings/led/led.h>
+
+/ {
+	model = "Seeed MR60BHA2 mmWave Kit with XIAO ESP32C6";
+	compatible = "seeed,mr60bha2-xiao-kit", "seeed,xiao-esp32c6";
+
+	aliases {
+		distance0 = &mr60bha2;
+		led-strip = &status_rgb_led;
+		light-sensor0 = &bh1750;
+		prox-sensor0 = &mr60bha2;
+		radar0 = &mr60bha2;
+	};
+};
+
+&i2c0 {
+	bh1750: light-sensor@23 {
+		compatible = "rohm,bh1750";
+		reg = <0x23>;
+		status = "okay";
+	};
+};
+
+&i2s_default {
+	group1 {
+		pinmux = <I2S_O_SD_GPIO1>;
+	};
+};
+
+&i2s {
+	status = "okay";
+	pinctrl-0 = <&i2s_default>;
+	pinctrl-names = "default";
+	dmas = <&dma 3>;
+	dma-names = "tx";
+
+	status_rgb_led: ws2812@0 {
+		compatible = "worldsemi,ws2812-i2s";
+		reg = <0>;
+		chain-length = <1>;
+		color-mapping = <LED_COLOR_ID_GREEN
+				 LED_COLOR_ID_RED
+				 LED_COLOR_ID_BLUE>;
+		reset-delay = <500>;
+	};
+};
+
+&dma {
+	status = "okay";
+};
+
+&xiao_serial {
+	mr60bha2: radar {
+		compatible = "seeed,mr60bha2";
+		status = "okay";
+	};
+};

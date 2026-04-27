@@ -1,0 +1,27 @@
+identifier: xiao_esp32c6/esp32c6/hpcore/mr60bha2
+name: XIAO ESP32C6 MR60BHA2 Kit
+type: mcu
+arch: riscv
+toolchain:
+  - zephyr
+supported:
+  - dma
+  - entropy
+  - gpio
+  - i2c
+  - led_strip
+  - sensor
+  - spi
+  - uart
+  - watchdog
+  - xiao_gpio
+  - xiao_i2c
+  - xiao_serial
+  - xiao_spi
+  - netif:openthread
+
+testing:
+  ignore_tags:
+    - bluetooth
+    - tracing
+vendor: seeed
