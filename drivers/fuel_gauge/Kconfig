@@ -33,4 +33,6 @@ source "drivers/fuel_gauge/sbs_gauge/Kconfig"
 source "drivers/fuel_gauge/sy24561/Kconfig"
 # zephyr-keep-sorted-stop
 
+source "drivers/fuel_gauge/Kconfig.shell"
+
 endif # FUEL_GAUGE

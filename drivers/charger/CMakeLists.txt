@@ -4,6 +4,7 @@ zephyr_library()
 zephyr_syscall_header(${ZEPHYR_BASE}/include/zephyr/drivers/charger.h)
 
 zephyr_library_sources_ifdef(CONFIG_USERSPACE charger_handlers.c)
+zephyr_library_sources_ifdef(CONFIG_CHARGER_SHELL charger_shell.c)
 
 # zephyr-keep-sorted-start
 zephyr_library_include_directories_ifdef(CONFIG_CHARGER_ADP5360 ${ZEPHYR_BASE}/drivers/mfd)

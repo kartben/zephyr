@@ -1,0 +1,9 @@
+# Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config FUEL_GAUGE_SHELL
+	bool "Fuel gauge shell"
+	default y
+	depends on SHELL
+	help
+	  Enable battery fuel gauge shell commands.

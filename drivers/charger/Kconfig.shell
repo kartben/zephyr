@@ -1,0 +1,9 @@
+# Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config CHARGER_SHELL
+	bool "Charger shell"
+	default y
+	depends on SHELL
+	help
+	  Enable battery charger shell commands.
