@@ -1126,6 +1126,137 @@ static int cmd_trig_sensor(const struct shell *sh, size_t argc, char **argv)
 	return err;
 }
 
+#ifdef CONFIG_SENSOR_SHELL_WATCH
+#define SENSOR_WATCH_HELP                                                                          \
+	SHELL_HELP("Periodically read sensor data, showing per-channel min/max statistics.\n"      \
+		   "If no channel is given, all supported channels are sampled.\n"                  \
+		   "Defaults: interval=1000 ms, count=10 samples.",                                \
+		   "<device_name> [<channel_name>] [<interval_ms>] [<count>]")
+
+static int cmd_sensor_watch(const struct shell *sh, size_t argc, char *argv[])
+{
+	const struct device *dev;
+	int chan = -1;
+	uint32_t interval_ms = 1000U;
+	uint32_t count = 10U;
+	int arg_idx = 2;
+
+	dev = shell_device_get_binding(argv[1]);
+	if (dev == NULL || !sensor_device_check(dev)) {
+		shell_error(sh, "Sensor device unknown (%s)", argv[1]);
+		return -ENODEV;
+	}
+
+	if (!device_is_sensor(dev)) {
+		shell_error(sh, "Device is not a sensor (%s)", argv[1]);
+		return -ENODEV;
+	}
+
+	/* Optional: channel name (checked before treating the arg as a number) */
+	if (argc > arg_idx) {
+		int parsed = parse_named_int(argv[arg_idx], sensor_channel_name,
+					     ARRAY_SIZE(sensor_channel_name));
+
+		if (parsed >= 0) {
+			chan = (parsed == SENSOR_CHAN_ALL) ? -1 : parsed;
+			arg_idx++;
+		}
+	}
+
+	/* Optional: interval_ms */
+	if (argc > arg_idx) {
+		int err2 = 0;
+
+		interval_ms = (uint32_t)shell_strtoul(argv[arg_idx], 10, &err2);
+		if (err2 != 0) {
+			shell_error(sh, "Expected interval_ms, got '%s'", argv[arg_idx]);
+			return -EINVAL;
+		}
+		arg_idx++;
+	}
+
+	/* Optional: sample count */
+	if (argc > arg_idx) {
+		int err2 = 0;
+
+		count = (uint32_t)shell_strtoul(argv[arg_idx], 10, &err2);
+		if (err2 != 0 || count == 0U) {
+			shell_error(sh, "Expected count > 0, got '%s'", argv[arg_idx]);
+			return -EINVAL;
+		}
+	}
+
+	struct sensor_value min_val[SENSOR_CHAN_ALL];
+	struct sensor_value max_val[SENSOR_CHAN_ALL];
+	bool initialized[SENSOR_CHAN_ALL];
+
+	memset(initialized, 0, sizeof(initialized));
+
+	shell_print(sh, "Watching %s: %u sample(s) every %u ms",
+		    dev->name, count, interval_ms);
+
+	for (uint32_t i = 0U; i < count; i++) {
+		int64_t ts = k_uptime_get();
+		int err;
+
+		err = sensor_sample_fetch(dev);
+		if (err != 0) {
+			shell_error(sh, "Sample fetch failed (%d)", err);
+			return err;
+		}
+
+		shell_print(sh, "[%lld ms] Sample #%u:", ts, i + 1U);
+
+		for (int ch = 0; ch < SENSOR_CHAN_ALL; ch++) {
+			struct sensor_value val;
+			double v;
+
+			if (chan >= 0 && ch != chan) {
+				continue;
+			}
+			if (SENSOR_CHANNEL_3_AXIS(ch)) {
+				continue;
+			}
+			if (sensor_channel_name[ch] == NULL) {
+				continue;
+			}
+			if (sensor_channel_get(dev, (enum sensor_channel)ch, &val) != 0) {
+				continue;
+			}
+
+			v = sensor_value_to_double(&val);
+
+			if (!initialized[ch]) {
+				min_val[ch] = val;
+				max_val[ch] = val;
+				initialized[ch] = true;
+			} else {
+				if (v < sensor_value_to_double(&min_val[ch])) {
+					min_val[ch] = val;
+				}
+				if (v > sensor_value_to_double(&max_val[ch])) {
+					max_val[ch] = val;
+				}
+			}
+
+			shell_print(sh,
+				    "  %s: %d.%06d"
+				    " (min: %d.%06d, max: %d.%06d)",
+				    sensor_channel_name[ch],
+				    val.val1, abs(val.val2),
+				    min_val[ch].val1, abs(min_val[ch].val2),
+				    max_val[ch].val1, abs(max_val[ch].val2));
+		}
+
+		if (i < count - 1U) {
+			k_msleep(interval_ms);
+		}
+	}
+
+	return 0;
+}
+#endif /* CONFIG_SENSOR_SHELL_WATCH */
+
 /* clang-format off */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_sensor,
 	SHELL_CMD_ARG(get, &dsub_device_name, SENSOR_GET_HELP, cmd_get_sensor,
@@ -1140,6 +1271,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_sensor,
 			cmd_get_sensor_info),
 	SHELL_CMD_ARG(trig, &dsub_trigger, SENSOR_TRIG_HELP, cmd_trig_sensor,
 			2, 255),
+	SHELL_COND_CMD_ARG(CONFIG_SENSOR_SHELL_WATCH, watch, &dsub_device_name,
+			SENSOR_WATCH_HELP, cmd_sensor_watch, 2, 3),
 	SHELL_SUBCMD_SET_END
 	);
 /* clang-format on */

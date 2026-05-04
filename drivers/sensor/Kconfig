@@ -55,6 +55,15 @@ config SENSOR_SHELL_THREAD_STACK_SIZE
 	  sensors in either one-shot or streaming mode. Use this config to control
 	  the size of that thread's stack.
 
+config SENSOR_SHELL_WATCH
+	bool "Sensor shell 'watch' command"
+	default y
+	depends on SENSOR_SHELL
+	help
+	  Add the 'watch' subcommand to the sensor shell. It periodically reads
+	  a sensor using the legacy fetch/get API and displays current readings
+	  together with running per-channel min/max statistics.
+
 config SENSOR_SHELL_BATTERY
 	bool "Sensor shell 'battery' command"
 	depends on SHELL
