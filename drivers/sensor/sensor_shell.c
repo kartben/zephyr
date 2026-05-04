@@ -1165,10 +1165,10 @@ static int cmd_sensor_watch(const struct shell *sh, size_t argc, char *argv[])
 
 	/* Optional: interval_ms */
 	if (argc > arg_idx) {
-		int err2 = 0;
+		int parse_err = 0;
 
-		interval_ms = (uint32_t)shell_strtoul(argv[arg_idx], 10, &err2);
-		if (err2 != 0) {
+		interval_ms = (uint32_t)shell_strtoul(argv[arg_idx], 10, &parse_err);
+		if (parse_err != 0) {
 			shell_error(sh, "Expected interval_ms, got '%s'", argv[arg_idx]);
 			return -EINVAL;
 		}
@@ -1177,18 +1177,24 @@ static int cmd_sensor_watch(const struct shell *sh, size_t argc, char *argv[])
 
 	/* Optional: sample count */
 	if (argc > arg_idx) {
-		int err2 = 0;
+		int parse_err = 0;
 
-		count = (uint32_t)shell_strtoul(argv[arg_idx], 10, &err2);
-		if (err2 != 0 || count == 0U) {
+		count = (uint32_t)shell_strtoul(argv[arg_idx], 10, &parse_err);
+		if (parse_err != 0 || count == 0U) {
 			shell_error(sh, "Expected count > 0, got '%s'", argv[arg_idx]);
 			return -EINVAL;
 		}
 	}
 
-	struct sensor_value min_val[SENSOR_CHAN_ALL];
-	struct sensor_value max_val[SENSOR_CHAN_ALL];
-	bool initialized[SENSOR_CHAN_ALL];
+	/*
+	 * Per-channel accumulators.  Declared static to avoid placing
+	 * ~1 KB of sensor_value arrays on the shell thread stack.
+	 * The command blocks the shell thread for its full duration, so
+	 * concurrent invocations are impossible and static storage is safe.
+	 */
+	static struct sensor_value min_val[SENSOR_CHAN_ALL];
+	static struct sensor_value max_val[SENSOR_CHAN_ALL];
+	static bool initialized[SENSOR_CHAN_ALL];
 
 	memset(initialized, 0, sizeof(initialized));
 

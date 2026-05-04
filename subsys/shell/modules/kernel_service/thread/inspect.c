@@ -63,16 +63,9 @@ static void inspect_rt_stats(const struct shell *sh, struct k_thread *thread)
 	k_thread_runtime_stats_t rt_stats_thread;
 	k_thread_runtime_stats_t rt_stats_all;
 	unsigned int pcnt;
-	int ret = 0;
 
-	if (k_thread_runtime_stats_get(thread, &rt_stats_thread) != 0) {
-		ret++;
-	}
-	if (k_thread_runtime_stats_all_get(&rt_stats_all) != 0) {
-		ret++;
-	}
-
-	if (ret != 0) {
+	if (k_thread_runtime_stats_get(thread, &rt_stats_thread) != 0 ||
+	    k_thread_runtime_stats_all_get(&rt_stats_all) != 0) {
 		shell_print(sh, "  runtime stats: unavailable");
 		return;
 	}
