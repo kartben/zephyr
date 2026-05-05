@@ -43,6 +43,43 @@ LOG_MODULE_REGISTER(net_sock_addr, CONFIG_NET_SOCKETS_LOG_LEVEL);
 
 #endif
 
+static void getaddrinfo_set_socket_info(const struct zsock_addrinfo *hints,
+					int *socktype, int *protocol)
+{
+	*socktype = NET_SOCK_STREAM;
+	*protocol = NET_IPPROTO_TCP;
+
+	if (hints == NULL) {
+		return;
+	}
+
+	switch (hints->ai_socktype) {
+	case NET_SOCK_DGRAM:
+		*socktype = NET_SOCK_DGRAM;
+		*protocol = NET_IPPROTO_UDP;
+		return;
+	case NET_SOCK_SEQPACKET:
+		*socktype = NET_SOCK_SEQPACKET;
+		*protocol = NET_IPPROTO_SCTP;
+		return;
+	default:
+		break;
+	}
+
+	switch (hints->ai_protocol) {
+	case NET_IPPROTO_UDP:
+		*socktype = NET_SOCK_DGRAM;
+		*protocol = NET_IPPROTO_UDP;
+		break;
+	case NET_IPPROTO_SCTP:
+		*socktype = NET_SOCK_SEQPACKET;
+		*protocol = NET_IPPROTO_SCTP;
+		break;
+	default:
+		break;
+	}
+}
+
 #if defined(CONFIG_DNS_RESOLVER)
 
 struct getaddrinfo_state {
@@ -93,13 +130,13 @@ static void dns_resolve_cb(enum dns_resolve_status status,
 	ai->ai_family = info->ai_family;
 
 	if (state->hints) {
-		if (state->hints->ai_socktype) {
-			socktype = state->hints->ai_socktype;
-		}
+		getaddrinfo_set_socket_info(state->hints, &socktype,
+					    &ai->ai_protocol);
+	} else {
+		ai->ai_protocol = NET_IPPROTO_TCP;
 	}
 
 	ai->ai_socktype = socktype;
-	ai->ai_protocol = (socktype == NET_SOCK_DGRAM) ? NET_IPPROTO_UDP : NET_IPPROTO_TCP;
 
 	state->idx++;
 }
@@ -218,13 +255,8 @@ static int getaddrinfo_null_host(int port, const struct zsock_addrinfo *hints,
 		return DNS_EAI_FAIL;
 	}
 
-	if (hints->ai_socktype == NET_SOCK_DGRAM) {
-		res->ai_socktype = NET_SOCK_DGRAM;
-		res->ai_protocol = NET_IPPROTO_UDP;
-	} else {
-		res->ai_socktype = NET_SOCK_STREAM;
-		res->ai_protocol = NET_IPPROTO_TCP;
-	}
+	getaddrinfo_set_socket_info(hints, &res->ai_socktype,
+				    &res->ai_protocol);
 	return 0;
 }
 
@@ -374,19 +406,17 @@ static int try_resolve_literal_addr(const char *host, const char *service,
 	int resolved_family = NET_AF_UNSPEC;
 	long port = 0;
 	bool result;
-	int socktype = NET_SOCK_STREAM;
-	int protocol = NET_IPPROTO_TCP;
+	int socktype;
+	int protocol;
 
 	if (!host) {
 		return DNS_EAI_NONAME;
 	}
 
+	getaddrinfo_set_socket_info(hints, &socktype, &protocol);
+
 	if (hints) {
 		family = hints->ai_family;
-		if (hints->ai_socktype == NET_SOCK_DGRAM) {
-			socktype = NET_SOCK_DGRAM;
-			protocol = NET_IPPROTO_UDP;
-		}
 	}
 
 	result = net_ipaddr_parse(host, strlen(host), net_sad(&res->_ai_addr));

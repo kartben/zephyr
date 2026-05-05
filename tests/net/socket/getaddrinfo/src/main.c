@@ -330,6 +330,16 @@ ZTEST(net_socket_getaddrinfo, test_getaddrinfo_num_ipv4)
 	zassert_equal(saddr->sin_addr.s4_addr[2], 3, "");
 	zassert_equal(saddr->sin_addr.s4_addr[3], 255, "");
 	zsock_freeaddrinfo(res);
+
+	hints.ai_socktype = NET_SOCK_SEQPACKET;
+	ret = zsock_getaddrinfo("1.2.3.255", "65534", &hints, &res);
+	zassert_equal(ret, 0, "Invalid result");
+	zassert_not_null(res, "");
+	zassert_is_null(res->ai_next, "");
+	zassert_equal(res->ai_family, NET_AF_INET, "");
+	zassert_equal(res->ai_socktype, NET_SOCK_SEQPACKET, "");
+	zassert_equal(res->ai_protocol, NET_IPPROTO_SCTP, "");
+	zsock_freeaddrinfo(res);
 }
 
 ZTEST(net_socket_getaddrinfo, test_getaddrinfo_num_ipv6)
@@ -663,6 +673,20 @@ ZTEST(net_socket_getaddrinfo, test_getaddrinfo_null_host)
 	zassert_equal(res->ai_socktype, NET_SOCK_DGRAM, "");
 	zassert_equal(res->ai_protocol, NET_IPPROTO_UDP, "");
 	saddr = (struct net_sockaddr_in *)res->ai_addr;
+	zassert_equal(saddr->sin_family, NET_AF_INET, "");
+	zassert_equal(saddr->sin_port, net_htons(80), "");
+	zsock_freeaddrinfo(res);
+
+	/* Test IPv4 SCTP */
+	hints.ai_socktype = NET_SOCK_SEQPACKET;
+	ret = zsock_getaddrinfo(NULL, "80", &hints, &res);
+	zassert_equal(ret, 0, "Invalid result");
+	zassert_not_null(res, "");
+	zassert_is_null(res->ai_next, "");
+	zassert_equal(res->ai_family, NET_AF_INET, "");
+	zassert_equal(res->ai_socktype, NET_SOCK_SEQPACKET, "");
+	zassert_equal(res->ai_protocol, NET_IPPROTO_SCTP, "");
+	saddr = net_sin(res->ai_addr);
 	zassert_equal(saddr->sin_family, NET_AF_INET, "");
 	zassert_equal(saddr->sin_port, net_htons(80), "");
 	zsock_freeaddrinfo(res);

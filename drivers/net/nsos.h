@@ -35,6 +35,7 @@ enum nsos_mid_net_ip_protocol {
 	NSOS_MID_IPPROTO_UDP = 17,          /**< UDP protocol    */
 	NSOS_MID_IPPROTO_IPV6 = 41,         /**< IPv6 protocol   */
 	NSOS_MID_IPPROTO_ICMPV6 = 58,       /**< ICMPv6 protocol */
+	NSOS_MID_IPPROTO_SCTP = 132,        /**< SCTP protocol   */
 	NSOS_MID_IPPROTO_RAW = 255,         /**< RAW IP packets  */
 };
 
@@ -42,7 +43,8 @@ enum nsos_mid_net_ip_protocol {
 enum nsos_mid_net_sock_type {
 	NSOS_MID_SOCK_STREAM = 1,           /**< Stream socket type   */
 	NSOS_MID_SOCK_DGRAM,                /**< Datagram socket type */
-	NSOS_MID_SOCK_RAW                   /**< RAW socket type      */
+	NSOS_MID_SOCK_RAW,                  /**< RAW socket type      */
+	NSOS_MID_SOCK_SEQPACKET = 5,        /**< Sequenced packet socket type */
 };
 
 #define NSOS_MID_MSG_PEEK 0x02

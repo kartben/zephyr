@@ -114,6 +114,9 @@ static int socket_proto_to_nsos_mid(int proto, int *proto_mid)
 	case NET_IPPROTO_IPV6:
 		*proto_mid = NSOS_MID_IPPROTO_IPV6;
 		break;
+	case NET_IPPROTO_SCTP:
+		*proto_mid = NSOS_MID_IPPROTO_SCTP;
+		break;
 	case NET_IPPROTO_RAW:
 		*proto_mid = NSOS_MID_IPPROTO_RAW;
 		break;
@@ -138,6 +141,9 @@ static int socket_type_to_nsos_mid(int type, int *type_mid)
 		break;
 	case NET_SOCK_RAW:
 		*type_mid = NSOS_MID_SOCK_RAW;
+		break;
+	case NET_SOCK_SEQPACKET:
+		*type_mid = NSOS_MID_SOCK_SEQPACKET;
 		break;
 	default:
 		return -NSI_ERRNO_MID_ESOCKTNOSUPPORT;
@@ -981,6 +987,9 @@ static int socket_type_from_nsos_mid(int type_mid, int *type)
 	case NSOS_MID_SOCK_RAW:
 		*type = NET_SOCK_RAW;
 		break;
+	case NSOS_MID_SOCK_SEQPACKET:
+		*type = NET_SOCK_SEQPACKET;
+		break;
 	default:
 		return -NSI_ERRNO_MID_ESOCKTNOSUPPORT;
 	}
@@ -1011,6 +1020,9 @@ static int socket_proto_from_nsos_mid(int proto_mid, int *proto)
 		break;
 	case NSOS_MID_IPPROTO_IPV6:
 		*proto = NET_IPPROTO_IPV6;
+		break;
+	case NSOS_MID_IPPROTO_SCTP:
+		*proto = NET_IPPROTO_SCTP;
 		break;
 	case NSOS_MID_IPPROTO_RAW:
 		*proto = NET_IPPROTO_RAW;

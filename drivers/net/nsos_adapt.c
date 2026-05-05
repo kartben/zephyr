@@ -42,6 +42,14 @@
 
 #include <stdio.h>
 
+#ifndef IPPROTO_SCTP
+#define IPPROTO_SCTP 132
+#endif
+
+#ifndef SOCK_SEQPACKET
+#define SOCK_SEQPACKET 5
+#endif
+
 static int nsos_epoll_fd;
 static int nsos_adapt_nfds;
 
@@ -135,6 +143,9 @@ static int socket_proto_from_nsos_mid(int proto_mid, int *proto)
 	case NSOS_MID_IPPROTO_IPV6:
 		*proto = IPPROTO_IPV6;
 		break;
+	case NSOS_MID_IPPROTO_SCTP:
+		*proto = IPPROTO_SCTP;
+		break;
 	case NSOS_MID_IPPROTO_RAW:
 		*proto = IPPROTO_RAW;
 		break;
@@ -173,6 +184,9 @@ static int socket_proto_to_nsos_mid(int proto, int *proto_mid)
 	case IPPROTO_IPV6:
 		*proto_mid = NSOS_MID_IPPROTO_IPV6;
 		break;
+	case IPPROTO_SCTP:
+		*proto_mid = NSOS_MID_IPPROTO_SCTP;
+		break;
 	case IPPROTO_RAW:
 		*proto_mid = NSOS_MID_IPPROTO_RAW;
 		break;
@@ -199,6 +213,9 @@ static int socket_type_from_nsos_mid(int type_mid, int *type)
 	case NSOS_MID_SOCK_RAW:
 		*type = SOCK_RAW;
 		break;
+	case NSOS_MID_SOCK_SEQPACKET:
+		*type = SOCK_SEQPACKET;
+		break;
 	default:
 		nsi_print_warning("%s: socket type %d not supported\n", __func__, type_mid);
 		return -NSI_ERRNO_MID_ESOCKTNOSUPPORT;
@@ -218,6 +235,9 @@ static int socket_type_to_nsos_mid(int type, int *type_mid)
 		break;
 	case SOCK_RAW:
 		*type_mid = NSOS_MID_SOCK_RAW;
+		break;
+	case SOCK_SEQPACKET:
+		*type_mid = NSOS_MID_SOCK_SEQPACKET;
 		break;
 	default:
 		nsi_print_warning("%s: socket type %d not supported\n", __func__, type);

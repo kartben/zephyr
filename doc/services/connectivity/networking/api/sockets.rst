@@ -75,6 +75,9 @@ what socket types are available:
 |              |             | IPPROTO_TLS_1_x  | Enabled if :kconfig:option:`CONFIG_NET_SOCKETS_SOCKOPT_TLS` is set. |br|  |
 |              |             |                  | Allows to send and receive TLS data stream.                               |
 |              +-------------+------------------+---------------------------------------------------------------------------+
+|              | SOCK_       | IPPROTO_SCTP    | Available for offloaded socket implementations that support SCTP. |br|    |
+|              | SEQPACKET   |                  | The native Zephyr IP stack does not implement SCTP.                       |
+|              +-------------+------------------+---------------------------------------------------------------------------+
 |              | SOCK_RAW    | IPPROTO_IP |br|  | Enabled if :kconfig:option:`CONFIG_NET_SOCKETS_INET_RAW` is set. |br|     |
 |              |             | <proto>          | Allows to send and receive IPv4/IPv6 datagrams. |br|                      |
 |              |             |                  | Packets are filtered by L4 protocol specified.                            |
@@ -94,7 +97,8 @@ what socket types are available:
 
 See :zephyr:code-sample:`sockets-echo-server` and :zephyr:code-sample:`sockets-echo-client`
 sample applications to learn how to create a simple server or client BSD socket based
-application.
+application. For an offloaded SCTP example, see
+:zephyr:code-sample:`sockets-sctp-loopback`.
 
 .. _secure_sockets_interface:
 
@@ -244,6 +248,10 @@ that the interface is offloaded with :c:func:`net_if_socket_offload_set`
 function. The function registers the function used to create an offloaded socket
 (the same as the one provided in :c:macro:`NET_SOCKET_OFFLOAD_REGISTER`) at the
 network interface.
+
+SCTP support is currently exposed through this socket offloading path. Applications
+can create ``SOCK_SEQPACKET`` sockets with ``IPPROTO_SCTP`` when the selected
+offloaded implementation advertises SCTP support.
 
 Offloaded socket creation
 =========================

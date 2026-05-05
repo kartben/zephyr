@@ -38,6 +38,9 @@ static struct test_socket_calls {
 	bool sendmsg_called;
 	bool getsockname_called;
 	bool getpeername_called;
+	int family;
+	int type;
+	int proto;
 } test_socket_ctx[OFFLOAD_COUNT];
 
 static int test_sock = -1;
@@ -283,6 +286,9 @@ int offload_1_socket(int family, int type, int proto)
 			    ZVFS_MODE_IFSOCK);
 
 	test_socket_ctx[OFFLOAD_1].socket_called = true;
+	test_socket_ctx[OFFLOAD_1].family = family;
+	test_socket_ctx[OFFLOAD_1].type = type;
+	test_socket_ctx[OFFLOAD_1].proto = proto;
 
 	return fd;
 }
@@ -345,6 +351,9 @@ int offload_2_socket(int family, int type, int proto)
 			    ZVFS_MODE_IFSOCK);
 
 	test_socket_ctx[OFFLOAD_2].socket_called = true;
+	test_socket_ctx[OFFLOAD_2].family = family;
+	test_socket_ctx[OFFLOAD_2].type = type;
+	test_socket_ctx[OFFLOAD_2].proto = proto;
 
 	return fd;
 }
@@ -438,6 +447,17 @@ static void test_socket_setup_tls(void *dummy)
 		      "Socket should'nt have been dispatched yet");
 }
 
+static void test_socket_setup_sctp(void *dummy)
+{
+	ARG_UNUSED(dummy);
+	test_result_reset();
+
+	test_sock = zsock_socket(NET_AF_INET, NET_SOCK_SEQPACKET, NET_IPPROTO_SCTP);
+	zassert_true(test_sock >= 0, "Failed to create socket");
+	zassert_false(test_socket_ctx[OFFLOAD_1].socket_called,
+		      "Socket should'nt have been dispatched yet");
+}
+
 static void test_socket_teardown(void *dummy)
 {
 	ARG_UNUSED(dummy);
@@ -478,6 +498,22 @@ ZTEST(net_socket_offload_udp, test_fcntl_not_bound)
 		     "Socket should've been dispatched");
 	zassert_true(test_socket_ctx[OFFLOAD_1].ioctl_called,
 		     "zsock_fcntl() should've been dispatched");
+}
+
+ZTEST(net_socket_offload_sctp, test_dispatch_seqpacket_sctp)
+{
+	int ret;
+
+	ret = zsock_fcntl(test_sock, ZVFS_F_SETFL, 0);
+	zassert_equal(0, ret, "zsock_fcntl() failed");
+	zassert_true(test_socket_ctx[OFFLOAD_1].socket_called,
+		     "Socket should've been dispatched");
+	zassert_equal(test_socket_ctx[OFFLOAD_1].family, NET_AF_INET,
+		      "Unexpected family");
+	zassert_equal(test_socket_ctx[OFFLOAD_1].type, NET_SOCK_SEQPACKET,
+		      "Unexpected type");
+	zassert_equal(test_socket_ctx[OFFLOAD_1].proto, NET_IPPROTO_SCTP,
+		      "Unexpected protocol");
 }
 
 /* Verify that socket is automatically dispatched to a default socket
@@ -883,6 +919,8 @@ ZTEST(net_socket_offload_tls, test_tls_native_iface_native_bindtodevice_only)
 }
 
 ZTEST_SUITE(net_socket_offload_udp, NULL, NULL, test_socket_setup_udp,
+	    test_socket_teardown, NULL);
+ZTEST_SUITE(net_socket_offload_sctp, NULL, NULL, test_socket_setup_sctp,
 	    test_socket_teardown, NULL);
 ZTEST_SUITE(net_socket_offload_tls, NULL, NULL, test_socket_setup_tls,
 	    test_socket_teardown, NULL);

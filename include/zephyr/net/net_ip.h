@@ -71,6 +71,7 @@ enum net_ip_protocol {
 	NET_IPPROTO_UDP = 17,          /**< UDP protocol    */
 	NET_IPPROTO_IPV6 = 41,         /**< IPv6 protocol   */
 	NET_IPPROTO_ICMPV6 = 58,       /**< ICMPv6 protocol */
+	NET_IPPROTO_SCTP = 132,        /**< SCTP protocol   */
 	NET_IPPROTO_RAW = 255,         /**< RAW IP packets  */
 };
 
@@ -89,7 +90,8 @@ enum net_ip_protocol_secure {
 enum net_sock_type {
 	NET_SOCK_STREAM = 1,           /**< Stream socket type   */
 	NET_SOCK_DGRAM,                /**< Datagram socket type */
-	NET_SOCK_RAW                   /**< RAW socket type      */
+	NET_SOCK_RAW,                  /**< RAW socket type      */
+	NET_SOCK_SEQPACKET = 5,        /**< Sequenced packet socket type */
 };
 
 /** @brief Convert 16-bit value from network to host byte order.
