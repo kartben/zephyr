@@ -16,6 +16,5 @@ _pend_curr_irqlock().  From this initial state:
    (the kernel switches to the main thread)
 5. The main thread returns from k_yield()
 
-It then iterates this many times, reporting timestamp latencies
-between each numbered step and for the whole cycle, and a running
-average for all cycles run.
+It then iterates this many times, and the ztest benchmark framework
+reports the measured cycle statistics for the full scheduling cycle.

@@ -65,6 +65,11 @@ K_SEM_DEFINE(done_sem, 0, 999);
 K_THREAD_DEFINE(thread0, 1024, thread_fn, &t0_0, &t0_1, NULL, HI_PRIO, 0, 0);
 K_THREAD_DEFINE(thread1, 1024, thread_fn, &t1_0, &t1_1, NULL, HI_PRIO, 0, 0);
 
+#ifdef CONFIG_CPU_CORTEX_M
+static uint32_t systick_ctrl;
+static uint32_t systick_load;
+#endif
+
 void thread_fn(void *t0_arg, void *t1_arg, void *c)
 {
 	uint32_t t0, t1, *t0_out = t0_arg, *t1_out = t1_arg;
@@ -162,6 +167,10 @@ static void swap_suite_setup(void)
 	zassert_equal(arch_num_cpus(), 1, "benchmark requires a single active CPU");
 #endif
 
+#ifdef CONFIG_CPU_CORTEX_M
+	systick_ctrl = SysTick->CTRL;
+	systick_load = SysTick->LOAD;
+#endif
 	time_setup();
 	k_thread_priority_set(k_current_get(), MAIN_PRIO);
 }
@@ -170,6 +179,11 @@ static void swap_suite_teardown(void)
 {
 	k_thread_abort(thread0);
 	k_thread_abort(thread1);
+
+#ifdef CONFIG_CPU_CORTEX_M
+	SysTick->LOAD = systick_load;
+	SysTick->CTRL = systick_ctrl;
+#endif
 }
 
 ZTEST_BENCHMARK_SUITE(swap_benchmark, swap_suite_setup, swap_suite_teardown);
