@@ -441,7 +441,7 @@ static void gather_iface_cb(struct net_if *iface, void *user_data)
 
 	/* Iterate unicast IPv4 addresses */
 	for (int i = 0; i < NET_IF_MAX_IPV4_ADDR; i++) {
-		struct net_if_addr *ifaddr;
+		struct net_if_addr_ipv4 *ifaddr4;
 		struct sockaddr_in sin;
 		int sock;
 		int ret;
@@ -449,8 +449,8 @@ static void gather_iface_cb(struct net_if *iface, void *user_data)
 		if (cfg->ip.ipv4 == NULL) {
 			break;
 		}
-		ifaddr = &cfg->ip.ipv4->unicast[i];
-		if (!ifaddr->is_used) {
+		ifaddr4 = &cfg->ip.ipv4->unicast[i];
+		if (!ifaddr4->ipv4.is_used) {
 			continue;
 		}
 
@@ -471,7 +471,8 @@ static void gather_iface_cb(struct net_if *iface, void *user_data)
 		memset(&sin, 0, sizeof(sin));
 		sin.sin_family = AF_INET;
 		sin.sin_port = 0;
-		memcpy(&sin.sin_addr, &ifaddr->address.in_addr,
+		memcpy(&sin.sin_addr,
+		       &ifaddr4->ipv4.address.in_addr,
 		       sizeof(sin.sin_addr));
 
 		ret = zsock_bind(sock, (struct sockaddr *)&sin, sizeof(sin));
@@ -501,7 +502,8 @@ static void gather_iface_cb(struct net_if *iface, void *user_data)
 			&pc->local_candidates[pc->local_candidate_count];
 		char addr_str[INET_ADDRSTRLEN];
 
-		net_addr_ntop(AF_INET, &ifaddr->address.in_addr,
+		net_addr_ntop(AF_INET,
+			      &ifaddr4->ipv4.address.in_addr,
 			      addr_str, sizeof(addr_str));
 		strncpy(c->addr, addr_str, sizeof(c->addr) - 1U);
 		c->port = ntohs(sin.sin_port);

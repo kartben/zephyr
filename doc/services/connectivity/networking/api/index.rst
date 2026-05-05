@@ -24,4 +24,5 @@ libraries for the application to use. See the list below for details.
    quic.rst
    system_mgmt.rst
    tsn.rst
+   webrtc.rst
    zperf.rst

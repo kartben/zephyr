@@ -75,6 +75,16 @@ config WEBRTC_SDP_MAX_LEN
 	  answer descriptions.  Increase this value if ICE candidates
 	  cause the generated SDP to exceed the default size.
 
+config WEBRTC_CERT_BUF_SIZE
+	int "Certificate copy buffer size in bytes"
+	default 2048
+	range 512 8192
+	help
+	  Size of the static buffer used when reading a DER-encoded X.509
+	  certificate from the TLS credentials store during peer connection
+	  initialisation.  Must be at least as large as the DER-encoded
+	  certificate registered under the DTLS credential tag.
+
 config WEBRTC_IO_RECV_BUF_SIZE
 	int "I/O receive buffer size in bytes"
 	default 1500

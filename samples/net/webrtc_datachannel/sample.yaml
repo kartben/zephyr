@@ -1,0 +1,14 @@
+common:
+  tags:
+    - net
+    - webrtc
+  min_ram: 64
+  depends_on: netif
+sample:
+  description: WebRTC data channel sample
+  name: webrtc_datachannel
+tests:
+  sample.net.webrtc_datachannel:
+    harness: net
+    platform_exclude:
+      - intel_adsp/cavs25

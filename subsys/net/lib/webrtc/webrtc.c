@@ -258,15 +258,15 @@ static void generate_ice_credentials(struct webrtc_sdp_info *sdp)
 static int populate_fingerprint(struct webrtc_sdp_info *sdp,
 				sec_tag_t dtls_tag)
 {
-	const void *cert = NULL;
-	size_t cert_len = 0U;
+	static uint8_t cert_buf[CONFIG_WEBRTC_CERT_BUF_SIZE];
+	size_t cert_len = sizeof(cert_buf);
 	psa_status_t status;
 	size_t hash_len;
 	int ret;
 
 	ret = tls_credential_get(dtls_tag,
 				 TLS_CREDENTIAL_PUBLIC_CERTIFICATE,
-				 &cert, &cert_len);
+				 cert_buf, &cert_len);
 	if (ret != 0) {
 		LOG_ERR("WebRTC: cannot get certificate for tag %d: %d",
 			(int)dtls_tag, ret);
@@ -274,7 +274,7 @@ static int populate_fingerprint(struct webrtc_sdp_info *sdp,
 	}
 
 	status = psa_hash_compute(PSA_ALG_SHA_256,
-				  (const uint8_t *)cert, cert_len,
+				  cert_buf, cert_len,
 				  sdp->fingerprint,
 				  WEBRTC_FINGERPRINT_LEN,
 				  &hash_len);

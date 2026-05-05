@@ -28,9 +28,8 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_DECLARE(net_webrtc, CONFIG_NET_WEBRTC_LOG_LEVEL);
 
-#include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
-#include <stdlib.h>
 #include <errno.h>
 
 #include <zephyr/kernel.h>
@@ -103,15 +102,39 @@ static int parse_fingerprint(const char *str, uint8_t *out)
 	size_t i;
 
 	for (i = 0U; i < WEBRTC_FINGERPRINT_LEN; i++) {
-		unsigned int byte;
-		int consumed;
+		uint8_t hi, lo;
 
-		if (sscanf(str, "%2x%n", &byte, &consumed) != 1) {
+		/* High nibble */
+		if (*str >= '0' && *str <= '9') {
+			hi = (uint8_t)(*str - '0');
+		} else if (*str >= 'A' && *str <= 'F') {
+			hi = (uint8_t)(*str - 'A' + 10);
+		} else if (*str >= 'a' && *str <= 'f') {
+			hi = (uint8_t)(*str - 'a' + 10);
+		} else {
 			return -EINVAL;
 		}
-		out[i] = (uint8_t)byte;
-		str += consumed;
-		if (i < WEBRTC_FINGERPRINT_LEN - 1U && *str == ':') {
+		str++;
+
+		/* Low nibble */
+		if (*str >= '0' && *str <= '9') {
+			lo = (uint8_t)(*str - '0');
+		} else if (*str >= 'A' && *str <= 'F') {
+			lo = (uint8_t)(*str - 'A' + 10);
+		} else if (*str >= 'a' && *str <= 'f') {
+			lo = (uint8_t)(*str - 'a' + 10);
+		} else {
+			return -EINVAL;
+		}
+		str++;
+
+		out[i] = (uint8_t)((hi << 4U) | lo);
+
+		/* Skip colon separator (except after last byte). */
+		if (i < WEBRTC_FINGERPRINT_LEN - 1U) {
+			if (*str != ':') {
+				return -EINVAL;
+			}
 			str++;
 		}
 	}
