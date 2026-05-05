@@ -1,0 +1,102 @@
+# WebRTC Data Channel support
+#
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config WEBRTC
+	bool "WebRTC Data Channel support [EXPERIMENTAL]"
+	select NET_SOCKETS
+	select NET_SOCKETS_ENABLE_DTLS
+	select NET_UDP
+	select TLS_CREDENTIALS
+	select PSA_CRYPTO
+	select PSA_WANT_ALG_SHA_256
+	select PSA_WANT_ALG_SHA_1
+	select PSA_WANT_ALG_HMAC
+	select CRC
+	select EXPERIMENTAL
+	help
+	  Enable the Zephyr WebRTC data channel library.
+
+	  This implements a subset of the W3C WebRTC API focused on
+	  RTCDataChannel support over UDP/DTLS.  ICE host candidate
+	  gathering and STUN-based connectivity checks are included.
+
+	  NOTE: The data channel wire protocol uses a Zephyr-specific
+	  lightweight framing over DTLS rather than the standard
+	  SCTP-over-DTLS defined in RFC 8832.  Interoperability with
+	  browsers or standard W3C WebRTC endpoints requires a future
+	  SCTP upgrade.  Only host ICE candidates are gathered; STUN
+	  server-reflexive and TURN relay candidates are not supported
+	  in this version.
+
+if WEBRTC
+
+config WEBRTC_MAX_PEER_CONNECTIONS
+	int "Maximum number of simultaneous peer connections"
+	default 1
+	range 1 8
+	help
+	  Number of rtc_peer_connection contexts allocated in the static
+	  pool.  Increase this value when multiple concurrent peer
+	  connections are required.
+
+config WEBRTC_MAX_ICE_CANDIDATES
+	int "Maximum number of ICE candidates per side"
+	default 4
+	range 1 16
+	help
+	  Maximum number of ICE candidates that can be stored for each
+	  side (local and remote) of a peer connection.
+
+config WEBRTC_MAX_DATA_CHANNELS
+	int "Maximum number of data channels per peer connection"
+	default 4
+	range 1 16
+	help
+	  Maximum number of simultaneous RTCDataChannels per peer
+	  connection.  Each channel is allocated dynamically from the
+	  system heap.
+
+config WEBRTC_DATA_CHANNEL_LABEL_LEN
+	int "Maximum data channel label length (characters)"
+	default 64
+	range 1 255
+	help
+	  Maximum length of an RTCDataChannel label string, not including
+	  the NUL terminator.
+
+config WEBRTC_SDP_MAX_LEN
+	int "Maximum SDP buffer size in bytes"
+	default 1024
+	range 256 4096
+	help
+	  Size of the SDP string buffer used when generating offer or
+	  answer descriptions.  Increase this value if ICE candidates
+	  cause the generated SDP to exceed the default size.
+
+config WEBRTC_IO_RECV_BUF_SIZE
+	int "I/O receive buffer size in bytes"
+	default 1500
+	range 256 65535
+	help
+	  Size of the internal receive buffer used by the background I/O
+	  work handler.  Should be at least as large as the largest
+	  expected DTLS record.
+
+config WEBRTC_IO_POLL_INTERVAL_MS
+	int "I/O polling interval in milliseconds"
+	default 20
+	range 1 1000
+	help
+	  Period at which the background I/O work item wakes to check for
+	  incoming STUN responses and DTLS data.  Lower values reduce
+	  latency at the cost of CPU load.
+
+module = NET_WEBRTC
+module-dep = NET_LOG
+module-str = Log level for WebRTC
+module-help = Enable debug messages from the WebRTC library.
+source "subsys/net/Kconfig.template.log_config.net"
+
+endif # WEBRTC

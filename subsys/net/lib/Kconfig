@@ -35,6 +35,8 @@ source "subsys/net/lib/ocpp/Kconfig"
 
 source "subsys/net/lib/quic/Kconfig"
 
+source "subsys/net/lib/webrtc/Kconfig"
+
 endmenu
 
 menu "Network Libraries"
