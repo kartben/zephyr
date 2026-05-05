@@ -13,5 +13,8 @@ tests:
     harness: console
     harness_config:
       type: one_line
+      record:
+        regex:
+          - "S,(?P<suite>[^,]+),(?P<benchmark>[^,]+),(?P<samples>[^,]+),(?P<total_cycles>[^,]+),(?P<mean>[^,]+),(?P<stddev>[^,]+),(?P<stderr>[^,]+),(?P<min>[^,]+),(?P<min_sample>[^,]+),(?P<max>[^,]+),(?P<max_sample>[^,]+)"
       regex:
-        - "SUCCESS"
+        - "PROJECT EXECUTION SUCCESSFUL"

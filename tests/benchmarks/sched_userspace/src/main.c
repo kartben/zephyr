@@ -5,7 +5,7 @@
  */
 
 #include <zephyr/kernel.h>
-#include <zephyr/sys/printk.h>
+#include <zephyr/ztest.h>
 
 /* private kernel APIs */
 #include <wait_q.h>
@@ -16,32 +16,7 @@
 
 #define MAIN_PRIO 8
 #define THREADS_PRIO 9
-
-enum {
-	MEAS_START,
-	MEAS_END,
-	NUM_STAMP_STATES
-};
-
-uint32_t stamps[NUM_STAMP_STATES];
-
-static inline int stamp(int state)
-{
-	uint32_t t;
-
-	/* In theory the TSC has much lower overhead and higher
-	 * precision.  In practice it's VERY jittery in recent qemu
-	 * versions and frankly too noisy to trust.
-	 */
-#ifdef CONFIG_X86
-	__asm__ volatile("rdtsc" : "=a"(t) : : "edx");
-#else
-	t = k_cycle_get_32();
-#endif
-
-	stamps[state] = t;
-	return t;
-}
+#define SCHED_USERSPACE_SAMPLES 5
 
 static int yielder_status;
 
@@ -72,8 +47,7 @@ static k_tid_t threads[MAX_NB_THREADS];
 static int exec_test(uint8_t nb_threads)
 {
 	if (nb_threads > MAX_NB_THREADS) {
-		printk("Too many threads\n");
-		return 1;
+		return -1;
 	}
 
 	yielder_status = 0;
@@ -97,45 +71,34 @@ static int exec_test(uint8_t nb_threads)
 	 */
 	k_thread_priority_set(k_current_get(), MAIN_PRIO);
 
-	stamp(MEAS_START);
 	for (size_t tid = 0; tid < nb_threads; tid++) {
 		k_thread_start(threads[tid]);
 	}
 	for (size_t tid = 0; tid < nb_threads; tid++) {
 		k_thread_join(threads[tid], K_FOREVER);
 	}
-	stamp(MEAS_END);
-
-	uint32_t full_time = stamps[MEAS_END] - stamps[MEAS_START];
-	uint64_t time_ms = k_cyc_to_ns_near64(full_time)/NB_YIELDS;
-
-	printk("Swapping %2u threads: %8" PRIu32 " cyc & %6" PRIu32 " rounds -> %6"
-				PRIu64 " ns per ctx\n", nb_threads, full_time,
-				NB_YIELDS, time_ms);
 
 	return yielder_status;
 }
 
+ZTEST_BENCHMARK_SUITE(sched_userspace_benchmark, NULL, NULL);
 
-int main(void)
+ZTEST_BENCHMARK(sched_userspace_benchmark, swap_yield_2_threads, SCHED_USERSPACE_SAMPLES)
 {
-	int ret;
+	zassert_equal(exec_test(2), 0, "2-thread userspace benchmark failed");
+}
 
-	printk("Userspace scheduling benchmark started on board %s\n", CONFIG_BOARD);
+ZTEST_BENCHMARK(sched_userspace_benchmark, swap_yield_8_threads, SCHED_USERSPACE_SAMPLES)
+{
+	zassert_equal(exec_test(8), 0, "8-thread userspace benchmark failed");
+}
 
-	size_t nb_threads_list[] = {2, 8, 16, 32, 0};
+ZTEST_BENCHMARK(sched_userspace_benchmark, swap_yield_16_threads, SCHED_USERSPACE_SAMPLES)
+{
+	zassert_equal(exec_test(16), 0, "16-thread userspace benchmark failed");
+}
 
-	printk("============================\n");
-	printk("user/user^n swapping (yield)\n");
-
-	for (size_t i = 0; nb_threads_list[i] > 0; i++) {
-		ret = exec_test(nb_threads_list[i]);
-		if (ret != 0) {
-			printk("FAIL\n");
-			return 0;
-		}
-	}
-
-	printk("SUCCESS\n");
-	return 0;
+ZTEST_BENCHMARK(sched_userspace_benchmark, swap_yield_32_threads, SCHED_USERSPACE_SAMPLES)
+{
+	zassert_equal(exec_test(32), 0, "32-thread userspace benchmark failed");
 }

@@ -5,7 +5,7 @@
  */
 
 #include <zephyr/kernel.h>
-#include <zephyr/sys/printk.h>
+#include <zephyr/ztest.h>
 #include <wait_q.h>
 #include <ksched.h>
 
@@ -29,12 +29,9 @@
  * average for all cycles run.
  */
 
-#define N_RUNS 1000
-#define N_SETTLE 10
-
-
 static K_THREAD_STACK_DEFINE(partner_stack, 1024);
 static struct k_thread partner_thread;
+static k_tid_t partner_tid;
 
 #if (CONFIG_MP_MAX_NUM_CPUS > 1)
 static struct k_thread busy_thread[CONFIG_MP_MAX_NUM_CPUS - 1];
@@ -47,39 +44,7 @@ static K_THREAD_STACK_ARRAY_DEFINE(busy_thread_stack, CONFIG_MP_MAX_NUM_CPUS - 1
 
 _wait_q_t waitq;
 
-enum {
-	UNPENDING,
-	UNPENDED_READYING,
-	READIED_YIELDING,
-	PARTNER_AWAKE_PENDING,
-	YIELDED,
-	NUM_STAMP_STATES
-};
-
-uint32_t stamps[NUM_STAMP_STATES];
-
 static struct k_spinlock lock;
-
-static inline int _stamp(int state)
-{
-	uint32_t t;
-
-	/* In theory the TSC has much lower overhead and higher
-	 * precision.  In practice it's VERY jittery in recent qemu
-	 * versions and frankly too noisy to trust.
-	 */
-#ifdef CONFIG_X86
-	__asm__ volatile("rdtsc" : "=a"(t) : : "edx");
-#else
-	t = k_cycle_get_32();
-#endif
-
-	stamps[state] = t;
-	return t;
-}
-
-/* #define stamp(s) printk("%s @ %d\n", #s, _stamp(s)) */
-#define stamp(s) _stamp(s)
 
 static void partner_fn(void *arg1, void *arg2, void *arg3)
 {
@@ -87,25 +52,26 @@ static void partner_fn(void *arg1, void *arg2, void *arg3)
 	ARG_UNUSED(arg2);
 	ARG_UNUSED(arg3);
 
-	printk("Running %p\n", k_current_get());
-
 	while (true) {
 		k_spinlock_key_t  key = k_spin_lock(&lock);
 
 		z_pend_curr(&lock, key, &waitq, K_FOREVER);
-		stamp(PARTNER_AWAKE_PENDING);
 	}
 }
 
 #if (CONFIG_MP_MAX_NUM_CPUS > 1)
 static void busy_thread_entry(void *arg1, void *arg2, void *arg3)
 {
+	ARG_UNUSED(arg1);
+	ARG_UNUSED(arg2);
+	ARG_UNUSED(arg3);
+
 	while (true) {
 	}
 }
 #endif /* (CONFIG_MP_MAX_NUM_CPUS > 1) */
 
-int main(void)
+static void sched_benchmark_suite_setup(void)
 {
 #if (CONFIG_MP_MAX_NUM_CPUS > 1)
 	/* Spawn busy threads that will execute on the other cores */
@@ -119,68 +85,44 @@ int main(void)
 
 	z_waitq_init(&waitq);
 
-	int main_prio = k_thread_priority_get(k_current_get());
-	int partner_prio = main_prio - 1;
+	const int main_prio = k_thread_priority_get(k_current_get());
+	const int partner_prio = main_prio - 1;
 
-	k_tid_t th = k_thread_create(&partner_thread, partner_stack,
-				     K_THREAD_STACK_SIZEOF(partner_stack),
-				     partner_fn, NULL, NULL, NULL,
-				     partner_prio, 0, K_NO_WAIT);
+	partner_tid = k_thread_create(&partner_thread, partner_stack,
+				      K_THREAD_STACK_SIZEOF(partner_stack),
+				      partner_fn, NULL, NULL, NULL,
+				      partner_prio, 0, K_NO_WAIT);
 
 	/* Let it start running and pend */
 	k_sleep(K_MSEC(100));
+}
 
-	uint64_t tot = 0U;
-	uint32_t runs = 0U;
+static void sched_benchmark_suite_teardown(void)
+{
+	k_thread_abort(partner_tid);
 
-	int key;
-
-	for (int i = 0; i < N_RUNS + N_SETTLE; i++) {
-		key = arch_irq_lock();
-		stamp(UNPENDING);
-		z_unpend_first_thread(&waitq);
-		arch_irq_unlock(key);
-		stamp(UNPENDED_READYING);
-		z_ready_thread(th);
-		stamp(READIED_YIELDING);
-
-		/* z_ready_thread() does not reschedule, so this is
-		 * guaranteed to be the point where we will yield to
-		 * the new thread, which (being higher priority) will
-		 * run immediately, and we'll wake up synchronously as
-		 * soon as it pends.
-		 */
-		k_yield();
-		stamp(YIELDED);
-
-		uint32_t avg, whole = stamps[4] - stamps[0];
-
-		if (++runs > N_SETTLE) {
-			/* Only compute averages after the first ~10
-			 * runs to let performance settle, cache
-			 * effects in the host pollute the early
-			 * data
-			 */
-			tot += whole;
-			avg = tot / (runs - 10);
-		} else {
-			tot = 0U;
-			avg = 0U;
-		}
-
-		/* For reference, an unmodified HEAD on qemu_x86 with
-		 * !USERSPACE and SCHED_SIMPLE and using -icount
-		 * shift=0,sleep=off,align=off, I get results of:
-		 *
-		 * unpend 132 ready 257 switch 278 pend 321 tot 988 (avg 900)
-		 */
-		printk("unpend %4d ready %4d switch %4d pend %4d tot %4d (avg %4d)\n",
-		       stamps[1] - stamps[0],
-		       stamps[2] - stamps[1],
-		       stamps[3] - stamps[2],
-		       stamps[4] - stamps[3],
-		       whole, avg);
+#if (CONFIG_MP_MAX_NUM_CPUS > 1)
+	for (uint32_t i = 0; i < CONFIG_MP_MAX_NUM_CPUS - 1; i++) {
+		k_thread_abort(&busy_thread[i]);
 	}
-	printk("fin\n");
-	return 0;
+#endif /* (CONFIG_MP_MAX_NUM_CPUS > 1) */
+}
+
+ZTEST_BENCHMARK_SUITE(sched_benchmark, sched_benchmark_suite_setup,
+		      sched_benchmark_suite_teardown);
+
+ZTEST_BENCHMARK(sched_benchmark, scheduler_cycle, 1000)
+{
+	const unsigned int key = arch_irq_lock();
+
+	z_unpend_first_thread(&waitq);
+	arch_irq_unlock(key);
+	z_ready_thread(partner_tid);
+
+	/* z_ready_thread() does not reschedule, so this is guaranteed to be the
+	 * point where we will yield to the new thread, which (being higher
+	 * priority) will run immediately, and we'll wake up synchronously as soon
+	 * as it pends.
+	 */
+	k_yield();
 }
