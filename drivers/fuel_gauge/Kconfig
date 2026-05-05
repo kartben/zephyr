@@ -19,6 +19,13 @@ config FUEL_GAUGE_INIT_PRIORITY
 	help
 	  Battery fuel gauge initialization priority.
 
+config FUEL_GAUGE_SHELL
+	bool "Fuel gauge shell"
+	depends on SHELL
+	help
+	  Enable fuel gauge shell for testing and debugging. Provides commands
+	  to read and write fuel gauge properties, and trigger battery cutoff.
+
 # zephyr-keep-sorted-start
 source "drivers/fuel_gauge/adp5360/Kconfig"
 source "drivers/fuel_gauge/axp2101/Kconfig"
