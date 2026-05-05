@@ -399,9 +399,9 @@ static int stun_parse_response(const uint8_t *buf, size_t len,
 				xored[1] = aval[5] ^ (uint8_t)(STUN_MAGIC_COOKIE >> 16U);
 				xored[2] = aval[6] ^ (uint8_t)(STUN_MAGIC_COOKIE >> 8U);
 				xored[3] = aval[7] ^ (uint8_t)(STUN_MAGIC_COOKIE);
-				for (int i = 0; i < 12; i++) {
-					xored[4 + i] =
-						aval[8 + i] ^ buf[8 + i];
+				for (int txid_byte_idx = 0; txid_byte_idx < 12; txid_byte_idx++) {
+					xored[4 + txid_byte_idx] =
+						aval[8 + txid_byte_idx] ^ buf[8 + txid_byte_idx];
 				}
 				sin6->sin6_family = AF_INET6;
 				sin6->sin6_port = htons(port);
