@@ -64,6 +64,9 @@ struct k_spinlock lock;
 K_SEM_DEFINE(done_sem, 0, 999);
 K_THREAD_DEFINE(thread0, 1024, thread_fn, &t0_0, &t0_1, NULL, HI_PRIO, 0, 0);
 K_THREAD_DEFINE(thread1, 1024, thread_fn, &t1_0, &t1_1, NULL, HI_PRIO, 0, 0);
+static volatile uint32_t irq_latency_cycles;
+static volatile uint32_t irq_preempt_latency_cycles;
+static volatile uint32_t swap_latency_cycles;
 
 #ifdef CONFIG_CPU_CORTEX_M
 static uint32_t systick_ctrl;
@@ -136,7 +139,7 @@ ZTEST_BENCHMARK(irq_benchmark, interrupt_latency, 1000)
 
 	k_timer_stop(&tm);
 
-	(void)(t1 - t0);
+	irq_latency_cycles = t1 - t0;
 }
 
 /* Very similar test, but switches to hi_thread and checks time on
@@ -158,7 +161,7 @@ ZTEST_BENCHMARK(irq_benchmark, interrupt_preempt_latency, 1000)
 
 	k_timer_stop(&tm);
 
-	(void)(t_preempt - t0);
+	irq_preempt_latency_cycles = t_preempt - t0;
 }
 
 static void swap_suite_setup(void)
@@ -214,5 +217,5 @@ ZTEST_BENCHMARK(swap_benchmark, cooperative_swap, 1024)
 	 */
 	k_thread_priority_set(thread0, HI_PRIO);
 
-	(void)time_delta(t0_0, t1_1);
+	swap_latency_cycles = time_delta(t0_0, t1_1);
 }
