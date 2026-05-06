@@ -20,6 +20,12 @@ config CHARGER_INIT_PRIORITY
 	help
 	  Battery charger initialization priority.
 
+config CHARGER_SHELL
+	bool "Battery charger shell"
+	depends on SHELL
+	help
+	  Enable shell commands for battery charger drivers.
+
 config CHARGER_HAS_DISCHARGE_CURRENT_NOTIFICATIONS
 	bool
 	help
