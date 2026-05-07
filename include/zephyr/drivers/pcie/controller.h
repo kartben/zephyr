@@ -193,7 +193,7 @@ __subsystem struct pcie_ctrl_driver_api {
 	/** @driver_ops_optional @copybrief pcie_ctrl_region_translate_t */
 	pcie_ctrl_region_translate_t region_translate;
 #if defined(CONFIG_PCIE_MSI) || defined(__DOXYGEN__)
-	/** 
+	/**
 	 * @driver_ops_mandatory @copybrief pcie_ctrl_msi_device_setup_t
 	 * @kconfig_dep{CONFIG_PCIE_MSI}
 	 */
@@ -317,7 +317,18 @@ static inline bool pcie_ctrl_region_translate(const struct device *dev, pcie_bdf
 	}
 }
 
-#ifdef CONFIG_PCIE_MSI
+#if defined(CONFIG_PCIE_MSI) || defined(__DOXYGEN__)
+/**
+ * @brief Configure the given PCI endpoint to generate MSIs.
+ *
+ * @kconfig_dep{CONFIG_PCIE_MSI}
+ *
+ * @param dev PCI Express Controller device pointer
+ * @param priority MSI priority
+ * @param vectors an array of allocated vector(s)
+ * @param n_vector the size of the vector array
+ * @return the number of vectors allocated
+ */
 static inline uint8_t pcie_ctrl_msi_device_setup(const struct device *dev, unsigned int priority,
 						 msi_vector_t *vectors, uint8_t n_vector)
 {
