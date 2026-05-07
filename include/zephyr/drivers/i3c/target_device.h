@@ -279,10 +279,23 @@ struct i3c_target_callbacks {
 	int (*controller_handoff_cb)(struct i3c_target_config *config);
 };
 
+/**
+ * @def_driverbackendgroup{I3C Target Device,i3c_target_device}
+ * @ingroup i3c_target_device
+ * @{
+ */
+
+/**
+ * @driver_ops{I3C Target Device}
+ */
 __subsystem struct i3c_target_driver_api {
+	/** @driver_ops_mandatory @copybrief i3c_target_driver_register */
 	int (*driver_register)(const struct device *dev);
+	/** @driver_ops_mandatory @copybrief i3c_target_driver_unregister */
 	int (*driver_unregister)(const struct device *dev);
 };
+
+/** @} */
 
 /**
  * @brief Accept or Decline Controller Handoffs
