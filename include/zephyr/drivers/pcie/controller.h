@@ -42,6 +42,12 @@ extern "C" {
  * @param reg the configuration word index (not address)
  * @return the word read (0xFFFFFFFFU if nonexistent endpoint or word)
  */
+/**
+ * @def_driverbackendgroup{PCIe Controller,pcie_controller_interface}
+ * @ingroup pcie_controller_interface
+ * @{
+ */
+
 typedef uint32_t (*pcie_ctrl_conf_read_t)(const struct device *dev, pcie_bdf_t bdf,
 					  unsigned int reg);
 
@@ -172,16 +178,30 @@ void pcie_generic_ctrl_enumerate(const struct device *dev, pcie_bdf_t bdf_start)
 /** @brief Structure providing callbacks to be implemented for devices
  * that supports the PCI Express Controller API
  */
+/**
+ * @driver_ops{PCIe Controller}
+ */
 __subsystem struct pcie_ctrl_driver_api {
+	/** @driver_ops_mandatory @copybrief pcie_ctrl_conf_read_t */
 	pcie_ctrl_conf_read_t conf_read;
+	/** @driver_ops_mandatory @copybrief pcie_ctrl_conf_write_t */
 	pcie_ctrl_conf_write_t conf_write;
+	/** @driver_ops_mandatory @copybrief pcie_ctrl_region_allocate_t */
 	pcie_ctrl_region_allocate_t region_allocate;
+	/** @driver_ops_mandatory @copybrief pcie_ctrl_region_get_allocate_base_t */
 	pcie_ctrl_region_get_allocate_base_t region_get_allocate_base;
+	/** @driver_ops_optional @copybrief pcie_ctrl_region_translate_t */
 	pcie_ctrl_region_translate_t region_translate;
-#ifdef CONFIG_PCIE_MSI
+#if defined(CONFIG_PCIE_MSI) || defined(__DOXYGEN__)
+	/** 
+	 * @driver_ops_mandatory @copybrief pcie_ctrl_msi_device_setup_t
+	 * @kconfig_dep{CONFIG_PCIE_MSI}
+	 */
 	pcie_ctrl_msi_device_setup_t msi_device_setup;
 #endif
 };
+
+/** @} */
 
 /**
  * @brief Read a 32-bit word from an endpoint's configuration space.
