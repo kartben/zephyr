@@ -30,9 +30,9 @@ extern "C" {
  */
 
 /**
- * @cond INTERNAL_HIDDEN
- *
- * For internal driver use only, skip these in public documentation.
+ * @def_driverbackendgroup{CAN Transceiver,can_transceiver}
+ * @ingroup can_transceiver
+ * @{
  */
 
 /**
@@ -47,12 +47,17 @@ typedef int (*can_transceiver_enable_t)(const struct device *dev, can_mode_t mod
  */
 typedef int (*can_transceiver_disable_t)(const struct device *dev);
 
+/**
+ * @driver_ops{CAN Transceiver}
+ */
 __subsystem struct can_transceiver_driver_api {
+	/** @driver_ops_mandatory @copybrief can_transceiver_enable_t */
 	can_transceiver_enable_t enable;
+	/** @driver_ops_mandatory @copybrief can_transceiver_disable_t */
 	can_transceiver_disable_t disable;
 };
 
-/** @endcond */
+/** @} */
 
 /**
  * @brief Enable CAN transceiver
