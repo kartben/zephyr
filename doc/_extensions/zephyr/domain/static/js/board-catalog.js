@@ -90,12 +90,13 @@ function updateURL() {
     if (param === "soc") {
       const selectedSocs = [...element.selectedOptions].map(({ value }) => value);
       selectedSocs.length ? hashParams.set(param, selectedSocs.join(",")) : hashParams.delete(param);
-    }
-    else if (param === "ram") {
-      Number.parseInt(element.value, 10) > 0 ? hashParams.set(param, element.value)
-        : hashParams.delete(param);
-    }
-    else {
+    } else if (param === "ram") {
+      if (Number.parseInt(element.value, 10) > 0) {
+        hashParams.set(param, element.value);
+      } else {
+        hashParams.delete(param);
+      }
+    } else {
       element.value ? hashParams.set(param, element.value) : hashParams.delete(param);
     }
   });
