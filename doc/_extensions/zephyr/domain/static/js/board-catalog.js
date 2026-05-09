@@ -14,7 +14,7 @@ function toggleDisplayMode(btn) {
 }
 
 function populateFormFromURL() {
-  const params = ["name", "arch", "vendor", "soc"];
+  const params = ["name", "arch", "vendor", "soc", "ram"];
   const hashParams = new URLSearchParams(window.location.hash.slice(1));
   params.forEach((param) => {
     const element = document.getElementById(param);
@@ -82,7 +82,7 @@ function populateFormFromURL() {
 }
 
 function updateURL() {
-  const params = ["name", "arch", "vendor", "soc"];
+  const params = ["name", "arch", "vendor", "soc", "ram"];
   const hashParams = new URLSearchParams(window.location.hash.slice(1));
 
   params.forEach((param) => {
@@ -90,6 +90,10 @@ function updateURL() {
     if (param === "soc") {
       const selectedSocs = [...element.selectedOptions].map(({ value }) => value);
       selectedSocs.length ? hashParams.set(param, selectedSocs.join(",")) : hashParams.delete(param);
+    }
+    else if (param === "ram") {
+      Number.parseInt(element.value, 10) > 0 ? hashParams.set(param, element.value)
+        : hashParams.delete(param);
     }
     else {
       element.value ? hashParams.set(param, element.value) : hashParams.delete(param);
@@ -404,6 +408,8 @@ function wildcardMatch(pattern, str) {
 function filterBoards() {
   const nameInput = document.getElementById("name").value.toLowerCase();
   const archSelect = document.getElementById("arch").value;
+  const ramInput = Number.parseInt(document.getElementById("ram").value, 10);
+  const ramFilterBytes = Number.isNaN(ramInput) ? 0 : ramInput * 1024;
   const vendorSelect = document.getElementById("vendor").value;
   const socSocSelect = document.getElementById("soc");
   const showBoards = document.getElementById("show-boards").checked;
@@ -416,7 +422,7 @@ function filterBoards() {
   const selectedCompatibles = [...document.querySelectorAll('#compatibles-tags .tag')].map(tag => tag.textContent);
 
   const resetFiltersBtn = document.getElementById("reset-filters");
-  if (nameInput || archSelect || vendorSelect || socSocSelect.selectedOptions.length || selectedHWTags.length || selectedCompatibles.length || !showBoards || !showShields) {
+  if (nameInput || archSelect || ramFilterBytes || vendorSelect || socSocSelect.selectedOptions.length || selectedHWTags.length || selectedCompatibles.length || !showBoards || !showShields) {
     resetFiltersBtn.classList.remove("btn-disabled");
   } else {
     resetFiltersBtn.classList.add("btn-disabled");
@@ -427,6 +433,7 @@ function filterBoards() {
   Array.from(boards).forEach(function (board) {
     const boardName = board.getAttribute("data-name").toLowerCase();
     const boardArchs = (board.getAttribute("data-arch") || "").split(" ").filter(Boolean);
+    const boardRam = Number.parseInt(board.getAttribute("data-ram") || "", 10);
     const boardVendor = board.getAttribute("data-vendor") || "";
     const boardSocs = (board.getAttribute("data-socs") || "").split(" ").filter(Boolean);
     const boardSupportedFeatures = (board.getAttribute("data-supported-features") || "").split(" ").filter(Boolean);
@@ -449,6 +456,7 @@ function filterBoards() {
       matches =
         !(nameInput && !boardName.includes(nameInput)) &&
         !(archSelect && !boardArchs.includes(archSelect)) &&
+        !(ramFilterBytes && (isShield || Number.isNaN(boardRam) || boardRam < ramFilterBytes)) &&
         !(vendorSelect && boardVendor !== vendorSelect) &&
         (selectedSocs.length === 0 || selectedSocs.some((soc) => boardSocs.includes(soc))) &&
         (selectedHWTags.length === 0 || selectedHWTags.every((tag) => boardSupportedFeatures.includes(tag))) &&

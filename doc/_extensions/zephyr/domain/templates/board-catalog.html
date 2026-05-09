@@ -3,7 +3,9 @@
   SPDX-License-Identifier: Apache-2.0
 #}
 
-<form class="filter-form" aria-label="Filter boards & shields by name, architecture, and vendor">
+<form
+  class="filter-form"
+  aria-label="Filter boards and shields by name, architecture, vendor, SoC, and RAM">
 
   <div class="form-group" style="flex-basis: 60%">
     <label for="name">Name</label>
@@ -42,6 +44,17 @@
         {% endfor %}
       </select>
     </div>
+  </div>
+
+  <div class="form-group">
+    <label for="ram">Minimum RAM (KiB)</label>
+    <input type="number" id="ram" min="0" inputmode="numeric"
+      placeholder="{% if hw_features_present -%}
+        Minimum available RAM in KiB, e.g. 256
+      {%- else -%}
+        Available RAM data is not available
+      {%- endif %}"
+      {% if not hw_features_present %}disabled{% endif %} />
   </div>
 
   <div class="form-group" style="flex-basis: 400px">

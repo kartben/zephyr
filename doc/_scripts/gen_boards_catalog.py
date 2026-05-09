@@ -104,6 +104,21 @@ class DeviceTreeUtils:
         )
 
 
+def get_board_ram_size(edt):
+    ram_node = edt.chosen_node("zephyr,sram")
+    if ram_node is None:
+        return None
+    ram_sizes = [reg.size for reg in ram_node.regs if reg.size is not None]
+    return sum(ram_sizes) if ram_sizes else None
+
+
+def format_memory_size(size):
+    for unit, divisor in (("GiB", 1024**3), ("MiB", 1024**2), ("KiB", 1024)):
+        if size >= divisor and size % divisor == 0:
+            return f"{size // divisor} {unit}"
+    return f"{size} B"
+
+
 def guess_file_from_patterns(directory, patterns, name, extensions):
     for pattern in patterns:
         for ext in extensions:
@@ -320,12 +335,17 @@ def get_catalog(generate_hw_features=False, hw_features_vendor_filter=None):
 
         supported_features = {}
         compatibles = {}
+        ram_sizes = []
 
         # Use pre-gathered build info and DTS files
         if board.name in board_devicetrees:
+            board_ram_sizes = set()
             for board_target, edt in board_devicetrees[board.name].items():
                 features = {}
                 target_compatibles = set()
+                ram_size = get_board_ram_size(edt)
+                if ram_size is not None:
+                    board_ram_sizes.add(ram_size)
                 for node in edt.nodes:
                     if node.binding_path is None:
                         continue
@@ -388,6 +408,8 @@ def get_catalog(generate_hw_features=False, hw_features_vendor_filter=None):
                 supported_features[board_target] = features
                 compatibles[board_target] = list(target_compatibles)
 
+            ram_sizes = sorted(board_ram_sizes)
+
         board_runner_info = {}
         if board.name in board_runners:
             # Assume all board targets have the same runners so only consider the runners
@@ -414,6 +436,15 @@ def get_catalog(generate_hw_features=False, hw_features_vendor_filter=None):
         else:
             doc_page_path = None
 
+        ram_display = None
+        if ram_sizes:
+            if len(ram_sizes) == 1:
+                ram_display = f"{format_memory_size(ram_sizes[0])} RAM"
+            else:
+                ram_display = (
+                    f"{format_memory_size(ram_sizes[0])}-{format_memory_size(ram_sizes[-1])} RAM"
+                )
+
         board_catalog[board.name] = {
             "name": board.name,
             "full_name": full_name,
@@ -426,6 +457,10 @@ def get_catalog(generate_hw_features=False, hw_features_vendor_filter=None):
             "compatibles": compatibles,
             "image": guess_image(board),
             "maintained": is_board_maintained(doc_page_path) if doc_page_path else False,
+            "ram_sizes": ram_sizes,
+            "ram_min": ram_sizes[0] if ram_sizes else None,
+            "ram_max": ram_sizes[-1] if ram_sizes else None,
+            "ram_display": ram_display,
             # runners
             "supported_runners": board_runner_info.get("runners", []),
             "flash_runner": board_runner_info.get("flash-runner", ""),
