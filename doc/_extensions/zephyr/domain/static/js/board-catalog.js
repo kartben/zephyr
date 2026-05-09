@@ -14,7 +14,7 @@ function toggleDisplayMode(btn) {
 }
 
 function populateFormFromURL() {
-  const params = ["name", "arch", "vendor", "soc", "ram", "rom"];
+  const params = ["name", "arch", "vendor", "soc"];
   const hashParams = new URLSearchParams(window.location.hash.slice(1));
   params.forEach((param) => {
     const element = document.getElementById(param);
@@ -27,6 +27,16 @@ function populateFormFromURL() {
         element.value = value;
       }
     }
+  });
+
+  // Restore memory slider positions (run after initMemorySliders sets the max)
+  ["ram", "rom"].forEach(type => {
+    const minEl = document.getElementById(`${type}-min`);
+    const maxEl = document.getElementById(`${type}-max`);
+    if (!minEl || !maxEl) return;
+    if (hashParams.has(`${type}-min`)) minEl.value = hashParams.get(`${type}-min`);
+    if (hashParams.has(`${type}-max`)) maxEl.value = hashParams.get(`${type}-max`);
+    updateMemorySlider(type);
   });
 
   // Restore visibility toggles from URL
@@ -82,7 +92,7 @@ function populateFormFromURL() {
 }
 
 function updateURL() {
-  const params = ["name", "arch", "vendor", "soc", "ram", "rom"];
+  const params = ["name", "arch", "vendor", "soc"];
   const hashParams = new URLSearchParams(window.location.hash.slice(1));
 
   params.forEach((param) => {
@@ -90,15 +100,21 @@ function updateURL() {
     if (param === "soc") {
       const selectedSocs = [...element.selectedOptions].map(({ value }) => value);
       selectedSocs.length ? hashParams.set(param, selectedSocs.join(",")) : hashParams.delete(param);
-    } else if (param === "ram" || param === "rom") {
-      if (Number.parseInt(element.value, 10) > 0) {
-        hashParams.set(param, element.value);
-      } else {
-        hashParams.delete(param);
-      }
     } else {
       element.value ? hashParams.set(param, element.value) : hashParams.delete(param);
     }
+  });
+
+  // Persist memory slider positions only when non-default
+  ["ram", "rom"].forEach(type => {
+    const minEl = document.getElementById(`${type}-min`);
+    const maxEl = document.getElementById(`${type}-max`);
+    if (!minEl || !maxEl) return;
+    const minVal = Number.parseInt(minEl.value, 10);
+    const maxVal = Number.parseInt(maxEl.value, 10);
+    const maxPossible = Number.parseInt(maxEl.max, 10);
+    minVal > 0 ? hashParams.set(`${type}-min`, minVal) : hashParams.delete(`${type}-min`);
+    maxVal < maxPossible ? hashParams.set(`${type}-max`, maxVal) : hashParams.delete(`${type}-max`);
   });
 
   ["show-boards", "show-shields"].forEach(toggle => {
@@ -317,6 +333,7 @@ document.addEventListener("DOMContentLoaded", function () {
   fillSocFamilySelect();
   fillSocSeriesSelect();
   fillSocSocSelect();
+  initMemorySliders();
   populateFormFromURL();
 
   setupHWCapabilitiesField();
@@ -382,6 +399,16 @@ function resetForm() {
   document.querySelectorAll('#compatibles-tags .tag').forEach(tag => tag.remove());
   document.getElementById('compatibles-input').value = '';
 
+  // Reset memory sliders to full range
+  ["ram", "rom"].forEach(type => {
+    const minEl = document.getElementById(`${type}-min`);
+    const maxEl = document.getElementById(`${type}-max`);
+    if (!minEl || !maxEl) return;
+    minEl.value = 0;
+    maxEl.value = maxEl.max;
+    updateMemorySlider(type);
+  });
+
   filterBoards();
 }
 
@@ -406,13 +433,119 @@ function wildcardMatch(pattern, str) {
   return regex.test(str);
 }
 
+function formatMemoryKiB(kib) {
+  if (kib <= 0) return "0";
+  if (kib >= 1024 && kib % 1024 === 0) return `${kib / 1024} MiB`;
+  return `${kib} KiB`;
+}
+
+function niceMemoryMax(kib) {
+  if (kib <= 0) return 64;
+  let n = 1;
+  while (n < kib) n <<= 1;
+  return n;
+}
+
+function updateMemorySlider(type) {
+  const minEl = document.getElementById(`${type}-min`);
+  const maxEl = document.getElementById(`${type}-max`);
+  const fill = document.getElementById(`${type}-range-fill`);
+  const label = document.getElementById(`${type}-range-label`);
+  const maxEndpoint = document.getElementById(`${type}-max-endpoint`);
+
+  if (!minEl || !maxEl || !fill || !label) return;
+
+  const minVal = Number.parseInt(minEl.value, 10);
+  const maxVal = Number.parseInt(maxEl.value, 10);
+  const sliderMax = Number.parseInt(minEl.max, 10);
+
+  const pctMin = (minVal / sliderMax) * 100;
+  const pctMax = (maxVal / sliderMax) * 100;
+
+  fill.style.left = `${pctMin}%`;
+  fill.style.width = `${pctMax - pctMin}%`;
+
+  if (maxEndpoint) maxEndpoint.textContent = formatMemoryKiB(sliderMax);
+
+  const atMin = minVal <= 0;
+  const atMax = maxVal >= sliderMax;
+
+  if (atMin && atMax) {
+    label.textContent = "Any";
+  } else if (atMin) {
+    label.textContent = `≤ ${formatMemoryKiB(maxVal)}`;
+  } else if (atMax) {
+    label.textContent = `≥ ${formatMemoryKiB(minVal)}`;
+  } else {
+    label.textContent = `${formatMemoryKiB(minVal)} – ${formatMemoryKiB(maxVal)}`;
+  }
+}
+
+function onMemorySlider(type) {
+  const minEl = document.getElementById(`${type}-min`);
+  const maxEl = document.getElementById(`${type}-max`);
+  if (!minEl || !maxEl) return;
+
+  /* Keep the two thumbs from crossing each other */
+  let minVal = Number.parseInt(minEl.value, 10);
+  let maxVal = Number.parseInt(maxEl.value, 10);
+  if (minVal > maxVal) {
+    if (document.activeElement === minEl) {
+      minEl.value = maxVal;
+    } else {
+      maxEl.value = minVal;
+    }
+  }
+
+  updateMemorySlider(type);
+  filterBoards();
+}
+
+function initMemorySliders() {
+  const boards = Array.from(document.querySelectorAll(".board-card"));
+
+  ["ram", "rom"].forEach(type => {
+    const values = boards
+      .map(b => Number.parseInt(b.getAttribute(`data-${type}`) || "", 10))
+      .filter(v => !Number.isNaN(v) && v > 0);
+
+    if (!values.length) return;
+
+    const maxBytes = Math.max(...values);
+    const maxKiB = niceMemoryMax(Math.ceil(maxBytes / 1024));
+
+    const minEl = document.getElementById(`${type}-min`);
+    const maxEl = document.getElementById(`${type}-max`);
+    if (!minEl || !maxEl) return;
+
+    minEl.max = maxKiB;
+    maxEl.max = maxKiB;
+    minEl.value = 0;
+    maxEl.value = maxKiB;
+
+    updateMemorySlider(type);
+  });
+}
+
 function filterBoards() {
   const nameInput = document.getElementById("name").value.toLowerCase();
   const archSelect = document.getElementById("arch").value;
-  const ramInput = Number.parseInt(document.getElementById("ram").value, 10);
-  const ramFilterBytes = Number.isNaN(ramInput) ? 0 : ramInput * 1024;
-  const romInput = Number.parseInt(document.getElementById("rom").value, 10);
-  const romFilterBytes = Number.isNaN(romInput) ? 0 : romInput * 1024;
+
+  const ramMinEl = document.getElementById("ram-min");
+  const ramMaxEl = document.getElementById("ram-max");
+  const ramMinKiB = ramMinEl ? Number.parseInt(ramMinEl.value, 10) : 0;
+  const ramMaxKiB = ramMaxEl ? Number.parseInt(ramMaxEl.value, 10) : Infinity;
+  const ramMaxPossible = ramMaxEl ? Number.parseInt(ramMaxEl.max, 10) : Infinity;
+  const ramMinBytes = ramMinKiB * 1024;
+  const ramMaxBytes = (ramMaxKiB >= ramMaxPossible) ? Infinity : ramMaxKiB * 1024;
+
+  const romMinEl = document.getElementById("rom-min");
+  const romMaxEl = document.getElementById("rom-max");
+  const romMinKiB = romMinEl ? Number.parseInt(romMinEl.value, 10) : 0;
+  const romMaxKiB = romMaxEl ? Number.parseInt(romMaxEl.value, 10) : Infinity;
+  const romMaxPossible = romMaxEl ? Number.parseInt(romMaxEl.max, 10) : Infinity;
+  const romMinBytes = romMinKiB * 1024;
+  const romMaxBytes = (romMaxKiB >= romMaxPossible) ? Infinity : romMaxKiB * 1024;
   const vendorSelect = document.getElementById("vendor").value;
   const socSocSelect = document.getElementById("soc");
   const showBoards = document.getElementById("show-boards").checked;
@@ -425,7 +558,9 @@ function filterBoards() {
   const selectedCompatibles = [...document.querySelectorAll('#compatibles-tags .tag')].map(tag => tag.textContent);
 
   const resetFiltersBtn = document.getElementById("reset-filters");
-  if (nameInput || archSelect || ramFilterBytes || romFilterBytes || vendorSelect || socSocSelect.selectedOptions.length || selectedHWTags.length || selectedCompatibles.length || !showBoards || !showShields) {
+  const ramFiltered = ramMinBytes > 0 || ramMaxBytes < Infinity;
+  const romFiltered = romMinBytes > 0 || romMaxBytes < Infinity;
+  if (nameInput || archSelect || ramFiltered || romFiltered || vendorSelect || socSocSelect.selectedOptions.length || selectedHWTags.length || selectedCompatibles.length || !showBoards || !showShields) {
     resetFiltersBtn.classList.remove("btn-disabled");
   } else {
     resetFiltersBtn.classList.add("btn-disabled");
@@ -460,8 +595,10 @@ function filterBoards() {
       matches =
         !(nameInput && !boardName.includes(nameInput)) &&
         !(archSelect && !boardArchs.includes(archSelect)) &&
-        !(ramFilterBytes && (isShield || Number.isNaN(boardRam) || boardRam < ramFilterBytes)) &&
-        !(romFilterBytes && (isShield || Number.isNaN(boardRom) || boardRom < romFilterBytes)) &&
+        !(ramMinBytes > 0 && (isShield || Number.isNaN(boardRam) || boardRam < ramMinBytes)) &&
+        !(ramMaxBytes < Infinity && (isShield || Number.isNaN(boardRam) || boardRam > ramMaxBytes)) &&
+        !(romMinBytes > 0 && (isShield || Number.isNaN(boardRom) || boardRom < romMinBytes)) &&
+        !(romMaxBytes < Infinity && (isShield || Number.isNaN(boardRom) || boardRom > romMaxBytes)) &&
         !(vendorSelect && boardVendor !== vendorSelect) &&
         (selectedSocs.length === 0 || selectedSocs.some((soc) => boardSocs.includes(soc))) &&
         (selectedHWTags.length === 0 || selectedHWTags.every((tag) => boardSupportedFeatures.includes(tag))) &&

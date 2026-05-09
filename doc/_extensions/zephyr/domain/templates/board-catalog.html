@@ -46,26 +46,52 @@
     </div>
   </div>
 
-  <div class="form-group">
-    <label for="ram">Minimum RAM (KiB)</label>
-    <input type="number" id="ram" min="0" inputmode="numeric"
-      placeholder="{% if hw_features_present -%}
-        Minimum available RAM in KiB, e.g. 256
-      {%- else -%}
-        Available RAM data is not available
-      {%- endif %}"
-      {% if not hw_features_present %}disabled{% endif %} />
+  <div class="form-group memory-slider-form-group">
+    <label>RAM</label>
+    <div class="memory-slider-wrapper{% if not hw_features_present %} memory-slider-disabled{% endif %}">
+      <div class="memory-slider-value-label" id="ram-range-label">Any</div>
+      <div class="memory-slider-track" id="ram-slider-track">
+        <div class="memory-slider-track-fill" id="ram-range-fill"></div>
+        <input type="range" id="ram-min" class="memory-slider-input"
+               value="0" min="0" max="65536" step="1"
+               aria-label="Minimum RAM"
+               oninput="onMemorySlider('ram')"
+               {% if not hw_features_present %}disabled{% endif %}>
+        <input type="range" id="ram-max" class="memory-slider-input"
+               value="65536" min="0" max="65536" step="1"
+               aria-label="Maximum RAM"
+               oninput="onMemorySlider('ram')"
+               {% if not hw_features_present %}disabled{% endif %}>
+      </div>
+      <div class="memory-slider-endpoints">
+        <span>0</span>
+        <span id="ram-max-endpoint">—</span>
+      </div>
+    </div>
   </div>
 
-  <div class="form-group">
-    <label for="rom">Minimum ROM (KiB)</label>
-    <input type="number" id="rom" min="0" inputmode="numeric"
-      placeholder="{% if hw_features_present -%}
-        Minimum available ROM in KiB, e.g. 512
-      {%- else -%}
-        Available ROM data is not available
-      {%- endif %}"
-      {% if not hw_features_present %}disabled{% endif %} />
+  <div class="form-group memory-slider-form-group">
+    <label>ROM / Flash</label>
+    <div class="memory-slider-wrapper{% if not hw_features_present %} memory-slider-disabled{% endif %}">
+      <div class="memory-slider-value-label" id="rom-range-label">Any</div>
+      <div class="memory-slider-track" id="rom-slider-track">
+        <div class="memory-slider-track-fill" id="rom-range-fill"></div>
+        <input type="range" id="rom-min" class="memory-slider-input"
+               value="0" min="0" max="65536" step="1"
+               aria-label="Minimum ROM"
+               oninput="onMemorySlider('rom')"
+               {% if not hw_features_present %}disabled{% endif %}>
+        <input type="range" id="rom-max" class="memory-slider-input"
+               value="65536" min="0" max="65536" step="1"
+               aria-label="Maximum ROM"
+               oninput="onMemorySlider('rom')"
+               {% if not hw_features_present %}disabled{% endif %}>
+      </div>
+      <div class="memory-slider-endpoints">
+        <span>0</span>
+        <span id="rom-max-endpoint">—</span>
+      </div>
+    </div>
   </div>
 
   <div class="form-group" style="flex-basis: 400px">
