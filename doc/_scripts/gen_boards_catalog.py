@@ -484,6 +484,8 @@ def get_catalog(generate_hw_features=False, hw_features_vendor_filter=None):
             "maintained": is_board_maintained(doc_page_path) if doc_page_path else False,
             "ram_sizes": ram_sizes,
             "rom_sizes": rom_sizes,
+            # Use the largest variant for data-ram/data-rom so boards with multiple
+            # targets are shown when filtering for "at least N" memory.
             "ram": ram_sizes[-1] if ram_sizes else None,
             "rom": rom_sizes[-1] if rom_sizes else None,
             "ram_display": ram_display,

@@ -527,25 +527,36 @@ function initMemorySliders() {
   });
 }
 
+function memorySliderRange(type) {
+  /* Returns {minBytes, maxBytes} from the slider pair for 'type' ("ram" or "rom").
+   * maxBytes is Infinity when the max slider sits at its maximum position. */
+  const KIB = 1024;
+  const minEl = document.getElementById(`${type}-min`);
+  const maxEl = document.getElementById(`${type}-max`);
+  const minKiB = minEl ? Number.parseInt(minEl.value, 10) : 0;
+  const maxKiB = maxEl ? Number.parseInt(maxEl.value, 10) : Infinity;
+  const maxPossible = maxEl ? Number.parseInt(maxEl.max, 10) : Infinity;
+  return {
+    minBytes: minKiB * KIB,
+    maxBytes: (maxKiB >= maxPossible) ? Infinity : maxKiB * KIB,
+  };
+}
+
+function memoryInRange(boardBytes, minBytes, maxBytes, isShield) {
+  /* Returns false when the board should be excluded by a memory range filter.
+   * Shields are never filtered by memory because they have no data-ram/data-rom. */
+  if (isShield) return true;
+  if (Number.isNaN(boardBytes)) return (minBytes <= 0 && maxBytes >= Infinity);
+  return boardBytes >= minBytes && (maxBytes >= Infinity || boardBytes <= maxBytes);
+}
+
 function filterBoards() {
   const nameInput = document.getElementById("name").value.toLowerCase();
   const archSelect = document.getElementById("arch").value;
 
-  const ramMinEl = document.getElementById("ram-min");
-  const ramMaxEl = document.getElementById("ram-max");
-  const ramMinKiB = ramMinEl ? Number.parseInt(ramMinEl.value, 10) : 0;
-  const ramMaxKiB = ramMaxEl ? Number.parseInt(ramMaxEl.value, 10) : Infinity;
-  const ramMaxPossible = ramMaxEl ? Number.parseInt(ramMaxEl.max, 10) : Infinity;
-  const ramMinBytes = ramMinKiB * 1024;
-  const ramMaxBytes = (ramMaxKiB >= ramMaxPossible) ? Infinity : ramMaxKiB * 1024;
+  const { minBytes: ramMinBytes, maxBytes: ramMaxBytes } = memorySliderRange("ram");
+  const { minBytes: romMinBytes, maxBytes: romMaxBytes } = memorySliderRange("rom");
 
-  const romMinEl = document.getElementById("rom-min");
-  const romMaxEl = document.getElementById("rom-max");
-  const romMinKiB = romMinEl ? Number.parseInt(romMinEl.value, 10) : 0;
-  const romMaxKiB = romMaxEl ? Number.parseInt(romMaxEl.value, 10) : Infinity;
-  const romMaxPossible = romMaxEl ? Number.parseInt(romMaxEl.max, 10) : Infinity;
-  const romMinBytes = romMinKiB * 1024;
-  const romMaxBytes = (romMaxKiB >= romMaxPossible) ? Infinity : romMaxKiB * 1024;
   const vendorSelect = document.getElementById("vendor").value;
   const socSocSelect = document.getElementById("soc");
   const showBoards = document.getElementById("show-boards").checked;
@@ -595,10 +606,8 @@ function filterBoards() {
       matches =
         !(nameInput && !boardName.includes(nameInput)) &&
         !(archSelect && !boardArchs.includes(archSelect)) &&
-        !(ramMinBytes > 0 && (isShield || Number.isNaN(boardRam) || boardRam < ramMinBytes)) &&
-        !(ramMaxBytes < Infinity && (isShield || Number.isNaN(boardRam) || boardRam > ramMaxBytes)) &&
-        !(romMinBytes > 0 && (isShield || Number.isNaN(boardRom) || boardRom < romMinBytes)) &&
-        !(romMaxBytes < Infinity && (isShield || Number.isNaN(boardRom) || boardRom > romMaxBytes)) &&
+        memoryInRange(boardRam, ramMinBytes, ramMaxBytes, isShield) &&
+        memoryInRange(boardRom, romMinBytes, romMaxBytes, isShield) &&
         !(vendorSelect && boardVendor !== vendorSelect) &&
         (selectedSocs.length === 0 || selectedSocs.some((soc) => boardSocs.includes(soc))) &&
         (selectedHWTags.length === 0 || selectedHWTags.every((tag) => boardSupportedFeatures.includes(tag))) &&
