@@ -105,6 +105,15 @@ class DeviceTreeUtils:
 
 
 def get_board_memory_size(edt, chosen_name):
+    """Get the total size of a memory region from a chosen Devicetree node.
+
+    Args:
+        edt: The EDT object for a board target.
+        chosen_name: Chosen node name (for example "zephyr,sram" or "zephyr,flash").
+
+    Returns:
+        Total size in bytes, or None if the chosen node is not present.
+    """
     memory_node = edt.chosen_node(chosen_name)
     if memory_node is None:
         return None
@@ -113,6 +122,7 @@ def get_board_memory_size(edt, chosen_name):
 
 
 def format_memory_size(size):
+    """Format a size in bytes using a human-readable binary unit string."""
     for unit, divisor in (("GiB", 1024**3), ("MiB", 1024**2), ("KiB", 1024)):
         if size >= divisor and size % divisor == 0:
             return f"{size // divisor} {unit}"
@@ -120,6 +130,15 @@ def format_memory_size(size):
 
 
 def format_memory_sizes(sizes, memory_type):
+    """Format memory sizes as a comma-separated list with a memory type suffix.
+
+    Args:
+        sizes: List of sizes in bytes.
+        memory_type: Memory label appended to the formatted output.
+
+    Returns:
+        Formatted string, or None if no sizes are provided.
+    """
     if not sizes:
         return None
     return f"{', '.join(format_memory_size(size) for size in sizes)} {memory_type}"
