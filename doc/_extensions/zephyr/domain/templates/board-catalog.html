@@ -5,7 +5,7 @@
 
 <form
   class="filter-form"
-  aria-label="Filter boards and shields by name, architecture, vendor, SoC, and RAM">
+  aria-label="Filter boards and shields by name, architecture, vendor, SoC, RAM, and ROM">
 
   <div class="form-group" style="flex-basis: 60%">
     <label for="name">Name</label>
@@ -53,6 +53,17 @@
         Minimum available RAM in KiB, e.g. 256
       {%- else -%}
         Available RAM data is not available
+      {%- endif %}"
+      {% if not hw_features_present %}disabled{% endif %} />
+  </div>
+
+  <div class="form-group">
+    <label for="rom">Minimum ROM (KiB)</label>
+    <input type="number" id="rom" min="0" inputmode="numeric"
+      placeholder="{% if hw_features_present -%}
+        Minimum available ROM in KiB, e.g. 512
+      {%- else -%}
+        Available ROM data is not available
       {%- endif %}"
       {% if not hw_features_present %}disabled{% endif %} />
   </div>

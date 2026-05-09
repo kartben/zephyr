@@ -296,6 +296,13 @@ input:checked + .toggle-label .toggle-switch::before {
   color: var(--body-color);
 }
 
+.board-card .rom {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--body-color);
+}
+
 @media (max-width: 1024px) {
   .board-card {
     flex: 1 1 calc(50% - 20px);
@@ -389,6 +396,14 @@ input:checked + .toggle-label .toggle-switch::before {
 }
 
 #catalog.compact .board-card .ram::before {
+  content: " / ";
+}
+
+#catalog.compact .board-card .rom {
+  display: inline;
+}
+
+#catalog.compact .board-card .rom::before {
   content: " / ";
 }
 
