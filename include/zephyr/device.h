@@ -904,6 +904,12 @@ __syscall bool device_is_ready(const struct device *dev);
  *
  * @retval true All devices are ready for use.
  * @retval false At least one device is not ready for use.
+ *
+ * @code{.c}
+ * if (!DEVICE_ARE_READY(dev1, dev2, dev3)) {
+ * 	return -ENODEV;
+ * }
+ * @endcode
  */
 #define Z_DEVICE_IS_READY_OR_LOG(dev, ready) \
 	do { \
