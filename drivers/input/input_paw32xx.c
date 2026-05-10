@@ -360,19 +360,13 @@ static int paw32xx_init(const struct device *dev)
 	struct paw32xx_data *data = dev->data;
 	int ret;
 
-	if (!spi_is_ready_dt(&cfg->spi)) {
-		LOG_ERR("%s is not ready", cfg->spi.bus->name);
+	if (!DEVICE_ARE_READY(cfg->spi.bus, cfg->motion_gpio.port)) {
 		return -ENODEV;
 	}
 
 	data->dev = dev;
 
 	k_work_init(&data->motion_work, paw32xx_motion_work_handler);
-
-	if (!gpio_is_ready_dt(&cfg->motion_gpio)) {
-		LOG_ERR("%s is not ready", cfg->motion_gpio.port->name);
-		return -ENODEV;
-	}
 
 	ret = gpio_pin_configure_dt(&cfg->motion_gpio, GPIO_INPUT);
 	if (ret != 0) {

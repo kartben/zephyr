@@ -195,19 +195,13 @@ static int xpt2046_init(const struct device *dev)
 	const struct xpt2046_config *config = dev->config;
 	struct xpt2046_data *data = dev->data;
 
-	if (!spi_is_ready_dt(&config->bus)) {
-		LOG_ERR_DEVICE_NOT_READY(config->bus.bus);
+	if (!DEVICE_ARE_READY(config->bus.bus, config->int_gpio.port)) {
 		return -ENODEV;
 	}
 
 	data->dev = dev;
 	k_work_init(&data->work, xpt2046_work_handler);
 	k_work_init_delayable(&data->dwork, xpt2046_release_handler);
-
-	if (!gpio_is_ready_dt(&config->int_gpio)) {
-		LOG_ERR_DEVICE_NOT_READY(config->int_gpio.port);
-		return -ENODEV;
-	}
 
 	r = gpio_pin_configure_dt(&config->int_gpio, GPIO_INPUT);
 	if (r < 0) {

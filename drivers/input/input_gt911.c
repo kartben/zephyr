@@ -284,8 +284,7 @@ static int gt911_init(const struct device *dev)
 	const struct gt911_config *config = dev->config;
 	struct gt911_data *data = dev->data;
 
-	if (!i2c_is_ready_dt(&config->bus)) {
-		LOG_ERR_DEVICE_NOT_READY(config->bus.bus);
+	if (!DEVICE_ARE_READY(config->bus.bus, config->int_gpio.port)) {
 		return -ENODEV;
 	}
 
@@ -296,14 +295,8 @@ static int gt911_init(const struct device *dev)
 
 	int r;
 
-	if (!gpio_is_ready_dt(&config->int_gpio)) {
-		LOG_ERR_DEVICE_NOT_READY(config->int_gpio.port);
-		return -ENODEV;
-	}
-
 	if (config->rst_gpio.port != NULL) {
-		if (!gpio_is_ready_dt(&config->rst_gpio)) {
-			LOG_ERR_DEVICE_NOT_READY(config->rst_gpio.port);
+		if (!DEVICE_ARE_READY(config->rst_gpio.port)) {
 			return -ENODEV;
 		}
 

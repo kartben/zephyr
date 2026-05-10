@@ -183,8 +183,11 @@ static int ft6146_init(const struct device *dev)
 	struct ft6146_data *data = dev->data;
 	int ret;
 
-	if (!i2c_is_ready_dt(&config->i2c)) {
-		LOG_ERR_DEVICE_NOT_READY(config->i2c.bus);
+#ifdef CONFIG_INPUT_FT6146_INTERRUPT
+	if (!DEVICE_ARE_READY(config->i2c.bus, config->int_gpio.port)) {
+#else
+	if (!DEVICE_ARE_READY(config->i2c.bus)) {
+#endif
 		return -ENODEV;
 	}
 
@@ -200,11 +203,6 @@ static int ft6146_init(const struct device *dev)
 	k_work_init(&data->work, ft6146_work_handler);
 
 #ifdef CONFIG_INPUT_FT6146_INTERRUPT
-	if (!gpio_is_ready_dt(&config->int_gpio)) {
-		LOG_ERR_DEVICE_NOT_READY(config->int_gpio.port);
-		return -ENODEV;
-	}
-
 	ret = gpio_pin_configure_dt(&config->int_gpio, GPIO_INPUT);
 	if (ret < 0) {
 		LOG_ERR("Failed to configure interrupt GPIO: %d", ret);

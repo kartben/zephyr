@@ -171,8 +171,11 @@ static int ft5336_init(const struct device *dev)
 	struct ft5336_data *data = dev->data;
 	int r;
 
-	if (!device_is_ready(config->bus.bus)) {
-		LOG_ERR_DEVICE_NOT_READY(config->bus.bus);
+#ifdef CONFIG_INPUT_FT5336_INTERRUPT
+	if (!DEVICE_ARE_READY(config->bus.bus, config->int_gpio.port)) {
+#else
+	if (!DEVICE_ARE_READY(config->bus.bus)) {
+#endif
 		return -ENODEV;
 	}
 
@@ -201,11 +204,6 @@ static int ft5336_init(const struct device *dev)
 	}
 
 #ifdef CONFIG_INPUT_FT5336_INTERRUPT
-	if (!gpio_is_ready_dt(&config->int_gpio)) {
-		LOG_ERR_DEVICE_NOT_READY(config->int_gpio.port);
-		return -ENODEV;
-	}
-
 	r = gpio_pin_configure_dt(&config->int_gpio, GPIO_INPUT);
 	if (r < 0) {
 		LOG_ERR("Could not configure interrupt GPIO pin");

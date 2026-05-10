@@ -76,18 +76,7 @@ static int ili2132a_init(const struct device *dev)
 	const struct ili2132a_config *dev_cfg = dev->config;
 	int ret;
 
-	if (!i2c_is_ready_dt(&dev_cfg->i2c)) {
-		LOG_ERR_DEVICE_NOT_READY(dev_cfg->i2c.bus);
-		return -ENODEV;
-	}
-
-	if (!gpio_is_ready_dt(&dev_cfg->rst)) {
-		LOG_ERR_DEVICE_NOT_READY(dev_cfg->rst.port);
-		return -ENODEV;
-	}
-
-	if (!gpio_is_ready_dt(&dev_cfg->irq)) {
-		LOG_ERR_DEVICE_NOT_READY(dev_cfg->irq.port);
+	if (!DEVICE_ARE_READY(dev_cfg->i2c.bus, dev_cfg->rst.port, dev_cfg->irq.port)) {
 		return -ENODEV;
 	}
 

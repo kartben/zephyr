@@ -891,6 +891,33 @@ __syscall bool device_is_ready(const struct device *dev);
 	LOG_ERR("%s device not ready", (dev) ? (dev)->name : "(null)")
 
 /**
+ * @brief Verify that one or more devices are ready for use.
+ *
+ * @details Evaluates each device with device_is_ready() and writes a
+ * "device not ready" error message for every device that is not ready.
+ *
+ * @param ... one or more pointers to struct device.
+ *
+ * @retval true All devices are ready for use.
+ * @retval false At least one device is not ready for use.
+ */
+#define Z_DEVICE_IS_READY_OR_LOG(dev, ready) \
+	do { \
+		const struct device *z_ready_dev = (dev); \
+		if (!device_is_ready(z_ready_dev)) { \
+			LOG_ERR_DEVICE_NOT_READY(z_ready_dev); \
+			(ready) = false; \
+		} \
+	} while (false)
+
+#define DEVICE_ARE_READY(...) \
+	({ \
+		bool z_ready = true; \
+		FOR_EACH_FIXED_ARG(Z_DEVICE_IS_READY_OR_LOG, (;), z_ready, __VA_ARGS__); \
+		z_ready; \
+	})
+
+/**
  * @brief Initialize a device.
  *
  * A device whose initialization was deferred (by marking it as

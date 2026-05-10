@@ -8,10 +8,13 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/init.h>
+#include <zephyr/logging/log.h>
 #include <zephyr/ztest.h>
 #include <zephyr/sys/printk.h>
 #include <zephyr/linker/sections.h>
 #include "abstract_driver.h"
+
+LOG_MODULE_REGISTER(test_kernel_device, LOG_LEVEL_ERR);
 
 
 #define DUMMY_PORT_1    "dummy"
@@ -134,6 +137,15 @@ ZTEST_USER(device, test_bogus_dynamic_name)
 	snprintk(name, sizeof(name), "ANOTHER_BOGUS_NAME");
 	mux = device_get_binding(name);
 	zassert_true(mux == NULL);
+}
+
+ZTEST(device, test_device_are_ready)
+{
+	const struct device *ready = device_get_binding(DUMMY_PORT_2);
+
+	zassert_not_null(ready);
+	zassert_true(DEVICE_ARE_READY(ready));
+	zassert_false(DEVICE_ARE_READY(ready, FAKEDEFERDRIVER2, NULL));
 }
 
 /**
