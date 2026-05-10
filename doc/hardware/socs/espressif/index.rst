@@ -1,11 +1,10 @@
 .. SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
 .. SPDX-License-Identifier: Apache-2.0
 
-SoC Documentation
-#################
+Espressif SoCs
+##############
 
 .. toctree::
    :maxdepth: 2
 
-   espressif/index
-   nxp/imxrt/index
+   esp32/index

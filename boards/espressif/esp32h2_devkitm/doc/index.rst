@@ -14,8 +14,7 @@ For details on getting started, check `ESP32-H2-DevKitM-1`_.
 Hardware
 ********
 
-.. include:: ../../../espressif/common/soc-esp32h2-features.rst
-   :start-after: espressif-soc-esp32h2-features
+.. zephyr:board-soc-fragment:: soc-features
 
 Supported Features
 ==================
@@ -25,25 +24,21 @@ Supported Features
 System Requirements
 *******************
 
-.. include:: ../../../espressif/common/system-requirements.rst
-   :start-after: espressif-system-requirements
+.. zephyr:board-soc-fragment:: system-requirements
 
 Programming and Debugging
 *************************
 
 .. zephyr:board-supported-runners::
 
-.. include:: ../../../espressif/common/building-flashing.rst
-   :start-after: espressif-building-flashing
+.. zephyr:board-soc-fragment:: building-flashing
 
-.. include:: ../../../espressif/common/board-variants.rst
-   :start-after: espressif-board-variants
+.. zephyr:board-soc-fragment:: board-variants
 
 Debugging
 =========
 
-.. include:: ../../../espressif/common/openocd-debugging.rst
-   :start-after: espressif-openocd-debugging
+.. zephyr:board-soc-fragment:: openocd-debugging
 
 References
 **********

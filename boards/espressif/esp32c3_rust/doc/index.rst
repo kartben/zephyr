@@ -12,8 +12,7 @@ For more information, check `ESP32-C3-DevKit-RUST`_.
 Hardware
 ********
 
-.. include:: ../../../espressif/common/soc-esp32c3-features.rst
-   :start-after: espressif-soc-esp32c3-features
+.. zephyr:board-soc-fragment:: soc-features
 
 Supported Features
 ==================
@@ -68,25 +67,21 @@ Power
 System Requirements
 *******************
 
-.. include:: ../../../espressif/common/system-requirements.rst
-   :start-after: espressif-system-requirements
+.. zephyr:board-soc-fragment:: system-requirements
 
 Programming and Debugging
 *************************
 
 .. zephyr:board-supported-runners::
 
-.. include:: ../../../espressif/common/building-flashing.rst
-   :start-after: espressif-building-flashing
+.. zephyr:board-soc-fragment:: building-flashing
 
-.. include:: ../../../espressif/common/board-variants.rst
-   :start-after: espressif-board-variants
+.. zephyr:board-soc-fragment:: board-variants
 
 Debugging
 =========
 
-.. include:: ../../../espressif/common/openocd-debugging.rst
-   :start-after: espressif-openocd-debugging
+.. zephyr:board-soc-fragment:: openocd-debugging
 
 References
 **********

@@ -35,8 +35,7 @@ The Wi-Fi based ESP Thread Border Router consists of two SoCs:
    The RCP runs its own firmware, usually based on ESP-IDF.
    This Zephyr board target is for the host, not the RCP.
 
-.. include:: ../../common/soc-esp32s3-features.rst
-   :start-after: espressif-soc-esp32s3-features
+.. zephyr:board-soc-fragment:: soc-features
 
 Supported Features
 ==================
@@ -46,25 +45,21 @@ Supported Features
 System Requirements
 *******************
 
-.. include:: ../../common/system-requirements.rst
-   :start-after: espressif-system-requirements
+.. zephyr:board-soc-fragment:: system-requirements
 
 Programming and Debugging
 *************************
 
 .. zephyr:board-supported-runners::
 
-.. include:: ../../common/building-flashing.rst
-   :start-after: espressif-building-flashing
+.. zephyr:board-soc-fragment:: building-flashing
 
-.. include:: ../../common/board-variants.rst
-   :start-after: espressif-board-variants
+.. zephyr:board-soc-fragment:: board-variants
 
 Debugging
 =========
 
-.. include:: ../../common/openocd-debugging.rst
-   :start-after: espressif-openocd-debugging
+.. zephyr:board-soc-fragment:: openocd-debugging
 
 References
 **********
