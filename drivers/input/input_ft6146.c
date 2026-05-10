@@ -186,7 +186,7 @@ static int ft6146_init(const struct device *dev)
 #ifdef CONFIG_INPUT_FT6146_INTERRUPT
 #define FT6146_READY_DEVS config->i2c.bus, config->int_gpio.port
 #else
-	#define FT6146_READY_DEVS config->i2c.bus
+#define FT6146_READY_DEVS config->i2c.bus
 #endif
 	if (!DEVICE_ARE_READY(FT6146_READY_DEVS)) {
 		return -ENODEV;
