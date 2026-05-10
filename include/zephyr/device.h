@@ -896,8 +896,9 @@ __syscall bool device_is_ready(const struct device *dev);
  * @details Evaluates each device with device_is_ready() and writes a
  * "device not ready" error message for every device that is not ready.
  *
- * This macro uses a GNU statement expression and therefore requires compiler
- * support for that extension.
+ * This macro uses a GNU statement expression together with
+ * FOR_EACH_FIXED_ARG(), and therefore requires compiler support for that
+ * extension.
  *
  * @param ... one or more pointers to struct device. NULL pointers are allowed;
  *           they are treated as not ready and logged as "(null)".
