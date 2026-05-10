@@ -816,7 +816,14 @@ class SocFragmentDirective(SphinxDirective):
                 location=(self.env.docname, self.lineno),
             )
             container = nodes.container(classes=["soc-fragment"])
-            self.state.nested_parse(self.content, self.content_offset, container)
+            container.extend(
+                nested_parse_to_nodes(
+                    self.state,
+                    self.content,
+                    offset=self.content_offset,
+                    allow_section_headings=True,
+                )
+            )
             return [container]
 
         anchor = _make_soc_fragment_anchor(owner["type"], owner["name"], fragment_name)
@@ -841,7 +848,14 @@ class SocFragmentDirective(SphinxDirective):
         if not fragment_registered:
             container["ids"] = []
 
-        self.state.nested_parse(self.content, self.content_offset, container)
+        container.extend(
+            nested_parse_to_nodes(
+                self.state,
+                self.content,
+                offset=self.content_offset,
+                allow_section_headings=True,
+            )
+        )
 
         return [container]
 
