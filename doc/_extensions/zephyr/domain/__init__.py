@@ -1705,9 +1705,9 @@ class ZephyrDomain(Domain):
             return None
 
         candidates: list[str] = []
-        if series is not None:
+        if series is not None and metadata.get("series"):
             candidates.append(f"series:{metadata['series']}:{fragment_name}")
-        elif family is not None:
+        elif family is not None and metadata.get("family"):
             candidates.append(f"family:{metadata['family']}:{fragment_name}")
         else:
             if metadata.get("series"):
