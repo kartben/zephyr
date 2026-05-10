@@ -172,12 +172,14 @@ static int ft5336_init(const struct device *dev)
 	int r;
 
 #ifdef CONFIG_INPUT_FT5336_INTERRUPT
-	if (!DEVICE_ARE_READY(config->bus.bus, config->int_gpio.port)) {
+#define FT5336_READY_DEVS config->bus.bus, config->int_gpio.port
 #else
-	if (!DEVICE_ARE_READY(config->bus.bus)) {
+	#define FT5336_READY_DEVS config->bus.bus
 #endif
+	if (!DEVICE_ARE_READY(FT5336_READY_DEVS)) {
 		return -ENODEV;
 	}
+#undef FT5336_READY_DEVS
 
 	data->dev = dev;
 

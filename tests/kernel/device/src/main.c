@@ -145,6 +145,7 @@ ZTEST(device, test_device_are_ready)
 
 	zassert_not_null(ready);
 	zassert_true(DEVICE_ARE_READY(ready));
+	zassert_false(DEVICE_ARE_READY(FAKEDEFERDRIVER2, ready));
 	zassert_false(DEVICE_ARE_READY(ready, FAKEDEFERDRIVER2, NULL));
 }
 
