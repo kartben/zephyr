@@ -46,7 +46,7 @@ the :zephyr:soc-family:`espressif_esp32` family.
    - 1x SDIO 2.0 slave controller
    - LED PWM controller, up to 6 channels
    - 1x Motor control PWM (MCPWM)
-   - 1x Remote control peripehral
+   - 1x Remote control peripheral
    - 1x Parallel IO interface (PARLIO)
    - General DMA controller (GDMA), with 3 transmit channels and 3 receive channels
    - Event task matrix (ETM)
