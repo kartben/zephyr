@@ -1346,7 +1346,7 @@ Boards
 
    .. note::
 
-      Similar to :rst:dir:`zephyr:board-supported-hw`, this directive requires hardware features
+       Similar to :rst:dir:`zephyr:board-supported-hw`, this directive requires hardware features
        generation to be enabled (``zephyr_generate_hw_features`` config option set to ``True``) to
        produce a complete table. If disabled, a warning message will be shown instead of the runners
        tables.
