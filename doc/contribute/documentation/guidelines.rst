@@ -1347,9 +1347,59 @@ Boards
    .. note::
 
       Similar to :rst:dir:`zephyr:board-supported-hw`, this directive requires hardware features
-      generation to be enabled (``zephyr_generate_hw_features`` config option set to ``True``) to
-      produce a complete table. If disabled, a warning message will be shown instead of the runners
-      tables.
+       generation to be enabled (``zephyr_generate_hw_features`` config option set to ``True``) to
+       produce a complete table. If disabled, a warning message will be shown instead of the runners
+       tables.
+
+SoC documentation
+=================
+
+.. rst:directive:: .. zephyr:soc-family:: name
+
+   This directive marks a document as the canonical page for a SoC family
+   identified by the ``soc.yml`` family name.
+
+.. rst:directive:: .. zephyr:soc-series:: name
+
+   This directive marks a document as the canonical page for a SoC series
+   identified by the ``soc.yml`` series name.
+
+.. rst:role:: zephyr:soc-family
+
+   This role references a page registered with :rst:dir:`zephyr:soc-family`.
+
+.. rst:role:: zephyr:soc-series
+
+   This role references a page registered with :rst:dir:`zephyr:soc-series`.
+
+.. rst:directive:: .. zephyr:soc-fragment:: name
+
+   This directive defines reusable content owned by the current SoC family or
+   series page. Use the ``title`` option to render a visible heading on the
+   canonical SoC page while still allowing board pages to inline just the
+   fragment body.
+
+.. rst:directive:: .. zephyr:board-soc-fragment:: name
+
+   This directive inlines a reusable SoC fragment into a board documentation
+   page. By default it resolves the board's SoC to a matching series fragment
+   and falls back to the family fragment if needed.
+
+   The directive accepts optional ``soc``, ``series``, and ``family`` options
+   to override the automatic resolution.
+
+.. rst:role:: zephyr:board-soc
+
+   This role links to the SoC documentation associated with a board page.
+
+   Use ``series`` or ``family`` as the target to resolve from the current board
+   page, or use an explicit target such as ``series:imxrt10xx`` or
+   ``family:nxp_imxrt``.
+
+.. rst:role:: zephyr:soc-fragment
+
+   This role links to a specific SoC fragment anchor. Use targets in the form
+   ``series:<name>:<fragment>`` or ``family:<name>:<fragment>``.
 
 Accessibility Guidelines
 ************************

@@ -357,7 +357,10 @@ DFU jumper to boot the on board debugger to ISP mode.
   * Debugger choice jumper: JP5
   * DFU mode jumper: JP3
 
-.. include:: ../../common/rt1xxx-lpclink2-debug.rst.inc
+Shared i.MX RT10xx debug probe setup details are available in
+:zephyr:board-soc:`the SoC series documentation <series>`.
+
+.. zephyr:board-soc-fragment:: debug-probe
 
 See `Using J-Link with MIMXRT1060-EVK or MIMXRT1064-EVK`_ or `Using J-Link with
 MIMXRT1060-EVKB`_ for more details.

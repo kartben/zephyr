@@ -211,7 +211,10 @@ Configuring a Debug Probe
 For the RT1040, J9/J10 are the SWD isolation jumpers, J12 is the DFU
 mode jumper, and J2 is the 20 pin JTAG/SWD header.
 
-.. include:: ../../common/rt1xxx-lpclink2-debug.rst.inc
+Shared i.MX RT10xx debug probe setup details are available in
+:zephyr:board-soc:`the SoC series documentation <series>`.
+
+.. zephyr:board-soc-fragment:: debug-probe
 
 Configuring a Console
 =====================

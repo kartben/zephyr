@@ -433,10 +433,33 @@ def get_catalog(generate_hw_features=False, hw_features_vendor_filter=None):
         }
 
     socs_hierarchy = {}
+    soc_family_catalog = {}
+    soc_series_catalog = {}
+    soc_name_catalog = {}
+
+    for family in systems.get_families():
+        soc_family_catalog[family.name] = {
+            "name": family.name,
+            "series": [series.name for series in family.series],
+            "socs": [soc.name for soc in family.socs],
+        }
+
+    for series in systems.get_series():
+        soc_series_catalog[series.name] = {
+            "name": series.name,
+            "family": series.family or None,
+            "socs": [soc.name for soc in series.socs],
+        }
+
     for soc in systems.get_socs():
         family = soc.family or "<no family>"
         series = soc.series or "<no series>"
         socs_hierarchy.setdefault(family, {}).setdefault(series, []).append(soc.name)
+        soc_name_catalog[soc.name] = {
+            "name": soc.name,
+            "family": soc.family or None,
+            "series": soc.series or None,
+        }
 
     available_runners = {}
     for runner in ZephyrBinaryRunner.get_runners():
@@ -474,6 +497,9 @@ def get_catalog(generate_hw_features=False, hw_features_vendor_filter=None):
         "shields": shield_catalog,
         "vendors": {**vnd_lookup.vnd2vendor, "others": "Other/Unknown"},
         "socs": socs_hierarchy,
+        "soc_families": soc_family_catalog,
+        "soc_series": soc_series_catalog,
+        "soc_names": soc_name_catalog,
         "archs": arch_catalog,
         "runners": available_runners,
     }

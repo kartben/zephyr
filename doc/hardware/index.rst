@@ -14,4 +14,5 @@ Hardware Support
    peripherals/index.rst
    pinctrl/index.rst
    porting/index
+   socs/index.rst
    virtualization/index.rst

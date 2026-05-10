@@ -20,6 +20,10 @@ Directives
   of the board documented in the current page.
 - ``zephyr:board-supported-runners::`` - Shows a table of supported runners for the board documented
   in the current page.
+- ``zephyr:soc-family::`` - Flags a document as the canonical documentation page for a SoC family.
+- ``zephyr:soc-series::`` - Flags a document as the canonical documentation page for a SoC series.
+- ``zephyr:soc-fragment::`` - Defines a reusable fragment owned by a SoC family or series page.
+- ``zephyr:board-soc-fragment::`` - Inlines a reusable SoC fragment into a board documentation page.
 
 Roles
 -----
@@ -28,6 +32,10 @@ Roles
 - ``:zephyr:code-sample-category:`` - References a code sample category.
 - ``:zephyr:board:`` - References a board.
 - ``:zephyr:board-catalog:`` - References the board catalog page, optionally with filter parameters.
+- ``:zephyr:soc-family:`` - References a SoC family page.
+- ``:zephyr:soc-series:`` - References a SoC series page.
+- ``:zephyr:board-soc:`` - References the SoC documentation associated with a board page.
+- ``:zephyr:soc-fragment:`` - References a specific SoC fragment.
 
 """
 
@@ -94,6 +102,18 @@ BINDING_TYPE_TO_DOCUTILS_NODE = {
 logger = logging.getLogger(__name__)
 
 
+def _find_node_by_id(document: nodes.document, node_id: str) -> nodes.Element | None:
+    for candidate in document.findall(nodes.Element):
+        if node_id in candidate.get("ids", []):
+            return candidate
+
+    return None
+
+
+def _make_soc_fragment_anchor(scope: str, owner: str, fragment: str) -> str:
+    return nodes.make_id(f"{scope}-{owner}-{fragment}")
+
+
 class CodeSampleNode(nodes.Element):
     pass
 
@@ -111,6 +131,10 @@ class CodeSampleListingNode(nodes.Element):
 
 
 class BoardNode(nodes.Element):
+    pass
+
+
+class BoardSocFragmentNode(nodes.Element):
     pass
 
 
@@ -743,6 +767,105 @@ class BoardDirective(SphinxDirective):
             return [board_node]
 
 
+class SocFamilyDirective(SphinxDirective):
+    has_content = False
+    required_arguments = 1
+    optional_arguments = 0
+
+    def run(self):
+        family_name = self.arguments[0]
+        domain = self.env.get_domain("zephyr")
+
+        if not domain.register_soc_page("family", family_name, self.env.docname, self.lineno):
+            return []
+
+        return [nodes.target("", "", ids=[family_name])]
+
+
+class SocSeriesDirective(SphinxDirective):
+    has_content = False
+    required_arguments = 1
+    optional_arguments = 0
+
+    def run(self):
+        series_name = self.arguments[0]
+        domain = self.env.get_domain("zephyr")
+
+        if not domain.register_soc_page("series", series_name, self.env.docname, self.lineno):
+            return []
+
+        return [nodes.target("", "", ids=[series_name])]
+
+
+class SocFragmentDirective(SphinxDirective):
+    has_content = True
+    required_arguments = 1
+    optional_arguments = 0
+    option_spec = {
+        "title": directives.unchanged,
+    }
+
+    def run(self):
+        fragment_name = self.arguments[0]
+        domain = self.env.get_domain("zephyr")
+        owner = domain.get_soc_page_for_doc(self.env.docname)
+
+        if owner is None:
+            logger.warning(
+                "soc-fragment directive must be used in a SoC family or series documentation page.",
+                location=(self.env.docname, self.lineno),
+            )
+            container = nodes.container(classes=["soc-fragment"])
+            self.state.nested_parse(self.content, self.content_offset, container)
+            return [container]
+
+        anchor = _make_soc_fragment_anchor(owner["type"], owner["name"], fragment_name)
+        title = self.options.get("title")
+
+        fragment_metadata = {
+            "name": fragment_name,
+            "scope": owner["type"],
+            "owner": owner["name"],
+            "docname": self.env.docname,
+            "anchor": anchor,
+            "title": title,
+        }
+        fragment_registered = domain.add_soc_fragment(fragment_metadata, self.lineno)
+
+        if title:
+            container: nodes.Element = nodes.section(ids=[anchor], classes=["soc-fragment"])
+            container += nodes.title(text=title)
+        else:
+            container = nodes.container(ids=[anchor], classes=["soc-fragment"])
+
+        if not fragment_registered:
+            container["ids"] = []
+
+        self.state.nested_parse(self.content, self.content_offset, container)
+
+        return [container]
+
+
+class BoardSocFragmentDirective(SphinxDirective):
+    has_content = False
+    required_arguments = 1
+    optional_arguments = 0
+    option_spec = {
+        "soc": directives.unchanged,
+        "series": directives.unchanged,
+        "family": directives.unchanged,
+    }
+
+    def run(self):
+        fragment_node = BoardSocFragmentNode()
+        fragment_node["fragment"] = self.arguments[0]
+        fragment_node["soc"] = self.options.get("soc")
+        fragment_node["series"] = self.options.get("series")
+        fragment_node["family"] = self.options.get("family")
+        fragment_node.line = self.lineno
+        return [fragment_node]
+
+
 class BoardCatalogDirective(SphinxDirective):
     has_content = False
     required_arguments = 0
@@ -1145,6 +1268,49 @@ class BoardSupportedRunnersDirective(SphinxDirective):
         return result_nodes
 
 
+class ProcessBoardSocFragmentNode(SphinxPostTransform):
+    default_priority = 5  # before ReferencesResolver
+
+    def run(self, **kwargs: Any) -> None:
+        matcher = NodeMatcher(BoardSocFragmentNode)
+        domain = self.env.get_domain("zephyr")
+
+        for node in self.document.traverse(matcher):
+            fragment = domain.resolve_board_soc_fragment(
+                self.env.docname,
+                node["fragment"],
+                soc=node.get("soc"),
+                series=node.get("series"),
+                family=node.get("family"),
+                location_line=node.line,
+            )
+            if fragment is None:
+                node.replace_self([])
+                continue
+
+            fragment_doc = self.env.doc2path(fragment["docname"], base=None)
+            self.env.note_dependency(fragment_doc)
+
+            fragment_doctree = self.env.get_doctree(fragment["docname"])
+            fragment_node = _find_node_by_id(fragment_doctree, fragment["anchor"])
+            if fragment_node is None:
+                logger.warning(
+                    (
+                        f"SoC fragment {fragment['scope']}:{fragment['owner']}:{fragment['name']} "
+                        "could not be loaded from the owning document."
+                    ),
+                    location=(self.env.docname, node.line),
+                )
+                node.replace_self([])
+                continue
+
+            children = list(fragment_node.children)
+            if children and isinstance(children[0], nodes.title):
+                children = children[1:]
+
+            node.replace_self([child.deepcopy() for child in children])
+
+
 class ZephyrDomain(Domain):
     """Zephyr domain"""
 
@@ -1156,6 +1322,10 @@ class ZephyrDomain(Domain):
         "code-sample-category": XRefRole(innernodeclass=nodes.inline, warn_dangling=True),
         "board": XRefRole(innernodeclass=nodes.inline, warn_dangling=True),
         "board-catalog": XRefRole(innernodeclass=nodes.inline, warn_dangling=False),
+        "soc-family": XRefRole(innernodeclass=nodes.inline, warn_dangling=True),
+        "soc-series": XRefRole(innernodeclass=nodes.inline, warn_dangling=True),
+        "board-soc": XRefRole(innernodeclass=nodes.inline, warn_dangling=True),
+        "soc-fragment": XRefRole(innernodeclass=nodes.inline, warn_dangling=True),
     }
 
     directives = {
@@ -1166,12 +1336,19 @@ class ZephyrDomain(Domain):
         "board": BoardDirective,
         "board-supported-hw": BoardSupportedHardwareDirective,
         "board-supported-runners": BoardSupportedRunnersDirective,
+        "soc-family": SocFamilyDirective,
+        "soc-series": SocSeriesDirective,
+        "soc-fragment": SocFragmentDirective,
+        "board-soc-fragment": BoardSocFragmentDirective,
     }
 
     object_types: dict[str, ObjType] = {
         "code-sample": ObjType("code sample", "code-sample"),
         "code-sample-category": ObjType("code sample category", "code-sample-category"),
         "board": ObjType("board", "board"),
+        "soc-family": ObjType("SoC family", "soc-family"),
+        "soc-series": ObjType("SoC series", "soc-series"),
+        "soc-fragment": ObjType("SoC fragment", "soc-fragment"),
     }
 
     initial_data: dict[str, Any] = {
@@ -1187,6 +1364,11 @@ class ZephyrDomain(Domain):
         "shields": {},
         "vendors": {},
         "socs": {},
+        "soc_families": {},
+        "soc_series": {},
+        "soc_names": {},
+        "doc_soc_pages": {},
+        "soc_fragments": {},
         "archs": {},
         "runners": {},
     }
@@ -1210,11 +1392,26 @@ class ZephyrDomain(Domain):
         if self.data["board_catalog_docname"] == docname:
             self.data["board_catalog_docname"] = None
         self.data["has_board"].pop(docname, None)
+        self.data["doc_soc_pages"].pop(docname, None)
 
         # Clear board docnames for boards documented in this docname
         for board_data in self.data.get("boards", {}).values():
             if board_data.get("docname") == docname:
                 board_data.pop("docname", None)
+
+        for family_data in self.data.get("soc_families", {}).values():
+            if family_data.get("docname") == docname:
+                family_data.pop("docname", None)
+
+        for series_data in self.data.get("soc_series", {}).values():
+            if series_data.get("docname") == docname:
+                series_data.pop("docname", None)
+
+        self.data["soc_fragments"] = {
+            fragment_id: fragment
+            for fragment_id, fragment in self.data["soc_fragments"].items()
+            if fragment["docname"] != docname
+        }
 
     def merge_domaindata(self, docnames: list[str], otherdata: dict) -> None:
         self.data["code-samples"].update(otherdata["code-samples"])
@@ -1245,10 +1442,22 @@ class ZephyrDomain(Domain):
                 "has_code_sample_listing"
             ].get(docname, False)
             self.data["has_board"][docname] = otherdata["has_board"].get(docname, False)
+            if docname in otherdata.get("doc_soc_pages", {}):
+                self.data["doc_soc_pages"][docname] = otherdata["doc_soc_pages"][docname]
 
         # Merge board catalog docname - there should only be one
         if otherdata["board_catalog_docname"] is not None:
             self.data["board_catalog_docname"] = otherdata["board_catalog_docname"]
+
+        for family_name, family in otherdata.get("soc_families", {}).items():
+            if "docname" in family:
+                self.data["soc_families"][family_name]["docname"] = family["docname"]
+
+        for series_name, series in otherdata.get("soc_series", {}).items():
+            if "docname" in series:
+                self.data["soc_series"][series_name]["docname"] = series["docname"]
+
+        self.data["soc_fragments"].update(otherdata.get("soc_fragments", {}))
 
     def get_objects(self):
         for _, code_sample in self.data["code-samples"].items():
@@ -1283,6 +1492,38 @@ class ZephyrDomain(Domain):
                     1,
                 )
 
+        for _, family in self.data["soc_families"].items():
+            if "docname" in family:
+                yield (
+                    family["name"],
+                    family["name"],
+                    "soc-family",
+                    family["docname"],
+                    family["name"],
+                    1,
+                )
+
+        for _, series in self.data["soc_series"].items():
+            if "docname" in series:
+                yield (
+                    series["name"],
+                    series["name"],
+                    "soc-series",
+                    series["docname"],
+                    series["name"],
+                    1,
+                )
+
+        for fragment_id, fragment in self.data["soc_fragments"].items():
+            yield (
+                fragment_id,
+                fragment["title"] or fragment["name"],
+                "soc-fragment",
+                fragment["docname"],
+                fragment["anchor"],
+                1,
+            )
+
     # used by Sphinx Immaterial theme
     def get_object_synopses(self) -> Iterator[tuple[tuple[str, str], str]]:
         for _, code_sample in self.data["code-samples"].items():
@@ -1291,6 +1532,302 @@ class ZephyrDomain(Domain):
                 code_sample["description"].astext(),
             )
 
+    def get_soc_page_for_doc(self, docname: str) -> dict[str, str] | None:
+        return self.data["doc_soc_pages"].get(docname)
+
+    def register_soc_page(self, scope: str, name: str, docname: str, lineno: int) -> bool:
+        collection_key = "soc_families" if scope == "family" else "soc_series"
+        collection = self.data[collection_key]
+        page = collection.get(name)
+        if page is None:
+            logger.warning(
+                f"SoC {scope} {name} does not seem to be a valid {scope} name.",
+                location=(docname, lineno),
+            )
+            return False
+
+        existing_page = self.data["doc_soc_pages"].get(docname)
+        if existing_page and existing_page != {"type": scope, "name": name}:
+            logger.warning(
+                (
+                    f"{docname} is already registered as a SoC {existing_page['type']} page for "
+                    f"{existing_page['name']}."
+                ),
+                location=(docname, lineno),
+            )
+            return False
+
+        if "docname" in page and page["docname"] != docname:
+            logger.warning(
+                (
+                    f"SoC {scope} {name} is already documented in {page['docname']}."
+                ),
+                location=(docname, lineno),
+            )
+            return False
+
+        self.data["doc_soc_pages"][docname] = {"type": scope, "name": name}
+        page["docname"] = docname
+        return True
+
+    def add_soc_fragment(self, fragment: dict[str, str | None], lineno: int) -> bool:
+        fragment_id = f"{fragment['scope']}:{fragment['owner']}:{fragment['name']}"
+        existing = self.data["soc_fragments"].get(fragment_id)
+        if existing is not None:
+            logger.warning(
+                (
+                    f"SoC fragment {fragment_id} is already defined in {existing['docname']}."
+                ),
+                location=(fragment["docname"], lineno),
+            )
+            return False
+
+        self.data["soc_fragments"][fragment_id] = fragment
+        return True
+
+    def _get_board_for_doc(self, docname: str) -> dict[str, Any] | None:
+        for board in self.data["boards"].values():
+            if board.get("docname") == docname:
+                return board
+
+        return None
+
+    def _resolve_board_soc_metadata(
+        self,
+        fromdocname: str,
+        *,
+        soc: str | None = None,
+        series: str | None = None,
+        family: str | None = None,
+        location_line: int | None = None,
+    ) -> dict[str, str | None] | None:
+        selectors = [value is not None for value in (soc, series, family)]
+        if sum(selectors) > 1:
+            logger.warning(
+                "Use only one of :soc:, :series:, or :family: for board SoC resolution.",
+                location=(fromdocname, location_line),
+            )
+            return None
+
+        if family is not None:
+            family_data = self.data["soc_families"].get(family)
+            if family_data is None:
+                logger.warning(
+                    f"Unknown SoC family {family}.",
+                    location=(fromdocname, location_line),
+                )
+                return None
+
+            return {"family": family_data["name"], "series": None, "soc": None}
+
+        if series is not None:
+            series_data = self.data["soc_series"].get(series)
+            if series_data is None:
+                logger.warning(
+                    f"Unknown SoC series {series}.",
+                    location=(fromdocname, location_line),
+                )
+                return None
+
+            return {
+                "family": series_data.get("family"),
+                "series": series_data["name"],
+                "soc": None,
+            }
+
+        if soc is not None:
+            soc_data = self.data["soc_names"].get(soc)
+            if soc_data is None:
+                logger.warning(
+                    f"Unknown SoC {soc}.",
+                    location=(fromdocname, location_line),
+                )
+                return None
+
+            return {
+                "family": soc_data.get("family"),
+                "series": soc_data.get("series"),
+                "soc": soc_data["name"],
+            }
+
+        board = self._get_board_for_doc(fromdocname)
+        if board is None:
+            logger.warning(
+                "Board SoC resolution is only available in board documentation pages.",
+                location=(fromdocname, location_line),
+            )
+            return None
+
+        board_socs = board.get("socs", [])
+        if len(board_socs) != 1:
+            logger.warning(
+                (
+                    "Board SoC resolution requires an explicit selector when the board does not "
+                    "map to exactly one SoC."
+                ),
+                location=(fromdocname, location_line),
+            )
+            return None
+
+        soc_name = board_socs[0]
+        soc_data = self.data["soc_names"].get(soc_name)
+        if soc_data is None:
+            logger.warning(
+                f"Unknown SoC {soc_name} for board page {fromdocname}.",
+                location=(fromdocname, location_line),
+            )
+            return None
+
+        return {
+            "family": soc_data.get("family"),
+            "series": soc_data.get("series"),
+            "soc": soc_data["name"],
+        }
+
+    def resolve_board_soc_fragment(
+        self,
+        fromdocname: str,
+        fragment_name: str,
+        *,
+        soc: str | None = None,
+        series: str | None = None,
+        family: str | None = None,
+        location_line: int | None = None,
+    ) -> dict[str, Any] | None:
+        metadata = self._resolve_board_soc_metadata(
+            fromdocname,
+            soc=soc,
+            series=series,
+            family=family,
+            location_line=location_line,
+        )
+        if metadata is None:
+            return None
+
+        candidates: list[str] = []
+        if series is not None:
+            candidates.append(f"series:{metadata['series']}:{fragment_name}")
+        elif family is not None:
+            candidates.append(f"family:{metadata['family']}:{fragment_name}")
+        else:
+            if metadata.get("series"):
+                candidates.append(f"series:{metadata['series']}:{fragment_name}")
+            if metadata.get("family"):
+                candidates.append(f"family:{metadata['family']}:{fragment_name}")
+
+        for candidate in candidates:
+            fragment = self.data["soc_fragments"].get(candidate)
+            if fragment is not None:
+                return fragment
+
+        logger.warning(
+            (
+                f"Could not resolve board SoC fragment {fragment_name} from "
+                f"{', '.join(candidates) or 'the current board context'}."
+            ),
+            location=(fromdocname, location_line),
+        )
+        return None
+
+    def _resolve_soc_page_target(
+        self, target: str, fromdocname: str, location_line: int | None = None
+    ) -> tuple[str, dict[str, Any]] | None:
+        if target in {"family", "series"}:
+            metadata = self._resolve_board_soc_metadata(
+                fromdocname,
+                location_line=location_line,
+            )
+            if metadata is None:
+                return None
+
+            if target == "series" and metadata.get("series"):
+                series = self.data["soc_series"].get(metadata["series"])
+                if series is not None and "docname" in series:
+                    return ("soc-series", series)
+
+            family = self.data["soc_families"].get(metadata.get("family"))
+            if family is not None and "docname" in family:
+                return ("soc-family", family)
+
+            logger.warning(
+                f"Could not resolve a documented SoC {target} page for {fromdocname}.",
+                location=(fromdocname, location_line),
+            )
+            return None
+
+        if target.startswith("series:"):
+            series_name = target.split(":", 1)[1]
+            series = self.data["soc_series"].get(series_name)
+            if series is not None and "docname" in series:
+                return ("soc-series", series)
+            logger.warning(
+                f"Unknown or undocumented SoC series {series_name}.",
+                location=(fromdocname, location_line),
+            )
+            return None
+
+        if target.startswith("family:"):
+            family_name = target.split(":", 1)[1]
+            family = self.data["soc_families"].get(family_name)
+            if family is not None and "docname" in family:
+                return ("soc-family", family)
+            logger.warning(
+                f"Unknown or undocumented SoC family {family_name}.",
+                location=(fromdocname, location_line),
+            )
+            return None
+
+        if target.startswith("soc:"):
+            soc_name = target.split(":", 1)[1]
+            metadata = self._resolve_board_soc_metadata(
+                fromdocname,
+                soc=soc_name,
+                location_line=location_line,
+            )
+            if metadata is None:
+                return None
+
+            if metadata.get("series"):
+                series = self.data["soc_series"].get(metadata["series"])
+                if series is not None and "docname" in series:
+                    return ("soc-series", series)
+
+            family = self.data["soc_families"].get(metadata.get("family"))
+            if family is not None and "docname" in family:
+                return ("soc-family", family)
+
+            logger.warning(
+                f"Could not resolve documented SoC pages for {soc_name}.",
+                location=(fromdocname, location_line),
+            )
+            return None
+
+        return None
+
+    def _resolve_soc_fragment_target(
+        self, target: str, fromdocname: str, location_line: int | None = None
+    ) -> dict[str, Any] | None:
+        parts = target.split(":", 2)
+        if len(parts) != 3 or parts[0] not in {"family", "series"}:
+            logger.warning(
+                (
+                    "SoC fragment references must use family:<name>:<fragment> or "
+                    "series:<name>:<fragment>."
+                ),
+                location=(fromdocname, location_line),
+            )
+            return None
+
+        fragment = self.data["soc_fragments"].get(target)
+        if fragment is None:
+            logger.warning(
+                f"Unknown SoC fragment {target}.",
+                location=(fromdocname, location_line),
+            )
+            return None
+
+        return fragment
+
     def resolve_xref(self, env, fromdocname, builder, type, target, node, contnode):
         if type == "code-sample":
             elem = self.data["code-samples"].get(target)
@@ -1298,6 +1835,10 @@ class ZephyrDomain(Domain):
             elem = self.data["code-samples-categories"].get(target)
         elif type == "board":
             elem = self.data["boards"].get(target)
+        elif type == "soc-family":
+            elem = self.data["soc_families"].get(target)
+        elif type == "soc-series":
+            elem = self.data["soc_series"].get(target)
         elif type == "board-catalog":
             catalog_docname = self.data["board_catalog_docname"]
             if catalog_docname is None:
@@ -1315,18 +1856,55 @@ class ZephyrDomain(Domain):
                 contnode,
                 None,
             )
-        else:
-            return
+        elif type == "board-soc":
+            resolved_page = self._resolve_soc_page_target(target, fromdocname, node.line)
+            if resolved_page is None:
+                return None
 
-        if elem and "docname" in elem:
+            _, elem = resolved_page
             if not node.get("refexplicit"):
-                contnode = [nodes.Text(elem["name"] if type != "board" else elem["full_name"])]
+                label = elem["name"]
+                contnode = [nodes.Text(label)]
 
             return make_refnode(
                 builder,
                 fromdocname,
                 elem["docname"],
-                elem["id"] if type != "board" else elem["name"],
+                elem["name"],
+                contnode,
+                None,
+            )
+        elif type == "soc-fragment":
+            fragment = self._resolve_soc_fragment_target(target, fromdocname, node.line)
+            if fragment is None:
+                return None
+
+            if not node.get("refexplicit"):
+                contnode = [nodes.Text(fragment["title"] or fragment["name"])]
+
+            return make_refnode(
+                builder,
+                fromdocname,
+                fragment["docname"],
+                fragment["anchor"],
+                contnode,
+                None,
+            )
+        else:
+            return
+
+        if elem and "docname" in elem:
+            if not node.get("refexplicit"):
+                if type == "board":
+                    contnode = [nodes.Text(elem["full_name"])]
+                else:
+                    contnode = [nodes.Text(elem["name"])]
+
+            return make_refnode(
+                builder,
+                fromdocname,
+                elem["docname"],
+                elem["id"] if type in {"code-sample", "code-sample-category"} else elem["name"],
                 contnode,
                 elem["description"].astext() if type == "code-sample" else None,
             )
@@ -1439,10 +2017,25 @@ def load_board_catalog_into_domain(app: Sphinx) -> None:
         if board_name in existing_boards and "docname" in existing_boards[board_name]:
             board_data["docname"] = existing_boards[board_name]["docname"]
 
+    existing_families = app.env.domaindata.get("zephyr", {}).get("soc_families", {})
+    new_families = board_catalog["soc_families"]
+    for family_name, family_data in new_families.items():
+        if family_name in existing_families and "docname" in existing_families[family_name]:
+            family_data["docname"] = existing_families[family_name]["docname"]
+
+    existing_series = app.env.domaindata.get("zephyr", {}).get("soc_series", {})
+    new_series = board_catalog["soc_series"]
+    for series_name, series_data in new_series.items():
+        if series_name in existing_series and "docname" in existing_series[series_name]:
+            series_data["docname"] = existing_series[series_name]["docname"]
+
     app.env.domaindata["zephyr"]["boards"] = new_boards
     app.env.domaindata["zephyr"]["shields"] = board_catalog["shields"]
     app.env.domaindata["zephyr"]["vendors"] = board_catalog["vendors"]
     app.env.domaindata["zephyr"]["socs"] = board_catalog["socs"]
+    app.env.domaindata["zephyr"]["soc_families"] = new_families
+    app.env.domaindata["zephyr"]["soc_series"] = new_series
+    app.env.domaindata["zephyr"]["soc_names"] = board_catalog["soc_names"]
     app.env.domaindata["zephyr"]["archs"] = board_catalog["archs"]
     app.env.domaindata["zephyr"]["runners"] = board_catalog["runners"]
 
@@ -1461,6 +2054,7 @@ def setup(app):
     app.add_post_transform(ProcessCodeSampleListingNode)
     app.add_post_transform(CodeSampleCategoriesTocPatching)
     app.add_post_transform(ProcessRelatedCodeSamplesNode)
+    app.add_post_transform(ProcessBoardSocFragmentNode)
 
     app.connect(
         "builder-inited",
