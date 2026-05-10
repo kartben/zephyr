@@ -899,7 +899,8 @@ __syscall bool device_is_ready(const struct device *dev);
  * This macro uses a GNU statement expression and therefore requires compiler
  * support for that extension.
  *
- * @param ... one or more pointers to struct device.
+ * @param ... one or more pointers to struct device. NULL pointers are allowed;
+ *           they are treated as not ready and logged as "(null)".
  *
  * @retval true All devices are ready for use.
  * @retval false At least one device is not ready for use.
