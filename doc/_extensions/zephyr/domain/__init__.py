@@ -1705,15 +1705,19 @@ class ZephyrDomain(Domain):
             return None
 
         candidates: list[str] = []
-        if series is not None and metadata.get("series"):
-            candidates.append(f"series:{metadata['series']}:{fragment_name}")
-        elif family is not None and metadata.get("family"):
-            candidates.append(f"family:{metadata['family']}:{fragment_name}")
+        if series is not None:
+            scope_candidates = [("series", metadata.get("series"))]
+        elif family is not None:
+            scope_candidates = [("family", metadata.get("family"))]
         else:
-            if metadata.get("series"):
-                candidates.append(f"series:{metadata['series']}:{fragment_name}")
-            if metadata.get("family"):
-                candidates.append(f"family:{metadata['family']}:{fragment_name}")
+            scope_candidates = [
+                ("series", metadata.get("series")),
+                ("family", metadata.get("family")),
+            ]
+
+        for scope, scope_name in scope_candidates:
+            if scope_name:
+                candidates.append(f"{scope}:{scope_name}:{fragment_name}")
 
         for candidate in candidates:
             fragment = self.data["soc_fragments"].get(candidate)
@@ -1807,8 +1811,8 @@ class ZephyrDomain(Domain):
     def _resolve_soc_fragment_target(
         self, target: str, fromdocname: str, location_line: int | None = None
     ) -> dict[str, Any] | None:
-        parts = target.split(":", 2)
-        if len(parts) != 3 or parts[0] not in {"family", "series"}:
+        target_parts = target.split(":", 2)
+        if len(target_parts) != 3 or target_parts[0] not in {"family", "series"}:
             logger.warning(
                 (
                     "SoC fragment references must use family:<name>:<fragment> or "
