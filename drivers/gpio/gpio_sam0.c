@@ -283,8 +283,6 @@ static DEVICE_API(gpio, gpio_sam0_api) = {
 #endif
 };
 
-static int gpio_sam0_init(const struct device *dev) { return 0; }
-
 /* Port A */
 #if DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(porta))
 
@@ -299,7 +297,7 @@ static const struct gpio_sam0_config gpio_sam0_config_0 = {
 static struct gpio_sam0_data gpio_sam0_data_0;
 
 DEVICE_DT_DEFINE(DT_NODELABEL(porta),
-		    gpio_sam0_init, NULL,
+		    NULL, NULL,
 		    &gpio_sam0_data_0, &gpio_sam0_config_0,
 		    PRE_KERNEL_1, CONFIG_GPIO_INIT_PRIORITY,
 		    &gpio_sam0_api);
@@ -319,7 +317,7 @@ static const struct gpio_sam0_config gpio_sam0_config_1 = {
 static struct gpio_sam0_data gpio_sam0_data_1;
 
 DEVICE_DT_DEFINE(DT_NODELABEL(portb),
-		    gpio_sam0_init, NULL,
+		    NULL, NULL,
 		    &gpio_sam0_data_1, &gpio_sam0_config_1,
 		    PRE_KERNEL_1, CONFIG_GPIO_INIT_PRIORITY,
 		    &gpio_sam0_api);
@@ -339,7 +337,7 @@ static const struct gpio_sam0_config gpio_sam0_config_2 = {
 static struct gpio_sam0_data gpio_sam0_data_2;
 
 DEVICE_DT_DEFINE(DT_NODELABEL(portc),
-		    gpio_sam0_init, NULL,
+		    NULL, NULL,
 		    &gpio_sam0_data_2, &gpio_sam0_config_2,
 		    PRE_KERNEL_1, CONFIG_GPIO_INIT_PRIORITY,
 		    &gpio_sam0_api);
@@ -359,7 +357,7 @@ static const struct gpio_sam0_config gpio_sam0_config_3 = {
 static struct gpio_sam0_data gpio_sam0_data_3;
 
 DEVICE_DT_DEFINE(DT_NODELABEL(portd),
-		    gpio_sam0_init, NULL,
+		    NULL, NULL,
 		    &gpio_sam0_data_3, &gpio_sam0_config_3,
 		    PRE_KERNEL_1, CONFIG_GPIO_INIT_PRIORITY,
 		    &gpio_sam0_api);

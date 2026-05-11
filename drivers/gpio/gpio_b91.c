@@ -231,7 +231,6 @@ static void gpio_b91_up_down_res_set(volatile struct gpio_b91_t *gpio,
 	analog_reg = 0x0e + (GET_PORT_NUM(gpio) << 1) + ((pin & 0xf0) ? 1 : 0);
 
 	if (pin & 0x11) {
-		val = val << 0;
 		mask = 0xfc;
 	} else if (pin & 0x22) {
 		val = val << 2;

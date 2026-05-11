@@ -199,8 +199,6 @@ static int gpio_xmc4xxx_toggle_bits(const struct device *dev, gpio_port_pins_t p
 	return 0;
 }
 
-static int gpio_xmc4xxx_init(const struct device *dev) { return 0; }
-
 static DEVICE_API(gpio, gpio_xmc4xxx_driver_api) = {
 	.pin_configure = gpio_xmc4xxx_pin_configure,
 	.port_get_raw = gpio_xmc4xxx_get_raw,
@@ -222,7 +220,7 @@ static DEVICE_API(gpio, gpio_xmc4xxx_driver_api) = {
 		.port = (XMC_GPIO_PORT_t *)DT_INST_REG_ADDR(index),                                \
 	};                                                                                         \
                                                                                                    \
-	DEVICE_DT_INST_DEFINE(index, gpio_xmc4xxx_init, NULL, &xmc4xxx_data_##index,               \
+	DEVICE_DT_INST_DEFINE(index, NULL, NULL, &xmc4xxx_data_##index,                             \
 			      &xmc4xxx_config_##index, POST_KERNEL, CONFIG_GPIO_INIT_PRIORITY,     \
 			      &gpio_xmc4xxx_driver_api);
 
