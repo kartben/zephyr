@@ -13,17 +13,51 @@ function toggleDisplayMode(btn) {
     : " Switch to Compact View";
 }
 
+function isAdvancedSearchEnabled() {
+  return (
+    document.getElementById("advanced-search-toggle")?.getAttribute("aria-expanded") === "true"
+  );
+}
+
+function setSearchMode(enabled, applyFilters = true) {
+  const advancedFilters = document.getElementById("advanced-filters");
+  const toggle = document.getElementById("advanced-search-toggle");
+
+  if (!advancedFilters || !toggle) return;
+
+  advancedFilters.hidden = !enabled;
+  toggle.setAttribute("aria-expanded", enabled ? "true" : "false");
+  toggle.classList.toggle("fa-sliders", !enabled);
+  toggle.classList.toggle("fa-search", enabled);
+  toggle.textContent = enabled ? " Simple Search" : " Advanced Search";
+
+  if (applyFilters) {
+    filterBoards();
+  }
+}
+
+function hashHasAdvancedFilters(hashParams) {
+  const advancedFields = new Set(["soc", "features", "compatibles"]);
+  for (const [key, value] of hashParams) {
+    if (advancedFields.has(key) && value !== "") return true;
+  }
+  return false;
+}
+
 function populateFormFromURL() {
   const params = ["name", "arch", "vendor", "soc"];
   const hashParams = new URLSearchParams(window.location.hash.slice(1));
+  setSearchMode(hashHasAdvancedFilters(hashParams), false);
+
   params.forEach((param) => {
     const element = document.getElementById(param);
     if (hashParams.has(param)) {
       const value = hashParams.get(param);
       if (param === "soc") {
-        value
-          .split(",")
-          .forEach((soc) => (element.querySelector(`option[value="${soc}"]`).selected = true));
+        value.split(",").forEach((soc) => {
+          const option = element.querySelector(`option[value="${soc}"]`);
+          if (option) option.selected = true;
+        });
       } else {
         element.value = value;
       }
@@ -97,19 +131,13 @@ function hashIndicatesFilteredCatalogView() {
 }
 
 function updateURL() {
-  const params = ["name", "arch", "vendor", "soc"];
+  const params = ["name", "arch", "vendor"];
   const hashParams = new URLSearchParams(window.location.hash.slice(1));
+  const advancedSearchEnabled = isAdvancedSearchEnabled();
 
   params.forEach((param) => {
     const element = document.getElementById(param);
-    if (param === "soc") {
-      const selectedSocs = [...element.selectedOptions].map(({ value }) => value);
-      selectedSocs.length
-        ? hashParams.set(param, selectedSocs.join(","))
-        : hashParams.delete(param);
-    } else {
-      element.value ? hashParams.set(param, element.value) : hashParams.delete(param);
-    }
+    element.value ? hashParams.set(param, element.value) : hashParams.delete(param);
   });
 
   ["show-boards", "show-shields"].forEach((toggle) => {
@@ -117,11 +145,17 @@ function updateURL() {
     isChecked ? hashParams.delete(toggle) : hashParams.set(toggle, "false");
   });
 
+  const socSocSelect = document.getElementById("soc");
+  const selectedSocs = [...socSocSelect.selectedOptions].map(({ value }) => value);
+  advancedSearchEnabled && selectedSocs.length
+    ? hashParams.set("soc", selectedSocs.join(","))
+    : hashParams.delete("soc");
+
   // Add supported features to URL
   const selectedHWTags = [...document.querySelectorAll("#hwcaps-tags .tag")].map(
     (tag) => tag.textContent,
   );
-  selectedHWTags.length
+  advancedSearchEnabled && selectedHWTags.length
     ? hashParams.set("features", selectedHWTags.join(","))
     : hashParams.delete("features");
 
@@ -129,7 +163,7 @@ function updateURL() {
   const selectedCompatibles = [...document.querySelectorAll("#compatibles-tags .tag")].map(
     (tag) => tag.textContent,
   );
-  selectedCompatibles.length
+  advancedSearchEnabled && selectedCompatibles.length
     ? hashParams.set("compatibles", selectedCompatibles.join("|"))
     : hashParams.delete("compatibles");
 
@@ -138,6 +172,7 @@ function updateURL() {
 
 function fillSocFamilySelect() {
   const socFamilySelect = document.getElementById("family");
+  socFamilySelect.innerHTML = "";
 
   Object.keys(socs_data)
     .sort()
@@ -164,7 +199,7 @@ function fillSocSocSelect(families, series = undefined, selectOnFill = false) {
 
   families = families?.length ? families : Object.keys(socs_data);
   series = series?.length ? series : families.flatMap((f) => Object.keys(socs_data[f]));
-  matchingSocs = [
+  const matchingSocs = [
     ...new Set(families.flatMap((f) => series.flatMap((s) => socs_data[f][s] || []))),
   ];
 
@@ -330,8 +365,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const form = document.querySelector(".filter-form");
 
   // sort vendors alphabetically
-  vendorSelect = document.getElementById("vendor");
-  vendorOptions = Array.from(vendorSelect.options).slice(1);
+  const vendorSelect = document.getElementById("vendor");
+  const vendorOptions = Array.from(vendorSelect.options).slice(1);
   vendorOptions.sort((a, b) => a.text.localeCompare(b.text));
   while (vendorSelect.options.length > 1) {
     vendorSelect.remove(1);
@@ -348,7 +383,12 @@ document.addEventListener("DOMContentLoaded", function () {
   setupHWCapabilitiesField();
   setupCompatiblesField();
 
-  socFamilySelect = document.getElementById("family");
+  const searchModeToggle = document.getElementById("advanced-search-toggle");
+  searchModeToggle.addEventListener("click", () => {
+    setSearchMode(!isAdvancedSearchEnabled());
+  });
+
+  const socFamilySelect = document.getElementById("family");
   socFamilySelect.addEventListener("change", () => {
     const selectedFamilies = [...socFamilySelect.selectedOptions].map(({ value }) => value);
     fillSocSeriesSelect(selectedFamilies, true);
@@ -356,7 +396,7 @@ document.addEventListener("DOMContentLoaded", function () {
     filterBoards();
   });
 
-  socSeriesSelect = document.getElementById("series");
+  const socSeriesSelect = document.getElementById("series");
   socSeriesSelect.addEventListener("change", () => {
     const selectedFamilies = [...socFamilySelect.selectedOptions].map(({ value }) => value);
     const selectedSeries = [...socSeriesSelect.selectedOptions].map(({ value }) => value);
@@ -364,17 +404,17 @@ document.addEventListener("DOMContentLoaded", function () {
     filterBoards();
   });
 
-  socSocSelect = document.getElementById("soc");
+  const socSocSelect = document.getElementById("soc");
   socSocSelect.addEventListener("change", () => {
     filterBoards();
   });
 
-  boardsToggle = document.getElementById("show-boards");
+  const boardsToggle = document.getElementById("show-boards");
   boardsToggle.addEventListener("change", () => {
     filterBoards();
   });
 
-  shieldsToggle = document.getElementById("show-shields");
+  const shieldsToggle = document.getElementById("show-shields");
   shieldsToggle.addEventListener("change", () => {
     filterBoards();
   });
@@ -398,6 +438,7 @@ document.addEventListener("DOMContentLoaded", function () {
 function resetForm() {
   const form = document.querySelector(".filter-form");
   form.reset();
+  setSearchMode(false, false);
   fillSocFamilySelect();
   fillSocSeriesSelect();
   fillSocSocSelect();
@@ -440,25 +481,29 @@ function filterBoards() {
   const archSelect = document.getElementById("arch").value;
   const vendorSelect = document.getElementById("vendor").value;
   const socSocSelect = document.getElementById("soc");
+  const advancedSearchEnabled = isAdvancedSearchEnabled();
   const showBoards = document.getElementById("show-boards").checked;
   const showShields = document.getElementById("show-shields").checked;
 
   // Get selected hardware capability tags
-  const selectedHWTags = [...document.querySelectorAll("#hwcaps-tags .tag")].map(
-    (tag) => tag.textContent,
-  );
+  const selectedHWTags = advancedSearchEnabled
+    ? [...document.querySelectorAll("#hwcaps-tags .tag")].map((tag) => tag.textContent)
+    : [];
 
   // Get selected compatible tags
-  const selectedCompatibles = [...document.querySelectorAll("#compatibles-tags .tag")].map(
-    (tag) => tag.textContent,
-  );
+  const selectedCompatibles = advancedSearchEnabled
+    ? [...document.querySelectorAll("#compatibles-tags .tag")].map((tag) => tag.textContent)
+    : [];
+  const selectedSocs = advancedSearchEnabled
+    ? [...socSocSelect.selectedOptions].map(({ value }) => value)
+    : [];
 
   const resetFiltersBtn = document.getElementById("reset-filters");
   if (
     nameInput ||
     archSelect ||
     vendorSelect ||
-    socSocSelect.selectedOptions.length ||
+    selectedSocs.length ||
     selectedHWTags.length ||
     selectedCompatibles.length ||
     !showBoards ||
@@ -485,8 +530,6 @@ function filterBoards() {
     const isShield = board.classList.contains("shield");
 
     let matches = true;
-
-    const selectedSocs = [...socSocSelect.selectedOptions].map(({ value }) => value);
 
     if ((isShield && !showShields) || (!isShield && !showBoards)) {
       matches = false;

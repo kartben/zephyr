@@ -38,6 +38,17 @@
   margin-bottom: 10px;
 }
 
+#advanced-filters {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+#advanced-filters[hidden] {
+  display: none;
+}
+
 .filter-form .form-group label {
   color: var(--body-color);
   font-size: 10px;
