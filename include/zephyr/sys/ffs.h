@@ -27,7 +27,8 @@ extern "C" {
 #endif
 
 /**
- * @brief Find most significant bit set in a 32-bit word
+ *
+ * @brief find most significant bit set in a 32-bit word
  *
  * This routine finds the first bit set starting from the most significant bit
  * in the argument passed in and returns the index of that bit.  Bits are
@@ -49,7 +50,8 @@ static ALWAYS_INLINE unsigned int find_msb_set(uint32_t op)
 
 
 /**
- * @brief Find least significant bit set in a 32-bit word
+ *
+ * @brief find least significant bit set in a 32-bit word
  *
  * This routine finds the first bit set starting from the least significant bit
  * in the argument passed in and returns the index of that bit.  Bits are
