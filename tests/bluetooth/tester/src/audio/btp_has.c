@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <zephyr/arch/common/ffs.h>
+#include <zephyr/sys/ffs.h>
 #include <zephyr/autoconf.h>
 #include <zephyr/bluetooth/audio/has.h>
 #include <zephyr/logging/log.h>

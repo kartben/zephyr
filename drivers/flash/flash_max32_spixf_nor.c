@@ -13,7 +13,7 @@
 #include <zephyr/devicetree.h>
 #include <zephyr/kernel.h>
 #include <zephyr/toolchain.h>
-#include <zephyr/arch/common/ffs.h>
+#include <zephyr/sys/ffs.h>
 #include <zephyr/sys/__assert.h>
 #include <zephyr/sys/util.h>
 #include <soc.h>

@@ -10,7 +10,7 @@
 #include <stdint.h>
 
 #include <zephyr/toolchain.h>
-#include <zephyr/arch/common/ffs.h>
+#include <zephyr/sys/ffs.h>
 #include <zephyr/sys/util.h>
 
 /**

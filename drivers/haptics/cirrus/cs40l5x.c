@@ -12,7 +12,7 @@
 #define DT_DRV_COMPAT cirrus_cs40l5x
 
 #include <stdlib.h>
-#include <zephyr/arch/common/ffs.h>
+#include <zephyr/sys/ffs.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/flash.h>

@@ -10,7 +10,7 @@
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/rtc.h>
 #include <zephyr/drivers/gpio.h>
-#include <zephyr/arch/common/ffs.h>
+#include <zephyr/sys/ffs.h>
 #include "rtc_utils.h"
 
 /* Registers */
