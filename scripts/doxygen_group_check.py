@@ -7,9 +7,11 @@
 doxygen_group_check.py - Report Doxygen entities not assigned to any group.
 
 Optionally runs Doxygen with XML output enabled, then parses the resulting
-XML to find documented entities (functions, typedefs, enums, structs, unions,
-macros) that do not belong to any Doxygen group (``@defgroup`` /
-``@addtogroup``).  Emits a Markdown report organised by source file.
+XML to find explicitly documented entities (functions, typedefs, enums,
+structs, unions, macros — those carrying a ``/** */`` or ``/*! */`` Doxygen
+comment) that do not belong to any Doxygen group (``@defgroup`` /
+``@addtogroup``).  Entities with no explicit Doxygen comment are ignored.
+Emits a Markdown report organised by source file.
 
 A **super-error** (⛔) is raised for any file where *all* of its documented
 entities are ungrouped, meaning the file has zero group coverage.
@@ -203,6 +205,31 @@ def _brief_text(element: Optional[ET.Element]) -> str:
     return " ".join(parts)
 
 
+def _has_explicit_doc(element: ET.Element) -> bool:
+    """Return True if *element* carries an explicit Doxygen documentation comment.
+
+    Doxygen emits XML for every entity it finds (especially with
+    ``EXTRACT_ALL = YES``), even those with no ``/** */`` or ``/*! */``
+    comment.  Undocumented entities have completely empty
+    ``<briefdescription>`` and ``<detaileddescription>`` elements.  This
+    function returns ``True`` only when at least one of those two elements
+    contains non-whitespace text, indicating that a real Doxygen comment was
+    present in the source.
+
+    Args:
+        element: A ``<memberdef>`` or ``<compounddef>`` XML element.
+
+    Returns:
+        ``True`` if the entity has an explicit Doxygen comment, ``False``
+        otherwise.
+    """
+    for tag in ("briefdescription", "detaileddescription"):
+        child = element.find(tag)
+        if child is not None and "".join(child.itertext()).strip():
+            return True
+    return False
+
+
 def parse_index(xml_dir: Path) -> Dict[str, str]:
     """Return ``{refid: kind}`` for every compound in ``index.xml``.
 
@@ -310,6 +337,9 @@ def collect_file_member_entities(
                     if m_kind not in MEMBER_KINDS:
                         continue
 
+                    if not _has_explicit_doc(mdef):
+                        continue
+
                     loc = mdef.find("location")
                     if loc is None:
                         continue
@@ -363,6 +393,9 @@ def collect_compound_entities(
 
         root = ET.parse(xml_file).getroot()
         for cdef in root.findall("compounddef"):
+            if not _has_explicit_doc(cdef):
+                continue
+
             loc = cdef.find("location")
             if loc is None:
                 continue
