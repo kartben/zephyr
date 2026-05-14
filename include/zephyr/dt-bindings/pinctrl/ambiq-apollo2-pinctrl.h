@@ -27,8 +27,8 @@
  * The macros follow the following naming convention:
  * @c \<SIGNAL\>\_P\<PIN\>.
  *
- * For example, @c UART0TX_P22 corresponds to the @c UART0TX signal routed to
- * pin @c 22.
+ * For example, @c UART0TX_P22 corresponds to selecting the @c UART0TX function
+ * on pin @c 22.
  *
  * @code{.dts}
  * #include <zephyr/dt-bindings/pinctrl/ambiq-apollo2-pinctrl.h>
