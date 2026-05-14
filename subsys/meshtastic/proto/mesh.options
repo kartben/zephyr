@@ -1,0 +1,13 @@
+# nanopb field-size constraints for mesh.proto
+#
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# The maximum on-air payload is 255 - 16 (header) = 239 bytes.
+# A Data message containing only portnum + payload has 5 bytes of
+# protobuf overhead (1-byte tag + 1-byte tag + up to 3-byte varint
+# for length), leaving 234 bytes for the payload content.
+# Setting max_size to 237 gives a comfortable margin while still
+# fitting entirely within a single LoRa packet.
+
+meshtastic.Data.payload  max_size:237

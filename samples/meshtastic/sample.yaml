@@ -1,0 +1,15 @@
+sample:
+  name: Meshtastic
+  description: >
+    Demonstrates the Meshtastic mesh radio stack: initialises the default
+    LongFast channel, prints received text messages, and broadcasts a
+    greeting every 30 seconds.
+tests:
+  sample.meshtastic:
+    tags:
+      - lora
+      - meshtastic
+    platform_allow:
+      - native_sim
+    integration_platforms:
+      - native_sim

@@ -1,0 +1,14 @@
+# Sample-specific configuration options.
+#
+# Copyright (c) 2026 The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config MESHTASTIC_SAMPLE_NODE_ID
+	hex "Local node ID"
+	default 0xDEADBEEF
+	help
+	  32-bit node identifier for this device.  Every node on the same mesh
+	  must have a unique ID.  In production, derive this from the last four
+	  bytes of the hardware MAC address.
+
+source "Kconfig.zephyr"

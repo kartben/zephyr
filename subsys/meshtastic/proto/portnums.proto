@@ -1,0 +1,51 @@
+/*
+ * Copyright (c) 2026 The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * Meshtastic application port-number definitions.
+ *
+ * Wire-compatible subset of the official Meshtastic portnums.proto
+ * (https://github.com/meshtastic/protobufs).  Field numbers and enum
+ * values are identical to the upstream definitions.
+ */
+
+syntax = "proto3";
+
+package meshtastic;
+
+option optimize_for = LITE_RUNTIME;
+
+/* Defines the destination port for a Data packet.  Matches the official
+ * Meshtastic PortNum enum; only the values needed for a messaging-focused
+ * implementation are listed here.
+ */
+enum PortNum {
+/* Reserved / unset. */
+UNKNOWN_APP = 0;
+
+/* Plain UTF-8 text message.  The Data.payload field contains the raw
+ * text bytes without any additional encoding.
+ */
+TEXT_MESSAGE_APP = 1;
+
+/* Remote hardware / GPIO control. */
+REMOTE_HARDWARE_APP = 2;
+
+/* GPS position report encoded as a Position protobuf. */
+POSITION_APP = 3;
+
+/* Node information (name, hardware model, …) encoded as a User protobuf. */
+NODEINFO_APP = 4;
+
+/* Internal mesh-routing protocol messages. */
+ROUTING_APP = 5;
+
+/* Device / environmental / air-quality telemetry. */
+TELEMETRY_APP = 67;
+
+/* Private / application-specific range (256-511). */
+PRIVATE_APP = 256;
+}

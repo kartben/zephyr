@@ -1,0 +1,83 @@
+# Meshtastic mesh radio stack
+#
+# Copyright (c) 2026 The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig MESHTASTIC
+	bool "Meshtastic mesh radio stack [EXPERIMENTAL]"
+	depends on ZEPHYR_NANOPB_MODULE
+	select LORA
+	select NANOPB
+	select PSA_CRYPTO
+	select PSA_WANT_ALG_CTR
+	select PSA_WANT_KEY_TYPE_AES
+	select EXPERIMENTAL
+	help
+	  Enable the Meshtastic mesh radio stack.
+
+	  Provides a wire-compatible implementation of the Meshtastic protocol
+	  (https://meshtastic.org) on top of the Zephyr raw LoRa driver API.
+	  Supports text messaging (PortNum 1) and raw data delivery over the
+	  LongFast channel parameters (SF 11, BW 250 kHz, CR 4/5).
+
+	  Requires a LoRa transceiver supported by the Zephyr LoRa driver
+	  (e.g. SX1276, SX1262) and the nanopb module in the west workspace.
+
+if MESHTASTIC
+
+module = MESHTASTIC
+module-str = meshtastic
+source "subsys/logging/Kconfig.template.log_config"
+
+config MESHTASTIC_THREAD_STACK_SIZE
+	int "Receive thread stack size (bytes)"
+	default 2048
+	help
+	  Stack size for the Meshtastic background receive thread.
+	  Must accommodate lora_recv(), nanopb decoding, and PSA crypto
+	  operations.  Increase if stack overflows are observed.
+
+config MESHTASTIC_THREAD_PRIORITY
+	int "Receive thread priority"
+	default 7
+	help
+	  Cooperative (negative) or preemptive (non-negative) priority of the
+	  Meshtastic background receive thread.
+
+config MESHTASTIC_RX_TIMEOUT_MS
+	int "Per-receive-window timeout (ms)"
+	default 500
+	help
+	  The background receive thread calls lora_recv() with this timeout.
+	  A shorter value reduces TX latency (the receive loop yields to a
+	  pending transmit more quickly) at the cost of slightly more CPU
+	  activity.  A longer value reduces CPU overhead but increases the
+	  worst-case time before a pending transmission is sent.
+
+config MESHTASTIC_DEFAULT_HOP_LIMIT
+	int "Default hop limit for outgoing packets"
+	default 3
+	range 1 7
+	help
+	  Number of times an outgoing packet may be relayed by intermediate
+	  nodes.  3 is the Meshtastic firmware default; higher values increase
+	  range at the cost of additional channel utilisation.
+
+config MESHTASTIC_TX_POWER
+	int "Default TX power (dBm)"
+	default 17
+	help
+	  Default LoRa transmit power used when meshtastic_config.tx_power is
+	  zero.  Most LoRa modules support 2–20 dBm; consult your hardware
+	  datasheet for the allowed range.
+
+config MESHTASTIC_DUP_CACHE_SIZE
+	int "Duplicate-packet cache size (entries)"
+	default 16
+	range 4 64
+	help
+	  Number of (src, packet_id) pairs retained for duplicate suppression.
+	  Each entry consumes 8 bytes of RAM.  Increase if duplicate packets
+	  are observed in dense mesh deployments.
+
+endif # MESHTASTIC

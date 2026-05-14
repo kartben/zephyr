@@ -1,0 +1,52 @@
+/*
+ * Copyright (c) 2026 The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * Meshtastic mesh packet payload definition.
+ *
+ * Wire-compatible subset of the official Meshtastic mesh.proto
+ * (https://github.com/meshtastic/protobufs).  The Data message is the
+ * only type sent as the encrypted payload in a raw LoRa Meshtastic packet.
+ */
+
+syntax = "proto3";
+
+package meshtastic;
+
+import "portnums.proto";
+
+option optimize_for = LITE_RUNTIME;
+
+/* Encrypted application-layer payload carried inside every Meshtastic
+ * LoRa packet.  Nanopb bounds are set in mesh.options.
+ */
+message Data {
+/* Destination port; tells the receiver how to interpret Data.payload. */
+PortNum portnum = 1;
+
+/* Raw application payload whose interpretation depends on portnum.
+ * For TEXT_MESSAGE_APP this is the UTF-8 message text.
+ */
+bytes payload = 2;
+
+/* Set by the sender to request a reply (e.g. a routing ACK). */
+bool want_response = 3;
+
+/* Explicit unicast destination for sub-routing inside the mesh. */
+uint32 dest = 4;
+
+/* Originating node (used when a message is re-broadcast by a relay). */
+uint32 source = 5;
+
+/* If this packet is a reply, the packet_id of the original request. */
+uint32 request_id = 6;
+
+/* Sequence counter used to match replies back to their requests. */
+uint32 reply_id = 7;
+
+/* Emoji reaction code (0 = no reaction). */
+uint32 emoji = 8;
+}
