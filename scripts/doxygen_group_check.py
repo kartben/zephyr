@@ -511,8 +511,8 @@ def generate_report(
     lines.append(f"**XML directory:** `{xml_dir}`\n")
 
     lines.append("## Summary\n")
-    lines.append(f"| Metric | Count |")
-    lines.append(f"|--------|-------|")
+    lines.append("| Metric | Count |")
+    lines.append("|--------|-------|")
     lines.append(f"| Files with ungrouped entities | {len(reports)} |")
     lines.append(
         f"| ⛔ Super-errors (entire file ungrouped) | {len(super_errors)} |"
