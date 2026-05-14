@@ -25,7 +25,7 @@
  * @ingroup ambiq_pinctrl
  *
  * The macros follow the following naming convention:
- * @c \<SIGNAL\>\_P\<PIN\>.
+ * @c \<FUNCTION\>\_P\<PIN\>.
  *
  * For example, @c UART0TX_P22 corresponds to selecting the @c UART0TX function
  * on pin @c 22.
