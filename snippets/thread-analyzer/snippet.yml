@@ -1,0 +1,6 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+name: thread-analyzer
+append:
+  EXTRA_CONF_FILE: thread-analyzer.conf
