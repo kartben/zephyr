@@ -72,6 +72,13 @@
 	current-speed = <115200>;
 };
 
+&usart2 {
+	status = "okay";
+	pinctrl-0 = <&usart2_tx_pd5 &usart2_rx_pd6>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+};
+
 &usart6 {
 	status = "disabled";
 	pinctrl-0 = <&usart6_tx_pg14 &usart6_rx_pc7>;

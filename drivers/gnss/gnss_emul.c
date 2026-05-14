@@ -360,11 +360,11 @@ static void gnss_emul_set_nav_data(const struct device *dev)
 {
 	struct gnss_emul_data *data = dev->data;
 
-	data->data.nav_data.latitude = 10000000000;
-	data->data.nav_data.longitude = -10000000000;
+	data->data.nav_data.latitude = 43361674000;
+	data->data.nav_data.longitude = 1629064400;
 	data->data.nav_data.bearing = 3000;
 	data->data.nav_data.speed = 0;
-	data->data.nav_data.altitude = 20000;
+	data->data.nav_data.altitude = 285000;
 }
 
 #endif /* CONFIG_GNSS_EMUL_MANUAL_UPDATE */

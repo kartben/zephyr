@@ -1,0 +1,56 @@
+tests:
+  subsys.meshtastic.core:
+    tags:
+      - meshtastic
+      - lora
+    platform_allow:
+      - native_sim
+    integration_platforms:
+      - native_sim
+  subsys.meshtastic.environment:
+    tags:
+      - meshtastic
+      - lora
+      - sensor
+    platform_allow:
+      - native_sim
+    integration_platforms:
+      - native_sim
+    extra_args:
+      - EXTRA_CONF_FILE=env.conf
+      - DTC_OVERLAY_FILE=env.overlay
+  subsys.meshtastic.environment_no_sensor:
+    tags:
+      - meshtastic
+      - lora
+      - sensor
+    platform_allow:
+      - native_sim
+    integration_platforms:
+      - native_sim
+    extra_args:
+      - EXTRA_CONF_FILE=env.conf
+  subsys.meshtastic.serial:
+    tags:
+      - meshtastic
+      - lora
+      - serial
+    platform_allow:
+      - native_sim
+    integration_platforms:
+      - native_sim
+    extra_args:
+      - EXTRA_CONF_FILE=serial.conf
+      - DTC_OVERLAY_FILE=serial.overlay
+  subsys.meshtastic.settings:
+    tags:
+      - meshtastic
+      - lora
+      - settings
+    platform_allow:
+      - native_sim
+    integration_platforms:
+      - native_sim
+    extra_args:
+      - EXTRA_CONF_FILE=settings.conf
+      - DTC_OVERLAY_FILE=serial.overlay

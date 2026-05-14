@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /Users/kartben/Repositories/meshtastic_firmware 2>/dev/null && find . -iname '*nodeinfo*' -o -iname '*NodeInfoModule*' 2>/dev/null | head; echo \"---\"; ls src/modules/ 2>/dev/null | head -40)",
+      "Bash(ls /Users/kartben/Repositories/meshtastic_firmware/src/mesh/ 2>/dev/null | grep -i \"stream\\\\|serial\\\\|api\" ; echo \"---\"; find /Users/kartben/Repositories/meshtastic_firmware/src -iname \"*stream*\" -o -iname \"*StreamAPI*\" 2>/dev/null)"
+    ]
+  }
+}

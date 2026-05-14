@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description: Fake environment sensor used by the Meshtastic environment test
+
+compatible: "vnd,env-sensor"
+
+include: base.yaml
