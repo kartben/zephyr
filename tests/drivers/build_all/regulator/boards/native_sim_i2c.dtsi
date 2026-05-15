@@ -224,3 +224,18 @@ npm10xx@b {
 		LDSW {};
 	};
 };
+
+m5pm1@c {
+	compatible = "m5stack,m5pm1";
+	reg = <0xc>;
+
+	regulators {
+		compatible = "m5stack,m5pm1-regulator";
+
+		DCDC {};
+
+		LDO {};
+
+		BOOST {};
+	};
+};

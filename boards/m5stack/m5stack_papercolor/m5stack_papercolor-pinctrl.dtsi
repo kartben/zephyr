@@ -1,0 +1,44 @@
+/*
+ * Copyright (c) 2026 Benjamin Cabé <benjamin@zephyrproject.org>
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/pinctrl/esp-pinctrl-common.h>
+#include <zephyr/dt-bindings/pinctrl/esp32s3-pinctrl.h>
+#include <zephyr/dt-bindings/pinctrl/esp32s3-gpio-sigmap.h>
+
+&pinctrl {
+	/* System I2C bus: SDA=GPIO3, SCL=GPIO2 */
+	i2c0_default: i2c0_default {
+		group1 {
+			pinmux = <I2C0_SDA_GPIO3>,
+				 <I2C0_SCL_GPIO2>;
+			bias-pull-up;
+			drive-open-drain;
+			output-high;
+		};
+	};
+
+	/* SPI2: shared by microSD card (CS = GPIO47) and the e-paper panel
+	 * (CS = GPIO44, not enabled in v1).
+	 */
+	spim2_default: spim2_default {
+		group1 {
+			pinmux = <SPIM2_MISO_GPIO14>,
+				 <SPIM2_SCLK_GPIO15>;
+		};
+		group2 {
+			pinmux = <SPIM2_MOSI_GPIO13>;
+			output-low;
+		};
+	};
+
+	/* SPI3: WS2812 RGB LED chain on GPIO21 (SPI used as a bit-banger). */
+	spim3_ws2812_led: spim3_ws2812_led {
+		group1 {
+			pinmux = <SPIM3_MOSI_GPIO21>;
+			output-low;
+		};
+	};
+};

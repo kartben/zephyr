@@ -1,0 +1,18 @@
+identifier: m5stack_papercolor/esp32s3/procpu
+name: M5Stack PaperColor PROCPU
+type: mcu
+arch: xtensa
+toolchain:
+  - zephyr
+supported:
+  - gpio
+  - uart
+  - i2c
+  - spi
+  - counter
+  - watchdog
+  - entropy
+  - pwm
+  - pinmux
+  - dma
+vendor: m5stack

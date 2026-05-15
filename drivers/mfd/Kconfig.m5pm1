@@ -1,0 +1,11 @@
+# Copyright (c) 2026 Benjamin Cabé <benjamin@zephyrproject.org>
+# SPDX-License-Identifier: Apache-2.0
+
+config MFD_M5PM1
+	bool "M5Stack M5PM1 power management IC"
+	default y
+	depends on DT_HAS_M5STACK_M5PM1_ENABLED
+	select I2C
+	help
+	  Enable the M5Stack M5PM1 multi-function PMIC driver. Sub-functions
+	  (regulator, GPIO, etc.) are provided by separate child drivers.

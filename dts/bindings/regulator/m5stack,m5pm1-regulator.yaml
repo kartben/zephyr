@@ -1,0 +1,48 @@
+# Copyright (c) 2026 Benjamin Cabé <benjamin@zephyrproject.org>
+# SPDX-License-Identifier: Apache-2.0
+
+title: M5Stack M5PM1 PMIC regulators
+
+description: |
+  The PMIC exposes three switchable rails. Children must be named
+  exactly "DCDC", "LDO" and "BOOST".
+
+  - DCDC:  5.0 V (5 V DCDC output)
+  - LDO:   3.3 V (3.3 V LDO output)
+  - BOOST: 5.0 V (Grove 5VINOUT boost)
+
+  Voltages are not adjustable.
+
+compatible: "m5stack,m5pm1-regulator"
+
+include: base.yaml
+
+child-binding:
+  include:
+    - name: regulator.yaml
+      property-allowlist:
+        - regulator-name
+        - regulator-always-on
+        - regulator-boot-on
+
+examples:
+  - |
+    m5pm1@6e {
+      compatible = "m5stack,m5pm1";
+      reg = <0x6e>;
+
+      regulators {
+        compatible = "m5stack,m5pm1-regulator";
+
+        DCDC {
+          regulator-name = "dcdc_5v";
+        };
+        LDO {
+          regulator-name = "ldo_3v3";
+          regulator-boot-on;
+        };
+        BOOST {
+          regulator-name = "boost_5v";
+        };
+      };
+    };

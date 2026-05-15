@@ -1,0 +1,10 @@
+# M5Stack PaperColor board defconfig
+# Copyright (c) 2026 Benjamin Cabé <benjamin@zephyrproject.org>
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_M5STACK_PAPERCOLOR_ESP32S3_PROCPU
+
+config INPUT
+	default y if DT_HAS_GPIO_KEYS_ENABLED
+
+endif # BOARD_M5STACK_PAPERCOLOR_ESP32S3_PROCPU

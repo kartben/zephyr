@@ -1,0 +1,22 @@
+# Copyright (c) 2026 Benjamin Cabé <benjamin@zephyrproject.org>
+# SPDX-License-Identifier: Apache-2.0
+
+title: M5Stack M5PM1 power management IC
+description: |
+  The M5PM1 is a custom PMIC built around a PY32 microcontroller exposing
+  an I2C register interface. It provides three switchable power rails
+  (DCDC 5V, LDO 3.3V, BOOST 5V/Grove), GPIO expansion, ADC/PWM channels,
+  a watchdog and a NeoPixel driver.
+
+  This binding describes the parent MFD device. Sub-functions are exposed
+  through child nodes using their own compatibles.
+
+compatible: "m5stack,m5pm1"
+
+include: i2c-device.yaml
+
+bus: m5pm1
+
+properties:
+  reg:
+    required: true

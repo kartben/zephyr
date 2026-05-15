@@ -1,0 +1,23 @@
+# Copyright (c) 2026 Benjamin Cabé <benjamin@zephyrproject.org>
+# SPDX-License-Identifier: Apache-2.0
+
+config REGULATOR_M5PM1
+	bool "M5Stack M5PM1 PMIC regulator driver"
+	default y
+	depends on DT_HAS_M5STACK_M5PM1_REGULATOR_ENABLED
+	select I2C
+	select MFD
+	help
+	  Enable the regulator sub-driver for the M5Stack M5PM1 PMIC.
+	  It exposes the DCDC 5V, LDO 3.3V and BOOST 5V (Grove) rails
+	  through Zephyr's regulator API.
+
+config REGULATOR_M5PM1_INIT_PRIORITY
+	int "M5Stack M5PM1 regulator init priority"
+	default 85
+	depends on REGULATOR_M5PM1
+	help
+	  Initialization priority for the M5PM1 regulator children.
+	  Must be higher (later) than CONFIG_MFD_INIT_PRIORITY so the
+	  PMIC parent is ready first, and lower (earlier) than any
+	  consumer that needs a rail at boot.
