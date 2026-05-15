@@ -288,6 +288,14 @@ stay separate from your system Python installation.
 
 #. Get the Zephyr source code:
 
+   ``west init`` creates a :term:`west workspace` and clones
+   ``https://github.com/zephyrproject-rtos/zephyr`` as its :term:`manifest
+   repository <west manifest repository>`.
+
+   ``west update`` then fetches the various
+   :term:`west projects <west project>` (modules) listed in Zephyr's
+   :term:`west manifest` (hardware abstraction layers (HALs), libraries, etc.).
+
    .. tabs::
 
       .. group-tab:: Ubuntu
