@@ -199,38 +199,98 @@ stay separate from your system Python installation.
 
 .. _Python virtual environment: https://docs.python.org/3/library/venv.html
 
-.. tabs::
+#. Create a new virtual environment:
 
-   .. group-tab:: Ubuntu
+   .. tabs::
 
-      #. Create a new virtual environment:
+      .. group-tab:: Ubuntu
 
          .. code-block:: bash
 
             python3 -m venv ~/zephyrproject/.venv
 
-      #. Activate the virtual environment:
+      .. group-tab:: macOS
+
+         .. code-block:: bash
+
+            python3 -m venv ~/zephyrproject/.venv
+
+      .. group-tab:: Windows
+
+         Open a ``cmd.exe`` or PowerShell terminal window **as a regular user**.
+
+         .. tabs::
+
+            .. code-tab:: bat
+
+               cd %HOMEPATH%
+               py -3.12 -m venv zephyrproject\.venv
+
+            .. code-tab:: powershell
+
+               cd $Env:HOMEPATH
+               py -3.12 -m venv zephyrproject\.venv
+
+#. Activate the virtual environment:
+
+   .. tabs::
+
+      .. group-tab:: Ubuntu
 
          .. code-block:: bash
 
             source ~/zephyrproject/.venv/bin/activate
 
-         Once activated your shell will be prefixed with ``(.venv)``. The
-         virtual environment can be deactivated at any time by running
-         ``deactivate``.
-
-         .. note::
-
-            Remember to activate the virtual environment every time you
-            start working.
-
-      #. Install west:
+      .. group-tab:: macOS
 
          .. code-block:: bash
 
-            pip install west
+            source ~/zephyrproject/.venv/bin/activate
 
-      #. Get the Zephyr source code:
+      .. group-tab:: Windows
+
+         .. note::
+
+            Python's virtual environment activation in PowerShell requires
+            running a script itself, which needs to be allowed.
+
+            .. code-block:: powershell
+
+               Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+         .. tabs::
+
+            .. code-tab:: bat
+
+               zephyrproject\.venv\Scripts\activate.bat
+
+            .. code-tab:: powershell
+
+               zephyrproject\.venv\Scripts\Activate.ps1
+
+   Once activated your shell will be prefixed with ``(.venv)``. The
+   virtual environment can be deactivated at any time by running
+   ``deactivate``.
+
+   .. note::
+
+      Remember to activate the virtual environment every time you
+      start working.
+
+#. Install west:
+
+   West is Zephyr's workspace manager; the next commands use it to create and
+   update the workspace.
+
+   .. code-block:: shell
+
+      pip install west
+
+#. Get the Zephyr source code:
+
+   .. tabs::
+
+      .. group-tab:: Ubuntu
 
          .. only:: not release
 
@@ -252,54 +312,7 @@ stay separate from your system Python installation.
                cd ~/zephyrproject
                west update
 
-      #. Export a :ref:`Zephyr CMake package <cmake_pkg>`. This allows CMake to
-         automatically load boilerplate code required for building Zephyr
-         applications.
-
-         .. code-block:: bash
-
-            west zephyr-export
-
-      #. Install Python dependencies using ``west packages``.
-
-         .. code-block:: bash
-
-            west packages pip --install
-
-         .. note::
-
-            This could downgrade or upgrade west itself.
-
-   .. group-tab:: macOS
-
-      #. Create a new virtual environment:
-
-         .. code-block:: bash
-
-            python3 -m venv ~/zephyrproject/.venv
-
-      #. Activate the virtual environment:
-
-         .. code-block:: bash
-
-            source ~/zephyrproject/.venv/bin/activate
-
-         Once activated your shell will be prefixed with ``(.venv)``. The
-         virtual environment can be deactivated at any time by running
-         ``deactivate``.
-
-         .. note::
-
-            Remember to activate the virtual environment every time you
-            start working.
-
-      #. Install west:
-
-         .. code-block:: bash
-
-            pip install west
-
-      #. Get the Zephyr source code:
+      .. group-tab:: macOS
 
          .. only:: not release
 
@@ -317,79 +330,7 @@ stay separate from your system Python installation.
                cd ~/zephyrproject
                west update
 
-      #. Export a :ref:`Zephyr CMake package <cmake_pkg>`. This allows CMake to
-         automatically load boilerplate code required for building Zephyr
-         applications.
-
-         .. code-block:: bash
-
-            west zephyr-export
-
-      #. Install Python dependencies using ``west packages``.
-
-         .. code-block:: bash
-
-            west packages pip --install
-
-         .. note::
-
-            This could downgrade or upgrade west itself.
-
-   .. group-tab:: Windows
-
-      #. Open a ``cmd.exe`` or PowerShell terminal window **as a regular user**
-
-      #. Create a new virtual environment:
-
-         .. tabs::
-
-            .. code-tab:: bat
-
-               cd %HOMEPATH%
-               py -3.12 -m venv zephyrproject\.venv
-
-            .. code-tab:: powershell
-
-               cd $Env:HOMEPATH
-               py -3.12 -m venv zephyrproject\.venv
-
-      #. Activate the virtual environment:
-
-         .. note::
-
-            Python's virtual environment activation in PowerShell requires
-            running a script itself, which needs to be allowed.
-
-            .. code-block:: powershell
-
-               Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-
-         .. tabs::
-
-            .. code-tab:: bat
-
-               zephyrproject\.venv\Scripts\activate.bat
-
-            .. code-tab:: powershell
-
-               zephyrproject\.venv\Scripts\Activate.ps1
-
-         Once activated your shell will be prefixed with ``(.venv)``. The
-         virtual environment can be deactivated at any time by running
-         ``deactivate``.
-
-         .. note::
-
-            Remember to activate the virtual environment every time you
-            start working.
-
-      #. Install west:
-
-         .. code-block:: bat
-
-            pip install west
-
-      #. Get the Zephyr source code:
+      .. group-tab:: Windows
 
          .. only:: not release
 
@@ -407,15 +348,31 @@ stay separate from your system Python installation.
                cd zephyrproject
                west update
 
-      #. Export a :ref:`Zephyr CMake package <cmake_pkg>`. This allows CMake to
-         automatically load boilerplate code required for building Zephyr
-         applications.
+#. Export a :ref:`Zephyr CMake package <cmake_pkg>`. This allows CMake to
+   automatically load boilerplate code required for building Zephyr
+   applications.
 
-         .. code-block:: bat
+   .. code-block:: shell
 
-            west zephyr-export
+      west zephyr-export
 
-      #. Install Python dependencies using ``west packages``.
+#. Install Python dependencies using ``west packages``.
+
+   .. tabs::
+
+      .. group-tab:: Ubuntu
+
+         .. code-block:: bash
+
+            west packages pip --install
+
+      .. group-tab:: macOS
+
+         .. code-block:: bash
+
+            west packages pip --install
+
+      .. group-tab:: Windows
 
          .. tabs::
 
@@ -427,9 +384,9 @@ stay separate from your system Python installation.
 
                python -m pip install @((west packages pip) -split ' ')
 
-         .. note::
+   .. note::
 
-            This could downgrade or upgrade west itself.
+      This could downgrade or upgrade west itself.
 
 Install the Zephyr SDK
 **********************
