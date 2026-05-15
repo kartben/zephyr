@@ -467,8 +467,8 @@ Build the Blinky Sample
    If you are unsure what name west uses for your board, ``west boards``
    can be used to obtain a list of all boards Zephyr supports.
 
-Build the :zephyr:code-sample:`blinky` with :ref:`west build <west-building>`, changing
-``<your-board-name>`` appropriately for your board:
+Build the :zephyr:code-sample:`blinky` with :ref:`west build <west-building>`.
+Replace ``<your-board-name>`` with the name of your board:
 
 .. tabs::
 
@@ -500,10 +500,10 @@ Build the :zephyr:code-sample:`blinky` with :ref:`west build <west-building>`, c
             cd $Env:HOMEPATH\zephyrproject\zephyr
             west build -p always -b <your-board-name> samples\basic\blinky
 
-The ``-p always`` option forces a pristine build, and is recommended for new
-users. Users may also use the ``-p auto`` option, which will use
-heuristics to determine if a pristine build is required, such as when building
-another sample.
+The ``-p always`` option forces a pristine build, which removes build output
+from any previous configuration. This avoids stale files when you are getting
+started. Later, you can use ``-p auto`` to let west decide when a pristine build
+is needed.
 
 .. note::
 
