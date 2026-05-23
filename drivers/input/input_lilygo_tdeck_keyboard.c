@@ -122,13 +122,12 @@ static int lilygo_tdeck_keyboard_init(const struct device *dev)
 		     "polling-interval-ms must be greater than 0");			\
 										\
 	static const struct lilygo_tdeck_keyboard_config				\
-		lilygo_tdeck_keyboard_config_##inst = {				\
+	lilygo_tdeck_keyboard_config_##inst = {					\
 		.i2c = I2C_DT_SPEC_INST_GET(inst),					\
 		.polling_interval_ms = DT_INST_PROP(inst, polling_interval_ms),	\
 	};									\
 										\
-	static struct lilygo_tdeck_keyboard_data					\
-		lilygo_tdeck_keyboard_data_##inst;					\
+	static struct lilygo_tdeck_keyboard_data lilygo_tdeck_keyboard_data_##inst;	\
 										\
 	DEVICE_DT_INST_DEFINE(inst, lilygo_tdeck_keyboard_init, NULL,			\
 			      &lilygo_tdeck_keyboard_data_##inst,			\
