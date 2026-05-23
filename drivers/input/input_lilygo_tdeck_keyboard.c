@@ -90,7 +90,7 @@ static int lilygo_tdeck_keyboard_init(const struct device *dev)
 	int ret;
 
 	if (!i2c_is_ready_dt(&cfg->i2c)) {
-		LOG_ERR_DEVICE_NOT_READY(cfg->i2c.bus);
+		LOG_ERR("I2C bus device is not ready");
 		return -ENODEV;
 	}
 

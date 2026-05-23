@@ -3,7 +3,6 @@
 
 config INPUT_LILYGO_TDECK_KEYBOARD
 	bool "LilyGO T-Deck keyboard input"
-	default y
 	depends on DT_HAS_LILYGO_TDECK_KEYBOARD_ENABLED
 	depends on I2C
 	help
