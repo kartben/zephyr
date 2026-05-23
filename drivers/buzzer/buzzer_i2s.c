@@ -33,6 +33,7 @@ struct buzzer_i2s_data {
 	struct k_work_delayable refill_work;
 	struct k_work_delayable stop_work;
 	const struct device *dev;
+	int16_t block[BUZZER_I2S_BLOCK_SIZE / sizeof(int16_t)];
 	uint32_t freq_hz;
 	uint32_t current_request_id;
 	uint32_t request_id;
@@ -102,11 +103,10 @@ static uint32_t buzzer_i2s_block_period_us(uint32_t freq_hz)
 }
 
 static int buzzer_i2s_queue_audio(const struct device *dev, int16_t amplitude,
-				  bool *phase_high, size_t max_blocks,
-				  size_t *queued_blocks)
+				  int16_t *block, bool *phase_high,
+				  size_t max_blocks, size_t *queued_blocks)
 {
 	const struct buzzer_i2s_config *cfg = dev->config;
-	int16_t block[BUZZER_I2S_BLOCK_SIZE / sizeof(int16_t)];
 
 	*queued_blocks = 0U;
 
@@ -150,8 +150,8 @@ static void buzzer_i2s_refill_work(struct k_work *work)
 	const struct device *dev = data->dev;
 	const struct buzzer_i2s_config *cfg = dev->config;
 	uint32_t freq_hz;
-	uint32_t active_request_id;
-	uint32_t snapshot_request_id;
+	uint32_t worker_request_id;
+	uint32_t current_request_id;
 	uint8_t volume_percent;
 	bool stream_active;
 	bool running;
@@ -163,8 +163,8 @@ static void buzzer_i2s_refill_work(struct k_work *work)
 
 	k_mutex_lock(&data->lock, K_FOREVER);
 	freq_hz = data->freq_hz;
-	active_request_id = data->current_request_id;
-	snapshot_request_id = data->request_id;
+	worker_request_id = data->current_request_id;
+	current_request_id = data->request_id;
 	volume_percent = data->volume_percent;
 	stream_active = data->stream_active;
 	running = data->running;
@@ -190,7 +190,7 @@ static void buzzer_i2s_refill_work(struct k_work *work)
 		return;
 	}
 
-	if (!running || (snapshot_request_id != active_request_id)) {
+	if (!running || (current_request_id != worker_request_id)) {
 		if (running) {
 			ret = buzzer_i2s_drop(dev);
 			if (ret < 0) {
@@ -212,8 +212,8 @@ static void buzzer_i2s_refill_work(struct k_work *work)
 		}
 
 		phase_high = true;
-		ret = buzzer_i2s_queue_audio(dev, amplitude, &phase_high, 2U,
-					     &queued_blocks);
+		ret = buzzer_i2s_queue_audio(dev, amplitude, data->block,
+					     &phase_high, 2U, &queued_blocks);
 		if (ret < 0) {
 			LOG_ERR("Failed to queue buzzer audio (%d)", ret);
 			(void)buzzer_i2s_drop(dev);
@@ -240,25 +240,25 @@ static void buzzer_i2s_refill_work(struct k_work *work)
 			return;
 		}
 
-		active_request_id = snapshot_request_id;
+		worker_request_id = current_request_id;
 
 		k_mutex_lock(&data->lock, K_FOREVER);
-		data->current_request_id = active_request_id;
+		data->current_request_id = worker_request_id;
 		data->running = true;
 		data->phase_high = phase_high;
 		k_mutex_unlock(&data->lock);
 	}
 
-	ret = buzzer_i2s_queue_audio(dev, amplitude, &phase_high,
+	ret = buzzer_i2s_queue_audio(dev, amplitude, data->block, &phase_high,
 				     BUZZER_I2S_BLOCK_COUNT, &queued_blocks);
 	if (ret < 0) {
 		k_mutex_lock(&data->lock, K_FOREVER);
 		stream_active = data->stream_active;
-		snapshot_request_id = data->request_id;
-		active_request_id = data->current_request_id;
+		current_request_id = data->request_id;
+		worker_request_id = data->current_request_id;
 		k_mutex_unlock(&data->lock);
 
-		if (stream_active && (snapshot_request_id == active_request_id)) {
+		if (stream_active && (current_request_id == worker_request_id)) {
 			LOG_ERR("Failed to queue buzzer audio (%d)", ret);
 		}
 
@@ -271,7 +271,7 @@ static void buzzer_i2s_refill_work(struct k_work *work)
 	}
 
 	k_mutex_lock(&data->lock, K_FOREVER);
-	if (data->stream_active && (data->request_id == active_request_id)) {
+	if (data->stream_active && (data->request_id == worker_request_id)) {
 		data->phase_high = phase_high;
 		schedule_next = true;
 	}
@@ -317,7 +317,7 @@ static int buzzer_i2s_tone(const struct device *dev, uint32_t freq_hz,
 	k_mutex_unlock(&data->lock);
 
 	if (stream_active && (duration_ms != BUZZER_DURATION_FOREVER)) {
-		ret = k_work_schedule(&data->stop_work, K_MSEC(duration_ms));
+		ret = k_work_reschedule(&data->stop_work, K_MSEC(duration_ms));
 		if (ret < 0) {
 			k_mutex_lock(&data->lock, K_FOREVER);
 			data->stream_active = false;
