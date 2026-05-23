@@ -1,0 +1,46 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  LilyGO T-Deck keyboard coprocessor.
+
+  The keyboard is exposed over I2C by the onboard keyboard coprocessor firmware.
+  This driver switches the keyboard into raw matrix mode and reports row/column
+  events through the Zephyr input subsystem.
+
+compatible: "lilygo,tdeck-keyboard"
+
+include:
+  - base.yaml
+  - i2c-device.yaml
+
+properties:
+  polling-interval-ms:
+    type: int
+    default: 10
+    description: |
+      Polling interval for reading keyboard matrix state from the coprocessor.
+
+examples:
+  - |
+    #include <zephyr/dt-bindings/input/input-event-codes.h>
+    #include <zephyr/dt-bindings/input/keymap.h>
+
+    &i2c0 {
+      status = "okay";
+
+      keyboard@55 {
+        compatible = "lilygo,tdeck-keyboard";
+        reg = <0x55>;
+        polling-interval-ms = <10>;
+
+        keymap {
+          compatible = "input-keymap";
+          row-size = <7>;
+          col-size = <5>;
+          keymap = <MATRIX_KEY(3, 3, INPUT_KEY_ENTER)
+                    MATRIX_KEY(3, 4, INPUT_KEY_BACKSPACE)
+                    MATRIX_KEY(5, 0, INPUT_KEY_SPACE)>;
+        };
+      };
+    };

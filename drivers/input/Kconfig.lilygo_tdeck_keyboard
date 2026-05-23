@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config INPUT_LILYGO_TDECK_KEYBOARD
+	bool "LilyGO T-Deck keyboard input"
+	default y
+	depends on DT_HAS_LILYGO_TDECK_KEYBOARD_ENABLED
+	depends on I2C
+	help
+	  Enable support for the LilyGO T-Deck keyboard coprocessor over I2C.
