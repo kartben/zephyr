@@ -3,7 +3,6 @@
 
 config BUZZER_I2S
 	bool "I2S-driven buzzer"
-	default y
 	depends on DT_HAS_I2S_BUZZER_ENABLED
 	select I2S
 	help
