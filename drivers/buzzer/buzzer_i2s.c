@@ -150,8 +150,8 @@ static void buzzer_i2s_refill_work(struct k_work *work)
 	const struct device *dev = data->dev;
 	const struct buzzer_i2s_config *cfg = dev->config;
 	uint32_t freq_hz;
-	uint32_t current_request_id;
-	uint32_t request_id;
+	uint32_t active_request_id;
+	uint32_t snapshot_request_id;
 	uint8_t volume_percent;
 	bool stream_active;
 	bool running;
@@ -163,8 +163,8 @@ static void buzzer_i2s_refill_work(struct k_work *work)
 
 	k_mutex_lock(&data->lock, K_FOREVER);
 	freq_hz = data->freq_hz;
-	current_request_id = data->current_request_id;
-	request_id = data->request_id;
+	active_request_id = data->current_request_id;
+	snapshot_request_id = data->request_id;
 	volume_percent = data->volume_percent;
 	stream_active = data->stream_active;
 	running = data->running;
@@ -190,7 +190,7 @@ static void buzzer_i2s_refill_work(struct k_work *work)
 		return;
 	}
 
-	if (!running || (request_id != current_request_id)) {
+	if (!running || (snapshot_request_id != active_request_id)) {
 		if (running) {
 			ret = buzzer_i2s_drop(dev);
 			if (ret < 0) {
@@ -240,10 +240,10 @@ static void buzzer_i2s_refill_work(struct k_work *work)
 			return;
 		}
 
-		current_request_id = request_id;
+		active_request_id = snapshot_request_id;
 
 		k_mutex_lock(&data->lock, K_FOREVER);
-		data->current_request_id = current_request_id;
+		data->current_request_id = active_request_id;
 		data->running = true;
 		data->phase_high = phase_high;
 		k_mutex_unlock(&data->lock);
@@ -254,11 +254,11 @@ static void buzzer_i2s_refill_work(struct k_work *work)
 	if (ret < 0) {
 		k_mutex_lock(&data->lock, K_FOREVER);
 		stream_active = data->stream_active;
-		request_id = data->request_id;
-		current_request_id = data->current_request_id;
+		snapshot_request_id = data->request_id;
+		active_request_id = data->current_request_id;
 		k_mutex_unlock(&data->lock);
 
-		if (stream_active && (request_id == current_request_id)) {
+		if (stream_active && (snapshot_request_id == active_request_id)) {
 			LOG_ERR("Failed to queue buzzer audio (%d)", ret);
 		}
 
@@ -271,7 +271,7 @@ static void buzzer_i2s_refill_work(struct k_work *work)
 	}
 
 	k_mutex_lock(&data->lock, K_FOREVER);
-	if (data->stream_active && (data->request_id == current_request_id)) {
+	if (data->stream_active && (data->request_id == active_request_id)) {
 		data->phase_high = phase_high;
 		schedule_next = true;
 	}
