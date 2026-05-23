@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+title: I2S-driven buzzer
+
+description: |
+  Buzzer connected to an I2S transmit controller. The driver synthesizes
+  a square wave from the runtime buzzer API requests, so the devicetree
+  node only describes the presence of the buzzer on the I2S bus.
+
+compatible: "i2s-buzzer"
+
+include: i2s-device.yaml

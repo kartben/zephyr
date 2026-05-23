@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config BUZZER_I2S
+	bool "I2S-driven buzzer"
+	default y
+	depends on DT_HAS_I2S_BUZZER_ENABLED
+	select I2S
+	help
+	  Enable the I2S backend for buzzers connected as I2S TX
+	  devices. The driver generates a square wave whose pitch and
+	  amplitude are controlled through the generic buzzer API.

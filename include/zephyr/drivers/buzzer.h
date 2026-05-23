@@ -165,7 +165,8 @@ static inline int buzzer_set_volume(const struct device *dev, uint8_t percent)
  * wait for @p duration_ms to elapse. For PWM-driven passive piezos, the
  * default tone is derived from the period cell of the device's @c pwms
  * devicetree property. For GPIO-driven active buzzers, the hardware
- * oscillator determines the actual pitch.
+ * oscillator determines the actual pitch. Other backends use a
+ * driver-defined default tone.
  *
  * @param dev          Buzzer device.
  * @param duration_ms  How long the buzzer should keep emitting the
