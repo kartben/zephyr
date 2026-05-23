@@ -117,21 +117,21 @@ static int lilygo_tdeck_keyboard_init(const struct device *dev)
 	return 0;
 }
 
-#define LILYGO_TDECK_KEYBOARD_DEFINE(inst)						\
-	BUILD_ASSERT(DT_INST_PROP(inst, polling_interval_ms) > 0,			\
-		     "polling-interval-ms must be greater than 0");			\
-										\
-	static const struct lilygo_tdeck_keyboard_config				\
-	lilygo_tdeck_keyboard_config_##inst = {					\
-		.i2c = I2C_DT_SPEC_INST_GET(inst),					\
-		.polling_interval_ms = DT_INST_PROP(inst, polling_interval_ms),	\
-	};									\
-										\
-	static struct lilygo_tdeck_keyboard_data lilygo_tdeck_keyboard_data_##inst;	\
-										\
-	DEVICE_DT_INST_DEFINE(inst, lilygo_tdeck_keyboard_init, NULL,			\
-			      &lilygo_tdeck_keyboard_data_##inst,			\
-			      &lilygo_tdeck_keyboard_config_##inst, POST_KERNEL,	\
+#define LILYGO_TDECK_KEYBOARD_DEFINE(inst)							\
+	BUILD_ASSERT(DT_INST_PROP(inst, polling_interval_ms) > 0,				\
+		     "polling-interval-ms must be greater than 0");				\
+											\
+	static const struct lilygo_tdeck_keyboard_config					\
+		lilygo_tdeck_keyboard_config_##inst = {					\
+			.i2c = I2C_DT_SPEC_INST_GET(inst),				\
+			.polling_interval_ms = DT_INST_PROP(inst, polling_interval_ms),\
+	};										\
+											\
+	static struct lilygo_tdeck_keyboard_data lilygo_tdeck_keyboard_data_##inst;		\
+											\
+	DEVICE_DT_INST_DEFINE(inst, lilygo_tdeck_keyboard_init, NULL,				\
+			      &lilygo_tdeck_keyboard_data_##inst,				\
+			      &lilygo_tdeck_keyboard_config_##inst, POST_KERNEL,		\
 			      CONFIG_INPUT_INIT_PRIORITY, NULL);
 
 DT_INST_FOREACH_STATUS_OKAY(LILYGO_TDECK_KEYBOARD_DEFINE)
