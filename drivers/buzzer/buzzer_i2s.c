@@ -114,7 +114,7 @@ static int buzzer_i2s_queue_audio(const struct device *dev, int16_t amplitude,
 		int ret;
 
 		buzzer_i2s_fill_block(block, amplitude, phase_high);
-		ret = i2s_buf_write(cfg->i2s, block, sizeof(block));
+		ret = i2s_buf_write(cfg->i2s, block, BUZZER_I2S_BLOCK_SIZE);
 		if (ret == -EBUSY) {
 			return 0;
 		}
