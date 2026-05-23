@@ -359,14 +359,14 @@ static DEVICE_API(buzzer, buzzer_i2s_api) = {
 				 BUZZER_I2S_BLOCK_COUNT, 4);				\
 	K_THREAD_STACK_DEFINE(buzzer_i2s_stack_##inst, BUZZER_I2S_THREAD_STACK_SIZE);	\
 	static const struct buzzer_i2s_config buzzer_i2s_cfg_##inst = {			\
-		.i2s = DEVICE_DT_GET(DT_INST_BUS(inst)),					\
+		.i2s = DEVICE_DT_GET(DT_INST_BUS(inst)),                           \
 		.mem_slab = &buzzer_i2s_slab_##inst,					\
-		.thread_stack = buzzer_i2s_stack_##inst,					\
+		.thread_stack = buzzer_i2s_stack_##inst,                            \
 		.thread_stack_size = K_THREAD_STACK_SIZEOF(buzzer_i2s_stack_##inst),	\
 	};										\
 	static struct buzzer_i2s_data buzzer_i2s_data_##inst;				\
 	DEVICE_DT_INST_DEFINE(inst, buzzer_i2s_init, NULL,				\
-			      &buzzer_i2s_data_##inst, &buzzer_i2s_cfg_##inst,		\
+			      &buzzer_i2s_data_##inst, &buzzer_i2s_cfg_##inst,           \
 			      POST_KERNEL, CONFIG_BUZZER_INIT_PRIORITY,			\
 			      &buzzer_i2s_api);
 
