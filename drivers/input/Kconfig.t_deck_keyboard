@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config INPUT_LILYGO_T_DECK_KEYBOARD
+	bool "LilyGO T-Deck keyboard driver"
+	default y
+	depends on DT_HAS_LILYGO_T_DECK_KEYBOARD_ENABLED
+	select I2C
+	help
+	  Enable the driver for the external I2C keyboard controller used on the
+	  LilyGO T-Deck.

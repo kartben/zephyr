@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  LilyGO T-Deck external keyboard controller.
+
+  The keyboard is implemented by a dedicated microcontroller on the T-Deck base
+  board. In the default key mode, each I2C read returns a single byte: the ASCII
+  character for the last key press, or 0x00 when no key is pending.
+
+compatible: "lilygo,t-deck-keyboard"
+
+include: i2c-device.yaml
+
+properties:
+  polling-interval-ms:
+    type: int
+    default: 16
+    description: |
+      Interval between consecutive keyboard polls in milliseconds.
