@@ -61,7 +61,7 @@ static int buzzer_i2s_configure_stream(const struct device *dev, uint32_t freq_h
 	const struct buzzer_i2s_config *cfg = dev->config;
 	struct i2s_config i2s_cfg = { 0 };
 
-	if (freq_hz > BUZZER_I2S_MAX_FREQ_HZ) {
+	if ((freq_hz == 0U) || (freq_hz > BUZZER_I2S_MAX_FREQ_HZ)) {
 		return -EINVAL;
 	}
 
@@ -223,6 +223,7 @@ static void buzzer_i2s_refill_work(struct k_work *work)
 			return;
 		}
 		if (queued_blocks < 2U) {
+			LOG_ERR("Failed to prime I2S buzzer queue");
 			(void)buzzer_i2s_drop(dev);
 			k_mutex_lock(&data->lock, K_FOREVER);
 			data->running = false;
