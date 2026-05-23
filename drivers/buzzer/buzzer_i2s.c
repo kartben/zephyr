@@ -19,6 +19,7 @@ LOG_MODULE_REGISTER(buzzer_i2s, CONFIG_BUZZER_LOG_LEVEL);
 #define BUZZER_I2S_BLOCK_SIZE        \
 	(BUZZER_I2S_BLOCK_FRAMES * 2U * sizeof(int16_t))
 #define BUZZER_I2S_DEFAULT_FREQ_HZ   1000U
+#define BUZZER_I2S_MAX_FREQ_HZ       (UINT32_MAX / 2U)
 #define BUZZER_I2S_TIMEOUT_MS        100
 #define BUZZER_I2S_THREAD_STACK_SIZE 1024U
 
@@ -58,7 +59,7 @@ static int buzzer_i2s_configure_stream(const struct device *dev, uint32_t freq_h
 	const struct buzzer_i2s_config *cfg = dev->config;
 	struct i2s_config i2s_cfg = { 0 };
 
-	if (freq_hz > (UINT32_MAX / 2U)) {
+	if (freq_hz > BUZZER_I2S_MAX_FREQ_HZ) {
 		return -EINVAL;
 	}
 
@@ -125,6 +126,7 @@ static void buzzer_i2s_thread(void *arg1, void *arg2, void *arg3)
 		uint32_t request_id;
 		uint8_t volume_percent;
 		bool stream_active;
+		int16_t amplitude;
 		int ret;
 
 		if (!running) {
@@ -137,6 +139,7 @@ static void buzzer_i2s_thread(void *arg1, void *arg2, void *arg3)
 		volume_percent = data->volume_percent;
 		stream_active = data->stream_active;
 		k_mutex_unlock(&data->lock);
+		amplitude = buzzer_i2s_amplitude(volume_percent);
 
 		if (!stream_active || (freq_hz == BUZZER_FREQ_REST) ||
 		    (volume_percent == 0U)) {
@@ -170,17 +173,18 @@ static void buzzer_i2s_thread(void *arg1, void *arg2, void *arg3)
 
 			phase_high = true;
 			for (size_t i = 0; i < 2U; i++) {
-				buzzer_i2s_fill_block(block,
-						      buzzer_i2s_amplitude(volume_percent),
-						      &phase_high);
+				buzzer_i2s_fill_block(block, amplitude, &phase_high);
 				ret = i2s_buf_write(cfg->i2s, block,
 						    sizeof(block));
 				if (ret < 0) {
 					LOG_ERR("Failed to queue buzzer audio (%d)", ret);
 					(void)buzzer_i2s_drop(dev);
 					running = false;
-					goto next_iteration;
+					break;
 				}
+			}
+			if (!running) {
+				continue;
 			}
 
 			ret = i2s_trigger(cfg->i2s, I2S_DIR_TX,
@@ -196,8 +200,7 @@ static void buzzer_i2s_thread(void *arg1, void *arg2, void *arg3)
 			running = true;
 		}
 
-		buzzer_i2s_fill_block(block, buzzer_i2s_amplitude(volume_percent),
-				      &phase_high);
+		buzzer_i2s_fill_block(block, amplitude, &phase_high);
 		ret = i2s_buf_write(cfg->i2s, block, sizeof(block));
 		if (ret < 0) {
 			k_mutex_lock(&data->lock, K_FOREVER);
@@ -212,9 +215,6 @@ static void buzzer_i2s_thread(void *arg1, void *arg2, void *arg3)
 			(void)buzzer_i2s_drop(dev);
 			running = false;
 		}
-
-next_iteration:
-		;
 	}
 }
 
@@ -237,7 +237,7 @@ static int buzzer_i2s_tone(const struct device *dev, uint32_t freq_hz,
 		return -ENODEV;
 	}
 
-	if (freq_hz > (UINT32_MAX / 2U)) {
+	if (freq_hz > BUZZER_I2S_MAX_FREQ_HZ) {
 		return -EINVAL;
 	}
 
