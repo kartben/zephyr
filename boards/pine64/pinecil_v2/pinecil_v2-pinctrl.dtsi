@@ -4,6 +4,8 @@
  */
 
 &pinctrl {
+adc0_default: adc0_default {};
+
 uart0_default: uart0_default {
 group1 {
 pinmux = <GPIO22_UART0_RX>,

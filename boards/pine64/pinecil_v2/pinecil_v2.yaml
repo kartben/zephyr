@@ -15,9 +15,11 @@ testing:
     - bluetooth
 supported:
   - gpio
+  - adc
   - i2c
   - spi
   - uart
+  - sensor
   - watchdog
   - entropy
   - pinctrl

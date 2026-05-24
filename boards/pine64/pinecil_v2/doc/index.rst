@@ -15,6 +15,7 @@ The board provides:
 - 4 MB external flash
 - USB-C connector
 - Two front-panel buttons
+- Internal die temperature sensor (TSEN via ADC)
 - I2C and SPI interfaces used by onboard peripherals
 
 Supported Features

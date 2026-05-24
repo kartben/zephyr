@@ -7,6 +7,7 @@
 
 #include <bflb/bl706.dtsi>
 #include "pinecil_v2-pinctrl.dtsi"
+#include <zephyr/dt-bindings/adc/adc.h>
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 
 / {
@@ -28,6 +29,7 @@ aliases {
 sw0 = &button_a;
 sw1 = &button_b;
 watchdog0 = &wdt0;
+die-temp0 = &tsen;
 };
 
 buttons {
@@ -100,6 +102,25 @@ status = "okay";
 
 pinctrl-0 = <&spi0_default>;
 pinctrl-names = "default";
+};
+
+&adc0 {
+status = "okay";
+pinctrl-0 = <&adc0_default>;
+pinctrl-names = "default";
+
+channel@0 {
+reg = <0>;
+zephyr,gain = "ADC_GAIN_1";
+zephyr,reference = "ADC_REF_INTERNAL";
+zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+zephyr,resolution = <16>;
+zephyr,input-positive = <14>;
+};
+};
+
+&tsen {
+status = "okay";
 };
 
 &wdt0 {
