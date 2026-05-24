@@ -2,8 +2,8 @@ identifier: pinecil_v2
 name: Pine64 Pinecil V2
 type: mcu
 arch: riscv
-ram: 88
-flash: 4064
+ram: 88 # KB
+flash: 4064 # KB
 toolchain:
   - zephyr
 testing:
