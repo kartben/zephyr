@@ -10,11 +10,13 @@ testing:
   ignore_tags:
     - bluetooth
 supported:
+  - adc
   - gpio
   - i2c
   - uart
   - display
   - input
+  - sensor
   - watchdog
   - entropy
   - pinctrl

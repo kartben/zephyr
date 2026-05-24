@@ -27,6 +27,7 @@
 	};
 
 	aliases {
+		ambient-temp0 = &handle_temp_sensor;
 		sw0 = &button_plus;
 		sw1 = &button_minus;
 		watchdog0 = &wdt0;
@@ -46,6 +47,15 @@
 			label = "Button -";
 			zephyr,code = <INPUT_KEY_DOWN>;
 		};
+	};
+
+	handle_temp_sensor: ambient_temp_sensor {
+		compatible = "tdk,ntcg163jf103ft1";
+		io-channels = <&adc0 10>;
+		pullup-uv = <3300000>;
+		pullup-ohm = <0>;
+		pulldown-ohm = <10000>;
+		connected-positive;
 	};
 };
 
@@ -93,6 +103,20 @@
 
 &wdt0 {
 	status = "okay";
+};
+
+&adc0 {
+	status = "okay";
+
+	channel@10 {
+		reg = <10>;
+		zephyr,gain = "ADC_GAIN_1";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,vref-mv = <3200>;
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,input-positive = <10>;
+		zephyr,resolution = <16>;
+	};
 };
 
 &uart1 {

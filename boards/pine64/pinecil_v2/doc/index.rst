@@ -16,12 +16,13 @@ The Pinecil V2 features:
 - 4 MB external flash
 - 0.69 inch 96x16 monochrome I2C OLED display
 - Two front-panel buttons
+- TDK NTCG163JF103FT1-compatible handle temperature NTC on ADC channel 10
 - USB-C power input and onboard USB PD controller
 - BLE radio integrated in the BL706 SoC
 
 Current Zephyr support covers the BL706-based console, the onboard OLED display,
-the front-panel buttons, and the standard BL706 watchdog, entropy, flash, and
-Bluetooth HCI blocks.
+the front-panel buttons, the handle temperature NTC sensor, and the standard
+BL706 watchdog, entropy, flash, and Bluetooth HCI blocks.
 
 Programming and Debugging
 *************************
