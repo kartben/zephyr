@@ -1,0 +1,6 @@
+board:
+  name: pinecil_v2
+  full_name: Pine64 Pinecil V2
+  vendor: pine64
+  socs:
+    - name: bl706c00q2i

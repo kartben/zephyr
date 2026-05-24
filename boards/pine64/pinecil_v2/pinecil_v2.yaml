@@ -1,0 +1,27 @@
+identifier: pinecil_v2
+name: Pine64 Pinecil V2
+type: mcu
+arch: riscv
+ram: 88
+flash: 4064
+toolchain:
+  - zephyr
+testing:
+  ignore_tags:
+    - net
+    - bluetooth
+supported:
+  - gpio
+  - i2c
+  - uart
+  - display
+  - input
+  - watchdog
+  - entropy
+  - pinctrl
+  - dma
+  - flash
+  - crypto
+  - counter
+  - bluetooth
+vendor: pine64

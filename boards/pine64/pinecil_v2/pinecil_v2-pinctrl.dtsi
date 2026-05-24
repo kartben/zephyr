@@ -1,0 +1,22 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&pinctrl {
+	uart1_default: uart1_default {
+		group1 {
+			pinmux = <GPIO22_UART1_TX>,
+				 <GPIO23_UART1_RX>;
+		};
+	};
+
+	i2c0_default: i2c0_default {
+		group1 {
+			pinmux = <GPIO11_I2C_SDA>,
+				 <GPIO10_I2C_SCL>;
+			bias-pull-up;
+			input-schmitt-enable;
+		};
+	};
+};
