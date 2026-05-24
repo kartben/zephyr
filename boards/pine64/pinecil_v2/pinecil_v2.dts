@@ -49,7 +49,7 @@
 		};
 	};
 
-	handle_temp_sensor: ambient_temp_sensor {
+	handle_temp_sensor: handle_temp_sensor {
 		compatible = "tdk,ntcg163jf103ft1";
 		io-channels = <&adc0 10>;
 		pullup-uv = <3300000>;
