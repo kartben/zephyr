@@ -4,7 +4,9 @@
  */
 
 &pinctrl {
-adc0_default: adc0_default {};
+adc0_default: adc0_default {
+/* Internal TSEN uses ADC input mux and does not require external pinmuxing. */
+};
 
 uart0_default: uart0_default {
 group1 {
