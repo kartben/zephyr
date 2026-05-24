@@ -8,7 +8,6 @@ toolchain:
   - zephyr
 testing:
   ignore_tags:
-    - net
     - bluetooth
 supported:
   - gpio
@@ -23,5 +22,4 @@ supported:
   - flash
   - crypto
   - counter
-  - bluetooth
 vendor: pine64
