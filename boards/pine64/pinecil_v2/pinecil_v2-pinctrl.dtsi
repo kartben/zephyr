@@ -4,36 +4,36 @@
  */
 
 &pinctrl {
-adc0_default: adc0_default {
-/*
- * Internal TSEN uses ADC input mux and does not require external pinmuxing.
- */
-};
+	adc0_default: adc0_default {
+		/*
+		 * Internal TSEN uses ADC input mux and does not require external pinmuxing.
+		 */
+	};
 
-uart0_default: uart0_default {
-group1 {
-pinmux = <GPIO22_UART0_RX>,
-<GPIO23_UART0_TX>;
-bias-pull-up;
-input-schmitt-enable;
-};
-};
+	uart0_default: uart0_default {
+		group1 {
+			pinmux = <GPIO22_UART0_RX>,
+				 <GPIO23_UART0_TX>;
+			bias-pull-up;
+			input-schmitt-enable;
+		};
+	};
 
-i2c0_default: i2c0_default {
-group1 {
-pinmux = <GPIO11_I2C_SCL>,
-<GPIO10_I2C_SDA>;
-bias-pull-up;
-input-schmitt-enable;
-};
-};
+	i2c0_default: i2c0_default {
+		group1 {
+			pinmux = <GPIO11_I2C_SCL>,
+				 <GPIO10_I2C_SDA>;
+			bias-pull-up;
+			input-schmitt-enable;
+		};
+	};
 
-spi0_default: spi0_default {
-group1 {
-pinmux = <GPIO15_SPI_SCLK>,
-<GPIO0_SPI_MOSI>,
-<GPIO1_SPI_MISO>,
-<GPIO2_SPI_SS>;
-};
-};
+	spi0_default: spi0_default {
+		group1 {
+			pinmux = <GPIO15_SPI_SCLK>,
+				 <GPIO0_SPI_MOSI>,
+				 <GPIO1_SPI_MISO>,
+				 <GPIO2_SPI_SS>;
+		};
+	};
 };
