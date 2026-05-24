@@ -115,6 +115,7 @@ zephyr,gain = "ADC_GAIN_1";
 zephyr,reference = "ADC_REF_INTERNAL";
 zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
 zephyr,resolution = <16>;
+/* BL706 internal TSEN positive input channel */
 zephyr,input-positive = <14>;
 };
 };
