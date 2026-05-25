@@ -200,8 +200,9 @@ static inline int buzzer_stop(const struct device *dev)
  * @brief Play an RTTTL ringtone on a buzzer device.
  *
  * The ringtone string must use the Ring Tone Text Transfer Language
- * (RTTTL) ``name:defaults:notes`` format. The function parses the
- * ringtone and plays each note sequentially through @p dev.
+ * (RTTTL) format with three colon-separated sections:
+ * ``name:defaults:notes``. The function parses the ringtone and plays
+ * each note sequentially through @p dev.
  *
  * Unlike the basic buzzer API, this helper is blocking: it sleeps in
  * the caller's context until the full ringtone has been played or a

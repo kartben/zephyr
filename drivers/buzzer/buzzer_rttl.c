@@ -22,6 +22,10 @@ struct buzzer_rttl_call {
 	uint32_t duration_ms;
 };
 
+/*
+ * [octave - 4][note] table for RTTTL notes. Each row covers one octave
+ * from 4 through 7, and each column is one chromatic semitone from C to B.
+ */
 static const uint16_t buzzer_rttl_note_freq_hz[][12] = {
 	{ 262U, 277U, 294U, 311U, 330U, 349U, 370U, 392U, 415U, 440U, 466U, 494U },
 	{ 523U, 554U, 587U, 622U, 659U, 698U, 740U, 784U, 831U, 880U, 932U, 988U },
@@ -66,7 +70,7 @@ static int buzzer_rttl_parse_defaults(const char **str,
 	const char *cursor = *str;
 	int ret;
 
-	/* Standard RTTTL defaults: quarter note, octave 6, 63 BPM. */
+	/* Standard RTTTL defaults: quarter Note, Octave 6, 63 BPM. */
 	defaults->duration = 4U;
 	defaults->octave = 6U;
 	defaults->bpm = 63U;
