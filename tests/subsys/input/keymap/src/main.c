@@ -14,7 +14,8 @@
 
 static const struct device *const fake_dev =
 	DEVICE_DT_GET(DT_NODELABEL(fake_input_device));
-static const struct device *const keymap_dev = DEVICE_DT_GET(DT_NODELABEL(keymap));
+static const struct device *const keymap_dev =
+	DEVICE_DT_GET(DT_NODELABEL(keymap));
 
 DEVICE_DT_DEFINE(DT_INST(0, vnd_input_device), NULL, NULL, NULL, NULL,
 		 PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_DEVICE, NULL);
