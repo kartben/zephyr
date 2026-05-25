@@ -247,16 +247,15 @@ static DEVICE_API(display, palette_dither_display_api) = {
 		DT_PROP(DT_INST_PHANDLE(inst, display), height))
 
 #define PALETTE_DITHER_DISPLAY_DEFINE(inst)                                                       \
-	static uint8_t                                                                      \
-		palette_dither_display_converted_buf_##inst[PALETTE_DITHER_DISPLAY_BUF_SIZE(inst)];\
+	static uint8_t palette_dither_buf_##inst[PALETTE_DITHER_DISPLAY_BUF_SIZE(inst)];      \
 	static const struct palette_dither_display_config palette_dither_display_config_##inst = { \
 		.display = DEVICE_DT_GET(DT_INST_PHANDLE(inst, display)),                        \
 		.initial_pixel_format = DT_INST_PROP(inst, pixel_format),                        \
-		.converted_buf_size = ARRAY_SIZE(palette_dither_display_converted_buf_##inst),   \
+		.converted_buf_size = ARRAY_SIZE(palette_dither_buf_##inst),                     \
 	};                                                                                        \
 	static struct palette_dither_display_data palette_dither_display_data_##inst = {          \
 		.current_pixel_format = DT_INST_PROP(inst, pixel_format),                        \
-		.converted_buf = palette_dither_display_converted_buf_##inst,                    \
+		.converted_buf = palette_dither_buf_##inst,                                      \
 	};                                                                                        \
 	DEVICE_DT_INST_DEFINE(inst, palette_dither_display_init, NULL,                           \
 			      &palette_dither_display_data_##inst,                               \
