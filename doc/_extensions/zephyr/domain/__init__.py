@@ -65,9 +65,10 @@ __version__ = "0.2.0"
 sys.path.insert(0, str(Path(__file__).parents[4] / "scripts/dts/python-devicetree/src"))
 sys.path.insert(0, str(Path(__file__).parents[4] / "scripts/west_commands"))
 sys.path.insert(0, str(Path(__file__).parents[3] / "_scripts"))
+sys.path.insert(0, str(Path(__file__).parents[4] / "scripts/pylib/build_helpers"))
 
 import dts_binding_types
-from gen_boards_catalog import get_catalog
+from board_catalog import get_catalog
 
 ZEPHYR_BASE = Path(__file__).parents[4]
 TEMPLATES_DIR = Path(__file__).parent / "templates"

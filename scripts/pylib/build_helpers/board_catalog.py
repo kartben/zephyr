@@ -1,6 +1,8 @@
 # Copyright (c) 2024-2025 The Linux Foundation
 # SPDX-License-Identifier: Apache-2.0
 
+"""Shared helpers for generating Zephyr board and devicetree catalogs."""
+
 import logging
 import os
 import pickle
@@ -9,6 +11,18 @@ import subprocess
 import sys
 from collections import namedtuple
 from pathlib import Path
+
+ZEPHYR_BASE = Path(__file__).resolve().parents[3]
+
+for module_path in (
+    ZEPHYR_BASE / "scripts",
+    ZEPHYR_BASE / "scripts" / "dts" / "python-devicetree" / "src",
+    ZEPHYR_BASE / "scripts" / "west_commands",
+    ZEPHYR_BASE / "doc" / "_scripts",
+):
+    module_path_str = str(module_path)
+    if module_path_str not in sys.path:
+        sys.path.insert(0, module_path_str)
 
 import list_boards
 import list_hardware
@@ -20,7 +34,6 @@ from gen_devicetree_rest import VndLookup
 from get_maintainer import Maintainers
 from runners.core import ZephyrBinaryRunner
 
-ZEPHYR_BASE = Path(__file__).parents[2]
 ZEPHYR_BINDINGS = ZEPHYR_BASE / "dts/bindings"
 EDT_PICKLE_PATHS = (
     "zephyr/edt.pickle",

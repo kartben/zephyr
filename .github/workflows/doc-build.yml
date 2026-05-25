@@ -48,6 +48,7 @@ jobs:
           scripts/dts/
           doc/requirements.txt
           .github/workflows/doc-build.yml
+          scripts/pylib/build_helpers/board_catalog.py
           scripts/pylib/pytest-twister-harness/src/twister_harness/device/device_adapter.py
           scripts/pylib/pytest-twister-harness/src/twister_harness/helpers/shell.py
 
