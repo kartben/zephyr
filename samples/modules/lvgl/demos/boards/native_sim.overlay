@@ -4,8 +4,42 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <zephyr/dt-bindings/display/panel.h>
+
+/ {
+	palette_dither: palette-dither-display {
+		compatible = "zephyr,palette-dither-display";
+		display = <&sdl_dc>;
+		pixel-format = <PANEL_PIXEL_FORMAT_RGB_565>;
+	};
+
+	chosen {
+		zephyr,display = &palette_dither;
+	};
+};
+
 &sdl_dc {
-	compatible = "zephyr,sdl-dc";
+	pixel-format = <PANEL_PIXEL_FORMAT_I_4>;
 	height = <272>;
 	width = <480>;
+
+	color-palette {
+		compatible = "zephyr,panel-color-palette";
+		colors = <ARGB8888(0, 0, 0, 255)        /* black */
+			  ARGB8888(128, 0, 0, 255)      /* dark red */
+			  ARGB8888(0, 128, 0, 255)      /* dark green */
+			  ARGB8888(128, 128, 0, 255)    /* dark yellow */
+			  ARGB8888(0, 0, 128, 255)      /* dark blue */
+			  ARGB8888(128, 0, 128, 255)    /* dark magenta */
+			  ARGB8888(0, 128, 128, 255)    /* dark cyan */
+			  ARGB8888(192, 192, 192, 255)  /* light gray */
+			  ARGB8888(128, 128, 128, 255)  /* dark gray */
+			  ARGB8888(255, 0, 0, 255)      /* red */
+			  ARGB8888(0, 255, 0, 255)      /* green */
+			  ARGB8888(255, 255, 0, 255)    /* yellow */
+			  ARGB8888(0, 0, 255, 255)      /* blue */
+			  ARGB8888(255, 0, 255, 255)    /* magenta */
+			  ARGB8888(0, 255, 255, 255)    /* cyan */
+			  ARGB8888(255, 255, 255, 255)>; /* white */
+	};
 };

@@ -44,6 +44,10 @@ Example building for :zephyr:board:`mimxrt1060_evk`:
 
 These demos can be built for simulated display environment as follows:
 
+On :zephyr:board:`native_sim <native_sim>`, the sample uses a
+``zephyr,palette-dither-display`` wrapper in front of the SDL display so LVGL
+can render RGB565 content to a paletted ``I_4`` backend.
+
 .. zephyr-app-commands::
    :zephyr-app: samples/modules/lvgl/demos
    :host-os: unix
