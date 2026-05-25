@@ -40,7 +40,7 @@ static void buzzer_rttl_skip_spaces(const char **str)
 
 static int buzzer_rttl_parse_number(const char **str, uint32_t *value)
 {
-	uint64_t result = 0U;
+	uint64_t result = 0ULL;
 	bool found = false;
 
 	while (isdigit((unsigned char)**str) != 0) {
