@@ -241,11 +241,14 @@ static DEVICE_API(display, palette_dither_display_api) = {
 	.set_orientation = palette_dither_display_set_orientation,
 };
 
+#define PALETTE_DITHER_DISPLAY_BUF_SIZE(inst)                                                   \
+	DISPLAY_COLOR_PALETTE_I4_BUFFER_SIZE(                                                   \
+		DT_PROP(DT_INST_PHANDLE(inst, display), width),                                \
+		DT_PROP(DT_INST_PHANDLE(inst, display), height))
+
 #define PALETTE_DITHER_DISPLAY_DEFINE(inst)                                                       \
-	static uint8_t palette_dither_display_converted_buf_##inst\
-		[DISPLAY_COLOR_PALETTE_I4_BUFFER_SIZE(                                    \
-			DT_PROP(DT_INST_PHANDLE(inst, display), width),                       \
-			DT_PROP(DT_INST_PHANDLE(inst, display), height))];                    \
+	static uint8_t                                                                      \
+		palette_dither_display_converted_buf_##inst[PALETTE_DITHER_DISPLAY_BUF_SIZE(inst)];\
 	static const struct palette_dither_display_config palette_dither_display_config_##inst = { \
 		.display = DEVICE_DT_GET(DT_INST_PHANDLE(inst, display)),                        \
 		.initial_pixel_format = DT_INST_PROP(inst, pixel_format),                        \
