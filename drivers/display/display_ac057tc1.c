@@ -16,6 +16,8 @@
 #include <zephyr/pm/device.h>
 #include <string.h>
 
+#include "display_color_palette.h"
+
 LOG_MODULE_REGISTER(ac057tc1, CONFIG_DISPLAY_LOG_LEVEL);
 
 /* Timing constants */
@@ -61,6 +63,8 @@ struct ac057tc1_data {
 	bool blanking_on;
 	struct k_sem busy_sem;
 	struct gpio_callback busy_cb;
+	enum display_pixel_format current_pixel_format;
+	uint8_t *converted_buf;
 };
 
 static inline int ac057tc1_write_cmd(const struct device *dev, uint8_t cmd, const uint8_t *data,
@@ -282,6 +286,7 @@ static int ac057tc1_write(const struct device *dev, const uint16_t x, const uint
 	struct ac057tc1_data *data = dev->data;
 	int ret;
 	size_t buf_len;
+	const void *tx_buf = buf;
 
 	LOG_DBG("write x=%u y=%u w=%u h=%u pitch=%u", x, y, desc->width, desc->height, desc->pitch);
 
@@ -292,11 +297,29 @@ static int ac057tc1_write(const struct device *dev, const uint16_t x, const uint
 	}
 
 	/* Calculate buffer length - 4 bits per pixel, 2 pixels per byte */
-	buf_len = (desc->width * desc->height) / 2U;
+	buf_len = DIV_ROUND_UP(desc->width, 2U) * desc->height;
 
 	if (buf == NULL || desc->buf_size < buf_len) {
 		LOG_ERR("Invalid buffer: buf=%p size=%u expected=%u", buf, desc->buf_size, buf_len);
 		return -EINVAL;
+	}
+
+	if (data->current_pixel_format == PIXEL_FORMAT_I_4) {
+		if (desc->pitch != desc->width) {
+			LOG_ERR("Pitch must match width for indexed writes");
+			return -EINVAL;
+		}
+	} else {
+		ret = display_color_palette_convert_to_i4(desc, data->current_pixel_format, buf,
+							 config->color_palette,
+							 ARRAY_SIZE(config->color_palette),
+							 data->converted_buf, buf_len);
+		if (ret < 0) {
+			LOG_ERR("Failed to dither write buffer: %d", ret);
+			return ret;
+		}
+
+		tx_buf = data->converted_buf;
 	}
 
 	/* Wake panel from deep sleep if needed */
@@ -316,7 +339,7 @@ static int ac057tc1_write(const struct device *dev, const uint16_t x, const uint
 	}
 
 	/* Send pixel data with DATA_START_TRANS command */
-	ret = ac057tc1_write_cmd(dev, AC057TC1_CMD_DATA_START_TRANS, buf, buf_len);
+	ret = ac057tc1_write_cmd(dev, AC057TC1_CMD_DATA_START_TRANS, tx_buf, buf_len);
 	if (ret < 0) {
 		LOG_ERR("Failed to write display data: %d", ret);
 		return ret;
@@ -388,24 +411,33 @@ static int ac057tc1_blanking_off(const struct device *dev)
 static void ac057tc1_get_capabilities(const struct device *dev, struct display_capabilities *caps)
 {
 	const struct ac057tc1_config *config = dev->config;
+	const struct ac057tc1_data *data = dev->data;
 
 	memset(caps, 0, sizeof(struct display_capabilities));
 	memcpy(caps->color_palette, config->color_palette, sizeof(config->color_palette));
 	caps->x_resolution = config->width;
 	caps->y_resolution = config->height;
-	caps->supported_pixel_formats = PIXEL_FORMAT_I_4;
-	caps->current_pixel_format = PIXEL_FORMAT_I_4;
+	caps->supported_pixel_formats = PIXEL_FORMAT_I_4 |
+					DISPLAY_COLOR_PALETTE_EMULATED_PIXEL_FORMATS;
+	caps->current_pixel_format = data->current_pixel_format;
 	caps->screen_info = SCREEN_INFO_EPD;
 }
 
 static int ac057tc1_set_pixel_format(const struct device *dev, const enum display_pixel_format pf)
 {
-	if (pf == PIXEL_FORMAT_I_4) {
-		return 0;
-	}
+	struct ac057tc1_data *data = dev->data;
 
-	LOG_ERR("Pixel format not supported");
-	return -ENOTSUP;
+	switch (pf) {
+	case PIXEL_FORMAT_I_4:
+	case PIXEL_FORMAT_RGB_565:
+	case PIXEL_FORMAT_RGB_565X:
+	case PIXEL_FORMAT_RGB_888:
+		data->current_pixel_format = pf;
+		return 0;
+	default:
+		LOG_ERR("Pixel format not supported");
+		return -ENOTSUP;
+	}
 }
 
 #ifdef CONFIG_PM_DEVICE
@@ -453,7 +485,12 @@ static DEVICE_API(display, ac057tc1_api) = {
 		.width = DT_INST_PROP(inst, width),                                                \
 		.height = DT_INST_PROP(inst, height),                                              \
 	};                                                                                         \
-	static struct ac057tc1_data ac057tc1_data_##inst;                                          \
+	static uint8_t ac057tc1_converted_buf_##inst[\
+		DIV_ROUND_UP(DT_INST_PROP(inst, width), 2U) * DT_INST_PROP(inst, height)];   \
+	static struct ac057tc1_data ac057tc1_data_##inst = {                                      \
+		.current_pixel_format = PIXEL_FORMAT_I_4,                                        \
+		.converted_buf = ac057tc1_converted_buf_##inst,                                  \
+	};                                                                                         \
 	PM_DEVICE_DT_INST_DEFINE(inst, ac057tc1_pm_action);                                        \
 	DEVICE_DT_INST_DEFINE(inst, ac057tc1_init, PM_DEVICE_DT_INST_GET(inst),                    \
 			      &ac057tc1_data_##inst, &ac057tc1_cfg_##inst, POST_KERNEL,            \

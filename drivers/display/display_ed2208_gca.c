@@ -16,6 +16,8 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/pm/device.h>
 
+#include "display_color_palette.h"
+
 LOG_MODULE_REGISTER(ed2208_gca, CONFIG_DISPLAY_LOG_LEVEL);
 
 #define ED2208_GCA_RESET_DELAY_MS    20U
@@ -63,6 +65,8 @@ struct ed2208_gca_data {
 	bool blanking_on;
 	struct k_sem busy_sem;
 	struct gpio_callback busy_cb;
+	enum display_pixel_format current_pixel_format;
+	uint8_t *converted_buf;
 };
 
 static inline int ed2208_gca_write_cmd(const struct device *dev, uint8_t cmd, const uint8_t *data,
@@ -205,13 +209,13 @@ static int ed2208_gca_write(const struct device *dev, const uint16_t x, const ui
 {
 	const struct ed2208_gca_config *config = dev->config;
 	struct ed2208_gca_data *data = dev->data;
-	const uint8_t *src = buf;
+	const uint8_t *tx_buf = buf;
 	struct display_buffer_descriptor mipi_desc = {
 		.width = ED2208_GCA_TX_CHUNK_SIZE,
 		.height = 1,
 		.pitch = ED2208_GCA_TX_CHUNK_SIZE,
 	};
-	size_t buf_len = config->width * config->height / 2U;
+	size_t buf_len = DIV_ROUND_UP(config->width, 2U) * config->height;
 	size_t offset = 0U;
 	int ret;
 
@@ -220,7 +224,7 @@ static int ed2208_gca_write(const struct device *dev, const uint16_t x, const ui
 		return -ENOTSUP;
 	}
 
-	if (desc->pitch != desc->width) {
+	if ((data->current_pixel_format == PIXEL_FORMAT_I_4) && (desc->pitch != desc->width)) {
 		LOG_ERR("Pitch must match width");
 		return -EINVAL;
 	}
@@ -228,6 +232,19 @@ static int ed2208_gca_write(const struct device *dev, const uint16_t x, const ui
 	if (buf == NULL || desc->buf_size < buf_len) {
 		LOG_ERR("Invalid buffer: %p (%zu < %zu)", buf, desc->buf_size, buf_len);
 		return -EINVAL;
+	}
+
+	if (data->current_pixel_format != PIXEL_FORMAT_I_4) {
+		ret = display_color_palette_convert_to_i4(desc, data->current_pixel_format, buf,
+							 config->color_palette,
+							 ARRAY_SIZE(config->color_palette),
+							 data->converted_buf, buf_len);
+		if (ret < 0) {
+			LOG_ERR("Failed to dither write buffer: %d", ret);
+			return ret;
+		}
+
+		tx_buf = data->converted_buf;
 	}
 
 	ret = ed2208_gca_hw_init(dev);
@@ -248,7 +265,7 @@ static int ed2208_gca_write(const struct device *dev, const uint16_t x, const ui
 		mipi_desc.pitch = chunk_len;
 		mipi_desc.frame_incomplete = (offset + chunk_len) != buf_len;
 
-		ret = mipi_dbi_write_display(config->mipi_dev, &config->dbi_config, src + offset,
+		ret = mipi_dbi_write_display(config->mipi_dev, &config->dbi_config, tx_buf + offset,
 					     &mipi_desc, PIXEL_FORMAT_I_4);
 		if (ret < 0) {
 			goto out;
@@ -305,25 +322,32 @@ static int ed2208_gca_blanking_off(const struct device *dev)
 static void ed2208_gca_get_capabilities(const struct device *dev, struct display_capabilities *caps)
 {
 	const struct ed2208_gca_config *config = dev->config;
+	const struct ed2208_gca_data *data = dev->data;
 
 	memset(caps, 0, sizeof(*caps));
 	memcpy(caps->color_palette, config->color_palette, sizeof(config->color_palette));
 	caps->x_resolution = config->width;
 	caps->y_resolution = config->height;
-	caps->supported_pixel_formats = PIXEL_FORMAT_I_4;
-	caps->current_pixel_format = PIXEL_FORMAT_I_4;
+	caps->supported_pixel_formats = PIXEL_FORMAT_I_4 |
+					DISPLAY_COLOR_PALETTE_EMULATED_PIXEL_FORMATS;
+	caps->current_pixel_format = data->current_pixel_format;
 	caps->screen_info = SCREEN_INFO_EPD;
 }
 
 static int ed2208_gca_set_pixel_format(const struct device *dev, const enum display_pixel_format pf)
 {
-	ARG_UNUSED(dev);
+	struct ed2208_gca_data *data = dev->data;
 
-	if (pf == PIXEL_FORMAT_I_4) {
+	switch (pf) {
+	case PIXEL_FORMAT_I_4:
+	case PIXEL_FORMAT_RGB_565:
+	case PIXEL_FORMAT_RGB_565X:
+	case PIXEL_FORMAT_RGB_888:
+		data->current_pixel_format = pf;
 		return 0;
+	default:
+		return -ENOTSUP;
 	}
-
-	return -ENOTSUP;
 }
 
 static int ed2208_gca_init(const struct device *dev)
@@ -407,7 +431,12 @@ static DEVICE_API(display, ed2208_gca_api) = {
 		.width = DT_INST_PROP(inst, width),                                                \
 		.height = DT_INST_PROP(inst, height),                                              \
 	};                                                                                         \
-	static struct ed2208_gca_data ed2208_gca_data_##inst;                                      \
+	static uint8_t ed2208_gca_converted_buf_##inst[\
+		DIV_ROUND_UP(DT_INST_PROP(inst, width), 2U) * DT_INST_PROP(inst, height)];  \
+	static struct ed2208_gca_data ed2208_gca_data_##inst = {                                  \
+		.current_pixel_format = PIXEL_FORMAT_I_4,                                        \
+		.converted_buf = ed2208_gca_converted_buf_##inst,                               \
+	};                                                                                         \
 	PM_DEVICE_DT_INST_DEFINE(inst, ed2208_gca_pm_action);                                      \
 	DEVICE_DT_INST_DEFINE(inst, ed2208_gca_init, PM_DEVICE_DT_INST_GET(inst),                  \
 			      &ed2208_gca_data_##inst, &ed2208_gca_cfg_##inst, POST_KERNEL,        \

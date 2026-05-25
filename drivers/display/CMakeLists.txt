@@ -7,6 +7,10 @@ if(CONFIG_SDL_DISPLAY)
   target_sources(native_simulator INTERFACE display_sdl_bottom.c)
 endif()
 
+if(CONFIG_AC057TC1 OR CONFIG_ED2208_GCA)
+  zephyr_library_sources(display_color_palette.c)
+endif()
+
 # zephyr-keep-sorted-start
 zephyr_library_sources_ifdef(CONFIG_AC057TC1	display_ac057tc1.c)
 zephyr_library_sources_ifdef(CONFIG_CO5300 display_co5300.c)

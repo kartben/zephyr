@@ -36,8 +36,9 @@ extern "C" {
  * The color palette in display_capabilities provides the ARGB8888 representation
  * of these colors for UI rendering (e.g., with LVGL).
  *
- * The controller uses the index values directly when rendering; conversion from
- * ARGB8888 to the hardware's color representation is application-specific.
+ * The controller uses the index values directly when rendering. Applications can
+ * also select RGB565, RGB565X, or RGB888 with display_set_pixel_format(); the
+ * driver will dither those formats to the hardware palette on write.
  */
 #define AC057TC1_COLOR_BLACK        0x00 /**< Black color index */
 #define AC057TC1_COLOR_WHITE        0x01 /**< White color index */

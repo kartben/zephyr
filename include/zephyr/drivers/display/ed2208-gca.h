@@ -30,6 +30,10 @@ extern "C" {
 /**
  * @name ED2208-GCA (EL073TF1) Color Definitions
  * @{
+ *
+ * Applications can select PIXEL_FORMAT_I_4 directly, or use RGB565, RGB565X,
+ * or RGB888 via display_set_pixel_format() and let the driver dither writes to
+ * the hardware palette.
  */
 #define ED2208_GCA_COLOR_BLACK  0x00 /**< Black color index */
 #define ED2208_GCA_COLOR_WHITE  0x01 /**< White color index */

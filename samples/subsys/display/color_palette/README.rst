@@ -16,6 +16,11 @@ values to full color values. This allows for significant memory savings when
 the number of colors needed is limited. For example, the I_4 format uses only
 4 bits per pixel (16 colors), compared to 32 bits for ARGB8888.
 
+Some palette-backed display drivers can also emulate RGB565, RGB565X, or
+RGB888 at runtime. In that mode, the driver dithers incoming pixels to the
+hardware palette after ``display_set_pixel_format()`` selects the emulated
+format.
+
 The sample:
 
 * Reads the color palette from the display capabilities
