@@ -64,7 +64,7 @@ static int fake_buzzer_stop(const struct device *dev)
 	return fake_stop_ret;
 }
 
-static DEVICE_API(buzzer, fake_buzzer_api) = {
+static const DEVICE_API(buzzer, fake_buzzer_api) = {
 	.tone = fake_buzzer_tone,
 	.set_volume = fake_buzzer_set_volume,
 	.beep = fake_buzzer_beep,

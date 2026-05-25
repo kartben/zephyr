@@ -66,6 +66,7 @@ static int buzzer_rttl_parse_defaults(const char **str,
 	const char *cursor = *str;
 	int ret;
 
+	/* Standard RTTTL defaults: quarter note, octave 6, 63 BPM. */
 	defaults->duration = 4U;
 	defaults->octave = 6U;
 	defaults->bpm = 63U;
@@ -192,8 +193,8 @@ static int buzzer_rttl_parse_call(const char **str,
 				  struct buzzer_rttl_call *call)
 {
 	const char *cursor = *str;
-	uint32_t duration = defaults->duration;
-	uint32_t octave = defaults->octave;
+	uint8_t duration = defaults->duration;
+	uint8_t octave = defaults->octave;
 	uint32_t value;
 	char note;
 	bool dotted = false;
@@ -213,7 +214,7 @@ static int buzzer_rttl_parse_call(const char **str,
 		if (value == 0U) {
 			return -EINVAL;
 		}
-		duration = value;
+		duration = (uint8_t)value;
 	}
 
 	note = tolower((unsigned char)*cursor);
@@ -247,7 +248,7 @@ static int buzzer_rttl_parse_call(const char **str,
 		if ((value < 4U) || (value > 7U)) {
 			return -EINVAL;
 		}
-		octave = value;
+		octave = (uint8_t)value;
 	}
 
 	if (*cursor == '.') {
@@ -262,7 +263,7 @@ static int buzzer_rttl_parse_call(const char **str,
 	if (note == 'p') {
 		call->freq_hz = BUZZER_FREQ_REST;
 	} else {
-		call->freq_hz = buzzer_rttl_note_frequency(note, sharp, (uint8_t)octave);
+		call->freq_hz = buzzer_rttl_note_frequency(note, sharp, octave);
 		if (call->freq_hz == 0U) {
 			return -EINVAL;
 		}

@@ -211,7 +211,7 @@ static inline int buzzer_stop(const struct device *dev)
  * buzzer before returning the error.
  *
  * @param dev   Buzzer device.
- * @param rttl  NUL-terminated RTTTL string.
+ * @param rttl  NULL-terminated RTTTL string.
  *
  * @retval 0        Ringtone played successfully.
  * @retval -EINVAL  @p rttl is NULL or malformed.
