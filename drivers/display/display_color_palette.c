@@ -12,10 +12,11 @@
 #include <zephyr/sys/util.h>
 
 #define DISPLAY_COLOR_PALETTE_DITHER_STEP 8
-#define DISPLAY_COLOR_PALETTE_BAYER_CENTER 8
+#define DISPLAY_COLOR_PALETTE_BAYER_OFFSET 8
 
 /*
- * Standard 4x4 Bayer ordered-dithering matrix. A step of 8 keeps the ordered
+ * Standard 4x4 Bayer ordered-dithering matrix. The 8-point centering offset
+ * makes the matrix symmetric around zero, and a step of 8 keeps the ordered
  * dither visible enough to mix palette entries without overwhelming the source
  * image on common small display palettes.
  */
@@ -32,7 +33,7 @@ static uint8_t display_color_palette_dither_component(uint8_t component, uint32_
 	int16_t offset;
 
 	offset = ((int16_t)display_color_palette_bayer4x4[y & 0x3U][x & 0x3U] -
-		  DISPLAY_COLOR_PALETTE_BAYER_CENTER) *
+		  DISPLAY_COLOR_PALETTE_BAYER_OFFSET) *
 		 DISPLAY_COLOR_PALETTE_DITHER_STEP;
 
 	return CLAMP((int16_t)component + offset, 0, UINT8_MAX);

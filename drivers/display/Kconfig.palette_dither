@@ -8,9 +8,9 @@ config DISPLAY_PALETTE_DITHER
 	select DISPLAY_COLOR_PALETTE
 	help
 	  Enable a virtual display that wraps a palette-backed display device and
-	  exposes I_4 passthrough plus RGB565, RGB565X, and RGB888 input formats.
-	  Non-indexed writes are dithered to the wrapped display's I_4 palette
-	  format.
+	  exposes I_4, RGB565, RGB565X, and RGB888 input formats. I_4 operations are
+	  passed through directly, while non-indexed writes are dithered to the
+	  wrapped display's I_4 palette format.
 
 	  The wrapper allocates a conversion buffer sized for the wrapped display's
 	  full I_4 frame buffer.
