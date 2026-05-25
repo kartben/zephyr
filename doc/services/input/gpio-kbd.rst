@@ -231,6 +231,32 @@ output:
       };
   };
 
+Child nodes can define modifier-activated layers. Each layer lists one or more
+modifier key codes and a sparse ``keymap`` override. For each pressed key, the
+most specific active layer that defines that key is used. If a matching layer
+does not define the key, the lookup falls back to less specific matching layers
+and finally to the base keymap.
+
+.. code-block:: devicetree
+
+   kbd {
+       ...
+       keymap {
+           compatible = "input-keymap";
+           keymap = <
+               MATRIX_KEY(0, 0, INPUT_KEY_A)
+               MATRIX_KEY(0, 1, INPUT_KEY_LEFTSHIFT)
+           >;
+           row-size = <1>;
+           col-size = <2>;
+
+           shift_layer {
+               modifier-codes = <INPUT_KEY_LEFTSHIFT INPUT_KEY_RIGHTSHIFT>;
+               keymap = <MATRIX_KEY(0, 0, INPUT_KEY_F1)>;
+           };
+       };
+   };
+
 .. doxygengroup:: input_keymap
 
 Keyboard matrix shell commands

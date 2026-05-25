@@ -1,0 +1,39 @@
+/*
+ * Copyright 2026 The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <zephyr/dt-bindings/input/keymap.h>
+
+/ {
+	fake_input_device: fake-device {
+		compatible = "vnd,input-device";
+
+		keymap: keymap {
+			compatible = "input-keymap";
+			row-size = <2>;
+			col-size = <3>;
+			keymap = <
+				MATRIX_KEY(0, 0, INPUT_KEY_A)
+				MATRIX_KEY(0, 1, INPUT_KEY_LEFTSHIFT)
+				MATRIX_KEY(0, 2, INPUT_KEY_LEFTCTRL)
+				MATRIX_KEY(1, 0, INPUT_KEY_B)
+			>;
+
+			shift_layer: shift-layer {
+				modifier-codes = <INPUT_KEY_LEFTSHIFT>;
+				keymap = <
+					MATRIX_KEY(0, 0, INPUT_KEY_Z)
+					MATRIX_KEY(1, 0, INPUT_KEY_Y)
+				>;
+			};
+
+			shift_ctrl_layer: shift-ctrl-layer {
+				modifier-codes = <INPUT_KEY_LEFTSHIFT INPUT_KEY_LEFTCTRL>;
+				keymap = <MATRIX_KEY(0, 0, INPUT_KEY_X)>;
+			};
+		};
+	};
+};

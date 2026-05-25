@@ -5,6 +5,7 @@ description: |
   Row-column to key mapper
 
   Listens for row-column events from the parent device and reports key events.
+  Optional child nodes can define sparse layers selected by held modifier keys.
 
 compatible: "input-keymap"
 
@@ -26,6 +27,28 @@ properties:
     required: true
     description: |
       The number of columns in the keymap.
+
+child-binding:
+  description: |
+    Modifier-activated keymap layer.
+
+  properties:
+    modifier-codes:
+      type: array
+      required: true
+      description: |
+        Modifier key codes that activate the layer. Supported codes are
+        INPUT_KEY_LEFTCTRL, INPUT_KEY_LEFTSHIFT, INPUT_KEY_LEFTALT,
+        INPUT_KEY_LEFTMETA, INPUT_KEY_RIGHTCTRL, INPUT_KEY_RIGHTSHIFT,
+        INPUT_KEY_RIGHTALT, and INPUT_KEY_RIGHTMETA.
+
+    keymap:
+      type: array
+      required: true
+      description: |
+        Sparse list of key codes for this layer, using the MATRIX_KEY() macro.
+        If a key is not present, matching falls back to less specific layers and
+        then to the base keymap.
 
 examples:
   - |
@@ -49,5 +72,13 @@ examples:
             >;
             row-size = <3>;
             col-size = <3>;
+
+            shift_layer {
+                modifier-codes = <INPUT_KEY_LEFTSHIFT INPUT_KEY_RIGHTSHIFT>;
+                keymap = <
+                    MATRIX_KEY(0, 0, INPUT_KEY_F1)
+                    MATRIX_KEY(0, 1, INPUT_KEY_F2)
+                >;
+            };
         };
     };
