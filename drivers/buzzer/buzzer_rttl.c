@@ -70,7 +70,7 @@ static int buzzer_rttl_parse_defaults(const char **str,
 	const char *cursor = *str;
 	int ret;
 
-	/* Standard RTTTL defaults: quarter Note, Octave 6, 63 BPM. */
+	/* Standard RTTTL defaults: quarter note, octave 6, 63 BPM. */
 	defaults->duration = 4U;
 	defaults->octave = 6U;
 	defaults->bpm = 63U;
@@ -215,6 +215,7 @@ static int buzzer_rttl_parse_call(const char **str,
 		if (ret < 0) {
 			return ret;
 		}
+		/* RTTTL durations are whole-note divisors, so zero is invalid. */
 		if (value == 0U) {
 			return -EINVAL;
 		}

@@ -15,13 +15,15 @@ enum fake_call_type {
 	FAKE_CALL_STOP,
 };
 
+#define FAKE_CALL_BUFFER_SIZE 8U
+
 struct fake_call {
 	enum fake_call_type type;
 	uint32_t freq_hz;
 	uint32_t duration_ms;
 };
 
-static struct fake_call fake_calls[8];
+static struct fake_call fake_calls[FAKE_CALL_BUFFER_SIZE];
 static size_t fake_call_count;
 static int fake_tone_ret;
 static int fake_stop_ret;
