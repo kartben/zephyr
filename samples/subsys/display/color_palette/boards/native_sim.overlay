@@ -7,14 +7,14 @@
 #include <zephyr/dt-bindings/display/panel.h>
 
 / {
-	palette_dither: palette-dither-display {
+	palette_dither_display: palette-dither-display {
 		compatible = "zephyr,palette-dither-display";
 		display = <&sdl_dc>;
 		pixel-format = <PANEL_PIXEL_FORMAT_I_4>;
 	};
 
 	chosen {
-		zephyr,display = &palette_dither;
+		zephyr,display = &palette_dither_display;
 	};
 };
 
