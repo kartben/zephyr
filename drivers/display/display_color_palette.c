@@ -11,7 +11,7 @@
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/util.h>
 
-#define DISPLAY_COLOR_PALETTE_DITHER_STEP 8
+#define DISPLAY_COLOR_PALETTE_DITHER_STEP 8 /* Balanced ordered-dither strength */
 
 /*
  * Standard 4x4 Bayer ordered-dithering matrix. A step of 8 keeps the ordered

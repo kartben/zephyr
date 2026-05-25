@@ -7,10 +7,6 @@ if(CONFIG_SDL_DISPLAY)
   target_sources(native_simulator INTERFACE display_sdl_bottom.c)
 endif()
 
-if(CONFIG_DISPLAY_PALETTE_DITHER)
-  zephyr_library_sources(display_color_palette.c)
-endif()
-
 # zephyr-keep-sorted-start
 zephyr_library_sources_ifdef(CONFIG_AC057TC1	display_ac057tc1.c)
 zephyr_library_sources_ifdef(CONFIG_CO5300 display_co5300.c)
@@ -45,6 +41,7 @@ zephyr_library_sources_ifdef(CONFIG_MICROBIT_DISPLAY mb_display.c)
 zephyr_library_sources_ifdef(CONFIG_MICROBIT_DISPLAY mb_font.c)
 zephyr_library_sources_ifdef(CONFIG_NT35510 display_nt35510.c)
 zephyr_library_sources_ifdef(CONFIG_OTM8009A display_otm8009a.c)
+zephyr_library_sources_ifdef(CONFIG_DISPLAY_PALETTE_DITHER display_color_palette.c)
 zephyr_library_sources_ifdef(CONFIG_DISPLAY_PALETTE_DITHER display_palette_dither.c)
 zephyr_library_sources_ifdef(CONFIG_QEMU_RAMFB_DISPLAY display_qemu_ramfb.c)
 zephyr_library_sources_ifdef(CONFIG_RENESAS_RA_GLCDC display_renesas_ra.c)
