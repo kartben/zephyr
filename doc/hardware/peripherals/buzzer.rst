@@ -27,6 +27,9 @@ hardware should keep emitting a tone, not how long the calling thread should sle
   values are stored and applied on the next tone. Active buzzers, lacking analog volume control,
   map zero to silent and any non-zero value to their single audible level.
 - :c:func:`buzzer_stop` cancels any in-progress tone immediately.
+- :c:func:`buzzer_play_rttl` parses a Ring Tone Text Transfer Language (RTTTL) string and plays
+  the ringtone sequentially on the buzzer. Unlike the lower-level APIs, this helper blocks until
+  the ringtone finishes or an error occurs.
 
 Backends
 ********

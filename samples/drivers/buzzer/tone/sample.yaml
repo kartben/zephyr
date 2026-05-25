@@ -1,9 +1,9 @@
 sample:
   name: Buzzer Tone
   description: |
-    Plays a short beep and a few tones through the buzzer device aliased as `buzzer`. Suitable
-    for boards that expose a passive piezo via the pwm-buzzer compatible or an active buzzer via
-    gpio-buzzer.
+    Plays a short beep and an RTTTL tune through the buzzer device aliased as `buzzer`.
+    Suitable for boards that expose a passive piezo via the pwm-buzzer compatible or an active
+    buzzer via gpio-buzzer.
 common:
   tags:
     - drivers

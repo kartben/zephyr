@@ -196,6 +196,29 @@ static inline int buzzer_stop(const struct device *dev)
 	return DEVICE_API_GET(buzzer, dev)->stop(dev);
 }
 
+/**
+ * @brief Play an RTTTL ringtone on a buzzer device.
+ *
+ * The ringtone string must use the Ring Tone Text Transfer Language
+ * (RTTTL) ``name:defaults:notes`` format. The function parses the
+ * ringtone and plays each note sequentially through @p dev.
+ *
+ * Unlike the basic buzzer API, this helper is blocking: it sleeps in
+ * the caller's context until the full ringtone has been played or a
+ * parsing/device error occurs.
+ *
+ * If parsing fails after playback has started, the helper stops the
+ * buzzer before returning the error.
+ *
+ * @param dev   Buzzer device.
+ * @param rttl  NUL-terminated RTTTL string.
+ *
+ * @retval 0        Ringtone played successfully.
+ * @retval -EINVAL  @p rttl is NULL or malformed.
+ * @retval -errno   Negative errno code from the buzzer device.
+ */
+int buzzer_play_rttl(const struct device *dev, const char *rttl);
+
 #ifdef __cplusplus
 }
 #endif

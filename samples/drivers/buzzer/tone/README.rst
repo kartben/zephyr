@@ -2,17 +2,17 @@
    :name: Buzzer Tone
    :relevant-api: buzzer_interface
 
-   Play a short beep and a few tones through the buzzer device aliased as ``buzzer``.
+   Play a short beep and an RTTTL tune through the buzzer device aliased as ``buzzer``.
 
 Overview
 ********
 
-This application plays a short attention beep followed by three tones through the buzzer device
-referenced by the ``buzzer`` :ref:`devicetree <dt-guide>` alias, repeating once every three
+This application plays a short attention beep followed by a short RTTTL melody through the buzzer
+device referenced by the ``buzzer`` :ref:`devicetree <dt-guide>` alias, repeating once every three
 seconds.
 
 The sample exercises the high-level :ref:`buzzer API <buzzer_api>` through :c:func:`buzzer_beep`
-and :c:func:`buzzer_tone`, which drive both backends:
+and :c:func:`buzzer_play_rttl`, which drive both backends:
 
 * :dtcompatible:`pwm-buzzer` for passive piezo buzzers wired to a PWM channel.
 * :dtcompatible:`gpio-buzzer` for active buzzers controlled by a single GPIO line. Pitch
