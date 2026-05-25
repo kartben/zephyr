@@ -124,7 +124,7 @@ int display_color_palette_convert_to_i4(const struct display_buffer_descriptor *
 	}
 
 	row_size = DIV_ROUND_UP(desc->width, 2U);
-	required_size = row_size * desc->height;
+	required_size = DISPLAY_COLOR_PALETTE_I4_BUFFER_SIZE(desc->width, desc->height);
 	if (converted_buf_size < required_size) {
 		return -EINVAL;
 	}

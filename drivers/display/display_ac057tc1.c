@@ -297,7 +297,7 @@ static int ac057tc1_write(const struct device *dev, const uint16_t x, const uint
 	}
 
 	/* Calculate buffer length - 4 bits per pixel, 2 pixels per byte */
-	buf_len = DIV_ROUND_UP(desc->width, 2U) * desc->height;
+	buf_len = DISPLAY_COLOR_PALETTE_I4_BUFFER_SIZE(desc->width, desc->height);
 
 	if (buf == NULL || desc->buf_size < buf_len) {
 		LOG_ERR("Invalid buffer: buf=%p size=%u expected=%u", buf, desc->buf_size, buf_len);
@@ -486,7 +486,8 @@ static DEVICE_API(display, ac057tc1_api) = {
 		.height = DT_INST_PROP(inst, height),                                              \
 	};                                                                                         \
 	static uint8_t ac057tc1_converted_buf_##inst[\
-		DIV_ROUND_UP(DT_INST_PROP(inst, width), 2U) * DT_INST_PROP(inst, height)];\
+		DISPLAY_COLOR_PALETTE_I4_BUFFER_SIZE(DT_INST_PROP(inst, width),             \
+						     DT_INST_PROP(inst, height))];\
 	static struct ac057tc1_data ac057tc1_data_##inst = {                                      \
 		.current_pixel_format = PIXEL_FORMAT_I_4,                                        \
 		.converted_buf = ac057tc1_converted_buf_##inst,                                  \

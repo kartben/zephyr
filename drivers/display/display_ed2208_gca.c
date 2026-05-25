@@ -215,7 +215,7 @@ static int ed2208_gca_write(const struct device *dev, const uint16_t x, const ui
 		.height = 1,
 		.pitch = ED2208_GCA_TX_CHUNK_SIZE,
 	};
-	size_t buf_len = DIV_ROUND_UP(config->width, 2U) * config->height;
+	size_t buf_len = DISPLAY_COLOR_PALETTE_I4_BUFFER_SIZE(config->width, config->height);
 	size_t offset = 0U;
 	int ret;
 
@@ -432,7 +432,8 @@ static DEVICE_API(display, ed2208_gca_api) = {
 		.height = DT_INST_PROP(inst, height),                                              \
 	};                                                                                         \
 	static uint8_t ed2208_gca_converted_buf_##inst[\
-		DIV_ROUND_UP(DT_INST_PROP(inst, width), 2U) * DT_INST_PROP(inst, height)];\
+		DISPLAY_COLOR_PALETTE_I4_BUFFER_SIZE(DT_INST_PROP(inst, width),            \
+						     DT_INST_PROP(inst, height))];\
 	static struct ed2208_gca_data ed2208_gca_data_##inst = {                                  \
 		.current_pixel_format = PIXEL_FORMAT_I_4,                                        \
 		.converted_buf = ed2208_gca_converted_buf_##inst,                               \
