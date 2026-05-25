@@ -13,6 +13,12 @@
 
 #define DISPLAY_COLOR_PALETTE_DITHER_STEP 8
 
+/*
+ * Standard 4x4 Bayer ordered-dithering matrix. A step of 8 keeps the ordered
+ * dither visible enough to mix palette entries without overwhelming the source
+ * image on common small display palettes.
+ */
+
 static const uint8_t display_color_palette_bayer4x4[4][4] = {
 	{ 0,  8,  2, 10},
 	{12,  4, 14,  6},
@@ -76,7 +82,7 @@ static int display_color_palette_find_nearest_index(const uint32_t *palette, siz
 	uint32_t best_distance = UINT32_MAX;
 	int best_index = -1;
 
-	for (size_t i = 0; i < palette_len; ++i) {
+	for (size_t i = 0; i < palette_len; i++) {
 		uint32_t entry = palette[i];
 		int16_t dr;
 		int16_t dg;
@@ -140,8 +146,8 @@ int display_color_palette_convert_to_i4(const struct display_buffer_descriptor *
 
 	memset(converted_buf, 0, required_size);
 
-	for (uint32_t y = 0U; y < desc->height; ++y) {
-		for (uint32_t x = 0U; x < desc->width; ++x) {
+	for (uint32_t y = 0U; y < desc->height; y++) {
+		for (uint32_t x = 0U; x < desc->width; x++) {
 			uint8_t r;
 			uint8_t g;
 			uint8_t b;
