@@ -76,6 +76,12 @@ static int display_color_palette_decode_rgb(const struct display_buffer_descript
 	}
 }
 
+static size_t display_color_palette_output_buffer_size(
+	const struct display_buffer_descriptor *desc, enum display_pixel_format pixel_format)
+{
+	return (desc->pitch * desc->height * DISPLAY_BITS_PER_PIXEL(pixel_format)) / 8U;
+}
+
 static int display_color_palette_find_nearest_index(const uint32_t *palette, size_t palette_len,
 						    uint8_t r, uint8_t g, uint8_t b)
 {
@@ -175,6 +181,89 @@ int display_color_palette_convert_to_i4(const struct display_buffer_descriptor *
 				converted_buf[byte_idx] = (uint8_t)palette_idx << 4;
 			} else {
 				converted_buf[byte_idx] |= (uint8_t)palette_idx & 0x0FU;
+			}
+		}
+	}
+
+	return 0;
+}
+
+int display_color_palette_convert_from_i4(const struct display_buffer_descriptor *desc,
+					  enum display_pixel_format pixel_format,
+					  const uint8_t *buf,
+					  const uint32_t *palette,
+					  size_t palette_len,
+					  void *converted_buf,
+					  size_t converted_buf_size)
+{
+	size_t input_row_size;
+	size_t required_size;
+
+	if ((desc == NULL) || (buf == NULL) || (palette == NULL) || (converted_buf == NULL)) {
+		return -EINVAL;
+	}
+
+	if (desc->width > desc->pitch) {
+		return -EINVAL;
+	}
+
+	required_size = display_color_palette_output_buffer_size(desc, pixel_format);
+	if (converted_buf_size < required_size) {
+		return -EINVAL;
+	}
+
+	input_row_size = DIV_ROUND_UP(desc->pitch, 2U);
+	if (DISPLAY_COLOR_PALETTE_I4_BUFFER_SIZE(desc->pitch, desc->height) > desc->buf_size) {
+		return -EINVAL;
+	}
+
+	for (uint32_t y = 0U; y < desc->height; y++) {
+		for (uint32_t x = 0U; x < desc->width; x++) {
+			uint8_t palette_idx;
+			uint32_t color;
+			uint8_t r;
+			uint8_t g;
+			uint8_t b;
+
+			palette_idx = buf[(y * input_row_size) + (x / 2U)];
+			palette_idx = ((x & 0x1U) == 0U) ? (palette_idx >> 4) : (palette_idx & 0x0FU);
+			if (palette_idx >= palette_len) {
+				return -EINVAL;
+			}
+
+			color = palette[palette_idx];
+			r = (color >> 16) & 0xFFU;
+			g = (color >> 8) & 0xFFU;
+			b = color & 0xFFU;
+
+			switch (pixel_format) {
+			case PIXEL_FORMAT_RGB_565: {
+				uint16_t pixel = (((uint16_t)r >> 3) << 11) |
+						 (((uint16_t)g >> 2) << 5) |
+						 ((uint16_t)b >> 3);
+
+				((uint16_t *)converted_buf)[(y * desc->pitch) + x] = sys_cpu_to_le16(pixel);
+				break;
+			}
+			case PIXEL_FORMAT_RGB_565X: {
+				uint16_t pixel = (((uint16_t)r >> 3) << 11) |
+						 (((uint16_t)g >> 2) << 5) |
+						 ((uint16_t)b >> 3);
+
+				((uint16_t *)converted_buf)[(y * desc->pitch) + x] = sys_cpu_to_be16(pixel);
+				break;
+			}
+			case PIXEL_FORMAT_RGB_888: {
+				uint8_t *dst = (uint8_t *)converted_buf +
+					       (((y * desc->pitch) + x) * 3U);
+
+				dst[0] = b;
+				dst[1] = g;
+				dst[2] = r;
+				break;
+			}
+			default:
+				return -ENOTSUP;
 			}
 		}
 	}

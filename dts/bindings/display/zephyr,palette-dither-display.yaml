@@ -1,0 +1,40 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Virtual display wrapper for palette-backed displays.
+
+  This node references another display device and exposes a new display device
+  which accepts RGB565, RGB565X, RGB888, or I_4 writes. Non-indexed writes are
+  dithered to the wrapped display's palette and forwarded as I_4.
+
+compatible: "zephyr,palette-dither-display"
+
+include: base.yaml
+
+properties:
+  display:
+    type: phandle
+    required: true
+    description: Wrapped display device. It must support PIXEL_FORMAT_I_4 and
+      expose a color palette in its display capabilities.
+
+  pixel-format:
+    type: int
+    required: true
+    description: Initial pixel format exposed by the virtual display.
+    enum:
+      - 1    # PANEL_PIXEL_FORMAT_RGB_888
+      - 16   # PANEL_PIXEL_FORMAT_RGB_565
+      - 32   # PANEL_PIXEL_FORMAT_RGB_565X
+      - 8192 # PANEL_PIXEL_FORMAT_I_4
+
+examples:
+  - |
+    #include <zephyr/dt-bindings/display/panel.h>
+
+    palette_display: palette-dither-display {
+      compatible = "zephyr,palette-dither-display";
+      display = <&sdl_dc>;
+      pixel-format = <PANEL_PIXEL_FORMAT_RGB_565>;
+    };

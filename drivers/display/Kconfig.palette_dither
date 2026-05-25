@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config DISPLAY_PALETTE_DITHER
+	bool "Virtual palette dithering display"
+	default y
+	depends on DT_HAS_ZEPHYR_PALETTE_DITHER_DISPLAY_ENABLED
+	select DISPLAY_COLOR_PALETTE
+	help
+	  Enable a virtual display that wraps a palette-backed display device and
+	  dithers RGB565, RGB565X, or RGB888 writes to the wrapped display's I_4
+	  palette format.

@@ -23,4 +23,12 @@ int display_color_palette_convert_to_i4(const struct display_buffer_descriptor *
 					uint8_t *converted_buf,
 					size_t converted_buf_size);
 
+int display_color_palette_convert_from_i4(const struct display_buffer_descriptor *desc,
+					  enum display_pixel_format pixel_format,
+					  const uint8_t *buf,
+					  const uint32_t *palette,
+					  size_t palette_len,
+					  void *converted_buf,
+					  size_t converted_buf_size);
+
 #endif /* ZEPHYR_DRIVERS_DISPLAY_COLOR_PALETTE_H_ */
