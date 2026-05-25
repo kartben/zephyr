@@ -432,7 +432,7 @@ static DEVICE_API(display, ed2208_gca_api) = {
 		.height = DT_INST_PROP(inst, height),                                              \
 	};                                                                                         \
 	static uint8_t ed2208_gca_converted_buf_##inst[\
-		DIV_ROUND_UP(DT_INST_PROP(inst, width), 2U) * DT_INST_PROP(inst, height)];  \
+		DIV_ROUND_UP(DT_INST_PROP(inst, width), 2U) * DT_INST_PROP(inst, height)];\
 	static struct ed2208_gca_data ed2208_gca_data_##inst = {                                  \
 		.current_pixel_format = PIXEL_FORMAT_I_4,                                        \
 		.converted_buf = ed2208_gca_converted_buf_##inst,                               \

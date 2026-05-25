@@ -486,7 +486,7 @@ static DEVICE_API(display, ac057tc1_api) = {
 		.height = DT_INST_PROP(inst, height),                                              \
 	};                                                                                         \
 	static uint8_t ac057tc1_converted_buf_##inst[\
-		DIV_ROUND_UP(DT_INST_PROP(inst, width), 2U) * DT_INST_PROP(inst, height)];   \
+		DIV_ROUND_UP(DT_INST_PROP(inst, width), 2U) * DT_INST_PROP(inst, height)];\
 	static struct ac057tc1_data ac057tc1_data_##inst = {                                      \
 		.current_pixel_format = PIXEL_FORMAT_I_4,                                        \
 		.converted_buf = ac057tc1_converted_buf_##inst,                                  \
