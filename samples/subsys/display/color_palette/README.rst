@@ -17,8 +17,8 @@ the number of colors needed is limited. For example, the I_4 format uses only
 4 bits per pixel (16 colors), compared to 32 bits for ARGB8888.
 
 A virtual ``zephyr,palette-dither-display`` device can wrap a palette-backed
-display and expose RGB565, RGB565X, or RGB888 input formats while dithering
-writes down to the wrapped display's I_4 palette format.
+display and expose I_4, RGB565, RGB565X, or RGB888 input formats while
+dithering non-indexed writes down to the wrapped display's I_4 palette format.
 
 The sample:
 
