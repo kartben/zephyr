@@ -117,7 +117,7 @@ def build_catalog(board_devicetrees: dict) -> dict:
         compat_entry["boards"].sort()
 
     return {
-        "generated_at": datetime.datetime.now(datetime.UTC).isoformat(),
+        "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "zephyr_base": str(BOARD_CATALOG_BASE),
         "boards": boards_db,
         "compatibles": compatibles_db,
