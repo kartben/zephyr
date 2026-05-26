@@ -72,6 +72,8 @@ ZTEST(display_dithering, test_capabilities_follow_claimed_format)
 {
 	struct display_capabilities caps;
 
+	zassert_ok(display_set_pixel_format(dev, PIXEL_FORMAT_RGB_888),
+		   "display_set_pixel_format(RGB_888) failed");
 	display_get_capabilities(dev, &caps);
 	zassert_equal(caps.x_resolution, DISPLAY_WIDTH);
 	zassert_equal(caps.y_resolution, DISPLAY_HEIGHT);
