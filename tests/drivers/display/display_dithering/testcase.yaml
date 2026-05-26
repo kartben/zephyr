@@ -1,0 +1,11 @@
+common:
+  tags:
+    - drivers
+    - display
+  harness: ztest
+tests:
+  drivers.display.dithering.sdl:
+    platform_allow:
+      - native_sim/native/64
+    extra_args:
+      - DTC_OVERLAY_FILE=native_sim_i4.overlay
