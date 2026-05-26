@@ -18,6 +18,8 @@ LOG_MODULE_REGISTER(display_palette_dither, CONFIG_DISPLAY_LOG_LEVEL);
 struct palette_dither_display_config {
 	const struct device *display;
 	enum display_pixel_format initial_pixel_format;
+	uint16_t width;
+	uint16_t height;
 	size_t converted_buf_size;
 };
 
@@ -177,6 +179,8 @@ static void palette_dither_display_get_capabilities(const struct device *dev,
 	const struct palette_dither_display_data *data = dev->data;
 
 	display_get_capabilities(config->display, caps);
+	caps->x_resolution = config->width;
+	caps->y_resolution = config->height;
 	caps->supported_pixel_formats = PIXEL_FORMAT_I_4 |
 					DISPLAY_COLOR_PALETTE_EMULATED_PIXEL_FORMATS;
 	caps->current_pixel_format = data->current_pixel_format;
@@ -207,6 +211,7 @@ static int palette_dither_display_init(const struct device *dev)
 {
 	const struct palette_dither_display_config *config = dev->config;
 	struct palette_dither_display_data *data = dev->data;
+	struct display_capabilities caps;
 	int ret;
 
 	if (!device_is_ready(config->display)) {
@@ -223,6 +228,13 @@ static int palette_dither_display_init(const struct device *dev)
 	if (ret < 0) {
 		LOG_ERR("Wrapped display must support PIXEL_FORMAT_I_4: %d", ret);
 		return ret;
+	}
+
+	display_get_capabilities(config->display, &caps);
+	if ((caps.x_resolution != config->width) || (caps.y_resolution != config->height)) {
+		LOG_ERR("Wrapper size %ux%u does not match wrapped display %ux%u",
+			config->width, config->height, caps.x_resolution, caps.y_resolution);
+		return -EINVAL;
 	}
 
 	data->current_pixel_format = config->initial_pixel_format;
@@ -243,14 +255,15 @@ static DEVICE_API(display, palette_dither_display_api) = {
 
 #define PALETTE_DITHER_DISPLAY_BUF_SIZE(inst)                                                   \
 	DISPLAY_COLOR_PALETTE_I4_BUFFER_SIZE(                                                   \
-		DT_PROP(DT_INST_PHANDLE(inst, display), width),                                \
-		DT_PROP(DT_INST_PHANDLE(inst, display), height))
+		DT_INST_PROP(inst, width), DT_INST_PROP(inst, height))
 
 #define PALETTE_DITHER_DISPLAY_DEFINE(inst)                                                       \
 	static uint8_t palette_dither_buf_##inst[PALETTE_DITHER_DISPLAY_BUF_SIZE(inst)];      \
 	static const struct palette_dither_display_config palette_dither_display_config_##inst = { \
 		.display = DEVICE_DT_GET(DT_INST_PHANDLE(inst, display)),                        \
 		.initial_pixel_format = DT_INST_PROP(inst, pixel_format),                        \
+		.width = DT_INST_PROP(inst, width),                                              \
+		.height = DT_INST_PROP(inst, height),                                            \
 		.converted_buf_size = ARRAY_SIZE(palette_dither_buf_##inst),                     \
 	};                                                                                        \
 	static struct palette_dither_display_data palette_dither_display_data_##inst = {          \
