@@ -18,6 +18,7 @@
 #include <zephyr/sys/byteorder.h>
 #include "display_sdl_bottom.h"
 #include "cmdline.h"
+#include "palette_dither.h"
 
 #define LOG_LEVEL CONFIG_DISPLAY_LOG_LEVEL
 #include <zephyr/logging/log.h>
@@ -196,6 +197,12 @@ static int sdl_display_init(const struct device *dev)
 			CONFIG_SDL_DISPLAY_THREAD_PRIORITY, 0, K_NO_WAIT);
 	/* Ensure task thread has performed the init */
 	k_sem_take(&disp_data->task_sem, K_FOREVER);
+
+	if (DISPLAY_PALETTE_DITHER_CLAIM(dev, disp_data->current_pixel_format) == 0) {
+		disp_data->current_pixel_format = PIXEL_FORMAT_I_4;
+	} else {
+		DISPLAY_PALETTE_DITHER_PASSTHROUGH(dev);
+	}
 
 	return 0;
 }
@@ -586,6 +593,7 @@ static int sdl_display_write(const struct device *dev, const uint16_t x,
 			     const struct display_buffer_descriptor *desc,
 			     const void *buf)
 {
+	DISPLAY_PALETTE_DITHER_PREPROCESS(dev, desc, buf);
 	const struct sdl_display_config *config = dev->config;
 	struct sdl_display_data *disp_data = dev->data;
 	struct sdl_display_task task = {
@@ -1256,12 +1264,31 @@ static void sdl_display_get_capabilities(
 	capabilities->screen_info =
 		(IS_ENABLED(CONFIG_SDL_DISPLAY_MONO_VTILED) ? SCREEN_INFO_MONO_VTILED : 0) |
 		(IS_ENABLED(CONFIG_SDL_DISPLAY_MONO_MSB_FIRST) ? SCREEN_INFO_MONO_MSB_FIRST : 0);
+	DISPLAY_PALETTE_DITHER_PATCH_CAPS(dev, capabilities);
 }
 
 static int sdl_display_set_pixel_format(const struct device *dev,
 					const enum display_pixel_format pixel_format)
 {
 	struct sdl_display_data *disp_data = dev->data;
+
+	/*
+	 * The palette-dither helper always gets first shot. When it claims the
+	 * format (I_4 always, plus RGB565/RGB888 when this device has a
+	 * color-palette child registered with the helper), the SDL render side
+	 * must dispatch its native I_4 path because PREPROCESS will hand it an
+	 * already-quantised buffer.
+	 */
+	if (DISPLAY_PALETTE_DITHER_CLAIM(dev, pixel_format) == 0) {
+		disp_data->current_pixel_format = PIXEL_FORMAT_I_4;
+		return 0;
+	}
+
+	/*
+	 * Helper declined - pin it in passthrough so PREPROCESS short-circuits
+	 * and SDL can serve the format natively.
+	 */
+	DISPLAY_PALETTE_DITHER_PASSTHROUGH(dev);
 
 	switch (pixel_format) {
 	case PIXEL_FORMAT_ARGB_8888:
@@ -1336,6 +1363,8 @@ static DEVICE_API(display, sdl_display_api) = {
 };
 
 #define DISPLAY_SDL_DEFINE(n)                                                                      \
+	COND_CODE_1(DT_NODE_EXISTS(DT_INST_CHILD(n, color_palette)),                               \
+		    (DISPLAY_PALETTE_DITHER_INST_DEFINE(sdl, n);), ())                             \
 	static const struct sdl_display_config sdl_config_##n = {                                  \
 		.height = DT_INST_PROP(n, height),                                                 \
 		.width = DT_INST_PROP(n, width),                                                   \

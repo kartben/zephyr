@@ -16,6 +16,8 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/pm/device.h>
 
+#include "palette_dither.h"
+
 LOG_MODULE_REGISTER(ed2208_gca, CONFIG_DISPLAY_LOG_LEVEL);
 
 #define ED2208_GCA_RESET_DELAY_MS    20U
@@ -203,6 +205,7 @@ static int ed2208_gca_deep_sleep(const struct device *dev)
 static int ed2208_gca_write(const struct device *dev, const uint16_t x, const uint16_t y,
 			    const struct display_buffer_descriptor *desc, const void *buf)
 {
+	DISPLAY_PALETTE_DITHER_PREPROCESS(dev, desc, buf);
 	const struct ed2208_gca_config *config = dev->config;
 	struct ed2208_gca_data *data = dev->data;
 	const uint8_t *src = buf;
@@ -211,7 +214,7 @@ static int ed2208_gca_write(const struct device *dev, const uint16_t x, const ui
 		.height = 1,
 		.pitch = ED2208_GCA_TX_CHUNK_SIZE,
 	};
-	size_t buf_len = config->width * config->height / 2U;
+	size_t buf_len = DIV_ROUND_UP(config->width, 2U) * config->height;
 	size_t offset = 0U;
 	int ret;
 
@@ -313,17 +316,17 @@ static void ed2208_gca_get_capabilities(const struct device *dev, struct display
 	caps->supported_pixel_formats = PIXEL_FORMAT_I_4;
 	caps->current_pixel_format = PIXEL_FORMAT_I_4;
 	caps->screen_info = SCREEN_INFO_EPD;
+	DISPLAY_PALETTE_DITHER_PATCH_CAPS(dev, caps);
 }
 
 static int ed2208_gca_set_pixel_format(const struct device *dev, const enum display_pixel_format pf)
 {
-	ARG_UNUSED(dev);
-
 	if (pf == PIXEL_FORMAT_I_4) {
+		DISPLAY_PALETTE_DITHER_PASSTHROUGH(dev);
 		return 0;
 	}
 
-	return -ENOTSUP;
+	return DISPLAY_PALETTE_DITHER_CLAIM(dev, pf);
 }
 
 static int ed2208_gca_init(const struct device *dev)
@@ -394,6 +397,7 @@ static DEVICE_API(display, ed2208_gca_api) = {
 #define ED2208_GCA_DEFINE(inst)                                                                    \
 	BUILD_ASSERT(CONFIG_DISPLAY_COLOR_PALETTE_MAX_SIZE >=                                      \
 		     DT_PROP_LEN(DT_INST_CHILD(inst, color_palette), colors));                     \
+	DISPLAY_PALETTE_DITHER_INST_DEFINE(ed2208_gca, inst);                                      \
 	static const struct ed2208_gca_config ed2208_gca_cfg_##inst = {                            \
 		.mipi_dev = DEVICE_DT_GET(DT_INST_PARENT(inst)),                                   \
 		.dbi_config =                                                                      \

@@ -16,6 +16,8 @@
 #include <zephyr/pm/device.h>
 #include <string.h>
 
+#include "palette_dither.h"
+
 LOG_MODULE_REGISTER(ac057tc1, CONFIG_DISPLAY_LOG_LEVEL);
 
 /* Timing constants */
@@ -278,6 +280,7 @@ static int ac057tc1_init(const struct device *dev)
 static int ac057tc1_write(const struct device *dev, const uint16_t x, const uint16_t y,
 			  const struct display_buffer_descriptor *desc, const void *buf)
 {
+	DISPLAY_PALETTE_DITHER_PREPROCESS(dev, desc, buf);
 	const struct ac057tc1_config *config = dev->config;
 	struct ac057tc1_data *data = dev->data;
 	int ret;
@@ -292,7 +295,7 @@ static int ac057tc1_write(const struct device *dev, const uint16_t x, const uint
 	}
 
 	/* Calculate buffer length - 4 bits per pixel, 2 pixels per byte */
-	buf_len = (desc->width * desc->height) / 2U;
+	buf_len = DIV_ROUND_UP(desc->width, 2U) * desc->height;
 
 	if (buf == NULL || desc->buf_size < buf_len) {
 		LOG_ERR("Invalid buffer: buf=%p size=%u expected=%u", buf, desc->buf_size, buf_len);
@@ -396,16 +399,17 @@ static void ac057tc1_get_capabilities(const struct device *dev, struct display_c
 	caps->supported_pixel_formats = PIXEL_FORMAT_I_4;
 	caps->current_pixel_format = PIXEL_FORMAT_I_4;
 	caps->screen_info = SCREEN_INFO_EPD;
+	DISPLAY_PALETTE_DITHER_PATCH_CAPS(dev, caps);
 }
 
 static int ac057tc1_set_pixel_format(const struct device *dev, const enum display_pixel_format pf)
 {
 	if (pf == PIXEL_FORMAT_I_4) {
+		DISPLAY_PALETTE_DITHER_PASSTHROUGH(dev);
 		return 0;
 	}
 
-	LOG_ERR("Pixel format not supported");
-	return -ENOTSUP;
+	return DISPLAY_PALETTE_DITHER_CLAIM(dev, pf);
 }
 
 #ifdef CONFIG_PM_DEVICE
@@ -440,6 +444,7 @@ static DEVICE_API(display, ac057tc1_api) = {
 #define AC057TC1_DEFINE(inst)                                                                      \
 	BUILD_ASSERT(CONFIG_DISPLAY_COLOR_PALETTE_MAX_SIZE >=                                      \
 		     DT_PROP_LEN(DT_INST_CHILD(inst, color_palette), colors));                     \
+	DISPLAY_PALETTE_DITHER_INST_DEFINE(ac057tc1, inst);                                        \
 	static const struct ac057tc1_config ac057tc1_cfg_##inst = {                                \
 		.mipi_dev = DEVICE_DT_GET(DT_INST_PARENT(inst)),                                   \
 		.dbi_config =                                                                      \

@@ -1,0 +1,502 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <string.h>
+
+#include <zephyr/device.h>
+#include <zephyr/drivers/display.h>
+#include <zephyr/dt-bindings/display/panel.h>
+#include <zephyr/logging/log.h>
+#include <zephyr/sys/byteorder.h>
+#include <zephyr/sys/iterable_sections.h>
+#include <zephyr/sys/util.h>
+
+#include "palette_dither.h"
+
+LOG_MODULE_REGISTER(palette_dither, CONFIG_DISPLAY_LOG_LEVEL);
+
+enum pdither_algorithm {
+	PDITHER_ALGO_NONE,
+	PDITHER_ALGO_BAYER_4X4,
+	PDITHER_ALGO_BAYER_8X8,
+	PDITHER_ALGO_FLOYD_STEINBERG,
+	PDITHER_ALGO_ATKINSON,
+};
+
+#if defined(CONFIG_DISPLAY_PALETTE_DITHER_ALGORITHM_ATKINSON)
+#define PDITHER_ACTIVE_ALGORITHM PDITHER_ALGO_ATKINSON
+#elif defined(CONFIG_DISPLAY_PALETTE_DITHER_ALGORITHM_FLOYD_STEINBERG)
+#define PDITHER_ACTIVE_ALGORITHM PDITHER_ALGO_FLOYD_STEINBERG
+#elif defined(CONFIG_DISPLAY_PALETTE_DITHER_ALGORITHM_ORDERED_BAYER_8X8)
+#define PDITHER_ACTIVE_ALGORITHM PDITHER_ALGO_BAYER_8X8
+#elif defined(CONFIG_DISPLAY_PALETTE_DITHER_ALGORITHM_ORDERED_BAYER_4X4)
+#define PDITHER_ACTIVE_ALGORITHM PDITHER_ALGO_BAYER_4X4
+#else
+#define PDITHER_ACTIVE_ALGORITHM PDITHER_ALGO_NONE
+#endif
+
+#define PDITHER_BAYER_STEP   8
+#define PDITHER_BAYER_OFFSET 8
+
+/*
+ * Standard 4x4 Bayer ordered-dithering matrix.
+ *
+ * The 8-point centering offset makes the matrix symmetric around zero, and a step of 8 keeps the
+ * ordered dither visible enough to mix palette entries without overwhelming the source image on
+ * common small display palettes.
+ */
+static const uint8_t bayer_4x4[4][4] = {
+	{0, 8, 2, 10},
+	{12, 4, 14, 6},
+	{3, 11, 1, 9},
+	{15, 7, 13, 5},
+};
+
+/*
+ * Standard 8x8 Bayer matrix.
+ *
+ * A 2-point step gives it a similar component range to the 4x4 matrix while using finer spatial
+ * thresholds.
+ */
+static const uint8_t bayer_8x8[8][8] = {
+	{0, 48, 12, 60, 3, 51, 15, 63}, {32, 16, 44, 28, 35, 19, 47, 31},
+	{8, 56, 4, 52, 11, 59, 7, 55},  {40, 24, 36, 20, 43, 27, 39, 23},
+	{2, 50, 14, 62, 1, 49, 13, 61}, {34, 18, 46, 30, 33, 17, 45, 29},
+	{10, 58, 6, 54, 9, 57, 5, 53},  {42, 26, 38, 22, 41, 25, 37, 21},
+};
+
+static struct display_palette_dither_state *lookup_state(const struct device *dev)
+{
+	STRUCT_SECTION_FOREACH(display_palette_dither_inst, it) {
+		if (it->dev == dev) {
+			return it->state;
+		}
+	}
+	return NULL;
+}
+
+static uint8_t apply_ordered_threshold(uint8_t component, uint8_t threshold,
+				       uint8_t threshold_offset, uint8_t step)
+{
+	int16_t offset = ((int16_t)threshold - (int16_t)threshold_offset) * step;
+
+	return CLAMP((int16_t)component + offset, 0, UINT8_MAX);
+}
+
+static void apply_ordered_dither(enum pdither_algorithm algorithm, uint32_t x, uint32_t y,
+				 uint8_t *r, uint8_t *g, uint8_t *b)
+{
+	uint8_t threshold;
+	uint8_t offset;
+	uint8_t step;
+
+	switch (algorithm) {
+	case PDITHER_ALGO_BAYER_4X4:
+		threshold = bayer_4x4[y & 0x3U][x & 0x3U];
+		offset = PDITHER_BAYER_OFFSET;
+		step = PDITHER_BAYER_STEP;
+		break;
+	case PDITHER_ALGO_BAYER_8X8:
+		threshold = bayer_8x8[y & 0x7U][x & 0x7U];
+		offset = 32U;
+		step = 2U;
+		break;
+	default:
+		return;
+	}
+
+	*r = apply_ordered_threshold(*r, threshold, offset, step);
+	*g = apply_ordered_threshold(*g, threshold, offset, step);
+	*b = apply_ordered_threshold(*b, threshold, offset, step);
+}
+
+static int decode_pixel_rgb(const struct display_buffer_descriptor *desc,
+			    enum display_pixel_format pixel_format, const void *buf, uint32_t x,
+			    uint32_t y, uint8_t *r, uint8_t *g, uint8_t *b)
+{
+	uint32_t pixel_idx = y * desc->pitch + x;
+
+	switch (pixel_format) {
+#ifdef CONFIG_DISPLAY_PALETTE_DITHER_RGB565
+	case PIXEL_FORMAT_RGB_565: {
+		uint16_t pixel = sys_get_le16((const uint8_t *)buf + (pixel_idx * 2U));
+
+		*r = ((pixel >> 11) & 0x1FU) * 255U / 31U;
+		*g = ((pixel >> 5) & 0x3FU) * 255U / 63U;
+		*b = (pixel & 0x1FU) * 255U / 31U;
+		return 0;
+	}
+#endif
+#ifdef CONFIG_DISPLAY_PALETTE_DITHER_RGB888
+	case PIXEL_FORMAT_RGB_888: {
+		const uint8_t *buf8 = (const uint8_t *)buf + (pixel_idx * 3U);
+
+		*r = buf8[2];
+		*g = buf8[1];
+		*b = buf8[0];
+		return 0;
+	}
+#endif
+	default:
+		return -ENOTSUP;
+	}
+}
+
+static bool palette_entry_is_null(const struct display_palette_color *color)
+{
+	uint32_t palette_entry = ((uint32_t)color->b << 0) | ((uint32_t)color->g << 8) |
+				 ((uint32_t)color->r << 16) | ((uint32_t)color->a << 24);
+
+	return palette_entry == PANEL_COLOR_PALETTE_NULL;
+}
+
+static int find_nearest_palette_idx(const struct display_palette_color *palette, size_t palette_len,
+				    uint8_t r, uint8_t g, uint8_t b)
+{
+	uint32_t best_distance = UINT32_MAX;
+	int best_index = -1;
+
+	for (size_t i = 0; i < palette_len; i++) {
+		int16_t dr, dg, db;
+		uint32_t distance;
+
+		if (palette_entry_is_null(&palette[i])) {
+			continue;
+		}
+
+		dr = (int16_t)r - (int16_t)palette[i].r;
+		dg = (int16_t)g - (int16_t)palette[i].g;
+		db = (int16_t)b - (int16_t)palette[i].b;
+		distance = (uint32_t)(dr * dr) + (uint32_t)(dg * dg) + (uint32_t)(db * db);
+
+		if (distance < best_distance) {
+			best_distance = distance;
+			best_index = (int)i;
+			if (distance == 0U) {
+				break;
+			}
+		}
+	}
+
+	return best_index;
+}
+
+static void pack_i4_nibble(uint8_t *converted_buf, size_t row_size, uint32_t x, uint32_t y,
+			   uint8_t palette_idx)
+{
+	size_t byte_idx = (y * row_size) + (x / 2U);
+
+	if ((x & 0x1U) == 0U) {
+		converted_buf[byte_idx] = palette_idx << 4;
+	} else {
+		converted_buf[byte_idx] |= palette_idx & 0x0FU;
+	}
+}
+
+static int quantise_to_i4(const struct display_palette_color *palette, size_t palette_len,
+			  uint8_t r, uint8_t g, uint8_t b, uint8_t *converted_buf, size_t row_size,
+			  uint32_t x, uint32_t y)
+{
+	int palette_idx = find_nearest_palette_idx(palette, palette_len, r, g, b);
+
+	if (palette_idx < 0) {
+		return -ENOTSUP;
+	}
+
+	pack_i4_nibble(converted_buf, row_size, x, y, (uint8_t)palette_idx);
+	return palette_idx;
+}
+
+#if defined(CONFIG_DISPLAY_PALETTE_DITHER_ALGORITHM_FLOYD_STEINBERG) ||                            \
+	defined(CONFIG_DISPLAY_PALETTE_DITHER_ALGORITHM_ATKINSON)
+
+/* One neighbour to which post-quantisation error is diffused. */
+struct pdither_ed_tap {
+	int8_t dx;
+	int8_t dy;
+	int8_t weight;
+};
+
+#ifdef CONFIG_DISPLAY_PALETTE_DITHER_ALGORITHM_FLOYD_STEINBERG
+/* Floyd-Steinberg kernel: 7/3/5/1 over 16, two rows. */
+static const struct pdither_ed_tap fs_taps[] = {
+	{1, 0, 7},
+	{-1, 1, 3},
+	{0, 1, 5},
+	{1, 1, 1},
+};
+#endif
+
+#ifdef CONFIG_DISPLAY_PALETTE_DITHER_ALGORITHM_ATKINSON
+/*
+ * Atkinson dithering, originally written for the Macintosh imaging stack.
+ * Distributes 6/8 of the quantization error across six neighbors:
+ *
+ *           X   1/8  1/8
+ *     1/8  1/8  1/8
+ *          1/8
+ *
+ * The remaining 2/8 is intentionally dropped, which keeps local contrast sharper than
+ * Floyd-Steinberg at the cost of slightly compressed highlights and shadows.
+ */
+static const struct pdither_ed_tap atk_taps[] = {
+	{1, 0, 1}, {2, 0, 1}, {-1, 1, 1}, {0, 1, 1}, {1, 1, 1}, {0, 2, 1},
+};
+#endif
+
+static void error_accumulate(struct display_palette_dither_rgb_error *error, int16_t r, int16_t g,
+			     int16_t b, int16_t scale)
+{
+	error->r = CLAMP((int32_t)error->r + (r * scale), INT16_MIN, INT16_MAX);
+	error->g = CLAMP((int32_t)error->g + (g * scale), INT16_MIN, INT16_MAX);
+	error->b = CLAMP((int32_t)error->b + (b * scale), INT16_MIN, INT16_MAX);
+}
+
+static uint8_t error_apply(uint8_t component, int16_t error, int divisor)
+{
+	return CLAMP((int16_t)component + (error / divisor), 0, UINT8_MAX);
+}
+
+static int convert_error_diffusion(const struct display_buffer_descriptor *desc,
+				   enum display_pixel_format pixel_format, const void *buf,
+				   const struct display_palette_color *palette, size_t palette_len,
+				   uint8_t *converted_buf,
+				   struct display_palette_dither_rgb_error *const state_rows[3],
+				   size_t row_len, int divisor, const struct pdither_ed_tap *taps,
+				   size_t n_taps, size_t n_rows)
+{
+	size_t row_size = DIV_ROUND_UP(desc->width, 2U);
+	struct display_palette_dither_rgb_error *rows[3] = {
+		state_rows[0],
+		state_rows[1],
+		state_rows[2],
+	};
+
+	if (row_len < desc->width + (n_rows == 3 ? 2U : 1U)) {
+		return -EINVAL;
+	}
+	for (size_t i = 0; i < n_rows; i++) {
+		if (rows[i] == NULL) {
+			return -EINVAL;
+		}
+		memset(rows[i], 0, row_len * sizeof(**rows));
+	}
+
+	for (uint32_t y = 0U; y < desc->height; y++) {
+		for (uint32_t x = 0U; x < desc->width; x++) {
+			const struct display_palette_color *color;
+			uint8_t r, g, b;
+			int16_t er, eg, eb;
+			int palette_idx;
+
+			if (decode_pixel_rgb(desc, pixel_format, buf, x, y, &r, &g, &b) != 0) {
+				return -ENOTSUP;
+			}
+
+			r = error_apply(r, rows[0][x].r, divisor);
+			g = error_apply(g, rows[0][x].g, divisor);
+			b = error_apply(b, rows[0][x].b, divisor);
+			palette_idx = quantise_to_i4(palette, palette_len, r, g, b, converted_buf,
+						     row_size, x, y);
+			if (palette_idx < 0) {
+				return -ENOTSUP;
+			}
+
+			color = &palette[palette_idx];
+			er = (int16_t)r - (int16_t)color->r;
+			eg = (int16_t)g - (int16_t)color->g;
+			eb = (int16_t)b - (int16_t)color->b;
+
+			for (size_t i = 0; i < n_taps; i++) {
+				int32_t nx = (int32_t)x + taps[i].dx;
+				uint32_t ny_off = (uint32_t)taps[i].dy;
+
+				if (nx < 0 || (uint32_t)nx >= desc->width) {
+					continue;
+				}
+				if (y + ny_off >= desc->height) {
+					continue;
+				}
+				error_accumulate(&rows[ny_off][nx], er, eg, eb, taps[i].weight);
+			}
+		}
+
+		/* Left-shift the row pointers: rows[0] <- rows[1] (... <- rows[2]),
+		 * then the freed slot becomes the new bottom row (zeroed-out).
+		 */
+		struct display_palette_dither_rgb_error *tmp = rows[0];
+
+		for (size_t i = 0; i + 1U < n_rows; i++) {
+			rows[i] = rows[i + 1U];
+		}
+		rows[n_rows - 1U] = tmp;
+		memset(rows[n_rows - 1U], 0, row_len * sizeof(**rows));
+	}
+
+	return 0;
+}
+
+#endif /* FLOYD_STEINBERG || ATKINSON */
+
+static int convert_ordered(const struct display_buffer_descriptor *desc,
+			   enum display_pixel_format pixel_format, const void *buf,
+			   const struct display_palette_color *palette, size_t palette_len,
+			   uint8_t *converted_buf, enum pdither_algorithm algorithm)
+{
+	size_t row_size = DIV_ROUND_UP(desc->width, 2U);
+
+	for (uint32_t y = 0U; y < desc->height; y++) {
+		for (uint32_t x = 0U; x < desc->width; x++) {
+			uint8_t r, g, b;
+
+			if (decode_pixel_rgb(desc, pixel_format, buf, x, y, &r, &g, &b) != 0) {
+				return -ENOTSUP;
+			}
+
+			apply_ordered_dither(algorithm, x, y, &r, &g, &b);
+			if (quantise_to_i4(palette, palette_len, r, g, b, converted_buf, row_size,
+					   x, y) < 0) {
+				return -ENOTSUP;
+			}
+		}
+	}
+
+	return 0;
+}
+
+uint32_t display_palette_dither_supported_formats(void)
+{
+	uint32_t formats = 0U;
+
+	if (IS_ENABLED(CONFIG_DISPLAY_PALETTE_DITHER_RGB565)) {
+		formats |= PIXEL_FORMAT_RGB_565;
+	}
+	if (IS_ENABLED(CONFIG_DISPLAY_PALETTE_DITHER_RGB888)) {
+		formats |= PIXEL_FORMAT_RGB_888;
+	}
+	return formats;
+}
+
+int _pdither_claim(const struct device *dev, enum display_pixel_format pf)
+{
+	struct display_palette_dither_state *state = lookup_state(dev);
+
+	if (state == NULL) {
+		return -ENOTSUP;
+	}
+
+	if (pf == PIXEL_FORMAT_I_4) {
+		state->current_format = pf;
+		return 0;
+	}
+
+	if (!IS_POWER_OF_TWO(pf) || (pf & display_palette_dither_supported_formats()) == 0U) {
+		return -ENOTSUP;
+	}
+
+	state->current_format = pf;
+	return 0;
+}
+
+void _pdither_patch_caps(const struct device *dev, struct display_capabilities *caps)
+{
+	struct display_palette_dither_state *state = lookup_state(dev);
+
+	if (state == NULL) {
+		return;
+	}
+
+	caps->supported_pixel_formats |= display_palette_dither_supported_formats();
+
+	/*
+	 * Only override the driver-reported current format when the helper is actively converting.
+	 * In passthrough mode (state->current_format == PIXEL_FORMAT_I_4) the driver speaks for
+	 * itself.
+	 */
+	if (state->current_format != PIXEL_FORMAT_I_4) {
+		caps->current_pixel_format = state->current_format;
+	}
+}
+
+int _pdither_preprocess(const struct device *dev,
+			const struct display_buffer_descriptor **desc_in_out,
+			const void **buf_in_out, struct display_buffer_descriptor *scratch)
+{
+	struct display_palette_dither_state *state = lookup_state(dev);
+
+	if (state == NULL || state->current_format == PIXEL_FORMAT_I_4) {
+		return 0;
+	}
+
+	const struct display_buffer_descriptor *in_desc = *desc_in_out;
+
+	if (in_desc->width > in_desc->pitch) {
+		return -EINVAL;
+	}
+
+	size_t input_pixel_bits = DISPLAY_BITS_PER_PIXEL(state->current_format);
+
+	if (input_pixel_bits == 0U) {
+		return -ENOTSUP;
+	}
+
+	if (in_desc->buf_size < (in_desc->pitch * in_desc->height * input_pixel_bits) / 8U) {
+		return -EINVAL;
+	}
+
+	size_t required_size = _PDITHER_I4_BYTES(in_desc->width, in_desc->height);
+
+	if (state->converted_buf_size < required_size) {
+		LOG_ERR("converted buffer too small (%zu < %zu)", state->converted_buf_size,
+			required_size);
+		return -ENOMEM;
+	}
+
+	struct display_capabilities caps;
+	int ret;
+
+	display_get_capabilities(dev, &caps);
+	memset(state->converted_buf, 0, required_size);
+
+	switch (PDITHER_ACTIVE_ALGORITHM) {
+	case PDITHER_ALGO_NONE:
+	case PDITHER_ALGO_BAYER_4X4:
+	case PDITHER_ALGO_BAYER_8X8:
+		ret = convert_ordered(in_desc, state->current_format, *buf_in_out,
+				      caps.color_palette, ARRAY_SIZE(caps.color_palette),
+				      state->converted_buf, PDITHER_ACTIVE_ALGORITHM);
+		break;
+#ifdef CONFIG_DISPLAY_PALETTE_DITHER_ALGORITHM_FLOYD_STEINBERG
+	case PDITHER_ALGO_FLOYD_STEINBERG:
+		ret = convert_error_diffusion(
+			in_desc, state->current_format, *buf_in_out, caps.color_palette,
+			ARRAY_SIZE(caps.color_palette), state->converted_buf, state->err_rows,
+			state->err_row_len, 16, fs_taps, ARRAY_SIZE(fs_taps), 2U);
+		break;
+#endif
+#ifdef CONFIG_DISPLAY_PALETTE_DITHER_ALGORITHM_ATKINSON
+	case PDITHER_ALGO_ATKINSON:
+		ret = convert_error_diffusion(
+			in_desc, state->current_format, *buf_in_out, caps.color_palette,
+			ARRAY_SIZE(caps.color_palette), state->converted_buf, state->err_rows,
+			state->err_row_len, 8, atk_taps, ARRAY_SIZE(atk_taps), 3U);
+		break;
+#endif
+	default:
+		return -ENOTSUP;
+	}
+
+	if (ret < 0) {
+		return ret;
+	}
+
+	*scratch = *in_desc;
+	scratch->buf_size = required_size;
+	scratch->pitch = in_desc->width;
+
+	*desc_in_out = scratch;
+	*buf_in_out = state->converted_buf;
+	return 0;
+}
