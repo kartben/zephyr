@@ -83,12 +83,12 @@
  *   }
  *
  *   // In the driver instance definition, define backing storage before data:
- *   #define FOO_DEFINE(inst)                                   \
- *           DISPLAY_COLOR_DITHER_DEFINE(inst);                 \
- *           static struct foo_data foo_data_##inst = {         \
- *                   IF_ENABLED(CONFIG_DISPLAY_COLOR_DITHER,     \
- *                              (.color_dither = DISPLAY_COLOR_DITHER_INIT(inst),)) \
- *           };                                                 \
+ *   #define FOO_DEFINE(inst)                                                         \
+ *           DISPLAY_COLOR_DITHER_DEFINE(inst);                                       \
+ *           static struct foo_data foo_data_##inst = {                               \
+ *                   IF_ENABLED(CONFIG_DISPLAY_COLOR_DITHER,                          \
+ *                              (.color_dither = DISPLAY_COLOR_DITHER_INIT(inst),))   \
+ *           };                                                                       \
  *           DEVICE_DT_INST_DEFINE(inst, ...);
  * @endcode
  *
@@ -104,6 +104,27 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#if defined(CONFIG_DISPLAY_COLOR_DITHER) || defined(__DOXYGEN__)
+
+/**
+ * @brief Embed color dithering state in a driver's runtime data.
+ *
+ * Use as a member declaration inside the driver's data structure.
+ */
+#define DISPLAY_COLOR_DITHER_DATA struct display_color_dither_state color_dither
+
+/**
+ * @brief Get the color dithering state pointer from driver data.
+ *
+ * Pass this to the helper functions. When color dithering is disabled, the macro expands to
+ * NULL and consumes @p data so driver code does not need extra conditionals.
+ *
+ * @param data Pointer to driver data containing @ref DISPLAY_COLOR_DITHER_DATA.
+ */
+#define DISPLAY_COLOR_DITHER_STATE(data) (&(data)->color_dither)
+
+/** @cond INTERNAL_HIDDEN */
 
 /**
  * @brief Per-component signed quantization error accumulated during error-diffusion dithering.
@@ -141,27 +162,6 @@ struct display_color_dither_state {
 	/** Number of elements in each error-diffusion row buffer. */
 	size_t err_row_len;
 };
-
-#if defined(CONFIG_DISPLAY_COLOR_DITHER) || defined(__DOXYGEN__)
-
-/**
- * @brief Embed color dithering state in a driver's runtime data.
- *
- * Use as a member declaration inside the driver's data structure.
- */
-#define DISPLAY_COLOR_DITHER_DATA struct display_color_dither_state color_dither
-
-/**
- * @brief Get the color dithering state pointer from driver data.
- *
- * Pass this to the helper functions. When color dithering is disabled, the macro expands to
- * NULL and consumes @p data so driver code does not need extra conditionals.
- *
- * @param data Pointer to driver data containing @ref DISPLAY_COLOR_DITHER_DATA.
- */
-#define DISPLAY_COLOR_DITHER_STATE(data) (&(data)->color_dither)
-
-/** @cond INTERNAL_HIDDEN */
 
 #if defined(CONFIG_DISPLAY_COLOR_DITHER_DEFAULT_RGB888)
 #define COLOR_DITHER_DEFAULT_FMT PIXEL_FORMAT_RGB_888
