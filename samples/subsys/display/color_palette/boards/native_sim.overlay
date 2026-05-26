@@ -10,6 +10,8 @@
 	palette_dither_display: palette-dither-display {
 		compatible = "zephyr,palette-dither-display";
 		display = <&sdl_dc>;
+		width = <320>;
+		height = <240>;
 		pixel-format = <PANEL_PIXEL_FORMAT_I_4>;
 	};
 

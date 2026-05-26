@@ -10,7 +10,7 @@ description: |
 
 compatible: "zephyr,palette-dither-display"
 
-include: base.yaml
+include: display-controller.yaml
 
 properties:
   display:
@@ -36,5 +36,7 @@ examples:
     palette_display: palette-dither-display {
       compatible = "zephyr,palette-dither-display";
       display = <&sdl_dc>;
+      width = <480>;
+      height = <272>;
       pixel-format = <PANEL_PIXEL_FORMAT_RGB_565>;
     };
