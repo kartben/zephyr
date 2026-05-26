@@ -211,7 +211,7 @@ static int ed2208_gca_write(const struct device *dev, const uint16_t x, const ui
 		.height = 1,
 		.pitch = ED2208_GCA_TX_CHUNK_SIZE,
 	};
-	size_t buf_len = config->width * config->height / 2U;
+	size_t buf_len = DIV_ROUND_UP(config->width, 2U) * config->height;
 	size_t offset = 0U;
 	int ret;
 

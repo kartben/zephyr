@@ -28,6 +28,7 @@
 		zephyr,bt-hci = &esp32_bt_hci;
 		zephyr,sdhc = &sdcard0;
 		zephyr,display = &epd_ed2208_gca;
+		// zephyr,display = &dithered_display;
 	};
 
 	aliases {
@@ -121,10 +122,21 @@
 					  ARGB8888(196, 50,  58,  255) /* 0x03 = Red */
 					  PANEL_COLOR_PALETTE_NULL /* 0x04 = Unused / reserved */
 					  ARGB8888(40,  85,  180, 255) /* 0x05 = Blue */
-					  ARGB8888(60,  140, 75,  255) /* 0x06 = Green */ >;
+					  ARGB8888(60,  140, 75,  255) /* 0x06 = Green */>;
 			};
 		};
 	};
+
+	dithered_display: dithered_display {
+		status = "disabled";
+		compatible = "zephyr,palette-dither-display";
+		display = <&epd_ed2208_gca>;
+		width = <800>;
+		height = <480>;
+		dithering-algorithm = "floyd-steinberg";
+		pixel-format = <PANEL_PIXEL_FORMAT_RGB_888>;
+	};
+
 };
 
 &dma {

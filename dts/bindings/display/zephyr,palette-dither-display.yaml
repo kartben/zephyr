@@ -1,0 +1,69 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+title: |
+  Virtual display wrapper for palette-backed displays.
+
+description: |
+  This node references another display device and exposes a new display device
+  which accepts RGB565, RGB888, or I_4 writes. Non-indexed writes are
+  dithered to the wrapped display's palette and forwarded as I_4.
+
+  I_4 writes are passed through without dithering.
+
+compatible: "zephyr,palette-dither-display"
+
+include: display-controller.yaml
+
+properties:
+  display:
+    type: phandle
+    required: true
+    description: Wrapped display device. It must support PIXEL_FORMAT_I_4.
+
+  pixel-format:
+    type: int
+    required: true
+    description: Initial pixel format exposed by the virtual display.
+    enum:
+      - 1 # PANEL_PIXEL_FORMAT_RGB_888
+      - 16 # PANEL_PIXEL_FORMAT_RGB_565
+      - 8192 # PANEL_PIXEL_FORMAT_I_4
+
+  dithering-algorithm:
+    type: string
+    default: "ordered-bayer-4x4"
+    enum:
+      - "none"
+      - "ordered-bayer-4x4"
+      - "ordered-bayer-8x8"
+      - "floyd-steinberg"
+    description: |
+      Algorithm used when RGB565 or RGB888 writes are converted to the wrapped display's I_4 palette
+      format.
+
+      "none" maps each source pixel to the nearest palette entry. It is the fastest option and
+      preserves hard edges in text, icons, and exact palette artwork.
+
+      "ordered-bayer-4x4" is the default. It is a good general-purpose choice for small displays and
+      simple graphics.
+
+      "ordered-bayer-8x8" gives smoother gradients than 4x4 ordered dithering, but at the cost of a
+      larger visible ordered pattern.
+
+      "floyd-steinberg" diffuses quantization error between neighboring pixels. It is typically
+      slower and more memory-intensive, but gives the best average tone and hue accuracy for photos
+      and smooth gradients.
+
+examples:
+  - |
+    #include <zephyr/dt-bindings/display/panel.h>
+
+    palette_display: palette-dither-display {
+      compatible = "zephyr,palette-dither-display";
+      display = <&sdl_dc>;
+      width = <480>;
+      height = <272>;
+      pixel-format = <PANEL_PIXEL_FORMAT_RGB_565>;
+      dithering-algorithm = "ordered-bayer-4x4";
+    };
