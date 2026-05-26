@@ -1,0 +1,16 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/display/panel.h>
+
+&sdl_dc {
+	pixel-format = <PANEL_PIXEL_FORMAT_I_4>;
+
+	color-palette {
+		compatible = "zephyr,panel-color-palette";
+		colors = <ARGB8888(0, 0, 0, 255)
+			  ARGB8888(255, 255, 255, 255)>;
+	};
+};

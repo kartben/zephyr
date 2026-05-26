@@ -11,6 +11,20 @@ tests:
       - native_sim/native/64
     depends_on: display
 
+  drivers.display.build.dither:
+    platform_allow:
+      - native_sim/native/64
+    extra_args:
+      - EXTRA_DTC_OVERLAY_FILE=boards/native_sim_dither.overlay
+    extra_configs:
+      - CONFIG_DISPLAY_COLOR_PALETTE=y
+      - CONFIG_DISPLAY_COLOR_PALETTE_MAX_SIZE=16
+      - CONFIG_DISPLAY_COLOR_DITHER=y
+      - CONFIG_DISPLAY_COLOR_DITHER_INPUT_RGB565=y
+      - CONFIG_DISPLAY_COLOR_DITHER_INPUT_RGB888=y
+      - CONFIG_DISPLAY_COLOR_DITHER_DEFAULT_RGB888=y
+    depends_on: display
+
   drivers.display.build.bflb_dbi:
     platform_allow:
       - ai_m62_12f_kit
