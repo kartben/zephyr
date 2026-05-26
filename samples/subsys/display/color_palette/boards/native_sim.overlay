@@ -21,9 +21,9 @@
 };
 
 &sdl_dc {
-	pixel-format = <PANEL_PIXEL_FORMAT_I_4>;
 	width = <320>;
 	height = <240>;
+	pixel-format = <PANEL_PIXEL_FORMAT_I_4>;
 
 	color-palette {
 		compatible = "zephyr,panel-color-palette";
