@@ -24,6 +24,13 @@ static const uint8_t expected_bayer_i4[] = {
 	0x10, 0x10,
 };
 
+static const uint8_t passthrough_i4[] = {
+	0x01, 0x23,
+	0x45, 0x67,
+	0x89, 0xab,
+	0xcd, 0xef,
+};
+
 static void fill_rgb565_gray(uint8_t *buf)
 {
 	for (size_t i = 0; i < DISPLAY_PIXELS; i++) {
@@ -109,6 +116,25 @@ ZTEST(display_dithering, test_rgb565_write_is_dithered_to_i4)
 
 	fill_rgb565_gray(rgb565_gray);
 	verify_dithered_output(PIXEL_FORMAT_RGB_565, rgb565_gray, sizeof(rgb565_gray));
+}
+
+ZTEST(display_dithering, test_i4_write_is_passthrough)
+{
+	uint8_t actual[sizeof(passthrough_i4)];
+	struct display_buffer_descriptor desc = {
+		.width = DISPLAY_WIDTH,
+		.height = DISPLAY_HEIGHT,
+		.pitch = DISPLAY_WIDTH,
+		.buf_size = sizeof(passthrough_i4),
+	};
+
+	zassert_ok(display_set_pixel_format(dev, PIXEL_FORMAT_RGB_888),
+		   "display_set_pixel_format(RGB_888) failed");
+	zassert_ok(display_set_pixel_format(dev, PIXEL_FORMAT_I_4),
+		   "display_set_pixel_format(I_4) failed");
+	zassert_ok(display_write(dev, 0, 0, &desc, passthrough_i4), "display_write failed");
+	zassert_ok(display_read(dev, 0, 0, &desc, actual), "display_read failed");
+	zassert_mem_equal(passthrough_i4, actual, sizeof(actual));
 }
 
 ZTEST_SUITE(display_dithering, NULL, NULL, display_dithering_before, NULL, NULL);
