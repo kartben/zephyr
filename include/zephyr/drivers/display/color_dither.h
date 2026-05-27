@@ -105,6 +105,8 @@
 extern "C" {
 #endif
 
+struct display_color_dither_state;
+
 #if defined(CONFIG_DISPLAY_COLOR_DITHER) || defined(__DOXYGEN__)
 
 /**

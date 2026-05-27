@@ -3,6 +3,9 @@
 
 if BOARD_RETERMINAL_E1002_ESP32S3_PROCPU
 
+config ESP_SPIRAM
+	default y
+
 if LVGL
 
 config LV_Z_BITS_PER_PIXEL
@@ -12,6 +15,9 @@ config LV_Z_FULL_REFRESH
 	default y
 
 config LV_Z_VDB_CUSTOM_SECTION
+	default y
+
+config LV_Z_MEMORY_POOL_CUSTOM_SECTION
 	default y
 
 endif # LVGL
