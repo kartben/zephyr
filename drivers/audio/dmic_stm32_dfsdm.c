@@ -136,11 +136,15 @@ void HAL_DFSDM_FilterRegConvCpltCallback(DFSDM_Filter_HandleTypeDef *hdfsdm_filt
 
 	/* Write sample into current buffer */
 	if (data->buf_pos + sample_size <= data->block_size) {
-		/* Shift 24-bit DFSDM sample down to 16-bit before storing. */
 		if (sample_size == 2) {
-			sample >>= 8;
+			int16_t pcm16 = (int16_t)CLAMP(sample, INT16_MIN, INT16_MAX);
+
+			memcpy((uint8_t *)data->buffer + data->buf_pos, &pcm16,
+			       sample_size);
+		} else {
+			memcpy((uint8_t *)data->buffer + data->buf_pos, &sample,
+			       sample_size);
 		}
-		memcpy((uint8_t *)data->buffer + data->buf_pos, &sample, sample_size);
 		data->buf_pos += sample_size;
 	}
 
