@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026
+ * Copyright (c) 2026 The Zephyr Project Contributors
  *
  * SPDX-License-Identifier: Apache-2.0
  */

@@ -15,6 +15,7 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(mfd_ite_it8801, CONFIG_MFD_LOG_LEVEL);
 
+/* GPIO control register base offsets for banks 0, 1, and 2. */
 static const uint8_t it8801_gpiocr_bases[] = { 0x0a, 0x12, 0x1a };
 
 struct mfd_it8801_config {
@@ -42,6 +43,10 @@ static int mfd_it8801_configure_pin(const struct device *dev, uint32_t pin, uint
 
 	ARG_UNUSED(reg);
 
+	/*
+	 * IT8801 exposes 8 GPIOs in bank 0, 6 GPIOs in bank 1, and 4 GPIOs
+	 * in bank 2.
+	 */
 	if ((bank >= ARRAY_SIZE(it8801_gpiocr_bases)) ||
 	    ((bank == 1U) && (bank_pin >= 6U)) ||
 	    ((bank == 2U) && (bank_pin >= 4U))) {

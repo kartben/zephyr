@@ -529,7 +529,7 @@ static inline int pinctrl_apply_state_direct(
 	const struct pinctrl_dev_config *config,
 	const struct pinctrl_state *state)
 {
-	int ret;
+	int status;
 	uintptr_t reg;
 
 #ifdef CONFIG_PINCTRL_STORE_REG
@@ -541,9 +541,9 @@ static inline int pinctrl_apply_state_direct(
 
 	if (state->type == PINCTRL_STATE_TYPE_PROVIDER) {
 		for (uint8_t i = 0U; i < state->pin_cnt; i++) {
-			ret = pinctrl_configure_state_item(&state->items[i], reg);
-			if (ret < 0) {
-				return ret;
+			status = pinctrl_configure_state_item(&state->items[i], reg);
+			if (status < 0) {
+				return status;
 			}
 		}
 
