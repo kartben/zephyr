@@ -637,6 +637,12 @@ static int dmic_stm32_dfsdm_configure(const struct device *dev, struct dmic_cfg 
 		}
 	}
 
+	/* Tear down a previous configuration before reprogramming the channel */
+	if (data->state == DMIC_STATE_CONFIGURED) {
+		HAL_DFSDM_ChannelDeInit(data->hchannels);
+		HAL_DFSDM_FilterDeInit(&data->hfilter);
+	}
+
 	/* Get Audio clock */
 	ret = clock_control_get_rate(DEVICE_DT_GET(STM32_CLOCK_CONTROL_NODE),
 				     (clock_control_subsys_t)&parent_cfg->aclken,
