@@ -7,6 +7,12 @@
 #define ZEPHYR_INCLUDE_DT_BINDINGS_PWM_PWM_H_
 
 /**
+ * @file
+ * @brief Generic PWM devicetree binding definitions.
+ * @ingroup pwm_interface
+ */
+
+/**
  * @addtogroup pwm_interface
  * @{
  */
@@ -18,17 +24,58 @@
  * @{
  */
 
-/** Specify PWM period in nanoseconds */
+/**
+ * @brief Specify PWM period in nanoseconds.
+ *
+ * @param x Period value in nanoseconds.
+ *
+ * @return PWM period expressed in nanoseconds.
+ */
 #define PWM_NSEC(x)	(x)
-/** Specify PWM period in microseconds */
+
+/**
+ * @brief Specify PWM period in microseconds.
+ *
+ * @param x Period value in microseconds.
+ *
+ * @return PWM period expressed in nanoseconds.
+ */
 #define PWM_USEC(x)	(PWM_NSEC(x) * 1000UL)
-/** Specify PWM period in milliseconds */
+
+/**
+ * @brief Specify PWM period in milliseconds.
+ *
+ * @param x Period value in milliseconds.
+ *
+ * @return PWM period expressed in nanoseconds.
+ */
 #define PWM_MSEC(x)	(PWM_USEC(x) * 1000UL)
-/** Specify PWM period in seconds */
+
+/**
+ * @brief Specify PWM period in seconds.
+ *
+ * @param x Period value in seconds.
+ *
+ * @return PWM period expressed in nanoseconds.
+ */
 #define PWM_SEC(x)	(PWM_MSEC(x) * 1000UL)
-/** Specify PWM frequency in hertz */
+
+/**
+ * @brief Specify PWM frequency in hertz.
+ *
+ * @param x Frequency value in hertz.
+ *
+ * @return PWM period expressed in nanoseconds.
+ */
 #define PWM_HZ(x)	(PWM_SEC(1UL) / (x))
-/** Specify PWM frequency in kilohertz */
+
+/**
+ * @brief Specify PWM frequency in kilohertz.
+ *
+ * @param x Frequency value in kilohertz.
+ *
+ * @return PWM period expressed in nanoseconds.
+ */
 #define PWM_KHZ(x)	(PWM_HZ((x) * 1000UL))
 
 /** @} */
