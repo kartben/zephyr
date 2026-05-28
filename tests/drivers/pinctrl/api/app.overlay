@@ -93,4 +93,37 @@
 		pinctrl-1 = <&test_device1_mystate>;
 		pinctrl-names = "default", "mystate";
 	};
+
+	test_pinctrl_provider0: test-pinctrl-provider0 {
+		compatible = "vnd,pinctrl-provider";
+		pinctrl-provider;
+		#pinctrl-cells = <2>;
+	};
+
+	test_pinctrl_provider1: test-pinctrl-provider1 {
+		compatible = "vnd,pinctrl-provider";
+		pinctrl-provider;
+		#pinctrl-cells = <2>;
+	};
+
+	test_pinctrl_provider_map: test-pinctrl-provider-map {
+		compatible = "vnd,pinctrl-provider-map";
+
+		test_device2_default: test_device2_default {
+			pinctrls = <&test_pinctrl_provider0 5 50>,
+				   <&test_pinctrl_provider1 7 70>;
+		};
+
+		test_device2_mystate: test_device2_mystate {
+			pinctrls = <&test_pinctrl_provider0 9 90>;
+		};
+	};
+
+	test_device2: test_device@2 {
+		compatible = "vnd,pinctrl-device";
+		reg = <0x2 0x1>;
+		pinctrl-0 = <&test_device2_default>;
+		pinctrl-1 = <&test_device2_mystate>;
+		pinctrl-names = "default", "mystate";
+	};
 };

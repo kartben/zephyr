@@ -50,13 +50,54 @@ extern "C" {
 /** @} */
 
 /** Pin control state configuration. */
+enum pinctrl_state_type {
+	/** State backed by legacy SoC pinctrl data. */
+	PINCTRL_STATE_TYPE_SOC = 0U,
+	/** State backed by pinctrl provider devices. */
+	PINCTRL_STATE_TYPE_PROVIDER,
+};
+
+/** Provider-backed pin control state item. */
+struct pinctrl_state_item {
+	/** Pin control provider device. */
+	const struct device *dev;
+	/** Provider-defined pin selector. */
+	uint32_t pin;
+	/** Provider-defined mux/config selector. */
+	uint32_t value;
+};
+
+/** Pin control provider driver API. */
+struct pinctrl_driver_api {
+	/**
+	 * Configure a single provider-backed pin control item.
+	 *
+	 * @param dev Provider device.
+	 * @param pin Provider-defined pin selector.
+	 * @param value Provider-defined mux/config selector.
+	 * @param reg Consumer device register (optional, use #PINCTRL_REG_NONE if
+	 *	      not used).
+	 *
+	 * @retval 0 If succeeded.
+	 * @retval -errno Negative errno for other failures.
+	 */
+	int (*configure_pin)(const struct device *dev, uint32_t pin, uint32_t value,
+			     uintptr_t reg);
+};
+
+/** Pin control state configuration. */
 struct pinctrl_state {
 	/** Pin configurations. */
-	const pinctrl_soc_pin_t *pins;
+	union {
+		const pinctrl_soc_pin_t *pins;
+		const struct pinctrl_state_item *items;
+	};
 	/** Number of pin configurations. */
 	uint8_t pin_cnt;
 	/** State identifier (see @ref PINCTRL_STATES). */
 	uint8_t id;
+	/** State storage type. */
+	uint8_t type;
 };
 
 /** Pin controller configuration for a given device. */
@@ -123,6 +164,19 @@ struct pinctrl_dev_config {
 	_CONCAT(__pinctrl_state_pins_ ## state_idx, DEVICE_DT_NAME_GET(node_id))
 
 /**
+ * @brief Obtain the variable name storing provider-backed state items for the
+ * given DT node identifier and state index.
+ *
+ * @param state_idx State index.
+ * @param node_id Node identifier.
+ */
+#define Z_PINCTRL_STATE_ITEMS_NAME(state_idx, node_id) \
+	_CONCAT(__pinctrl_state_items_ ## state_idx, DEVICE_DT_NAME_GET(node_id))
+
+/** @brief Obtain the property name token for a pinctrl state index. */
+#define Z_PINCTRL_STATE_PROP(state_idx) UTIL_CAT(pinctrl_, state_idx)
+
+/**
  * @brief Utility macro to check if given state has to be skipped.
  *
  * If a certain state has to be skipped, a macro named PINCTRL_SKIP_<STATE>
@@ -138,16 +192,125 @@ struct pinctrl_dev_config {
 		DT_PINCTRL_IDX_TO_NAME_UPPER_TOKEN(node_id, state_idx))
 
 /**
+ * @brief Check whether the first fragment of a state uses a pinctrl provider.
+ *
+ * @param state_idx State index.
+ * @param node_id Node identifier.
+ */
+#define Z_PINCTRL_STATE_HAS_PROVIDER(state_idx, node_id)			       \
+	DT_NODE_HAS_PROP(DT_PHANDLE_BY_IDX(node_id, Z_PINCTRL_STATE_PROP(state_idx), 0), \
+			 pinctrls)
+
+/**
+ * @brief Count provider-backed fragments within a state.
+ *
+ * @param node_id Consumer node identifier.
+ * @param prop Consumer state property.
+ * @param idx Provider state fragment index.
+ */
+#define Z_PINCTRL_PROVIDER_NODE_COUNT(node_id, prop, idx)			       \
+	DT_NODE_HAS_PROP(DT_PHANDLE_BY_IDX(node_id, prop, idx), pinctrls)
+
+/**
+ * @brief Assert a state is either fully legacy or fully provider-backed.
+ *
+ * @param state_idx State index.
+ * @param node_id Node identifier.
+ */
+#define Z_PINCTRL_VALIDATE_STATE(state_idx, node_id)			       \
+	BUILD_ASSERT((DT_FOREACH_PROP_ELEM_SEP(node_id,			       \
+					       Z_PINCTRL_STATE_PROP(state_idx),     \
+					       Z_PINCTRL_PROVIDER_NODE_COUNT, (+))  \
+		      == 0) ||						       \
+		     (DT_FOREACH_PROP_ELEM_SEP(node_id,			       \
+					       Z_PINCTRL_STATE_PROP(state_idx),     \
+					       Z_PINCTRL_PROVIDER_NODE_COUNT, (+))  \
+		      == DT_NUM_PINCTRLS_BY_IDX(node_id, state_idx)),	       \
+		     "mixed legacy and provider-backed pinctrl fragments are "    \
+		     "not supported")
+
+/**
  * @brief Helper macro to define pins for a given pin control state.
+ *
+ * @param state_idx State index.
+ * @param node_id Node identifier.
+ */
+#define Z_PINCTRL_STATE_SOC_PINS_DEFINE(state_idx, node_id)		       \
+	static const pinctrl_soc_pin_t					       \
+	Z_PINCTRL_STATE_PINS_NAME(state_idx, node_id)[] =			       \
+	Z_PINCTRL_STATE_PINS_INIT(node_id, pinctrl_ ## state_idx)
+
+/**
+ * @brief Initialize a provider-backed state item.
+ *
+ * @param node_id Provider-backed state node.
+ * @param prop Provider-backed state property.
+ * @param idx Property entry index.
+ */
+#define Z_PINCTRL_STATE_ITEM_INIT(node_id, prop, idx)			       \
+	{								       \
+		.dev = DEVICE_DT_GET(DT_PHANDLE_BY_IDX(node_id, prop, idx)),    \
+		.pin = DT_PHA_BY_IDX(node_id, prop, idx, pin),		       \
+		.value = DT_PHA_BY_IDX(node_id, prop, idx, value),	       \
+	}
+
+/** @brief Invoke a property's generated foreach helper directly. */
+#define Z_PINCTRL_FOREACH_NODE_PROP_ELEM_SEP(node_id, prop, fn, sep)	       \
+	DT_CAT4(node_id, _P_, prop, _FOREACH_PROP_ELEM_SEP)(fn, sep)
+
+/** @brief Expand all provider-backed items from a provider-backed state node. */
+#define Z_PINCTRL_STATE_ITEMS_FROM_NODE(state_node)			       \
+	Z_PINCTRL_FOREACH_NODE_PROP_ELEM_SEP(state_node, pinctrls,	       \
+					     Z_PINCTRL_STATE_ITEM_INIT, (,))
+
+/** @brief Count provider-backed items in a provider-backed state node. */
+#define Z_PINCTRL_STATE_ITEM_COUNT_FROM_NODE(state_node) DT_PROP_LEN(state_node, pinctrls)
+
+/**
+ * @brief Expand all provider-backed items from one state fragment.
+ *
+ * @param node_id Consumer node identifier.
+ * @param prop Consumer state property.
+ * @param idx Fragment index.
+ */
+#define Z_PINCTRL_STATE_NODE_ITEMS(node_id, prop, idx)			       \
+	Z_PINCTRL_STATE_ITEMS_FROM_NODE(DT_PHANDLE_BY_IDX(node_id, prop, idx))
+
+/**
+ * @brief Count provider-backed state items in one state fragment.
+ *
+ * @param node_id Consumer node identifier.
+ * @param prop Consumer state property.
+ * @param idx Fragment index.
+ */
+#define Z_PINCTRL_STATE_NODE_ITEM_COUNT(node_id, prop, idx)		       \
+	Z_PINCTRL_STATE_ITEM_COUNT_FROM_NODE(DT_PHANDLE_BY_IDX(node_id, prop, idx))
+
+/**
+ * @brief Define provider-backed items for a given pin control state.
+ *
+ * @param state_idx State index.
+ * @param node_id Node identifier.
+ */
+#define Z_PINCTRL_STATE_ITEMS_DEFINE(state_idx, node_id)		       \
+	static const struct pinctrl_state_item				       \
+	Z_PINCTRL_STATE_ITEMS_NAME(state_idx, node_id)[] = {		       \
+		DT_FOREACH_PROP_ELEM_SEP(node_id, Z_PINCTRL_STATE_PROP(state_idx),\
+					 Z_PINCTRL_STATE_NODE_ITEMS, (,))     \
+	}
+
+/**
+ * @brief Helper macro to define pins/items for a given pin control state.
  *
  * @param state_idx State index.
  * @param node_id Node identifier.
  */
 #define Z_PINCTRL_STATE_PINS_DEFINE(state_idx, node_id)			       \
 	COND_CODE_1(Z_PINCTRL_SKIP_STATE(state_idx, node_id), (),	       \
-	(static const pinctrl_soc_pin_t					       \
-	Z_PINCTRL_STATE_PINS_NAME(state_idx, node_id)[] =		       \
-	Z_PINCTRL_STATE_PINS_INIT(node_id, pinctrl_ ## state_idx)))
+	(Z_PINCTRL_VALIDATE_STATE(state_idx, node_id);			       \
+	 COND_CODE_1(Z_PINCTRL_STATE_HAS_PROVIDER(state_idx, node_id),	       \
+		     (Z_PINCTRL_STATE_ITEMS_DEFINE(state_idx, node_id);),       \
+		     (Z_PINCTRL_STATE_SOC_PINS_DEFINE(state_idx, node_id);))))
 
 /**
  * @brief Helper macro to initialize a pin control state.
@@ -155,14 +318,43 @@ struct pinctrl_dev_config {
  * @param state_idx State index.
  * @param node_id Node identifier.
  */
-#define Z_PINCTRL_STATE_INIT(state_idx, node_id)			       \
-	COND_CODE_1(Z_PINCTRL_SKIP_STATE(state_idx, node_id), (),	       \
-	({								       \
+#define Z_PINCTRL_STATE_SOC_INIT(state_idx, node_id)			       \
+	{								       \
 		.pins = Z_PINCTRL_STATE_PINS_NAME(state_idx, node_id),	       \
 		.pin_cnt = ARRAY_SIZE(Z_PINCTRL_STATE_PINS_NAME(state_idx,     \
 								node_id)),      \
-		.id = Z_PINCTRL_STATE_ID(state_idx, node_id)		       \
-	}))
+		.id = Z_PINCTRL_STATE_ID(state_idx, node_id),		       \
+		.type = PINCTRL_STATE_TYPE_SOC,			       \
+	}
+
+/**
+ * @brief Helper macro to initialize a provider-backed pin control state.
+ *
+ * @param state_idx State index.
+ * @param node_id Node identifier.
+ */
+#define Z_PINCTRL_STATE_PROVIDER_INIT(state_idx, node_id)		       \
+	{								       \
+		.items = Z_PINCTRL_STATE_ITEMS_NAME(state_idx, node_id),	       \
+		.pin_cnt = DT_FOREACH_PROP_ELEM_SEP(node_id,		       \
+						    Z_PINCTRL_STATE_PROP(state_idx),\
+						    Z_PINCTRL_STATE_NODE_ITEM_COUNT,\
+						    (+)),		       \
+		.id = Z_PINCTRL_STATE_ID(state_idx, node_id),		       \
+		.type = PINCTRL_STATE_TYPE_PROVIDER,			       \
+	}
+
+/**
+ * @brief Utility macro to initialize a pin control state.
+ *
+ * @param state_idx State index.
+ * @param node_id Node identifier.
+ */
+#define Z_PINCTRL_STATE_INIT(state_idx, node_id)			       \
+	COND_CODE_1(Z_PINCTRL_SKIP_STATE(state_idx, node_id), (),	       \
+	(COND_CODE_1(Z_PINCTRL_STATE_HAS_PROVIDER(state_idx, node_id),	       \
+		     (Z_PINCTRL_STATE_PROVIDER_INIT(state_idx, node_id)),       \
+		     (Z_PINCTRL_STATE_SOC_INIT(state_idx, node_id)))))
 
 /**
  * @brief Define all the states for the given node identifier.
@@ -307,6 +499,23 @@ int pinctrl_lookup_state(const struct pinctrl_dev_config *config, uint8_t id,
 int pinctrl_configure_pins(const pinctrl_soc_pin_t *pins, uint8_t pin_cnt,
 			   uintptr_t reg);
 
+static inline int pinctrl_configure_state_item(
+	const struct pinctrl_state_item *item, uintptr_t reg)
+{
+	const struct pinctrl_driver_api *api =
+		(const struct pinctrl_driver_api *)item->dev->api;
+
+	if (!device_is_ready(item->dev)) {
+		return -ENODEV;
+	}
+
+	if ((api == NULL) || (api->configure_pin == NULL)) {
+		return -ENOSYS;
+	}
+
+	return api->configure_pin(item->dev, item->pin, item->value, reg);
+}
+
 /**
  * @brief Apply a state directly from the provided state configuration.
  *
@@ -320,6 +529,7 @@ static inline int pinctrl_apply_state_direct(
 	const struct pinctrl_dev_config *config,
 	const struct pinctrl_state *state)
 {
+	int ret;
 	uintptr_t reg;
 
 #ifdef CONFIG_PINCTRL_STORE_REG
@@ -328,6 +538,17 @@ static inline int pinctrl_apply_state_direct(
 	ARG_UNUSED(config);
 	reg = PINCTRL_REG_NONE;
 #endif
+
+	if (state->type == PINCTRL_STATE_TYPE_PROVIDER) {
+		for (uint8_t i = 0U; i < state->pin_cnt; i++) {
+			ret = pinctrl_configure_state_item(&state->items[i], reg);
+			if (ret < 0) {
+				return ret;
+			}
+		}
+
+		return 0;
+	}
 
 	return pinctrl_configure_pins(state->pins, state->pin_cnt, reg);
 }

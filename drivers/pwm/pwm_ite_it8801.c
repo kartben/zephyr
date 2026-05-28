@@ -9,6 +9,7 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/mfd/mfd_ite_it8801.h>
+#include <zephyr/drivers/pinctrl.h>
 #include <zephyr/drivers/pwm.h>
 
 #include <zephyr/logging/log.h>
@@ -23,23 +24,13 @@ const static struct it8801_pwm_map it8801_pwm_gpio_map[] = {
 	[9] = {.pushpull_en = BIT(6)},
 };
 
-struct it8801_mfd_pwm_altctrl_cfg {
-	/* GPIO control device structure */
-	const struct device *gpiocr;
-	/* GPIO control pin */
-	uint8_t pin;
-	/* GPIO function select */
-	uint8_t alt_func;
-};
-
 struct pwm_it8801_config {
 	/* IT8801 controller dev */
 	const struct device *mfd;
+	/* Pin control configuration */
+	const struct pinctrl_dev_config *pin_cfg;
 	/* I2C device for the MFD parent */
 	const struct i2c_dt_spec i2c_dev;
-	/* PWM alternate configuration */
-	const struct it8801_mfd_pwm_altctrl_cfg *altctrl;
-	int mfdctrl_len;
 	int channel;
 	/* PWM mode control register */
 	uint8_t reg_mcr;
@@ -131,19 +122,14 @@ static int pwm_it8801_init(const struct device *dev)
 		return -ENODEV;
 	}
 
+	ret = pinctrl_apply_state(config->pin_cfg, PINCTRL_STATE_DEFAULT);
+	if ((ret != 0) && (ret != -ENOENT)) {
+		LOG_ERR("Failed to apply pinctrl state (ret %d)", ret);
+		return ret;
+	}
+
 	/* PWM channel clock source gating before configuring */
 	pwm_enable(dev, 0);
-
-	for (int i = 0; i < config->mfdctrl_len; i++) {
-		/* Switching the pin to PWM alternate function */
-		ret = mfd_it8801_configure_pins(&config->i2c_dev, config->altctrl[i].gpiocr,
-						config->altctrl[i].pin,
-						config->altctrl[i].alt_func);
-		if (ret != 0) {
-			LOG_ERR("Failed to configure pins (ret %d)", ret);
-			return ret;
-		}
-	}
 
 	return 0;
 }
@@ -154,14 +140,11 @@ static DEVICE_API(pwm, pwm_it8801_api) = {
 };
 
 #define PWM_IT8801_INIT(inst)                                                                      \
-	static const struct it8801_mfd_pwm_altctrl_cfg                                             \
-		it8801_pwm_altctrl##inst[IT8801_DT_INST_MFDCTRL_LEN(inst)] =                       \
-			IT8801_DT_MFD_ITEMS_LIST(inst);                                            \
+	PINCTRL_DT_INST_DEFINE(inst);                                                              \
 	static const struct pwm_it8801_config pwm_it8801_cfg_##inst = {                            \
 		.mfd = DEVICE_DT_GET(DT_INST_PARENT(inst)),                                        \
+		.pin_cfg = PINCTRL_DT_INST_DEV_CONFIG_GET(inst),                                   \
 		.i2c_dev = I2C_DT_SPEC_GET(DT_INST_PARENT(inst)),                                  \
-		.altctrl = it8801_pwm_altctrl##inst,                                               \
-		.mfdctrl_len = IT8801_DT_INST_MFDCTRL_LEN(inst),                                   \
 		.channel = DT_INST_PROP(inst, channel),                                            \
 		.reg_mcr = DT_INST_REG_ADDR_BY_IDX(inst, 0),                                       \
 		.reg_dcr = DT_INST_REG_ADDR_BY_IDX(inst, 1),                                       \

@@ -9,6 +9,8 @@
 &it8801_mfd {
 	#address-cells = <1>;
 	#size-cells = <1>;
+	pinctrl-provider;
+	#pinctrl-cells = <2>;
 
 	/* GPIO */
 	ioex_it8801_port0: it8801_port@0 {
@@ -70,7 +72,8 @@
 		       0x64 1   /* PWMDCR */
 		       0x66 1   /* PWMPRSL */
 		       0x67 1>; /* PWMPRSM */
-		mfdctrl = <&pwm1_gp12_default>;
+		pinctrl-0 = <&pwm1_gp12_default>;
+		pinctrl-names = "default";
 		channel = <1>;
 		#pwm-cells = <3>;
 	};
@@ -82,7 +85,8 @@
 		       0x6c 1   /* PWMDCR */
 		       0x6e 1   /* PWMPRSL */
 		       0x6f 1>; /* PWMPRSM */
-		mfdctrl = <&pwm2_gp13_default>;
+		pinctrl-0 = <&pwm2_gp13_default>;
+		pinctrl-names = "default";
 		channel = <2>;
 		#pwm-cells = <3>;
 	};
@@ -94,7 +98,8 @@
 		       0x74 1   /* PWMDCR */
 		       0x76 1   /* PWMPRSL */
 		       0x77 1>; /* PWMPRSM */
-		mfdctrl = <&pwm3_gp14_default>;
+		pinctrl-0 = <&pwm3_gp14_default>;
+		pinctrl-names = "default";
 		channel = <3>;
 		#pwm-cells = <3>;
 	};
@@ -106,7 +111,8 @@
 		       0x7c 1   /* PWMDCR */
 		       0x7e 1   /* PWMPRSL */
 		       0x7f 1>; /* PWMPRSM */
-		mfdctrl = <&pwm4_gp15_default>;
+		pinctrl-0 = <&pwm4_gp15_default>;
+		pinctrl-names = "default";
 		channel = <4>;
 		#pwm-cells = <3>;
 	};
@@ -118,7 +124,8 @@
 		       0x94 1   /* PWMDCR */
 		       0x96 1   /* PWMPRSL */
 		       0x97 1>; /* PWMPRSM */
-		mfdctrl = <&pwm7_gp20_default>;
+		pinctrl-0 = <&pwm7_gp20_default>;
+		pinctrl-names = "default";
 		channel = <7>;
 		#pwm-cells = <3>;
 	};
@@ -130,7 +137,8 @@
 		       0x9c 1   /* PWMDCR */
 		       0x9e 1   /* PWMPRSL */
 		       0x9f 1>; /* PWMPRSM */
-		mfdctrl = <&pwm8_gp23_default>;
+		pinctrl-0 = <&pwm8_gp23_default>;
+		pinctrl-names = "default";
 		channel = <8>;
 		#pwm-cells = <3>;
 	};
@@ -142,7 +150,8 @@
 		       0xa4 1   /* PWMDCR */
 		       0xa6 1   /* PWMPRSL */
 		       0xa7 1>; /* PWMPRSM */
-		mfdctrl = <&pwm9_gp22_default>;
+		pinctrl-0 = <&pwm9_gp22_default>;
+		pinctrl-names = "default";
 		channel = <9>;
 		#pwm-cells = <3>;
 	};

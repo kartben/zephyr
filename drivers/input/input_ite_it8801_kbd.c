@@ -9,30 +9,21 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/mfd/mfd_ite_it8801.h>
+#include <zephyr/drivers/pinctrl.h>
 #include <zephyr/input/input.h>
 #include <zephyr/input/input_kbd_matrix.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(input_ite_it8801_kbd, CONFIG_INPUT_LOG_LEVEL);
 
-struct it8801_mfd_input_altctrl_cfg {
-	/* GPIO control device structure */
-	const struct device *gpiocr;
-	/* GPIO control pin */
-	uint8_t pin;
-	/* GPIO function select */
-	uint8_t alt_func;
-};
-
 struct kbd_it8801_config {
 	struct input_kbd_matrix_common_config common;
 	/* IT8801 controller dev */
 	const struct device *mfd;
-	/* KSO alternate configuration */
-	const struct it8801_mfd_input_altctrl_cfg *altctrl;
+	/* Pin control configuration */
+	const struct pinctrl_dev_config *pin_cfg;
 	/* I2C device for the MFD parent */
 	const struct i2c_dt_spec i2c_dev;
-	int mfdctrl_len;
 	uint8_t kso_mapping[DT_INST_PROP(0, col_size)];
 	/* Keyboard scan out mode control register */
 	uint8_t reg_ksomcr;
@@ -152,15 +143,10 @@ static int kbd_it8801_init(const struct device *dev)
 		return -ENODEV;
 	}
 
-	for (int i = 0; i < config->mfdctrl_len; i++) {
-		/* Switching the pin to KSO alternate function (KSO[21:18]) */
-		status = mfd_it8801_configure_pins(&config->i2c_dev, config->altctrl[i].gpiocr,
-						   config->altctrl[i].pin,
-						   config->altctrl[i].alt_func);
-		if (status != 0) {
-			LOG_ERR("Failed to configure KSO[21:18] pins");
-			return status;
-		}
+	status = pinctrl_apply_state(config->pin_cfg, PINCTRL_STATE_DEFAULT);
+	if ((status != 0) && (status != -ENOENT)) {
+		LOG_ERR("Failed to apply pinctrl state (ret %d)", status);
+		return status;
 	}
 
 	/* Disable wakeup and interrupt of KSI pins before configuring */
@@ -202,16 +188,13 @@ static const struct input_kbd_matrix_api kbd_it8801_api = {
 #define INPUT_IT8801_INIT(inst)                                                                    \
 	INPUT_KBD_MATRIX_DT_INST_DEFINE(inst);                                                     \
 	PM_DEVICE_DT_INST_DEFINE(inst, input_kbd_matrix_pm_action);                                \
-	static const struct it8801_mfd_input_altctrl_cfg                                           \
-		it8801_input_altctrl##inst[IT8801_DT_INST_MFDCTRL_LEN(inst)] =                     \
-			IT8801_DT_MFD_ITEMS_LIST(inst);                                            \
+	PINCTRL_DT_INST_DEFINE(inst);                                                              \
 	static struct kbd_it8801_data kbd_it8801_data_##inst;                                      \
 	static const struct kbd_it8801_config kbd_it8801_cfg_##inst = {                            \
 		.common = INPUT_KBD_MATRIX_DT_INST_COMMON_CONFIG_INIT(inst, &kbd_it8801_api),      \
 		.mfd = DEVICE_DT_GET(DT_INST_PARENT(inst)),                                        \
+		.pin_cfg = PINCTRL_DT_INST_DEV_CONFIG_GET(inst),                                   \
 		.i2c_dev = I2C_DT_SPEC_GET(DT_INST_PARENT(inst)),                                  \
-		.altctrl = it8801_input_altctrl##inst,                                             \
-		.mfdctrl_len = IT8801_DT_INST_MFDCTRL_LEN(inst),                                   \
 		.kso_mapping = DT_INST_PROP(inst, kso_mapping),                                    \
 		.reg_ksomcr = DT_INST_REG_ADDR_BY_IDX(inst, 0),                                    \
 		.reg_ksidr = DT_INST_REG_ADDR_BY_IDX(inst, 1),                                     \

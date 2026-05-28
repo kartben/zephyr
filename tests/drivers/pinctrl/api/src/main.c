@@ -5,6 +5,7 @@
  */
 
 #include "test_device.h"
+#include "test_provider.h"
 
 #include <zephyr/drivers/pinctrl.h>
 #include <zephyr/fff.h>
@@ -23,6 +24,14 @@ static struct pinctrl_dev_config *pcfg0 = PINCTRL_DT_DEV_CONFIG_GET(TEST_DEVICE0
 #define TEST_DEVICE1 DT_NODELABEL(test_device1)
 PINCTRL_DT_DEV_CONFIG_DECLARE(TEST_DEVICE1);
 static struct pinctrl_dev_config *pcfg1 = PINCTRL_DT_DEV_CONFIG_GET(TEST_DEVICE1);
+
+/* test device 2 */
+#define TEST_DEVICE2 DT_NODELABEL(test_device2)
+PINCTRL_DT_DEV_CONFIG_DECLARE(TEST_DEVICE2);
+static struct pinctrl_dev_config *pcfg2 = PINCTRL_DT_DEV_CONFIG_GET(TEST_DEVICE2);
+
+#define TEST_PROVIDER0 DEVICE_DT_GET(DT_NODELABEL(test_pinctrl_provider0))
+#define TEST_PROVIDER1 DEVICE_DT_GET(DT_NODELABEL(test_pinctrl_provider1))
 
 /**
  * @brief Test if configuration for device 0 has been stored as expected.
@@ -89,6 +98,38 @@ ZTEST(pinctrl_api, test_config_dev1)
 }
 
 /**
+ * @brief Test if provider-backed configuration has been stored as expected.
+ */
+ZTEST(pinctrl_api, test_config_dev2)
+{
+	const struct pinctrl_state *scfg;
+
+	zassert_equal(pcfg2->state_cnt, 2);
+#ifdef CONFIG_PINCTRL_STORE_REG
+	zassert_equal(pcfg2->reg, 2);
+#endif
+
+	scfg = &pcfg2->states[0];
+	zassert_equal(scfg->type, PINCTRL_STATE_TYPE_PROVIDER);
+	zassert_equal(scfg->id, PINCTRL_STATE_DEFAULT);
+	zassert_equal(scfg->pin_cnt, 2);
+	zassert_equal_ptr(scfg->items[0].dev, TEST_PROVIDER0);
+	zassert_equal(scfg->items[0].pin, 5);
+	zassert_equal(scfg->items[0].value, 50);
+	zassert_equal_ptr(scfg->items[1].dev, TEST_PROVIDER1);
+	zassert_equal(scfg->items[1].pin, 7);
+	zassert_equal(scfg->items[1].value, 70);
+
+	scfg = &pcfg2->states[1];
+	zassert_equal(scfg->type, PINCTRL_STATE_TYPE_PROVIDER);
+	zassert_equal(scfg->id, PINCTRL_STATE_MYSTATE);
+	zassert_equal(scfg->pin_cnt, 1);
+	zassert_equal_ptr(scfg->items[0].dev, TEST_PROVIDER0);
+	zassert_equal(scfg->items[0].pin, 9);
+	zassert_equal(scfg->items[0].value, 90);
+}
+
+/**
  * @brief Test that pinctrl_lookup_state() works as expected
  */
 ZTEST(pinctrl_api, test_lookup_state)
@@ -118,6 +159,31 @@ ZTEST(pinctrl_api, test_apply_state)
 #else
 	zassert_equal(PINCTRL_REG_NONE, pinctrl_configure_pins_fake.arg2_val);
 #endif
+}
+
+/**
+ * @brief Test that provider-backed states are applied through provider devices.
+ */
+ZTEST(pinctrl_api, test_apply_provider_state)
+{
+	const struct test_pinctrl_provider_data *pdata0;
+	const struct test_pinctrl_provider_data *pdata1;
+
+	test_pinctrl_provider_reset(TEST_PROVIDER0);
+	test_pinctrl_provider_reset(TEST_PROVIDER1);
+
+	zassert_ok(pinctrl_apply_state(pcfg2, PINCTRL_STATE_DEFAULT));
+	zassert_equal(0, pinctrl_configure_pins_fake.call_count);
+
+	pdata0 = test_pinctrl_provider_data_get(TEST_PROVIDER0);
+	zassert_equal(pdata0->call_count, 1);
+	zassert_equal(pdata0->last_pin, 5);
+	zassert_equal(pdata0->last_value, 50);
+
+	pdata1 = test_pinctrl_provider_data_get(TEST_PROVIDER1);
+	zassert_equal(pdata1->call_count, 1);
+	zassert_equal(pdata1->last_pin, 7);
+	zassert_equal(pdata1->last_value, 70);
 }
 
 /** Test device 0 alternative pins for default state */

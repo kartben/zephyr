@@ -188,6 +188,32 @@ or pin configurations, though). The user can then use
 device driver will apply the pin configurations stored in the updated states
 when it applies a state.
 
+Provider-backed pin control
+***************************
+
+Some devices expose pins or muxes that are controlled by another device driver
+instead of the SoC-wide pin controller. A common example is a multi-function
+device (MFD) which repurposes external pins between GPIO, PWM, keyboard scan,
+ADC, and similar functions.
+
+In this case the consumer model stays the same: client devices still use
+``pinctrl-0``, ``pinctrl-1``, and ``pinctrl-names``. The difference is that the
+referenced state nodes contain provider-backed ``pinctrls`` specifiers instead
+of SoC-specific pin configuration groups. Each specifier targets a device node
+marked with ``pinctrl-provider`` and uses the standard ``pin`` and ``value``
+cells.
+
+This allows child functions of an instantiated device to use normal pinctrl
+states without introducing device-specific mux properties in each child binding.
+The provider device owns mux selection and other static pin routing decisions,
+while the child function driver still owns its runtime functional programming.
+
+.. note::
+
+   A single consumer state must currently be entirely legacy SoC pinctrl or
+   entirely provider-backed pinctrl. Mixing both kinds of fragments in one
+   state is not supported.
+
 Devicetree representation
 *************************
 
@@ -252,6 +278,41 @@ particular state are enclosed in a single Devicetree node.
      * This file is optional, but recommended.
      */
     ...
+
+Provider-backed state nodes use a different representation because their pin
+configuration is applied by a device driver instead of the SoC pinctrl backend:
+
+.. code-block:: devicetree
+
+    &mfd0 {
+        pinctrl-provider;
+        #pinctrl-cells = <2>;
+    };
+
+    mfd0_pinctrl: mfd0-pinctrl {
+        compatible = "vendor,mfd-pinctrl-map";
+
+        pwm0_default: pwm0_default {
+            pinctrls = <&mfd0 10 1>;
+        };
+
+        kbd0_default: kbd0_default {
+            pinctrls = <&mfd0 1 1>, <&mfd0 19 1>;
+        };
+    };
+
+    &pwm0 {
+        pinctrl-0 = <&pwm0_default>;
+        pinctrl-names = "default";
+    };
+
+    &kbd0 {
+        pinctrl-0 = <&kbd0_default>;
+        pinctrl-names = "default";
+    };
+
+In the example above, ``mfd0`` is the pinctrl provider and the ``value`` cell
+selects the provider-defined mux/configuration for each ``pin``.
     #define PERIPH0_SIGA_PX0 VNDSOC_PIN(X, 0, MUX0)
     #define PERIPH0_SIGB_PY7 VNDSOC_PIN(Y, 7, MUX4)
     #define PERIPH0_SIGC_PZ1 VNDSOC_PIN(Z, 1, MUX2)

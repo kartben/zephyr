@@ -11,11 +11,6 @@ properties:
   reg:
     required: true
 
-  mfdctrl:
-    type: phandles
-    description: |
-      Switching the pin to KSO alternate function.
-
   kso-mapping:
     type: array
 

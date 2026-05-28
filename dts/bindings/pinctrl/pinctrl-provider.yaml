@@ -1,0 +1,20 @@
+# Copyright (c) 2026
+# SPDX-License-Identifier: Apache-2.0
+
+description: Common fields for pinctrl provider devices
+
+properties:
+  "pinctrl-provider":
+    type: boolean
+    required: true
+    description: |
+      This node can be referenced by provider-backed pinctrl state nodes
+      through ``pinctrls`` specifiers.
+
+  "#pinctrl-cells":
+    type: int
+    required: true
+    const: 2
+    description: |
+      Number of cells expected in a provider-backed pinctrl specifier.
+      The standard cell names are ``pin`` and ``value``.

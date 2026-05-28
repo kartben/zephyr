@@ -8,6 +8,7 @@ compatible: "ite,it8801-mfd-map"
 child-binding:
   description: Child node to present the mapping of IT8801 altternate function
   properties:
-    altctrls:
+    pinctrls:
       type: phandle-array
       required: true
+      specifier-space: pinctrl

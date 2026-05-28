@@ -1,0 +1,15 @@
+# Copyright (c) 2026
+# SPDX-License-Identifier: Apache-2.0
+
+description: Test pinctrl provider-backed state map
+
+compatible: "vnd,pinctrl-provider-map"
+
+include: base.yaml
+
+child-binding:
+  properties:
+    pinctrls:
+      type: phandle-array
+      required: true
+      specifier-space: pinctrl

@@ -11,12 +11,6 @@ properties:
   reg:
     required: true
 
-  mfdctrl:
-    type: phandle
-    required: true
-    description: |
-      Switching the pin to PWM alternate function.
-
   channel:
     type: int
     required: true

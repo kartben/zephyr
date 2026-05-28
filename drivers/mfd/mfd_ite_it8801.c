@@ -6,12 +6,16 @@
 
 #define DT_DRV_COMPAT ite_it8801_mfd
 
+#include <zephyr/dt-bindings/mfd/mfd_it8801_altctrl.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/mfd/mfd_ite_it8801.h>
+#include <zephyr/drivers/pinctrl.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(mfd_ite_it8801, CONFIG_MFD_LOG_LEVEL);
+
+static const uint8_t it8801_gpiocr_bases[] = { 0x0a, 0x12, 0x1a };
 
 struct mfd_it8801_config {
 	const struct i2c_dt_spec i2c_dev;
@@ -25,6 +29,50 @@ struct mfd_it8801_data {
 	struct gpio_callback gpio_cb;
 	sys_slist_t callback_list;
 };
+
+static int mfd_it8801_configure_pin(const struct device *dev, uint32_t pin, uint32_t value,
+				    uintptr_t reg)
+{
+	const struct mfd_it8801_config *config = dev->config;
+	uint8_t bank = pin / 8U;
+	uint8_t bank_pin = pin % 8U;
+	uint8_t reg_gpiocr;
+	uint8_t alt_val;
+	int ret;
+
+	ARG_UNUSED(reg);
+
+	if ((bank >= ARRAY_SIZE(it8801_gpiocr_bases)) ||
+	    ((bank == 1U) && (bank_pin >= 6U)) ||
+	    ((bank == 2U) && (bank_pin >= 4U))) {
+		return -EINVAL;
+	}
+
+	switch (value) {
+	case IT8801_ALT_FUNC_1:
+	case IT8801_ALT_DEFAULT:
+		alt_val = IT8801_GPIOAFS_FUN1;
+		break;
+	case IT8801_ALT_FUNC_2:
+		alt_val = IT8801_GPIOAFS_FUN2;
+		break;
+	case IT8801_ALT_FUNC_3:
+		alt_val = IT8801_GPIOAFS_FUN3;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	reg_gpiocr = it8801_gpiocr_bases[bank] + bank_pin;
+
+	ret = i2c_reg_update_byte_dt(&config->i2c_dev, reg_gpiocr, GENMASK(7, 6), alt_val << 6);
+	if (ret != 0) {
+		LOG_ERR("Failed to update gpiocr (ret %d)", ret);
+		return ret;
+	}
+
+	return 0;
+}
 
 static int it8801_check_vendor_id(const struct device *dev)
 {
@@ -122,6 +170,10 @@ static int mfd_it8801_init(const struct device *dev)
 	return 0;
 }
 
+static const struct pinctrl_driver_api mfd_it8801_pinctrl_api = {
+	.configure_pin = mfd_it8801_configure_pin,
+};
+
 #define MFD_IT8801_DEFINE(inst)                                                                    \
 	static struct mfd_it8801_data it8801_data_##inst;                                          \
 	static const struct mfd_it8801_config it8801_cfg_##inst = {                                \
@@ -129,6 +181,7 @@ static int mfd_it8801_init(const struct device *dev)
 		.irq_gpios = GPIO_DT_SPEC_INST_GET_OR(inst, irq_gpios, {0}),                       \
 	};                                                                                         \
 	DEVICE_DT_INST_DEFINE(inst, mfd_it8801_init, NULL, &it8801_data_##inst,                    \
-			      &it8801_cfg_##inst, POST_KERNEL, CONFIG_MFD_INIT_PRIORITY, NULL);
+			      &it8801_cfg_##inst, POST_KERNEL, CONFIG_MFD_INIT_PRIORITY,         \
+			      &mfd_it8801_pinctrl_api);
 
 DT_INST_FOREACH_STATUS_OKAY(MFD_IT8801_DEFINE)
