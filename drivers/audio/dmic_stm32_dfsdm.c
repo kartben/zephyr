@@ -673,6 +673,27 @@ static int dmic_stm32_dfsdm_configure(const struct device *dev, struct dmic_cfg 
 		return ret;
 	}
 
+	/*  before applying hardware limits */
+	for (uint8_t chan = 0; chan < channel->req_num_chan; chan += 2) {
+		enum pdm_lr lr_0, lr_1;
+		uint8_t hw_chan_0, hw_chan_1;
+
+		dmic_parse_channel_map(channel->req_chan_map_lo, channel->req_chan_map_hi, chan,
+				       &hw_chan_0, &lr_0);
+		if ((chan + 1) < channel->req_num_chan) {
+			dmic_parse_channel_map(channel->req_chan_map_lo, channel->req_chan_map_hi,
+					       chan + 1, &hw_chan_1, &lr_1);
+			if ((lr_0 == lr_1) || (hw_chan_0 != hw_chan_1)) {
+				return -EINVAL;
+			}
+		}
+	}
+
+	/* Regular mode supports one DFSDM channel per filter */
+	if (channel->req_num_chan > 1) {
+		return -ENOTSUP;
+	}
+
 	channel->act_num_chan = 0;
 	data->chan_map = channel->req_chan_map_lo;
 
