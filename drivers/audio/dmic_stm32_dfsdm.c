@@ -73,6 +73,7 @@ struct dmic_stm32_dfsdm_filter_cfg {
 	void (*irq_config_func)(const struct device *dev);
 	const struct pinctrl_dev_config *pcfg;
 	const struct device *parent;
+	uint8_t hw_channel; /* DFSDM channel (DT child reg), not PDM map index */
 };
 
 struct dmic_stm32_dfsdm_cfg {
@@ -446,6 +447,8 @@ static int dmic_stm32_dfsdm_setup_channel(const struct device *dev, uint32_t div
 	DFSDM_Filter_HandleTypeDef *hfilter = &data->hfilter;
 	uint8_t fast_mode = 0;
 
+	ARG_UNUSED(chan);
+
 	if (hfilter->Init.RegularParam.FastMode == ENABLE) {
 		fast_mode = 1;
 	}
@@ -536,7 +539,8 @@ static int dmic_stm32_dfsdm_configure(const struct device *dev, struct dmic_cfg 
 	struct pdm_chan_cfg *channel = &cfg->channel;
 	uint32_t bitclk_rate, oversamp;
 	uint32_t max, min = 1;
-	uint8_t hw_chan = 0;
+	uint8_t hw_chan = drv_cfg->hw_channel;
+	uint8_t pdm_idx;
 	enum pdm_lr lr = 0;
 	int ret = 0;
 
@@ -613,7 +617,8 @@ static int dmic_stm32_dfsdm_configure(const struct device *dev, struct dmic_cfg 
 	channel->act_num_chan = 0;
 	data->chan_map = channel->req_chan_map_lo;
 
-	dmic_parse_channel_map(channel->req_chan_map_lo, 0, 0, &hw_chan, &lr);
+	dmic_parse_channel_map(channel->req_chan_map_lo, 0, 0, &pdm_idx, &lr);
+	ARG_UNUSED(pdm_idx);
 
 	/* DFSDM channel initialization */
 	ret = dmic_stm32_dfsdm_setup_channel(dev, min, hw_chan, lr);
@@ -711,8 +716,8 @@ static int dmic_stm32_dfsdm_pm_action(const struct device *dev,
 }
 #endif /* CONFIG_PM_DEVICE */
 
-#define DMIC_DFSDM_CHAN_REG_ADDR(chan) \
-	(DFSDM_Channel_TypeDef *)(DT_REG_ADDR(DT_GPARENT(chan)) + DT_REG_ADDR(chan) * 0x20)
+#define DMIC_DFSDM_CHAN_REG_ADDR(chan)                                                         \
+	(DFSDM_Channel_TypeDef *)(DT_REG_ADDR(DT_GPARENT(chan)) + DT_PROP(chan, reg) * 0x20)
 
 #define DMIC_DFSDM_CHAN_DEFINE(chan)                                           \
 	{                                                                      \
@@ -741,8 +746,16 @@ static int dmic_stm32_dfsdm_pm_action(const struct device *dev,
 #define DMIC_DFSDM_FLT_REG_ADDR(flt) \
 	(DFSDM_Filter_TypeDef *)(DT_REG_ADDR(DT_PARENT(flt)) + DT_REG_ADDR(flt) * 0x80 + 0x100)
 
-#define DMIC_DFSDM_FILTERS_DEFINE(flt)                                         \
-	PINCTRL_DT_DEFINE(flt);                                                \
+#define DMIC_DFSDM_CHAN_REG(chan) DT_PROP(chan, reg)
+
+#define DMIC_DFSDM_HW_CHANNEL(flt)                                                             \
+	DT_FOREACH_CHILD_STATUS_OKAY_SEP(flt, DMIC_DFSDM_CHAN_REG, ())
+
+#define DMIC_DFSDM_FILTERS_DEFINE(flt)                                                         \
+	BUILD_ASSERT(DT_CHILD_NUM_STATUS_OKAY(flt) == 1,                                       \
+		     "One DFSDM channel child per filter (regular mode)");                     \
+                                                                                               \
+	PINCTRL_DT_DEFINE(flt);                                                                \
                                                                                \
 	K_MSGQ_DEFINE(dmic_stm32_dfsdm_msgq_##flt, sizeof(void *),             \
 		      CONFIG_DMIC_STM32_DFSDM_QUEUE_SIZE, 4);                  \
@@ -763,6 +776,7 @@ static int dmic_stm32_dfsdm_pm_action(const struct device *dev,
 		.irq_config_func = dmic_stm32_dfsdm_irq_cfg_func_##flt,        \
 		.pcfg = PINCTRL_DT_DEV_CONFIG_GET(flt),                        \
 		.parent = DEVICE_DT_GET(DT_PARENT(flt)),                       \
+		.hw_channel = DMIC_DFSDM_HW_CHANNEL(flt),                      \
 	};                                                                     \
                                                                                \
 	static struct dmic_stm32_dfsdm_filter_data                             \
