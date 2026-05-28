@@ -1,0 +1,11 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * MP34DT06JTR (ABX00051 schematic U6) max PDM clock ~3.072 MHz.
+ */
+
+/ {
+	chosen {
+		zephyr,dmic = &dmic_dev;
+	};
+};
