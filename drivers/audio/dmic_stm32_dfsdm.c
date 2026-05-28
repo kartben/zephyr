@@ -50,6 +50,7 @@ struct dmic_stm32_dfsdm_filter_osr {
 	uint16_t iosr;		/* Integrator oversampling */
 	uint16_t fosr;		/* Filter oversampling */
 	uint8_t rshift;		/* Output sample right shift (hardware shift) */
+	uint8_t data_bits;	/* Significant bits of the sample read back from the filter */
 	uint64_t res;		/* Output sample resolution */
 };
 
@@ -67,6 +68,7 @@ struct dmic_stm32_dfsdm_filter_data {
 	uint16_t block_size;
 	uint8_t sincorder;
 	uint8_t pcm_width;
+	uint8_t data_bits;	/* Significant bits of the active filter output */
 };
 
 struct dmic_stm32_dfsdm_filter_cfg {
@@ -121,6 +123,7 @@ void HAL_DFSDM_FilterRegConvCpltCallback(DFSDM_Filter_HandleTypeDef *hdfsdm_filt
 	uint32_t chan;
 	int32_t sample;
 	uint8_t sample_size;
+	int shift;
 	int ret;
 
 	/* REOCF is only cleared on DFSDM_FLTxRDATAR read.
@@ -134,13 +137,28 @@ void HAL_DFSDM_FilterRegConvCpltCallback(DFSDM_Filter_HandleTypeDef *hdfsdm_filt
 
 	sample_size = DIV_ROUND_UP(data->pcm_width, BITS_PER_BYTE);
 
+	/* The filter returns a value with data->data_bits significant bits.
+	 * Rescale it to fill the requested pcm_width so that full-scale audio
+	 * maps to full-scale PCM instead of clipping or being attenuated.
+	 */
+	shift = (int)data->data_bits - (int)data->pcm_width;
+	if (shift > 0) {
+		sample >>= shift;
+	} else if (shift < 0) {
+		sample <<= -shift;
+	}
+
 	/* Write sample into current buffer */
 	if (data->buf_pos + sample_size <= data->block_size) {
-		/* Shift 24-bit DFSDM sample down to 16-bit before storing. */
 		if (sample_size == 2) {
-			sample >>= 8;
+			int16_t pcm16 = (int16_t)CLAMP(sample, INT16_MIN, INT16_MAX);
+
+			memcpy((uint8_t *)data->buffer + data->buf_pos, &pcm16,
+			       sample_size);
+		} else {
+			memcpy((uint8_t *)data->buffer + data->buf_pos, &sample,
+			       sample_size);
 		}
-		memcpy((uint8_t *)data->buffer + data->buf_pos, &sample, sample_size);
 		data->buf_pos += sample_size;
 	}
 
@@ -257,6 +275,13 @@ static int dmic_stm32_dfsdm_compute_osrs(struct dmic_stm32_dfsdm_filter_osr *osr
 				} else {
 					osr->rshift = 1 - shift;
 				}
+
+				/* Significant bits left in the sample once the
+				 * hardware right shift has been applied. This is
+				 * what HAL_DFSDM_FilterGetRegularValue() returns
+				 * and what the PCM conversion must scale from.
+				 */
+				osr->data_bits = bits - osr->rshift;
 			}
 		}
 	}
@@ -446,6 +471,8 @@ static int dmic_stm32_dfsdm_setup_channel(const struct device *dev, uint32_t div
 		fast_mode = 1;
 	}
 
+
+	data->data_bits = data->osr[fast_mode].data_bits;
 	hchannel->Init.RightBitShift = data->osr[fast_mode].rshift;
 	hchannel->Init.OutputClock.Divider = div;
 	hchannel->Init.SerialInterface.SpiClock = DFSDM_CHANNEL_SPI_CLOCK_INTERNAL;
