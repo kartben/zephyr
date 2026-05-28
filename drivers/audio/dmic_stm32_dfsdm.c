@@ -472,6 +472,7 @@ static int dmic_stm32_dfsdm_setup_channel(const struct device *dev, uint32_t div
 		fast_mode = 1;
 	}
 
+	__HAL_DFSDM_CHANNEL_RESET_HANDLE_STATE(hchannel);
 
 	data->data_bits = data->osr[fast_mode].data_bits;
 	hchannel->Init.RightBitShift = data->osr[fast_mode].rshift;
@@ -504,6 +505,8 @@ static int dmic_stm32_dfsdm_setup_filter(const struct device *dev, uint8_t chan)
 	if (hfilter->Init.RegularParam.FastMode == ENABLE) {
 		fast_mode = 1;
 	}
+
+	__HAL_DFSDM_FILTER_RESET_HANDLE_STATE(hfilter);
 
 	hfilter->Init.FilterParam.IntOversampling = data->osr[fast_mode].iosr;
 	hfilter->Init.FilterParam.Oversampling = data->osr[fast_mode].fosr;
@@ -816,7 +819,7 @@ static int dmic_stm32_dfsdm_pm_action(const struct device *dev,
 				.RegularParam = {                              \
 					.DmaMode = DISABLE,                    \
 					.FastMode = ENABLE,                    \
-					.Trigger = DT_PROP(flt, filter0_sync), \
+					.Trigger = DFSDM_FILTER_SW_TRIGGER,    \
 				},                                             \
 			},                                                     \
 		},                                                             \
