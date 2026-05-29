@@ -95,16 +95,22 @@ static void dmic_stm32_dfsdm_isr(const struct device *dev)
 static int32_t dmic_stm32_dfsdm_scale_sample(const struct dmic_stm32_dfsdm_filter_data *data,
 					     int32_t sample)
 {
+	uint64_t full_scale;
 	uint64_t magnitude;
 	uint64_t scaled;
 	int64_t signed_scaled;
 
-	magnitude = (sample < 0) ? (uint64_t)(-(int64_t)sample) : (uint64_t)sample;
-	scaled = DIV_ROUND_CLOSEST_ULL(magnitude * BIT64(data->pcm_width - 1), data->sample_max);
+	if ((data->sample_max == 0U) || (data->pcm_width == 0U) ||
+	    (data->pcm_width > DFSDM_DATA_RES)) {
+		return sample;
+	}
+
+	full_scale = BIT64(data->pcm_width - 1);
+	magnitude = (sample < 0) ? (uint64_t)(-((int64_t)sample)) : (uint64_t)sample;
+	scaled = DIV_ROUND_CLOSEST_ULL(magnitude * full_scale, data->sample_max);
 	signed_scaled = (sample < 0) ? -(int64_t)scaled : (int64_t)scaled;
 
-	return CLAMP(signed_scaled, -(int64_t)BIT64(data->pcm_width - 1),
-		     (int64_t)BIT64(data->pcm_width - 1) - 1);
+	return CLAMP(signed_scaled, -(int64_t)full_scale, (int64_t)full_scale - 1);
 }
 
 void HAL_DFSDM_FilterErrorCallback(DFSDM_Filter_HandleTypeDef *hdfsdm_filter)
@@ -515,7 +521,8 @@ static int dmic_stm32_dfsdm_setup_channel(const struct device *dev, uint32_t div
 
 	data->sample_max = data->osr[fast_mode].res >> data->osr[fast_mode].rshift;
 	if (data->sample_max == 0U) {
-		data->sample_max = 1U;
+		LOG_ERR("Invalid DFSDM sample scaling");
+		return -EINVAL;
 	}
 	hchannel->Init.RightBitShift = data->osr[fast_mode].rshift;
 	hchannel->Init.OutputClock.Divider = div;
