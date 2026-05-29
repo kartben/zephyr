@@ -68,7 +68,7 @@ struct dmic_stm32_dfsdm_filter_data {
 	uint16_t block_size;
 	uint8_t sincorder;
 	uint8_t pcm_width;
-	uint8_t data_bits;	/* Significant bits of the active filter output */
+	uint32_t sample_max;	/* Peak magnitude of the active filter output */
 };
 
 struct dmic_stm32_dfsdm_filter_cfg {
@@ -90,6 +90,21 @@ static void dmic_stm32_dfsdm_isr(const struct device *dev)
 	struct dmic_stm32_dfsdm_filter_data *data = dev->data;
 
 	HAL_DFSDM_IRQHandler(&data->hfilter);
+}
+
+static int32_t dmic_stm32_dfsdm_scale_sample(const struct dmic_stm32_dfsdm_filter_data *data,
+					     int32_t sample)
+{
+	uint64_t magnitude;
+	uint64_t scaled;
+	int64_t signed_scaled;
+
+	magnitude = (sample < 0) ? (uint64_t)(-(int64_t)sample) : (uint64_t)sample;
+	scaled = DIV_ROUND_CLOSEST_ULL(magnitude * BIT64(data->pcm_width - 1), data->sample_max);
+	signed_scaled = (sample < 0) ? -(int64_t)scaled : (int64_t)scaled;
+
+	return CLAMP(signed_scaled, -(int64_t)BIT64(data->pcm_width - 1),
+		     (int64_t)BIT64(data->pcm_width - 1) - 1);
 }
 
 void HAL_DFSDM_FilterErrorCallback(DFSDM_Filter_HandleTypeDef *hdfsdm_filter)
@@ -124,7 +139,6 @@ void HAL_DFSDM_FilterRegConvCpltCallback(DFSDM_Filter_HandleTypeDef *hdfsdm_filt
 	uint32_t chan;
 	int32_t sample;
 	uint8_t sample_size;
-	int shift;
 	int ret;
 
 	/* REOCF is only cleared on DFSDM_FLTxRDATAR read.
@@ -138,16 +152,12 @@ void HAL_DFSDM_FilterRegConvCpltCallback(DFSDM_Filter_HandleTypeDef *hdfsdm_filt
 
 	sample_size = DIV_ROUND_UP(data->pcm_width, BITS_PER_BYTE);
 
-	/* The filter returns a value with data->data_bits significant bits.
-	 * Rescale it to fill the requested pcm_width so that full-scale audio
-	 * maps to full-scale PCM instead of clipping or being attenuated.
+	/* The filter output has already been right-shifted in hardware.
+	 * Normalize it against the actual post-shift full-scale gain so the
+	 * requested PCM width uses the full range even when the filter gain is
+	 * not a power of two.
 	 */
-	shift = (int)data->data_bits - (int)data->pcm_width;
-	if (shift > 0) {
-		sample >>= shift;
-	} else if (shift < 0) {
-		sample <<= -shift;
-	}
+	sample = dmic_stm32_dfsdm_scale_sample(data, sample);
 
 	/* Write sample into current buffer */
 	if (data->buf_pos + sample_size <= data->block_size) {
@@ -503,7 +513,10 @@ static int dmic_stm32_dfsdm_setup_channel(const struct device *dev, uint32_t div
 
 	__HAL_DFSDM_CHANNEL_RESET_HANDLE_STATE(hchannel);
 
-	data->data_bits = data->osr[fast_mode].data_bits;
+	data->sample_max = data->osr[fast_mode].res >> data->osr[fast_mode].rshift;
+	if (data->sample_max == 0U) {
+		data->sample_max = 1U;
+	}
 	hchannel->Init.RightBitShift = data->osr[fast_mode].rshift;
 	hchannel->Init.OutputClock.Divider = div;
 	hchannel->Init.SerialInterface.SpiClock = DFSDM_CHANNEL_SPI_CLOCK_INTERNAL;
