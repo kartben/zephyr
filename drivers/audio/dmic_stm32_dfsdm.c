@@ -50,7 +50,6 @@ struct dmic_stm32_dfsdm_filter_osr {
 	uint16_t iosr;		/* Integrator oversampling */
 	uint16_t fosr;		/* Filter oversampling */
 	uint8_t rshift;		/* Output sample right shift (hardware shift) */
-	uint8_t data_bits;	/* Significant bits of the sample read back from the filter */
 	uint64_t res;		/* Output sample resolution */
 };
 
@@ -285,10 +284,6 @@ static int dmic_stm32_dfsdm_compute_osrs(struct dmic_stm32_dfsdm_filter_osr *osr
 
 				bits = find_msb_set(osr->res);
 
-				if (osr->res > BIT(bits - 1)) {
-					bits++;
-				}
-
 				shift = DFSDM_DATA_RES - bits;
 				/* Compute right shift */
 				if (shift > 0) {
@@ -297,13 +292,6 @@ static int dmic_stm32_dfsdm_compute_osrs(struct dmic_stm32_dfsdm_filter_osr *osr
 				} else {
 					osr->rshift = 1 - shift;
 				}
-
-				/* Significant bits left in the sample once the
-				 * hardware right shift has been applied. This is
-				 * what HAL_DFSDM_FilterGetRegularValue() returns
-				 * and what the PCM conversion must scale from.
-				 */
-				osr->data_bits = bits - osr->rshift;
 			}
 		}
 	}
