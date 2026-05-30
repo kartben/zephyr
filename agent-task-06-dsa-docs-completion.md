@@ -28,7 +28,7 @@ Replace the `TODO work` section with accurate, code-backed documentation of what
 ## Out of scope
 
 - Do not implement new DSA features.
-- Do not rewrite the entire networking documentation set.
+- Do not rewrite the entire networking documentation.
 
 ## Validation
 

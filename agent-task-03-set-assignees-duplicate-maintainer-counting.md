@@ -27,7 +27,7 @@ Ensure the maintainer/reviewer ranking logic does not over-count a changed file 
 ## Out of scope
 
 - Do not redesign the full PR triage policy.
-- Do not change unrelated reviewer-cap limits or label limits unless required by the bug.
+- Do not change unrelated reviewer limits or label limits unless required by the bug.
 
 ## Validation
 
