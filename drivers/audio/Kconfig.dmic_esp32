@@ -1,0 +1,13 @@
+# Copyright (c) 2026 Espressif Systems (Shanghai) PTE LTD
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig AUDIO_DMIC_ESP32
+bool "ESP32 DMIC driver"
+default y
+depends on DT_HAS_ESPRESSIF_ESP32_DMIC_ENABLED
+depends on I2S_ESP32
+depends on AUDIO
+select AUDIO_DMIC
+help
+  Enable an ESP32 DMIC driver that captures PCM audio over an ESP32 I2S
+  RX controller.

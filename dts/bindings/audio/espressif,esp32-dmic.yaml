@@ -1,0 +1,10 @@
+# Copyright (c) 2026 Espressif Systems (Shanghai) PTE LTD
+# SPDX-License-Identifier: Apache-2.0
+
+description: ESP32 DMIC frontend using an I2S controller in RX mode
+
+compatible: "espressif,esp32-dmic"
+
+include: base.yaml
+
+on-bus: i2s
