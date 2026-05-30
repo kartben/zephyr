@@ -47,6 +47,23 @@ typedef struct z_thread_stack_element k_thread_stack_t;
 
 typedef void (*k_thread_entry_t)(void *p1, void *p2, void *p3);
 
+#ifdef __DOXYGEN__
+#define ARCH_THREAD_STACK_RESERVED
+#define ARCH_STACK_PTR_ALIGN
+#define ARCH_THREAD_STACK_OBJ_ALIGN(size)
+#define ARCH_THREAD_STACK_SIZE_ADJUST(size)
+#define ARCH_KERNEL_STACK_RESERVED
+#define ARCH_KERNEL_STACK_OBJ_ALIGN
+#define ARCH_IRQ_CONNECT(irq, pri, isr, arg, flags)
+#define ARCH_PCIE_IRQ_CONNECT(bdf, irq, pri, isr, arg, flags)
+#define ARCH_IRQ_DIRECT_CONNECT(irq_p, priority_p, isr_p, flags_p)
+#define ARCH_ISR_DIRECT_PM()
+#define ARCH_ISR_DIRECT_HEADER()
+#define ARCH_ISR_DIRECT_FOOTER(swap)
+#define ARCH_ISR_DIRECT_DECLARE(name)
+#define ARCH_EXCEPT(reason_p)
+#endif /* __DOXYGEN__ */
+
 /**
  * @defgroup arch-timing Architecture timing APIs
  * @ingroup arch-interface

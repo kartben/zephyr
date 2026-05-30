@@ -26,6 +26,13 @@
 extern "C" {
 #endif
 
+#ifdef __DOXYGEN__
+#define ARCH_DATA_PAGE_ACCESSED
+#define ARCH_DATA_PAGE_DIRTY
+#define ARCH_DATA_PAGE_LOADED
+#define ARCH_DATA_PAGE_NOT_MAPPED
+#endif /* __DOXYGEN__ */
+
 /**
  * @defgroup arch-timing Architecture timing APIs
  * @{
