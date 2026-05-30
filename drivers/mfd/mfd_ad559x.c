@@ -5,8 +5,6 @@
 
 #define DT_DRV_COMPAT adi_ad559x
 
-#include <errno.h>
-
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys/byteorder.h>
