@@ -1,6 +1,6 @@
 # Task 03: Fix duplicate maintainer counting in `set_assignees.py`
 
-Please fix the duplicate-counting bug called out in `/tmp/workspace/kartben/zephyr/scripts/ci/set_assignees.py`.
+Please fix the duplicate-counting bug called out in `scripts/ci/set_assignees.py`.
 
 ## Goal
 
@@ -8,7 +8,7 @@ Ensure the maintainer/reviewer ranking logic does not over-count a changed file 
 
 ## Scope
 
-- `/tmp/workspace/kartben/zephyr/scripts/ci/set_assignees.py`
+- `scripts/ci/set_assignees.py`
 - Add focused regression tests in an appropriate existing scripts test location
 - Use `MAINTAINERS.yml`-style fixtures if needed
 

@@ -1,6 +1,6 @@
 # Task 05: Fix `:maybe-skip-config:` handling in `zephyr-app-commands`
 
-Please fix the `maybe-skip-config` behavior in `/tmp/workspace/kartben/zephyr/doc/_extensions/zephyr/application.py`.
+Please fix the `maybe-skip-config` behavior in `doc/_extensions/zephyr/application.py`.
 
 ## Goal
 
@@ -8,8 +8,8 @@ Make the `.. zephyr-app-commands::` directive honor `:maybe-skip-config:` in the
 
 ## Scope
 
-- `/tmp/workspace/kartben/zephyr/doc/_extensions/zephyr/application.py`
-- `/tmp/workspace/kartben/zephyr/doc/contribute/documentation/guidelines.rst`
+- `doc/_extensions/zephyr/application.py`
+- `doc/contribute/documentation/guidelines.rst`
 - Any documentation pages whose rendered examples must be updated because of the behavior change
 
 ## Requirements

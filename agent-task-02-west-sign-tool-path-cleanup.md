@@ -1,6 +1,6 @@
 # Task 02: Deduplicate `west sign` tool-path resolution
 
-Please clean up duplicated tool-path lookup logic in `/tmp/workspace/kartben/zephyr/scripts/west_commands/sign.py`.
+Please clean up duplicated tool-path lookup logic in `scripts/west_commands/sign.py`.
 
 ## Goal
 
@@ -8,9 +8,9 @@ Unify the repeated `--tool-path` / PATH lookup code used by the signing backends
 
 ## Scope
 
-- `/tmp/workspace/kartben/zephyr/scripts/west_commands/sign.py`
-- `/tmp/workspace/kartben/zephyr/scripts/west_commands/tests/`
-- `/tmp/workspace/kartben/zephyr/doc/develop/west/sign.rst` if behavior or wording needs updating
+- `scripts/west_commands/sign.py`
+- `scripts/west_commands/tests/`
+- `doc/develop/west/sign.rst` if behavior or wording needs updating
 
 ## Requirements
 

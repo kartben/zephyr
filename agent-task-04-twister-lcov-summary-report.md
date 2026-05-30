@@ -1,6 +1,6 @@
 # Task 04: Add an LCOV summary artifact in Twister coverage output
 
-Please implement the LCOV summary-report TODO in `/tmp/workspace/kartben/zephyr/scripts/pylib/twister/twisterlib/coverage.py`.
+Please implement the LCOV summary-report TODO in `scripts/pylib/twister/twisterlib/coverage.py`.
 
 ## Goal
 
@@ -8,9 +8,9 @@ When Twister runs coverage with the LCOV backend, generate a lightweight summary
 
 ## Scope
 
-- `/tmp/workspace/kartben/zephyr/scripts/pylib/twister/twisterlib/coverage.py`
-- `/tmp/workspace/kartben/zephyr/scripts/tests/twister_blackbox/test_coverage.py`
-- `/tmp/workspace/kartben/zephyr/doc/develop/test/coverage.rst` if user-visible output changes need documenting
+- `scripts/pylib/twister/twisterlib/coverage.py`
+- `scripts/tests/twister_blackbox/test_coverage.py`
+- `doc/develop/test/coverage.rst` if user-visible output changes need documenting
 
 ## Requirements
 

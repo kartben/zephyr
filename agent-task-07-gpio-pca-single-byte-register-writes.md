@@ -1,6 +1,6 @@
 # Task 07: Reduce unnecessary full-register writes in the PCA GPIO driver
 
-Please address the single-byte write TODO in `/tmp/workspace/kartben/zephyr/drivers/gpio/gpio_pca_series.c`.
+Please address the single-byte write TODO in `drivers/gpio/gpio_pca_series.c`.
 
 ## Goal
 
@@ -8,7 +8,7 @@ Stop writing more register data than necessary when configuring a single pin in 
 
 ## Scope
 
-- `/tmp/workspace/kartben/zephyr/drivers/gpio/gpio_pca_series.c`
+- `drivers/gpio/gpio_pca_series.c`
 - Any directly related helper declarations in the same file
 - Existing tests or board-specific validation that can exercise PCA95xx behavior
 
@@ -30,7 +30,7 @@ Stop writing more register data than necessary when configuring a single pin in 
 
 At minimum:
 
-- Run `perl scripts/checkpatch.pl --no-tree -f /tmp/workspace/kartben/zephyr/drivers/gpio/gpio_pca_series.c`
+- Run `perl scripts/checkpatch.pl --no-tree -f drivers/gpio/gpio_pca_series.c`
 - Run the most focused existing GPIO/PCA validation available in-tree for the touched behavior.
 
 ## Deliverable

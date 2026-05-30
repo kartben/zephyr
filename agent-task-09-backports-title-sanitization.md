@@ -1,6 +1,6 @@
 # Task 09: Sanitize backport titles for both RST and JSON output
 
-Please implement the title-sanitization TODO in `/tmp/workspace/kartben/zephyr/scripts/release/list_backports.py`.
+Please implement the title-sanitization TODO in `scripts/release/list_backports.py`.
 
 ## Goal
 
@@ -8,7 +8,7 @@ Make `Backport.sanitize_title()` produce titles that are safe and readable in bo
 
 ## Scope
 
-- `/tmp/workspace/kartben/zephyr/scripts/release/list_backports.py`
+- `scripts/release/list_backports.py`
 - Add focused regression tests in an appropriate existing scripts test location
 
 ## Requirements

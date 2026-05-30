@@ -1,6 +1,6 @@
 # Task 01: Implement string-link export table sorting for LLEXT
 
-Please implement the currently stubbed string-linking preparation path in `/tmp/workspace/kartben/zephyr/scripts/build/llext_prepare_exptab.py`.
+Please implement the currently stubbed string-linking preparation path in `scripts/build/llext_prepare_exptab.py`.
 
 ## Goal
 
@@ -8,10 +8,10 @@ Make `_prepare_exptab_for_str_linking()` actually rewrite the LLEXT export table
 
 ## Scope
 
-- `/tmp/workspace/kartben/zephyr/scripts/build/llext_prepare_exptab.py`
-- `/tmp/workspace/kartben/zephyr/include/zephyr/llext/symbol.h`
-- `/tmp/workspace/kartben/zephyr/subsys/llext/llext.c`
-- `/tmp/workspace/kartben/zephyr/tests/subsys/llext/`
+- `scripts/build/llext_prepare_exptab.py`
+- `include/zephyr/llext/symbol.h`
+- `subsys/llext/llext.c`
+- `tests/subsys/llext/`
 
 ## Requirements
 

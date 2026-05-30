@@ -1,6 +1,6 @@
 # Task 10: Improve coredump GDB stub memory-read efficiency
 
-Please optimize memory extraction in `/tmp/workspace/kartben/zephyr/scripts/coredump/gdbstubs/gdbstub.py`.
+Please optimize memory extraction in `scripts/coredump/gdbstubs/gdbstub.py`.
 
 ## Goal
 
@@ -8,7 +8,7 @@ Replace the current byte-at-a-time implementation of `GdbStub.get_memory()` with
 
 ## Scope
 
-- `/tmp/workspace/kartben/zephyr/scripts/coredump/gdbstubs/gdbstub.py`
+- `scripts/coredump/gdbstubs/gdbstub.py`
 - Any directly related coredump GDB stub tests you add
 
 ## Requirements

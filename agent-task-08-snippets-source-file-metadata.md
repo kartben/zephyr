@@ -1,6 +1,6 @@
 # Task 08: Add snippet source-file metadata to generated CMake output
 
-Please extend `/tmp/workspace/kartben/zephyr/scripts/snippets.py` so the generated CMake output includes useful source-file provenance.
+Please extend `scripts/snippets.py` so the generated CMake output includes useful source-file provenance.
 
 ## Goal
 
@@ -8,7 +8,7 @@ Implement the existing `# TODO: add source file info` so the auto-generated snip
 
 ## Scope
 
-- `/tmp/workspace/kartben/zephyr/scripts/snippets.py`
+- `scripts/snippets.py`
 - Add focused regression tests in an appropriate scripts test location if none exist yet
 - Update docs only if the generated output contract becomes user-visible enough to warrant it
 

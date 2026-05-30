@@ -1,6 +1,6 @@
 # Task 06: Replace the placeholder DSA documentation section with accurate content
 
-Please clean up `/tmp/workspace/kartben/zephyr/doc/services/connectivity/networking/dsa.rst` and remove the current placeholder section.
+Please clean up `doc/services/connectivity/networking/dsa.rst` and remove the current placeholder section.
 
 ## Goal
 
@@ -8,11 +8,11 @@ Replace the `TODO work` section with accurate, code-backed documentation of what
 
 ## Scope
 
-- `/tmp/workspace/kartben/zephyr/doc/services/connectivity/networking/dsa.rst`
+- `doc/services/connectivity/networking/dsa.rst`
 - Reference implementation files as needed, including:
-  - `/tmp/workspace/kartben/zephyr/subsys/net/ip/net_core.c`
-  - `/tmp/workspace/kartben/zephyr/subsys/net/l2/ethernet/dsa/`
-  - `/tmp/workspace/kartben/zephyr/dts/bindings/dsa/` if needed
+  - `subsys/net/ip/net_core.c`
+  - `subsys/net/l2/ethernet/dsa/`
+  - `dts/bindings/dsa/` if needed
 
 ## Requirements
 
