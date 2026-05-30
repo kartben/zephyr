@@ -8,10 +8,10 @@ Make `_prepare_exptab_for_str_linking()` actually rewrite the LLEXT export table
 
 ## Scope
 
-- `scripts/build/llext_prepare_exptab.py`
-- `include/zephyr/llext/symbol.h`
-- `subsys/llext/llext.c`
-- `tests/subsys/llext/`
+- `scripts/build/llext_prepare_exptab.py` - main implementation target for the string-link export-table rewrite
+- `include/zephyr/llext/symbol.h` - header describing the export/symbol data layout that must remain compatible
+- `subsys/llext/llext.c` - runtime lookup implementation whose sorting assumptions must stay aligned with the preparation script
+- `tests/subsys/llext/` - existing subsystem test area for regression coverage
 
 ## Requirements
 

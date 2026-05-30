@@ -8,9 +8,9 @@ Unify the repeated `--tool-path` / PATH lookup code used by the signing backends
 
 ## Scope
 
-- `scripts/west_commands/sign.py`
-- `scripts/west_commands/tests/`
-- `doc/develop/west/sign.rst` if behavior or wording needs updating
+- `scripts/west_commands/sign.py` - contains the duplicated tool-resolution logic that should be unified
+- `scripts/west_commands/tests/` - location for focused regression coverage of the cleaned-up behavior
+- `doc/develop/west/sign.rst` - update only if user-visible behavior, precedence, or wording changes
 
 ## Requirements
 

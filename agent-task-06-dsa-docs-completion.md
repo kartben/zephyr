@@ -8,11 +8,10 @@ Replace the `TODO work` section with accurate, code-backed documentation of what
 
 ## Scope
 
-- `doc/services/connectivity/networking/dsa.rst`
-- Reference implementation files as needed, including:
-  - `subsys/net/ip/net_core.c`
-  - `subsys/net/l2/ethernet/dsa/`
-  - `dts/bindings/dsa/` if needed
+- `doc/services/connectivity/networking/dsa.rst` - main documentation page to clean up
+- `subsys/net/ip/net_core.c` - confirms where DSA receive handling is integrated into packet flow
+- `subsys/net/l2/ethernet/dsa/` - core implementation files that define the current feature set and terminology
+- `dts/bindings/dsa/` - optional reference if the documentation needs binding-level details
 
 ## Requirements
 
