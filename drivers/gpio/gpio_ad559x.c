@@ -12,8 +12,6 @@
 
 #include <zephyr/drivers/mfd/ad559x.h>
 
-#define AD559X_GPIO_RD_POINTER 0x60
-
 struct gpio_ad559x_config {
 	/* gpio_driver_config needs to be first */
 	struct gpio_driver_config common;
@@ -24,15 +22,11 @@ struct gpio_ad559x_data {
 	/* gpio_driver_data needs to be first */
 	struct gpio_driver_data common;
 	uint8_t gpio_val;
-	uint8_t gpio_out;
-	uint8_t gpio_in;
-	uint8_t gpio_pull_down;
 };
 
 static int gpio_ad559x_port_get_raw(const struct device *dev, uint32_t *value)
 {
 	const struct gpio_ad559x_config *config = dev->config;
-	struct gpio_ad559x_data *drv_data = dev->data;
 	uint16_t data;
 	int ret;
 
@@ -40,15 +34,7 @@ static int gpio_ad559x_port_get_raw(const struct device *dev, uint32_t *value)
 		return -EWOULDBLOCK;
 	}
 
-	if (mfd_ad559x_has_pointer_byte_map(config->mfd_dev)) {
-		ret = mfd_ad559x_read_reg(config->mfd_dev, AD559X_GPIO_RD_POINTER, 0, &data);
-		/* LSB contains port information. Clear the MSB. */
-		data &= BIT_MASK(AD559X_PIN_MAX);
-	} else {
-		ret = mfd_ad559x_read_reg(config->mfd_dev, AD559X_REG_GPIO_INPUT_EN,
-					  drv_data->gpio_in, &data);
-	}
-
+	ret = mfd_ad559x_gpio_port_get_raw(config->mfd_dev, &data);
 	if (ret < 0) {
 		return ret;
 	}
@@ -94,7 +80,6 @@ static inline int gpio_ad559x_configure(const struct device *dev,
 	struct gpio_ad559x_data *data = dev->data;
 	const struct gpio_ad559x_config *config = dev->config;
 	uint8_t val;
-	int ret;
 
 	if (k_is_in_isr()) {
 		return -EWOULDBLOCK;
@@ -105,62 +90,27 @@ static inline int gpio_ad559x_configure(const struct device *dev,
 	}
 
 	val = BIT(pin);
-	if ((flags & GPIO_OUTPUT) != 0U) {
-		data->gpio_in &= ~val;
-		data->gpio_out |= val;
-
-		if ((flags & GPIO_OUTPUT_INIT_HIGH) != 0U) {
-			ret = gpio_ad559x_port_set_bits_raw(
-				dev, (gpio_port_pins_t)BIT(pin));
-			if (ret < 0) {
-				return ret;
-			}
-		} else if ((flags & GPIO_OUTPUT_INIT_LOW) != 0U) {
-			ret = gpio_ad559x_port_clear_bits_raw(
-				dev, (gpio_port_pins_t)BIT(pin));
-			if (ret < 0) {
-				return ret;
-			}
-		}
-
-		ret = mfd_ad559x_write_reg(config->mfd_dev,
-					   AD559X_REG_GPIO_OUTPUT_EN, data->gpio_out);
-		if (ret < 0) {
-			return ret;
-		}
-
-		ret = mfd_ad559x_write_reg(config->mfd_dev,
-					   AD559X_REG_GPIO_INPUT_EN, data->gpio_in);
-	} else if ((flags & GPIO_INPUT) != 0U) {
-		data->gpio_in |= val;
-		data->gpio_out &= ~val;
-
-		if ((flags & GPIO_PULL_DOWN) != 0U) {
-			data->gpio_pull_down |= val;
-
-			ret = mfd_ad559x_write_reg(config->mfd_dev,
-						   AD559X_REG_GPIO_PULLDOWN,
-						   data->gpio_pull_down);
-			if (ret < 0) {
-				return ret;
-			}
-		} else if ((flags & GPIO_PULL_UP) != 0U) {
-			return -ENOTSUP;
-		}
-
-		ret = mfd_ad559x_write_reg(config->mfd_dev,
-					   AD559X_REG_GPIO_OUTPUT_EN, data->gpio_out);
-		if (ret < 0) {
-			return ret;
-		}
-
-		ret = mfd_ad559x_write_reg(config->mfd_dev,
-					   AD559X_REG_GPIO_INPUT_EN, data->gpio_in);
-	} else {
-		return -ENOTSUP;
+	if ((flags & (GPIO_INPUT | GPIO_OUTPUT)) == GPIO_DISCONNECTED) {
+		return mfd_ad559x_gpio_pin_release(config->mfd_dev, dev, pin);
 	}
 
-	return ret;
+	if ((flags & GPIO_OUTPUT) != 0U) {
+		if ((flags & GPIO_OUTPUT_INIT_HIGH) != 0U) {
+			data->gpio_val |= val;
+		} else if ((flags & GPIO_OUTPUT_INIT_LOW) != 0U) {
+			data->gpio_val &= ~val;
+		}
+
+		return mfd_ad559x_gpio_pin_configure(config->mfd_dev, dev, pin, flags,
+						     data->gpio_val);
+	}
+
+	if ((flags & GPIO_INPUT) != 0U) {
+		return mfd_ad559x_gpio_pin_configure(config->mfd_dev, dev, pin, flags,
+						     data->gpio_val);
+	}
+
+	return -ENOTSUP;
 }
 
 static int gpio_ad559x_port_set_masked_raw(const struct device *dev,

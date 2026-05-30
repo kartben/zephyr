@@ -5,6 +5,8 @@
 
 #define DT_DRV_COMPAT adi_ad559x
 
+#include <errno.h>
+
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys/byteorder.h>
@@ -12,6 +14,8 @@
 #include <zephyr/drivers/mfd/ad559x.h>
 
 #include "mfd_ad559x.h"
+
+#define AD559X_GPIO_RD_POINTER 0x60
 
 bool mfd_ad559x_has_pointer_byte_map(const struct device *dev)
 {
@@ -48,6 +52,300 @@ int mfd_ad559x_write_reg(const struct device *dev, uint8_t reg, uint16_t val)
 	return data->transfer_function->write_reg(dev, reg, val);
 }
 
+static int mfd_ad559x_pin_check(uint8_t pin)
+{
+	if (pin >= AD559X_PIN_MAX) {
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int mfd_ad559x_write_function_regs(const struct device *dev, uint8_t adc_conf, uint8_t dac_conf,
+					  uint8_t gpio_out, uint8_t gpio_in,
+					  uint8_t gpio_pull_down)
+{
+	int ret;
+
+	ret = mfd_ad559x_write_reg(dev, AD559X_REG_GPIO_PULLDOWN, gpio_pull_down);
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = mfd_ad559x_write_reg(dev, AD559X_REG_GPIO_OUTPUT_EN, gpio_out);
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = mfd_ad559x_write_reg(dev, AD559X_REG_GPIO_INPUT_EN, gpio_in);
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = mfd_ad559x_write_reg(dev, AD559X_REG_LDAC_EN, dac_conf);
+	if (ret < 0) {
+		return ret;
+	}
+
+	return mfd_ad559x_write_reg(dev, AD559X_REG_ADC_CONFIG, adc_conf);
+}
+
+int mfd_ad559x_adc_channel_setup(const struct device *dev, const struct device *client_dev,
+				 uint8_t channel)
+{
+	struct mfd_ad559x_data *data = dev->data;
+	uint8_t pin_mask = BIT(channel);
+	uint8_t adc_conf;
+	uint8_t dac_conf;
+	uint8_t gpio_out;
+	uint8_t gpio_in;
+	uint8_t gpio_pull_down;
+	int ret;
+
+	ret = mfd_ad559x_pin_check(channel);
+	if (ret < 0) {
+		return ret;
+	}
+
+	k_mutex_lock(&data->lock, K_FOREVER);
+
+	if ((data->pin_owner[channel] != NULL) && (data->pin_owner[channel] != client_dev)) {
+		ret = -EBUSY;
+		goto out;
+	}
+
+	if ((data->pin_owner[channel] == client_dev) &&
+	    (data->pin_mode[channel] == AD559X_PIN_MODE_ADC)) {
+		ret = 0;
+		goto out;
+	}
+
+	adc_conf = data->adc_conf | pin_mask;
+	dac_conf = data->dac_conf & ~pin_mask;
+	gpio_out = data->gpio_out & ~pin_mask;
+	gpio_in = data->gpio_in & ~pin_mask;
+	gpio_pull_down = data->gpio_pull_down & ~pin_mask;
+
+	ret = mfd_ad559x_write_function_regs(dev, adc_conf, dac_conf, gpio_out, gpio_in,
+					     gpio_pull_down);
+	if (ret == 0) {
+		data->adc_conf = adc_conf;
+		data->dac_conf = dac_conf;
+		data->gpio_out = gpio_out;
+		data->gpio_in = gpio_in;
+		data->gpio_pull_down = gpio_pull_down;
+		data->pin_owner[channel] = client_dev;
+		data->pin_mode[channel] = AD559X_PIN_MODE_ADC;
+	}
+
+out:
+	k_mutex_unlock(&data->lock);
+
+	return ret;
+}
+
+int mfd_ad559x_dac_channel_setup(const struct device *dev, const struct device *client_dev,
+				 uint8_t channel)
+{
+	struct mfd_ad559x_data *data = dev->data;
+	uint8_t pin_mask = BIT(channel);
+	uint8_t adc_conf;
+	uint8_t dac_conf;
+	uint8_t gpio_out;
+	uint8_t gpio_in;
+	uint8_t gpio_pull_down;
+	int ret;
+
+	ret = mfd_ad559x_pin_check(channel);
+	if (ret < 0) {
+		return ret;
+	}
+
+	k_mutex_lock(&data->lock, K_FOREVER);
+
+	if ((data->pin_owner[channel] != NULL) && (data->pin_owner[channel] != client_dev)) {
+		ret = -EBUSY;
+		goto out;
+	}
+
+	if ((data->pin_owner[channel] == client_dev) &&
+	    (data->pin_mode[channel] == AD559X_PIN_MODE_DAC)) {
+		ret = 0;
+		goto out;
+	}
+
+	adc_conf = data->adc_conf & ~pin_mask;
+	dac_conf = data->dac_conf | pin_mask;
+	gpio_out = data->gpio_out & ~pin_mask;
+	gpio_in = data->gpio_in & ~pin_mask;
+	gpio_pull_down = data->gpio_pull_down & ~pin_mask;
+
+	ret = mfd_ad559x_write_function_regs(dev, adc_conf, dac_conf, gpio_out, gpio_in,
+					     gpio_pull_down);
+	if (ret == 0) {
+		data->adc_conf = adc_conf;
+		data->dac_conf = dac_conf;
+		data->gpio_out = gpio_out;
+		data->gpio_in = gpio_in;
+		data->gpio_pull_down = gpio_pull_down;
+		data->pin_owner[channel] = client_dev;
+		data->pin_mode[channel] = AD559X_PIN_MODE_DAC;
+	}
+
+out:
+	k_mutex_unlock(&data->lock);
+
+	return ret;
+}
+
+int mfd_ad559x_gpio_pin_configure(const struct device *dev, const struct device *client_dev,
+				  uint8_t pin, gpio_flags_t flags, uint8_t value)
+{
+	struct mfd_ad559x_data *data = dev->data;
+	uint8_t pin_mask = BIT(pin);
+	uint8_t adc_conf;
+	uint8_t dac_conf;
+	uint8_t gpio_out;
+	uint8_t gpio_in;
+	uint8_t gpio_pull_down;
+	int ret;
+
+	ret = mfd_ad559x_pin_check(pin);
+	if (ret < 0) {
+		return ret;
+	}
+
+	if ((flags & GPIO_PULL_UP) != 0U) {
+		return -ENOTSUP;
+	}
+
+	k_mutex_lock(&data->lock, K_FOREVER);
+
+	if ((data->pin_owner[pin] != NULL) && (data->pin_owner[pin] != client_dev)) {
+		ret = -EBUSY;
+		goto out;
+	}
+
+	adc_conf = data->adc_conf & ~pin_mask;
+	dac_conf = data->dac_conf & ~pin_mask;
+	gpio_out = data->gpio_out & ~pin_mask;
+	gpio_in = data->gpio_in & ~pin_mask;
+	gpio_pull_down = data->gpio_pull_down & ~pin_mask;
+
+	if ((flags & GPIO_OUTPUT) != 0U) {
+		ret = mfd_ad559x_write_reg(dev, AD559X_REG_GPIO_SET, value);
+		if (ret < 0) {
+			goto out;
+		}
+
+		gpio_out |= pin_mask;
+	} else if ((flags & GPIO_INPUT) != 0U) {
+		gpio_in |= pin_mask;
+
+		if ((flags & GPIO_PULL_DOWN) != 0U) {
+			gpio_pull_down |= pin_mask;
+		}
+	} else {
+		ret = -ENOTSUP;
+		goto out;
+	}
+
+	ret = mfd_ad559x_write_function_regs(dev, adc_conf, dac_conf, gpio_out, gpio_in,
+					     gpio_pull_down);
+	if (ret == 0) {
+		data->adc_conf = adc_conf;
+		data->dac_conf = dac_conf;
+		data->gpio_out = gpio_out;
+		data->gpio_in = gpio_in;
+		data->gpio_pull_down = gpio_pull_down;
+		data->pin_owner[pin] = client_dev;
+		data->pin_mode[pin] = AD559X_PIN_MODE_GPIO;
+	}
+
+out:
+	k_mutex_unlock(&data->lock);
+
+	return ret;
+}
+
+int mfd_ad559x_gpio_pin_release(const struct device *dev, const struct device *client_dev, uint8_t pin)
+{
+	struct mfd_ad559x_data *data = dev->data;
+	uint8_t pin_mask = BIT(pin);
+	uint8_t adc_conf;
+	uint8_t dac_conf;
+	uint8_t gpio_out;
+	uint8_t gpio_in;
+	uint8_t gpio_pull_down;
+	int ret;
+
+	ret = mfd_ad559x_pin_check(pin);
+	if (ret < 0) {
+		return ret;
+	}
+
+	k_mutex_lock(&data->lock, K_FOREVER);
+
+	if (data->pin_owner[pin] == NULL) {
+		ret = 0;
+		goto out;
+	}
+
+	if (data->pin_owner[pin] != client_dev) {
+		ret = -EBUSY;
+		goto out;
+	}
+
+	adc_conf = data->adc_conf & ~pin_mask;
+	dac_conf = data->dac_conf & ~pin_mask;
+	gpio_out = data->gpio_out & ~pin_mask;
+	gpio_in = data->gpio_in & ~pin_mask;
+	gpio_pull_down = data->gpio_pull_down & ~pin_mask;
+
+	ret = mfd_ad559x_write_function_regs(dev, adc_conf, dac_conf, gpio_out, gpio_in,
+					     gpio_pull_down);
+	if (ret == 0) {
+		data->adc_conf = adc_conf;
+		data->dac_conf = dac_conf;
+		data->gpio_out = gpio_out;
+		data->gpio_in = gpio_in;
+		data->gpio_pull_down = gpio_pull_down;
+		data->pin_owner[pin] = NULL;
+		data->pin_mode[pin] = AD559X_PIN_MODE_NONE;
+	}
+
+out:
+	k_mutex_unlock(&data->lock);
+
+	return ret;
+}
+
+int mfd_ad559x_gpio_port_get_raw(const struct device *dev, uint16_t *value)
+{
+	struct mfd_ad559x_data *data = dev->data;
+	uint16_t reg_val;
+	int ret;
+
+	k_mutex_lock(&data->lock, K_FOREVER);
+
+	if (mfd_ad559x_has_pointer_byte_map(dev)) {
+		ret = mfd_ad559x_read_reg(dev, AD559X_GPIO_RD_POINTER, 0, &reg_val);
+		reg_val &= BIT_MASK(AD559X_PIN_MAX);
+	} else {
+		ret = mfd_ad559x_read_reg(dev, AD559X_REG_GPIO_INPUT_EN, data->gpio_in, &reg_val);
+	}
+
+	k_mutex_unlock(&data->lock);
+
+	if (ret < 0) {
+		return ret;
+	}
+
+	*value = reg_val & BIT_MASK(AD559X_PIN_MAX);
+
+	return 0;
+}
+
 static int mfd_add559x_software_reset(const struct device *dev)
 {
 	return mfd_ad559x_write_reg(dev, AD559X_REG_SOFTWARE_RESET,
@@ -57,6 +355,7 @@ static int mfd_add559x_software_reset(const struct device *dev)
 static int mfd_ad559x_init(const struct device *dev)
 {
 	const struct mfd_ad559x_config *config = dev->config;
+	struct mfd_ad559x_data *data = dev->data;
 	int ret;
 
 	ret = config->bus_init(dev);
@@ -79,6 +378,8 @@ static int mfd_ad559x_init(const struct device *dev)
 	if (ret < 0) {
 		return ret;
 	}
+
+	k_mutex_init(&data->lock);
 
 	return 0;
 }

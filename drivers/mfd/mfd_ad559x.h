@@ -14,6 +14,7 @@ extern "C" {
 
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/kernel.h>
 
 #if DT_ANY_INST_ON_BUS_STATUS_OKAY(i2c)
 #include <zephyr/drivers/i2c.h>
@@ -53,6 +54,14 @@ struct mfd_ad559x_config {
 
 struct mfd_ad559x_data {
 	const struct mfd_ad559x_transfer_function *transfer_function;
+	struct k_mutex lock;
+	const struct device *pin_owner[AD559X_PIN_MAX];
+	enum ad559x_pin_mode pin_mode[AD559X_PIN_MAX];
+	uint8_t adc_conf;
+	uint8_t dac_conf;
+	uint8_t gpio_out;
+	uint8_t gpio_in;
+	uint8_t gpio_pull_down;
 };
 
 int mfd_ad559x_i2c_init(const struct device *dev);

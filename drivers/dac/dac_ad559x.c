@@ -32,7 +32,6 @@ static int dac_ad559x_channel_setup(const struct device *dev,
 				    const struct dac_channel_cfg *channel_cfg)
 {
 	const struct dac_ad559x_config *config = dev->config;
-	struct dac_ad559x_data *data = dev->data;
 
 	if (channel_cfg->channel_id >= AD559X_PIN_MAX) {
 		LOG_ERR("Invalid channel number %d", channel_cfg->channel_id);
@@ -49,9 +48,7 @@ static int dac_ad559x_channel_setup(const struct device *dev,
 		return -ENOTSUP;
 	}
 
-	data->dac_conf |= BIT(channel_cfg->channel_id);
-
-	return mfd_ad559x_write_reg(config->mfd_dev, AD559X_REG_LDAC_EN, data->dac_conf);
+	return mfd_ad559x_dac_channel_setup(config->mfd_dev, dev, channel_cfg->channel_id);
 }
 
 static int dac_ad559x_write_value(const struct device *dev, uint8_t channel, uint32_t value)

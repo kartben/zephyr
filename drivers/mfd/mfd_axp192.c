@@ -300,7 +300,7 @@ int mfd_axp192_gpio_func_ctrl(const struct device *dev, const struct device *cli
 	}
 
 	if ((data->gpio_mask_used[gpio] != 0) && (data->gpio_mask_used[gpio] != client_dev)) {
-		LOG_INF("Warning: Pin already configured. Please check dt configuration");
+		return -EBUSY;
 	}
 
 	switch (gpio) {

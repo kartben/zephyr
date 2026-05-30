@@ -35,7 +35,6 @@ struct adc_ad559x_config {
 struct adc_ad559x_data {
 	struct adc_context ctx;
 	const struct device *dev;
-	uint8_t adc_conf;
 	uint16_t *buffer;
 	uint16_t *repeat_buffer;
 	uint8_t channels;
@@ -49,16 +48,13 @@ static int adc_ad559x_channel_setup(const struct device *dev,
 				    const struct adc_channel_cfg *channel_cfg)
 {
 	const struct adc_ad559x_config *config = dev->config;
-	struct adc_ad559x_data *data = dev->data;
 
 	if (channel_cfg->channel_id >= AD559X_PIN_MAX) {
 		LOG_ERR("invalid channel id %d", channel_cfg->channel_id);
 		return -EINVAL;
 	}
 
-	data->adc_conf |= BIT(channel_cfg->channel_id);
-
-	return mfd_ad559x_write_reg(config->mfd_dev, AD559X_REG_ADC_CONFIG, data->adc_conf);
+	return mfd_ad559x_adc_channel_setup(config->mfd_dev, dev, channel_cfg->channel_id);
 }
 
 static int adc_ad559x_validate_buffer_size(const struct device *dev,

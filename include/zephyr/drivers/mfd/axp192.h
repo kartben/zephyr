@@ -71,6 +71,7 @@ enum axp192_gpio_func {
  * @param gpio GPIO to be configured (0..5)
  * @param func Function to be configured (see @ref axp192_gpio_func for details)
  * @retval 0 on success
+ * @retval -EBUSY if the GPIO is already owned by another client device
  * @retval -EINVAL if an invalid GPIO number is passed
  * @retval -ENOTSUP if the requested function is not supported by the given
  * @retval -errno in case of any bus error
