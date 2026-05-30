@@ -230,7 +230,8 @@ int mfd_m5pm1_configure_gpio_wake(const struct device *dev, uint8_t pin, bool en
 		goto out;
 	}
 
-	ret = m5pm1_update_reg_locked(dev, M5PM1_REG_GPIO_WAKE_EN, BIT(pin), enable ? BIT(pin) : 0U);
+	ret = m5pm1_update_reg_locked(dev, M5PM1_REG_GPIO_WAKE_EN, BIT(pin),
+				      enable ? BIT(pin) : 0U);
 out:
 	k_mutex_unlock(&data->lock);
 
