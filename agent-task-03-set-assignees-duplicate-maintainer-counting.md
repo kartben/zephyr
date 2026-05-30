@@ -4,7 +4,8 @@ Please fix the duplicate-counting bug called out in `scripts/ci/set_assignees.py
 
 ## Goal
 
-Ensure the maintainer/reviewer ranking logic does not over-count a changed file multiple times when that file belongs to multiple matching areas owned by the same maintainer.
+Ensure the maintainer/reviewer ranking logic does not over-count a changed file multiple
+times when that file belongs to multiple matching areas owned by the same maintainer.
 
 ## Scope
 
@@ -38,4 +39,5 @@ At minimum:
 
 ## Deliverable
 
-A bugfix with regression tests proving that overlapping MAINTAINERS areas no longer inflate ownership counts for the same maintainer.
+A bugfix with regression tests proving that overlapping MAINTAINERS areas no longer
+inflate ownership counts for the same maintainer.

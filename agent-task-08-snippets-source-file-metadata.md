@@ -1,10 +1,12 @@
 # Task 08: Add snippet source-file metadata to generated CMake output
 
-Please extend `scripts/snippets.py` so the generated CMake output includes useful source-file provenance.
+Please extend `scripts/snippets.py` so the generated CMake output includes useful source-
+file provenance.
 
 ## Goal
 
-Implement the existing `# TODO: add source file info` so the auto-generated snippets CMake file makes it easy to see which `snippet.yml` files contributed each discovered snippet.
+Implement the existing `# TODO: add source file info` so the auto-generated snippets CMake
+file makes it easy to see which `snippet.yml` files contributed each discovered snippet.
 
 ## Scope
 
@@ -38,4 +40,5 @@ At minimum:
 
 ## Deliverable
 
-A focused tooling improvement that makes generated snippet metadata easier to audit without breaking existing snippet discovery behavior.
+A focused tooling improvement that makes generated snippet metadata easier to audit
+without breaking existing snippet discovery behavior.

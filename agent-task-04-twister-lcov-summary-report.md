@@ -4,7 +4,9 @@ Please implement the LCOV summary-report TODO in `scripts/pylib/twister/twisterl
 
 ## Goal
 
-When Twister runs coverage with the LCOV backend, generate a lightweight summary artifact in addition to the existing `.info` and HTML outputs, and return its path in the coverage result metadata.
+When Twister runs coverage with the LCOV backend, generate a lightweight summary artifact
+in addition to the existing `.info` and HTML outputs, and return its path in the coverage
+result metadata.
 
 ## Scope
 
@@ -38,4 +40,5 @@ At minimum:
 
 ## Deliverable
 
-A focused feature/cleanup patch that adds a real LCOV summary output, wires it into the returned metadata, and includes regression coverage.
+A focused feature/cleanup patch that adds a real LCOV summary output, wires it into the
+returned metadata, and includes regression coverage.

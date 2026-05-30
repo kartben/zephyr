@@ -4,7 +4,8 @@ Please fix the `maybe-skip-config` behavior in `doc/_extensions/zephyr/applicati
 
 ## Goal
 
-Make the `.. zephyr-app-commands::` directive honor `:maybe-skip-config:` in the west-generated command path instead of effectively ignoring it.
+Make the `.. zephyr-app-commands::` directive honor `:maybe-skip-config:` in the west-
+generated command path instead of effectively ignoring it.
 
 ## Scope
 
@@ -35,4 +36,5 @@ At minimum:
 
 ## Deliverable
 
-A targeted bugfix that makes `:maybe-skip-config:` do what the docs say it does, with any necessary documentation updates kept minimal and accurate.
+A targeted bugfix that makes `:maybe-skip-config:` do what the docs say it does, with any
+necessary documentation updates kept minimal and accurate.

@@ -4,7 +4,8 @@ Please implement the title-sanitization TODO in `scripts/release/list_backports.
 
 ## Goal
 
-Make `Backport.sanitize_title()` produce titles that are safe and readable in both reStructuredText output and JSON output.
+Make `Backport.sanitize_title()` produce titles that are safe and readable in both
+reStructuredText output and JSON output.
 
 ## Scope
 
@@ -37,4 +38,5 @@ At minimum:
 
 ## Deliverable
 
-A small but solid bugfix/cleanup patch that makes backport output robust for both RST and JSON consumers.
+A small but solid bugfix/cleanup patch that makes backport output robust for both RST and
+JSON consumers.

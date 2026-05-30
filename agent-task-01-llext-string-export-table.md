@@ -1,10 +1,13 @@
 # Task 01: Implement string-link export table sorting for LLEXT
 
-Please implement the currently stubbed string-linking preparation path in `scripts/build/llext_prepare_exptab.py`.
+Please implement the currently stubbed string-linking preparation path in
+`scripts/build/llext_prepare_exptab.py`.
 
 ## Goal
 
-Make `_prepare_exptab_for_str_linking()` actually rewrite the LLEXT export table into the sort order required for string-based symbol lookup, instead of logging a warning and doing nothing.
+Make `_prepare_exptab_for_str_linking()` actually rewrite the LLEXT export table into the
+sort order required for string-based symbol lookup, instead of logging a warning and doing
+nothing.
 
 ## Scope
 
@@ -39,4 +42,6 @@ At minimum:
 
 ## Deliverable
 
-A small, reviewable patch that turns the current TODO into working behavior, includes regression coverage, and clearly documents any assumptions you had to preserve between the preparation script and runtime lookup code.
+A small, reviewable patch that turns the current TODO into working behavior, includes
+regression coverage, and clearly documents any assumptions you had to preserve between the
+preparation script and runtime lookup code.

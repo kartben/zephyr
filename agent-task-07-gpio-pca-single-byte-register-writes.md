@@ -4,7 +4,8 @@ Please address the single-byte write TODO in `drivers/gpio/gpio_pca_series.c`.
 
 ## Goal
 
-Stop writing more register data than necessary when configuring a single pin in the PCA-series GPIO driver, while preserving existing behavior and cache correctness.
+Stop writing more register data than necessary when configuring a single pin in the PCA-
+series GPIO driver, while preserving existing behavior and cache correctness.
 
 ## Scope
 
@@ -35,4 +36,5 @@ At minimum:
 
 ## Deliverable
 
-A small driver cleanup/bugfix patch that narrows writes to the affected byte where possible without regressing cache synchronization or device support.
+A small driver cleanup/bugfix patch that narrows writes to the affected byte where
+possible without regressing cache synchronization or device support.

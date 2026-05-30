@@ -4,7 +4,9 @@ Please clean up duplicated tool-path lookup logic in `scripts/west_commands/sign
 
 ## Goal
 
-Unify the repeated `--tool-path` / PATH lookup code used by the signing backends so `rimage`, `silabs_commander`, and any other supported signers use one consistent mechanism.
+Unify the repeated `--tool-path` / PATH lookup code used by the signing backends so
+`rimage`, `silabs_commander`, and any other supported signers use one consistent
+mechanism.
 
 ## Scope
 
@@ -40,4 +42,5 @@ At minimum:
 
 ## Deliverable
 
-A surgical cleanup that removes duplicated lookup code, keeps behavior compatible, and adds tests covering the shared path-resolution logic.
+A surgical cleanup that removes duplicated lookup code, keeps behavior compatible, and
+adds tests covering the shared path-resolution logic.

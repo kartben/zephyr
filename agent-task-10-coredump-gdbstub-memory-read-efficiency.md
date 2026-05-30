@@ -4,7 +4,9 @@ Please optimize memory extraction in `scripts/coredump/gdbstubs/gdbstub.py`.
 
 ## Goal
 
-Replace the current byte-at-a-time implementation of `GdbStub.get_memory()` with a more efficient approach that still behaves correctly across region boundaries and missing-memory cases.
+Replace the current byte-at-a-time implementation of `GdbStub.get_memory()` with a more
+efficient approach that still behaves correctly across region boundaries and missing-
+memory cases.
 
 ## Scope
 
@@ -39,4 +41,5 @@ At minimum:
 
 ## Deliverable
 
-A focused performance/cleanup patch that removes the byte-by-byte bottleneck from `get_memory()` while keeping behavior identical for callers.
+A focused performance/cleanup patch that removes the byte-by-byte bottleneck from
+`get_memory()` while keeping behavior identical for callers.

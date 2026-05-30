@@ -1,10 +1,13 @@
 # Task 06: Replace the placeholder DSA documentation section with accurate content
 
-Please clean up `doc/services/connectivity/networking/dsa.rst` and remove the current placeholder section.
+Please clean up `doc/services/connectivity/networking/dsa.rst` and remove the current
+placeholder section.
 
 ## Goal
 
-Replace the `TODO work` section with accurate, code-backed documentation of what Zephyr’s current DSA support actually does today, especially around packet flow and supported operating modes.
+Replace the `TODO work` section with accurate, code-backed documentation of what Zephyr’s
+current DSA support actually does today, especially around packet flow and supported
+operating modes.
 
 ## Scope
 
@@ -39,4 +42,5 @@ At minimum:
 
 ## Deliverable
 
-A documentation-only patch that removes the placeholder content and replaces it with precise, up-to-date guidance tied to the current implementation.
+A documentation-only patch that removes the placeholder content and replaces it with
+precise, up-to-date guidance tied to the current implementation.
