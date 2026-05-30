@@ -27,12 +27,6 @@ LOG_MODULE_REGISTER(adc_m5pm1, CONFIG_ADC_LOG_LEVEL);
 #define M5PM1_REG_ADC_RES_L 0x28
 #define M5PM1_REG_ADC_CTRL  0x2a
 
-/* GPIO_FUNC0 is shared with the GPIO driver; the ADC only needs to put pins 1 and 2 into the
- * SPECIAL function to route them to the ADC mux.
- */
-#define M5PM1_REG_GPIO_FUNC0    0x16
-#define M5PM1_GPIO_FUNC_SPECIAL 0x3U
-
 #define M5PM1_ADC_CTRL_START      BIT(0)
 #define M5PM1_ADC_CTRL_CH_SEL(ch) ((uint8_t)((ch) << 1))
 
@@ -79,11 +73,7 @@ static int adc_m5pm1_read_u16(const struct device *mfd, uint8_t reg_l, uint16_t 
 
 static int adc_m5pm1_route_gpio(const struct device *mfd, uint8_t pin)
 {
-	uint8_t shift = pin * 2U;
-	uint8_t mask = 0x3U << shift;
-
-	return mfd_m5pm1_update_reg(mfd, M5PM1_REG_GPIO_FUNC0, mask,
-				    (uint8_t)(M5PM1_GPIO_FUNC_SPECIAL << shift));
+	return mfd_m5pm1_set_gpio_function(mfd, pin, M5PM1_GPIO_FUNC_SPECIAL);
 }
 
 static int adc_m5pm1_convert(const struct device *dev, uint8_t hw_channel, uint16_t *value)

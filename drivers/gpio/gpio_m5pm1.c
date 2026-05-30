@@ -25,19 +25,14 @@ LOG_MODULE_REGISTER(gpio_m5pm1, CONFIG_GPIO_LOG_LEVEL);
 #define M5PM1_REG_GPIO_DRV   0x13
 #define M5PM1_REG_GPIO_PUPD0 0x14
 #define M5PM1_REG_GPIO_PUPD1 0x15
-#define M5PM1_REG_GPIO_FUNC0 0x16
-#define M5PM1_REG_GPIO_FUNC1 0x17
 
 /*
- * Each pin occupies a 2-bit field. Pins 0..3 are packed into the FUNC0/PUPD0 register; pin 4 lives
- * alone at offset 0 of FUNC1/PUPD1.
+ * Each pin occupies a 2-bit field. Pins 0..3 are packed into the PUPD0
+ * register; pin 4 lives alone at offset 0 of PUPD1.
  */
-#define M5PM1_GPIO_FUNC_REG(pin)    ((pin) == 4U ? M5PM1_REG_GPIO_FUNC1 : M5PM1_REG_GPIO_FUNC0)
 #define M5PM1_GPIO_PUPD_REG(pin)    ((pin) == 4U ? M5PM1_REG_GPIO_PUPD1 : M5PM1_REG_GPIO_PUPD0)
 #define M5PM1_GPIO_FIELD_SHIFT(pin) (((pin) == 4U ? 0U : (pin)) * 2U)
 #define M5PM1_GPIO_FIELD_MASK(pin)  (0x3U << M5PM1_GPIO_FIELD_SHIFT(pin))
-
-#define M5PM1_GPIO_FUNC_GPIO 0U
 
 #define M5PM1_GPIO_PULL_NONE 0U
 #define M5PM1_GPIO_PULL_UP   1U
@@ -85,8 +80,7 @@ static int gpio_m5pm1_configure(const struct device *dev, gpio_pin_t pin, gpio_f
 		pull = M5PM1_GPIO_PULL_DOWN;
 	}
 
-	ret = gpio_m5pm1_set_field(config->mfd, M5PM1_GPIO_FUNC_REG(pin), pin,
-				   M5PM1_GPIO_FUNC_GPIO);
+	ret = mfd_m5pm1_set_gpio_function(config->mfd, pin, M5PM1_GPIO_FUNC_GPIO);
 	if (ret < 0) {
 		return ret;
 	}
