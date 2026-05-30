@@ -15,8 +15,6 @@
 
 #include "mfd_ad559x.h"
 
-#define AD559X_GPIO_RD_POINTER 0x60
-
 bool mfd_ad559x_has_pointer_byte_map(const struct device *dev)
 {
 	const struct mfd_ad559x_config *config = dev->config;
