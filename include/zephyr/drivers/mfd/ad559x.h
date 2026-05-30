@@ -39,7 +39,7 @@ enum ad559x_pin_mode {
 };
 
 /**
- * @defgroup mdf_interface_ad559x MFD AD559X interface
+ * @defgroup mfd_interface_ad559x MFD AD559X interface
  * @ingroup mfd_interfaces
  * @{
  */

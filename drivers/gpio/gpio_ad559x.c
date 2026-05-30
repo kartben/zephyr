@@ -79,6 +79,7 @@ static inline int gpio_ad559x_configure(const struct device *dev,
 {
 	struct gpio_ad559x_data *data = dev->data;
 	const struct gpio_ad559x_config *config = dev->config;
+	gpio_flags_t io_flags = flags & (GPIO_INPUT | GPIO_OUTPUT);
 	uint8_t val;
 
 	if (k_is_in_isr()) {
@@ -90,7 +91,7 @@ static inline int gpio_ad559x_configure(const struct device *dev,
 	}
 
 	val = BIT(pin);
-	if ((flags & (GPIO_INPUT | GPIO_OUTPUT)) == GPIO_DISCONNECTED) {
+	if (io_flags == GPIO_DISCONNECTED) {
 		return mfd_ad559x_gpio_pin_release(config->mfd_dev, dev, pin);
 	}
 
