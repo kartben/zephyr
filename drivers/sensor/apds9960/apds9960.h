@@ -217,7 +217,7 @@
 #define APDS9960_DEFAULT_GPULSE		0xC9
 #define APDS9960_DEFAULT_GCONF3		0
 
-/* Polling wait times */
+/* Polling Wait Times */
 #define APDS9960_DEFAULT_WAIT_TIME_US	2780
 #define APDS9960_MAX_WAIT_TIME_MS	10000
 
