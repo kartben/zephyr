@@ -71,6 +71,20 @@ testing while developing a driver. To exercise the same test application on real
 instantiates the stepper motion controller under test and provides the expected ``stepper`` alias.
 When the build completes, flash the image to the board as shown below.
 
+For example, use Twister for the built-in ``native_sim`` configurations:
+
+.. code-block:: console
+
+   west twister -T tests/drivers/stepper/stepper_ctrl -p native_sim/native/64
+
+To build and flash the same test application on a real board:
+
+.. code-block:: console
+
+   west build -b <board> tests/drivers/stepper/stepper_ctrl -- \
+     -DDTC_OVERLAY_FILE=<path/to/board.overlay>
+   west flash
+
 .. zephyr-app-commands::
    :zephyr-app: tests/drivers/stepper/stepper_ctrl
    :board: <board>
