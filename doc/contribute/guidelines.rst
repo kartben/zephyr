@@ -765,6 +765,29 @@ for example:
 
    west twister -p native_sim -s tests/drivers/build_all/sensor/drivers.sensor.generic_test
 
+When introducing a new driver, do not stop with a single board build. As a
+baseline, rerun the existing driver test suites for the affected subsystem:
+
+* Run the corresponding build-only coverage in
+  :zephyr_file:`tests/drivers/build_all/<subsystem>` to catch Kconfig,
+  devicetree, and link errors in common configurations, for example:
+
+  .. code-block:: bash
+
+     west twister -T tests/drivers/build_all/adc
+
+* Run the matching API or functional tests in :zephyr_file:`tests/drivers`
+  to verify that the new driver still conforms to the subsystem behavior, for
+  example:
+
+  .. code-block:: bash
+
+     west twister -T tests/drivers/adc/adc_api
+     west twister -T tests/drivers/pinctrl/api
+
+* If CI reports a single failing scenario, copy the exact suite name from the
+  logs and rerun just that case locally with ``-s``.
+
 .. _static_analysis:
 
 Static Code Analysis
