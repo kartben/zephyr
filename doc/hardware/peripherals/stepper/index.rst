@@ -57,8 +57,19 @@ Below are two typical scenarios:
 Stepper Motion Controller API Test Suite
 ****************************************
 
-The stepper motion controller API test suite provides a set of tests that can be used to verify
-the functionality of stepper motion controllers.
+The stepper motion controller API test suite checks that a stepper motion controller implements
+the common :c:group:`stepper_ctrl` contract correctly. It exercises operations such as setting the
+reference position, issuing relative and absolute moves, starting continuous motion, stopping, and
+observing completion events. In other words, this is an API conformance test suite: it verifies
+that a driver behaves like a Zephyr stepper motion controller, but it does not replace any
+board-specific electrical or mechanical validation you may want to run on your hardware.
+
+The automated test configurations in ``tests/drivers/stepper/stepper_ctrl`` use ``native_sim``
+with devicetree overlays that instantiate test stepper controllers. This is useful for regression
+testing while developing a driver. To exercise the same test application on real hardware, replace
+``<board>`` with your board target and point ``<path/to/board.overlay>`` to an overlay that
+instantiates the stepper motion controller under test and provides the expected ``stepper`` alias.
+When the build completes, flash the image to the board as shown below.
 
 .. zephyr-app-commands::
    :zephyr-app: tests/drivers/stepper/stepper_ctrl
