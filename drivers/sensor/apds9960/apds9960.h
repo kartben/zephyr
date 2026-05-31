@@ -217,9 +217,9 @@
 #define APDS9960_DEFAULT_GPULSE		0xC9
 #define APDS9960_DEFAULT_GCONF3		0
 
-/* Polling Wait Times (ms) */
-#define APDS9960_DEFAULT_WAIT_TIME	2.78
-#define APDS9960_MAX_WAIT_TIME		10000
+/* Polling wait times */
+#define APDS9960_DEFAULT_WAIT_TIME_US	2780
+#define APDS9960_MAX_WAIT_TIME_MS	10000
 
 struct apds9960_gesture_setup {
 	int proximity;
@@ -260,7 +260,9 @@ struct apds9960_data {
 static inline void apds9960_setup_int(const struct apds9960_config *cfg,
 				      bool enable)
 {
-	unsigned int flags = enable ? GPIO_INT_EDGE_TO_ACTIVE : GPIO_INT_DISABLE;
+	unsigned int flags = enable
+		? GPIO_INT_EDGE_TO_ACTIVE
+		: GPIO_INT_DISABLE;
 
 	gpio_pin_interrupt_configure_dt(&cfg->int_gpio, flags);
 }

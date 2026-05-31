@@ -217,11 +217,11 @@ static int apds9960_sample_fetch(const struct device *dev,
 #else
 	while (!(tmp & APDS9960_STATUS_PINT)) {
 #endif
-		k_sleep(K_MSEC(APDS9960_DEFAULT_WAIT_TIME));
+		k_sleep(K_USEC(APDS9960_DEFAULT_WAIT_TIME_US));
 		if (i2c_reg_read_byte_dt(&config->i2c, APDS9960_STATUS_REG, &tmp)) {
 			return -EIO;
 		}
-		if ((k_uptime_get() - start_time) > APDS9960_MAX_WAIT_TIME) {
+		if ((k_uptime_get() - start_time) > APDS9960_MAX_WAIT_TIME_MS) {
 			return -ETIMEDOUT;
 		}
 	}
