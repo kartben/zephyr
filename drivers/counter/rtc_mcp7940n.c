@@ -17,12 +17,13 @@
 #include <zephyr/drivers/counter.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/i2c.h>
-#include <zephyr/drivers/rtc/mcp7940n.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/timeutil.h>
 #include <zephyr/sys/util.h>
 #include <time.h>
+
+#include "mcp7940n.h"
 
 LOG_MODULE_REGISTER(MCP7940N, CONFIG_COUNTER_LOG_LEVEL);
 

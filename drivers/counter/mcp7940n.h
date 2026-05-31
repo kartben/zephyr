@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef ZEPHYR_INCLUDE_DRIVERS_RTC_MCP7940N_H_
-#define ZEPHYR_INCLUDE_DRIVERS_RTC_MCP7940N_H_
+#ifndef ZEPHYR_DRIVERS_COUNTER_MCP7940N_H_
+#define ZEPHYR_DRIVERS_COUNTER_MCP7940N_H_
 
 #include <zephyr/sys/timeutil.h>
 #include <time.h>
@@ -194,4 +194,4 @@ enum mcp7940n_alarm_trigger {
  */
 int mcp7940n_rtc_set_time(const struct device *dev, time_t unix_time);
 
-#endif /* ZEPHYR_INCLUDE_DRIVERS_RTC_MCP7940N_H_ */
+#endif /* ZEPHYR_DRIVERS_COUNTER_MCP7940N_H_ */
