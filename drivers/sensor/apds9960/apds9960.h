@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef ZEPHYR_DRIVERS_SENSOR_APDS9960_PRIV_H_
-#define ZEPHYR_DRIVERS_SENSOR_APDS9960_PRIV_H_
+#ifndef ZEPHYR_DRIVERS_SENSOR_APDS9960_APDS9960_H_
+#define ZEPHYR_DRIVERS_SENSOR_APDS9960_APDS9960_H_
 
 #include <stdbool.h>
 
@@ -281,4 +281,4 @@ int apds9960_trigger_set(const struct device *dev,
 			 sensor_trigger_handler_t handler);
 #endif /* CONFIG_APDS9960_TRIGGER */
 
-#endif /* ZEPHYR_DRIVERS_SENSOR_APDS9960_PRIV_H_ */
+#endif /* ZEPHYR_DRIVERS_SENSOR_APDS9960_APDS9960_H_ */
