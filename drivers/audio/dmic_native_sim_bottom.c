@@ -12,8 +12,6 @@
 #include <nsi_errno.h>
 #include <nsi_tracing.h>
 
-#include "dmic_native_sim_bottom.h"
-
 int ns_dmic_open_file_bottom(const char *pathname)
 {
 	int fd = open(pathname, O_RDONLY);

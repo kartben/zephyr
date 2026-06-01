@@ -173,19 +173,15 @@ static int ns_dmic_open_file(const struct ns_dmic_config *cfg, struct ns_dmic_da
 	if (fd < 0) {
 		fd = -nsi_errno_from_mid(-fd);
 
-		if ((fd == -ENOENT) || (fd == -ENOTDIR)) {
-			data->missing_input_file = true;
-			if (reset_deadline) {
-				data->next_deadline_us = nsi_hws_get_time();
-			}
-			return 0;
+		if (!((fd == -ENOENT) || (fd == -ENOTDIR))) {
+			return fd;
 		}
-
-		return fd;
+		data->missing_input_file = true;
+	} else {
+		data->fd = fd;
+		data->missing_input_file = false;
 	}
 
-	data->fd = fd;
-	data->missing_input_file = false;
 	if (reset_deadline) {
 		data->next_deadline_us = nsi_hws_get_time();
 	}
@@ -214,6 +210,10 @@ static int ns_dmic_fill_block(const struct ns_dmic_config *cfg, struct ns_dmic_d
 			continue;
 		}
 
+		/* Allow one EOF rewind so a capture block can span the file boundary.
+		 * If a second EOF happens before any new data is read, stop instead of
+		 * looping forever on an empty or non-advancing input file.
+		 */
 		if ((bytes_read == 0) && !rewound) {
 			if (ns_dmic_open_file(cfg, data, false) < 0) {
 				return -EIO;
@@ -318,12 +318,11 @@ static void ns_dmic_worker(void *arg1, void *arg2, void *arg3)
 	const struct ns_dmic_config *cfg = dev->config;
 	struct ns_dmic_data *data = dev->data;
 	struct ns_dmic_block block = {0};
-	uint32_t session;
+	uint32_t capture_session;
 	int ret;
 
 	ARG_UNUSED(arg2);
 	ARG_UNUSED(arg3);
-	ret = ns_dmic_open_file(cfg, data, true);
 	while (true) {
 		(void)k_sem_take(&data->worker_sem, K_FOREVER);
 
@@ -334,7 +333,10 @@ static void ns_dmic_worker(void *arg1, void *arg2, void *arg3)
 				break;
 			}
 
-			session = data->session_id;
+			/* Snapshot the active session so control operations can invalidate
+			 * this in-flight block after the lock is dropped for pacing and I/O.
+			 */
+			capture_session = data->session_id;
 			ret = k_mem_slab_alloc(data->stream.mem_slab, &block.mem_block, K_NO_WAIT);
 			if (ret < 0) {
 				ns_dmic_set_error(data, -ENOMEM);
@@ -357,7 +359,8 @@ static void ns_dmic_worker(void *arg1, void *arg2, void *arg3)
 			/* Pause, stop, reset, or reconfigure can race with the unlocked
 			 * file read above and invalidate the current capture block.
 			 */
-			if ((data->state != DMIC_STATE_ACTIVE) || (data->session_id != session)) {
+			if ((data->state != DMIC_STATE_ACTIVE) ||
+			    (data->session_id != capture_session)) {
 				ns_dmic_free_block(&data->stream, &block);
 				k_mutex_unlock(&data->lock);
 				break;
