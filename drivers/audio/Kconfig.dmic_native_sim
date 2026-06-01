@@ -13,9 +13,10 @@ if AUDIO_DMIC_NATIVE_SIM
 
 config AUDIO_DMIC_NATIVE_SIM_FILE_PATH
 	string "Input PCM file path"
-	default "/tmp/native_sim_dmic_in.pcm"
+	default "dmic_in.pcm"
 	help
-	  Host file path used as the PCM capture source.
+	  Host file path used as the PCM capture source. Can be either an
+	  absolute path or relative to the current working directory.
 
 config AUDIO_DMIC_NATIVE_SIM_QUEUE_SIZE
 	int "Receive queue length"
