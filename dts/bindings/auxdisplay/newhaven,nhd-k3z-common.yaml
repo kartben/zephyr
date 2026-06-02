@@ -1,0 +1,21 @@
+# Copyright (c) 2026
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Newhaven NHD K3Z family serial character OLED displays.
+
+  This binding models the transport-facing module interface used by K3Z variants,
+  where geometry is configurable through generic `rows` and `columns` properties.
+
+include: auxdisplay-device.yaml
+
+properties:
+  command-delay-us:
+    type: int
+    default: 40
+    description: Delay in microseconds to wait after each command write.
+
+  clear-delay-ms:
+    type: int
+    default: 2
+    description: Delay in milliseconds to wait after a clear command.
