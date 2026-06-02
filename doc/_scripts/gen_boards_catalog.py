@@ -104,6 +104,46 @@ class DeviceTreeUtils:
         )
 
 
+def get_board_memory_size(edt, chosen_name):
+    """Get the total size of a memory region from a chosen Devicetree node.
+
+    Args:
+        edt: The EDT object for a board target.
+        chosen_name: Chosen node name (for example "zephyr,sram" or "zephyr,flash").
+
+    Returns:
+        Total size in bytes, or None if the chosen node is not present.
+    """
+    memory_node = edt.chosen_node(chosen_name)
+    if memory_node is None:
+        return None
+    memory_sizes = [reg.size for reg in memory_node.regs if reg.size is not None]
+    return sum(memory_sizes) if memory_sizes else None
+
+
+def format_memory_size(size):
+    """Format a size in bytes using a human-readable binary unit string."""
+    for unit, divisor in (("GiB", 1024**3), ("MiB", 1024**2), ("KiB", 1024)):
+        if size >= divisor and size % divisor == 0:
+            return f"{size // divisor} {unit}"
+    return f"{size} B"
+
+
+def format_memory_sizes(sizes, memory_type):
+    """Format memory sizes as a comma-separated list with a memory type suffix.
+
+    Args:
+        sizes: List of sizes in bytes.
+        memory_type: Memory label appended to the formatted output.
+
+    Returns:
+        Formatted string, or None if no sizes are provided.
+    """
+    if not sizes:
+        return None
+    return f"{', '.join(format_memory_size(size) for size in sizes)} {memory_type}"
+
+
 def guess_file_from_patterns(directory, patterns, name, extensions):
     for pattern in patterns:
         for ext in extensions:
@@ -320,12 +360,22 @@ def get_catalog(generate_hw_features=False, hw_features_vendor_filter=None):
 
         supported_features = {}
         compatibles = {}
+        ram_sizes = []
+        rom_sizes = []
 
         # Use pre-gathered build info and DTS files
         if board.name in board_devicetrees:
+            board_ram_sizes = set()
+            board_rom_sizes = set()
             for board_target, edt in board_devicetrees[board.name].items():
                 features = {}
                 target_compatibles = set()
+                ram_size = get_board_memory_size(edt, "zephyr,sram")
+                rom_size = get_board_memory_size(edt, "zephyr,flash")
+                if ram_size is not None:
+                    board_ram_sizes.add(ram_size)
+                if rom_size is not None:
+                    board_rom_sizes.add(rom_size)
                 for node in edt.nodes:
                     if node.binding_path is None:
                         continue
@@ -388,6 +438,9 @@ def get_catalog(generate_hw_features=False, hw_features_vendor_filter=None):
                 supported_features[board_target] = features
                 compatibles[board_target] = list(target_compatibles)
 
+            ram_sizes = sorted(board_ram_sizes)
+            rom_sizes = sorted(board_rom_sizes)
+
         board_runner_info = {}
         if board.name in board_runners:
             # Assume all board targets have the same runners so only consider the runners
@@ -414,6 +467,9 @@ def get_catalog(generate_hw_features=False, hw_features_vendor_filter=None):
         else:
             doc_page_path = None
 
+        ram_display = format_memory_sizes(ram_sizes, "RAM")
+        rom_display = format_memory_sizes(rom_sizes, "ROM")
+
         board_catalog[board.name] = {
             "name": board.name,
             "full_name": full_name,
@@ -426,6 +482,14 @@ def get_catalog(generate_hw_features=False, hw_features_vendor_filter=None):
             "compatibles": compatibles,
             "image": guess_image(board),
             "maintained": is_board_maintained(doc_page_path) if doc_page_path else False,
+            "ram_sizes": ram_sizes,
+            "rom_sizes": rom_sizes,
+            # Use the largest variant for data-ram/data-rom so boards with multiple
+            # targets are shown when filtering for "at least N" memory.
+            "ram": ram_sizes[-1] if ram_sizes else None,
+            "rom": rom_sizes[-1] if rom_sizes else None,
+            "ram_display": ram_display,
+            "rom_display": rom_display,
             # runners
             "supported_runners": board_runner_info.get("runners", []),
             "flash_runner": board_runner_info.get("flash-runner", ""),

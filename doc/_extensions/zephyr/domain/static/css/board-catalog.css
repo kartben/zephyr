@@ -289,6 +289,132 @@ input:checked + .toggle-label .toggle-switch::before {
   color: var(--body-color);
 }
 
+.board-card .ram {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--body-color);
+}
+
+.board-card .rom {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--body-color);
+}
+
+/* ── Memory range sliders ───────────────────────────────────────────────── */
+
+.memory-slider-form-group {
+  flex-basis: 280px;
+}
+
+.memory-slider-wrapper {
+  padding: 6px 18px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.memory-slider-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.memory-slider-value-label {
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--admonition-note-title-background-color);
+  min-height: 1.4em;
+}
+
+.memory-slider-track {
+  position: relative;
+  height: 4px;
+  background: var(--input-background-color);
+  border-radius: 4px;
+  margin: 14px 0 6px;
+}
+
+.memory-slider-track-fill {
+  position: absolute;
+  height: 100%;
+  background: var(--admonition-note-title-background-color);
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.memory-slider-input {
+  position: absolute;
+  top: -13px;
+  width: 100%;
+  height: 30px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  appearance: none;
+  pointer-events: none;
+}
+
+.memory-slider-input::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 4px;
+}
+
+.memory-slider-input::-moz-range-track {
+  background: transparent;
+  height: 4px;
+}
+
+.memory-slider-input::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--admonition-note-title-background-color);
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  pointer-events: all;
+  transition: transform 0.15s ease;
+  margin-top: -8px;
+}
+
+.memory-slider-input::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--admonition-note-title-background-color);
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.memory-slider-input:focus {
+  outline: none;
+}
+
+.memory-slider-input:focus::-webkit-slider-thumb {
+  transform: scale(1.2);
+}
+
+.memory-slider-input:focus::-moz-range-thumb {
+  transform: scale(1.2);
+}
+
+.memory-slider-endpoints {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--body-color);
+  opacity: 0.65;
+}
+
 @media (max-width: 1024px) {
   .board-card {
     flex: 1 1 calc(50% - 20px);
@@ -375,6 +501,22 @@ input:checked + .toggle-label .toggle-switch::before {
 
 #catalog.compact .board-card .arch::after {
   content: ")";
+}
+
+#catalog.compact .board-card .ram {
+  display: inline;
+}
+
+#catalog.compact .board-card .ram::before {
+  content: " / ";
+}
+
+#catalog.compact .board-card .rom {
+  display: inline;
+}
+
+#catalog.compact .board-card .rom::before {
+  content: " / ";
 }
 
 #catalog.compact .board-card:hover {

@@ -13,6 +13,8 @@
   aria-label="Open the documentation page for {{ board.full_name }}"
   data-name="{{ board.full_name}}"
   data-arch="{{ board.archs | join(" ") }}"
+  data-ram="{{ board.ram or '' }}"
+  data-rom="{{ board.rom or '' }}"
   data-vendor="{{ board.vendor }}"
   data-socs="{{ board.socs | join(" ") }}"
   data-supported-features="
@@ -48,4 +50,10 @@
   {% endif -%}
   <div class="board-name">{{ board.full_name }}</div>
   <div class="arch">{{ board.archs | join(", ") }}</div>
+  {% if board.ram_display -%}
+  <div class="ram">{{ board.ram_display }}</div>
+  {% endif -%}
+  {% if board.rom_display -%}
+  <div class="rom">{{ board.rom_display }}</div>
+  {% endif -%}
 </a>

@@ -29,6 +29,16 @@ function populateFormFromURL() {
     }
   });
 
+  // Restore memory slider positions (run after initMemorySliders sets the max)
+  ["ram", "rom"].forEach(type => {
+    const minEl = document.getElementById(`${type}-min`);
+    const maxEl = document.getElementById(`${type}-max`);
+    if (!minEl || !maxEl) return;
+    if (hashParams.has(`${type}-min`)) minEl.value = hashParams.get(`${type}-min`);
+    if (hashParams.has(`${type}-max`)) maxEl.value = hashParams.get(`${type}-max`);
+    updateMemorySlider(type);
+  });
+
   // Restore visibility toggles from URL
   ["show-boards", "show-shields"].forEach(toggle => {
     if (hashParams.has(toggle)) {
@@ -104,10 +114,21 @@ function updateURL() {
     if (param === "soc") {
       const selectedSocs = [...element.selectedOptions].map(({ value }) => value);
       selectedSocs.length ? hashParams.set(param, selectedSocs.join(",")) : hashParams.delete(param);
-    }
-    else {
+    } else {
       element.value ? hashParams.set(param, element.value) : hashParams.delete(param);
     }
+  });
+
+  // Persist memory slider positions only when non-default
+  ["ram", "rom"].forEach(type => {
+    const minEl = document.getElementById(`${type}-min`);
+    const maxEl = document.getElementById(`${type}-max`);
+    if (!minEl || !maxEl) return;
+    const minVal = Number.parseInt(minEl.value, 10);
+    const maxVal = Number.parseInt(maxEl.value, 10);
+    const maxPossible = Number.parseInt(maxEl.max, 10);
+    minVal > 0 ? hashParams.set(`${type}-min`, minVal) : hashParams.delete(`${type}-min`);
+    maxVal < maxPossible ? hashParams.set(`${type}-max`, maxVal) : hashParams.delete(`${type}-max`);
   });
 
   ["show-boards", "show-shields"].forEach(toggle => {
@@ -326,6 +347,7 @@ document.addEventListener("DOMContentLoaded", function () {
   fillSocFamilySelect();
   fillSocSeriesSelect();
   fillSocSocSelect();
+  initMemorySliders();
   populateFormFromURL();
 
   setupHWCapabilitiesField();
@@ -396,6 +418,16 @@ function resetForm() {
   document.querySelectorAll('#compatibles-tags .tag').forEach(tag => tag.remove());
   document.getElementById('compatibles-input').value = '';
 
+  // Reset memory sliders to full range
+  ["ram", "rom"].forEach(type => {
+    const minEl = document.getElementById(`${type}-min`);
+    const maxEl = document.getElementById(`${type}-max`);
+    if (!minEl || !maxEl) return;
+    minEl.value = 0;
+    maxEl.value = maxEl.max;
+    updateMemorySlider(type);
+  });
+
   filterBoards();
 }
 
@@ -420,9 +452,130 @@ function wildcardMatch(pattern, str) {
   return regex.test(str);
 }
 
+function formatMemoryKiB(kib) {
+  if (kib <= 0) return "0";
+  if (kib >= 1024 && kib % 1024 === 0) return `${kib / 1024} MiB`;
+  return `${kib} KiB`;
+}
+
+function niceMemoryMax(kib) {
+  if (kib <= 0) return 64;
+  let n = 1;
+  while (n < kib) n <<= 1;
+  return n;
+}
+
+function updateMemorySlider(type) {
+  const minEl = document.getElementById(`${type}-min`);
+  const maxEl = document.getElementById(`${type}-max`);
+  const fill = document.getElementById(`${type}-range-fill`);
+  const label = document.getElementById(`${type}-range-label`);
+  const maxEndpoint = document.getElementById(`${type}-max-endpoint`);
+
+  if (!minEl || !maxEl || !fill || !label) return;
+
+  const minVal = Number.parseInt(minEl.value, 10);
+  const maxVal = Number.parseInt(maxEl.value, 10);
+  const sliderMax = Number.parseInt(minEl.max, 10);
+
+  const pctMin = (minVal / sliderMax) * 100;
+  const pctMax = (maxVal / sliderMax) * 100;
+
+  fill.style.left = `${pctMin}%`;
+  fill.style.width = `${pctMax - pctMin}%`;
+
+  if (maxEndpoint) maxEndpoint.textContent = formatMemoryKiB(sliderMax);
+
+  const atMin = minVal <= 0;
+  const atMax = maxVal >= sliderMax;
+
+  if (atMin && atMax) {
+    label.textContent = "Any";
+  } else if (atMin) {
+    label.textContent = `≤ ${formatMemoryKiB(maxVal)}`;
+  } else if (atMax) {
+    label.textContent = `≥ ${formatMemoryKiB(minVal)}`;
+  } else {
+    label.textContent = `${formatMemoryKiB(minVal)} – ${formatMemoryKiB(maxVal)}`;
+  }
+}
+
+function onMemorySlider(type) {
+  const minEl = document.getElementById(`${type}-min`);
+  const maxEl = document.getElementById(`${type}-max`);
+  if (!minEl || !maxEl) return;
+
+  /* Keep the two thumbs from crossing each other */
+  let minVal = Number.parseInt(minEl.value, 10);
+  let maxVal = Number.parseInt(maxEl.value, 10);
+  if (minVal > maxVal) {
+    if (document.activeElement === minEl) {
+      minEl.value = maxVal;
+    } else {
+      maxEl.value = minVal;
+    }
+  }
+
+  updateMemorySlider(type);
+  filterBoards();
+}
+
+function initMemorySliders() {
+  const boards = Array.from(document.querySelectorAll(".board-card"));
+
+  ["ram", "rom"].forEach(type => {
+    const values = boards
+      .map(b => Number.parseInt(b.getAttribute(`data-${type}`) || "", 10))
+      .filter(v => !Number.isNaN(v) && v > 0);
+
+    if (!values.length) return;
+
+    const maxBytes = Math.max(...values);
+    const maxKiB = niceMemoryMax(Math.ceil(maxBytes / 1024));
+
+    const minEl = document.getElementById(`${type}-min`);
+    const maxEl = document.getElementById(`${type}-max`);
+    if (!minEl || !maxEl) return;
+
+    minEl.max = maxKiB;
+    maxEl.max = maxKiB;
+    minEl.value = 0;
+    maxEl.value = maxKiB;
+
+    updateMemorySlider(type);
+  });
+}
+
+function memorySliderRange(type) {
+  /* Returns {minBytes, maxBytes} from the slider pair for 'type' ("ram" or "rom").
+   * maxBytes is Infinity when the max slider sits at its maximum position. */
+  const KIB = 1024;
+  const minEl = document.getElementById(`${type}-min`);
+  const maxEl = document.getElementById(`${type}-max`);
+  const minKiB = minEl ? Number.parseInt(minEl.value, 10) : 0;
+  const maxKiB = maxEl ? Number.parseInt(maxEl.value, 10) : Infinity;
+  const maxPossible = maxEl ? Number.parseInt(maxEl.max, 10) : Infinity;
+  return {
+    minBytes: minKiB * KIB,
+    maxBytes: (maxKiB >= maxPossible) ? Infinity : maxKiB * KIB,
+  };
+}
+
+function memoryInRange(boardBytes, minBytes, maxBytes, isShield) {
+  /* Returns false when the board should be excluded by a memory range filter.
+   * Shields are never filtered by memory because they have no data-ram/data-rom. */
+  if (isShield) return true;
+  if (Number.isNaN(boardBytes)) return (minBytes <= 0 && maxBytes >= Infinity);
+  return boardBytes >= minBytes && (maxBytes >= Infinity || boardBytes <= maxBytes);
+}
+
 function filterBoards() {
   const nameInput = document.getElementById("name").value.toLowerCase();
   const archSelect = document.getElementById("arch").value;
+
+  const { minBytes: ramMinBytes, maxBytes: ramMaxBytes } = memorySliderRange("ram");
+  const { minBytes: romMinBytes, maxBytes: romMaxBytes } = memorySliderRange("rom");
+
   const vendorSelect = document.getElementById("vendor").value;
   const socSocSelect = document.getElementById("soc");
   const showBoards = document.getElementById("show-boards").checked;
@@ -435,7 +588,9 @@ function filterBoards() {
   const selectedCompatibles = [...document.querySelectorAll('#compatibles-tags .tag')].map(tag => tag.textContent);
 
   const resetFiltersBtn = document.getElementById("reset-filters");
-  if (nameInput || archSelect || vendorSelect || socSocSelect.selectedOptions.length || selectedHWTags.length || selectedCompatibles.length || !showBoards || !showShields) {
+  const ramFiltered = ramMinBytes > 0 || ramMaxBytes < Infinity;
+  const romFiltered = romMinBytes > 0 || romMaxBytes < Infinity;
+  if (nameInput || archSelect || ramFiltered || romFiltered || vendorSelect || socSocSelect.selectedOptions.length || selectedHWTags.length || selectedCompatibles.length || !showBoards || !showShields) {
     resetFiltersBtn.classList.remove("btn-disabled");
   } else {
     resetFiltersBtn.classList.add("btn-disabled");
@@ -446,6 +601,8 @@ function filterBoards() {
   Array.from(boards).forEach(function (board) {
     const boardName = board.getAttribute("data-name").toLowerCase();
     const boardArchs = (board.getAttribute("data-arch") || "").split(" ").filter(Boolean);
+    const boardRam = Number.parseInt(board.getAttribute("data-ram") || "", 10);
+    const boardRom = Number.parseInt(board.getAttribute("data-rom") || "", 10);
     const boardVendor = board.getAttribute("data-vendor") || "";
     const boardSocs = (board.getAttribute("data-socs") || "").split(" ").filter(Boolean);
     const boardSupportedFeatures = (board.getAttribute("data-supported-features") || "").split(" ").filter(Boolean);
@@ -468,6 +625,8 @@ function filterBoards() {
       matches =
         !(nameInput && !boardName.includes(nameInput)) &&
         !(archSelect && !boardArchs.includes(archSelect)) &&
+        memoryInRange(boardRam, ramMinBytes, ramMaxBytes, isShield) &&
+        memoryInRange(boardRom, romMinBytes, romMaxBytes, isShield) &&
         !(vendorSelect && boardVendor !== vendorSelect) &&
         (selectedSocs.length === 0 || selectedSocs.some((soc) => boardSocs.includes(soc))) &&
         (selectedHWTags.length === 0 || selectedHWTags.every((tag) => boardSupportedFeatures.includes(tag))) &&
