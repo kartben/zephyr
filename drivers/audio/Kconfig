@@ -71,12 +71,12 @@ config AUDIO_DMIC_SHELL
 	select SHELL_VT100_COMMANDS
 	select BASE64
 	help
-	  Enable the Audio DMIC shell with commands to read audio data, display a live VU meter, and
-	  dump captured PCM as base64 from a digital microphonedevice.
+	  Enable shell commands to read audio data, show a live VU meter, and dump captured
+	  PCM as base64 from a digital microphone device.
 
-	  Captured buffers are allocated from the system heap only while a command runs and freed
-	  afterwards, so the idle cost is just a small control block plus a ~2 KB VU-meter thread
-	  stack. The heap is reserved via HEAP_MEM_POOL_ADD_SIZE_AUDIO_DMIC_SHELL.
+	  Capture buffers are allocated from the system heap only while a command runs and freed
+	  afterwards. Idle cost is a small control block plus a ~2 KB VU-meter thread stack. The
+	  heap is reserved via HEAP_MEM_POOL_ADD_SIZE_AUDIO_DMIC_SHELL.
 
 if AUDIO_DMIC_SHELL
 
@@ -92,10 +92,10 @@ config HEAP_MEM_POOL_ADD_SIZE_AUDIO_DMIC_SHELL
 	int "System heap reserved for the Audio DMIC shell (bytes)"
 	default 8192
 	help
-	  Heap reserved for the shell capture.
-	  The default covers the default capture (16 kHz mono 16-bit, 50 ms blocks: ~6.4 KB).
-	  Raise it for higher sample rates, stereo, or 32-bit (e.g. 48 kHz / 2 ch / 32-bit needs
-	  ~76 KB).
+	  Heap reserved for shell capture buffers.
+	  The default covers 16 kHz mono 16-bit capture with 50 ms blocks (~6.4 KB).
+	  Raise it for higher sample rates, stereo, or 32-bit capture (for example
+	  48 kHz / 2 ch / 32-bit needs ~76 KB).
 	  A request that does not fit fails with a clean error.
 
 config AUDIO_DMIC_SHELL_VU_PEAK_HOLD_MS

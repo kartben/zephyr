@@ -24,10 +24,7 @@
 #define DMIC_SHELL_CLK_DC_MIN 40U
 #define DMIC_SHELL_CLK_DC_MAX 60U
 
-/*
- * One read cycle holds this many milliseconds of audio. Kept short so each heap-allocated buffer
- * stays small; must divide 1000 evenly so BLOCKS_PER_SEC is exact.
- */
+/* Audio carried by one read cycle; must divide 1000 evenly. */
 #define DMIC_SHELL_BLOCK_DURATION_MS 50U
 #define DMIC_SHELL_BLOCKS_PER_SEC    (1000U / DMIC_SHELL_BLOCK_DURATION_MS)
 
@@ -37,9 +34,7 @@
 /* Number of capture buffers in the pool */
 #define DMIC_SHELL_BLOCK_COUNT CONFIG_AUDIO_DMIC_SHELL_BLOCK_COUNT
 
-/*
- * Capture pool, carved from the system heap.
- */
+/* Capture pool, carved from the system heap. */
 static struct k_mem_slab dmic_shell_slab;
 static void *dmic_shell_pool;
 
@@ -49,10 +44,7 @@ static void *dmic_shell_pool;
 /* Level-meter bar geometry, in characters */
 #define DMIC_SHELL_VU_BAR_MIN       4
 #define DMIC_SHELL_VU_BAR_MAX       40
-/*
- * Fixed characters per channel line around the bar, used to size the bar to the terminal width:
- * "CHx [" (5) + "] " (2) + "NNNN.N dBFS" (11) + " !" clip flag (2).
- */
+/* Fixed text around the meter bar: "CHx [" + "] " + "NNNN.N dBFS" + optional " !". */
 #define DMIC_SHELL_VU_LINE_OVERHEAD 20
 
 /* Up to two interleaved channels (mono or stereo) */
@@ -63,12 +55,7 @@ static void *dmic_shell_pool;
 /* dmic_read() timeout while metering: short so a key press stops promptly */
 #define DMIC_SHELL_VU_READ_TIMEOUT_MS 200
 
-/*
- * The meter works in dBFS (0 dBFS = full-scale signed PCM). Samples of either width are normalised
- * to a common Q15 full scale so 16- and 32-bit share one code path:
- *   FS_N  = 2^15  -> full-scale amplitude
- *   FS_SQ = 2^30  -> full-scale power, the 0 dBFS reference for the dB helper
- */
+/* Meter math uses Q15 full scale so 16- and 32-bit PCM share the same path. */
 #define DMIC_SHELL_VU_FS_N   (1 << 15)
 #define DMIC_SHELL_VU_FS_SQ  (1ULL << 30)
 /* A sample at or above this magnitude (~ -0.01 dBFS) counts as clipping. */
@@ -80,12 +67,7 @@ static void *dmic_shell_pool;
 #define DMIC_SHELL_VU_GREEN_DBFS_T  (-180) /* green below -18 dBFS */
 #define DMIC_SHELL_VU_YELLOW_DBFS_T (-60)  /* yellow -18..-6, red above -6 dBFS */
 
-/*
- * Peak-hold ballistics.
- * After a new peak, the '|' tick is held flat for CONFIG_AUDIO_DMIC_SHELL_VU_PEAK_HOLD_MS, then
- * falls at DMIC_SHELL_VU_HOLD_DECAY_T tenths of a dB per block until it reaches the floor.
- * The clip '!' stays lit for CONFIG_AUDIO_DMIC_SHELL_VU_CLIP_HOLD_MS after the last clipped sample.
- */
+/* Peak hold stays flat first, then decays; the clip flag is held separately. */
 #define DMIC_SHELL_VU_HOLD_BLOCKS                                                                  \
 	(CONFIG_AUDIO_DMIC_SHELL_VU_PEAK_HOLD_MS / DMIC_SHELL_BLOCK_DURATION_MS)
 #define DMIC_SHELL_VU_HOLD_DECAY_T 5
@@ -219,11 +201,7 @@ static void dmic_shell_pool_free(void)
 	dmic_shell_pool = NULL;
 }
 
-/*
- * Allocate the capture pool, configure the DMIC for the requested format and start it.
- * On success the caller owns the running capture and must call dmic_shell_capture_stop() when done;
- * on any failure everything is unwound here.
- */
+/* Allocate the pool, configure the DMIC, and start capture. */
 static int dmic_shell_capture_start(const struct shell *sh, const struct device *dev,
 				    uint32_t sample_rate, uint8_t channels, uint8_t pcm_width)
 {
@@ -280,10 +258,7 @@ static void dmic_shell_capture_stop(const struct device *dev)
 	dmic_shell_pool_free();
 }
 
-/*
- * Per-channel measurements for one captured block, all derived from signed PCM
- * normalised to a Q15 full scale (see DMIC_SHELL_VU_FS_N).
- */
+/* Per-channel measurements for one captured block in Q15 full scale. */
 struct dmic_vu_meas {
 	int32_t peak_n; /* peak |sample|, 0..FS_N */
 	uint32_t clips; /* samples at/above the clip threshold */
@@ -291,10 +266,7 @@ struct dmic_vu_meas {
 
 /*
  * Fixed-point constants for the log2-based dBFS conversion.
- *   LOG2_FRAC_BITS - fractional bits in the Q16 log2 result (1 unit == one octave)
- *   FS_SQ_LOG2     - log2 of the full-scale power reference FS_SQ (= 2^30), i.e. the 0 dBFS point
- *   DB_TENTHS_PER_OCTAVE - tenths of a dB gained per octave of power: 10*log10(2)*10 = 30.103,
- *                          stored scaled by DB_SCALE so the conversion stays in integer math
+ * DB_TENTHS_PER_OCTAVE is 10*log10(2)*10, scaled by DB_SCALE.
  */
 #define DMIC_SHELL_VU_LOG2_FRAC_BITS       16
 #define DMIC_SHELL_VU_LOG2_ONE             (1LL << DMIC_SHELL_VU_LOG2_FRAC_BITS)
@@ -347,18 +319,12 @@ static int32_t power_dbfs_tenths(uint64_t power)
 	/* log2(power / FS_SQ) in Q16; <= 0 because power never exceeds full scale. */
 	l = (int64_t)log2_q16(power) -
 	    ((int64_t)DMIC_SHELL_VU_FS_SQ_LOG2 << DMIC_SHELL_VU_LOG2_FRAC_BITS);
-	/* Scale octaves of power to tenths of a dB and undo the Q16 and DB_SCALE factors, rounding
-	 * to nearest.
-	 */
+	/* Convert octaves of power to tenths of a dB, rounding to nearest. */
 	num = l * DMIC_SHELL_VU_DB_TENTHS_PER_OCTAVE;
 	return (int32_t)((num >= 0) ? (num + half) / divisor : (num - half) / divisor);
 }
 
-/*
- * Analyse one interleaved channel of a block: peak amplitude and clip count. Samples are normalized
- * to Q15 full scale, which also sidesteps INT16_MIN / INT32_MIN negation UB (the normalized minimum
- * is -FS_N, whose magnitude +FS_N fits in int32_t).
- */
+/* Analyze one interleaved channel: peak amplitude and clip count in Q15 full scale. */
 static void analyze_channel(const void *buf, size_t size, uint8_t pcm_width, uint8_t num_channels,
 			    uint8_t channel, struct dmic_vu_meas *m)
 {
@@ -539,16 +505,11 @@ struct dmic_vu_ctx {
 static K_THREAD_STACK_DEFINE(dmic_vu_stack, DMIC_SHELL_VU_STACK_SIZE);
 static struct dmic_vu_ctx dmic_vu_ctx_data;
 
-/*
- * Redraw one meter frame: one line per channel, redrawn in place. Each line is
- *   CHx [#### bar with a '|' peak-hold tick] <peak> dBFS [!]
- * where '#' is the current peak level for the latest block, '|' marks the recent peak hold (held
- * flat then decaying), and a red '!' appears for a short while after the channel clips.
- */
+/* Redraw one in-place meter frame, one line per channel. */
 static void render_frame(struct dmic_vu_ctx *ctx, const void *buf, size_t size)
 {
 	const struct shell *sh = ctx->sh;
-	int span = 0 - DMIC_SHELL_VU_FLOOR_DBFS_T;
+	int span = -DMIC_SHELL_VU_FLOOR_DBFS_T;
 
 	/* After the first frame, step the cursor back up over the lines drawn last time so they
 	 * are overwritten rather than scrolled.
@@ -567,9 +528,7 @@ static void render_frame(struct dmic_vu_ctx *ctx, const void *buf, size_t size)
 
 		peak_t = power_dbfs_tenths((uint64_t)m.peak_n * (uint64_t)m.peak_n);
 
-		/* Peak hold: jump up to a new peak immediately and hold it flat for HOLD_BLOCKS,
-		 * then decay gradually and eventually fall back to -inf (it never sticks forever).
-		 */
+		/* Peak hold jumps to new peaks, then decays back to -inf. */
 		if (peak_t != INT32_MIN && peak_t >= ctx->hold_tenths[ch]) {
 			ctx->hold_tenths[ch] = peak_t;
 			ctx->hold_blocks[ch] = DMIC_SHELL_VU_HOLD_BLOCKS;
@@ -580,25 +539,16 @@ static void render_frame(struct dmic_vu_ctx *ctx, const void *buf, size_t size)
 			if (ctx->hold_tenths[ch] < DMIC_SHELL_VU_FLOOR_DBFS_T) {
 				ctx->hold_tenths[ch] = INT32_MIN;
 			}
-		} else {
-			/* no peak hold active */
 		}
 
-		/* Clip hold: re-arm on any clipped sample, otherwise count down so the '!' clears
-		 * once the input has stayed below the clip threshold for CLIP_HOLD_BLOCKS.
-		 */
+		/* Keep the clip flag lit for a short time after the last clipped sample. */
 		if (m.clips > 0U) {
 			ctx->clip_blocks[ch] = DMIC_SHELL_VU_CLIP_HOLD_BLOCKS;
 		} else if (ctx->clip_blocks[ch] > 0U) {
 			ctx->clip_blocks[ch]--;
-		} else {
-			/* no clip indicator active */
 		}
 
-		/*
-		 * Map the current peak onto the solid fill and the decaying peak hold onto the '|'
-		 * tick.
-		 */
+		/* Map the current peak to the fill and the hold value to the marker tick. */
 		if (peak_t == INT32_MIN) {
 			filled = 0;
 		} else {
@@ -620,7 +570,6 @@ static void render_frame(struct dmic_vu_ctx *ctx, const void *buf, size_t size)
 		shell_fprintf(sh, SHELL_NORMAL, "\r\033[2KCH%u [", ch);
 		render_meter_bar(sh, filled, marker, ctx->bar_width);
 		shell_fprintf(sh, SHELL_NORMAL, "] %6s dBFS", peak_s);
-		/* A red '!' flags that the channel has clipped recently. */
 		if (ctx->clip_blocks[ch] > 0U) {
 			shell_fprintf(sh, SHELL_ERROR, " !");
 		}
@@ -657,10 +606,7 @@ static void dmic_vu_thread(void *p1, void *p2, void *p3)
 
 		ret = dmic_read(ctx->dev, 0, &buf, &size, DMIC_SHELL_VU_READ_TIMEOUT_MS);
 		if (ret == -EAGAIN) {
-			/*
-			 * No block arrived in time: surface it once and keep trying, staying
-			 * responsive to a stop request.
-			 */
+			/* Report a stall once, then keep polling so stop stays responsive. */
 			if (!warned) {
 				shell_warn(ctx->sh, "No audio data yet (read timed out) - check "
 						    "the DMIC clock and wiring");
@@ -715,19 +661,12 @@ static int cmd_vu(const struct shell *sh, size_t argc, char *argv[])
 		return -EBUSY;
 	}
 
-	/*
-	 * Winning the CAS means the previous run (if any) has already cleared "running" and is in
-	 * its final unwind. Join it so the kernel has fully torn the thread down before we reuse
-	 * the shared thread object and stack below; without this the create could race a thread
-	 * that is not quite dead yet.
-	 */
+	/* Wait for the previous run to finish before reusing the shared thread object and stack. */
 	if (dmic_vu_ctx_data.thread_started) {
 		k_thread_join(&dmic_vu_ctx_data.thread, K_FOREVER);
 	}
 
-	/* Each channel is drawn on its own line, so size the bar to the terminal
-	 * width (capped so the numeric readouts stay aligned on wide terminals).
-	 */
+	/* Size the bar to the terminal width without pushing the numeric readouts around. */
 	term_wid = (sh->ctx != NULL) ? sh->ctx->vt100_ctx.cons.terminal_wid : 0U;
 	if (term_wid == 0U) {
 		term_wid = CONFIG_SHELL_DEFAULT_TERMINAL_WIDTH;
@@ -767,11 +706,7 @@ static int cmd_vu(const struct shell *sh, size_t argc, char *argv[])
 	return 0;
 }
 
-/*
- * Stream `src` as base64, one DMIC_SHELL_DUMP_CHUNK-byte line at a time.
- * Bytes that do not fill a full chunk are kept in @carry and prepended to the next block so the
- * base64 stream stays aligned on 3-byte boundaries until flushed.
- */
+/* Stream src as base64, keeping leftover bytes in carry until the next chunk. */
 static int dump_emit(const struct shell *sh, const uint8_t *src, size_t slen, uint8_t *carry,
 		     size_t *carry_len)
 {
