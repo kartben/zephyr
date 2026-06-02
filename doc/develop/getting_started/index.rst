@@ -17,6 +17,8 @@ Select and Update OS
 ********************
 
 Click the operating system you are using.
+Start by bringing that system up to date so the package manager metadata and
+base packages used in later steps are current.
 
 .. tabs::
 
@@ -52,7 +54,8 @@ Click the operating system you are using.
 Install dependencies
 ********************
 
-Next, you'll install some host dependencies using your package manager.
+Next, you'll install some host dependencies using your package manager so your
+host has the build, flash, and debug tools Zephyr expects.
 
 The current minimum required version for the main dependencies are:
 
@@ -77,7 +80,8 @@ The current minimum required version for the main dependencies are:
 
       .. _install_dependencies_ubuntu:
 
-      #. Use ``apt`` to install the required dependencies:
+      #. Use ``apt`` to install the required dependencies that provide the
+         build system, compilers, Python tooling, and flashing utilities:
 
          .. code-block:: bash
 
@@ -90,7 +94,9 @@ The current minimum required version for the main dependencies are:
             Due to the unavailability of ``gcc-multilib`` and ``g++-multilib`` on AArch64
             (ARM64) systems, you may need to omit them from the list of packages to install.
 
-      #. Verify the versions of the main dependencies installed on your system by entering:
+      #. Verify the versions of the main dependencies installed on your system
+         to make sure the tools you just installed meet Zephyr's minimum
+         requirements:
 
          .. code-block:: bash
 
@@ -106,28 +112,31 @@ The current minimum required version for the main dependencies are:
 
       .. _install_dependencies_macos:
 
-      #. Install `Homebrew <https://brew.sh/>`_:
+      #. Install `Homebrew <https://brew.sh/>`_ so you can use a single package
+         manager to install and update the tools Zephyr needs:
 
          .. code-block:: bash
 
             /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
       #. After the Homebrew installation script completes, follow the on-screen
-         instructions to add the Homebrew installation to the path.
+         instructions to add Homebrew to your path so later commands can find
+         ``brew``:
 
          .. code-block:: bash
 
             (echo; echo 'eval "$(/opt/homebrew/bin/brew shellenv)"') >> ~/.zprofile
             source ~/.zprofile
 
-      #. Use ``brew`` to install the required dependencies:
+      #. Use ``brew`` to install the required dependencies that provide the
+         build system, Python tooling, emulation, and flashing support:
 
          .. code-block:: bash
 
             brew install cmake ninja gperf python3 python-tk ccache qemu dtc libmagic wget openocd
 
-      #. Add the Homebrew Python folder to the path, in order to be able to
-         execute ``python`` and ``pip`` as well ``python3`` and ``pip3``.
+      #. Add the Homebrew Python folder to the path so you can run ``python``
+         and ``pip`` as well as ``python3`` and ``pip3`` in later steps:
 
            .. code-block:: bash
 
@@ -146,36 +155,41 @@ The current minimum required version for the main dependencies are:
 
          Therefore, we don't recommend using WSL when getting started.
 
-      In modern version of Windows (10 and later) it is recommended to install the Windows Terminal
-      application from the Microsoft Store. Instructions are provided for a ``cmd.exe`` or
-      PowerShell command prompts.
+       In modern versions of Windows (10 and later) it is recommended to
+       install the Windows Terminal application from the Microsoft Store.
+       Instructions are provided for ``cmd.exe`` or PowerShell command prompts.
 
-      These instructions rely on Windows' official package manager, `winget`_.
-      If using winget isn't an option, you can install dependencies from their
-      respective websites and ensure the command line tools are on your
-      :envvar:`PATH` :ref:`environment variable <env_vars>`.
+       These instructions rely on Windows' official package manager, `winget`_.
+       If using winget isn't an option, you can install dependencies from their
+       respective websites and ensure the command line tools are on your
+       :envvar:`PATH` :ref:`environment variable <env_vars>`.
 
-      |p|
+       |p|
 
-      .. _install_dependencies_windows:
+       .. _install_dependencies_windows:
 
-      #. In modern Windows versions, winget is already pre-installed by default.
-         You can verify that this is the case by typing ``winget`` in a terminal
-         window. If that fails, you can then `install winget`_.
+       #. In modern Windows versions, winget is already pre-installed by
+          default. Verify that it is available first, because the next step uses
+          it to install the required tools. If ``winget`` is not available, you
+          can then `install winget`_.
 
-      #. Open a Command Prompt (``cmd.exe``) or PowerShell terminal window.
-         To do so, press the Windows key, type ``cmd.exe`` or PowerShell and
-         click on the result.
+       #. Open a Command Prompt (``cmd.exe``) or PowerShell terminal window so
+          you can run the install commands in the next steps. To do so, press
+          the Windows key, type ``cmd.exe`` or PowerShell and click on the
+          result.
 
-      #. Use ``winget`` to install the required dependencies:
+       #. Use ``winget`` to install the required dependencies that provide the
+          build system, Python tooling, archive utilities, and device tree
+          compiler:
 
-         .. code-block:: bat
+          .. code-block:: bat
 
-            winget install Kitware.CMake Ninja-build.Ninja oss-winget.gperf Python.Python.3.12 Git.Git oss-winget.dtc wget 7zip.7zip
+             winget install Kitware.CMake Ninja-build.Ninja oss-winget.gperf Python.Python.3.12 Git.Git oss-winget.dtc wget 7zip.7zip
 
-      #. Close the terminal window.
+       #. Close the terminal window so a new shell session picks up the updated
+          ``PATH`` from the installers.
 
-      .. note::
+       .. note::
 
          You may need to add the 7zip installation folder to your ``PATH``.
 
@@ -203,13 +217,15 @@ chosen. You'll also install Zephyr's additional Python dependencies in a
 
    .. group-tab:: Ubuntu
 
-      #. Create a new virtual environment:
+      #. Create a new virtual environment to keep Zephyr's Python packages
+         separate from your system Python installation:
 
          .. code-block:: bash
 
             python3 -m venv ~/zephyrproject/.venv
 
-      #. Activate the virtual environment:
+      #. Activate the virtual environment so ``pip`` installs Zephyr's Python
+         dependencies into that isolated environment:
 
          .. code-block:: bash
 
@@ -222,15 +238,19 @@ chosen. You'll also install Zephyr's additional Python dependencies in a
          .. note::
 
             Remember to activate the virtual environment every time you
-            start working.
+            start working. Otherwise, commands such as ``pip``, ``west``, and
+            other Zephyr tools may use packages from a different Python
+            installation.
 
-      #. Install west:
+      #. Install west, the Zephyr workspace tool that downloads modules,
+         installs helper packages, and drives common build and flash commands:
 
          .. code-block:: bash
 
             pip install west
 
-      #. Get the Zephyr source code:
+      #. Get the Zephyr source code and its modules so you have the full
+         workspace needed to build Zephyr applications:
 
          .. only:: not release
 
@@ -242,6 +262,10 @@ chosen. You'll also install Zephyr's additional Python dependencies in a
 
          .. only:: release
 
+            In release documentation, ``--mr`` tells ``west init`` to check out
+            the matching Zephyr release manifest instead of the latest
+            development manifest.
+
             .. We need to use a parsed-literal here because substitutions do not work in code
                blocks. This means users can't copy-paste these lines as easily as other blocks but
                should be good enough still :)
@@ -252,15 +276,17 @@ chosen. You'll also install Zephyr's additional Python dependencies in a
                cd ~/zephyrproject
                west update
 
-      #. Export a :ref:`Zephyr CMake package <cmake_pkg>`. This allows CMake to
-         automatically load boilerplate code required for building Zephyr
+      #. Export a :ref:`Zephyr CMake package <cmake_pkg>`. This registers your
+         current Zephyr checkout in CMake's user package registry so
+         ``find_package(Zephyr)`` can locate it automatically when building
          applications.
 
          .. code-block:: bash
 
             west zephyr-export
 
-      #. Install Python dependencies using ``west packages``.
+      #. Install the Python dependencies declared by Zephyr and its modules
+         into the active virtual environment using ``west packages``:
 
          .. code-block:: bash
 
@@ -268,17 +294,20 @@ chosen. You'll also install Zephyr's additional Python dependencies in a
 
          .. note::
 
-            This could downgrade or upgrade west itself.
+            This could downgrade or upgrade west itself so the workspace uses a
+            version that matches the checked out Zephyr tree and modules.
 
    .. group-tab:: macOS
 
-      #. Create a new virtual environment:
+      #. Create a new virtual environment to keep Zephyr's Python packages
+         separate from your system Python installation:
 
          .. code-block:: bash
 
             python3 -m venv ~/zephyrproject/.venv
 
-      #. Activate the virtual environment:
+      #. Activate the virtual environment so ``pip`` installs Zephyr's Python
+         dependencies into that isolated environment:
 
          .. code-block:: bash
 
@@ -291,15 +320,19 @@ chosen. You'll also install Zephyr's additional Python dependencies in a
          .. note::
 
             Remember to activate the virtual environment every time you
-            start working.
+            start working. Otherwise, commands such as ``pip``, ``west``, and
+            other Zephyr tools may use packages from a different Python
+            installation.
 
-      #. Install west:
+      #. Install west, the Zephyr workspace tool that downloads modules,
+         installs helper packages, and drives common build and flash commands:
 
          .. code-block:: bash
 
             pip install west
 
-      #. Get the Zephyr source code:
+      #. Get the Zephyr source code and its modules so you have the full
+         workspace needed to build Zephyr applications:
 
          .. code-block:: bash
 
@@ -307,15 +340,17 @@ chosen. You'll also install Zephyr's additional Python dependencies in a
             cd ~/zephyrproject
             west update
 
-      #. Export a :ref:`Zephyr CMake package <cmake_pkg>`. This allows CMake to
-         automatically load boilerplate code required for building Zephyr
+      #. Export a :ref:`Zephyr CMake package <cmake_pkg>`. This registers your
+         current Zephyr checkout in CMake's user package registry so
+         ``find_package(Zephyr)`` can locate it automatically when building
          applications.
 
          .. code-block:: bash
 
             west zephyr-export
 
-      #. Install Python dependencies using ``west packages``.
+      #. Install the Python dependencies declared by Zephyr and its modules
+         into the active virtual environment using ``west packages``:
 
          .. code-block:: bash
 
@@ -323,13 +358,17 @@ chosen. You'll also install Zephyr's additional Python dependencies in a
 
          .. note::
 
-            This could downgrade or upgrade west itself.
+            This could downgrade or upgrade west itself so the workspace uses a
+            version that matches the checked out Zephyr tree and modules.
 
    .. group-tab:: Windows
 
       #. Open a ``cmd.exe`` or PowerShell terminal window **as a regular user**
+         so the virtual environment and Python packages are created in your own
+         profile instead of an administrator account.
 
-      #. Create a new virtual environment:
+      #. Create a new virtual environment to keep Zephyr's Python packages
+         separate from your system Python installation:
 
          .. tabs::
 
@@ -343,7 +382,8 @@ chosen. You'll also install Zephyr's additional Python dependencies in a
                cd $Env:HOMEPATH
                py -3.12 -m venv zephyrproject\.venv
 
-      #. Activate the virtual environment:
+      #. Activate the virtual environment so ``pip`` installs Zephyr's Python
+         dependencies into that isolated environment:
 
          .. note::
 
@@ -371,15 +411,19 @@ chosen. You'll also install Zephyr's additional Python dependencies in a
          .. note::
 
             Remember to activate the virtual environment every time you
-            start working.
+            start working. Otherwise, commands such as ``pip``, ``west``, and
+            other Zephyr tools may use packages from a different Python
+            installation.
 
-      #. Install west:
+      #. Install west, the Zephyr workspace tool that downloads modules,
+         installs helper packages, and drives common build and flash commands:
 
          .. code-block:: bat
 
             pip install west
 
-      #. Get the Zephyr source code:
+      #. Get the Zephyr source code and its modules so you have the full
+         workspace needed to build Zephyr applications:
 
          .. code-block:: bat
 
@@ -387,15 +431,17 @@ chosen. You'll also install Zephyr's additional Python dependencies in a
             cd zephyrproject
             west update
 
-      #. Export a :ref:`Zephyr CMake package <cmake_pkg>`. This allows CMake to
-         automatically load boilerplate code required for building Zephyr
+      #. Export a :ref:`Zephyr CMake package <cmake_pkg>`. This registers your
+         current Zephyr checkout in CMake's user package registry so
+         ``find_package(Zephyr)`` can locate it automatically when building
          applications.
 
          .. code-block:: bat
 
             west zephyr-export
 
-      #. Install Python dependencies using ``west packages``.
+      #. Install the Python dependencies declared by Zephyr and its modules
+         into the active virtual environment using ``west packages``:
 
          .. tabs::
 
@@ -407,27 +453,34 @@ chosen. You'll also install Zephyr's additional Python dependencies in a
 
                python -m pip install @((west packages pip) -split ' ')
 
+         The ``cmd.exe`` helper script runs ``west packages pip`` and then
+         forwards the resulting requirement list to ``pip install``. The
+         PowerShell example does the same thing inline.
+
          .. note::
 
-            This could downgrade or upgrade west itself.
+            This could downgrade or upgrade west itself so the workspace uses a
+            version that matches the checked out Zephyr tree and modules.
 
 Install the Zephyr SDK
 **********************
 
 The :ref:`Zephyr Software Development Kit (SDK) <toolchain_zephyr_sdk>`
-contains toolchains for each of Zephyr's supported architectures, which
-include a compiler, assembler, linker and other programs required to build
-Zephyr applications.
+contains toolchains for each of Zephyr's supported architectures. Those
+toolchains include the compiler, assembler, linker, and other programs
+required to build Zephyr applications for your target board.
 
 It also contains additional host tools, such as custom QEMU and OpenOCD builds
-that are used to emulate, flash and debug Zephyr applications.
+that are used to emulate, flash, and debug Zephyr applications later in the
+workflow.
 
 
 .. tabs::
 
    .. group-tab:: Ubuntu
 
-      Install the Zephyr SDK using the ``west sdk install``.
+      Install the Zephyr SDK so west can download the toolchains and host tools
+      needed to build and work with Zephyr applications on this machine:
 
          .. code-block:: bash
 
@@ -442,7 +495,8 @@ that are used to emulate, flash and debug Zephyr applications.
 
    .. group-tab:: macOS
 
-      Install the Zephyr SDK using the ``west sdk install``.
+      Install the Zephyr SDK so west can download the toolchains and host tools
+      needed to build and work with Zephyr applications on this machine:
 
          .. code-block:: bash
 
@@ -457,7 +511,8 @@ that are used to emulate, flash and debug Zephyr applications.
 
    .. group-tab:: Windows
 
-      Install the Zephyr SDK using the ``west sdk install``.
+      Install the Zephyr SDK so west can download the toolchains and host tools
+      needed to build and work with Zephyr applications on this machine:
 
          .. tabs::
 
@@ -493,11 +548,14 @@ Build the Blinky Sample
    does not meet Blinky's :ref:`blinky-sample-requirements`, then
    :zephyr:code-sample:`hello_world` is a good alternative.
 
-   If you are unsure what name west uses for your board, ``west boards``
-   can be used to obtain a list of all boards Zephyr supports.
+If you are unsure what name west uses for your board, ``west boards`` can be
+used to obtain a list of all boards Zephyr supports, and your board's
+documentation page lists the exact board target name to use with ``west build``.
 
-Build the :zephyr:code-sample:`blinky` with :ref:`west build <west-building>`, changing
-``<your-board-name>`` appropriately for your board:
+Build the :zephyr:code-sample:`blinky` with :ref:`west build <west-building>`,
+changing ``<your-board-name>`` appropriately for your board. This step confirms
+that your host tools, SDK, source checkout, and board selection all work
+together before you try flashing hardware:
 
 .. tabs::
 
@@ -529,14 +587,16 @@ Build the :zephyr:code-sample:`blinky` with :ref:`west build <west-building>`, c
             cd $Env:HOMEPATH\zephyrproject\zephyr
             west build -p always -b <your-board-name> samples\basic\blinky
 
-The ``-p always`` option forces a pristine build, and is recommended for new
-users. Users may also use the ``-p auto`` option, which will use
+The ``-p always`` option deletes any previous build directory contents before
+configuring the sample again. That pristine build is recommended for new users
+because it avoids confusing failures caused by stale settings or artifacts from
+an earlier build. Users may also use the ``-p auto`` option, which uses
 heuristics to determine if a pristine build is required, such as when building
 another sample.
 
 .. note::
 
-   A board may contain one or multiple SoCs, Also, each SoC may contain one or
+   A board may contain one or multiple SoCs. Also, each SoC may contain one or
    more CPU clusters.
    When building for such boards it is necessary to specify the SoC or CPU
    cluster for which the sample must be built.
@@ -551,7 +611,8 @@ Flash the Sample
 Connect your board, usually via USB, and turn it on if there's a power switch.
 If in doubt about what to do, check your board's page in :ref:`boards`.
 
-Then flash the sample using :ref:`west flash <west-flashing>`:
+Then flash the sample using :ref:`west flash <west-flashing>` so west can invoke
+the correct board-specific runner and program the image you just built:
 
 .. code-block:: shell
 
@@ -565,9 +626,8 @@ Then flash the sample using :ref:`west flash <west-flashing>`:
 
 .. note::
 
-    When using Linux, you may need to configure udev rules the first time
-    of using a debug probe.
-    Please also see :ref:`setting-udev-rules`.
+   When using Linux, you may need to configure udev rules the first time you
+   use a debug probe. Please also see :ref:`setting-udev-rules`.
 
 If you're using blinky, the LED will start to blink as shown in this figure:
 
