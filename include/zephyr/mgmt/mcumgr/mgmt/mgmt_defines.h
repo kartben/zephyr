@@ -45,6 +45,7 @@ enum mcumgr_op_t {
 	/** Write response op-code */
 	MGMT_OP_WRITE_RSP,
 
+	/** Number of defined op-codes. */
 	MGMT_OP_COUNT,
 };
 
@@ -146,6 +147,7 @@ enum mcumgr_err_t {
 	MGMT_ERR_EPERUSER	= 256
 };
 
+/** Size of an SMP header, in bytes. */
 #define MGMT_HDR_SIZE		8
 
 /**

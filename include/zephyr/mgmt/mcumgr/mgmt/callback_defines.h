@@ -62,14 +62,15 @@ enum mgmt_cb_return {
  * MGMT event callback group IDs. Note that this is not a 1:1 mapping with #mcumgr_group_t values.
  */
 enum mgmt_cb_groups {
-	MGMT_EVT_GRP_ALL			= 0,
-	MGMT_EVT_GRP_SMP,
-	MGMT_EVT_GRP_OS,
-	MGMT_EVT_GRP_IMG,
-	MGMT_EVT_GRP_FS,
-	MGMT_EVT_GRP_SETTINGS,
-	MGMT_EVT_GRP_ENUM,
+	MGMT_EVT_GRP_ALL = 0,  /**< All groups. */
+	MGMT_EVT_GRP_SMP,      /**< SMP base group. */
+	MGMT_EVT_GRP_OS,       /**< OS management group. */
+	MGMT_EVT_GRP_IMG,      /**< Image management group. */
+	MGMT_EVT_GRP_FS,       /**< File system management group. */
+	MGMT_EVT_GRP_SETTINGS, /**< Settings management group. */
+	MGMT_EVT_GRP_ENUM,     /**< Enumeration management group. */
 
+	/** Start of the user-defined group range. */
 	MGMT_EVT_GRP_USER_CUSTOM_START		= MGMT_GROUP_ID_PERUSER,
 };
 

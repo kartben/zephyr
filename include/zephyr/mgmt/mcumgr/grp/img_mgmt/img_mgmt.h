@@ -34,7 +34,8 @@
 extern "C" {
 #endif
 
-#define IMG_MGMT_DATA_SHA_LEN	32 /* SHA256 */
+/** Length of the image data SHA, in bytes (SHA-256). */
+#define IMG_MGMT_DATA_SHA_LEN 32
 
 /**
  * @name Image state flags
@@ -50,7 +51,9 @@ extern "C" {
 #define IMG_MGMT_STATE_F_PERMANENT	0x08
 /** @} */
 
-/* 255.255.65535.4294967295\0 */
+/** Maximum length of an image version string, including the NUL terminator
+ *  (e.g. "255.255.65535.4294967295").
+ */
 #define IMG_MGMT_VER_MAX_STR_LEN	(sizeof("255.255.65535.4294967295"))
 
 /**
@@ -191,22 +194,24 @@ enum img_mgmt_err_code_t {
  * IMG_MGMT_ID_UPLOAD statuses.
  */
 enum img_mgmt_id_upload_t {
-	IMG_MGMT_ID_UPLOAD_STATUS_START		= 0,
-	IMG_MGMT_ID_UPLOAD_STATUS_ONGOING,
-	IMG_MGMT_ID_UPLOAD_STATUS_COMPLETE,
+	IMG_MGMT_ID_UPLOAD_STATUS_START = 0, /**< Upload is starting. */
+	IMG_MGMT_ID_UPLOAD_STATUS_ONGOING,   /**< Upload is in progress. */
+	IMG_MGMT_ID_UPLOAD_STATUS_COMPLETE,  /**< Upload has completed. */
 };
 
+/** Index of the slot the device booted from. */
 extern int boot_current_slot;
+/** Global state for the upload currently in progress. */
 extern struct img_mgmt_state g_img_mgmt_state;
 
 /** Represents an individual upload request. */
 struct img_mgmt_upload_req {
-	uint32_t image;	/* 0 by default */
-	size_t off;	/* SIZE_MAX if unspecified */
-	size_t size;	/* SIZE_MAX if unspecified */
-	struct zcbor_string img_data;
-	struct zcbor_string data_sha;
-	bool upgrade;			/* Only allow greater version numbers. */
+	uint32_t image;               /**< Image number; 0 by default. */
+	size_t off;                   /**< Offset of this chunk; SIZE_MAX if unspecified. */
+	size_t size;                  /**< Total image size; SIZE_MAX if unspecified. */
+	struct zcbor_string img_data; /**< Image data carried in this chunk. */
+	struct zcbor_string data_sha; /**< SHA of the whole image, used to resume uploads. */
+	bool upgrade;                 /**< Only allow greater version numbers. */
 };
 
 /** Global state for upload in progress. */
@@ -219,6 +224,7 @@ struct img_mgmt_state {
 	size_t size;
 	/** Hash of image data; used for resumption of a partial upload. */
 	uint8_t data_sha_len;
+	/** Image data hash bytes; @ref data_sha_len bytes are valid. */
 	uint8_t data_sha[IMG_MGMT_DATA_SHA_LEN];
 };
 
@@ -240,7 +246,7 @@ struct img_mgmt_upload_action {
 #endif
 };
 
-/*
+/**
  * @brief Read info of an image at the specified slot number
  *
  * @param image_slot	image slot number
@@ -375,7 +381,17 @@ void img_mgmt_reset_upload(void);
 #endif
 
 #ifdef CONFIG_MCUMGR_GRP_IMG_VERBOSE_ERR
+/**
+ * @brief Set the verbose error reason string on an upload action.
+ * @param action Upload action.
+ * @param rsn Error reason string.
+ */
 #define IMG_MGMT_UPLOAD_ACTION_SET_RC_RSN(action, rsn) ((action)->rc_rsn = (rsn))
+/**
+ * @brief Get the verbose error reason string from an upload action.
+ * @param action Upload action.
+ * @return The error reason string, or NULL when verbose errors are disabled.
+ */
 #define IMG_MGMT_UPLOAD_ACTION_RC_RSN(action) ((action)->rc_rsn)
 int img_mgmt_error_rsp(struct smp_streamer *ctxt, int rc, const char *rsn);
 extern const char *img_mgmt_err_str_app_reject;

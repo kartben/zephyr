@@ -131,6 +131,7 @@ struct mgmt_evt_op_cmd_arg {
 	/** Message ID within group */
 	uint8_t id;
 
+	/** Command detail; the active member depends on the event. */
 	union {
 		/** #mcumgr_op_t used in #MGMT_EVT_OP_CMD_RECV */
 		uint8_t op;

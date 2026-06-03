@@ -108,11 +108,17 @@ struct img_mgmt_image_confirmed {
  * slot state response.
  */
 struct img_mgmt_state_slot_encode {
+	/** [in,out] Set to false by a handler to signal an encoding failure. */
 	bool *ok;
+	/** zcbor encoding state to append custom fields to. */
 	zcbor_state_t *zse;
+	/** Slot number the state is being encoded for. */
 	const uint32_t slot;
+	/** Image version string for the slot. */
 	const char *version;
+	/** Image hash for the slot. */
 	const uint8_t *hash;
+	/** Image flags for the slot. */
 	const int flags;
 };
 

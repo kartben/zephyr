@@ -40,6 +40,7 @@ enum settings_mgmt_group_events {
  * @name Settings access types
  * @{
  */
+/** @brief Type of settings access being notified to callbacks. */
 enum settings_mgmt_access_types {
 	SETTINGS_ACCESS_READ,   /**< Setting is being read */
 	SETTINGS_ACCESS_WRITE,  /**< Setting is being written */

@@ -135,13 +135,13 @@ struct smp_transport_api_t {
  * @brief SMP transport object for sending SMP responses.
  */
 struct smp_transport {
-	/* Must be the first member. */
+	/** Work item for processing incoming requests. Must be the first member. */
 	struct k_work work;
 
-	/* FIFO containing incoming requests to be processed. */
+	/** FIFO containing incoming requests to be processed. */
 	struct k_fifo fifo;
 
-	/* Function pointers */
+	/** Transport API function pointers. */
 	struct smp_transport_api_t functions;
 
 #ifdef CONFIG_MCUMGR_TRANSPORT_REASSEMBLY
@@ -177,6 +177,7 @@ enum smp_transport_type {
  * @brief SMP Client transport structure
  */
 struct smp_client_transport_entry {
+	/** List node used to register the transport. */
 	sys_snode_t node;
 	/** Transport structure pointer */
 	struct smp_transport *smpt;
