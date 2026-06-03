@@ -4,8 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/** @file
- * @brief Bluetooth transport for the mcumgr SMP protocol.
+/**
+ * @file
+ * @brief Header file for MCUmgr SMP over Bluetooth Transport.
  * @ingroup mcumgr_transport_bt
  */
 

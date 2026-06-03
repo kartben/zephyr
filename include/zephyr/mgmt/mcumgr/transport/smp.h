@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for MCUmgr SMP Transport.
+ * @ingroup mcumgr_transport_smp
+ */
+
 #ifndef ZEPHYR_INCLUDE_MGMT_SMP_H_
 #define ZEPHYR_INCLUDE_MGMT_SMP_H_
 

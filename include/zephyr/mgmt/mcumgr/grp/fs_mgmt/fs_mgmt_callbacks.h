@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for MCUmgr File System Management Callbacks.
+ * @ingroup mcumgr_callback_api_fs_mgmt
+ */
+
 #ifndef H_MCUMGR_FS_MGMT_CALLBACKS_
 #define H_MCUMGR_FS_MGMT_CALLBACKS_
 

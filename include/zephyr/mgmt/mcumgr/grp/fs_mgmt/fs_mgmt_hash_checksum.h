@@ -6,6 +6,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for MCUmgr File System Management Hash/Checksum Support.
+ * @ingroup mcumgr_fs_mgmt
+ */
+
 #ifndef H_MGMT_MCUMGR_GRP_FS_MGMT_CHKSUM_
 #define H_MGMT_MCUMGR_GRP_FS_MGMT_CHKSUM_
 

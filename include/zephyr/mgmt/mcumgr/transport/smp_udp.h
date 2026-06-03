@@ -7,7 +7,7 @@
 
 /**
  * @file
- * @brief UDP transport for the MCUmgr SMP protocol.
+ * @brief Header file for MCUmgr SMP over UDP Transport.
  * @ingroup mcumgr_transport_udp
  */
 

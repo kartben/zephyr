@@ -6,8 +6,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/** @file
- * @brief Dummy transport for the mcumgr SMP protocol for unit testing.
+/**
+ * @file
+ * @brief Header file for MCUmgr SMP over Raw Dummy Transport (for unit testing)
  * @ingroup mcumgr_transport_dummy
  */
 #ifndef ZEPHYR_INCLUDE_MGMT_MCUMGR_TRANSPORT_RAW_DUMMY_H_

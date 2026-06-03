@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for MCUmgr Management Definitions.
+ * @ingroup mcumgr_mgmt_api
+ */
+
 #ifndef H_MGMT_MGMT_DEFINES_
 #define H_MGMT_MGMT_DEFINES_
 
