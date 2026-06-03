@@ -82,20 +82,22 @@ if AUDIO_DMIC_SHELL
 
 config AUDIO_DMIC_SHELL_BLOCK_COUNT
 	int "Number of capture buffers"
-	default 4
+	default 8
 	range 2 16
 	help
-	  Number of buffers in the capture pool.
+	  Number of buffers in the capture pool shared with the DMIC driver.
 	  At least two are needed so one buffer can be filled while another is processed.
+	  "dmic read" and "dmic vu" use this pool while streaming. "dmic dump" also allocates a
+	  temporary PCM buffer for the full capture before base64 output.
 
 config HEAP_MEM_POOL_ADD_SIZE_AUDIO_DMIC_SHELL
 	int "System heap reserved for the Audio DMIC shell (bytes)"
-	default 8192
+	default 81920
 	help
 	  Heap reserved for the shell capture.
-	  The default covers the default capture (16 kHz mono 16-bit, 50 ms blocks: ~6.4 KB).
-	  Raise it for higher sample rates, stereo, or 32-bit (e.g. 48 kHz / 2 ch / 32-bit needs
-	  ~76 KB).
+	  The default covers the shell pool (16 kHz mono 16-bit, 50 ms blocks: ~12.8 KB).
+	  "dmic dump" additionally malloc()s the full recording (2 s default ~64 KB). Raise the
+	  system heap for longer dumps or higher rates (e.g. 10 s at 16 kHz mono needs ~320 KB).
 	  A request that does not fit fails with a clean error.
 
 config AUDIO_DMIC_SHELL_VU_PEAK_HOLD_MS
@@ -126,6 +128,7 @@ source "subsys/logging/Kconfig.template.log_config"
 
 # zephyr-keep-sorted-start
 source "drivers/audio/Kconfig.dmic_ambiq_pdm"
+source "drivers/audio/Kconfig.dmic_esp32"
 source "drivers/audio/Kconfig.dmic_infineon"
 source "drivers/audio/Kconfig.dmic_mcux"
 source "drivers/audio/Kconfig.dmic_mpxxdtyy"

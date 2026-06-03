@@ -47,6 +47,14 @@
 		};
 	};
 
+	i2s0_pdm_dmic_default: i2s0_pdm_dmic_default {
+		group1 {
+			/* PDM CLK on GPIO0: ESP32 drives clock on I2S WS, not BCK (see M5Stack SPM1423) */
+			pinmux = <I2S0_I_WS_GPIO0>,
+				 <I2S0_I_SD_GPIO34>;
+		};
+	};
+
 	i2c0_default: i2c0_default {
 		group1 {
 			pinmux = <I2C0_SDA_GPIO21>,

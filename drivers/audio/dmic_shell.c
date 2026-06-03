@@ -83,9 +83,12 @@ static void *dmic_shell_pool;
 /* "dmic dump" defaults and limits */
 #define DMIC_SHELL_DUMP_DEF_SECONDS 2U
 #define DMIC_SHELL_DUMP_MAX_SECONDS 10U
-/* Encode 48 source bytes (= 64 base64 chars) per line */
-#define DMIC_SHELL_DUMP_CHUNK       48U
+/* Fallback chunk size when a block is too large for one base64 line */
+#define DMIC_SHELL_DUMP_CHUNK       512U
 #define DMIC_SHELL_DUMP_B64         ((DMIC_SHELL_DUMP_CHUNK / 3U) * 4U)
+/* One shell_print per block up to this many source bytes (fits in ~4 KiB line buffer) */
+#define DMIC_SHELL_DUMP_ONESHOT_MAX 3072U
+#define DMIC_SHELL_DUMP_LINE_MAX    4096U
 
 static int parse_audio_params(const struct shell *sh, size_t argc, char *argv[], size_t first,
 			      uint32_t *rate, uint8_t *channels, uint8_t *pcm_width)
@@ -160,6 +163,12 @@ static void dmic_shell_pool_free(void)
 	dmic_shell_pool = NULL;
 }
 
+static uint32_t dmic_shell_block_size_get(uint32_t sample_rate, uint8_t channels,
+					  uint8_t pcm_width)
+{
+	return sample_rate * channels * (pcm_width / 8U) * DMIC_SHELL_BLOCK_DURATION_MS / 1000U;
+}
+
 /*
  * Allocate the pool, configure the DMIC and start it. On success the caller owns the running
  * capture and must call dmic_shell_capture_stop(); on failure everything is unwound here.
@@ -169,8 +178,7 @@ static int dmic_shell_capture_start(const struct shell *sh, const struct device 
 {
 	struct pcm_stream_cfg stream = {0};
 	struct dmic_cfg cfg = {0};
-	uint32_t block_size =
-		sample_rate * channels * (pcm_width / 8U) * DMIC_SHELL_BLOCK_DURATION_MS / 1000U;
+	uint32_t block_size = dmic_shell_block_size_get(sample_rate, channels, pcm_width);
 	int ret;
 
 	ret = dmic_shell_pool_alloc(sh, block_size);
@@ -705,11 +713,32 @@ static int dump_line(const struct shell *sh, const uint8_t *src, size_t len)
 }
 
 /*
+ * Emit one block as a single base64 line when small enough. Fewer shell_print() calls keep
+ * capture from outrunning the consumer during "dmic dump".
+ */
+static int dump_emit_oneshot(const struct shell *sh, const uint8_t *src, size_t slen)
+{
+	uint8_t line[DMIC_SHELL_DUMP_LINE_MAX];
+	size_t olen;
+	int ret;
+
+	ret = base64_encode(line, sizeof(line), &olen, src, slen);
+	if (ret < 0) {
+		return ret;
+	}
+
+	line[olen] = '\0';
+	shell_print(sh, "%s", line);
+
+	return 0;
+}
+
+/*
  * Stream `src` as base64, one DMIC_SHELL_DUMP_CHUNK-byte line at a time. A partial chunk is kept
  * in @carry and prepended to the next block so output stays 3-byte aligned until flushed.
  */
-static int dump_emit(const struct shell *sh, const uint8_t *src, size_t slen, uint8_t *carry,
-		     size_t *carry_len)
+static int dump_emit_chunked(const struct shell *sh, const uint8_t *src, size_t slen, uint8_t *carry,
+			     size_t *carry_len)
 {
 	int ret;
 
@@ -749,6 +778,16 @@ static int dump_emit(const struct shell *sh, const uint8_t *src, size_t slen, ui
 	return 0;
 }
 
+static int dump_emit(const struct shell *sh, const uint8_t *src, size_t slen, uint8_t *carry,
+		     size_t *carry_len)
+{
+	if (*carry_len == 0U && slen <= DMIC_SHELL_DUMP_ONESHOT_MAX) {
+		return dump_emit_oneshot(sh, src, slen);
+	}
+
+	return dump_emit_chunked(sh, src, slen, carry, carry_len);
+}
+
 static int dump_flush(const struct shell *sh, const uint8_t *carry, size_t carry_len)
 {
 	return (carry_len != 0U) ? dump_line(sh, carry, carry_len) : 0;
@@ -784,6 +823,10 @@ static int cmd_dump(const struct shell *sh, size_t argc, char *argv[])
 	uint8_t carry[DMIC_SHELL_DUMP_CHUNK];
 	size_t carry_len = 0U;
 	uint32_t blocks;
+	uint32_t block_size;
+	size_t pcm_bytes;
+	uint8_t *pcm = NULL;
+	uint32_t captured = 0U;
 	int ret;
 
 	dev = dmic_shell_device(sh, argv[1]);
@@ -804,28 +847,57 @@ static int cmd_dump(const struct shell *sh, size_t argc, char *argv[])
 		return ret;
 	}
 
+	block_size = dmic_shell_block_size_get(rate, channels, pcm_width);
+	blocks = seconds * DMIC_SHELL_BLOCKS_PER_SEC;
+	pcm_bytes = (size_t)blocks * block_size;
+
+	pcm = k_malloc(pcm_bytes);
+	if (pcm == NULL) {
+		shell_error(sh,
+			    "Need %zu bytes for %u s capture; shorten duration or raise system heap",
+			    pcm_bytes, seconds);
+		return -ENOMEM;
+	}
+
 	ret = dmic_shell_capture_start(sh, dev, rate, channels, pcm_width);
 	if (ret < 0) {
+		k_free(pcm);
 		return ret;
 	}
 
-	blocks = seconds * DMIC_SHELL_BLOCKS_PER_SEC;
-
-	shell_print(sh, "# --- BEGIN PCM base64 (%us, %u Hz, %u ch, %u-bit signed LE) ---", seconds,
-		    rate, channels, pcm_width);
-
+	/* Capture phase: drain DMIC quickly and return slab buffers after each copy. */
 	for (uint32_t i = 0; i < blocks; i++) {
 		void *buf;
 		size_t size;
 
 		ret = dmic_read(dev, 0, &buf, &size, DMIC_SHELL_READ_TIMEOUT_MS);
 		if (ret < 0) {
-			shell_error(sh, "Block %u: read failed: %d", i, ret);
+			if (ret == -EAGAIN) {
+				shell_error(sh, "Block %u: read timed out", i);
+			} else {
+				shell_error(sh, "Block %u: read failed: %d", i, ret);
+			}
 			break;
 		}
 
-		ret = dump_emit(sh, buf, size, carry, &carry_len);
+		memcpy(pcm + ((size_t)i * block_size), buf, block_size);
 		k_mem_slab_free(&dmic_shell_slab, buf);
+		captured++;
+	}
+
+	dmic_shell_capture_stop(dev);
+
+	if (ret < 0) {
+		k_free(pcm);
+		return ret;
+	}
+
+	/* Encode phase: UART traffic no longer competes with live capture. */
+	shell_print(sh, "# --- BEGIN PCM base64 (%us, %u Hz, %u ch, %u-bit signed LE) ---", seconds,
+		    rate, channels, pcm_width);
+
+	for (uint32_t i = 0; i < captured; i++) {
+		ret = dump_emit(sh, pcm + ((size_t)i * block_size), block_size, carry, &carry_len);
 		if (ret < 0) {
 			shell_error(sh, "base64 encode failed: %d", ret);
 			break;
@@ -842,7 +914,8 @@ static int cmd_dump(const struct shell *sh, size_t argc, char *argv[])
 		dump_print_instructions(sh, rate, channels, pcm_width);
 	}
 
-	dmic_shell_capture_stop(dev);
+	k_free(pcm);
+
 	return ret < 0 ? ret : 0;
 }
 

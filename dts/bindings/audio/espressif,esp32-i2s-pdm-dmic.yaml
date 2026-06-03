@@ -1,0 +1,57 @@
+# Copyright (c) 2025 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  ESP32 I2S peripheral in PDM RX mode with hardware PDM-to-PCM decimation.
+
+  Use this compatible on an existing I2S controller node (for example i2s0) via a
+  board overlay. Do not enable the espressif,esp32-i2s driver on the same node.
+
+  On ESP32-S3 and ESP32-P4, hardware PDM-to-PCM is only available on I2S unit 0.
+
+  On ESP32 (I2S HW v1), the PDM bit clock is output on the I2S WS signal. Board
+  pinctrl must use an I2S ``*_WS`` pinmux for the clock GPIO (not ``*_BCK``), as
+  used by the M5StickC Plus built-in SPM1423 microphone (GPIO0 = CLK, GPIO34 = DATA).
+
+compatible: "espressif,esp32-i2s-pdm-dmic"
+
+include: [base.yaml, pinctrl-device.yaml]
+
+properties:
+  reg:
+    required: true
+
+  pinctrl-0:
+    required: true
+
+  pinctrl-names:
+    required: true
+
+  clocks:
+    required: true
+
+  interrupts:
+    required: true
+
+  interrupt-parent:
+    required: true
+
+  unit:
+    type: int
+    required: true
+    description: I2S unit number (0 or 1 depending on SoC).
+
+  queue-size:
+    type: int
+    default: 4
+    description: Number of completed RX buffers queued for dmic_read().
+
+  dmas:
+    description: Optional GDMA channel for RX (required on GDMA-capable SoCs).
+
+  dma-names:
+    description: Must include "rx" when dmas is present.
+
+child-binding:
+  description: Optional PDM microphone configuration
+  include: ["pdm-dmic.yaml"]

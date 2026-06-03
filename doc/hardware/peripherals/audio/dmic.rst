@@ -80,12 +80,26 @@ A common pattern is to declare this slab statically:
 In this example, each slab block stores one PCM buffer and ``BUFFER_COUNT`` sets how many buffers
 can be queued internally before the application reads them using :c:func:`dmic_read`.
 
+Espressif ESP32 (I2S PDM RX)
+**************************
+
+On ESP32, ESP32-S3, and ESP32-P4, digital microphone capture uses the I2S peripheral in
+PDM receive mode with hardware PDM-to-PCM decimation (:kconfig:option:`CONFIG_AUDIO_DMIC_ESP32`).
+
+Board devicetree enables this by setting the ``compatible`` on the I2S controller node
+(for example ``i2s0``) to :dtcompatible:`espressif,esp32-i2s-pdm-dmic` and wiring PDM CLK/DATA
+via ``pinctrl``. The standard :dtcompatible:`espressif,esp32-i2s` driver must stay disabled on
+that same node.
+
+On ESP32-S3 and ESP32-P4, hardware PDM-to-PCM is only available on **I2S unit 0**.
+
 Configuration Options
 *********************
 
 Related configuration options:
 
 * :kconfig:option:`CONFIG_AUDIO_DMIC`
+* :kconfig:option:`CONFIG_AUDIO_DMIC_ESP32`
 
 API Reference
 *************

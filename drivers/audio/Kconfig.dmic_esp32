@@ -1,0 +1,24 @@
+# Copyright (c) 2025 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
+
+config AUDIO_DMIC_ESP32
+	bool "ESP32 I2S PDM DMIC driver"
+	default y
+	depends on DT_HAS_ESPRESSIF_ESP32_I2S_PDM_DMIC_ENABLED
+	depends on SOC_I2S_SUPPORTS_PDM2PCM
+	select PINCTRL
+	select DMA if DT_HAS_ESPRESSIF_ESP32_GDMA_ENABLED
+	help
+	  Enable ESP32 digital microphone driver using the I2S peripheral in
+	  PDM RX mode with hardware PDM-to-PCM conversion.
+
+if AUDIO_DMIC_ESP32
+
+config AUDIO_DMIC_ESP32_DMA_DESC_NUM_MAX
+	int "ESP32 DMIC legacy DMA link descriptor count"
+	default 10
+	depends on !DT_HAS_ESPRESSIF_ESP32_GDMA_ENABLED
+	help
+	  Number of link descriptors for RX DMA on SoCs without GDMA.
+
+endif

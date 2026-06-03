@@ -1,0 +1,21 @@
+/*
+ * PDM digital microphone on I2S0: CLK = GPIO0, DATA = GPIO34
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+dmic_dev: &i2s0 {
+	compatible = "espressif,esp32-i2s-pdm-dmic";
+	status = "okay";
+	pinctrl-0 = <&i2s0_pdm_dmic_default>;
+	pinctrl-names = "default";
+
+	pdm_mic: pdm-mic {
+		compatible = "zephyr,pdm-dmic";
+		clk-frequency-min = <1000000>;
+		clk-frequency-max = <3500000>;
+		clk-duty-cycle-min = <40>;
+		clk-duty-cycle-max = <60>;
+		channel-left;
+	};
+};

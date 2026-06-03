@@ -74,6 +74,21 @@ System Requirements
 .. include:: ../../../espressif/common/system-requirements.rst
    :start-after: espressif-system-requirements
 
+PDM digital microphone (optional)
+********************************
+
+An external PDM MEMS microphone can be connected to I2S0 for use with the
+:ref:`audio_dmic_api` driver (:kconfig:option:`CONFIG_AUDIO_DMIC_ESP32`):
+
+- PDM clock: GPIO0 (route via ``I2S0_I_WS`` pinmux; ESP32 outputs PDM CLK on WS, not BCK)
+- PDM data: GPIO34 (``I2S0_I_SD``)
+
+GPIO0 is a strapping pin on ESP32; verify that your wiring still allows reliable boot.
+
+Enable the provided board overlay (or ``tests/drivers/audio/dmic_api`` /
+``samples/drivers/audio/dmic`` board files for ``m5stickc_plus/esp32/procpu``), which sets
+the ``dmic_dev`` label on ``&i2s0``.
+
 Programming and Debugging
 *************************
 
