@@ -1,0 +1,6 @@
+board:
+  name: weact_ch32v006
+  full_name: WeAct Studio CH32V006 Core Board
+  vendor: weact
+  socs:
+    - name: ch32v006

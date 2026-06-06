@@ -1,0 +1,5 @@
+# Copyright (c) 2026 Benjamin Cabé <benjamin@zephyrproject.org>
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_WEACT_CH32V006
+	select SOC_CH32V006

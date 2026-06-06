@@ -1,0 +1,70 @@
+/*
+ * Copyright (c) 2026 Benjamin Cabé <benjamin@zephyrproject.org>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+
+#include <wch/ch32v0/ch32v006f8u.dtsi>
+#include "weact_ch32v006-pinctrl.dtsi"
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+/ {
+	model = "WeAct Studio CH32V006 Core Board";
+	compatible = "wch,ch32v006";
+
+	chosen {
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,console = &usart1;
+		zephyr,shell-uart = &usart1;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		status = "okay";
+
+		blue_led: led0 {
+			gpios = <&gpioc 4 GPIO_ACTIVE_HIGH>;
+		};
+	};
+
+	aliases {
+		led0 = &blue_led;
+		watchdog0 = &iwdg;
+	};
+};
+
+/* The board has no external crystal; clock from the internal 24 MHz HSI. */
+&clk_hsi {
+	status = "okay";
+};
+
+&pll {
+	clocks = <&clk_hsi>;
+	status = "okay";
+};
+
+&rcc {
+	clocks = <&pll>;
+};
+
+&exti {
+	status = "okay";
+};
+
+&gpioc {
+	status = "okay";
+};
+
+&usart1 {
+	status = "okay";
+	current-speed = <115200>;
+	pinctrl-0 = <&usart1_default>;
+	pinctrl-names = "default";
+};
+
+&iwdg {
+	status = "okay";
+};
