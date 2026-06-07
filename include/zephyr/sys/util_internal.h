@@ -155,9 +155,9 @@
  * @deprecated Use CONCAT() instead.
  */
 #define UTIL_PRIMITIVE_CAT(a, ...) Z_UTIL_PRIMITIVE_CAT(a, __VA_ARGS__) __DEPRECATED_MACRO
-#define UTIL_CHECK_N(x, n, ...) n
-#define UTIL_CHECK(...) UTIL_CHECK_N(__VA_ARGS__, 0,)
-#define UTIL_NOT(x) UTIL_CHECK(Z_UTIL_PRIMITIVE_CAT(UTIL_NOT_, x))
+#define Z_UTIL_CHECK_N(x, n, ...) n
+#define Z_UTIL_CHECK(...) Z_UTIL_CHECK_N(__VA_ARGS__, 0,)
+#define UTIL_NOT(x) Z_UTIL_CHECK(Z_UTIL_PRIMITIVE_CAT(UTIL_NOT_, x))
 #define UTIL_NOT_0 ~, 1,
 #define UTIL_COMPL(b) Z_UTIL_PRIMITIVE_CAT(UTIL_COMPL_, b)
 #define UTIL_COMPL_0 1
