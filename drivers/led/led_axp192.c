@@ -128,7 +128,7 @@ static int led_axp192_init(const struct device *dev)
 	static const struct led_axp192_config led_axp_config_##model##_##n = {                     \
 		.i2c = I2C_DT_SPEC_GET(DT_PARENT(n)),                                              \
 		.addr = AXP##model##_REG_CHGLED,                                                   \
-		.mode = UTIL_CAT(CHGLED_CTRL_, DT_STRING_UPPER_TOKEN(n, x_powers_mode)),           \
+		.mode = CONCAT(CHGLED_CTRL_, DT_STRING_UPPER_TOKEN(n, x_powers_mode)),             \
 		.mode_mask = AXP##model##_CHGLED_CTRL_MASK,                                        \
 		.mode_offset = AXP##model##_CHGLED_CTRL_OFFSET,                                    \
 	};                                                                                         \

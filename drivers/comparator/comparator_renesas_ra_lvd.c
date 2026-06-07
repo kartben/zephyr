@@ -255,7 +255,7 @@ static void ra_lvd_callback(lvd_callback_args_t *p_args)
 
 #define DIGITAL_FILTER_GET(index)                                                                  \
 	COND_CODE_1(IS_EQ(DT_INST_PROP(index, noise_filter), 1), (LVD_SAMPLE_CLOCK_DISABLED),      \
-		    (UTIL_CAT(LVD_SAMPLE_CLOCK_LOCO_DIV_, DT_INST_PROP(index, noise_filter))))
+		    (CONCAT(LVD_SAMPLE_CLOCK_LOCO_DIV_, DT_INST_PROP(index, noise_filter))))
 
 #define IRQ_PARAMETER(index)                                                                       \
 	COND_CODE_1(DT_INST_NODE_HAS_PROP(index, interrupts), (DT_INST_IRQ(index, irq)),           \

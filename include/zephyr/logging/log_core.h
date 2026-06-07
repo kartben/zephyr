@@ -128,7 +128,7 @@ extern "C" {
  * Additionally, macro is handling the empty message case.
  */
 #define Z_LOG_STR(_level, ...) \
-	COND_CODE_1(UTIL_CAT(Z_LOG_FUNC_PREFIX_##_level), \
+	COND_CODE_1(CONCAT(Z_LOG_FUNC_PREFIX_##_level), \
 		(Z_LOG_STR_WITH_PREFIX(__VA_ARGS__)), (__VA_ARGS__))
 
 #define Z_LOG_LEVEL_CHECK(_level, _check_level, _default_level) \
@@ -501,7 +501,7 @@ TYPE_SECTION_END_EXTERN(struct log_source_dynamic_data, log_dynamic);
  *
  *  @param _name Name.
  */
-#define LOG_ITEM_DYNAMIC_DATA(_name) UTIL_CAT(log_dynamic_, _name)
+#define LOG_ITEM_DYNAMIC_DATA(_name) CONCAT(log_dynamic_, _name)
 
 #define LOG_INSTANCE_DYNAMIC_DATA(_module_name, _inst) \
 	LOG_ITEM_DYNAMIC_DATA(Z_LOG_INSTANCE_FULL_NAME(_module_name, _inst))

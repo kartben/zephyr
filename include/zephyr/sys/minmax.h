@@ -34,7 +34,7 @@ extern "C" {
 	})
 
 #define _minmax_cnt(op, a, b, cnt) \
-	_minmax_unique(op, a, b, UTIL_CAT(_value_a_, cnt), UTIL_CAT(_value_b_, cnt))
+	_minmax_unique(op, a, b, CONCAT(_value_a_, cnt), CONCAT(_value_b_, cnt))
 
 #define _minmax3_unique(op, a, b, c, ua, ub, uc) ({ \
 		__typeof__(a) ua = (a);             \
@@ -45,9 +45,9 @@ extern "C" {
 
 #define _minmax3_cnt(op, a, b, c, cnt)            \
 	_minmax3_unique(op, a, b, c,              \
-			UTIL_CAT(_value_a_, cnt), \
-			UTIL_CAT(_value_b_, cnt), \
-			UTIL_CAT(_value_c_, cnt))
+			CONCAT(_value_a_, cnt),   \
+			CONCAT(_value_b_, cnt),   \
+			CONCAT(_value_c_, cnt))
 /**
  * @endcond
  */

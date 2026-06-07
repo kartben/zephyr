@@ -551,13 +551,13 @@ do {										\
 	ATMEL_SAM0_DT_INST_ASSIGNED_CLOCKS_CELL_BY_NAME
 
 #define ADC_SAM0_GCLK_FREQ(n)							\
-	UTIL_CAT(UTIL_CAT(SOC_ATMEL_SAM0_GCLK,					\
+	CONCAT(CONCAT(SOC_ATMEL_SAM0_GCLK,					\
 			  ASSIGNED_CLOCKS_CELL_BY_NAME(n, gclk, gen)),		\
 		 _FREQ_HZ)
 
 #define ADC_SAM0_FREQ(n)							\
-	.prescaler = UTIL_CAT(ADC_CTRLx_PRESCALER_DIV,				\
-			      UTIL_CAT(DT_INST_PROP(n, prescaler), _Val)),	\
+	.prescaler = CONCAT(ADC_CTRLx_PRESCALER_DIV,				\
+			      CONCAT(DT_INST_PROP(n, prescaler), _Val)),	\
 	.freq = ADC_SAM0_GCLK_FREQ(n) / DT_INST_PROP(n, prescaler)
 
 #define ADC_SAM0_DEVICE(n)							\

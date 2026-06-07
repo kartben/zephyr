@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Helpers to mitigate speculative-execution (Spectre V1) attacks.
+ */
+
 #ifndef ZEPHYR_MISC_SPECULATION_H
 #define ZEPHYR_MISC_SPECULATION_H
 

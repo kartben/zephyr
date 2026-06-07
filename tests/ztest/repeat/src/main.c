@@ -5,8 +5,8 @@
  */
 #include <zephyr/ztest.h>
 
-extern struct ztest_suite_stats UTIL_CAT(z_ztest_suite_node_stats_, testsuite);
-struct ztest_suite_stats *suite_stats = &UTIL_CAT(z_ztest_suite_node_stats_, testsuite);
+extern struct ztest_suite_stats CONCAT(z_ztest_suite_node_stats_, testsuite);
+struct ztest_suite_stats *suite_stats = &CONCAT(z_ztest_suite_node_stats_, testsuite);
 extern struct ztest_unit_test_stats z_ztest_unit_test_stats_testsuite_test_repeating;
 struct ztest_unit_test_stats *case_stats =
 	&z_ztest_unit_test_stats_testsuite_test_repeating;

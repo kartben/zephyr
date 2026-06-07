@@ -47,7 +47,7 @@ enum battery_chemistry {
  * @param node_id node identifier
  */
 #define BATTERY_CHEMISTRY_DT_GET(node_id)                                                          \
-	UTIL_CAT(BATTERY_CHEMISTRY_, DT_STRING_UPPER_TOKEN_OR(node_id, device_chemistry, UNKNOWN))
+	CONCAT(BATTERY_CHEMISTRY_, DT_STRING_UPPER_TOKEN_OR(node_id, device_chemistry, UNKNOWN))
 
 /**
  * @brief Get the OCV curve for a given table

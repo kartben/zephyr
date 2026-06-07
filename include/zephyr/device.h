@@ -1111,13 +1111,13 @@ device_get_dt_nodelabels(const struct device *dev)
  * @brief Name of the identifier for a device's DT metadata structure
  * @param dev_id device identifier
  */
-#define Z_DEVICE_DT_METADATA_NAME_GET(dev_id) UTIL_CAT(__dev_dt_meta_, dev_id)
+#define Z_DEVICE_DT_METADATA_NAME_GET(dev_id) CONCAT(__dev_dt_meta_, dev_id)
 
 /**
  * @brief Name of the identifier for the array of node label strings
  *        saved for a device.
  */
-#define Z_DEVICE_DT_NODELABELS_NAME_GET(dev_id) UTIL_CAT(__dev_dt_nodelabels_, dev_id)
+#define Z_DEVICE_DT_NODELABELS_NAME_GET(dev_id) CONCAT(__dev_dt_nodelabels_, dev_id)
 
 /**
  * @brief Initialize an entry in the device DT node label lookup table

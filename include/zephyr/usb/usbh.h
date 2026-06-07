@@ -175,13 +175,13 @@ struct usbh_class_node {
  *                 When non-NULL, then it has to be terminated by an entry with @c flags set to 0.
  */
 #define USBH_DEFINE_CLASS(class_name, class_api, class_priv, filt)		\
-	static struct usbh_class_data UTIL_CAT(class_data_, class_name) = {	\
+	static struct usbh_class_data CONCAT(class_data_, class_name) = {	\
 		.name = STRINGIFY(class_name),					\
 		.api = class_api,						\
 		.priv = class_priv,						\
 	};									\
 	static STRUCT_SECTION_ITERABLE(usbh_class_node, class_name) = {		\
-		.c_data = &UTIL_CAT(class_data_, class_name),			\
+		.c_data = &CONCAT(class_data_, class_name),			\
 		.filters = filt,						\
 	};
 

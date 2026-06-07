@@ -421,7 +421,7 @@ static DEVICE_API(counter, counter_sam0_tc32_driver_api) = {
 		.gclk_id = DT_INST_CLOCKS_CELL_BY_NAME(n, gclk, id),		\
 		.mclk = ATMEL_SAM0_DT_INST_MCLK_PM_REG_ADDR_OFFSET(n),		\
 		.mclk_mask = ATMEL_SAM0_DT_INST_MCLK_PM_PERIPH_MASK(n, bit),	\
-		.prescaler = UTIL_CAT(TC_CTRLA_PRESCALER_DIV,			\
+		.prescaler = CONCAT(TC_CTRLA_PRESCALER_DIV,			\
 				      SAM0_TC32_PRESCALER(n)),			\
 		.irq_config_func = &counter_sam0_tc32_config_##n,		\
 		.pcfg = PINCTRL_DT_INST_DEV_CONFIG_GET(n),			\

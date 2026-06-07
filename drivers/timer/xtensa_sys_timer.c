@@ -11,8 +11,8 @@
 
 #include "xtensa_sys_timer.h"
 
-#define TIMER_IRQ UTIL_CAT(XCHAL_TIMER,		\
-			   UTIL_CAT(CONFIG_XTENSA_TIMER_ID, _INTERRUPT))
+#define TIMER_IRQ CONCAT(XCHAL_TIMER,		\
+			   CONCAT(CONFIG_XTENSA_TIMER_ID, _INTERRUPT))
 
 #define CYC_PER_TICK (sys_clock_hw_cycles_per_sec()	\
 		      / CONFIG_SYS_CLOCK_TICKS_PER_SEC)
@@ -23,8 +23,8 @@
 static unsigned int last_count;
 
 #if defined(CONFIG_TEST)
-const int32_t z_sys_timer_irq_for_test = UTIL_CAT(XCHAL_TIMER,
-					 UTIL_CAT(CONFIG_XTENSA_TIMER_ID, _INTERRUPT));
+const int32_t z_sys_timer_irq_for_test = CONCAT(XCHAL_TIMER,
+					 CONCAT(CONFIG_XTENSA_TIMER_ID, _INTERRUPT));
 #endif
 
 static uint32_t ccount_compensation;

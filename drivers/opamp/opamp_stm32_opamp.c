@@ -668,7 +668,7 @@ static int stm32_opamp_init(const struct device *dev)
 #define _STM32_OPAMP_DT_ADC_CHANNEL_DEFINE_0(inst) /* empty */
 
 #define STM32_OPAMP_DT_ADC_CHANNEL_DEFINE(inst)                                                    \
-	UTIL_CAT(_STM32_OPAMP_DT_ADC_CHANNEL_DEFINE_,                                              \
+	CONCAT(_STM32_OPAMP_DT_ADC_CHANNEL_DEFINE_,                                                \
 		 UTIL_BOOL(DT_INST_NODE_HAS_PROP(inst, io_channels)))(inst)
 
 #define STM32_OPAMP_ADC_CHANNEL_PTR(inst)                                                          \

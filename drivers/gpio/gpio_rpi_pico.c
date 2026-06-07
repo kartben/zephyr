@@ -428,12 +428,12 @@ static int gpio_rpi_bank_init(const struct device *dev)
 }
 
 #define GPIO_REG_0U            1
-#define IS_GPIO_RPI_LO_NODE(n) UTIL_CAT(GPIO_REG_, DT_REG_ADDR(n))
+#define IS_GPIO_RPI_LO_NODE(n) CONCAT(GPIO_REG_, DT_REG_ADDR(n))
 
 #define DEVICE_IF_GPIO_RPI_HI_NODE(n) COND_CODE_1(IS_GPIO_RPI_LO_NODE(n), (), (DEVICE_DT_GET(n)))
 
 #define FIND_GPIO_RPI_HI_DEVICE(n)                                                                 \
-	COND_CODE_1(UTIL_CAT(GPIO_REG_, DT_REG_ADDR(n)),                                           \
+	COND_CODE_1(CONCAT(GPIO_REG_, DT_REG_ADDR(n)),                                             \
 			(DT_FOREACH_CHILD(DT_PARENT(n), DEVICE_IF_GPIO_RPI_HI_NODE)), (NULL))
 
 #if GPIO_RPI_HI_AVAILABLE

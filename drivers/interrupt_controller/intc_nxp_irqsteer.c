@@ -808,7 +808,7 @@ __maybe_unused static int irqsteer_pm_action(const struct device *dev,
 		return pm_device_runtime_enable(dev); \
 	}
 
-#define CONCAT4(a, b, c, d) UTIL_CAT(UTIL_CAT(UTIL_CAT(a, b), c), d)
+#define CONCAT4(a, b, c, d) CONCAT(CONCAT(CONCAT(a, b), c), d)
 
 #define NXP_IRQSTEER_MASTER_IRQ_ENTRY_DEF(node_id)                                                 \
 	IRQ_PARENT_ENTRY_DEFINE(CONCAT4(nxp_irqsteer_,						   \

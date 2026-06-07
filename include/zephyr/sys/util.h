@@ -305,7 +305,7 @@ extern "C" {
  *
  * @return Concatenated token.
  */
-#define CONCAT(...) UTIL_CAT(_CONCAT_, NUM_VA_ARGS_LESS_1(__VA_ARGS__))(__VA_ARGS__)
+#define CONCAT(...) Z_UTIL_CAT(_CONCAT_, NUM_VA_ARGS_LESS_1(__VA_ARGS__))(__VA_ARGS__)
 
 /**
  * @brief Check if @p ptr is aligned to @p align alignment

@@ -166,15 +166,15 @@ static DEVICE_API(sensor, nxp_tempsense_api) = {
 			.buffer = &_CONCAT(nxp_tempsense_data, inst).buffer,			\
 			.buffer_size = sizeof(_CONCAT(nxp_tempsense_data, inst).buffer),	\
 			.resolution = DT_PROP(DT_CHILD(DT_INST_IO_CHANNELS_CTLR(inst),		\
-				      UTIL_CAT(channel_, DT_INST_IO_CHANNELS_INPUT(inst))),	\
+				      CONCAT(channel_, DT_INST_IO_CHANNELS_INPUT(inst))),	\
 				      zephyr_resolution),					\
 		},										\
 		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(inst)),				\
 		.clock_subsys = (clock_control_subsys_t)DT_INST_CLOCKS_CELL(inst, name),	\
 		.ch_cfg = ADC_CHANNEL_CFG_DT(DT_CHILD(DT_INST_IO_CHANNELS_CTLR(inst),		\
-					UTIL_CAT(channel_, DT_INST_IO_CHANNELS_INPUT(inst)))),	\
+					CONCAT(channel_, DT_INST_IO_CHANNELS_INPUT(inst)))),	\
 		.adc_ref_mv = DT_PROP(DT_CHILD(DT_INST_IO_CHANNELS_CTLR(inst),			\
-				      UTIL_CAT(channel_, DT_INST_IO_CHANNELS_INPUT(inst))),	\
+				      CONCAT(channel_, DT_INST_IO_CHANNELS_INPUT(inst))),	\
 				      zephyr_vref_mv),						\
 		.expose_ground = DT_INST_PROP_OR(inst, nxp_expose_ground, 0),			\
 	};											\

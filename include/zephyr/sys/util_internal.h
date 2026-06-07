@@ -17,6 +17,8 @@
 
 #include "util_loops.h"
 
+/** @cond INTERNAL_HIDDEN */
+
 /* IS_ENABLED() helpers */
 
 /* This is called from IS_ENABLED(), and sticks on a "_XXXX" prefix,
@@ -76,7 +78,7 @@
 	Z_COND_CASE_1_CAT_N(NUM_VA_ARGS_LESS_1(__VA_ARGS__), __VA_ARGS__)
 
 #define Z_COND_CASE_1_CAT_N(count_minus_one, ...) \
-	UTIL_CAT(Z_COND_CASE_1_N_, count_minus_one)(__VA_ARGS__)
+	Z_UTIL_CAT(Z_COND_CASE_1_N_, count_minus_one)(__VA_ARGS__)
 
 #define Z_COND_CASE_1_N_0(_default) __DEBRACKET _default
 #define Z_COND_CASE_1_N_2(flag0, value0, _default) \
@@ -142,7 +144,12 @@
 #define Z_LIST_NO_EMPTIES(e) \
 	COND_CODE_1(IS_EMPTY(e), (), (Z_LIST_ADD_ELEM(e)))
 
-#define UTIL_CAT(a, ...) UTIL_PRIMITIVE_CAT(a, __VA_ARGS__)
+#define Z_UTIL_CAT(a, ...) Z_UTIL_PRIMITIVE_CAT(a, __VA_ARGS__)
+/**
+ * @deprecated Use CONCAT() unless you are explictly looking for the internal helper now named
+ *  Z_UTIL_CAT.
+ */
+#define UTIL_CAT(a, ...) Z_UTIL_CAT(a, __VA_ARGS__) __DEPRECATED_MACRO
 #define UTIL_PRIMITIVE_CAT(a, ...) a##__VA_ARGS__
 #define UTIL_CHECK_N(x, n, ...) n
 #define UTIL_CHECK(...) UTIL_CHECK_N(__VA_ARGS__, 0,)
@@ -158,13 +165,13 @@
 #define UTIL_REPEAT(...) UTIL_LISTIFY(__VA_ARGS__)
 
 #define _CONCAT_0(arg, ...) arg
-#define _CONCAT_1(arg, ...) UTIL_CAT(arg, _CONCAT_0(__VA_ARGS__))
-#define _CONCAT_2(arg, ...) UTIL_CAT(arg, _CONCAT_1(__VA_ARGS__))
-#define _CONCAT_3(arg, ...) UTIL_CAT(arg, _CONCAT_2(__VA_ARGS__))
-#define _CONCAT_4(arg, ...) UTIL_CAT(arg, _CONCAT_3(__VA_ARGS__))
-#define _CONCAT_5(arg, ...) UTIL_CAT(arg, _CONCAT_4(__VA_ARGS__))
-#define _CONCAT_6(arg, ...) UTIL_CAT(arg, _CONCAT_5(__VA_ARGS__))
-#define _CONCAT_7(arg, ...) UTIL_CAT(arg, _CONCAT_6(__VA_ARGS__))
+#define _CONCAT_1(arg, ...) Z_UTIL_CAT(arg, _CONCAT_0(__VA_ARGS__))
+#define _CONCAT_2(arg, ...) Z_UTIL_CAT(arg, _CONCAT_1(__VA_ARGS__))
+#define _CONCAT_3(arg, ...) Z_UTIL_CAT(arg, _CONCAT_2(__VA_ARGS__))
+#define _CONCAT_4(arg, ...) Z_UTIL_CAT(arg, _CONCAT_3(__VA_ARGS__))
+#define _CONCAT_5(arg, ...) Z_UTIL_CAT(arg, _CONCAT_4(__VA_ARGS__))
+#define _CONCAT_6(arg, ...) Z_UTIL_CAT(arg, _CONCAT_5(__VA_ARGS__))
+#define _CONCAT_7(arg, ...) Z_UTIL_CAT(arg, _CONCAT_6(__VA_ARGS__))
 
 /* Implementation details for NUM_VA_ARGS_LESS_1 */
 #define NUM_VA_ARGS_LESS_1_IMPL(				\
@@ -181,23 +188,23 @@
 #define Z_MACRO_MAP_CAT_(...)						\
 	/* To make sure it works also for 2 arguments in total */	\
 	MACRO_MAP_CAT_N(NUM_VA_ARGS_LESS_1(__VA_ARGS__), __VA_ARGS__)
-#define Z_MACRO_MAP_CAT_N_(N, ...) UTIL_CAT(Z_MACRO_MC_, N)(__VA_ARGS__,)
+#define Z_MACRO_MAP_CAT_N_(N, ...) Z_UTIL_CAT(Z_MACRO_MC_, N)(__VA_ARGS__,)
 #define Z_MACRO_MC_0(...)
 #define Z_MACRO_MC_1(m, a, ...)  m(a)
-#define Z_MACRO_MC_2(m, a, ...)  UTIL_CAT(m(a), Z_MACRO_MC_1(m, __VA_ARGS__,))
-#define Z_MACRO_MC_3(m, a, ...)  UTIL_CAT(m(a), Z_MACRO_MC_2(m, __VA_ARGS__,))
-#define Z_MACRO_MC_4(m, a, ...)  UTIL_CAT(m(a), Z_MACRO_MC_3(m, __VA_ARGS__,))
-#define Z_MACRO_MC_5(m, a, ...)  UTIL_CAT(m(a), Z_MACRO_MC_4(m, __VA_ARGS__,))
-#define Z_MACRO_MC_6(m, a, ...)  UTIL_CAT(m(a), Z_MACRO_MC_5(m, __VA_ARGS__,))
-#define Z_MACRO_MC_7(m, a, ...)  UTIL_CAT(m(a), Z_MACRO_MC_6(m, __VA_ARGS__,))
-#define Z_MACRO_MC_8(m, a, ...)  UTIL_CAT(m(a), Z_MACRO_MC_7(m, __VA_ARGS__,))
-#define Z_MACRO_MC_9(m, a, ...)  UTIL_CAT(m(a), Z_MACRO_MC_8(m, __VA_ARGS__,))
-#define Z_MACRO_MC_10(m, a, ...) UTIL_CAT(m(a), Z_MACRO_MC_9(m, __VA_ARGS__,))
-#define Z_MACRO_MC_11(m, a, ...) UTIL_CAT(m(a), Z_MACRO_MC_10(m, __VA_ARGS__,))
-#define Z_MACRO_MC_12(m, a, ...) UTIL_CAT(m(a), Z_MACRO_MC_11(m, __VA_ARGS__,))
-#define Z_MACRO_MC_13(m, a, ...) UTIL_CAT(m(a), Z_MACRO_MC_12(m, __VA_ARGS__,))
-#define Z_MACRO_MC_14(m, a, ...) UTIL_CAT(m(a), Z_MACRO_MC_13(m, __VA_ARGS__,))
-#define Z_MACRO_MC_15(m, a, ...) UTIL_CAT(m(a), Z_MACRO_MC_14(m, __VA_ARGS__,))
+#define Z_MACRO_MC_2(m, a, ...)  Z_UTIL_CAT(m(a), Z_MACRO_MC_1(m, __VA_ARGS__,))
+#define Z_MACRO_MC_3(m, a, ...)  Z_UTIL_CAT(m(a), Z_MACRO_MC_2(m, __VA_ARGS__,))
+#define Z_MACRO_MC_4(m, a, ...)  Z_UTIL_CAT(m(a), Z_MACRO_MC_3(m, __VA_ARGS__,))
+#define Z_MACRO_MC_5(m, a, ...)  Z_UTIL_CAT(m(a), Z_MACRO_MC_4(m, __VA_ARGS__,))
+#define Z_MACRO_MC_6(m, a, ...)  Z_UTIL_CAT(m(a), Z_MACRO_MC_5(m, __VA_ARGS__,))
+#define Z_MACRO_MC_7(m, a, ...)  Z_UTIL_CAT(m(a), Z_MACRO_MC_6(m, __VA_ARGS__,))
+#define Z_MACRO_MC_8(m, a, ...)  Z_UTIL_CAT(m(a), Z_MACRO_MC_7(m, __VA_ARGS__,))
+#define Z_MACRO_MC_9(m, a, ...)  Z_UTIL_CAT(m(a), Z_MACRO_MC_8(m, __VA_ARGS__,))
+#define Z_MACRO_MC_10(m, a, ...) Z_UTIL_CAT(m(a), Z_MACRO_MC_9(m, __VA_ARGS__,))
+#define Z_MACRO_MC_11(m, a, ...) Z_UTIL_CAT(m(a), Z_MACRO_MC_10(m, __VA_ARGS__,))
+#define Z_MACRO_MC_12(m, a, ...) Z_UTIL_CAT(m(a), Z_MACRO_MC_11(m, __VA_ARGS__,))
+#define Z_MACRO_MC_13(m, a, ...) Z_UTIL_CAT(m(a), Z_MACRO_MC_12(m, __VA_ARGS__,))
+#define Z_MACRO_MC_14(m, a, ...) Z_UTIL_CAT(m(a), Z_MACRO_MC_13(m, __VA_ARGS__,))
+#define Z_MACRO_MC_15(m, a, ...) Z_UTIL_CAT(m(a), Z_MACRO_MC_14(m, __VA_ARGS__,))
 
 /* Used by Z_IS_EQ */
 #include "util_internal_is_eq.h"
@@ -238,5 +245,7 @@
 
 /* Used by UTIL_X2 */
 #include "util_internal_util_x2.h"
+
+/** @endcond */
 
 #endif /* ZEPHYR_INCLUDE_SYS_UTIL_INTERNAL_H_ */

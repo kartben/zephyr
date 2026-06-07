@@ -75,16 +75,16 @@
 #if defined(MCLK)
 /* a trailing underscore and/or lumpy concatenation is used to prevent expansion */
 #define ADC_SAM0_CALIB(prefix, val) \
-	UTIL_CAT(ADC_CALIB_, val)( \
-		(((*(uint32_t *)UTIL_CAT(UTIL_CAT(UTIL_CAT(prefix, FUSES_), val), _ADDR)) \
-		>> UTIL_CAT(UTIL_CAT(UTIL_CAT(prefix, FUSES_), val), _Pos)) \
-		& UTIL_CAT(UTIL_CAT(UTIL_CAT(prefix, FUSES_), val), _Msk)) \
+	CONCAT(ADC_CALIB_, val)( \
+		(((*(uint32_t *)CONCAT(CONCAT(CONCAT(prefix, FUSES_), val), _ADDR)) \
+		>> CONCAT(CONCAT(CONCAT(prefix, FUSES_), val), _Pos)) \
+		& CONCAT(CONCAT(CONCAT(prefix, FUSES_), val), _Msk)) \
 	)
 
 #if ADC_INST_NUM == 1
 #  define ADC_FUSES_PREFIX(n) ADC_
 #else
-#  define ADC_FUSES_PREFIX(n) UTIL_CAT(AD, UTIL_CAT(C, UTIL_CAT(n, _)))
+#  define ADC_FUSES_PREFIX(n) CONCAT(AD, CONCAT(C, CONCAT(n, _)))
 #endif
 
 #if defined(ADC_FUSES_BIASCOMP) || defined(ADC0_FUSES_BIASCOMP)

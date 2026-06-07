@@ -1510,7 +1510,7 @@ static inline bool adc_is_ready_dt(const struct adc_dt_spec *spec)
  *
  * This function depends on `DT_DRV_COMPAT` being defined.
  */
-#define ADC_DECODER_NAME() UTIL_CAT(DT_DRV_COMPAT, __adc_decoder_api)
+#define ADC_DECODER_NAME() CONCAT(DT_DRV_COMPAT, __adc_decoder_api)
 
 /**
  * @brief Statically get the decoder for a given node
@@ -1520,7 +1520,7 @@ static inline bool adc_is_ready_dt(const struct adc_dt_spec *spec)
  * @endcode
  */
 #define ADC_DECODER_DT_GET(node_id)                                                             \
-	&UTIL_CAT(DT_STRING_TOKEN_BY_IDX(node_id, compatible, 0), __adc_decoder_api)
+	&CONCAT(DT_STRING_TOKEN_BY_IDX(node_id, compatible, 0), __adc_decoder_api)
 
 /**
  * @brief Define a decoder API
@@ -1542,7 +1542,7 @@ static inline bool adc_is_ready_dt(const struct adc_dt_spec *spec)
 	const STRUCT_SECTION_ITERABLE(adc_decoder_api, ADC_DECODER_NAME())
 
 #define Z_MAYBE_ADC_DECODER_DECLARE_INTERNAL_IDX(node_id, prop, idx)				\
-	extern const struct adc_decoder_api UTIL_CAT(						\
+	extern const struct adc_decoder_api CONCAT(						\
 		DT_STRING_TOKEN_BY_IDX(node_id, prop, idx), __adc_decoder_api);
 
 #define Z_MAYBE_ADC_DECODER_DECLARE_INTERNAL(node_id)						\

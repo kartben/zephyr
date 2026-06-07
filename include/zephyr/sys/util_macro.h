@@ -419,7 +419,7 @@ extern "C" {
  *
  * @return Nth argument.
  */
-#define GET_ARG_N(N, ...) UTIL_CAT(Z_GET_ARG_, N)(__VA_ARGS__)
+#define GET_ARG_N(N, ...) Z_UTIL_CAT(Z_GET_ARG_, N)(__VA_ARGS__)
 
 /**
  * @brief Strips n first arguments from the argument list.
@@ -429,7 +429,7 @@ extern "C" {
  *
  * @return argument list without N first arguments.
  */
-#define GET_ARGS_LESS_N(N, ...) UTIL_CAT(Z_GET_ARGS_LESS_, N)(__VA_ARGS__)
+#define GET_ARGS_LESS_N(N, ...) Z_UTIL_CAT(Z_GET_ARGS_LESS_, N)(__VA_ARGS__)
 
 /**
  * @brief Get the first N arguments from the argument list.
@@ -439,7 +439,7 @@ extern "C" {
  *
  * @return argument list only contains first N arguments.
  */
-#define GET_ARGS_FIRST_N(N, ...) UTIL_CAT(Z_GET_ARGS_FIRST_, N)(__VA_ARGS__)
+#define GET_ARGS_FIRST_N(N, ...) Z_UTIL_CAT(Z_GET_ARGS_FIRST_, N)(__VA_ARGS__)
 
 /**
  * @brief Like <tt>a || b</tt>, but does evaluation and
@@ -516,7 +516,7 @@ extern "C" {
  * @note Calling LISTIFY with undefined arguments has undefined
  * behavior.
  */
-#define LISTIFY(LEN, F, sep, ...) UTIL_CAT(Z_UTIL_LISTIFY_, LEN)(F, sep, __VA_ARGS__)
+#define LISTIFY(LEN, F, sep, ...) Z_UTIL_CAT(Z_UTIL_LISTIFY_, LEN)(F, sep, __VA_ARGS__)
 
 /**
  * @brief Call a macro @p F on each provided argument with a given

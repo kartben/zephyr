@@ -34,7 +34,7 @@ struct log_source_dynamic_data {
  *
  *  @param _name Name.
  */
-#define Z_LOG_ITEM_CONST_DATA(_name) UTIL_CAT(log_const_, _name)
+#define Z_LOG_ITEM_CONST_DATA(_name) CONCAT(log_const_, _name)
 
 /** @internal
  *
@@ -72,7 +72,7 @@ struct log_source_dynamic_data {
  * Create a name for which contains module and instance names.
  */
 #define Z_LOG_INSTANCE_FULL_NAME(_module_name, _inst_name) \
-	UTIL_CAT(_module_name, UTIL_CAT(_, _inst_name))
+	CONCAT(_module_name, CONCAT(_, _inst_name))
 
 /** @internal
  *

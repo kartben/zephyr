@@ -221,7 +221,7 @@ DEVICE_DT_DEFINE(DT_COMPAT_GET_ANY_STATUS_OKAY(renesas_ra_acmphs_global),
 
 #define FILTER_PARAMETER(idx)                                                                      \
 	COND_CODE_1(IS_EQ(DT_INST_PROP(idx, noise_filter), 1),                                     \
-	(COMPARATOR_FILTER_OFF), (UTIL_CAT(COMPARATOR_FILTER_, DT_INST_PROP(idx, noise_filter))))
+	(COMPARATOR_FILTER_OFF), (CONCAT(COMPARATOR_FILTER_, DT_INST_PROP(idx, noise_filter))))
 
 #define INVERT_PARAMETER(idx)                                                                      \
 	COND_CODE_1(DT_INST_PROP(idx, output_invert_polarity),                                     \
@@ -245,10 +245,10 @@ DEVICE_DT_DEFINE(DT_COMPAT_GET_ANY_STATUS_OKAY(renesas_ra_acmphs_global),
 #define ACMPHS_RENESAS_RA_INIT(idx)                                                                \
 	PINCTRL_DT_INST_DEFINE(idx);                                                               \
 	static r_acmphs_extended_cfg_t g_acmphs_cfg_extend_##idx = {                               \
-		.input_voltage = UTIL_CAT(ACMPHS_INPUT_,                                           \
+		.input_voltage = CONCAT(ACMPHS_INPUT_,                                             \
 					  DT_INST_STRING_UPPER_TOKEN(idx, compare_input_source)),  \
 		.reference_voltage =                                                               \
-			UTIL_CAT(ACMPHS_REFERENCE_,                                                \
+			CONCAT(ACMPHS_REFERENCE_,                                                  \
 				 DT_INST_STRING_UPPER_TOKEN(idx, reference_input_source)),         \
 		.maximum_status_retries = 1024,                                                    \
 	};                                                                                         \

@@ -60,7 +60,7 @@ static inline void feedback_target_init(void)
 #error "Unsupported target"
 #endif
 
-#define FEEDBACK_GPIOTE_NODE DT_NODELABEL(UTIL_CAT(gpiote, FEEDBACK_GPIOTE_INSTANCE_NUMBER))
+#define FEEDBACK_GPIOTE_NODE DT_NODELABEL(CONCAT(gpiote, FEEDBACK_GPIOTE_INSTANCE_NUMBER))
 
 static nrfx_timer_t feedback_timer_instance =
 	NRFX_TIMER_INSTANCE(NRF_TIMER_INST_GET(FEEDBACK_TIMER_INSTANCE_NUMBER));

@@ -397,13 +397,13 @@ static inline bool shell_help_is_structured(const char *help)
  */
 #define SHELL_CMD_ARG_REGISTER(syntax, subcmd, help, handler,		   \
 			       mandatory, optional)			   \
-	static const struct shell_static_entry UTIL_CAT(_shell_, syntax) = \
+	static const struct shell_static_entry CONCAT(_shell_, syntax) =   \
 	SHELL_CMD_ARG(syntax, subcmd, help, handler, mandatory, optional); \
 	static const TYPE_SECTION_ITERABLE(union shell_cmd_entry,	   \
-		UTIL_CAT(shell_cmd_, syntax), shell_root_cmds,		   \
-		UTIL_CAT(shell_cmd_, syntax)				   \
+		CONCAT(shell_cmd_, syntax), shell_root_cmds,		   \
+		CONCAT(shell_cmd_, syntax)				   \
 	) = {								   \
-		.entry = &UTIL_CAT(_shell_, syntax)			   \
+		.entry = &CONCAT(_shell_, syntax)			   \
 	}
 
 /**
@@ -499,7 +499,7 @@ static inline bool shell_help_is_structured(const char *help)
 
 #define Z_SHELL_UNDERSCORE(x) _##x
 #define Z_SHELL_SUBCMD_NAME(...) \
-	UTIL_CAT(shell_subcmds, MACRO_MAP_CAT(Z_SHELL_UNDERSCORE, __VA_ARGS__))
+	CONCAT(shell_subcmds, MACRO_MAP_CAT(Z_SHELL_UNDERSCORE, __VA_ARGS__))
 #define Z_SHELL_SUBCMD_SECTION_TAG(...) MACRO_MAP_CAT(Z_SHELL_UNDERSCORE, __VA_ARGS__)
 #define Z_SHELL_SUBCMD_SET_SECTION_TAG(x) \
 	Z_SHELL_SUBCMD_SECTION_TAG(NUM_VA_ARGS_LESS_1 x, __DEBRACKET x)
@@ -709,7 +709,7 @@ static inline bool shell_help_is_structured(const char *help)
 
 /* Internal macro used for creating handlers for dictionary commands. */
 #define Z_SHELL_CMD_DICT_HANDLER_CREATE(_data, _handler)		\
-static int UTIL_CAT(UTIL_CAT(cmd_dict_, UTIL_CAT(_handler, _)),		\
+static int CONCAT(CONCAT(cmd_dict_, CONCAT(_handler, _)),		\
 			GET_ARG_N(1, __DEBRACKET _data))(		\
 		const struct shell *sh, size_t argc, char **argv)	\
 {									\
@@ -720,7 +720,7 @@ static int UTIL_CAT(UTIL_CAT(cmd_dict_, UTIL_CAT(_handler, _)),		\
 /* Internal macro used for creating dictionary commands. */
 #define SHELL_CMD_DICT_CREATE(_data, _handler)				\
 	SHELL_CMD_ARG(GET_ARG_N(1, __DEBRACKET _data), NULL, GET_ARG_N(3, __DEBRACKET _data),	\
-		UTIL_CAT(UTIL_CAT(cmd_dict_, UTIL_CAT(_handler, _)),	\
+		CONCAT(CONCAT(cmd_dict_, CONCAT(_handler, _)),	\
 			GET_ARG_N(1, __DEBRACKET _data)), 1, 0)
 
 /**
@@ -1113,7 +1113,7 @@ extern void z_shell_print_stream(const void *user_ctx, const char *data,
  */
 #define Z_SHELL_DEFINE(_name, _prompt, _transport_iface, _out_buf, _log_backend, _shell_flag)      \
 	static const struct shell _name;                                                           \
-	static struct shell_ctx UTIL_CAT(_name, _ctx);                                             \
+	static struct shell_ctx CONCAT(_name, _ctx);                                               \
 	Z_SHELL_HISTORY_DEFINE(_name##_history, CONFIG_SHELL_HISTORY_BUFFER);                      \
 	Z_SHELL_FPRINTF_DEFINE(_name##_fprintf, &_name, _out_buf, CONFIG_SHELL_PRINTF_BUFF_SIZE,   \
 			       IS_ENABLED(CONFIG_SHELL_PRINTF_AUTOFLUSH), z_shell_print_stream);   \
@@ -1124,7 +1124,7 @@ extern void z_shell_print_stream(const void *user_ctx, const char *data,
 	static const STRUCT_SECTION_ITERABLE(shell, _name) = {                                     \
 		.default_prompt = _prompt,                                                         \
 		.iface = _transport_iface,                                                         \
-		.ctx = &UTIL_CAT(_name, _ctx),                                                     \
+		.ctx = &CONCAT(_name, _ctx),                                                       \
 		.history = IS_ENABLED(CONFIG_SHELL_HISTORY) ? &_name##_history : NULL,             \
 		.shell_flag = _shell_flag,                                                         \
 		.fprintf_ctx = &_name##_fprintf,                                                   \

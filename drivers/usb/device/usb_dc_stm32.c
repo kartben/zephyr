@@ -592,7 +592,7 @@ static int usb_dc_stm32_init(void)
 	unsigned int i;
 
 	usb_dc_stm32_state.pcd.Init.speed =
-			UTIL_CAT(USB_DC_STM32_, DT_INST_STRING_UPPER_TOKEN(0, maximum_speed));
+			CONCAT(USB_DC_STM32_, DT_INST_STRING_UPPER_TOKEN(0, maximum_speed));
 
 #if defined(USB) || defined(USB_DRD_FS)
 #ifdef USB

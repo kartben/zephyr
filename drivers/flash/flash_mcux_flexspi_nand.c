@@ -936,8 +936,8 @@ static DEVICE_API(flash, flash_flexspi_nand_api) = {
 #endif
 };
 
-#define CS_INTERVAL_UNIT(unit)    UTIL_CAT(UTIL_CAT(kFLEXSPI_CsIntervalUnit, unit), SckCycle)
-#define AHB_WRITE_WAIT_UNIT(unit) UTIL_CAT(UTIL_CAT(kFLEXSPI_AhbWriteWaitUnit, unit), AhbCycle)
+#define CS_INTERVAL_UNIT(unit)    CONCAT(CONCAT(kFLEXSPI_CsIntervalUnit, unit), SckCycle)
+#define AHB_WRITE_WAIT_UNIT(unit) CONCAT(CONCAT(kFLEXSPI_AhbWriteWaitUnit, unit), AhbCycle)
 
 #define FLASH_FLEXSPI_DEVICE_CONFIG(n)                                                             \
 	{                                                                                          \

@@ -3424,7 +3424,7 @@ static struct mse_server mse_server[MAP_MAS_MAX_NUM] = {
 	LISTIFY(MAP_MAS_MAX_NUM, MSE_SERVER_INIT, (,)) };
 
 #define MSE_MAS_ATTRS(i, _) \
-static struct bt_sdp_attribute UTIL_CAT(mse_mas_, UTIL_CAT(i, _attrs))[] = { \
+static struct bt_sdp_attribute CONCAT(mse_mas_, CONCAT(i, _attrs))[] = { \
 	BT_SDP_NEW_SERVICE, \
 	BT_SDP_LIST( \
 		BT_SDP_ATTR_SVCLASS_ID_LIST, \
@@ -3523,7 +3523,7 @@ static struct bt_sdp_attribute UTIL_CAT(mse_mas_, UTIL_CAT(i, _attrs))[] = { \
 	}, \
 };
 
-#define MSE_MAS_SDP_RECORD_INIT(idx, _) BT_SDP_RECORD(UTIL_CAT(mse_mas_, UTIL_CAT(idx, _attrs)))
+#define MSE_MAS_SDP_RECORD_INIT(idx, _) BT_SDP_RECORD(CONCAT(mse_mas_, CONCAT(idx, _attrs)))
 
 LISTIFY(MAP_MAS_MAX_NUM, MSE_MAS_ATTRS, (;))
 

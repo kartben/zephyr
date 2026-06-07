@@ -947,7 +947,7 @@ static DEVICE_API(rtc, pcf8523_driver_api) = {
 };
 
 #define PCF8523_PM_FROM_DT_INST(inst)                                                              \
-	UTIL_CAT(PCF8523_PM_, DT_INST_STRING_UPPER_TOKEN(inst, battery_switch_over))
+	CONCAT(PCF8523_PM_, DT_INST_STRING_UPPER_TOKEN(inst, battery_switch_over))
 #define PCF8523_CAP_SEL_FROM_DT_INST(inst) (DT_INST_PROP(inst, quartz_load_femtofarads) == 12500)
 
 #define PCF8523_INIT(inst)                                                                         \

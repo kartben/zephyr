@@ -358,7 +358,7 @@ static int pwm_bbled_xec_init(const struct device *dev)
 		.girq_pos = (uint8_t)(DT_INST_PROP_BY_IDX(0, girqs, 1)),	\
 		.pcr_idx = (uint8_t)DT_INST_PROP_BY_IDX(inst, pcrs, 0),		\
 		.pcr_pos = (uint8_t)DT_INST_PROP_BY_IDX(inst, pcrs, 1),		\
-		.clk_sel = UTIL_CAT(XEC_PWM_BBLED_CLKSEL_, XEC_PWM_BBLED_CLKSEL(inst)),	\
+		.clk_sel = CONCAT(XEC_PWM_BBLED_CLKSEL_, XEC_PWM_BBLED_CLKSEL(inst)),	\
 		.enable_low_power_32K = DT_INST_PROP(inst, enable_low_power_32k),\
 		.pcfg = PINCTRL_DT_INST_DEV_CONFIG_GET(inst),			\
 	};

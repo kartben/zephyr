@@ -208,8 +208,8 @@ static int pwm_rpi_init(const struct device *dev)
 
 #define PWM_INST_RPI_SLICE_DIVIDER(n, idx)				   \
 	{								   \
-		.integral = DT_INST_PROP_OR(idx, UTIL_CAT(divider_int_, n), 0),			   \
-		.frac = DT_INST_PROP_OR(idx, UTIL_CAT(divider_frac_, n), 0),			   \
+		.integral = DT_INST_PROP_OR(idx, CONCAT(divider_int_, n), 0),			   \
+		.frac = DT_INST_PROP_OR(idx, CONCAT(divider_frac_, n), 0),			   \
 	}
 
 #define PWM_RPI_INIT(idx)									   \

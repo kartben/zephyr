@@ -139,7 +139,7 @@ static int lpadc_temp40_init(const struct device *dev)
 			},                                                                         \
 		.ch_cfg = ADC_CHANNEL_CFG_DT(                                                      \
 			DT_CHILD(DT_INST_IO_CHANNELS_CTLR(inst),                                   \
-				 UTIL_CAT(channel_, DT_INST_IO_CHANNELS_INPUT(inst)))),            \
+				 CONCAT(channel_, DT_INST_IO_CHANNELS_INPUT(inst)))),            \
 	};                                                                                         \
                                                                                                    \
 	SENSOR_DEVICE_DT_INST_DEFINE(inst, lpadc_temp40_init, NULL, &lpadc_temp40_data_##inst,     \

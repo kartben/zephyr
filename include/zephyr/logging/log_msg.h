@@ -238,7 +238,7 @@ enum z_log_msg_mode {
 
 /* Determine if amount of arguments (less than 3) qualifies to  simple message. */
 #define LOG_MSG_SIMPLE_ARG_CNT_CHECK(...) \
-	COND_CODE_1(UTIL_CAT(_LOG_MSG_SIMPLE_XXXX, NUM_VA_ARGS_LESS_1(__VA_ARGS__)), (1), (0))
+	COND_CODE_1(CONCAT(_LOG_MSG_SIMPLE_XXXX, NUM_VA_ARGS_LESS_1(__VA_ARGS__)), (1), (0))
 
 /* Set of marcos used to determine if arguments type allows simplified message creation mode. */
 #define LOG_MSG_SIMPLE_ARG_TYPE_CHECK_0(fmt) 1
@@ -251,7 +251,7 @@ enum z_log_msg_mode {
  * @param ... String with arguments.
  */
 #define LOG_MSG_SIMPLE_ARG_TYPE_CHECK(...) \
-	UTIL_CAT(LOG_MSG_SIMPLE_ARG_TYPE_CHECK_, NUM_VA_ARGS_LESS_1(__VA_ARGS__))(__VA_ARGS__)
+	CONCAT(LOG_MSG_SIMPLE_ARG_TYPE_CHECK_, NUM_VA_ARGS_LESS_1(__VA_ARGS__))(__VA_ARGS__)
 
 /** @brief Check if message can be handled using simplified method.
  *
@@ -589,7 +589,7 @@ do { \
 
 #define Z_LOG_MSG_CREATE(_try_0cpy, _mode,  _domain_id, _source,\
 			  _level, _data, _dlen, ...) \
-	Z_LOG_MSG_CREATE2(_try_0cpy, _mode, UTIL_CAT(Z_LOG_FUNC_PREFIX_, _level), \
+	Z_LOG_MSG_CREATE2(_try_0cpy, _mode, CONCAT(Z_LOG_FUNC_PREFIX_, _level), \
 			   _domain_id, _source, _level, _data, _dlen, \
 			   Z_LOG_STR(_level, __VA_ARGS__))
 

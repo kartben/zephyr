@@ -200,7 +200,7 @@ static void sent_nxp_s32_isr_error(const struct device *dev)
 			{                                                                          \
 				.BusTimeout = COND_CODE_0(DT_PROP(node_id, bus_timeout_cycles),    \
 						(SRX_IP_BUS_TIMEOUT_DISABLED),                     \
-						(UTIL_CAT(SRX_IP_RECEIVER_CLOCK_TICK_COUNTS_,      \
+						(CONCAT(SRX_IP_RECEIVER_CLOCK_TICK_COUNTS_,        \
 							DT_PROP(node_id, bus_timeout_cycles)))),   \
 				.FastCrcCheckOff = DT_PROP(node_id, fast_crc) ==                   \
 							FAST_CRC_DISABLE ? true : false,           \
@@ -342,7 +342,7 @@ static void sent_nxp_s32_isr_error(const struct device *dev)
 	do {                                                                                       \
 		IRQ_CONNECT(DT_IRQ_BY_IDX(node_id, idx, irq),                                      \
 			    DT_IRQ_BY_IDX(node_id, idx, priority),                                 \
-			    UTIL_CAT(sent_nxp_s32_isr_,                                            \
+			    CONCAT(sent_nxp_s32_isr_,                                              \
 				     DT_STRING_TOKEN_BY_IDX(node_id, prop, idx)),                  \
 			    DEVICE_DT_GET(node_id), DT_IRQ_BY_IDX(node_id, idx, flags));           \
 		irq_enable(DT_IRQ_BY_IDX(node_id, idx, irq));                                      \

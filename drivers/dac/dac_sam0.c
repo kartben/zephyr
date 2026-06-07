@@ -145,7 +145,7 @@ static DEVICE_API(dac, api_sam0_driver_api) = {
 		.gclk_id = DT_INST_CLOCKS_CELL_BY_NAME(n, gclk, id),		\
 		.mclk = ATMEL_SAM0_DT_INST_MCLK_PM_REG_ADDR_OFFSET(n),		\
 		.mclk_mask = ATMEL_SAM0_DT_INST_MCLK_PM_PERIPH_MASK(n, bit),	\
-		.refsel = UTIL_CAT(SAM0_DAC_REFSEL_, SAM0_DAC_REFSEL(n)),	\
+		.refsel = CONCAT(SAM0_DAC_REFSEL_, SAM0_DAC_REFSEL(n)),		\
 	};									\
 										\
 	DEVICE_DT_INST_DEFINE(n, &dac_sam0_init, NULL, NULL,			\

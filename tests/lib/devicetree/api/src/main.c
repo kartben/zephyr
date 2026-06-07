@@ -4677,8 +4677,8 @@ ZTEST(devicetree_api, test_nvmem_devictree_inst)
 	zassert_str_equal(STRINGIFY(DT_MAP_ENTRY_PARENT_BY_IDX(n, p, i)),                          \
 				    "DT_N_S_interrupt_map_test_S_controller_1_1");
 
-#define INTERRUPT_NEXUS_CHECK(n, p, i)            UTIL_CAT(INTERRUPT_NEXUS_CHECK_, i)(n, p, i)
-#define INTERRUPT_NEXUS_CHECK_VARGS(n, p, i, ...) UTIL_CAT(INTERRUPT_NEXUS_CHECK_, i)(n, p, i)
+#define INTERRUPT_NEXUS_CHECK(n, p, i)            CONCAT(INTERRUPT_NEXUS_CHECK_, i)(n, p, i)
+#define INTERRUPT_NEXUS_CHECK_VARGS(n, p, i, ...) CONCAT(INTERRUPT_NEXUS_CHECK_, i)(n, p, i)
 
 #define EMPTY_MAP_SHOULD_NOT_RUN(...) zassert_unreachable("map should be empty")
 

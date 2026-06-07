@@ -406,7 +406,7 @@ static DEVICE_API(sensor, ltr55x_driver_api) = {
 
 #define LTR55X_ALS_GAIN_REG(n)                                                                     \
 	COND_CODE_1(DT_NODE_HAS_PROP(n, gain), (DT_PROP(n, gain)),                                 \
-		    (UTIL_CAT(LTR55X_ALS_GAIN_VALUE_, DT_PROP_OR(n, als_gain, 1))))
+		    (CONCAT(LTR55X_ALS_GAIN_VALUE_, DT_PROP_OR(n, als_gain, 1))))
 #define LTR55X_ALS_INT_TIME_REG(n)                                                                 \
 	COND_CODE_1(DT_NODE_HAS_PROP(n, integration_time), (DT_PROP(n, integration_time)),         \
 		    (DT_ENUM_IDX_OR(n, als_integration_time, 0)))
@@ -436,7 +436,7 @@ static DEVICE_API(sensor, ltr55x_driver_api) = {
 		.ps_led_duty_cycle = DT_ENUM_IDX_OR(node_id, ps_led_duty_cycle, 3),                \
 		.ps_led_current = DT_ENUM_IDX_OR(node_id, ps_led_current, 4),                      \
 		.ps_n_pulses = DT_PROP_OR(node_id, ps_n_pulses, 1),                                \
-		.ps_measurement_rate = UTIL_CAT(LTR55X_PS_MEASUREMENT_RATE_VALUE_,                 \
+		.ps_measurement_rate = CONCAT(LTR55X_PS_MEASUREMENT_RATE_VALUE_,                 \
 						DT_PROP_OR(node_id, ps_measurement_rate, 100)),    \
 		.ps_saturation_indicator = DT_PROP_OR(node_id, ps_saturation_indicator, false),    \
 	};                                                                                         \

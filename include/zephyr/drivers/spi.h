@@ -716,7 +716,7 @@ struct spi_device_state {
  * and calls the given init_fn
  */
 #define Z_SPI_INIT_FN(dev_id, init_fn)					\
-	static inline int UTIL_CAT(dev_id, _init)(const struct device *dev) \
+	static inline int CONCAT(dev_id, _init)(const struct device *dev) \
 	{								\
 		struct spi_device_state *state =			\
 			CONTAINER_OF(dev->state, struct spi_device_state, devstate); \
@@ -734,7 +734,7 @@ struct spi_device_state {
 	Z_SPI_INIT_FN(Z_DEVICE_DT_DEV_ID(node_id), init_fn)		\
 	Z_DEVICE_DEFINE(node_id, Z_DEVICE_DT_DEV_ID(node_id),		\
 			DEVICE_DT_NAME(node_id),			\
-			&UTIL_CAT(Z_DEVICE_DT_DEV_ID(node_id), _init),	\
+			&CONCAT(Z_DEVICE_DT_DEV_ID(node_id), _init),	\
 			deinit_fn, Z_DEVICE_DT_FLAGS(node_id),		\
 			pm_device, data_ptr, cfg_ptr, level, prio,	\
 			api_ptr,					\

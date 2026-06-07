@@ -39,7 +39,7 @@
  */
 #define RA_CGC_CLK_SRC(node_id)                                                                    \
 	COND_CODE_1(DT_NODE_HAS_STATUS(node_id, okay), \
-		(UTIL_CAT(BSP_CLOCKS_SOURCE_, DT_NODE_FULL_NAME_UPPER_TOKEN(node_id))), \
+		(CONCAT(BSP_CLOCKS_SOURCE_, DT_NODE_FULL_NAME_UPPER_TOKEN(node_id))), \
 		(BSP_CLOCKS_CLOCK_DISABLED))
 
 /**
@@ -48,7 +48,7 @@
  * This macro expands to a RA_CGC_DIV_* prefix combined with a devicetree value.
  */
 #define RA_CGC_CLK_DIV(clk, prop, default_value)                                                   \
-	UTIL_CAT(RA_CGC_DIV_, DT_NODE_FULL_NAME_UPPER_TOKEN(clk))                                  \
+	CONCAT(RA_CGC_DIV_, DT_NODE_FULL_NAME_UPPER_TOKEN(clk))                                    \
 	(RA_CGC_PROP_HAS_STATUS_OKAY_OR(clk, prop, default_value))
 
 /**
@@ -58,112 +58,112 @@
  */
 
 /** BCLK divider. */
-#define RA_CGC_DIV_BCLK(n)       UTIL_CAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
+#define RA_CGC_DIV_BCLK(n)       CONCAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
 /** CANFD divider. */
-#define RA_CGC_DIV_CANFDCLK(n)   UTIL_CAT(BSP_CLOCKS_CANFD_CLOCK_DIV_, n)
+#define RA_CGC_DIV_CANFDCLK(n)   CONCAT(BSP_CLOCKS_CANFD_CLOCK_DIV_, n)
 /** CEC divider. */
-#define RA_CGC_DIV_CECCLK(n)     UTIL_CAT(BSP_CLOCKS_CEC_CLOCK_DIV_, n)
+#define RA_CGC_DIV_CECCLK(n)     CONCAT(BSP_CLOCKS_CEC_CLOCK_DIV_, n)
 /** CLKOUT divider. */
-#define RA_CGC_DIV_CLKOUT(n)     UTIL_CAT(BSP_CLOCKS_CLKOUT_DIV_, n)
+#define RA_CGC_DIV_CLKOUT(n)     CONCAT(BSP_CLOCKS_CLKOUT_DIV_, n)
 /** CPUCLK0 divider. */
-#define RA_CGC_DIV_CPUCLK0(n)    UTIL_CAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
+#define RA_CGC_DIV_CPUCLK0(n)    CONCAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
 /** CPUCLK1 divider. */
-#define RA_CGC_DIV_CPUCLK1(n)    UTIL_CAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
+#define RA_CGC_DIV_CPUCLK1(n)    CONCAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
 /** MRPCLK divider. */
-#define RA_CGC_DIV_MRPCLK(n)     UTIL_CAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
+#define RA_CGC_DIV_MRPCLK(n)     CONCAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
 /** CPUCLK divider. */
-#define RA_CGC_DIV_CPUCLK(n)     UTIL_CAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
+#define RA_CGC_DIV_CPUCLK(n)     CONCAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
 /** FCLK divider. */
-#define RA_CGC_DIV_FCLK(n)       UTIL_CAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
+#define RA_CGC_DIV_FCLK(n)       CONCAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
 /** I3C divider. */
-#define RA_CGC_DIV_I3CCLK(n)     UTIL_CAT(BSP_CLOCKS_I3C_CLOCK_DIV_, n)
+#define RA_CGC_DIV_I3CCLK(n)     CONCAT(BSP_CLOCKS_I3C_CLOCK_DIV_, n)
 /** ICLK divider. */
-#define RA_CGC_DIV_ICLK(n)       UTIL_CAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
+#define RA_CGC_DIV_ICLK(n)       CONCAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
 /** LCDCLK divider. */
-#define RA_CGC_DIV_LCDCLK(n)     UTIL_CAT(BSP_CLOCKS_LCD_CLOCK_DIV_, n)
+#define RA_CGC_DIV_LCDCLK(n)     CONCAT(BSP_CLOCKS_LCD_CLOCK_DIV_, n)
 /** OCTASPI divider. */
-#define RA_CGC_DIV_OCTASPICLK(n) UTIL_CAT(BSP_CLOCKS_OCTA_CLOCK_DIV_, n)
+#define RA_CGC_DIV_OCTASPICLK(n) CONCAT(BSP_CLOCKS_OCTA_CLOCK_DIV_, n)
 /** PCLKA divider. */
-#define RA_CGC_DIV_PCLKA(n)      UTIL_CAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
+#define RA_CGC_DIV_PCLKA(n)      CONCAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
 /** PCLKB divider. */
-#define RA_CGC_DIV_PCLKB(n)      UTIL_CAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
+#define RA_CGC_DIV_PCLKB(n)      CONCAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
 /** PCLKC divider. */
-#define RA_CGC_DIV_PCLKC(n)      UTIL_CAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
+#define RA_CGC_DIV_PCLKC(n)      CONCAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
 /** PCLKD divider. */
-#define RA_CGC_DIV_PCLKD(n)      UTIL_CAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
+#define RA_CGC_DIV_PCLKD(n)      CONCAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
 /** PCLKE divider. */
-#define RA_CGC_DIV_PCLKE(n)      UTIL_CAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
+#define RA_CGC_DIV_PCLKE(n)      CONCAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
 /** PLL divider. */
-#define RA_CGC_DIV_PLL(n)        UTIL_CAT(BSP_CLOCKS_PLL_DIV_, n)
+#define RA_CGC_DIV_PLL(n)        CONCAT(BSP_CLOCKS_PLL_DIV_, n)
 /** PLLP divider. */
-#define RA_CGC_DIV_PLLP(n)       UTIL_CAT(BSP_CLOCKS_PLL_DIV_, n)
+#define RA_CGC_DIV_PLLP(n)       CONCAT(BSP_CLOCKS_PLL_DIV_, n)
 /** PLLQ divider. */
-#define RA_CGC_DIV_PLLQ(n)       UTIL_CAT(BSP_CLOCKS_PLL_DIV_, n)
+#define RA_CGC_DIV_PLLQ(n)       CONCAT(BSP_CLOCKS_PLL_DIV_, n)
 /** PLLR divider. */
-#define RA_CGC_DIV_PLLR(n)       UTIL_CAT(BSP_CLOCKS_PLL_DIV_, n)
+#define RA_CGC_DIV_PLLR(n)       CONCAT(BSP_CLOCKS_PLL_DIV_, n)
 /** PLL2 divider. */
-#define RA_CGC_DIV_PLL2(n)       UTIL_CAT(BSP_CLOCKS_PLL_DIV_, n)
+#define RA_CGC_DIV_PLL2(n)       CONCAT(BSP_CLOCKS_PLL_DIV_, n)
 /** PLL2P divider. */
-#define RA_CGC_DIV_PLL2P(n)      UTIL_CAT(BSP_CLOCKS_PLL_DIV_, n)
+#define RA_CGC_DIV_PLL2P(n)      CONCAT(BSP_CLOCKS_PLL_DIV_, n)
 /** PLL2Q divider. */
-#define RA_CGC_DIV_PLL2Q(n)      UTIL_CAT(BSP_CLOCKS_PLL_DIV_, n)
+#define RA_CGC_DIV_PLL2Q(n)      CONCAT(BSP_CLOCKS_PLL_DIV_, n)
 /** PLL2R divider. */
-#define RA_CGC_DIV_PLL2R(n)      UTIL_CAT(BSP_CLOCKS_PLL_DIV_, n)
+#define RA_CGC_DIV_PLL2R(n)      CONCAT(BSP_CLOCKS_PLL_DIV_, n)
 /** SCICLK divider. */
-#define RA_CGC_DIV_SCICLK(n)     UTIL_CAT(BSP_CLOCKS_SCI_CLOCK_DIV_, n)
+#define RA_CGC_DIV_SCICLK(n)     CONCAT(BSP_CLOCKS_SCI_CLOCK_DIV_, n)
 /** SPICLK divider. */
-#define RA_CGC_DIV_SPICLK(n)     UTIL_CAT(BSP_CLOCKS_SPI_CLOCK_DIV_, n)
+#define RA_CGC_DIV_SPICLK(n)     CONCAT(BSP_CLOCKS_SPI_CLOCK_DIV_, n)
 /** U60CLK divider. */
-#define RA_CGC_DIV_U60CLK(n)     UTIL_CAT(BSP_CLOCKS_USB60_CLOCK_DIV_, n)
+#define RA_CGC_DIV_U60CLK(n)     CONCAT(BSP_CLOCKS_USB60_CLOCK_DIV_, n)
 /** UCLK divider. */
-#define RA_CGC_DIV_UCLK(n)       UTIL_CAT(BSP_CLOCKS_USB_CLOCK_DIV_, n)
+#define RA_CGC_DIV_UCLK(n)       CONCAT(BSP_CLOCKS_USB_CLOCK_DIV_, n)
 /** SCISPI divider. */
-#define RA_CGC_DIV_SCISPICLK(n)  UTIL_CAT(BSP_CLOCKS_SCISPI_CLOCK_DIV_, n)
+#define RA_CGC_DIV_SCISPICLK(n)  CONCAT(BSP_CLOCKS_SCISPI_CLOCK_DIV_, n)
 /** GPTCLK divider. */
-#define RA_CGC_DIV_GPTCLK(n)     UTIL_CAT(BSP_CLOCKS_GPT_CLOCK_DIV_, n)
+#define RA_CGC_DIV_GPTCLK(n)     CONCAT(BSP_CLOCKS_GPT_CLOCK_DIV_, n)
 /** IICCLK divider. */
-#define RA_CGC_DIV_IICCLK(n)     UTIL_CAT(BSP_CLOCKS_IIC_CLOCK_DIV_, n)
+#define RA_CGC_DIV_IICCLK(n)     CONCAT(BSP_CLOCKS_IIC_CLOCK_DIV_, n)
 /** ADCCLK divider. */
-#define RA_CGC_DIV_ADCCLK(n)     UTIL_CAT(BSP_CLOCKS_ADC_CLOCK_DIV_, n)
+#define RA_CGC_DIV_ADCCLK(n)     CONCAT(BSP_CLOCKS_ADC_CLOCK_DIV_, n)
 /** MRICLK divider. */
-#define RA_CGC_DIV_MRICLK(n)     UTIL_CAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
+#define RA_CGC_DIV_MRICLK(n)     CONCAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
 /** NPUCLK divider. */
-#define RA_CGC_DIV_NPUCLK(n)     UTIL_CAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
+#define RA_CGC_DIV_NPUCLK(n)     CONCAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
 /** BCLKA divider. */
-#define RA_CGC_DIV_BCLKA(n)      UTIL_CAT(BSP_CLOCKS_BCLKA_CLOCK_DIV_, n)
+#define RA_CGC_DIV_BCLKA(n)      CONCAT(BSP_CLOCKS_BCLKA_CLOCK_DIV_, n)
 /** ESWCLK divider. */
-#define RA_CGC_DIV_ESWCLK(n)     UTIL_CAT(BSP_CLOCKS_ESW_CLOCK_DIV_, n)
+#define RA_CGC_DIV_ESWCLK(n)     CONCAT(BSP_CLOCKS_ESW_CLOCK_DIV_, n)
 /** ESWPHYCLK divider. */
-#define RA_CGC_DIV_ESWPHYCLK(n)  UTIL_CAT(BSP_CLOCKS_ESWPHY_CLOCK_DIV_, n)
+#define RA_CGC_DIV_ESWPHYCLK(n)  CONCAT(BSP_CLOCKS_ESWPHY_CLOCK_DIV_, n)
 /** ETHPHY divider. */
-#define RA_CGC_DIV_ETHPHYCLK(n)  UTIL_CAT(BSP_CLOCKS_ETHPHY_CLOCK_DIV_, n)
+#define RA_CGC_DIV_ETHPHYCLK(n)  CONCAT(BSP_CLOCKS_ETHPHY_CLOCK_DIV_, n)
 /** ESCCLK divider. */
-#define RA_CGC_DIV_ESCCLK(n)     UTIL_CAT(BSP_CLOCKS_ESC_CLOCK_DIV_, n)
+#define RA_CGC_DIV_ESCCLK(n)     CONCAT(BSP_CLOCKS_ESC_CLOCK_DIV_, n)
 /** DSMIFCLK divider. */
-#define RA_CGC_DIV_DSMIFCLK(n)   UTIL_CAT(BSP_CLOCKS_DSMIF_CLOCK_DIV_, n)
+#define RA_CGC_DIV_DSMIFCLK(n)   CONCAT(BSP_CLOCKS_DSMIF_CLOCK_DIV_, n)
 
 /** XTALDIV_CLK divider. */
-#define RA_CGC_DIV_XTALDIV_CLK(n) UTIL_CAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
+#define RA_CGC_DIV_XTALDIV_CLK(n) CONCAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
 /** HOCODIV_CLK divider. */
-#define RA_CGC_DIV_HOCODIV_CLK(n) UTIL_CAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
+#define RA_CGC_DIV_HOCODIV_CLK(n) CONCAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
 /** MOCODIV_CLK divider. */
-#define RA_CGC_DIV_MOCODIV_CLK(n) UTIL_CAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
+#define RA_CGC_DIV_MOCODIV_CLK(n) CONCAT(BSP_CLOCKS_SYS_CLOCK_DIV_, n)
 /** SAU_CK00 divider. */
-#define RA_CGC_DIV_SAU_CK00(n)    UTIL_CAT(BSP_CLOCKS_SAU_CLOCK_DIV_, n)
+#define RA_CGC_DIV_SAU_CK00(n)    CONCAT(BSP_CLOCKS_SAU_CLOCK_DIV_, n)
 /** SAU_CK01 divider. */
-#define RA_CGC_DIV_SAU_CK01(n)    UTIL_CAT(BSP_CLOCKS_SAU_CLOCK_DIV_, n)
+#define RA_CGC_DIV_SAU_CK01(n)    CONCAT(BSP_CLOCKS_SAU_CLOCK_DIV_, n)
 /** SAU_CK10 divider. */
-#define RA_CGC_DIV_SAU_CK10(n)    UTIL_CAT(BSP_CLOCKS_SAU_CLOCK_DIV_, n)
+#define RA_CGC_DIV_SAU_CK10(n)    CONCAT(BSP_CLOCKS_SAU_CLOCK_DIV_, n)
 /** SAU_CK11 divider. */
-#define RA_CGC_DIV_SAU_CK11(n)    UTIL_CAT(BSP_CLOCKS_SAU_CLOCK_DIV_, n)
+#define RA_CGC_DIV_SAU_CK11(n)    CONCAT(BSP_CLOCKS_SAU_CLOCK_DIV_, n)
 /** TAU_CK01 divider. */
-#define RA_CGC_DIV_TAU_CK01(n)    UTIL_CAT(TIMER_SOURCE_DIV_, n)
+#define RA_CGC_DIV_TAU_CK01(n)    CONCAT(TIMER_SOURCE_DIV_, n)
 /** TAU_CK02 divider. */
-#define RA_CGC_DIV_TAU_CK02(n)    UTIL_CAT(TIMER_SOURCE_DIV_, n)
+#define RA_CGC_DIV_TAU_CK02(n)    CONCAT(TIMER_SOURCE_DIV_, n)
 /** TAU_CK03 divider. */
-#define RA_CGC_DIV_TAU_CK03(n)    UTIL_CAT(TIMER_SOURCE_DIV_, n)
+#define RA_CGC_DIV_TAU_CK03(n)    CONCAT(TIMER_SOURCE_DIV_, n)
 /** TAU_CK04 divider. */
-#define RA_CGC_DIV_TAU_CK04(n)    UTIL_CAT(TIMER_SOURCE_DIV_, n)
+#define RA_CGC_DIV_TAU_CK04(n)    CONCAT(TIMER_SOURCE_DIV_, n)
 /** @} end of ra_cgc_div group */
 
 /**

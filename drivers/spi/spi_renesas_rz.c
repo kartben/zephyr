@@ -954,17 +954,17 @@ static void intc_connect_irq_event(IRQn_Type irq, IRQSELn_Type event)
 		.channel = DT_INST_DMAS_CELL_BY_NAME(n, dir, channel),                             \
 		.dmac_int_irq = DT_IRQ_BY_NAME(                                                    \
 			DT_INST_DMAS_CTLR_BY_NAME(n, dir),                                         \
-			UTIL_CAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, dir, channel)), irq),            \
+			CONCAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, dir, channel)), irq),              \
 		.dmac_int_ipl = DT_IRQ_BY_NAME(                                                    \
 			DT_INST_DMAS_CTLR_BY_NAME(n, dir),                                         \
-			UTIL_CAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, dir, channel)), priority),       \
+			CONCAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, dir, channel)), priority),         \
 		.dmac_int_irq_detect_type = 0,                                                     \
 		.activation_source =                                                               \
-			UTIL_CAT(UTIL_CAT(ELC_EVENT_SPI, spi_channel), UTIL_CAT(_SP, TRIG)),       \
+			CONCAT(CONCAT(ELC_EVENT_SPI, spi_channel), CONCAT(_SP, TRIG)),             \
 		.ack_mode = DMAC_ACK_MODE_BUS_CYCLE_MODE,                                          \
 		.detection_mode = (dmac_detection_t)((0) << 2 | (1) << 1 | (0) << 0),              \
 		.activation_request_source_select =                                                \
-			UTIL_CAT(UTIL_CAT(DMAC_REQUEST_DIRECTION_, request_source), _MODULE),      \
+			CONCAT(CONCAT(DMAC_REQUEST_DIRECTION_, request_source), _MODULE),          \
 		.dmac_mode = DMAC_MODE_SELECT_REGISTER,                                            \
 		.p_descriptor = NULL,                                                              \
 		.transfer_interval = 0,                                                            \
@@ -988,17 +988,17 @@ static void intc_connect_irq_event(IRQn_Type irq, IRQSELn_Type event)
 		.channel = DT_INST_DMAS_CELL_BY_NAME(n, dir, channel),                             \
 		.dmac_int_irq = DT_IRQ_BY_NAME(                                                    \
 			DT_INST_DMAS_CTLR_BY_NAME(n, dir),                                         \
-			UTIL_CAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, dir, channel)), irq),            \
+			CONCAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, dir, channel)), irq),            \
 		.dmac_int_ipl = DT_IRQ_BY_NAME(                                                    \
 			DT_INST_DMAS_CTLR_BY_NAME(n, dir),                                         \
-			UTIL_CAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, dir, channel)), priority),       \
+			CONCAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, dir, channel)), priority),       \
 		.activation_source =                                                               \
-			UTIL_CAT(UTIL_CAT(DMAC_TRIGGER_EVENT_SPI, spi_channel), TRIG),             \
+			CONCAT(CONCAT(DMAC_TRIGGER_EVENT_SPI, spi_channel), TRIG),             \
 		.ack_mode = DMAC_B_ACK_MODE_MASK_DACK_OUTPUT,                                      \
 		.external_detection_mode = DMAC_B_EXTERNAL_DETECTION_LOW_LEVEL,                    \
 		.internal_detection_mode = DMAC_B_INTERNAL_DETECTION_NO_DETECTION,                 \
 		.activation_request_source_select =                                                \
-			UTIL_CAT(UTIL_CAT(DMAC_B_REQUEST_DIRECTION_, request_source), _MODULE),    \
+			CONCAT(CONCAT(DMAC_B_REQUEST_DIRECTION_, request_source), _MODULE),    \
 		.dmac_mode = DMAC_B_MODE_SELECT_REGISTER,                                          \
 		.continuous_setting = DMAC_B_CONTINUOUS_SETTING_TRANSFER_ONCE,                     \
 		.transfer_interval = 0,                                                            \
@@ -1044,14 +1044,14 @@ static void intc_connect_irq_event(IRQn_Type irq, IRQSELn_Type event)
 #else /* Cortex-A/R */
 #define GET_DMA_IRQ_FLAGS(n, dir)                                                                  \
 	DT_IRQ_BY_NAME(DT_INST_DMAS_CTLR_BY_NAME(n, dir),                                          \
-		       UTIL_CAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, dir, channel)), flags)
+		       CONCAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, dir, channel)), flags)
 #endif /* CONFIG_CPU_CORTEX_M */
 
 #define RZ_SPI_CONNECT_DMA_IRQ(n, dir)                                                             \
 	IRQ_CONNECT(DT_IRQ_BY_NAME(DT_INST_DMAS_CTLR_BY_NAME(n, dir),                              \
-				   UTIL_CAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, dir, channel)), irq), \
+				   CONCAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, dir, channel)), irq), \
 		    DT_IRQ_BY_NAME(DT_INST_DMAS_CTLR_BY_NAME(n, dir),                              \
-				   UTIL_CAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, dir, channel)),       \
+				   CONCAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, dir, channel)),       \
 				   priority),                                                      \
 		    RZ_SPI_DMA_INT_ISR, NULL, GET_DMA_IRQ_FLAGS(n, dir));
 

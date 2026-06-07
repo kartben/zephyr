@@ -169,7 +169,7 @@ static int gpio_ra_interrupt_init(const struct device *dev)
 		.trigger =                                                                         \
 			DT_INST_ENUM_IDX_OR(index, renesas_trigger, EXT_INTERRUPT_EDGE_FALLING),   \
 		.digital_filter = DT_INST_PROP_OR(index, renesas_digital_filtering, false),        \
-		.sample_clock = UTIL_CAT(EXT_INTERRUPT_SAMPLE_CLOCK_DIV_,                          \
+		.sample_clock = CONCAT(EXT_INTERRUPT_SAMPLE_CLOCK_DIV_,                            \
 					 DT_INST_PROP_OR(index, renesas_sample_clock_div, 1)),     \
 		.irq = DT_INST_IRQ(index, irq),                                                    \
 	};                                                                                         \

@@ -148,7 +148,7 @@ static DEVICE_API(pwm, pwm_sam0_driver_api) = {
 		.pcfg = PINCTRL_DT_INST_DEV_CONFIG_GET(inst),			\
 		.channels = DT_INST_PROP(inst, channels),			\
 		.counter_size = DT_INST_PROP(inst, counter_size),		\
-		.prescaler = UTIL_CAT(TCC_CTRLA_PRESCALER_DIV,			\
+		.prescaler = CONCAT(TCC_CTRLA_PRESCALER_DIV,			\
 				      DT_INST_PROP(inst, prescaler)),		\
 		.freq = SOC_ATMEL_SAM0_GCLK0_FREQ_HZ /				\
 			DT_INST_PROP(inst, prescaler),				\

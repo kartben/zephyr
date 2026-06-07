@@ -247,7 +247,7 @@ skipped:
 ZTEST(util, test_LISTIFY) {
 	int ab0 = 1;
 	int ab1 = 1;
-#define A_PTR(x, name0, name1) &UTIL_CAT(UTIL_CAT(name0, name1), x)
+#define A_PTR(x, name0, name1) &CONCAT(CONCAT(name0, name1), x)
 
 	int *a[] = { LISTIFY(2, A_PTR, (,), a, b) };
 

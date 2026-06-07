@@ -1618,7 +1618,7 @@ static inline int sensor_value_from_micro(struct sensor_value *val, int64_t micr
  *
  * This function depends on `DT_DRV_COMPAT` being defined.
  */
-#define SENSOR_DECODER_NAME() UTIL_CAT(DT_DRV_COMPAT, __decoder_api)
+#define SENSOR_DECODER_NAME() CONCAT(DT_DRV_COMPAT, __decoder_api)
 
 /**
  * @brief Statically get the decoder for a given node
@@ -1628,7 +1628,7 @@ static inline int sensor_value_from_micro(struct sensor_value *val, int64_t micr
  * @endcode
  */
 #define SENSOR_DECODER_DT_GET(node_id)                                                             \
-	&UTIL_CAT(DT_STRING_TOKEN_BY_IDX(node_id, compatible, 0), __decoder_api)
+	&CONCAT(DT_STRING_TOKEN_BY_IDX(node_id, compatible, 0), __decoder_api)
 
 /**
  * @brief Define a decoder API
@@ -1650,7 +1650,7 @@ static inline int sensor_value_from_micro(struct sensor_value *val, int64_t micr
 	const STRUCT_SECTION_ITERABLE(sensor_decoder_api, SENSOR_DECODER_NAME())
 
 #define Z_MAYBE_SENSOR_DECODER_DECLARE_INTERNAL_IDX(node_id, prop, idx)                            \
-	extern const struct sensor_decoder_api UTIL_CAT(                                           \
+	extern const struct sensor_decoder_api CONCAT(                                             \
 		DT_STRING_TOKEN_BY_IDX(node_id, prop, idx), __decoder_api);
 
 #define Z_MAYBE_SENSOR_DECODER_DECLARE_INTERNAL(node_id)                                           \

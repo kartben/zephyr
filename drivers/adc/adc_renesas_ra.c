@@ -398,7 +398,7 @@ static int adc_ra_init(const struct device *dev)
 	IRQ_CONFIGURE_FUNC(idx)                                                                    \
 	PINCTRL_DT_INST_DEFINE(idx);                                                               \
 	static adc_extended_cfg_t g_adc_cfg_extend_##idx = {                                       \
-		.add_average_count = UTIL_CAT(ADC_AVERAGE_, DT_INST_PROP(idx, average_count)),     \
+		.add_average_count = CONCAT(ADC_AVERAGE_, DT_INST_PROP(idx, average_count)),       \
 		.clearing = ADC_CLEAR_AFTER_READ_ON,                                               \
 		.trigger_group_b = ADC_START_SOURCE_DISABLED,                                      \
 		.double_trigger_mode = ADC_DOUBLE_TRIGGER_DISABLED,                                \

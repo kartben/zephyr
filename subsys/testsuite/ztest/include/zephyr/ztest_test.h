@@ -68,7 +68,7 @@ extern struct ztest_expected_result_entry _ztest_expected_result_entry_list_end[
 #define __ZTEST_EXPECT(_suite_name, _test_name, expectation)                                       \
 	static const STRUCT_SECTION_ITERABLE(                                                      \
 		ztest_expected_result_entry,                                                       \
-		UTIL_CAT(UTIL_CAT(z_ztest_expected_result_, _suite_name), _test_name)) = {         \
+		CONCAT(CONCAT(z_ztest_expected_result_, _suite_name), _test_name)) = {             \
 			.test_suite_name = STRINGIFY(_suite_name),                                 \
 			.test_name = STRINGIFY(_test_name),                                        \
 			.expected_result = expectation,                                            \
@@ -231,16 +231,16 @@ extern struct ztest_suite_node _ztest_suite_node_list_end[];
  * @param teardown_fn The function to call after running all the tests in this suite
  */
 #define ZTEST_SUITE(SUITE_NAME, PREDICATE, setup_fn, before_fn, after_fn, teardown_fn)             \
-	struct ztest_suite_stats UTIL_CAT(z_ztest_suite_node_stats_, SUITE_NAME);                  \
+	struct ztest_suite_stats CONCAT(z_ztest_suite_node_stats_, SUITE_NAME);                    \
 	static const STRUCT_SECTION_ITERABLE(ztest_suite_node,                                     \
-					     UTIL_CAT(z_ztest_test_node_, SUITE_NAME)) = {         \
+					     CONCAT(z_ztest_test_node_, SUITE_NAME)) = {           \
 		.name = STRINGIFY(SUITE_NAME),                                                     \
 		.setup = (setup_fn),                                                               \
 		.before = (before_fn),                                                             \
 		.after = (after_fn),                                                               \
 		.teardown = (teardown_fn),                                                         \
 		.predicate = PREDICATE,                                                            \
-		.stats = &UTIL_CAT(z_ztest_suite_node_stats_, SUITE_NAME),             \
+		.stats = &CONCAT(z_ztest_suite_node_stats_, SUITE_NAME),             \
 	}
 /**
  * Default entry point for running or listing registered unit tests.

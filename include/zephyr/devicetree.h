@@ -398,7 +398,7 @@
  * @return node identifier for the node with that instance number and
  *         compatible
  */
-#define DT_INST(inst, compat) UTIL_CAT(DT_N_INST, DT_DASH(inst, compat))
+#define DT_INST(inst, compat) CONCAT(DT_N_INST, DT_DASH(inst, compat))
 
 /**
  * @brief Get a node identifier for a parent node
@@ -485,7 +485,7 @@
  * @param child lowercase-and-underscores child node name
  * @return node identifier for the node with the name referred to by 'child'
  */
-#define DT_CHILD(node_id, child) UTIL_CAT(node_id, DT_S_PREFIX(child))
+#define DT_CHILD(node_id, child) CONCAT(node_id, DT_S_PREFIX(child))
 
 /**
  * @brief Get a node identifier for a child node with a matching unit address
@@ -3761,7 +3761,7 @@
  */
 #define DT_FOREACH_STATUS_OKAY(compat, fn)				\
 	COND_CODE_1(DT_HAS_COMPAT_STATUS_OKAY(compat),			\
-		    (UTIL_CAT(DT_FOREACH_OKAY_, compat)(fn)),		\
+		    (CONCAT(DT_FOREACH_OKAY_, compat)(fn)),		\
 		    ())
 
 /**
@@ -3828,7 +3828,7 @@
  */
 #define DT_COMPAT_FOREACH_STATUS_OKAY_VARGS(compat, fn, ...)		\
 	COND_CODE_1(DT_HAS_COMPAT_STATUS_OKAY(compat),			\
-		    (UTIL_CAT(DT_FOREACH_OKAY_INST_VARGS_,		\
+		    (CONCAT(DT_FOREACH_OKAY_INST_VARGS_,		\
 			      compat)(fn, compat, __VA_ARGS__)),	\
 		    ())
 
@@ -4015,7 +4015,7 @@
  */
 #define DT_NUM_INST_STATUS_OKAY(compat)			\
 	UTIL_AND(DT_HAS_COMPAT_STATUS_OKAY(compat),		\
-		 UTIL_CAT(DT_N_INST, DT_DASH(compat, NUM_OKAY)))
+		 CONCAT(DT_N_INST, DT_DASH(compat, NUM_OKAY)))
 
 /**
  * @brief Does a devicetree node match a compatible?
@@ -5667,7 +5667,7 @@
  */
 #define DT_INST_FOREACH_STATUS_OKAY(fn) \
 	COND_CODE_1(DT_HAS_COMPAT_STATUS_OKAY(DT_DRV_COMPAT),	\
-		    (UTIL_CAT(DT_FOREACH_OKAY_INST_,		\
+		    (CONCAT(DT_FOREACH_OKAY_INST_,		\
 			      DT_DRV_COMPAT)(fn)),		\
 		    ())
 
@@ -5685,7 +5685,7 @@
  */
 #define DT_INST_FOREACH_STATUS_OKAY_VARGS(fn, ...) \
 	COND_CODE_1(DT_HAS_COMPAT_STATUS_OKAY(DT_DRV_COMPAT),   \
-		    (UTIL_CAT(DT_FOREACH_OKAY_INST_VARGS_,      \
+		    (CONCAT(DT_FOREACH_OKAY_INST_VARGS_,      \
 			      DT_DRV_COMPAT)(fn, __VA_ARGS__)), \
 		    ())
 
@@ -5958,7 +5958,7 @@
 	IF_DISABLED(DT_INST_REG_HAS_NAME(inst, name), (1,))
 
 #define DT_PATH_INTERNAL(...) \
-	UTIL_CAT(DT_ROOT, MACRO_MAP_CAT(DT_S_PREFIX, __VA_ARGS__))
+	CONCAT(DT_ROOT, MACRO_MAP_CAT(DT_S_PREFIX, __VA_ARGS__))
 /** @brief DT_PATH_INTERNAL() helper: prepends _S_ to a node name
  * We don't want to expand 'name' recursively before expansion
  * in this case. The MACRO_MAP_CAT above is giving us the exact
@@ -5972,7 +5972,7 @@
  * This and the following macros are used to paste things together
  * with "##" *after* forcing expansion on each argument.
  *
- * We could try to use something like UTIL_CAT(), but the compiler
+ * We could try to use something like CONCAT(), but the compiler
  * error messages from the util macros can be extremely long when they
  * are misused. This unfortunately happens often with devicetree.h,
  * since its macro-based API is fiddly and can be hard to get right.

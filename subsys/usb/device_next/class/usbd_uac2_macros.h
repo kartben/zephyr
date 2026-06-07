@@ -181,7 +181,7 @@
 		(NOT_PRESENT))
 
 #define CONTROL_BITS(entity, control_name, bitshift)				\
-	(UTIL_CAT(CONTROL_, CONTROL_TOKEN(entity, control_name)) << bitshift)
+	(CONCAT(CONTROL_, CONTROL_TOKEN(entity, control_name)) << bitshift)
 
 #define CONTROL_TOKEN_BY_IDX(entity, control_name, idx)				\
 	COND_CODE_1(DT_PROP_HAS_IDX(entity, control_name, idx),			\
@@ -189,7 +189,7 @@
 		(NOT_PRESENT))
 
 #define CONTROL_BITS_BY_IDX(entity, control_name, idx, bitshift)		\
-	(UTIL_CAT(CONTROL_, CONTROL_TOKEN_BY_IDX(entity, control_name, idx))	\
+	(CONCAT(CONTROL_, CONTROL_TOKEN_BY_IDX(entity, control_name, idx))	\
 		<< bitshift)
 
 #define CLOCK_SOURCE_CONTROLS(entity)						\

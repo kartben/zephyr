@@ -2323,7 +2323,7 @@ static DEVICE_API(adc, api_stm32_driver_api) = {
  * given index). Example, for an ADC instance with IRQn 18, returns
  * "adc_stm32_isr_18".
  */
-#define ISR_FUNC(index) UTIL_CAT(adc_stm32_isr_, DT_INST_IRQN(index))
+#define ISR_FUNC(index) CONCAT(adc_stm32_isr_, DT_INST_IRQN(index))
 
 /*
  * Macro for generating code for the common ISRs (by looping of all
@@ -2339,7 +2339,7 @@ static DEVICE_API(adc, api_stm32_driver_api) = {
 		DT_INST_FOREACH_STATUS_OKAY_VARGS(HANDLE_IRQS, DT_INST_IRQN(index))                \
 	}                                                                                          \
                                                                                                    \
-	static void UTIL_CAT(ISR_FUNC(index), _init)(void)                                         \
+	static void CONCAT(ISR_FUNC(index), _init)(void)                                           \
 	{                                                                                          \
 		IRQ_CONNECT(DT_INST_IRQN(index), DT_INST_IRQ(index, priority), ISR_FUNC(index),    \
 			    NULL, 0);                                                              \
@@ -2360,7 +2360,7 @@ DT_INST_FOREACH_STATUS_OKAY(GENERATE_ISR)
 /* Only "first" instances need to call the ISR setup function */
 #define ADC_STM32_IRQ_FUNC(index)                                                                  \
 	.irq_cfg_func = COND_CODE_1(IS_EQ(index, FIRST_WITH_IRQN(index)),                          \
-				    (UTIL_CAT(ISR_FUNC(index), _init)), (NULL)),
+				    (CONCAT(ISR_FUNC(index), _init)), (NULL)),
 
 #else /* !CONFIG_ADC_STM32_DMA || CONFIG_ADC_STM32_INJECTED_CHANNELS */
 

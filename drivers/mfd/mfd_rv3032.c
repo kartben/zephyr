@@ -18,7 +18,7 @@ LOG_MODULE_REGISTER(mfd_rv3032, CONFIG_MFD_LOG_LEVEL);
 #define RV3032_BSM_LEVEL    0x2
 
 #define RV3032_BSM_FROM_DT_INST(inst)                                                              \
-	UTIL_CAT(RV3032_BSM_, DT_INST_STRING_UPPER_TOKEN(inst, backup_switch_mode))
+	CONCAT(RV3032_BSM_, DT_INST_STRING_UPPER_TOKEN(inst, backup_switch_mode))
 
 #define RV3032_BACKUP_FROM_DT_INST(inst) (FIELD_PREP(0, RV3032_BSM_FROM_DT_INST(inst)))
 

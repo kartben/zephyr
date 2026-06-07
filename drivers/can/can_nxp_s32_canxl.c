@@ -1313,7 +1313,7 @@ static DEVICE_API(can, can_nxp_s32_driver_api) = {
 	do {										\
 		IRQ_CONNECT(DT_IRQ_BY_IDX(node_id, idx, irq),				\
 				DT_IRQ_BY_IDX(node_id, idx, priority),			\
-				UTIL_CAT(can_nxp_s32_isr_,				\
+				CONCAT(can_nxp_s32_isr_,				\
 					DT_STRING_TOKEN_BY_IDX(node_id, prop, idx)),	\
 				DEVICE_DT_GET(node_id),					\
 				COND_CODE_1(DT_INST_IRQ_HAS_CELL(n, flags),		\

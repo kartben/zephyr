@@ -631,11 +631,11 @@ static int spi_rz_rspi_init(const struct device *dev)
 		.channel = DT_INST_DMAS_CELL_BY_NAME(n, dir, channel),                             \
 		.dmac_int_irq = DT_IRQ_BY_NAME(                                                    \
 			DT_INST_DMAS_CTLR_BY_NAME(n, dir),                                         \
-			UTIL_CAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, dir, channel)), irq),            \
+			CONCAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, dir, channel)), irq),              \
 		.dmac_int_ipl = DT_IRQ_BY_NAME(                                                    \
 			DT_INST_DMAS_CTLR_BY_NAME(n, dir),                                         \
-			UTIL_CAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, dir, channel)), priority),       \
-		.activation_source = UTIL_CAT(DMAC_TRIGGER_EVENT_RSPI_SP##TRIG, spi_channel),      \
+			CONCAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, dir, channel)), priority),         \
+		.activation_source = CONCAT(DMAC_TRIGGER_EVENT_RSPI_SP##TRIG, spi_channel),        \
 		.ack_mode = DMAC_B_ACK_MODE_MASK_DACK_OUTPUT,                                      \
 		.external_detection_mode = DMAC_B_EXTERNAL_DETECTION_NO_DETECTION,                 \
 		.internal_detection_mode = DMAC_B_INTERNAL_DETECTION_NO_DETECTION,                 \
@@ -662,18 +662,18 @@ static int spi_rz_rspi_init(const struct device *dev)
 	do {                                                                                       \
 		IRQ_CONNECT(                                                                       \
 			DT_IRQ_BY_NAME(DT_INST_DMAS_CTLR_BY_NAME(n, rx),                           \
-				       UTIL_CAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, rx, channel)),    \
+				       CONCAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, rx, channel)),      \
 				       irq),                                                       \
 			DT_IRQ_BY_NAME(DT_INST_DMAS_CTLR_BY_NAME(n, rx),                           \
-				       UTIL_CAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, rx, channel)),    \
+				       CONCAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, rx, channel)),      \
 				       priority),                                                  \
 			dmac_b_int_isr, DEVICE_DT_INST_GET(n), 0);                                 \
 		IRQ_CONNECT(                                                                       \
 			DT_IRQ_BY_NAME(DT_INST_DMAS_CTLR_BY_NAME(n, tx),                           \
-				       UTIL_CAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, tx, channel)),    \
+				       CONCAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, tx, channel)),      \
 				       irq),                                                       \
 			DT_IRQ_BY_NAME(DT_INST_DMAS_CTLR_BY_NAME(n, tx),                           \
-				       UTIL_CAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, tx, channel)),    \
+				       CONCAT(ch, DT_INST_DMAS_CELL_BY_NAME(n, tx, channel)),      \
 				       priority),                                                  \
 			dmac_b_int_isr, DEVICE_DT_INST_GET(n), 0);                                 \
 	} while (0)

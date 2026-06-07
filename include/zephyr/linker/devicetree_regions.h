@@ -146,11 +146,11 @@
 
 #define _DT_COMPATIBLE	zephyr_memory_region
 
-#define _DT_SECTION_PREFIX(node_id)	UTIL_CAT(__, LINKER_DT_NODE_REGION_NAME_TOKEN(node_id))
-#define _DT_SECTION_START(node_id)	UTIL_CAT(_DT_SECTION_PREFIX(node_id), _start)
-#define _DT_SECTION_END(node_id)	UTIL_CAT(_DT_SECTION_PREFIX(node_id), _end)
-#define _DT_SECTION_SIZE(node_id)	UTIL_CAT(_DT_SECTION_PREFIX(node_id), _size)
-#define _DT_SECTION_LOAD(node_id)	UTIL_CAT(_DT_SECTION_PREFIX(node_id), _load_start)
+#define _DT_SECTION_PREFIX(node_id)	CONCAT(__, LINKER_DT_NODE_REGION_NAME_TOKEN(node_id))
+#define _DT_SECTION_START(node_id)	CONCAT(_DT_SECTION_PREFIX(node_id), _start)
+#define _DT_SECTION_END(node_id)	CONCAT(_DT_SECTION_PREFIX(node_id), _end)
+#define _DT_SECTION_SIZE(node_id)	CONCAT(_DT_SECTION_PREFIX(node_id), _size)
+#define _DT_SECTION_LOAD(node_id)	CONCAT(_DT_SECTION_PREFIX(node_id), _load_start)
 
 /**
  * @brief Declare a memory region

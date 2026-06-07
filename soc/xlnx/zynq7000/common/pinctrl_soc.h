@@ -379,7 +379,7 @@ typedef struct {
 /* Process each pin in group using MIO_GROUP_x_PINS macros defined above */
 #define Z_PINCTRL_STATE_PIN_CHILD_GROUP_INIT(node_id, prop, idx)	\
 	FOR_EACH_FIXED_ARG(Z_PINCTRL_STATE_PIN_CHILD_GROUP_PIN_INIT, (), node_id, \
-		UTIL_CAT(UTIL_CAT(MIO_GROUP_,				\
+		CONCAT(CONCAT(MIO_GROUP_,				\
 				  DT_STRING_UPPER_TOKEN_BY_IDX(node_id, prop, idx)), _PINS))
 
 /* Reverse order of arguments to adapt between FOR_EACH_FIXED_ARG() and DT_FOREACH_PROP_ELEM() */
@@ -399,17 +399,17 @@ typedef struct {
 /* Determine if pin has special function */
 #define Z_PINCTRL_STATE_PIN_IS_SPECIAL_FUNCTION(node_id)		\
 	COND_CODE_1(DT_NODE_HAS_PROP(node_id, function),		\
-		(UTIL_CAT(MIO_PIN_SPECIAL_FUNCTION_, DT_STRING_UPPER_TOKEN(node_id, function))), \
+		(CONCAT(MIO_PIN_SPECIAL_FUNCTION_, DT_STRING_UPPER_TOKEN(node_id, function))), \
 		(0))
 
 /* Populate pinctrl_soc_pin_t for each special function pin */
 #define Z_PINCTRL_STATE_PIN_SPECIAL_INIT(node_id, pin)			\
 	{								\
-		.mask = UTIL_CAT(MIO_PIN_SPECIAL_MASK_,			\
+		.mask = CONCAT(MIO_PIN_SPECIAL_MASK_,			\
 				DT_STRING_UPPER_TOKEN(node_id, function)), \
-		.val = pin << UTIL_CAT(MIO_PIN_SPECIAL_SHIFT_,		\
+		.val = pin << CONCAT(MIO_PIN_SPECIAL_SHIFT_,		\
 				DT_STRING_UPPER_TOKEN(node_id, function)), \
-		.offset = UTIL_CAT(MIO_PIN_SPECIAL_OFFSET_,		\
+		.offset = CONCAT(MIO_PIN_SPECIAL_OFFSET_,		\
 				DT_STRING_UPPER_TOKEN(node_id, function)), \
 	},
 
@@ -431,7 +431,7 @@ typedef struct {
 
 #define Z_PINCTRL_STATE_PIN_VAL(node_id) \
 	COND_CODE_1(DT_NODE_HAS_PROP(node_id, function),		\
-		(UTIL_CAT(MIO_PIN_FUNCTION_, DT_STRING_UPPER_TOKEN(node_id, function))), (0U)) | \
+		(CONCAT(MIO_PIN_FUNCTION_, DT_STRING_UPPER_TOKEN(node_id, function))), (0U)) | \
 	MIO_PIN_TRI_ENABLE(DT_PROP(node_id, bias_high_impedance)) | \
 	MIO_PIN_PULLUP(DT_PROP(node_id, bias_pull_up)) | \
 	MIO_PIN_DISABLE_RCVR(DT_PROP(node_id, low_power_enable)) | \

@@ -256,7 +256,7 @@ static int ti_hdc20xx_init(const struct device *dev)
 /* Create the struct device for every status "okay" node in the devicetree. */
 #define TI_HDC20XX_FOREACH_STATUS_OKAY(compat, fn)	\
 	COND_CODE_1(DT_HAS_COMPAT_STATUS_OKAY(compat),	\
-		    (UTIL_CAT(DT_FOREACH_OKAY_INST_,	\
+		    (CONCAT(DT_FOREACH_OKAY_INST_,	\
 			      compat)(fn)),		\
 		    ())
 

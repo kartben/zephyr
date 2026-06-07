@@ -24,7 +24,7 @@
 #define CY_CFG_PWR_MODE_POWER_PROFILE_3  4 /* ULP MCU Only */
 
 #define CY_CFG_PWR_SYS_ACTIVE_PROFILE                                                              \
-	UTIL_CAT(CY_CFG_PWR_MODE, DT_STRING_UPPER_TOKEN_OR(DT_NODELABEL(srss_power),               \
+	CONCAT(CY_CFG_PWR_MODE, DT_STRING_UPPER_TOKEN_OR(DT_NODELABEL(srss_power),                 \
 							   power_profile, POWER_PROFILE_0))
 #define CY_CFG_PWR_VBACKUP_USING_VDDD  1
 #define CY_CFG_PWR_REGULATOR_MODE_MIN  0

@@ -1019,7 +1019,7 @@ static int ti_hdc302x_init(const struct device *dev)
 
 #define TI_HDC302X_FOREACH_STATUS_OKAY(fn)                                                         \
 	COND_CODE_1(DT_HAS_COMPAT_STATUS_OKAY(DT_DRV_COMPAT),                                      \
-				(UTIL_CAT(DT_FOREACH_OKAY_INST_, DT_DRV_COMPAT)(fn)),              \
+				(CONCAT(DT_FOREACH_OKAY_INST_, DT_DRV_COMPAT)(fn)),                \
 				())
 
 /* HDC302X sensor instance */

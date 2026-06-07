@@ -687,7 +687,7 @@ static inline void i2c_xfer_stats(const struct device *dev, struct i2c_msg *msgs
  * and calls the given init_fn
  */
 #define Z_I2C_INIT_FN(dev_id, init_fn)					\
-	static inline int UTIL_CAT(dev_id, _init)(const struct device *dev) \
+	static inline int CONCAT(dev_id, _init)(const struct device *dev) \
 	{								\
 		struct i2c_device_state *state =			\
 			CONTAINER_OF(dev->state, struct i2c_device_state, devstate); \
@@ -738,7 +738,7 @@ static inline void i2c_xfer_stats(const struct device *dev, struct i2c_msg *msgs
 	Z_I2C_INIT_FN(Z_DEVICE_DT_DEV_ID(node_id), init_fn)		\
 	Z_DEVICE_DEFINE(node_id, Z_DEVICE_DT_DEV_ID(node_id),		\
 			DEVICE_DT_NAME(node_id),			\
-			&UTIL_CAT(Z_DEVICE_DT_DEV_ID(node_id), _init),	\
+			&CONCAT(Z_DEVICE_DT_DEV_ID(node_id), _init),	\
 			deinit_fn, Z_DEVICE_DT_FLAGS(node_id), pm, data,\
 			config,	level, prio, api,			\
 			&(Z_DEVICE_STATE_NAME(Z_DEVICE_DT_DEV_ID(node_id)).devstate), \

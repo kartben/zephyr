@@ -1002,7 +1002,7 @@ static DEVICE_API(rtc, rv3028_driver_api) = {
 };
 
 #define RV3028_BSM_FROM_DT_INST(inst)                                                              \
-	UTIL_CAT(RV3028_BSM_, DT_INST_STRING_UPPER_TOKEN(inst, backup_switch_mode))
+	CONCAT(RV3028_BSM_, DT_INST_STRING_UPPER_TOKEN(inst, backup_switch_mode))
 
 #define RV3028_BACKUP_FROM_DT_INST(inst)                                                           \
 	((FIELD_PREP(RV3028_BACKUP_BSM, RV3028_BSM_FROM_DT_INST(inst))) |                          \

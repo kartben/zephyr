@@ -208,7 +208,7 @@ static DEVICE_API(dac, dac_samd5x_driver_api) = {
 		.gclk_id = DT_INST_CLOCKS_CELL_BY_NAME(n, gclk, id), \
 		.mclk = ATMEL_SAM0_DT_INST_MCLK_PM_REG_ADDR_OFFSET(n), \
 		.mclk_mask = ATMEL_SAM0_DT_INST_MCLK_PM_PERIPH_MASK(n, bit), \
-		.refsel = UTIL_CAT(SAMD5X_DAC_REFSEL_, SAMD5X_DAC_REFSEL(n)), \
+		.refsel = CONCAT(SAMD5X_DAC_REFSEL_, SAMD5X_DAC_REFSEL(n)), \
 		.diff_mode = SAMD5X_DAC_DIFF_MODE(n), \
 		.channel_cfg = {DT_INST_FOREACH_CHILD_STATUS_OKAY_SEP(n, CHANNEL_CFG_DEF, (,))}, \
 	}; \

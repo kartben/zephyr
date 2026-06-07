@@ -992,7 +992,7 @@ struct usbd_class_api uac2_api = {
 	))
 
 #define FREQUENCY_TABLE_NAME(node, i)						\
-	UTIL_CAT(frequencies_##i##_, ENTITY_ID(node))
+	CONCAT(frequencies_##i##_, ENTITY_ID(node))
 #define DEFINE_CLOCK_SOURCES(node, i)						\
 	IF_ENABLED(DT_NODE_HAS_COMPAT(node, zephyr_uac2_clock_source), (	\
 		static const uint32_t FREQUENCY_TABLE_NAME(node, i)[] =		\

@@ -164,8 +164,8 @@ static DEVICE_API(w1, ds2482_driver_api) = {
 		.w1_config.slave_count = W1_INST_SLAVE_COUNT(inst),                                \
 		.parent = DEVICE_DT_GET(DT_INST_PARENT(inst)),                                     \
 		.i2c_spec = I2C_DT_SPEC_GET(DT_INST_PARENT(inst)),                                 \
-		.reg_channel = UTIL_CAT(CHSL_IO, DT_INST_REG_ADDR_RAW(inst)),                      \
-		.reg_channel_rb = UTIL_CAT(CHSL_RB_IO, DT_INST_REG_ADDR_RAW(inst)),                \
+		.reg_channel = CONCAT(CHSL_IO, DT_INST_REG_ADDR_RAW(inst)),                        \
+		.reg_channel_rb = CONCAT(CHSL_RB_IO, DT_INST_REG_ADDR_RAW(inst)),                  \
 		.reg_config = DT_INST_PROP(inst, active_pullup) << DEVICE_APU_pos,                 \
 	};                                                                                         \
 	static struct ds2482_data inst_##inst##_data = {0};                                        \
