@@ -473,7 +473,7 @@ extern "C" {
  *
  * @see UTIL_DEC(x)
  */
-#define UTIL_INC(x) UTIL_PRIMITIVE_CAT(Z_UTIL_INC_, x)
+#define UTIL_INC(x) Z_UTIL_PRIMITIVE_CAT(Z_UTIL_INC_, x)
 
 /**
  * @brief UTIL_DEC(x) for an integer literal x from 0 to 4095 expands to an
@@ -481,13 +481,13 @@ extern "C" {
  *
  * @see UTIL_INC(x)
  */
-#define UTIL_DEC(x) UTIL_PRIMITIVE_CAT(Z_UTIL_DEC_, x)
+#define UTIL_DEC(x) Z_UTIL_PRIMITIVE_CAT(Z_UTIL_DEC_, x)
 
 /**
  * @brief UTIL_X2(y) for an integer literal y from 0 to 4095 expands to an
  * integer literal whose value is 2y.
  */
-#define UTIL_X2(y) UTIL_PRIMITIVE_CAT(Z_UTIL_X2_, y)
+#define UTIL_X2(y) Z_UTIL_PRIMITIVE_CAT(Z_UTIL_X2_, y)
 
 
 /**

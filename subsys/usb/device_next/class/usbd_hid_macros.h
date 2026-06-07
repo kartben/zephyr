@@ -85,7 +85,7 @@
 #define HID_MPS_LESS_65_63 1
 #define HID_MPS_LESS_65_64 1
 
-#define HID_MPS_LESS_65(x) UTIL_PRIMITIVE_CAT(HID_MPS_LESS_65_, x)
+#define HID_MPS_LESS_65(x) CONCAT(HID_MPS_LESS_65_, x)
 
 /*
  * If all the endpoint MPS are less than 65 bytes, we do not need to define and
