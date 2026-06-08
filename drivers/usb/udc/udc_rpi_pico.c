@@ -34,7 +34,7 @@ struct rpi_pico_config {
 	void (*irq_enable_func)(const struct device *dev);
 	void (*irq_disable_func)(const struct device *dev);
 	const struct device *clk_dev;
-	struct pinctrl_dev_config *const pcfg;
+	const struct pinctrl_dev_config *pcfg;
 	clock_control_subsys_t clk_sys;
 	const struct reset_dt_spec reset;
 };
