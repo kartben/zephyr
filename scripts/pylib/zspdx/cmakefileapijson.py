@@ -12,30 +12,55 @@ _logger = logging.getLogger(__name__)
 
 
 def parseReply(replyIndexPath):
+    """Parse CMake file-based API reply files and return a CMakeFileApiReply object.
+
+    This parses the index file and all available reply files (codemodel, cache, toolchains).
+    """
     replyDir, _ = os.path.split(replyIndexPath)
 
-    # first we need to find the codemodel reply file
     try:
         with open(replyIndexPath) as indexFile:
             js = json.load(indexFile)
+
+            result = cmakefileapi.CMakeFileApiReply()
+
+            # Parse cmake info from the index file
+            result.cmake_info = parseCMakeInfo(js)
 
             # get reply object
             reply_dict = js.get("reply", {})
             if reply_dict == {}:
                 _logger.error('no "reply" field found in index file')
                 return None
-            # get codemodel object
+
+            # Parse codemodel (required)
             cm_dict = reply_dict.get("codemodel-v2", {})
             if cm_dict == {}:
                 _logger.error('no "codemodel-v2" field found in "reply" object in index file')
                 return None
-            # and get codemodel filename
             jsonFile = cm_dict.get("jsonFile", "")
             if jsonFile == "":
                 _logger.error('no "jsonFile" field found in "codemodel-v2" object in index file')
                 return None
+            result.codemodel = parseCodemodel(replyDir, jsonFile)
+            if not result.codemodel:
+                return None
 
-            return parseCodemodel(replyDir, jsonFile)
+            # Parse cache (optional but preferred)
+            cache_dict = reply_dict.get("cache-v2", {})
+            if cache_dict:
+                cacheJsonFile = cache_dict.get("jsonFile", "")
+                if cacheJsonFile:
+                    result.cache = parseCache(replyDir, cacheJsonFile)
+
+            # Parse toolchains (optional but preferred)
+            toolchains_dict = reply_dict.get("toolchains-v1", {})
+            if toolchains_dict:
+                toolchainsJsonFile = toolchains_dict.get("jsonFile", "")
+                if toolchainsJsonFile:
+                    result.toolchains = parseToolchains(replyDir, toolchainsJsonFile)
+
+            return result
 
     except OSError:
         _logger.exception("Error loading %s", replyIndexPath)
@@ -43,6 +68,131 @@ def parseReply(replyIndexPath):
     except json.decoder.JSONDecodeError:
         _logger.exception("Error parsing JSON in %s", replyIndexPath)
         return None
+
+
+def parseCMakeInfo(js):
+    """Parse CMake info from the index file."""
+    cmake_info = cmakefileapi.CMakeInfo()
+
+    cmake_dict = js.get("cmake", {})
+    if cmake_dict:
+        # Generator info
+        generator_dict = cmake_dict.get("generator", {})
+        cmake_info.generator_name = generator_dict.get("name", "")
+        cmake_info.generator_multiConfig = generator_dict.get("multiConfig", False)
+
+        # CMake paths
+        paths_dict = cmake_dict.get("paths", {})
+        cmake_info.cmake_path = paths_dict.get("cmake", "")
+        cmake_info.cpack_path = paths_dict.get("cpack", "")
+        cmake_info.ctest_path = paths_dict.get("ctest", "")
+        cmake_info.cmake_root = paths_dict.get("root", "")
+
+        # CMake version
+        version_dict = cmake_dict.get("version", {})
+        cmake_info.version_major = version_dict.get("major", 0)
+        cmake_info.version_minor = version_dict.get("minor", 0)
+        cmake_info.version_patch = version_dict.get("patch", 0)
+        cmake_info.version_string = version_dict.get("string", "")
+
+    return cmake_info
+
+
+def parseCache(replyDir, cacheFile):
+    """Parse cache-v2 reply file."""
+    cachePath = os.path.join(replyDir, cacheFile)
+    cache = cmakefileapi.Cache()
+
+    try:
+        with open(cachePath) as f:
+            js = json.load(f)
+
+            # Verify kind and version
+            kind = js.get("kind", "")
+            if kind != "cache":
+                _logger.warning(f'Expected "kind":"cache" in {cachePath}, got {kind}')
+
+            # Parse entries
+            entries_arr = js.get("entries", [])
+            for entry_dict in entries_arr:
+                entry = cmakefileapi.CacheEntry()
+                entry.name = entry_dict.get("name", "")
+                entry.value = entry_dict.get("value", "")
+                entry.type = entry_dict.get("type", "")
+
+                if entry.name:
+                    cache.entries[entry.name] = entry
+
+            _logger.debug(f"parsed {len(cache.entries)} cache entries from CMake file API")
+            return cache
+
+    except OSError as e:
+        _logger.warning(f"Could not load cache file {cachePath}: {str(e)}")
+        return cache
+    except json.decoder.JSONDecodeError as e:
+        _logger.warning(f"Error parsing JSON in {cachePath}: {str(e)}")
+        return cache
+
+
+def parseToolchains(replyDir, toolchainsFile):
+    """Parse toolchains-v1 reply file."""
+    toolchainsPath = os.path.join(replyDir, toolchainsFile)
+    toolchains = cmakefileapi.Toolchains()
+
+    try:
+        with open(toolchainsPath) as f:
+            js = json.load(f)
+
+            # Verify kind and version
+            kind = js.get("kind", "")
+            if kind != "toolchains":
+                _logger.warning(f'Expected "kind":"toolchains" in {toolchainsPath}, got {kind}')
+
+            # Parse toolchains
+            toolchains_arr = js.get("toolchains", [])
+            for tc_dict in toolchains_arr:
+                tc = cmakefileapi.Toolchain()
+                tc.language = tc_dict.get("language", "")
+                tc.sourceFileExtensions = tc_dict.get("sourceFileExtensions", [])
+
+                # Parse compiler info
+                compiler_dict = tc_dict.get("compiler", {})
+                if compiler_dict:
+                    compiler = cmakefileapi.ToolchainCompiler()
+                    compiler.path = compiler_dict.get("path", "")
+                    compiler.id = compiler_dict.get("id", "")
+                    compiler.version = compiler_dict.get("version", "")
+                    compiler.target = compiler_dict.get("target", "")
+
+                    # Parse implicit directories
+                    implicit_dict = compiler_dict.get("implicit", {})
+                    if implicit_dict:
+                        compiler.implicit_include_directories = implicit_dict.get(
+                            "includeDirectories", []
+                        )
+                        compiler.implicit_link_directories = implicit_dict.get(
+                            "linkDirectories", []
+                        )
+                        compiler.implicit_link_framework_directories = implicit_dict.get(
+                            "linkFrameworkDirectories", []
+                        )
+                        compiler.implicit_link_libraries = implicit_dict.get("linkLibraries", [])
+
+                    tc.compiler = compiler
+
+                if tc.language:
+                    toolchains.toolchains[tc.language] = tc
+
+            _logger.debug(f"parsed toolchains for languages: {list(toolchains.toolchains.keys())}")
+            return toolchains
+
+    except OSError as e:
+        _logger.warning(f"Could not load toolchains file {toolchainsPath}: {str(e)}")
+        return toolchains
+    except json.decoder.JSONDecodeError as e:
+        _logger.warning(f"Error parsing JSON in {toolchainsPath}: {str(e)}")
+        return toolchains
+
 
 def parseCodemodel(replyDir, codemodelFile):
     codemodelPath = os.path.join(replyDir, codemodelFile)
@@ -58,7 +208,8 @@ def parseCodemodel(replyDir, codemodelFile):
             if kind != "codemodel":
                 _logger.error(
                     'Error loading CMake API reply: expected "kind":"codemodel" in %s, got %s',
-                    codemodelPath, kind,
+                    codemodelPath,
+                    kind,
                 )
                 return None
             version = js.get("version", {})
@@ -73,7 +224,8 @@ def parseCodemodel(replyDir, codemodelFile):
                     return None
                 _logger.error(
                     "Error loading CMake API reply: expected major version 2 in %s, got %d",
-                    codemodelPath, versionMajor,
+                    codemodelPath,
+                    versionMajor,
                 )
                 return None
 
@@ -100,6 +252,7 @@ def parseCodemodel(replyDir, codemodelFile):
     except json.decoder.JSONDecodeError:
         _logger.exception("Error parsing JSON in %s", codemodelPath)
         return None
+
 
 def parseConfig(cfg_dict, replyDir):
     cfg = cmakefileapi.Config()
@@ -153,6 +306,7 @@ def parseConfig(cfg_dict, replyDir):
 
     return cfg
 
+
 def parseTarget(targetPath):
     try:
         with open(targetPath) as targetFile:
@@ -202,6 +356,7 @@ def parseTarget(targetPath):
         _logger.exception("Error parsing JSON in %s", targetPath)
         return None
 
+
 def parseTargetType(targetType):
     return {
         "EXECUTABLE": cmakefileapi.TargetType.EXECUTABLE,
@@ -211,6 +366,7 @@ def parseTargetType(targetType):
         "OBJECT_LIBRARY": cmakefileapi.TargetType.OBJECT_LIBRARY,
         "UTILITY": cmakefileapi.TargetType.UTILITY,
     }.get(targetType, cmakefileapi.TargetType.UNKNOWN)
+
 
 def parseTargetInstall(target, js):
     install_dict = js.get("install", {})
@@ -225,6 +381,7 @@ def parseTargetInstall(target, js):
         dest.path = destination_dict.get("path", "")
         dest.backtrace = destination_dict.get("backtrace", -1)
         target.install_destinations.append(dest)
+
 
 def parseTargetLink(target, js):
     link_dict = js.get("link", {})
@@ -242,6 +399,7 @@ def parseTargetLink(target, js):
         fragment.role = fragment_dict.get("role", "")
         target.link_commandFragments.append(fragment)
 
+
 def parseTargetArchive(target, js):
     archive_dict = js.get("archive", {})
     if archive_dict == {}:
@@ -255,6 +413,7 @@ def parseTargetArchive(target, js):
         fragment.role = fragment_dict.get("role", "")
         target.archive_commandFragments.append(fragment)
 
+
 def parseTargetDependencies(target, js):
     dependencies_arr = js.get("dependencies", [])
     for dependency_dict in dependencies_arr:
@@ -262,6 +421,7 @@ def parseTargetDependencies(target, js):
         dep.id = dependency_dict.get("id", "")
         dep.backtrace = dependency_dict.get("backtrace", -1)
         target.dependencies.append(dep)
+
 
 def parseTargetSources(target, js):
     sources_arr = js.get("sources", [])
@@ -274,6 +434,7 @@ def parseTargetSources(target, js):
         src.backtrace = source_dict.get("backtrace", -1)
         target.sources.append(src)
 
+
 def parseTargetSourceGroups(target, js):
     sourceGroups_arr = js.get("sourceGroups", [])
     for sourceGroup_dict in sourceGroups_arr:
@@ -281,6 +442,7 @@ def parseTargetSourceGroups(target, js):
         srcgrp.name = sourceGroup_dict.get("name", "")
         srcgrp.sourceIndexes = sourceGroup_dict.get("sourceIndexes", [])
         target.sourceGroups.append(srcgrp)
+
 
 def parseTargetCompileGroups(target, js):
     compileGroups_arr = js.get("compileGroups", [])
@@ -320,6 +482,7 @@ def parseTargetCompileGroups(target, js):
 
         target.compileGroups.append(cmpgrp)
 
+
 def parseTargetBacktraceGraph(target, js):
     backtraceGraph_dict = js.get("backtraceGraph", {})
     if backtraceGraph_dict == {}:
@@ -336,11 +499,13 @@ def parseTargetBacktraceGraph(target, js):
         node.parent = node_dict.get("parent", -1)
         target.backtraceGraph_nodes.append(node)
 
+
 # Create direct pointers for all Configs in Codemodel
 # takes: Codemodel
 def linkCodemodel(cm):
     for cfg in cm.configurations:
         linkConfig(cfg)
+
 
 # Create direct pointers for all contents of Config
 # takes: Config
@@ -351,6 +516,7 @@ def linkConfig(cfg):
         linkConfigProject(cfg, cfgPrj)
     for cfgTarget in cfg.configTargets:
         linkConfigTarget(cfg, cfgTarget)
+
 
 # Create direct pointers for ConfigDir indices
 # takes: Config and ConfigDir
@@ -373,6 +539,7 @@ def linkConfigDir(cfg, cfgDir):
     for targetIndex in cfgDir.targetIndexes:
         cfgDir.targets.append(cfg.configTargets[targetIndex])
 
+
 # Create direct pointers for ConfigProject indices
 # takes: Config and ConfigProject
 def linkConfigProject(cfg, cfgPrj):
@@ -392,6 +559,7 @@ def linkConfigProject(cfg, cfgPrj):
     cfgPrj.targets = []
     for targetIndex in cfgPrj.targetIndexes:
         cfgPrj.targets.append(cfg.configTargets[targetIndex])
+
 
 # Create direct pointers for ConfigTarget indices
 # takes: Config and ConfigTarget
@@ -414,6 +582,7 @@ def linkConfigTarget(cfg, cfgTarget):
     for tcg in cfgTarget.target.compileGroups:
         linkTargetCompileGroup(cfgTarget.target, tcg)
 
+
 # Create direct pointers for TargetSource indices
 # takes: Target and TargetSource
 def linkTargetSource(target, targetSrc):
@@ -427,12 +596,14 @@ def linkTargetSource(target, targetSrc):
     else:
         targetSrc.sourceGroup = target.sourceGroups[targetSrc.sourceGroupIndex]
 
+
 # Create direct pointers for TargetSourceGroup indices
 # takes: Target and TargetSourceGroup
 def linkTargetSourceGroup(target, targetSrcGrp):
     targetSrcGrp.sources = []
     for srcIndex in targetSrcGrp.sourceIndexes:
         targetSrcGrp.sources.append(target.sources[srcIndex])
+
 
 # Create direct pointers for TargetCompileGroup indices
 # takes: Target and TargetCompileGroup

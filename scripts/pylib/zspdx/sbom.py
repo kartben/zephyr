@@ -6,10 +6,9 @@ import logging
 import os
 from dataclasses import dataclass
 
-from .scanner import ScannerConfig, scanDocument
+from .scanner import ScannerConfig, scanSBOMData
 from .version import SPDX_VERSION_2_3
 from .walker import Walker, WalkerConfig
-from .writer import writeSPDX
 
 _logger = logging.getLogger(__name__)
 
@@ -27,8 +26,8 @@ class SBOMConfig:
     # location of SPDX document output directory
     spdxDir: str = ""
 
-    # SPDX specification version to use
-    spdxVersion: str = SPDX_VERSION_2_3
+    # SPDX specification version to use (Version object from packaging.version)
+    spdxVersion = SPDX_VERSION_2_3
 
     # should also analyze for included header files?
     analyzeIncludes: bool = False
@@ -37,7 +36,7 @@ class SBOMConfig:
     includeSDK: bool = False
 
 
-# create Cmake file-based API directories and query file
+# create Cmake file-based API directories and query files
 # Arguments:
 #   1) build_dir: build directory
 def setupCmakeQuery(build_dir):
@@ -54,19 +53,22 @@ def setupCmakeQuery(build_dir):
         # create the directory
         os.makedirs(cmakeApiDirPath, exist_ok=False)
 
-    # check that codemodel-v2 exists as a file, or else create it
-    queryFilePath = os.path.join(cmakeApiDirPath, "codemodel-v2")
-    if os.path.exists(queryFilePath):
-        if not os.path.isfile(queryFilePath):
-            _logger.error("cmake api query file %s exists and is not a directory", queryFilePath)
-            return False
-        # file exists, we're good
-        return True
-    else:
-        # file doesn't exist, let's create an empty file
-        with open(queryFilePath, "w"):
-            pass
-        return True
+    # Query files to create: codemodel-v2, cache-v2, and toolchains-v1
+    query_files = ["codemodel-v2", "cache-v2", "toolchains-v1"]
+
+    for query_file in query_files:
+        queryFilePath = os.path.join(cmakeApiDirPath, query_file)
+        if os.path.exists(queryFilePath):
+            if not os.path.isfile(queryFilePath):
+                _logger.error("cmake api query file %s exists and is not a file", queryFilePath)
+                return False
+            # file exists, we're good
+        else:
+            # file doesn't exist, let's create an empty file
+            with open(queryFilePath, "w"):
+                pass
+
+    return True
 
 
 # main entry point for SBOM maker
@@ -89,57 +91,26 @@ def makeSPDX(cfg):
     walkerCfg.analyzeIncludes = cfg.analyzeIncludes
     walkerCfg.includeSDK = cfg.includeSDK
 
-    # make and run the walker
+    # make and run the walker to collect SBOM data
     w = Walker(walkerCfg)
-    retval = w.makeDocuments()
-    if not retval:
+    sbom_data = w.collectSBOMData()
+    if not sbom_data:
         _logger.error("SPDX walker failed; bailing")
         return False
 
     # set up scanner configuration
     scannerCfg = ScannerConfig()
 
-    # scan each document from walker
-    if cfg.includeSDK:
-        scanDocument(scannerCfg, w.docSDK)
-    scanDocument(scannerCfg, w.docApp)
-    scanDocument(scannerCfg, w.docZephyr)
-    scanDocument(scannerCfg, w.docBuild)
+    # scan SBOM data
+    scanSBOMData(scannerCfg, sbom_data)
 
-    # write each document, in this particular order so that the
-    # hashes for external references are calculated
+    # route to appropriate serializer based on version
+    if cfg.spdxVersion.major == 2:
+        # Use SPDX 2.x serializer
+        from zspdx.serializers.spdx2 import SPDX2Serializer
 
-    # write SDK document, if we made one
-    if cfg.includeSDK:
-        retval = writeSPDX(os.path.join(cfg.spdxDir, "sdk.spdx"), w.docSDK, cfg.spdxVersion)
-        if not retval:
-            _logger.error("SPDX writer failed for SDK document; bailing")
-            return False
-
-    # write app document
-    retval = writeSPDX(os.path.join(cfg.spdxDir, "app.spdx"), w.docApp, cfg.spdxVersion)
-    if not retval:
-        _logger.error("SPDX writer failed for app document; bailing")
+        serializer = SPDX2Serializer(sbom_data, cfg.spdxVersion)
+        return serializer.serialize(cfg.spdxDir)
+    else:
+        _logger.error("Unsupported SPDX version: %s", cfg.spdxVersion)
         return False
-
-    # write zephyr document
-    retval = writeSPDX(os.path.join(cfg.spdxDir, "zephyr.spdx"), w.docZephyr, cfg.spdxVersion)
-    if not retval:
-        _logger.error("SPDX writer failed for zephyr document; bailing")
-        return False
-
-    # write build document
-    retval = writeSPDX(os.path.join(cfg.spdxDir, "build.spdx"), w.docBuild, cfg.spdxVersion)
-    if not retval:
-        _logger.error("SPDX writer failed for build document; bailing")
-        return False
-
-    # write modules document
-    retval = writeSPDX(
-        os.path.join(cfg.spdxDir, "modules-deps.spdx"), w.docModulesExtRefs, cfg.spdxVersion
-    )
-    if not retval:
-        _logger.error("SPDX writer failed for modules-deps document; bailing")
-        return False
-
-    return True
