@@ -5,7 +5,30 @@
 import logging
 import os
 import re
-from datetime import datetime
+from datetime import UTC, datetime
+
+from license_expression import get_spdx_licensing
+from spdx_tools.spdx.model import (
+    Actor,
+    ActorType,
+    Checksum,
+    ChecksumAlgorithm,
+    CreationInfo,
+    Document,
+    ExternalDocumentRef,
+    ExternalPackageRef,
+    ExternalPackageRefCategory,
+    ExtractedLicensingInfo,
+    File,
+    Package,
+    PackagePurpose,
+    PackageVerificationCode,
+    Relationship,
+    RelationshipType,
+    SpdxNoAssertion,
+    SpdxNone,
+)
+from spdx_tools.spdx.writer.write_anything import write_file
 
 from zspdx.model import ComponentPurpose, SBOMComponent, SBomDocument, SBOMFile
 from zspdx.serializers.helpers import (
@@ -20,13 +43,28 @@ from zspdx.version import SPDX_VERSION_2_3
 
 _logger = logging.getLogger(__name__)
 
+# File extension for each supported output format
+_FORMAT_EXTENSIONS = {
+    "tag-value": "spdx",
+    "json": "spdx.json",
+}
+
 
 class SPDX2Serializer:
-    """Serializer that converts SBOMData to SPDX 2.x tag-value format."""
+    """Serializer that converts SBOMData to SPDX 2.x documents.
 
-    def __init__(self, sbom_data, spdx_version=SPDX_VERSION_2_3):
+    The format-agnostic SBOMData is mapped onto the ``spdx_tools`` SPDX 2.x data
+    model and written out with ``spdx_tools.writer.write_anything.write_file``,
+    which selects the concrete output format (tag-value or JSON) from the file
+    extension and validates the result.
+    """
+
+    def __init__(self, sbom_data, spdx_version=SPDX_VERSION_2_3, spdx_format="tag-value"):
         self.sbom_data = sbom_data
         self.spdx_version = spdx_version
+        if spdx_format not in _FORMAT_EXTENSIONS:
+            raise ValueError(f"Unsupported SPDX 2.x output format: {spdx_format}")
+        self.spdx_format = spdx_format
 
         # Track generated IDs
         self.component_ids = {}  # component_name -> SPDX ID
@@ -38,30 +76,45 @@ class SPDX2Serializer:
         # Generate IDs for all components and files
         self._generate_ids()
 
-        # First pass: write all documents to calculate hashes
-        written_docs = {}
+        # Build the spdx_tools document model for every non-empty document.
+        models = {}  # doc_name -> (SBomDocument, spdx_tools Document, output_path)
         for doc in self.sbom_data.documents.values():
             if not doc.components:
                 continue
+            model = self._build_document(doc)
+            filename = f"{doc.name}.{_FORMAT_EXTENSIONS[self.spdx_format]}"
+            output_path = os.path.join(output_dir, filename)
+            models[doc.name] = (doc, model, output_path)
 
-            output_path = os.path.join(output_dir, f"{doc.name}.spdx")
-            if self._write_document_first_pass(doc, output_path):
-                written_docs[doc.name] = output_path
-            else:
-                _logger.error(f"Failed to write document {doc.name}")
+        # First pass: write each document without external document references so
+        # we can compute its checksum (mirrors the historic two-pass behavior).
+        for doc, model, output_path in models.values():
+            if not self._write_model(model, output_path, validate=False):
                 return False
+            hashes = getHashes(output_path)
+            if not hashes:
+                _logger.error(f"Unable to calculate hash values for {output_path}")
+                return False
+            doc.doc_hash = hashes[0]
 
-        # Second pass: rewrite documents with external document references
-        for doc in self.sbom_data.documents.values():
-            if not doc.components or doc.name not in written_docs:
-                continue
-
-            output_path = written_docs[doc.name]
-            if not self._write_document_second_pass(doc, output_path):
-                _logger.error(f"Failed to rewrite document {doc.name} with external references")
+        # Second pass: add external document references (now that every referenced
+        # document has a checksum) and rewrite, validating the final output.
+        for doc, model, output_path in models.values():
+            self._add_external_document_refs(model, doc)
+            if not self._write_model(model, output_path, validate=True):
                 return False
 
         return True
+
+    def _write_model(self, model, output_path, validate):
+        """Write a spdx_tools Document to disk in the configured format."""
+        try:
+            _logger.info(f"Writing SPDX {self.spdx_version} document to {output_path}")
+            write_file(model, output_path, validate=validate)
+            return True
+        except Exception as e:  # noqa: BLE001 - surface any validation/IO failure
+            _logger.error(f"Failed to write SPDX document {output_path}: {e}")
+            return False
 
     def _generate_ids(self):
         """Generate SPDX IDs for all components and files."""
@@ -89,115 +142,75 @@ class SPDX2Serializer:
         for doc_name in self.sbom_data.documents:
             self.document_refs[doc_name] = f"DocumentRef-{doc_name}"
 
-    def _write_document_first_pass(self, doc: SBomDocument, output_path):
-        """Write a single SPDX 2.x document (first pass, without external refs)."""
-        try:
-            _logger.info(f"Writing SPDX {self.spdx_version} document {doc.name} to {output_path}")
-            with open(output_path, "w") as f:
-                self._write_document_header(f, doc)
-                # Skip external document refs in first pass
-                self._write_document_relationships(f, doc)
-                self._write_packages(f, doc)
-                self._write_custom_licenses(f, doc)
+    # -- model builders ------------------------------------------------------
 
-            # Calculate document hash and store it in the document object
-            hashes = getHashes(output_path)
-            if not hashes:
-                _logger.error(
-                    f"Error: created document but unable to calculate hash values for {output_path}"
-                )
-                return False
-            doc.doc_hash = hashes[0]
-
-            return True
-        except OSError as e:
-            _logger.error(f"Error: Unable to write to {output_path}: {str(e)}")
-            return False
-
-    def _write_document_second_pass(self, doc: SBomDocument, output_path):
-        """Rewrite document with external document references (second pass)."""
-        try:
-            # Write the updated document
-            with open(output_path, "w") as f:
-                # Write header
-                self._write_document_header(f, doc)
-                # Write external document refs (now we have all hashes)
-                self._write_external_document_refs(f, doc)
-                # Write the rest (relationships, packages, licenses)
-                self._write_document_relationships(f, doc)
-                self._write_packages(f, doc)
-                self._write_custom_licenses(f, doc)
-
-            # Recalculate hash after adding external refs
-            hashes = getHashes(output_path)
-            if not hashes:
-                _logger.error(f"Error: unable to recalculate hash for {output_path}")
-                return False
-            doc.doc_hash = hashes[0]
-
-            return True
-        except OSError as e:
-            _logger.error(f"Error: Unable to rewrite {output_path}: {str(e)}")
-            return False
-
-    def _write_document_header(self, f, doc: SBomDocument):
-        """Write SPDX document header."""
-        # Use document's namespace if set, otherwise generate from prefix
+    def _build_document(self, doc: SBomDocument) -> Document:
+        """Build a spdx_tools Document from a format-agnostic SBomDocument."""
         namespace = doc.namespace or f"{self.sbom_data.namespace_prefix}/{doc.name}"
-        normalized_name = normalize_spdx_name(doc.name)
+        creation_info = CreationInfo(
+            spdx_version=f"SPDX-{self.spdx_version}",
+            spdx_id="SPDXRef-DOCUMENT",
+            name=normalize_spdx_name(doc.name),
+            document_namespace=namespace,
+            creators=[Actor(ActorType.TOOL, "Zephyr SPDX builder")],
+            created=datetime.now(UTC).replace(microsecond=0, tzinfo=None),
+            data_license="CC0-1.0",
+        )
 
-        f.write(f"""SPDXVersion: SPDX-{self.spdx_version}
-DataLicense: CC0-1.0
-SPDXID: SPDXRef-DOCUMENT
-DocumentName: {normalized_name}
-DocumentNamespace: {namespace}
-Creator: Tool: Zephyr SPDX builder
-Created: {datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
+        packages = []
+        files = []
+        relationships = []
 
-""")
+        # DESCRIBES relationships from the document to each top-level package.
+        for component in doc.components.values():
+            relationships.append(
+                Relationship(
+                    "SPDXRef-DOCUMENT",
+                    RelationshipType.DESCRIBES,
+                    self.component_ids[component.name],
+                )
+            )
 
-    def _write_external_document_refs(self, f, doc: SBomDocument):
-        """Write external document references."""
-        ext_refs = []
-        # Use document's external_documents which were populated during walking
-        for ext_doc in doc.external_documents.values():
-            if ext_doc.doc_hash:  # Only include if hash has been calculated
-                ext_refs.append(
-                    (ext_doc, self.document_refs.get(ext_doc.name, f"DocumentRef-{ext_doc.name}"))
+        for component in doc.components.values():
+            packages.append(self._build_package(component))
+
+            # Files belong to the document (flat); containment is expressed with
+            # explicit CONTAINS relationships (the tag-value parser otherwise
+            # infers these from inline grouping, but JSON has no such grouping).
+            pkg_id = self.component_ids[component.name]
+            for file_obj in component.files.values():
+                files.append(self._build_file(file_obj))
+                relationships.append(
+                    Relationship(pkg_id, RelationshipType.CONTAINS, self.file_ids[file_obj.path])
                 )
 
-        if ext_refs:
-            ext_refs.sort(key=lambda x: x[1])  # Sort by DocumentRef ID
-            for ext_doc, doc_ref_id in ext_refs:
-                namespace = ext_doc.namespace or f"{self.sbom_data.namespace_prefix}/{ext_doc.name}"
-                f.write(f"ExternalDocumentRef: {doc_ref_id} {namespace} SHA1: {ext_doc.doc_hash}\n")
-            f.write("\n")
+            # Component-level relationships (e.g. STATIC_LINK, GENERATED_FROM).
+            for rel in component.relationships:
+                relationships.extend(
+                    self._relationship_objects(rel, component.name, "component", doc)
+                )
 
-    def _write_document_relationships(self, f, doc: SBomDocument):
-        """Write document-level relationships (DESCRIBES)."""
-        for component in doc.components.values():
-            component_id = self.component_ids[component.name]
-            f.write(f"Relationship: SPDXRef-DOCUMENT DESCRIBES {component_id}\n")
-        if doc.components:
-            f.write("\n")
+            # File-level relationships (e.g. GENERATED_FROM source files).
+            for file_obj in component.files.values():
+                for rel in file_obj.relationships:
+                    relationships.extend(
+                        self._relationship_objects(rel, file_obj.path, "file", doc)
+                    )
 
-    def _write_packages(self, f, doc: SBomDocument):
-        """Write all packages in this document."""
-        for component in doc.components.values():
-            self._write_package(f, component, doc)
+        return Document(
+            creation_info=creation_info,
+            packages=packages,
+            files=files,
+            relationships=relationships,
+            extracted_licensing_info=self._build_extracted_licensing_info(doc),
+        )
 
-    def _write_package(self, f, component, doc: SBomDocument):
-        """Write a single package."""
-        # Get SPDX ID first, before any name modifications
-        spdx_id = self.component_ids.get(component.name)
-        if not spdx_id:
-            _logger.error(f"Component {component.name} not found in component_ids")
-            # Generate ID on the fly as fallback
-            spdx_id = f"SPDXRef-{normalize_spdx_name(component.name)}"
-            self.component_ids[component.name] = spdx_id
+    def _build_package(self, component: SBOMComponent) -> Package:
+        """Build a spdx_tools Package from an SBOMComponent."""
+        spdx_id = self.component_ids[component.name]
 
-        # Update component metadata based on CPE references
-        # Use local variables to avoid modifying component.name (which affects ID lookup)
+        # Derive name/supplier/version from a CPE reference when present, without
+        # mutating the component (its name is the ID lookup key).
         package_name = component.name
         supplier = component.supplier
         package_version = component.version
@@ -214,114 +227,102 @@ Created: {datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
                         else package_version
                     )
 
-        normalized_name = normalize_spdx_name(package_name)
-
-        f.write(f"""##### Package: {normalized_name}
-
-PackageName: {package_name}
-SPDXID: {spdx_id}
-PackageLicenseConcluded: {component.concluded_license}
-PackageLicenseDeclared: {component.declared_license}
-PackageCopyrightText: {component.copyright_text}
-""")
-
-        # PrimaryPackagePurpose is only available in SPDX 2.3 and later
-        if self.spdx_version >= SPDX_VERSION_2_3:
-            purpose_str = self._purpose_to_spdx_string(component.purpose)
-            if purpose_str:
-                f.write(f"PrimaryPackagePurpose: {purpose_str}\n")
-
-        # Download location
         if component.url:
-            download_url = generate_download_url(component.url, component.revision)
-            f.write(f"PackageDownloadLocation: {download_url}\n")
+            download_location = self._noassertion_or_value(
+                generate_download_url(component.url, component.revision)
+            )
         else:
-            f.write("PackageDownloadLocation: NOASSERTION\n")
+            download_location = SpdxNoAssertion()
 
-        # Version
-        if package_version:
-            f.write(f"PackageVersion: {package_version}\n")
-        elif component.revision:
-            f.write(f"PackageVersion: {component.revision}\n")
+        kwargs = {
+            "spdx_id": spdx_id,
+            "name": package_name,
+            "download_location": download_location,
+            "license_concluded": self._to_license(component.concluded_license),
+            "license_declared": self._to_license(component.declared_license),
+            "copyright_text": self._to_copyright(component.copyright_text),
+        }
 
-        # Supplier
+        version = package_version or component.revision
+        if version:
+            kwargs["version"] = version
+
         if supplier:
-            f.write(f"PackageSupplier: Organization: {supplier}\n")
+            kwargs["supplier"] = Actor(ActorType.ORGANIZATION, supplier)
 
-        # External references
+        # PrimaryPackagePurpose is only available in SPDX 2.3 and later.
+        if self.spdx_version >= SPDX_VERSION_2_3:
+            purpose = self._purpose_to_spdx(component.purpose)
+            if purpose:
+                kwargs["primary_package_purpose"] = purpose
+
+        ext_refs = []
         for ref in component.external_references:
             if re.fullmatch(CPE23TYPE_REGEX, ref):
-                f.write(f"ExternalRef: SECURITY cpe23Type {ref}\n")
+                ext_refs.append(
+                    ExternalPackageRef(ExternalPackageRefCategory.SECURITY, "cpe23Type", ref)
+                )
             elif re.fullmatch(PURL_REGEX, ref):
-                f.write(f"ExternalRef: PACKAGE-MANAGER purl {ref}\n")
+                ext_refs.append(
+                    ExternalPackageRef(ExternalPackageRefCategory.PACKAGE_MANAGER, "purl", ref)
+                )
             else:
                 _logger.warning(f"Unknown external reference ({ref})")
+        if ext_refs:
+            kwargs["external_references"] = ext_refs
 
-        # Files analyzed and verification code
         if len(component.files) > 0:
-            if component.license_info_from_files:
-                for lic in component.license_info_from_files:
-                    f.write(f"PackageLicenseInfoFromFiles: {lic}\n")
-            else:
-                f.write("PackageLicenseInfoFromFiles: NOASSERTION\n")
-            f.write(
-                f"FilesAnalyzed: true\nPackageVerificationCode: {component.verification_code}\n"
+            kwargs["files_analyzed"] = True
+            kwargs["verification_code"] = PackageVerificationCode(
+                value=component.verification_code
             )
-            f.write("\n")
+            if component.license_info_from_files:
+                kwargs["license_info_from_files"] = [
+                    self._to_license(lic) for lic in component.license_info_from_files
+                ]
+            else:
+                kwargs["license_info_from_files"] = [SpdxNoAssertion()]
         else:
-            f.write("FilesAnalyzed: false\nPackageComment: Utility target; no files\n\n")
+            kwargs["files_analyzed"] = False
+            kwargs["comment"] = "Utility target; no files"
 
-        # Package relationships
-        for rel in component.relationships:
-            self._write_relationship(f, rel, component.name, "component", doc)
+        return Package(**kwargs)
 
-        # Package files
-        if len(component.files) > 0:
-            files_list = list(component.files.values())
-            files_list.sort(key=lambda x: x.relative_path)
-            for file_obj in files_list:
-                self._write_file(f, file_obj, doc)
+    def _build_file(self, file_obj: SBOMFile) -> File:
+        """Build a spdx_tools File from an SBOMFile."""
+        checksums = [Checksum(ChecksumAlgorithm.SHA1, file_obj.hashes.get('SHA1', ''))]
+        if file_obj.hashes.get('SHA256'):
+            checksums.append(Checksum(ChecksumAlgorithm.SHA256, file_obj.hashes['SHA256']))
+        if file_obj.hashes.get('MD5'):
+            checksums.append(Checksum(ChecksumAlgorithm.MD5, file_obj.hashes['MD5']))
 
-    def _write_file(self, f, file_obj, doc: SBomDocument):
-        """Write a single file."""
-        spdx_id = self.file_ids[file_obj.path]
-
-        f.write(f"""FileName: ./{file_obj.relative_path}
-SPDXID: {spdx_id}
-FileChecksum: SHA1: {file_obj.hashes.get('SHA1', '')}
-""")
-
-        if 'SHA256' in file_obj.hashes and file_obj.hashes['SHA256']:
-            f.write(f"FileChecksum: SHA256: {file_obj.hashes['SHA256']}\n")
-        if 'MD5' in file_obj.hashes and file_obj.hashes['MD5']:
-            f.write(f"FileChecksum: MD5: {file_obj.hashes['MD5']}\n")
-
-        f.write(f"LicenseConcluded: {file_obj.concluded_license}\n")
-
-        if not file_obj.license_info_in_file:
-            f.write("LicenseInfoInFile: NONE\n")
+        if file_obj.license_info_in_file:
+            license_info = [self._to_license(lic) for lic in file_obj.license_info_in_file]
         else:
-            for lic in file_obj.license_info_in_file:
-                f.write(f"LicenseInfoInFile: {lic}\n")
+            license_info = [SpdxNone()]
 
-        f.write(f"FileCopyrightText: {file_obj.copyright_text}\n\n")
+        return File(
+            name=f"./{file_obj.relative_path}",
+            spdx_id=self.file_ids[file_obj.path],
+            checksums=checksums,
+            license_concluded=self._to_license(file_obj.concluded_license),
+            license_info_in_file=license_info,
+            copyright_text=self._to_copyright(file_obj.copyright_text),
+        )
 
-        # File relationships
-        for rel in file_obj.relationships:
-            self._write_relationship(f, rel, file_obj.path, "file", doc)
-
-    def _write_relationship(self, f, rel, from_identifier, from_type, current_doc: SBomDocument):
-        """Write a relationship."""
-        # Get from ID
+    def _relationship_objects(self, rel, from_identifier, from_type, current_doc: SBomDocument):
+        """Build spdx_tools Relationship objects from an SBOMRelationship."""
+        out = []
         if from_type == "component":
             from_id = self.component_ids.get(from_identifier, "")
         else:  # file
             from_id = self.file_ids.get(from_identifier, "")
 
         if not from_id:
-            return
+            return out
 
-        # Get to ID(s)
+        rel_type = self._to_relationship_type(rel.relationship_type)
+
         to_elements = rel.to_elements if isinstance(rel.to_elements, list) else [rel.to_elements]
         for to_elem in to_elements:
             to_id = None
@@ -329,13 +330,11 @@ FileChecksum: SHA1: {file_obj.hashes.get('SHA1', '')}
 
             if isinstance(to_elem, SBOMComponent):
                 to_id = self.component_ids.get(to_elem.name, "")
-                # Check if it's in a different document
                 to_doc_name = self._get_document_name_for_component(to_elem.name)
                 if to_doc_name and to_doc_name != current_doc.name:
                     doc_ref = self.document_refs.get(to_doc_name, "")
             elif isinstance(to_elem, SBOMFile):
                 to_id = self.file_ids.get(to_elem.path, "")
-                # Check if it's in a different document
                 if to_elem.component:
                     to_doc_name = self._get_document_name_for_component(to_elem.component.name)
                     if to_doc_name and to_doc_name != current_doc.name:
@@ -344,18 +343,28 @@ FileChecksum: SHA1: {file_obj.hashes.get('SHA1', '')}
             if to_id:
                 if doc_ref:
                     to_id = f"{doc_ref}:{to_id}"
-                f.write(f"Relationship: {from_id} {rel.relationship_type} {to_id}\n")
+                out.append(Relationship(from_id, rel_type, to_id))
 
-    def _get_document_name_for_component(self, component_name: str) -> str:
-        """Get document name for a component."""
-        for doc in self.sbom_data.documents.values():
-            if component_name in doc.components:
-                return doc.name
-        return None
+        return out
 
-    def _write_custom_licenses(self, f, doc: SBomDocument):
-        """Write custom license declarations."""
-        # Get custom licenses from components in this document
+    def _add_external_document_refs(self, model: Document, doc: SBomDocument):
+        """Populate the model's external document references from computed hashes."""
+        ext_refs = []
+        for ext_doc in doc.external_documents.values():
+            if not ext_doc.doc_hash:  # Only include if hash has been calculated
+                continue
+            doc_ref_id = self.document_refs.get(ext_doc.name, f"DocumentRef-{ext_doc.name}")
+            namespace = ext_doc.namespace or f"{self.sbom_data.namespace_prefix}/{ext_doc.name}"
+            ext_refs.append(
+                ExternalDocumentRef(
+                    doc_ref_id, namespace, Checksum(ChecksumAlgorithm.SHA1, ext_doc.doc_hash)
+                )
+            )
+        ext_refs.sort(key=lambda r: r.document_ref_id)
+        model.creation_info.external_document_refs = ext_refs
+
+    def _build_extracted_licensing_info(self, doc: SBomDocument):
+        """Collect custom (non-standard) licenses as ExtractedLicensingInfo entries."""
         custom_licenses = set()
         standard_licenses = get_standard_licenses()
         for component in doc.components.values():
@@ -367,20 +376,70 @@ FileChecksum: SHA1: {file_obj.hashes.get('SHA1', '')}
         # Also include any custom licenses stored in the document
         custom_licenses.update(doc.custom_license_ids)
 
-        if custom_licenses:
-            for lic in sorted(custom_licenses):
-                f.write(f"""LicenseID: {lic}
-ExtractedText: {lic}
-LicenseName: {lic}
-LicenseComment: Corresponds to the license ID `{lic}` detected in an SPDX-License-Identifier: tag.
-""")
+        return [
+            ExtractedLicensingInfo(
+                license_id=lic,
+                extracted_text=lic,
+                license_name=lic,
+                comment=(
+                    f"Corresponds to the license ID `{lic}` detected in an "
+                    "SPDX-License-Identifier: tag."
+                ),
+            )
+            for lic in sorted(custom_licenses)
+        ]
 
-    def _purpose_to_spdx_string(self, purpose):
-        """Convert ComponentPurpose enum to SPDX 2.x string."""
+    # -- small helpers -------------------------------------------------------
+
+    def _get_document_name_for_component(self, component_name: str) -> str:
+        """Get document name for a component."""
+        for doc in self.sbom_data.documents.values():
+            if component_name in doc.components:
+                return doc.name
+        return None
+
+    def _to_relationship_type(self, value: str) -> RelationshipType:
+        """Map a relationship-type string to the spdx_tools enum."""
+        try:
+            return RelationshipType[value]
+        except KeyError:
+            _logger.warning(f"Unknown relationship type '{value}'; using OTHER")
+            return RelationshipType.OTHER
+
+    def _to_license(self, value):
+        """Convert a license string to a spdx_tools license value."""
+        if not value or value == "NOASSERTION":
+            return SpdxNoAssertion()
+        if value == "NONE":
+            return SpdxNone()
+        try:
+            return get_spdx_licensing().parse(value)
+        except Exception:  # noqa: BLE001 - fall back to NOASSERTION on unparseable input
+            _logger.warning(f"Could not parse license expression '{value}'; using NOASSERTION")
+            return SpdxNoAssertion()
+
+    def _to_copyright(self, value):
+        """Convert a copyright string to a spdx_tools copyright value."""
+        if value is None or value == "NOASSERTION":
+            return SpdxNoAssertion()
+        if value == "NONE":
+            return SpdxNone()
+        return value
+
+    def _noassertion_or_value(self, value):
+        """Map the NOASSERTION/NONE sentinels to their spdx_tools singletons."""
+        if value is None or value == "NOASSERTION":
+            return SpdxNoAssertion()
+        if value == "NONE":
+            return SpdxNone()
+        return value
+
+    def _purpose_to_spdx(self, purpose):
+        """Convert ComponentPurpose enum to spdx_tools PackagePurpose."""
         purpose_map = {
-            ComponentPurpose.APPLICATION: "APPLICATION",
-            ComponentPurpose.LIBRARY: "LIBRARY",
-            ComponentPurpose.SOURCE: "SOURCE",
-            ComponentPurpose.FILE: "FILE",
+            ComponentPurpose.APPLICATION: PackagePurpose.APPLICATION,
+            ComponentPurpose.LIBRARY: PackagePurpose.LIBRARY,
+            ComponentPurpose.SOURCE: PackagePurpose.SOURCE,
+            ComponentPurpose.FILE: PackagePurpose.FILE,
         }
-        return purpose_map.get(purpose, "")
+        return purpose_map.get(purpose)

@@ -25,6 +25,12 @@ def pytest_addoption(parser):
         help="Expected SPDX version (e.g., '2.2' or '2.3')",
     )
     parser.addoption(
+        "--spdx-file-ext",
+        action="store",
+        default="spdx",
+        help="Extension of the SPDX documents to validate ('spdx' or 'spdx.json')",
+    )
+    parser.addoption(
         "--source-dir",
         action="store",
         required=True,
@@ -75,24 +81,30 @@ def spdx_dir(build_dir):
 
 
 @pytest.fixture(scope="session")
-def app_doc(spdx_dir):
-    """Fixture providing the parsed app.spdx document."""
-    return parse_file(os.path.join(spdx_dir, "app.spdx"))
+def spdx_file_ext(request):
+    """Fixture providing the SPDX document file extension to validate."""
+    return request.config.getoption("--spdx-file-ext")
 
 
 @pytest.fixture(scope="session")
-def zephyr_doc(spdx_dir):
-    """Fixture providing the parsed zephyr.spdx document."""
-    return parse_file(os.path.join(spdx_dir, "zephyr.spdx"))
+def app_doc(spdx_dir, spdx_file_ext):
+    """Fixture providing the parsed app document."""
+    return parse_file(os.path.join(spdx_dir, f"app.{spdx_file_ext}"))
 
 
 @pytest.fixture(scope="session")
-def build_doc(spdx_dir):
-    """Fixture providing the parsed build.spdx document."""
-    return parse_file(os.path.join(spdx_dir, "build.spdx"))
+def zephyr_doc(spdx_dir, spdx_file_ext):
+    """Fixture providing the parsed zephyr document."""
+    return parse_file(os.path.join(spdx_dir, f"zephyr.{spdx_file_ext}"))
 
 
 @pytest.fixture(scope="session")
-def modules_doc(spdx_dir):
-    """Fixture providing the parsed modules-deps.spdx document."""
-    return parse_file(os.path.join(spdx_dir, "modules-deps.spdx"))
+def build_doc(spdx_dir, spdx_file_ext):
+    """Fixture providing the parsed build document."""
+    return parse_file(os.path.join(spdx_dir, f"build.{spdx_file_ext}"))
+
+
+@pytest.fixture(scope="session")
+def modules_doc(spdx_dir, spdx_file_ext):
+    """Fixture providing the parsed modules-deps document."""
+    return parse_file(os.path.join(spdx_dir, f"modules-deps.{spdx_file_ext}"))

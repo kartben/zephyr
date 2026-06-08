@@ -111,6 +111,12 @@ To use this command:
 
       west spdx -d BUILD_DIR --spdx-version 2.2
 
+   SPDX 2.x documents can also be generated as JSON instead of tag-value:
+
+   .. code-block:: bash
+
+      west spdx -d BUILD_DIR --spdx-format json
+
    To generate SPDX 3.0 documents (JSON-LD and JSON formats):
 
    .. code-block:: bash
@@ -132,13 +138,18 @@ To use this command:
 This generates the following SPDX bill-of-materials (BOM) documents in
 :file:`BUILD_DIR/spdx/`:
 
-**For SPDX 2.x (tag-value format):**
+**For SPDX 2.x (tag-value format, or JSON with** ``--spdx-format json`` **):**
 
 - :file:`app.spdx`: BOM for the application source files used for the build
 - :file:`zephyr.spdx`: BOM for the specific Zephyr source code files used for the build
 - :file:`build.spdx`: BOM for the built output files
 - :file:`modules-deps.spdx`: BOM for modules dependencies. Check
   :ref:`modules <modules-vulnerability-monitoring>` for more details.
+
+With ``--spdx-format json`` the same documents are written as
+:file:`app.spdx.json`, :file:`zephyr.spdx.json`, :file:`build.spdx.json` and
+:file:`modules-deps.spdx.json`. Both the tag-value and JSON outputs can be
+validated with :command:`pyspdxtools`.
 
 **For SPDX 3.0 (JSON-LD and JSON formats):**
 
@@ -176,6 +187,10 @@ source files that are compiled to generate the built library files.
 - ``--spdx-version {2.2,2.3,3.0}``: specifies which SPDX specification version to use.
   Defaults to ``2.3``. SPDX 2.3 includes additional fields like ``PrimaryPackagePurpose``
   that are not available in SPDX 2.2. SPDX 3.0 generates JSON-LD and JSON format documents.
+
+- ``--spdx-format {tag-value,json}``: for SPDX 2.x, selects the output format.
+  Defaults to ``tag-value`` (:file:`*.spdx`); ``json`` writes :file:`*.spdx.json`
+  instead. This option is ignored for SPDX 3.0, which always emits JSON-LD and JSON.
 
 - ``--analyze-includes``: in addition to recording the compiled source code
   files (e.g. ``.c``, ``.S``) in the bills-of-materials, also attempt to

@@ -50,6 +50,10 @@ class ZephyrSpdx(WestCommand):
         parser.add_argument('--spdx-version', choices=[str(v) for v in SUPPORTED_SPDX_VERSIONS],
                 default=str(SPDX_VERSION_2_3),
                 help="SPDX specification version to use (default: 2.3)")
+        parser.add_argument('--spdx-format', choices=['tag-value', 'json'],
+                default='tag-value',
+                help="SPDX 2.x output format (default: tag-value); "
+                     "ignored for SPDX 3.0, which always emits JSON-LD and JSON")
         parser.add_argument('--analyze-includes', action="store_true",
                 help="also analyze included header files")
         parser.add_argument('--include-sdk', action="store_true",
@@ -70,6 +74,7 @@ class ZephyrSpdx(WestCommand):
         self.dbg("  --namespace-prefix is", args.namespace_prefix)
         self.dbg("  --spdx-dir is", args.spdx_dir)
         self.dbg("  --spdx-version is", args.spdx_version)
+        self.dbg("  --spdx-format is", args.spdx_format)
         self.dbg("  --analyze-includes is", args.analyze_includes)
         self.dbg("  --include-sdk is", args.include_sdk)
 
@@ -105,6 +110,10 @@ class ZephyrSpdx(WestCommand):
         except Exception:
             self.die(f"Invalid SPDX version: {args.spdx_version}")
         cfg.spdxVersion = version_obj
+        cfg.spdxFormat = args.spdx_format
+        if version_obj.major >= 3 and args.spdx_format != 'tag-value':
+            self.wrn("--spdx-format is ignored for SPDX 3.0 "
+                     "(JSON-LD and JSON are always generated)")
         if args.namespace_prefix:
             cfg.namespacePrefix = args.namespace_prefix
         else:

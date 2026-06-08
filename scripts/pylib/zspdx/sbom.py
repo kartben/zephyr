@@ -29,6 +29,9 @@ class SBOMConfig:
     # SPDX specification version to use (Version object from packaging.version)
     spdxVersion = SPDX_VERSION_2_3
 
+    # SPDX 2.x output format ("tag-value" or "json"); ignored for SPDX 3.0
+    spdxFormat: str = "tag-value"
+
     # should also analyze for included header files?
     analyzeIncludes: bool = False
 
@@ -106,7 +109,7 @@ def makeSPDX(cfg):
         # Use SPDX 2.x serializer
         from zspdx.serializers.spdx2 import SPDX2Serializer
 
-        serializer = SPDX2Serializer(sbom_data, cfg.spdxVersion)
+        serializer = SPDX2Serializer(sbom_data, cfg.spdxVersion, cfg.spdxFormat)
         return serializer.serialize(cfg.spdxDir)
     elif cfg.spdxVersion.major == 3:
         # Use SPDX 3.0 serializer
