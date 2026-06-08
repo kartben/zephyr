@@ -1,0 +1,1292 @@
+# Copyright (c) 2025 The Linux Foundation
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import json
+import logging
+import os
+import re
+from datetime import UTC, datetime
+
+from spdx_python_model import v3_0_1 as spdx
+
+from zspdx.model import (
+    ComponentPurpose,
+    SBOMComponent,
+    SBOMData,
+    SBomDocument,
+    SBOMFile,
+    SBOMRelationship,
+)
+from zspdx.serializers.helpers import (
+    CPE23TYPE_REGEX,
+    PURL_REGEX,
+    generate_download_url,
+    get_standard_licenses,
+    normalize_spdx_name,
+)
+from zspdx.spdxids import getUniqueFileID
+
+_logger = logging.getLogger(__name__)
+
+
+class SPDX3Serializer:
+    """Serializer that converts SBOMData to SPDX 3.0 format (JSON-LD)."""
+
+    def __init__(self, sbom_data: SBOMData, spdx_version=None):
+        self.sbom_data = sbom_data
+        self.spdx_version = spdx_version  # Not used for SPDX 3.0, but kept for API consistency
+
+        # Track SPDX 3.0 elements
+        self.elements = []  # All SPDX3 elements (packages, files, relationships, etc.)
+        self.component_elements = {}  # component_name -> software_Package
+        self.file_elements = {}  # file_path -> software_File
+        self.relationship_elements = []  # List of Relationship objects
+
+        # Track original from_id for relationships (before reversal)
+        # This is used to assign cross-document relationships to the correct document
+        # Key: relationship._id, Value: original from_id
+        self.relationship_original_from = {}
+
+        # Shared objects
+        self.tool = None  # Tool element for createdUsing
+        self.creator_agent = None  # SoftwareAgent for createdBy
+        self.creation_info = None
+        self.documents = {}  # doc_name -> SpdxDocument
+        self.build = None  # build_Build object
+
+        # Build tools and information
+        self.build_tools = {}  # tool_name -> Tool
+        # Extract build information from metadata if available
+        self.build_info = sbom_data.metadata.get('build_info', {}) if sbom_data.metadata else {}
+
+        # Track file IDs for uniqueness
+        self.filename_counts = sbom_data.filename_counts.copy() if sbom_data.filename_counts else {}
+
+        # Namespace prefixes for shortened IDs
+        self.namespace_prefixes = {}
+        if self.sbom_data.namespace_prefix:
+            prefix = "zephyr"
+            uri = self.sbom_data.namespace_prefix.rstrip("/") + "/"
+            self.namespace_prefixes[uri] = prefix
+
+    def _shorten_id(self, full_uri: str) -> str:
+        """Shorten a URI-based ID using known namespace prefixes."""
+        for ns_uri, prefix in self.namespace_prefixes.items():
+            if full_uri.startswith(ns_uri):
+                return full_uri.replace(ns_uri, f"{prefix}:", 1)
+        return full_uri
+
+    def _generate_package_id(self, component_name: str) -> str:
+        """Generate URI-based ID for a package."""
+        normalized = normalize_spdx_name(component_name)
+        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        full_uri = f"{namespace}/packages/{normalized}"
+        return self._shorten_id(full_uri)
+
+    def _generate_file_id(self, file_path: str) -> str:
+        """Generate URI-based ID for a file."""
+        filename_only = os.path.basename(file_path)
+        unique_id = getUniqueFileID(filename_only, self.filename_counts)
+        # Remove "SPDXRef-" prefix and normalize
+        normalized_id = unique_id.replace("SPDXRef-", "").replace("_", "-")
+        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        full_uri = f"{namespace}/files/{normalized_id}"
+        return self._shorten_id(full_uri)
+
+    def _generate_relationship_id(self, index: int) -> str:
+        """Generate URI-based ID for a relationship."""
+        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        full_uri = f"{namespace}/relationships/{index}"
+        return self._shorten_id(full_uri)
+
+    def _is_build_target_component(self, component: SBOMComponent) -> bool:
+        """Check if a component represents a build target (not source or dependency).
+
+        Build target components are those that produce build artifacts (libraries, executables).
+        Source components and dependency components are excluded.
+        """
+        # Source components are excluded
+        source_components = {"app-sources", "zephyr-sources", "sdk-sources"}
+        if component.name in source_components:
+            return False
+
+        # Dependency components (ending with -deps) are excluded
+        return not component.name.endswith("-deps")
+
+    def _create_build_config_element(
+        self, component: SBOMComponent, config_type: str
+    ) -> spdx.software_File:
+        """Create a software_File element representing build configuration for a target.
+
+        This captures compilation flags, defines, and includes as a configuration
+        artifact that can be linked via configures relationship.
+
+        Args:
+            component: The SBOMComponent with build metadata
+            config_type: Type of config ('compile', 'link', or 'archive')
+
+        Returns:
+            software_File element representing the build configuration, or None
+        """
+        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        normalized_name = normalize_spdx_name(component.name)
+
+        config_file = spdx.software_File()
+        config_file._id = self._shorten_id(
+            f"{namespace}/build-config/{normalized_name}-{config_type}"
+        )
+        config_file.name = f"{component.name} {config_type} configuration"
+        config_file.creationInfo = self.creation_info._id
+        config_file.software_fileKind = spdx.software_FileKindType.file
+        config_file.software_primaryPurpose = spdx.software_SoftwarePurpose.configuration
+
+        # Build description based on config type
+        if config_type == "compile":
+            flags = component.metadata.get("compile_flags", [])
+            defines = component.metadata.get("compile_defines", [])
+            languages = component.metadata.get("compile_languages", [])
+
+            if not flags and not defines:
+                return None
+
+            description_parts = []
+            if languages:
+                description_parts.append(f"Languages: {', '.join(languages)}")
+            if flags:
+                # Show flags count and first few for summary
+                if len(flags) > 10:
+                    description_parts.append(f"Flags ({len(flags)}): {' '.join(flags[:10])} ...")
+                else:
+                    description_parts.append(f"Flags: {' '.join(flags)}")
+            if defines:
+                if len(defines) > 5:
+                    description_parts.append(
+                        f"Defines ({len(defines)}): {', '.join(defines[:5])} ..."
+                    )
+                else:
+                    description_parts.append(f"Defines: {', '.join(defines)}")
+
+            config_file.description = "; ".join(description_parts)
+
+            # Store full flags in comment for complete audit trail
+            config_file.comment = f"Full compile command fragments: {' '.join(flags)}"
+
+        elif config_type == "link":
+            link_flags = component.metadata.get("link_flags", [])
+            link_libs = component.metadata.get("link_libraries", [])
+            link_language = component.metadata.get("link_language", "")
+
+            if not link_flags and not link_libs:
+                return None
+
+            description_parts = []
+            if link_language:
+                description_parts.append(f"Link language: {link_language}")
+            if link_flags:
+                if len(link_flags) > 10:
+                    description_parts.append(
+                        f"Link flags ({len(link_flags)}): {' '.join(link_flags[:10])} ..."
+                    )
+                else:
+                    description_parts.append(f"Link flags: {' '.join(link_flags)}")
+            if link_libs:
+                if len(link_libs) > 5:
+                    description_parts.append(
+                        f"Libraries ({len(link_libs)}): {' '.join(link_libs[:5])} ..."
+                    )
+                else:
+                    description_parts.append(f"Libraries: {' '.join(link_libs)}")
+
+            config_file.description = "; ".join(description_parts)
+            config_file.comment = f"Full link flags: {' '.join(link_flags)}"
+
+        elif config_type == "archive":
+            archive_flags = component.metadata.get("archive_flags", [])
+
+            if not archive_flags:
+                return None
+
+            config_file.description = f"Archive flags: {' '.join(archive_flags)}"
+            config_file.comment = f"Full archive command fragments: {' '.join(archive_flags)}"
+
+        self.elements.append(config_file)
+        return config_file
+
+    def _create_tool_lifecycle_relationships(self, component: SBOMComponent, build_file) -> None:
+        """Create LifecycleScopedRelationships for tools used to build a specific artifact.
+
+        Uses CMake metadata captured in walker.py to determine exactly which tools
+        were used for this target, rather than heuristic-based detection.
+        Also creates build configuration elements and configures relationships
+        to capture detailed compilation flags.
+
+        Args:
+            component: The SBOMComponent representing the build target
+            build_file: The SPDX file element for the build artifact
+        """
+        # Map compile languages to tool keys
+        language_to_tool = {
+            "C": "c-compiler",
+            "CXX": "cxx-compiler",
+            "ASM": "asm-compiler",
+            "ASM-ATT": "asm-compiler",
+        }
+
+        tools_used = []
+        tool_config_map = {}  # tool -> config_type
+
+        # Get compile languages from metadata (extracted from CMake compileGroups)
+        compile_languages = component.metadata.get("compile_languages", [])
+        for lang in compile_languages:
+            tool_key = language_to_tool.get(lang)
+            if tool_key and tool_key in self.build_tools:
+                tool = self.build_tools[tool_key]
+                if tool not in tools_used:
+                    tools_used.append(tool)
+                    tool_config_map[tool._id] = "compile"
+
+        # Determine if linker was used based on target type
+        target_type = component.metadata.get("target_type", "")
+
+        if (
+            target_type in ("EXECUTABLE", "SHARED_LIBRARY", "MODULE_LIBRARY")
+            and "linker" in self.build_tools
+        ):
+            # Executables and shared libraries use the linker
+            tool = self.build_tools["linker"]
+            tools_used.append(tool)
+            tool_config_map[tool._id] = "link"
+
+        # Determine if archiver was used (for static libraries)
+        is_archive = component.metadata.get("is_archive", False)
+        if (is_archive or target_type == "STATIC_LIBRARY") and "archiver" in self.build_tools:
+            tool = self.build_tools["archiver"]
+            tools_used.append(tool)
+            tool_config_map[tool._id] = "archive"
+
+        # Create build config elements for this target
+        config_elements = {}
+        for config_type in ["compile", "link", "archive"]:
+            config_elem = self._create_build_config_element(component, config_type)
+            if config_elem:
+                config_elements[config_type] = config_elem
+
+        # Create LifecycleScopedRelationship for each tool used
+        for tool in tools_used:
+            rel = spdx.LifecycleScopedRelationship()
+            rel._id = self._generate_relationship_id(len(self.relationship_elements))
+            rel.relationshipType = spdx.RelationshipType.usesTool
+            rel.from_ = build_file._id
+            rel.to = [tool._id]
+            rel.scope = spdx.LifecycleScopeType.build
+            rel.creationInfo = self.creation_info._id
+
+            # Add description with summary of build parameters for this tool
+            config_type = tool_config_map.get(tool._id)
+            if config_type == "compile":
+                flags = component.metadata.get("compile_flags", [])
+                defines = component.metadata.get("compile_defines", [])
+                opt_flags = [f for f in flags if f.startswith('-O') or f == '-g']
+                arch_flags = [
+                    f
+                    for f in flags
+                    if f.startswith('-mcpu') or f.startswith('-march') or f.startswith('-mthumb')
+                ]
+                std_flags = [f for f in flags if f.startswith('-std=')]
+                summary_parts = opt_flags + arch_flags + std_flags
+                if summary_parts:
+                    rel.description = f"Compiled with: {' '.join(summary_parts)}"
+                    if defines:
+                        rel.description += f"; Defines: {len(defines)} macros"
+            elif config_type == "link":
+                link_flags = component.metadata.get("link_flags", [])
+                link_libs = component.metadata.get("link_libraries", [])
+                if link_flags or link_libs:
+                    parts = []
+                    if link_flags:
+                        parts.append(f"{len(link_flags)} flags")
+                    if link_libs:
+                        parts.append(f"{len(link_libs)} libraries")
+                    rel.description = f"Linked with: {', '.join(parts)}"
+            elif config_type == "archive":
+                archive_flags = component.metadata.get("archive_flags", [])
+                if archive_flags:
+                    rel.description = f"Archived with: {' '.join(archive_flags)}"
+
+            self.elements.append(rel)
+            self.relationship_elements.append(rel)
+
+        # Create configures relationships from build config elements to the artifact
+        for config_type, config_elem in config_elements.items():
+            rel = spdx.LifecycleScopedRelationship()
+            rel._id = self._generate_relationship_id(len(self.relationship_elements))
+            rel.relationshipType = spdx.RelationshipType.configures
+            rel.from_ = config_elem._id
+            rel.to = [build_file._id]
+            rel.scope = spdx.LifecycleScopeType.build
+            rel.creationInfo = self.creation_info._id
+            rel.description = f"Build configuration ({config_type}) for {component.name}"
+            self.elements.append(rel)
+            self.relationship_elements.append(rel)
+
+    def _purpose_to_spdx3(self, purpose: ComponentPurpose) -> spdx.software_SoftwarePurpose:
+        """Convert ComponentPurpose enum to SPDX 3.0 SoftwarePurpose."""
+        purpose_map = {
+            ComponentPurpose.APPLICATION: spdx.software_SoftwarePurpose.application,
+            ComponentPurpose.LIBRARY: spdx.software_SoftwarePurpose.library,
+            ComponentPurpose.SOURCE: spdx.software_SoftwarePurpose.source,
+            ComponentPurpose.FILE: spdx.software_SoftwarePurpose.file,
+        }
+        return purpose_map.get(purpose, spdx.software_SoftwarePurpose.library)
+
+    def _create_tool(
+        self, key: str, name: str, path: str = None, extra_identifiers: list = None
+    ) -> spdx.Tool:
+        """Create a Tool element for a build tool.
+
+        Args:
+            key: Unique key for the tool (e.g., 'c-compiler', 'cmake')
+            name: Human-readable name for the tool
+            path: Optional file path to the tool executable
+            extra_identifiers: Optional list of (type, value) tuples for additional identifiers
+
+        Returns:
+            The created Tool element
+        """
+        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        tool = spdx.Tool()
+        tool._id = self._shorten_id(f"{namespace}/tools/{key}")
+        tool.name = name
+        tool.creationInfo = self.creation_info._id
+
+        # Add path as external identifier if provided
+        if path:
+            ext_id = spdx.ExternalIdentifier()
+            ext_id.externalIdentifierType = spdx.ExternalIdentifierType.other
+            ext_id.identifier = path
+            tool.externalIdentifier.append(ext_id)
+
+        # Add any extra identifiers
+        if extra_identifiers:
+            for id_type, id_value in extra_identifiers:
+                ext_id = spdx.ExternalIdentifier()
+                ext_id.externalIdentifierType = id_type
+                ext_id.identifier = id_value
+                tool.externalIdentifier.append(ext_id)
+
+        self.elements.append(tool)
+        self.build_tools[key] = tool
+        return tool
+
+    def _create_build_tools(self):
+        """Create Tool elements for build tools (CMake, compilers, etc.).
+
+        Per SPDX 3.0.1 spec, build tools should be Tool elements (not Agent).
+        Agent is for entities that create SPDX data, Tool is for software
+        used during the build process.
+        """
+        # Create CMake tool
+        if self.build_info.get("cmake_version") or self.build_info.get("cmake_generator"):
+            cmake_name = "CMake"
+            if self.build_info.get("cmake_version"):
+                cmake_name += f" {self.build_info['cmake_version']}"
+            if self.build_info.get("cmake_generator"):
+                cmake_name += f" ({self.build_info['cmake_generator']})"
+
+            extra_ids = []
+            if self.build_info.get("cmake_build_type"):
+                extra_ids.append(
+                    (
+                        spdx.ExternalIdentifierType.other,
+                        f"build-type:{self.build_info['cmake_build_type']}",
+                    )
+                )
+            self._create_tool(
+                "cmake", cmake_name, extra_identifiers=extra_ids if extra_ids else None
+            )
+
+        # Create C compiler tool
+        compiler_path = self.build_info.get("cmake_compiler", "")
+        if compiler_path:
+            compiler_name = os.path.basename(compiler_path)
+            compiler_version = self.build_info.get("c_compiler_version", "")
+            tool_name = f"C Compiler ({compiler_name})"
+            if compiler_version:
+                tool_name = f"C Compiler ({compiler_name} {compiler_version})"
+
+            extra_ids = []
+            if self.build_info.get("cmake_system_processor"):
+                extra_ids.append(
+                    (
+                        spdx.ExternalIdentifierType.other,
+                        f"target-arch:{self.build_info['cmake_system_processor']}",
+                    )
+                )
+            self._create_tool(
+                "c-compiler",
+                tool_name,
+                path=compiler_path,
+                extra_identifiers=extra_ids if extra_ids else None,
+            )
+
+        # Create C++ compiler tool (only if different from C compiler)
+        cxx_compiler_path = self.build_info.get("cmake_cxx_compiler", "")
+        if cxx_compiler_path and cxx_compiler_path != compiler_path:
+            cxx_compiler_name = os.path.basename(cxx_compiler_path)
+            cxx_compiler_version = self.build_info.get("cxx_compiler_version", "")
+            tool_name = f"C++ Compiler ({cxx_compiler_name})"
+            if cxx_compiler_version:
+                tool_name = f"C++ Compiler ({cxx_compiler_name} {cxx_compiler_version})"
+            self._create_tool("cxx-compiler", tool_name, path=cxx_compiler_path)
+
+        # Create Assembler tool
+        asm_compiler_path = self.build_info.get("cmake_asm_compiler", "")
+        if asm_compiler_path:
+            asm_compiler_name = os.path.basename(asm_compiler_path)
+            asm_compiler_version = self.build_info.get("asm_compiler_version", "")
+            tool_name = f"Assembler ({asm_compiler_name})"
+            if asm_compiler_version:
+                tool_name = f"Assembler ({asm_compiler_name} {asm_compiler_version})"
+            self._create_tool("asm-compiler", tool_name, path=asm_compiler_path)
+
+        # Create Linker tool
+        linker_path = self.build_info.get("cmake_linker", "")
+        if linker_path:
+            linker_name = os.path.basename(linker_path)
+            linker_version = self.build_info.get("linker_version", "")
+            tool_name = f"Linker ({linker_name})"
+            if linker_version:
+                tool_name = f"Linker ({linker_name} {linker_version})"
+            self._create_tool("linker", tool_name, path=linker_path)
+
+        # Create Archiver tool
+        ar_path = self.build_info.get("cmake_ar", "")
+        if ar_path:
+            ar_name = os.path.basename(ar_path)
+            ar_version = self.build_info.get("ar_version", "")
+            tool_name = f"Archiver ({ar_name})"
+            if ar_version:
+                tool_name = f"Archiver ({ar_name} {ar_version})"
+            self._create_tool("archiver", tool_name, path=ar_path)
+
+    def _initialize_shared_objects(self):
+        """Initialize shared Tool and CreationInfo objects.
+
+        Per SPDX 3.0.1 spec:
+        - CreationInfo.createdBy takes Agent (who created the SPDX data) - REQUIRED
+        - CreationInfo.createdUsing takes Tool (what tool created the SPDX data) - optional
+        """
+        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+
+        # Create a SoftwareAgent representing the automated SBOM generation process
+        # This satisfies the required createdBy field
+        if self.tool is None:
+            # Create the creator agent (required by createdBy)
+            self.creator_agent = spdx.SoftwareAgent()
+            self.creator_agent._id = self._shorten_id(f"{namespace}/agents/west-spdx-agent")
+            self.creator_agent.name = "West SPDX Generator"
+            self.elements.append(self.creator_agent)
+
+            # Create the tool (for createdUsing)
+            self.tool = spdx.Tool()
+            self.tool._id = self._shorten_id(f"{namespace}/tools/west-spdx")
+            self.tool.name = "West SPDX Tool"
+            self.elements.append(self.tool)
+
+        if self.creation_info is None:
+            self.creation_info = spdx.CreationInfo()
+            self.creation_info._id = self._shorten_id(f"{namespace}/creationinfo")
+            self.creation_info.created = datetime.now(UTC)
+            # createdBy references the Agent that created this SPDX document (REQUIRED)
+            self.creation_info.createdBy.append(self.creator_agent._id)
+            # createdUsing references the Tool that created this SPDX document (optional)
+            self.creation_info.createdUsing.append(self.tool._id)
+            self.creation_info.specVersion = "3.0.1"
+            self.elements.append(self.creation_info)
+
+            # Now set the tool's and agent's creationInfo
+            self.tool.creationInfo = self.creation_info._id
+            self.creator_agent.creationInfo = self.creation_info._id
+
+        # Create build tool elements if build info is available
+        self._create_build_tools()
+
+        # Create Build object if build info is available
+        self._create_build_object()
+
+    def _create_build_object(self):
+        """Create SPDX 3.0 Build object.
+
+        Per SPDX 3.0.1 spec, the Build class represents a build instance.
+        buildStartTime and buildEndTime are optional and may be omitted
+        to simplify creating reproducible builds.
+        Also populates build_parameter with global build configuration information.
+        """
+        if self.build:
+            return
+
+        # Always create Build object if we have any build info
+        # This ensures consistent output structure
+        if not self.build_info and not self.sbom_data.build:
+            return
+
+        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        self.build = spdx.build_Build()
+        self.build._id = self._shorten_id(f"{namespace}/builds/default")
+        self.build.creationInfo = self.creation_info._id
+
+        # Set mandatory buildType (URI per spec)
+        self.build.build_buildType = "https://zephyrproject.org/build-types/standard"
+
+        # Set optional properties from SBOMBuild model
+        if self.sbom_data.build:
+            if self.sbom_data.build.id:
+                self.build.build_buildId = self.sbom_data.build.id
+            if self.sbom_data.build.build_type:
+                # Ensure build_type is a valid URI
+                build_type = self.sbom_data.build.build_type
+                if build_type and not build_type.startswith("http"):
+                    build_type = f"https://zephyrproject.org/build-types/{build_type}"
+                self.build.build_buildType = build_type
+
+            # Only set timestamps if explicitly provided
+            # (we no longer infer from file modification times)
+            if self.sbom_data.build.started_at:
+                self.build.build_buildStartTime = self.sbom_data.build.started_at
+            if self.sbom_data.build.finished_at:
+                self.build.build_buildEndTime = self.sbom_data.build.finished_at
+
+        # Add build_parameter with global build configuration
+        # Per SPDX 3.0.1 spec, build_parameter is a list of DictionaryEntry
+        self._add_build_parameters()
+
+        self.elements.append(self.build)
+
+    def _add_build_parameters(self):
+        """Add build parameters (DictionaryEntry) to the Build object.
+
+        Captures global build configuration including:
+        - CMake configuration (generator, build type, system info)
+        - Compiler information (paths, versions, IDs)
+        - Target architecture information
+        """
+        if not self.build:
+            return
+
+        # Helper function to create DictionaryEntry
+        def add_param(key: str, value: str):
+            if value:
+                entry = spdx.DictionaryEntry()
+                entry.key = key
+                entry.value = str(value)
+                self.build.build_parameter.append(entry)
+
+        # CMake configuration
+        if self.build_info:
+            # CMake basic info
+            add_param("cmake:version", self.build_info.get("cmake_version", ""))
+            add_param("cmake:generator", self.build_info.get("cmake_generator", ""))
+            add_param("cmake:buildType", self.build_info.get("cmake_build_type", ""))
+
+            # Target system info
+            add_param("target:system", self.build_info.get("cmake_system_name", ""))
+            add_param("target:processor", self.build_info.get("cmake_system_processor", ""))
+
+            # C Compiler
+            c_compiler = self.build_info.get("cmake_compiler", "")
+            if c_compiler:
+                add_param("compiler:c:path", c_compiler)
+                add_param("compiler:c:id", self.build_info.get("c_compiler_id", ""))
+                add_param("compiler:c:version", self.build_info.get("c_compiler_version", ""))
+
+            # C++ Compiler
+            cxx_compiler = self.build_info.get("cmake_cxx_compiler", "")
+            if cxx_compiler:
+                add_param("compiler:cxx:path", cxx_compiler)
+                add_param("compiler:cxx:id", self.build_info.get("cxx_compiler_id", ""))
+                add_param("compiler:cxx:version", self.build_info.get("cxx_compiler_version", ""))
+
+            # ASM Compiler
+            asm_compiler = self.build_info.get("cmake_asm_compiler", "")
+            if asm_compiler:
+                add_param("compiler:asm:path", asm_compiler)
+                add_param("compiler:asm:id", self.build_info.get("asm_compiler_id", ""))
+                add_param("compiler:asm:version", self.build_info.get("asm_compiler_version", ""))
+
+            # Linker
+            linker = self.build_info.get("cmake_linker", "")
+            if linker:
+                add_param("linker:path", linker)
+                add_param("linker:version", self.build_info.get("linker_version", ""))
+
+            # Archiver
+            archiver = self.build_info.get("cmake_ar", "")
+            if archiver:
+                add_param("archiver:path", archiver)
+                add_param("archiver:version", self.build_info.get("ar_version", ""))
+
+    def _create_software_package(self, component: SBOMComponent) -> spdx.software_Package:
+        """Convert SBOMComponent to SPDX 3.0 software_Package."""
+        package = spdx.software_Package()
+        package._id = self._generate_package_id(component.name)
+        package.name = component.name
+        package.creationInfo = self.creation_info._id
+        package.software_primaryPurpose = self._purpose_to_spdx3(component.purpose)
+
+        # Version
+        if component.version:
+            package.software_packageVersion = component.version
+        elif component.revision:
+            package.software_packageVersion = component.revision
+
+        # Download location
+        if component.url:
+            package.software_downloadLocation = generate_download_url(
+                component.url, component.revision
+            )
+        else:
+            package.software_downloadLocation = "NOASSERTION"
+
+        # Copyright
+        package.software_copyrightText = component.copyright_text or "NOASSERTION"
+
+        # License information will be added via relationships after package creation
+
+        # External references (CPE, PURL)
+        for ref in component.external_references:
+            if not ref or not isinstance(ref, str):
+                _logger.warning(f"Invalid external reference: {ref}")
+                continue
+            if re.fullmatch(CPE23TYPE_REGEX, ref):
+                ext_id = spdx.ExternalIdentifier()
+                ext_id.externalIdentifierType = spdx.ExternalIdentifierType.cpe23
+                ext_id.identifier = ref
+                package.externalIdentifier.append(ext_id)
+            elif re.fullmatch(PURL_REGEX, ref):
+                ext_id = spdx.ExternalIdentifier()
+                ext_id.externalIdentifierType = spdx.ExternalIdentifierType.packageUrl
+                ext_id.identifier = ref
+                package.externalIdentifier.append(ext_id)
+            else:
+                _logger.warning(f"Unknown external reference format: {ref}")
+
+        # Verification code (if available)
+        # Note: SPDX 3.0 may handle verification codes differently than SPDX 2.x
+        # For now, we'll skip setting it directly as the property may not exist
+        # TODO: Investigate SPDX 3.0 verification code handling
+
+        self.elements.append(package)
+        self.component_elements[component.name] = package
+        return package
+
+    def _create_software_file(self, file_obj: SBOMFile) -> spdx.software_File:
+        """Convert SBOMFile to SPDX 3.0 software_File."""
+        file_element = spdx.software_File()
+        file_element._id = self._generate_file_id(file_obj.path)
+        file_element.name = file_obj.relative_path or os.path.basename(file_obj.path)
+        file_element.creationInfo = self.creation_info._id
+        file_element.software_fileKind = spdx.software_FileKindType.file
+
+        # File purpose (default to file)
+        file_element.software_primaryPurpose = spdx.software_SoftwarePurpose.file
+
+        # Copyright
+        file_element.software_copyrightText = file_obj.copyright_text or "NOASSERTION"
+
+        # Hashes - SPDX 3.0 uses verifiedUsing with Hash (which is a type of IntegrityMethod)
+        for hash_type, hash_value in file_obj.hashes.items():
+            if hash_value:
+                hash_obj = spdx.Hash()
+                if hash_type == "SHA1":
+                    hash_obj.algorithm = spdx.HashAlgorithm.sha1
+                elif hash_type == "SHA256":
+                    hash_obj.algorithm = spdx.HashAlgorithm.sha256
+                elif hash_type == "MD5":
+                    hash_obj.algorithm = spdx.HashAlgorithm.md5
+                else:
+                    _logger.warning(f"Unknown hash algorithm: {hash_type}")
+                    continue
+                hash_obj.hashValue = hash_value
+                file_element.verifiedUsing.append(hash_obj)
+
+        # License information will be added via relationships after file creation
+
+        self.elements.append(file_element)
+        self.file_elements[file_obj.path] = file_element
+        return file_element
+
+    def _map_relationship_type(self, rel_type: str) -> tuple[spdx.RelationshipType, bool]:
+        """Map relationship type string to SPDX 3.0 RelationshipType enum.
+        Returns a tuple of (RelationshipType, reversed).
+        """
+        # Map SPDX 2.x relationship types to SPDX 3.0 RelationshipType
+        type_map = {
+            "GENERATED_FROM": (spdx.RelationshipType.generates, True),
+            "HAS_PREREQUISITE": (spdx.RelationshipType.dependsOn, False),
+            "STATIC_LINK": (spdx.RelationshipType.hasStaticLink, False),
+            "CONTAINS": (spdx.RelationshipType.contains, False),
+            "DESCRIBES": (spdx.RelationshipType.describes, False),
+            "DEPENDS_ON": (spdx.RelationshipType.dependsOn, False),
+            "DYNAMIC_LINK": (spdx.RelationshipType.hasDynamicLink, False),
+            "BUILD_TOOL_OF": (spdx.RelationshipType.usesTool, True),
+            "DEV_TOOL_OF": (spdx.RelationshipType.usesTool, True),
+            "TEST_TOOL_OF": (spdx.RelationshipType.usesTool, True),
+            "OTHER": (spdx.RelationshipType.other, False),
+        }
+        return type_map.get(rel_type, (spdx.RelationshipType.other, False))
+
+    def _get_element_id(self, element):
+        """Get SPDX 3.0 element ID from various element types."""
+        if isinstance(element, SBOMComponent):
+            if element.name in self.component_elements:
+                return self.component_elements[element.name]._id
+        elif isinstance(element, SBOMFile):
+            if element.path in self.file_elements:
+                return self.file_elements[element.path]._id
+        elif isinstance(element, str):
+            # Try to resolve as component name first, then file path
+            if element in self.component_elements:
+                return self.component_elements[element]._id
+            elif element in self.file_elements:
+                return self.file_elements[element]._id
+        return None
+
+    def _create_relationship(self, rel: SBOMRelationship) -> spdx.Relationship:
+        """Convert SBOMRelationship to SPDX 3.0 Relationship."""
+        # Get from_element ID
+        from_id = self._get_element_id(rel.from_element)
+        if not from_id:
+            _logger.warning(
+                f"Could not resolve from_element for relationship: {rel.relationship_type}"
+            )
+            return None
+
+        # Get to_elements IDs
+        to_elements = rel.to_elements if isinstance(rel.to_elements, list) else [rel.to_elements]
+        to_ids = []
+        for to_elem in to_elements:
+            to_id = self._get_element_id(to_elem)
+            if to_id:
+                to_ids.append(to_id)
+            else:
+                _logger.warning(
+                    f"Could not resolve to_element for relationship: {rel.relationship_type}"
+                )
+
+        if not to_ids:
+            _logger.warning(f"No valid to_elements found for relationship: {rel.relationship_type}")
+            return None
+
+        rel_type, is_reversed = self._map_relationship_type(rel.relationship_type)
+
+        relationship = spdx.Relationship()
+        relationship._id = self._generate_relationship_id(len(self.relationship_elements))
+        relationship.relationshipType = rel_type
+        if is_reversed:
+            # Swap from/to for reversed relationships (e.g., A GENERATED_FROM B -> B generates A)
+            if len(to_ids) > 1:
+                _logger.warning(
+                    f"Reversed relationship {rel.relationship_type} with multiple to_elements "
+                    "is not well-defined for swapping. Using first element."
+                )
+            relationship.from_ = to_ids[0]
+            relationship.to = [from_id]
+        else:
+            relationship.from_ = from_id
+            relationship.to = to_ids
+        relationship.creationInfo = self.creation_info._id
+
+        # Store original from_id for document assignment (before reversal)
+        # This ensures cross-document relationships are placed in the document
+        # of the original "from" element, matching SPDX 2.x behavior
+        self.relationship_original_from[relationship._id] = from_id
+
+        self.elements.append(relationship)
+        self.relationship_elements.append(relationship)
+        return relationship
+
+    def _create_license_expression(
+        self, license_str: str
+    ) -> spdx.simplelicensing_LicenseExpression:
+        """Create a license expression object and add it to elements."""
+        if not license_str or license_str == "NOASSERTION":
+            return None
+
+        license_expr = spdx.simplelicensing_LicenseExpression()
+        standard_licenses = get_standard_licenses()
+
+        # Check if it's a standard license ID
+        if license_str in standard_licenses:
+            license_expr._id = f"https://spdx.org/licenses/{license_str}"
+        else:
+            # Custom license - use a namespace-based ID
+            namespace = self.sbom_data.namespace_prefix.rstrip("/")
+            # Normalize the license string for use in URI
+            normalized = normalize_spdx_name(
+                license_str.replace(" ", "-").replace("(", "").replace(")", "")
+            )
+            license_expr._id = self._shorten_id(f"{namespace}/licenses/{normalized}")
+
+        license_expr.simplelicensing_licenseExpression = license_str
+        license_expr.creationInfo = self.creation_info._id
+
+        # Add to elements if not already present
+        existing_ids = {elem._id for elem in self.elements if hasattr(elem, '_id')}
+        if license_expr._id not in existing_ids:
+            self.elements.append(license_expr)
+
+        return license_expr
+
+    def _create_document(self, sbom_doc: SBomDocument) -> spdx.SpdxDocument:
+        """Create an SPDX 3.0 document for a specific SBomDocument."""
+        self._initialize_shared_objects()
+
+        document = spdx.SpdxDocument()
+        # Use document's namespace if set, otherwise generate from prefix
+        namespace = (
+            sbom_doc.namespace.rstrip("/")
+            if sbom_doc.namespace
+            else self.sbom_data.namespace_prefix.rstrip("/")
+        )
+        document._id = self._shorten_id(f"{namespace}/documents/{sbom_doc.name}")
+
+        # Add NamespaceMap entries
+        for uri, prefix in self.namespace_prefixes.items():
+            ns_map = spdx.NamespaceMap()
+            ns_map.prefix = prefix
+            ns_map.namespace = uri
+            document.namespaceMap.append(ns_map)
+
+        # Set document name based on type
+        doc_names = {
+            "app": "Zephyr Application SPDX 3.0 SBOM",
+            "zephyr": "Zephyr RTOS SPDX 3.0 SBOM",
+            "build": "Zephyr Build Artifacts SPDX 3.0 SBOM",
+            "modules-deps": "Zephyr Module Dependencies SPDX 3.0 SBOM",
+            "sdk": "Zephyr SDK SPDX 3.0 SBOM",
+        }
+        document.name = doc_names.get(
+            sbom_doc.name, f"Zephyr {sbom_doc.name.capitalize()} SPDX 3.0 SBOM"
+        )
+        document.creationInfo = self.creation_info
+
+        # Set data license
+        data_license = self._create_license_expression("CC0-1.0")
+        if data_license:
+            document.dataLicense = data_license._id
+
+        # Add profile conformance
+        document.profileConformance.append(spdx.ProfileIdentifierType.core)
+        # Add build profile if we have build information and this is the build document
+        if self.build_info and sbom_doc.name == "build":
+            document.profileConformance.append(spdx.ProfileIdentifierType.build)
+
+        # Collect elements that belong to this document
+        components = sbom_doc.components.values()
+        document_component_ids = set()
+        document_file_ids = set()
+
+        # Get component and file IDs for this document
+        for component in components:
+            if component.name in self.component_elements:
+                document_component_ids.add(self.component_elements[component.name]._id)
+            for file_obj in component.files.values():
+                if file_obj.path in self.file_elements:
+                    document_file_ids.add(self.file_elements[file_obj.path]._id)
+
+        # Collect all element IDs that belong to this document
+        document_element_ids = set(document_component_ids)
+        document_element_ids.update(document_file_ids)
+
+        # Collect license expression IDs used by our components and files
+        license_ids = set()
+        for component in components:
+            if component.concluded_license and component.concluded_license != "NOASSERTION":
+                license_expr = self._create_license_expression(component.concluded_license)
+                if license_expr:
+                    license_ids.add(license_expr._id)
+            if component.declared_license and component.declared_license != "NOASSERTION":
+                license_expr = self._create_license_expression(component.declared_license)
+                if license_expr:
+                    license_ids.add(license_expr._id)
+            for file_obj in component.files.values():
+                if file_obj.concluded_license and file_obj.concluded_license != "NOASSERTION":
+                    license_expr = self._create_license_expression(file_obj.concluded_license)
+                    if license_expr:
+                        license_ids.add(license_expr._id)
+                for lic in file_obj.license_info_in_file:
+                    if lic != "NONE":
+                        license_expr = self._create_license_expression(lic)
+                        if license_expr:
+                            license_ids.add(license_expr._id)
+        document_element_ids.update(license_ids)
+
+        # Also include custom license IDs stored in the document
+        for lic in sbom_doc.custom_license_ids:
+            license_expr = self._create_license_expression(lic)
+            if license_expr:
+                license_ids.add(license_expr._id)
+
+        # Collect relationship IDs that involve our elements
+        relationship_ids = set()
+        for rel in self.relationship_elements:
+            from_id = getattr(rel, 'from_', None)
+            # Use the original from_id (before any reversal) to determine document ownership.
+            # This ensures cross-document relationships are placed in the document that
+            # originally owned the "from" element, matching SPDX 2.x behavior.
+            # For example, if ".a GENERATED_FROM .c" is reversed to ".c generates .a",
+            # we still want the relationship in the document containing the .a file.
+            original_from_id = self.relationship_original_from.get(rel._id, from_id)
+            if original_from_id in document_element_ids or from_id in document_element_ids:
+                relationship_ids.add(rel._id)
+                document_element_ids.add(from_id)
+                document_element_ids.update(rel.to)
+        document_element_ids.update(relationship_ids)
+
+        # Add tool, creator agent, and data license
+        if self.tool:
+            document_element_ids.add(self.tool._id)
+        if self.creator_agent:
+            document_element_ids.add(self.creator_agent._id)
+        # Add build tools only for the build document
+        if sbom_doc.name == "build":
+            for tool in self.build_tools.values():
+                document_element_ids.add(tool._id)
+            # Add Build object and set as root element
+            if self.build:
+                document_element_ids.add(self.build._id)
+                document.rootElement.append(self.build)
+
+                # Ensure relationships involving Build are included
+                for rel in self.relationship_elements:
+                    if rel.from_ == self.build._id:
+                        document_element_ids.add(rel._id)
+                        # Also include tools referenced by these relationships
+                        for tool_id in rel.to:
+                            document_element_ids.add(tool_id)
+
+            # Include build-config elements (they have IDs containing build-config)
+            for element in self.elements:
+                if hasattr(element, '_id') and element._id and 'build-config' in element._id:
+                    document_element_ids.add(element._id)
+                    # Also include configures relationships involving this config element
+                    for rel in self.relationship_elements:
+                        if rel.from_ == element._id:
+                            document_element_ids.add(rel._id)
+                            # Include the target of the configures relationship
+                            for to_id in rel.to:
+                                document_element_ids.add(to_id)
+        data_license = self._create_license_expression("CC0-1.0")
+        if data_license:
+            document_element_ids.add(data_license._id)
+
+        # Add relevant elements to document
+        document_id = document._id
+        for element in self.elements:
+            # Only add Element types (not CreationInfo or other non-Element types)
+            # Also exclude the document itself from its own element list
+            if (
+                isinstance(element, spdx.Element)
+                and hasattr(element, '_id')
+                and element._id
+                and element._id != document_id
+                and not isinstance(element, spdx.SpdxDocument)
+            ) and element._id in document_element_ids:
+                document.element.append(element)
+
+        # Set root elements (components in this document)
+        for component in components:
+            if component.name in self.component_elements:
+                document.rootElement.append(self.component_elements[component.name])
+
+        self.elements.append(document)
+        self.documents[sbom_doc.name] = document
+        return document
+
+    def serialize(self, output_dir: str) -> bool:
+        """Serialize SBOMData to SPDX 3.0 format (JSON-LD)."""
+        try:
+            # Validate input
+            if not self.sbom_data:
+                _logger.error("SBOMData is None or empty")
+                return False
+
+            if not self.sbom_data.namespace_prefix:
+                _logger.error("Namespace prefix is required for SPDX 3.0")
+                return False
+
+            if not os.path.exists(output_dir):
+                _logger.error(f"Output directory does not exist: {output_dir}")
+                return False
+
+            # Initialize shared objects
+            self._initialize_shared_objects()
+
+            # Create all software packages from components
+            if not self.sbom_data.components:
+                _logger.warning("No components found in SBOM data")
+            else:
+                for component in self.sbom_data.components.values():
+                    if not component.name:
+                        _logger.warning("Skipping component with empty name")
+                        continue
+                    self._create_software_package(component)
+
+            # Create all software files
+            if not self.sbom_data.files:
+                _logger.warning("No files found in SBOM data")
+            else:
+                for file_obj in self.sbom_data.files.values():
+                    if not file_obj.path:
+                        _logger.warning("Skipping file with empty path")
+                        continue
+                    self._create_software_file(file_obj)
+
+            # Create relationships from components
+            for component in self.sbom_data.components.values():
+                for rel in component.relationships:
+                    created_rel = self._create_relationship(rel)
+                    if not created_rel:
+                        _logger.warning(
+                            f"Failed to create relationship from component {component.name}"
+                        )
+
+            # Create relationships from files
+            for file_obj in self.sbom_data.files.values():
+                for rel in file_obj.relationships:
+                    created_rel = self._create_relationship(rel)
+                    if not created_rel:
+                        _logger.warning(f"Failed to create relationship from file {file_obj.path}")
+
+            # Create top-level relationships
+            for rel in self.sbom_data.relationships:
+                created_rel = self._create_relationship(rel)
+                if not created_rel:
+                    _logger.warning("Failed to create top-level relationship")
+
+            # Create CONTAINS relationships for files in packages
+            for component in self.sbom_data.components.values():
+                package = self.component_elements.get(component.name)
+                if package:
+                    for file_obj in component.files.values():
+                        file_element = self.file_elements.get(file_obj.path)
+                        if file_element:
+                            contains_rel = spdx.Relationship()
+                            contains_rel._id = self._generate_relationship_id(
+                                len(self.relationship_elements)
+                            )
+                            contains_rel.relationshipType = spdx.RelationshipType.contains
+                            contains_rel.from_ = package._id
+                            contains_rel.to = [file_element._id]
+                            contains_rel.creationInfo = self.creation_info._id
+                            self.elements.append(contains_rel)
+                            self.relationship_elements.append(contains_rel)
+
+            # Create relationships involving the Build object
+            if self.build:
+                # 1. Build usesTool Tool (for all build tools - general relationship)
+                for tool in self.build_tools.values():
+                    rel = spdx.Relationship()
+                    rel._id = self._generate_relationship_id(len(self.relationship_elements))
+                    rel.relationshipType = spdx.RelationshipType.usesTool
+                    rel.from_ = self.build._id
+                    rel.to = [tool._id]
+                    rel.creationInfo = self.creation_info._id
+                    self.elements.append(rel)
+                    self.relationship_elements.append(rel)
+
+                # 2. Build generates Artifact (for all target build files)
+                #    Also create LifecycleScopedRelationships for specific tools used
+                for component in self.sbom_data.components.values():
+                    # Only process build target components (not source or dependency components)
+                    if self._is_build_target_component(component):
+                        package = self.component_elements.get(component.name)
+                        if package and component.target_build_file:
+                            build_file = self.file_elements.get(component.target_build_file.path)
+                            if build_file:
+                                # Build generates this artifact
+                                rel = spdx.Relationship()
+                                rel._id = self._generate_relationship_id(
+                                    len(self.relationship_elements)
+                                )
+                                rel.relationshipType = spdx.RelationshipType.generates
+                                rel.from_ = self.build._id
+                                rel.to = [build_file._id]
+                                rel.creationInfo = self.creation_info._id
+                                self.elements.append(rel)
+                                self.relationship_elements.append(rel)
+
+                                # Create LifecycleScopedRelationships based on CMake metadata
+                                self._create_tool_lifecycle_relationships(component, build_file)
+
+            # Create license relationships for packages
+            for component in self.sbom_data.components.values():
+                package = self.component_elements.get(component.name)
+                if package:
+                    # Create hasConcludedLicense relationship
+                    if component.concluded_license and component.concluded_license != "NOASSERTION":
+                        license_expr = self._create_license_expression(component.concluded_license)
+                        if license_expr:
+                            rel = spdx.Relationship()
+                            rel._id = self._generate_relationship_id(
+                                len(self.relationship_elements)
+                            )
+                            rel.relationshipType = spdx.RelationshipType.hasConcludedLicense
+                            rel.from_ = package._id
+                            rel.to = [license_expr._id]
+                            rel.creationInfo = self.creation_info._id
+                            self.elements.append(rel)
+                            self.relationship_elements.append(rel)
+
+                    # Create hasDeclaredLicense relationship
+                    if component.declared_license and component.declared_license != "NOASSERTION":
+                        license_expr = self._create_license_expression(component.declared_license)
+                        if license_expr:
+                            rel = spdx.Relationship()
+                            rel._id = self._generate_relationship_id(
+                                len(self.relationship_elements)
+                            )
+                            rel.relationshipType = spdx.RelationshipType.hasDeclaredLicense
+                            rel.from_ = package._id
+                            rel.to = [license_expr._id]
+                            rel.creationInfo = self.creation_info._id
+                            self.elements.append(rel)
+                            self.relationship_elements.append(rel)
+
+            # Create license relationships for files
+            for file_obj in self.sbom_data.files.values():
+                file_element = self.file_elements.get(file_obj.path)
+                if file_element:
+                    # Create hasConcludedLicense relationship
+                    if file_obj.concluded_license and file_obj.concluded_license != "NOASSERTION":
+                        license_expr = self._create_license_expression(file_obj.concluded_license)
+                        if license_expr:
+                            rel = spdx.Relationship()
+                            rel._id = self._generate_relationship_id(
+                                len(self.relationship_elements)
+                            )
+                            rel.relationshipType = spdx.RelationshipType.hasConcludedLicense
+                            rel.from_ = file_element._id
+                            rel.to = [license_expr._id]
+                            rel.creationInfo = self.creation_info._id
+                            self.elements.append(rel)
+                            self.relationship_elements.append(rel)
+
+                    # Create hasDeclaredLicense relationships for each license in file
+                    if file_obj.license_info_in_file:
+                        for lic in file_obj.license_info_in_file:
+                            if lic != "NONE":
+                                license_expr = self._create_license_expression(lic)
+                                if license_expr:
+                                    rel = spdx.Relationship()
+                                    rel._id = self._generate_relationship_id(
+                                        len(self.relationship_elements)
+                                    )
+                                    rel.relationshipType = spdx.RelationshipType.hasDeclaredLicense
+                                    rel.from_ = file_element._id
+                                    rel.to = [license_expr._id]
+                                    rel.creationInfo = self.creation_info._id
+                                    self.elements.append(rel)
+                                    self.relationship_elements.append(rel)
+
+            # Create documents for each group
+            for sbom_doc in self.sbom_data.documents.values():
+                if not sbom_doc.components:
+                    continue
+                self._create_document(sbom_doc)
+
+            # Serialize each document to separate files
+            for doc_name, document in self.documents.items():
+                # Serialize to JSON-LD
+                jsonld_path = os.path.join(output_dir, f"{doc_name}.jsonld")
+                self._serialize_document_to_jsonld(document, jsonld_path)
+
+            _logger.info(f"SPDX 3.0 documents written to {output_dir}")
+            return True
+
+        except Exception as e:
+            _logger.error(f"Failed to serialize SPDX 3.0 document: {e}")
+            import traceback
+
+            _logger.debug(traceback.format_exc())
+            return False
+
+    def _serialize_document_to_jsonld(self, document: spdx.SpdxDocument, output_path: str):
+        """Serialize a single document to JSON-LD format."""
+        # Collect all elements referenced by this document
+        # document.element contains Element objects, so extract their IDs
+        document_element_ids = set()
+        if hasattr(document, 'element'):
+            for elem in document.element:
+                if hasattr(elem, '_id') and elem._id:
+                    document_element_ids.add(elem._id)
+
+        # Always include the document itself, creation info, and tool
+        elements_to_serialize = [document]
+        if self.creation_info:
+            elements_to_serialize.append(self.creation_info)
+        if self.tool:
+            elements_to_serialize.append(self.tool)
+
+        # Add all elements referenced by the document
+        for elem_id in document_element_ids:
+            # Find the element in our elements list
+            for elem in self.elements:
+                if hasattr(elem, '_id') and elem._id == elem_id:
+                    if elem not in elements_to_serialize:
+                        elements_to_serialize.append(elem)
+                    break
+
+        # Serialize all elements
+        elements_data = []
+        for element in elements_to_serialize:
+            try:
+                encoder = spdx.JSONLDEncoder()
+                state = spdx.EncodeState()
+                element.encode(encoder, state)
+                if encoder.data:
+                    elements_data.append(encoder.data)
+            except Exception as e:
+                _logger.warning(
+                    f"Failed to encode element {getattr(element, '_id', 'unknown')}: {e}"
+                )
+
+        complete_dict = {
+            "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
+            "@graph": elements_data,
+        }
+
+        # Post-process: Convert document.element and rootElement from full objects to ID references
+        for elem in elements_data:
+            if elem.get("type") == "SpdxDocument":
+                # Convert element references to IDs
+                if "element" in elem:
+                    element_refs = elem["element"]
+                    element_ids = []
+                    for ref in element_refs:
+                        if isinstance(ref, dict):
+                            elem_id = ref.get("spdxId") or ref.get("@id")
+                            if elem_id:
+                                element_ids.append(elem_id)
+                        elif isinstance(ref, str):
+                            element_ids.append(ref)
+                    elem["element"] = element_ids
+
+                # Convert rootElement references to IDs
+                if "rootElement" in elem:
+                    root_refs = elem["rootElement"]
+                    root_ids = []
+                    for ref in root_refs:
+                        if isinstance(ref, dict):
+                            root_id = ref.get("spdxId") or ref.get("@id")
+                            if root_id:
+                                root_ids.append(root_id)
+                        elif isinstance(ref, str):
+                            root_ids.append(ref)
+                    elem["rootElement"] = root_ids
+
+        with open(output_path, "w") as f:
+            json.dump(complete_dict, f, indent=2)
+
+        _logger.info(f"Written SPDX 3.0 JSON-LD to {output_path}")
