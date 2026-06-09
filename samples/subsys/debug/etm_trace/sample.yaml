@@ -1,0 +1,11 @@
+sample:
+  name: ETM instruction trace
+  description: Capture Arm CoreSight ETM instruction trace into an on-chip buffer
+tests:
+  sample.debug.etm_trace:
+    build_only: true
+    platform_allow:
+      - nrf54h20dk/nrf54h20/cpuapp
+    integration_platforms:
+      - nrf54h20dk/nrf54h20/cpuapp
+    tags: debug

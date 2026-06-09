@@ -615,11 +615,15 @@
 				};
 
 				etb: etb@4000 {
+					compatible = "arm,coresight-tmc";
 					reg = <0x4000 0x1000>;
+					arm,sink-mode = "etb";
 				};
 
 				etr: etr@5000 {
+					compatible = "arm,coresight-tmc";
 					reg = <0x5000 0x1000>;
+					arm,sink-mode = "etr";
 				};
 
 				cti210: cti@6000 {
@@ -1754,6 +1758,13 @@
 			#interrupt-cells = <2>;
 			interrupt-controller;
 			#address-cells = <1>;
+		};
+
+		etm: etm@e0041000 {
+			compatible = "arm,coresight-etm4x";
+			reg = <0xe0041000 0x1000>;
+			arm,trace-id = <0x10>;
+			status = "disabled";
 		};
 	};
 

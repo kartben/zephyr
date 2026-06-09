@@ -151,6 +151,118 @@ extern "C" {
 #define TSGEN_CNTCR_EN_Pos (0UL)
 #define TSGEN_CNTCR_EN_Msk (0x1UL << TSGEN_CNTCR_EN_Pos)
 
+/* ETM (Embedded Trace Macrocell, ETMv4 / ETM-M33) register offsets */
+#define CORESIGHT_ETM_TRCPRGCTLR_OFFSET    (0x004UL) /* Programming Control Register */
+#define CORESIGHT_ETM_TRCSTATR_OFFSET      (0x00CUL) /* Status Register */
+#define CORESIGHT_ETM_TRCCONFIGR_OFFSET    (0x010UL) /* Trace Configuration Register */
+#define CORESIGHT_ETM_TRCEVENTCTL0R_OFFSET (0x020UL) /* Event Control 0 Register */
+#define CORESIGHT_ETM_TRCEVENTCTL1R_OFFSET (0x024UL) /* Event Control 1 Register */
+#define CORESIGHT_ETM_TRCTSCTLR_OFFSET     (0x030UL) /* Timestamp Control Register */
+#define CORESIGHT_ETM_TRCSYNCPR_OFFSET     (0x034UL) /* Synchronization Period Register */
+#define CORESIGHT_ETM_TRCBBCTLR_OFFSET     (0x03CUL) /* Branch Broadcast Control Register */
+#define CORESIGHT_ETM_TRCTRACEIDR_OFFSET   (0x040UL) /* Trace ID Register */
+#define CORESIGHT_ETM_TRCVICTLR_OFFSET     (0x080UL) /* ViewInst Main Control Register */
+#define CORESIGHT_ETM_TRCOSLAR_OFFSET      (0x300UL) /* OS Lock Access Register */
+#define CORESIGHT_ETM_TRCPDCR_OFFSET       (0x310UL) /* Power Down Control Register */
+#define CORESIGHT_ETM_TRCPDSR_OFFSET       (0x314UL) /* Power Down Status Register */
+
+/* ETM Programming Control Register (TRCPRGCTLR) bit fields */
+#define CORESIGHT_ETM_TRCPRGCTLR_EN_Pos (0UL)
+#define CORESIGHT_ETM_TRCPRGCTLR_EN_Msk (0x1UL << CORESIGHT_ETM_TRCPRGCTLR_EN_Pos)
+
+/* ETM Status Register (TRCSTATR) bit fields */
+#define CORESIGHT_ETM_TRCSTATR_IDLE_Pos     (0UL)
+#define CORESIGHT_ETM_TRCSTATR_IDLE_Msk     (0x1UL << CORESIGHT_ETM_TRCSTATR_IDLE_Pos)
+#define CORESIGHT_ETM_TRCSTATR_PMSTABLE_Pos (1UL)
+#define CORESIGHT_ETM_TRCSTATR_PMSTABLE_Msk (0x1UL << CORESIGHT_ETM_TRCSTATR_PMSTABLE_Pos)
+
+/* ETM Trace Configuration Register (TRCCONFIGR) bit fields */
+#define CORESIGHT_ETM_TRCCONFIGR_BB_Pos (3UL) /* Branch broadcast enable */
+#define CORESIGHT_ETM_TRCCONFIGR_BB_Msk (0x1UL << CORESIGHT_ETM_TRCCONFIGR_BB_Pos)
+#define CORESIGHT_ETM_TRCCONFIGR_TS_Pos (11UL) /* Global timestamp tracing enable */
+#define CORESIGHT_ETM_TRCCONFIGR_TS_Msk (0x1UL << CORESIGHT_ETM_TRCCONFIGR_TS_Pos)
+
+/*
+ * Branch Broadcast Control Register (TRCBBCTLR) value that broadcasts branch
+ * target addresses across the whole memory map: exclude mode (MODE bit 8 set)
+ * with no address-range comparators selected excludes nothing.
+ */
+#define CORESIGHT_ETM_TRCBBCTLR_BROADCAST_ALL (0x1UL << 8)
+
+/* ETM ViewInst Main Control Register (TRCVICTLR) bit fields */
+#define CORESIGHT_ETM_TRCVICTLR_SSTATUS_Pos (9UL) /* Start/stop logic status (started) */
+#define CORESIGHT_ETM_TRCVICTLR_SSTATUS_Msk (0x1UL << CORESIGHT_ETM_TRCVICTLR_SSTATUS_Pos)
+/*
+ * Value programmed in TRCVICTLR to trace the whole instruction stream
+ * unconditionally: select resource selector 1 (architecturally always true) as
+ * the ViewInst event and mark the start/stop logic as started.
+ */
+#define CORESIGHT_ETM_TRCVICTLR_TRACE_ALL (CORESIGHT_ETM_TRCVICTLR_SSTATUS_Msk | 0x1UL)
+
+/* ETM OS Lock Access Register (TRCOSLAR) bit fields */
+#define CORESIGHT_ETM_TRCOSLAR_UNLOCK (0x0UL) /* Write 0 to clear the OS Lock */
+
+/* ETM Power Down Control Register (TRCPDCR) bit fields */
+#define CORESIGHT_ETM_TRCPDCR_PU_Pos (3UL) /* Keep ETM powered/accessible */
+#define CORESIGHT_ETM_TRCPDCR_PU_Msk (0x1UL << CORESIGHT_ETM_TRCPDCR_PU_Pos)
+
+/* ETM Power Down Status Register (TRCPDSR) bit fields */
+#define CORESIGHT_ETM_TRCPDSR_POWER_Pos (0UL) /* ETM is powered up */
+#define CORESIGHT_ETM_TRCPDSR_POWER_Msk (0x1UL << CORESIGHT_ETM_TRCPDSR_POWER_Pos)
+
+/*
+ * TMC (Trace Memory Controller) register offsets. A single TMC can be
+ * configured as an ETB (on-chip SRAM buffer), ETF (FIFO) or ETR (router to
+ * system memory). The ETR_* offsets above are a subset used by the Nordic STM
+ * path; the TMC_* set below is the generic superset used for ETM capture.
+ */
+#define TMC_RSZ_OFFSET   (0x004UL) /* RAM Size Register */
+#define TMC_STS_OFFSET   (0x00CUL) /* Status Register */
+#define TMC_RRD_OFFSET   (0x010UL) /* RAM Read Data Register */
+#define TMC_RRP_OFFSET   (0x014UL) /* RAM Read Pointer Register */
+#define TMC_RWP_OFFSET   (0x018UL) /* RAM Write Pointer Register */
+#define TMC_CTL_OFFSET   (0x020UL) /* Control Register */
+#define TMC_MODE_OFFSET  (0x028UL) /* Mode Register */
+#define TMC_DBALO_OFFSET (0x118UL) /* Data Buffer Address Low Register (ETR) */
+#define TMC_DBAHI_OFFSET (0x11CUL) /* Data Buffer Address High Register (ETR) */
+#define TMC_FFCR_OFFSET  (0x304UL) /* Formatter and Flush Control Register */
+#define TMC_DEVID_OFFSET (0xFC8UL) /* Device Configuration Register */
+
+/* TMC Control Register (CTL) bit fields */
+#define TMC_CTL_TRACECAPTEN_Pos (0UL)
+#define TMC_CTL_TRACECAPTEN_Msk (0x1UL << TMC_CTL_TRACECAPTEN_Pos)
+
+/* TMC Status Register (STS) bit fields */
+#define TMC_STS_FULL_Pos     (0UL) /* Buffer wrapped/full */
+#define TMC_STS_FULL_Msk     (0x1UL << TMC_STS_FULL_Pos)
+#define TMC_STS_TMCREADY_Pos (2UL) /* Formatter stopped and drained */
+#define TMC_STS_TMCREADY_Msk (0x1UL << TMC_STS_TMCREADY_Pos)
+
+/* TMC Mode Register (MODE) values */
+#define TMC_MODE_CIRCULAR_BUFFER (0x0UL)
+#define TMC_MODE_SW_FIFO         (0x1UL)
+#define TMC_MODE_HW_FIFO         (0x2UL)
+
+/* TMC Formatter and Flush Control Register (FFCR) bit fields */
+#define TMC_FFCR_ENFT_Pos    (0UL) /* Enable formatting */
+#define TMC_FFCR_ENFT_Msk    (0x1UL << TMC_FFCR_ENFT_Pos)
+#define TMC_FFCR_ENTI_Pos    (1UL) /* Enable trigger insertion */
+#define TMC_FFCR_ENTI_Msk    (0x1UL << TMC_FFCR_ENTI_Pos)
+#define TMC_FFCR_FONFLIN_Pos (4UL) /* Flush on flush-in */
+#define TMC_FFCR_FONFLIN_Msk (0x1UL << TMC_FFCR_FONFLIN_Pos)
+#define TMC_FFCR_FLUSHMAN_Pos (6UL) /* Manual flush */
+#define TMC_FFCR_FLUSHMAN_Msk (0x1UL << TMC_FFCR_FLUSHMAN_Pos)
+
+/* Value returned by TMC_RRD once the ETB/ETF FIFO has been fully drained */
+#define TMC_RRD_DRAINED (0xFFFFFFFFUL)
+
+/* TMC Device Configuration Register (DEVID) configuration type field */
+#define TMC_DEVID_CONFIGTYPE_Pos (6UL)
+#define TMC_DEVID_CONFIGTYPE_Msk (0x3UL << TMC_DEVID_CONFIGTYPE_Pos)
+#define TMC_DEVID_CONFIGTYPE_ETB (0x0UL) /* ETB: on-chip SRAM buffer */
+#define TMC_DEVID_CONFIGTYPE_ETR (0x1UL) /* ETR: router to system memory */
+#define TMC_DEVID_CONFIGTYPE_ETF (0x2UL) /* ETF: FIFO */
+
 /**
  * @brief Check if a CoreSight peripheral is locked
  *

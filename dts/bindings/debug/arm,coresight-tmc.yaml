@@ -1,0 +1,33 @@
+# Copyright (c) 2026 Benjamin Cabé
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Arm CoreSight Trace Memory Controller (TMC).
+
+  A TMC is a trace sink that can be configured as an Embedded Trace Buffer (ETB,
+  on-chip SRAM), an Embedded Trace FIFO (ETF) or an Embedded Trace Router (ETR,
+  routing trace to system memory). It captures the formatted CoreSight trace
+  stream emitted by trace sources such as an ETM or STM.
+
+compatible: "arm,coresight-tmc"
+
+include: [base.yaml]
+
+properties:
+  reg:
+    required: true
+
+  arm,sink-mode:
+    type: string
+    enum:
+      - etb
+      - etf
+      - etr
+    description: |
+      How this TMC instance is configured. Optional; if omitted it can be
+      derived at runtime from the TMC DEVID register.
+
+  memory-region:
+    type: phandle
+    description: |
+      For an ETR, the system memory region used as the trace buffer.

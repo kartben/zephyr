@@ -18,5 +18,10 @@ properties:
       - "unconfigured"
       - "stm-tpiu"
       - "stm-etr"
+      - "etm-etb"
+      - "etm-etr"
     description: >
-      Specifies which mode to configure the Coresight subsystem in.
+      Specifies which mode to configure the Coresight subsystem in. The "etm-*"
+      modes route Embedded Trace Macrocell (ETM) instruction trace through the
+      ATB fabric to the on-chip ETB or ETR sink for capture via the ETM trace
+      API (see CONFIG_ETM_TRACE).

@@ -1,0 +1,20 @@
+/*
+ * Copyright (c) 2026 Benjamin Cabé
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* Enable the CoreSight subsystem and route the application-core ETM trace into
+ * the on-chip ETB sink.
+ */
+&coresight {
+	status = "okay";
+	mode = "etm-etb";
+};
+
+&etm {
+	status = "okay";
+};
+
+&etb {
+	status = "okay";
+};

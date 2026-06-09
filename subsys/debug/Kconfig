@@ -361,6 +361,68 @@ config CS_TRACE_DEFMT
 	  Module is decoding data which is formatted using Coresight
 	  Trace Formatter, e.g. when data is put into ETR (Embedded Trace Router).
 
+# Workaround for not being able to have commas in macro arguments
+DT_COMPAT_ARM_CORESIGHT_ETM4X := arm,coresight-etm4x
+
+config ETM_TRACE
+	bool "Arm CoreSight ETM instruction tracing"
+	depends on CPU_CORTEX_M
+	depends on $(dt_compat_enabled,$(DT_COMPAT_ARM_CORESIGHT_ETM4X))
+	help
+	  Enable the Arm CoreSight Embedded Trace Macrocell (ETM) instruction trace
+	  API (etm_trace_start(), etm_trace_stop(), etm_trace_read()). The ETM trace
+	  source is routed to an on-chip trace sink (ETB or ETR) by the SoC CoreSight
+	  driver; the captured byte stream is meant to be decoded offline (e.g. with
+	  OpenCSD or ptm2human) against the application ELF.
+
+if ETM_TRACE
+
+choice ETM_TRACE_SINK
+	prompt "ETM trace sink"
+	default ETM_TRACE_SINK_ETB
+	help
+	  Selects the on-chip CoreSight sink that captures the ETM trace stream.
+
+config ETM_TRACE_SINK_ETB
+	bool "On-chip ETB (Embedded Trace Buffer)"
+	help
+	  Capture trace into the on-chip ETB SRAM buffer (referenced by the "etb"
+	  devicetree node label). The buffer is drained with etm_trace_read().
+
+config ETM_TRACE_SINK_ETR
+	bool "ETR (Embedded Trace Router) to RAM"
+	help
+	  Capture trace into a system RAM buffer through the ETR (referenced by the
+	  "etr" and "etr_buffer" devicetree node labels).
+
+endchoice
+
+config ETM_TRACE_BRANCH_BROADCAST
+	bool "Trace all branch target addresses"
+	help
+	  Enable ETM branch broadcasting so the trace can be decoded without access
+	  to the traced program image, at the cost of higher trace bandwidth.
+
+config ETM_TRACE_TIMESTAMPS
+	bool "Insert global timestamps into the trace"
+	help
+	  Enable global timestamp packets in the ETM trace stream.
+
+config ETM_TRACE_SYNC_PERIOD
+	int "Trace synchronization period (log2 of bytes)"
+	default 10
+	range 8 20
+	help
+	  Period, expressed as a power-of-two number of bytes, between ETM
+	  synchronization packets. Smaller values ease decoder resynchronization at
+	  the cost of higher trace bandwidth.
+
+module = ETM_TRACE
+module-str = etm_trace
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # ETM_TRACE
+
 config CPU_LOAD
 	select TRACING
 	depends on CPU_CORTEX_M || RISCV || CPU_CORTEX_A || XTENSA

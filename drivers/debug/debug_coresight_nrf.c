@@ -32,10 +32,16 @@ LOG_MODULE_REGISTER(cs_trace, CONFIG_DEBUG_CORESIGHT_NRF_LOG_LEVEL);
 	BIT(CONFIG_DEBUG_CORESIGHT_NRF_ATB_TRACE_ID_STM_GLOBAL >> 4)
 #define ATBFUNNEL211_STM_ENS_MASK BIT(2)
 
+#if DT_NODE_EXISTS(DT_NODELABEL(etm))
+#define ATBREPLICATOR_IDFILTER_FORWARD_ETM BIT(DT_PROP(DT_NODELABEL(etm), arm_trace_id) >> 4)
+#endif
+
 enum coresight_nrf_mode {
 	CORESIGHT_NRF_MODE_UNCONFIGURED,
 	CORESIGHT_NRF_MODE_STM_TPIU,
 	CORESIGHT_NRF_MODE_STM_ETR,
+	CORESIGHT_NRF_MODE_ETM_ETB,
+	CORESIGHT_NRF_MODE_ETM_ETR,
 };
 
 struct coresight_nrf_config {
@@ -230,6 +236,37 @@ static int coresight_nrf_init_stm_tpiu(void)
 	return 0;
 }
 
+#if DT_NODE_EXISTS(DT_NODELABEL(etm))
+static int coresight_nrf_init_etm(void)
+{
+	mem_addr_t atbfunnel211 = DT_REG_ADDR(DT_NODELABEL(atbfunnel211));
+	mem_addr_t atbreplicator210 = DT_REG_ADDR(DT_NODELABEL(atbreplicator210));
+	mem_addr_t atbreplicator213 = DT_REG_ADDR(DT_NODELABEL(atbreplicator213));
+
+	/*
+	 * Route the application-core ETM trace ID through the ATB fabric to the
+	 * on-chip sink (ETB/ETR). All funnel input ports are enabled so the ETM
+	 * stream reaches the sink branch, and the replicators forward the ETM ID
+	 * to the sink-side output (channel 1).
+	 *
+	 * The exact funnel/replicator ports carrying ETM trace on the nRF54H20 TDD
+	 * should be confirmed against the hardware specification; this mirrors the
+	 * STM sink path and is the routing exercised during bring-up.
+	 */
+	nrf_atbfunnel_init(atbfunnel211, 0xFF);
+	nrf_atbreplicator_init(atbreplicator210, ATBREPLICATOR_IDFILTER_FORWARD_ETM, false, true);
+	nrf_atbreplicator_init(atbreplicator213, ATBREPLICATOR_IDFILTER_FORWARD_ETM, false, true);
+
+	nrf_tsgen_init();
+
+	/*
+	 * The ETM trace source and the ETB/ETR sink are programmed by the ETM
+	 * trace API (CONFIG_ETM_TRACE) when the application calls etm_trace_start().
+	 */
+	return 0;
+}
+#endif
+
 static int coresight_nrf_init(const struct device *dev)
 {
 	int err;
@@ -262,6 +299,12 @@ static int coresight_nrf_init(const struct device *dev)
 		size_t buf_word_len = DT_REG_SIZE(DT_NODELABEL(etr_buffer)) / sizeof(uint32_t);
 
 		return coresight_nrf_init_stm_etr(etr_buffer, buf_word_len);
+	}
+#endif
+#if DT_NODE_EXISTS(DT_NODELABEL(etm))
+	case CORESIGHT_NRF_MODE_ETM_ETB:
+	case CORESIGHT_NRF_MODE_ETM_ETR: {
+		return coresight_nrf_init_etm();
 	}
 #endif
 	default: {

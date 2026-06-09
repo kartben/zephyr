@@ -1,0 +1,26 @@
+# Copyright (c) 2026 Benjamin Cabé
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Arm CoreSight Embedded Trace Macrocell (ETMv4 / ETM-M33).
+
+  The ETM is a trace source that traces the executed instruction stream of a
+  CPU. Its ATB output is routed through the SoC CoreSight trace fabric to a sink
+  (ETB/ETF/ETR). The captured stream is decoded offline against the application
+  image.
+
+compatible: "arm,coresight-etm4x"
+
+include: [base.yaml]
+
+properties:
+  reg:
+    required: true
+
+  arm,trace-id:
+    type: int
+    default: 0x10
+    description: |
+      ATB trace ID assigned to this ETM. Must match the ID forwarded to the
+      trace sink by the SoC trace fabric. The values 0x00 and 0x70-0x7F are
+      reserved by the CoreSight architecture and must not be used.

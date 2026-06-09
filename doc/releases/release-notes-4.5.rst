@@ -137,6 +137,11 @@ New APIs and options
     * :c:func:`bt_mesh_stat_lpn_timing_get`
     * :c:func:`bt_mesh_stat_lpn_timing_reset`
 
+* Debugging
+
+  * Arm CoreSight ETM instruction trace (:ref:`etm_trace`): :c:func:`etm_trace_start`,
+    :c:func:`etm_trace_stop`, :c:func:`etm_trace_read`, :c:func:`etm_trace_get_size`.
+
 * Devicetree
 
   * :c:macro:`DT_IRQN_BY_NAME`

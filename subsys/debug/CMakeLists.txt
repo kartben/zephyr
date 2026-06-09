@@ -41,6 +41,16 @@ zephyr_sources_ifdef(
 )
 
 zephyr_sources_ifdef(
+  CONFIG_ETM_TRACE
+  coresight/etm.c
+)
+# The generic CoreSight register HAL lives next to the platform debug drivers.
+zephyr_include_directories_ifdef(
+  CONFIG_ETM_TRACE
+  ${ZEPHYR_BASE}/drivers/debug
+)
+
+zephyr_sources_ifdef(
   CONFIG_CPU_LOAD
   cpu_load.c
   )
