@@ -418,14 +418,16 @@ Install the Zephyr SDK
 **********************
 
 The :ref:`Zephyr Software Development Kit (SDK) <toolchain_zephyr_sdk>`
-contains toolchains for each of Zephyr's supported architectures, which
-include a compiler, assembler, linker and other programs required to build
-Zephyr applications.
+contains toolchains for each of Zephyr's supported architectures. Those
+toolchains include the compiler, assembler, linker, and other programs
+required to build Zephyr applications for your target board.
 
 It also contains additional host tools, such as custom QEMU and OpenOCD builds
-that are used to emulate, flash and debug Zephyr applications.
+that are used to emulate, flash, and debug Zephyr applications.
 
-Install the Zephyr SDK with ``west sdk install`` from the Zephyr repository:
+Run ``west sdk install`` from the Zephyr repository to download the SDK
+and populate it with the toolchains and host tools needed to build and
+debug Zephyr applications on this machine:
 
 .. tabs::
 
