@@ -113,21 +113,25 @@ The current minimum required versions for the main dependencies are:
 
       .. _install_dependencies_macos:
 
-      #. Install `Homebrew <https://brew.sh/>`_:
+      #. Install `Homebrew <https://brew.sh/>`_ so you have a single package
+         manager to install and update the tools Zephyr needs:
 
          .. code-block:: bash
 
             /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
       #. After the Homebrew installation script completes, follow the on-screen
-         instructions to add the Homebrew installation to the path.
+         instructions to add Homebrew to your path so later commands can find
+         ``brew`` and the tools it installs:
 
          .. code-block:: bash
 
             (echo; echo 'eval "$(/opt/homebrew/bin/brew shellenv)"') >> ~/.zprofile
             source ~/.zprofile
 
-      #. Use ``brew`` to install the required dependencies:
+      #. Use ``brew`` to install the required dependencies. These packages provide
+         the build system, Python tooling, emulation support, and flashing
+         utilities Zephyr needs:
 
          .. code-block:: bash
 
