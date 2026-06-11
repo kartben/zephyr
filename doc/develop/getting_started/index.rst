@@ -178,7 +178,9 @@ The current minimum required versions for the main dependencies are:
          To do so, press the Windows key, type ``cmd.exe`` or PowerShell and
          click on the result.
 
-      #. Use ``winget`` to install the required dependencies:
+      #. Use ``winget`` to install the required dependencies. These packages
+         provide the build system, Python tooling, version control, device
+         tree compiler, and archive utilities Zephyr needs:
 
          .. code-block:: bat
 
