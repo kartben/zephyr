@@ -26,8 +26,23 @@
  * Copyright (c) 2005, Keir Fraser <keir@xensource.com>
  */
 
+/**
+ * @file
+ * @brief Imported Xen scheduler ABI definitions.
+ * @ingroup xen_public_sched
+ */
+/**
+ * @defgroup xen_public_sched Xen scheduler ABI
+ * @ingroup xen_public_abi
+ * @brief Collect the imported Xen scheduler-operation structures and constants.
+ * @{
+ */
+
 #ifndef __XEN_PUBLIC_SCHED_H__
 #define __XEN_PUBLIC_SCHED_H__
+
+/** @cond INTERNAL_HIDDEN */
+
 
 #include "event_channel.h"
 
@@ -197,5 +212,9 @@ DEFINE_XEN_GUEST_HANDLE(sched_pin_override_t);
 
 /* Maximum valid shutdown reason. */
 #define SHUTDOWN_MAX		5
+
+/** @endcond */
+
+/** @} */
 
 #endif /* __XEN_PUBLIC_SCHED_H__ */

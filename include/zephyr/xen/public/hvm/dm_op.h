@@ -4,8 +4,23 @@
  *
  */
 
+/**
+ * @file
+ * @brief Imported Xen device-model ABI definitions.
+ * @ingroup xen_public_hvm_dmops
+ */
+/**
+ * @defgroup xen_public_hvm_dmops Xen device-model ABI
+ * @ingroup xen_public_abi
+ * @brief Collect the imported Xen device-model operation structures and constants.
+ * @{
+ */
+
 #ifndef __XEN_PUBLIC_HVM_DM_OP_H__
 #define __XEN_PUBLIC_HVM_DM_OP_H__
+
+/** @cond INTERNAL_HIDDEN */
+
 
 #include "../xen.h"
 #include "../event_channel.h"
@@ -489,6 +504,10 @@ DEFINE_XEN_GUEST_HANDLE(xen_dm_op_buf_t);
  * @bufs[1..] may be referenced in the parameters for the purposes of
  * passing extra information to or from the domain.
  */
+
+/** @endcond */
+
+/** @} */
 
 #endif /* __XEN_PUBLIC_HVM_DM_OP_H__ */
 

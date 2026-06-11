@@ -26,8 +26,34 @@
  * Copyright (c) 2004, K A Fraser
  */
 
+/**
+ * @file
+ * @brief Imported Xen core ABI definitions.
+ * @ingroup xen_public_core
+ */
+
+/**
+ * @defgroup xen_support Xen hypervisor support
+ * @brief Provide Zephyr interfaces for interacting with Xen guests and domains.
+ */
+
+/**
+ * @defgroup xen_public_abi Xen public ABI
+ * @ingroup xen_support
+ * @brief Collect the imported Xen public interface headers bundled with Zephyr.
+ */
+
+/**
+ * @defgroup xen_public_core Xen core ABI
+ * @ingroup xen_public_abi
+ * @brief Expose the low-level Xen identifiers, hypercall numbers, and shared-memory layouts used by the Zephyr Xen support code.
+ * @{
+ */
 #ifndef __XEN_PUBLIC_XEN_H__
 #define __XEN_PUBLIC_XEN_H__
+
+/** @cond INTERNAL_HIDDEN */
+
 
 #if defined(CONFIG_ARM64)
 #include "arch-arm.h"
@@ -393,5 +419,9 @@ typedef struct xenctl_bitmap xenctl_bitmap_t;
 #endif
 
 #endif /* !__ASSEMBLY__ */
+
+/** @endcond */
+
+/** @} */
 
 #endif /* __XEN_PUBLIC_XEN_H__ */

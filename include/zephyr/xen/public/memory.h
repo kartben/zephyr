@@ -26,8 +26,23 @@
  * Copyright (c) 2005, Keir Fraser <keir@xensource.com>
  */
 
+/**
+ * @file
+ * @brief Imported Xen memory-management ABI definitions.
+ * @ingroup xen_public_memory
+ */
+/**
+ * @defgroup xen_public_memory Xen memory ABI
+ * @ingroup xen_public_abi
+ * @brief Collect the imported Xen memory-operation structures and constants.
+ * @{
+ */
+
 #ifndef __XEN_PUBLIC_MEMORY_H__
 #define __XEN_PUBLIC_MEMORY_H__
+
+/** @cond INTERNAL_HIDDEN */
+
 
 #include "xen.h"
 
@@ -238,5 +253,9 @@ struct xen_mem_acquire_resource {
 };
 typedef struct xen_mem_acquire_resource xen_mem_acquire_resource_t;
 DEFINE_XEN_GUEST_HANDLE(xen_mem_acquire_resource_t);
+
+/** @endcond */
+
+/** @} */
 
 #endif /* __XEN_PUBLIC_MEMORY_H__ */

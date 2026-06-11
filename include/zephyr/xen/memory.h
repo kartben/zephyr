@@ -35,7 +35,7 @@
  * @retval -errno Negative error code returned by the hypercall.
  */
 int xendom_add_to_physmap(int domid, unsigned long idx, unsigned int space,
-  xen_pfn_t gpfn);
+			  xen_pfn_t gpfn);
 
 /**
  * @brief Add multiple mappings to a domain physmap.
@@ -53,8 +53,8 @@ int xendom_add_to_physmap(int domid, unsigned long idx, unsigned int space,
  * @retval -errno Negative error code returned by the hypercall.
  */
 int xendom_add_to_physmap_batch(int domid, int foreign_domid,
-unsigned int space, unsigned int size,
-xen_ulong_t *idxs, xen_pfn_t *gpfns, int *errs);
+				unsigned int space, unsigned int size,
+				xen_ulong_t *idxs, xen_pfn_t *gpfns, int *errs);
 
 /**
  * @brief Remove a mapping from a domain physmap.
@@ -80,8 +80,8 @@ int xendom_remove_from_physmap(int domid, xen_pfn_t gpfn);
  * @retval -errno Negative error code returned by the hypercall.
  */
 int xendom_populate_physmap(int domid, unsigned int extent_order,
-    unsigned int nr_extents, unsigned int mem_flags,
-    xen_pfn_t *extent_start);
+			    unsigned int nr_extents, unsigned int mem_flags,
+			    xen_pfn_t *extent_start);
 
 /**
  * @brief Acquire a Xen-managed resource mapping for a domain.
@@ -98,7 +98,7 @@ int xendom_populate_physmap(int domid, unsigned int extent_order,
  * @retval -errno Negative error code returned by the hypercall.
  */
 int xendom_acquire_resource(domid_t domid, uint16_t type, uint32_t id, uint64_t frame,
-    uint32_t *nr_frames, xen_pfn_t *frame_list);
+			    uint32_t *nr_frames, xen_pfn_t *frame_list);
 
 /** @} */
 

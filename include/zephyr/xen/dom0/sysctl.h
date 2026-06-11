@@ -57,7 +57,7 @@ int xen_sysctl_physinfo(struct xen_sysctl_physinfo *info);
  * @retval -errno Negative error code returned by the hypercall.
  */
 int xen_sysctl_getdomaininfo(struct xen_domctl_getdomaininfo *domaininfo,
-     uint16_t first, uint16_t num);
+			     uint16_t first, uint16_t num);
 
 /** @} */
 

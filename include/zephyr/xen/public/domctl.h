@@ -8,8 +8,23 @@
  * Copyright (c) 2002-2006, K Fraser
  */
 
+/**
+ * @file
+ * @brief Imported Xen domctl ABI definitions.
+ * @ingroup xen_public_domctl
+ */
+/**
+ * @defgroup xen_public_domctl Xen domctl ABI
+ * @ingroup xen_public_abi
+ * @brief Collect the imported Xen domain-control command structures and constants.
+ * @{
+ */
+
 #ifndef __XEN_PUBLIC_DOMCTL_H__
 #define __XEN_PUBLIC_DOMCTL_H__
+
+/** @cond INTERNAL_HIDDEN */
+
 
 #ifndef CONFIG_XEN_DOM0
 #error "domctl operations are intended for use by node control tools only"
@@ -530,5 +545,9 @@ struct xen_domctl {
 };
 typedef struct xen_domctl xen_domctl_t;
 DEFINE_XEN_GUEST_HANDLE(xen_domctl_t);
+
+/** @endcond */
+
+/** @} */
 
 #endif /* __XEN_PUBLIC_DOMCTL_H__ */

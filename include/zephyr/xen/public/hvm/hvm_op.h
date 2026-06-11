@@ -22,8 +22,23 @@
  * Copyright (c) 2007, Keir Fraser
  */
 
+/**
+ * @file
+ * @brief Imported Xen HVM operation ABI definitions.
+ * @ingroup xen_public_hvm_ops
+ */
+/**
+ * @defgroup xen_public_hvm_ops Xen HVM operation ABI
+ * @ingroup xen_public_abi
+ * @brief Collect the imported Xen HVM operation structures and constants.
+ * @{
+ */
+
 #ifndef __XEN_PUBLIC_HVM_HVM_OP_H__
 #define __XEN_PUBLIC_HVM_HVM_OP_H__
+
+/** @cond INTERNAL_HIDDEN */
+
 
 #include "../xen.h"
 
@@ -51,5 +66,9 @@ DEFINE_XEN_GUEST_HANDLE(xen_hvm_param_t);
  * the pointer pair gets read atomically:
  */
 #define HVM_IOREQSRV_BUFIOREQ_ATOMIC 2
+
+/** @endcond */
+
+/** @} */
 
 #endif /* __XEN_PUBLIC_HVM_HVM_OP_H__ */

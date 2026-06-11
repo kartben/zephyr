@@ -4,8 +4,23 @@
  * Copyright (c) 2004, Intel Corporation.
  */
 
+/**
+ * @file
+ * @brief Imported Xen I/O-request ABI definitions.
+ * @ingroup xen_public_hvm_ioreq
+ */
+/**
+ * @defgroup xen_public_hvm_ioreq Xen I/O-request ABI
+ * @ingroup xen_public_abi
+ * @brief Collect the imported Xen I/O-request structures and constants.
+ * @{
+ */
+
 #ifndef _IOREQ_H_
 #define _IOREQ_H_
+
+/** @cond INTERNAL_HIDDEN */
+
 
 #define IOREQ_READ  1
 #define IOREQ_WRITE 0
@@ -111,6 +126,10 @@ typedef struct buffered_iopage buffered_iopage_t;
 #define ACPI_PM_TMR_BLK_ADDRESS   ACPI_PM_TMR_BLK_ADDRESS_V0
 #define ACPI_GPE0_BLK_ADDRESS     ACPI_GPE0_BLK_ADDRESS_V0
 #define ACPI_GPE0_BLK_LEN         ACPI_GPE0_BLK_LEN_V0
+
+/** @endcond */
+
+/** @} */
 
 #endif /* _IOREQ_H_ */
 

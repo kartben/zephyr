@@ -22,8 +22,23 @@
  * Copyright (c) 2007, Keir Fraser
  */
 
+/**
+ * @file
+ * @brief Imported Xen HVM parameter ABI definitions.
+ * @ingroup xen_public_hvm_params
+ */
+/**
+ * @defgroup xen_public_hvm_params Xen HVM parameter ABI
+ * @ingroup xen_public_abi
+ * @brief Collect the imported Xen HVM parameter identifiers exposed to Zephyr.
+ * @{
+ */
+
 #ifndef __XEN_PUBLIC_HVM_PARAMS_H__
 #define __XEN_PUBLIC_HVM_PARAMS_H__
+
+/** @cond INTERNAL_HIDDEN */
+
 
 #include "hvm_op.h"
 
@@ -37,5 +52,9 @@
 /* Console debug shared memory ring and event channel */
 #define HVM_PARAM_CONSOLE_PFN		17
 #define HVM_PARAM_CONSOLE_EVTCHN	18
+
+/** @endcond */
+
+/** @} */
 
 #endif /* __XEN_PUBLIC_HVM_PARAMS_H__ */

@@ -26,8 +26,23 @@
  * Copyright (c) 2005, Keir Fraser
  */
 
+/**
+ * @file
+ * @brief Imported Xen console ABI definitions.
+ * @ingroup xen_public_console
+ */
+/**
+ * @defgroup xen_public_console Xen console ABI
+ * @ingroup xen_public_abi
+ * @brief Collect the imported Xen console ring structures and constants.
+ * @{
+ */
+
 #ifndef __XEN_PUBLIC_IO_CONSOLE_H__
 #define __XEN_PUBLIC_IO_CONSOLE_H__
+
+/** @cond INTERNAL_HIDDEN */
+
 
 typedef uint32_t XENCONS_RING_IDX;
 
@@ -44,5 +59,9 @@ struct xencons_interface {
 #include "ring.h"
 DEFINE_XEN_FLEX_RING(xencons);
 #endif
+
+/** @endcond */
+
+/** @} */
 
 #endif /* __XEN_PUBLIC_IO_CONSOLE_H__ */

@@ -26,8 +26,23 @@
  * Copyright (c) 2003-2004, K A Fraser.
  */
 
+/**
+ * @file
+ * @brief Imported Xen event-channel ABI definitions.
+ * @ingroup xen_public_event_channels
+ */
+/**
+ * @defgroup xen_public_event_channels Xen event-channel ABI
+ * @ingroup xen_public_abi
+ * @brief Collect the imported Xen event-channel commands, structures, and constants.
+ * @{
+ */
+
 #ifndef __XEN_PUBLIC_EVENT_CHANNEL_H__
 #define __XEN_PUBLIC_EVENT_CHANNEL_H__
+
+/** @cond INTERNAL_HIDDEN */
+
 
 #include "xen.h"
 
@@ -212,5 +227,9 @@ struct evtchn_set_priority {
 typedef struct evtchn_set_priority evtchn_set_priority_t;
 
 #define EVTCHN_2L_NR_CHANNELS (sizeof(xen_ulong_t) * sizeof(xen_ulong_t) * 64)
+
+/** @endcond */
+
+/** @} */
 
 #endif /* __XEN_PUBLIC_EVENT_CHANNEL_H__ */

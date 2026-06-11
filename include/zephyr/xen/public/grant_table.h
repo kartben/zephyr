@@ -27,8 +27,23 @@
  * Copyright (c) 2004, K A Fraser
  */
 
+/**
+ * @file
+ * @brief Imported Xen grant-table ABI definitions.
+ * @ingroup xen_public_grant_tables
+ */
+/**
+ * @defgroup xen_public_grant_tables Xen grant-table ABI
+ * @ingroup xen_public_abi
+ * @brief Collect the imported Xen grant-table structures, operations, and status codes.
+ * @{
+ */
+
 #ifndef __XEN_PUBLIC_GRANT_TABLE_H__
 #define __XEN_PUBLIC_GRANT_TABLE_H__
+
+/** @cond INTERNAL_HIDDEN */
+
 
 #include "xen.h"
 
@@ -411,5 +426,9 @@ DEFINE_XEN_GUEST_HANDLE(gnttab_query_size_t);
 	"page address size too large",			\
 	"operation not done; try again"			\
 }
+
+/** @endcond */
+
+/** @} */
 
 #endif /* __XEN_PUBLIC_GRANT_TABLE_H__ */

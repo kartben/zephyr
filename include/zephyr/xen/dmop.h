@@ -57,8 +57,8 @@ int dmop_destroy_ioreq_server(domid_t domid, ioservid_t id);
  * @retval 0 If the mapping was created successfully.
  * @retval -errno Negative error code returned by the hypercall.
  */
-int dmop_map_io_range_to_ioreq_server(domid_t domid, ioservid_t id, uint32_t type, uint64_t start,
-      uint64_t end);
+int dmop_map_io_range_to_ioreq_server(domid_t domid, ioservid_t id, uint32_t type,
+				      uint64_t start, uint64_t end);
 
 /**
  * @brief Remove an I/O range from an I/O request server.
@@ -73,7 +73,7 @@ int dmop_map_io_range_to_ioreq_server(domid_t domid, ioservid_t id, uint32_t typ
  * @retval -errno Negative error code returned by the hypercall.
  */
 int dmop_unmap_io_range_from_ioreq_server(domid_t domid, ioservid_t id, uint32_t type,
-  uint64_t start, uint64_t end);
+					  uint64_t start, uint64_t end);
 
 /**
  * @brief Enable or disable an I/O request server.

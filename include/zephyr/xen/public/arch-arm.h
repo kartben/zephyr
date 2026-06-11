@@ -26,8 +26,23 @@
  * Copyright 2011 (C) Citrix Systems
  */
 
+/**
+ * @file
+ * @brief Imported Xen ARM guest ABI definitions.
+ * @ingroup xen_public_arm
+ */
+/**
+ * @defgroup xen_public_arm Xen ARM ABI
+ * @ingroup xen_public_abi
+ * @brief Collect the imported ARM-specific Xen guest structures, constants, and helper macros.
+ * @{
+ */
+
 #ifndef __XEN_PUBLIC_ARCH_ARM_H__
 #define __XEN_PUBLIC_ARCH_ARM_H__
+
+/** @cond INTERNAL_HIDDEN */
+
 
 #include <zephyr/kernel.h>
 
@@ -476,5 +491,9 @@ typedef uint64_t xen_callback_t;
 /* Stub definition of PMU structure */
 typedef struct xen_pmu_arch { uint8_t dummy; } xen_pmu_arch_t;
 #endif /* __ASSEMBLY__ */
+
+/** @endcond */
+
+/** @} */
 
 #endif /* __XEN_PUBLIC_ARCH_ARM_H__ */

@@ -9,8 +9,23 @@
  *
  */
 
+/**
+ * @file
+ * @brief Imported Xen sysctl ABI definitions.
+ * @ingroup xen_public_sysctl
+ */
+/**
+ * @defgroup xen_public_sysctl Xen sysctl ABI
+ * @ingroup xen_public_abi
+ * @brief Collect the imported Xen system-control command structures and constants.
+ * @{
+ */
+
 #ifndef __XEN_PUBLIC_SYSCTL_H__
 #define __XEN_PUBLIC_SYSCTL_H__
+
+/** @cond INTERNAL_HIDDEN */
+
 
 #if !defined(CONFIG_XEN_DOM0)
 #error "sysctl operations are intended for use by node control tools only"
@@ -142,5 +157,9 @@ struct xen_sysctl {
 
 typedef struct xen_sysctl xen_sysctl_t;
 DEFINE_XEN_GUEST_HANDLE(xen_sysctl_t);
+
+/** @endcond */
+
+/** @} */
 
 #endif /* __XEN_PUBLIC_SYSCTL_H__ */
