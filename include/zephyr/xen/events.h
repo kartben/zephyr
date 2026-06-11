@@ -35,9 +35,7 @@
 typedef void (*evtchn_cb_t)(void *priv);
 
 /** @cond INTERNAL_HIDDEN */
-/**
- * @brief Internal event-channel callback slot.
- */
+/* Internal event-channel callback slot. */
 struct event_channel_handle {
 	evtchn_cb_t cb;
 	void *priv;

@@ -284,18 +284,6 @@ int xen_domctl_max_vcpus(int domid, int max_vcpus);
 int xen_domctl_createdomain(int *domid, struct xen_domctl_createdomain *config);
 
 /**
- * @brief Destroy a domain.
- *
- * @kconfig_dep{CONFIG_XEN_DOM0}
- *
- * @param domid Target domain identifier.
- *
- * @retval 0 If the domain was destroyed successfully.
- * @retval -errno Negative error code returned by the hypercall.
- */
-int xen_domctl_destroydomain(int domid);
-
-/**
  * @brief Clean and invalidate caches for a guest memory range.
  *
  * @kconfig_dep{CONFIG_XEN_DOM0}
@@ -307,6 +295,18 @@ int xen_domctl_destroydomain(int domid);
  * @retval -errno Negative error code returned by the hypercall.
  */
 int xen_domctl_cacheflush(int domid, struct xen_domctl_cacheflush *cacheflush);
+
+/**
+ * @brief Destroy a domain.
+ *
+ * @kconfig_dep{CONFIG_XEN_DOM0}
+ *
+ * @param domid Target domain identifier.
+ *
+ * @retval 0 If the domain was destroyed successfully.
+ * @retval -errno Negative error code returned by the hypercall.
+ */
+int xen_domctl_destroydomain(int domid);
 
 /**
  * @brief Query runtime information for one domain vCPU.
