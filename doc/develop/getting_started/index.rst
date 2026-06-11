@@ -369,8 +369,9 @@ stay separate from your system Python installation.
                cd zephyrproject
                west update
 
-#. Export a :ref:`Zephyr CMake package <cmake_pkg>`. This allows CMake to
-   automatically load boilerplate code required for building Zephyr
+#. Export a :ref:`Zephyr CMake package <cmake_pkg>`. This registers your
+   current Zephyr checkout in CMake's user package registry so
+   ``find_package(Zephyr)`` can locate it automatically when building
    applications.
 
    .. code-block:: shell
