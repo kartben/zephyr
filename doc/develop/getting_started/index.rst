@@ -411,7 +411,8 @@ stay separate from your system Python installation.
 
    .. note::
 
-      Installing these dependencies can downgrade or upgrade west itself.
+      Installing these dependencies can downgrade or upgrade west itself
+      to match the version required by the Zephyr tree you checked out.
 
 Install the Zephyr SDK
 **********************
