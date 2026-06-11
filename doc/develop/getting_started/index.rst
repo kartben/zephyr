@@ -81,7 +81,9 @@ The current minimum required versions for the main dependencies are:
 
       .. _install_dependencies_ubuntu:
 
-      #. Use ``apt`` to install the required dependencies:
+      #. Use ``apt`` to install the required dependencies. These packages provide
+         the build system, compilers, Python tooling, and flashing utilities
+         Zephyr needs:
 
          .. code-block:: bash
 
@@ -94,7 +96,8 @@ The current minimum required versions for the main dependencies are:
             Due to the unavailability of ``gcc-multilib`` and ``g++-multilib`` on AArch64
             (ARM64) systems, you may need to omit them from the list of packages to install.
 
-      #. Verify the versions of the main dependencies installed on your system by entering:
+      #. Verify the versions of the main dependencies to confirm they meet the
+         minimums in the table above:
 
          .. code-block:: bash
 
