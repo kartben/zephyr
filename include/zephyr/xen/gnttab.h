@@ -61,7 +61,7 @@ int32_t gnttab_alloc_and_grant(void **map, bool readonly);
  * @brief Allocate pages that can host grant mappings.
  *
  * The returned range is suitable for use as ``host_addr`` in
- * :c:struct:`gnttab_map_grant_ref` entries.
+ * ``struct gnttab_map_grant_ref`` entries.
  *
  * @param npages Number of pages to allocate.
  *
