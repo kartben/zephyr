@@ -16,11 +16,6 @@
 #include <zephyr/xen/public/xen.h>
 
 /**
- * @defgroup xen_support Xen hypervisor support
- * @brief Provide Zephyr interfaces for interacting with Xen guests and domains.
- */
-
-/**
  * @defgroup xen_internal Xen internal support
  * @ingroup xen_support
  * @brief Share low-level helpers used by the Zephyr Xen support code.

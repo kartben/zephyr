@@ -25,22 +25,22 @@
  * @{
  */
 
+/** @cond INTERNAL_HIDDEN */
 /**
  * @brief Runtime data used by the Xen console UART driver.
  */
 struct hvc_xen_data {
-/** @cond INTERNAL_HIDDEN */
-DEVICE_MMIO_RAM;    /* should be first */
-const struct device *dev;
-struct xencons_interface *intf;
-uint64_t evtchn;
+	DEVICE_MMIO_RAM;	/* should be first */
+	const struct device *dev;
+	struct xencons_interface *intf;
+	uint64_t evtchn;
 
 #ifdef CONFIG_UART_INTERRUPT_DRIVEN
-uart_irq_callback_user_data_t irq_cb;
-void *irq_cb_data;
+	uart_irq_callback_user_data_t irq_cb;
+	void *irq_cb_data;
 #endif /* CONFIG_UART_INTERRUPT_DRIVEN */
-/** @endcond */
 };
+/** @endcond */
 
 /**
  * @brief Initialize the Xen console UART instance.
