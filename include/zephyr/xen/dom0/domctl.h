@@ -182,7 +182,7 @@ int xen_domctl_set_address_size(int domid, int addr_size);
  * @retval -errno Negative error code returned by the hypercall.
  */
 int xen_domctl_iomem_permission(int domid, uint64_t first_mfn,
-uint64_t nr_mfns, uint8_t allow_access);
+				uint64_t nr_mfns, uint8_t allow_access);
 
 /**
  * @brief Map or unmap a machine-memory range into a guest frame range.

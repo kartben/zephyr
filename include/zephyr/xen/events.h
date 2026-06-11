@@ -126,7 +126,7 @@ int alloc_unbound_event_channel_dom0(domid_t dom, domid_t remote_dom);
  * @retval -errno Negative error code returned by the hypercall or the local bind step.
  */
 int bind_interdomain_event_channel(domid_t remote_dom, evtchn_port_t remote_port,
-evtchn_cb_t cb, void *data);
+				   evtchn_cb_t cb, void *data);
 
 /**
  * @brief Attach a callback to an already allocated local event channel.

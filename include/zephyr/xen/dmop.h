@@ -58,7 +58,8 @@ int dmop_destroy_ioreq_server(domid_t domid, ioservid_t id);
  * @retval -errno Negative error code returned by the hypercall.
  */
 int dmop_map_io_range_to_ioreq_server(domid_t domid, ioservid_t id,
-				      uint32_t type, uint64_t start,
+				      uint32_t type,
+				      uint64_t start,
 				      uint64_t end);
 
 /**

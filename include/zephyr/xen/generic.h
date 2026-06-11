@@ -43,9 +43,10 @@
  * "old", then store and return "new". Otherwise, return the "old" value.
  */
 #define synch_cmpxchg(ptr, old, new) \
-({ __typeof__(*ptr) stored = old; \
-__atomic_compare_exchange_n(ptr, &stored, new, 0, __ATOMIC_SEQ_CST, \
-__ATOMIC_SEQ_CST) ? new : old; \
+({ \
+	__typeof__(*ptr) stored = old; \
+	__atomic_compare_exchange_n(ptr, &stored, new, 0, __ATOMIC_SEQ_CST, \
+				    __ATOMIC_SEQ_CST) ? new : old; \
 })
 
 /** @endcond */

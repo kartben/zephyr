@@ -35,7 +35,7 @@
  * @return Grant reference that identifies the new entry.
  */
 grant_ref_t gnttab_grant_access(domid_t domid, unsigned long gfn,
-bool readonly);
+				bool readonly);
 
 /**
  * @brief Release a grant reference created by gnttab_grant_access().
