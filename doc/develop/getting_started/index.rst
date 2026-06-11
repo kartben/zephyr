@@ -482,10 +482,13 @@ Build the Blinky Sample
    :zephyr:code-sample:`hello_world` is a good alternative.
 
    If you are unsure what name west uses for your board, use ``west boards``
-   to list all boards Zephyr supports.
+   to list all boards Zephyr supports. Your board's :ref:`documentation page
+   <boards>` also shows the exact board target name to pass to ``west build``.
 
 Build the :zephyr:code-sample:`blinky` with :ref:`west build <west-building>`.
-Replace ``<your-board-name>`` with the name of your board:
+Replace ``<your-board-name>`` with the name of your board. Building blinky
+confirms that your host tools, SDK, source checkout, and board target all
+work together before you flash hardware:
 
 .. tabs::
 
