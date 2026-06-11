@@ -16,7 +16,9 @@ Follow this guide to:
 Select and Update OS
 ********************
 
-Click the operating system you are using.
+Click the operating system you are using. Bringing your system up to date
+first ensures that the package manager metadata and base libraries later
+steps depend on are current.
 
 .. tabs::
 
