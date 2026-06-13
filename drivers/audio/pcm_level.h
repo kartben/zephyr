@@ -49,6 +49,17 @@ int pcm_level_analyze(const void *buf, size_t size, uint8_t pcm_width, uint8_t n
 		      uint8_t channel, struct pcm_level_meas *m);
 
 /**
+ * @brief Decode interleaved sample @p i and normalize it to Q15 full scale.
+ *
+ * @param buf       Interleaved PCM block.
+ * @param i         Sample index into @p buf (counting interleaved samples, not frames).
+ * @param pcm_width Sample width in bits: 8, 16, 24 (packed, little-endian) or 32.
+ *
+ * @return The sample value normalized to Q15 full scale (range -32768..32767).
+ */
+int32_t pcm_level_decode_q15(const void *buf, size_t i, uint8_t pcm_width);
+
+/**
  * @brief Convert a PCM power level to dBFS.
  *
  * @param power Squared Q15 amplitude

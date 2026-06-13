@@ -13,6 +13,10 @@
 #include <zephyr/audio/dmic.h>
 #include <zephyr/sys/base64.h>
 
+#if defined(CONFIG_AUDIO_DMIC_SHELL_SPECTRUM)
+#include <zephyr/dsp/dsp.h>
+#endif
+
 #include "dmic_capture.h"
 #include "pcm_level.h"
 
@@ -569,6 +573,428 @@ static int cmd_vu(const struct shell *sh, size_t argc, char *argv[])
 	return 0;
 }
 
+#define DMIC_SPECTRUM_HELP                                                                          \
+	SHELL_HELP("Show a live FFT spectrum of channel 0",                                         \
+		   "<device> [<rate_hz> [<channels> [<pcm_width>]]]")
+
+#if defined(CONFIG_AUDIO_DMIC_SHELL_SPECTRUM)
+
+/* FFT size and band count for the live spectrum analyzer. */
+#define DMIC_SHELL_SPECTRUM_FFT_SIZE   CONFIG_AUDIO_DMIC_SHELL_SPECTRUM_FFT_SIZE
+#define DMIC_SHELL_SPECTRUM_BANDS      CONFIG_AUDIO_DMIC_SHELL_SPECTRUM_BANDS
+#define DMIC_SHELL_SPECTRUM_STACK_SIZE CONFIG_AUDIO_DMIC_SHELL_SPECTRUM_STACK_SIZE
+/* dmic_read() timeout while running: short so a key press stops promptly. */
+#define DMIC_SHELL_SPECTRUM_READ_TIMEOUT_MS 200
+/* Fixed chars per band line around the bar (label + brackets + " -xx.x dBFS"). */
+#define DMIC_SHELL_SPECTRUM_LINE_OVERHEAD   24
+
+/*
+ * Per-band bar ballistics: fast attack / slow release. Each frame the displayed level moves a
+ * fraction alpha = frame_ms / (tau_ms + frame_ms) of the way toward the new level (a libm-free
+ * one-pole approximation), with separate attack/release time constants. ALPHA_SCALE is the
+ * fixed-point denominator for the alpha numerators stored in the context.
+ */
+#define DMIC_SHELL_SPECTRUM_ATTACK_MS    CONFIG_AUDIO_DMIC_SHELL_SPECTRUM_ATTACK_MS
+#define DMIC_SHELL_SPECTRUM_RELEASE_MS   CONFIG_AUDIO_DMIC_SHELL_SPECTRUM_RELEASE_MS
+#define DMIC_SHELL_SPECTRUM_PEAK_HOLD_MS CONFIG_AUDIO_DMIC_SHELL_SPECTRUM_PEAK_HOLD_MS
+#define DMIC_SHELL_SPECTRUM_ALPHA_SCALE  256
+
+BUILD_ASSERT(IS_POWER_OF_TWO(DMIC_SHELL_SPECTRUM_FFT_SIZE),
+	     "CONFIG_AUDIO_DMIC_SHELL_SPECTRUM_FFT_SIZE must be a power of two");
+
+struct dmic_spectrum_ctx {
+	struct k_thread thread;
+	const struct shell *sh;
+	uint8_t channels;
+	uint8_t pcm_width;
+	uint32_t rate;
+	int bar_width;
+	uint32_t frames;     /* rendered frames; used only to manage in-place redraw */
+	size_t fill;         /* samples accumulated into the FFT input buffer so far */
+	bool thread_started; /* thread object created at least once; needs a join on restart */
+	atomic_t running;
+	atomic_t stop;
+	/* Bar ballistics, derived from the frame period at start (see DMIC_SHELL_SPECTRUM_*_MS). */
+	int32_t attack_num;        /* attack alpha numerator over ALPHA_SCALE */
+	int32_t release_num;       /* release alpha numerator over ALPHA_SCALE */
+	uint32_t peak_hold_blocks; /* frames the peak-hold tick stays flat after a new peak */
+	/* Geometric (log-spaced) band edges in bin index; band b spans [edge[b], edge[b + 1]). */
+	uint16_t band_edge[DMIC_SHELL_SPECTRUM_BANDS + 1];
+	/* Per-band meter state carried across frames, in tenths of a dBFS. */
+	int32_t level_tenths[DMIC_SHELL_SPECTRUM_BANDS]; /* attack/release-smoothed bar level */
+	int32_t hold_tenths[DMIC_SHELL_SPECTRUM_BANDS];  /* decaying peak-hold tick, dBFS */
+	uint32_t hold_blocks[DMIC_SHELL_SPECTRUM_BANDS]; /* frames left holding the peak flat */
+};
+
+static K_THREAD_STACK_DEFINE(dmic_spectrum_stack, DMIC_SHELL_SPECTRUM_STACK_SIZE);
+static struct dmic_spectrum_ctx dmic_spectrum_ctx_data;
+
+/* FFT instance and working buffers (static: too large for the worker thread stack). */
+static struct zdsp_rfft_fast_instance_f32 dmic_spectrum_fft;
+static float32_t dmic_spectrum_in[DMIC_SHELL_SPECTRUM_FFT_SIZE];
+static float32_t dmic_spectrum_out[DMIC_SHELL_SPECTRUM_FFT_SIZE];
+static float32_t dmic_spectrum_window[DMIC_SHELL_SPECTRUM_FFT_SIZE];
+/* Power divisor so a full-scale tone reads ~0 dBFS, accounting for the window's gain. */
+static float dmic_spectrum_pow_norm;
+
+/* Libm-free n-th root of @p value (>= 1) by bisection; used once to space the bands. */
+static float spectrum_nth_root(float value, unsigned int n)
+{
+	float lo = 1.0f;
+	float hi = value;
+	float mid = 1.0f;
+
+	for (int iter = 0; iter < 64; iter++) {
+		float p = 1.0f;
+
+		mid = 0.5f * (lo + hi);
+		for (unsigned int k = 0; k < n; k++) {
+			p *= mid;
+		}
+		if (p < value) {
+			lo = mid;
+		} else {
+			hi = mid;
+		}
+	}
+
+	return mid;
+}
+
+/* Compute the (build-constant) window, its power normalization and the log-spaced bands. */
+static void spectrum_prepare(struct dmic_spectrum_ctx *ctx)
+{
+	const unsigned int n_fft = DMIC_SHELL_SPECTRUM_FFT_SIZE;
+	const unsigned int n_bins = n_fft / 2U;
+	float m = (float)(n_fft - 1U) / 2.0f;
+	float sum = 0.0f;
+	float ratio, edge;
+
+	/* Triangular (Bartlett) window: w[n] = 1 - |(n - m) / m|, computed without libm. */
+	for (unsigned int n = 0; n < n_fft; n++) {
+		float d = ((float)n - m) / m;
+		float w = 1.0f - ((d < 0.0f) ? -d : d);
+
+		dmic_spectrum_window[n] = w;
+		sum += w;
+	}
+	/* A full-scale tone yields a bin amplitude of ~A * sum/2; divide power by (sum/2)^2. */
+	dmic_spectrum_pow_norm = (sum * 0.5f) * (sum * 0.5f);
+
+	/* Log-spaced band edges in bin index, from bin 1 to the Nyquist bin (n_bins). */
+	ratio = spectrum_nth_root((float)n_bins, DMIC_SHELL_SPECTRUM_BANDS);
+	edge = 1.0f;
+	ctx->band_edge[0] = 1U;
+	for (unsigned int b = 1; b < DMIC_SHELL_SPECTRUM_BANDS; b++) {
+		uint16_t e;
+
+		edge *= ratio;
+		e = (uint16_t)(edge + 0.5f);
+		/* Keep edges strictly increasing and within range. */
+		if (e <= ctx->band_edge[b - 1]) {
+			e = ctx->band_edge[b - 1] + 1U;
+		}
+		if (e > n_bins) {
+			e = (uint16_t)n_bins;
+		}
+		ctx->band_edge[b] = e;
+	}
+	/* Last band includes the Nyquist bin (n_bins). */
+	ctx->band_edge[DMIC_SHELL_SPECTRUM_BANDS] = (uint16_t)n_bins + 1U;
+}
+
+/* Format a band centre frequency compactly, e.g. "120" or "1.2k". */
+static void freq_fmt(char *buf, size_t buf_size, uint32_t hz)
+{
+	if (hz >= 1000U) {
+		(void)snprintf(buf, buf_size, "%u.%uk", hz / 1000U, (hz % 1000U) / 100U);
+	} else {
+		(void)snprintf(buf, buf_size, "%u", hz);
+	}
+}
+
+/* Window the accumulated samples, run the FFT and redraw one band bar per line in place. */
+static void render_spectrum_frame(struct dmic_spectrum_ctx *ctx)
+{
+	const struct shell *sh = ctx->sh;
+	const unsigned int n_bins = DMIC_SHELL_SPECTRUM_FFT_SIZE / 2U;
+	int span = 0 - DMIC_SHELL_VU_FLOOR_DBFS_T;
+
+	/* Apply the window in place, then forward real FFT into the output buffer. */
+	for (size_t n = 0; n < DMIC_SHELL_SPECTRUM_FFT_SIZE; n++) {
+		dmic_spectrum_in[n] *= dmic_spectrum_window[n];
+	}
+	zdsp_rfft_fast_f32(&dmic_spectrum_fft, dmic_spectrum_in, dmic_spectrum_out, 0);
+
+	/* After the first frame, rewind the cursor over the previous band lines. */
+	if (ctx->frames > 0U) {
+		shell_fprintf(sh, SHELL_NORMAL, "\033[%uA", (unsigned int)DMIC_SHELL_SPECTRUM_BANDS);
+	}
+
+	for (uint16_t b = 0; b < DMIC_SHELL_SPECTRUM_BANDS; b++) {
+		uint16_t lo = ctx->band_edge[b];
+		uint16_t hi = ctx->band_edge[b + 1];
+		double power = 0.0;
+		uint64_t power_q15;
+		uint32_t center_hz;
+		int32_t dbfs, in_t, cur, step;
+		int filled, marker;
+		char db_s[16];
+		char lbl[8];
+
+		for (uint16_t k = lo; k < hi; k++) {
+			float re, im;
+
+			if (k >= n_bins) {
+				/* Packed format: out[1] holds the real-valued Nyquist bin. */
+				re = dmic_spectrum_out[1];
+				im = 0.0f;
+			} else {
+				re = dmic_spectrum_out[2 * k];
+				im = dmic_spectrum_out[2 * k + 1];
+			}
+			power += (double)re * (double)re + (double)im * (double)im;
+		}
+
+		power_q15 = (uint64_t)(power / (double)dmic_spectrum_pow_norm);
+		dbfs = pcm_level_power_dbfs_tenths(power_q15);
+
+		/*
+		 * Fast attack / slow release: move the displayed level a fraction (attack when
+		 * rising, release when falling) of the way toward the new level. Silence is treated
+		 * as the floor. Nudge by one tenth when the integer step rounds to zero so the bar
+		 * never stalls short of its target.
+		 */
+		in_t = (dbfs == INT32_MIN) ? DMIC_SHELL_VU_FLOOR_DBFS_T
+					   : CLAMP(dbfs, DMIC_SHELL_VU_FLOOR_DBFS_T, 0);
+		cur = ctx->level_tenths[b];
+		step = (int32_t)(((int64_t)(in_t - cur) *
+				  (in_t >= cur ? ctx->attack_num : ctx->release_num)) /
+				 DMIC_SHELL_SPECTRUM_ALPHA_SCALE);
+		if (step == 0 && in_t != cur) {
+			step = (in_t > cur) ? 1 : -1;
+		}
+		cur += step;
+		ctx->level_tenths[b] = cur;
+
+		/* Peak-hold tick: jump to a new peak, hold for peak_hold_blocks, then decay to -inf. */
+		if (dbfs != INT32_MIN && dbfs >= ctx->hold_tenths[b]) {
+			ctx->hold_tenths[b] = MIN(dbfs, 0);
+			ctx->hold_blocks[b] = ctx->peak_hold_blocks;
+		} else if (ctx->hold_blocks[b] > 0U) {
+			ctx->hold_blocks[b]--;
+		} else if (ctx->hold_tenths[b] != INT32_MIN) {
+			ctx->hold_tenths[b] -= DMIC_SHELL_VU_HOLD_DECAY_T;
+			if (ctx->hold_tenths[b] < DMIC_SHELL_VU_FLOOR_DBFS_T) {
+				ctx->hold_tenths[b] = INT32_MIN;
+			}
+		}
+
+		/* Map the smoothed level to the fill and the peak-hold to the '|' tick. */
+		if (cur <= DMIC_SHELL_VU_FLOOR_DBFS_T) {
+			filled = 0;
+		} else {
+			filled = (int)(((int64_t)cur - DMIC_SHELL_VU_FLOOR_DBFS_T) * ctx->bar_width /
+				       span);
+			filled = CLAMP(filled, 0, ctx->bar_width);
+		}
+		if (ctx->hold_tenths[b] == INT32_MIN) {
+			marker = -1;
+		} else {
+			marker = (int)(((int64_t)ctx->hold_tenths[b] - DMIC_SHELL_VU_FLOOR_DBFS_T) *
+				       ctx->bar_width / span);
+			marker = CLAMP(marker, 0, ctx->bar_width - 1);
+		}
+
+		center_hz = (uint32_t)(((uint64_t)(lo + hi) / 2U) * ctx->rate /
+				       DMIC_SHELL_SPECTRUM_FFT_SIZE);
+		freq_fmt(lbl, sizeof(lbl), center_hz);
+		db_fmt(db_s, sizeof(db_s), dbfs);
+
+		shell_fprintf(sh, SHELL_NORMAL, "\r\033[2K%5s [", lbl);
+		render_meter_bar(sh, filled, marker, ctx->bar_width);
+		shell_fprintf(sh, SHELL_NORMAL, "] %6s dBFS\n", db_s);
+	}
+
+	ctx->frames++;
+}
+
+/* Any byte received while the spectrum runs stops it. */
+static void dmic_spectrum_bypass(const struct shell *sh, uint8_t *data, size_t len, void *user_data)
+{
+	ARG_UNUSED(sh);
+	ARG_UNUSED(data);
+	ARG_UNUSED(len);
+	ARG_UNUSED(user_data);
+
+	atomic_set(&dmic_spectrum_ctx_data.stop, 1);
+}
+
+static void dmic_spectrum_thread(void *p1, void *p2, void *p3)
+{
+	struct dmic_spectrum_ctx *ctx = &dmic_spectrum_ctx_data;
+	bool warned = false;
+	int ret = 0;
+
+	ARG_UNUSED(p1);
+	ARG_UNUSED(p2);
+	ARG_UNUSED(p3);
+
+	while (!atomic_get(&ctx->stop)) {
+		void *buf;
+		size_t size;
+		size_t num_samples;
+
+		ret = dmic_capture_read(&dmic_shell_cap, &buf, &size,
+					DMIC_SHELL_SPECTRUM_READ_TIMEOUT_MS);
+		if (ret == -EAGAIN) {
+			/* No block in time; warn once, keep trying, stay stoppable. */
+			if (!warned) {
+				shell_warn(ctx->sh, "No audio data yet (read timed out) - check "
+						    "the DMIC clock and wiring");
+				warned = true;
+			}
+			continue;
+		}
+		if (ret < 0) {
+			shell_error(ctx->sh, "Read failed: %d", ret);
+			break;
+		}
+		warned = false;
+
+		/* Accumulate channel 0 samples until a full FFT window is collected. */
+		num_samples = size / (ctx->pcm_width / 8U);
+		for (size_t i = 0;
+		     i < num_samples && ctx->fill < DMIC_SHELL_SPECTRUM_FFT_SIZE;
+		     i += ctx->channels) {
+			dmic_spectrum_in[ctx->fill++] =
+				(float32_t)pcm_level_decode_q15(buf, i, ctx->pcm_width);
+		}
+		dmic_capture_free_block(&dmic_shell_cap, buf);
+
+		if (ctx->fill >= DMIC_SHELL_SPECTRUM_FFT_SIZE) {
+			if (!atomic_get(&ctx->stop)) {
+				render_spectrum_frame(ctx);
+			}
+			ctx->fill = 0U;
+		}
+	}
+
+	dmic_shell_capture_stop();
+	shell_set_bypass(ctx->sh, NULL, NULL);
+	shell_fprintf(ctx->sh, SHELL_NORMAL, "\r\033[2K");
+	shell_print(ctx->sh, "Spectrum stopped");
+	atomic_clear(&ctx->running);
+}
+
+static int cmd_spectrum(const struct shell *sh, size_t argc, char *argv[])
+{
+	struct dmic_spectrum_ctx *ctx = &dmic_spectrum_ctx_data;
+	const struct device *dev;
+	uint32_t rate = DMIC_SHELL_DEF_SAMPLE_RATE;
+	uint8_t channels = DMIC_SHELL_DEF_CHANNELS;
+	uint8_t pcm_width = DMIC_SHELL_DEF_PCM_WIDTH;
+	uint32_t frame_ms;
+	int ret;
+
+	dev = dmic_shell_device(sh, argv[1]);
+	if (dev == NULL) {
+		return -ENODEV;
+	}
+
+	ret = parse_audio_params(sh, argc, argv, 2, &rate, &channels, &pcm_width);
+	if (ret < 0) {
+		return ret;
+	}
+
+	if (!atomic_cas(&ctx->running, 0, 1)) {
+		shell_error(sh, "Spectrum is already running");
+		return -EBUSY;
+	}
+
+	/*
+	 * Winning the CAS means a previous run has already cleared "running" and is in its final
+	 * unwind. Join it so the thread is fully torn down before we reuse the shared thread object
+	 * and stack below.
+	 */
+	if (ctx->thread_started) {
+		k_thread_join(&ctx->thread, K_FOREVER);
+	}
+
+	if (zdsp_rfft_fast_init_f32(&dmic_spectrum_fft, DMIC_SHELL_SPECTRUM_FFT_SIZE) !=
+	    ZDSP_STATUS_OK) {
+		shell_error(sh, "Failed to initialize %u-point FFT", DMIC_SHELL_SPECTRUM_FFT_SIZE);
+		atomic_clear(&ctx->running);
+		return -EINVAL;
+	}
+	spectrum_prepare(ctx);
+
+	/* Size the bars to the configured terminal width (capped for readout alignment). */
+	ctx->bar_width =
+		CLAMP(CONFIG_SHELL_DEFAULT_TERMINAL_WIDTH - DMIC_SHELL_SPECTRUM_LINE_OVERHEAD,
+		      DMIC_SHELL_VU_BAR_MIN, DMIC_SHELL_VU_BAR_MAX);
+
+	ret = dmic_shell_capture_start(sh, dev, rate, channels, pcm_width);
+	if (ret < 0) {
+		atomic_clear(&ctx->running);
+		return ret;
+	}
+
+	ctx->sh = sh;
+	ctx->channels = channels;
+	ctx->pcm_width = pcm_width;
+	ctx->rate = rate;
+	ctx->frames = 0U;
+	ctx->fill = 0U;
+
+	/* Derive the bar ballistics from the per-frame period (one FFT window of audio). */
+	frame_ms = (rate != 0U) ? MAX(1U, (uint32_t)DMIC_SHELL_SPECTRUM_FFT_SIZE * 1000U / rate)
+				: 1U;
+	ctx->attack_num = (int32_t)MAX(1U, (uint32_t)DMIC_SHELL_SPECTRUM_ALPHA_SCALE * frame_ms /
+						  (DMIC_SHELL_SPECTRUM_ATTACK_MS + frame_ms));
+	ctx->release_num = (int32_t)MAX(1U, (uint32_t)DMIC_SHELL_SPECTRUM_ALPHA_SCALE * frame_ms /
+						   (DMIC_SHELL_SPECTRUM_RELEASE_MS + frame_ms));
+	ctx->peak_hold_blocks = MAX(1U, DIV_ROUND_UP(DMIC_SHELL_SPECTRUM_PEAK_HOLD_MS, frame_ms));
+	for (uint16_t b = 0; b < DMIC_SHELL_SPECTRUM_BANDS; b++) {
+		ctx->level_tenths[b] = DMIC_SHELL_VU_FLOOR_DBFS_T;
+		ctx->hold_tenths[b] = INT32_MIN;
+		ctx->hold_blocks[b] = 0U;
+	}
+
+	atomic_clear(&ctx->stop);
+
+	shell_print(sh,
+		    "Starting spectrum at %u Hz, %u ch, %u-bit, %u-pt FFT (press any key to stop)",
+		    rate, channels, pcm_width, DMIC_SHELL_SPECTRUM_FFT_SIZE);
+
+	/* Bypass first so a keypress can stop the analyzer even during start-up. */
+	shell_set_bypass(sh, dmic_spectrum_bypass, NULL);
+	k_thread_create(&ctx->thread, dmic_spectrum_stack,
+			K_THREAD_STACK_SIZEOF(dmic_spectrum_stack), dmic_spectrum_thread, NULL,
+			NULL, NULL, K_PRIO_PREEMPT(8), 0, K_NO_WAIT);
+	k_thread_name_set(&ctx->thread, "dmic_spectrum");
+	ctx->thread_started = true;
+
+	return 0;
+}
+
+#else /* CONFIG_AUDIO_DMIC_SHELL_SPECTRUM */
+
+/*
+ * Stub kept so the SHELL_COND_CMD_ARG() entry can reference the handler symbol even when the
+ * feature (and its DSP dependency) is disabled. It is never reached: the command entry is empty.
+ */
+static int cmd_spectrum(const struct shell *sh, size_t argc, char *argv[])
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	shell_error(sh, "Spectrum support is not enabled (CONFIG_AUDIO_DMIC_SHELL_SPECTRUM)");
+	return -ENOTSUP;
+}
+
+#endif /* CONFIG_AUDIO_DMIC_SHELL_SPECTRUM */
+
 /* base64-encode one chunk (<= DMIC_SHELL_DUMP_CHUNK bytes) and print it as a line. */
 static int dump_line(const struct shell *sh, const uint8_t *src, size_t len)
 {
@@ -758,6 +1184,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	sub_dmic,
 	SHELL_CMD_ARG(read, &dsub_device_name, DMIC_READ_HELP, cmd_read, 2, 4),
 	SHELL_CMD_ARG(vu,   &dsub_device_name, DMIC_VU_HELP,   cmd_vu,   2, 3),
+	SHELL_COND_CMD_ARG(CONFIG_AUDIO_DMIC_SHELL_SPECTRUM, spectrum, &dsub_device_name,
+			   DMIC_SPECTRUM_HELP, cmd_spectrum, 2, 3),
 	SHELL_CMD_ARG(dump, &dsub_device_name, DMIC_DUMP_HELP, cmd_dump, 2, 4),
 	SHELL_SUBCMD_SET_END
 );

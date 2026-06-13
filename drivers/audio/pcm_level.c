@@ -64,7 +64,7 @@ int32_t pcm_level_power_dbfs_tenths(uint64_t power)
 /*
  * Decode interleaved sample i and normalize it to Q15 full scale.
  */
-static int32_t decode_sample_q15(const void *buf, size_t i, uint8_t pcm_width)
+int32_t pcm_level_decode_q15(const void *buf, size_t i, uint8_t pcm_width)
 {
 	switch (pcm_width) {
 	case 8U:
@@ -104,7 +104,7 @@ int pcm_level_analyze(const void *buf, size_t size, uint8_t pcm_width, uint8_t n
 	num_samples = size / (pcm_width / 8U);
 
 	for (size_t i = channel; i < num_samples; i += num_channels) {
-		int32_t x = decode_sample_q15(buf, i, pcm_width);
+		int32_t x = pcm_level_decode_q15(buf, i, pcm_width);
 		int32_t mag = (x < 0) ? -x : x;
 
 		peak = MAX(peak, mag);

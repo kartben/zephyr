@@ -104,6 +104,14 @@ The following subcommands are available:
   Capture ``seconds`` of audio and print it as base64-encoded raw PCM, together with the host
   commands needed to decode and play it back. The default duration is 2 seconds.
 
+``dmic spectrum <device> [<rate_hz> [<channels> [<pcm_width>]]]``
+  Display a live FFT spectrum of channel 0 as a color-coded, log-spaced band bar-graph, updated in
+  place until any key is pressed. The bars use fast-attack / slow-release ballistics and a
+  decaying peak-hold tick ('|') per band, like the ``vu`` meter. Available only when
+  :kconfig:option:`CONFIG_AUDIO_DMIC_SHELL_SPECTRUM` is enabled (it depends on the
+  :kconfig:option:`CONFIG_CMSIS_DSP` math backend). The FFT size, number of bands, attack and
+  release times, and peak-hold time are configurable.
+
 The built-in help (e.g. ``dmic read --help``) lists the arguments and their defaults.
 
 Configuration Options
@@ -113,6 +121,7 @@ Related configuration options:
 
 * :kconfig:option:`CONFIG_AUDIO_DMIC`
 * :kconfig:option:`CONFIG_AUDIO_DMIC_SHELL`
+* :kconfig:option:`CONFIG_AUDIO_DMIC_SHELL_SPECTRUM`
 
 API Reference
 *************
