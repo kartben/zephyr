@@ -59,9 +59,16 @@ struct ns_dmic_data {
 	const char *file_path;
 	bool missing_input_file;
 	bool configured;
+	bool tail_follow;
+	uint16_t tail_idle_polls;
 };
 
 static const char *const ns_dmic_default_file = CONFIG_AUDIO_DMIC_NATIVE_SIM_FILE_PATH;
+
+/* Poll interval while waiting for new data at the tail of a growing input file. */
+#define NS_DMIC_TAIL_POLL_US 10000U
+/* After this many idle polls with no new data, treat the input as terminated and loop. */
+#define NS_DMIC_TAIL_IDLE_MAX 20U
 
 static uint8_t ns_dmic_bytes_per_sample(uint8_t pcm_width)
 {
@@ -108,6 +115,8 @@ static void ns_dmic_reset_stream(struct ns_dmic_data *data)
 	data->last_error = 0;
 	data->configured = false;
 	data->missing_input_file = false;
+	data->tail_follow = false;
+	data->tail_idle_polls = 0U;
 	data->state = DMIC_STATE_INITIALIZED;
 	data->session_id++;
 }
@@ -149,17 +158,21 @@ static void ns_dmic_pace(struct ns_dmic_data *data, size_t size)
 }
 
 static int ns_dmic_open_file(const struct ns_dmic_config *cfg, struct ns_dmic_data *data,
-			     bool reset_deadline)
+			     bool reset_deadline, bool seek_to_end)
 {
 	/* native_sim resets unset string options to NULL before parsing. */
 	const char *path = (data->file_path != NULL) ? data->file_path : ns_dmic_default_file;
 	int fd;
+	int ret;
 
 	ARG_UNUSED(cfg);
 
 	__ASSERT_NO_MSG(path != NULL);
 
 	ns_dmic_close_file(data);
+
+	data->tail_follow = false;
+	data->tail_idle_polls = 0U;
 
 	fd = ns_dmic_open_file_bottom(path);
 	if (fd < 0) {
@@ -172,6 +185,15 @@ static int ns_dmic_open_file(const struct ns_dmic_config *cfg, struct ns_dmic_da
 	} else {
 		data->fd = fd;
 		data->missing_input_file = false;
+
+		if (seek_to_end) {
+			ret = ns_dmic_seek_to_end_bottom(fd);
+			if (ret < 0) {
+				ns_dmic_close_file(data);
+				return -nsi_errno_from_mid(-ret);
+			}
+			data->tail_follow = true;
+		}
 	}
 
 	if (reset_deadline) {
@@ -199,15 +221,27 @@ static int ns_dmic_fill_block(const struct ns_dmic_config *cfg, struct ns_dmic_d
 		if (bytes_read > 0) {
 			bytes_filled += (size_t)bytes_read;
 			rewound = false;
+			data->tail_idle_polls = 0U;
 			continue;
 		}
 
-		/* Allow one EOF rewind so a capture block can span the file boundary.
-		 * If a second EOF happens before any new data is read, stop instead of
-		 * looping forever on an empty or non-advancing input file.
+		if ((bytes_read == 0) && data->tail_follow && !rewound) {
+			if (data->tail_idle_polls < NS_DMIC_TAIL_IDLE_MAX) {
+				data->tail_idle_polls++;
+				k_usleep(NS_DMIC_TAIL_POLL_US);
+				continue;
+			}
+
+			data->tail_follow = false;
+			data->tail_idle_polls = 0U;
+		}
+
+		/* Allow one EOF rewind from the start of the file so a capture block can
+		 * span the file boundary. If a second EOF happens before any new data is
+		 * read, stop instead of looping forever on an empty or non-advancing file.
 		 */
 		if ((bytes_read == 0) && !rewound) {
-			if (ns_dmic_open_file(cfg, data, false) < 0) {
+			if (ns_dmic_open_file(cfg, data, false, false) < 0) {
 				return -EIO;
 			}
 			rewound = true;
@@ -400,10 +434,12 @@ static int ns_dmic_configure(const struct device *dev, struct dmic_cfg *config)
 		return 0;
 	}
 
-	/* Re-open on configure so reset/reconfigure rewinds the source and any
-	 * command-line path override is picked up before capture starts.
+	/* Re-open on configure so reset/reconfigure picks up any command-line path
+	 * override and positions the source at the end of the file. That lets a
+	 * growing host-side input behave like a live microphone. EOF still loops
+	 * from the beginning.
 	 */
-	ret = ns_dmic_open_file(cfg, data, true);
+	ret = ns_dmic_open_file(cfg, data, true, true);
 	if (ret < 0) {
 		k_mutex_unlock(&data->lock);
 		return ret;
@@ -447,6 +483,18 @@ static int ns_dmic_trigger(const struct device *dev, enum dmic_trigger cmd)
 		}
 
 		if (data->state != DMIC_STATE_ACTIVE) {
+			int seek_ret;
+
+			if (!data->missing_input_file && (data->fd >= 0)) {
+				seek_ret = ns_dmic_seek_to_end_bottom(data->fd);
+				if (seek_ret < 0) {
+					ret = -nsi_errno_from_mid(-seek_ret);
+					break;
+				}
+				data->tail_follow = true;
+				data->tail_idle_polls = 0U;
+			}
+
 			data->state = DMIC_STATE_ACTIVE;
 			data->last_error = 0;
 			data->next_deadline_us = nsi_hws_get_time();

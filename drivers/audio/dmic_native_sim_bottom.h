@@ -12,6 +12,7 @@ extern "C" {
 #endif
 
 int ns_dmic_open_file_bottom(const char *pathname);
+int ns_dmic_seek_to_end_bottom(int fd);
 
 #ifdef __cplusplus
 }

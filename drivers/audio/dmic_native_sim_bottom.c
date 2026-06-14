@@ -23,3 +23,20 @@ int ns_dmic_open_file_bottom(const char *pathname)
 
 	return fd;
 }
+
+int ns_dmic_seek_to_end_bottom(int fd)
+{
+	off_t offset = lseek(fd, 0, SEEK_END);
+
+	if (offset < 0) {
+		/* Pipes, FIFOs, and sockets have no file offset; read from open. */
+		if (errno == ESPIPE) {
+			return 0;
+		}
+
+		nsi_print_warning("native_sim DMIC input seek failed (%s)\n", strerror(errno));
+		return -nsi_errno_to_mid(errno);
+	}
+
+	return 0;
+}
