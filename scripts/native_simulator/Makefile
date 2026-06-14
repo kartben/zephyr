@@ -57,6 +57,15 @@ NSI_AR?=ar
 #  Objcopy program (it is unlikely you'll need to change this)
 NSI_OBJCOPY?=objcopy
 
+# Host operating system detection. On macOS (Darwin) the host linker is ld64 and
+# the object format is Mach-O, which require a different set of link options and
+# do not support GNU ld linker scripts. NSI_HOST_OS can be overridden by the
+# caller (e.g. from the CMake integration).
+NSI_HOST_OS?=$(shell uname -s)
+ifeq ($(NSI_HOST_OS),Darwin)
+  NSI_HOST_MACOS:=1
+endif
+
 #  Build debug switch (by default enabled)
 NSI_DEBUG?=-g
 #  Build optimization level (by default disabled to ease debugging)
@@ -66,15 +75,28 @@ NSI_WARNINGS?=-Wall -Wpedantic
 #  Preprocessor flags
 NSI_CPPFLAGS?=-D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=600 -D_XOPEN_SOURCE_EXTENDED
 
-NO_PIE_CO:=-fno-pie -fno-pic
+ifdef NSI_HOST_MACOS
+  # PIE is mandatory on macOS, so -no-pie/-fno-pie/-fno-pic must not be used.
+  NO_PIE_CO:=
+else
+  NO_PIE_CO:=-fno-pie -fno-pic
+endif
 DEPENDFLAGS:=-MMD -MP
 COMMON_BUILD_FLAGS:=-DNSI_RUNNER_BUILD ${NSI_DEBUG} ${NSI_WARNINGS} ${NSI_OPT} ${NO_PIE_CO} \
   -DNSI_N_CPUS=${NSI_N_CPUS} -ffunction-sections -fdata-sections ${DEPENDFLAGS} ${NSI_BUILD_OPTIONS}
 CFLAGS:=-std=c11 ${COMMON_BUILD_FLAGS} ${NSI_BUILD_C_OPTIONS}
 CXXFLAGS:=${COMMON_BUILD_FLAGS} ${NSI_BUILD_CXX_OPTIONS}
-FINALLINK_FLAGS:=${NO_PIE_CO} -no-pie  ${NSI_WARNINGS} \
-  -Wl,--gc-sections -ldl -pthread \
-  ${NSI_LINK_OPTIONS} -lm
+ifdef NSI_HOST_MACOS
+  # ld64 equivalents: -dead_strip for --gc-sections; libdl functionality is part
+  # of libSystem so -ldl is dropped; PIE is implicit so -no-pie is not passed.
+  FINALLINK_FLAGS:=${NSI_WARNINGS} \
+    -Wl,-dead_strip -pthread \
+    ${NSI_LINK_OPTIONS} -lm
+else
+  FINALLINK_FLAGS:=${NO_PIE_CO} -no-pie  ${NSI_WARNINGS} \
+    -Wl,--gc-sections -ldl -pthread \
+    ${NSI_LINK_OPTIONS} -lm
+endif
 
 no_default:
 	@echo "There is no default rule, please specify what you want to build,\
@@ -135,13 +157,37 @@ ${NSI_BUILD_PATH}/%.loc_cpusw.o: /% ${NSI_CONFIG_FILE}
 	  false; \
 	fi
 	@if [ ! -d $(dir $@) ]; then mkdir -p $(dir $@); fi
+ifdef NSI_HOST_MACOS
+	# On macOS the embedded image is a Mach-O object. GNU objcopy's ELF symbol
+	# binding semantics (--localize-hidden / local STB_LOCAL binding) do not map
+	# cleanly onto Mach-O, and ld64's two-level namespace already prevents most
+	# cross-image symbol interposition. llvm-objcopy is used to localize the
+	# explicitly requested symbols (CONFIG_*, etc.); residual clashes are handled
+	# at the runner link with -unexported_symbols_list (see natsim_config.cmake).
+	${NSI_OBJCOPY} --localize-symbol=_* $< $@ ${NSI_LOCALIZE_OPTIONS}
+else
 	${NSI_OBJCOPY} --localize-hidden $< $@ -w --localize-symbol=_* ${NSI_LOCALIZE_OPTIONS}
+endif
 
+ifdef NSI_HOST_MACOS
+# ld64 has no --whole-archive group; instead each static archive whose members
+# must all be retained is passed with its own -Wl,-force_load,<archive>. Plain
+# object files (the localized embedded SW) are always fully linked, so they are
+# listed directly. ld64 does not support GNU linker scripts, so there is no -T;
+# the section placement/bounds are resolved at runtime via getsectiondata().
+NSI_FORCE_LOAD_ARCHIVES:=${NSI_BUILD_PATH}/${RUNNER_LIB} ${NSI_EXTRA_LIBS}
+NSI_FORCE_LOAD_FLAGS:=$(foreach lib,${NSI_FORCE_LOAD_ARCHIVES},-Wl,-force_load,${lib})
+
+${NSI_EXE}: ${NSI_BUILD_PATH}/${RUNNER_LIB} ${LOCALIZED_EMBSW} ${NSI_EXTRA_LIBS}
+	${NSI_LINKER} ${LOCALIZED_EMBSW} ${NSI_FORCE_LOAD_FLAGS} \
+	  -o $@ ${FINALLINK_FLAGS}
+else
 ${NSI_EXE}: ${NSI_BUILD_PATH}/${RUNNER_LIB} ${LOCALIZED_EMBSW} ${NSI_EXTRA_LIBS} \
  ${NSI_BUILD_PATH}/linker_script.ld
 	${NSI_LINKER} -Wl,--whole-archive ${LOCALIZED_EMBSW} ${NSI_BUILD_PATH}/${RUNNER_LIB} \
 	  ${NSI_EXTRA_LIBS} -Wl,--no-whole-archive \
 	  -o $@ ${FINALLINK_FLAGS} -T ${NSI_BUILD_PATH}/linker_script.ld
+endif
 
 Makefile: ;
 

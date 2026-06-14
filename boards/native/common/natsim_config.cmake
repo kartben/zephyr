@@ -4,8 +4,18 @@
 set(zephyr_build_path ${APPLICATION_BINARY_DIR}/zephyr)
 get_property(CCACHE GLOBAL PROPERTY RULE_LAUNCH_COMPILE)
 
-target_link_options(native_simulator INTERFACE
-  "-T ${ZEPHYR_BASE}/boards/native/common/natsim_linker_script.ld")
+if(CMAKE_HOST_APPLE)
+  # ld64 (macOS) does not support GNU linker scripts. The extra sections this
+  # script keeps are resolved at runtime via getsectiondata() on macOS instead.
+  # Static linking of the runner is also not supported on macOS (no crt0.o /
+  # static libSystem), so the embedded image symbols are hidden from the final
+  # executable's export table to avoid clashes with the runner/libc symbols.
+  target_link_options(native_simulator INTERFACE
+    "-Wl,-unexported_symbol,_CONFIG_*")
+else()
+  target_link_options(native_simulator INTERFACE
+    "-T ${ZEPHYR_BASE}/boards/native/common/natsim_linker_script.ld")
+endif()
 
 if(SYSROOT_DIR)
   message(NOTICE "Appending --sysroot=${SYSROOT_DIR} to native_simulator")
@@ -19,6 +29,12 @@ endif()
 
 if("${LINKER}" STREQUAL "lld")
   target_link_options(native_simulator INTERFACE "-fuse-ld=lld")
+endif()
+
+# Tell the runner Makefile explicitly which host OS we are building for, so it
+# does not have to rely on `uname` (and to keep cross-build setups correct).
+if(CMAKE_HOST_APPLE)
+  set(nsi_config_content ${nsi_config_content} "NSI_HOST_OS:=Darwin")
 endif()
 
 set(nsi_config_content

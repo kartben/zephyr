@@ -112,6 +112,14 @@ struct threads_table_el {
 	 * What that is, if anything, is up to that the hosted OS
 	 */
 	void *payload;
+
+#if defined(__APPLE__)
+	/*
+	 * On macOS pthread_setname_np() can only rename the *calling* thread, so the
+	 * requested name is stashed here and applied by the thread itself once it runs.
+	 */
+	const char *pending_name;
+#endif
 };
 
 struct nct_status_t {
@@ -288,6 +296,15 @@ static void *nct_thread_starter(void *arg_el)
 	/* Let's wait until the thread is swapped in */
 	nct_wait_until_allowed(tt_el, thread_idx);
 
+#if defined(__APPLE__)
+	/* Apply any thread name requested before we got a chance to run (macOS can
+	 * only name the calling thread). See nct_thread_name_set().
+	 */
+	if (tt_el->pending_name != NULL) {
+		(void)pthread_setname_np(tt_el->pending_name);
+	}
+#endif
+
 	this->fptr(tt_el->payload);
 
 	/*
@@ -430,6 +447,20 @@ void nct_get_thread_stack(void *this_arg, int thread_idx, void **stack_addr,
 {
 	struct nct_status_t *this = (struct nct_status_t *)this_arg;
 	struct threads_table_el *tt_el = ttable_get_element(this, thread_idx);
+
+#if defined(__APPLE__)
+	/*
+	 * macOS has no pthread_getattr_np(). Instead it exposes the stack of an
+	 * arbitrary thread directly. Note pthread_get_stackaddr_np() returns the
+	 * *highest* address of the stack (its base), while pthread_attr_getstack()
+	 * (and our callers) expect the *lowest* address, so we subtract the size.
+	 */
+	size_t stack_size_local = pthread_get_stacksize_np(tt_el->thread);
+	void *stack_high = pthread_get_stackaddr_np(tt_el->thread);
+
+	*stack_addr = (void *)((uintptr_t)stack_high - stack_size_local);
+	*stack_size = stack_size_local;
+#else
 	pthread_attr_t attr;
 	size_t stack_size_local;
 
@@ -440,6 +471,7 @@ void nct_get_thread_stack(void *this_arg, int thread_idx, void **stack_addr,
 	*stack_size = stack_size_local;
 
 	NSI_SAFE_CALL(pthread_attr_destroy(&attr));
+#endif
 }
 
 /**
@@ -592,7 +624,21 @@ int nct_thread_name_set(void *this_arg, int thread_idx, const char *str)
 	struct nct_status_t *this = (struct nct_status_t *)this_arg;
 	struct threads_table_el *tt_el = ttable_get_element(this, thread_idx);
 
+#if defined(__APPLE__)
+	/*
+	 * macOS pthread_setname_np() only names the calling thread. If we happen to be
+	 * that thread we can set it immediately, otherwise stash the name so the target
+	 * thread applies it itself the next time it starts running (see
+	 * nct_thread_starter()).
+	 */
+	tt_el->pending_name = str;
+	if (pthread_equal(pthread_self(), tt_el->thread)) {
+		return pthread_setname_np(str);
+	}
+	return 0;
+#else
 	return pthread_setname_np(tt_el->thread, str);
+#endif
 }
 
 /*

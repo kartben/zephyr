@@ -4,6 +4,22 @@
 # distributions. Userspace is (generally) either 32-bit or 64-bit but not
 # both.
 
+if(NATIVE_HOST_MACOS)
+  # Apple Silicon: userspace is always 64-bit and the architecture is selected
+  # with -arch arm64. PIE is mandatory (no -no-pie); -fPIC is fine.
+  if(NOT CONFIG_64BIT)
+    message(FATAL_ERROR
+      "32-bit native_sim builds are not supported on Apple Silicon macOS hosts.\n"
+      "Target native_sim/native/64 instead, or set CONFIG_64BIT=y.")
+  endif()
+  zephyr_compile_options(-arch arm64 -fPIC)
+  zephyr_link_libraries(-arch arm64)
+
+  target_link_options(native_simulator INTERFACE "-arch" "arm64")
+  target_compile_options(native_simulator INTERFACE "-arch" "arm64")
+  return()
+endif()
+
 # Get userspace wordsize for comparison with CONFIG_64BIT
 execute_process(
   COMMAND

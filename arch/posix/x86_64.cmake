@@ -1,6 +1,20 @@
 # SPDX-License-Identifier: Apache-2.0
 
-if(CONFIG_64BIT)
+if(NATIVE_HOST_MACOS)
+  # macOS/clang has no -m32 multilib and selects the target word size with -arch.
+  # Only 64bit x86_64 is supported (use the native_sim/native/64 variant).
+  if(NOT CONFIG_64BIT)
+    message(FATAL_ERROR
+      "32-bit native_sim builds are not supported on macOS hosts (no multilib).\n"
+      "Target native_sim/native/64 instead, or set CONFIG_64BIT=y.")
+  endif()
+  # PIE is mandatory on macOS; -fPIC is fine, -no-pie/-m64 must not be used.
+  zephyr_compile_options(-arch x86_64 -fPIC)
+  zephyr_link_libraries(-arch x86_64)
+
+  target_link_options(native_simulator INTERFACE "-arch" "x86_64")
+  target_compile_options(native_simulator INTERFACE "-arch" "x86_64")
+elseif(CONFIG_64BIT)
   # some gcc versions fail to build without -fPIC
   zephyr_compile_options(-m64 -fPIC)
   zephyr_link_libraries(-m64)

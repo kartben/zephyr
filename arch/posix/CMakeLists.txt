@@ -1,8 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 
-if(NOT CMAKE_HOST_UNIX OR CMAKE_HOST_APPLE)
-  message(FATAL_ERROR "The POSIX architecture only works on Linux. If on Windows or macOS "
-          "consider using a virtual machine to run a Linux guest.")
+if(NOT CMAKE_HOST_UNIX)
+  message(FATAL_ERROR "The POSIX architecture only works on Unix-like hosts (Linux or macOS). "
+          "If on Windows consider using a virtual machine to run a Linux guest, or WSL2.")
+endif()
+
+# Is the host we are building on (and for) macOS/Darwin?
+# The native_sim build chain differs substantially between GNU/Linux (ELF, GNU ld)
+# and macOS (Mach-O, ld64). This variable gates all the host-OS specific handling
+# below so the Linux path is left untouched.
+if(CMAKE_HOST_APPLE)
+  set(NATIVE_HOST_MACOS TRUE)
 endif()
 
 # This native_simulator library is used to pass options to the
