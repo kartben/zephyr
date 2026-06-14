@@ -6,6 +6,8 @@
 menuconfig ETH_NATIVE_TAP
 	bool "Native TAP Ethernet driver"
 	depends on ARCH_POSIX
+	# Uses the Linux TUN/TAP interface, which does not exist on macOS hosts.
+	depends on !NATIVE_BUILD_ON_MACOS
 	help
 	  Enable native_sim TAP ethernet driver. Note, this driver is run inside
 	  a process in your host system.

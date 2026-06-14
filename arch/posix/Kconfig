@@ -9,6 +9,22 @@ menu "Native (POSIX) Architecture Options"
 config ARCH
 	default "posix"
 
+config NATIVE_HOST_OS
+	string
+	default "$(NATIVE_HOST_OS)"
+	help
+	  Name of the host operating system the build is running on, as reported by
+	  CMake (e.g. "Linux" or "Darwin"). Set automatically by the build system.
+
+config NATIVE_BUILD_ON_MACOS
+	bool
+	default y if NATIVE_HOST_OS = "Darwin"
+	help
+	  Selected automatically when the native/POSIX build is being built on a
+	  macOS (Darwin) host. Some host-OS facilities (Linux TAP networking,
+	  SocketCAN, evdev input, ...) are not available there, so the drivers
+	  relying on them depend on this being disabled.
+
 config ARCH_POSIX_UPDATE_STACK_INFO
 	bool "Update thread stack info with real pthread stack bounds"
 	depends on THREAD_STACK_INFO

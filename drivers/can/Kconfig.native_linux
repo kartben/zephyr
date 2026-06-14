@@ -8,6 +8,8 @@ config CAN_NATIVE_LINUX
 	default y
 	depends on DT_HAS_ZEPHYR_NATIVE_LINUX_CAN_ENABLED
 	depends on ARCH_POSIX
+	# Uses the Linux SocketCAN (AF_CAN) interface, not available on macOS hosts.
+	depends on !NATIVE_BUILD_ON_MACOS
 	help
 	  Enable native Linux SocketCAN Driver
 

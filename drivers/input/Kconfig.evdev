@@ -7,6 +7,8 @@ config NATIVE_LINUX_EVDEV
 	depends on DT_HAS_ZEPHYR_NATIVE_LINUX_EVDEV_ENABLED
 	depends on ARCH_POSIX
 	depends on MULTITHREADING
+	# Reads Linux /dev/input/event* (evdev), not available on macOS hosts.
+	depends on !NATIVE_BUILD_ON_MACOS
 	help
 	  Enable reading input from a Linux evdev device, requires specifying
 	  an evdev device path in the --evdev command line argument.
