@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include "nsi_utils.h"
 #include "nsi_hw_scheduler.h"
+#include "nsi_host_sections.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,6 +20,14 @@ extern "C" {
 struct nsi_hw_event_st {
 	void (*const callback)(void);
 	uint64_t *timer;
+#if defined(__APPLE__)
+	/*
+	 * On macOS the event priority cannot be encoded in (and sorted by) the
+	 * section name, so it is carried here and the events are ordered by it at
+	 * runtime by the HW scheduler.
+	 */
+	uint16_t prio;
+#endif
 };
 
 /**
@@ -33,6 +42,19 @@ struct nsi_hw_event_st {
  *
  * Priority can be a number between 0 and 999.
  */
+#if defined(__APPLE__)
+
+#define NSI_HW_EVENT(t, fn, prio)					\
+	static const struct nsi_hw_event_st NSI_CONCAT(NSI_CONCAT(__nsi_hw_event_, fn), t) \
+		NSI_HOST_SECTION("__nsi_hwev") NSI_NOASAN				\
+		= {			\
+			.callback = fn,	\
+			.timer = &t,	\
+			.prio = prio,	\
+		}
+
+#else
+
 #define NSI_HW_EVENT(t, fn, prio)					\
 	static const struct nsi_hw_event_st NSI_CONCAT(NSI_CONCAT(__nsi_hw_event_, fn), t) \
 		__attribute__((__used__)) NSI_NOASAN					\
@@ -41,6 +63,8 @@ struct nsi_hw_event_st {
 			.callback = fn,	\
 			.timer = &t,	\
 		}
+
+#endif /* defined(__APPLE__) */
 
 #ifdef __cplusplus
 }

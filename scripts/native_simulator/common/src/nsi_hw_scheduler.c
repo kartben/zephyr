@@ -20,12 +20,25 @@
 #include "nsi_safe_call.h"
 #include "nsi_hw_scheduler.h"
 #include "nsi_hws_models_if.h"
+#if defined(__APPLE__)
+#include "nsi_host_sections.h"
+#include "nsi_host_trampolines.h"
+#endif
 
 uint64_t nsi_simu_time; /* The actual time as known by the HW models */
 static uint64_t end_of_time = NSI_NEVER; /* When will this device stop */
 
+#if !defined(__APPLE__)
 extern struct nsi_hw_event_st __nsi_hw_events_start[];
 extern struct nsi_hw_event_st __nsi_hw_events_end[];
+#endif
+
+/*
+ * Pointer to the array of registered HW events, ordered by ascending priority.
+ * On GNU/Linux this points directly at the linker-sorted section; on macOS it
+ * points at a runtime-sorted copy built in nsi_hws_init() (see below).
+ */
+static struct nsi_hw_event_st *nsi_hw_events;
 
 static unsigned int number_of_events;
 
@@ -101,12 +114,12 @@ static void nsi_hws_sleep_until_next_event(void)
 void nsi_hws_find_next_event(void)
 {
 	next_timer_index = 0;
-	next_timer_time  = *__nsi_hw_events_start[0].timer;
+	next_timer_time  = *nsi_hw_events[0].timer;
 
 	for (unsigned int i = 1; i < number_of_events ; i++) {
-		if (next_timer_time > *__nsi_hw_events_start[i].timer) {
+		if (next_timer_time > *nsi_hw_events[i].timer) {
 			next_timer_index = i;
-			next_timer_time = *__nsi_hw_events_start[i].timer;
+			next_timer_time = *nsi_hw_events[i].timer;
 		}
 	}
 }
@@ -125,7 +138,7 @@ void nsi_hws_one_event(void)
 	nsi_hws_sleep_until_next_event();
 
 	if (next_timer_index < number_of_events) { /* LCOV_EXCL_BR_LINE */
-		__nsi_hw_events_start[next_timer_index].callback();
+		nsi_hw_events[next_timer_index].callback();
 	} else {
 		nsi_print_error_and_exit("next_timer_index corrupted\n"); /* LCOV_EXCL_LINE */
 	}
@@ -149,7 +162,40 @@ void nsi_hws_set_end_of_time(uint64_t new_end_of_time)
  */
 void nsi_hws_init(void)
 {
+#if defined(__APPLE__)
+	/*
+	 * macOS: collect the events from the Mach-O section (which ld64 leaves in
+	 * link order) and sort a private copy by ascending priority so that, like the
+	 * GNU ld linker-script ordering, events with the same trigger time fire in
+	 * priority order. The number of events is small.
+	 */
+	struct nsi_hw_event_st *section_events;
+	size_t n;
+
+	NSI_HOST_GET_SECTION(struct nsi_hw_event_st, "__nsi_hwev", section_events, n);
+	number_of_events = n;
+
+	if (n > 0) {
+		nsi_hw_events = nsi_host_calloc(n, sizeof(struct nsi_hw_event_st));
+		for (size_t i = 0; i < n; i++) {
+			nsi_hw_events[i] = section_events[i];
+		}
+		/* Stable insertion sort by priority (ascending) */
+		for (size_t i = 1; i < n; i++) {
+			struct nsi_hw_event_st key = nsi_hw_events[i];
+			size_t j = i;
+
+			while ((j > 0) && (nsi_hw_events[j - 1].prio > key.prio)) {
+				nsi_hw_events[j] = nsi_hw_events[j - 1];
+				j--;
+			}
+			nsi_hw_events[j] = key;
+		}
+	}
+#else
 	number_of_events = __nsi_hw_events_end - __nsi_hw_events_start;
+	nsi_hw_events = __nsi_hw_events_start;
+#endif
 
 	nsi_hws_set_sig_handler();
 	nsi_hws_find_next_event();

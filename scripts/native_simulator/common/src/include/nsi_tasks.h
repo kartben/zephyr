@@ -7,7 +7,9 @@
 #ifndef NSI_COMMON_SRC_NSI_TASKS_H
 #define NSI_COMMON_SRC_NSI_TASKS_H
 
+#include <stdint.h>
 #include "nsi_utils.h"
+#include "nsi_host_sections.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,6 +51,30 @@ extern "C" {
  *
  * The function must take no parameters and return nothing.
  */
+#if defined(__APPLE__)
+
+/*
+ * On macOS all tasks live in a single Mach-O section and the (level, priority)
+ * ordering that the GNU ld linker script reconstructs from the section name is
+ * instead carried explicitly in each entry and applied at runtime by
+ * nsi_run_tasks().
+ */
+struct nsi_task_entry {
+	void (*fn)(void);
+	uint16_t level;
+	uint16_t prio;
+};
+
+#define NSI_TASK(fn, level, prio)	\
+	static const struct nsi_task_entry NSI_CONCAT(__nsi_task_, fn) \
+	NSI_HOST_SECTION("__nsi_task") NSI_NOASAN \
+	= { fn, NSITASK_##level##_LEVEL, prio }; \
+	/* Let's cross-check the macro level is a valid one, so we don't silently drop it */ \
+	_Static_assert(NSITASK_##level##_LEVEL >= 0, \
+			"Using a non pre-defined level, it will be dropped")
+
+#else
+
 #define NSI_TASK(fn, level, prio)	\
 	static void (* const NSI_CONCAT(__nsi_task_, fn))(void) \
 	__attribute__((__used__)) NSI_NOASAN \
@@ -57,6 +83,8 @@ extern "C" {
 	/* Let's cross-check the macro level is a valid one, so we don't silently drop it */ \
 	_Static_assert(NSITASK_##level##_LEVEL >= 0, \
 			"Using a non pre-defined level, it will be dropped")
+
+#endif /* defined(__APPLE__) */
 
 /**
  * @brief Run the set of special native tasks corresponding to the given level
