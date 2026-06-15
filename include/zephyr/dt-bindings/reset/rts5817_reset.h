@@ -4,8 +4,27 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Peripheral reset identifiers for Realtek RTS5817
+ * @ingroup reset_controller_realtek
+ */
+
 #ifndef ZEPHYR_INCLUDE_DT_BINDINGS_RESET_RTS5817_RESET_H_
 #define ZEPHYR_INCLUDE_DT_BINDINGS_RESET_RTS5817_RESET_H_
+
+/**
+ * @defgroup reset_controller_realtek Realtek reset controller helpers
+ * @brief Realtek reset controller helpers
+ * @ingroup reset_controller_interface
+ *
+ * @details Reset identifiers for use with the <tt>realtek,rts5817-reset</tt> binding.
+ * Identifiers follow the pattern @c SYS_FORCE_RST_<PERIPHERAL>, where @c <PERIPHERAL>
+ * is the RTS5817 peripheral name (for example, @c SYS_FORCE_RST_UART0 resets UART0).
+ * @{
+ */
+
+/** @cond INTERNAL_HIDDEN */
 
 #define SYS_FORCE_RST_BUS       0
 #define SYS_FORCE_RST_AES       1
@@ -32,5 +51,9 @@
 #define SYS_FORCE_RST_SYS       22
 #define SYS_FORCE_RST_DPHY      23
 #define SYS_FORCE_RST_SSI_S_BUS 24
+
+/** @endcond */
+
+/** @} */
 
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_RESET_RTS5817_RESET_H_ */

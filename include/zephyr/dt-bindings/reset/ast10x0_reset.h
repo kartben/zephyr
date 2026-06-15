@@ -4,8 +4,27 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Peripheral reset identifiers for Aspeed AST10x0
+ * @ingroup reset_controller_aspeed
+ */
+
 #ifndef ZEPHYR_INCLUDE_DT_BINDINGS_RESET_AST10X0_H_
 #define ZEPHYR_INCLUDE_DT_BINDINGS_RESET_AST10X0_H_
+
+/**
+ * @defgroup reset_controller_aspeed Aspeed reset controller helpers
+ * @brief Aspeed reset controller helpers
+ * @ingroup reset_controller_interface
+ *
+ * @details Reset identifiers for use with the <tt>aspeed,ast10x0-reset</tt> binding.
+ * Identifiers follow the pattern @c ASPEED_RESET_<PERIPHERAL>, where @c <PERIPHERAL>
+ * is the AST10x0 peripheral name (for example, @c ASPEED_RESET_I2C resets the I2C block).
+ * @{
+ */
+
+/** @cond INTERNAL_HIDDEN */
 
 #define ASPEED_RESET_GRP_0_OFFSET	(0)
 #define ASPEED_RESET_GRP_1_OFFSET	(32)
@@ -38,5 +57,9 @@
 #define ASPEED_RESET_I2C		(ASPEED_RESET_GRP_1_OFFSET + 2)
 
 #define ASPEED_RESET_LPC		(ASPEED_RESET_GRP_1_OFFSET + 0)
+
+/** @endcond */
+
+/** @} */
 
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_RESET_AST10X0_H_ */

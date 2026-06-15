@@ -3,8 +3,27 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Peripheral reset identifiers for SiFli SF32LB
+ * @ingroup reset_controller_sifli
+ */
+
 #ifndef _ZEPHYR_INCLUDE_DT_BINDINGS_RESET_SF32LB_RESET_H_
 #define _ZEPHYR_INCLUDE_DT_BINDINGS_RESET_SF32LB_RESET_H_
+
+/**
+ * @defgroup reset_controller_sifli SiFli reset controller helpers
+ * @brief SiFli reset controller helpers
+ * @ingroup reset_controller_interface
+ *
+ * @details Reset identifiers for use with the <tt>sifli,sf32lb-rcc-rctl</tt> binding.
+ * Identifiers follow the pattern @c SF32LB_RESET_<PERIPHERAL>, where @c <PERIPHERAL>
+ * is the SF32LB peripheral name (for example, @c SF32LB_RESET_USART1 resets USART1).
+ * @{
+ */
+
+/** @cond INTERNAL_HIDDEN */
 
 #define SF32LB_RESET_DMAC1          (0U)
 #define SF32LB_RESET_MAILBOX1       (1U)
@@ -45,5 +64,9 @@
 #define SF32LB_RESET_GPADC          (54U)
 #define SF32LB_RESET_TSEN           (55U)
 #define SF32LB_RESET_I2C4           (57U)
+
+/** @endcond */
+
+/** @} */
 
 #endif /* _ZEPHYR_INCLUDE_DT_BINDINGS_RESET_SF32LB_RESET_H_ */

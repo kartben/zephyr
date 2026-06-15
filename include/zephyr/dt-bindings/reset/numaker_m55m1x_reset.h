@@ -7,6 +7,29 @@
 #ifndef ZEPHYR_INCLUDE_DT_BINDINGS_RESET_NUMAKER_M55M1X_RESET_H
 #define ZEPHYR_INCLUDE_DT_BINDINGS_RESET_NUMAKER_M55M1X_RESET_H
 
+/**
+ * @file
+ * @brief Reset module IDs for Nuvoton M55M1X
+ * @ingroup reset_controller_nuvoton_m55m1x
+ */
+
+/**
+ * @addtogroup reset_controller_nuvoton Nuvoton reset controller helpers
+ * @ingroup reset_controller_interface
+ */
+
+/**
+ * @defgroup reset_controller_nuvoton_m55m1x Nuvoton NuMaker M55M1X reset controller helpers
+ * @brief Nuvoton NuMaker M55M1X reset controller helpers
+ * @ingroup reset_controller_nuvoton
+ *
+ * @details Devicetree macros/defines for Nuvoton NuMaker devices, for use with the
+ * <tt>nuvoton,numaker-rst</tt> binding.
+ * @{
+ */
+
+/** @cond INTERNAL_HIDDEN */
+
 /* Beginning of M55M1 BSP sys_reg.h reset module copy */
 
 #define SYS_RSTCTL_CHIPRST_Pos           0
@@ -206,5 +229,9 @@
 #define NUMAKER_SYS_WWDT1RST        ((0x2E0UL<<20) | SYS_WWDTRST_WWDT1RST_Pos)
 
 /* End of M55M1 BSP sys.h reset module copy */
+
+/** @endcond */
+
+/** @} */
 
 #endif

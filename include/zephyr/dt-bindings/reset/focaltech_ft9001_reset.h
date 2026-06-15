@@ -4,12 +4,35 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Peripheral reset identifiers for FocalTech FT9001
+ * @ingroup reset_controller_focaltech_ft9001
+ */
+
 #ifndef ZEPHYR_INCLUDE_DT_BINDINGS_RESET_FOCALTECH_FT9001_RESET_H_
 #define ZEPHYR_INCLUDE_DT_BINDINGS_RESET_FOCALTECH_FT9001_RESET_H_
 
 /**
+ * @addtogroup reset_controller_focaltech FocalTech reset controller helpers
+ * @ingroup reset_controller_interface
+ */
+
+/**
+ * @defgroup reset_controller_focaltech_ft9001 FocalTech FT9001 reset controller helpers
+ * @brief FocalTech FT9001 reset controller helpers
+ * @ingroup reset_controller_focaltech
+ *
+ * @details Reset identifiers for use with the <tt>focaltech,ft9001-cpm-rctl</tt> binding.
+ * @{
+ */
+
+/** @cond INTERNAL_HIDDEN */
+
+/**
  * @defgroup focaltech_reset_macros FocalTech Reset Configuration Macros
  * @brief Macros for encoding reset register and bit information
+ * @ingroup reset_controller_focaltech_ft9001
  * @{
  */
 
@@ -21,9 +44,12 @@
 
 /** @} */
 
+/** @endcond */
+
 /**
  * @defgroup focaltech_reset_regs FocalTech Reset Control Module Registers
  * @brief Reset Control Module Register offsets
+ * @ingroup reset_controller_focaltech_ft9001
  * @{
  */
 
@@ -45,6 +71,7 @@
 /**
  * @defgroup focaltech_reset_enables FocalTech Reset Enable/Disable Definitions
  * @brief Reset enable/disable definitions for peripherals
+ * @ingroup reset_controller_focaltech_ft9001
  * @{
  */
 
@@ -279,6 +306,8 @@
 #define FOCALTECH_RESET_AHB2IPS FOCALTECH_RESET_CONFIG(IPSRSTCR, 30U)
 /** PWMT3 reset */
 #define FOCALTECH_RESET_PWMT3   FOCALTECH_RESET_CONFIG(IPSRSTCR, 31U)
+
+/** @} */
 
 /** @} */
 

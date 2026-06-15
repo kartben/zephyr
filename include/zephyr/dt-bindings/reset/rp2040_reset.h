@@ -4,8 +4,33 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Peripheral reset identifiers for Raspberry Pi RP2040
+ * @ingroup reset_controller_rp2040
+ */
+
 #ifndef ZEPHYR_INCLUDE_DT_BINDINGS_RESET_RP2040_RESET_H_
 #define ZEPHYR_INCLUDE_DT_BINDINGS_RESET_RP2040_RESET_H_
+
+/**
+ * @addtogroup reset_controller_raspberrypi Raspberry Pi reset controller helpers
+ * @ingroup reset_controller_interface
+ */
+
+/**
+ * @defgroup reset_controller_rp2040 Raspberry Pi RP2040 reset controller helpers
+ * @brief Raspberry Pi RP2040 reset controller helpers
+ * @ingroup reset_controller_raspberrypi
+ *
+ * @details Reset identifiers for use with the <tt>raspberrypi,pico-reset</tt> binding.
+ * Identifiers follow the pattern @c RPI_PICO_RESETS_RESET_<PERIPHERAL>, where
+ * @c <PERIPHERAL> is the RP2040 peripheral name (for example,
+ * @c RPI_PICO_RESETS_RESET_I2C0 resets the I2C0 controller).
+ * @{
+ */
+
+/** @cond INTERNAL_HIDDEN */
 
 #define RPI_PICO_RESETS_RESET_ADC        0
 #define RPI_PICO_RESETS_RESET_BUSCTRL    1
@@ -32,5 +57,9 @@
 #define RPI_PICO_RESETS_RESET_UART0      22
 #define RPI_PICO_RESETS_RESET_UART1      23
 #define RPI_PICO_RESETS_RESET_USBCTRL    24
+
+/** @endcond */
+
+/** @} */
 
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_RESET_RP2040_RESET_H_ */

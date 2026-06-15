@@ -14,8 +14,14 @@
 #define ZEPHYR_INCLUDE_DT_BINDINGS_RESET_NUMICRO_M48X_RESET_H_
 
 /**
- * @defgroup reset_controller_nuvoton_m48x Nuvoton M48X Reset controller Devicetree helpers
+ * @addtogroup reset_controller_nuvoton Nuvoton reset controller helpers
  * @ingroup reset_controller_interface
+ */
+
+/**
+ * @defgroup reset_controller_nuvoton_m48x Nuvoton M48X reset controller helpers
+ * @brief Nuvoton M48X reset controller helpers
+ * @ingroup reset_controller_nuvoton
  *
  * @details Devicetree macos/defines for reset ids on Nuvoton M48x devices,
  * for use with the <tt>nuvoton,numaker-rst</tt> binding.

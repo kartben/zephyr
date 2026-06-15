@@ -7,6 +7,29 @@
 #ifndef ZEPHYR_INCLUDE_DT_BINDINGS_RESET_NUMAKER_M2L31X_RESET_H
 #define ZEPHYR_INCLUDE_DT_BINDINGS_RESET_NUMAKER_M2L31X_RESET_H
 
+/**
+ * @file
+ * @brief Reset module IDs for Nuvoton M2L31X
+ * @ingroup reset_controller_nuvoton_m2l31x
+ */
+
+/**
+ * @addtogroup reset_controller_nuvoton Nuvoton reset controller helpers
+ * @ingroup reset_controller_interface
+ */
+
+/**
+ * @defgroup reset_controller_nuvoton_m2l31x Nuvoton NuMaker M2L31X reset controller helpers
+ * @brief Nuvoton NuMaker M2L31X reset controller helpers
+ * @ingroup reset_controller_nuvoton
+ *
+ * @details Devicetree macros/defines for Nuvoton NuMaker devices, for use with the
+ * <tt>nuvoton,numaker-rst</tt> binding.
+ * @{
+ */
+
+/** @cond INTERNAL_HIDDEN */
+
 /* Beginning of M2L31 BSP sys_reg.h reset module copy */
 
 #define LPSCC_IPRST0_LPPDMA0RST_Pos      0
@@ -151,5 +174,9 @@
 #define NUMAKER_OPA_RST         ((0x80UL<<24) | LPSCC_IPRST0_OPARST_Pos)
 
 /* End of M2L31 BSP sys.h reset module copy */
+
+/** @endcond */
+
+/** @} */
 
 #endif

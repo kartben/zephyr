@@ -4,8 +4,32 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Peripheral reset identifiers for Nuvoton NPCX4
+ * @ingroup reset_controller_npcx4
+ */
+
 #ifndef ZEPHYR_INCLUDE_DT_BINDINGS_RESET_NPCX4_RESET_H
 #define ZEPHYR_INCLUDE_DT_BINDINGS_RESET_NPCX4_RESET_H
+
+/**
+ * @addtogroup reset_controller_nuvoton Nuvoton reset controller helpers
+ * @ingroup reset_controller_interface
+ */
+
+/**
+ * @defgroup reset_controller_npcx4 Nuvoton NPCX4 reset controller helpers
+ * @brief Nuvoton NPCX4 reset controller helpers
+ * @ingroup reset_controller_nuvoton
+ *
+ * @details Reset identifiers for use with the <tt>nuvoton,npcx-rst</tt> binding.
+ * Identifiers follow the pattern @c NPCX_RESET_<PERIPHERAL>, where @c <PERIPHERAL>
+ * is the NPCX4 peripheral name (for example, @c NPCX_RESET_ADC resets the ADC).
+ * @{
+ */
+
+/** @cond INTERNAL_HIDDEN */
 
 #define NPCX_RESET_SWRST_CTL1_OFFSET 0
 #define NPCX_RESET_SWRST_CTL2_OFFSET 32
@@ -111,4 +135,8 @@
 
 #define NPCX_RESET_ID_START NPCX_RESET_GPIO0
 #define NPCX_RESET_ID_END   NPCX_RESET_MDMA7
+/** @endcond */
+
+/** @} */
+
 #endif

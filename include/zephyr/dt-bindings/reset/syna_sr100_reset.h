@@ -7,12 +7,24 @@
 /**
  * @file
  * @brief List reset subsystem IDs for Synaptics SR100 family.
+ * @ingroup reset_controller_synaptics
  */
 
 #ifndef ZEPHYR_INCLUDE_DT_BINDINGS_SYNA_SR100_RESET_H_
 #define ZEPHYR_INCLUDE_DT_BINDINGS_SYNA_SR100_RESET_H_
 
 #include <zephyr/sys/util_macro.h>
+
+/**
+ * @defgroup reset_controller_synaptics Synaptics reset controller helpers
+ * @brief Synaptics reset controller helpers
+ * @ingroup reset_controller_interface
+ *
+ * @details Reset identifiers for use with the <tt>syna,sr100-reset</tt> binding.
+ * @{
+ */
+
+/** @cond INTERNAL_HIDDEN */
 
 /** helpers for RST_REG values */
 /** @brief Image Processing reset */
@@ -49,6 +61,8 @@
 #define RST_MASK 5
 /** @brief bit shift for reset bit */
 #define RST_BIT  0
+
+/** @endcond */
 
 /** Device domain reset selection */
 /** @brief Image Processing reset */
@@ -101,5 +115,7 @@
 #define SYNA_SD1_RST   ((PERIF_RST << RST_REG) | (3 << RST_BIT))
 /** @brief xSPI reset */
 #define SYNA_XSPI_RST  ((PERIF_RST << RST_REG) | (5 << RST_BIT))
+
+/** @} */
 
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_SYNA_SR100_RESET_H_ */

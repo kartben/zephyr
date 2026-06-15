@@ -14,8 +14,14 @@
  */
 
 /**
- * @defgroup reset_controller_nuvoton_m335x Nuvoton NuMaker controller Devicetree helpers
+ * @addtogroup reset_controller_nuvoton Nuvoton reset controller helpers
  * @ingroup reset_controller_interface
+ */
+
+/**
+ * @defgroup reset_controller_nuvoton_m335x Nuvoton NuMaker M335X reset controller helpers
+ * @brief Nuvoton NuMaker M335X reset controller helpers
+ * @ingroup reset_controller_nuvoton
  *
  * @details Devicetree macos/defines for Nuvoton NuMaker devices,
  * for use with the <tt>nuvoton,numaker-rst</tt> binding.

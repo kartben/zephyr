@@ -7,6 +7,29 @@
 #ifndef ZEPHYR_INCLUDE_DT_BINDINGS_RESET_NUMAKER_M46X_RESET_H
 #define ZEPHYR_INCLUDE_DT_BINDINGS_RESET_NUMAKER_M46X_RESET_H
 
+/**
+ * @file
+ * @brief Reset module IDs for Nuvoton M46X
+ * @ingroup reset_controller_nuvoton_m46x
+ */
+
+/**
+ * @addtogroup reset_controller_nuvoton Nuvoton reset controller helpers
+ * @ingroup reset_controller_interface
+ */
+
+/**
+ * @defgroup reset_controller_nuvoton_m46x Nuvoton NuMaker M46X reset controller helpers
+ * @brief Nuvoton NuMaker M46X reset controller helpers
+ * @ingroup reset_controller_nuvoton
+ *
+ * @details Devicetree macros/defines for Nuvoton NuMaker devices, for use with the
+ * <tt>nuvoton,numaker-rst</tt> binding.
+ * @{
+ */
+
+/** @cond INTERNAL_HIDDEN */
+
 /* Beginning of M460 BSP sys_reg.h reset module copy */
 
 #define NUMAKER_SYS_IPRST0_PDMA0RST_Pos (2)
@@ -267,5 +290,9 @@
 #define NUMAKER_UART9_RST  ((0x18UL << 24) | NUMAKER_SYS_IPRST3_UART9RST_Pos)
 
 /* End of M460 BSP sys.h reset module copy */
+
+/** @endcond */
+
+/** @} */
 
 #endif

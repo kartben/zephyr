@@ -4,13 +4,30 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Peripheral reset identifiers for Microchip PolarFire SoC MSS
+ * @ingroup reset_controller_microchip
+ */
+
 #ifndef ZEPHYR_INCLUDE_DT_BINDINGS_RESET_MCHP_MSS_RESET_H_
 #define ZEPHYR_INCLUDE_DT_BINDINGS_RESET_MCHP_MSS_RESET_H_
 
-/*
- * The reset ID encodes the bit index of the SUBBLK_CLOCK_CR and SOFT_RESET_CR
- * registers associated with the device.
+/**
+ * @defgroup reset_controller_microchip Microchip reset controller helpers
+ * @brief Microchip reset controller helpers
+ * @ingroup reset_controller_interface
+ *
+ * @details Reset identifiers for use with the <tt>microchip,mpfs-reset</tt> binding. The
+ * reset ID encodes the bit index of the SUBBLK_CLOCK_CR and SOFT_RESET_CR registers
+ * associated with the device. Identifiers follow the pattern @c MSS_RESET_ID_<PERIPHERAL>,
+ * where @c <PERIPHERAL> is the PolarFire SoC MSS peripheral name (for example,
+ * @c MSS_RESET_ID_UART0 resets UART0).
+ * @{
  */
+
+/** @cond INTERNAL_HIDDEN */
+
 #define MSS_RESET_ID_ENVM    0x0
 #define MSS_RESET_ID_MAC0    0x1
 #define MSS_RESET_ID_MAC1    0x2
@@ -41,5 +58,9 @@
 #define MSS_RESET_ID_FIC3    0x1b
 #define MSS_RESET_ID_ATHENA  0x1c
 #define MSS_RESET_ID_CFM     0x1d
+
+/** @endcond */
+
+/** @} */
 
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_RESET_MCHP_MSS_RESET_H_ */

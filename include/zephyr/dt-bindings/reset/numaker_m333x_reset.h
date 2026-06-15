@@ -7,6 +7,29 @@
 #ifndef ZEPHYR_INCLUDE_DT_BINDINGS_RESET_NUMAKER_M333X_RESET_H
 #define ZEPHYR_INCLUDE_DT_BINDINGS_RESET_NUMAKER_M333X_RESET_H
 
+/**
+ * @file
+ * @brief Reset module IDs for Nuvoton M333X
+ * @ingroup reset_controller_nuvoton_m333x
+ */
+
+/**
+ * @addtogroup reset_controller_nuvoton Nuvoton reset controller helpers
+ * @ingroup reset_controller_interface
+ */
+
+/**
+ * @defgroup reset_controller_nuvoton_m333x Nuvoton NuMaker M333X reset controller helpers
+ * @brief Nuvoton NuMaker M333X reset controller helpers
+ * @ingroup reset_controller_nuvoton
+ *
+ * @details Devicetree macros/defines for Nuvoton NuMaker devices, for use with the
+ * <tt>nuvoton,numaker-rst</tt> binding.
+ * @{
+ */
+
+/** @cond INTERNAL_HIDDEN */
+
 /* Beginning of M3331 BSP sys_reg.h reset module copy */
 
 #define SYS_IPRST0_CHIPRST_Pos           0
@@ -137,5 +160,9 @@
 #define NUMAKER_ELLSI0_RST          ((0x18UL<<24) | SYS_IPRST3_ELLSI0RST_Pos)
 
 /* End of M3331 BSP sys.h reset module copy */
+
+/** @endcond */
+
+/** @} */
 
 #endif

@@ -5,6 +5,12 @@
  *
  */
 
+/**
+ * @file
+ * @brief Peripheral reset line identifiers for Intel SoC FPGA
+ * @ingroup reset_controller_intel
+ */
+
 #ifndef ZEPHYR_INCLUDE_DT_BINDINGS_RESET_INTEL_SOCFPGA_RESET_H_
 #define ZEPHYR_INCLUDE_DT_BINDINGS_RESET_INTEL_SOCFPGA_RESET_H_
 
@@ -21,6 +27,20 @@
  * NAND RSTLINE pin = 5;
  * RSTMGR_NAND_RSTLINE = (0x24 * 8) + 5 = 293
  */
+
+/**
+ * @defgroup reset_controller_intel Intel reset controller helpers
+ * @brief Intel reset controller helpers
+ * @ingroup reset_controller_interface
+ *
+ * @details Reset line identifiers for use with the <tt>intel,socfpga-reset</tt> binding.
+ * Identifiers follow the pattern @c RSTMGR_<PERIPHERAL>_RSTLINE, where @c <PERIPHERAL>
+ * is the Intel SoC FPGA peripheral name. The value encodes the register offset and bit
+ * position as <tt>(offset * 8) + bit</tt> (for example, @c RSTMGR_UART0_RSTLINE).
+ * @{
+ */
+
+/** @cond INTERNAL_HIDDEN */
 
 #define RSTMGR_SDMCOLDRST_RSTLINE           0
 #define RSTMGR_SDMWARMRST_RSTLINE           1
@@ -130,5 +150,9 @@
 #define RSTMGR_FPGA2SOC_WARM_RSTLINE        610
 #define RSTMGR_FPGA2SDRAM_WARM_RSTLINE      611
 #define RSTMGR_MPFE_WARM_RSTLINE            614
+
+/** @endcond */
+
+/** @} */
 
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_RESET_INTEL_SOCFPGA_RESET_H_ */
