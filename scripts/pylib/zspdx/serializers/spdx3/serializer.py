@@ -666,6 +666,82 @@ class SPDX3Serializer:
             _logger.debug(traceback.format_exc())
             return False
 
+    def write_system_document(self, output_path: str, product_name: str, domain_refs) -> bool:
+        """Write a system-level aggregate SPDX 3.0 document (JSON-LD).
+
+        The aggregate declares a single ``system`` package representing the
+        assembled multi-domain (sysbuild) firmware, and links it via
+        ``contains`` relationships to the final image package of each domain's
+        build document. Those images live in separately serialized domain
+        documents, so they are referenced by IRI and declared as imported
+        external elements.
+
+        ``domain_refs`` is a list of objects exposing ``name`` and
+        ``final_image_iri``. Domains without a resolved final image IRI are
+        omitted from the aggregate.
+        """
+        try:
+            self._initialize_shared_objects()
+            ns = self.sbom_data.namespace_prefix.rstrip("/")
+
+            # The system package: the assembled multi-domain firmware
+            system_pkg = spdx.software_Package()
+            system_pkg._id = f"{ns}/packages/system"
+            system_pkg.name = product_name
+            system_pkg.creationInfo = self.creation_info._id
+            system_pkg.software_primaryPurpose = spdx.software_SoftwarePurpose.application
+            system_pkg.software_downloadLocation = "NOASSERTION"
+            system_pkg.software_copyrightText = "NOASSERTION"
+            self.elements.append(system_pkg)
+
+            document = spdx.SpdxDocument()
+            document._id = f"{ns}/documents/sbom"
+            document.name = product_name
+            document.creationInfo = self.creation_info
+            document.profileConformance.append(spdx.ProfileIdentifierType.core)
+
+            data_license = self._create_license_expression("CC0-1.0")
+            if data_license:
+                document.dataLicense = data_license._id
+                document.element.append(data_license)
+
+            # The creator agent and tool must be present in the document so that
+            # the createdBy/createdUsing references resolve.
+            if self.creator_agent:
+                document.element.append(self.creator_agent)
+            if self.tool:
+                document.element.append(self.tool)
+
+            document.element.append(system_pkg)
+            document.rootElement.append(system_pkg)
+
+            for index, r in enumerate(r for r in domain_refs if r.final_image_iri):
+                rel = spdx.Relationship()
+                rel._id = f"{ns}/relationships/{index}"
+                rel.relationshipType = spdx.RelationshipType.contains
+                rel.from_ = system_pkg._id
+                rel.to = [r.final_image_iri]
+                rel.creationInfo = self.creation_info._id
+                self.elements.append(rel)
+                document.element.append(rel)
+
+                # Declare the referenced image as an imported external element
+                ext_map = spdx.ExternalMap()
+                ext_map.externalSpdxId = r.final_image_iri
+                document.import_.append(ext_map)
+
+            self.elements.append(document)
+            self.documents["sbom"] = document
+
+            self._serialize_document_to_jsonld(document, output_path)
+            return True
+        except Exception as e:
+            _logger.error(f"Failed to serialize system SPDX 3.0 document: {e}")
+            import traceback
+
+            _logger.debug(traceback.format_exc())
+            return False
+
     def _serialize_document_to_jsonld(self, document: spdx.SpdxDocument, output_path: str):
         """Serialize a single document to JSON-LD format."""
         # Collect all elements referenced by this document

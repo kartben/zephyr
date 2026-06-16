@@ -69,6 +69,84 @@ class SPDX2Serializer:
 
         return True
 
+    def write_system_document(self, output_path, product_name, domain_refs):
+        """Write a system-level aggregate SPDX 2.x document.
+
+        The aggregate declares a single ``system`` package representing the
+        assembled multi-domain (sysbuild) firmware, and links it via
+        cross-document references to the final image package of each domain's
+        ``build`` document.
+
+        ``domain_refs`` is a list of objects exposing ``name``,
+        ``build_namespace``, ``build_sha1`` and ``final_image_id``. Domains
+        missing any of these are omitted from the aggregate.
+        """
+        namespace = self.sbom_graph.namespace_prefix
+        # Only domains with a hashed build document and a resolved final image
+        # can be referenced across documents.
+        refs = sorted(
+            (
+                r
+                for r in domain_refs
+                if r.build_namespace and r.build_sha1 and r.final_image_id
+            ),
+            key=lambda r: r.name,
+        )
+
+        try:
+            _logger.info(f"Writing system SPDX {self.spdx_version} document to {output_path}")
+            with open(output_path, "w") as f:
+                f.write(f"""SPDXVersion: SPDX-{self.spdx_version}
+DataLicense: CC0-1.0
+SPDXID: SPDXRef-DOCUMENT
+DocumentName: {normalize_spdx_name(product_name)}
+DocumentNamespace: {namespace}
+Creator: Tool: Zephyr SPDX builder
+Created: {datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")}
+
+""")
+
+                # External document references to each domain's build document
+                for r in refs:
+                    doc_ref = f"DocumentRef-{normalize_spdx_name(r.name)}-build"
+                    f.write(
+                        f"ExternalDocumentRef: {doc_ref} {r.build_namespace} SHA1: {r.build_sha1}\n"
+                    )
+                if refs:
+                    f.write("\n")
+
+                # The document describes the system package
+                f.write("Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-system\n\n")
+
+                # The system package itself
+                f.write("""##### Package: system
+
+PackageName: system
+SPDXID: SPDXRef-system
+PackageLicenseConcluded: NOASSERTION
+PackageLicenseDeclared: NOASSERTION
+PackageCopyrightText: NOASSERTION
+""")
+                if self.spdx_version >= SPDX_VERSION_2_3:
+                    f.write("PrimaryPackagePurpose: APPLICATION\n")
+                f.write("PackageDownloadLocation: NOASSERTION\n")
+                f.write("FilesAnalyzed: false\n")
+                f.write(
+                    "PackageComment: System-level aggregate of all sysbuild domains; no files\n\n"
+                )
+
+                # The system CONTAINS the final image of each domain
+                for r in refs:
+                    doc_ref = f"DocumentRef-{normalize_spdx_name(r.name)}-build"
+                    f.write(
+                        f"Relationship: SPDXRef-system CONTAINS {doc_ref}:{r.final_image_id}\n"
+                    )
+
+            return True
+        except OSError:
+            _logger.exception(f"Error: Unable to write system document to {output_path}")
+            return False
+
     def _generate_ids(self):
         """Generate SPDX IDs for all components and files."""
         # Generate component IDs
