@@ -298,8 +298,9 @@ Other notable changes
     at the top-level build directory generates a complete set of SPDX documents
     for every domain, plus a system-level aggregate (:file:`sbom.spdx` /
     :file:`sbom.jsonld`) that links the domains together. Running
-    ``west spdx --init`` on a sysbuild build directory now enables the CMake
-    file-based API for every domain.
+    ``west spdx --init`` on a sysbuild build directory enables the CMake
+    file-based API and :kconfig:option:`CONFIG_BUILD_OUTPUT_META` for every
+    domain.
 
 ..
   Any more descriptive subsystem or driver changes. Do you really want to write

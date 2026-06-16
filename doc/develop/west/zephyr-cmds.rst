@@ -140,10 +140,12 @@ Sysbuild
 
 When building with :ref:`sysbuild`, the build is composed of multiple domains
 (the main application together with, for example, MCUboot). Run ``west spdx
---init`` against the **top-level** sysbuild build directory before building:
-the CMake file-based API is then enabled for every domain automatically, so that
-a separate SPDX document set can be generated for each of them. After the build,
-point ``west spdx`` at the same top-level build directory:
+--init`` against the **top-level** sysbuild build directory before building. This
+enables the CMake file-based API for every domain and also turns on
+:kconfig:option:`CONFIG_BUILD_OUTPUT_META` for each of them, so that a separate
+SPDX document set can be generated for every domain without having to configure
+the images individually. After the build, point ``west spdx`` at the same
+top-level build directory:
 
 .. code-block:: bash
 
