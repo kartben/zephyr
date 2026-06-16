@@ -292,6 +292,15 @@ Other notable changes
   * Removed the ``samples/net/wifi/test_certs/rsa2k`` enterprise test
     certificates (DES-encrypted private keys). Use ``rsa2k_no_des`` instead.
 
+* SPDX / SBOM
+
+  * :ref:`west spdx <west-spdx>` now supports :ref:`sysbuild` builds: pointing it
+    at the top-level build directory generates a complete set of SPDX documents
+    for every domain, plus a system-level aggregate (:file:`sbom.spdx` /
+    :file:`sbom.jsonld`) that links the domains together. Running
+    ``west spdx --init`` on a sysbuild build directory now enables the CMake
+    file-based API for every domain.
+
 ..
   Any more descriptive subsystem or driver changes. Do you really want to write
   a paragraph or is it enough to link to the api/driver/Kconfig/board page above?

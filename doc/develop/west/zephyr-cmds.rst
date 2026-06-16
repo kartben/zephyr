@@ -88,10 +88,10 @@ To use this command:
 
       west spdx --init -d BUILD_DIR
 
-   This step ensures the build directory contains CMake metadata required for
-   SPDX document generation.
+   This step ensures the build directory contains the CMake metadata required for
+   SPDX document generation, by enabling the CMake file-based API.
 
-#. Enable :file:`CONFIG_BUILD_OUTPUT_META` in your project.
+#. Enable :kconfig:option:`CONFIG_BUILD_OUTPUT_META` in your project.
 
 #. Build your application using this pre-created build directory, like so:
 
@@ -117,18 +117,6 @@ To use this command:
 
       west spdx -d BUILD_DIR --spdx-version 3.0
 
-.. note::
-
-   When building with :ref:`sysbuild`, make sure you target the actual application
-   which you want to generate the SBOM for. For example, if the application is
-   named ``hello_world``:
-
-   .. code-block:: bash
-
-     west spdx --init  -d BUILD_DIR/hello_world
-     west build -d BUILD_DIR/hello_world
-     west spdx -d BUILD_DIR/hello_world
-
 This generates the following SPDX bill-of-materials (BOM) documents in
 :file:`BUILD_DIR/spdx/`:
 
@@ -146,6 +134,34 @@ This generates the following SPDX bill-of-materials (BOM) documents in
 - :file:`zephyr.jsonld` and :file:`zephyr.json`: BOM for the specific Zephyr source code files
 - :file:`build.jsonld` and :file:`build.json`: BOM for the built output files
 - :file:`modules-deps.jsonld` and :file:`modules-deps.json`: BOM for modules dependencies
+
+Sysbuild
+--------
+
+When building with :ref:`sysbuild`, the build is composed of multiple domains
+(the main application together with, for example, MCUboot). Run ``west spdx
+--init`` against the **top-level** sysbuild build directory before building:
+the CMake file-based API is then enabled for every domain automatically, so that
+a separate SPDX document set can be generated for each of them. After the build,
+point ``west spdx`` at the same top-level build directory:
+
+.. code-block:: bash
+
+   west spdx --init -d BUILD_DIR
+   west build -b BOARD --sysbuild APP -d BUILD_DIR
+   west spdx -d BUILD_DIR
+
+This produces, under :file:`BUILD_DIR/spdx/`:
+
+- one subdirectory per domain (e.g. :file:`hello_world/`, :file:`mcuboot/`),
+  each containing the same set of per-build documents described above
+  (:file:`app`, :file:`zephyr`, :file:`build` and :file:`modules-deps`);
+- a top-level :file:`sbom.spdx` (or :file:`sbom.jsonld` for SPDX 3.0): a
+  system-level aggregate that declares a single ``system`` package and links it,
+  via cross-document references, to the final image of each domain.
+
+Domains whose build directory is not a Zephyr build (for example TF-M) are
+skipped with a warning.
 
 Each file in the bill-of-materials is scanned, so that its hashes (SHA256, SHA1, and MD5)
 can be recorded, along with any detected licenses if an
