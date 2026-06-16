@@ -70,6 +70,10 @@ class Walker:
         self.doc_build = None
         self.doc_modules_deps = None
 
+        # name of the final image build-target component (e.g. "zephyr_final");
+        # used by the sysbuild orchestrator to reference each domain's image
+        self.final_image_name = None
+
         # queue of pending source file paths to create, process and assign
         self.pendingSources = []
 
@@ -449,6 +453,7 @@ class Walker:
                     component.purpose = ComponentPurpose.APPLICATION
                     # the build document's primary subject is the final image
                     self.doc_build.add_described_component(component)
+                    self.final_image_name = component.name
                 else:
                     component.purpose = ComponentPurpose.LIBRARY
 

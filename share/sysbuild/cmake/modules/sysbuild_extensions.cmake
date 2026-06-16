@@ -355,6 +355,17 @@ function(ExternalZephyrProject_Add)
 
   include(ExternalProject)
   set(application_binary_dir ${CMAKE_BINARY_DIR}/${ZBUILD_APPLICATION})
+
+  # When the user has requested an SBOM by initializing the CMake file-based API
+  # at the sysbuild top level (`west spdx --init`), propagate the query to this
+  # image's build directory. The image is configured later, as a build step, by
+  # a separate CMake invocation; since CMake reads queries at startup, creating
+  # the query here (during sysbuild configure) ensures the codemodel reply is
+  # generated for the image and `west spdx` can produce a per-domain SBOM.
+  if(EXISTS ${CMAKE_BINARY_DIR}/.cmake/api/v1/query/codemodel-v2)
+    file(WRITE ${application_binary_dir}/.cmake/api/v1/query/codemodel-v2 "")
+  endif()
+
   ExternalProject_Add(
     ${ZBUILD_APPLICATION}
     SOURCE_DIR ${ZBUILD_SOURCE_DIR}
@@ -553,6 +564,17 @@ function(ExternalZephyrVariantProject_Add)
 
   include(ExternalProject)
   set(application_binary_dir ${CMAKE_BINARY_DIR}/${ZBUILD_APPLICATION})
+
+  # When the user has requested an SBOM by initializing the CMake file-based API
+  # at the sysbuild top level (`west spdx --init`), propagate the query to this
+  # image's build directory. The image is configured later, as a build step, by
+  # a separate CMake invocation; since CMake reads queries at startup, creating
+  # the query here (during sysbuild configure) ensures the codemodel reply is
+  # generated for the image and `west spdx` can produce a per-domain SBOM.
+  if(EXISTS ${CMAKE_BINARY_DIR}/.cmake/api/v1/query/codemodel-v2)
+    file(WRITE ${application_binary_dir}/.cmake/api/v1/query/codemodel-v2 "")
+  endif()
+
   ExternalProject_Add(
     ${ZBUILD_APPLICATION}
     SOURCE_DIR ${ZBUILD_SOURCE_DIR}

@@ -9,7 +9,7 @@ import uuid
 
 from west.commands import WestCommand
 
-from build_helpers import forward_logging_to_west
+from build_helpers import forward_logging_to_west, load_domains
 
 script_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 sys.path.insert(0, os.path.join(script_dir, "pylib/"))
@@ -20,11 +20,11 @@ SPDX_DESCRIPTION = """\
 This command creates an SPDX bill of materials following the completion
 of a Zephyr build.
 
-Prior to the build, an empty file must be created at
-BUILDDIR/.cmake/api/v1/query/codemodel-v2 in order to enable
-the CMake file-based API, which the SPDX command relies upon.
-This can be done by calling `west spdx --init` prior to
-calling `west build`."""
+Prior to the build, the CMake file-based API must be enabled, as the SPDX
+command relies upon it. This is done by calling `west spdx --init` before
+calling `west build`. When the build directory is a sysbuild build, `--init`
+also enables the file-based API for every domain so that an SBOM can be
+generated for each of them."""
 
 
 class ZephyrSpdx(WestCommand):
@@ -37,7 +37,11 @@ class ZephyrSpdx(WestCommand):
         # If you update these options, make sure to keep the docs in
         # doc/guides/west/zephyr-cmds.rst up to date.
         parser.add_argument(
-            '-i', '--init', action="store_true", help="initialize CMake file-based API"
+            '-i',
+            '--init',
+            action="store_true",
+            help="initialize CMake file-based API prior to building; for a sysbuild "
+            "build directory this also initializes every domain",
         )
         parser.add_argument('-d', '--build-dir', help="build directory")
         parser.add_argument('-n', '--namespace-prefix', help="namespace prefix")
@@ -84,16 +88,26 @@ class ZephyrSpdx(WestCommand):
         if not args.build_dir:
             self.die("Build directory not specified; call `west spdx --init --build-dir=BUILD_DIR`")
 
-        # initialize CMake file-based API - empty query file
-        query_ready = setupCmakeQuery(args.build_dir)
-        if query_ready:
-            self.inf("initialized; run `west build` then run `west spdx`")
-        else:
-            self.die(
-                "Couldn't create CMake file-based API query directory\n"
-                "You can manually create an empty file at "
-                "$BUILDDIR/.cmake/api/v1/query/codemodel-v2"
-            )
+        # Initialize the CMake file-based API for the top-level build directory.
+        # When run before the build, this is all that exists yet; the sysbuild
+        # build system propagates this query to each domain at configure time.
+        # When run after a sysbuild build (domains.yaml present), also initialize
+        # each existing domain build directory directly.
+        build_dirs = [args.build_dir]
+        if os.path.isfile(os.path.join(args.build_dir, "domains.yaml")):
+            domains = [d.build_dir for d in load_domains(args.build_dir).get_domains()]
+            build_dirs.extend(d for d in domains if d not in build_dirs)
+            self.inf(f"sysbuild detected; also initializing domains: {', '.join(domains)}")
+
+        for build_dir in build_dirs:
+            if not setupCmakeQuery(build_dir):
+                self.die(
+                    f"Couldn't create CMake file-based API query directory in {build_dir}\n"
+                    "You can manually create an empty file at "
+                    "$BUILDDIR/.cmake/api/v1/query/codemodel-v2"
+                )
+
+        self.inf("initialized; run `west build` then run `west spdx`")
 
     def do_run_spdx(self, args):
         if not args.build_dir:
@@ -123,6 +137,17 @@ class ZephyrSpdx(WestCommand):
         if args.include_sdk:
             cfg.includeSDK = True
 
+        # When the build directory is a sysbuild top-level directory it
+        # contains a domains.yaml listing the build directory of each domain
+        # (the application, MCUboot, etc.). In that case generate a separate
+        # set of SPDX documents for each domain.
+        sysbuild = os.path.isfile(os.path.join(args.build_dir, "domains.yaml"))
+        domains = None
+        if sysbuild:
+            domains = [(d.name, d.build_dir) for d in load_domains(args.build_dir).get_domains()]
+            self.inf(f"sysbuild detected; generating SPDX for domains: "
+                     f"{', '.join(name for name, _ in domains)}")
+
         # make sure SPDX directory exists, or create it if it doesn't
         if os.path.exists(cfg.spdxDir):
             if not os.path.isdir(cfg.spdxDir):
@@ -133,5 +158,5 @@ class ZephyrSpdx(WestCommand):
             # create the directory
             os.makedirs(cfg.spdxDir, exist_ok=False)
 
-        if not makeSPDX(cfg):
+        if not makeSPDX(cfg, domains=domains, sysbuild=sysbuild):
             self.die("Failed to create SPDX output")
