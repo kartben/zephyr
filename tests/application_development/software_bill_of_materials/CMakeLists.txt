@@ -96,3 +96,69 @@ foreach(spdx_version ${SPDX_VERSIONS_TO_TEST})
     add_spdx3_validation_tests(${version_suffix})
   endif()
 endforeach()
+
+# ----------------------------------------------------------------------------
+# Coverage for the selectable output format (--format) and the bundled
+# single-file output (--single-file). Each mode generates into its own
+# directory so it never clobbers the default-mode artifacts validated above.
+# Only the standards-clean modes are validated; the non-standard bundles
+# (tag-value concatenation, 2.x JSON container) are smoke-tested via generation.
+# ----------------------------------------------------------------------------
+
+# SPDX 2.x JSON output, one file per document (valid SPDX 2.3 JSON).
+add_test(
+  NAME spdx_gen_json_2_3
+  COMMAND west spdx -d ${CMAKE_BINARY_DIR} --spdx-version 2.3
+                    --format json --spdx-dir ${CMAKE_BINARY_DIR}/spdx-json
+)
+set_tests_properties(
+  spdx_gen_json_2_3 PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+foreach(spdx_file ${SPDX2_FILES})
+  get_filename_component(basename ${spdx_file} NAME_WE)
+  add_test(
+    NAME spdx_validate_json_${basename}
+    COMMAND pyspdxtools -i ${CMAKE_BINARY_DIR}/spdx-json/${basename}.spdx.json
+  )
+  set_tests_properties(
+    spdx_validate_json_${basename} PROPERTIES DEPENDS spdx_gen_json_2_3
+  )
+endforeach()
+
+# SPDX 2.x JSON, bundled into a single (non-standard) container file.
+add_test(
+  NAME spdx_gen_json_single_2_3
+  COMMAND west spdx -d ${CMAKE_BINARY_DIR} --spdx-version 2.3
+                    --format json --single-file --spdx-dir ${CMAKE_BINARY_DIR}/spdx-json-single
+)
+set_tests_properties(
+  spdx_gen_json_single_2_3 PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+# SPDX 2.x tag-value, bundled into a single (non-standard) concatenated file.
+add_test(
+  NAME spdx_gen_tagvalue_single_2_3
+  COMMAND west spdx -d ${CMAKE_BINARY_DIR} --spdx-version 2.3
+                    --single-file --spdx-dir ${CMAKE_BINARY_DIR}/spdx-tagvalue-single
+)
+set_tests_properties(
+  spdx_gen_tagvalue_single_2_3 PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+# SPDX 3.0, all documents bundled into a single @graph (standards-clean).
+add_test(
+  NAME spdx_gen_single_3_0
+  COMMAND west spdx -d ${CMAKE_BINARY_DIR} --spdx-version 3.0
+                    --single-file --spdx-dir ${CMAKE_BINARY_DIR}/spdx-single-3_0
+)
+set_tests_properties(
+  spdx_gen_single_3_0 PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+add_test(
+  NAME spdx_validate_single_3_0
+  COMMAND spdx3-validate --quiet --spdx-version auto
+                         --json ${CMAKE_BINARY_DIR}/spdx-single-3_0/sbom.jsonld
+)
+set_tests_properties(
+  spdx_validate_single_3_0 PROPERTIES DEPENDS spdx_gen_single_3_0
+)
