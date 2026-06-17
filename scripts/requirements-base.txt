@@ -26,6 +26,7 @@ semver
 tqdm>=4.67.1
 reuse>=6.0.0
 spdx-python-model
+spdx-tools
 
 # for ram/rom reports
 anytree
