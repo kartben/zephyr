@@ -54,6 +54,18 @@ class ZephyrSpdx(WestCommand):
         parser.add_argument(
             '--include-sdk', action="store_true", help="also generate SPDX document for SDK"
         )
+        parser.add_argument(
+            '--format',
+            choices=["tag-value", "json"],
+            default="tag-value",
+            help="output format for SPDX 2.x (default: tag-value); "
+            "ignored for SPDX 3.0, which is always JSON-LD",
+        )
+        parser.add_argument(
+            '--single-file',
+            action="store_true",
+            help="bundle all documents into a single output file instead of one file each",
+        )
 
         return parser
 
@@ -72,6 +84,8 @@ class ZephyrSpdx(WestCommand):
         self.dbg("  --spdx-version is", args.spdx_version)
         self.dbg("  --analyze-includes is", args.analyze_includes)
         self.dbg("  --include-sdk is", args.include_sdk)
+        self.dbg("  --format is", args.format)
+        self.dbg("  --single-file is", args.single_file)
 
         if args.init:
             self.do_run_init(args)
@@ -122,6 +136,8 @@ class ZephyrSpdx(WestCommand):
             cfg.analyzeIncludes = True
         if args.include_sdk:
             cfg.includeSDK = True
+        cfg.outputFormat = args.format
+        cfg.singleFile = args.single_file
 
         # make sure SPDX directory exists, or create it if it doesn't
         if os.path.exists(cfg.spdxDir):

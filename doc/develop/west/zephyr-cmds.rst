@@ -169,6 +169,18 @@ source files that are compiled to generate the built library files.
   Defaults to ``2.3``. SPDX 2.3 includes additional fields like ``PrimaryPackagePurpose``
   that are not available in SPDX 2.2. SPDX 3.0 generates JSON-LD format documents.
 
+- ``--format {tag-value,json}``: for SPDX 2.x, selects the output format. Defaults to
+  ``tag-value`` (the traditional :file:`.spdx` files); ``json`` writes SPDX 2.x JSON
+  (:file:`<name>.spdx.json`). This option is ignored for SPDX 3.0, which is always
+  emitted as JSON-LD.
+
+- ``--single-file``: bundle all generated documents into a single output file
+  (:file:`sbom.<ext>`) instead of one file per document. For SPDX 3.0 this produces a
+  single JSON-LD ``@graph`` and is the standards-compliant way to combine documents. For
+  SPDX 2.x, bundling is not part of the specification (the tag-value bundle is a plain
+  concatenation and the JSON bundle is a simple container), so the result may not validate
+  as a single document; the default per-document layout remains the compliant option.
+
 - ``--analyze-includes``: in addition to recording the compiled source code
   files (e.g. ``.c``, ``.S``) in the bills-of-materials, also attempt to
   determine the specific header files that are included for each ``.c`` file.

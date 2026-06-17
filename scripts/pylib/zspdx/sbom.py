@@ -37,6 +37,13 @@ class SBOMConfig:
     # should also add an SPDX document for the SDK?
     includeSDK: bool = False
 
+    # output format for SPDX 2.x ("tag-value" or "json");
+    # ignored for SPDX 3.0, which is always JSON-LD
+    outputFormat: str = "tag-value"
+
+    # bundle all documents into a single output file instead of one file each
+    singleFile: bool = False
+
 
 # create Cmake file-based API directories and query file
 # Arguments:
@@ -108,13 +115,18 @@ def makeSPDX(cfg):
         # Use SPDX 2.x serializer
         from zspdx.serializers.spdx2 import SPDX2Serializer
 
-        serializer = SPDX2Serializer(sbom_graph, cfg.spdxVersion)
+        serializer = SPDX2Serializer(
+            sbom_graph,
+            cfg.spdxVersion,
+            output_format=cfg.outputFormat,
+            single_file=cfg.singleFile,
+        )
         return serializer.serialize(cfg.spdxDir)
     elif cfg.spdxVersion.major == 3:
-        # Use SPDX 3.0 serializer
+        # Use SPDX 3.0 serializer (always JSON-LD; output format is ignored)
         from zspdx.serializers.spdx3 import SPDX3Serializer
 
-        serializer = SPDX3Serializer(sbom_graph, cfg.spdxVersion)
+        serializer = SPDX3Serializer(sbom_graph, cfg.spdxVersion, single_file=cfg.singleFile)
         return serializer.serialize(cfg.spdxDir)
     else:
         _logger.error("Unsupported SPDX version: %s", cfg.spdxVersion)
