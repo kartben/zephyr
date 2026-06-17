@@ -44,9 +44,11 @@ class SPDX3Serializer:
         "sdk": "Zephyr SDK",
     }
 
-    def __init__(self, sbom_graph: SBOMGraph, spdx_version=None):
+    def __init__(self, sbom_graph: SBOMGraph, spdx_version=None, single_file=False):
         self.sbom_data = sbom_graph
         self.spdx_version = spdx_version  # Not used for SPDX 3.0, but kept for API consistency
+        # Bundle all documents into a single JSON-LD @graph instead of one file each
+        self.single_file = single_file
 
         # Track SPDX 3.0 elements
         self.elements = []  # All SPDX3 elements (packages, files, relationships, etc.)
@@ -678,14 +680,18 @@ class SPDX3Serializer:
                 self._create_document(sbom_doc)
 
     def _write_documents(self, output_dir: str):
-        """Write each created document to its own JSON-LD file."""
-        for doc_name, document in self.documents.items():
-            jsonld_path = os.path.join(output_dir, f"{doc_name}.jsonld")
-            self._serialize_document_to_jsonld(document, jsonld_path)
+        """Write the created documents, either one file each or a single bundle."""
+        if self.single_file:
+            jsonld_path = os.path.join(output_dir, "sbom.jsonld")
+            self._serialize_documents_to_jsonld(list(self.documents.values()), jsonld_path)
+        else:
+            for doc_name, document in self.documents.items():
+                jsonld_path = os.path.join(output_dir, f"{doc_name}.jsonld")
+                self._serialize_documents_to_jsonld([document], jsonld_path)
 
-    def _serialize_document_to_jsonld(self, document: spdx.SpdxDocument, output_path: str):
-        """Serialize a single document to JSON-LD format."""
-        elements = self._gather_elements_to_serialize(document)
+    def _serialize_documents_to_jsonld(self, documents: list, output_path: str):
+        """Serialize one or more documents into a single JSON-LD @graph."""
+        elements = self._gather_elements_to_serialize(documents)
         elements_data = self._encode_elements(elements)
         self._simplify_document_references(elements_data)
 
@@ -698,21 +704,24 @@ class SPDX3Serializer:
 
         _logger.info(f"Written SPDX 3.0 JSON-LD to {output_path}")
 
-    def _gather_elements_to_serialize(self, document: spdx.SpdxDocument) -> list:
-        """Collect the document plus every element it references.
+    def _gather_elements_to_serialize(self, documents: list) -> list:
+        """Collect the given documents plus every element they reference.
 
-        The document, its creation info and the tool are always included; the
-        remaining elements are looked up by the IDs listed in ``document.element``.
+        The documents, the shared creation info and the tool are always included;
+        the remaining elements are looked up by the IDs listed in each
+        ``document.element``.
         """
-        elements = [document]
+        elements = list(documents)
         if self.creation_info:
             elements.append(self.creation_info)
         if self.tool:
             elements.append(self.tool)
 
-        referenced_ids = {
-            elem._id for elem in getattr(document, 'element', []) if getattr(elem, '_id', None)
-        }
+        referenced_ids = set()
+        for document in documents:
+            for elem in getattr(document, 'element', []):
+                if getattr(elem, '_id', None):
+                    referenced_ids.add(elem._id)
 
         # First-occurrence wins, mirroring the original linear search.
         elements_by_id = {}
