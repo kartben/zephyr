@@ -8,6 +8,11 @@
 
 #include "stm32_common_clocks.h"
 
+/**
+ * @addtogroup clock_control_dt_stm32
+ * @{
+ */
+
 /** Domain clocks */
 
 /** Bus clocks */
@@ -100,4 +105,6 @@
 #define SDMMC2_SEL(val)		STM32_DT_CLOCK_SELECT((val), 29, 29, DCKCFGR2_REG)
 #define DSI_SEL(val)		STM32_DT_CLOCK_SELECT((val), 30, 30, DCKCFGR2_REG)
 
+
+/** @} */
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32F7_CLOCK_H_ */

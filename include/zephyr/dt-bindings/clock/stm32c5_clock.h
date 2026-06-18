@@ -15,6 +15,11 @@
 
 #include "stm32_common_clocks.h"
 
+/**
+ * @addtogroup clock_control_dt_stm32
+ * @{
+ */
+
 /** Domain clocks */
 
 /* RM0522, Figure 24 Clock tree for STM32C5 Series */
@@ -140,4 +145,6 @@
 #define MCO2_SEL_HSIDIV3	7
 
 /** @endcond */
+
+/** @} */
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32C5_CLOCK_H_ */

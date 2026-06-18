@@ -9,6 +9,11 @@
 /** Define system & low-speed clocks */
 #include "stm32_common_clocks.h"
 
+/**
+ * @addtogroup clock_control_dt_stm32
+ * @{
+ */
+
 /** Other fixed clocks.
  * - CLKSLOWMUX: used to query slow clock tree frequency
  * - CLK16MHZ: secondary clock for LPUART, SPI3/I2S and BLE
@@ -42,4 +47,6 @@
 /* `msb` is only 22 for WB06/WB07, but a single definition with msb=23 is acceptable */
 #define SPI3_I2S3_SEL(val)	STM32_DT_CLOCK_SELECT((val), 23, 22, CFGR_REG)
 
+
+/** @} */
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32WB0_CLOCK_H_ */

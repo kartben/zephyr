@@ -9,6 +9,11 @@
 
 #include "stm32_common_clocks.h"
 
+/**
+ * @addtogroup clock_control_dt_stm32
+ * @{
+ */
+
 /** Domain clocks */
 
 /* RM0456, Figure 36 Clock tree for STM32U5 Series */
@@ -122,4 +127,6 @@
 #define MCO_PRE_DIV_8  3
 #define MCO_PRE_DIV_16 4
 
+
+/** @} */
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32U5_CLOCK_H_ */

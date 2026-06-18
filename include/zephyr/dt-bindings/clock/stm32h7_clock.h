@@ -8,6 +8,11 @@
 
 #include "stm32_common_clocks.h"
 
+/**
+ * @addtogroup clock_control_dt_stm32
+ * @{
+ */
+
 /** Domain clocks */
 
 /* RM0468, Table 56 Kernel clock dictribution summary */
@@ -148,4 +153,6 @@
 #define MCO2_SEL_CSI		4
 #define MCO2_SEL_LSI		5
 
+
+/** @} */
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32H7_CLOCK_H_ */

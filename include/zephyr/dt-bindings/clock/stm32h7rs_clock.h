@@ -8,6 +8,11 @@
 
 #include "stm32_common_clocks.h"
 
+/**
+ * @addtogroup clock_control_dt_stm32
+ * @{
+ */
+
 /** Domain clocks */
 
 /* RM0477  */
@@ -137,4 +142,6 @@
 #define MCO_PRE_DIV_14 14
 #define MCO_PRE_DIV_15 15
 
+
+/** @} */
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32H7RS_CLOCK_H_ */

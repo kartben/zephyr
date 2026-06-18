@@ -8,6 +8,11 @@
 
 #include "stm32_common_clocks.h"
 
+/**
+ * @addtogroup clock_control_dt_stm32
+ * @{
+ */
+
 /** Bus clocks */
 #define STM32_CLOCK_BUS_AHB1    0x048
 #define STM32_CLOCK_BUS_AHB2    0x04c
@@ -89,4 +94,6 @@
 #define MCO_SEL_PLL1PCLK  13
 #define MCO_SEL_PLL1QCLK  14
 
+
+/** @} */
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32WL_CLOCK_H_ */

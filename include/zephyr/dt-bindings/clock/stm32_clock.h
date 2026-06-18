@@ -6,7 +6,15 @@
 #ifndef ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32_CLOCK_H_
 #define ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32_CLOCK_H_
 
-/* clock bus references */
+/**
+ * @addtogroup clock_control_dt_stm32
+ * @{
+ */
+
+/**
+ * @name Legacy STM32 clock bus identifiers
+ * @{
+ */
 #define STM32_CLOCK_BUS_AHB1    0
 #define STM32_CLOCK_BUS_AHB2    1
 #define STM32_CLOCK_BUS_APB1    2
@@ -23,10 +31,15 @@
 #define STM32_CLOCK_BUS_AXI     13
 #define STM32_CLOCK_BUS_MLAHB   14
 #define STM32_CLOCK_BUS_APB4_2  15
+/** @} */
 
+/** @cond INTERNAL_HIDDEN */
 #define STM32_CLOCK_DIV_SHIFT	12
+/** @endcond */
 
-/** Clock divider */
+/** Clock divider value for STM32 devicetree clock specifiers. */
 #define STM32_CLOCK_DIV(div)	(((div) - 1) << STM32_CLOCK_DIV_SHIFT)
 
+
+/** @} */
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32_CLOCK_H_ */

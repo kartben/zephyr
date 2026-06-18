@@ -8,6 +8,11 @@
 
 #include "stm32_common_clocks.h"
 
+/**
+ * @addtogroup clock_control_dt_stm32
+ * @{
+ */
+
 /** Bus clocks */
 #define STM32_CLOCK_BUS_AHB1    0x048
 #define STM32_CLOCK_BUS_AHB2    0x04c
@@ -72,4 +77,6 @@
 /** BDCR devices */
 #define RTC_SEL(val)		STM32_DT_CLOCK_SELECT((val), 9, 8, BDCR_REG)
 
+
+/** @} */
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32G4_CLOCK_H_ */
