@@ -313,6 +313,24 @@ class SBOMDocument:
 
 
 @dataclass
+class SBOMBuild:
+    """Format-agnostic identity of the build that produced the graph's artifacts.
+
+    Serializers with a build vocabulary (e.g. the SPDX 3.0 Build profile) map this
+    onto their build element; others ignore it. ``build_type`` may be a bare token
+    (mapped to a project URI by the serializer) or an absolute URI. Timestamps are
+    left empty for reproducible builds. The detailed, tool-specific configuration
+    lives in ``SBOMGraph.metadata['build_info']``, not here.
+    """
+
+    id: str = ""
+    build_type: str = ""
+    started_at: str = ""
+    finished_at: str = ""
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
 class SBOMGraph:
     """Format-agnostic SBOM graph and consistency boundary.
 
@@ -328,7 +346,11 @@ class SBOMGraph:
         files: Files in the graph, keyed by absolute path.
         relationships: Relationships in the graph.
         custom_license_ids: Custom license IDs that need to be declared by serializers.
-        metadata: Additional data not represented by the common model fields.
+        build: Build instance that produced the graph's artifacts, or ``None`` when no build
+            information was collected.
+        metadata: Additional data not represented by the common model fields. The
+            ``build_info`` key, when present, holds the detailed build configuration (compiler,
+            linker and CMake information) consumed by the SPDX 3.0 Build profile serializer.
     """
 
     namespace_prefix: str = ""
@@ -338,6 +360,7 @@ class SBOMGraph:
     files: dict[str, SBOMFile] = field(default_factory=dict)
     relationships: list[SBOMRelationship] = field(default_factory=list)
     custom_license_ids: set[str] = field(default_factory=set)
+    build: SBOMBuild | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def add_document(self, document: SBOMDocument) -> None:
