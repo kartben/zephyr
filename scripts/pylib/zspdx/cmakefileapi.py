@@ -305,3 +305,80 @@ class Target:
 
     def __repr__(self):
         return f"Target: {self.name}"
+
+
+# General CMake information from the top of the file-based API index reply (the
+# "cmake" object): generator and CMake version. Used by the SPDX 3.0 Build
+# profile to record which build system produced the artifacts.
+class CMakeInfo:
+    def __init__(self):
+        super().__init__()
+
+        # generator info
+        self.generator_name = ""
+        self.generator_multiConfig = False
+
+        # CMake executable paths
+        self.cmake_path = ""
+
+        # CMake version info
+        self.version_major = 0
+        self.version_minor = 0
+        self.version_patch = 0
+        self.version_string = ""
+
+    def __repr__(self):
+        return f"CMakeInfo: version {self.version_string}, generator {self.generator_name}"
+
+
+# Compiler information for a single language from the toolchains-v1 reply
+class ToolchainCompiler:
+    def __init__(self):
+        super().__init__()
+
+        self.path = ""
+        self.id = ""
+        self.version = ""
+        self.target = ""
+
+    def __repr__(self):
+        return f"ToolchainCompiler: {self.id} {self.version} at {self.path}"
+
+
+# A member of the toolchains-v1 reply toolchains array
+class Toolchain:
+    def __init__(self):
+        super().__init__()
+
+        self.language = ""
+        self.compiler = None  # ToolchainCompiler
+        self.sourceFileExtensions = []
+
+    def __repr__(self):
+        return f"Toolchain: {self.language}"
+
+
+# Collection of toolchains keyed by language, from the toolchains-v1 reply
+class Toolchains:
+    def __init__(self):
+        super().__init__()
+
+        self.toolchains = {}  # language -> Toolchain
+
+    def get_compiler_path(self, language):
+        """Get the compiler path for a given language, or "" if unknown."""
+        tc = self.toolchains.get(language)
+        return tc.compiler.path if tc and tc.compiler else ""
+
+    def get_compiler_version(self, language):
+        """Get the compiler version for a given language, or "" if unknown."""
+        tc = self.toolchains.get(language)
+        return tc.compiler.version if tc and tc.compiler else ""
+
+    def get_compiler_id(self, language):
+        """Get the compiler ID for a given language, or "" if unknown."""
+        tc = self.toolchains.get(language)
+        return tc.compiler.id if tc and tc.compiler else ""
+
+    def __repr__(self):
+        return f"Toolchains: {list(self.toolchains.keys())}"

@@ -45,6 +45,103 @@ def parseReply(replyIndexPath):
         return None
 
 
+def parseToolchainsAndInfo(replyIndexPath):
+    """Parse the CMake info and toolchains-v1 reply from the file-API index.
+
+    CMake info comes from the ``cmake`` object in the index itself; compiler ids
+    and versions come from the toolchains-v1 reply (present only when that query
+    was created before configuring). Returns a ``(CMakeInfo, Toolchains)`` tuple,
+    each falling back to an empty object when its data is missing or unparsable.
+    """
+    cmake_info = cmakefileapi.CMakeInfo()
+    toolchains = cmakefileapi.Toolchains()
+
+    replyDir, _ = os.path.split(replyIndexPath)
+    try:
+        with open(replyIndexPath) as indexFile:
+            js = json.load(indexFile)
+    except OSError:
+        _logger.exception("Error loading %s", replyIndexPath)
+        return cmake_info, toolchains
+    except json.decoder.JSONDecodeError:
+        _logger.exception("Error parsing JSON in %s", replyIndexPath)
+        return cmake_info, toolchains
+
+    cmake_info = parseCMakeInfo(js)
+
+    reply_dict = js.get("reply", {})
+    toolchains_dict = reply_dict.get("toolchains-v1", {})
+    toolchainsJsonFile = toolchains_dict.get("jsonFile", "")
+    if toolchainsJsonFile:
+        toolchains = parseToolchains(replyDir, toolchainsJsonFile)
+    else:
+        _logger.debug('no "toolchains-v1" reply found in CMake file API index')
+
+    return cmake_info, toolchains
+
+
+def parseCMakeInfo(js):
+    """Parse the ``cmake`` object (generator and version) from the index file."""
+    cmake_info = cmakefileapi.CMakeInfo()
+
+    cmake_dict = js.get("cmake", {})
+    if cmake_dict:
+        generator_dict = cmake_dict.get("generator", {})
+        cmake_info.generator_name = generator_dict.get("name", "")
+        cmake_info.generator_multiConfig = generator_dict.get("multiConfig", False)
+
+        paths_dict = cmake_dict.get("paths", {})
+        cmake_info.cmake_path = paths_dict.get("cmake", "")
+
+        version_dict = cmake_dict.get("version", {})
+        cmake_info.version_major = version_dict.get("major", 0)
+        cmake_info.version_minor = version_dict.get("minor", 0)
+        cmake_info.version_patch = version_dict.get("patch", 0)
+        cmake_info.version_string = version_dict.get("string", "")
+
+    return cmake_info
+
+
+def parseToolchains(replyDir, toolchainsFile):
+    """Parse a toolchains-v1 reply file into a ``Toolchains`` object."""
+    toolchainsPath = os.path.join(replyDir, toolchainsFile)
+    toolchains = cmakefileapi.Toolchains()
+
+    try:
+        with open(toolchainsPath) as f:
+            js = json.load(f)
+    except OSError as e:
+        _logger.warning("Could not load toolchains file %s: %s", toolchainsPath, str(e))
+        return toolchains
+    except json.decoder.JSONDecodeError as e:
+        _logger.warning("Error parsing JSON in %s: %s", toolchainsPath, str(e))
+        return toolchains
+
+    kind = js.get("kind", "")
+    if kind != "toolchains":
+        _logger.warning('Expected "kind":"toolchains" in %s, got %s', toolchainsPath, kind)
+
+    for tc_dict in js.get("toolchains", []):
+        tc = cmakefileapi.Toolchain()
+        tc.language = tc_dict.get("language", "")
+        tc.sourceFileExtensions = tc_dict.get("sourceFileExtensions", [])
+
+        compiler_dict = tc_dict.get("compiler", {})
+        if compiler_dict:
+            compiler = cmakefileapi.ToolchainCompiler()
+            compiler.path = compiler_dict.get("path", "")
+            compiler.id = compiler_dict.get("id", "")
+            compiler.version = compiler_dict.get("version", "")
+            compiler.target = compiler_dict.get("target", "")
+            tc.compiler = compiler
+
+        if tc.language:
+            toolchains.toolchains[tc.language] = tc
+
+    _logger.debug("parsed %d toolchains from CMake file API", len(toolchains.toolchains))
+    return toolchains
+
+
 def parseCodemodel(replyDir, codemodelFile):
     codemodelPath = os.path.join(replyDir, codemodelFile)
 
