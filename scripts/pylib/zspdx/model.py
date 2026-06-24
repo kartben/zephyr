@@ -24,6 +24,7 @@ class ComponentPurpose(StrEnum):
     LIBRARY = "LIBRARY"
     SOURCE = "SOURCE"
     FILE = "FILE"
+    CONFIGURATION = "CONFIGURATION"
 
 
 class RelationshipType(StrEnum):
@@ -115,6 +116,7 @@ class SBOMFile:
         copyright_text: Copyright text detected for the file.
         relationships: Relationships where this file is the source element.
         component: Component that owns this file. Set by ``SBOMGraph.add_file()``.
+        purpose: File purpose, or ``None`` to let the serializer use its default.
         metadata: Additional data not represented by the common model fields.
     """
 
@@ -126,6 +128,7 @@ class SBOMFile:
     copyright_text: str = NOASSERTION
     relationships: list[SBOMRelationship] = field(default_factory=list)
     component: SBOMComponent | None = None
+    purpose: ComponentPurpose | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -321,12 +324,16 @@ class SBOMBuild:
     (mapped to a project URI by the serializer) or an absolute URI. Timestamps are
     left empty for reproducible builds. The detailed, tool-specific configuration
     lives in ``SBOMGraph.metadata['build_info']``, not here.
+
+    ``config_source`` is the build's configuration file (e.g. Kconfig ``.config``),
+    mapped to the SPDX ``build_configSourceUri``/``build_configSourceDigest``.
     """
 
     id: str = ""
     build_type: str = ""
     started_at: str = ""
     finished_at: str = ""
+    config_source: SBOMFile | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
 

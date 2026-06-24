@@ -199,6 +199,9 @@ class Walker:
         _logger.info("walking through targets")
         self.walk_targets()
 
+        # capture the build's configuration source (Kconfig .config)
+        self.capture_build_config()
+
         # walk through pending sources and create corresponding files
         _logger.info("walking through pending sources files")
         self.walk_pending_sources()
@@ -297,6 +300,18 @@ class Walker:
         if self.cmake_info:
             build_info["cmake_generator"] = self.cmake_info.generator_name
             build_info["cmake_version"] = self.cmake_info.version_string
+
+        # build environment: Zephyr config inputs surfaced as build_environment
+        for env_key, cache_key in (
+            ("BOARD", "BOARD"),
+            ("ARCH", "ARCH"),
+            ("ZEPHYR_TOOLCHAIN_VARIANT", "ZEPHYR_TOOLCHAIN_VARIANT"),
+            ("ZEPHYR_SDK_INSTALL_DIR", "ZEPHYR_SDK_INSTALL_DIR"),
+            ("CMAKE_BUILD_TYPE", "CMAKE_BUILD_TYPE"),
+        ):
+            value = self.cmake_cache.get(cache_key, "")
+            if value:
+                build_info[f"env:{env_key}"] = value
 
         # linker and archiver versions are not in toolchains-v1; query the tools
         for version_key, path in (
@@ -587,15 +602,68 @@ class Walker:
             # get its target dependencies
             self.collect_target_dependencies(cfg_targets, cfg_target, component)
 
-    # capture the per-target metadata the SPDX 3.0 Build profile needs to
-    # attribute a compiler/archiver to each artifact: the CMake target type and
-    # the languages compiled into it
+    # capture the per-target metadata the SPDX 3.0 Build profile needs to attribute a compiler/
+    # archiver to each artifact: target type, compiled languages and per-language compile flags
     def capture_build_metadata(self, cfg_target, component):
         target = cfg_target.target
         component.metadata["target_type"] = target.type.name
-        languages = sorted({cg.language for cg in target.compile_groups if cg.language})
+
+        languages = set()
+        compile_flags = {}
+        compile_defines = {}
+        for cg in target.compile_groups:
+            if not cg.language:
+                continue
+            languages.add(cg.language)
+            flags = [frag for frag in (cg.compile_command_fragments or []) if frag]
+            if flags:
+                compile_flags.setdefault(cg.language, []).extend(flags)
+            defines = [f"-D{d.define}" for d in (cg.defines or []) if d.define]
+            if defines:
+                compile_defines.setdefault(cg.language, []).extend(defines)
+
         if languages:
-            component.metadata["compile_languages"] = languages
+            component.metadata["compile_languages"] = sorted(languages)
+        if compile_flags:
+            component.metadata["compile_flags"] = {
+                lang: " ".join(flags) for lang, flags in compile_flags.items()
+            }
+        if compile_defines:
+            component.metadata["compile_defines"] = {
+                lang: " ".join(defs) for lang, defs in compile_defines.items()
+            }
+
+    # capture the Kconfig .config as the build's configuration source
+    def capture_build_config(self):
+        """Register the Kconfig ``.config`` as the build's configuration source.
+
+        Adds ``<build>/zephyr/.config`` to the build document as a configuration-purpose file
+        (hashed later by the scanner) and records it on the graph's SBOMBuild so the serializer can
+        emit the SPDX build_configSourceUri/build_configSourceDigest.
+        """
+        if not self.sbom_graph.build:
+            return
+
+        config_path = os.path.join(self.cfg.build_dir, "zephyr", ".config")
+        if not os.path.isfile(config_path):
+            _logger.debug("no .config at %s; skipping build configuration", config_path)
+            return
+        if config_path in self.sbom_graph.files:
+            return
+
+        # own it under the build document's described component so it is scanned
+        owner = None
+        for name in self.doc_build.described_components:
+            owner = self.sbom_graph.get_component(name)
+            if owner:
+                break
+        if not owner:
+            _logger.debug("build document has no component to own .config; skipping")
+            return
+
+        config_file = SBOMFile(path=config_path, purpose=ComponentPurpose.CONFIGURATION)
+        self.sbom_graph.add_file(config_file, owner)
+        self.sbom_graph.build.config_source = config_file
 
     # build a Component for the given ConfigTarget
     def init_config_target_component(self, cfg_target):

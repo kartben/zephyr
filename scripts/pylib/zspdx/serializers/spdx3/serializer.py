@@ -124,6 +124,7 @@ class SPDX3Serializer:
             ComponentPurpose.LIBRARY: spdx.software_SoftwarePurpose.library,
             ComponentPurpose.SOURCE: spdx.software_SoftwarePurpose.source,
             ComponentPurpose.FILE: spdx.software_SoftwarePurpose.file,
+            ComponentPurpose.CONFIGURATION: spdx.software_SoftwarePurpose.configuration,
         }
         return purpose_map.get(purpose, spdx.software_SoftwarePurpose.library)
 
@@ -311,7 +312,36 @@ class SPDX3Serializer:
                 self.build.build_buildEndTime = sbom_build.finished_at
 
         self._add_build_parameters()
+        self._add_build_environment()
         self.elements.append(self.build)
+
+    def _add_build_environment(self):
+        """Populate ``build_environment`` from the collected ``env:`` entries."""
+        if not self.build or not self.build_info:
+            return
+        for key, value in sorted(self.build_info.items()):
+            if not key.startswith("env:") or not value:
+                continue
+            entry = spdx.DictionaryEntry()
+            entry.key = key[len("env:") :]
+            entry.value = str(value)
+            self.build.build_environment.append(entry)
+
+    def _add_build_config_source(self):
+        """Point the Build at its configuration source (the Kconfig ``.config``)."""
+        sbom_build = self.sbom_data.build
+        if not self.build or not sbom_build or not sbom_build.config_source:
+            return
+        config_file = self.file_elements.get(sbom_build.config_source.path)
+        if not config_file:
+            return
+        self.build.build_configSourceUri.append(config_file._id)
+        digest = sbom_build.config_source.hashes.get("SHA256")
+        if digest:
+            hash_obj = spdx.Hash()
+            hash_obj.algorithm = spdx.HashAlgorithm.sha256
+            hash_obj.hashValue = digest
+            self.build.build_configSourceDigest.append(hash_obj)
 
     def _add_build_parameters(self):
         """Populate ``build_parameter`` with the global build configuration."""
@@ -374,6 +404,9 @@ class SPDX3Serializer:
         if not self.build:
             return
 
+        # configSource wiring needs the file elements, created after the Build
+        self._add_build_config_source()
+
         for tool in self.build_tools.values():
             self._new_build_relationship(spdx.RelationshipType.usesTool, self.build._id, [tool._id])
 
@@ -416,6 +449,13 @@ class SPDX3Serializer:
         )
         target_build.creationInfo = self.creation_info._id
         target_build.build_buildType = self.build.build_buildType
+        # per-language compile flags and defines used to produce this artifact
+        for kind in ("flags", "defines"):
+            for lang, value in sorted(component.metadata.get(f"compile_{kind}", {}).items()):
+                entry = spdx.DictionaryEntry()
+                entry.key = f"compile:{kind}:{lang}"
+                entry.value = value
+                target_build.build_parameter.append(entry)
         self.elements.append(target_build)
         self.target_builds[component.name] = target_build
 
@@ -470,10 +510,11 @@ class SPDX3Serializer:
         return tool_ids
 
     def _build_input_ids(self) -> list[str]:
-        """Package IDs of the build's inputs (the source/dependency roots).
+        """Element IDs of the build's inputs: the source/dependency package roots plus the
+        configuration source (Kconfig ``.config``).
 
-        The described (root) components of every non-build document, falling back to all of a
-        document's components when it declares no root.
+        Package roots are the described (root) components of every non-build document, falling
+        back to all of a document's components when it declares no root.
         """
         input_ids = []
         seen = set()
@@ -486,6 +527,12 @@ class SPDX3Serializer:
                 if package and package._id not in seen:
                     seen.add(package._id)
                     input_ids.append(package._id)
+
+        sbom_build = self.sbom_data.build
+        if sbom_build and sbom_build.config_source:
+            config_file = self.file_elements.get(sbom_build.config_source.path)
+            if config_file and config_file._id not in seen:
+                input_ids.append(config_file._id)
         return input_ids
 
     def _create_software_package(self, component: SBOMComponent) -> spdx.software_Package:
@@ -549,8 +596,11 @@ class SPDX3Serializer:
         file_element.creationInfo = self.creation_info._id
         file_element.software_fileKind = spdx.software_FileKindType.file
 
-        # File purpose (default to file)
-        file_element.software_primaryPurpose = spdx.software_SoftwarePurpose.file
+        # File purpose (declared purpose, e.g. configuration, else default file)
+        if file_obj.purpose:
+            file_element.software_primaryPurpose = self._purpose_to_spdx3(file_obj.purpose)
+        else:
+            file_element.software_primaryPurpose = spdx.software_SoftwarePurpose.file
 
         # Copyright
         file_element.software_copyrightText = file_obj.copyright_text or NOASSERTION
@@ -994,6 +1044,9 @@ class SPDX3Serializer:
             if not package:
                 continue
             for file_obj in component.files.values():
+                # configuration files are linked via the Build, not "contained"
+                if file_obj.purpose == ComponentPurpose.CONFIGURATION:
+                    continue
                 file_element = self.file_elements.get(file_obj.path)
                 if file_element:
                     self._add_contains_relationship(package, file_element)
