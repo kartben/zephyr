@@ -5,17 +5,19 @@
 import logging
 import os
 import re
+import subprocess
 from dataclasses import dataclass
 
 import yaml
 from west.util import WestNotFound, west_topdir
 
 from zspdx.cmakecache import parseCMakeCacheFile
-from zspdx.cmakefileapijson import parseReply
+from zspdx.cmakefileapijson import parseReply, parseToolchainsAndInfo
 from zspdx.getincludes import getCIncludes
 from zspdx.model import (
     ComponentPurpose,
     RelationshipType,
+    SBOMBuild,
     SBOMComponent,
     SBOMDocument,
     SBOMFile,
@@ -23,6 +25,44 @@ from zspdx.model import (
 )
 
 _logger = logging.getLogger(__name__)
+
+
+def get_tool_version(tool_path):
+    """Get a tool's version by running it with ``--version``.
+
+    Used for the linker and archiver, which the CMake toolchains-v1 reply does
+    not describe. Returns "" when the tool is missing or no version can be parsed.
+    """
+    if not tool_path or not os.path.isfile(tool_path):
+        return ""
+
+    try:
+        result = subprocess.run(
+            [tool_path, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=5,  # avoid hanging on a misbehaving tool
+        )
+        output = result.stdout or result.stderr
+        if not output:
+            return ""
+
+        # parse the version from the first line of output, e.g.
+        # "GNU ld (Zephyr SDK 0.17.4) 2.38" -> "2.38",
+        # "cmake version 3.28.1" -> "3.28.1"
+        first_line = output.strip().split('\n')[0]
+        for pattern in (
+            r'version\s+(\d+\.\d+(?:\.\d+)?)',
+            r'\b(\d+\.\d+(?:\.\d+)?)\s*$',
+            r'\b(\d+\.\d+(?:\.\d+)?)\b',
+        ):
+            match = re.search(pattern, first_line, re.IGNORECASE)
+            if match:
+                return match.group(1)
+        return ""
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
+        _logger.debug(f"Could not get version for {tool_path}: {e}")
+        return ""
 
 
 # WalkerConfig contains configuration data for the Walker.
@@ -81,6 +121,12 @@ class Walker:
         # parsed CMake codemodel
         self.cm = None
 
+        # parsed CMake toolchains-v1 reply (compiler ids and versions)
+        self.toolchains = None
+
+        # parsed CMake info (generator and version) from the file API index
+        self.cmake_info = None
+
         # parsed CMake cache dict
         self.cmakeCache = {}
 
@@ -138,6 +184,11 @@ class Walker:
             _logger.error("could not parse codemodel from CMake API reply; bailing")
             return None
 
+        # extract Build profile info; non-fatal, the profile is omitted if absent
+        _logger.info("extracting build information from CMake file-based API")
+        self.getToolchainsAndInfo()
+        self.extractBuildInfo()
+
         # set up components
         _logger.info("setting up SBOM components")
         retval = self.setupComponents()
@@ -167,12 +218,8 @@ class Walker:
             self.sdkPath = self.cmakeCache.get("ZEPHYR_SDK_INSTALL_DIR", "")
             self.metaFile = self.cmakeCache.get("KERNEL_META_PATH", "")
 
-    # determine path from build dir to CMake file-based API index file, then
-    # parse it and return the Codemodel
-    def getCodemodel(self):
-        _logger.debug("getting codemodel from CMake API reply files")
-
-        # make sure the reply directory exists
+    # locate the CMake file-based API reply index file within the build dir
+    def getReplyIndexPath(self):
         cmakeReplyDirPath = os.path.join(self.cfg.buildDir, ".cmake", "api", "v1", "reply")
         if not os.path.exists(cmakeReplyDirPath):
             _logger.error(f'cmake api reply directory {cmakeReplyDirPath} does not exist')
@@ -185,18 +232,96 @@ class Walker:
             return None
 
         # find file with "index" prefix; there should only be one
-        indexFilePath = ""
         for f in os.listdir(cmakeReplyDirPath):
             if f.startswith("index"):
-                indexFilePath = os.path.join(cmakeReplyDirPath, f)
-                break
-        if indexFilePath == "":
-            # didn't find it
-            _logger.error(f'cmake api reply index file not found in {cmakeReplyDirPath}')
+                return os.path.join(cmakeReplyDirPath, f)
+
+        _logger.error(f'cmake api reply index file not found in {cmakeReplyDirPath}')
+        return None
+
+    # determine path from build dir to CMake file-based API index file, then
+    # parse it and return the Codemodel
+    def getCodemodel(self):
+        _logger.debug("getting codemodel from CMake API reply files")
+
+        indexFilePath = self.getReplyIndexPath()
+        if not indexFilePath:
             return None
 
         # parse it
         return parseReply(indexFilePath)
+
+    # parse the toolchains-v1 reply and CMake info from the file-based API index
+    def getToolchainsAndInfo(self):
+        _logger.debug("getting toolchains and CMake info from CMake API reply files")
+
+        indexFilePath = self.getReplyIndexPath()
+        if not indexFilePath:
+            return
+
+        self.cmake_info, self.toolchains = parseToolchainsAndInfo(indexFilePath)
+
+    def extractBuildInfo(self):
+        """Collect global build information for the SPDX 3.0 Build profile.
+
+        Stores the details in ``metadata['build_info']`` and an ``SBOMBuild``
+        summary on the graph; serializers without a build vocabulary ignore them.
+        """
+        if not self.cmakeCache:
+            _logger.debug("no CMake cache parsed; skipping build info extraction")
+            return
+
+        build_info = {}
+
+        # compiler paths, ids and versions: prefer toolchains-v1, fall back to cache
+        if self.toolchains and self.toolchains.toolchains:
+            for lang, key in (("C", "c"), ("CXX", "cxx"), ("ASM", "asm")):
+                build_info[f"cmake_{key}_compiler"] = self.toolchains.get_compiler_path(lang)
+                build_info[f"{key}_compiler_version"] = self.toolchains.get_compiler_version(lang)
+                build_info[f"{key}_compiler_id"] = self.toolchains.get_compiler_id(lang)
+            # keep a stable alias for the C compiler path
+            build_info["cmake_compiler"] = build_info.get("cmake_c_compiler", "")
+        else:
+            build_info["cmake_compiler"] = self.cmakeCache.get("CMAKE_C_COMPILER", "")
+            build_info["cmake_cxx_compiler"] = self.cmakeCache.get("CMAKE_CXX_COMPILER", "")
+            build_info["cmake_asm_compiler"] = self.cmakeCache.get("CMAKE_ASM_COMPILER", "")
+
+        # linker, archiver, build type and target system always come from the cache
+        build_info["cmake_linker"] = self.cmakeCache.get("CMAKE_LINKER", "")
+        build_info["cmake_ar"] = self.cmakeCache.get("CMAKE_AR", "")
+        build_info["cmake_build_type"] = self.cmakeCache.get("CMAKE_BUILD_TYPE", "")
+        build_info["cmake_system_name"] = self.cmakeCache.get("CMAKE_SYSTEM_NAME", "")
+        build_info["cmake_system_processor"] = self.cmakeCache.get("CMAKE_SYSTEM_PROCESSOR", "")
+
+        # CMake generator and version from the file-API index
+        if self.cmake_info:
+            build_info["cmake_generator"] = self.cmake_info.generator_name
+            build_info["cmake_version"] = self.cmake_info.version_string
+
+        # linker and archiver versions are not in toolchains-v1; query the tools
+        for version_key, path in (
+            ("linker_version", build_info["cmake_linker"]),
+            ("ar_version", build_info["cmake_ar"]),
+        ):
+            version = get_tool_version(path)
+            if version:
+                build_info[version_key] = version
+
+        # drop empty entries to keep the build_parameter output tidy
+        build_info = {k: v for k, v in build_info.items() if v}
+        if not build_info:
+            _logger.debug("no build information available; skipping Build profile inputs")
+            return
+
+        self.sbom_graph.metadata["build_info"] = build_info
+
+        # summarise as an SBOMBuild instance; timestamps are intentionally left
+        # unset (omitted per SPDX 3.0 to simplify reproducible builds)
+        build_id = f"build-{self.cfg.namespacePrefix.rstrip('/').split('/')[-1]}"
+        self.sbom_graph.build = SBOMBuild(
+            id=build_id,
+            build_type=build_info.get("cmake_build_type", ""),
+        )
 
     def _create_document(self, name: str, title: str = "") -> SBOMDocument:
         """Create a document with the given name and register it with SBOM data.
