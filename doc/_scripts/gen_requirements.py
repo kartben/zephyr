@@ -87,9 +87,20 @@ def slugify(title):
     return slug or "requirements"
 
 
+def req_uid(req):
+    """Return a requirement's UID with surrounding whitespace removed.
+
+    Some upstream requirements carry trailing whitespace in their UID; that
+    space would otherwise leak into the generated Doxygen ``\\requirement`` id
+    and RST item id, where it can never match a ``@verifies``/``@satisfies``
+    reference (Doxygen tokenizes those on whitespace). Normalizing here keeps
+    traceability robust against such data quirks."""
+    return (req.get("UID") or "").strip()
+
+
 def parents(req):
     return [
-        rel.get("VALUE")
+        rel.get("VALUE").strip()
         for rel in req.get("RELATIONS", [])
         if rel.get("TYPE") == "Parent" and rel.get("VALUE")
     ]
@@ -132,7 +143,7 @@ def rst_heading(out, text, level):
 
 
 def render_requirement_rst(out, req, level):
-    uid = req.get("UID")
+    uid = req_uid(req)
     if not uid:
         return
     heading = f"{uid}: {clean(req.get('TITLE', ''))}".rstrip(": ").strip()
@@ -242,7 +253,7 @@ DOX_SECTIONS = ["section", "subsection", "subsubsection", "paragraph"]
 def render_requirement_block_dox(out, req):
     """Emit a flat \\requirement block. These are collected by Doxygen onto a
     single requirements page and are the anchors for \\satisfies / \\verifies."""
-    uid = req.get("UID")
+    uid = req_uid(req)
     if not uid:
         return
     title = clean(req.get("TITLE"))
@@ -276,7 +287,7 @@ def render_node_dox_page(out, node, depth, counter):
     requirements page so the catalog is browsable by category."""
     node_type = node.get("_NODE_TYPE")
     if node_type == "REQUIREMENT":
-        uid = node.get("UID")
+        uid = req_uid(node)
         if uid:
             title = clean(node.get("TITLE")).replace('"', "")
             out.append(f' * - \\ref {uid} "{uid}: {title}"')
