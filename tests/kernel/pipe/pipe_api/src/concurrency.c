@@ -66,6 +66,9 @@ static void thread_read(void *arg1, void *arg2, void *arg3)
  *
  * @see k_pipe_close()
  * @see k_pipe_read()
+ * @verifies ZEP-SRS-32-6
+ * @verifies ZEP-SRS-32-8
+ * @verifies ZEP-SRS-32-9
  */
 ZTEST(k_pipe_concurrency, test_pipe_close_on_read)
 {
@@ -101,6 +104,9 @@ ZTEST(k_pipe_concurrency, test_pipe_close_on_read)
  *
  * @see k_pipe_close()
  * @see k_pipe_write()
+ * @verifies ZEP-SRS-32-5
+ * @verifies ZEP-SRS-32-8
+ * @verifies ZEP-SRS-32-9
  */
 ZTEST(k_pipe_concurrency, test_pipe_close_on_write)
 {
@@ -140,6 +146,8 @@ ZTEST(k_pipe_concurrency, test_pipe_close_on_write)
  *
  * @see k_pipe_reset()
  * @see k_pipe_read()
+ * @verifies ZEP-SRS-32-7
+ * @verifies ZEP-SRS-32-10
  */
 ZTEST(k_pipe_concurrency, test_pipe_reset_on_read)
 {
@@ -178,6 +186,9 @@ ZTEST(k_pipe_concurrency, test_pipe_reset_on_read)
  *
  * @see k_pipe_reset()
  * @see k_pipe_write()
+ * @verifies ZEP-SRS-32-5
+ * @verifies ZEP-SRS-32-7
+ * @verifies ZEP-SRS-32-10
  */
 ZTEST(k_pipe_concurrency, test_pipe_reset_on_write)
 {
