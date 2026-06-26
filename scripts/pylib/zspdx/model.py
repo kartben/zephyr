@@ -199,7 +199,7 @@ class SBOMComponent:
         return reference
 
 
-type SBOMElement = SBOMComponent | SBOMFile
+type SBOMElement = SBOMComponent | SBOMFile | SBOMSnippet
 
 
 @dataclass
@@ -344,6 +344,33 @@ class BuildInfo(TypedDict, total=False):
 
 
 @dataclass
+class SBOMSnippet:
+    """A contiguous range of used source lines within a tracked SBOM file.
+
+    Instances are produced by the DWARF extractor and consumed by serializers to
+    emit SPDX ``Snippet`` elements (2.x tag-value) or ``software_Snippet``
+    elements (SPDX 3.0).  ``byte_range`` and ``line_range`` are offsets/line
+    numbers within the *source* file, not the binary.
+
+    Attributes:
+        spdx_file: The :class:`SBOMFile` whose source lines this snippet covers.
+        byte_range: ``(start_byte, end_byte)`` offsets within the source file.
+        line_range: ``(start_line, end_line)`` line numbers within the source
+            file, or ``None`` when line information is unavailable.
+        name: Optional human-readable label for this snippet.
+        concluded_license: Concluded license expression (defaults to parent's).
+        copyright_text: Copyright text (defaults to parent's).
+    """
+
+    spdx_file: SBOMFile
+    byte_range: tuple[int, int]
+    line_range: tuple[int, int] | None = None
+    name: str = ""
+    concluded_license: str = NOASSERTION
+    copyright_text: str = NOASSERTION
+
+
+@dataclass
 class SBOMBuild:
     """Format-agnostic identity of the build that produced the graph's artifacts."""
 
@@ -371,6 +398,9 @@ class SBOMGraph:
         relationships: Relationships in the graph.
         custom_license_ids: Custom license IDs that need to be declared by serializers.
         build: Build that produced the graph's artifacts, or ``None`` if it carries no build.
+        snippets: Source-code snippets extracted from DWARF debug info, populated by the
+            snippet extraction step when ``--snippets`` is requested.  Empty when not requested
+            or when the ELF carries no DWARF info.
         metadata: Additional data not represented by the common model fields.
     """
 
@@ -382,6 +412,7 @@ class SBOMGraph:
     relationships: list[SBOMRelationship] = field(default_factory=list)
     custom_license_ids: set[str] = field(default_factory=set)
     build: SBOMBuild | None = None
+    snippets: list[SBOMSnippet] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def add_document(self, document: SBOMDocument) -> None:

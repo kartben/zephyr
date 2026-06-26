@@ -134,10 +134,13 @@ This generates the following SPDX bill-of-materials (BOM) documents in
 - :file:`build.spdx`: BOM for the built output files
 - :file:`modules-deps.spdx`: BOM for modules dependencies. Check
   :ref:`modules <modules-vulnerability-monitoring>` for more details.
+- :file:`snippets.spdx`: *(optional, requires* ``--snippets`` *)* add-on document
+  listing the specific source-code line ranges that contributed to the binary.
 
 **For SPDX 3.0 (JSON-LD format):**
 
-Same file names as above, but with the ``.jsonld`` extension.
+Same file names as above, but with the ``.jsonld`` extension (e.g.
+:file:`snippets.jsonld` for the snippets add-on).
 
 Each file in the bill-of-materials is scanned, so that its hashes (SHA256, SHA1, and MD5)
 can be recorded, along with any detected licenses if an
@@ -180,9 +183,43 @@ source files that are compiled to generate the built library files.
 - ``--include-sdk``: with ``--analyze-includes``, also create a fourth SPDX
   document, :file:`sdk.spdx`, which lists header files included from the SDK.
 
+- ``--snippets [ELF]``: generate a :file:`snippets.spdx` (or
+  :file:`snippets.jsonld` for SPDX 3.0) add-on document that records which
+  specific source-code line ranges contributed code to the linked binary.
+  Each entry is an `SPDX Snippet`_ element referencing the corresponding source
+  file already listed in the base documents.
+
+  The ELF file is parsed for `DWARF`_ debug information (``DW_LNE_*`` line
+  number entries) to determine which source lines appear in the binary.  This
+  requires the application to have been built with debug symbols (the default
+  for most Zephyr configurations; add ``CONFIG_DEBUG_OPTIMIZATIONS=y`` or
+  ``-DCMAKE_BUILD_TYPE=Debug`` if needed).
+
+  By default the ELF used is :file:`<BUILD_DIR>/zephyr/zephyr.elf`.  An
+  alternate path may be supplied as an optional argument:
+
+  .. code-block:: bash
+
+     west spdx -d BUILD_DIR --snippets                         # use default ELF
+     west spdx -d BUILD_DIR --snippets build/zephyr/app.elf   # custom ELF
+
+  .. note::
+
+     Snippet granularity follows DWARF line-number table entries: each
+     :file:`snippets.spdx` entry covers one contiguous run of source lines
+     that were emitted as machine code.  Lines that were dead-code-eliminated
+     or never reachable do not appear.  Inlined functions may contribute line
+     ranges from their definition site.
+
 .. warning::
 
    The generation of SBOM documents for the ``native_sim`` platform is currently not supported.
+
+.. _SPDX Snippet:
+   https://spdx.github.io/spdx-spec/v3.0.1/model/Software/Classes/Snippet/
+
+.. _DWARF:
+   https://dwarfstd.org/
 
 .. _SPDX specification clause 6:
    https://spdx.github.io/spdx-spec/v2.2.2/document-creation-information/

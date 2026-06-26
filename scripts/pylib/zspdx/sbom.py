@@ -37,6 +37,13 @@ class SBOMConfig:
     # should also add an SPDX document for the SDK?
     include_sdk: bool = False
 
+    # should generate a snippets add-on document using DWARF debug info?
+    generate_snippets: bool = False
+
+    # ELF file to use for snippet extraction; when empty, defaults to
+    # <build_dir>/zephyr/zephyr.elf
+    elf_file: str = ""
+
 
 # create Cmake file-based API directories and query file
 # Arguments:
@@ -105,6 +112,10 @@ def make_spdx(cfg):
     # scan SBOM graph
     scan_sbom_graph(scanner_cfg, sbom_graph)
 
+    # optional: extract source snippets from DWARF debug info
+    if cfg.generate_snippets:
+        _extract_snippets(cfg, sbom_graph)
+
     # route to appropriate serializer based on version
     if cfg.spdx_version.major == 2:
         # Use SPDX 2.x serializer
@@ -121,3 +132,41 @@ def make_spdx(cfg):
     else:
         _logger.error("Unsupported SPDX version: %s", cfg.spdx_version)
         return False
+
+
+def _extract_snippets(cfg: SBOMConfig, sbom_graph) -> None:
+    """Populate ``sbom_graph.snippets`` from DWARF debug info in the ELF file."""
+    from zspdx.dwarf import extract_source_ranges
+    from zspdx.model import SBOMSnippet
+
+    elf_path = cfg.elf_file or os.path.join(cfg.build_dir, "zephyr", "zephyr.elf")
+    if not os.path.isfile(elf_path):
+        _logger.error(
+            "ELF file not found for snippet extraction: %s "
+            "(build first, or pass --snippets=<path>)",
+            elf_path,
+        )
+        return
+
+    known_paths = set(sbom_graph.files.keys())
+    ranges_by_file = extract_source_ranges(elf_path, known_paths)
+
+    for path, ranges in ranges_by_file.items():
+        spdx_file = sbom_graph.get_file(path)
+        if spdx_file is None:
+            continue
+        for r in ranges:
+            snippet = SBOMSnippet(
+                spdx_file=spdx_file,
+                byte_range=(r.start_byte, r.end_byte),
+                line_range=(r.start_line, r.end_line),
+                concluded_license=spdx_file.concluded_license,
+                copyright_text=spdx_file.copyright_text,
+            )
+            sbom_graph.snippets.append(snippet)
+
+    _logger.info(
+        "Extracted %d snippet(s) from %d source file(s)",
+        len(sbom_graph.snippets),
+        len(ranges_by_file),
+    )

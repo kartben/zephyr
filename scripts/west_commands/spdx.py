@@ -54,6 +54,19 @@ class ZephyrSpdx(WestCommand):
         parser.add_argument(
             '--include-sdk', action="store_true", help="also generate SPDX document for SDK"
         )
+        parser.add_argument(
+            '--snippets',
+            metavar='ELF',
+            nargs='?',
+            const='',
+            default=None,
+            help=(
+                "generate a snippets add-on document using DWARF debug info "
+                "(requires build with debug symbols). "
+                "Optionally specify the ELF file path; defaults to "
+                "<build-dir>/zephyr/zephyr.elf"
+            ),
+        )
 
         return parser
 
@@ -72,6 +85,7 @@ class ZephyrSpdx(WestCommand):
         self.dbg("  --spdx-version is", args.spdx_version)
         self.dbg("  --analyze-includes is", args.analyze_includes)
         self.dbg("  --include-sdk is", args.include_sdk)
+        self.dbg("  --snippets is", args.snippets)
 
         if args.init:
             self.do_run_init(args)
@@ -122,6 +136,9 @@ class ZephyrSpdx(WestCommand):
             cfg.analyze_includes = True
         if args.include_sdk:
             cfg.include_sdk = True
+        if args.snippets is not None:
+            cfg.generate_snippets = True
+            cfg.elf_file = args.snippets  # empty string → use default path
 
         # make sure SPDX directory exists, or create it if it doesn't
         if os.path.exists(cfg.spdx_dir):
