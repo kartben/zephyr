@@ -23,8 +23,13 @@ def get_group(innergroup, all_groups):
 
 
 def parse_xml_dir(dir_name):
+    index_xml = Path(dir_name) / "index.xml"
+    if not index_xml.exists():
+        # Doxygen XML not generated (e.g. the API layer was skipped).
+        return []
+
     groups = []
-    root = doxmlparser.index.parse(Path(dir_name) / "index.xml", True)
+    root = doxmlparser.index.parse(index_xml, True)
     for compound in root.get_compound():
         if compound.get_kind() == DoxCompoundKind.GROUP:
             file_name = Path(dir_name) / f"{compound.get_refid()}.xml"
@@ -48,6 +53,10 @@ class ApiOverview(SphinxDirective):
 
     def run(self):
         groups = parse_xml_dir(self.config.api_overview_doxygen_out_dir + "/xml")
+
+        if not groups:
+            text = "The API overview was skipped in this build (no Doxygen data)."
+            return [nodes.note("", nodes.paragraph(text=text))]
 
         inners = [group.get_compounddef()[0].get_innergroup() for group in groups]
         inner_ids = [i.get_refid() for inner in inners for i in inner]

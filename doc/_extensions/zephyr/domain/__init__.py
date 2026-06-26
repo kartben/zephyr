@@ -317,6 +317,14 @@ class ConvertBoardNode(SphinxTransform):
             new_section = nodes.section(ids=[node["id"]])
             new_section += nodes.title(text=node["full_name"])
 
+            # no catalog data: keep the title and content, drop the sidebar
+            if node.get("catalog_skipped"):
+                new_section.extend(siblings_to_move)
+                node.replace_self(new_section)
+                for sibling in siblings_to_move:
+                    parent.remove(sibling)
+                return
+
             # create a sidebar with all the board details
             sidebar = nodes.sidebar(classes=["board-overview"])
             new_section += sidebar
@@ -767,6 +775,14 @@ class BoardDirective(SphinxDirective):
     def run(self):
         # board_name is passed as the directive argument
         board_name = self.arguments[0]
+
+        # Without the board catalog, emit a bare node so the page keeps its
+        # title (see ConvertBoardNode); the overview sidebar is dropped.
+        if not self.env.app.config.zephyr_generate_board_catalog:
+            board_node = BoardNode(id=board_name)
+            board_node["full_name"] = board_name
+            board_node["catalog_skipped"] = True
+            return [board_node]
 
         boards = self.env.domaindata["zephyr"]["boards"]
         vendors = self.env.domaindata["zephyr"]["vendors"]
@@ -1508,6 +1524,9 @@ def install_static_assets_as_needed(
 
 
 def load_board_catalog_into_domain(app: Sphinx) -> None:
+    if not app.config.zephyr_generate_board_catalog:
+        return
+
     board_catalog = get_catalog(
         generate_hw_features=(
             app.builder.format == "html" and app.config.zephyr_generate_hw_features
@@ -1534,6 +1553,7 @@ def setup(app):
     app.add_config_value("zephyr_breathe_insert_related_samples", False, "env")
     app.add_config_value("zephyr_generate_hw_features", False, "env")
     app.add_config_value("zephyr_hw_features_vendor_filter", [], "env", types=[list[str]])
+    app.add_config_value("zephyr_generate_board_catalog", True, "env")
 
     app.add_domain(ZephyrDomain)
 

@@ -67,8 +67,16 @@ class DoxygenReferencer(SphinxPostTransform):
     default_priority = 5
 
     def run(self, **kwargs: Any) -> None:
+        skip = self.app.config.doxybridge_skip
+
         for node in self.document.traverse(addnodes.pending_xref):
             if node.get("refdomain") != "c":
+                continue
+
+            if skip:
+                # Doxygen layer skipped: render the reference as plain text
+                # rather than letting the C domain try (and fail) to resolve it.
+                node.replace_self(node[0].deepcopy())
                 continue
 
             reftype = node.get("reftype")
@@ -211,6 +219,9 @@ def parse_index(app: Sphinx, name, inDirName):
 
 
 def doxygen_parse(app: Sphinx) -> None:
+    if app.config.doxybridge_skip:
+        return
+
     if not hasattr(app.env, "doxybridge_cache"):
         app.env.doxybridge_cache = dict()
 
@@ -240,6 +251,7 @@ def doxygen_parse(app: Sphinx) -> None:
 
 def setup(app: Sphinx) -> dict[str, Any]:
     app.add_config_value("doxybridge_projects", None, "env")
+    app.add_config_value("doxybridge_skip", False, "env")
 
     app.add_directive("doxygengroup", DoxygenGroupDirective)
 
