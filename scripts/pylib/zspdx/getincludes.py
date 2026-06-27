@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from subprocess import run
+from subprocess import DEVNULL, PIPE, run
 
 _logger = logging.getLogger(__name__)
 
@@ -31,7 +31,10 @@ def get_c_includes(compiler_path, src_file, tcg):
     # prepare command invocation
     cmd = [compiler_path, "-E", "-H"] + fragments + includes + defines + [src_file]
 
-    cp = run(cmd, capture_output=True, text=True)
+    # we only care about the "-H" header trace, which the compiler writes to
+    # stderr. The preprocessed source goes to stdout and can be many megabytes
+    # per file; discard it instead of buffering and decoding it for nothing.
+    cp = run(cmd, stdout=DEVNULL, stderr=PIPE, text=True)
     if cp.returncode != 0:
         _logger.debug("    - calling %s failed with error code %d", compiler_path, cp.returncode)
         return []
