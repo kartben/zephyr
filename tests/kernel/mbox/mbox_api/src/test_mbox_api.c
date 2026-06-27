@@ -802,6 +802,7 @@ static void put_timeout_receiver(void *p1, void *p2, void *p3)
  * - The put without a receiver returns -EAGAIN; with a receiver it returns 0.
  *
  * @see k_mbox_put()
+ * @verifies ZEP-SRS-25-6
  */
 ZTEST(mbox_api, test_mbox_put_timeout)
 {
