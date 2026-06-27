@@ -5,14 +5,37 @@
 import logging
 import os
 import re
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
+import tqdm
 from reuse.project import Project
 
 from .licenses import LICENSES
 from .util import get_hashes
 
 _logger = logging.getLogger(__name__)
+
+# Cache of reuse Project instances keyed by directory. Building a Project
+# scans the directory for REUSE licensing config (.reuse/dep5, REUSE.toml,
+# LICENSES/, ...), so reusing one per directory instead of rebuilding it for
+# every single file is a large speedup. Guarded by a lock because scanning
+# runs across a thread pool.
+_reuse_projects = {}
+_reuse_projects_lock = threading.Lock()
+
+
+def _get_reuse_project(dir_path):
+    """Return a cached reuse Project rooted at dir_path, building it if needed."""
+    project = _reuse_projects.get(dir_path)
+    if project is None:
+        with _reuse_projects_lock:
+            project = _reuse_projects.get(dir_path)
+            if project is None:
+                project = Project(dir_path)
+                _reuse_projects[dir_path] = project
+    return project
 
 
 # ScannerConfig contains settings used to configure how the SBOM
@@ -171,7 +194,7 @@ def get_copyright_info(file_path):
     _logger.debug("  - getting copyright info for %s", file_path)
 
     try:
-        project = Project(os.path.dirname(file_path))
+        project = _get_reuse_project(os.path.dirname(file_path))
         infos = project.reuse_info_of(file_path)
         copyrights = []
 
@@ -185,6 +208,41 @@ def get_copyright_info(file_path):
         return []
 
 
+def scan_file(cfg, f):
+    """
+    Gather hashes, license expression, and copyright info for a single File.
+
+    Arguments:
+        - cfg: ScannerConfig
+        - f: SBOMFile to populate (mutated in place)
+    """
+    # set relpath based on the owning component's base_dir
+    if f.component is not None and f.component.base_dir:
+        f.relative_path = os.path.relpath(f.path, f.component.base_dir)
+
+    # get hashes for file
+    hashes = get_hashes(f.path)
+    if not hashes:
+        _logger.warning("unable to get hashes for file %s; skipping", f.path)
+        return
+    h_sha1, h_sha256, h_md5 = hashes
+    f.hashes["SHA1"] = h_sha1
+    if cfg.do_sha256:
+        f.hashes["SHA256"] = h_sha256
+    if cfg.do_md5:
+        f.hashes["MD5"] = h_md5
+
+    # get licenses for file
+    expression = get_expression_data(f.path, cfg.num_lines_scanned)
+    if expression:
+        if cfg.should_conclude_file_licenses:
+            f.concluded_license = expression
+        f.license_info_in_file = split_expression(expression)
+
+    if copyrights := get_copyright_info(f.path):
+        f.copyright_text = "<text>\n" + "\n".join(copyrights) + "\n</text>"
+
+
 def scan_sbom_graph(cfg, sbom_graph):
     """
     Scan for licenses and calculate hashes for all Files and Components
@@ -194,41 +252,31 @@ def scan_sbom_graph(cfg, sbom_graph):
         - cfg: ScannerConfig
         - sbom_graph: SBOMGraph
     """
+    # Files are globally unique by path in the graph, so scan them once each.
+    # Hashing, license detection, and REUSE copyright lookups are independent
+    # per file and I/O-bound, so fan them out across a thread pool rather than
+    # grinding through thousands of files serially.
+    files = list(sbom_graph.files.values())
+    if files:
+        _logger.info("scanning %d files", len(files))
+        max_workers = min(32, (os.cpu_count() or 1) * 4)
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            for _ in tqdm.tqdm(
+                executor.map(lambda f: scan_file(cfg, f), files),
+                total=len(files),
+                desc="Scanning files",
+                unit="file",
+            ):
+                pass
+
+    # collect custom license IDs and assemble per-Component data (cheap, and
+    # touches shared graph state, so done serially after the parallel scan)
     for component in sbom_graph.components.values():
-        _logger.info("scanning files in component %s", component.name)
-
-        # first, gather File data for this component
         for f in component.files.values():
-            # set relpath based on component's base_dir
-            f.relative_path = os.path.relpath(f.path, component.base_dir)
-
-            # get hashes for file
-            hashes = get_hashes(f.path)
-            if not hashes:
-                _logger.warning("unable to get hashes for file %s; skipping", f.path)
-                continue
-            h_sha1, h_sha256, h_md5 = hashes
-            f.hashes["SHA1"] = h_sha1
-            if cfg.do_sha256:
-                f.hashes["SHA256"] = h_sha256
-            if cfg.do_md5:
-                f.hashes["MD5"] = h_md5
-
-            # get licenses for file
-            expression = get_expression_data(f.path, cfg.num_lines_scanned)
-            if expression:
-                if cfg.should_conclude_file_licenses:
-                    f.concluded_license = expression
-                f.license_info_in_file = split_expression(expression)
-
-            if copyrights := get_copyright_info(f.path):
-                f.copyright_text = "<text>\n" + "\n".join(copyrights) + "\n</text>"
-
             # check if any custom license IDs should be flagged for SBOM
             for lic in f.license_info_in_file:
                 check_license_valid(lic, sbom_graph)
 
-        # now, assemble the Component data
         lics_concluded, lics_from_files = get_component_licenses(component)
         if cfg.should_conclude_component_license:
             component.concluded_license = normalize_expression(lics_concluded)
