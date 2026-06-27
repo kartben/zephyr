@@ -60,6 +60,13 @@ class SPDX3Serializer:
         self.file_elements = {}  # file_path -> software_File
         self.relationship_elements = []  # List of Relationship objects
 
+        # License-expression caches. Avoid rescanning self.elements (O(n) per
+        # call, O(n^2) overall) when deduplicating license expressions: the
+        # license string maps deterministically to a single element, so we
+        # memoize by string and track the IDs already added as elements.
+        self._license_expressions = {}  # license_str -> LicenseExpression
+        self._license_expression_ids = set()  # IDs already appended to elements
+
         # Track original from_id for relationships (before reversal)
         # This is used to assign cross-document relationships to the correct document
         # Key: relationship._id, Value: original from_id
@@ -726,6 +733,12 @@ class SPDX3Serializer:
         if not license_str or license_str == NOASSERTION:
             return None
 
+        # The same license string is referenced by many packages and files;
+        # return the memoized expression instead of rebuilding it.
+        cached = self._license_expressions.get(license_str)
+        if cached is not None:
+            return cached
+
         license_expr = spdx.simplelicensing_LicenseExpression()
         standard_licenses = get_standard_licenses()
 
@@ -744,11 +757,14 @@ class SPDX3Serializer:
         license_expr.simplelicensing_licenseExpression = license_str
         license_expr.creationInfo = self.creation_info._id
 
-        # Add to elements if not already present
-        existing_ids = {elem._id for elem in self.elements if hasattr(elem, '_id')}
-        if license_expr._id not in existing_ids:
+        # Add to elements only once per ID. License IDs live in their own
+        # "/licenses/" namespace, so tracking just the license-expression IDs is
+        # equivalent to scanning every element but stays O(1) per call.
+        if license_expr._id not in self._license_expression_ids:
+            self._license_expression_ids.add(license_expr._id)
             self.elements.append(license_expr)
 
+        self._license_expressions[license_str] = license_expr
         return license_expr
 
     def _get_license_target_id(self, license_str: str) -> str | None:
