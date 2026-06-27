@@ -9,6 +9,7 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
+import tqdm
 import yaml
 from west.util import WestNotFound, west_topdir
 
@@ -810,9 +811,13 @@ class Walker:
         # subprocess-bound, so a small multiple of the CPU count works well.
         max_workers = min(32, (os.cpu_count() or 1) * 4)
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            for (component, bf, _cg, _src_abspath), includes in executor.map(
-                run_job, self.include_jobs
-            ):
+            results = tqdm.tqdm(
+                executor.map(run_job, self.include_jobs),
+                total=len(self.include_jobs),
+                desc="Analyzing includes",
+                unit="file",
+            )
+            for (component, bf, _cg, _src_abspath), includes in results:
                 entry = per_target.setdefault(bf.path, (component, bf, set()))
                 entry[2].update(includes)
 
