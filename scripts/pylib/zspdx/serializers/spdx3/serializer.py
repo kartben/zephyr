@@ -1141,26 +1141,28 @@ class SPDX3Serializer:
         The document, its creation info and the tool are always included; the
         remaining elements are looked up by the IDs listed in ``document.element``.
         """
-        elements = [document]
-        if self.creation_info:
-            elements.append(self.creation_info)
-        if self.tool:
-            elements.append(self.tool)
-
         referenced_ids = {
             elem._id for elem in getattr(document, 'element', []) if getattr(elem, '_id', None)
         }
 
-        # First-occurrence wins, mirroring the original linear search.
-        elements_by_id = {}
+        # Track included IDs in a set so membership tests stay O(1); a list
+        # membership check here is O(n) per element and turns the whole pass
+        # quadratic on large documents (tens of thousands of elements).
+        elements = [document]
+        seen = {getattr(document, '_id', None)}
+
+        for shared in (self.creation_info, self.tool):
+            shared_id = getattr(shared, '_id', None) if shared is not None else None
+            if shared is not None and shared_id not in seen:
+                seen.add(shared_id)
+                elements.append(shared)
+
+        # Walk self.elements once, in order, keeping the first occurrence of
+        # each referenced ID. This is deterministic and O(n).
         for elem in self.elements:
             elem_id = getattr(elem, '_id', None)
-            if elem_id and elem_id not in elements_by_id:
-                elements_by_id[elem_id] = elem
-
-        for elem_id in referenced_ids:
-            elem = elements_by_id.get(elem_id)
-            if elem is not None and elem not in elements:
+            if elem_id in referenced_ids and elem_id not in seen:
+                seen.add(elem_id)
                 elements.append(elem)
 
         return elements
