@@ -913,22 +913,23 @@ class SPDX3Serializer:
             element_ids.add(tool._id)
 
     def _collect_relationship_ids(self, element_ids: set):
-        """Add relationships owned by this document, along with their endpoints.
+        """Add the relationships owned by this document.
 
         A relationship belongs to the document when its original (pre-reversal)
-        "from" element is already part of ``element_ids``. This matches SPDX 2.x
-        behavior: e.g. ".a GENERATED_FROM .c" reversed to ".c generates .a" still
-        lands in the document that owns ".a". Each matching relationship pulls in
-        its own ID and both endpoints, so ``element_ids`` grows in place.
+        "from" element is one of the document's own elements. This matches SPDX
+        2.x behavior: e.g. ".a GENERATED_FROM .c" reversed to ".c generates .a"
+        lands in the document that owns ".a", not the one owning ".c".
+
+        Only the relationship itself is added; its endpoints are referenced by
+        ID and stay defined in the document that owns them, so a file shared as
+        a build input is not duplicated into every document that consumes it.
         """
         relationship_ids = set()
         for rel in self.relationship_elements:
             from_id = getattr(rel, 'from_', None)
             original_from_id = self.relationship_original_from.get(rel._id, from_id)
-            if original_from_id in element_ids or from_id in element_ids:
+            if original_from_id in element_ids:
                 relationship_ids.add(rel._id)
-                element_ids.add(from_id)
-                element_ids.update(rel.to)
         element_ids.update(relationship_ids)
 
     def _populate_document(
