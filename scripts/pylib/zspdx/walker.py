@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 import yaml
@@ -113,6 +114,11 @@ class Walker:
         # queue of pending source file paths to create, process and assign
         self.pending_sources = []
 
+        # queue of pending include-analysis jobs, resolved in parallel after
+        # all targets have been walked.
+        # Format: (component, build File, TargetCompileGroup, source abspath)
+        self.include_jobs = []
+
         # queue of pending relationship data to create, process and assign
         # Format: (from_type, from_identifier, to_type, to_identifier, relationship_type)
         # Types: "component", "file"
@@ -198,6 +204,9 @@ class Walker:
         # walk through targets in codemodel to gather information
         _logger.info("walking through targets")
         self.walk_targets()
+
+        # resolve queued include-analysis jobs in parallel (if enabled)
+        self.resolve_include_files()
 
         # capture the build's configuration source (Kconfig .config)
         self.capture_build_config()
@@ -718,8 +727,6 @@ class Walker:
     def collect_pending_source_files(self, cfg_target, component, bf):
         _logger.debug("  - collecting source files and adding to pending queue")
 
-        target_includes_set = set()
-
         # walk through target's sources
         for src in cfg_target.target.sources:
             _logger.debug(f"    - add pending source file and relationship for {src.path}")
@@ -746,33 +753,18 @@ class Walker:
                 ("file", bf.path, "file", src_abspath, "GENERATED_FROM")
             )
 
-            # collect this source file's includes
+            # queue this source file's includes for parallel analysis later
             if self.cfg.analyze_includes and self.compiler_path:
-                includes = self.collect_includes(cfg_target, component, bf, src)
-                for inc in includes:
-                    target_includes_set.add(inc)
+                cg = self.compile_group_for_source(cfg_target, src)
+                if cg is not None:
+                    self.include_jobs.append((component, bf, cg, src_abspath))
 
-        # make relationships for the overall included files,
-        # avoiding duplicates for multiple source files including
-        # the same headers
-        target_includes_list = list(target_includes_set)
-        target_includes_list.sort()
-        for inc in target_includes_list:
-            # add it to pending source files queue, remembering the build
-            # target that referenced it
-            self.pending_sources.append((inc, component))
-
-            # create relationship data: build file GENERATED_FROM include file
-            self.pending_relationships.append(("file", bf.path, "file", inc, "GENERATED_FROM"))
-
-    # collect the include files corresponding to this source file
+    # return the C compile group to use when analyzing this source file's
+    # includes, or None if it has no usable C compile group.
     # call with:
     #   1) ConfigTarget
-    #   2) Component for this target
-    #   3) build File for this target
-    #   4) TargetSource entry for this source file
-    # returns: sorted list of include files for this source file
-    def collect_includes(self, cfg_target, component, bf, src):
+    #   2) TargetSource entry for this source file
+    def compile_group_for_source(self, cfg_target, src):
         # get the right compile group for this source file
         if len(cfg_target.target.compile_groups) < (src.compile_group_index + 1):
             _logger.debug(
@@ -780,7 +772,7 @@ class Walker:
                 f"but only {len(cfg_target.target.compile_groups)} found; "
                 "skipping included files search"
             )
-            return []
+            return None
         cg = cfg_target.target.compile_groups[src.compile_group_index]
 
         # currently only doing C includes
@@ -790,12 +782,51 @@ class Walker:
                 "but currently only searching includes for C files; "
                 "skipping included files search"
             )
-            return []
+            return None
 
-        src_abspath = src.path
-        if src.path[0] != "/":
-            src_abspath = os.path.join(self.cm.paths_source, src.path)
-        return get_c_includes(self.compiler_path, src_abspath, cg)
+        return cg
+
+    # resolve all queued include-analysis jobs. Each job runs the compiler to
+    # list the headers pulled in by one source file; these invocations are
+    # independent and subprocess-bound, so we fan them out across a thread pool
+    # rather than running hundreds of compiler calls one at a time.
+    def resolve_include_files(self):
+        if not self.include_jobs:
+            return
+
+        _logger.info("analyzing includes for %d source files", len(self.include_jobs))
+
+        def run_job(job):
+            _component, _bf, cg, src_abspath = job
+            return job, get_c_includes(self.compiler_path, src_abspath, cg)
+
+        # accumulate includes per build File so that multiple source files in
+        # the same target that pull in the same header produce a single
+        # relationship (matching the previous per-target de-duplication).
+        # Keyed by build File path; value is (component, build File, set).
+        per_target = {}
+
+        # bound the pool so we don't oversubscribe; include analysis is
+        # subprocess-bound, so a small multiple of the CPU count works well.
+        max_workers = min(32, (os.cpu_count() or 1) * 4)
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            for (component, bf, _cg, _src_abspath), includes in executor.map(
+                run_job, self.include_jobs
+            ):
+                entry = per_target.setdefault(bf.path, (component, bf, set()))
+                entry[2].update(includes)
+
+        for component, bf, includes in per_target.values():
+            # sorted for stable output ordering
+            for inc in sorted(includes):
+                # add it to pending source files queue, remembering the build
+                # target that referenced it
+                self.pending_sources.append((inc, component))
+
+                # create relationship data: build file GENERATED_FROM include file
+                self.pending_relationships.append(
+                    ("file", bf.path, "file", inc, "GENERATED_FROM")
+                )
 
     # collect relationships for dependencies of this target Component
     # call with:
