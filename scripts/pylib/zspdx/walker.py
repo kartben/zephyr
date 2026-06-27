@@ -431,6 +431,13 @@ class Walker:
         # the zephyr dependency component, which every module depends on
         zephyr_deps = self._setup_zephyr_deps_component(zephyr)
 
+        # link the zephyr dependency package to its sources package: the latter holds
+        # the files actually used from the upstream tree the former describes
+        if zephyr_deps is not None and self.component_zephyr is not None:
+            self.pending_relationships.append(
+                ("component", zephyr_deps.name, "component", self.component_zephyr.name, "CONTAINS")
+            )
+
         for module in modules:
             module_name = module.get("name", None)
             module_security = module.get("security", None)
@@ -459,6 +466,14 @@ class Walker:
 
             self.sbom_graph.add_component(component, "modules-deps")
             self.component_modules_deps[module_name] = component
+
+            # link the module dependency package to its sources package, which holds the
+            # files actually used from this module (empty when nothing was contributed)
+            sources_component = self.component_zephyr_modules.get(module_name)
+            if sources_component is not None:
+                self.pending_relationships.append(
+                    ("component", component.name, "component", sources_component.name, "CONTAINS")
+                )
 
             # each module is a dependency of the zephyr dependency component
             if zephyr_deps is not None:
