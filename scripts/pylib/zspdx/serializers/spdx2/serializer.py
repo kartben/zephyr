@@ -244,7 +244,10 @@ Created: {created}
     def _write_files_analyzed(self, f, component):
         """Write the FilesAnalyzed section and verification code for a component."""
         if not component.files:
-            f.write("FilesAnalyzed: false\nPackageComment: Utility target; no files\n\n")
+            # Prefer an explicit, component-specific comment (e.g. reference-only
+            # dependency packages); fall back to the generic utility-target note.
+            comment = component.comment or "Utility target; no files"
+            f.write(f"FilesAnalyzed: false\nPackageComment: {comment}\n\n")
             return
 
         if component.license_info_from_files:
@@ -303,6 +306,11 @@ PackageCopyrightText: {component.copyright_text}
                 f.write(f"ExternalRef: PACKAGE-MANAGER purl {ref.locator}\n")
             else:
                 _logger.warning(f"Unknown external reference ({ref.locator})")
+
+        # Package-level comment. Fileless packages emit their comment next to
+        # FilesAnalyzed, so only handle packages that own files here.
+        if component.files and component.comment:
+            f.write(f"PackageComment: {component.comment}\n")
 
         # Files analyzed and verification code
         self._write_files_analyzed(f, component)

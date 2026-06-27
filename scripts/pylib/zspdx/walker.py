@@ -256,6 +256,10 @@ class Walker:
             name="app-sources",
             purpose=ComponentPurpose.SOURCE,
             base_dir=self.cm.paths_source,
+            comment=(
+                "Source package: the application source files that were actually pulled "
+                "into this build."
+            ),
         )
 
         self.sbom_graph.add_component(component, "app")
@@ -279,6 +283,12 @@ class Walker:
             name="zephyr-sources",
             purpose=ComponentPurpose.SOURCE,
             base_dir=relative_base_dir,
+            comment=(
+                "Source package: the Zephyr tree source files that were actually pulled "
+                "into this build. Upstream provenance and security identifiers (CPE/PURL) "
+                "for the project are recorded in the 'zephyr-deps' package "
+                "(modules-deps.spdx)."
+            ),
         )
 
         zephyr_url = zephyr.get("remote", "")
@@ -326,6 +336,13 @@ class Walker:
                 name=module_name + "-sources",
                 purpose=ComponentPurpose.SOURCE,
                 base_dir=module_path,
+                comment=(
+                    f"Source package: the '{module_name}' module source files that were "
+                    "actually pulled into this build. An empty file list means the module is "
+                    "part of the manifest but contributed no source files to this build. "
+                    f"Upstream provenance and security identifiers (CPE/PURL) are recorded in "
+                    f"the '{module_name}-deps' package (modules-deps.spdx)."
+                ),
             )
 
             if module_revision:
@@ -346,6 +363,10 @@ class Walker:
             name="sdk-sources",
             purpose=ComponentPurpose.SOURCE,
             base_dir=self.sdk_path,
+            comment=(
+                "Source package: the Zephyr SDK source files that were actually pulled "
+                "into this build."
+            ),
         )
 
         self.sbom_graph.add_component(component, "sdk")
@@ -362,7 +383,15 @@ class Walker:
             return None
 
         # no PrimaryPackagePurpose: this is a reference-only dependency package with no files
-        component = SBOMComponent(name="zephyr-deps")
+        component = SBOMComponent(
+            name="zephyr-deps",
+            comment=(
+                "Reference-only package: records upstream provenance (URL, revision) and "
+                "security identifiers (CPE/PURL) for the Zephyr tree. Contains no files; the "
+                "source files actually used by the build are listed in the 'zephyr-sources' "
+                "package (zephyr.spdx)."
+            ),
+        )
         component.url = zephyr.get("remote", "")
         component.revision = zephyr.get("revision", "")
 
@@ -415,7 +444,15 @@ class Walker:
                 module_ext_ref = module_security.get("external-references", [])
 
             # set up module deps component (reference-only, no files; no purpose)
-            component = SBOMComponent(name=module_name + "-deps")
+            component = SBOMComponent(
+                name=module_name + "-deps",
+                comment=(
+                    f"Reference-only package: records upstream provenance and security "
+                    f"identifiers (CPE/PURL) for the '{module_name}' module. Contains no "
+                    f"files; the source files actually used by the build (if any) are listed "
+                    f"in the '{module_name}-sources' package (zephyr.spdx)."
+                ),
+            )
 
             for ref in module_ext_ref:
                 component.add_external_reference(ref)

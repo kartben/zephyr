@@ -177,6 +177,10 @@ class SPDX3Serializer:
         # Copyright
         package.software_copyrightText = component.copyright_text or NOASSERTION
 
+        # Free-form comment describing the package's role in the SBOM
+        if component.comment:
+            package.comment = component.comment
+
         # License information will be added via relationships after package creation
 
         # External references (CPE, PURL)
