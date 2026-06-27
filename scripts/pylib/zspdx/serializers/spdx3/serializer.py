@@ -1023,7 +1023,12 @@ class SPDX3Serializer:
             self._create_software_file(file_obj)
 
     def _create_relationships(self):
-        """Create the relationships declared by components, files and the graph."""
+        """Create the relationships declared by components and files.
+
+        Every relationship is attached to its ``from`` element, so iterating the
+        components and files covers the whole graph; iterating
+        ``sbom_data.relationships`` as well would duplicate each one.
+        """
         for component in self.sbom_data.components.values():
             for rel in component.relationships:
                 if not self._create_relationship(rel):
@@ -1035,10 +1040,6 @@ class SPDX3Serializer:
             for rel in file_obj.relationships:
                 if not self._create_relationship(rel):
                     _logger.warning(f"Failed to create relationship from file {file_obj.path}")
-
-        for rel in self.sbom_data.relationships:
-            if not self._create_relationship(rel):
-                _logger.warning("Failed to create top-level relationship")
 
     def _create_contains_relationships(self):
         """Create a CONTAINS relationship from each package to each of its files."""
