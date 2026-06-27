@@ -59,6 +59,7 @@ class SPDX3Serializer:
         self.component_elements = {}  # component_name -> software_Package
         self.file_elements = {}  # file_path -> software_File
         self.relationship_elements = []  # List of Relationship objects
+        self.license_expressions = {}  # license string -> LicenseExpression
 
         # Track original from_id for relationships (before reversal)
         # This is used to assign cross-document relationships to the correct document
@@ -726,6 +727,10 @@ class SPDX3Serializer:
         if not license_str or license_str == NOASSERTION:
             return None
 
+        cached = self.license_expressions.get(license_str)
+        if cached is not None:
+            return cached
+
         license_expr = spdx.simplelicensing_LicenseExpression()
         standard_licenses = get_standard_licenses()
 
@@ -744,10 +749,8 @@ class SPDX3Serializer:
         license_expr.simplelicensing_licenseExpression = license_str
         license_expr.creationInfo = self.creation_info._id
 
-        # Add to elements if not already present
-        existing_ids = {elem._id for elem in self.elements if hasattr(elem, '_id')}
-        if license_expr._id not in existing_ids:
-            self.elements.append(license_expr)
+        self.license_expressions[license_str] = license_expr
+        self.elements.append(license_expr)
 
         return license_expr
 
