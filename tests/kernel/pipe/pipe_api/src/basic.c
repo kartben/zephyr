@@ -102,6 +102,8 @@ ZTEST(k_pipe_basic, test_pipe_write_read_one)
  *
  * @see k_pipe_write()
  * @see k_pipe_read()
+ * @verifies ZEP-SRS-32-3
+ * @verifies ZEP-SRS-32-4
  */
 ZTEST(k_pipe_basic, test_pipe_write_read_multiple)
 {
@@ -189,6 +191,8 @@ ZTEST(k_pipe_basic, test_pipe_read_empty)
  *
  * @see k_pipe_write()
  * @see k_pipe_read()
+ * @verifies ZEP-SRS-32-3
+ * @verifies ZEP-SRS-32-4
  */
 ZTEST(k_pipe_basic, test_pipe_read_write_full)
 {
@@ -224,6 +228,8 @@ ZTEST(k_pipe_basic, test_pipe_read_write_full)
  *
  * @see k_pipe_write()
  * @see k_pipe_read()
+ * @verifies ZEP-SRS-32-3
+ * @verifies ZEP-SRS-32-4
  */
 ZTEST(k_pipe_basic, test_pipe_read_write_wrap_around)
 {

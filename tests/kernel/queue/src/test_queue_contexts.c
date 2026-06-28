@@ -425,6 +425,7 @@ static void queue_poll_race_consume(void *p1, void *p2, void *p3)
  *
  * @see k_queue_append()
  * @see k_queue_get()
+ * @verifies ZEP-SRS-20-6
  */
 ZTEST(queue_api_1cpu, test_queue_poll_race)
 {
@@ -465,6 +466,7 @@ ZTEST(queue_api_1cpu, test_queue_poll_race)
 	k_thread_abort(&tdata1);
 }
 
+#define QUEUE_NUM 10
 /**
  * @brief Verify multiple independent queues operate without interference.
  *
@@ -482,8 +484,9 @@ ZTEST(queue_api_1cpu, test_queue_poll_race)
  * @ingroup tests_kernel_queue
  *
  * @see k_queue_init()
+ * @verifies ZEP-SRS-20-3
+ * @verifies ZEP-SRS-20-6
  */
-#define QUEUE_NUM 10
 ZTEST(queue_api, test_multiple_queues)
 {
 	/*define multiple queues*/
@@ -525,6 +528,8 @@ void user_access_queue_private_data(void *p1, void *p2, void *p3)
  * @ingroup tests_kernel_queue
  *
  * @see k_queue_is_empty()
+ * @verifies ZEP-SRS-20-8
+ * @verifies ZEP-SRS-20-10
  */
 ZTEST(queue_api, test_access_kernel_obj_with_priv_data)
 {
@@ -588,6 +593,7 @@ static void high_prio_t2_wait_for_queue(void *p1, void *p2, void *p3)
  *
  * @see k_queue_get()
  * @see k_queue_append()
+ * @verifies ZEP-SRS-20-6
  */
 ZTEST(queue_api_1cpu, test_queue_multithread_competition)
 {

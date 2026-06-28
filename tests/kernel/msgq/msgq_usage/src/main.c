@@ -262,6 +262,8 @@ static void start_client(void)
 /**
  * @addtogroup tests_kernel_msgq
  * @{
+ * @verifies ZEP-SRS-31-4
+ * @verifies ZEP-SRS-31-8
  */
 
 /**
