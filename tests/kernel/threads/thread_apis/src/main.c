@@ -58,6 +58,7 @@ static ZTEST_DMEM int tp = 10;
  * - The main thread runs at the configured priority.
  *
  * @see k_thread_priority_get()
+ * @verifies ZEP-SRS-1-31
  */
 ZTEST(threads_lifecycle, test_thread_main_priority)
 {
@@ -83,6 +84,7 @@ ZTEST(threads_lifecycle, test_thread_main_priority)
  * - The running thread's priority is higher than the idle priority.
  *
  * @see k_thread_priority_get()
+ * @verifies ZEP-SRS-1-32
  */
 ZTEST(threads_lifecycle, test_thread_idle_priority)
 {
@@ -697,6 +699,7 @@ static void user_start_thread(void *p1, void *p2, void *p3)
  *
  * @see k_thread_timeout_remaining_ticks()
  * @see k_thread_timeout_expires_ticks()
+ * @verifies ZEP-SRS-1-33
  */
 
 ZTEST_USER(threads_lifecycle, test_thread_timeout_remaining_expires)
@@ -772,6 +775,8 @@ static void foreach_callback(const struct k_thread *thread, void *user_data)
  *
  * @see k_thread_runtime_stats_get()
  * @see k_thread_runtime_stats_all_get()
+ * @verifies ZEP-SRS-1-28
+ * @verifies ZEP-SRS-1-29
  */
 ZTEST(threads_lifecycle, test_thread_runtime_stats_get)
 {
@@ -814,6 +819,7 @@ ZTEST(threads_lifecycle, test_thread_runtime_stats_get)
  *
  * @see k_busy_wait()
  * @see k_thread_runtime_stats_get()
+ * @verifies ZEP-SRS-28-13
  */
 ZTEST(threads_lifecycle, test_thread_busy_wait)
 {
@@ -875,6 +881,7 @@ static void tp_entry(void *p1, void *p2, void *p3)
  *
  * @see k_busy_wait()
  * @see k_thread_runtime_stats_get()
+ * @verifies ZEP-SRS-28-13
  */
 ZTEST_USER(threads_lifecycle_1cpu, test_thread_busy_wait_user)
 {

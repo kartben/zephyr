@@ -33,6 +33,7 @@
  *
  * @see k_busy_wait()
  * @see k_uptime_get()
+ * @verifies ZEP-SRS-28-13
  */
 ZTEST(no_multithreading, test_no_multithreading_busy_wait)
 {
@@ -92,6 +93,8 @@ K_TIMER_DEFINE(timer, timeout_handler, NULL);
  * @see irq_lock()
  * @see irq_unlock()
  * @see k_timer_start()
+ * @verifies ZEP-SRS-7-8
+ * @verifies ZEP-SRS-7-9
  */
 ZTEST(no_multithreading, test_no_multithreading_irq_lock)
 {

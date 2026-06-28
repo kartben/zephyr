@@ -125,6 +125,7 @@ ZTEST_USER(threads_lifecycle, test_thread_abort_others)
  * - The repeated aborts complete without error and the system keeps running.
  *
  * @see k_thread_abort()
+ * @verifies ZEP-SRS-1-6
  */
 ZTEST(threads_lifecycle_1cpu, test_thread_abort_repeat)
 {

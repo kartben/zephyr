@@ -224,6 +224,7 @@ ZTEST(threads_lifecycle_1cpu, test_thread_foreach_unlocked)
  * - The call raises the expected fatal error and does not return.
  *
  * @see k_thread_foreach()
+ * @verifies ZEP-SRS-1-26
  */
 ZTEST(threads_lifecycle_1cpu, test_thread_foreach_null_cb)
 {
@@ -246,6 +247,7 @@ ZTEST(threads_lifecycle_1cpu, test_thread_foreach_null_cb)
  * - The call raises the expected fatal error and does not return.
  *
  * @see k_thread_foreach_unlocked()
+ * @verifies ZEP-SRS-1-26
  */
 ZTEST(threads_lifecycle_1cpu, test_thread_foreach_unlocked_null_cb)
 {

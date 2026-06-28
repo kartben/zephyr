@@ -61,6 +61,8 @@ static void func(void *arg1, void *arg2, void *arg3)
  * @see k_thread_stack_alloc()
  * @see k_object_alloc()
  * @see k_thread_create()
+ * @verifies ZEP-SRS-1-24
+ * @verifies ZEP-SRS-1-25
  */
 ZTEST_USER(dynamic_thread_stack, test_dynamic_thread_stack_userspace_dyn_obj)
 {
@@ -122,6 +124,8 @@ ZTEST_USER(dynamic_thread_stack, test_dynamic_thread_stack_userspace_dyn_obj)
  *
  * @see k_thread_stack_alloc()
  * @see k_thread_stack_free()
+ * @verifies ZEP-SRS-1-24
+ * @verifies ZEP-SRS-1-25
  */
 ZTEST(dynamic_thread_stack, test_dynamic_thread_stack_pool)
 {
@@ -324,6 +328,8 @@ static void perm_func_violator(void *arg1, void *arg2, void *arg3)
  *
  * @see k_thread_stack_free()
  * @see k_thread_stack_alloc()
+ * @verifies ZEP-SRS-1-24
+ * @verifies ZEP-SRS-1-25
  */
 ZTEST(dynamic_thread_stack, test_dynamic_thread_stack_permission)
 {

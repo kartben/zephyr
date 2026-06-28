@@ -245,6 +245,7 @@ static void user_start_thread(void *p1, void *p2, void *p3)
  *
  * @see k_thread_start()
  * @see k_thread_create()
+ * @verifies ZEP-SRS-1-14
  */
 ZTEST_USER(threads_lifecycle, test_thread_start_user)
 {
