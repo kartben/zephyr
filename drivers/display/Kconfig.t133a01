@@ -1,0 +1,12 @@
+# Copyright 2026 The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config T133A01
+	bool "T133A01 display controller"
+	default y
+	depends on DT_HAS_EINK_T133A01_ENABLED
+	select MIPI_DBI
+	select DISPLAY_COLOR_PALETTE
+	select DISPLAY_COLOR_DITHER_SUPPORTED
+	help
+	  Enable driver for the T133A01 dual-controller Spectra 6 e-ink display.
