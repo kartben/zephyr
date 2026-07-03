@@ -690,6 +690,8 @@ __syscall int k_thread_join(struct k_thread *thread, k_timeout_t timeout);
  * sleep rounded up to the nearest millisecond (e.g. if the thread was
  * awoken by the \ref k_wakeup call).  Will be clamped to INT_MAX in
  * the case where the remaining time is unrepresentable in an int32_t.
+ *
+ * @satisfies ZEP-SRS-28-8
  */
 __syscall int32_t k_sleep(k_timeout_t timeout);
 
@@ -724,6 +726,8 @@ static inline int32_t k_msleep(int32_t ms)
  * @return Zero if the requested time has elapsed or if the thread was woken up
  * by the \ref k_wakeup call, the time left to sleep rounded up to the nearest
  * microsecond.
+ *
+ * @satisfies ZEP-SRS-28-9
  */
 __syscall int32_t k_usleep(int32_t us);
 
@@ -742,6 +746,8 @@ __syscall int32_t k_usleep(int32_t us);
  * @note In case when @kconfig{CONFIG_SYSTEM_CLOCK_SLOPPY_IDLE} and
  * @kconfig{CONFIG_PM} options are enabled, this function may not work.
  * The timer/clock used for delay processing may be disabled/inactive.
+ *
+ * @satisfies ZEP-SRS-28-13
  */
 __syscall void k_busy_wait(uint32_t usec_to_wait);
 
@@ -764,6 +770,8 @@ bool k_can_yield(void);
  * This routine causes the current thread to yield execution to another
  * thread of the same or higher priority. If there are no other ready threads
  * of the same or higher priority, the routine returns immediately.
+ *
+ * @satisfies ZEP-SRS-2-15
  */
 __syscall void k_yield(void);
 
@@ -775,6 +783,8 @@ __syscall void k_yield(void);
  * If @a thread is not currently sleeping, the routine has no effect.
  *
  * @param thread ID of thread to wake.
+ *
+ * @satisfies ZEP-SRS-28-11
  */
 __syscall void k_wakeup(k_tid_t thread);
 
@@ -1132,6 +1142,7 @@ __syscall void k_thread_priority_set(k_tid_t thread, int prio);
  * @param thread A thread on which to set the deadline
  * @param deadline A time delta, in cycle units
  *
+ * @satisfies ZEP-SRS-2-17
  */
 __syscall void k_thread_deadline_set(k_tid_t thread, int deadline);
 
@@ -1407,6 +1418,8 @@ void k_sched_time_slice_set(int32_t slice, int prio);
  * @param slice_ticks Maximum timeslice, in ticks
  * @param expired Callback function called on slice expiration
  * @param data Parameter for the expiration handler
+ *
+ * @satisfies ZEP-SRS-2-18
  */
 void k_thread_time_slice_set(struct k_thread *th, int32_t slice_ticks,
 			     k_thread_timeslice_fn_t expired, void *data);
@@ -1446,6 +1459,8 @@ bool k_is_in_isr(void);
  *
  * @return 0 if invoked by an ISR or by a cooperative thread.
  * @return Non-zero if invoked by a preemptible thread.
+ *
+ * @satisfies ZEP-SRS-2-20
  */
 __syscall int k_is_preempt_thread(void);
 
@@ -1482,6 +1497,8 @@ __syscall int k_is_preempt_thread(void);
  * threads with MetaIRQ priorities from preempting the current thread.
  * In general this is a historical API not well-suited to modern
  * applications, use with care.
+ *
+ * @satisfies ZEP-SRS-2-16
  */
 void k_sched_lock(void);
 
@@ -1491,6 +1508,8 @@ void k_sched_lock(void);
  * This routine reverses the effect of a previous call to k_sched_lock().
  * A thread must call the routine once for each time it called k_sched_lock()
  * before the thread becomes preemptible.
+ *
+ * @satisfies ZEP-SRS-2-16
  */
 void k_sched_unlock(void);
 
@@ -1933,6 +1952,8 @@ typedef void (*k_timer_stop_t)(struct k_timer *timer);
  * @param name Name of the timer variable.
  * @param expiry_fn Function to invoke each time the timer expires.
  * @param stop_fn   Function to invoke if the timer is stopped while running.
+ *
+ * @satisfies ZEP-SRS-4-1
  */
 #define K_TIMER_DEFINE(name, expiry_fn, stop_fn) \
 	STRUCT_SECTION_ITERABLE(k_timer, name) = \
@@ -1982,6 +2003,8 @@ typedef void (*k_timer_stop_t)(struct k_timer *timer);
  * @param timer     Address of timer.
  * @param expiry_fn Function to invoke each time the timer expires.
  * @param stop_fn   Function to invoke if the timer is stopped while running.
+ *
+ * @satisfies ZEP-SRS-4-4
  */
 void k_timer_init(struct k_timer *timer,
 			 k_timer_expiry_t expiry_fn,
@@ -2003,6 +2026,8 @@ void k_timer_init(struct k_timer *timer,
  * @param timer     Address of timer.
  * @param duration  Initial timer duration.
  * @param period    Timer period.
+ *
+ * @satisfies ZEP-SRS-4-5
  */
 __syscall void k_timer_start(struct k_timer *timer,
 			     k_timeout_t duration, k_timeout_t period);
@@ -2022,6 +2047,8 @@ __syscall void k_timer_start(struct k_timer *timer,
  * @isr_ok
  *
  * @param timer     Address of timer.
+ *
+ * @satisfies ZEP-SRS-4-6
  */
 __syscall void k_timer_stop(struct k_timer *timer);
 
@@ -2036,6 +2063,8 @@ __syscall void k_timer_stop(struct k_timer *timer);
  * @param timer     Address of timer.
  *
  * @return Timer status.
+ *
+ * @satisfies ZEP-SRS-4-7
  */
 __syscall uint32_t k_timer_status_get(struct k_timer *timer);
 
@@ -2055,6 +2084,8 @@ __syscall uint32_t k_timer_status_get(struct k_timer *timer);
  * @param timer     Address of timer.
  *
  * @return Timer status.
+ *
+ * @satisfies ZEP-SRS-4-9
  */
 __syscall uint32_t k_timer_status_sync(struct k_timer *timer);
 
@@ -2069,6 +2100,8 @@ __syscall uint32_t k_timer_status_sync(struct k_timer *timer);
  *
  * @param timer The timer object
  * @return Uptime of expiration, in ticks
+ *
+ * @satisfies ZEP-SRS-4-10
  */
 __syscall k_ticks_t k_timer_expires_ticks(const struct k_timer *timer);
 
@@ -2087,6 +2120,8 @@ static inline k_ticks_t z_impl_k_timer_expires_ticks(
  *
  * @param timer The timer object
  * @return Remaining time until expiration, in ticks
+ *
+ * @satisfies ZEP-SRS-4-11
  */
 __syscall k_ticks_t k_timer_remaining_ticks(const struct k_timer *timer);
 
@@ -2105,6 +2140,8 @@ static inline k_ticks_t z_impl_k_timer_remaining_ticks(
  * @param timer     Address of timer.
  *
  * @return Remaining time (in milliseconds).
+ *
+ * @satisfies ZEP-SRS-4-12
  */
 static inline uint32_t k_timer_remaining_get(struct k_timer *timer)
 {
@@ -2124,6 +2161,8 @@ static inline uint32_t k_timer_remaining_get(struct k_timer *timer)
  *
  * @param timer     Address of timer.
  * @param user_data User data to associate with the timer.
+ *
+ * @satisfies ZEP-SRS-4-13
  */
 __syscall void k_timer_user_data_set(struct k_timer *timer, void *user_data);
 
@@ -2142,6 +2181,8 @@ static inline void z_impl_k_timer_user_data_set(struct k_timer *timer,
  * @param timer     Address of timer.
  *
  * @return The user data.
+ *
+ * @satisfies ZEP-SRS-4-14
  */
 __syscall void *k_timer_user_data_get(const struct k_timer *timer);
 
@@ -2188,6 +2229,8 @@ int k_timer_cleanup(struct k_timer *timer);
  * fundamental unit of resolution of kernel timekeeping.
  *
  * @return Current uptime in ticks.
+ *
+ * @satisfies ZEP-SRS-28-2
  */
 __syscall int64_t k_uptime_ticks(void);
 
@@ -2203,6 +2246,8 @@ __syscall int64_t k_uptime_ticks(void);
  *    @kconfig{CONFIG_SYS_CLOCK_TICKS_PER_SEC} config option.
  *
  * @return Current uptime in milliseconds.
+ *
+ * @satisfies ZEP-SRS-28-1
  */
 static inline int64_t k_uptime_get(void)
 {
@@ -2240,6 +2285,8 @@ static inline uint32_t k_uptime_get_32(void)
  * in seconds.
  *
  * @return Current uptime in seconds.
+ *
+ * @satisfies ZEP-SRS-28-3
  */
 static inline uint32_t k_uptime_seconds(void)
 {
@@ -2275,6 +2322,8 @@ static inline int64_t k_uptime_delta(int64_t *reftime)
  * clock.
  *
  * @return Current hardware clock up-counter (in cycles).
+ *
+ * @satisfies ZEP-SRS-28-5
  */
 static inline uint32_t k_cycle_get_32(void)
 {
@@ -2290,6 +2339,8 @@ static inline uint32_t k_cycle_get_32(void)
  * @see CONFIG_TIMER_HAS_64BIT_CYCLE_COUNTER
  *
  * @return Current hardware clock up-counter (in cycles).
+ *
+ * @satisfies ZEP-SRS-28-6
  */
 static inline uint64_t k_cycle_get_64(void)
 {
@@ -2354,6 +2405,8 @@ struct k_queue {
  * This routine initializes a queue object, prior to its first use.
  *
  * @param queue Address of the queue.
+ *
+ * @satisfies ZEP-SRS-20-2
  */
 __syscall void k_queue_init(struct k_queue *queue);
 
@@ -2369,6 +2422,8 @@ __syscall void k_queue_init(struct k_queue *queue);
  * @isr_ok
  *
  * @param queue Address of the queue.
+ *
+ * @satisfies ZEP-SRS-20-15
  */
 __syscall void k_queue_cancel_wait(struct k_queue *queue);
 
@@ -2383,6 +2438,8 @@ __syscall void k_queue_cancel_wait(struct k_queue *queue);
  *
  * @param queue Address of the queue.
  * @param data Address of the data item.
+ *
+ * @satisfies ZEP-SRS-20-3
  */
 void k_queue_append(struct k_queue *queue, void *data);
 
@@ -2415,6 +2472,8 @@ __syscall int32_t k_queue_alloc_append(struct k_queue *queue, void *data);
  *
  * @param queue Address of the queue.
  * @param data Address of the data item.
+ *
+ * @satisfies ZEP-SRS-20-4
  */
 void k_queue_prepend(struct k_queue *queue, void *data);
 
@@ -2448,6 +2507,8 @@ __syscall int32_t k_queue_alloc_prepend(struct k_queue *queue, void *data);
  * @param queue Address of the queue.
  * @param prev Address of the previous data item.
  * @param data Address of the data item.
+ *
+ * @satisfies ZEP-SRS-20-10
  */
 void k_queue_insert(struct k_queue *queue, void *prev, void *data);
 
@@ -2468,6 +2529,7 @@ void k_queue_insert(struct k_queue *queue, void *prev, void *data);
  * @retval 0 on success
  * @retval -EINVAL on invalid supplied data
  *
+ * @satisfies ZEP-SRS-20-11
  */
 int k_queue_append_list(struct k_queue *queue, void *head, void *tail);
 
@@ -2487,6 +2549,8 @@ int k_queue_append_list(struct k_queue *queue, void *head, void *tail);
  *
  * @retval 0 on success
  * @retval -EINVAL on invalid data
+ *
+ * @satisfies ZEP-SRS-20-12
  */
 int k_queue_merge_slist(struct k_queue *queue, sys_slist_t *list);
 
@@ -2506,6 +2570,8 @@ int k_queue_merge_slist(struct k_queue *queue, sys_slist_t *list);
  *
  * @return Address of the data item if successful; NULL if returned
  * without waiting, or waiting period timed out.
+ *
+ * @satisfies ZEP-SRS-20-6
  */
 __syscall void *k_queue_get(struct k_queue *queue, k_timeout_t timeout);
 
@@ -2522,6 +2588,8 @@ __syscall void *k_queue_get(struct k_queue *queue, k_timeout_t timeout);
  * @param data Address of the data item.
  *
  * @return true if data item was removed
+ *
+ * @satisfies ZEP-SRS-20-5
  */
 bool k_queue_remove(struct k_queue *queue, void *data);
 
@@ -2553,6 +2621,8 @@ bool k_queue_unique_append(struct k_queue *queue, void *data);
  *
  * @return Non-zero if the queue is empty.
  * @return 0 if data is available.
+ *
+ * @satisfies ZEP-SRS-20-7
  */
 __syscall int k_queue_is_empty(struct k_queue *queue);
 
@@ -2569,6 +2639,8 @@ static inline int z_impl_k_queue_is_empty(struct k_queue *queue)
  * @param queue Address of the queue.
  *
  * @return Head element, or NULL if queue is empty.
+ *
+ * @satisfies ZEP-SRS-20-9
  */
 __syscall void *k_queue_peek_head(struct k_queue *queue);
 
@@ -2580,6 +2652,8 @@ __syscall void *k_queue_peek_head(struct k_queue *queue);
  * @param queue Address of the queue.
  *
  * @return Tail element, or NULL if queue is empty.
+ *
+ * @satisfies ZEP-SRS-20-8
  */
 __syscall void *k_queue_peek_tail(struct k_queue *queue);
 
@@ -2591,6 +2665,8 @@ __syscall void *k_queue_peek_tail(struct k_queue *queue);
  * @code extern struct k_queue <name>; @endcode
  *
  * @param name Name of the queue.
+ *
+ * @satisfies ZEP-SRS-20-1
  */
 #define K_QUEUE_DEFINE(name) \
 	STRUCT_SECTION_ITERABLE(k_queue, name) = \
@@ -2667,6 +2743,8 @@ struct z_futex_data {
  * @retval 0 if the caller went to sleep and was woken up. The caller
  *	     should check the futex's value on wakeup to determine if it needs
  *	     to block again.
+ *
+ * @satisfies ZEP-SRS-37-1
  */
 __syscall int k_futex_wait(struct k_futex *futex, int expected,
 			   k_timeout_t timeout);
@@ -2684,6 +2762,8 @@ __syscall int k_futex_wait(struct k_futex *futex, int expected,
  * @retval -EACCES Caller does not have access to the futex address.
  * @retval -EINVAL Futex parameter address not recognized by the kernel.
  * @retval >=0 Number of threads that were woken up.
+ *
+ * @satisfies ZEP-SRS-37-2
  */
 __syscall int k_futex_wake(struct k_futex *futex, bool wake_all);
 
@@ -2745,6 +2825,8 @@ struct k_event {
  * This routine initializes an event object, prior to its first use.
  *
  * @param event Address of the event object.
+ *
+ * @satisfies ZEP-SRS-27-2
  */
 __syscall void k_event_init(struct k_event *event);
 
@@ -2764,6 +2846,8 @@ __syscall void k_event_init(struct k_event *event);
  * @param events Set of events to post to @a event
  *
  * @return Previous value of the events in @a event
+ *
+ * @satisfies ZEP-SRS-27-4
  */
 __syscall uint32_t k_event_post(struct k_event *event, uint32_t events);
 
@@ -2783,6 +2867,8 @@ __syscall uint32_t k_event_post(struct k_event *event, uint32_t events);
  * @param events Set of events to set in @a event
  *
  * @return Previous value of the events in @a event
+ *
+ * @satisfies ZEP-SRS-27-5
  */
 __syscall uint32_t k_event_set(struct k_event *event, uint32_t events);
 
@@ -2801,6 +2887,8 @@ __syscall uint32_t k_event_set(struct k_event *event, uint32_t events);
  * @param events_mask Mask to be applied to @a events
  *
  * @return Previous value of the events in @a events_mask
+ *
+ * @satisfies ZEP-SRS-27-6
  */
 __syscall uint32_t k_event_set_masked(struct k_event *event, uint32_t events,
 				  uint32_t events_mask);
@@ -2816,6 +2904,8 @@ __syscall uint32_t k_event_set_masked(struct k_event *event, uint32_t events,
  * @param events Set of events to clear in @a event
  *
  * @return Previous value of the events in @a event
+ *
+ * @satisfies ZEP-SRS-27-7
  */
 __syscall uint32_t k_event_clear(struct k_event *event, uint32_t events);
 
@@ -2842,6 +2932,9 @@ __syscall uint32_t k_event_clear(struct k_event *event, uint32_t events);
  *
  * @retval non-zero set of matching events upon success
  * @retval 0 if matching events were not received within the specified time
+ *
+ * @satisfies ZEP-SRS-27-10
+ * @satisfies ZEP-SRS-27-12
  */
 __syscall uint32_t k_event_wait(struct k_event *event, uint32_t events,
 				bool reset, k_timeout_t timeout);
@@ -2869,6 +2962,8 @@ __syscall uint32_t k_event_wait(struct k_event *event, uint32_t events,
  *
  * @retval non-zero set of matching events upon success
  * @retval 0 if matching events were not received within the specified time
+ *
+ * @satisfies ZEP-SRS-27-11
  */
 __syscall uint32_t k_event_wait_all(struct k_event *event, uint32_t events,
 				    bool reset, k_timeout_t timeout);
@@ -2940,6 +3035,8 @@ static inline uint32_t k_event_test(struct k_event *event, uint32_t events_mask)
  * @code extern struct k_event <name>; @endcode
  *
  * @param name Name of the event object.
+ *
+ * @satisfies ZEP-SRS-27-1
  */
 #define K_EVENT_DEFINE(name)                                   \
 	STRUCT_SECTION_ITERABLE(k_event, name) =               \
@@ -3191,6 +3288,8 @@ struct k_fifo {
  * @code extern struct k_fifo <name>; @endcode
  *
  * @param name Name of the FIFO queue.
+ *
+ * @satisfies ZEP-SRS-24-1
  */
 #define K_FIFO_DEFINE(name) \
 	STRUCT_SECTION_ITERABLE(k_fifo, name) = \
@@ -3327,6 +3426,8 @@ struct k_lifo {
  * @code extern struct k_lifo <name>; @endcode
  *
  * @param name Name of the fifo.
+ *
+ * @satisfies ZEP-SRS-23-1
  */
 #define K_LIFO_DEFINE(name) \
 	STRUCT_SECTION_ITERABLE(k_lifo, name) = \
@@ -3380,6 +3481,8 @@ struct k_stack {
  * @param stack Address of the stack.
  * @param buffer Address of array used to hold stacked values.
  * @param num_entries Maximum number of values that can be stacked.
+ *
+ * @satisfies ZEP-SRS-30-2
  */
 void k_stack_init(struct k_stack *stack,
 		  stack_data_t *buffer, uint32_t num_entries);
@@ -3397,6 +3500,8 @@ void k_stack_init(struct k_stack *stack,
  * @param num_entries Maximum number of values that can be stacked.
  *
  * @return -ENOMEM if memory couldn't be allocated
+ *
+ * @satisfies ZEP-SRS-30-3
  */
 
 __syscall int32_t k_stack_alloc_init(struct k_stack *stack,
@@ -3412,6 +3517,8 @@ __syscall int32_t k_stack_alloc_init(struct k_stack *stack,
  * @param stack Address of the stack.
  * @retval 0 on success
  * @retval -EAGAIN when object is still in use
+ *
+ * @satisfies ZEP-SRS-30-10
  */
 int k_stack_cleanup(struct k_stack *stack);
 
@@ -3427,6 +3534,8 @@ int k_stack_cleanup(struct k_stack *stack);
  *
  * @retval 0 on success
  * @retval -ENOMEM if stack is full
+ *
+ * @satisfies ZEP-SRS-30-4
  */
 __syscall int k_stack_push(struct k_stack *stack, stack_data_t data);
 
@@ -3449,6 +3558,9 @@ __syscall int k_stack_push(struct k_stack *stack, stack_data_t data);
  * @retval 0 Element popped from stack.
  * @retval -EBUSY Returned without waiting.
  * @retval -EAGAIN Waiting period timed out.
+ *
+ * @satisfies ZEP-SRS-30-6
+ * @satisfies ZEP-SRS-30-8
  */
 __syscall int k_stack_pop(struct k_stack *stack, stack_data_t *data,
 			  k_timeout_t timeout);
@@ -3462,6 +3574,8 @@ __syscall int k_stack_pop(struct k_stack *stack, stack_data_t *data,
  *
  * @param name Name of the stack.
  * @param stack_num_entries Maximum number of values that can be stacked.
+ *
+ * @satisfies ZEP-SRS-30-1
  */
 #define K_STACK_DEFINE(name, stack_num_entries)                \
 	stack_data_t __noinit                                  \
@@ -3541,6 +3655,8 @@ struct k_mutex {
  * @code extern struct k_mutex <name>; @endcode
  *
  * @param name Name of the mutex.
+ *
+ * @satisfies ZEP-SRS-6-2
  */
 #define K_MUTEX_DEFINE(name) \
 	STRUCT_SECTION_ITERABLE(k_mutex, name) = \
@@ -3557,6 +3673,7 @@ struct k_mutex {
  *
  * @retval 0 Mutex object created
  *
+ * @satisfies ZEP-SRS-6-3
  */
 __syscall int k_mutex_init(struct k_mutex *mutex);
 
@@ -3581,6 +3698,9 @@ __syscall int k_mutex_init(struct k_mutex *mutex);
  * @retval 0 Mutex locked.
  * @retval -EBUSY Returned without waiting.
  * @retval -EAGAIN Waiting period timed out.
+ *
+ * @satisfies ZEP-SRS-6-4
+ * @satisfies ZEP-SRS-6-7
  */
 __syscall int k_mutex_lock(struct k_mutex *mutex, k_timeout_t timeout);
 
@@ -3603,6 +3723,7 @@ __syscall int k_mutex_lock(struct k_mutex *mutex, k_timeout_t timeout);
  * @retval -EPERM The current thread does not own the mutex
  * @retval -EINVAL The mutex is not locked
  *
+ * @satisfies ZEP-SRS-6-10
  */
 __syscall int k_mutex_unlock(struct k_mutex *mutex);
 
@@ -3651,6 +3772,8 @@ struct k_condvar {
  *
  * @param condvar pointer to a @p k_condvar structure
  * @retval 0 Condition variable created successfully
+ *
+ * @satisfies ZEP-SRS-21-1
  */
 __syscall int k_condvar_init(struct k_condvar *condvar);
 
@@ -3659,6 +3782,8 @@ __syscall int k_condvar_init(struct k_condvar *condvar);
  *
  * @param condvar pointer to a @p k_condvar structure
  * @retval 0 On success
+ *
+ * @satisfies ZEP-SRS-21-3
  */
 __syscall int k_condvar_signal(struct k_condvar *condvar);
 
@@ -3668,6 +3793,8 @@ __syscall int k_condvar_signal(struct k_condvar *condvar);
  *
  * @param condvar pointer to a @p k_condvar structure
  * @return An integer with number of woken threads on success
+ *
+ * @satisfies ZEP-SRS-21-4
  */
 __syscall int k_condvar_broadcast(struct k_condvar *condvar);
 
@@ -3687,6 +3814,9 @@ __syscall int k_condvar_broadcast(struct k_condvar *condvar);
  *                or one of the special values K_NO_WAIT and K_FOREVER.
  * @retval 0 On success
  * @retval -EAGAIN Waiting period timed out.
+ *
+ * @satisfies ZEP-SRS-21-5
+ * @satisfies ZEP-SRS-21-6
  */
 __syscall int k_condvar_wait(struct k_condvar *condvar, struct k_mutex *mutex,
 			     k_timeout_t timeout);
@@ -3700,6 +3830,8 @@ __syscall int k_condvar_wait(struct k_condvar *condvar, struct k_mutex *mutex,
  * @code extern struct k_condvar <name>; @endcode
  *
  * @param name Name of the condition variable.
+ *
+ * @satisfies ZEP-SRS-21-2
  */
 #define K_CONDVAR_DEFINE(name)                                                 \
 	STRUCT_SECTION_ITERABLE(k_condvar, name) =                             \
@@ -3778,6 +3910,8 @@ struct k_sem {
  * @retval 0 Semaphore created successfully
  * @retval -EINVAL Invalid values
  *
+ * @satisfies ZEP-SRS-5-2
+ * @satisfies ZEP-SRS-5-4
  */
 __syscall int k_sem_init(struct k_sem *sem, unsigned int initial_count,
 			  unsigned int limit);
@@ -3799,6 +3933,9 @@ __syscall int k_sem_init(struct k_sem *sem, unsigned int initial_count,
  * @retval -EBUSY Returned without waiting.
  * @retval -EAGAIN Waiting period timed out,
  *			or the semaphore was reset during the waiting period.
+ *
+ * @satisfies ZEP-SRS-5-6
+ * @satisfies ZEP-SRS-5-9
  */
 __syscall int k_sem_take(struct k_sem *sem, k_timeout_t timeout);
 
@@ -3811,6 +3948,8 @@ __syscall int k_sem_take(struct k_sem *sem, k_timeout_t timeout);
  * @isr_ok
  *
  * @param sem Address of the semaphore.
+ *
+ * @satisfies ZEP-SRS-5-12
  */
 __syscall void k_sem_give(struct k_sem *sem);
 
@@ -3822,6 +3961,8 @@ __syscall void k_sem_give(struct k_sem *sem);
  * with -EAGAIN.
  *
  * @param sem Address of the semaphore.
+ *
+ * @satisfies ZEP-SRS-5-16
  */
 __syscall void k_sem_reset(struct k_sem *sem);
 
@@ -3833,6 +3974,8 @@ __syscall void k_sem_reset(struct k_sem *sem);
  * @param sem Address of the semaphore.
  *
  * @return Current semaphore count.
+ *
+ * @satisfies ZEP-SRS-5-15
  */
 __syscall unsigned int k_sem_count_get(struct k_sem *sem);
 
@@ -3854,6 +3997,8 @@ static inline unsigned int z_impl_k_sem_count_get(struct k_sem *sem)
  * @param name Name of the semaphore.
  * @param initial_count Initial semaphore count.
  * @param count_limit Maximum permitted semaphore count.
+ *
+ * @satisfies ZEP-SRS-5-1
  */
 #define K_SEM_DEFINE(name, initial_count, count_limit)                                             \
 	STRUCT_SECTION_ITERABLE(k_sem, name) =                                                     \
@@ -3998,6 +4143,8 @@ typedef void (*k_work_handler_t)(struct k_work *work);
  * @param work the work structure to be initialized.
  *
  * @param handler the handler to be invoked by the work item.
+ *
+ * @satisfies ZEP-SRS-26-9
  */
 void k_work_init(struct k_work *work,
 		  k_work_handler_t handler);
@@ -4030,6 +4177,8 @@ int k_work_busy_get(const struct k_work *work);
  * @param work pointer to the work item.
  *
  * @return true if and only if k_work_busy_get() returns a non-zero value.
+ *
+ * @satisfies ZEP-SRS-26-16
  */
 static inline bool k_work_is_pending(const struct k_work *work);
 
@@ -4052,6 +4201,8 @@ static inline bool k_work_is_pending(const struct k_work *work);
  * * @p queue is plugged.
  * @retval -EINVAL if @p queue is null and the work item has never been run.
  * @retval -ENODEV if @p queue has not been started.
+ *
+ * @satisfies ZEP-SRS-26-11
  */
 int k_work_submit_to_queue(struct k_work_q *queue,
 			   struct k_work *work);
@@ -4063,6 +4214,8 @@ int k_work_submit_to_queue(struct k_work_q *queue,
  * @param work pointer to the work item.
  *
  * @return as with k_work_submit_to_queue().
+ *
+ * @satisfies ZEP-SRS-26-10
  */
 int k_work_submit(struct k_work *work);
 
@@ -4089,6 +4242,8 @@ int k_work_submit(struct k_work *work);
  *
  * @retval true if call had to wait for completion
  * @retval false if work was already idle
+ *
+ * @satisfies ZEP-SRS-26-15
  */
 bool k_work_flush(struct k_work *work,
 		  struct k_work_sync *sync);
@@ -4111,6 +4266,8 @@ bool k_work_flush(struct k_work *work,
  *
  * @return the k_work_busy_get() status indicating the state of the item after all
  * cancellation steps performed by this call are completed.
+ *
+ * @satisfies ZEP-SRS-26-17
  */
 int k_work_cancel(struct k_work *work);
 
@@ -4143,6 +4300,8 @@ int k_work_cancel(struct k_work *work);
  * running handler to complete, or scheduled or submitted operations were
  * cancelled);
  * @retval false otherwise
+ *
+ * @satisfies ZEP-SRS-26-19
  */
 bool k_work_cancel_sync(struct k_work *work, struct k_work_sync *sync);
 
@@ -4175,6 +4334,8 @@ void k_work_queue_init(struct k_work_q *queue);
  * @param cfg optional additional configuration parameters.  Pass @c
  * NULL if not required, to use the defaults documented in
  * k_work_queue_config.
+ *
+ * @satisfies ZEP-SRS-26-1
  */
 void k_work_queue_start(struct k_work_q *queue,
 			k_thread_stack_t *stack, size_t stack_size,
@@ -4225,6 +4386,8 @@ static inline k_tid_t k_work_queue_thread_get(struct k_work_q *queue);
  * @retval 1 if call had to wait for the drain to complete
  * @retval 0 if call did not have to wait
  * @retval negative if wait was interrupted or failed
+ *
+ * @satisfies ZEP-SRS-26-5
  */
 int k_work_queue_drain(struct k_work_q *queue, bool plug);
 
@@ -4257,6 +4420,8 @@ int k_work_queue_unplug(struct k_work_q *queue);
  * @retval -EBUSY if the work queue is actively processing work items
  * @retval -ETIMEDOUT if the work queue did not stop within the stipulated timeout
  * @retval -ENOSUP if the work queue is essential
+ *
+ * @satisfies ZEP-SRS-26-8
  */
 int k_work_queue_stop(struct k_work_q *queue, k_timeout_t timeout);
 
@@ -4272,6 +4437,8 @@ int k_work_queue_stop(struct k_work_q *queue, k_timeout_t timeout);
  * @param dwork the delayable work structure to be initialized.
  *
  * @param handler the handler to be invoked by the work item.
+ *
+ * @satisfies ZEP-SRS-26-20
  */
 void k_work_init_delayable(struct k_work_delayable *dwork,
 			   k_work_handler_t handler);
@@ -4397,6 +4564,8 @@ int k_work_schedule_for_queue(struct k_work_q *queue,
  * K_NO_WAIT this is equivalent to k_work_submit_to_queue().
  *
  * @return as with k_work_schedule_for_queue().
+ *
+ * @satisfies ZEP-SRS-26-21
  */
 int k_work_schedule(struct k_work_delayable *dwork,
 				   k_timeout_t delay);
@@ -4451,6 +4620,8 @@ int k_work_reschedule_for_queue(struct k_work_q *queue,
  * @param delay the time to wait before submitting the work item.
  *
  * @return as with k_work_reschedule_for_queue().
+ *
+ * @satisfies ZEP-SRS-26-23
  */
 int k_work_reschedule(struct k_work_delayable *dwork,
 				     k_timeout_t delay);
@@ -4501,6 +4672,8 @@ bool k_work_flush_delayable(struct k_work_delayable *dwork,
  *
  * @return the k_work_delayable_busy_get() status indicating the state of the
  * item after all cancellation steps performed by this call are completed.
+ *
+ * @satisfies ZEP-SRS-26-24
  */
 int k_work_cancel_delayable(struct k_work_delayable *dwork);
 
@@ -5191,6 +5364,8 @@ int k_work_poll_submit_to_queue(struct k_work_q *work_q,
  * @retval 0 Work item started watching for events.
  * @retval -EINVAL Work item is being processed or has completed its work.
  * @retval -EADDRINUSE Work item is pending on a different workqueue.
+ *
+ * @satisfies ZEP-SRS-26-27
  */
 int k_work_poll_submit(struct k_work_poll *work,
 				     struct k_poll_event *events,
@@ -5318,6 +5493,7 @@ struct k_msgq_attrs {
  * @param q_max_msgs Maximum number of messages that can be queued.
  * @param q_align Alignment of the message queue's ring buffer (power of 2).
  *
+ * @satisfies ZEP-SRS-31-1
  */
 #define K_MSGQ_DEFINE(q_name, q_msg_size, q_max_msgs, q_align)		\
 	static char __noinit __aligned(q_align)				\
@@ -5339,6 +5515,8 @@ struct k_msgq_attrs {
  * @param buffer Pointer to ring buffer that holds queued messages.
  * @param msg_size Message size (in bytes).
  * @param max_msgs Maximum number of messages that can be queued.
+ *
+ * @satisfies ZEP-SRS-31-2
  */
 void k_msgq_init(struct k_msgq *msgq, char *buffer, size_t msg_size,
 		 uint32_t max_msgs);
@@ -5361,6 +5539,8 @@ void k_msgq_init(struct k_msgq *msgq, char *buffer, size_t msg_size,
  * @return 0 on success, -ENOMEM if there was insufficient memory in the
  *	thread's resource pool, or -EINVAL if the size parameters cause
  *	an integer overflow.
+ *
+ * @satisfies ZEP-SRS-31-3
  */
 __syscall int k_msgq_alloc_init(struct k_msgq *msgq, size_t msg_size,
 				uint32_t max_msgs);
@@ -5374,6 +5554,8 @@ __syscall int k_msgq_alloc_init(struct k_msgq *msgq, size_t msg_size,
  *
  * @retval 0 on success
  * @retval -EBUSY Queue not empty
+ *
+ * @satisfies ZEP-SRS-31-17
  */
 int k_msgq_cleanup(struct k_msgq *msgq);
 
@@ -5396,6 +5578,9 @@ int k_msgq_cleanup(struct k_msgq *msgq);
  * @retval 0 Message sent.
  * @retval -ENOMSG Returned without waiting or queue purged.
  * @retval -EAGAIN Waiting period timed out.
+ *
+ * @satisfies ZEP-SRS-31-4
+ * @satisfies ZEP-SRS-31-6
  */
 __syscall int k_msgq_put(struct k_msgq *msgq, const void *data, k_timeout_t timeout);
 
@@ -5444,6 +5629,9 @@ __syscall int k_msgq_put_front(struct k_msgq *msgq, const void *data);
  * @retval 0 Message received.
  * @retval -ENOMSG Returned without waiting or queue purged.
  * @retval -EAGAIN Waiting period timed out.
+ *
+ * @satisfies ZEP-SRS-31-8
+ * @satisfies ZEP-SRS-31-10
  */
 __syscall int k_msgq_get(struct k_msgq *msgq, void *data, k_timeout_t timeout);
 
@@ -5460,6 +5648,8 @@ __syscall int k_msgq_get(struct k_msgq *msgq, void *data, k_timeout_t timeout);
  *
  * @retval 0 Message read.
  * @retval -ENOMSG Returned when the queue has no message.
+ *
+ * @satisfies ZEP-SRS-31-12
  */
 __syscall int k_msgq_peek(struct k_msgq *msgq, void *data);
 
@@ -5478,6 +5668,8 @@ __syscall int k_msgq_peek(struct k_msgq *msgq, void *data);
  *
  * @retval 0 Message read.
  * @retval -ENOMSG Returned when the queue has no message at index.
+ *
+ * @satisfies ZEP-SRS-31-13
  */
 __syscall int k_msgq_peek_at(struct k_msgq *msgq, void *data, uint32_t idx);
 
@@ -5489,6 +5681,8 @@ __syscall int k_msgq_peek_at(struct k_msgq *msgq, void *data, uint32_t idx);
  * message queue are unblocked and see an -ENOMSG error code.
  *
  * @param msgq Address of the message queue.
+ *
+ * @satisfies ZEP-SRS-31-14
  */
 __syscall void k_msgq_purge(struct k_msgq *msgq);
 
@@ -5501,6 +5695,8 @@ __syscall void k_msgq_purge(struct k_msgq *msgq);
  * @param msgq Address of the message queue.
  *
  * @return Number of unused ring buffer entries.
+ *
+ * @satisfies ZEP-SRS-31-16
  */
 __syscall uint32_t k_msgq_num_free_get(struct k_msgq *msgq);
 
@@ -5529,6 +5725,8 @@ static inline uint32_t z_impl_k_msgq_num_free_get(struct k_msgq *msgq)
  * @param msgq Address of the message queue.
  *
  * @return Number of messages.
+ *
+ * @satisfies ZEP-SRS-31-15
  */
 __syscall uint32_t k_msgq_num_used_get(struct k_msgq *msgq);
 
@@ -5618,6 +5816,8 @@ struct k_mbox {
  * @code extern struct k_mbox <name>; @endcode
  *
  * @param name Name of the mailbox.
+ *
+ * @satisfies ZEP-SRS-25-2
  */
 #define K_MBOX_DEFINE(name) \
 	STRUCT_SECTION_ITERABLE(k_mbox, name) = \
@@ -5629,6 +5829,8 @@ struct k_mbox {
  * This routine initializes a mailbox object, prior to its first use.
  *
  * @param mbox Address of the mailbox.
+ *
+ * @satisfies ZEP-SRS-25-1
  */
 void k_mbox_init(struct k_mbox *mbox);
 
@@ -5650,6 +5852,9 @@ void k_mbox_init(struct k_mbox *mbox);
  * @retval 0 Message sent.
  * @retval -ENOMSG Returned without waiting.
  * @retval -EAGAIN Waiting period timed out.
+ *
+ * @satisfies ZEP-SRS-25-5
+ * @satisfies ZEP-SRS-25-6
  */
 int k_mbox_put(struct k_mbox *mbox, struct k_mbox_msg *tx_msg,
 		      k_timeout_t timeout);
@@ -5666,6 +5871,8 @@ int k_mbox_put(struct k_mbox *mbox, struct k_mbox_msg *tx_msg,
  * @param mbox Address of the mailbox.
  * @param tx_msg Address of the transmit message descriptor.
  * @param sem Address of a semaphore, or NULL if none is needed.
+ *
+ * @satisfies ZEP-SRS-25-7
  */
 void k_mbox_async_put(struct k_mbox *mbox, struct k_mbox_msg *tx_msg,
 			     struct k_sem *sem);
@@ -5686,6 +5893,9 @@ void k_mbox_async_put(struct k_mbox *mbox, struct k_mbox_msg *tx_msg,
  * @retval 0 Message received.
  * @retval -ENOMSG Returned without waiting.
  * @retval -EAGAIN Waiting period timed out.
+ *
+ * @satisfies ZEP-SRS-25-9
+ * @satisfies ZEP-SRS-25-12
  */
 int k_mbox_get(struct k_mbox *mbox, struct k_mbox_msg *rx_msg,
 		      void *buffer, k_timeout_t timeout);
@@ -5702,6 +5912,8 @@ int k_mbox_get(struct k_mbox *mbox, struct k_mbox_msg *rx_msg,
  * @param rx_msg Address of the receive message descriptor.
  * @param buffer Address of the buffer to receive data, or NULL to discard
  *               the data.
+ *
+ * @satisfies ZEP-SRS-25-10
  */
 void k_mbox_data_get(struct k_mbox_msg *rx_msg, void *buffer);
 
@@ -5721,6 +5933,8 @@ void k_mbox_data_get(struct k_mbox_msg *rx_msg, void *buffer);
  * @param pipe Address of the pipe.
  * @param buffer Address of the pipe's buffer, or NULL if no ring buffer is used.
  * @param buffer_size Size of the pipe's buffer, or zero if no ring buffer is used.
+ *
+ * @satisfies ZEP-SRS-32-2
  */
 __syscall void k_pipe_init(struct k_pipe *pipe, uint8_t *buffer, size_t buffer_size);
 
@@ -5783,6 +5997,7 @@ struct k_pipe {
  *                         or zero if no ring buffer is used.
  * @param pipe_align Alignment of the pipe's ring buffer (power of 2).
  *
+ * @satisfies ZEP-SRS-32-1
  */
 #define K_PIPE_DEFINE(name, pipe_buffer_size, pipe_align)		\
 	static unsigned char __noinit __aligned(pipe_align)		\
@@ -5806,6 +6021,9 @@ struct k_pipe {
  * @retval -EAGAIN if no data could be written before the timeout expired
  * @retval -ECANCELED if the write was interrupted by k_pipe_reset(..)
  * @retval -EPIPE if the pipe was closed
+ *
+ * @satisfies ZEP-SRS-32-3
+ * @satisfies ZEP-SRS-32-5
  */
 __syscall int k_pipe_write(struct k_pipe *pipe, const uint8_t *data, size_t len,
 			   k_timeout_t timeout);
@@ -5824,6 +6042,9 @@ __syscall int k_pipe_write(struct k_pipe *pipe, const uint8_t *data, size_t len,
  * @retval -EAGAIN if no data could be read before the timeout expired
  * @retval -ECANCELED if the read was interrupted by k_pipe_reset(..)
  * @retval -EPIPE if the pipe was closed
+ *
+ * @satisfies ZEP-SRS-32-4
+ * @satisfies ZEP-SRS-32-6
  */
 __syscall int k_pipe_read(struct k_pipe *pipe, uint8_t *data, size_t len,
 			  k_timeout_t timeout);
@@ -5836,6 +6057,8 @@ __syscall int k_pipe_read(struct k_pipe *pipe, uint8_t *data, size_t len,
  * The pipe is left open after a reset and can be used as normal.
  *
  * @param pipe Address of the pipe.
+ *
+ * @satisfies ZEP-SRS-32-7
  */
 __syscall void k_pipe_reset(struct k_pipe *pipe);
 
@@ -5846,6 +6069,8 @@ __syscall void k_pipe_reset(struct k_pipe *pipe);
  * will be unblocked and receive an error code.
  *
  * @param pipe Address of the pipe.
+ *
+ * @satisfies ZEP-SRS-32-8
  */
 __syscall void k_pipe_close(struct k_pipe *pipe);
 /** @} */
@@ -5952,6 +6177,8 @@ struct k_mem_slab {
  * @param slab_block_size Size of each memory block (in bytes).
  * @param slab_num_blocks Number memory blocks.
  * @param slab_align Alignment of the memory slab's buffer (power of 2).
+ *
+ * @satisfies ZEP-SRS-9-12
  */
 #define K_MEM_SLAB_DEFINE(name, slab_block_size, slab_num_blocks, slab_align)                      \
 	K_MEM_SLAB_DEFINE_IN_SECT(name, __noinit_named(k_mem_slab_buf_##name), slab_block_size,    \
@@ -6061,6 +6288,7 @@ struct k_mem_slab {
  * @retval 0 on success
  * @retval -EINVAL invalid data supplied
  *
+ * @satisfies ZEP-SRS-9-13
  */
 int k_mem_slab_init(struct k_mem_slab *slab, void *buffer,
 			   size_t block_size, uint32_t num_blocks);
@@ -6086,6 +6314,9 @@ int k_mem_slab_init(struct k_mem_slab *slab, void *buffer,
  * @retval -ENOMEM Returned without waiting.
  * @retval -EAGAIN Waiting period timed out.
  * @retval -EINVAL Invalid data supplied
+ *
+ * @satisfies ZEP-SRS-9-14
+ * @satisfies ZEP-SRS-9-15
  */
 int k_mem_slab_alloc(struct k_mem_slab *slab, void **mem,
 			    k_timeout_t timeout);
@@ -6100,6 +6331,8 @@ int k_mem_slab_alloc(struct k_mem_slab *slab, void **mem,
  *
  * @param slab Address of the memory slab.
  * @param mem Pointer to the memory block (as returned by k_mem_slab_alloc()).
+ *
+ * @satisfies ZEP-SRS-9-16
  */
 void k_mem_slab_free(struct k_mem_slab *slab, void *mem);
 
@@ -6226,6 +6459,8 @@ struct k_heap {
  * @param h Heap struct to initialize
  * @param mem Pointer to memory.
  * @param bytes Size of memory region, in bytes
+ *
+ * @satisfies ZEP-SRS-9-4
  */
 void k_heap_init(struct k_heap *h, void *mem,
 		size_t bytes) __attribute_nonnull(1);
@@ -6249,6 +6484,8 @@ void k_heap_init(struct k_heap *h, void *mem,
  * @param bytes Number of bytes requested
  * @param timeout How long to wait, or K_NO_WAIT
  * @return Pointer to memory the caller can now use
+ *
+ * @satisfies ZEP-SRS-9-6
  */
 void *k_heap_aligned_alloc(struct k_heap *h, size_t align, size_t bytes,
 			k_timeout_t timeout) __attribute_nonnull(1);
@@ -6273,6 +6510,9 @@ void *k_heap_aligned_alloc(struct k_heap *h, size_t align, size_t bytes,
  * @param bytes Desired size of block to allocate
  * @param timeout How long to wait, or K_NO_WAIT
  * @return A pointer to valid heap memory, or NULL
+ *
+ * @satisfies ZEP-SRS-9-5
+ * @satisfies ZEP-SRS-9-7
  */
 void *k_heap_alloc(struct k_heap *h, size_t bytes,
 		k_timeout_t timeout) __attribute_nonnull(1);
@@ -6324,6 +6564,8 @@ void *k_heap_calloc(struct k_heap *h, size_t num, size_t size, k_timeout_t timeo
  * @param timeout How long to wait, or K_NO_WAIT
  *
  * @return Pointer to memory the caller can now use, or NULL
+ *
+ * @satisfies ZEP-SRS-9-9
  */
 void *k_heap_realloc(struct k_heap *h, void *ptr, size_t bytes, k_timeout_t timeout)
 	__attribute_nonnull(1);
@@ -6337,6 +6579,8 @@ void *k_heap_realloc(struct k_heap *h, void *ptr, size_t bytes, k_timeout_t time
  *
  * @param h Heap to which to return the memory
  * @param mem A valid memory block, or NULL
+ *
+ * @satisfies ZEP-SRS-9-10
  */
 void k_heap_free(struct k_heap *h, void *mem) __attribute_nonnull(1);
 
@@ -6430,6 +6674,8 @@ void k_heap_free(struct k_heap *h, void *mem) __attribute_nonnull(1);
  *
  * @param name Symbol name for the struct k_heap object
  * @param bytes Size of memory region, in bytes
+ *
+ * @satisfies ZEP-SRS-9-3
  */
 #define K_HEAP_DEFINE(name, bytes)				\
 	Z_HEAP_DEFINE_IN_SECT(name, bytes,			\
@@ -6504,6 +6750,8 @@ void *k_aligned_alloc(size_t align, size_t size);
  * @param size Amount of memory requested (in bytes).
  *
  * @return Address of the allocated memory if successful; otherwise NULL.
+ *
+ * @satisfies ZEP-SRS-9-11
  */
 void *k_malloc(size_t size);
 
@@ -6516,6 +6764,8 @@ void *k_malloc(size_t size);
  * If @a ptr is NULL, no operation is performed.
  *
  * @param ptr Pointer to previously allocated memory.
+ *
+ * @satisfies ZEP-SRS-9-11
  */
 void k_free(void *ptr);
 
@@ -6820,6 +7070,9 @@ void k_poll_event_init(struct k_poll_event *event, uint32_t type,
  *         K_POLL_STATE_CANCELLED.
  * @retval -ENOMEM Thread resource pool insufficient memory (user mode only)
  * @retval -EINVAL Bad parameters (user mode only)
+ *
+ * @satisfies ZEP-SRS-33-1
+ * @satisfies ZEP-SRS-33-3
  */
 
 __syscall int k_poll(struct k_poll_event *events, int num_events,
@@ -6831,6 +7084,8 @@ __syscall int k_poll(struct k_poll_event *events, int num_events,
  * Ready a poll signal object to be signaled via k_poll_signal_raise().
  *
  * @param sig A poll signal.
+ *
+ * @satisfies ZEP-SRS-33-6
  */
 
 __syscall void k_poll_signal_init(struct k_poll_signal *sig);
@@ -6839,6 +7094,8 @@ __syscall void k_poll_signal_init(struct k_poll_signal *sig);
  * @brief Reset a poll signal object's state to unsignaled.
  *
  * @param sig A poll signal object
+ *
+ * @satisfies ZEP-SRS-33-9
  */
 __syscall void k_poll_signal_reset(struct k_poll_signal *sig);
 
@@ -6851,6 +7108,8 @@ __syscall void k_poll_signal_reset(struct k_poll_signal *sig);
  * @param result An integer destination buffer which will be written with the
  *		   result value if the object was signaled, or an undefined
  *		   value if it was not.
+ *
+ * @satisfies ZEP-SRS-33-10
  */
 __syscall void k_poll_signal_check(struct k_poll_signal *sig,
 				   unsigned int *signaled, int *result);
@@ -6877,6 +7136,8 @@ __syscall void k_poll_signal_check(struct k_poll_signal *sig,
  *
  * @retval 0 The signal was delivered successfully.
  * @retval -EAGAIN The polling thread's timeout is in the process of expiring.
+ *
+ * @satisfies ZEP-SRS-33-7
  */
 
 __syscall int k_poll_signal_raise(struct k_poll_signal *sig, int result);

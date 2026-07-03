@@ -148,6 +148,8 @@ struct init_entry {
  * equivalent symbolic name (e.g. `#define MY_INIT_PRIO 32`); symbolic
  * expressions are **not** permitted (e.g.
  * `CONFIG_KERNEL_INIT_PRIORITY_DEFAULT + 5`).
+ *
+ * @satisfies ZEP-SRS-12-1
  */
 #define SYS_INIT(init_fn, level, prio)                                         \
 	SYS_INIT_NAMED(init_fn, init_fn, level, prio)
@@ -166,6 +168,8 @@ struct init_entry {
  * @param prio See SYS_INIT().
  *
  * @see SYS_INIT()
+ *
+ * @satisfies ZEP-SRS-12-1
  */
 #define SYS_INIT_NAMED(name, init_fn_, level, prio)                                       \
 	static const Z_DECL_ALIGN(struct init_entry)                                      \
