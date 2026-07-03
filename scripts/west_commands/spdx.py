@@ -65,6 +65,12 @@ class ZephyrSpdx(WestCommand):
             "@satisfies/@verifies requirement UIDs for SPDX 3.1 output (auto-detected "
             "from ZEPHYR_REQMGMT_MODULE_DIR / the workspace when omitted)",
         )
+        parser.add_argument(
+            '--twister-out',
+            help="path to a completed twister output directory; imports requirement "
+            "verification (which requirements each test suite verifies and whether it "
+            "passed) into the SPDX 3.1 SBOM using the FunctionalSafety profile",
+        )
 
         return parser
 
@@ -84,6 +90,7 @@ class ZephyrSpdx(WestCommand):
         self.dbg("  --analyze-includes is", args.analyze_includes)
         self.dbg("  --include-sdk is", args.include_sdk)
         self.dbg("  --requirements-dir is", args.requirements_dir)
+        self.dbg("  --twister-out is", args.twister_out)
 
         if args.init:
             self.do_run_init(args)
@@ -147,6 +154,8 @@ class ZephyrSpdx(WestCommand):
                     cfg.requirements_dir = projects[0].abspath
             except Exception:
                 pass
+        if args.twister_out:
+            cfg.twister_out = args.twister_out
 
         # make sure SPDX directory exists, or create it if it doesn't
         if os.path.exists(cfg.spdx_dir):

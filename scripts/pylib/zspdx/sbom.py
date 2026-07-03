@@ -40,6 +40,11 @@ class SBOMConfig:
     # path to the reqmgmt (StrictDoc) requirements module; empty to auto-detect
     requirements_dir: str = ""
 
+    # path to a completed twister output directory; when set, requirement
+    # verification (which requirements each test suite verifies, and whether it
+    # passed) is imported from its twister.json
+    twister_out: str = ""
+
 
 # create Cmake file-based API directories and query file
 # Arguments:
@@ -75,11 +80,25 @@ def setup_cmake_query(build_dir):
     return True
 
 
+def _load_twister(cfg, sbom_graph):
+    """Import requirement-verification records from a twister run, if configured."""
+    if not cfg.twister_out:
+        return
+    from zspdx.requirements import _read_cache_vars
+    from zspdx.twister import load_twister_verifications
+
+    zephyr_base = _read_cache_vars(cfg.build_dir, {"ZEPHYR_BASE"}).get("ZEPHYR_BASE", "")
+    records = load_twister_verifications(cfg.twister_out, zephyr_base)
+    if records:
+        sbom_graph.metadata["twister_verifications"] = records
+
+
 def _load_requirements(cfg, sbom_graph):
-    """Load the requirement catalog onto the graph when sources reference it.
+    """Load the requirement catalog onto the graph when requirements are referenced.
 
     Skips the (potentially filesystem-walking) catalog lookup entirely when no
-    scanned file carried a ``@satisfies``/``@verifies`` tag.
+    scanned file carried a ``@satisfies``/``@verifies`` tag and no twister
+    verification record was imported.
     """
     from zspdx.requirements import load_requirements_catalog
 
@@ -87,7 +106,8 @@ def _load_requirements(cfg, sbom_graph):
         f.metadata.get("satisfies") or f.metadata.get("verifies")
         for f in sbom_graph.files.values()
     )
-    if not has_tags:
+    has_twister = bool(sbom_graph.metadata.get("twister_verifications"))
+    if not has_tags and not has_twister:
         return
 
     catalog = load_requirements_catalog(cfg.build_dir, cfg.requirements_dir)
@@ -95,9 +115,10 @@ def _load_requirements(cfg, sbom_graph):
         sbom_graph.metadata["requirements_catalog"] = catalog
     else:
         _logger.warning(
-            "found @satisfies/@verifies tags in sources but no requirement catalog "
-            "was located; Requirement elements will be skipped. Point --requirements-dir "
-            "at the reqmgmt module or ensure ZEPHYR_REQMGMT_MODULE_DIR is set."
+            "found requirement references (@satisfies/@verifies tags or twister "
+            "verifications) but no requirement catalog was located; Requirement "
+            "elements will be skipped. Point --requirements-dir at the reqmgmt module "
+            "or ensure ZEPHYR_REQMGMT_MODULE_DIR is set."
         )
 
 
@@ -136,9 +157,11 @@ def make_spdx(cfg):
     # scan SBOM graph
     scan_sbom_graph(scanner_cfg, sbom_graph)
 
-    # load the requirement catalog when sources carry traceability tags, so the
+    # import twister verification records and load the requirement catalog when
+    # sources carry traceability tags (or twister supplies verifications), so the
     # serializer can emit Requirement elements with their statements
     if scanner_cfg.scan_requirements:
+        _load_twister(cfg, sbom_graph)
         _load_requirements(cfg, sbom_graph)
 
     # route to appropriate serializer based on version
