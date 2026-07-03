@@ -222,8 +222,10 @@ The links are read from Doxygen commands embedded in the source:
   declaration in a header) that fulfills a requirement. It becomes a
   ``Requirement implementedBy File`` relationship.
 
-- ``@verifies ZEP-SRS-<id>`` marks a test that exercises a requirement. It
-  becomes a ``Requirement hasTest File`` relationship.
+- ``@verifies ZEP-SRS-<id>`` marks a test that exercises a requirement. It is
+  modelled with the `SPDX 3.1 FunctionalSafety profile`_: the requirement is
+  ``verifiedBy`` a ``RequirementVerification`` element (with a
+  ``verificationMethod`` of ``test``), which in turn ``hasTest`` the test file.
 
 The requirement statements themselves come from the ``reqmgmt`` StrictDoc
 module (see ``--requirements-dir`` above); only requirements actually referenced
@@ -281,6 +283,9 @@ Command-line options
 
 .. _SPDX 3.1 Core model:
    https://spdx.github.io/spdx-spec/v3.1-dev/model/Core/Classes/Requirement/
+
+.. _SPDX 3.1 FunctionalSafety profile:
+   https://spdx.github.io/spdx-spec/v3.1-dev/model/FunctionalSafety/Classes/RequirementVerification/
 
 .. _SPDX specification clause 6:
    https://spdx.github.io/spdx-spec/v2.2.2/document-creation-information/

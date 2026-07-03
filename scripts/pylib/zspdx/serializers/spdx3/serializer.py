@@ -77,6 +77,7 @@ class SPDX3Serializer:
         self.file_elements = {}  # file_path -> software_File
         self.relationship_elements = []  # List of Relationship objects
         self.requirement_elements = {}  # requirement UID -> Requirement (SPDX 3.1)
+        self.requirement_verifications = []  # functionalsafety_RequirementVerification elements
 
         # Track original from_id for relationships (before reversal)
         # This is used to assign cross-document relationships to the correct document
@@ -1218,11 +1219,13 @@ class SPDX3Serializer:
         Requirement is a Core class new in SPDX 3.1, so this is a no-op for 3.0.1
         output. Requirement statements come from the reqmgmt (StrictDoc) catalog
         stored on the SBOM graph; only requirements actually referenced by a
-        scanned file are emitted. Each link is a relationship whose ``from`` is
-        the requirement, following the spec direction:
+        scanned file are emitted. The links follow the spec direction:
 
         * ``@satisfies`` -> ``Requirement implementedBy File``
-        * ``@verifies``  -> ``Requirement hasTest File``
+        * ``@verifies``  -> ``Requirement verifiedBy RequirementVerification``
+          (FunctionalSafety profile, ``verificationMethod = test``), and that
+          ``RequirementVerification hasTest`` the test File. Bindings without the
+          FunctionalSafety profile fall back to ``Requirement hasTest File``.
 
         Because ``@satisfies`` lives in header files, the source-to-requirement
         trace is only populated when the SBOM was generated with
@@ -1231,24 +1234,20 @@ class SPDX3Serializer:
         if self.spdx_version != SPDX_VERSION_3_1 or not hasattr(spdx, "Requirement"):
             return
 
-        # (file_element, relationship_type, uids) work items, plus the full set
-        # of referenced UIDs (to size the "no catalog" warning).
-        links = []
+        # Gather per-file (satisfies, verifies) UIDs and the full referenced set.
+        per_file = []
         referenced = set()
         for file_obj in self.sbom_data.files.values():
-            satisfies = file_obj.metadata.get("satisfies")
-            verifies = file_obj.metadata.get("verifies")
+            satisfies = file_obj.metadata.get("satisfies") or []
+            verifies = file_obj.metadata.get("verifies") or []
             if not satisfies and not verifies:
                 continue
             file_element = self.file_elements.get(file_obj.path)
             if not file_element:
                 continue
-            if satisfies:
-                links.append((file_element, spdx.RelationshipType.implementedBy, satisfies))
-                referenced.update(satisfies)
-            if verifies:
-                links.append((file_element, spdx.RelationshipType.hasTest, verifies))
-                referenced.update(verifies)
+            per_file.append((file_element, satisfies, verifies))
+            referenced.update(satisfies)
+            referenced.update(verifies)
 
         if not referenced:
             return
@@ -1265,16 +1264,68 @@ class SPDX3Serializer:
         if missing := sorted(uid for uid in referenced if uid not in catalog):
             _logger.warning("requirements: no catalog entry for %s", ", ".join(missing))
 
-        for file_element, rel_type, uids in links:
-            for uid in uids:
-                requirement = self._get_or_create_requirement(uid, catalog)
-                if requirement is None:
-                    continue
-                rel = self._new_relationship(rel_type, requirement._id, [file_element._id])
-                # Scope the relationship (and thus the pulled-in Requirement) to
-                # the document that owns the annotated file rather than the shared
-                # requirement, so requirements follow their referencing files.
-                self.relationship_original_from[rel._id] = file_element._id
+        for file_element, satisfies, verifies in per_file:
+            for uid in satisfies:
+                if requirement := self._get_or_create_requirement(uid, catalog):
+                    self._scoped_relationship(
+                        spdx.RelationshipType.implementedBy,
+                        requirement._id,
+                        file_element._id,
+                        file_element,
+                    )
+            for uid in verifies:
+                if requirement := self._get_or_create_requirement(uid, catalog):
+                    self._link_verification(requirement, file_element)
+
+    def _scoped_relationship(self, rel_type, from_id, to_id, scope_element):
+        """Create a relationship and scope it to ``scope_element``'s document.
+
+        Requirement/verification endpoints are not files or packages, so they are
+        not owned by any document on their own. Recording ``scope_element`` (an
+        annotated file) as the relationship's originating element places the
+        relationship — and pulls its requirement endpoints — into that file's
+        document (see :meth:`_collect_relationship_ids`).
+        """
+        rel = self._new_relationship(rel_type, from_id, [to_id])
+        self.relationship_original_from[rel._id] = scope_element._id
+        return rel
+
+    def _link_verification(self, requirement, file_element):
+        """Model an ``@verifies`` link using the FunctionalSafety profile.
+
+        Emits ``Requirement verifiedBy RequirementVerification`` (with
+        ``verificationMethod = test``) and ``RequirementVerification hasTest``
+        the test File. If the binding predates the FunctionalSafety profile, this
+        degrades to a plain ``Requirement hasTest File`` edge.
+        """
+        if not hasattr(spdx, "functionalsafety_RequirementVerification"):
+            self._scoped_relationship(
+                spdx.RelationshipType.hasTest, requirement._id, file_element._id, file_element
+            )
+            return
+        verification = self._new_requirement_verification(requirement, file_element)
+        self._scoped_relationship(
+            spdx.RelationshipType.verifiedBy, requirement._id, verification._id, file_element
+        )
+        self._scoped_relationship(
+            spdx.RelationshipType.hasTest, verification._id, file_element._id, file_element
+        )
+
+    def _new_requirement_verification(self, requirement, file_element):
+        """Create a ``functionalsafety_RequirementVerification`` for a test link."""
+        verification = spdx.functionalsafety_RequirementVerification()
+        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        index = len(self.requirement_verifications)
+        verification._id = self._shorten_id(f"{namespace}/requirement-verifications/{index}")
+        verification.creationInfo = self.creation_info._id
+        verification.functionalsafety_verificationMethod.append(
+            spdx.functionalsafety_VerificationType.test
+        )
+        verification.name = f"Test verification of {requirement.name}"
+        verification.summary = f"Verified by test artifact {file_element.name}"
+        self.elements.append(verification)
+        self.requirement_verifications.append(verification)
+        return verification
 
     def _get_or_create_requirement(self, uid: str, catalog: dict):
         """Return the ``Requirement`` element for ``uid``, creating it on first use.
