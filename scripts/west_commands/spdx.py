@@ -59,6 +59,12 @@ class ZephyrSpdx(WestCommand):
         parser.add_argument(
             '--include-sdk', action="store_true", help="also generate SPDX document for SDK"
         )
+        parser.add_argument(
+            '--requirements-dir',
+            help="path to the reqmgmt (StrictDoc) requirements module; used to resolve "
+            "@satisfies/@verifies requirement UIDs for SPDX 3.1 output (auto-detected "
+            "from ZEPHYR_REQMGMT_MODULE_DIR / the workspace when omitted)",
+        )
 
         return parser
 
@@ -77,6 +83,7 @@ class ZephyrSpdx(WestCommand):
         self.dbg("  --spdx-version is", args.spdx_version)
         self.dbg("  --analyze-includes is", args.analyze_includes)
         self.dbg("  --include-sdk is", args.include_sdk)
+        self.dbg("  --requirements-dir is", args.requirements_dir)
 
         if args.init:
             self.do_run_init(args)
@@ -129,6 +136,17 @@ class ZephyrSpdx(WestCommand):
             cfg.analyze_includes = True
         if args.include_sdk:
             cfg.include_sdk = True
+        if args.requirements_dir:
+            cfg.requirements_dir = args.requirements_dir
+        else:
+            # best-effort: locate the reqmgmt module via the west manifest so
+            # requirement UIDs resolve even without ZEPHYR_REQMGMT_MODULE_DIR
+            try:
+                projects = self.manifest.get_projects(['reqmgmt'], only_cloned=True)
+                if projects:
+                    cfg.requirements_dir = projects[0].abspath
+            except Exception:
+                pass
 
         # make sure SPDX directory exists, or create it if it doesn't
         if os.path.exists(cfg.spdx_dir):

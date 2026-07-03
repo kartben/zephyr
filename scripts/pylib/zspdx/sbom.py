@@ -37,6 +37,9 @@ class SBOMConfig:
     # should also add an SPDX document for the SDK?
     include_sdk: bool = False
 
+    # path to the reqmgmt (StrictDoc) requirements module; empty to auto-detect
+    requirements_dir: str = ""
+
 
 # create Cmake file-based API directories and query file
 # Arguments:
@@ -72,6 +75,32 @@ def setup_cmake_query(build_dir):
     return True
 
 
+def _load_requirements(cfg, sbom_graph):
+    """Load the requirement catalog onto the graph when sources reference it.
+
+    Skips the (potentially filesystem-walking) catalog lookup entirely when no
+    scanned file carried a ``@satisfies``/``@verifies`` tag.
+    """
+    from zspdx.requirements import load_requirements_catalog
+
+    has_tags = any(
+        f.metadata.get("satisfies") or f.metadata.get("verifies")
+        for f in sbom_graph.files.values()
+    )
+    if not has_tags:
+        return
+
+    catalog = load_requirements_catalog(cfg.build_dir, cfg.requirements_dir)
+    if catalog:
+        sbom_graph.metadata["requirements_catalog"] = catalog
+    else:
+        _logger.warning(
+            "found @satisfies/@verifies tags in sources but no requirement catalog "
+            "was located; Requirement elements will be skipped. Point --requirements-dir "
+            "at the reqmgmt module or ensure ZEPHYR_REQMGMT_MODULE_DIR is set."
+        )
+
+
 # main entry point for SBOM maker
 # Arguments:
 #   1) cfg: SBOMConfig
@@ -101,9 +130,16 @@ def make_spdx(cfg):
 
     # set up scanner configuration
     scanner_cfg = ScannerConfig()
+    # requirement traceability is only represented in SPDX 3.x output
+    scanner_cfg.scan_requirements = cfg.spdx_version.major == 3
 
     # scan SBOM graph
     scan_sbom_graph(scanner_cfg, sbom_graph)
+
+    # load the requirement catalog when sources carry traceability tags, so the
+    # serializer can emit Requirement elements with their statements
+    if scanner_cfg.scan_requirements:
+        _load_requirements(cfg, sbom_graph)
 
     # route to appropriate serializer based on version
     if cfg.spdx_version.major == 2:

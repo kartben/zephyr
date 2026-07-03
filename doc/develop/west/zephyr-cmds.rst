@@ -207,6 +207,35 @@ Each intermediate target, such as a static library, also gets its own sub-build 
 sources, tools and compile flags that produced its artifact, so any output can be traced back to how
 it was built.
 
+.. _west-spdx-requirements:
+
+Requirement traceability (SPDX 3.1)
+-----------------------------------
+
+When generating SPDX 3.1 documents, ``west spdx`` captures the traceability
+links between source files and the software requirements they implement or
+test, emitting them as ``Requirement`` elements from the `SPDX 3.1 Core model`_.
+
+The links are read from Doxygen commands embedded in the source:
+
+- ``@satisfies ZEP-SRS-<id>`` marks an implementation (typically an API
+  declaration in a header) that fulfills a requirement. It becomes a
+  ``Requirement implementedBy File`` relationship.
+
+- ``@verifies ZEP-SRS-<id>`` marks a test that exercises a requirement. It
+  becomes a ``Requirement hasTest File`` relationship.
+
+The requirement statements themselves come from the ``reqmgmt`` StrictDoc
+module (see ``--requirements-dir`` above); only requirements actually referenced
+by a scanned file are emitted, each carrying its UID as an external identifier.
+
+.. note::
+
+   Because ``@satisfies`` links live in header files, source-to-requirement
+   traceability is only populated when ``--analyze-includes`` is also used, so
+   that the annotated headers are brought into the bill-of-materials. Without
+   it, only requirements referenced by directly-compiled sources are captured.
+
 Command-line options
 --------------------
 
@@ -236,6 +265,11 @@ Command-line options
   document, :file:`sdk.spdx` (or :file:`sdk.jsonld`), which lists header files
   included from the SDK.
 
+- ``--requirements-dir DIR``: path to the ``reqmgmt`` (StrictDoc) requirements
+  module, used to resolve requirement UIDs for SPDX 3.1 output (see
+  :ref:`west-spdx-requirements`). When omitted, the module is auto-detected from
+  the ``ZEPHYR_REQMGMT_MODULE_DIR`` CMake/environment variable or the workspace.
+
 .. warning::
 
    The generation of SBOM documents for the ``native_sim`` platform is currently not supported.
@@ -244,6 +278,9 @@ Command-line options
 
 .. _SPDX 3.0 Build profile:
    https://spdx.github.io/spdx-spec/v3.0.1/model/Build/Build/
+
+.. _SPDX 3.1 Core model:
+   https://spdx.github.io/spdx-spec/v3.1-dev/model/Core/Classes/Requirement/
 
 .. _SPDX specification clause 6:
    https://spdx.github.io/spdx-spec/v2.2.2/document-creation-information/
