@@ -94,8 +94,11 @@ class SPDX3Serializer:
         self.build_tools = {}  # tool key -> Tool element
         self.build_info = sbom_graph.build.metadata if sbom_graph.build else {}
 
-        # SPDX 3.1 Hardware profile: the target board the image runs on.
-        self.hardware = None  # hardware_PhysicalHardware element
+        # SPDX 3.1 Hardware profile: the target board the image runs on, plus the
+        # devicetree-derived components it contains and their vendor organizations.
+        self.hardware = None  # hardware_PhysicalHardware element (the board)
+        self.dt_hardware = {}  # devicetree node path -> hardware_PhysicalHardware
+        self.vendor_orgs = {}  # vendor name -> Organization
 
         # Track file IDs for uniqueness
         self.filename_counts = {}
@@ -360,15 +363,77 @@ class SPDX3Serializer:
             ("target-arch", environment.get("ARCH")),
             ("target-processor", self.build_info.get("cmake_system_processor")),
         ):
-            if not id_value:
-                continue
-            ext_id = spdx.ExternalIdentifier()
-            ext_id.externalIdentifierType = spdx.ExternalIdentifierType.other
-            ext_id.identifier = f"{id_type}:{id_value}"
-            hardware.externalIdentifier.append(ext_id)
+            if id_value:
+                hardware.externalIdentifier.append(self._other_identifier(f"{id_type}:{id_value}"))
 
         self.elements.append(hardware)
         self.hardware = hardware
+
+        self._create_devicetree_hardware()
+
+    def _other_identifier(self, value: str) -> spdx.ExternalIdentifier:
+        """Build an ``other``-type ExternalIdentifier carrying ``value``."""
+        ext_id = spdx.ExternalIdentifier()
+        ext_id.externalIdentifierType = spdx.ExternalIdentifierType.other
+        ext_id.identifier = value
+        return ext_id
+
+    def _vendor_org(self, vendor: str):
+        """Get or create the Organization element for a hardware vendor, or ``None``."""
+        if not vendor:
+            return None
+        org = self.vendor_orgs.get(vendor)
+        if org is None:
+            namespace = self.sbom_data.namespace_prefix.rstrip("/")
+            org = spdx.Organization()
+            org._id = self._shorten_id(f"{namespace}/vendors/{normalize_spdx_name(vendor)}")
+            org.creationInfo = self.creation_info._id
+            org.name = vendor
+            self.elements.append(org)
+            self.vendor_orgs[vendor] = org
+        return org
+
+    def _create_devicetree_hardware(self):
+        """Create a ``hardware_PhysicalHardware`` element per devicetree component.
+
+        Each enabled, binding-backed devicetree node collected by the walker becomes a
+        component of the board: its devicetree compatible and path are recorded as external
+        identifiers, the binding description as the summary, and the resolved manufacturer as
+        the producer (NoAssertion when unknown). Containment is wired up separately, in
+        :meth:`_create_hardware_relationships`.
+        """
+        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        for entry in self.build_info.get("devicetree", []):
+            path = entry.get("path")
+            compatible = entry.get("compatible")
+            if not path or not compatible:
+                continue
+
+            # Turn the devicetree path (e.g. "/soc/flash-controller@40023c00") into a clean,
+            # unique id fragment ("soc-flash-controller-40023c00").
+            slug = normalize_spdx_name(path.strip("/").replace("/", "-").replace("@", "-"))
+            component = spdx.hardware_PhysicalHardware()
+            component._id = self._shorten_id(f"{namespace}/hardware/{slug}")
+            component.creationInfo = self.creation_info._id
+            component.name = entry.get("name") or compatible
+            if entry.get("description"):
+                component.summary = entry["description"]
+            # hardware_partNumber is mandatory; the devicetree compatible is the component's
+            # canonical hardware-model identifier.
+            component.hardware_partNumber = compatible
+
+            vendor_org = self._vendor_org(entry.get("vendor", ""))
+            component.hardware_productAgent = (
+                vendor_org._id if vendor_org else spdx.IndividualElement.NoAssertionElement
+            )
+
+            component.externalIdentifier.append(
+                self._other_identifier(f"devicetree-compatible:{compatible}")
+            )
+            component.externalIdentifier.append(self._other_identifier(f"devicetree-path:{path}"))
+
+            self.elements.append(component)
+            self.dt_hardware[path] = component
 
     def _add_build_environment(self):
         """Populate ``build_environment`` from the collected environment variables."""
@@ -469,6 +534,21 @@ class SPDX3Serializer:
         input_ids = self._build_input_ids()
         if input_ids:
             self._new_build_relationship(spdx.RelationshipType.hasInput, self.build._id, input_ids)
+
+    def _create_hardware_relationships(self):
+        """Emit ``contains`` edges describing the board's hardware composition.
+
+        Every devicetree component is contained by its nearest captured ancestor, or by the
+        board itself when it hangs directly off the root. SPDX 3.1 only; a no-op otherwise.
+        """
+        if not self.hardware:
+            return
+        for entry in self.build_info.get("devicetree", []):
+            component = self.dt_hardware.get(entry.get("path"))
+            if component is None:
+                continue
+            parent = self.dt_hardware.get(entry.get("parent"), self.hardware)
+            self._new_relationship(spdx.RelationshipType.contains, parent._id, [component._id])
 
     def _create_build_output_relationships(self):
         """Emit ``hasOutput`` for the final image(s) and a sub-build for every other target."""
@@ -977,6 +1057,13 @@ class SPDX3Serializer:
             element_ids.add(target_build._id)
         for tool in self.build_tools.values():
             element_ids.add(tool._id)
+        # Hardware profile: the board, its devicetree components and their vendors.
+        if self.hardware:
+            element_ids.add(self.hardware._id)
+        for component in self.dt_hardware.values():
+            element_ids.add(component._id)
+        for org in self.vendor_orgs.values():
+            element_ids.add(org._id)
 
     def _collect_relationship_ids(self, element_ids: set):
         """Add this document's relationships and their endpoints to ``element_ids``.
@@ -1050,6 +1137,7 @@ class SPDX3Serializer:
             self._create_relationships()
             self._create_contains_relationships()
             self._create_build_relationships()
+            self._create_hardware_relationships()
             self._create_license_relationships()
             self._create_documents()
             self._write_documents(output_dir)

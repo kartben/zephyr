@@ -13,6 +13,7 @@ from west.util import WestNotFound, west_topdir
 
 from zspdx.cmakecache import parse_cmake_cache_file
 from zspdx.cmakefileapijson import parse_reply, parse_toolchains_and_info
+from zspdx.devicetree import extract_hardware
 from zspdx.getincludes import get_c_includes
 from zspdx.model import (
     BuildInfo,
@@ -322,6 +323,9 @@ class Walker:
             version = get_tool_version(path)
             if version:
                 build_info[version_key] = version
+
+        # devicetree hardware components for the SPDX 3.1 Hardware profile
+        build_info["devicetree"] = extract_hardware(self.cfg.build_dir)
 
         # drop empty entries to keep the build_parameter output tidy
         build_info = {k: v for k, v in build_info.items() if v}
