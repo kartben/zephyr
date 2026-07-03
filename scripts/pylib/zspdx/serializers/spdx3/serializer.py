@@ -431,6 +431,11 @@ class SPDX3Serializer:
                 self._other_identifier(f"devicetree-compatible:{compatible}")
             )
             component.externalIdentifier.append(self._other_identifier(f"devicetree-path:{path}"))
+            binding_type = entry.get("binding_type")
+            if binding_type and binding_type != "misc":
+                component.externalIdentifier.append(
+                    self._other_identifier(f"devicetree-binding-type:{binding_type}")
+                )
 
             self.elements.append(component)
             self.dt_hardware[path] = component

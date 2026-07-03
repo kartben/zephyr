@@ -71,6 +71,22 @@ def _find_edt_pickle(build_dir: str) -> str | None:
     return matches[0] if len(matches) == 1 else None
 
 
+def _binding_type(binding_path: str, bindings_root: str) -> str:
+    """Category of a binding: its top-level directory under ``dts/bindings``.
+
+    Mirrors ``doc/_scripts/dts_binding_types.py`` / ``gen_catalogs._get_binding_type``.
+    Returns ``"misc"`` for out-of-tree bindings or when it cannot be determined.
+    """
+    try:
+        rel = os.path.relpath(binding_path, bindings_root)
+    except ValueError:
+        return "misc"
+    parts = rel.split(os.sep)
+    if parts[0] == ".." or len(parts) < 2:
+        return "misc"
+    return parts[0]
+
+
 def _is_hardware(node) -> bool:
     """Whether an EDT node is an enabled, binding-backed hardware component.
 
@@ -111,6 +127,7 @@ def extract_hardware(build_dir: str) -> list[dict]:
         return []
 
     vendors = _load_vendor_prefixes(zephyr_base)
+    bindings_root = os.path.join(zephyr_base, "dts", "bindings")
     hardware = []
     for node in edt.nodes:
         if not _is_hardware(node):
@@ -131,6 +148,7 @@ def extract_hardware(build_dir: str) -> list[dict]:
                 "parent": ancestor.path if ancestor is not None else None,
                 "description": _first_sentence(node.description),
                 "vendor": vendors.get(prefix, ""),
+                "binding_type": _binding_type(node.binding_path, bindings_root),
             }
         )
 
