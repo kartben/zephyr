@@ -44,6 +44,8 @@ extern "C" {
  * @param isr_p Address of interrupt service routine.
  * @param isr_param_p Parameter passed to interrupt service routine.
  * @param flags_p Architecture-specific IRQ configuration flags..
+ *
+ * @satisfies ZEP-SRS-7-1
  */
 #define IRQ_CONNECT(irq_p, priority_p, isr_p, isr_param_p, flags_p) \
 	ARCH_IRQ_CONNECT(irq_p, priority_p, isr_p, isr_param_p, flags_p)
@@ -60,6 +62,8 @@ extern "C" {
  * @param flags Arch-specific IRQ configuration flags
  *
  * @return The vector assigned to this interrupt
+ *
+ * @satisfies ZEP-SRS-7-5
  */
 static inline int
 irq_connect_dynamic(unsigned int irq, unsigned int priority,
@@ -85,6 +89,8 @@ irq_connect_dynamic(unsigned int irq, unsigned int priority,
  * @param flags Arch-specific IRQ configuration flags
  *
  * @return 0 in case of success, negative value otherwise
+ *
+ * @satisfies ZEP-SRS-7-7
  */
 static inline int
 irq_disconnect_dynamic(unsigned int irq, unsigned int priority,
@@ -136,6 +142,8 @@ irq_disconnect_dynamic(unsigned int irq, unsigned int priority,
  * @param priority_p Interrupt priority.
  * @param isr_p Address of interrupt service routine.
  * @param flags_p Architecture-specific IRQ configuration flags.
+ *
+ * @satisfies ZEP-SRS-7-3
  */
 #define IRQ_DIRECT_CONNECT(irq_p, priority_p, isr_p, flags_p) \
 	ARCH_IRQ_DIRECT_CONNECT(irq_p, priority_p, isr_p, flags_p)
@@ -294,6 +302,8 @@ void z_smp_global_unlock(unsigned int key);
  * This routine enables interrupts from source @a irq.
  *
  * @param irq IRQ line.
+ *
+ * @satisfies ZEP-SRS-7-11
  */
 #define irq_enable(irq) arch_irq_enable(irq)
 
@@ -303,6 +313,8 @@ void z_smp_global_unlock(unsigned int key);
  * This routine disables interrupts from source @a irq.
  *
  * @param irq IRQ line.
+ *
+ * @satisfies ZEP-SRS-7-10
  */
 #define irq_disable(irq) arch_irq_disable(irq)
 
@@ -314,6 +326,8 @@ void z_smp_global_unlock(unsigned int key);
  * @param irq IRQ line.
  *
  * @return interrupt enable state, true or false
+ *
+ * @satisfies ZEP-SRS-7-12
  */
 #define irq_is_enabled(irq) arch_irq_is_enabled(irq)
 
