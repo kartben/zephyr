@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from reuse.project import Project
 
 from .licenses import LICENSES
+from .requirements import get_requirement_tags, should_scan_for_requirements
 from .util import get_hashes
 
 _logger = logging.getLogger(__name__)
@@ -37,6 +38,10 @@ class ScannerConfig:
 
     # should we calculate MD5 hashes for each Component's Files?
     do_md5: bool = False
+
+    # should we scan each File for Doxygen @satisfies/@verifies requirement
+    # traceability tags? (only useful for SPDX 3.1 Requirement output)
+    scan_requirements: bool = False
 
 
 def parse_line_for_expression(line):
@@ -227,6 +232,14 @@ def scan_sbom_graph(cfg, sbom_graph):
             # check if any custom license IDs should be flagged for SBOM
             for lic in f.license_info_in_file:
                 check_license_valid(lic, sbom_graph)
+
+            # extract requirement traceability tags (@satisfies/@verifies)
+            if cfg.scan_requirements and should_scan_for_requirements(f.path):
+                tags = get_requirement_tags(f.path)
+                if tags["satisfies"]:
+                    f.metadata["satisfies"] = tags["satisfies"]
+                if tags["verifies"]:
+                    f.metadata["verifies"] = tags["verifies"]
 
         # now, assemble the Component data
         lics_concluded, lics_from_files = get_component_licenses(component)

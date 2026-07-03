@@ -76,6 +76,7 @@ class SPDX3Serializer:
         self.component_elements = {}  # component_name -> software_Package
         self.file_elements = {}  # file_path -> software_File
         self.relationship_elements = []  # List of Relationship objects
+        self.requirement_elements = {}  # requirement UID -> Requirement (SPDX 3.1)
 
         # Track original from_id for relationships (before reversal)
         # This is used to assign cross-document relationships to the correct document
@@ -1140,6 +1141,7 @@ class SPDX3Serializer:
             self._create_packages()
             self._create_files()
             self._create_relationships()
+            self._create_requirements()
             self._create_contains_relationships()
             self._create_build_relationships()
             self._create_hardware_relationships()
@@ -1208,6 +1210,109 @@ class SPDX3Serializer:
                 continue
             if not self._create_relationship(rel):
                 _logger.warning(f"Failed to create relationship from {owner_kind} {owner_id}")
+
+    def _create_requirements(self):
+        """Emit SPDX 3.1 ``Requirement`` elements and link them to the files that
+        implement (``@satisfies``) or test (``@verifies``) them.
+
+        Requirement is a Core class new in SPDX 3.1, so this is a no-op for 3.0.1
+        output. Requirement statements come from the reqmgmt (StrictDoc) catalog
+        stored on the SBOM graph; only requirements actually referenced by a
+        scanned file are emitted. Each link is a relationship whose ``from`` is
+        the requirement, following the spec direction:
+
+        * ``@satisfies`` -> ``Requirement implementedBy File``
+        * ``@verifies``  -> ``Requirement hasTest File``
+
+        Because ``@satisfies`` lives in header files, the source-to-requirement
+        trace is only populated when the SBOM was generated with
+        ``--analyze-includes`` (which brings those headers into the graph).
+        """
+        if self.spdx_version != SPDX_VERSION_3_1 or not hasattr(spdx, "Requirement"):
+            return
+
+        # (file_element, relationship_type, uids) work items, plus the full set
+        # of referenced UIDs (to size the "no catalog" warning).
+        links = []
+        referenced = set()
+        for file_obj in self.sbom_data.files.values():
+            satisfies = file_obj.metadata.get("satisfies")
+            verifies = file_obj.metadata.get("verifies")
+            if not satisfies and not verifies:
+                continue
+            file_element = self.file_elements.get(file_obj.path)
+            if not file_element:
+                continue
+            if satisfies:
+                links.append((file_element, spdx.RelationshipType.implementedBy, satisfies))
+                referenced.update(satisfies)
+            if verifies:
+                links.append((file_element, spdx.RelationshipType.hasTest, verifies))
+                referenced.update(verifies)
+
+        if not referenced:
+            return
+
+        catalog = self.sbom_data.metadata.get("requirements_catalog") or {}
+        if not catalog:
+            _logger.warning(
+                "requirements: %d requirement link(s) found in sources but no catalog "
+                "was loaded; skipping Requirement elements",
+                len(referenced),
+            )
+            return
+
+        if missing := sorted(uid for uid in referenced if uid not in catalog):
+            _logger.warning("requirements: no catalog entry for %s", ", ".join(missing))
+
+        for file_element, rel_type, uids in links:
+            for uid in uids:
+                requirement = self._get_or_create_requirement(uid, catalog)
+                if requirement is None:
+                    continue
+                rel = self._new_relationship(rel_type, requirement._id, [file_element._id])
+                # Scope the relationship (and thus the pulled-in Requirement) to
+                # the document that owns the annotated file rather than the shared
+                # requirement, so requirements follow their referencing files.
+                self.relationship_original_from[rel._id] = file_element._id
+
+    def _get_or_create_requirement(self, uid: str, catalog: dict):
+        """Return the ``Requirement`` element for ``uid``, creating it on first use.
+
+        Returns ``None`` when ``uid`` has no catalog entry (the mandatory
+        ``requirementStatement`` cannot be filled in), so no dangling link is
+        emitted.
+        """
+        if uid in self.requirement_elements:
+            return self.requirement_elements[uid]
+        info = catalog.get(uid)
+        if info is None:
+            return None
+
+        requirement = spdx.Requirement()
+        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        requirement._id = self._shorten_id(f"{namespace}/requirements/{uid}")
+        requirement.creationInfo = self.creation_info._id
+        requirement.name = f"{uid}: {info.title}" if info.title else uid
+        if info.title:
+            requirement.summary = info.title
+        # requirementStatement is mandatory; fall back to the title, then the UID.
+        requirement.requirementStatement = info.statement or info.title or uid
+        if info.rationale:
+            requirement.requirementRationale = info.rationale
+
+        # Record the StrictDoc UID as an external identifier for round-tripping.
+        other_type = getattr(spdx.ExternalIdentifierType, "other", None)
+        if other_type is not None:
+            ext = spdx.ExternalIdentifier()
+            ext.externalIdentifierType = other_type
+            ext.identifier = uid
+            ext.comment = "StrictDoc requirement UID"
+            requirement.externalIdentifier.append(ext)
+
+        self.elements.append(requirement)
+        self.requirement_elements[uid] = requirement
+        return requirement
 
     def _create_contains_relationships(self):
         """Create a CONTAINS relationship from each package to each of its files."""
