@@ -94,6 +94,9 @@ class SPDX3Serializer:
         self.build_tools = {}  # tool key -> Tool element
         self.build_info = sbom_graph.build.metadata if sbom_graph.build else {}
 
+        # SPDX 3.1 Hardware profile: the target board the image runs on.
+        self.hardware = None  # hardware_PhysicalHardware element
+
         # Track file IDs for uniqueness
         self.filename_counts = {}
 
@@ -186,6 +189,8 @@ class SPDX3Serializer:
         # Build profile elements; no-ops when no build information was collected.
         self._create_build_tools()
         self._create_build_object()
+        # Hardware profile element (SPDX 3.1 only); no-op otherwise.
+        self._create_hardware_object()
 
     # ---- SPDX 3.0 Build profile -------------------------------------------------
 
@@ -322,6 +327,49 @@ class SPDX3Serializer:
         self._add_build_environment()
         self.elements.append(self.build)
 
+    def _create_hardware_object(self):
+        """Create the SPDX 3.1 ``hardware_PhysicalHardware`` element for the target board.
+
+        Only emitted for SPDX 3.1 (the Hardware profile did not exist in 3.0) and only when a
+        ``BOARD`` was recorded. The processor and architecture are attached as external
+        identifiers. A ``runsOn`` relationship from the final image to this element is added
+        later, in :meth:`_create_build_output_relationships`.
+        """
+        if self.hardware is not None:
+            return
+        if self.spdx_version != SPDX_VERSION_3_1:
+            return
+        environment = self.build_info.get("environment", {})
+        board = environment.get("BOARD")
+        if not board:
+            return
+
+        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        hardware = spdx.hardware_PhysicalHardware()
+        hardware._id = self._shorten_id(f"{namespace}/hardware/{normalize_spdx_name(board)}")
+        hardware.creationInfo = self.creation_info._id
+        hardware.name = board
+        hardware.summary = f"Zephyr target board '{board}'"
+        # Both fields are mandatory on hardware_PhysicalHardware. The Zephyr board id is the
+        # canonical identifier for the target, so it doubles as the part number; the board
+        # vendor is not collected, so the producer is left as NoAssertion.
+        hardware.hardware_partNumber = board
+        hardware.hardware_productAgent = spdx.IndividualElement.NoAssertionElement
+
+        for id_type, id_value in (
+            ("target-arch", environment.get("ARCH")),
+            ("target-processor", self.build_info.get("cmake_system_processor")),
+        ):
+            if not id_value:
+                continue
+            ext_id = spdx.ExternalIdentifier()
+            ext_id.externalIdentifierType = spdx.ExternalIdentifierType.other
+            ext_id.identifier = f"{id_type}:{id_value}"
+            hardware.externalIdentifier.append(ext_id)
+
+        self.elements.append(hardware)
+        self.hardware = hardware
+
     def _add_build_environment(self):
         """Populate ``build_environment`` from the collected environment variables."""
         if not self.build:
@@ -384,6 +432,24 @@ class SPDX3Serializer:
         self.relationship_elements.append(rel)
         return rel
 
+    def _new_relationship(
+        self, rel_type: spdx.RelationshipType, from_id: str, to_ids: list[str]
+    ) -> spdx.Relationship:
+        """Create and register a plain (non lifecycle-scoped) relationship.
+
+        The relationship is placed in the document that owns ``from_id`` (see
+        :meth:`_collect_relationship_ids`), pulling ``to_ids`` in as endpoints.
+        """
+        rel = spdx.Relationship()
+        rel._id = self._generate_relationship_id(len(self.relationship_elements))
+        rel.relationshipType = rel_type
+        rel.from_ = from_id
+        rel.to = list(to_ids)
+        rel.creationInfo = self.creation_info._id
+        self.elements.append(rel)
+        self.relationship_elements.append(rel)
+        return rel
+
     def _create_build_relationships(self):
         """Create the Build profile's build-scoped relationships.
 
@@ -424,6 +490,11 @@ class SPDX3Serializer:
                 if input_ids:
                     self._new_build_relationship(
                         spdx.RelationshipType.hasInput, self.build._id, input_ids
+                    )
+                # SPDX 3.1: the final image runs on the target board (Hardware profile).
+                if self.hardware:
+                    self._new_relationship(
+                        spdx.RelationshipType.runsOn, build_file._id, [self.hardware._id]
                     )
             else:
                 self._create_target_build(component, build_file)
@@ -949,6 +1020,11 @@ class SPDX3Serializer:
         # The Build element is a root of the build document.
         if self.build and sbom_doc.name == self._BUILD_DOCUMENT:
             document.rootElement.append(self.build)
+
+        # Declare Hardware profile conformance on whichever document ended up
+        # carrying the target-board element (SPDX 3.1 only).
+        if self.hardware and self.hardware in document.element:
+            document.profileConformance.append(spdx.ProfileIdentifierType.hardware)
 
     @staticmethod
     def _belongs_in_document(element, document_id: str, element_ids: set) -> bool:
