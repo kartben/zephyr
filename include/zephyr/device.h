@@ -184,6 +184,8 @@ typedef int16_t device_handle_t;
  * @brief Create a device object and set it up for boot time initialization.
  *
  * @see DEVICE_DEINIT_DEFINE()
+ *
+ * @satisfies ZEP-SRS-14-3
  */
 #define DEVICE_DEFINE(dev_id, name, init_fn, pm, data, config, level, prio,    \
 		      api)                                                     \
@@ -313,6 +315,8 @@ typedef int16_t device_handle_t;
  * @param node_id A devicetree node identifier
  *
  * @return A pointer to the device object created for that node
+ *
+ * @satisfies ZEP-SRS-14-5
  */
 #define DEVICE_DT_GET(node_id) (&DEVICE_DT_NAME_GET(node_id))
 
@@ -837,6 +841,8 @@ int device_supported_foreach(const struct device *dev,
  * @return pointer to device structure with the given name; `NULL` if the device
  * is not found or if the device with that name's initialization function
  * failed.
+ *
+ * @satisfies ZEP-SRS-14-4
  */
 __syscall const struct device *device_get_binding(const char *name);
 
@@ -865,6 +871,8 @@ size_t z_device_get_all_static(const struct device **devices);
  * @retval true If the device is ready for use.
  * @retval false If the device is not ready for use or if a NULL device pointer
  * is passed as argument.
+ *
+ * @satisfies ZEP-SRS-14-6
  */
 __syscall bool device_is_ready(const struct device *dev);
 
@@ -924,6 +932,9 @@ __syscall int device_init(const struct device *dev);
  * @retval -ENOTSUP If device does not support de-initialization, or if the
  *         feature is not enabled (see CONFIG_DEVICE_DEINIT_SUPPORT)
  * @retval -errno For any other errors.
+ *
+ * @satisfies ZEP-SRS-14-9
+ * @satisfies ZEP-SRS-14-10
  */
 __syscall int device_deinit(const struct device *dev);
 
