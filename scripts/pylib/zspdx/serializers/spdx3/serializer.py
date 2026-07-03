@@ -27,6 +27,7 @@ from zspdx.serializers.helpers import (
     normalize_spdx_name,
 )
 from zspdx.spdxids import get_unique_file_id
+from zspdx.twister import status_verdict
 from zspdx.version import SPDX_VERSION_3_0, SPDX_VERSION_3_1
 
 _logger = logging.getLogger(__name__)
@@ -78,6 +79,13 @@ class SPDX3Serializer:
         self.relationship_elements = []  # List of Relationship objects
         self.requirement_elements = {}  # requirement UID -> Requirement (SPDX 3.1)
         self.requirement_verifications = []  # functionalsafety_RequirementVerification elements
+        self.evaluation_results = []  # functionalsafety_EvaluationResult elements
+        self.test_suite_packages = {}  # (suite_path, platform) -> software_Package
+        # Elements that belong in the standalone "requirements" document (the
+        # requirement/verification/result graph imported from a twister run,
+        # which is not owned by any build component). See
+        # :meth:`_create_requirements_document`.
+        self.requirements_doc_elements = []
 
         # Track original from_id for relationships (before reversal)
         # This is used to assign cross-document relationships to the correct document
@@ -1143,11 +1151,13 @@ class SPDX3Serializer:
             self._create_files()
             self._create_relationships()
             self._create_requirements()
+            self._create_twister_verifications()
             self._create_contains_relationships()
             self._create_build_relationships()
             self._create_hardware_relationships()
             self._create_license_relationships()
             self._create_documents()
+            self._create_requirements_document()
             self._write_documents(output_dir)
 
             _logger.info(f"SPDX 3.0 documents written to {output_dir}")
@@ -1326,6 +1336,182 @@ class SPDX3Serializer:
         self.elements.append(verification)
         self.requirement_verifications.append(verification)
         return verification
+
+    def _create_twister_verifications(self):
+        """Import requirement verification from a twister run into the SBOM.
+
+        For each test suite that carries ``@verifies`` links, emit the SPDX 3.1
+        FunctionalSafety graph::
+
+            Requirement --verifiedBy--> RequirementVerification(method=test)
+            RequirementVerification --hasTest--> <test-suite Package>
+            EvaluationResult(evaluation=pass/fail, evaluationBasedOn=verification)
+            EvaluationResult --hasEvidence[EvidenceRelationship]--> <test-suite Package>
+
+        These elements describe a *separate* test run (not the app build), so they
+        live in a standalone "requirements" document (see
+        :meth:`_create_requirements_document`). No-op unless SPDX 3.1 output is
+        requested and the FunctionalSafety profile is available in the binding.
+        """
+        records = self.sbom_data.metadata.get("twister_verifications") or []
+        if not records:
+            return
+        if self.spdx_version != SPDX_VERSION_3_1 or not hasattr(
+            spdx, "functionalsafety_RequirementVerification"
+        ):
+            return
+        catalog = self.sbom_data.metadata.get("requirements_catalog") or {}
+        if not catalog:
+            _logger.warning(
+                "twister: %d verification record(s) but no requirement catalog; "
+                "skipping FunctionalSafety elements",
+                len(records),
+            )
+            return
+
+        for record in records:
+            package = self._get_or_create_test_package(record)
+            verdict = status_verdict(record.status)
+            for uid in record.uids:
+                requirement = self._get_or_create_requirement(uid, catalog)
+                if requirement is None:
+                    continue
+                self._register_requirements_element(requirement)
+                verification = self._new_requirement_verification(requirement, package)
+                self._register_requirements_element(verification)
+                self._register_requirements_element(
+                    self._scoped_relationship(
+                        spdx.RelationshipType.verifiedBy,
+                        requirement._id,
+                        verification._id,
+                        package,
+                    )
+                )
+                self._register_requirements_element(
+                    self._scoped_relationship(
+                        spdx.RelationshipType.hasTest,
+                        verification._id,
+                        package._id,
+                        package,
+                    )
+                )
+                result = self._new_evaluation_result(verification, verdict, record)
+                self._new_evidence_relationship(result, package)
+
+    def _get_or_create_test_package(self, record):
+        """Return the ``software_Package`` representing a (suite, platform) test run."""
+        key = (record.suite_path, record.platform)
+        if key in self.test_suite_packages:
+            return self.test_suite_packages[key]
+        package = spdx.software_Package()
+        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        slug = normalize_spdx_name(f"{record.suite_path}-{record.platform}")
+        package._id = self._shorten_id(f"{namespace}/tests/{slug}")
+        package.creationInfo = self.creation_info._id
+        package.name = f"{record.suite_name} [{record.platform}]"
+        package.summary = f"Twister test suite {record.suite_path} on {record.platform}"
+        package.software_primaryPurpose = spdx.software_SoftwarePurpose.test
+        if record.run_id:
+            package.externalIdentifier.append(self._other_identifier(f"twister-run:{record.run_id}"))
+        self.elements.append(package)
+        self.test_suite_packages[key] = package
+        self._register_requirements_element(package)
+        return package
+
+    def _new_evaluation_result(self, verification, verdict, record):
+        """Create a ``functionalsafety_EvaluationResult`` for a suite's verdict."""
+        result = spdx.functionalsafety_EvaluationResult()
+        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        index = len(self.evaluation_results)
+        result._id = self._shorten_id(f"{namespace}/evaluation-results/{index}")
+        result.creationInfo = self.creation_info._id
+        result.functionalsafety_evaluation = self._verdict_to_result_type(verdict)
+        result.functionalsafety_evaluationBasedOn = verification._id
+        result.functionalsafety_evaluationRationale = (
+            f"twister suite '{record.suite_name}' on {record.platform}: "
+            f"{record.status or 'unknown'}"
+        )
+        result.name = f"Verification result for {record.suite_name} [{record.platform}]"
+        self.elements.append(result)
+        self.evaluation_results.append(result)
+        self._register_requirements_element(result)
+        return result
+
+    def _new_evidence_relationship(self, result, package):
+        """Link an EvaluationResult to the test artifact that evidences it."""
+        evidence = spdx.functionalsafety_EvidenceRelationship()
+        evidence._id = self._generate_relationship_id(len(self.relationship_elements))
+        evidence.relationshipType = spdx.RelationshipType.hasEvidence
+        evidence.from_ = result._id
+        evidence.to = [package._id]
+        evidence.functionalsafety_evidenceCategory.append(spdx.functionalsafety_EvidenceType.report)
+        evidence.creationInfo = self.creation_info._id
+        self.elements.append(evidence)
+        self.relationship_elements.append(evidence)
+        self.relationship_original_from[evidence._id] = package._id
+        self._register_requirements_element(evidence)
+        return evidence
+
+    def _register_requirements_element(self, element):
+        """Record an element for inclusion in the standalone requirements document."""
+        if element is not None:
+            self.requirements_doc_elements.append(element)
+
+    def _verdict_to_result_type(self, verdict: str):
+        """Map a normalised twister verdict to a FunctionalSafety result type."""
+        return {
+            "pass": spdx.functionalsafety_EvaluationResultType.pass_,
+            "fail": spdx.functionalsafety_EvaluationResultType.fail,
+            "inconclusive": spdx.functionalsafety_EvaluationResultType.inconclusive,
+        }[verdict]
+
+    def _create_requirements_document(self):
+        """Create a standalone ``requirements`` document for twister verifications.
+
+        The requirement-verification graph imported from a twister run is not
+        owned by any build component, so it cannot be attached to the app, zephyr
+        or build documents. Collect those elements (requirements, verifications,
+        evaluation results, evidence relationships and the test-suite packages)
+        into their own SPDX document.
+        """
+        if not self.requirements_doc_elements:
+            return
+
+        document = spdx.SpdxDocument()
+        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        document._id = self._shorten_id(f"{namespace}/documents/requirements")
+        for uri, prefix in self.namespace_prefixes.items():
+            ns_map = spdx.NamespaceMap()
+            ns_map.prefix = prefix
+            ns_map.namespace = uri
+            document.namespaceMap.append(ns_map)
+        document.name = "Zephyr Requirements"
+        document.creationInfo = self.creation_info
+        data_license = self._create_license_expression("CC0-1.0")
+        if data_license:
+            document.dataLicense = data_license._id
+        document.profileConformance.append(spdx.ProfileIdentifierType.core)
+        document.profileConformance.append(spdx.ProfileIdentifierType.software)
+        document.profileConformance.append(spdx.ProfileIdentifierType.simpleLicensing)
+
+        # The data-license expression and the creator agent are referenced by the
+        # document/its creation info, so they must be serialized alongside it
+        # (_gather_elements_to_serialize only pulls in the document's ``element``
+        # list plus the shared creation info and tool).
+        extras = [e for e in (data_license, self.creator_agent) if e is not None]
+
+        seen = set()
+        for element in [*self.requirements_doc_elements, *extras]:
+            element_id = getattr(element, "_id", None)
+            if not element_id or element_id in seen:
+                continue
+            if isinstance(element, spdx.Element) and not isinstance(element, spdx.SpdxDocument):
+                document.element.append(element)
+                seen.add(element_id)
+        for package in self.test_suite_packages.values():
+            document.rootElement.append(package)
+
+        self.documents["requirements"] = document
 
     def _get_or_create_requirement(self, uid: str, catalog: dict):
         """Return the ``Requirement`` element for ``uid``, creating it on first use.

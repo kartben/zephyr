@@ -225,7 +225,7 @@ The links are read from Doxygen commands embedded in the source:
 - ``@verifies ZEP-SRS-<id>`` marks a test that exercises a requirement. It is
   modelled with the `SPDX 3.1 FunctionalSafety profile`_: the requirement is
   ``verifiedBy`` a ``RequirementVerification`` element (with a
-  ``verificationMethod`` of ``test``), which in turn ``hasTest`` the test file.
+  ``verificationMethod`` of ``test``), which in turn ``hasTest`` the test.
 
 The requirement statements themselves come from the ``reqmgmt`` StrictDoc
 module (see ``--requirements-dir`` above); only requirements actually referenced
@@ -237,6 +237,28 @@ by a scanned file are emitted, each carrying its UID as an external identifier.
    traceability is only populated when ``--analyze-includes`` is also used, so
    that the annotated headers are brought into the bill-of-materials. Without
    it, only requirements referenced by directly-compiled sources are captured.
+
+Verification from a test run
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An application build does not compile any tests, so on its own it produces no
+``@verifies`` links. Tests are normally run separately with :ref:`twister
+<twister_script>`. Pass a completed twister output directory with
+``--twister-out`` to import verification into the application's SBOM. For each
+test suite, its sources are scanned for ``@verifies`` links and the following is
+emitted, into a dedicated :file:`requirements.jsonld` document:
+
+- a ``RequirementVerification`` (``verificationMethod`` of ``test``) that each
+  verified ``Requirement`` is ``verifiedBy``, which ``hasTest`` a package
+  representing the test suite (tagged with its twister ``run_id``);
+- a ``functionalsafety_EvaluationResult`` recording whether the suite ``passed``,
+  ``failed`` or was inconclusive, which ``hasEvidence`` (an ``EvidenceRelationship``)
+  pointing back at the test-suite package.
+
+Verification is attributed at the test-suite level. For example::
+
+   west twister -p qemu_x86 -T tests/kernel/threads/thread_apis --outdir twister-out
+   west spdx -d BUILD_DIR --spdx-version 3.1 --analyze-includes --twister-out twister-out
 
 Command-line options
 --------------------
@@ -271,6 +293,12 @@ Command-line options
   module, used to resolve requirement UIDs for SPDX 3.1 output (see
   :ref:`west-spdx-requirements`). When omitted, the module is auto-detected from
   the ``ZEPHYR_REQMGMT_MODULE_DIR`` CMake/environment variable or the workspace.
+
+- ``--twister-out DIR``: path to a completed :ref:`twister <twister_script>`
+  output directory. Imports requirement verification (which requirements each
+  test suite verified, and whether it passed) from its :file:`twister.json` into
+  a dedicated :file:`requirements.jsonld` document (SPDX 3.1 only). See
+  :ref:`west-spdx-requirements`.
 
 .. warning::
 
