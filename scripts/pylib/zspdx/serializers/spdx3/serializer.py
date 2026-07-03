@@ -615,6 +615,9 @@ class SPDX3Serializer:
                 hash_obj.hashValue = hash_value
                 file_element.verifiedUsing.append(hash_obj)
 
+        if self.spdx_version == SPDX_VERSION_3_1 and os.path.isfile(file_obj.path):
+            file_element.software_artifactSize = os.path.getsize(file_obj.path)
+
         # License information will be added via relationships after file creation
 
         self.elements.append(file_element)
