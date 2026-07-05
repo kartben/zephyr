@@ -10,7 +10,11 @@ from dataclasses import dataclass
 from reuse.project import Project
 
 from .licenses import LICENSES
-from .requirements import get_requirement_tags, should_scan_for_requirements
+from .requirements import (
+    get_requirement_tags,
+    get_verifies_blocks,
+    should_scan_for_requirements,
+)
 from .util import get_hashes
 
 _logger = logging.getLogger(__name__)
@@ -240,6 +244,9 @@ def scan_sbom_graph(cfg, sbom_graph):
                     f.metadata["satisfies"] = tags["satisfies"]
                 if tags["verifies"]:
                     f.metadata["verifies"] = tags["verifies"]
+                    # keep the per-block @brief/@details so a verification can
+                    # carry the test's own documentation
+                    f.metadata["verifies_blocks"] = get_verifies_blocks(f.path)
 
         # now, assemble the Component data
         lics_concluded, lics_from_files = get_component_licenses(component)

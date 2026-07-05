@@ -1244,7 +1244,8 @@ class SPDX3Serializer:
         if self.spdx_version != SPDX_VERSION_3_1 or not hasattr(spdx, "Requirement"):
             return
 
-        # Gather per-file (satisfies, verifies) UIDs and the full referenced set.
+        # Gather, per file, its @satisfies UIDs and its @verifies doc blocks, plus
+        # the full referenced UID set.
         per_file = []
         referenced = set()
         for file_obj in self.sbom_data.files.values():
@@ -1255,9 +1256,15 @@ class SPDX3Serializer:
             file_element = self.file_elements.get(file_obj.path)
             if not file_element:
                 continue
-            per_file.append((file_element, satisfies, verifies))
+            # Prefer per-block data (keeps @brief/@details); fall back to a single
+            # block of bare UIDs if only the aggregate list is present.
+            verifies_blocks = file_obj.metadata.get("verifies_blocks") or (
+                [{"uids": verifies, "brief": "", "details": ""}] if verifies else []
+            )
+            per_file.append((file_element, satisfies, verifies_blocks))
             referenced.update(satisfies)
-            referenced.update(verifies)
+            for block in verifies_blocks:
+                referenced.update(block["uids"])
 
         if not referenced:
             return
@@ -1274,7 +1281,7 @@ class SPDX3Serializer:
         if missing := sorted(uid for uid in referenced if uid not in catalog):
             _logger.warning("requirements: no catalog entry for %s", ", ".join(missing))
 
-        for file_element, satisfies, verifies in per_file:
+        for file_element, satisfies, verifies_blocks in per_file:
             for uid in satisfies:
                 if requirement := self._get_or_create_requirement(uid, catalog):
                     self._scoped_relationship(
@@ -1283,9 +1290,8 @@ class SPDX3Serializer:
                         file_element._id,
                         file_element,
                     )
-            for uid in verifies:
-                if requirement := self._get_or_create_requirement(uid, catalog):
-                    self._link_verification(requirement, file_element)
+            for block in verifies_blocks:
+                self._emit_test_verification(block, file_element, catalog)
 
     def _scoped_relationship(self, rel_type, from_id, to_id, scope_element):
         """Create a relationship and scope it to ``scope_element``'s document.
@@ -1300,29 +1306,63 @@ class SPDX3Serializer:
         self.relationship_original_from[rel._id] = scope_element._id
         return rel
 
-    def _link_verification(self, requirement, file_element):
-        """Model an ``@verifies`` link using the FunctionalSafety profile.
+    def _emit_test_verification(self, block, artifact, catalog, *, record=None, req_doc=False):
+        """Link a single ``@verifies`` doc ``block`` to the requirements it verifies.
 
-        Emits ``Requirement verifiedBy RequirementVerification`` (with
-        ``verificationMethod = test``) and ``RequirementVerification hasTest``
-        the test File. If the binding predates the FunctionalSafety profile, this
-        degrades to a plain ``Requirement hasTest File`` edge.
+        ``artifact`` is the test element (the compiled test File, or — for a
+        twister import — the test-suite Package). Emits, per the FunctionalSafety
+        profile::
+
+            Requirement --verifiedBy--> RequirementVerification(method=test)
+            RequirementVerification --hasTest--> artifact
+
+        The verification carries the block's ``@brief``/``@details`` as its
+        name/summary/description. When ``record`` is given (a twister import), it
+        also emits a pass/fail ``EvaluationResult`` and its ``EvidenceRelationship``.
+        Bindings without the FunctionalSafety profile degrade to a plain
+        ``Requirement hasTest artifact`` edge. Elements are recorded for the
+        standalone requirements document when ``req_doc`` is set.
         """
-        if not hasattr(spdx, "functionalsafety_RequirementVerification"):
-            self._scoped_relationship(
-                spdx.RelationshipType.hasTest, requirement._id, file_element._id, file_element
-            )
+        register = self._register_requirements_element if req_doc else lambda element: None
+        requirements = [
+            requirement
+            for uid in block["uids"]
+            if (requirement := self._get_or_create_requirement(uid, catalog))
+        ]
+        if not requirements:
             return
-        verification = self._new_requirement_verification(requirement, file_element)
-        self._scoped_relationship(
-            spdx.RelationshipType.verifiedBy, requirement._id, verification._id, file_element
-        )
-        self._scoped_relationship(
-            spdx.RelationshipType.hasTest, verification._id, file_element._id, file_element
-        )
 
-    def _new_requirement_verification(self, requirement, file_element):
-        """Create a ``functionalsafety_RequirementVerification`` for a test link."""
+        if not hasattr(spdx, "functionalsafety_RequirementVerification"):
+            for requirement in requirements:
+                register(requirement)
+                register(
+                    self._scoped_relationship(
+                        spdx.RelationshipType.hasTest, requirement._id, artifact._id, artifact
+                    )
+                )
+            return
+
+        verification = self._new_test_verification(block, artifact)
+        register(verification)
+        register(
+            self._scoped_relationship(
+                spdx.RelationshipType.hasTest, verification._id, artifact._id, artifact
+            )
+        )
+        for requirement in requirements:
+            register(requirement)
+            register(
+                self._scoped_relationship(
+                    spdx.RelationshipType.verifiedBy, requirement._id, verification._id, artifact
+                )
+            )
+        if record is not None:
+            verdict = status_verdict(record.status)
+            result = self._new_evaluation_result(verification, verdict, record)
+            self._new_evidence_relationship(result, artifact)
+
+    def _new_test_verification(self, block, artifact):
+        """Create a ``RequirementVerification`` carrying a test block's documentation."""
         verification = spdx.functionalsafety_RequirementVerification()
         namespace = self.sbom_data.namespace_prefix.rstrip("/")
         index = len(self.requirement_verifications)
@@ -1331,8 +1371,13 @@ class SPDX3Serializer:
         verification.functionalsafety_verificationMethod.append(
             spdx.functionalsafety_VerificationType.test
         )
-        verification.name = f"Test verification of {requirement.name}"
-        verification.summary = f"Verified by test artifact {file_element.name}"
+        brief = (block.get("brief") or "").strip()
+        details = (block.get("details") or "").strip()
+        verification.name = brief or f"Test verification ({artifact.name})"
+        if brief:
+            verification.summary = brief
+        if details or brief:
+            verification.description = details or brief
         self.elements.append(verification)
         self.requirement_verifications.append(verification)
         return verification
@@ -1371,32 +1416,10 @@ class SPDX3Serializer:
 
         for record in records:
             package = self._get_or_create_test_package(record)
-            verdict = status_verdict(record.status)
-            for uid in record.uids:
-                requirement = self._get_or_create_requirement(uid, catalog)
-                if requirement is None:
-                    continue
-                self._register_requirements_element(requirement)
-                verification = self._new_requirement_verification(requirement, package)
-                self._register_requirements_element(verification)
-                self._register_requirements_element(
-                    self._scoped_relationship(
-                        spdx.RelationshipType.verifiedBy,
-                        requirement._id,
-                        verification._id,
-                        package,
-                    )
+            for block in record.test_items:
+                self._emit_test_verification(
+                    block, package, catalog, record=record, req_doc=True
                 )
-                self._register_requirements_element(
-                    self._scoped_relationship(
-                        spdx.RelationshipType.hasTest,
-                        verification._id,
-                        package._id,
-                        package,
-                    )
-                )
-                result = self._new_evaluation_result(verification, verdict, record)
-                self._new_evidence_relationship(result, package)
 
     def _get_or_create_test_package(self, record):
         """Return the ``software_Package`` representing a (suite, platform) test run."""

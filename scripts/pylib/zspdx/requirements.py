@@ -98,6 +98,58 @@ def get_requirement_tags(file_path: str) -> dict[str, list[str]]:
     return {"satisfies": sorted(satisfies), "verifies": sorted(verifies)}
 
 
+# A Doxygen block comment: /** ... */ or /*! ... */
+_DOXY_BLOCK_RE = re.compile(r"/\*[*!](.*?)\*/", re.DOTALL)
+
+
+def _strip_comment_stars(block: str) -> str:
+    """Remove the leading ``*`` decoration from each line of a comment block."""
+    return "\n".join(re.sub(r"^\s*\*\s?", "", line) for line in block.splitlines())
+
+
+def _doxygen_field(content: str, field: str) -> str:
+    """Extract a Doxygen ``@field`` value, up to the next command, as one line."""
+    match = re.search(
+        rf"[@\\]{field}\b[ \t]*(.*?)(?=\n[ \t]*[@\\]\w|\Z)", content, re.DOTALL
+    )
+    return " ".join(match.group(1).split()) if match else ""
+
+
+def get_verifies_blocks(file_path: str) -> list[dict]:
+    """Return each ``@verifies`` doc-comment block in a file with its documentation.
+
+    Unlike :func:`get_requirement_tags` (which only collects UIDs), this keeps the
+    per-block structure so a verification can carry the test's own ``@brief`` and
+    ``@details`` text.
+
+    Returns:
+        A list of ``{"uids": [...], "brief": str, "details": str}`` dicts, one per
+        block that contains at least one ``@verifies``; empty when none is found.
+    """
+    blocks: list[dict] = []
+    try:
+        with open(file_path, encoding="utf-8", errors="ignore") as f:
+            text = f.read()
+    except OSError as e:
+        _logger.warning("could not read %s for verifies blocks: %s", file_path, e)
+        return blocks
+    if "verifies" not in text:
+        return blocks
+    for match in _DOXY_BLOCK_RE.finditer(text):
+        content = _strip_comment_stars(match.group(1))
+        uids = sorted({uid for kind, uid in _TAG_RE.findall(content) if kind == "verifies"})
+        if not uids:
+            continue
+        blocks.append(
+            {
+                "uids": uids,
+                "brief": _doxygen_field(content, "brief"),
+                "details": _doxygen_field(content, "details"),
+            }
+        )
+    return blocks
+
+
 def _read_cache_vars(build_dir: str, names: set[str]) -> dict[str, str]:
     """Read selected ``NAME:TYPE=VALUE`` entries from a build's CMakeCache.txt."""
     result: dict[str, str] = {}
