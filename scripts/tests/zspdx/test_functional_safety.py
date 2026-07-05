@@ -1,0 +1,316 @@
+# Copyright (c) 2025 The Zephyr Project Contributors
+#
+# SPDX-License-Identifier: Apache-2.0
+
+"""Tests for the SPDX 3.1 FunctionalSafety generation in the zspdx package.
+
+These cover the standalone input loaders (traceability graph, twister results,
+per-test coverage matrix, StrictDoc catalog and implementation-body resolution)
+and the end-to-end serializer pass that turns them into a FunctionalSafety SPDX
+document, including the coverage-backed evidence linking a verifying test to the
+implementation snippets it actually exercises, and the ExternalMap referencing of
+source files defined in a sibling document.
+"""
+
+import json
+import os
+import sys
+from pathlib import Path
+
+import pytest
+
+ZEPHYR_BASE = os.environ.get("ZEPHYR_BASE", str(Path(__file__).parents[3]))
+sys.path.insert(0, os.path.join(ZEPHYR_BASE, "scripts", "pylib"))
+
+from zspdx.coverage import load_matrix  # noqa: E402
+from zspdx.requirements import _parse_sdoc  # noqa: E402
+from zspdx.sources import Source, content_byte_range, resolve_impl_symbols  # noqa: E402
+from zspdx.traceability import parse_traceability  # noqa: E402
+from zspdx.twister import load_results, verdict_from_rollup  # noqa: E402
+
+pytest.importorskip("spdx_python_model")
+try:
+    # v3_1 is exposed as a lazy attribute of the package, not a real submodule,
+    # so it cannot be imported via a dotted importorskip.
+    from spdx_python_model import v3_1  # noqa: F401
+except ImportError:
+    pytest.skip("spdx_python_model v3_1 bindings unavailable", allow_module_level=True)
+
+
+# ---- traceability ----------------------------------------------------------
+
+
+def _sample_traceability():
+    return [
+        {"id": "ZEP-SYRS-1", "caption": "Threading", "targets": {}},
+        {
+            "id": "ZEP-SRS-1-1",
+            "caption": "Creating threads",
+            "attributes": {"component": "Threads", "rtype": "Functional"},
+            "targets": {
+                "trace": ["ZEP-SYRS-1"],
+                "fulfilled_by": ["DESIGN-THREADS"],
+                "implemented_by": ["k_thread_create"],
+                "validated_by": ["threads__test_thread_start"],
+            },
+        },
+        {"id": "DESIGN-THREADS", "caption": "Thread design",
+         "targets": {"fulfills": ["ZEP-SRS-1-1"]}},
+        {"id": "threads__test_thread_start", "caption": "start",
+         "targets": {"validates": ["ZEP-SRS-1-1"]}},
+    ]
+
+
+def test_traceability_parse_classifies_nodes():
+    graph = parse_traceability(_sample_traceability())
+    assert set(graph.requirements) == {"ZEP-SYRS-1", "ZEP-SRS-1-1"}
+    assert set(graph.designs) == {"DESIGN-THREADS"}
+    assert set(graph.tests) == {"threads__test_thread_start"}
+    srs = graph.requirements["ZEP-SRS-1-1"]
+    assert srs.traces_to == ["ZEP-SYRS-1"] and srs.implemented_by == ["k_thread_create"]
+    assert not srs.is_system and graph.requirements["ZEP-SYRS-1"].is_system
+    assert graph.implementation_symbols() == {"k_thread_create"}
+
+
+# ---- twister results -------------------------------------------------------
+
+
+def test_verdict_from_rollup():
+    assert verdict_from_rollup("passing") == "pass"
+    assert verdict_from_rollup("failing") == "fail"
+    assert verdict_from_rollup("skipped") == "inconclusive"
+    assert verdict_from_rollup("no-run") == "inconclusive"
+
+
+def _write_twister(path, testcases, platform="native_sim"):
+    path.write_text(json.dumps({
+        "environment": {"zephyr_version": "v4.4.0-1-gdeadbeef"},
+        "testsuites": [{
+            "name": "kernel.threads", "platform": platform, "path": "tests/kernel/threads",
+            "testcases": testcases,
+        }],
+    }))
+
+
+def test_load_results_qualifies_and_rolls_up(tmp_path):
+    report = tmp_path / "twister.json"
+    # twister reports the ztest name without the "test_" prefix; the qualified id
+    # rebuilds it and keeps the ztest suite (last two identifier segments).
+    _write_twister(
+        report, [{"identifier": "kernel.threads.threads.thread_start", "status": "passed"}]
+    )
+    env, results, qual_map = load_results(str(report))
+    assert env["zephyr_version"] == "v4.4.0-1-gdeadbeef"
+    assert "threads__test_thread_start" in results
+    assert results["threads__test_thread_start"]["rollup"] == "passing"
+    # qual_map lets the coverage matrix (scenario-slug keyed) recover the id.
+    assert qual_map["kernel.threads"]["test_thread_start"] == "threads__test_thread_start"
+
+
+def test_load_results_rollup_precedence(tmp_path):
+    report = tmp_path / "twister.json"
+    report.write_text(json.dumps({"environment": {}, "testsuites": [
+        {"name": "s", "platform": "p1",
+         "testcases": [{"identifier": "s.suite.f", "status": "passed"}]},
+        {"name": "s", "platform": "p2",
+         "testcases": [{"identifier": "s.suite.f", "status": "failed"}]},
+    ]}))
+    _env, results, _q = load_results(str(report))
+    # any failure dominates the rollup
+    assert results["suite__test_f"]["rollup"] == "failing"
+
+
+# ---- coverage matrix -------------------------------------------------------
+
+
+def test_load_matrix_joins_via_qual_map(tmp_path):
+    matrix = tmp_path / "test_matrix.json"
+    # matrix keys are <scenario slug>_<test fn>, no ztest suite name
+    matrix.write_text(json.dumps({
+        "by_test": {
+            "kernel_threads_test_thread_start":
+                {"kernel/thread.c": [800, 805], "../modules/x.c": [1]},
+        },
+        "by_line": {},
+    }))
+    qual_map = {"kernel.threads": {"test_thread_start": "threads__test_thread_start"}}
+    cov = load_matrix(str(matrix), qual_map, wanted_tests={"threads__test_thread_start"})
+    assert cov["threads__test_thread_start"]["kernel/thread.c"] == [800, 805]
+    # out-of-tree files are dropped
+    assert "../modules/x.c" not in cov["threads__test_thread_start"]
+
+
+# ---- requirements catalog --------------------------------------------------
+
+
+def test_parse_sdoc_multiline_statement(tmp_path):
+    sdoc = tmp_path / "req.sdoc"
+    sdoc.write_text(
+        "[REQUIREMENT]\nUID: ZEP-SRS-1-1\nTITLE: Creating threads\n"
+        "STATEMENT: >>>\nThe RTOS shall create threads.\n<<<\n"
+    )
+    catalog = _parse_sdoc(str(sdoc))
+    assert catalog["ZEP-SRS-1-1"].statement == "The RTOS shall create threads."
+
+
+# ---- implementation-body resolution ----------------------------------------
+
+_FOO_C = (
+    "#include <x.h>\n"
+    "int z_impl_k_foo(int a)\n"
+    "{\n"
+    "\treturn a + 1;\n"
+    "}\n"
+    "int z_vrfy_k_foo(int a)\n"
+    "{\n"
+    "\treturn z_impl_k_foo(a);\n"
+    "}\n"
+)
+
+
+def _make_tree(tmp_path):
+    (tmp_path / "kernel").mkdir()
+    (tmp_path / "kernel" / "foo.c").write_text(_FOO_C)
+
+
+def test_resolve_impl_symbols_finds_impl_and_vrfy(tmp_path):
+    _make_tree(tmp_path)
+    bodies = resolve_impl_symbols(Source(str(tmp_path)), {"k_foo"})
+    got = {(b.variant, b.file, b.start, b.end) for b in bodies["k_foo"]}
+    assert ("impl", "kernel/foo.c", 2, 5) in got
+    assert ("vrfy", "kernel/foo.c", 6, 9) in got
+
+
+def test_content_byte_range():
+    text = "line1\nline2\nline3\n"  # 6 bytes per line
+    assert content_byte_range(text, 2, 3) == (7, 18)
+    assert content_byte_range(text, 9, 9) is None
+
+
+# ---- end-to-end serializer -------------------------------------------------
+
+
+def _fs_metadata(tmp_path, *, covered=True):
+    """Build sbom_graph.metadata for the FunctionalSafety pass."""
+    from zspdx.requirements import RequirementInfo
+    from zspdx.sources import ImplBody
+
+    _make_tree(tmp_path)
+    traceability = parse_traceability([
+        {"id": "ZEP-SYRS-1", "caption": "Sys", "targets": {}},
+        {
+            "id": "ZEP-SRS-1-1", "caption": "Foo",
+            "targets": {"trace": ["ZEP-SYRS-1"], "implemented_by": ["k_foo"],
+                        "validated_by": ["suite__test_foo"]},
+        },
+        {"id": "DESIGN-X", "caption": "Design", "targets": {"fulfills": ["ZEP-SRS-1-1"]}},
+        {"id": "suite__test_foo", "caption": "exercises foo",
+         "targets": {"validates": ["ZEP-SRS-1-1"]}},
+    ])
+    return {
+        "traceability": traceability,
+        "requirements_catalog": {"ZEP-SRS-1-1": RequirementInfo(uid="ZEP-SRS-1-1",
+                                                                statement="The system shall foo.")},
+        "impl_bodies": {"k_foo": [ImplBody("kernel/foo.c", 2, 5, "impl")]},
+        "test_results": {"suite__test_foo": {
+            "rollup": "passing",
+            "instances": [{"platform": "native_sim", "status": "passed"}],
+        }},
+        # covered: the test's coverage reaches the impl body's lines (2..5)
+        "coverage": {"suite__test_foo": {"kernel/foo.c": [3, 4] if covered else [99]}},
+        "source": None,
+        "zephyr_base": str(tmp_path),
+    }
+
+
+def _safety_graph(tmp_path, *, covered=True, host_in_sbom=False):
+    from zspdx.model import SBOMComponent, SBOMDocument, SBOMFile, SBOMGraph
+    from zspdx.serializers.spdx3 import SPDX3Serializer
+    from zspdx.version import SPDX_VERSION_3_1
+
+    graph = SBOMGraph()
+    graph.namespace_prefix = "http://spdx.org/spdxdocs/zephyr-ut"
+    graph.metadata.update(_fs_metadata(tmp_path, covered=covered))
+    if host_in_sbom:
+        abs_path = os.path.normpath(str(tmp_path / "kernel" / "foo.c"))
+        sbom_file = SBOMFile(path=abs_path, relative_path="kernel/foo.c", hashes={"SHA1": "abc"})
+        component = SBOMComponent(name="zephyr")
+        component.files[abs_path] = sbom_file
+        document = SBOMDocument(name="zephyr")
+        document.components["zephyr"] = component
+        graph.files[abs_path] = sbom_file
+        graph.components["zephyr"] = component
+        graph.documents["zephyr"] = document
+
+    out = tmp_path / "out"
+    out.mkdir()
+    assert SPDX3Serializer(graph, SPDX_VERSION_3_1).serialize(str(out))
+    return json.loads((out / "safety.jsonld").read_text())["@graph"]
+
+
+def _by_type(graph, spdx_type):
+    return [e for e in graph if e.get("type") == spdx_type]
+
+
+def test_fs_impl_snippet_is_the_c_body(tmp_path):
+    graph = _safety_graph(tmp_path)
+    snippets = _by_type(graph, "software_Snippet")
+    assert len(snippets) == 1
+    snippet = snippets[0]
+    assert snippet["name"] == "z_impl_k_foo"
+    assert snippet["software_lineRange"]["beginIntegerRange"] == 2
+    # linked from the requirement via implementedBy
+    req = next(e for e in _by_type(graph, "Requirement") if e["name"].startswith("ZEP-SRS-1-1"))
+    assert any(
+        e["relationshipType"] == "implementedBy" and e["from"] == req["spdxId"]
+        and snippet["spdxId"] in e["to"]
+        for e in _by_type(graph, "Relationship")
+    )
+
+
+def test_fs_coverage_backed_evidence(tmp_path):
+    graph = _safety_graph(tmp_path, covered=True)
+    verifs = _by_type(graph, "functionalsafety_RequirementVerification")
+    results = _by_type(graph, "functionalsafety_EvaluationResult")
+    evidence = _by_type(graph, "functionalsafety_EvidenceRelationship")
+    assert len(verifs) == len(results) == 1
+    assert results[0]["functionalsafety_evaluation"].endswith("pass")
+    # the passing test covered the impl body -> one hasEvidence to the snippet
+    assert len(evidence) == 1
+    snippet = _by_type(graph, "software_Snippet")[0]
+    assert evidence[0]["from"] == results[0]["spdxId"]
+    assert snippet["spdxId"] in evidence[0]["to"]
+    assert evidence[0]["functionalsafety_evidenceCategory"][0].endswith("recording")
+
+
+def test_fs_no_evidence_without_coverage(tmp_path):
+    # the test runs (verification + result exist) but its coverage never reaches
+    # the implementation body, so there is no coverage-backed evidence link.
+    graph = _safety_graph(tmp_path, covered=False)
+    assert len(_by_type(graph, "functionalsafety_RequirementVerification")) == 1
+    assert len(_by_type(graph, "functionalsafety_EvidenceRelationship")) == 0
+
+
+def test_fs_snippet_imports_source_file_via_external_map(tmp_path):
+    graph = _safety_graph(tmp_path, host_in_sbom=True)
+    document = _by_type(graph, "SpdxDocument")[0]
+    imports = document.get("import", [])
+    assert len(imports) == 1 and imports[0]["locationHint"] == "./zephyr.jsonld"
+    imported_id = imports[0]["externalSpdxId"]
+    snippet = _by_type(graph, "software_Snippet")[0]
+    assert snippet["software_snippetFromFile"] == imported_id
+    # the imported file is not redefined in the safety document
+    assert imported_id not in {f["spdxId"] for f in _by_type(graph, "software_File")}
+
+
+def test_fs_noop_without_traceability(tmp_path):
+    from zspdx.model import SBOMGraph
+    from zspdx.serializers.spdx3 import SPDX3Serializer
+    from zspdx.version import SPDX_VERSION_3_1
+
+    graph = SBOMGraph()
+    graph.namespace_prefix = "http://spdx.org/spdxdocs/zephyr-empty"
+    out = tmp_path / "out"
+    out.mkdir()
+    assert SPDX3Serializer(graph, SPDX_VERSION_3_1).serialize(str(out))
+    assert not (out / "safety.jsonld").exists()
