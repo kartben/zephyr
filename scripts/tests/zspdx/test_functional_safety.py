@@ -257,7 +257,10 @@ def test_fs_impl_snippet_is_the_c_body(tmp_path):
     snippets = _by_type(graph, "software_Snippet")
     assert len(snippets) == 1
     snippet = snippets[0]
-    assert snippet["name"] == "z_impl_k_foo"
+    # the snippet is the z_impl_ body, and its name/description carry the location
+    assert snippet["name"].startswith("z_impl_k_foo")
+    assert "kernel/foo.c:2-5" in snippet["name"]
+    assert snippet["description"] == "kernel/foo.c:2-5"
     assert snippet["software_lineRange"]["beginIntegerRange"] == 2
     # linked from the requirement via implementedBy
     req = next(e for e in _by_type(graph, "Requirement") if e["name"].startswith("ZEP-SRS-1-1"))
