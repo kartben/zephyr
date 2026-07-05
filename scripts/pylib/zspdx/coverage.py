@@ -32,21 +32,32 @@ def _keep_file(path: str) -> bool:
     return path.startswith(("kernel/", "include/", "lib/", "tests/"))
 
 
-def load_matrix(matrix_path: str, qual_map: dict, wanted_tests: set[str] | None = None) -> dict:
-    """Return ``{qualified_test_id: {file: sorted covered lines}}``.
+def load_coverage(
+    matrix_path: str, qual_map: dict, wanted_tests: set[str] | None = None
+) -> tuple[dict, dict]:
+    """Index a coverage matrix into per-test coverage and a whole-run union.
+
+    Returns ``(cov_by_test, all_covered)`` where
+
+    * ``cov_by_test[qualified_test_id][file]`` -- set of lines that test covered
+      (restricted to ``wanted_tests`` when given), used to prove a requirement's
+      own verifying tests exercise its implementation, and
+    * ``all_covered[file]`` -- set of lines covered by *any* test in the run (from
+      ``by_line``), used to tell an implementation that no test reaches at all
+      (``unattributed``) from one only *other* tests reach (``broken``).
 
     Args:
         matrix_path: Path to ``test_matrix.json``.
         qual_map: ``{scenario: {bare test_ name: qualified id}}`` from
             :func:`zspdx.twister.load_results`.
-        wanted_tests: If given, only these qualified test ids are kept.
+        wanted_tests: If given, ``cov_by_test`` is restricted to these ids.
     """
     try:
         with open(matrix_path, encoding="utf-8") as f:
             data = json.load(f)
     except (OSError, json.JSONDecodeError) as e:
         _logger.warning("coverage: could not read %s: %s", matrix_path, e)
-        return {}
+        return {}, {}
 
     # Longest scenario slug wins when several are prefixes of a matrix key.
     slugs = sorted(
@@ -77,9 +88,13 @@ def load_matrix(matrix_path: str, qual_map: dict, wanted_tests: set[str] | None 
             if _keep_file(path):
                 dst.setdefault(path, set()).update(int(x) for x in lines)
 
-    result = {
-        test_id: {path: sorted(lines) for path, lines in files.items()}
-        for test_id, files in cov_by_test.items()
-    }
-    _logger.info("coverage: indexed line coverage for %d test(s) from %s", len(result), matrix_path)
-    return result
+    all_covered: dict[str, set] = {}
+    for path, lines in data.get("by_line", {}).items():
+        if _keep_file(path):
+            all_covered[path] = {int(ln) for ln in lines}
+
+    _logger.info(
+        "coverage: indexed %d test(s) and %d file(s) of run coverage from %s",
+        len(cov_by_test), len(all_covered), matrix_path,
+    )
+    return cov_by_test, all_covered
