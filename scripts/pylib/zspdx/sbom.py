@@ -109,7 +109,7 @@ def _load_functional_safety_inputs(cfg, sbom_graph):
     sources of the coverage build's commit), and the per-test line coverage is
     indexed for the serializer to intersect against.
     """
-    from zspdx.coverage import load_matrix
+    from zspdx.coverage import load_coverage
     from zspdx.requirements import load_requirements_catalog
     from zspdx.sources import Source, resolve_impl_symbols
     from zspdx.traceability import load_traceability
@@ -134,6 +134,7 @@ def _load_functional_safety_inputs(cfg, sbom_graph):
     if cfg.twister_json:
         env, results, qual_map = load_results(cfg.twister_json)
         sbom_graph.metadata["test_results"] = results
+        sbom_graph.metadata["test_environment"] = env
 
     # Resolve implementing symbols to their bodies against the coverage build's
     # sources, and index the coverage of the graph's tests to intersect them.
@@ -145,9 +146,11 @@ def _load_functional_safety_inputs(cfg, sbom_graph):
         sbom_graph.metadata["source"] = source
 
     if cfg.coverage_json and qual_map:
-        sbom_graph.metadata["coverage"] = load_matrix(
+        cov_by_test, all_covered = load_coverage(
             cfg.coverage_json, qual_map, wanted_tests=set(traceability.tests)
         )
+        sbom_graph.metadata["coverage"] = cov_by_test
+        sbom_graph.metadata["all_covered"] = all_covered
 
 
 # main entry point for SBOM maker

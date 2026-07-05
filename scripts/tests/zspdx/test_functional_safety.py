@@ -22,7 +22,8 @@ import pytest
 ZEPHYR_BASE = os.environ.get("ZEPHYR_BASE", str(Path(__file__).parents[3]))
 sys.path.insert(0, os.path.join(ZEPHYR_BASE, "scripts", "pylib"))
 
-from zspdx.coverage import load_matrix  # noqa: E402
+from zspdx.adequacy import requirement_adequacy  # noqa: E402
+from zspdx.coverage import load_coverage  # noqa: E402
 from zspdx.requirements import _parse_sdoc  # noqa: E402
 from zspdx.sources import Source, content_byte_range, resolve_impl_symbols  # noqa: E402
 from zspdx.traceability import parse_traceability  # noqa: E402
@@ -123,7 +124,7 @@ def test_load_results_rollup_precedence(tmp_path):
 # ---- coverage matrix -------------------------------------------------------
 
 
-def test_load_matrix_joins_via_qual_map(tmp_path):
+def test_load_coverage_joins_and_unions(tmp_path):
     matrix = tmp_path / "test_matrix.json"
     # matrix keys are <scenario slug>_<test fn>, no ztest suite name
     matrix.write_text(json.dumps({
@@ -131,13 +132,43 @@ def test_load_matrix_joins_via_qual_map(tmp_path):
             "kernel_threads_test_thread_start":
                 {"kernel/thread.c": [800, 805], "../modules/x.c": [1]},
         },
-        "by_line": {},
+        "by_line": {"kernel/thread.c": {"800": ["a"], "805": ["a"], "812": ["b"]},
+                    "../modules/x.c": {"1": ["a"]}},
     }))
     qual_map = {"kernel.threads": {"test_thread_start": "threads__test_thread_start"}}
-    cov = load_matrix(str(matrix), qual_map, wanted_tests={"threads__test_thread_start"})
-    assert cov["threads__test_thread_start"]["kernel/thread.c"] == [800, 805]
-    # out-of-tree files are dropped
+    cov, all_covered = load_coverage(
+        str(matrix), qual_map, wanted_tests={"threads__test_thread_start"}
+    )
+    assert cov["threads__test_thread_start"]["kernel/thread.c"] == {800, 805}
+    # out-of-tree files are dropped from both indexes
     assert "../modules/x.c" not in cov["threads__test_thread_start"]
+    assert "../modules/x.c" not in all_covered
+    # all_covered is the whole-run union from by_line (includes other tests' 812)
+    assert all_covered["kernel/thread.c"] == {800, 805, 812}
+
+
+# ---- adequacy --------------------------------------------------------------
+
+
+def test_requirement_adequacy_verdicts():
+    from zspdx.sources import ImplBody
+    bodies = {"k_foo": [ImplBody("kernel/foo.c", 10, 20, "impl")]}
+    body_lines = {"kernel/foo.c": {12, 15}}
+
+    def adq(symbols, tests, cov_by_test, all_covered):
+        return requirement_adequacy(symbols, tests, bodies, cov_by_test, all_covered)
+
+    assert adq([], ["t"], {}, {}) == "no-impl"
+    # impl symbol is a macro with no resolvable body
+    assert adq(["k_macro"], ["t"], {"t": {}}, body_lines) == "unresolved"
+    # verifying test has no coverage data at all
+    assert adq(["k_foo"], ["t"], {}, body_lines) == "no-cov"
+    # nobody covers the body
+    assert adq(["k_foo"], ["t"], {"t": {"kernel/foo.c": {99}}}, {}) == "unattributed"
+    # the verifying test exercises the body
+    assert adq(["k_foo"], ["t"], {"t": {"kernel/foo.c": {12}}}, body_lines) == "true"
+    # only OTHER tests reach the body -> looks verified, isn't
+    assert adq(["k_foo"], ["t"], {"t": {"kernel/foo.c": {99}}}, body_lines) == "broken"
 
 
 # ---- requirements catalog --------------------------------------------------
@@ -169,7 +200,7 @@ _FOO_C = (
 
 
 def _make_tree(tmp_path):
-    (tmp_path / "kernel").mkdir()
+    (tmp_path / "kernel").mkdir(exist_ok=True)
     (tmp_path / "kernel" / "foo.c").write_text(_FOO_C)
 
 
@@ -200,10 +231,12 @@ def _fs_metadata(tmp_path, *, covered=True):
         {"id": "ZEP-SYRS-1", "caption": "Sys", "targets": {}},
         {
             "id": "ZEP-SRS-1-1", "caption": "Foo",
+            "attributes": {"status": "Draft", "rtype": "Functional"},
             "targets": {"trace": ["ZEP-SYRS-1"], "implemented_by": ["k_foo"],
                         "validated_by": ["suite__test_foo"]},
         },
-        {"id": "DESIGN-X", "caption": "Design", "targets": {"fulfills": ["ZEP-SRS-1-1"]}},
+        {"id": "DESIGN-X", "caption": "Design", "document": "kernel/foo",
+         "targets": {"fulfills": ["ZEP-SRS-1-1"]}},
         {"id": "suite__test_foo", "caption": "exercises foo",
          "targets": {"validates": ["ZEP-SRS-1-1"]}},
     ])
@@ -216,8 +249,12 @@ def _fs_metadata(tmp_path, *, covered=True):
             "rollup": "passing",
             "instances": [{"platform": "native_sim", "status": "passed"}],
         }},
-        # covered: the test's coverage reaches the impl body's lines (2..5)
-        "coverage": {"suite__test_foo": {"kernel/foo.c": [3, 4] if covered else [99]}},
+        "test_environment": {"zephyr_version": "v4.4.0-1-gdeadbeef",
+                             "options": {"platform": ["native_sim"], "coverage_tool": "lcov"}},
+        # covered: the verifying test's coverage reaches the impl body (lines 2..5);
+        # some test always does (all_covered), so uncovered -> broken, not unattributed
+        "coverage": {"suite__test_foo": {"kernel/foo.c": {3, 4} if covered else {99}}},
+        "all_covered": {"kernel/foo.c": {3, 4}},
         "source": None,
         "zephyr_base": str(tmp_path),
     }
@@ -243,7 +280,7 @@ def _safety_graph(tmp_path, *, covered=True, host_in_sbom=False):
         graph.documents["zephyr"] = document
 
     out = tmp_path / "out"
-    out.mkdir()
+    out.mkdir(exist_ok=True)
     assert SPDX3Serializer(graph, SPDX_VERSION_3_1).serialize(str(out))
     return json.loads((out / "safety.jsonld").read_text())["@graph"]
 
@@ -304,6 +341,50 @@ def test_fs_snippet_imports_source_file_via_external_map(tmp_path):
     assert snippet["software_snippetFromFile"] == imported_id
     # the imported file is not redefined in the safety document
     assert imported_id not in {f["spdxId"] for f in _by_type(graph, "software_File")}
+
+
+def _ext_ids(element):
+    return [x["identifier"] for x in element.get("externalIdentifier", [])]
+
+
+def test_fs_adequacy_true_and_broken(tmp_path):
+    # verifying test exercises the implementation -> true
+    graph = _safety_graph(tmp_path, covered=True)
+    req = next(e for e in _by_type(graph, "Requirement") if e["name"].startswith("ZEP-SRS-1-1"))
+    assert "adequacy:true" in _ext_ids(req)
+    assert "adequacy" in req.get("comment", "")
+
+    # only other tests reach the implementation -> broken (looks verified, isn't)
+    graph = _safety_graph(tmp_path, covered=False)
+    req = next(e for e in _by_type(graph, "Requirement") if e["name"].startswith("ZEP-SRS-1-1"))
+    assert "adequacy:broken" in _ext_ids(req)
+    # system requirements are not adjudicated for adequacy
+    syrs = next(e for e in _by_type(graph, "Requirement") if e["name"].startswith("ZEP-SYRS-1"))
+    assert not any(i.startswith("adequacy:") for i in _ext_ids(syrs))
+
+
+def test_fs_twister_tool_provenance_and_uses_tool(tmp_path):
+    graph = _safety_graph(tmp_path, covered=True)
+    tool = next(e for e in _by_type(graph, "Tool") if e.get("name") == "Twister")
+    ids = _ext_ids(tool)
+    assert "zephyr-version:v4.4.0-1-gdeadbeef" in ids
+    assert "coverage-tool:lcov" in ids
+    # the verification records the tool that ran it
+    verif = _by_type(graph, "functionalsafety_RequirementVerification")[0]
+    assert any(
+        e["relationshipType"] == "usesTool" and e["from"] == verif["spdxId"]
+        and tool["spdxId"] in e["to"]
+        for e in _by_type(graph, "Relationship")
+    )
+
+
+def test_fs_requirement_and_spec_metadata(tmp_path):
+    graph = _safety_graph(tmp_path, covered=True)
+    req = next(e for e in _by_type(graph, "Requirement") if e["name"].startswith("ZEP-SRS-1-1"))
+    assert "status:Draft" in _ext_ids(req)
+    assert "requirement-type:Functional" in _ext_ids(req)
+    spec = _by_type(graph, "Specification")[0]
+    assert "source-document:kernel/foo" in _ext_ids(spec)
 
 
 def test_fs_noop_without_traceability(tmp_path):

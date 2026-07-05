@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 
 from spdx_python_model import v3_0_1 as spdx
 
+from zspdx.adequacy import VERDICT_HELP, requirement_adequacy
 from zspdx.model import (
     NOASSERTION,
     ComponentPurpose,
@@ -1084,10 +1085,14 @@ class SPDX3Serializer:
         self._fs_results = metadata.get("test_results") or {}
         self._fs_impl_bodies = metadata.get("impl_bodies") or {}
         self._fs_coverage = metadata.get("coverage") or {}
+        self._fs_all_covered = metadata.get("all_covered") or {}
+        self._fs_environment = metadata.get("test_environment") or {}
         self._fs_source = metadata.get("source")
         self._fs_zephyr_base = metadata.get("zephyr_base") or ""
         self._fs_content_cache = {}
         self._fs_traceability = traceability
+        # The test runner is the provenance for every verification/result.
+        self._fs_twister_tool = self._fs_create_twister_tool()
 
         # 1) Requirements and the system -> software refinement chain.
         for uid in traceability.requirements:
@@ -1128,6 +1133,12 @@ class SPDX3Serializer:
                         snippets.append((body, snippet))
             if snippets:
                 req_impl_snippets[req.uid] = snippets
+            # "True traceability" adequacy: do the verifying tests actually exercise
+            # the implementing code? Only meaningful for software requirements (a
+            # system requirement is realized through the SRS that refine it), and
+            # only when coverage was supplied.
+            if self._fs_coverage and not req.is_system:
+                self._fs_set_adequacy(req, requirement)
 
         # 4) Verification: each test measured by twister becomes a
         #    RequirementVerification + pass/fail EvaluationResult, with the
@@ -1182,6 +1193,58 @@ class SPDX3Serializer:
         self.relationship_elements.append(rel)
         return self._fs_register(rel)
 
+    def _fs_create_twister_tool(self):
+        """Create the ``Tool`` element for the twister run that produced the results.
+
+        Records the run provenance (Zephyr version/commit, run date, platform,
+        toolchain and coverage tool) so every verification can point at it with
+        ``usesTool``. Returns ``None`` when no twister results were supplied.
+        """
+        if not self._fs_results:
+            return None
+        env = self._fs_environment
+        options = env.get("options", {})
+        platforms = options.get("platform") or sorted(
+            {
+                instance["platform"]
+                for record in self._fs_results.values()
+                for instance in record["instances"]
+                if instance["platform"]
+            }
+        )
+
+        tool = spdx.Tool()
+        tool._id = self._shorten_id(f"{self._fs_namespace}/tools/twister")
+        tool.creationInfo = self.creation_info._id
+        tool.name = "Twister"
+        tool.summary = "Zephyr twister test runner"
+        for id_type, value in (
+            ("zephyr-version", env.get("zephyr_version")),
+            ("commit-date", env.get("commit_date")),
+            ("run-date", env.get("run_date")),
+            ("toolchain", env.get("toolchain")),
+            ("host-os", env.get("os")),
+            ("platform", ", ".join(platforms) if platforms else None),
+            ("coverage-tool", options.get("coverage_tool")),
+        ):
+            if value:
+                tool.externalIdentifier.append(self._fs_other_identifier(f"{id_type}:{value}"))
+        return self._fs_register(tool)
+
+    def _fs_set_adequacy(self, req, requirement):
+        """Annotate a requirement with its "true traceability" adequacy verdict."""
+        verdict = requirement_adequacy(
+            req.implemented_by,
+            req.validated_by,
+            self._fs_impl_bodies,
+            self._fs_coverage,
+            self._fs_all_covered,
+        )
+        requirement.comment = f"True-traceability adequacy: {verdict} — {VERDICT_HELP[verdict]}"
+        requirement.externalIdentifier.append(
+            self._fs_other_identifier(f"adequacy:{verdict}", "True-traceability verdict")
+        )
+
     def _fs_get_requirement(self, uid: str):
         """Return the ``Requirement`` for ``uid``, creating it on first use.
 
@@ -1211,6 +1274,14 @@ class SPDX3Serializer:
         requirement.externalIdentifier.append(
             self._fs_other_identifier(uid, "StrictDoc requirement UID")
         )
+        if node.status:
+            requirement.externalIdentifier.append(
+                self._fs_other_identifier(f"status:{node.status}", "Requirement status")
+            )
+        if node.rtype:
+            requirement.externalIdentifier.append(
+                self._fs_other_identifier(f"requirement-type:{node.rtype}", "Requirement type")
+            )
 
         self.requirement_elements[uid] = requirement
         return self._fs_register(requirement)
@@ -1226,6 +1297,10 @@ class SPDX3Serializer:
             spec.summary = design.title
         spec.specType = spdx.SpecificationType.specification
         spec.externalIdentifier.append(self._fs_other_identifier(design.uid, "Design element id"))
+        if design.document:
+            spec.externalIdentifier.append(
+                self._fs_other_identifier(f"source-document:{design.document}", "Design document")
+            )
         self.specification_elements[design.uid] = spec
         self._fs_register(spec)
 
@@ -1365,6 +1440,10 @@ class SPDX3Serializer:
             self._fs_other_identifier(test.node_id, "ztest case")
         )
         self._fs_register(verification)
+        if self._fs_twister_tool is not None:
+            self._fs_relationship(
+                spdx.RelationshipType.usesTool, verification._id, [self._fs_twister_tool._id]
+            )
 
         for _uid, requirement in requirements:
             self._fs_relationship(

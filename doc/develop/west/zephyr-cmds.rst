@@ -236,10 +236,19 @@ The resulting elements are collected into a standalone :file:`safety.jsonld` doc
   user-mode ``z_vrfy_`` bodies of a syscall, or a ``static inline``), and each becomes a
   ``software_Snippet`` (a byte/line range in its ``.c`` source) linked from the requirement with
   ``implementedBy``;
-- each verifying test becomes a ``functionalsafety_RequirementVerification`` with a
-  ``functionalsafety_EvaluationResult`` carrying the twister result; when the coverage matrix shows
-  the test executed lines inside an implementation snippet, a ``functionalsafety_EvidenceRelationship``
-  records that snippet as the coverage evidence for the result.
+- each verifying test becomes a ``functionalsafety_RequirementVerification`` (``usesTool`` the
+  twister ``Tool``) with a ``functionalsafety_EvaluationResult`` carrying the twister result; when
+  the coverage matrix shows the test executed lines inside an implementation snippet, a
+  ``functionalsafety_EvidenceRelationship`` records that snippet as the coverage evidence.
+
+Each software requirement is also annotated with a **true-traceability adequacy** verdict — do its
+*own* verifying tests actually execute its implementation? ``true`` (all resolved implementations
+exercised), ``partial``, ``broken`` (the implementation is reached only by *other* tests, so the
+requirement looks verified but is not), ``unattributed`` (no test reaches it), ``unresolved`` (the
+implementation is a macro/inline), ``no-cov`` or ``no-impl``. The verdict is recorded as an
+``adequacy:<verdict>`` external identifier and a comment on the ``Requirement``. The twister run's
+provenance (Zephyr version/commit, run date, platform, toolchain and coverage tool) is recorded on
+the twister ``Tool``, and each requirement carries its status, type and source document.
 
 Because coverage line numbers are only meaningful against the sources of the build that produced
 them, implementation bodies are resolved against the commit recorded in the twister run's
