@@ -54,6 +54,25 @@ class ZephyrSpdx(WestCommand):
         parser.add_argument(
             '--include-sdk', action="store_true", help="also generate SPDX document for SDK"
         )
+        parser.add_argument(
+            '--traceability',
+            help="path to the documentation traceability.json; enables the SPDX 3.1 "
+            "FunctionalSafety profile (requirements, coverage snippets, verifications)",
+        )
+        parser.add_argument(
+            '--twister-json',
+            help="path to a twister.json (or its output directory) providing the "
+            "pass/fail results for requirement verifications",
+        )
+        parser.add_argument(
+            '--coverage',
+            help="path to a twister test_matrix.json providing per-test line coverage, "
+            "used to prove a verifying test exercises the requirement's implementation",
+        )
+        parser.add_argument(
+            '--requirements-dir',
+            help="path to the reqmgmt StrictDoc module (for full requirement statements)",
+        )
 
         return parser
 
@@ -72,6 +91,10 @@ class ZephyrSpdx(WestCommand):
         self.dbg("  --spdx-version is", args.spdx_version)
         self.dbg("  --analyze-includes is", args.analyze_includes)
         self.dbg("  --include-sdk is", args.include_sdk)
+        self.dbg("  --traceability is", args.traceability)
+        self.dbg("  --twister-json is", args.twister_json)
+        self.dbg("  --coverage is", args.coverage)
+        self.dbg("  --requirements-dir is", args.requirements_dir)
 
         if args.init:
             self.do_run_init(args)
@@ -122,6 +145,14 @@ class ZephyrSpdx(WestCommand):
             cfg.analyze_includes = True
         if args.include_sdk:
             cfg.include_sdk = True
+        if args.traceability:
+            cfg.traceability_json = args.traceability
+        if args.twister_json:
+            cfg.twister_json = args.twister_json
+        if args.coverage:
+            cfg.coverage_json = args.coverage
+        if args.requirements_dir:
+            cfg.requirements_dir = args.requirements_dir
 
         # make sure SPDX directory exists, or create it if it doesn't
         if os.path.exists(cfg.spdx_dir):
