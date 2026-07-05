@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from packaging.version import Version
 
 from zspdx.scanner import ScannerConfig, scan_sbom_graph
-from zspdx.version import SPDX_VERSION_2_3
+from zspdx.version import SPDX_VERSION_2_3, SPDX_VERSION_3_1
 from zspdx.walker import Walker, WalkerConfig
 
 _logger = logging.getLogger(__name__)
@@ -36,6 +36,19 @@ class SBOMConfig:
 
     # should also add an SPDX document for the SDK?
     include_sdk: bool = False
+
+    # ---- SPDX 3.1 FunctionalSafety inputs (all optional) --------------------
+    # Documentation traceability graph (doc/_build/html/traceability.json).
+    traceability_json: str = ""
+
+    # twister.json (or its output dir) providing test execution results.
+    twister_json: str = ""
+
+    # test_matrix.json providing per-test line coverage (true traceability).
+    coverage_json: str = ""
+
+    # reqmgmt StrictDoc module directory (full requirement statements).
+    requirements_dir: str = ""
 
 
 # create Cmake file-based API directories and query file
@@ -72,6 +85,71 @@ def setup_cmake_query(build_dir):
     return True
 
 
+def _zephyr_base(build_dir: str) -> str:
+    """Best-effort ZEPHYR_BASE: the environment, else the build's CMake cache."""
+    from zspdx.requirements import _read_cache_vars
+
+    base = os.environ.get("ZEPHYR_BASE", "")
+    if not base:
+        base = _read_cache_vars(build_dir, {"ZEPHYR_BASE"}).get("ZEPHYR_BASE", "")
+    return base
+
+
+def _load_functional_safety_inputs(cfg, sbom_graph):
+    """Load the traceability / results / coverage / catalog inputs.
+
+    Everything is keyed off the traceability graph: without it there is no
+    FunctionalSafety data to emit, so this is a no-op (and the serializer falls
+    back to a plain SBOM). The loaded objects are stashed on
+    ``sbom_graph.metadata`` for the SPDX 3.1 serializer to consume.
+
+    Coverage answers the "true traceability" question — does a requirement's
+    verifying tests actually exercise its implementing code? So each requirement's
+    implementing symbols are resolved to their function bodies (against the
+    sources of the coverage build's commit), and the per-test line coverage is
+    indexed for the serializer to intersect against.
+    """
+    from zspdx.coverage import load_matrix
+    from zspdx.requirements import load_requirements_catalog
+    from zspdx.sources import Source, resolve_impl_symbols
+    from zspdx.traceability import load_traceability
+    from zspdx.twister import load_results
+
+    traceability_path = cfg.traceability_json
+    if not traceability_path:
+        return
+    traceability = load_traceability(traceability_path)
+    if not traceability:
+        return
+    sbom_graph.metadata["traceability"] = traceability
+
+    zephyr_base = _zephyr_base(cfg.build_dir)
+    sbom_graph.metadata["zephyr_base"] = zephyr_base
+
+    sbom_graph.metadata["requirements_catalog"] = load_requirements_catalog(
+        build_dir=cfg.build_dir, explicit=cfg.requirements_dir
+    )
+
+    env, results, qual_map = ({}, {}, {})
+    if cfg.twister_json:
+        env, results, qual_map = load_results(cfg.twister_json)
+        sbom_graph.metadata["test_results"] = results
+
+    # Resolve implementing symbols to their bodies against the coverage build's
+    # sources, and index the coverage of the graph's tests to intersect them.
+    if zephyr_base:
+        source = Source(zephyr_base, env.get("zephyr_version", ""))
+        sbom_graph.metadata["impl_bodies"] = resolve_impl_symbols(
+            source, traceability.implementation_symbols()
+        )
+        sbom_graph.metadata["source"] = source
+
+    if cfg.coverage_json and qual_map:
+        sbom_graph.metadata["coverage"] = load_matrix(
+            cfg.coverage_json, qual_map, wanted_tests=set(traceability.tests)
+        )
+
+
 # main entry point for SBOM maker
 # Arguments:
 #   1) cfg: SBOMConfig
@@ -104,6 +182,10 @@ def make_spdx(cfg):
 
     # scan SBOM graph
     scan_sbom_graph(scanner_cfg, sbom_graph)
+
+    # load the SPDX 3.1 FunctionalSafety inputs, if requested
+    if cfg.spdx_version >= SPDX_VERSION_3_1:
+        _load_functional_safety_inputs(cfg, sbom_graph)
 
     # route to appropriate serializer based on version
     if cfg.spdx_version.major == 2:
