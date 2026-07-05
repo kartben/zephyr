@@ -1257,7 +1257,10 @@ class SPDX3Serializer:
         slug = normalize_spdx_name(f"{fn_name}-{body.start}-{body.end}")
         snippet._id = self._shorten_id(f"{self._fs_namespace}/snippets/{slug}")
         snippet.creationInfo = self.creation_info._id
-        snippet.name = fn_name
+        # Name the snippet for the function and its exact location so the covered
+        # code is legible (and greppable) without having to resolve snippetFromFile.
+        snippet.name = f"{fn_name} @ {body.file}:{body.start}-{body.end}"
+        snippet.description = f"{body.file}:{body.start}-{body.end}"
         snippet.software_snippetFromFile = host._id
 
         line_range = spdx.PositiveIntegerRange()
