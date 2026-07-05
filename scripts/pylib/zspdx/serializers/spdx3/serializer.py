@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
 # SPDX-License-Identifier: Apache-2.0
 
+import hashlib
 import logging
 import os
 import re
@@ -26,7 +27,10 @@ from zspdx.serializers.helpers import (
     get_standard_licenses,
     normalize_spdx_name,
 )
+from zspdx.sources import content_byte_range
 from zspdx.spdxids import get_unique_file_id
+from zspdx.twister import verdict_from_rollup
+from zspdx.version import SPDX_VERSION_3_1
 
 _logger = logging.getLogger(__name__)
 
@@ -52,7 +56,25 @@ class SPDX3Serializer:
 
     def __init__(self, sbom_graph: SBOMGraph, spdx_version=None):
         self.sbom_data = sbom_graph
-        self.spdx_version = spdx_version  # Not used for SPDX 3.0, but kept for API consistency
+        self.spdx_version = spdx_version
+
+        # Select the SPDX 3.x Python bindings matching the requested spec version.
+        # v3.1 is a superset of v3.0.1 with identical public class names, so the code
+        # below stays version-agnostic; only the binding module (which drives the
+        # emitted JSON-LD @context and specVersion) and the availability of the newer
+        # Requirement / FunctionalSafety classes differ. The module-global ``spdx`` is
+        # rebound so every method picks up the selected binding.
+        self.is_31 = spdx_version is not None and spdx_version >= SPDX_VERSION_3_1
+        global spdx
+        if self.is_31:
+            from spdx_python_model import v3_1 as _binding
+
+            self.spec_version = "3.1.0"
+        else:
+            from spdx_python_model import v3_0_1 as _binding
+
+            self.spec_version = "3.0.1"
+        spdx = _binding
 
         # Track SPDX 3.0 elements
         self.elements = []  # All SPDX3 elements (packages, files, relationships, etc.)
@@ -84,6 +106,17 @@ class SPDX3Serializer:
         # Used to reference cross-document elements via ExternalMap instead of
         # re-serializing them in every document that mentions them.
         self._element_home = None
+
+        # SPDX 3.1 FunctionalSafety state, populated by _create_functional_safety().
+        self.requirement_elements = {}  # requirement UID -> Requirement
+        self.specification_elements = {}  # design UID -> Specification
+        self.snippet_elements = {}  # (path, start, end) -> software_Snippet
+        self.synth_file_elements = {}  # abs path -> safety-doc-owned software_File
+        # Every element that belongs in the standalone "safety" document.
+        self.fs_elements = []
+        # Source-File ids referenced by snippets but defined in another document;
+        # declared via ExternalMap in the safety document.
+        self.fs_import_ids = set()
 
         # Namespace prefixes for shortened IDs
         self.namespace_prefixes = {}
@@ -164,7 +197,7 @@ class SPDX3Serializer:
             self.creation_info.createdBy.append(self.creator_agent._id)
             # createdUsing references the Tool that created this SPDX document (optional)
             self.creation_info.createdUsing.append(self.tool._id)
-            self.creation_info.specVersion = "3.0.1"
+            self.creation_info.specVersion = self.spec_version
             self.elements.append(self.creation_info)
 
             # Now set the tool's and agent's creationInfo
@@ -1025,8 +1058,412 @@ class SPDX3Serializer:
         element_id = getattr(element, '_id', None)
         return bool(element_id) and element_id != document_id and element_id in element_ids
 
+    # ---- SPDX 3.1 FunctionalSafety profile -------------------------------------
+
+    def _create_functional_safety(self):
+        """Emit the SPDX 3.1 FunctionalSafety graph from the traceability inputs.
+
+        Builds ``Requirement`` elements and their refinement chain, ``Specification``
+        elements for design artifacts, implementation ``software_Snippet``s (the
+        ``z_impl_``/``z_vrfy_`` function bodies of each requirement's implementing
+        symbols), and — from a twister run and its coverage matrix — test
+        verifications whose evidence is the *actual* line coverage of the
+        implementation. All of these are gathered into a standalone "safety"
+        document by :meth:`_create_safety_document`.
+
+        No-op unless SPDX 3.1 output was requested and a traceability graph was
+        loaded into ``sbom_data.metadata['traceability']``.
+        """
+        if not self.is_31:
+            return
+        metadata = self.sbom_data.metadata
+        traceability = metadata.get("traceability")
+        if not traceability:
+            return
+        self._fs_catalog = metadata.get("requirements_catalog") or {}
+        self._fs_results = metadata.get("test_results") or {}
+        self._fs_impl_bodies = metadata.get("impl_bodies") or {}
+        self._fs_coverage = metadata.get("coverage") or {}
+        self._fs_source = metadata.get("source")
+        self._fs_zephyr_base = metadata.get("zephyr_base") or ""
+        self._fs_content_cache = {}
+        self._fs_traceability = traceability
+
+        # 1) Requirements and the system -> software refinement chain.
+        for uid in traceability.requirements:
+            self._fs_get_requirement(uid)
+        for req in traceability.requirements.values():
+            requirement = self.requirement_elements.get(req.uid)
+            if requirement is None:
+                continue
+            for parent_uid in req.traces_to:
+                parent = self._fs_get_requirement(parent_uid)
+                if parent is not None:
+                    # The parent (system) requirement is refined to the detail of
+                    # this (software) requirement.
+                    self._fs_relationship(
+                        spdx.RelationshipType.tracedToDetail, parent._id, [requirement._id]
+                    )
+
+        # 2) Design descriptions as Specifications that carry requirements.
+        for design in traceability.designs.values():
+            self._fs_specification(design)
+
+        # 3) Implementation: each implementing symbol's resolved bodies become
+        #    snippets linked from the requirement. Remember them per requirement so
+        #    coverage can adjudicate which the verifying tests actually exercise.
+        req_impl_snippets: dict[str, list] = {}
+        for req in traceability.requirements.values():
+            requirement = self.requirement_elements.get(req.uid)
+            if requirement is None:
+                continue
+            snippets = []
+            for symbol in req.implemented_by:
+                for body in self._fs_impl_bodies.get(symbol, []):
+                    snippet = self._fs_body_snippet(symbol, body)
+                    if snippet is not None:
+                        self._fs_relationship(
+                            spdx.RelationshipType.implementedBy, requirement._id, [snippet._id]
+                        )
+                        snippets.append((body, snippet))
+            if snippets:
+                req_impl_snippets[req.uid] = snippets
+
+        # 4) Verification: each test measured by twister becomes a
+        #    RequirementVerification + pass/fail EvaluationResult, with the
+        #    implementation snippets its coverage actually exercised as evidence.
+        for test in traceability.tests.values():
+            record = self._fs_results.get(test.node_id)
+            if record is None:
+                continue
+            requirements = [
+                (uid, requirement)
+                for uid in test.validates
+                if (requirement := self.requirement_elements.get(uid)) is not None
+            ]
+            if requirements:
+                self._fs_test_verification(test, record, requirements, req_impl_snippets)
+
+    # ---- FunctionalSafety element builders -------------------------------------
+
+    @property
+    def _fs_namespace(self) -> str:
+        return self.sbom_data.namespace_prefix.rstrip("/")
+
+    def _fs_register(self, element):
+        """Register an element for serialization in the safety document."""
+        self.elements.append(element)
+        self.fs_elements.append(element)
+        return element
+
+    def _fs_other_identifier(self, value: str, comment: str = ""):
+        """Build an ``other``-type ExternalIdentifier carrying ``value``."""
+        ext_id = spdx.ExternalIdentifier()
+        ext_id.externalIdentifierType = spdx.ExternalIdentifierType.other
+        ext_id.identifier = value
+        if comment:
+            ext_id.comment = comment
+        return ext_id
+
+    def _fs_relationship(self, rel_type, from_id: str, to_ids: list[str]):
+        """Create a plain Relationship owned by the safety document.
+
+        Its ``from`` endpoint is a FunctionalSafety element (requirement,
+        specification, verification, ...), which no build document owns, so the
+        standard per-document collection skips it and it is serialized only in the
+        safety document.
+        """
+        rel = spdx.Relationship()
+        rel._id = self._generate_relationship_id(len(self.relationship_elements))
+        rel.relationshipType = rel_type
+        rel.from_ = from_id
+        rel.to = list(to_ids)
+        rel.creationInfo = self.creation_info._id
+        self.relationship_elements.append(rel)
+        return self._fs_register(rel)
+
+    def _fs_get_requirement(self, uid: str):
+        """Return the ``Requirement`` for ``uid``, creating it on first use.
+
+        Returns ``None`` when ``uid`` is not a node in the traceability graph (a
+        dangling parent reference), so no empty requirement is emitted.
+        """
+        if uid in self.requirement_elements:
+            return self.requirement_elements[uid]
+        node = self._fs_traceability.requirements.get(uid)
+        if node is None:
+            return None
+
+        info = self._fs_catalog.get(uid)
+        title = node.title or (info.title if info else "")
+        statement = (info.statement if info else "") or title or uid
+
+        requirement = spdx.Requirement()
+        requirement._id = self._shorten_id(f"{self._fs_namespace}/requirements/{uid}")
+        requirement.creationInfo = self.creation_info._id
+        requirement.name = f"{uid}: {title}" if title else uid
+        if title:
+            requirement.summary = title
+        # requirementStatement is mandatory; fall back to the title, then the UID.
+        requirement.requirementStatement = statement
+        if info and info.rationale:
+            requirement.requirementRationale = info.rationale
+        requirement.externalIdentifier.append(
+            self._fs_other_identifier(uid, "StrictDoc requirement UID")
+        )
+
+        self.requirement_elements[uid] = requirement
+        return self._fs_register(requirement)
+
+    def _fs_specification(self, design):
+        """Create a ``Specification`` for a design node and link its requirements."""
+        spec = spdx.Specification()
+        slug = normalize_spdx_name(design.uid)
+        spec._id = self._shorten_id(f"{self._fs_namespace}/specifications/{slug}")
+        spec.creationInfo = self.creation_info._id
+        spec.name = f"{design.uid}: {design.title}" if design.title else design.uid
+        if design.title:
+            spec.summary = design.title
+        spec.specType = spdx.SpecificationType.specification
+        spec.externalIdentifier.append(self._fs_other_identifier(design.uid, "Design element id"))
+        self.specification_elements[design.uid] = spec
+        self._fs_register(spec)
+
+        for req_uid in design.fulfills:
+            requirement = self._fs_get_requirement(req_uid)
+            if requirement is not None:
+                self._fs_relationship(
+                    spdx.RelationshipType.hasRequirement, spec._id, [requirement._id]
+                )
+        return spec
+
+    def _fs_body_snippet(self, symbol: str, body):
+        """Get or create a ``software_Snippet`` for a resolved implementation body.
+
+        ``body`` is a :class:`zspdx.sources.ImplBody` (tree-relative file, inclusive
+        line span, variant). The snippet is named for the actual function
+        (``z_impl_``/``z_vrfy_`` prefixed) and carved from that file, referenced via
+        ExternalMap when it is part of the SBOM.
+        """
+        key = (body.file, body.start, body.end)
+        if key in self.snippet_elements:
+            return self.snippet_elements[key]
+        host = self._fs_host_file(body.file)
+        if host is None:
+            return None
+
+        fn_name = {"impl": f"z_impl_{symbol}", "vrfy": f"z_vrfy_{symbol}"}.get(body.variant, symbol)
+        snippet = spdx.software_Snippet()
+        slug = normalize_spdx_name(f"{fn_name}-{body.start}-{body.end}")
+        snippet._id = self._shorten_id(f"{self._fs_namespace}/snippets/{slug}")
+        snippet.creationInfo = self.creation_info._id
+        snippet.name = fn_name
+        snippet.software_snippetFromFile = host._id
+
+        line_range = spdx.PositiveIntegerRange()
+        line_range.beginIntegerRange = body.start
+        line_range.endIntegerRange = body.end
+        snippet.software_lineRange = line_range
+
+        content = self._fs_file_content(body.file)
+        if content is not None:
+            byte_span = content_byte_range(content, body.start, body.end)
+            if byte_span:
+                byte_range = spdx.PositiveIntegerRange()
+                byte_range.beginIntegerRange, byte_range.endIntegerRange = byte_span
+                snippet.software_byteRange = byte_range
+
+        self.snippet_elements[key] = snippet
+        return self._fs_register(snippet)
+
+    def _fs_file_content(self, rel: str) -> str | None:
+        """Cached text of a tree-relative file, read at the coverage build's ref."""
+        if rel not in self._fs_content_cache:
+            if self._fs_source is not None:
+                self._fs_content_cache[rel] = self._fs_source.read(rel)
+            else:
+                path = os.path.join(self._fs_zephyr_base, rel)
+                try:
+                    with open(path, encoding="utf-8", errors="replace") as f:
+                        self._fs_content_cache[rel] = f.read()
+                except OSError:
+                    self._fs_content_cache[rel] = None
+        return self._fs_content_cache[rel]
+
+    def _fs_host_file(self, rel: str):
+        """Return the ``software_File`` a snippet is carved from.
+
+        Prefers a file already defined by the SBOM (referenced across documents via
+        ExternalMap, never duplicated); otherwise synthesizes a file owned by the
+        safety document (e.g. implementation sources absent from an application
+        build). ``rel`` is a tree-relative path.
+        """
+        abs_path = os.path.normpath(os.path.join(self._fs_zephyr_base, rel))
+        existing = self.file_elements.get(abs_path)
+        if existing is not None:
+            self.fs_import_ids.add(existing._id)
+            return existing
+
+        if rel in self.synth_file_elements:
+            return self.synth_file_elements[rel]
+        content = self._fs_file_content(rel)
+        if content is None:
+            return None
+
+        file_element = spdx.software_File()
+        file_element._id = self._generate_file_id(rel)
+        file_element.name = self._fs_workspace_name(rel)
+        file_element.creationInfo = self.creation_info._id
+        file_element.software_fileKind = spdx.software_FileKindType.file
+        file_element.software_primaryPurpose = spdx.software_SoftwarePurpose.source
+        hash_obj = spdx.Hash()
+        hash_obj.algorithm = spdx.HashAlgorithm.sha1
+        hash_obj.hashValue = hashlib.sha1(content.encode()).hexdigest()
+        file_element.verifiedUsing.append(hash_obj)
+
+        self.synth_file_elements[rel] = file_element
+        return self._fs_register(file_element)
+
+    def _fs_workspace_name(self, rel: str) -> str:
+        """A workspace-relative display name for a synthesized tree file."""
+        if self._fs_zephyr_base:
+            return f"{os.path.basename(self._fs_zephyr_base.rstrip('/'))}/{rel}"
+        return rel
+
+    def _fs_verdict_result_type(self, verdict: str):
+        """Map a normalised verdict to a FunctionalSafety result type."""
+        return {
+            "pass": spdx.functionalsafety_EvaluationResultType.pass_,
+            "fail": spdx.functionalsafety_EvaluationResultType.fail,
+            "inconclusive": spdx.functionalsafety_EvaluationResultType.inconclusive,
+        }[verdict]
+
+    def _fs_test_verification(self, test, record, requirements, req_impl_snippets):
+        """Emit the verification graph for one twister-measured test.
+
+        Produces a ``functionalsafety_RequirementVerification`` (method ``test``)
+        linked from every requirement it validates, a pass/fail
+        ``functionalsafety_EvaluationResult`` from the run's rollup, and — when the
+        coverage matrix shows the test executed the implementation — a
+        ``functionalsafety_EvidenceRelationship`` to the implementation snippets it
+        actually exercised.
+        """
+        slug = normalize_spdx_name(test.node_id)
+        verification = spdx.functionalsafety_RequirementVerification()
+        verification._id = self._shorten_id(f"{self._fs_namespace}/verifications/{slug}")
+        verification.creationInfo = self.creation_info._id
+        verification.functionalsafety_verificationMethod.append(
+            spdx.functionalsafety_VerificationType.test
+        )
+        verification.name = f"Verification of {test.node_id}"
+        if test.title:
+            verification.summary = test.title
+        verification.externalIdentifier.append(
+            self._fs_other_identifier(test.node_id, "ztest case")
+        )
+        self._fs_register(verification)
+
+        for _uid, requirement in requirements:
+            self._fs_relationship(
+                spdx.RelationshipType.verifiedBy, requirement._id, [verification._id]
+            )
+
+        verdict = verdict_from_rollup(record.get("rollup", ""))
+        result = spdx.functionalsafety_EvaluationResult()
+        result._id = self._shorten_id(f"{self._fs_namespace}/evaluations/{slug}")
+        result.creationInfo = self.creation_info._id
+        result.functionalsafety_evaluation = self._fs_verdict_result_type(verdict)
+        result.functionalsafety_evaluationBasedOn = verification._id
+        platforms = sorted({i["platform"] for i in record.get("instances", []) if i["platform"]})
+        result.functionalsafety_evaluationRationale = (
+            f"twister rollup '{record.get('rollup', 'no-run')}' over "
+            f"{len(record.get('instances', []))} instance(s) on "
+            f"{', '.join(platforms) or 'unknown platform'}"
+        )
+        result.name = f"Evaluation of {test.node_id}"
+        self._fs_register(result)
+
+        # Coverage-backed evidence: the implementation snippets of this test's
+        # requirements whose line span its coverage actually reaches.
+        test_coverage = self._fs_coverage.get(test.node_id, {})
+        covered = []
+        seen = set()
+        for uid, _requirement in requirements:
+            for body, snippet in req_impl_snippets.get(uid, []):
+                if snippet._id in seen:
+                    continue
+                lines = test_coverage.get(body.file)
+                if lines and any(body.start <= ln <= body.end for ln in lines):
+                    covered.append(snippet)
+                    seen.add(snippet._id)
+        if covered:
+            evidence = spdx.functionalsafety_EvidenceRelationship()
+            evidence._id = self._generate_relationship_id(len(self.relationship_elements))
+            evidence.relationshipType = spdx.RelationshipType.hasEvidence
+            evidence.from_ = result._id
+            evidence.to = [snippet._id for snippet in covered]
+            evidence.functionalsafety_evidenceCategory.append(
+                spdx.functionalsafety_EvidenceType.recording
+            )
+            evidence.creationInfo = self.creation_info._id
+            self.relationship_elements.append(evidence)
+            self._fs_register(evidence)
+
+    def _create_safety_document(self):
+        """Create the standalone document that owns the FunctionalSafety elements.
+
+        The requirement/verification/snippet graph is not owned by any build
+        component, so it cannot attach to the app, zephyr or build documents; it
+        gets its own SPDX document instead. Source files referenced by snippets are
+        declared via ExternalMap rather than duplicated. No-op unless FS elements
+        were emitted.
+
+        The FunctionalSafety profile identifier is not representable in the
+        installed spdx_python_model bindings, so conformance is declared as
+        ``core`` + ``software`` while still emitting the ``functionalsafety_*``
+        elements the profile defines.
+        """
+        if not self.is_31 or not self.fs_elements:
+            return
+
+        document = spdx.SpdxDocument()
+        document._id = self._shorten_id(f"{self._fs_namespace}/documents/safety")
+        for uri, prefix in self.namespace_prefixes.items():
+            ns_map = spdx.NamespaceMap()
+            ns_map.prefix = prefix
+            ns_map.namespace = uri
+            document.namespaceMap.append(ns_map)
+        document.name = "Zephyr Functional Safety"
+        document.creationInfo = self.creation_info
+        data_license = self._create_license_expression("CC0-1.0")
+        if data_license:
+            document.dataLicense = data_license._id
+        document.profileConformance.append(spdx.ProfileIdentifierType.core)
+        document.profileConformance.append(spdx.ProfileIdentifierType.software)
+
+        # The data-license expression and creator agent are referenced by the
+        # document/its creation info, so they must be serialized alongside it.
+        extras = [element for element in (data_license, self.creator_agent) if element is not None]
+        seen = set()
+        for element in [*self.fs_elements, *extras]:
+            element_id = getattr(element, "_id", None)
+            if element_id and element_id not in seen:
+                document.element.append(element)
+                seen.add(element_id)
+
+        # Reference source files carved by snippets via ExternalMap.
+        self._add_external_maps(document, self.fs_import_ids)
+
+        # The system-level requirements are the roots of the refinement tree.
+        for uid, requirement in self.requirement_elements.items():
+            node = self._fs_traceability.requirements.get(uid)
+            if node is not None and node.is_system:
+                document.rootElement.append(requirement)
+
+        self.documents["safety"] = document
+
     def serialize(self, output_dir: str) -> bool:
-        """Serialize SBOMData to SPDX 3.0 format (JSON-LD)."""
+        """Serialize SBOMData to SPDX 3.x format (JSON-LD)."""
         try:
             if not self._validate_inputs(output_dir):
                 return False
@@ -1038,10 +1475,16 @@ class SPDX3Serializer:
             self._create_contains_relationships()
             self._create_build_relationships()
             self._create_license_relationships()
+            # SPDX 3.1 FunctionalSafety profile: requirements, coverage snippets and
+            # test verifications imported from the traceability graph. No-op for 3.0.
+            self._create_functional_safety()
             self._create_documents()
+            # The FunctionalSafety graph is not owned by any build component, so it
+            # lives in its own document created after the standard ones.
+            self._create_safety_document()
             self._write_documents(output_dir)
 
-            _logger.info(f"SPDX 3.0 documents written to {output_dir}")
+            _logger.info(f"SPDX {self.spec_version} documents written to {output_dir}")
             return True
 
         except Exception:
