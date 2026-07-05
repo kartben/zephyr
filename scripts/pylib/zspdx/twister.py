@@ -25,7 +25,7 @@ import logging
 import os
 from dataclasses import dataclass, field
 
-from .requirements import get_requirement_tags, should_scan_for_requirements
+from .requirements import get_verifies_blocks, should_scan_for_requirements
 
 _logger = logging.getLogger(__name__)
 
@@ -37,7 +37,12 @@ _FAIL_STATUSES = frozenset({"failed", "blocked", "error"})
 
 @dataclass
 class VerificationRecord:
-    """A test suite from a twister run and the requirements it verifies."""
+    """A test suite from a twister run and the requirements it verifies.
+
+    ``test_items`` holds one entry per ``@verifies`` doc block found in the
+    suite's sources: ``{"uids": [...], "brief": str, "details": str}``. ``uids``
+    is the flattened set across all items, kept for convenience.
+    """
 
     uids: list[str]
     suite_name: str
@@ -46,6 +51,7 @@ class VerificationRecord:
     status: str
     run_id: str = ""
     source_files: list[str] = field(default_factory=list)
+    test_items: list[dict] = field(default_factory=list)
 
 
 def status_verdict(status: str) -> str:
@@ -58,10 +64,11 @@ def status_verdict(status: str) -> str:
     return "inconclusive"
 
 
-def _scan_suite_verifies(suite_dir: str) -> tuple[list[str], list[str]]:
-    """Collect ``@verifies`` UIDs and the files carrying them under a suite dir."""
+def _scan_suite_verifies(suite_dir: str) -> tuple[list[str], list[str], list[dict]]:
+    """Collect ``@verifies`` blocks and the files carrying them under a suite dir."""
     uids: set[str] = set()
     files: list[str] = []
+    items: list[dict] = []
     for root, dirs, filenames in os.walk(suite_dir):
         # Never descend into build output that may sit under a suite directory.
         dirs[:] = [d for d in dirs if d != "build" and not d.startswith("twister-out")]
@@ -69,10 +76,12 @@ def _scan_suite_verifies(suite_dir: str) -> tuple[list[str], list[str]]:
             path = os.path.join(root, filename)
             if not should_scan_for_requirements(path):
                 continue
-            if verified := get_requirement_tags(path)["verifies"]:
-                uids.update(verified)
+            if blocks := get_verifies_blocks(path):
                 files.append(path)
-    return sorted(uids), sorted(files)
+                for block in blocks:
+                    uids.update(block["uids"])
+                    items.append(block)
+    return sorted(uids), sorted(files), items
 
 
 def load_twister_verifications(twister_out_dir: str, zephyr_base: str) -> list[VerificationRecord]:
@@ -107,7 +116,7 @@ def load_twister_verifications(twister_out_dir: str, zephyr_base: str) -> list[V
         if not os.path.isdir(suite_dir):
             _logger.debug("twister: suite source dir %s not found; skipping", suite_dir)
             continue
-        uids, files = _scan_suite_verifies(suite_dir)
+        uids, files, items = _scan_suite_verifies(suite_dir)
         if not uids:
             continue
         records.append(
@@ -119,6 +128,7 @@ def load_twister_verifications(twister_out_dir: str, zephyr_base: str) -> list[V
                 status=(suite.get("status") or "").lower(),
                 run_id=suite.get("run_id", ""),
                 source_files=files,
+                test_items=items,
             )
         )
 
