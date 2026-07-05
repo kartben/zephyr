@@ -91,7 +91,9 @@ select another version with the ``--spdx-version`` option.
 
 SPDX 2.3 is a superset of 2.2 and adds fields such as ``PrimaryPackagePurpose``. Pick SPDX 2.x for
 compatibility with tooling that does not yet understand SPDX 3.0; pick SPDX 3.0 for the richer,
-machine-readable build provenance described in :ref:`west-spdx-build-profile`.
+machine-readable build provenance described in :ref:`west-spdx-build-profile`. SPDX 3.1 extends 3.0
+with the requirement-traceability and :ref:`Functional Safety data <west-spdx-functional-safety>`
+described below.
 
 Generating SPDX documents
 -------------------------
@@ -203,6 +205,48 @@ Each intermediate target, such as a static library, also gets its own sub-build 
 sources, tools and compile flags that produced its artifact, so any output can be traced back to how
 it was built.
 
+.. _west-spdx-functional-safety:
+
+Functional Safety profile (SPDX 3.1)
+------------------------------------
+
+When generating SPDX 3.1 documents, ``west spdx`` can additionally populate the `SPDX 3.1 Functional
+Safety profile`_ from the documentation traceability graph, recording *which requirements the code
+implements, which tests verify them, and whether those tests actually exercise the implementing
+code*. This is driven by artifacts produced by the documentation and test builds, passed with these
+options:
+
+- ``--traceability PATH``: the :file:`traceability.json` emitted by the documentation build
+  (:file:`doc/_build/html/traceability.json`). This is the primary input and enables the profile.
+- ``--twister-json PATH``: a :file:`twister.json` report, used to attach a pass/fail result to each
+  requirement verification. Only tests actually measured by that run are emitted.
+- ``--coverage PATH``: a twister :file:`test_matrix.json` (per-test line coverage). Used to prove
+  that a verifying test really exercises a requirement's implementation, rather than merely being
+  linked to it.
+- ``--requirements-dir DIR``: the StrictDoc ``reqmgmt`` module, used to fill in the full requirement
+  statement text (auto-detected relative to ``ZEPHYR_BASE`` when omitted).
+
+The resulting elements are collected into a standalone :file:`safety.jsonld` document:
+
+- each requirement becomes a ``Requirement``, linked to the higher-level requirements it refines with
+  ``tracedToDetail``;
+- each design description becomes a ``Specification`` that ``hasRequirement`` the requirements it
+  realizes;
+- each implementing symbol is resolved to its function bodies (the supervisor ``z_impl_`` and
+  user-mode ``z_vrfy_`` bodies of a syscall, or a ``static inline``), and each becomes a
+  ``software_Snippet`` (a byte/line range in its ``.c`` source) linked from the requirement with
+  ``implementedBy``;
+- each verifying test becomes a ``functionalsafety_RequirementVerification`` with a
+  ``functionalsafety_EvaluationResult`` carrying the twister result; when the coverage matrix shows
+  the test executed lines inside an implementation snippet, a ``functionalsafety_EvidenceRelationship``
+  records that snippet as the coverage evidence for the result.
+
+Because coverage line numbers are only meaningful against the sources of the build that produced
+them, implementation bodies are resolved against the commit recorded in the twister run's
+``environment.zephyr_version`` when it is present in the tree. Snippets reference the source files
+defined in the sibling BOM documents (e.g. :file:`zephyr.jsonld`) via ExternalMap rather than
+duplicating them.
+
 Command-line options
 --------------------
 
@@ -216,7 +260,7 @@ Command-line options
 - ``-s SPDX_DIR``: specifies an alternate directory where the SPDX documents
   should be written instead of :file:`BUILD_DIR/spdx/`.
 
-- ``--spdx-version {2.2,2.3,3.0}``: specifies which SPDX specification version to use.
+- ``--spdx-version {2.2,2.3,3.0,3.1}``: specifies which SPDX specification version to use.
   Defaults to ``2.3``. See :ref:`west-spdx-versions` for the differences between
   the versions.
 
@@ -232,6 +276,10 @@ Command-line options
   document, :file:`sdk.spdx` (or :file:`sdk.jsonld`), which lists header files
   included from the SDK.
 
+- ``--traceability PATH``, ``--twister-json PATH``, ``--coverage PATH`` and
+  ``--requirements-dir DIR``: enable and feed the SPDX 3.1 :ref:`Functional Safety profile
+  <west-spdx-functional-safety>`. Only used with ``--spdx-version 3.1``.
+
 .. warning::
 
    The generation of SBOM documents for the ``native_sim`` platform is currently not supported.
@@ -240,6 +288,9 @@ Command-line options
 
 .. _SPDX 3.0 Build profile:
    https://spdx.github.io/spdx-spec/v3.0.1/model/Build/Build/
+
+.. _SPDX 3.1 Functional Safety profile:
+   https://spdx.github.io/spdx-spec/v3.1/model/FunctionalSafety/FunctionalSafety/
 
 .. _SPDX specification clause 6:
    https://spdx.github.io/spdx-spec/v2.2.2/document-creation-information/
