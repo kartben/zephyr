@@ -345,12 +345,14 @@ traceability_attributes = {
     "status": r"^.*$",
     "rtype": r"^.*$",
     "component": r"^.*$",
+    "details": r"^.*$",
 }
 
 traceability_attribute_to_string = {
     "status": "Status",
     "rtype": "Type",
     "component": "Component",
+    "details": "Details",
 }
 
 # Keep the mlx defaults (which already provide validates/validated_by,

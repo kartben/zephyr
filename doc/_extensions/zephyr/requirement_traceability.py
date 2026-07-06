@@ -131,6 +131,23 @@ def _description_to_rst(desc: ET.Element | None) -> list[str]:
     return lines
 
 
+def _plain_description(desc: ET.Element | None) -> str:
+    """Render a Doxygen ``<...description>`` to plain text for the ``details``
+    attribute (and hence ``traceability.json``).
+
+    Keeps the line structure -- paragraph breaks, bullet lists and section labels
+    -- but drops RST emphasis and blank lines: the value is carried as a single
+    mlx attribute whose RST option body ends at the first blank line, so the
+    generator emits the remaining newline-separated lines as an indented block.
+    """
+    lines = []
+    for line in _description_to_rst(desc):
+        line = re.sub(r"\*([^*]+)\*", r"\1", line)  # *Label:* -> Label:
+        if line.strip():
+            lines.append(line)
+    return "\n".join(lines)
+
+
 def _link_uids(member: ET.Element, tag: str) -> set[str]:
     uids = {
         req.get("refid", "")[len(REQ_REFID_PREFIX):]
@@ -169,7 +186,7 @@ def _collect(xml_dir: Path) -> dict[str, dict]:
             if not rels:
                 continue  # only document symbols that trace to a requirement
             entry = symbols.setdefault(
-                name_el.text, {"rels": {}, "brief": "", "body": []}
+                name_el.text, {"rels": {}, "brief": "", "body": [], "details": ""}
             )
             for rel, uids in rels.items():
                 entry["rels"].setdefault(rel, set()).update(uids)
@@ -177,6 +194,8 @@ def _collect(xml_dir: Path) -> dict[str, dict]:
                 entry["brief"] = " ".join(_inline_text(member.find("briefdescription")).split())
             if not entry["body"]:
                 entry["body"] = _description_to_rst(member.find("detaileddescription"))
+            if not entry["details"]:
+                entry["details"] = _plain_description(member.find("detaileddescription"))
     return symbols
 
 
@@ -267,6 +286,13 @@ def _render_symbols_page(title: str, symbols: dict[str, dict]) -> str:
         out.append(f".. item:: {name} {entry['brief']}".rstrip())
         for rel in sorted(entry["rels"]):
             out.append(f"   :{rel}: {' '.join(sorted(entry['rels'][rel]))}")
+        # Carry the detailed description into traceability.json as an attribute.
+        # Emit the newline-separated lines as an indented option body so the line
+        # structure survives (docutils joins them back with newlines).
+        if entry["details"]:
+            detail_lines = entry["details"].split("\n")
+            out.append(f"   :details: {detail_lines[0]}")
+            out.extend(f"      {line}" for line in detail_lines[1:])
         out.append("")
         # Link to the full documentation in the Doxygen output (doxybridge).
         out.append(f"   Documented at :c:func:`{name}`.")
