@@ -1486,6 +1486,8 @@ class SPDX3Serializer:
         verification.name = test.node_id
         if test.title:
             verification.summary = test.title
+        if test.details:
+            verification.description = test.details
         verification.externalIdentifier.append(
             self._fs_other_identifier(test.node_id, "ztest case")
         )
