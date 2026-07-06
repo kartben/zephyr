@@ -251,10 +251,11 @@ def _fs_metadata(tmp_path, *, covered=True):
         }},
         "test_environment": {"zephyr_version": "v4.4.0-1-gdeadbeef",
                              "options": {"platform": ["native_sim"], "coverage_tool": "lcov"}},
-        # covered: the verifying test's coverage reaches the impl body (lines 2..5);
-        # some test always does (all_covered), so uncovered -> broken, not unattributed
-        "coverage": {"suite__test_foo": {"kernel/foo.c": {3, 4} if covered else {99}}},
-        "all_covered": {"kernel/foo.c": {3, 4}},
+        # covered: the verifying test executes lines 2 and 4 of the body (2..5) —
+        # two non-contiguous paths. Some test always reaches it (all_covered), so
+        # uncovered -> broken, not unattributed.
+        "coverage": {"suite__test_foo": {"kernel/foo.c": {2, 4} if covered else {99}}},
+        "all_covered": {"kernel/foo.c": {2, 4}},
         "source": None,
         "zephyr_base": str(tmp_path),
     }
@@ -289,38 +290,44 @@ def _by_type(graph, spdx_type):
     return [e for e in graph if e.get("type") == spdx_type]
 
 
-def test_fs_impl_snippet_is_the_c_body(tmp_path):
+def test_contiguous_ranges():
+    from zspdx.serializers.spdx3.serializer import SPDX3Serializer
+    assert SPDX3Serializer._contiguous_ranges([]) == []
+    assert SPDX3Serializer._contiguous_ranges([5]) == [(5, 5)]
+    assert SPDX3Serializer._contiguous_ranges([1, 2, 4, 5, 7]) == [(1, 2), (4, 5), (7, 7)]
+
+
+def _line_span(snippet):
+    lr = snippet["software_lineRange"]
+    return (lr["beginIntegerRange"], lr["endIntegerRange"])
+
+
+def test_fs_implemented_by_is_the_full_body(tmp_path):
     graph = _safety_graph(tmp_path)
-    snippets = _by_type(graph, "software_Snippet")
-    assert len(snippets) == 1
-    snippet = snippets[0]
-    # the snippet is the z_impl_ body, and its name/description carry the location
-    assert snippet["name"].startswith("z_impl_k_foo")
-    assert "kernel/foo.c:2-5" in snippet["name"]
-    assert snippet["description"] == "kernel/foo.c:2-5"
-    assert snippet["software_lineRange"]["beginIntegerRange"] == 2
-    # linked from the requirement via implementedBy
+    byid = {e["spdxId"]: e for e in graph if "spdxId" in e}
     req = next(e for e in _by_type(graph, "Requirement") if e["name"].startswith("ZEP-SRS-1-1"))
-    assert any(
-        e["relationshipType"] == "implementedBy" and e["from"] == req["spdxId"]
-        and snippet["spdxId"] in e["to"]
-        for e in _by_type(graph, "Relationship")
-    )
+    impl = [e for e in _by_type(graph, "Relationship")
+            if e["relationshipType"] == "implementedBy" and e["from"] == req["spdxId"]]
+    assert len(impl) == 1
+    snippet = byid[impl[0]["to"][0]]
+    # implementedBy is the whole z_impl_ function body (lines 2..5)
+    assert snippet["name"].startswith("z_impl_k_foo")
+    assert _line_span(snippet) == (2, 5)
 
 
-def test_fs_coverage_backed_evidence(tmp_path):
+def test_fs_evidence_is_the_covered_ranges_not_the_body(tmp_path):
     graph = _safety_graph(tmp_path, covered=True)
-    verifs = _by_type(graph, "functionalsafety_RequirementVerification")
+    byid = {e["spdxId"]: e for e in graph if "spdxId" in e}
     results = _by_type(graph, "functionalsafety_EvaluationResult")
     evidence = _by_type(graph, "functionalsafety_EvidenceRelationship")
-    assert len(verifs) == len(results) == 1
+    assert len(results) == 1 and len(evidence) == 1
     assert results[0]["functionalsafety_evaluation"].endswith("pass")
-    # the passing test covered the impl body -> one hasEvidence to the snippet
-    assert len(evidence) == 1
-    snippet = _by_type(graph, "software_Snippet")[0]
     assert evidence[0]["from"] == results[0]["spdxId"]
-    assert snippet["spdxId"] in evidence[0]["to"]
     assert evidence[0]["functionalsafety_evidenceCategory"][0].endswith("recording")
+    # coverage of lines {2, 4} splits into two single-line ranges, and the whole
+    # body span (2, 5) is NOT the evidence
+    spans = {_line_span(byid[t]) for t in evidence[0]["to"]}
+    assert spans == {(2, 2), (4, 4)}
 
 
 def test_fs_no_evidence_without_coverage(tmp_path):

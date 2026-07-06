@@ -233,13 +233,13 @@ The resulting elements are collected into a standalone :file:`safety.jsonld` doc
 - each design description becomes a ``Specification`` that ``hasRequirement`` the requirements it
   realizes;
 - each implementing symbol is resolved to its function bodies (the supervisor ``z_impl_`` and
-  user-mode ``z_vrfy_`` bodies of a syscall, or a ``static inline``), and each becomes a
-  ``software_Snippet`` (a byte/line range in its ``.c`` source) linked from the requirement with
-  ``implementedBy``;
+  user-mode ``z_vrfy_`` bodies of a syscall, or a ``static inline``), and each whole body becomes a
+  ``software_Snippet`` linked from the requirement with ``implementedBy``;
 - each verifying test becomes a ``functionalsafety_RequirementVerification`` (``usesTool`` the
-  twister ``Tool``) with a ``functionalsafety_EvaluationResult`` carrying the twister result; when
-  the coverage matrix shows the test executed lines inside an implementation snippet, a
-  ``functionalsafety_EvidenceRelationship`` records that snippet as the coverage evidence.
+  twister ``Tool``) with a ``functionalsafety_EvaluationResult`` carrying the twister result; the
+  ``functionalsafety_EvidenceRelationship`` for that result points at snippets for the *exact line
+  ranges the test executed* inside those bodies (the covered code paths, one snippet per contiguous
+  run) — not the whole function — so different tests reference the different paths they exercise.
 
 Each software requirement is also annotated with a **true-traceability adequacy** verdict — do its
 *own* verifying tests actually execute its implementation? ``true`` (all resolved implementations

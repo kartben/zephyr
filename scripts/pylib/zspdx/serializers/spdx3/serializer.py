@@ -1312,40 +1312,37 @@ class SPDX3Serializer:
                 )
         return spec
 
-    def _fs_body_snippet(self, symbol: str, body):
-        """Get or create a ``software_Snippet`` for a resolved implementation body.
+    def _fs_make_snippet(self, rel: str, start: int, end: int, slug_base: str, name: str):
+        """Get or create a ``software_Snippet`` for ``rel:start-end``.
 
-        ``body`` is a :class:`zspdx.sources.ImplBody` (tree-relative file, inclusive
-        line span, variant). The snippet is named for the actual function
-        (``z_impl_``/``z_vrfy_`` prefixed) and carved from that file, referenced via
-        ExternalMap when it is part of the SBOM.
+        Snippets are cached by ``(file, start, end)``. The name is stored on the
+        snippet (and its span in the description) so the code is legible without
+        resolving ``snippetFromFile``. Returns ``None`` when the host file is
+        unavailable.
         """
-        key = (body.file, body.start, body.end)
+        key = (rel, start, end)
         if key in self.snippet_elements:
             return self.snippet_elements[key]
-        host = self._fs_host_file(body.file)
+        host = self._fs_host_file(rel)
         if host is None:
             return None
 
-        fn_name = {"impl": f"z_impl_{symbol}", "vrfy": f"z_vrfy_{symbol}"}.get(body.variant, symbol)
         snippet = spdx.software_Snippet()
-        slug = normalize_spdx_name(f"{fn_name}-{body.start}-{body.end}")
+        slug = normalize_spdx_name(f"{slug_base}-{start}-{end}")
         snippet._id = self._shorten_id(f"{self._fs_namespace}/snippets/{slug}")
         snippet.creationInfo = self.creation_info._id
-        # Name the snippet for the function and its exact location so the covered
-        # code is legible (and greppable) without having to resolve snippetFromFile.
-        snippet.name = f"{fn_name} @ {body.file}:{body.start}-{body.end}"
-        snippet.description = f"{body.file}:{body.start}-{body.end}"
+        snippet.name = name
+        snippet.description = f"{rel}:{start}-{end}"
         snippet.software_snippetFromFile = host._id
 
         line_range = spdx.PositiveIntegerRange()
-        line_range.beginIntegerRange = body.start
-        line_range.endIntegerRange = body.end
+        line_range.beginIntegerRange = start
+        line_range.endIntegerRange = end
         snippet.software_lineRange = line_range
 
-        content = self._fs_file_content(body.file)
+        content = self._fs_file_content(rel)
         if content is not None:
-            byte_span = content_byte_range(content, body.start, body.end)
+            byte_span = content_byte_range(content, start, end)
             if byte_span:
                 byte_range = spdx.PositiveIntegerRange()
                 byte_range.beginIntegerRange, byte_range.endIntegerRange = byte_span
@@ -1353,6 +1350,44 @@ class SPDX3Serializer:
 
         self.snippet_elements[key] = snippet
         return self._fs_register(snippet)
+
+    def _fs_body_snippet(self, symbol: str, body):
+        """Snippet for a resolved implementation body (the whole function).
+
+        ``body`` is a :class:`zspdx.sources.ImplBody`; the snippet is named for the
+        actual function (``z_impl_``/``z_vrfy_`` prefixed).
+        """
+        fn_name = {"impl": f"z_impl_{symbol}", "vrfy": f"z_vrfy_{symbol}"}.get(body.variant, symbol)
+        name = f"{fn_name} @ {body.file}:{body.start}-{body.end}"
+        return self._fs_make_snippet(body.file, body.start, body.end, fn_name, name)
+
+    @staticmethod
+    def _contiguous_ranges(lines):
+        """Collapse a sorted line list into inclusive contiguous ``(start, end)`` runs."""
+        ranges: list[list[int]] = []
+        for line in lines:
+            if ranges and line == ranges[-1][1] + 1:
+                ranges[-1][1] = line
+            else:
+                ranges.append([line, line])
+        return [(start, end) for start, end in ranges]
+
+    def _fs_coverage_snippets(self, rel: str, body, covered_lines):
+        """Snippets for the code paths a test actually executed within ``body``.
+
+        Returns one snippet per contiguous run of ``covered_lines`` that falls
+        inside the body span, so the evidence reflects the executed paths rather
+        than the whole function.
+        """
+        in_body = sorted(ln for ln in covered_lines if body.start <= ln <= body.end)
+        snippets = []
+        for start, end in self._contiguous_ranges(in_body):
+            snippet = self._fs_make_snippet(
+                rel, start, end, f"cov-{rel}", f"{rel}:{start}-{end}"
+            )
+            if snippet is not None:
+                snippets.append(snippet)
+        return snippets
 
     def _fs_file_content(self, rel: str) -> str | None:
         """Cached text of a tree-relative file, read at the coverage build's ref."""
@@ -1465,19 +1500,21 @@ class SPDX3Serializer:
         result.name = f"Evaluation of {test.node_id}"
         self._fs_register(result)
 
-        # Coverage-backed evidence: the implementation snippets of this test's
-        # requirements whose line span its coverage actually reaches.
+        # Coverage-backed evidence: snippets for the code paths this test actually
+        # executed inside its requirements' implementation bodies -- the covered
+        # line ranges, not the whole function.
         test_coverage = self._fs_coverage.get(test.node_id, {})
         covered = []
         seen = set()
         for uid, _requirement in requirements:
-            for body, snippet in req_impl_snippets.get(uid, []):
-                if snippet._id in seen:
-                    continue
+            for body, _impl_snippet in req_impl_snippets.get(uid, []):
                 lines = test_coverage.get(body.file)
-                if lines and any(body.start <= ln <= body.end for ln in lines):
-                    covered.append(snippet)
-                    seen.add(snippet._id)
+                if not lines:
+                    continue
+                for snippet in self._fs_coverage_snippets(body.file, body, lines):
+                    if snippet._id not in seen:
+                        covered.append(snippet)
+                        seen.add(snippet._id)
         if covered:
             evidence = spdx.functionalsafety_EvidenceRelationship()
             evidence._id = self._generate_relationship_id(len(self.relationship_elements))
