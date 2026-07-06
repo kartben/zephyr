@@ -77,6 +77,7 @@ class Test:
     suite: str
     function: str
     title: str = ""
+    details: str = ""
     validates: list[str] = field(default_factory=list)
 
 
@@ -153,6 +154,7 @@ def parse_traceability(data: list[dict]) -> TraceabilityGraph:
                 suite=suite,
                 function=function,
                 title=node.get("caption", ""),
+                details=node.get("attributes", {}).get("details", ""),
                 validates=_targets(node, "validates"),
             )
 
