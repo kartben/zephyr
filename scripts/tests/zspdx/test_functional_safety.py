@@ -236,6 +236,9 @@ _FOO_C = (
     "}\n"
 )
 
+# A multi-line @details, to check the structure survives (is not flattened).
+_FOO_DETAILS = "Calls k_foo.\nTest steps:\n- Call k_foo(1)\n- Check it returns 2"
+
 
 def _make_tree(tmp_path):
     (tmp_path / "kernel").mkdir(exist_ok=True)
@@ -290,6 +293,7 @@ def _fs_metadata(tmp_path, *, covered=True):
                 "id": "suite__test_foo",
                 "type": "test",
                 "title": "exercises foo",
+                "content": _FOO_DETAILS,
                 "validates": ["ZEP-SRS-1-1"],
             },
         ]
@@ -454,6 +458,15 @@ def test_fs_relationships_are_lifecycle_scoped(tmp_path):
     assert by_kind["implementedBy"] == {"development"}
     assert by_kind["verifiedBy"] == {"test"}
     assert by_kind["usesTool"] == {"test"}
+
+
+def test_fs_verification_carries_test_details(tmp_path):
+    graph = _safety_graph(tmp_path, covered=True)
+    verif = _by_type(graph, "functionalsafety_RequirementVerification")[0]
+    assert verif["summary"] == "exercises foo"
+    # the multi-line @details structure is preserved (not flattened)
+    assert verif["description"] == _FOO_DETAILS
+    assert "\n" in verif["description"]
 
 
 def test_fs_requirement_and_spec_metadata(tmp_path):
