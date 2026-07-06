@@ -345,7 +345,7 @@ traceability_attributes = {
     "status": r"^.*$",
     "rtype": r"^.*$",
     "component": r"^.*$",
-    "details": r"^.*$",
+    "details": r"(?s)^.*$",
 }
 
 traceability_attribute_to_string = {
