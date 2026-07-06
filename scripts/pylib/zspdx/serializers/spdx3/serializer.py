@@ -1401,7 +1401,10 @@ class SPDX3Serializer:
                     # The parent (system) requirement is refined to the detail of
                     # this (software) requirement.
                     self._fs_relationship(
-                        spdx.RelationshipType.tracedToDetail, parent._id, [requirement._id]
+                        spdx.RelationshipType.tracedToDetail,
+                        parent._id,
+                        [requirement._id],
+                        scope=spdx.LifecycleScopeType.design,
                     )
 
         # 2) Design descriptions as Specifications that carry requirements.
@@ -1422,7 +1425,10 @@ class SPDX3Serializer:
                     snippet = self._fs_body_snippet(symbol, body)
                     if snippet is not None:
                         self._fs_relationship(
-                            spdx.RelationshipType.implementedBy, requirement._id, [snippet._id]
+                            spdx.RelationshipType.implementedBy,
+                            requirement._id,
+                            [snippet._id],
+                            scope=spdx.LifecycleScopeType.development,
                         )
                         snippets.append((body, snippet))
             if snippets:
@@ -1470,19 +1476,25 @@ class SPDX3Serializer:
             ext_id.comment = comment
         return ext_id
 
-    def _fs_relationship(self, rel_type, from_id: str, to_ids: list[str]):
-        """Create a plain Relationship owned by the safety document.
+    def _fs_relationship(self, rel_type, from_id: str, to_ids: list[str], scope=None):
+        """Create a Relationship owned by the safety document.
 
         Its ``from`` endpoint is a FunctionalSafety element (requirement,
         specification, verification, ...), which no build document owns, so the
         standard per-document collection skips it and it is serialized only in the
         safety document.
+
+        When ``scope`` (a ``LifecycleScopeType``) is given, the relationship is
+        emitted as a ``LifecycleScopedRelationship`` so its meaning is anchored to a
+        phase of the safety lifecycle (design, development, test, ...).
         """
-        rel = spdx.Relationship()
+        rel = spdx.LifecycleScopedRelationship() if scope is not None else spdx.Relationship()
         rel._id = self._generate_relationship_id(len(self.relationship_elements))
         rel.relationshipType = rel_type
         rel.from_ = from_id
         rel.to = list(to_ids)
+        if scope is not None:
+            rel.scope = scope
         rel.creationInfo = self.creation_info._id
         self.relationship_elements.append(rel)
         return self._fs_register(rel)
@@ -1602,7 +1614,10 @@ class SPDX3Serializer:
             requirement = self._fs_get_requirement(req_uid)
             if requirement is not None:
                 self._fs_relationship(
-                    spdx.RelationshipType.hasRequirement, spec._id, [requirement._id]
+                    spdx.RelationshipType.hasRequirement,
+                    spec._id,
+                    [requirement._id],
+                    scope=spdx.LifecycleScopeType.design,
                 )
         return spec
 
@@ -1772,7 +1787,10 @@ class SPDX3Serializer:
 
         for _uid, requirement in requirements:
             self._fs_relationship(
-                spdx.RelationshipType.verifiedBy, requirement._id, [verification._id]
+                spdx.RelationshipType.verifiedBy,
+                requirement._id,
+                [verification._id],
+                scope=spdx.LifecycleScopeType.test,
             )
 
         verdict = verdict_from_rollup(record.get("rollup", ""))
@@ -1791,7 +1809,10 @@ class SPDX3Serializer:
         self._fs_register(result)
         if self._fs_twister_tool is not None:
             self._fs_relationship(
-                spdx.RelationshipType.usesTool, result._id, [self._fs_twister_tool._id]
+                spdx.RelationshipType.usesTool,
+                result._id,
+                [self._fs_twister_tool._id],
+                scope=spdx.LifecycleScopeType.test,
             )
 
         # Coverage-backed evidence: snippets for the code paths this test actually

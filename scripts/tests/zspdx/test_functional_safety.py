@@ -306,9 +306,10 @@ def test_fs_implemented_by_is_the_full_body(tmp_path):
     graph = _safety_graph(tmp_path)
     byid = {e["spdxId"]: e for e in graph if "spdxId" in e}
     req = next(e for e in _by_type(graph, "Requirement") if e["name"].startswith("ZEP-SRS-1-1"))
-    impl = [e for e in _by_type(graph, "Relationship")
+    impl = [e for e in _by_type(graph, "LifecycleScopedRelationship")
             if e["relationshipType"] == "implementedBy" and e["from"] == req["spdxId"]]
     assert len(impl) == 1
+    assert impl[0]["scope"].endswith("development")
     snippet = byid[impl[0]["to"][0]]
     # implementedBy is the whole z_impl_ function body (lines 2..5)
     assert snippet["name"].startswith("z_impl_k_foo")
@@ -380,9 +381,25 @@ def test_fs_twister_tool_provenance_and_uses_tool(tmp_path):
     result = _by_type(graph, "functionalsafety_EvaluationResult")[0]
     assert any(
         e["relationshipType"] == "usesTool" and e["from"] == result["spdxId"]
-        and tool["spdxId"] in e["to"]
-        for e in _by_type(graph, "Relationship")
+        and tool["spdxId"] in e["to"] and e["scope"].endswith("test")
+        for e in _by_type(graph, "LifecycleScopedRelationship")
     )
+
+
+def test_fs_relationships_are_lifecycle_scoped(tmp_path):
+    # every FunctionalSafety relationship is anchored to a phase of the safety
+    # lifecycle (the V-model): refinement/realization at design, code at
+    # development, verification at test.
+    graph = _safety_graph(tmp_path, covered=True)
+    scoped = _by_type(graph, "LifecycleScopedRelationship")
+    by_kind = {}
+    for rel in scoped:
+        by_kind.setdefault(rel["relationshipType"], set()).add(rel["scope"].split("/")[-1])
+    assert by_kind["tracedToDetail"] == {"design"}
+    assert by_kind["hasRequirement"] == {"design"}
+    assert by_kind["implementedBy"] == {"development"}
+    assert by_kind["verifiedBy"] == {"test"}
+    assert by_kind["usesTool"] == {"test"}
 
 
 def test_fs_requirement_and_spec_metadata(tmp_path):
