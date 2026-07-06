@@ -1511,7 +1511,7 @@ class SPDX3Serializer:
             f"{len(record.get('instances', []))} instance(s) on "
             f"{', '.join(platforms) or 'unknown platform'}"
         )
-        result.name = f"Evaluation of {test.node_id}"
+        result.name = f"Test execution of {test.node_id}"
         self._fs_register(result)
         if self._fs_twister_tool is not None:
             self._fs_relationship(
