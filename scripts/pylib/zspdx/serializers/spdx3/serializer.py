@@ -1197,8 +1197,8 @@ class SPDX3Serializer:
         """Create the ``Tool`` element for the twister run that produced the results.
 
         Records the run provenance (Zephyr version/commit, run date, platform,
-        toolchain and coverage tool) so every verification can point at it with
-        ``usesTool``. Returns ``None`` when no twister results were supplied.
+        toolchain and coverage tool) so every evaluation result can point at it
+        with ``usesTool``. Returns ``None`` when no twister results were supplied.
         """
         if not self._fs_results:
             return None
@@ -1456,10 +1456,10 @@ class SPDX3Serializer:
 
         Produces a ``functionalsafety_RequirementVerification`` (method ``test``)
         linked from every requirement it validates, a pass/fail
-        ``functionalsafety_EvaluationResult`` from the run's rollup, and — when the
-        coverage matrix shows the test executed the implementation — a
-        ``functionalsafety_EvidenceRelationship`` to the implementation snippets it
-        actually exercised.
+        ``functionalsafety_EvaluationResult`` from the run's rollup that records the
+        twister tool via ``usesTool``, and — when the coverage matrix shows the test
+        executed the implementation — a ``functionalsafety_EvidenceRelationship`` to
+        the implementation snippets it actually exercised.
         """
         slug = normalize_spdx_name(test.node_id)
         verification = spdx.functionalsafety_RequirementVerification()
@@ -1468,17 +1468,13 @@ class SPDX3Serializer:
         verification.functionalsafety_verificationMethod.append(
             spdx.functionalsafety_VerificationType.test
         )
-        verification.name = f"Verification of {test.node_id}"
+        verification.name = test.node_id
         if test.title:
             verification.summary = test.title
         verification.externalIdentifier.append(
             self._fs_other_identifier(test.node_id, "ztest case")
         )
         self._fs_register(verification)
-        if self._fs_twister_tool is not None:
-            self._fs_relationship(
-                spdx.RelationshipType.usesTool, verification._id, [self._fs_twister_tool._id]
-            )
 
         for _uid, requirement in requirements:
             self._fs_relationship(
@@ -1499,6 +1495,10 @@ class SPDX3Serializer:
         )
         result.name = f"Evaluation of {test.node_id}"
         self._fs_register(result)
+        if self._fs_twister_tool is not None:
+            self._fs_relationship(
+                spdx.RelationshipType.usesTool, result._id, [self._fs_twister_tool._id]
+            )
 
         # Coverage-backed evidence: snippets for the code paths this test actually
         # executed inside its requirements' implementation bodies -- the covered
