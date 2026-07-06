@@ -376,10 +376,10 @@ def test_fs_twister_tool_provenance_and_uses_tool(tmp_path):
     ids = _ext_ids(tool)
     assert "zephyr-version:v4.4.0-1-gdeadbeef" in ids
     assert "coverage-tool:lcov" in ids
-    # the verification records the tool that ran it
-    verif = _by_type(graph, "functionalsafety_RequirementVerification")[0]
+    # the evaluation result records the tool that produced it
+    result = _by_type(graph, "functionalsafety_EvaluationResult")[0]
     assert any(
-        e["relationshipType"] == "usesTool" and e["from"] == verif["spdxId"]
+        e["relationshipType"] == "usesTool" and e["from"] == result["spdxId"]
         and tool["spdxId"] in e["to"]
         for e in _by_type(graph, "Relationship")
     )
