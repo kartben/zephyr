@@ -21,6 +21,8 @@ from spdx_tools.spdx.model.checksum import ChecksumAlgorithm
 from spdx_tools.spdx.model.package import PackagePurpose
 from spdx_tools.spdx.model.relationship import RelationshipType
 
+SPDX_TOOL_PREFIX = "Zephyr SPDX builder"
+
 # File name constants (as they appear in SPDX documents)
 FILE_MAIN_C = "./src/main.c"
 FILE_LIBAPP_A = "./app/libapp.a"
@@ -103,10 +105,26 @@ class TestCommonValidation:
         doc, doc_name = doc_with_name
         assert doc.creation_info.document_namespace, f"{doc_name}: document_namespace is empty"
 
-    def test_creators(self, doc_with_name):
-        """Test that creators list is not empty."""
+    def test_creators(self, doc_with_name, zephyr_version):
+        """Test that creators include the Zephyr organization and versioned tool."""
         doc, doc_name = doc_with_name
-        assert len(doc.creation_info.creators) > 0, f"{doc_name}: no creators found"
+        creators = [str(c) for c in doc.creation_info.creators]
+
+        # the author is derived from the workspace the build was made in, so a fork or
+        # a downstream workspace names its own organization here
+        org_creators = [c for c in creators if c.startswith("Organization:")]
+        assert org_creators, f"{doc_name}: no Organization creator found in {creators}"
+
+        expected_tool = f"{SPDX_TOOL_PREFIX}-{zephyr_version}"
+        tool_creators = [c for c in creators if c.startswith("Tool:")]
+        assert tool_creators, f"{doc_name}: no Tool creator found in {creators}"
+        tool_names = [c.removeprefix("Tool: ") for c in tool_creators]
+        assert any(name.startswith(SPDX_TOOL_PREFIX) for name in tool_names), (
+            f"{doc_name}: Tool creator should start with '{SPDX_TOOL_PREFIX}', got {tool_creators}"
+        )
+        assert expected_tool in tool_names, (
+            f"{doc_name}: expected Tool creator '{expected_tool}', got {tool_creators}"
+        )
 
     def test_document_name(self, doc_with_name):
         """Test that document name is not empty."""

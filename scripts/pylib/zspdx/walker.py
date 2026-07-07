@@ -27,6 +27,26 @@ from zspdx.model import (
 
 _logger = logging.getLogger(__name__)
 
+# Organization credited as the SBOM author and as the supplier of Zephyr and its
+# upstream-mirrored modules (all hosted under github.com/zephyrproject-rtos).
+ZEPHYR_ORGANIZATION = "The Zephyr Project"
+
+# Name of the tool recorded in the SPDX Creator field.
+SPDX_TOOL_NAME = "Zephyr SPDX builder"
+
+# Full names for the repository namespaces (the organization or user on common git
+# forges) that a name alone does not identify well enough.
+KNOWN_NAMESPACE_ORGANIZATIONS = {
+    "zephyrproject-rtos": ZEPHYR_ORGANIZATION,
+}
+
+# Matches a git repository URL of the form '<protocol><host>/<namespace>/<package>',
+# capturing the host type (e.g. "github"), the namespace and the package name.
+COMMON_GIT_URL_REGEX = (
+    r'((git@|http(s)?:\/\/)(?P<type>[\w\.@]+)(\.\w+)(\/|:))'
+    r'(?P<namespace>[\w,\-,\_\/]+)\/(?P<package>[\w,\-,\_]+)(.git){0,1}((\/){0,1})$'
+)
+
 
 def get_tool_version(tool_path):
     """Get a tool's version by running it with ``--version``.
@@ -140,18 +160,26 @@ class Walker:
         # Meta file path
         self.meta_file = ""
 
+    @staticmethod
+    def _organization_from_url(url):
+        """Derive an organization name from a git repository URL.
+
+        The namespace of a repository URL is the organization or user hosting it,
+        which is the only provenance a west workspace carries. Namespaces listed in
+        ``KNOWN_NAMESPACE_ORGANIZATIONS`` are mapped to their full name; any other is
+        used as-is. Returns "" when the URL cannot be parsed.
+        """
+        match = re.fullmatch(COMMON_GIT_URL_REGEX, url) if url else None
+        if not match:
+            return ""
+        namespace = match.group("namespace")
+        return KNOWN_NAMESPACE_ORGANIZATIONS.get(namespace, namespace)
+
     def _build_purl(self, url, version=None):
         if not url:
             return None
 
         purl = None
-        # This is designed to match repository with the following url pattern:
-        # '<protocol><type>/<namespace>/<package>
-        COMMON_GIT_URL_REGEX = (
-            r'((git@|http(s)?:\/\/)(?P<type>[\w\.@]+)(\.\w+)(\/|:))'
-            r'(?P<namespace>[\w,\-,\_\/]+)\/(?P<package>[\w,\-,\_]+)(.git){0,1}((\/){0,1})$'
-        )
-
         match = re.fullmatch(COMMON_GIT_URL_REGEX, url)
         if match:
             purl = f'pkg:{match.group("type")}/{match.group("namespace")}/{match.group("package")}'
@@ -160,6 +188,57 @@ class Walker:
             purl += f'@{version}'
 
         return purl
+
+    @staticmethod
+    def _read_zephyr_version(zephyr_path):
+        """Read the Zephyr version (e.g. "4.4.99") from the repo VERSION file.
+
+        Returns "" when the path is missing or the file cannot be parsed.
+        """
+        if not zephyr_path:
+            return ""
+        version_file = os.path.join(zephyr_path, "VERSION")
+        values = {}
+        try:
+            with open(version_file) as f:
+                for line in f:
+                    key, sep, val = line.partition("=")
+                    if sep:
+                        values[key.strip()] = val.strip()
+        except OSError:
+            return ""
+
+        try:
+            version = (
+                f"{int(values['VERSION_MAJOR'])}"
+                f".{int(values['VERSION_MINOR'])}"
+                f".{int(values['PATCHLEVEL'])}"
+            )
+        except (KeyError, ValueError):
+            return ""
+
+        extra = values.get("EXTRAVERSION", "")
+        if extra:
+            version += f"-{extra}"
+        return version
+
+    def _set_creation_metadata(self, zephyr):
+        """Record SBOM creator provenance (author organization and tool version).
+
+        Serializers read these from the graph metadata to emit the SPDX Creator
+        fields, so the SBOM advertises a human/organization author alongside the
+        versioned generation tool.
+        """
+        # who generates the SBOM is not knowable from the workspace alone; the
+        # organization owning the Zephyr repository it was built from is the closest
+        # answer, and it stays correct for a fork or a downstream workspace
+        zephyr = zephyr or {}
+        author = self._organization_from_url(zephyr.get("remote") or zephyr.get("url", ""))
+        if not author:
+            _logger.warning("cannot determine which organization is generating this SBOM")
+        self.sbom_graph.metadata["creator_organization"] = author
+        self.sbom_graph.metadata["tool_name"] = SPDX_TOOL_NAME
+        self.sbom_graph.metadata["tool_version"] = self._read_zephyr_version(zephyr.get("path", ""))
 
     # primary entry point
     def collect_sbom_graph(self):
@@ -372,6 +451,7 @@ class Walker:
         try:
             with open(self.meta_file) as file:
                 content = yaml.load(file.read(), yaml.SafeLoader)
+                self._set_creation_metadata(content.get("zephyr"))
                 if not self.setup_zephyr_component(content["zephyr"], content["modules"]):
                     return False
         except (FileNotFoundError, yaml.YAMLError):
