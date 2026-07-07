@@ -102,8 +102,10 @@ class SPDX2Serializer:
         try:
             _logger.info(f"Writing SPDX {self.spdx_version} document {doc.name} to {output_path}")
             with open(output_path, "w", encoding="utf-8") as f:
-                self._write_document_header(f, doc)
-                # Skip external document refs in first pass
+                # No external document refs in the first pass: the other documents'
+                # hashes are not known yet, and leaving them out keeps the hash this
+                # pass computes independent of the order documents are written in.
+                self._write_document_header(f, doc, external_refs=False)
                 self._write_document_relationships(f, doc)
                 self._write_packages(f, doc)
                 self._write_custom_licenses(f, doc)
@@ -127,10 +129,9 @@ class SPDX2Serializer:
         try:
             # Write the updated document
             with open(output_path, "w", encoding="utf-8") as f:
-                # Write header
-                self._write_document_header(f, doc)
-                # Write external document refs (now we have all hashes)
-                self._write_external_document_refs(f, doc)
+                # Now that every document has been hashed, the header can carry the
+                # external document refs (emitted within the creation-info section).
+                self._write_document_header(f, doc, external_refs=True)
                 # Write the rest (relationships, packages, licenses)
                 self._write_document_relationships(f, doc)
                 self._write_packages(f, doc)
@@ -148,8 +149,8 @@ class SPDX2Serializer:
             _logger.exception(f"Error: Unable to rewrite {output_path}")
             return False
 
-    def _write_document_header(self, f, doc: SBOMDocument):
-        """Write SPDX document header."""
+    def _write_document_header(self, f, doc: SBOMDocument, external_refs: bool = True):
+        """Write SPDX document header, with external document refs when requested."""
         # Use document's namespace if set, otherwise generate from prefix
         namespace = doc.namespace or f"{self.sbom_graph.namespace_prefix}/{doc.name}"
         normalized_name = normalize_spdx_name(doc.title or doc.name)
@@ -165,9 +166,13 @@ DataLicense: CC0-1.0
 SPDXID: SPDXRef-DOCUMENT
 DocumentName: {normalized_name}
 DocumentNamespace: {namespace}
-{creators}Created: {created}
-
 """)
+        # ExternalDocumentRef is part of the Document Creation Information section and
+        # must precede Creator/Created; strict tag-value parsers reject it if it appears
+        # after the section (e.g. once Created has been seen).
+        if external_refs:
+            self._write_external_document_refs(f, doc)
+        f.write(f"{creators}Created: {created}\n\n")
 
     def _creators(self):
         """Build the SPDX Creator values: an organization author and the tool.
@@ -213,7 +218,6 @@ DocumentNamespace: {namespace}
                     ext_doc.namespace or f"{self.sbom_graph.namespace_prefix}/{ext_doc.name}"
                 )
                 f.write(f"ExternalDocumentRef: {doc_ref_id} {namespace} SHA1: {doc_hash}\n")
-            f.write("\n")
 
     def _write_document_relationships(self, f, doc: SBOMDocument):
         """Write document-level relationships (DESCRIBES) for the document's primary subjects."""
