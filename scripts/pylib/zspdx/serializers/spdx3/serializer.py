@@ -568,6 +568,12 @@ class SPDX3Serializer:
         elif component.revision:
             package.software_packageVersion = component.revision
 
+        # Supplier: references a shared Organization Agent (SPDX 3 has no supplier
+        # string; suppliedBy points at an Agent element that must exist in the graph)
+        supplier_agent = self._get_organization(component.supplier)
+        if supplier_agent:
+            package.suppliedBy = supplier_agent._id
+
         # Download location
         if component.url:
             package.software_downloadLocation = generate_download_url(
@@ -877,6 +883,11 @@ class SPDX3Serializer:
             element_ids.add(self.creator_agent._id)
         if self.author_agent:
             element_ids.add(self.author_agent._id)
+        # Organizations referenced as package suppliers in this document.
+        for component in components:
+            supplier_agent = self.organizations.get(component.supplier)
+            if supplier_agent:
+                element_ids.add(supplier_agent._id)
         data_license = self._create_license_expression("CC0-1.0")
         if data_license:
             element_ids.add(data_license._id)
