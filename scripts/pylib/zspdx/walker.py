@@ -17,6 +17,7 @@ from zspdx.getincludes import get_c_includes
 from zspdx.model import (
     BuildInfo,
     ComponentPurpose,
+    ExternalReferenceType,
     RelationshipType,
     SBOMBuild,
     SBOMComponent,
@@ -27,8 +28,7 @@ from zspdx.model import (
 
 _logger = logging.getLogger(__name__)
 
-# Organization credited as the SBOM author and as the supplier of Zephyr and its
-# upstream-mirrored modules (all hosted under github.com/zephyrproject-rtos).
+# Full name of the organization hosting Zephyr and its modules on GitHub.
 ZEPHYR_ORGANIZATION = "The Zephyr Project"
 
 # Name of the tool recorded in the SPDX Creator field.
@@ -161,6 +161,32 @@ class Walker:
         self.meta_file = ""
 
     @staticmethod
+    def _parse_git_url(url):
+        """Parse a git repository URL into (host_type, namespace, package).
+
+        Returns ``None`` when the URL does not match the common
+        '<protocol><host>/<namespace>/<package>' pattern.
+        """
+        if not url:
+            return None
+        match = re.fullmatch(COMMON_GIT_URL_REGEX, url)
+        if not match:
+            return None
+        return match.group("type"), match.group("namespace"), match.group("package")
+
+    def _build_purl(self, url, version=None):
+        parsed = self._parse_git_url(url)
+        if not parsed:
+            return None
+
+        host_type, namespace, package = parsed
+        purl = f'pkg:{host_type}/{namespace}/{package}'
+        if version:
+            purl += f'@{version}'
+
+        return purl
+
+    @staticmethod
     def _organization_from_url(url):
         """Derive an organization name from a git repository URL.
 
@@ -169,25 +195,31 @@ class Walker:
         ``KNOWN_NAMESPACE_ORGANIZATIONS`` are mapped to their full name; any other is
         used as-is. Returns "" when the URL cannot be parsed.
         """
-        match = re.fullmatch(COMMON_GIT_URL_REGEX, url) if url else None
-        if not match:
+        parsed = Walker._parse_git_url(url)
+        if not parsed:
             return ""
-        namespace = match.group("namespace")
+        _host_type, namespace, _package = parsed
         return KNOWN_NAMESPACE_ORGANIZATIONS.get(namespace, namespace)
 
-    def _build_purl(self, url, version=None):
+    def _apply_scm_identity(self, component, url, revision):
+        """Attach supplier and a package URL derived from a module's SCM location.
+
+        Sets ``component.supplier`` from the organization owning the repository when
+        not already set, and adds a revision-pinned purl unless the component already
+        carries one (e.g. a curated purl from the module's security metadata).
+        """
         if not url:
-            return None
-
-        purl = None
-        match = re.fullmatch(COMMON_GIT_URL_REGEX, url)
-        if match:
-            purl = f'pkg:{match.group("type")}/{match.group("namespace")}/{match.group("package")}'
-
-        if purl and version:
-            purl += f'@{version}'
-
-        return purl
+            return
+        if not component.supplier:
+            component.supplier = self._organization_from_url(url)
+        has_purl = any(
+            ref.reference_type == ExternalReferenceType.PURL
+            for ref in component.external_references
+        )
+        if not has_purl:
+            purl = self._build_purl(url, revision)
+            if purl:
+                component.add_external_reference(purl)
 
     @staticmethod
     def _read_zephyr_version(zephyr_path):
@@ -498,9 +530,10 @@ class Walker:
             base_dir=relative_base_dir,
         )
 
-        zephyr_url = zephyr.get("remote", "")
+        zephyr_url = zephyr.get("remote") or zephyr.get("url", "")
         if zephyr_url:
             component.url = zephyr_url
+        component.supplier = self._organization_from_url(zephyr_url)
 
         if zephyr.get("revision"):
             component.revision = zephyr.get("revision")
@@ -520,6 +553,13 @@ class Walker:
                 if component.version == "" and version:
                     component.version = version.group('version')
 
+        # Fall back to a revision-pinned package URL when no release tag is known,
+        # so the component still carries a purl for vulnerability matching.
+        if purl is None and zephyr_url:
+            purl = self._build_purl(zephyr_url, component.revision)
+            if purl:
+                component.add_external_reference(purl)
+
         if len(component.version) > 0:
             cpe = f'cpe:2.3:o:zephyrproject:zephyr:{component.version}:-:*:*:*:*:*:*'
             component.add_external_reference(cpe)
@@ -532,7 +572,8 @@ class Walker:
         for module in modules:
             module_name = module.get("name", None)
             module_path = module.get("path", None)
-            module_url = module.get("remote", None)
+            # west may record the module remote as either "remote" or "url"
+            module_url = module.get("remote") or module.get("url")
             module_revision = module.get("revision", None)
 
             if not module_name:
@@ -550,6 +591,7 @@ class Walker:
 
             if module_url:
                 module_component.url = module_url
+                self._apply_scm_identity(module_component, module_url, module_revision)
 
             self.sbom_graph.add_component(module_component, "zephyr")
             self.doc_zephyr.add_described_component(module_component)
@@ -580,7 +622,8 @@ class Walker:
 
         # no PrimaryPackagePurpose: this is a reference-only dependency package with no files
         component = SBOMComponent(name="zephyr-deps")
-        component.url = zephyr.get("remote", "")
+        component.url = zephyr.get("remote") or zephyr.get("url", "")
+        component.supplier = self._organization_from_url(component.url)
         component.revision = zephyr.get("revision", "")
 
         purl = None
@@ -622,6 +665,8 @@ class Walker:
         for module in modules:
             module_name = module.get("name", None)
             module_security = module.get("security", None)
+            module_url = module.get("remote") or module.get("url")
+            module_revision = module.get("revision", None)
 
             if not module_name:
                 _logger.error("cannot find module name in meta file; bailing")
@@ -634,8 +679,17 @@ class Walker:
             # set up module deps component (reference-only, no files; no purpose)
             component = SBOMComponent(name=module_name + "-deps")
 
+            if module_url:
+                component.url = module_url
+            if module_revision:
+                component.revision = module_revision
+
+            # curated security references (CPE/purl) take precedence; the SCM
+            # identity then fills in a supplier and a purl when none was provided.
             for ref in module_ext_ref:
                 component.add_external_reference(ref)
+            if module_url:
+                self._apply_scm_identity(component, module_url, module_revision)
 
             self.sbom_graph.add_component(component, "modules-deps")
             self.component_modules_deps[module_name] = component
