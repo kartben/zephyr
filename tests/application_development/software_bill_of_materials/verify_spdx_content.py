@@ -23,6 +23,16 @@ from spdx_tools.spdx.model.package import PackagePurpose
 from spdx_tools.spdx.model.relationship import RelationshipType
 
 SPDX_TOOL_PREFIX = "Zephyr SPDX builder"
+UTILITY_TARGETS = {
+    "run",
+    "flash",
+    "debug",
+    "debugserver",
+    "menuconfig",
+    "guiconfig",
+    "ram_report",
+    "rom_report",
+}
 
 # File name constants (as they appear in SPDX documents)
 FILE_MAIN_C = "./src/main.c"
@@ -395,6 +405,12 @@ class TestBuildDocument:
         assert app_files == [FILE_LIBAPP_A], (
             f"build.spdx: app package should contain only {FILE_LIBAPP_A}, got {app_files}"
         )
+
+    def test_utility_targets_excluded(self, build_doc):
+        """Test that CMake UTILITY targets are not emitted as packages."""
+        package_names = {pkg.name for pkg in build_doc.packages}
+        found = package_names & UTILITY_TARGETS
+        assert not found, f"build.spdx: UTILITY targets should be excluded, found {sorted(found)}"
 
 
 class TestModulesDocument:
