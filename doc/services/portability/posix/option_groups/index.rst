@@ -1051,6 +1051,15 @@ Enable this option with :kconfig:option:`CONFIG_POSIX_THREAD_PRIORITY_SCHEDULING
     pthread_setschedparam(),yes
     pthread_setschedprio(),yes
 
+.. note::
+   The scheduling policy determines which class of Zephyr thread priority a pthread maps to.
+   ``SCHED_FIFO`` maps to Zephyr :ref:`cooperative <scheduling_v2>` priorities: such threads
+   run until they block or yield and are **never preempted**, so a busy ``SCHED_FIFO`` thread
+   can starve equal- or lower-priority threads. ``SCHED_RR`` and ``SCHED_OTHER`` map to
+   preemptible priorities (time-slicing additionally requires
+   :kconfig:option:`CONFIG_TIMESLICING`). Choose ``SCHED_RR``/``SCHED_OTHER`` unless
+   run-to-completion semantics are specifically required.
+
 .. _posix_option_thread_safe_functions:
 
 _POSIX_THREAD_SAFE_FUNCTIONS
