@@ -223,6 +223,55 @@ ZTEST(mutex, test_mutex_timedlock)
 	zassert_ok(pthread_mutex_destroy(&mutex));
 }
 
+/**
+ * @brief Test the statically-initialized mutex path.
+ *
+ * @details A PTHREAD_MUTEX_INITIALIZER mutex lazily associates a pool slot on first use (the
+ *          only path that still needs the module lock); subsequent lock/unlock cycles take the
+ *          lock-free steady-state resolve path. Exercise both.
+ */
+ZTEST(mutex, test_mutex_static_initializer)
+{
+	pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+
+	/* first use: lazily associates a pool slot */
+	zassert_ok(pthread_mutex_lock(&m));
+	zassert_ok(pthread_mutex_unlock(&m));
+
+	/* subsequent uses: steady-state path */
+	zassert_ok(pthread_mutex_trylock(&m));
+	zassert_ok(pthread_mutex_unlock(&m));
+	zassert_ok(pthread_mutex_lock(&m));
+	zassert_ok(pthread_mutex_unlock(&m));
+
+	zassert_ok(pthread_mutex_destroy(&m));
+}
+
+/**
+ * @brief Test that PTHREAD_MUTEX_ERRORCHECK detects self-relock.
+ *
+ * @details A second lock by the owning thread must return EDEADLK rather than deadlock. This
+ *          exercises the owner/type check on the steady-state (no module-lock) resolve path.
+ */
+ZTEST(mutex, test_mutex_errorcheck)
+{
+	pthread_mutex_t m;
+	pthread_mutexattr_t attr;
+
+	zassert_ok(pthread_mutexattr_init(&attr));
+	zassert_ok(pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK));
+	zassert_ok(pthread_mutex_init(&m, &attr));
+	zassert_ok(pthread_mutexattr_destroy(&attr));
+
+	zassert_ok(pthread_mutex_lock(&m));
+	/* relock by the same thread must fail deterministically, not deadlock */
+	zassert_equal(EDEADLK, pthread_mutex_lock(&m));
+	zassert_equal(EDEADLK, pthread_mutex_trylock(&m));
+	zassert_ok(pthread_mutex_unlock(&m));
+
+	zassert_ok(pthread_mutex_destroy(&m));
+}
+
 static void before(void *arg)
 {
 	ARG_UNUSED(arg);

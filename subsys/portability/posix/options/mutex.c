@@ -106,25 +106,35 @@ static int acquire_mutex(pthread_mutex_t *mu, k_timeout_t timeout)
 	struct k_mutex *m = NULL;
 	struct k_thread *owner = NULL;
 
-	SYS_SEM_LOCK(&lock) {
-		m = to_posix_mutex(mu);
-		if (m == NULL) {
-			ret = EINVAL;
-			SYS_SEM_LOCK_BREAK;
+	/*
+	 * The global module lock only needs to serialize the lazy association of a
+	 * PTHREAD_MUTEX_INITIALIZER handle with a pool slot (sys_bitarray_alloc()). Once a
+	 * mutex is initialized, resolving the handle is a read-only lookup, posix_mutex_type[]
+	 * is stable, and m->owner/m->lock_count are only acted upon when the caller already owns
+	 * the mutex (a race-free condition). So the steady-state lock path skips the module lock
+	 * entirely and lets k_mutex_lock() provide the real synchronization, matching the already
+	 * lean pthread_mutex_unlock() path.
+	 */
+	if (*mu == PTHREAD_MUTEX_INITIALIZER) {
+		SYS_SEM_LOCK(&lock) {
+			m = to_posix_mutex(mu);
 		}
-
-		LOG_DBG("Locking mutex %p with timeout %" PRIx64, m, (int64_t)timeout.ticks);
-
-		ret = 0;
-		bit = posix_mutex_to_offset(m);
-		type = posix_mutex_type[bit];
-		owner = m->owner;
-		lock_count = m->lock_count;
+	} else {
+		m = get_posix_mutex(*mu);
 	}
 
-	if (ret != 0) {
+	if (m == NULL) {
+		ret = EINVAL;
 		goto handle_error;
 	}
+
+	LOG_DBG("Locking mutex %p with timeout %" PRIx64, m, (int64_t)timeout.ticks);
+
+	ret = 0;
+	bit = posix_mutex_to_offset(m);
+	type = posix_mutex_type[bit];
+	owner = m->owner;
+	lock_count = m->lock_count;
 
 	if (owner == k_current_get()) {
 		switch (type) {
