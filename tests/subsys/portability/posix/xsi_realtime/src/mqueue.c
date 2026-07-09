@@ -92,6 +92,36 @@ ZTEST(xsi_realtime, test_mqueue)
 	zassert_false(mq_unlink(queue), "Not able to unlink Queue");
 }
 
+/**
+ * @brief Verify a plain (un-armed) mq_send delivers to mq_receive.
+ *
+ * @details When no mq_notify() is registered, send_message() takes the fast path that skips the
+ *          queue-transition tracking. This confirms that path still enqueues and delivers.
+ */
+ZTEST(xsi_realtime, test_mqueue_send_receive_unarmed)
+{
+	mqd_t mqd;
+	struct mq_attr attrs = {
+		.mq_msgsize = MESSAGE_SIZE,
+		.mq_maxmsg = MESG_COUNT_PERMQ,
+	};
+	char unarmed_queue[] = "unarmed";
+
+	mqd = mq_open(unarmed_queue, O_RDWR | O_CREAT, 0777, &attrs);
+	zassert_not_equal(mqd, (mqd_t)-1, "mq_open failed");
+
+	zassert_ok(mq_send(mqd, send_data, MESSAGE_SIZE, 0), "un-armed mq_send failed");
+
+	(void)memset(rec_data, 0, sizeof(rec_data));
+	zassert_equal(mq_receive(mqd, rec_data, MESSAGE_SIZE, NULL), MESSAGE_SIZE,
+		      "mq_receive did not return the message size");
+	zassert_ok(strcmp(rec_data, send_data), "Error in data reception. exp: %s act: %s",
+		   send_data, rec_data);
+
+	zassert_ok(mq_close(mqd), "unable to close message queue descriptor.");
+	zassert_ok(mq_unlink(unarmed_queue), "Not able to unlink Queue");
+}
+
 static bool notification_executed;
 
 void notify_function_basic(union sigval val)
