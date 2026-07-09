@@ -28,3 +28,176 @@ SPDX-FileCopyrightText = "Copyright The Zephyr Project Contributors"
 path = "**/*.rst"
 SPDX-License-Identifier = "CC-BY-4.0"
 SPDX-FileCopyrightText = "Copyright The Zephyr Project Contributors"
+
+# -----------------------------------------------------------------------------
+# Licensing exceptions
+# -----------------------------------------------------------------------------
+#
+# Zephyr as a whole is Apache-2.0 licensed, but it imports or reuses a few
+# components that use other licenses. Each such component is described below as
+# a single REUSE annotation and is rendered on the licensing documentation page
+# (see doc/LICENSING.rst) by the "zephyr.licensing" Sphinx extension.
+#
+# The license/copyright metadata is standard REUSE/SPDX. To *explain* a
+# deviation, three optional Zephyr-specific keys may be added (the `reuse` tool
+# ignores keys it does not know about):
+#
+#   Zephyr-Component   Human-friendly title for the component. Its presence is
+#                      what promotes a plain REUSE annotation to a documented
+#                      licensing exception.
+#   Zephyr-Origin      Upstream project, as "name <url>" (the url is optional).
+#   Zephyr-Condition   Kconfig option(s) gating whether the files end up in a
+#                      build, rendered as :kconfig:option: cross references.
+#
+# The standard SPDX-FileComment holds the free-text rationale ("Impact").
+
+[[annotations]]
+path = [
+    "scripts/dashboard/static/css/bootstrap-chop.css",
+    "scripts/dashboard/static/js/bootstrap-chop.js",
+]
+SPDX-License-Identifier = "MIT"
+SPDX-FileCopyrightText = "Copyright 2011-2025 The Bootstrap Authors"
+SPDX-FileComment = "Used by the dashboard tool only and never linked into a Zephyr firmware image."
+Zephyr-Component = "Bootstrap JavaScript and CSS Files"
+Zephyr-Origin = "Bootstrap <https://getbootstrap.com/>"
+
+[[annotations]]
+path = [
+    "scripts/coccicheck",
+    "scripts/coccinelle/array_size.cocci",
+    "scripts/coccinelle/deref_null.cocci",
+    "scripts/coccinelle/mini_lock.cocci",
+    "scripts/coccinelle/noderef.cocci",
+    "scripts/coccinelle/returnvar.cocci",
+    "scripts/coccinelle/semicolon.cocci",
+    "scripts/coccinelle/unsigned_lesser_than_zero.cocci",
+]
+SPDX-License-Identifier = "GPL-2.0"
+SPDX-FileCopyrightText = "Copyright The Coccinelle authors"
+SPDX-FileComment = "Used by Coccinelle, a tool for transforming C code, and never linked into the firmware."
+Zephyr-Component = "Coccinelle Scripts"
+Zephyr-Origin = "Coccinelle <https://coccinelle.gitlabpages.inria.fr/website/>"
+
+[[annotations]]
+path = [
+    "scripts/checkpatch.pl",
+    "scripts/checkstack.pl",
+    "scripts/spelling.txt",
+]
+SPDX-License-Identifier = "GPL-2.0"
+SPDX-FileCopyrightText = "Copyright The Linux Kernel contributors"
+SPDX-FileComment = "Used in Continuous Integration (CI) and never linked into the firmware."
+Zephyr-Component = "Continuous Integration Scripts"
+Zephyr-Origin = "Linux Kernel <https://www.kernel.org/>"
+
+[[annotations]]
+path = "boards/ene/kb1200_evb/support/openocd.cfg"
+SPDX-License-Identifier = "GPL-2.0-or-later"
+SPDX-FileCopyrightText = "Copyright The OpenOCD contributors"
+SPDX-FileComment = "Used by OpenOCD when programming and debugging the kb1200_evb board. Never linked into the firmware."
+Zephyr-Component = "ENE KB1200_EVB Board OpenOCD Configuration"
+Zephyr-Origin = "OpenOCD <https://openocd.org/>"
+
+[[annotations]]
+path = "subsys/fs/fuse_client/fuse_abi.h"
+SPDX-License-Identifier = "((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause)"
+SPDX-FileCopyrightText = "Copyright (C) 2001-2007 Miklos Szeredi. All rights reserved."
+SPDX-FileComment = "Used under the BSD-2-Clause option of its dual license. Only built when the gating option is enabled."
+Zephyr-Component = "FUSE Interface Definition Header File"
+Zephyr-Condition = "CONFIG_FUSE_CLIENT"
+
+[[annotations]]
+path = "subsys/testsuite/coverage/coverage.h"
+SPDX-License-Identifier = "GPL-3.0-or-later WITH GCC-exception-3.1"
+SPDX-FileCopyrightText = "Copyright (C) 1996-2018 Free Software Foundation, Inc."
+SPDX-FileComment = "Linked into the firmware only when GCOV coverage is enabled; covered by the GCC Runtime Library Exception."
+Zephyr-Component = "GCOV Coverage Header File"
+Zephyr-Origin = "GCC, the GNU Compiler Collection <https://gcc.gnu.org/>"
+Zephyr-Condition = "CONFIG_COVERAGE_GCOV"
+
+[[annotations]]
+path = [
+    "doc/_static/css/custom.css",
+    "doc/_static/css/dark.css",
+    "doc/_static/css/light.css",
+    "doc/_static/js/custom.js",
+]
+SPDX-License-Identifier = "CC-BY-3.0"
+SPDX-FileCopyrightText = "Copyright (c) 2014-2022 Juan Linietsky, Ariel Manzur and the Godot community"
+SPDX-FileComment = "Customize the Sphinx theme used to render the documentation and are never linked into a firmware."
+Zephyr-Component = "Godot Documentation Theme Files"
+Zephyr-Origin = "Godot Engine documentation <https://github.com/godotengine/godot-docs>"
+
+[[annotations]]
+path = [
+    "doc/_extensions/zephyr/domain/static/css/nouislider.min.css",
+    "doc/_extensions/zephyr/domain/static/js/nouislider.min.js",
+]
+SPDX-License-Identifier = "MIT"
+SPDX-FileCopyrightText = "Copyright (c) 2013-2023 Léon Gersen and contributors"
+SPDX-FileComment = "Provides the flash/RAM range sliders in the board catalog and is never linked into a firmware."
+Zephyr-Component = "noUiSlider Library"
+Zephyr-Origin = "noUiSlider <https://refreshless.com/nouislider/>"
+
+[[annotations]]
+path = [
+    "modules/openthread/platform/hdlc_interface.cpp",
+    "modules/openthread/platform/hdlc_interface.hpp",
+    "modules/openthread/platform/radio_spinel.cpp",
+]
+SPDX-License-Identifier = "BSD-3-Clause"
+SPDX-FileCopyrightText = "Copyright (c) 2021, The OpenThread Authors."
+SPDX-FileComment = "Linked into the firmware only when the Spinel HDLC RCP host interface is enabled."
+Zephyr-Component = "OpenThread Spinel HDLC RCP Host Interface Files"
+Zephyr-Origin = "OpenThread <https://openthread.io/>"
+Zephyr-Condition = "CONFIG_HDLC_RCP_IF"
+
+[[annotations]]
+path = "doc/_extensions/zephyr/doxytooltip/static/tippy/popper.min.js"
+SPDX-License-Identifier = "MIT"
+SPDX-FileCopyrightText = "Copyright (c) 2019 Federico Zivolo and contributors"
+SPDX-FileComment = "Used by Tippy.js to position the documentation's Doxygen tooltips and is never linked into a firmware."
+Zephyr-Component = "Popper.js Library"
+Zephyr-Origin = "Popper.js <https://popper.js.org/>"
+
+[[annotations]]
+path = "scripts/dts/python-devicetree/tests/**/*.yaml"
+SPDX-License-Identifier = "BSD-3-Clause"
+SPDX-FileCopyrightText = "Copyright The python-devicetree contributors"
+SPDX-FileComment = "Used only when testing the python-devicetree library and never linked into the firmware."
+Zephyr-Component = "Python Devicetree Library Test Files"
+Zephyr-Origin = "python-devicetree <https://github.com/zephyrproject-rtos/python-devicetree>"
+
+[[annotations]]
+path = [
+    "tests/benchmarks/thread_metric/src/*.c",
+    "tests/benchmarks/thread_metric/src/*.h",
+    "tests/benchmarks/thread_metric/thread_metric_readme.txt",
+]
+SPDX-License-Identifier = "MIT"
+SPDX-FileCopyrightText = "Copyright (c) 2024 Microsoft Corporation"
+SPDX-FileComment = "Linked only into the Thread-Metric RTOS Test Suite test firmware."
+Zephyr-Component = "Thread-Metric RTOS Test Suite Source Files"
+Zephyr-Origin = "ThreadX <https://github.com/eclipse-threadx/threadx>"
+
+[[annotations]]
+path = "doc/_extensions/zephyr/doxytooltip/static/tippy/tippy-bundle.umd.min.js"
+SPDX-License-Identifier = "MIT"
+SPDX-FileCopyrightText = "Copyright (c) 2017-2021 atomiks"
+SPDX-FileComment = "Renders the tooltips of the documentation's Doxygen tooltip extension and is never linked into a firmware."
+Zephyr-Component = "Tippy.js Library"
+Zephyr-Origin = "Tippy.js <https://atomiks.github.io/tippyjs/>"
+
+[[annotations]]
+path = [
+    "subsys/net/lib/wireguard/crypto/**/*.c",
+    "subsys/net/lib/wireguard/crypto/**/*.h",
+    "subsys/net/lib/wireguard/wg_crypto.c",
+]
+SPDX-License-Identifier = "BSD-3-Clause"
+SPDX-FileCopyrightText = "Copyright (c) 2021 Daniel Hope (www.floorsense.nz)"
+SPDX-FileComment = "Compiled into the firmware only when WireGuard is enabled."
+Zephyr-Component = "WireGuard VPN Files"
+Zephyr-Origin = "wireguard-lwip <https://github.com/smartalock/wireguard-lwip>"
+Zephyr-Condition = "CONFIG_WIREGUARD"

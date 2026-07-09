@@ -17,6 +17,7 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import tomllib
 import traceback
 from collections.abc import Iterable
 from itertools import takewhile
@@ -45,6 +46,7 @@ import unidiff
 import yaml
 from dotenv import load_dotenv
 from junitparser import Error, Failure, JUnitXml, Skipped, TestCase, TestSuite
+from reuse.global_licensing import AnnotationsItem
 from reuse.project import Project
 from reuse.report import ProjectSubsetReport
 from west.manifest import Manifest, ManifestProject
@@ -1815,6 +1817,14 @@ class LicenseAndCopyrightCheck(ComplianceTest):
     name = "LicenseAndCopyrightCheck"
     doc = "Check SPDX headers and copyright lines with the reuse Python API."
 
+    #: License that applies to the Zephyr tree as a whole and therefore never
+    #: needs to be documented as a licensing exception.
+    DEFAULT_LICENSE = "Apache-2.0"
+
+    #: License allowed for documentation only (per the project charter), so it
+    #: needs no exception when it applies to a documentation source file.
+    DOC_LICENSE = "CC-BY-4.0"
+
     def _report_violations(
         self,
         paths: Iterable[Path],
@@ -1865,6 +1875,55 @@ class LicenseAndCopyrightCheck(ComplianceTest):
                 "warning",
                 (
                     f"License file for '{lic_id}' not found in /LICENSES. Please check "
+                    "https://docs.zephyrproject.org/latest/contribute/guidelines.html#components-using-other-licenses."
+                ),
+            )
+
+        self._check_documented_exceptions(project, changed_files)
+
+    def _check_documented_exceptions(self, project: Project, changed_files: Iterable) -> None:
+        """Flag non-Apache-2.0 files that are not documented as an exception.
+
+        Zephyr is Apache-2.0 as a whole; per the project charter CC-BY-4.0 is
+        allowed for documentation only. Any other license, or CC-BY-4.0 on a
+        non-documentation file, must be listed on the
+        :ref:`licensing page <zephyr_licensing>`. That page is generated from
+        the ``[[annotations]]`` blocks in ``REUSE.toml`` that carry a
+        ``Zephyr-Component`` key, so such a file is considered documented if and
+        only if it is matched by one of those blocks.
+        """
+        reuse_toml = tomllib.loads((GIT_TOP / "REUSE.toml").read_text(encoding="utf-8"))
+        exception_items = [
+            AnnotationsItem.from_dict(block)
+            for block in reuse_toml.get("annotations", [])
+            if "Zephyr-Component" in block
+        ]
+
+        for file in changed_files:
+            allowed = {self.DEFAULT_LICENSE}
+            # CC-BY-4.0 is only acceptable without an exception on documentation.
+            if PurePath(file).suffix == ".rst":
+                allowed.add(self.DOC_LICENSE)
+
+            info = project.reuse_info_of(GIT_TOP / file)
+            licenses = {str(expr) for item in info for expr in item.spdx_expressions}
+            non_default = licenses - allowed
+            if not non_default:
+                continue
+            if any(item.matches(str(file)) for item in exception_items):
+                continue
+
+            self.fmtd_failure(
+                "error",
+                "Undocumented license",
+                str(file),
+                line=1,
+                desc=(
+                    f"File is licensed as {', '.join(sorted(non_default))}, which is not "
+                    "Apache-2.0. Every non-Apache-2.0 file in the main tree must be documented "
+                    "as a licensing exception: add an [[annotations]] entry with a "
+                    "'Zephyr-Component' key to REUSE.toml so the file is listed on the licensing "
+                    "page (https://docs.zephyrproject.org/latest/LICENSING.html). See "
                     "https://docs.zephyrproject.org/latest/contribute/guidelines.html#components-using-other-licenses."
                 ),
             )
