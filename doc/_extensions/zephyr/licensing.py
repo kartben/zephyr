@@ -108,9 +108,6 @@ REUSE_TOML: Final[Path] = ZEPHYR_BASE / "REUSE.toml"
 
 logger = logging.getLogger(__name__)
 
-# Licenses that are the project defaults and therefore not "deviations".
-DEFAULT_LICENSES: Final[set[str]] = {"Apache-2.0", "CC-BY-4.0"}
-
 # Marker key: a REUSE annotation is turned into a documented exception only if
 # it carries this key.
 MARKER_KEY: Final[str] = "Zephyr-Component"

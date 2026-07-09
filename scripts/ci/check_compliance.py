@@ -1817,9 +1817,13 @@ class LicenseAndCopyrightCheck(ComplianceTest):
     name = "LicenseAndCopyrightCheck"
     doc = "Check SPDX headers and copyright lines with the reuse Python API."
 
-    #: Licenses that apply to the Zephyr tree as a whole and therefore do not
-    #: need to be documented as a licensing exception.
-    DEFAULT_LICENSES = {"Apache-2.0", "CC-BY-4.0"}
+    #: License that applies to the Zephyr tree as a whole and therefore never
+    #: needs to be documented as a licensing exception.
+    DEFAULT_LICENSE = "Apache-2.0"
+
+    #: License allowed for documentation only (per the project charter), so it
+    #: needs no exception when it applies to a documentation source file.
+    DOC_LICENSE = "CC-BY-4.0"
 
     def _report_violations(
         self,
@@ -1880,12 +1884,13 @@ class LicenseAndCopyrightCheck(ComplianceTest):
     def _check_documented_exceptions(self, project: Project, changed_files: Iterable) -> None:
         """Flag non-Apache-2.0 files that are not documented as an exception.
 
-        Every file in the main tree that uses a license other than the project
-        defaults must be listed on the :ref:`licensing page <zephyr_licensing>`.
-        That page is generated from the ``[[annotations]]`` blocks in
-        ``REUSE.toml`` that carry a ``Zephyr-Component`` key, so a non-default
-        licensed file is considered documented if and only if it is matched by
-        one of those blocks.
+        Zephyr is Apache-2.0 as a whole; per the project charter CC-BY-4.0 is
+        allowed for documentation only. Any other license, or CC-BY-4.0 on a
+        non-documentation file, must be listed on the
+        :ref:`licensing page <zephyr_licensing>`. That page is generated from
+        the ``[[annotations]]`` blocks in ``REUSE.toml`` that carry a
+        ``Zephyr-Component`` key, so such a file is considered documented if and
+        only if it is matched by one of those blocks.
         """
         reuse_toml = tomllib.loads((GIT_TOP / "REUSE.toml").read_text(encoding="utf-8"))
         exception_items = [
@@ -1895,9 +1900,14 @@ class LicenseAndCopyrightCheck(ComplianceTest):
         ]
 
         for file in changed_files:
+            allowed = {self.DEFAULT_LICENSE}
+            # CC-BY-4.0 is only acceptable without an exception on documentation.
+            if PurePath(file).suffix == ".rst":
+                allowed.add(self.DOC_LICENSE)
+
             info = project.reuse_info_of(GIT_TOP / file)
             licenses = {str(expr) for item in info for expr in item.spdx_expressions}
-            non_default = licenses - self.DEFAULT_LICENSES
+            non_default = licenses - allowed
             if not non_default:
                 continue
             if any(item.matches(str(file)) for item in exception_items):
