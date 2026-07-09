@@ -8,6 +8,7 @@
 #include <semaphore.h>
 #include <time.h>
 
+#include <zephyr/sys/atomic.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/ztest.h>
 
@@ -461,6 +462,49 @@ ZTEST(pthread, test_pthread_equal)
 {
 	zassert_true(pthread_equal(pthread_self(), pthread_self()));
 	zassert_false(pthread_equal(pthread_self(), (pthread_t)4242));
+}
+
+static void *detached_recycle_entry(void *arg)
+{
+	atomic_inc((atomic_t *)arg);
+	return NULL;
+}
+
+/**
+ * @brief Exercise recycling of detached threads.
+ *
+ * @details Each detached thread exits immediately and lands on the DONE queue; a later
+ *          pthread_create() must reclaim it via posix_thread_recycle(). Churn more than the pool
+ *          size so that, if recycling regressed, the pool would exhaust and pthread_create()
+ *          would fail with EAGAIN before the loop completes.
+ */
+ZTEST(pthread, test_pthread_detached_recycle)
+{
+	atomic_t ran = ATOMIC_INIT(0);
+	const size_t iterations = CONFIG_POSIX_THREAD_THREADS_MAX * 2;
+
+	/*
+	 * Create detached threads one at a time, draining each before the next. Every create after
+	 * the first must reclaim the previous detached thread from the DONE queue, so the pool
+	 * (CONFIG_POSIX_THREAD_THREADS_MAX slots) never exhausts. A recycle regression would
+	 * surface as EAGAIN from pthread_create() once the pool fills.
+	 */
+	for (size_t i = 0; i < iterations; ++i) {
+		pthread_t th;
+		pthread_attr_t attr;
+
+		zassert_ok(pthread_attr_init(&attr));
+		zassert_ok(pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED));
+		zassert_ok(pthread_create(&th, &attr, detached_recycle_entry, (void *)&ran),
+			   "unable to create detached thread %zu", i);
+		zassert_ok(pthread_attr_destroy(&attr));
+
+		/* let the detached thread run to completion and reach the DONE queue */
+		k_msleep(50);
+	}
+
+	zassert_equal(atomic_get(&ran), (atomic_val_t)iterations,
+		      "not all detached threads ran (%ld/%zu)", (long)atomic_get(&ran), iterations);
 }
 
 static void cleanup_handler(void *arg)

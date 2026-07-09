@@ -542,6 +542,16 @@ static void posix_thread_recycle(void)
 	struct posix_thread *safe_t;
 	sys_dlist_t recyclables = SYS_DLIST_STATIC_INIT(&recyclables);
 
+	/*
+	 * Fast path: if nothing has finished since the last recycle, avoid taking the pool lock
+	 * entirely. This keeps pthread_create()/pthread_join() churn from paying a lock cycle on
+	 * every call. The unlocked read is safe: if a thread finishes concurrently it is simply
+	 * reclaimed on the next create/join instead of this one.
+	 */
+	if (sys_dlist_is_empty(&posix_thread_q[POSIX_THREAD_DONE_Q])) {
+		return;
+	}
+
 	SYS_SEM_LOCK(&pthread_pool_lock) {
 		SYS_DLIST_FOR_EACH_CONTAINER_SAFE(&posix_thread_q[POSIX_THREAD_DONE_Q], t, safe_t,
 						  q_node) {
