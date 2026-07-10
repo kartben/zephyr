@@ -98,12 +98,18 @@ class SPDX2Serializer:
             self.document_refs[doc_name] = f"DocumentRef-{doc_name}"
 
     def _write_document_first_pass(self, doc: SBOMDocument, output_path):
-        """Write a single SPDX 2.x document (first pass, without external refs)."""
+        """Write a single SPDX 2.x document (first pass).
+
+        The header emits external document references for whichever referenced
+        documents already have a computed hash at this point; documents are
+        written sequentially, so later documents are still missing. The second
+        pass rewrites each document once every hash is known so that all
+        external references are present and consistent.
+        """
         try:
             _logger.info(f"Writing SPDX {self.spdx_version} document {doc.name} to {output_path}")
             with open(output_path, "w", encoding="utf-8") as f:
                 self._write_document_header(f, doc)
-                # Skip external document refs in first pass
                 self._write_document_relationships(f, doc)
                 self._write_packages(f, doc)
                 self._write_custom_licenses(f, doc)

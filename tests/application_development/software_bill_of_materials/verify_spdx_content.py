@@ -23,6 +23,7 @@ from spdx_tools.spdx.model.package import PackagePurpose
 from spdx_tools.spdx.model.relationship import RelationshipType
 
 ZEPHYR_ORGANIZATION = "The Zephyr Project"
+ZEPHYR_GITHUB_NAMESPACE = "zephyrproject-rtos"
 SPDX_TOOL_PREFIX = "Zephyr SPDX builder"
 PURL_ZEPHYR_PREFIX = "pkg:github/zephyrproject-rtos/zephyr@"
 UTILITY_TARGETS = {
@@ -97,6 +98,28 @@ def get_supplier_name(package):
     if package.supplier is None:
         return None
     return str(package.supplier)
+
+
+def namespace_from_purl(purl):
+    """Return the host namespace (owner) from a 'pkg:<type>/<namespace>/<name>@rev' purl."""
+    # Strip the 'pkg:<type>/' prefix and any '@revision' / qualifier suffix, then take
+    # everything but the trailing package name as the namespace.
+    body = purl.split("@", 1)[0].split("?", 1)[0]
+    without_type = body.split("/", 1)[1] if "/" in body else body
+    namespace, _, _package = without_type.rpartition("/")
+    return namespace
+
+
+def expected_supplier_from_purl(purl):
+    """Mirror the generator's supplier logic: Zephyr's org for zephyrproject-rtos, else the namespace.
+
+    Keeps the test valid for forks and downstream manifests whose modules are hosted
+    under a different GitHub namespace.
+    """
+    namespace = namespace_from_purl(purl)
+    if namespace == ZEPHYR_GITHUB_NAMESPACE:
+        return ZEPHYR_ORGANIZATION
+    return namespace
 
 
 def has_relationship(doc, spdx_element_id, rel_type, related_id):
@@ -500,13 +523,19 @@ class TestPackageProvenance:
         pkg = first_module_deps_package(modules_doc)
         if pkg is None:
             pytest.skip("No module-deps packages in modules-deps.spdx")
-        assert get_supplier_name(pkg) == f"Organization: {ZEPHYR_ORGANIZATION}", (
-            f"modules-deps.spdx: {pkg.name} supplier is '{get_supplier_name(pkg)}'"
-        )
         purls = get_purl_refs(pkg)
         assert purls, f"modules-deps.spdx: {pkg.name} has no purl references"
         assert any("@" in p for p in purls), (
             f"modules-deps.spdx: {pkg.name} purl should include revision suffix, got {purls}"
+        )
+        # The supplier is derived from the module's SCM namespace, so it is only the
+        # Zephyr organization for modules hosted under zephyrproject-rtos. Derive the
+        # expected value from the package's own purl so the test holds for forks and
+        # downstream manifests whose modules live under a different namespace.
+        expected_supplier = expected_supplier_from_purl(purls[0])
+        assert get_supplier_name(pkg) == f"Organization: {expected_supplier}", (
+            f"modules-deps.spdx: {pkg.name} supplier is '{get_supplier_name(pkg)}', "
+            f"expected 'Organization: {expected_supplier}' (from purl {purls[0]})"
         )
 
 
