@@ -139,3 +139,26 @@ def zephyr_meta_remote(build_dir):
 
     zephyr = content.get("zephyr", {}) if content else {}
     return zephyr.get("remote") or zephyr.get("url")
+
+
+@pytest.fixture(scope="session")
+def manifest_meta_remote(build_dir):
+    """Fixture providing the manifest repository SCM URL from zephyr.meta, if any.
+
+    ``process_meta`` records the manifest repository as the first entry of
+    ``west.projects``; the SBOM author is derived from its hosting namespace.
+    Returns None for non-west builds or when no manifest remote is recorded.
+    """
+    meta_path = os.path.join(build_dir, "zephyr", "zephyr.meta")
+    try:
+        with open(meta_path) as f:
+            content = yaml.safe_load(f)
+    except OSError:
+        return None
+
+    west = content.get("west", {}) if content else {}
+    projects = west.get("projects") or []
+    if not projects:
+        return None
+    manifest = projects[0] or {}
+    return manifest.get("remote") or manifest.get("url")

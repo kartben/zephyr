@@ -29,8 +29,8 @@ from zspdx.model import (
 
 _logger = logging.getLogger(__name__)
 
-# Organization credited as the SBOM author and as the supplier of Zephyr and its
-# upstream-mirrored modules (all hosted under github.com/zephyrproject-rtos).
+# Organization mapped to the github.com/zephyrproject-rtos namespace when deriving a
+# supplier or author, and used as the fallback when no SCM remote is available.
 ZEPHYR_ORGANIZATION = "The Zephyr Project"
 
 # Name of the tool recorded in the SPDX Creator field.
@@ -274,17 +274,42 @@ class Walker:
             version += f"-{extra}"
         return version
 
-    def _set_creation_metadata(self, zephyr):
+    def _set_creation_metadata(self, content):
         """Record SBOM creator provenance (author organization and tool version).
 
         Serializers read these from the graph metadata to emit the SPDX Creator
         fields, so the SBOM advertises a human/organization author alongside the
         versioned generation tool.
         """
-        self.sbom_graph.metadata["creator_organization"] = ZEPHYR_ORGANIZATION
+        zephyr = content.get("zephyr") or {}
+        self.sbom_graph.metadata["creator_organization"] = self._author_organization(content)
         self.sbom_graph.metadata["tool_name"] = SPDX_TOOL_NAME
-        self.sbom_graph.metadata["tool_version"] = self._read_zephyr_version(
-            (zephyr or {}).get("path", "")
+        self.sbom_graph.metadata["tool_version"] = self._read_zephyr_version(zephyr.get("path", ""))
+
+    def _author_organization(self, content):
+        """Credit the SBOM author to the workspace's manifest repository owner.
+
+        The manifest repository is the top-level project that pins the workspace
+        (a vendor SDK, a downstream integration, or Zephyr itself), so its hosting
+        namespace identifies who produced this SBOM. ``process_meta`` records it as
+        the first entry of ``west.projects``. Fall back to the Zephyr repository's
+        namespace, then to the Zephyr Project, when no manifest remote is available
+        (non-west builds, or a local/off-manifest checkout).
+        """
+        west = content.get("west") or {}
+        projects = west.get("projects") or []
+        manifest_url = ""
+        if projects:
+            manifest = projects[0] or {}
+            manifest_url = manifest.get("remote") or manifest.get("url", "")
+
+        zephyr = content.get("zephyr") or {}
+        zephyr_url = zephyr.get("remote") or zephyr.get("url", "")
+
+        return (
+            self._supplier_from_url(manifest_url)
+            or self._supplier_from_url(zephyr_url)
+            or ZEPHYR_ORGANIZATION
         )
 
     # primary entry point
@@ -498,7 +523,7 @@ class Walker:
         try:
             with open(self.meta_file) as file:
                 content = yaml.load(file.read(), yaml.SafeLoader)
-                self._set_creation_metadata(content.get("zephyr"))
+                self._set_creation_metadata(content)
                 if not self.setup_zephyr_component(content["zephyr"], content["modules"]):
                     return False
         except (FileNotFoundError, yaml.YAMLError):
@@ -545,13 +570,18 @@ class Walker:
             base_dir=relative_base_dir,
         )
 
-        # Zephyr itself is always supplied by the Zephyr Project.
-        component.supplier = ZEPHYR_ORGANIZATION
         component.comment = SOURCES_COMMENT
 
         zephyr_url = zephyr.get("remote") or zephyr.get("url", "")
         if zephyr_url:
             component.url = zephyr_url
+
+        # The supplier is the entity distributing this Zephyr tree: the Zephyr
+        # Project for the canonical upstream repository, or the hosting namespace
+        # for a downstream/vendor fork that ships a modified Zephyr (e.g. a vendor
+        # SDK). Fall back to the Zephyr Project when no remote is recorded (e.g. a
+        # local, off-manifest checkout).
+        component.supplier = self._supplier_from_url(zephyr_url) or ZEPHYR_ORGANIZATION
 
         if zephyr.get("revision"):
             component.revision = zephyr.get("revision")
@@ -641,8 +671,11 @@ class Walker:
 
         # no PrimaryPackagePurpose: this is a reference-only dependency package with no files
         component = SBOMComponent(name="zephyr-deps", comment=ZEPHYR_DEPS_COMMENT)
-        component.supplier = ZEPHYR_ORGANIZATION
         component.url = zephyr.get("remote") or zephyr.get("url", "")
+        # Same supplier derivation as zephyr-sources: the hosting namespace, so a
+        # downstream/vendor fork is attributed to its distributor rather than to
+        # the upstream Zephyr Project.
+        component.supplier = self._supplier_from_url(component.url) or ZEPHYR_ORGANIZATION
         component.revision = zephyr.get("revision", "")
 
         purl = None
