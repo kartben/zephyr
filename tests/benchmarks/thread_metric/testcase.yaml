@@ -69,3 +69,47 @@ tests:
   benchmark.thread_metric.synchronization:
     extra_configs:
       - CONFIG_TM_SYNCHRONIZATION=y
+
+  # POSIX API porting-layer flavor: the same benchmarks routed through Zephyr's
+  # POSIX API (pthreads, POSIX semaphores, and POSIX message queues) to measure
+  # the overhead of that abstraction relative to the native Zephyr layer.
+  benchmark.thread_metric.posix.basic:
+    extra_configs:
+      - CONFIG_TM_BASIC=y
+      - CONFIG_TM_PORTING_LAYER_POSIX=y
+
+  benchmark.thread_metric.posix.cooperative:
+    extra_configs:
+      - CONFIG_TM_COOPERATIVE=y
+      - CONFIG_TM_PORTING_LAYER_POSIX=y
+
+  benchmark.thread_metric.posix.interrupt:
+    min_ram: 24
+    extra_configs:
+      - CONFIG_TM_INTERRUPT=y
+      - CONFIG_TM_PORTING_LAYER_POSIX=y
+
+  benchmark.thread_metric.posix.interrupt_preemption:
+    extra_configs:
+      - CONFIG_TM_INTERRUPT_PREEMPTION=y
+      - CONFIG_TM_PORTING_LAYER_POSIX=y
+
+  benchmark.thread_metric.posix.memory_allocation:
+    extra_configs:
+      - CONFIG_TM_MEMORY_ALLOCATION=y
+      - CONFIG_TM_PORTING_LAYER_POSIX=y
+
+  benchmark.thread_metric.posix.message:
+    extra_configs:
+      - CONFIG_TM_MESSAGE=y
+      - CONFIG_TM_PORTING_LAYER_POSIX=y
+
+  benchmark.thread_metric.posix.preemptive:
+    extra_configs:
+      - CONFIG_TM_PREEMPTIVE=y
+      - CONFIG_TM_PORTING_LAYER_POSIX=y
+
+  benchmark.thread_metric.posix.synchronization:
+    extra_configs:
+      - CONFIG_TM_SYNCHRONIZATION=y
+      - CONFIG_TM_PORTING_LAYER_POSIX=y

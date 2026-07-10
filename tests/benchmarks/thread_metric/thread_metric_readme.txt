@@ -121,9 +121,42 @@ tm_message_processing_test.c                  Message exchange processing test
 tm_synchronization_processing_test.c          Semaphore get/put processing test
 tm_memory_allocation_test.c                   Basic memory allocation test
 tm_porting_layer_zephyr.c                     Specific porting layer source
-                                                 code for Zephyr
+                                                 code for Zephyr (native kernel
+                                                 API)
+tm_porting_layer_posix.c                      Porting layer source code
+                                                 implemented on top of the
+                                                 Zephyr POSIX API
 
-2.5. Test execution with Twister tool
+2.5. POSIX API porting layer flavor
+
+In addition to the native Zephyr porting layer (tm_porting_layer_zephyr.c),
+Zephyr provides a second porting layer (tm_porting_layer_posix.c) that is
+implemented entirely on top of the Zephyr POSIX API:
+
+    * threads       -> pthreads (SCHED_RR)
+    * semaphores    -> POSIX unnamed semaphores (sem_init/sem_wait/sem_post)
+    * message queue -> POSIX message queues (mq_open/mq_send/mq_receive)
+    * memory pool   -> the C library heap (malloc/free)
+
+Running the same eight benchmarks through this layer captures the additional
+overhead that the POSIX abstraction adds relative to calling the Zephyr kernel
+APIs directly. The pthread scheduling priorities are chosen so that the
+resulting Zephyr thread priorities match those used by the native porting
+layer, keeping the comparison apples-to-apples.
+
+The porting layer is selected through Kconfig. The native layer is used by
+default; to build any of the benchmarks against the POSIX layer, set:
+
+    CONFIG_TM_PORTING_LAYER_POSIX=y
+
+For example:
+
+    west build -b <board> tests/benchmarks/thread_metric -- \
+        -DCONFIG_TM_SYNCHRONIZATION=y -DCONFIG_TM_PORTING_LAYER_POSIX=y
+
+The Twister test cases whose names contain ".posix" exercise this flavor.
+
+2.6. Test execution with Twister tool
 
 When the test suite is executed by Twister it takes parameters from testcase.yaml
 file, in particular:

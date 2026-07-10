@@ -78,4 +78,37 @@ config TM_SYNCHRONIZATION
 
 endchoice
 
+choice TM_PORTING_LAYER
+	prompt "Select the Thread-Metric porting layer implementation"
+	default TM_PORTING_LAYER_ZEPHYR
+	help
+	  Select which RTOS abstraction the Thread-Metric porting layer is
+	  mapped onto. This allows the very same benchmarks to be run either
+	  directly against the native Zephyr kernel API or through Zephyr's
+	  POSIX API in order to compare the two.
+
+config TM_PORTING_LAYER_ZEPHYR
+	bool "Native Zephyr kernel API"
+	help
+	  Implement the porting layer using the native Zephyr kernel API
+	  (k_thread, k_sem, k_msgq, k_mem_slab).
+
+config TM_PORTING_LAYER_POSIX
+	bool "POSIX API"
+	select POSIX_API
+	select POSIX_MESSAGE_PASSING
+	select POSIX_PRIORITY_SCHEDULING
+	help
+	  Implement the porting layer using Zephyr's POSIX API (pthreads,
+	  POSIX semaphores, and POSIX message queues). Running the benchmarks
+	  through this layer measures the additional overhead introduced by
+	  the POSIX abstraction relative to the native Zephyr porting layer.
+
+endchoice
+
+# The scheduling benchmarks keep up to five test threads alive at once, so make
+# sure the POSIX thread pool is large enough for them.
+config POSIX_THREAD_THREADS_MAX
+	default 8 if TM_PORTING_LAYER_POSIX
+
 source "Kconfig.zephyr"
