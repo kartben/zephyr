@@ -63,7 +63,7 @@ complete conversion reference.
 
 .. _hardware model v2 commit: https://github.com/zephyrproject-rtos/zephyr/commit/8dc3f856229ce083c956aa301c31a23e65bd8cd8
 .. _example-application conversion Pull Request: https://github.com/zephyrproject-rtos/example-application/pull/58
-.. _conversion script: https://github.com/zephyrproject-rtos/zephyr/blob/main/scripts/utils/board_v1_to_v2.py
+.. _conversion script: https://github.com/zephyrproject-rtos/zephyr/blob/v3.7.0/scripts/utils/board_v1_to_v2.py
 
 .. _hw_support_hierarchy:
 
