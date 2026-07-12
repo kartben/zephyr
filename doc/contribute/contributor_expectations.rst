@@ -290,6 +290,6 @@ the steps below:
 
 .. _#pr-help: https://discord.com/channels/720317445772017664/997527108844798012
 
-.. _Architecture Project: https://github.com/zephyrproject-rtos/zephyr/projects/18
+.. _Architecture Project: https://github.com/orgs/zephyrproject-rtos/projects/35
 
 .. _Architecture Working Group: https://github.com/zephyrproject-rtos/zephyr/wiki/Architecture-Working-Group
