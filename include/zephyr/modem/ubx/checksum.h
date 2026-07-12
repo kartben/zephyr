@@ -5,8 +5,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Compile-time computation of the u-blox (UBX) protocol checksum.
+ *
+ * These helper macros implement the 8-bit Fletcher checksum defined by the UBX
+ * protocol so that constant frames declared with the initializer macros in
+ * @ref modem_ubx_protocol can have their checksum evaluated by the preprocessor.
+ */
+
 #ifndef ZEPHYR_MODEM_UBX_CHECKSUM_
 #define ZEPHYR_MODEM_UBX_CHECKSUM_
+
+/** @cond INTERNAL_HIDDEN */
 
 /** Macrobatics to compute UBX checksum at compile time */
 
@@ -34,5 +45,7 @@
 	 ((len - 16) * a17) + ((len - 17) * a18) + ((len - 18) * a19) + ((len - 19) * a20)) & 0xFF
 
 #define UBX_CSUM(...) UBX_CSUM_A(__VA_ARGS__), UBX_CSUM_B(__VA_ARGS__)
+
+/** @endcond */
 
 #endif /* ZEPHYR_MODEM_UBX_CHECKSUM_ */
