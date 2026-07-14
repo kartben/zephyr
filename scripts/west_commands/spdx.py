@@ -35,7 +35,7 @@ class ZephyrSpdx(WestCommand):
         parser = parser_adder.add_parser(self.name, description=self.description)
 
         # If you update these options, make sure to keep the docs in
-        # doc/guides/west/zephyr-cmds.rst up to date.
+        # doc/develop/west/zephyr-cmds.rst up to date.
         parser.add_argument(
             '-i', '--init', action="store_true", help="initialize CMake file-based API"
         )
@@ -53,6 +53,24 @@ class ZephyrSpdx(WestCommand):
         )
         parser.add_argument(
             '--include-sdk', action="store_true", help="also generate SPDX document for SDK"
+        )
+        parser.add_argument(
+            '--analyze-elf',
+            metavar='ANALYSIS',
+            action='append',
+            choices=['snippets'],
+            help=(
+                "analyze the final image's DWARF debug info (requires a build "
+                "with debug symbols). "
+                "'snippets': emit the used source line-ranges as an SPDX Snippets "
+                "add-on document."
+            ),
+        )
+        parser.add_argument(
+            '--elf-file',
+            metavar='ELF',
+            help="ELF file to analyze for --analyze-elf (default: "
+            "<build-dir>/zephyr/zephyr.elf)",
         )
 
         return parser
@@ -72,6 +90,8 @@ class ZephyrSpdx(WestCommand):
         self.dbg("  --spdx-version is", args.spdx_version)
         self.dbg("  --analyze-includes is", args.analyze_includes)
         self.dbg("  --include-sdk is", args.include_sdk)
+        self.dbg("  --analyze-elf is", args.analyze_elf)
+        self.dbg("  --elf-file is", args.elf_file)
 
         if args.init:
             self.do_run_init(args)
@@ -122,6 +142,12 @@ class ZephyrSpdx(WestCommand):
             cfg.analyze_includes = True
         if args.include_sdk:
             cfg.include_sdk = True
+        analyses = set(args.analyze_elf or [])
+        cfg.generate_snippets = 'snippets' in analyses
+        if args.elf_file:
+            if not analyses:
+                self.wrn("--elf-file has no effect without --analyze-elf; ignoring")
+            cfg.elf_file = args.elf_file
 
         # make sure SPDX directory exists, or create it if it doesn't
         if os.path.exists(cfg.spdx_dir):
