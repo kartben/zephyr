@@ -4,8 +4,51 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Resource identifiers for the NXP i.MX System Controller Unit (SCU)
+ * @ingroup dt_imx_scu_rsrc
+ */
+
 #ifndef ZEPHYR_INCLUDE_DT_BINDINGS_POWER_IMX_SCU_RSRC_H_
 #define ZEPHYR_INCLUDE_DT_BINDINGS_POWER_IMX_SCU_RSRC_H_
+
+/**
+ * @addtogroup devicetree-power Devicetree power helpers
+ * @ingroup devicetree
+ */
+
+/**
+ * @defgroup dt_imx_scu_rsrc NXP i.MX SCU resource IDs
+ * @brief Resource identifiers for SCU-managed power domains on NXP i.MX8
+ * @ingroup devicetree-power
+ *
+ * SoCs of the i.MX8 family delegate power management to firmware running on the
+ * System Controller Unit (SCU). Each resource the SCU manages (CPU core,
+ * peripheral, DMA channel, ...) is identified by an <tt>IMX_SC_R_\<resource\></tt>
+ * value from this header, used as the @c nxp,resource-id property of a
+ * @c nxp,scu-pd power domain node:
+ *
+ * @code{.dts}
+ * #include <zephyr/dt-bindings/power/imx_scu_rsrc.h>
+ *
+ * irqstr_pd: pd@0 {
+ *         compatible = "nxp,imx8qm-scu-pd", "nxp,scu-pd";
+ *         reg = <0>;
+ *         nxp,resource-id = <IMX_SC_R_IRQSTR_DSP>;
+ *         #power-domain-cells = <0>;
+ * };
+ * @endcode
+ *
+ * The IDs mirror the resource table of the i.MX8 System Controller firmware.
+ * @c IMX_SC_R_LAST is not a resource: it is the number of resource IDs (one past
+ * the last valid ID). <tt>IMX_SC_R_UNUSED\<n\></tt> entries are placeholders kept
+ * so the numbering matches the firmware.
+ *
+ * @{
+ */
+
+/** @cond INTERNAL_HIDDEN */
 
 #define IMX_SC_R_A53                  0U
 #define IMX_SC_R_A53_0                1U
@@ -554,5 +597,9 @@
 #define IMX_SC_R_DMA_5_CH3            544U
 #define IMX_SC_R_ATTESTATION          545U
 #define IMX_SC_R_LAST                 546U
+
+/** @endcond */
+
+/** @} */
 
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_POWER_IMX_SCU_RSRC_H_ */

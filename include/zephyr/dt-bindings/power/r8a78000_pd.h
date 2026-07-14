@@ -4,12 +4,40 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Renesas R-Car Gen5 R8A78000 power domain definitions
+ * @ingroup dt_renesas_r8a78000_pd
+ */
+
 #ifndef ZEPHYR_INCLUDE_DT_BINDINGS_POWER_RENESAS_PD_R8A78000_H_
 #define ZEPHYR_INCLUDE_DT_BINDINGS_POWER_RENESAS_PD_R8A78000_H_
 
 /**
- * @file
- * @brief Renesas R-Car Gen5 R8A78000 power domain definitions.
+ * @addtogroup devicetree-power Devicetree power helpers
+ * @ingroup devicetree
+ */
+
+/**
+ * @defgroup dt_renesas_r8a78000_pd Renesas R8A78000 power domains
+ * @brief Power domain identifiers for the Renesas R-Car Gen5 R8A78000 SoC
+ * @ingroup devicetree-power
+ *
+ * Each <tt>R8A78000_PD_\<domain\></tt> value identifies one of the SoC power
+ * domains managed by the SCMI platform firmware. Use them as the @c reg of
+ * @c arm,scmi-power-domain nodes:
+ *
+ * @code{.dts}
+ * #include <zephyr/dt-bindings/power/r8a78000_pd.h>
+ *
+ * vio4_pd: video-io4-pd@b {
+ *         compatible = "arm,scmi-power-domain";
+ *         reg = <R8A78000_PD_VIO4>;
+ *         #power-domain-cells = <0>;
+ * };
+ * @endcode
+ *
+ * @{
  */
 
 /** @cond INTERNAL_HIDDEN */
@@ -272,5 +300,7 @@
 #define R8A78000_PD_Q_APU_P07		254
 
 /** @endcond */
+
+/** @} */
 
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_POWER_RENESAS_PD_R8A78000_H_ */

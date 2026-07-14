@@ -17,9 +17,14 @@
 #define ZEPHYR_INCLUDE_DT_BINDINGS_POWER_IMX952_POWER_H_
 
 /**
+ * @addtogroup devicetree-power Devicetree power helpers
+ * @ingroup devicetree
+ */
+
+/**
  * @defgroup imx952_power_domains NXP i.MX952 Power Domains
  * @brief Power domain slice indices for i.MX952 SoC
- * @ingroup devicetree
+ * @ingroup devicetree-power
  * @{
  */
 
