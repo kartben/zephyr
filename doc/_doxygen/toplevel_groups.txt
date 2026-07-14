@@ -8,6 +8,9 @@
 # meant to stay short: nest a new group under an existing category instead of
 # adding a line below. Enforced by scripts/ci/doxygen_toplevel_groups.py.
 #
+# These categories are also listed on the API documentation homepage: when
+# changing this list, update doc/_doxygen/mainpage.md accordingly.
+#
 # Blank lines are ignored and '#' starts a comment.
 
 # zephyr-keep-sorted-start

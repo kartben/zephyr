@@ -1,27 +1,48 @@
-# Introduction
+# Zephyr API Reference
 
-The Zephyr OS is a small-footprint kernel designed for use on
-resource-constrained and embedded systems: from simple embedded
-environmental sensors and LED wearables to sophisticated embedded
-controllers, smart watches, and IoT wireless applications.
+This is the reference documentation for the [Zephyr RTOS](https://zephyrproject.org)
+C API: the functions, macros, and data structures available to Zephyr
+applications and subsystems, generated from the source code.
 
-See the [zephyrproject.org](https://zephyrproject.org) site for more
-information about the project and becoming a member, and this [summary
-of Zephyr resources](https://docs.zephyrproject.org/latest/introduction/index.html#resources)
-to help you find your way around the project.
+## Browse the API by topic
 
-## Supported Boards
+The API is organized as a hierarchy of [**Topics**](topics.html), starting from
+the following top-level categories:
 
-The Zephyr kernel supports multiple architectures, including ARM
-Cortex-M, Intel x86, ARC, NIOS II, Tensilica Xtensa, and RISC-V 32.  For
-details, see the [latest supported boards
-documentation](https://docs.zephyrproject.org/latest/boards/index.html).
+- @ref kernel_apis — threads, scheduling, synchronization primitives, memory
+  allocation, timers, and other kernel services.
+- @ref os_services — higher-level services built on top of the kernel, such as
+  connectivity (networking, Bluetooth, USB, ...), file systems, power
+  management, cryptography, storage, debugging, device management, and the
+  shell.
+- @ref io_interfaces — hardware-agnostic APIs for interacting with device
+  drivers (GPIO, I2C, SPI, sensors, ...) and for implementing new ones.
+- @ref device_model — how devices are defined, initialized, and retrieved at
+  run time.
+- @ref devicetree — macros for accessing the hardware description provided by
+  the devicetree.
+- @ref mem_mgmt — memory management APIs such as demand paging and memory
+  attributes.
+- @ref utilities — data structures and general-purpose helper APIs.
+- @ref testing — APIs for writing and running tests.
+- @ref third_party — APIs to interact with third-party services or
+  applications.
+- @ref toolchain — macros abstracting compiler and toolchain capabilities.
+- @ref system_errno — system error numbers.
+- @ref internal_api — internal and system APIs, not intended for direct use by
+  applications.
 
-## Licensing
+## Other ways to explore
 
-Zephyr is permissively licensed using the Apache 2.0 license (as found
-in the [project's GitHub LICENSE
-file](https://github.com/zephyrproject-rtos/zephyr/blob/main/LICENSE).
-There are some imported or reused components of the Zephyr project that
-use other licensing, as described in [Licensing of Zephyr Project
-components](https://docs.zephyrproject.org/latest/LICENSING.html#zephyr-licensing).
+- [Data Structures](annotated.html) — all documented `struct`s and `union`s.
+- [Files](files.html) — browse the API by header file.
+- [Deprecated List](deprecated.html) — APIs scheduled for removal, and what to
+  use instead.
+- The search box at the top of every page finds any documented symbol by name.
+
+## Looking for something else?
+
+This site only covers the C API. For everything else — introduction to Zephyr,
+getting started guide, developer and contribution guides, kernel and services
+documentation, supported boards, samples, release notes, licensing — head over
+to the main [Zephyr Project documentation](https://docs.zephyrproject.org/latest/).
