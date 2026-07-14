@@ -20,11 +20,13 @@ SPDX_DESCRIPTION = """\
 This command creates an SPDX bill of materials following the completion
 of a Zephyr build.
 
-Prior to the build, an empty file must be created at
-BUILDDIR/.cmake/api/v1/query/codemodel-v2 in order to enable
-the CMake file-based API, which the SPDX command relies upon.
-This can be done by calling `west spdx --init` prior to
-calling `west build`."""
+The SPDX command relies on the CMake file-based API. `west build` enables
+it automatically, so in the common case no preparation is required: just
+build, then run `west spdx`.
+
+If you configure CMake without `west build` -- or you disabled the file-based
+API with `west config build.cmake-file-api false` -- initialize the query
+manually before configuring the build, with `west spdx --init -d BUILDDIR`."""
 
 
 class ZephyrSpdx(WestCommand):
