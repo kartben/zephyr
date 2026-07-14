@@ -80,6 +80,24 @@ class ZephyrSpdx(WestCommand):
             '--requirements-dir',
             help="path to the reqmgmt StrictDoc module (for full requirement statements)",
         )
+        parser.add_argument(
+            '--analyze-elf',
+            metavar='ANALYSIS',
+            action='append',
+            choices=['snippets'],
+            help=(
+                "analyze the final image's DWARF debug info (requires a build "
+                "with debug symbols). "
+                "'snippets': emit the used source line-ranges as an SPDX Snippets "
+                "add-on document."
+            ),
+        )
+        parser.add_argument(
+            '--elf-file',
+            metavar='ELF',
+            help="ELF file to analyze for --analyze-elf (default: "
+            "<build-dir>/zephyr/zephyr.elf)",
+        )
 
         return parser
 
@@ -102,6 +120,8 @@ class ZephyrSpdx(WestCommand):
         self.dbg("  --twister-json is", args.twister_json)
         self.dbg("  --coverage is", args.coverage)
         self.dbg("  --requirements-dir is", args.requirements_dir)
+        self.dbg("  --analyze-elf is", args.analyze_elf)
+        self.dbg("  --elf-file is", args.elf_file)
 
         if args.init:
             self.do_run_init(args)
@@ -167,6 +187,12 @@ class ZephyrSpdx(WestCommand):
             cfg.coverage_json = args.coverage
         if args.requirements_dir:
             cfg.requirements_dir = args.requirements_dir
+        analyses = set(args.analyze_elf or [])
+        cfg.generate_snippets = 'snippets' in analyses
+        if args.elf_file:
+            if not analyses:
+                self.wrn("--elf-file has no effect without --analyze-elf; ignoring")
+            cfg.elf_file = args.elf_file
 
         # make sure SPDX directory exists, or create it if it doesn't
         if os.path.exists(cfg.spdx_dir):

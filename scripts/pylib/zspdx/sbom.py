@@ -49,6 +49,13 @@ class SBOMConfig:
 
     # reqmgmt StrictDoc module directory (full requirement statements).
     requirements_dir: str = ""
+    # --analyze-elf=snippets: generate a snippets add-on document from the
+    # final image's DWARF debug info?
+    generate_snippets: bool = False
+
+    # ELF file to analyze for --analyze-elf; when empty, defaults to
+    # <build_dir>/zephyr/zephyr.elf
+    elf_file: str = ""
 
 
 # create Cmake file-based API directories and query file
@@ -189,6 +196,9 @@ def make_spdx(cfg):
     # load the SPDX 3.1 FunctionalSafety inputs, if requested
     if cfg.spdx_version >= SPDX_VERSION_3_1:
         _load_functional_safety_inputs(cfg, sbom_graph)
+    # optional: analyze the final image's DWARF debug info
+    if cfg.generate_snippets:
+        _analyze_elf(cfg, sbom_graph)
 
     # route to appropriate serializer based on version
     if cfg.spdx_version.major == 2:
@@ -206,3 +216,64 @@ def make_spdx(cfg):
     else:
         _logger.error("Unsupported SPDX version: %s", cfg.spdx_version)
         return False
+
+
+def _analyze_elf(cfg: SBOMConfig, sbom_graph) -> None:
+    """Record the final image's used source ranges as SPDX snippets."""
+    from zspdx.dwarf import collect_used_lines
+
+    elf_path = cfg.elf_file or os.path.join(cfg.build_dir, "zephyr", "zephyr.elf")
+    if not os.path.isfile(elf_path):
+        _logger.error(
+            "ELF file not found for --analyze-elf: %s "
+            "(build first, or pass --elf-file=<path>)",
+            elf_path,
+        )
+        return
+
+    file_lines = collect_used_lines(elf_path)
+    _extract_snippets(sbom_graph, elf_path, file_lines)
+
+
+def _extract_snippets(sbom_graph, elf_path: str, file_lines: dict[str, set[int]]) -> None:
+    """Populate ``sbom_graph.snippets`` from the collected DWARF line map."""
+    from zspdx.dwarf import ranges_from_line_map
+    from zspdx.model import SBOMSnippet
+
+    # Restrict to tracked files before folding into ranges so we only read the
+    # sources we actually emit snippets for.
+    known_paths = set(sbom_graph.files.keys())
+    ranges_by_file = ranges_from_line_map(
+        {path: lines for path, lines in file_lines.items() if path in known_paths}
+    )
+
+    # Record the image the snippets came from so serializers can emit the
+    # source-to-binary provenance relationship. The graph may key the file by a
+    # different (non-realpath) path, so fall back to a realpath comparison.
+    sbom_graph.snippet_binary = sbom_graph.get_file(elf_path)
+    if sbom_graph.snippet_binary is None:
+        real_elf = os.path.realpath(elf_path)
+        for file_path, spdx_file in sbom_graph.files.items():
+            if os.path.realpath(file_path) == real_elf:
+                sbom_graph.snippet_binary = spdx_file
+                break
+
+    for path, ranges in ranges_by_file.items():
+        spdx_file = sbom_graph.get_file(path)
+        if spdx_file is None:
+            continue
+        for r in ranges:
+            snippet = SBOMSnippet(
+                spdx_file=spdx_file,
+                byte_range=(r.start_byte, r.end_byte),
+                line_range=(r.start_line, r.end_line),
+                concluded_license=spdx_file.concluded_license,
+                copyright_text=spdx_file.copyright_text,
+            )
+            sbom_graph.snippets.append(snippet)
+
+    _logger.info(
+        "Extracted %d snippet(s) from %d source file(s)",
+        len(sbom_graph.snippets),
+        len(ranges_by_file),
+    )

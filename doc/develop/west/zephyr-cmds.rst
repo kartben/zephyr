@@ -312,6 +312,18 @@ Command-line options
 - ``--traceability PATH``, ``--twister-json PATH``, ``--coverage PATH`` and
   ``--requirements-dir DIR``: enable and feed the SPDX 3.1 :ref:`Functional Safety profile
   <west-spdx-functional-safety>`. Only used with ``--spdx-version 3.1``.
+- ``--analyze-elf {snippets}``: inspect the final image's DWARF debug
+  information to refine the bill-of-materials down to what actually ended up in
+  the firmware. Requires a build with debug symbols (the default for most
+  Zephyr configurations).
+
+  - ``snippets``: record the specific source line-ranges that contributed code
+    to the image as an additional :file:`snippets.spdx` (or
+    :file:`snippets.jsonld`) document, using SPDX Snippets. Each snippet points
+    back at its source file and carries that file's license and copyright.
+
+- ``--elf-file ELF``: the image analyzed by ``--analyze-elf``. Defaults to
+  :file:`BUILD_DIR/zephyr/zephyr.elf`.
 
 .. warning::
 
