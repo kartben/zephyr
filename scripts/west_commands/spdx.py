@@ -58,12 +58,14 @@ class ZephyrSpdx(WestCommand):
             '--analyze-elf',
             metavar='ANALYSIS',
             action='append',
-            choices=['snippets'],
+            choices=['snippets', 'prune-sources'],
             help=(
                 "analyze the final image's DWARF debug info (requires a build "
-                "with debug symbols). "
+                "with debug symbols). May be given more than once. "
                 "'snippets': emit the used source line-ranges as an SPDX Snippets "
-                "add-on document."
+                "add-on document. "
+                "'prune-sources': drop source files that contributed no code to "
+                "the final image."
             ),
         )
         parser.add_argument(
@@ -144,6 +146,7 @@ class ZephyrSpdx(WestCommand):
             cfg.include_sdk = True
         analyses = set(args.analyze_elf or [])
         cfg.generate_snippets = 'snippets' in analyses
+        cfg.prune_sources = 'prune-sources' in analyses
         if args.elf_file:
             if not analyses:
                 self.wrn("--elf-file has no effect without --analyze-elf; ignoring")
