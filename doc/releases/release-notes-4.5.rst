@@ -678,6 +678,12 @@ Other notable changes
     Experimental SPDX 3.1 output is also available, tracking the still
     in-development 3.1 specification. See :ref:`west-spdx`.
 
+  * ``west build`` now enables CMake's file-based API automatically, so
+    generating an SBOM no longer requires a separate ``west spdx --init`` step
+    before the build: build with :kconfig:option:`CONFIG_BUILD_OUTPUT_META`
+    enabled and then run ``west spdx``. Set
+    ``west config build.cmake-file-api false`` to opt out.
+
   * SPDX 3.x output includes a :ref:`Build profile <west-spdx-build-profile>`
     that records build provenance: the toolchain (compilers, assembler, linker
     and archiver, with versions), the CMake generator and build type, selected
