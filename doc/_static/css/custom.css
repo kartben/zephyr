@@ -13,6 +13,10 @@
      --system-font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
      --header-font-family: Seravek, 'Gill Sans Nova', Ubuntu, Calibri, 'DejaVu Sans', source-sans-pro, sans-serif;
      --monospace-font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', 'Droid Sans Mono', 'Source Code Pro', monospace;
+
+     /* Card "lift on hover" shadow, shared by the landing page and index cards. */
+     --shadow-color: rgb(from var(--body-color) r g b / calc(alpha * 0.2));
+     --shadow-style: 0 12px 6px -6px var(--shadow-color);
  }
 
 body,
@@ -1158,5 +1162,147 @@ li>a.code-sample-link.reference.internal {
 }
 
 li>a.code-sample-link.reference.internal.current {
+    text-decoration: underline;
+}
+
+/* Categorized index cards (e.g. the OS Services landing page). */
+
+.sd-index-grid {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+.sd-index-grid .sd-row {
+    display: block;
+    column-count: 3;
+    column-gap: 1.5rem;
+}
+
+@media (max-width: 996px) {
+    .sd-index-grid .sd-row { column-count: 2; }
+}
+
+@media (max-width: 700px) {
+    .sd-index-grid .sd-row { column-count: 1; }
+}
+
+.sd-index-grid .sd-col {
+    display: block;
+    width: auto !important;
+    max-width: none !important;
+    flex: none !important;
+    break-inside: avoid;
+    margin: 0 0 1.5rem;
+    padding: 0 !important;
+}
+
+.sd-index-card {
+    --svc-accent: var(--navbar-scrollbar-active-color);
+    position: relative;
+    overflow: hidden;
+    background-color: var(--landing-card-background-color);
+    border: 1px solid transparent;
+    border-radius: 0.75rem;
+    box-shadow: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.sd-index-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-style);
+    border-color: rgb(from var(--svc-accent) r g b / 0.35);
+}
+
+.sd-index-watermark {
+    position: absolute;
+    right: -0.75rem;
+    bottom: -1.25rem;
+    margin: 0;
+    line-height: 1;
+    color: var(--svc-accent);
+    opacity: 0.1;
+    pointer-events: none;
+    z-index: 0;
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease;
+}
+
+.sd-index-card:hover .sd-index-watermark {
+    transform: rotate(-10deg) scale(1.1);
+    opacity: 0.18;
+}
+
+.sd-index-card .sd-card-body {
+    position: relative;
+    z-index: 1;
+}
+
+.sd-index-card .sd-card-title {
+    font-size: 1.06rem;
+    font-weight: 700;
+    color: var(--body-color);
+    margin-bottom: 1.2rem;
+}
+
+.sd-index-card .sd-card-title a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.sd-index-card .sd-card-title a:hover {
+    color: var(--link-color-hover);
+    text-decoration: underline;
+}
+
+.sd-index-card .toctree-wrapper {
+    position: relative;
+    z-index: 1;
+}
+
+.sd-index-card .toctree-wrapper ul {
+    margin: 0 !important;
+    padding: 0 !important;
+    list-style: none !important;
+}
+
+.sd-index-card .toctree-wrapper li {
+    margin: 0 !important;
+    padding: 0 !important;
+    list-style: none !important;
+}
+
+.sd-index-card .toctree-wrapper > ul > li.toctree-l1 > a.reference {
+    display: none;
+}
+
+.sd-index-card .toctree-wrapper > p.caption {
+    display: none;
+}
+
+.sd-index-card .toctree-wrapper a.reference {
+    display: flex;
+    align-items: baseline;
+    color: var(--body-color);
+    font-size: 0.9rem;
+    line-height: 1.15;
+    margin-bottom: 0.5rem;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-thickness: from-font;
+    text-underline-offset: 0.2em;
+    padding: 0;
+    transition: color 0.15s ease;
+}
+
+.sd-index-card .toctree-wrapper a.reference::before {
+    content: "\f054";
+    font-family: FontAwesome;
+    font-size: 0.7rem;
+    color: var(--svc-accent);
+    margin-right: 0.6rem;
+    flex: none;
+}
+
+.sd-index-card .toctree-wrapper a.reference:hover {
+    color: var(--link-color-hover);
     text-decoration: underline;
 }
