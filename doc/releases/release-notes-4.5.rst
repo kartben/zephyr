@@ -388,6 +388,25 @@ Other notable changes
     key. The first entry is the key the application is signed with and the rest are
     verification-only public keys. See :ref:`build-signing`.
 
+* SBOM (``west spdx``)
+
+  * ``west spdx`` can now emit **SPDX 3.0** documents (JSON-LD) alongside the
+    SPDX 2.2/2.3 tag-value formats; pick the version with ``--spdx-version``.
+    See :ref:`west-spdx`.
+
+  * SPDX 3.0 output includes a :ref:`Build profile <west-spdx-build-profile>`
+    that records build provenance: the toolchain (compilers, assembler, linker
+    and archiver, with versions), the CMake generator and build type, selected
+    environment variables such as ``BOARD`` and ``ARCH``, and
+    ``hasInput``/``hasOutput``/``usesTool`` relationships tracing each artifact
+    back to how it was built.
+
+  * The new ``--analyze-elf`` option inspects the final image's DWARF debug
+    information to refine the bill-of-materials to what actually shipped:
+    ``snippets`` records the source line-ranges that contributed code as SPDX
+    Snippets, and ``prune-sources`` drops source files the linker left out.
+    Use ``--elf-file`` to analyze a non-default image.
+
 ..
   Any more descriptive subsystem or driver changes. Do you really want to write
   a paragraph or is it enough to link to the api/driver/Kconfig/board page above?
