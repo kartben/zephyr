@@ -26,6 +26,22 @@ class ComponentPurpose(StrEnum):
     FILE = "FILE"
 
 
+class SbomType(StrEnum):
+    """Format-agnostic SBOM content types.
+
+    These values intentionally match the SPDX 3.0 SBOM type vocabulary (which mirrors the
+    CISA SBOM types) so serializers can map them directly when the target format supports
+    the same vocabulary.
+    """
+
+    DESIGN = "design"
+    SOURCE = "source"
+    BUILD = "build"
+    ANALYZED = "analyzed"
+    DEPLOYED = "deployed"
+    RUNTIME = "runtime"
+
+
 class RelationshipType(StrEnum):
     """Format-agnostic relationship types used by the SBOM model.
 
@@ -232,6 +248,8 @@ class SBOMDocument:
               filename, namespace, and cross-document reference ID.
         title: Human-readable document name emitted as the SPDX ``DocumentName``. Falls back to
                ``name`` when empty, allowing the displayed name to differ from the identifier.
+        sbom_type: Type of SBOM content this document carries (e.g. source or build), or
+                   ``None`` when unspecified.
         namespace: Document namespace URI.
         components: Components contained in this document, keyed by component name.
         described_components: Names of the components that are the primary subject(s) of this
@@ -245,6 +263,7 @@ class SBOMDocument:
 
     name: str
     title: str = ""
+    sbom_type: SbomType | None = None
     namespace: str = ""
     components: dict[str, SBOMComponent] = field(default_factory=dict)
     described_components: list[str] = field(default_factory=list)

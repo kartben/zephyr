@@ -18,6 +18,7 @@ from zspdx.model import (
     SBOMFile,
     SBOMGraph,
     SBOMRelationship,
+    SbomType,
 )
 from zspdx.serializers.helpers import (
     CPE23TYPE_REGEX,
@@ -70,6 +71,9 @@ class SPDX3Serializer:
         self.creator_agent = None  # SoftwareAgent for createdBy
         self.creation_info = None
         self.documents = {}  # doc_name -> SpdxDocument
+
+        # per-document software_Sbom root elements, keyed by document name
+        self.sbom_elements = {}
 
         # SPDX 3.0 Build profile state
         self.build = None  # overall build_Build element
@@ -988,14 +992,51 @@ class SPDX3Serializer:
 
         self._add_external_maps(document, import_ids)
 
+        # The document's sole root is a software_Sbom element gathering the SBOM content;
+        # SBOM consumers (e.g. sbom-cve-check) locate the bill of materials through it.
+        sbom_element = self._create_sbom_element(sbom_doc)
+        document.element.append(sbom_element)
+        document.rootElement.append(sbom_element)
+
         for component in components:
             package = self.component_elements.get(component.name)
             if package:
-                document.rootElement.append(package)
+                sbom_element.rootElement.append(package)
 
         # The Build element is a root of the build document.
         if self.build and sbom_doc.name == self._BUILD_DOCUMENT:
-            document.rootElement.append(self.build)
+            sbom_element.rootElement.append(self.build)
+
+    # Map model SBOM types to SPDX 3.0 SbomType.
+    _SBOM_TYPE_MAP = {
+        SbomType.DESIGN: spdx.software_SbomType.design,
+        SbomType.SOURCE: spdx.software_SbomType.source,
+        SbomType.BUILD: spdx.software_SbomType.build,
+        SbomType.ANALYZED: spdx.software_SbomType.analyzed,
+        SbomType.DEPLOYED: spdx.software_SbomType.deployed,
+        SbomType.RUNTIME: spdx.software_SbomType.runtime,
+    }
+
+    def _create_sbom_element(self, sbom_doc: SBOMDocument) -> spdx.software_Sbom:
+        """Create the ``software_Sbom`` element serving as a document's root.
+
+        The SBOM is typed from the document's ``sbom_type``; documents without one carry
+        no explicit SBOM type.
+        """
+        namespace = (
+            sbom_doc.namespace.rstrip("/")
+            if sbom_doc.namespace
+            else self.sbom_data.namespace_prefix.rstrip("/")
+        )
+        sbom_element = spdx.software_Sbom()
+        sbom_element._id = self._shorten_id(f"{namespace}/sboms/{sbom_doc.name}")
+        sbom_element.creationInfo = self.creation_info._id
+        sbom_type = self._SBOM_TYPE_MAP.get(sbom_doc.sbom_type)
+        if sbom_type is not None:
+            sbom_element.software_sbomType.append(sbom_type)
+        self.elements.append(sbom_element)
+        self.sbom_elements[sbom_doc.name] = sbom_element
+        return sbom_element
 
     def _add_external_maps(self, document: spdx.SpdxDocument, import_ids: set):
         """Declare elements used by, but defined outside, this document.

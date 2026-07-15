@@ -23,6 +23,7 @@ from zspdx.model import (
     SBOMDocument,
     SBOMFile,
     SBOMGraph,
+    SbomType,
 )
 
 _logger = logging.getLogger(__name__)
@@ -335,14 +336,22 @@ class Walker:
             metadata=build_info,
         )
 
-    def _create_document(self, name: str, title: str = "") -> SBOMDocument:
+    def _create_document(
+        self, name: str, title: str = "", sbom_type: SbomType | None = None
+    ) -> SBOMDocument:
         """Create a document with the given name and register it with SBOM data.
 
         ``name`` is the identifier used for the output filename, namespace and
         cross-document reference ID; ``title`` is the human-readable SPDX
-        ``DocumentName`` and defaults to ``name`` when not given.
+        ``DocumentName`` and defaults to ``name`` when not given; ``sbom_type``
+        classifies the document's content following the SBOM type vocabulary.
         """
-        doc = SBOMDocument(name=name, title=title, namespace=f"{self.cfg.namespace_prefix}/{name}")
+        doc = SBOMDocument(
+            name=name,
+            title=title,
+            sbom_type=sbom_type,
+            namespace=f"{self.cfg.namespace_prefix}/{name}",
+        )
         self.sbom_graph.add_document(doc)
         return doc
 
@@ -353,14 +362,19 @@ class Walker:
         # Create core documents. The app and zephyr documents historically carry a
         # "-sources" suffix in their DocumentName while keeping the unsuffixed
         # identifier for filename/namespace/reference purposes.
-        self.doc_app = self._create_document("app", "app-sources")
-        self.doc_zephyr = self._create_document("zephyr", "zephyr-sources")
-        self.doc_build = self._create_document("build")
-        self.doc_modules_deps = self._create_document("modules-deps")
+        #
+        # All documents except the build one describe content taken directly from the
+        # development environment - application/Zephyr/SDK source files and the included
+        # module dependencies - so they are 'source' SBOMs. The build document records
+        # the artifacts produced while building the releasable image: a 'build' SBOM.
+        self.doc_app = self._create_document("app", "app-sources", SbomType.SOURCE)
+        self.doc_zephyr = self._create_document("zephyr", "zephyr-sources", SbomType.SOURCE)
+        self.doc_build = self._create_document("build", sbom_type=SbomType.BUILD)
+        self.doc_modules_deps = self._create_document("modules-deps", sbom_type=SbomType.SOURCE)
 
         # SDK document is optional
         if self.cfg.include_sdk:
-            self.doc_sdk = self._create_document("sdk")
+            self.doc_sdk = self._create_document("sdk", sbom_type=SbomType.SOURCE)
 
     def setup_components(self):
         """Set up all SBOM components from meta file and configuration."""

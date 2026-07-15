@@ -165,8 +165,12 @@ DocumentName: {normalized_name}
 DocumentNamespace: {namespace}
 Creator: Tool: Zephyr SPDX builder
 Created: {created}
-
 """)
+        if doc.sbom_type is not None:
+            # SPDX 2.x has no dedicated field for the CISA SBOM type; record it in
+            # CreatorComment following the OpenChain Telco SBOM Guide convention
+            f.write(f"CreatorComment: SBOM Type: {doc.sbom_type.capitalize()}\n")
+        f.write("\n")
 
     def _write_external_document_refs(self, f, doc: SBOMDocument):
         """Write external document references."""

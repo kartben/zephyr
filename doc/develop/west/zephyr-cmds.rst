@@ -156,6 +156,16 @@ For SPDX 3.0, every document declares conformance to the Core, Software and Simp
 profiles, and :file:`build.jsonld` additionally declares the :ref:`Build profile
 <west-spdx-build-profile>` that captures how the artifacts were produced.
 
+Each document also carries the `SBOM type
+<https://spdx.github.io/spdx-spec/v3.0.1/model/Software/Vocabularies/SbomType/>`_ of its content:
+``app``, ``zephyr``, ``modules-deps`` and ``sdk`` are *source* SBOMs (their content comes directly
+from the development environment: source files and included dependencies), while ``build`` is a
+*build* SBOM (artifacts produced while building the releasable image). SPDX 3.0 documents are
+rooted in a ``software_Sbom`` element typed accordingly; SPDX 2.x documents record the type in
+their ``CreatorComment`` (e.g. ``SBOM Type: Source``), following the `OpenChain Telco SBOM Guide
+<https://github.com/OpenChain-Project/Telco-WG/blob/main/OpenChain-Telco-SBOM-Guide_EN.md>`_
+convention.
+
 Each file in the bill-of-materials is scanned, so that its hashes (SHA256, SHA1, and MD5)
 can be recorded, along with any detected licenses if an
 ``SPDX-License-Identifier`` comment appears in the file.
