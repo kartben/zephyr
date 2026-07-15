@@ -283,6 +283,10 @@ New Drivers
   Same as above, this will also be recomputed at the time of the release.
   Just link the driver, further details go in the binding description
 
+* Biometrics
+
+  * DFRobot AI10 face and palm-vein recognition module (:dtcompatible:`dfrobot,ai10`).
+
 * GPIO
 
   * Diodes/Pericom PI4IOE5V6408 8-bit I2C-bus I/O expander

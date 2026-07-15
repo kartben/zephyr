@@ -33,6 +33,7 @@ Related configuration options:
 
 * :kconfig:option:`CONFIG_BIOMETRICS`
 * :kconfig:option:`CONFIG_BIOMETRICS_INIT_PRIORITY`
+* :kconfig:option:`CONFIG_BIOMETRICS_DFROBOT_AI10`
 
 API Reference
 *************

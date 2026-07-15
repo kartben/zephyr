@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config BIOMETRICS_DFROBOT_AI10
+	bool "DFRobot AI10 face and palm-vein recognition module"
+	default y
+	depends on DT_HAS_DFROBOT_AI10_ENABLED
+	select SERIAL
+	select UART_INTERRUPT_DRIVEN
+	help
+	  Enable driver for the DFRobot AI10 UART face and palm-vein
+	  recognition module.
+
+if BIOMETRICS_DFROBOT_AI10
+
+config DFROBOT_AI10_TIMEOUT_MS
+	int "Default capture timeout in milliseconds"
+	range 3000 20000
+	default 10000
+	help
+	  Default timeout for enrollment and matching captures, used when the
+	  application passes K_FOREVER. The module accepts capture timeouts
+	  between 3 and 20 seconds.
+
+endif # BIOMETRICS_DFROBOT_AI10
