@@ -7,6 +7,11 @@
 #ifndef ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32G0_B1X_C1X_CLOCK_H_
 #define ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32G0_B1X_C1X_CLOCK_H_
 
+/**
+ * @addtogroup clock_control_dt_stm32
+ * @{
+ */
+
 /* MCO prescaler : division factor */
 #define MCO_PRE_DIV_256  8
 #define MCO_PRE_DIV_512  9
@@ -19,4 +24,6 @@
 #define MCO_SEL_RTCCLK    10
 #define MCO_SEL_RTCWAKEUP 11
 
+
+/** @} */
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32G0_B1X_C1X_CLOCK_H_ */

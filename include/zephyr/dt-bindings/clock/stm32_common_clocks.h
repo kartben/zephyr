@@ -6,21 +6,32 @@
 #ifndef ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32_COMMON_CLOCKS_H_
 #define ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32_COMMON_CLOCKS_H_
 
-/** System clock */
+/**
+ * @defgroup clock_control_dt_stm32 STM32 clock control devicetree helpers
+ * @ingroup clock_control_interface
+ * @{
+ */
+
+/**
+ * @name Common STM32 clock source identifiers
+ * @{
+ */
 #define STM32_SRC_SYSCLK	0x001
-/** Fixed clocks  */
 #define STM32_SRC_LSE		0x002
 #define STM32_SRC_LSI		0x003
+/** @} */
 
-/** Dummy: Add a specifier when no selection is possible */
+/** Dummy specifier for clock configuration entries without selectable sources. */
 #define NO_SEL			0xFF
 
+/** @cond INTERNAL_HIDDEN */
 #define STM32_CLOCK_DIV_SHIFT	12
+/** @endcond */
 
-/** Clock divider */
+/** Clock divider value for STM32 devicetree clock specifiers. */
 #define STM32_CLOCK_DIV(div)	(((div) - 1) << STM32_CLOCK_DIV_SHIFT)
 
-/** Helper macros to pack RCC clock source selection register info in the DT */
+/** @cond INTERNAL_HIDDEN */
 #define STM32_DT_CLKSEL_REG_MASK	0xFFFFU
 #define STM32_DT_CLKSEL_REG_SHIFT	0U
 #define STM32_DT_CLKSEL_SHIFT_MASK	0x1FU
@@ -29,6 +40,7 @@
 #define STM32_DT_CLKSEL_WIDTH_SHIFT	21U
 #define STM32_DT_CLKSEL_VAL_MASK	0xFFU
 #define STM32_DT_CLKSEL_VAL_SHIFT	24U
+/** @endcond */
 
 /**
  * @brief Pack STM32 source clock selection RCC register bit fields for the DT
@@ -59,4 +71,6 @@
  */
 #define STM32_CLOCK(bus, bit) (STM32_CLOCK_BUS_##bus) (1 << bit)
 
+
+/** @} */
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32_COMMON_CLOCKS_H_ */

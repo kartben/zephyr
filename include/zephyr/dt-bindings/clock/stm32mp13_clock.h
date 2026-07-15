@@ -10,6 +10,11 @@
 
 #include "stm32_common_clocks.h"
 
+/**
+ * @addtogroup clock_control_dt_stm32
+ * @{
+ */
+
 /** System clock */
 /* defined in stm32_common_clocks.h */
 /** Fixed clocks  */
@@ -158,4 +163,6 @@
 
 /** @endcond */
 
+
+/** @} */
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32MP13_CLOCK_H_ */

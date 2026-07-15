@@ -8,6 +8,11 @@
 
 #include "stm32_common_clocks.h"
 
+/**
+ * @addtogroup clock_control_dt_stm32
+ * @{
+ */
+
 /** Bus clocks */
 #define STM32_CLOCK_BUS_AHB1    0x048
 #define STM32_CLOCK_BUS_AHB2    0x04c
@@ -66,4 +71,6 @@
 /** CSR devices */
 #define RFWKP_SEL(val)		STM32_DT_CLOCK_SELECT((val), 15, 14, CSR_REG)
 
+
+/** @} */
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32WB_CLOCK_H_ */
