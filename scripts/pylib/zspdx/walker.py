@@ -512,8 +512,11 @@ class Walker:
         if zephyr is None:
             return None
 
-        # no PrimaryPackagePurpose: this is a reference-only dependency package with no files
-        component = SBOMComponent(name="zephyr-deps")
+        # reference-only dependency package with no files; the SPECIFICATION purpose marks it
+        # as a component description carrying security identifiers (CPE/PURL), which is also
+        # what CVE scanning tools such as sbom-cve-check look for (SPDX 3.0 only; SPDX 2.x
+        # keeps emitting no PrimaryPackagePurpose for it)
+        component = SBOMComponent(name="zephyr-deps", purpose=ComponentPurpose.SPECIFICATION)
         component.url = zephyr.get("remote", "")
         component.revision = zephyr.get("revision", "")
 
@@ -565,8 +568,11 @@ class Walker:
             if module_security:
                 module_ext_ref = module_security.get("external-references", [])
 
-            # set up module deps component (reference-only, no files; no purpose)
-            component = SBOMComponent(name=module_name + "-deps")
+            # set up module deps component (reference-only, no files; see zephyr-deps above
+            # for why the SPECIFICATION purpose is used)
+            component = SBOMComponent(
+                name=module_name + "-deps", purpose=ComponentPurpose.SPECIFICATION
+            )
 
             for ref in module_ext_ref:
                 component.add_external_reference(ref)

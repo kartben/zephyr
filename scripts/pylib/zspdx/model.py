@@ -18,12 +18,17 @@ class ComponentPurpose(StrEnum):
 
     These values intentionally match SPDX package purpose strings so serializers can map them
     directly when the target format supports the same vocabulary.
+
+    ``SPECIFICATION`` only exists in the SPDX 3.0 vocabulary; it marks reference-only packages
+    that describe a component (e.g. with CPE/PURL identifiers for vulnerability monitoring)
+    rather than carry its files. Serializers for formats without an equivalent purpose omit it.
     """
 
     APPLICATION = "APPLICATION"
     LIBRARY = "LIBRARY"
     SOURCE = "SOURCE"
     FILE = "FILE"
+    SPECIFICATION = "SPECIFICATION"
 
 
 class SbomType(StrEnum):

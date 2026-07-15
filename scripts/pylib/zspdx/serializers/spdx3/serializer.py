@@ -133,6 +133,7 @@ class SPDX3Serializer:
             ComponentPurpose.LIBRARY: spdx.software_SoftwarePurpose.library,
             ComponentPurpose.SOURCE: spdx.software_SoftwarePurpose.source,
             ComponentPurpose.FILE: spdx.software_SoftwarePurpose.file,
+            ComponentPurpose.SPECIFICATION: spdx.software_SoftwarePurpose.specification,
         }
         return purpose_map.get(purpose, spdx.software_SoftwarePurpose.library)
 

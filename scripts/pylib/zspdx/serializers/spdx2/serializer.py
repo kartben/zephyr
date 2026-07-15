@@ -401,8 +401,13 @@ LicenseComment: Corresponds to the license ID `{lic}` detected in an SPDX-Licens
                 # REUSE-IgnoreEnd
 
     def _purpose_to_spdx_string(self, purpose):
-        """Convert ComponentPurpose enum to SPDX 2.x string."""
-        if isinstance(purpose, ComponentPurpose):
+        """Convert ComponentPurpose enum to SPDX 2.x string.
+
+        ``SPECIFICATION`` only exists in the SPDX 3.0 vocabulary, so packages carrying it
+        are emitted without a ``PrimaryPackagePurpose`` (matching the historical output for
+        the reference-only ``*-deps`` packages).
+        """
+        if isinstance(purpose, ComponentPurpose) and purpose != ComponentPurpose.SPECIFICATION:
             return purpose
         return ""
 
