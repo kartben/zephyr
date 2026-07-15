@@ -24,6 +24,7 @@ from zspdx.model import (
     SBOMFile,
     SBOMGraph,
     SbomType,
+    VexStatus,
 )
 
 _logger = logging.getLogger(__name__)
@@ -565,8 +566,10 @@ class Walker:
                 return False
 
             module_ext_ref = []
+            module_vex = []
             if module_security:
                 module_ext_ref = module_security.get("external-references", [])
+                module_vex = module_security.get("vex", [])
 
             # set up module deps component (reference-only, no files; see zephyr-deps above
             # for why the SPECIFICATION purpose is used)
@@ -576,6 +579,25 @@ class Walker:
 
             for ref in module_ext_ref:
                 component.add_external_reference(ref)
+
+            for vex_entry in module_vex:
+                try:
+                    statement = component.add_vex_statement(vex_entry)
+                except (TypeError, ValueError) as e:
+                    _logger.warning(
+                        f"module {module_name}: skipping invalid VEX statement {vex_entry}: {e}"
+                    )
+                    continue
+                if (
+                    statement.status == VexStatus.NOT_AFFECTED
+                    and statement.justification is None
+                    and not statement.impact_statement
+                ):
+                    _logger.warning(
+                        f"module {module_name}: VEX statement for "
+                        f"{statement.vulnerability_id} is 'not_affected' but has neither a "
+                        "justification nor an impact-statement"
+                    )
 
             self.sbom_graph.add_component(component, "modules-deps")
             self.component_modules_deps[module_name] = component

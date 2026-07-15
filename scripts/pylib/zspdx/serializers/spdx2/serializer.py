@@ -311,6 +311,9 @@ PackageCopyrightText: {component.copyright_text}
         # Files analyzed and verification code
         self._write_files_analyzed(f, component)
 
+        # VEX statements, encoded as package annotations (SPDX 2.x has no VEX vocabulary)
+        self._write_vex_annotations(f, component, doc)
+
         # Package relationships
         for rel in component.relationships:
             self._write_relationship(f, rel, doc)
@@ -320,6 +323,48 @@ PackageCopyrightText: {component.copyright_text}
             files_list = sorted(component.files.values(), key=lambda x: x.relative_path)
             for file_obj in files_list:
                 self._write_file(f, file_obj, doc)
+
+    def _write_vex_annotations(self, f, component, doc: SBOMDocument):
+        """Write the component's VEX statements as SPDX 2.x package annotations.
+
+        SPDX 2.x has no security/VEX vocabulary, so each VEX statement becomes an
+        ``AnnotationType: OTHER`` annotation attached to the package, carrying a
+        human-readable rendering of the statement. The SPDX 3.0 serializer emits the same
+        statements as proper Security profile relationships instead.
+        """
+        if not component.vex_statements:
+            return
+
+        spdx_id = self.component_ids.get(component.name)
+        if not spdx_id:
+            return
+
+        # reuse the document's Created timestamp so both serialization passes emit
+        # identical bytes (the first pass hash feeds ExternalDocumentRef checksums)
+        annotation_date = self.document_created_timestamps.get(doc.name)
+        if annotation_date is None:
+            annotation_date = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+            self.document_created_timestamps[doc.name] = annotation_date
+
+        for statement in component.vex_statements:
+            comment_parts = [f"VEX {statement.status}: {statement.vulnerability_id}"]
+            if statement.justification is not None:
+                comment_parts.append(f"justification: {statement.justification}")
+            if statement.impact_statement:
+                comment_parts.append(f"impact-statement: {statement.impact_statement}")
+            if statement.action_statement:
+                comment_parts.append(f"action-statement: {statement.action_statement}")
+            if statement.notes:
+                comment_parts.append(f"notes: {statement.notes}")
+            comment = "; ".join(comment_parts)
+
+            f.write(f"""Annotator: Tool: Zephyr SPDX builder
+AnnotationDate: {annotation_date}
+AnnotationType: OTHER
+SPDXREF: {spdx_id}
+AnnotationComment: <text>{comment}</text>
+
+""")
 
     def _write_file(self, f, file_obj, doc: SBOMDocument):
         """Write a single file."""
