@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+sample:
+  name: DFRobot AI10 Face and Palm Recognition
+  description: Exercise the DFRobot AI10 multimodal biometric module
+
+tests:
+  sample.drivers.biometrics.dfrobot_ai10:
+    build_only: true
+    tags:
+      - drivers
+      - biometrics
+    filter: dt_alias_exists("ai10")
+    platform_allow:
+      - native_sim
+      - native_sim/native/64

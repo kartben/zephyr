@@ -317,6 +317,8 @@ New Samples
   Same as above, this will also be recomputed at the time of the release.
  Just link the sample, further details go in the sample documentation itself.
 
+* :zephyr:code-sample:`dfrobot_ai10` — demonstrates the multimodal (face and palm-vein)
+  features of the DFRobot AI10 module on top of the biometrics API.
 * :zephyr:code-sample:`mctp_i2c_bus_host` (renamed from ``mctp_i2c_bus_owner``)
 * :zephyr:code-sample:`mctp_i3c_bus_host` (renamed from ``mctp_i3c_bus_owner``)
 * ``samples/drivers/clock_monitor/check_freq`` — demonstrates WINDOW-mode
