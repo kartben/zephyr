@@ -19,6 +19,20 @@ extern "C" {
 #endif
 
 /**
+ * @name DFRobot AI10 user ID ranges
+ *
+ * The module assigns user IDs itself when a template is enrolled, using a
+ * dedicated range per modality.
+ *
+ * @{
+ */
+#define DFROBOT_AI10_UID_FACE_MIN 1
+#define DFROBOT_AI10_UID_FACE_MAX 1000
+#define DFROBOT_AI10_UID_PALM_MIN 1001
+#define DFROBOT_AI10_UID_PALM_MAX 2000
+/** @} */
+
+/**
  * @brief DFRobot AI10 specific attributes
  * @ingroup biometrics_interface
  */

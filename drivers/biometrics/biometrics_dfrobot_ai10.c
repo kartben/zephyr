@@ -47,9 +47,7 @@ LOG_MODULE_REGISTER(dfrobot_ai10, CONFIG_BIOMETRICS_LOG_LEVEL);
 #define AI10_RESULT_LIVE_CHECK    12
 #define AI10_RESULT_TIMEOUT       13
 
-/* Face templates are assigned user IDs 1-1000, palm-vein templates 1001-2000 */
-#define AI10_UID_FACE_MAX 1000U
-#define AI10_MAX_USERS    2000U
+#define AI10_MAX_USERS DFROBOT_AI10_UID_PALM_MAX
 
 #define AI10_HDR_SIZE      3U /* message ID + 16-bit payload length */
 #define AI10_MAX_PAYLOAD   300U
@@ -159,7 +157,7 @@ static int ai10_result_to_errno(uint8_t result)
 
 static enum biometric_sensor_type ai10_uid_modality(uint16_t uid)
 {
-	return uid > AI10_UID_FACE_MAX ? BIOMETRIC_TYPE_PALM : BIOMETRIC_TYPE_FACE;
+	return uid >= DFROBOT_AI10_UID_PALM_MIN ? BIOMETRIC_TYPE_PALM : BIOMETRIC_TYPE_FACE;
 }
 
 static const char *ai10_modality_name(enum biometric_sensor_type modality)
