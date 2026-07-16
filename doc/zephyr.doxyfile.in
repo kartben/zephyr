@@ -299,7 +299,8 @@ ALIASES                = "kconfig{1}=\c \1" \
                          "pre_kernel_ok=\qualifier pre-kernel-ok" \
                          "async=\qualifier async" \
                          "atomic_api=As for all atomic APIs, includes a full/sequentially-consistent memory barrier (where applicable)." \
-                         "supervisor=\qualifier supervisor"
+                         "supervisor=\qualifier supervisor" \
+                         "sphinxref{2}=<a href=\"../../\1\">\2</a>"
 
 # Aliases to help structure the API documentation for "driver ops"
 ALIASES               += "def_driverbackendgroup{2}=\defgroup \2_backend \1 Driver Backend API ^^\
@@ -2639,7 +2640,7 @@ SKIP_FUNCTION_MACROS   = NO
 # the path). If a tag file is not located in the directory in which Doxygen is
 # run, you must also specify the path to the tagfile here.
 
-TAGFILES               =
+TAGFILES               = @DOXYLINK_TAGFILE@=../../
 
 # When a file name is specified after GENERATE_TAGFILE, Doxygen will create a
 # tag file that is based on the input files it reads. See section "Linking to
