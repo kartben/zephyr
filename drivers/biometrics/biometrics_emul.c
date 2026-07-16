@@ -203,6 +203,7 @@ unlock:
 static int biometrics_emul_enroll_capture(const struct device *dev, k_timeout_t timeout,
 					  struct biometric_capture_result *result)
 {
+	const struct biometrics_emul_config *cfg = dev->config;
 	struct biometrics_emul_data *data = dev->data;
 	int ret = 0;
 
@@ -238,6 +239,7 @@ static int biometrics_emul_enroll_capture(const struct device *dev, k_timeout_t 
 								: BIOMETRICS_EMUL_DEFAULT_QUALITY;
 
 	if (result != NULL) {
+		result->modality = cfg->type;
 		result->samples_captured = data->enroll_samples_captured;
 		result->samples_required = BIOMETRICS_EMUL_ENROLL_SAMPLES;
 		result->quality = (uint8_t)data->last_image_quality;
@@ -508,6 +510,7 @@ static int biometrics_emul_match(const struct device *dev, enum biometric_match_
 				 uint16_t template_id, k_timeout_t timeout,
 				 struct biometric_match_result *result)
 {
+	const struct biometrics_emul_config *cfg = dev->config;
 	struct biometrics_emul_data *data = dev->data;
 	int ret;
 	int score;
@@ -541,6 +544,7 @@ static int biometrics_emul_match(const struct device *dev, enum biometric_match_
 	if (score >= 0) {
 		if (result != NULL) {
 			result->confidence = score;
+			result->modality = cfg->type;
 			result->template_id = data->last_matched_id;
 			result->image_quality = (uint8_t)data->last_image_quality;
 		}

@@ -180,6 +180,10 @@ Biometrics
   * :c:enumerator:`BIOMETRIC_TYPE_PALM` was inserted before :c:enumerator:`BIOMETRIC_TYPE_VOICE`
     in :c:enum:`biometric_sensor_type`, so the numeric value of ``BIOMETRIC_TYPE_VOICE`` has
     changed and code relying on it must be recompiled.
+  * :c:struct:`biometric_match_result` and :c:struct:`biometric_capture_result` gained a
+    :c:member:`biometric_match_result.modality` /
+    :c:member:`biometric_capture_result.modality` member reporting the modality that produced
+    the result. Out-of-tree drivers must fill it when populating these structures.
 
 Clock Control
 =============

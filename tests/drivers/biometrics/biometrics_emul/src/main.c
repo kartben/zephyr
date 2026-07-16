@@ -82,6 +82,8 @@ ZTEST(biometrics_emul, test_enrollment_flow)
 	for (int i = 0; i < caps.enrollment_samples_required; i++) {
 		ret = biometric_enroll_capture(dev, K_SECONDS(5), &capture);
 		zassert_equal(ret, 0, "Failed to capture sample %d: %d", i, ret);
+		zassert_equal(capture.modality, BIOMETRIC_TYPE_FINGERPRINT,
+			      "capture modality should be fingerprint");
 		zassert_equal(capture.samples_captured, i + 1, "samples_captured mismatch");
 		zassert_equal(capture.samples_required, caps.enrollment_samples_required,
 			      "samples_required mismatch");
@@ -219,6 +221,8 @@ ZTEST(biometrics_emul, test_match_verify)
 	ret = biometric_match(dev, BIOMETRIC_MATCH_VERIFY, 300, K_SECONDS(5), &result);
 	zassert_equal(ret, 0, "Match should succeed: %d", ret);
 	zassert_equal(result.confidence, 85, "Expected confidence 85, got %d", result.confidence);
+	zassert_equal(result.modality, BIOMETRIC_TYPE_FINGERPRINT,
+		      "match modality should be fingerprint");
 	zassert_equal(result.template_id, 300, "Expected template_id 300, got %u",
 		      result.template_id);
 
@@ -244,6 +248,8 @@ ZTEST(biometrics_emul, test_match_identify)
 	ret = biometric_match(dev, BIOMETRIC_MATCH_IDENTIFY, 0, K_SECONDS(5), &result);
 	zassert_equal(ret, 0, "Identify should succeed: %d", ret);
 	zassert_equal(result.confidence, 92, "Expected confidence 92, got %d", result.confidence);
+	zassert_equal(result.modality, BIOMETRIC_TYPE_FINGERPRINT,
+		      "match modality should be fingerprint");
 	zassert_equal(result.template_id, 401, "Expected template_id 401, got %u",
 		      result.template_id);
 

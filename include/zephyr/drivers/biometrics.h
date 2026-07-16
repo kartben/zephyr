@@ -129,6 +129,11 @@ struct biometric_capabilities {
 struct biometric_match_result {
 	/** Confidence/match score (sensor-specific scale, higher is better) */
 	int32_t confidence;
+	/**
+	 * Biometric modality that produced the match. Single-modality
+	 * sensors always report their only modality.
+	 */
+	enum biometric_sensor_type modality;
 	/** Matched template ID (for IDENTIFY mode, or verified ID for VERIFY mode) */
 	uint16_t template_id;
 	/** Quality score of the captured sample used for matching (0-100) */
@@ -141,6 +146,11 @@ struct biometric_match_result {
  * Contains progress information and quality feedback for the capture.
  */
 struct biometric_capture_result {
+	/**
+	 * Biometric modality of the captured sample. Single-modality sensors
+	 * always report their only modality.
+	 */
+	enum biometric_sensor_type modality;
 	/** Number of samples captured so far */
 	uint8_t samples_captured;
 	/** Total number of samples required for enrollment */

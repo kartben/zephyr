@@ -745,6 +745,7 @@ static int gt5x_enroll_capture(const struct device *dev, k_timeout_t timeout,
 	}
 
 	if (result) {
+		result->modality = BIOMETRIC_TYPE_FINGERPRINT;
 		result->samples_captured = pass;
 		result->samples_required = 3;
 		result->quality = 0;
@@ -1021,6 +1022,7 @@ static int gt5x_match(const struct device *dev, enum biometric_match_mode mode,
 		if (ret == 0) {
 			if (result) {
 				result->confidence = 0;
+				result->modality = BIOMETRIC_TYPE_FINGERPRINT;
 				result->template_id = template_id;
 				result->image_quality = 0;
 			}
@@ -1039,6 +1041,7 @@ static int gt5x_match(const struct device *dev, enum biometric_match_mode mode,
 
 			if (result) {
 				result->confidence = 0;
+				result->modality = BIOMETRIC_TYPE_FINGERPRINT;
 				result->template_id = matched_id;
 				result->image_quality = 0;
 			}

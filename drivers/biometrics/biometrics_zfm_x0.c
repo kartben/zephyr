@@ -577,6 +577,7 @@ static int zfm_x0_enroll_capture(const struct device *dev, k_timeout_t timeout,
 	}
 
 	if (result != NULL) {
+		result->modality = BIOMETRIC_TYPE_FINGERPRINT;
 		result->samples_captured =
 			(data->enroll_state == ZFM_X0_ENROLL_WAIT_SAMPLE_2) ? 1 : 2;
 		result->samples_required = 2;
@@ -773,6 +774,7 @@ static int zfm_x0_match(const struct device *dev, enum biometric_match_mode mode
 	if (confidence >= 0) {
 		if (result != NULL) {
 			result->confidence = confidence;
+			result->modality = BIOMETRIC_TYPE_FINGERPRINT;
 			result->template_id = (mode == BIOMETRIC_MATCH_IDENTIFY)
 						      ? data->last_match_id
 						      : template_id;

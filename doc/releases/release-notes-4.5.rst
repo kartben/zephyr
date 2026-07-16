@@ -172,6 +172,8 @@ New APIs and options
 
   * :c:enumerator:`BIOMETRIC_TYPE_PALM`
   * :c:member:`biometric_capabilities.supported_modalities`
+  * :c:member:`biometric_capture_result.modality`
+  * :c:member:`biometric_match_result.modality`
 
 * Bluetooth
 

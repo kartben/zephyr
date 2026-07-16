@@ -79,6 +79,15 @@ static const char *const match_mode_names[] = {
 	[BIOMETRIC_MATCH_IDENTIFY] = "identify",
 };
 
+static const char *sensor_type_name(enum biometric_sensor_type type)
+{
+	if ((size_t)type < ARRAY_SIZE(sensor_type_names)) {
+		return sensor_type_names[type];
+	}
+
+	return "unknown";
+}
+
 static const char *const led_state_names[] = {
 	[BIOMETRIC_LED_OFF] = "off",
 	[BIOMETRIC_LED_ON] = "on",
@@ -336,8 +345,9 @@ static int cmd_biometric_enroll_capture(const struct shell *sh, size_t argc, cha
 		return ret;
 	}
 
-	shell_print(sh, "Sample %u/%u captured (quality: %u)", result.samples_captured,
-		    result.samples_required, result.quality);
+	shell_print(sh, "Sample %u/%u captured (modality: %s, quality: %u)",
+		    result.samples_captured, result.samples_required,
+		    sensor_type_name(result.modality), result.quality);
 	return 0;
 }
 
@@ -515,8 +525,9 @@ static int cmd_biometric_match(const struct shell *sh, size_t argc, char **argv)
 		return ret;
 	}
 
-	shell_print(sh, "Match! ID: %u, confidence: %d, quality: %u", result.template_id,
-		    result.confidence, result.image_quality);
+	shell_print(sh, "Match! ID: %u, modality: %s, confidence: %d, quality: %u",
+		    result.template_id, sensor_type_name(result.modality), result.confidence,
+		    result.image_quality);
 
 	return 0;
 }
@@ -602,7 +613,8 @@ static int cmd_biometric_enroll(const struct shell *sh, size_t argc, char **argv
 			biometric_enroll_abort(dev);
 			return ret;
 		}
-		shell_print(sh, "  Quality: %u", result.quality);
+		shell_print(sh, "  Modality: %s, quality: %u", sensor_type_name(result.modality),
+			    result.quality);
 	}
 
 	ret = biometric_enroll_finalize(dev);
