@@ -351,11 +351,22 @@ def get_section_ranges(elf):
 
 def get_die_filename(die, lineprog):
     """Get the source code filename associated with a DIE"""
+    # DWARF v5 renumbered the line program's file and directory tables: both
+    # are 0-based, and directory 0 is an explicit entry holding the
+    # compilation directory.  Up to v4 the file table is 1-based and
+    # directory 0 is implicitly the compilation directory.  Getting this wrong
+    # does not raise, it silently attributes code to the neighbouring file, so
+    # branch on the line program's own version.
+    dwarf_v5 = lineprog.header.version >= 5
+
     file_index = die.attributes['DW_AT_decl_file'].value
-    file_entry = lineprog['file_entry'][file_index - 1]
+    file_entry = lineprog['file_entry'][file_index if dwarf_v5 else file_index - 1]
 
     dir_index = file_entry['dir_index']
-    if dir_index == 0:
+    if dwarf_v5:
+        directory = lineprog.header['include_directory'][dir_index]
+        filename = os.path.join(directory, file_entry.name)
+    elif dir_index == 0:
         filename = file_entry.name
     else:
         directory = lineprog.header['include_directory'][dir_index - 1]
