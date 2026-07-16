@@ -168,6 +168,11 @@ New APIs and options
   * :c:member:`pcm_stream_cfg.gain_db`
   * :c:struct:`audio_codec_eq_cfg`
 
+* Biometrics
+
+  * :c:enumerator:`BIOMETRIC_TYPE_PALM`
+  * :c:member:`biometric_capabilities.supported_modalities`
+
 * Bluetooth
 
   * Audio

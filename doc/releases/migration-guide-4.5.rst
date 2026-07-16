@@ -167,6 +167,20 @@ Audio Codec
   in-tree drivers have been updated. Application code using the ``audio_codec_...`` APIs is not
   impacted.
 
+Biometrics
+==========
+
+* The biometrics API version was bumped to ``0.2.0``:
+
+  * The ``type`` member of :c:struct:`biometric_capabilities` was replaced by the
+    :c:member:`biometric_capabilities.supported_modalities` bitmask, which can also describe
+    multimodal sensors. Checks such as ``caps.type == BIOMETRIC_TYPE_FINGERPRINT`` must be
+    rewritten as ``(caps.supported_modalities & BIT(BIOMETRIC_TYPE_FINGERPRINT)) != 0``, and
+    drivers must now set one bit per supported modality instead of assigning ``type``.
+  * :c:enumerator:`BIOMETRIC_TYPE_PALM` was inserted before :c:enumerator:`BIOMETRIC_TYPE_VOICE`
+    in :c:enum:`biometric_sensor_type`, so the numeric value of ``BIOMETRIC_TYPE_VOICE`` has
+    changed and code relying on it must be recompiled.
+
 Clock Control
 =============
 

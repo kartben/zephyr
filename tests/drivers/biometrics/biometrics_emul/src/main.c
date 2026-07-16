@@ -9,6 +9,7 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/biometrics.h>
 #include <zephyr/drivers/biometrics/emul.h>
+#include <zephyr/sys/util.h>
 
 static const struct device *get_biometrics_device(void)
 {
@@ -29,7 +30,8 @@ ZTEST(biometrics_emul, test_get_capabilities)
 	ret = biometric_get_capabilities(dev, &caps);
 	zassert_equal(ret, 0, "Failed to get capabilities: %d", ret);
 
-	zassert_equal(caps.type, BIOMETRIC_TYPE_FINGERPRINT, "Expected fingerprint sensor type");
+	zassert_equal(caps.supported_modalities, BIT(BIOMETRIC_TYPE_FINGERPRINT),
+		      "supported_modalities should report fingerprint only");
 	zassert_true(caps.max_templates > 0, "max_templates should be > 0");
 	zassert_true(caps.template_size > 0, "template_size should be > 0");
 	zassert_true(caps.storage_modes & BIOMETRIC_STORAGE_DEVICE,

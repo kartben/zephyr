@@ -10,6 +10,7 @@
 #include <zephyr/drivers/uart.h>
 #include <zephyr/drivers/biometrics.h>
 #include <zephyr/sys/byteorder.h>
+#include <zephyr/sys/util.h>
 #include <zephyr/logging/log.h>
 
 #include "biometrics_zfm_x0.h"
@@ -393,7 +394,7 @@ static int zfm_x0_get_capabilities(const struct device *dev, struct biometric_ca
 {
 	struct zfm_x0_data *data = dev->data;
 
-	caps->type = BIOMETRIC_TYPE_FINGERPRINT;
+	caps->supported_modalities = BIT(BIOMETRIC_TYPE_FINGERPRINT);
 	caps->max_templates = data->max_templates;
 	caps->template_size = ZFM_X0_TEMPLATE_SIZE;
 	caps->storage_modes = BIOMETRIC_STORAGE_DEVICE;

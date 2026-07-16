@@ -70,6 +70,7 @@ static const char *const sensor_type_names[] = {
 	[BIOMETRIC_TYPE_FINGERPRINT] = "fingerprint",
 	[BIOMETRIC_TYPE_IRIS] = "iris",
 	[BIOMETRIC_TYPE_FACE] = "face",
+	[BIOMETRIC_TYPE_PALM] = "palm",
 	[BIOMETRIC_TYPE_VOICE] = "voice",
 };
 
@@ -196,9 +197,12 @@ static int cmd_biometric_info(const struct shell *sh, size_t argc, char **argv)
 	}
 
 	shell_print(sh, "Device: %s", dev->name);
-	shell_print(sh, "  Type: %s",
-		    caps.type < ARRAY_SIZE(sensor_type_names) ? sensor_type_names[caps.type]
-							      : "unknown");
+	shell_print(sh, "  Supported modalities:");
+	for (size_t i = 0; i < ARRAY_SIZE(sensor_type_names); i++) {
+		if ((caps.supported_modalities & BIT(i)) != 0U) {
+			shell_print(sh, "    %s", sensor_type_names[i]);
+		}
+	}
 	shell_print(sh, "  Max templates: %u", caps.max_templates);
 	shell_print(sh, "  Template size: %u bytes", caps.template_size);
 	shell_print(sh, "  Storage modes: %s%s",
