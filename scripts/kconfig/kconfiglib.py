@@ -1454,6 +1454,9 @@ class Kconfig(object):
         chunks = [header]  # "".join()ed later
         add = chunks.append
 
+        # Cache config_prefix for micro-optimization
+        config_prefix = self.config_prefix
+
         for sym in self.unique_defined_syms:
             # _write_to_conf is determined when the value is calculated. This
             # is a hidden function call due to property magic.
@@ -1468,14 +1471,14 @@ class Kconfig(object):
             if sym.orig_type in _BOOL_TRISTATE:
                 if val == "y":
                     add("#define {}{} 1\n"
-                        .format(self.config_prefix, sym.name))
+                        .format(config_prefix, sym.name))
                 elif val == "m":
                     add("#define {}{}_MODULE 1\n"
-                        .format(self.config_prefix, sym.name))
+                        .format(config_prefix, sym.name))
 
             elif sym.orig_type is STRING:
                 add('#define {}{} "{}"\n'
-                    .format(self.config_prefix, sym.name, escape(val)))
+                    .format(config_prefix, sym.name, escape(val)))
 
             else:  # sym.orig_type in _INT_HEX:
                 if sym.orig_type is HEX and \
@@ -1483,7 +1486,7 @@ class Kconfig(object):
                     val = "0x" + val
 
                 add("#define {}{} {}\n"
-                    .format(self.config_prefix, sym.name, val))
+                    .format(config_prefix, sym.name, val))
 
         return "".join(chunks)
 
@@ -2286,8 +2289,9 @@ class Kconfig(object):
         # registering it if it does not exist. If '_parsing_kconfigs' is False,
         # it means we're in eval_string(), and new symbols won't be registered.
 
-        if name in self.syms:
-            return self.syms[name]
+        syms = self.syms  # Micro-optimization
+        if name in syms:
+            return syms[name]
 
         sym = Symbol()
         sym.kconfig = self
@@ -2297,7 +2301,7 @@ class Kconfig(object):
         sym.rev_dep = sym.weak_rev_dep = sym.direct_dep = self.n
 
         if self._parsing_kconfigs:
-            self.syms[name] = sym
+            syms[name] = sym
         else:
             self._warn("no symbol {} in configuration".format(name))
 
@@ -2306,8 +2310,9 @@ class Kconfig(object):
     def _lookup_const_sym(self, name):
         # Like _lookup_sym(), for constant (quoted) symbols
 
-        if name in self.const_syms:
-            return self.const_syms[name]
+        const_syms = self.const_syms  # Micro-optimization
+        if name in const_syms:
+            return const_syms[name]
 
         sym = Symbol()
         sym.kconfig = self
@@ -2317,7 +2322,7 @@ class Kconfig(object):
         sym.rev_dep = sym.weak_rev_dep = sym.direct_dep = self.n
 
         if self._parsing_kconfigs:
-            self.const_syms[name] = sym
+            const_syms[name] = sym
 
         return sym
 
@@ -2364,8 +2369,11 @@ class Kconfig(object):
         # The current index in the string being tokenized
         i = match.end()
 
+        # Cache string length for loop efficiency (micro-optimization)
+        s_len = len(s)
+
         # Main tokenization loop (for tokens past the first one)
-        while i < len(s):
+        while i < s_len:
             # Test for an identifier/keyword first. This is the most common
             # case.
             match = _id_keyword_match(s, i)
@@ -2514,7 +2522,7 @@ class Kconfig(object):
 
 
                 # Skip trailing whitespace
-                while i < len(s) and s[i].isspace():
+                while i < s_len and s[i].isspace():
                     i += 1
 
 
