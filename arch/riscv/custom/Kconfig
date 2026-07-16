@@ -13,6 +13,13 @@ rsource "vexriscv/Kconfig"
 
 endif # DT_HAS_SPINALHDL_VEXRISCV_ENABLED
 
+if DT_HAS_XUANTIE_E906_ENABLED
+
+rsource "thead/Kconfig"
+rsource "thead/Kconfig.core"
+
+endif # DT_HAS_XUANTIE_E906_ENABLED
+
 if DT_HAS_XUANTIE_E907_ENABLED
 
 rsource "thead/Kconfig"
