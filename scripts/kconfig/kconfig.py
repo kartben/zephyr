@@ -16,6 +16,7 @@
 # Also does various checks (most via Kconfiglib warnings).
 
 import argparse
+import contextlib
 import glob
 import hashlib
 import io
@@ -282,10 +283,8 @@ def write_stamp(args, kconf):
             json.dump(stamp, f)
     except Exception:
         # A missing stamp only means the next run is a full run.
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(stamp_path(args))
-        except OSError:
-            pass
 
 
 def _first_changed_glob(recorded):
