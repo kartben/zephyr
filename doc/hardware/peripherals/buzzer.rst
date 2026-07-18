@@ -11,7 +11,7 @@ Basic Operation
 ***************
 
 Applications obtain a buzzer device through devicetree and drive it through the functions in
-:zephyr_file:`include/zephyr/drivers/buzzer.h`:
+:zephyr_file:`include/zephyr/drivers/buzzer.h`.
 
 Buzzer API calls do not wait for the requested tone duration. Durations describe how long the
 hardware should keep emitting a tone, not how long the calling thread should sleep; use
