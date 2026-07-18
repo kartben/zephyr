@@ -43,16 +43,25 @@ list(APPEND ARCH_ROOT ${ZEPHYR_BASE})
 list(TRANSFORM ARCH_ROOT PREPEND "--arch-root=" OUTPUT_VARIABLE arch_root_args)
 list(TRANSFORM SOC_ROOT PREPEND "--soc-root=" OUTPUT_VARIABLE soc_root_args)
 
-execute_process(COMMAND ${PYTHON_EXECUTABLE} ${ZEPHYR_BASE}/scripts/list_hardware.py
-                ${arch_root_args} ${soc_root_args}
-                --archs --socs
-                --cmakeformat={TYPE}\;{NAME}\;{DIR}
-                OUTPUT_VARIABLE ret_hw
-                ERROR_VARIABLE err_hw
-                RESULT_VARIABLE ret_val
-)
-if(ret_val)
-  message(FATAL_ERROR "Error listing hardware.\nError message: ${err_hw}")
+# The boards module may already have written the hardware listing to a file
+# during this configure run (via list_boards.py --hardware-out), saving a
+# process invocation and a duplicate scan of all soc.yml files. Fall back to
+# invoking list_hardware.py directly when the listing is not available, for
+# example on errors or when the boards module did not run.
+if(DEFINED ZEPHYR_HW_V2_LISTING_FILE AND EXISTS ${ZEPHYR_HW_V2_LISTING_FILE})
+  file(READ ${ZEPHYR_HW_V2_LISTING_FILE} ret_hw)
+else()
+  execute_process(COMMAND ${PYTHON_EXECUTABLE} ${ZEPHYR_BASE}/scripts/list_hardware.py
+                  ${arch_root_args} ${soc_root_args}
+                  --archs --socs
+                  --cmakeformat={TYPE}\;{NAME}\;{DIR}
+                  OUTPUT_VARIABLE ret_hw
+                  ERROR_VARIABLE err_hw
+                  RESULT_VARIABLE ret_val
+  )
+  if(ret_val)
+    message(FATAL_ERROR "Error listing hardware.\nError message: ${err_hw}")
+  endif()
 endif()
 
 set(kconfig_soc_source_dir)

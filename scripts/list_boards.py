@@ -4,7 +4,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import argparse
+import contextlib
 import difflib
+import io
 import sys
 from collections import Counter
 from dataclasses import dataclass, field
@@ -158,7 +160,18 @@ def load_v2_boards(board_name, board_yml, systems):
     board_extensions = []
     if board_yml.is_file():
         with board_yml.open('r', encoding='utf-8') as f:
-            b = yaml.load(f.read(), Loader=SafeLoader)
+            contents = f.read()
+
+        if board_name is not None and board_name not in contents:
+            # Speed optimization: when a specific board is requested, a
+            # board.yml file can only be relevant if it contains the board
+            # name as a literal: either as the name of one of its boards or
+            # as the target of an 'extend' entry. A file that does not even
+            # contain the name as a substring cannot contribute anything to
+            # the lookup, so skip YAML parsing and schema validation of it.
+            return boards, board_extensions
+
+        b = yaml.load(contents, Loader=SafeLoader)
 
         errors = list(board_validator.iter_errors(b))
         if errors:
@@ -234,9 +247,10 @@ def find_v2_board_dirs(args):
     return dirs
 
 
-def find_v2_boards(args):
-    root_args = argparse.Namespace(**{'soc_roots': args.soc_roots})
-    systems = list_hardware.find_v2_systems(root_args)
+def find_v2_boards(args, systems=None):
+    if systems is None:
+        root_args = argparse.Namespace(**{'soc_roots': args.soc_roots})
+        systems = list_hardware.find_v2_systems(root_args)
 
     boards = {}
     board_extensions = []
@@ -290,6 +304,16 @@ def add_args(parser):
 def add_args_formatting(parser):
     parser.add_argument("--cmakeformat", default=None,
                         help='''CMake Format string to use to list each board''')
+    parser.add_argument("--hardware-out", type=Path, default=None,
+                        help='''additionally write the archs/socs listing that
+                        'list_hardware.py --archs --socs' would print to this
+                        file, to save a separate process invocation''')
+    parser.add_argument("--hardware-cmakeformat", default=None,
+                        help='''CMake format string for the --hardware-out listing''')
+    parser.add_argument("--shields-out", type=Path, default=None,
+                        help='''additionally write the JSON shields listing that
+                        'list_shields.py --json' would print to this file, to
+                        save a separate process invocation''')
 
 
 def variant_v2_qualifiers(variant, qualifiers = None):
@@ -324,8 +348,43 @@ def board_v2_qualifiers_csv(board):
     return ",".join(board_v2_qualifiers(board))
 
 
-def dump_v2_boards(args):
-    boards = find_v2_boards(args)
+def dump_extra_listings(args, systems):
+    # Best-effort generation of the side listings requested with
+    # --hardware-out / --shields-out. On any error the corresponding output
+    # file is simply not written: the build system then falls back to a
+    # dedicated invocation of the relevant script, which reports the error
+    # with the exact same message and attribution as before.
+    if args.hardware_out is not None:
+        try:
+            hw_args = argparse.Namespace(
+                soc_roots=args.soc_roots, arch_roots=args.arch_roots,
+                soc=None, soc_series=None, soc_family=None, socs=True,
+                arch=None, archs=True,
+                format='{name}', cmakeformat=args.hardware_cmakeformat)
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                list_hardware.dump_v2_systems(hw_args, systems=systems)
+                list_hardware.dump_v2_archs(hw_args)
+            args.hardware_out.write_text(out.getvalue(), encoding='utf-8')
+        except (Exception, SystemExit):
+            with contextlib.suppress(OSError):
+                args.hardware_out.unlink(missing_ok=True)
+
+    if args.shields_out is not None:
+        try:
+            import list_shields
+            shield_args = argparse.Namespace(board_roots=args.board_roots)
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                list_shields.dump_shields(list_shields.find_shields(shield_args), True)
+            args.shields_out.write_text(out.getvalue(), encoding='utf-8')
+        except (Exception, SystemExit):
+            with contextlib.suppress(OSError):
+                args.shields_out.unlink(missing_ok=True)
+
+
+def dump_v2_boards(args, systems=None):
+    boards = find_v2_boards(args, systems)
     if args.fuzzy_match is not None:
         close_boards = difflib.get_close_matches(args.fuzzy_match, boards.keys())
         boards = {b: boards[b] for b in close_boards}
@@ -357,7 +416,10 @@ def dump_v2_boards(args):
 if __name__ == '__main__':
     try:
         args = parse_args()
-        dump_v2_boards(args)
+        root_args = argparse.Namespace(**{'soc_roots': args.soc_roots})
+        systems = list_hardware.find_v2_systems(root_args)
+        dump_extra_listings(args, systems)
+        dump_v2_boards(args, systems)
     except RuntimeError as e:
         print(f'ERROR: {e}', file=sys.stderr)
         sys.exit(1)
