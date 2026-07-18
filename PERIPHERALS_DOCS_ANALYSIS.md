@@ -88,7 +88,7 @@ dead Kconfig references or uncompiled example code.
 | D8 | `buzzer.rst:14` | Sentence ends "…through the functions in buzzer.h:" — dangling colon, the promised example never follows. |
 | D9 | `stepper/index.rst:121-122` | Stray link target pointing at a Discord channel — link-rot-prone and unusual for upstream docs. |
 | D10 | `sdhc.rst:44` | "Related configuration options" list is orphaned under the "Host Controller I/O" section instead of a Configuration Options section. |
-| D11 | Multiple files | Heading underlines shorter than their titles (e.g. `dac.rst:12`, `pwm.rst:23`, `sensor/power_management.rst:2`, `read_and_decode.rst:14`) — triggers docutils warnings. |
+| D11 | `sensor/attributes.rst:32,36` | Example bugs: format string `%d.06%d` should be `%d.%06d`, `val2` spuriously multiplied by 1000000 (it is already in millionths), and `sensor_attr_set()` passed the `sensor_value` struct by value where the API takes a pointer. |
 
 ---
 
@@ -247,7 +247,7 @@ i2c_eeprom_target.
    `fetch_and_get.rst` already does with `magn_polling` (D3).
 4. Fix the stepper DTS semicolon (D4), BOM (D5), otp/api.rst ordering/typos (D6),
    coredump typo (D7), buzzer dangling colon (D8), Discord link (D9), sdhc orphaned
-   config list (D10), short underlines (D11).
+   config list (D10), attributes example bugs (D11).
 5. Re-sort `index.rst` by rendered title per its own instruction (§5.1).
 
 ### Phase 1 — Define the standard (one PR, unblocks everything else)
