@@ -4,10 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <stdio.h>
-
+#include <lvgl.h>
 #include <zephyr/device.h>
-#include <zephyr/display/cfb.h>
+#include <zephyr/drivers/display.h>
 #include <zephyr/kernel.h>
 
 #include <zephyr/logging/log.h>
@@ -15,85 +14,141 @@ LOG_MODULE_REGISTER(ui, LOG_LEVEL_INF);
 
 #include "agent_pad.h"
 
-#define ROW_H 16
+#define HEADER_H 14
+#define SLOT_W	 20
+#define SLOT_H	 26
+#define SLOT_Y	 17
 
 static const struct device *display = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
 
-static char status_char(enum agent_status status, int tick)
+static lv_obj_t *layer_label;
+static lv_obj_t *page_label;
+static lv_obj_t *slots[AGENT_SLOTS];
+static lv_obj_t *slot_labels[AGENT_SLOTS];
+static lv_obj_t *note_label;
+
+static const char *status_text(enum agent_status status, int tick)
 {
-	static const char spinner[] = "|/-\\";
+	static const char *const spinner[] = {"|", "/", "-", "\\"};
 
 	switch (status) {
 	case AGENT_IDLE:
-		return 'o';
+		return "-";
 	case AGENT_THINKING:
 		return spinner[tick % 4];
 	case AGENT_DONE:
-		return '+';
+		return LV_SYMBOL_OK;
 	case AGENT_INPUT:
-		return '?';
+		return LV_SYMBOL_BELL;
 	case AGENT_ERROR:
-		return '!';
+		return LV_SYMBOL_WARNING;
 	default:
-		return '.';
+		return "";
 	}
 }
 
-static void redraw(int tick)
+static void refresh(int tick)
 {
-	char line[16];
 	char note[NOTE_LEN];
-	char status[AGENT_SLOTS];
 	struct agent agent;
 
+	lv_label_set_text(layer_label, layers[state_layer()].name);
+	lv_label_set_text_fmt(page_label, "L%d", state_layer() + 1);
+
 	for (int i = 0; i < AGENT_SLOTS; i++) {
+		bool alert;
+
 		state_agent_get(i, &agent);
-		status[i] = status_char(agent.status, tick);
+		alert = agent.status == AGENT_INPUT || agent.status == AGENT_ERROR;
+
+		lv_label_set_text(slot_labels[i], status_text(agent.status, tick));
+		lv_obj_set_style_bg_opa(slots[i], alert ? LV_OPA_COVER : LV_OPA_TRANSP, 0);
+		lv_obj_set_style_text_color(slot_labels[i],
+					    alert ? lv_color_black() : lv_color_white(), 0);
+		lv_obj_set_style_border_opa(
+			slots[i], agent.status == AGENT_EMPTY ? LV_OPA_TRANSP : LV_OPA_COVER, 0);
 	}
+
 	state_note_get(note, sizeof(note));
+	lv_label_set_text(note_label, note);
+}
 
-	cfb_framebuffer_clear(display, false);
+static lv_obj_t *make_box(lv_obj_t *parent)
+{
+	lv_obj_t *obj = lv_obj_create(parent);
 
-	snprintf(line, sizeof(line), " %-8s L%d", layers[state_layer()].name,
-		 state_layer() + 1);
-	cfb_print(display, line, 0, 0);
-	cfb_invert_area(display, 0, 0, 128, ROW_H);
+	lv_obj_remove_style_all(obj);
+	return obj;
+}
 
-	cfb_print(display, "1 2 3 4 5 6", 4, ROW_H);
-	snprintf(line, sizeof(line), "%c %c %c %c %c %c", status[0], status[1], status[2],
-		 status[3], status[4], status[5]);
-	cfb_print(display, line, 4, 2 * ROW_H);
-	cfb_print(display, note, 0, 3 * ROW_H);
+static void build_screen(void)
+{
+	lv_obj_t *scr = lv_screen_active();
+	lv_obj_t *header;
 
-	cfb_framebuffer_finalize(display);
+	lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
+	lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
+	lv_obj_set_style_text_color(scr, lv_color_white(), 0);
+
+	header = make_box(scr);
+	lv_obj_set_pos(header, 0, 0);
+	lv_obj_set_size(header, LV_HOR_RES, HEADER_H);
+	lv_obj_set_style_bg_color(header, lv_color_white(), 0);
+	lv_obj_set_style_bg_opa(header, LV_OPA_COVER, 0);
+	lv_obj_set_style_text_color(header, lv_color_black(), 0);
+
+	layer_label = lv_label_create(header);
+	lv_obj_align(layer_label, LV_ALIGN_LEFT_MID, 2, 0);
+
+	page_label = lv_label_create(header);
+	lv_obj_align(page_label, LV_ALIGN_RIGHT_MID, -2, 0);
+
+	for (int i = 0; i < AGENT_SLOTS; i++) {
+		slots[i] = make_box(scr);
+		lv_obj_set_pos(slots[i], 2 + i * (SLOT_W + 1), SLOT_Y);
+		lv_obj_set_size(slots[i], SLOT_W, SLOT_H);
+		lv_obj_set_style_border_width(slots[i], 1, 0);
+		lv_obj_set_style_border_color(slots[i], lv_color_white(), 0);
+		lv_obj_set_style_bg_color(slots[i], lv_color_white(), 0);
+		lv_obj_set_style_radius(slots[i], 3, 0);
+
+		slot_labels[i] = lv_label_create(slots[i]);
+		lv_obj_center(slot_labels[i]);
+	}
+
+	note_label = lv_label_create(scr);
+	lv_obj_set_pos(note_label, 2, SLOT_Y + SLOT_H + 4);
+	lv_obj_set_width(note_label, LV_HOR_RES - 4);
+	lv_label_set_long_mode(note_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
 }
 
 static void ui_thread(void *p1, void *p2, void *p3)
 {
-	uint32_t seen = 0;
+	uint32_t seen = ~0U;
+	uint32_t iter = 0;
 	int tick = 0;
-	bool thinking;
 
 	while (true) {
 		struct agent agent;
+		bool thinking = false;
 
-		thinking = false;
 		for (int i = 0; i < AGENT_SLOTS; i++) {
 			state_agent_get(i, &agent);
 			thinking = thinking || (agent.status == AGENT_THINKING);
 		}
 
-		if (state_seq() != seen || thinking) {
+		if (state_seq() != seen || (thinking && (iter % 4) == 0)) {
 			seen = state_seq();
-			redraw(tick);
+			refresh(tick++);
 		}
 
-		tick++;
-		k_msleep(250);
+		lv_timer_handler();
+		iter++;
+		k_msleep(50);
 	}
 }
 
-K_THREAD_DEFINE(ui_tid, 2048, ui_thread, NULL, NULL, NULL, 8, 0, K_TICKS_FOREVER);
+K_THREAD_DEFINE(ui_tid, 4096, ui_thread, NULL, NULL, NULL, 8, 0, K_TICKS_FOREVER);
 
 int ui_init(void)
 {
@@ -102,13 +157,9 @@ int ui_init(void)
 		return -EIO;
 	}
 
-	if (cfb_framebuffer_init(display) != 0) {
-		LOG_ERR("Framebuffer init failed");
-		return -EIO;
-	}
-
+	build_screen();
 	state_note_set("agents ready");
-	redraw(0);
+	display_blanking_off(display);
 
 	k_thread_start(ui_tid);
 

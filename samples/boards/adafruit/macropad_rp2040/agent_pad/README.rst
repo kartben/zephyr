@@ -1,6 +1,6 @@
 .. zephyr:code-sample:: agent_pad
    :name: Agent Pad
-   :relevant-api: usbd_api usbd_hid_device input_interface led_strip_interface monochrome_character_framebuffer
+   :relevant-api: usbd_api usbd_hid_device input_interface led_strip_interface
 
    Turn the Adafruit MacroPad RP2040 into a control surface for AI coding agents.
 
@@ -51,8 +51,9 @@ keystrokes. Two layers are provided:
 :kbd:`Enter`, long press to switch layers. The bottom row LEDs are tinted with
 the active layer's color.
 
-**OLED display** — shows the active layer, a status glyph per agent slot (with
-a spinner while thinking) and the last event.
+**OLED display** — an LVGL GUI shows the active layer, a tile per agent slot
+(spinner while thinking, inverted when attention is needed) and a scrolling
+ticker with the last event.
 
 **Speaker** — plays short chimes when an agent finishes, needs input, or hits
 an error, so you notice even when the pad is out of sight.

@@ -4,6 +4,8 @@ sample:
 tests:
   sample.boards.adafruit.macropad_rp2040.agent_pad:
     build_only: true
+    modules:
+      - lvgl
     platform_allow:
       - adafruit_macropad_rp2040
     integration_platforms:
