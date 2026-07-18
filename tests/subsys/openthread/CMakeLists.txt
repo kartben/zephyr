@@ -1,5 +1,5 @@
 # Boilerplate code, which pulls in the Zephyr build system.
-cmake_minimum_required(VERSION 3.20.0)
+cmake_minimum_required(VERSION 3.28.3)
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
 project(openthread_tests)
