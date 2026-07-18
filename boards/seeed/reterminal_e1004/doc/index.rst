@@ -27,9 +27,8 @@ The board includes the following features:
 - Green status LED
 - Buzzer
 
-.. note::
-
-   The ePaper display is not yet supported.
+The 13.3 inch ePaper panel is driven by a T133A01 Spectra 6 display controller
+made of two cascaded controller dies, each driving one half of the panel.
 
 For more details about the board, see the `reTerminal E1004 board schematics`_.
 

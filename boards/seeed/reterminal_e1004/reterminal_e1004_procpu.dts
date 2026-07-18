@@ -11,6 +11,7 @@
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 #include <zephyr/dt-bindings/pwm/pwm.h>
 #include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/display/panel.h>
 #include <espressif/partitions_0x0_amp_32M.dtsi>
 #include "reterminal_e1004-pinctrl.dtsi"
 
@@ -27,6 +28,7 @@
 		zephyr,bt-hci = &esp32_bt_hci;
 		zephyr,rtc = &pcf8563_rtc;
 		zephyr,sdhc = &sdcard0;
+		zephyr,display = &epd_t133a01;
 	};
 
 	aliases {
@@ -98,6 +100,39 @@
 	buzzer0: buzzer0 {
 		compatible = "pwm-buzzer";
 		pwms = <&ledc0 0 PWM_HZ(50) PWM_POLARITY_NORMAL>;
+	};
+
+	mipi_dbi: mipi_dbi {
+		compatible = "zephyr,mipi-dbi-spi";
+		spi-dev = <&spi2>;
+		dc-gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpio1 6 GPIO_ACTIVE_LOW>;
+		write-only;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		epd_t133a01: t133a01@1 {
+			compatible = "eink,t133a01";
+			mipi-max-frequency = <DT_FREQ_M(10)>;
+			reg = <1>;
+			width = <1200>;
+			height = <1600>;
+			busy-gpios = <&gpio0 13 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+			slave-cs-gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
+			enable-gpios = <&gpio0 12 GPIO_ACTIVE_HIGH>;
+
+			color-palette {
+				compatible = "zephyr,panel-color-palette";
+
+				colors = <ARGB8888(0,   0,   0,   255) /* 0x00 = Black */
+					  ARGB8888(245, 245, 240, 255) /* 0x01 = White */
+					  ARGB8888(230, 200, 40,  255) /* 0x02 = Yellow */
+					  ARGB8888(196, 50,  58,  255) /* 0x03 = Red */
+					  PANEL_COLOR_PALETTE_NULL /* 0x04 = Unused / reserved */
+					  ARGB8888(40,  85,  180, 255) /* 0x05 = Blue */
+					  ARGB8888(60,  140, 75,  255) /* 0x06 = Green */>;
+			};
+		};
 	};
 };
 
@@ -185,7 +220,7 @@
 	status = "okay";
 	pinctrl-0 = <&spim2_default>;
 	pinctrl-names = "default";
-	cs-gpios = <&gpio0 14 GPIO_ACTIVE_LOW>;
+	cs-gpios = <&gpio0 14 GPIO_ACTIVE_LOW>, <&gpio0 10 GPIO_ACTIVE_LOW>;
 
 	sdcard0: sdhc@0 {
 		compatible = "zephyr,sdhc-spi-slot";
