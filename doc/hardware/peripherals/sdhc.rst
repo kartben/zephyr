@@ -41,6 +41,9 @@ host controller, such as clock frequency, I/O voltage, and card power. Not all
 controllers will support applying all I/O settings. For example, SPI mode
 controllers typically cannot toggle power to the SD card.
 
+Configuration Options
+*********************
+
 Related configuration options:
 
 * :kconfig:option:`CONFIG_SDHC`
