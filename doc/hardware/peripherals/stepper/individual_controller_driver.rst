@@ -10,7 +10,7 @@ controller:
 
     / {
         aliases {
-            stepper_driver = &tmc2209
+            stepper_driver = &tmc2209;
             stepper_ctrl = &step_dir_motion_control;
         };
 
