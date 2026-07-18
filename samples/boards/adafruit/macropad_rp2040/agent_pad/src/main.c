@@ -80,14 +80,8 @@ static void handle_encoder_button(int32_t value)
 
 static int key_index(uint16_t code)
 {
-	static const uint16_t codes[] = {
-		INPUT_KEY_F1, INPUT_KEY_F2,  INPUT_KEY_F3,  INPUT_KEY_F4,
-		INPUT_KEY_F5, INPUT_KEY_F6,  INPUT_KEY_F7,  INPUT_KEY_F8,
-		INPUT_KEY_F9, INPUT_KEY_F10, INPUT_KEY_F11, INPUT_KEY_F12,
-	};
-
-	for (int i = 0; i < (int)ARRAY_SIZE(codes); i++) {
-		if (codes[i] == code) {
+	for (int i = 0; i < (int)ARRAY_SIZE(pad_key_codes); i++) {
+		if (pad_key_codes[i] == code) {
 			return i;
 		}
 	}

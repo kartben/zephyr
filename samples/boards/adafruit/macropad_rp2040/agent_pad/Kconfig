@@ -1,5 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
+config AGENT_PAD_SIM
+	bool "Simulator GUI instead of pad hardware I/O"
+	help
+	  Replace the USB HID keyboard, LED strip and buzzer with an
+	  interactive LVGL mock of the pad: clickable key and encoder
+	  widgets, live agent-key colors and indicators for the keystrokes
+	  and chimes the firmware would emit. The serial link protocol stays
+	  active, making the whole application testable without hardware,
+	  e.g. on qemu_x86.
+
 # Source common USB sample options used to initialize new experimental USB
 # device stack. The scope of these options is limited to USB samples in project
 # tree, you cannot use them in your own application.

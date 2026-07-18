@@ -19,19 +19,19 @@ LOG_MODULE_REGISTER(link, LOG_LEVEL_INF);
 
 #define LINE_LEN 64
 
-static const struct device *uart_dev = DEVICE_DT_GET(DT_NODELABEL(cdc_acm_uart0));
+static const struct device *uart_dev = DEVICE_DT_GET(DT_ALIAS(pad_link));
 
 static char rx_line[LINE_LEN];
 static size_t rx_len;
 
-K_MSGQ_DEFINE(line_msgq, LINE_LEN, 4, 4);
+K_MSGQ_DEFINE(line_msgq, LINE_LEN, 8, 4);
 
 static void link_send(const char *line)
 {
-	uint32_t dtr = 0;
+	uint32_t dtr;
 
-	uart_line_ctrl_get(uart_dev, UART_LINE_CTRL_DTR, &dtr);
-	if (dtr == 0U) {
+	/* Skip when a DTR-capable port (CDC ACM) has no terminal attached. */
+	if (uart_line_ctrl_get(uart_dev, UART_LINE_CTRL_DTR, &dtr) == 0 && dtr == 0U) {
 		return;
 	}
 

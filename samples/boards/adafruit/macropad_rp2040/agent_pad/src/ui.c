@@ -14,10 +14,15 @@ LOG_MODULE_REGISTER(ui, LOG_LEVEL_INF);
 
 #include "agent_pad.h"
 
+#define OLED_W	 128
 #define HEADER_H 14
 #define SLOT_W	 20
 #define SLOT_H	 26
 #define SLOT_Y	 17
+
+#ifdef CONFIG_AGENT_PAD_SIM
+lv_obj_t *sim_build(lv_obj_t *root);
+#endif
 
 static const struct device *display = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
 
@@ -86,13 +91,17 @@ static void build_screen(void)
 	lv_obj_t *scr = lv_screen_active();
 	lv_obj_t *header;
 
+#ifdef CONFIG_AGENT_PAD_SIM
+	scr = sim_build(scr);
+#endif
+
 	lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
 	lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
 	lv_obj_set_style_text_color(scr, lv_color_white(), 0);
 
 	header = make_box(scr);
 	lv_obj_set_pos(header, 0, 0);
-	lv_obj_set_size(header, LV_HOR_RES, HEADER_H);
+	lv_obj_set_size(header, OLED_W, HEADER_H);
 	lv_obj_set_style_bg_color(header, lv_color_white(), 0);
 	lv_obj_set_style_bg_opa(header, LV_OPA_COVER, 0);
 	lv_obj_set_style_text_color(header, lv_color_black(), 0);
@@ -118,7 +127,7 @@ static void build_screen(void)
 
 	note_label = lv_label_create(scr);
 	lv_obj_set_pos(note_label, 2, SLOT_Y + SLOT_H + 4);
-	lv_obj_set_width(note_label, LV_HOR_RES - 4);
+	lv_obj_set_width(note_label, OLED_W - 4);
 	lv_label_set_long_mode(note_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
 }
 

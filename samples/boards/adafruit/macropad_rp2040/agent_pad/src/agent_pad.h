@@ -61,6 +61,7 @@ struct layer {
 
 extern const struct layer layers[];
 extern const size_t num_layers;
+extern const uint16_t pad_key_codes[12];
 
 int hid_kb_init(void);
 void hid_kb_run(const struct key_action *action);
