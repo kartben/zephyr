@@ -29,11 +29,11 @@ A quick example...
                 printk("Failed to get sampling frequency\n");
    }
 
-   printk("Sample rate for accel %p is %d.06%d\n", accel_dev, accel_sample_rate.val1, accel_sample_rate.val2*1000000);
+   printk("Sample rate for accel %p is %d.%06d\n", accel_dev, accel_sample_rate.val1, accel_sample_rate.val2);
 
    accel_sample_rate.val1 = 2000;
 
-   rc = sensor_attr_set(accel_dev, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, accel_sample_rate);
+   rc = sensor_attr_set(accel_dev, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &accel_sample_rate);
    if (rc != 0) {
                 printk("Failed to set sampling frequency\n");
    }
