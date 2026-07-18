@@ -119,12 +119,18 @@ QEMU opens a display window where the keys are clickable with the mouse,
 including holding the knob to switch layers. The serial link protocol runs on
 the second serial port, which QEMU exposes as a pseudo-terminal — look for
 ``char device redirected to /dev/ttys004`` (or ``/dev/pts/N``) in the run
-output, then drive it exactly like the hardware:
+output, then drive it exactly like the hardware, either with raw protocol
+lines or through the hook bridge script by feeding it a hook payload on stdin
+the way Claude Code would:
 
 .. code-block:: console
 
    $ echo "agent 2 thinking zephyr" > /dev/ttys004
-   $ CLAUDE_PAD_PORT=/dev/ttys004 claude-pad.sh done < hook.json
+   $ echo '{"session_id": "demo", "cwd": "'$PWD'"}' | \
+         CLAUDE_PAD_PORT=/dev/ttys004 claude-pad.sh done
+
+Setting ``CLAUDE_PAD_PORT`` in the environment Claude Code runs in makes the
+hooks from the previous section target the simulator instead of a real pad.
 
 Building and flashing
 *********************
