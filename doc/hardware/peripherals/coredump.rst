@@ -6,7 +6,7 @@ Coredump Device
 Overview
 ********
 
-The coredump device is a pseudo-device driver with two types.A COREDUMP_TYPE_MEMCPY
+The coredump device is a pseudo-device driver with two types. A COREDUMP_TYPE_MEMCPY
 type exposes device tree bindings for memory address/size values to be included in
 any dump. And the driver exposes an API to add/remove dump memory regions at runtime.
 A COREDUMP_TYPE_CALLBACK device requires exactly one entry in the memory-regions
