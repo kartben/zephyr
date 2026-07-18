@@ -72,7 +72,7 @@ static void handle_encoder_button(int32_t value)
 	if (k_uptime_get() - pressed_at >= LAYER_HOLD_MS) {
 		state_layer_next();
 		state_note_set("%s", layers[state_layer()].name);
-		buzzer_play(CHIME_LAYER);
+		chime_play(CHIME_LAYER);
 	} else {
 		run_action(&layers[state_layer()].enc_press);
 	}
@@ -132,7 +132,7 @@ int main(void)
 	struct pad_event evt;
 
 	if (hid_kb_init() != 0 || link_init() != 0 || leds_init() != 0 || ui_init() != 0 ||
-	    buzzer_init() != 0) {
+	    chime_init() != 0) {
 		return -EIO;
 	}
 

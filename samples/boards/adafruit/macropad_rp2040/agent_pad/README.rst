@@ -1,6 +1,6 @@
 .. zephyr:code-sample:: agent_pad
    :name: Agent Pad
-   :relevant-api: usbd_api usbd_hid_device input_interface led_strip_interface
+   :relevant-api: usbd_api usbd_hid_device input_interface led_strip_interface buzzer_interface
 
    Turn the Adafruit MacroPad RP2040 into a control surface for AI coding agents.
 

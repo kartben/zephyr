@@ -5,16 +5,16 @@
  */
 
 #include <zephyr/device.h>
-#include <zephyr/drivers/pwm.h>
+#include <zephyr/drivers/buzzer.h>
 #include <zephyr/drivers/regulator.h>
 #include <zephyr/kernel.h>
 
 #include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(buzzer, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(chime, LOG_LEVEL_INF);
 
 #include "agent_pad.h"
 
-#define SPEAKER_PWM_CHANNEL 0
+#define VOLUME_PERCENT 25
 #define MAX_NOTES 3
 
 struct note {
@@ -25,11 +25,11 @@ struct note {
 static const struct note chimes[][MAX_NOTES] = {
 	[CHIME_DONE] = {{1568, 70}},
 	[CHIME_INPUT] = {{880, 70}, {1175, 110}},
-	[CHIME_ERROR] = {{196, 120}, {0, 30}, {196, 120}},
+	[CHIME_ERROR] = {{196, 120}, {BUZZER_FREQ_REST, 30}, {196, 120}},
 	[CHIME_LAYER] = {{1319, 40}},
 };
 
-static const struct device *pwm_dev = DEVICE_DT_GET(DT_NODELABEL(pwm));
+static const struct device *buzzer = DEVICE_DT_GET(DT_NODELABEL(buzzer));
 static const struct device *speaker_reg = DEVICE_DT_GET(DT_NODELABEL(speaker_reg));
 
 static const struct note *current;
@@ -38,30 +38,21 @@ static int note_idx;
 static void play_note(struct k_work *work);
 static K_WORK_DELAYABLE_DEFINE(note_work, play_note);
 
-static void tone(uint16_t freq_hz)
-{
-	if (freq_hz == 0) {
-		pwm_set(pwm_dev, SPEAKER_PWM_CHANNEL, PWM_HZ(100), 0, 0);
-		return;
-	}
-
-	pwm_set(pwm_dev, SPEAKER_PWM_CHANNEL, PWM_HZ(freq_hz), PWM_HZ(freq_hz) / 8, 0);
-}
-
 static void play_note(struct k_work *work)
 {
+	const struct note *note;
+
 	if (current == NULL || note_idx >= MAX_NOTES || current[note_idx].duration_ms == 0) {
-		tone(0);
 		current = NULL;
 		return;
 	}
 
-	tone(current[note_idx].freq_hz);
-	k_work_schedule(&note_work, K_MSEC(current[note_idx].duration_ms));
-	note_idx++;
+	note = &current[note_idx++];
+	buzzer_tone(buzzer, note->freq_hz, note->duration_ms);
+	k_work_schedule(&note_work, K_MSEC(note->duration_ms));
 }
 
-void buzzer_play(enum chime chime)
+void chime_play(enum chime chime)
 {
 	if (current != NULL) {
 		return;
@@ -72,12 +63,14 @@ void buzzer_play(enum chime chime)
 	k_work_schedule(&note_work, K_NO_WAIT);
 }
 
-int buzzer_init(void)
+int chime_init(void)
 {
-	if (!device_is_ready(pwm_dev) || !device_is_ready(speaker_reg)) {
+	if (!device_is_ready(buzzer) || !device_is_ready(speaker_reg)) {
 		LOG_ERR("Speaker devices not ready");
 		return -EIO;
 	}
+
+	buzzer_set_volume(buzzer, VOLUME_PERCENT);
 
 	return regulator_enable(speaker_reg);
 }

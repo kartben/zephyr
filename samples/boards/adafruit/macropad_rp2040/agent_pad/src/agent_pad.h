@@ -80,7 +80,7 @@ enum chime {
 	CHIME_LAYER,
 };
 
-int buzzer_init(void);
-void buzzer_play(enum chime chime);
+int chime_init(void);
+void chime_play(enum chime chime);
 
 #endif /* AGENT_PAD_H_ */

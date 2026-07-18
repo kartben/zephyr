@@ -13,5 +13,5 @@ target_sources(app PRIVATE
   src/link.c
   src/leds.c
   src/ui.c
-  src/buzzer.c
+  src/chime.c
 )

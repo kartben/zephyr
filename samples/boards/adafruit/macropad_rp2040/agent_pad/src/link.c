@@ -79,15 +79,15 @@ static void status_effects(int slot, enum agent_status old, enum agent_status st
 	switch (status) {
 	case AGENT_DONE:
 		state_note_set("A%d done", slot + 1);
-		buzzer_play(CHIME_DONE);
+		chime_play(CHIME_DONE);
 		break;
 	case AGENT_INPUT:
 		state_note_set("A%d needs you", slot + 1);
-		buzzer_play(CHIME_INPUT);
+		chime_play(CHIME_INPUT);
 		break;
 	case AGENT_ERROR:
 		state_note_set("A%d error", slot + 1);
-		buzzer_play(CHIME_ERROR);
+		chime_play(CHIME_ERROR);
 		break;
 	case AGENT_THINKING:
 		state_note_set("A%d thinking", slot + 1);
