@@ -2,11 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 config ED2208_GCA
-	bool "ED2208-GCA (EL073TF1) display controller"
+	bool "ED2208-GCA (EL073TF1) / T133A01 display controller"
 	default y
-	depends on DT_HAS_EINK_ED2208_GCA_ENABLED
+	depends on DT_HAS_EINK_ED2208_GCA_ENABLED || DT_HAS_EINK_T133A01_ENABLED
 	select MIPI_DBI
 	select DISPLAY_COLOR_PALETTE
 	select DISPLAY_COLOR_DITHER_SUPPORTED
 	help
-	  Enable driver for ED2208-GCA (EL073TF1) Spectra 6 e-ink displays.
+	  Enable driver for the ED2208-GCA family of Spectra 6 e-ink display
+	  controllers: ED2208-GCA (EL073TF1) single-controller panels and
+	  T133A01 dual-controller panels.
