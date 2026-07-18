@@ -11,22 +11,22 @@ Peripherals
 
    w1.rst
    adc.rst
-   auxdisplay.rst
    audio/index.rst
+   auxdisplay.rst
    bbram.rst
    bc12.rst
    biometrics.rst
    buzzer.rst
+   charger.rst
    clock_control.rst
    clock_monitor.rst
-   can/index.rst
-   charger.rst
    comparator.rst
+   can/index.rst
    coredump.rst
    counter.rst
    crc.rst
-   dac.rst
    dali.rst
+   dac.rst
    dma.rst
    display/index.rst
    eeprom/index.rst
@@ -35,8 +35,8 @@ Peripherals
    edac/index.rst
    flash.rst
    fuel_gauge.rst
-   gnss.rst
    gpio.rst
+   gnss.rst
    haptics.rst
    hwinfo.rst
    hwspinlock.rst
@@ -49,12 +49,12 @@ Peripherals
    memc.rst
    mspi.rst
    mbox.rst
-   opamp.rst
    otp/index.rst
+   opamp.rst
    pcie.rst
+   psi5.rst
    peci.rst
    ps2.rst
-   psi5.rst
    pwm.rst
    rtc.rst
    regulators.rst
@@ -62,14 +62,14 @@ Peripherals
    retained_mem.rst
    sdhc.rst
    sensor/index.rst
-   sent.rst
    spi.rst
+   sent.rst
    stepper/index.rst
    smbus.rst
-   uart.rst
-   usbc_vbus.rst
-   tcpc.rst
    tgpio.rst
+   uart.rst
+   tcpc.rst
+   usbc_vbus.rst
    video.rst
-   watchdog.rst
    wuc.rst
+   watchdog.rst
