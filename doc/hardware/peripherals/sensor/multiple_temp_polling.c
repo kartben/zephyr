@@ -30,9 +30,8 @@ RTIO_DEFINE_WITH_MEMPOOL(temp_ctx, NUM_SENSORS, NUM_SENSORS, NUM_SENSORS, 8, siz
 int main(void)
 {
 	int rc;
-	uint32_t temp_frame_iter = 0;
 	struct sensor_q31_data temp_data[2] = {0};
-	struct sensor_decoder_api *decoder;
+	const struct sensor_decoder_api *decoder;
 	struct rtio_cqe *cqe;
 	uint8_t *buf;
 	uint32_t buf_len;
@@ -44,7 +43,7 @@ int main(void)
 
 			if (rc != 0) {
 				printk("sensor_read() failed %d\n", rc);
-				return;
+				return rc;
 			}
 		}
 
@@ -54,7 +53,7 @@ int main(void)
 
 			if (cqe->result != 0) {
 				printk("async read failed %d\n", cqe->result);
-				return;
+				return cqe->result;
 			}
 
 			/* Get the associated mempool buffer with the completion */
@@ -62,10 +61,10 @@ int main(void)
 
 			if (rc != 0) {
 				printk("get mempool buffer failed %d\n", rc);
-				return;
+				return rc;
 			}
 
-			struct device *sensor = ((struct sensor_read_config *)
+			const struct device *sensor = ((struct sensor_read_config *)
 				((struct rtio_iodev *)cqe->userdata)->data)->sensor;
 
 			/* Done with the completion event, release it */
@@ -74,15 +73,15 @@ int main(void)
 			rc = sensor_get_decoder(sensor, &decoder);
 			if (rc != 0) {
 				printk("sensor_get_decoder failed %d\n", rc);
-				return;
+				return rc;
 			}
 
 			/* Frame iterators, one per channel we are decoding */
 			uint32_t temp_fits[2] = { 0, 0 };
 
-			decoder->decode(buf, {SENSOR_CHAN_AMBIENT_TEMP, 0},
+			decoder->decode(buf, (struct sensor_chan_spec) {SENSOR_CHAN_AMBIENT_TEMP, 0},
 					&temp_fits[0], 1, &temp_data[0]);
-			decoder->decode(buf, {SENSOR_CHAN_AMBIENT_TEMP, 1},
+			decoder->decode(buf, (struct sensor_chan_spec) {SENSOR_CHAN_AMBIENT_TEMP, 1},
 					&temp_fits[1], 1, &temp_data[1]);
 
 			/* Done with the buffer, release it */
@@ -90,11 +89,11 @@ int main(void)
 
 			printk("Temperature for %s channel 0 " PRIsensor_q31_data ", channel 1 "
 			    PRIsensor_q31_data "\n",
-			    dev->name,
+			    sensor->name,
 			    PRIsensor_q31_data_arg(temp_data[0], 0),
 			    PRIsensor_q31_data_arg(temp_data[1], 0));
 		}
-	}
 
-	k_msleep(1);
+		k_msleep(1);
+	}
 }

@@ -30,9 +30,8 @@ RTIO_DEFINE_WITH_MEMPOOL(accel_ctx, NUM_SENSORS, NUM_SENSORS, NUM_SENSORS, 16, s
 int main(void)
 {
 	int rc;
-	uint32_t accel_frame_iter = 0;
-	struct sensor_three_axis_data accel_data[2] = {0};
-	struct sensor_decoder_api *decoder;
+	struct sensor_three_axis_data accel_data = {0};
+	const struct sensor_decoder_api *decoder;
 	struct rtio_cqe *cqe;
 	uint8_t *buf;
 	uint32_t buf_len;
@@ -40,7 +39,7 @@ int main(void)
 
 	/* Start the streams */
 	for (int i = 0; i < NUM_SENSORS; i++) {
-		sensor_stream(iodevs[i], &accel_ctx, NULL, &handles[i]);
+		sensor_stream(iodevs[i], &accel_ctx, iodevs[i], &handles[i]);
 	}
 
 	while (1) {
@@ -48,17 +47,17 @@ int main(void)
 
 		if (cqe->result != 0) {
 			printk("async read failed %d\n", cqe->result);
-			return;
+			return cqe->result;
 		}
 
 		rc = rtio_cqe_get_mempool_buffer(&accel_ctx, cqe, &buf, &buf_len);
 
 		if (rc != 0) {
 			printk("get mempool buffer failed %d\n", rc);
-			return;
+			return rc;
 		}
 
-		struct device *sensor = ((struct sensor_read_config *)
+		const struct device *sensor = ((struct sensor_read_config *)
 					 ((struct rtio_iodev *)cqe->userdata)->data)->sensor;
 
 		rtio_cqe_release(&accel_ctx, cqe);
@@ -67,33 +66,33 @@ int main(void)
 
 		if (rc != 0) {
 			printk("sensor_get_decoder failed %d\n", rc);
-			return;
+			return rc;
 		}
 
 		/* Frame iterator values when data comes from a FIFO */
 		uint32_t accel_fit = 0;
 
 		/* Number of accelerometer data frames */
-		uint32_t frame_count;
+		uint16_t frame_count;
 
-		rc = decoder->get_frame_count(buf, {SENSOR_CHAN_ACCEL_XYZ, 0},
+		rc = decoder->get_frame_count(buf, (struct sensor_chan_spec) {SENSOR_CHAN_ACCEL_XYZ, 0},
 					      &frame_count);
 		if (rc != 0) {
-			printk("sensor_get_decoder failed %d\n", rc);
-			return;
+			printk("get_frame_count failed %d\n", rc);
+			return rc;
 		}
 
 		/* If a tap has occurred lets print it out */
 		if (decoder->has_trigger(buf, SENSOR_TRIG_TAP)) {
-			printk("Tap! Sensor %s\n", dev->name);
+			printk("Tap! Sensor %s\n", sensor->name);
 		}
 
 		/* Decode all available accelerometer sample frames */
 		for (int i = 0; i < frame_count; i++) {
-			decoder->decode(buf, {SENSOR_CHAN_ACCEL_XYZ, 0},
-					accel_fit, 1, &accel_data);
+			decoder->decode(buf, (struct sensor_chan_spec) {SENSOR_CHAN_ACCEL_XYZ, 0},
+					&accel_fit, 1, &accel_data);
 			printk("Accel data for %s " PRIsensor_three_axis_data "\n",
-			       dev->name,
+			       sensor->name,
 			       PRIsensor_three_axis_data_arg(accel_data, 0));
 		}
 
