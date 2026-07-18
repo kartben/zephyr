@@ -44,6 +44,41 @@ class Graph:
         self.__nodes.add(source)
         self.__nodes.add(target)
 
+    def __getstate__(self):
+        # Pickle the graph in a deterministic form: sets of nodes are
+        # serialized in their iteration order, which varies from run to run,
+        # while a pickled devicetree is expected to be byte-for-byte
+        # reproducible. Tarjan scratch state is dropped; it is only used
+        # while _tarjan() itself is running and is recomputable.
+        state = self.__dict__.copy()
+        for key in ('_Graph__stack', '_Graph__index',
+                    '_Graph__tarjan_index', '_Graph__tarjan_low_link'):
+            state.pop(key, None)
+
+        roots = state.get('_Graph__roots')
+        if roots is not None:
+            state['_Graph__roots'] = sorted(roots, key=node_key)
+        state['_Graph__nodes'] = sorted(self.__nodes, key=node_key)
+        for map_key in ('_Graph__edge_map', '_Graph__reverse_map'):
+            state[map_key] = {
+                source: sorted(targets, key=node_key)
+                for source, targets in sorted(state[map_key].items(),
+                                              key=lambda kv: node_key(kv[0]))
+            }
+        return state
+
+    def __setstate__(self, state):
+        roots = state.get('_Graph__roots')
+        if roots is not None:
+            state['_Graph__roots'] = set(roots)
+        state['_Graph__nodes'] = set(state['_Graph__nodes'])
+        for map_key in ('_Graph__edge_map', '_Graph__reverse_map'):
+            restored = collections.defaultdict(set)
+            for source, targets in state[map_key].items():
+                restored[source] = set(targets)
+            state[map_key] = restored
+        self.__dict__.update(state)
+
     def roots(self):
         """
         Return the set of nodes calculated to be roots (i.e., those
