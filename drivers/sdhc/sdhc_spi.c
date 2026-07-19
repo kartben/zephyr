@@ -444,7 +444,7 @@ static int sdhc_skip(const struct device *dev, uint8_t skip_val)
 			return ret;
 		}
 	} while (buf == skip_val && retries--);
-	if (retries == 0) {
+	if (buf == skip_val) {
 		return -ETIMEDOUT;
 	}
 	/* Return first non-skipped value */
