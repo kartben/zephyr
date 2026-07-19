@@ -98,7 +98,7 @@ static bool adc_rts5912_validate_buffer_size(const struct adc_sequence *sequence
 	size_t buff_need;
 	uint32_t chan_mask;
 
-	for (chan_mask = 0x80; chan_mask != 0; chan_mask >>= 1) {
+	for (chan_mask = BIT(RTS5912_ADC_MAX_CHAN - 1); chan_mask != 0; chan_mask >>= 1) {
 		if (chan_mask & sequence->channels) {
 			chan_count++;
 		}
