@@ -345,7 +345,7 @@ static int siwx91x_gpdma_xfer_configure(const struct device *dev, const struct d
 	}
 
 	xfer_cfg.chnlCtrlConfig.srcDataWidth = siwx91x_gpdma_data_size(config->source_data_size);
-	if (xfer_cfg.chnlCtrlConfig.destDataWidth == SIWX91X_DATA_WIDTH_INVALID) {
+	if (xfer_cfg.chnlCtrlConfig.srcDataWidth == SIWX91X_DATA_WIDTH_INVALID) {
 		return -EINVAL;
 	}
 
