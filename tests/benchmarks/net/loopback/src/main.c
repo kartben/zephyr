@@ -110,7 +110,7 @@ static void pong_fn(void *a, void *b, void *c)
 	}
 }
 
-static void bench_udp_pingpong(int size, int rounds)
+static void bench_udp_pingpong(const char *label, int size, int rounds)
 {
 	int sa = udp_socket_bound(UDP_PORT_A);
 	int sb = udp_socket_bound(UDP_PORT_B);
@@ -148,8 +148,31 @@ static void bench_udp_pingpong(int size, int rounds)
 	double pps = (double)rounds * 2.0 * 1e6 / (double)dt;
 	double mbps = pps * size * 8.0 / 1e6;
 
-	printf("RESULT udp_pingpong size=%-5d rounds=%d time_us=%llu pps=%.0f goodput_mbps=%.1f\n",
-	       size, rounds, (unsigned long long)dt, pps, mbps);
+	printf("RESULT %s size=%-5d rounds=%d time_us=%llu pps=%.0f goodput_mbps=%.1f\n",
+	       label, size, rounds, (unsigned long long)dt, pps, mbps);
+}
+
+/* Same ping-pong, but with a number of other UDP sockets bound to
+ * other ports, to expose how the cost of the per-packet connection
+ * lookup scales with the number of open sockets.
+ */
+static void bench_udp_pingpong_socks(int size, int rounds, int extra)
+{
+	int socks[32];
+
+	if (extra > ARRAY_SIZE(socks)) {
+		extra = ARRAY_SIZE(socks);
+	}
+
+	for (int i = 0; i < extra; i++) {
+		socks[i] = udp_socket_bound(5000 + i);
+	}
+
+	bench_udp_pingpong("udp_pingpong_socks", size, rounds);
+
+	for (int i = 0; i < extra; i++) {
+		zsock_close(socks[i]);
+	}
 }
 
 /* ------------- UDP one-way batched blast ------------- */
@@ -358,11 +381,13 @@ int main(void)
 	}
 
 	/* warmup */
-	bench_udp_pingpong(64, scaled(2000));
+	bench_udp_pingpong("udp_pingpong", 64, scaled(2000));
 
-	bench_udp_pingpong(32, scaled(50000));
-	bench_udp_pingpong(512, scaled(50000));
-	bench_udp_pingpong(1280, scaled(50000));
+	bench_udp_pingpong("udp_pingpong", 32, scaled(50000));
+	bench_udp_pingpong("udp_pingpong", 512, scaled(50000));
+	bench_udp_pingpong("udp_pingpong", 1280, scaled(50000));
+
+	bench_udp_pingpong_socks(32, scaled(50000), 16);
 
 	bench_udp_blast(32, scaled(100000), 16);
 	bench_udp_blast(1280, scaled(100000), 16);
