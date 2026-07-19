@@ -362,14 +362,15 @@ static int gpio_eos_s3_port_get_direction(const struct device *port, gpio_port_p
 {
 	uint32_t pin;
 	PadConfig pad_config;
+	gpio_port_pins_t pins;
 	gpio_port_pins_t ip = 0;
 	gpio_port_pins_t op = 0;
-	const struct gpio_eos_s3_config *config = dev->config;
+	const struct gpio_eos_s3_config *config = port->config;
 
 	map &= config->common.port_pin_mask;
 
 	if (inputs != NULL) {
-		for (pin = find_lsb_set(pins) - 1; pins;
+		for (pins = map, pin = find_lsb_set(pins) - 1; pins;
 		     pins &= ~BIT(pin), pin = find_lsb_set(pins) - 1) {
 			pad_config = gpio_eos_s3_pad_select(port, pin);
 			ip |= (pad_config.ucMode == PAD_MODE_INPUT_EN &&
@@ -381,7 +382,7 @@ static int gpio_eos_s3_port_get_direction(const struct device *port, gpio_port_p
 	}
 
 	if (outputs != NULL) {
-		for (pin = find_lsb_set(pins) - 1; pins;
+		for (pins = map, pin = find_lsb_set(pins) - 1; pins;
 		     pins &= ~BIT(pin), pin = find_lsb_set(pins) - 1) {
 			pad_config = gpio_eos_s3_pad_select(port, pin);
 			op |= (pad_config.ucMode == PAD_MODE_OUTPUT_EN) * BIT(pin);
