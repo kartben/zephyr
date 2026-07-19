@@ -478,7 +478,7 @@ static int siwx91x_gpdma_start(const struct device *dev, uint32_t channel)
 		return -EINVAL;
 	}
 
-	if (data->chan_info[channel].channel_active) {
+	if (!data->chan_info[channel].channel_active) {
 		pm_device_runtime_get(dev);
 		data->chan_info[channel].channel_active = true;
 	}
