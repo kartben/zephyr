@@ -652,10 +652,10 @@ static void update_cmd_response(const struct device *dev, struct sdhc_command *s
 
 		LOG_DBG("cmd resp: %x %x %x %x", resp0, resp1, resp2, resp3);
 
-		sdhc_cmd->response[0u] = resp3;
-		sdhc_cmd->response[1U] = resp2;
-		sdhc_cmd->response[2U] = resp1;
-		sdhc_cmd->response[3U] = resp0;
+		sdhc_cmd->response[3u] = (resp3 << 8) | (resp2 >> 24);
+		sdhc_cmd->response[2U] = (resp2 << 8) | (resp1 >> 24);
+		sdhc_cmd->response[1U] = (resp1 << 8) | (resp0 >> 24);
+		sdhc_cmd->response[0u] = resp0 << 8;
 	} else {
 		LOG_DBG("cmd resp: %x", resp0);
 		sdhc_cmd->response[0u] = resp0;
