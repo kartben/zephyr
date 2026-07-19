@@ -382,7 +382,7 @@ static int uart_bee_irq_is_pending(const struct device *dev)
 	UART_TypeDef *uart = config->uart;
 
 	return ((UART_GetFlagStatus(uart, UART_FLAG_TX_EMPTY) && data->tx_int_en) ||
-		(UART_GetFlagStatus(uart, UART_INT_RD_AVA) && data->rx_int_en));
+		(UART_GetFlagStatus(uart, UART_FLAG_RX_DATA_AVA) && data->rx_int_en));
 }
 
 static void uart_bee_irq_callback_set(const struct device *dev, uart_irq_callback_user_data_t cb,
