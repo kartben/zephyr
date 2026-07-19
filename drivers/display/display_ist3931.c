@@ -181,7 +181,7 @@ static int ist3931_init(const struct device *dev)
 	const struct ist3931_config *config = dev->config;
 	int ret;
 
-	if (ist3931_bus_ready(dev)) {
+	if (!ist3931_bus_ready(dev)) {
 		LOG_ERR("I2C device not ready");
 		return -ENODEV;
 	}
