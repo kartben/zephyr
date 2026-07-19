@@ -255,15 +255,15 @@ static int ifx_cat1_counter_set_top_value(const struct device *dev,
 	const struct ifx_cat1_counter_config *const config = dev->config;
 	bool ticks_gt_period;
 
-	data->top_value_cfg_counter = *cfg;
-	data->counter_cfg.period = cfg->ticks;
-
 	/* Check new top value limit */
 	if (cfg->ticks > config->counter_info.max_top_value) {
 		return -ENOTSUP;
 	}
 
 	ticks_gt_period = cfg->ticks > data->counter_cfg.period;
+
+	data->top_value_cfg_counter = *cfg;
+	data->counter_cfg.period = cfg->ticks;
 	/* Checks if new period value is not less then old period value */
 	if (!(cfg->flags & COUNTER_TOP_CFG_DONT_RESET)) {
 		data->counter_cfg.value = 0u;
