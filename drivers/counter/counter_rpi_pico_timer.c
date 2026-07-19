@@ -79,11 +79,12 @@ static int counter_rpi_pico_timer_set_alarm(const struct device *dev, uint8_t id
 	const struct counter_rpi_pico_timer_config *config = dev->config;
 	struct counter_rpi_pico_timer_data *data = dev->data;
 	struct counter_rpi_pico_timer_ch_data *chdata = &data->ch_data[id];
-	uint64_t target = (alarm_cfg->flags & COUNTER_ALARM_CFG_ABSOLUTE) ? 0 : alarm_cfg->ticks;
+	uint64_t base =
+		(alarm_cfg->flags & COUNTER_ALARM_CFG_ABSOLUTE) ? 0 : config->timer->timerawl;
 	absolute_time_t alarm_at;
 	bool missed;
 
-	update_us_since_boot(&alarm_at, config->timer->timerawl + target);
+	update_us_since_boot(&alarm_at, base + alarm_cfg->ticks);
 
 	if (alarm_cfg->ticks > counter_rpi_pico_timer_get_top_value(dev)) {
 		return -EINVAL;
