@@ -664,8 +664,8 @@ static int can_nxp_s32_send(const struct device *dev,
 	}
 
 	if ((frame->flags & CAN_FRAME_BRS) != 0 &&
-			~(config->base_sic->BCFG1 & CANXL_SIC_BCFG1_FDRSDIS_MASK) == 0) {
-		LOG_ERR("CAN FD BRS not supported in non-FD mode");
+			(config->base_sic->BCFG1 & CANXL_SIC_BCFG1_FDRSDIS_MASK) != 0) {
+		LOG_ERR("CAN FD BRS not supported with bit rate switching disabled");
 		return -ENOTSUP;
 	}
 #else
