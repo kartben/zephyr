@@ -653,8 +653,7 @@ static int websocket_prepare_and_send(struct websocket_context *ctx,
 		tout = K_MSEC(timeout);
 	}
 
-	k_timeout_t req_timeout = K_MSEC(timeout);
-	k_timepoint_t req_end_timepoint = sys_timepoint_calc(req_timeout);
+	k_timepoint_t req_end_timepoint = sys_timepoint_calc(tout);
 
 	return sendmsg_all(ctx->real_sock, &msg,
 			   K_TIMEOUT_EQ(tout, K_NO_WAIT) ? ZSOCK_MSG_DONTWAIT : 0,
