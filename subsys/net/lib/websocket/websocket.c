@@ -1064,13 +1064,12 @@ int websocket_recv_msg(int ws_sock, uint8_t *buf, size_t buf_len,
 
 	/* Unmask the data */
 	if (ctx->masked) {
-		uint8_t *mask_as_bytes = (uint8_t *)&ctx->masking_value;
 		size_t data_buf_offset = ctx->message_len - ctx->parser_remaining - payload.count;
 
 		for (size_t i = 0; i < payload.count; i++) {
 			size_t m = data_buf_offset % 4;
 
-			payload.buf[i] ^= mask_as_bytes[3 - m];
+			payload.buf[i] ^= ctx->masking_value >> (8 * (3 - m));
 			data_buf_offset++;
 		}
 	}
