@@ -498,7 +498,7 @@ static int get_objlnk(struct lwm2m_input_context *in, struct lwm2m_objlnk *value
 		}
 	}
 
-	if (value->obj_inst != LWM2M_OBJLNK_MAX_ID && (value->obj_inst == LWM2M_OBJLNK_MAX_ID)) {
+	if (value->obj_inst != LWM2M_OBJLNK_MAX_ID && (value->obj_id == LWM2M_OBJLNK_MAX_ID)) {
 		LOG_WRN("decoded obj inst id without obj id");
 		return -EBADMSG;
 	}
