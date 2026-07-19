@@ -87,8 +87,12 @@ static int gpio_iproc_port_set_bits_raw(const struct device *dev, uint32_t mask)
 {
 	const struct gpio_iproc_config *const cfg = DEV_CFG(dev);
 	mem_addr_t base = cfg->base;
+	uint32_t value;
 
-	sys_write32(mask, base + IPROC_GPIO_DATA_OUT_OFFSET);
+	/* Set pins. */
+	value = sys_read32(base + IPROC_GPIO_DATA_OUT_OFFSET);
+	value |= mask;
+	sys_write32(value, base + IPROC_GPIO_DATA_OUT_OFFSET);
 
 	return 0;
 }
