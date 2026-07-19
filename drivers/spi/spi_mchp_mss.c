@@ -180,7 +180,6 @@ static void mss_spi_disable_ints(const struct mss_spi_config *cfg)
 	uint32_t mask = MSS_SPI_CONTROL_RX_DATA_INT | MSS_SPI_CONTROL_TX_DATA_INT |
 			MSS_SPI_CONTROL_RX_OVER_INT | MSS_SPI_CONTROL_TX_UNDER_INT;
 
-	mask = ~mask;
 	control = mss_spi_read(cfg, MSS_SPI_REG_CONTROL);
 	control &= ~mask;
 	mss_spi_write(cfg, MSS_SPI_REG_CONTROL, control);
