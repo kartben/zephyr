@@ -455,6 +455,8 @@ static int32_t send_message(mqueue_desc *mqd, const char *msg_ptr, size_t msg_le
 			  k_timeout_t timeout)
 {
 	int32_t ret = -1;
+	mqueue_object *mqueue;
+	uint32_t msgq_num;
 
 	if (mqd == NULL) {
 		errno = EBADF;
@@ -465,20 +467,27 @@ static int32_t send_message(mqueue_desc *mqd, const char *msg_ptr, size_t msg_le
 		timeout = K_NO_WAIT;
 	}
 
-	if (msg_len >  mqd->mqueue->queue.msg_size) {
+	mqueue = mqd->mqueue;
+
+	if (msg_len > mqueue->queue.msg_size) {
 		errno = EMSGSIZE;
 		return ret;
 	}
 
-	uint32_t msgq_num = k_msgq_num_used_get(&mqd->mqueue->queue);
+	/* Only track queue occupancy when a notification is registered */
+	bool notify = (mqueue->not.sigev_notify & SIGEV_MASK) != 0;
 
-	if (k_msgq_put(&mqd->mqueue->queue, (void *)msg_ptr, timeout) != 0) {
+	if (notify) {
+		msgq_num = k_msgq_num_used_get(&mqueue->queue);
+	}
+
+	if (k_msgq_put(&mqueue->queue, (void *)msg_ptr, timeout) != 0) {
 		errno = K_TIMEOUT_EQ(timeout, K_NO_WAIT) ? EAGAIN : ETIMEDOUT;
 		return ret;
 	}
 
-	if (k_msgq_num_used_get(&mqd->mqueue->queue) - msgq_num > 0) {
-		struct sigevent *sevp = &mqd->mqueue->not;
+	if (notify && (k_msgq_num_used_get(&mqueue->queue) - msgq_num > 0)) {
+		struct sigevent *sevp = &mqueue->not;
 
 		if (sevp->sigev_notify == SIGEV_NONE) {
 			sevp->sigev_notify_function(sevp->sigev_value);
@@ -488,7 +497,7 @@ static int32_t send_message(mqueue_desc *mqd, const char *msg_ptr, size_t msg_le
 			ret = pthread_create(&th,
 					     sevp->sigev_notify_attributes,
 					     mq_notify_thread,
-					     mqd->mqueue);
+					     mqueue);
 			if (ret != 0) {
 				errno = ret;
 				return -1;
