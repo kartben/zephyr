@@ -258,7 +258,7 @@ static int dac_configure(const struct device *dev, uint8_t channel_id)
 
 #if defined(CONFIG_DAC_MCHP_G1_DIFFERENTIAL)
 	/* If differential is selected, we can use only channel 0 */
-	if (channel_cfg->channel_id != 0) {
+	if (channel_id != 0 && channel_id != DAC_CHANNELS_ALL) {
 		return -EINVAL;
 	}
 #endif /* CONFIG_DAC_MCHP_G1_DIFFERENTIAL */
