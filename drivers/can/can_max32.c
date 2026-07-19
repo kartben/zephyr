@@ -288,6 +288,7 @@ static int can_max32_send(const struct device *dev, const struct can_frame *msg,
 			  k_timeout_t timeout, can_tx_callback_t callback, void *user_data)
 {
 	struct max32_can_data *dev_data = dev->data;
+	const struct max32_can_config *dev_cfg = dev->config;
 	int ret = 0;
 	unsigned int key;
 
@@ -325,7 +326,7 @@ static int can_max32_send(const struct device *dev, const struct can_frame *msg,
 
 	can_max32_convert_canframe_to_req(msg, &dev_data->tx_data.req);
 
-	ret = MXC_CAN_MessageSendAsync(0, &dev_data->tx_data.req);
+	ret = MXC_CAN_MessageSendAsync(dev_cfg->can_id, &dev_data->tx_data.req);
 	if (ret < 0) {
 		LOG_ERR("MXC_CAN_MessageSendAsync error (err %d)", ret);
 		k_sem_give(&dev_data->tx_sem);
