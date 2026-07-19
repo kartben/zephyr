@@ -706,6 +706,7 @@ static int clock_get_rate_rtc(const struct device *dev, uint32_t *freq)
 		} else {
 			*freq = 0;
 		}
+		break;
 
 	default:
 		ret_val = -ENOTSUP;
