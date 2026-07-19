@@ -294,11 +294,7 @@ static int adc_rza2m_check_buffer_size(const struct device *dev,
 
 	channels = POPCOUNT(sequence->channels);
 
-	if (sequence->resolution == 8) {
-		needed = channels * sizeof(uint8_t);
-	} else {
-		needed = channels * sizeof(uint16_t);
-	}
+	needed = channels * sizeof(uint16_t);
 
 	if (sequence->options) {
 		needed *= (1 + sequence->options->extra_samplings);
