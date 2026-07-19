@@ -528,7 +528,7 @@ static int dma_atcdmacx00_transfer_stop(const struct device *dev,
 
 	sys_write32(BIT(channel), DMA_ABORT(dev));
 	sys_write32(0, DMA_CH_CTRL(dev, channel));
-	sys_write32(FIELD_GET(DMA_INT_STATUS_ABORT_MASK, (channel)), DMA_INT_STATUS(dev));
+	sys_write32(FIELD_PREP(DMA_INT_STATUS_ABORT_MASK, BIT(channel)), DMA_INT_STATUS(dev));
 	data->chan[channel].status.busy = false;
 
 	k_spin_unlock(&data->lock, key);
