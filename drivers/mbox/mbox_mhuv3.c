@@ -1163,6 +1163,7 @@ static void mbox_mhuv3_mbx_comb_interrupt(const struct device *dev)
 
 		if (!chan->ops) {
 			LOG_WRN("RX Data on UNBOUND channel (%u)", chan->ch_idx);
+			continue;
 		}
 
 		if (chan->ops->read_data) {
