@@ -122,7 +122,7 @@ static int socks5_tcp_connect(struct net_context *ctx,
 	cmd_req.r.cmd = SOCKS5_CMD_CONNECT;
 	cmd_req.r.rsv = SOCKS5_PKT_RSV;
 
-	if (proxy->sa_family == NET_AF_INET) {
+	if (dest->sa_family == NET_AF_INET) {
 		const struct net_sockaddr_in *d4 =
 			(struct net_sockaddr_in *)dest;
 
@@ -136,7 +136,7 @@ static int socks5_tcp_connect(struct net_context *ctx,
 
 		size = sizeof(struct socks5_command_request_common)
 			+ sizeof(struct socks5_ipv4_addr);
-	} else if (proxy->sa_family == NET_AF_INET6) {
+	} else if (dest->sa_family == NET_AF_INET6) {
 		const struct net_sockaddr_in6 *d6 =
 			(struct net_sockaddr_in6 *)dest;
 
