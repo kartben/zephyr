@@ -236,7 +236,7 @@ static int sdhc_spi_response_get(const struct device *dev, struct sdhc_command *
 	uint8_t *response = dev_data->scratch;
 	uint8_t *end = response + rx_len;
 	int ret, timeout = cmd->timeout_ms;
-	uint8_t value, i;
+	uint8_t i;
 
 	/* First step is finding the first valid byte of the response.
 	 * All SPI responses start with R1, which will have MSB of zero.
@@ -299,11 +299,12 @@ static int sdhc_spi_response_get(const struct device *dev, struct sdhc_command *
 			response++;
 		}
 		if (response == end) {
-			value = cmd->timeout_ms;
-			response--;
 			/* Periodically check busy line */
 			ret = sdhc_spi_wait_unbusy(dev,
 				SPI_R1B_TIMEOUT_MS, 1000);
+			if (ret) {
+				return ret;
+			}
 		}
 		break;
 	case SD_SPI_RSP_TYPE_R2:
