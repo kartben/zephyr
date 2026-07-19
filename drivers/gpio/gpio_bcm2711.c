@@ -153,7 +153,7 @@ static int gpio_bcm2711_port_set_masked_raw(const struct device *port, gpio_port
 	regmask = (uint64_t)mask << cfg->offset;
 
 	set = regval & regmask;
-	clr = regval ^ regmask;
+	clr = regmask & ~regval;
 
 	sys_write32(FROM_U64(set, 0), GPSET(data->base, 0));
 	sys_write32(FROM_U64(clr, 0), GPCLR(data->base, 0));
