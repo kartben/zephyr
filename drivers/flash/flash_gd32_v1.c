@@ -22,7 +22,7 @@ LOG_MODULE_DECLARE(flash_gd32);
 #define GD32_FMC_V1_WORK_ALIGNED
 #endif
 
-#ifdef FLASH_GD32_FMC_WORK_ALIGNED
+#ifdef GD32_FMC_V1_WORK_ALIGNED
 #define GD32_FMC_V1_WRITE_ERR	(FMC_STAT_PGERR | FMC_STAT_WPERR | FMC_STAT_PGAERR)
 #else
 #define GD32_FMC_V1_WRITE_ERR	(FMC_STAT_PGERR | FMC_STAT_WPERR)
@@ -76,7 +76,7 @@ bool flash_gd32_valid_range(off_t offset, uint32_t len, bool write)
 			return false;
 		}
 
-#ifdef FLASH_GD32_FMC_WORK_ALIGNED
+#ifdef GD32_FMC_V1_WORK_ALIGNED
 		/* Check offset and len is word aligned. */
 		if ((offset % sizeof(uint32_t)) ||
 		    (len % sizeof(uint32_t))) {
