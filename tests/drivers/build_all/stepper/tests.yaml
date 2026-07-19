@@ -9,3 +9,13 @@ tests:
     build_only: true
     platform_allow:
       - native_sim/native/64
+  drivers.stepper.build.stallguard_log:
+    tags:
+      - drivers
+      - stepper
+    build_only: true
+    platform_allow:
+      - native_sim/native/64
+    extra_configs:
+      - CONFIG_STEPPER_ADI_TMC50XX_RAMPSTAT_POLL_STALLGUARD_LOG=y
+      - CONFIG_STEPPER_ADI_TMC51XX_RAMPSTAT_POLL_STALLGUARD_LOG=y
