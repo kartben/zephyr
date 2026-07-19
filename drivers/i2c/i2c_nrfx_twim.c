@@ -142,7 +142,7 @@ static int i2c_nrfx_twim_transfer(const struct device *dev,
 
 		if (ret < 0) {
 			LOG_ERR("Failed to prepare buffer: %d", ret);
-			return ret;
+			break;
 		}
 
 		dev_data->buf_ptr = buf;
