@@ -758,7 +758,7 @@ static int mbox_mhuv3_dbe_channels_init(const struct device *dev, uint32_t *base
 	struct mbox_mhuv3_extension *ext = &data->ext[DBE_EXT];
 	struct mbox_mhuv3_channel *chan;
 
-	__ASSERT(((*base_ch_idx + ext->num_chans) * MHUV3_FLAG_BITS) < data->num_chans,
+	__ASSERT(((*base_ch_idx + ext->num_chans) * MHUV3_FLAG_BITS) <= data->num_chans,
 		 "The number of allocated channels is less than required by the MHUv3 extension");
 
 	ext->base_ch_idx = *base_ch_idx;
