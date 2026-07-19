@@ -503,9 +503,9 @@ int coap_well_known_core_get_len(struct coap_resource *resources,
 		if (first) {
 			first = false;
 		} else {
-			r = append_to_coap_pkt(response, ",", 1, &remaining,
-					       &offset, ctx.current);
-			if (!r) {
+			if (!append_to_coap_pkt(response, ",", 1, &remaining,
+						&offset, ctx.current)) {
+				r = -ENOMEM;
 				goto end;
 			}
 		}
