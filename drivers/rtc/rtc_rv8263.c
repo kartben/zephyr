@@ -220,7 +220,7 @@ static int rv8263c8_time_set(const struct device *dev, const struct rtc_time *ti
 	regs[3] = bin2bcd(timeptr->tm_hour) & HOURS_BITS;
 	regs[4] = bin2bcd(timeptr->tm_mday) & DATE_BITS;
 	regs[5] = bin2bcd(timeptr->tm_wday) & WEEKDAY_BITS;
-	regs[6] = (bin2bcd(timeptr->tm_mon) & MONTHS_BITS) + 1;
+	regs[6] = bin2bcd(timeptr->tm_mon + 1) & MONTHS_BITS;
 	regs[7] = bin2bcd(timeptr->tm_year - RV8263_YEAR_OFFSET) & YEAR_BITS;
 
 	return i2c_write_dt(&config->i2c_bus, regs, sizeof(regs));
