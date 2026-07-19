@@ -69,3 +69,52 @@ tests:
   benchmark.thread_metric.synchronization:
     extra_configs:
       - CONFIG_TM_SYNCHRONIZATION=y
+
+  benchmark.thread_metric.posix.basic:
+    extra_args:
+      - EXTRA_CONF_FILE=posix.conf
+    extra_configs:
+      - CONFIG_TM_BASIC=y
+
+  benchmark.thread_metric.posix.cooperative:
+    extra_args:
+      - EXTRA_CONF_FILE=posix.conf
+    extra_configs:
+      - CONFIG_TM_COOPERATIVE=y
+
+  benchmark.thread_metric.posix.interrupt:
+    min_ram: 24
+    extra_args:
+      - EXTRA_CONF_FILE=posix.conf
+    extra_configs:
+      - CONFIG_TM_INTERRUPT=y
+
+  benchmark.thread_metric.posix.interrupt_preemption:
+    extra_args:
+      - EXTRA_CONF_FILE=posix.conf
+    extra_configs:
+      - CONFIG_TM_INTERRUPT_PREEMPTION=y
+
+  benchmark.thread_metric.posix.memory_allocation:
+    extra_args:
+      - EXTRA_CONF_FILE=posix.conf
+    extra_configs:
+      - CONFIG_TM_MEMORY_ALLOCATION=y
+
+  benchmark.thread_metric.posix.message:
+    extra_args:
+      - EXTRA_CONF_FILE=posix.conf
+    extra_configs:
+      - CONFIG_TM_MESSAGE=y
+
+  benchmark.thread_metric.posix.preemptive:
+    extra_args:
+      - EXTRA_CONF_FILE=posix.conf
+    extra_configs:
+      - CONFIG_TM_PREEMPTIVE=y
+
+  benchmark.thread_metric.posix.synchronization:
+    extra_args:
+      - EXTRA_CONF_FILE=posix.conf
+    extra_configs:
+      - CONFIG_TM_SYNCHRONIZATION=y

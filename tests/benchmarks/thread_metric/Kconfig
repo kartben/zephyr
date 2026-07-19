@@ -78,4 +78,13 @@ config TM_SYNCHRONIZATION
 
 endchoice
 
+config TM_POSIX
+	bool "Run the tests on top of the POSIX API"
+	depends on POSIX_THREADS && POSIX_PRIORITY_SCHEDULING && POSIX_SEMAPHORES && \
+		   POSIX_MESSAGE_PASSING && POSIX_TIMERS
+	help
+	  Use the POSIX porting layer (pthreads, semaphores, message queues)
+	  instead of the native kernel APIs, benchmarking the overhead of the
+	  POSIX abstraction.
+
 source "Kconfig.zephyr"
