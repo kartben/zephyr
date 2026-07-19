@@ -362,6 +362,7 @@ static int max1125x_read_sample(const struct device *dev)
 	const struct max1125x_config *config = dev->config;
 	struct max1125x_data *data = dev->data;
 	bool is_positive;
+	uint32_t raw;
 	uint8_t buffer_tx[(config->resolution / 8) + 1];
 	uint8_t buffer_rx[ARRAY_SIZE(buffer_tx)];
 	uint8_t current_channel = find_msb_set(data->ctx.sequence.channels) - 1;
@@ -409,13 +410,18 @@ static int max1125x_read_sample(const struct device *dev)
 		return -EINVAL;
 	}
 
-	is_positive = buffer_rx[(config->resolution / 8)] >> 7;
+	raw = 0;
+	for (size_t i = 1; i < ARRAY_SIZE(buffer_rx); i++) {
+		raw = (raw << 8) | buffer_rx[i];
+	}
+
+	is_positive = (buffer_rx[1] & BIT(7)) == 0;
 
 	if (is_positive) {
-		/* Ensure left shift is done using unsigned literal to avoid overflow. */
-		*data->buffer++ = sys_get_be24(buffer_rx) - (1U << (config->resolution - 1));
+		*data->buffer++ = raw;
 	} else {
-		*data->buffer++ = sys_get_be24(buffer_rx + 1);
+		/* Two's complement: sign-extend negative values */
+		*data->buffer++ = (int32_t)(raw - (1U << config->resolution));
 	}
 
 	adc_context_on_sampling_done(&data->ctx, dev);
