@@ -175,12 +175,12 @@ static void ch9350l_mouse(const struct device *dev, const uint8_t *values, uint8
 
 	for (size_t i = 0; i < 8; i++) {
 		if (button & BIT(i) && !(data->last_mouse_btns & BIT(i))) {
-			if (input_report(dev, INPUT_EV_DEVICE,
+			if (input_report(dev, INPUT_EV_KEY,
 				ch9350l_mouse_map(dev, BIT(i)), 1, true, K_FOREVER)) {
 				LOG_ERR("Input failed to be enqueued");
 			}
 		} else if (data->last_mouse_btns & BIT(i) && !(button & BIT(i))) {
-			if (input_report(dev, INPUT_EV_DEVICE,
+			if (input_report(dev, INPUT_EV_KEY,
 				ch9350l_mouse_map(dev, BIT(i)), 0, true, K_FOREVER)) {
 				LOG_ERR("Input failed to be enqueued");
 			}
