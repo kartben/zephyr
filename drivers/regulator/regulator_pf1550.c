@@ -125,9 +125,9 @@ static const struct linear_range buck3_range[] = {
 };
 static const struct linear_range buck123_current_limit_range[] = {
 	LINEAR_RANGE_INIT(1000000, 0, 0, 0),
-	LINEAR_RANGE_INIT(1200000, 0, 0, 0),
-	LINEAR_RANGE_INIT(1500000, 0, 0, 0),
-	LINEAR_RANGE_INIT(2000000, 0, 0, 0),
+	LINEAR_RANGE_INIT(1200000, 0, 1, 1),
+	LINEAR_RANGE_INIT(1500000, 0, 2, 2),
+	LINEAR_RANGE_INIT(2000000, 0, 3, 3),
 };
 static const struct linear_range ldo13_range[] = {
 	LINEAR_RANGE_INIT(750000, 50000, 0, 15),
@@ -139,6 +139,7 @@ static const struct linear_range ldo2_range[] = {
 
 #define PF1550_RAIL_EN        BIT(0)
 #define PF1550_RAIL_EN_MASK   GENMASK(1, 0)
+#define PF1550_BUCK_ILIM_MASK GENMASK(1, 0)
 #define PF1550_GOTO_SHIP      BIT(0)
 #define PF1550_GOTO_SHIP_MASK GENMASK(1, 0)
 
@@ -320,7 +321,6 @@ static int regulator_pf1550_set_current_limit(const struct device *dev, int32_t 
 					      int32_t max_ua)
 {
 	const struct regulator_pf1550_config *config = dev->config;
-	uint8_t val;
 	uint16_t idx;
 	int ret;
 
@@ -330,20 +330,15 @@ static int regulator_pf1550_set_current_limit(const struct device *dev, int32_t 
 		return -ENOTSUP;
 	}
 
-	/* Current is stored in SW*_CTRL1 register */
-	ret = i2c_reg_read_byte_dt(&config->bus, config->desc->cfg_reg + 1, &val);
-	if (ret < 0) {
-		return ret;
-	}
-
 	ret = linear_range_group_get_win_index(config->desc->ua_range, config->desc->ua_nranges,
 					       min_ua, max_ua, &idx);
 	if (ret < 0) {
 		return ret;
 	}
 
-	val |= idx;
-	return i2c_reg_write_byte_dt(&config->bus, config->desc->cfg_reg + 1, val);
+	/* Current is stored in SW*_CTRL1 register */
+	return i2c_reg_update_byte_dt(&config->bus, config->desc->cfg_reg + 1,
+				      PF1550_BUCK_ILIM_MASK, idx);
 }
 
 static int regulator_pf1550_power_off(const struct device *dev)
