@@ -390,7 +390,7 @@ int flash_gd32_erase_block(off_t offset, size_t size)
 	int ret = 0;
 
 	if (offset < GD32_NV_FLASH_V2_BANK0_SIZE) {
-		if ((offset + size0) > GD32_NV_FLASH_V2_BANK0_SIZE) {
+		if ((offset + size) > GD32_NV_FLASH_V2_BANK0_SIZE) {
 			size0 = GD32_NV_FLASH_V2_BANK0_SIZE - offset;
 		} else {
 			size0 = size;
