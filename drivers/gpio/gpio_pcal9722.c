@@ -167,7 +167,7 @@ static int gpio_pcal9722_config(const struct device *dev, gpio_pin_t pin, gpio_f
 	}
 
 	pull = sys_cpu_to_le32(pull & ALL_PINS);
-	pullen = sys_cpu_to_le32(pull & ALL_PINS);
+	pullen = sys_cpu_to_le32(pullen & ALL_PINS);
 	val = sys_cpu_to_le32(val & ALL_PINS);
 	dir = sys_cpu_to_le32(dir & ALL_PINS);
 
