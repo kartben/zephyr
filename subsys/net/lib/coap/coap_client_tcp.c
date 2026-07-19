@@ -602,6 +602,7 @@ int coap_client_tcp_csm_req(struct coap_client_tcp *client,
 {
 	struct coap_client_tcp_option tcp_csm_options[2];
 	struct coap_client_tcp_request req;
+	size_t num_csm_options = MIN(ARRAY_SIZE(tcp_csm_options), (size_t)MAX_TCP_EXTRA_OPTIONS);
 
 	client->max_block_size = max_block_size;
 
@@ -622,8 +623,9 @@ int coap_client_tcp_csm_req(struct coap_client_tcp *client,
 	req.payload = NULL;
 	req.len = 0;
 	req.cb = cb;
-	memcpy(&req.options[0], &tcp_csm_options[0], sizeof(tcp_csm_options));
-	req.num_options = 2;
+	memcpy(&req.options[0], &tcp_csm_options[0],
+	       num_csm_options * sizeof(struct coap_client_tcp_option));
+	req.num_options = num_csm_options;
 	req.user_data = user_data;
 
 	return coap_client_tcp_req(client, &req);
