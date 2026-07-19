@@ -448,7 +448,7 @@ static int dma_silabs_start(const struct device *dev, uint32_t channel)
 	const struct dma_silabs_data *data = dev->data;
 	struct dma_silabs_channel *chan = &data->dma_chan_table[channel];
 
-	if (channel > data->dma_ctx.dma_channels) {
+	if (channel >= data->dma_ctx.dma_channels) {
 		return -EINVAL;
 	}
 
@@ -464,7 +464,7 @@ static int dma_silabs_stop(const struct device *dev, uint32_t channel)
 	const struct dma_silabs_data *data = dev->data;
 	struct dma_silabs_channel *chan = &data->dma_chan_table[channel];
 
-	if (channel > data->dma_ctx.dma_channels) {
+	if (channel >= data->dma_ctx.dma_channels) {
 		return -EINVAL;
 	}
 
@@ -482,7 +482,7 @@ static int dma_silabs_get_status(const struct device *dev, uint32_t channel,
 {
 	const struct dma_silabs_data *data = dev->data;
 
-	if (channel > data->dma_ctx.dma_channels) {
+	if (channel >= data->dma_ctx.dma_channels) {
 		return -EINVAL;
 	}
 
@@ -548,7 +548,7 @@ int silabs_ldma_append_block(const struct device *dev, uint32_t channel, struct 
 	__ASSERT(!((uintptr_t)desc & ~_LDMA_CH_LINK_LINKADDR_MASK),
 		 "DMA Descriptor is not 32 bits aligned");
 
-	if (channel > data->dma_ctx.dma_channels) {
+	if (channel >= data->dma_ctx.dma_channels) {
 		return -EINVAL;
 	}
 
