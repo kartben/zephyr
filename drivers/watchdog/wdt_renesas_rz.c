@@ -172,7 +172,7 @@ static int wdt_rz_timeout_calculate(const struct device *dev, const struct wdt_t
 			((config->window.max * 4 + best_period_ms) / best_period_ms) - 1;
 	}
 
-	if (config->window.min > best_period_ms) {
+	if (config->window.min >= best_period_ms) {
 		LOG_ERR("window_min invalid");
 		return -EINVAL;
 	} else if (config->window.min == 0) {
