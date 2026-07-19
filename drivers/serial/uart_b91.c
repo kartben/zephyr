@@ -386,7 +386,7 @@ static int uart_b91_fifo_fill(const struct device *dev,
 	}
 
 	for (i = 0; i < size; i++) {
-		if (uart_b91_get_rx_bufcnt(uart) != 0) {
+		if (uart_b91_get_tx_bufcnt(uart) >= UART_TX_BUF_CNT) {
 			break;
 		}
 
