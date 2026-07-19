@@ -184,12 +184,14 @@ static int st75256_write_pixels_MONO01(const struct device *dev, const uint16_t 
 	int ret;
 
 	for (int i = 0; i < desc->height / 8; i++) {
-		st75256_set_window(dev, x, y + i * 8, desc->width, desc->height);
+		st75256_set_window(dev, x, y + i * 8, desc->width, 8);
 		st75256_start_write(dev);
 		mipi_desc.buf_size = desc->width;
+		mipi_desc.pitch = desc->width;
 		mipi_desc.width = desc->width;
 		mipi_desc.height = 8;
-		ret = mipi_dbi_write_display(config->mipi_dev, &config->dbi_config, buf, &mipi_desc,
+		ret = mipi_dbi_write_display(config->mipi_dev, &config->dbi_config,
+					     buf + i * desc->width, &mipi_desc,
 					     PIXEL_FORMAT_MONO01);
 		if (ret < 0) {
 			return ret;
