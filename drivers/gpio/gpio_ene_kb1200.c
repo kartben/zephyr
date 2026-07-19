@@ -104,7 +104,7 @@ static int kb1200_gpio_port_set_masked_raw(const struct device *dev, gpio_port_p
 {
 	const struct gpio_kb1200_config *config = dev->config;
 
-	config->gpio_regs->GPIOD |= (value & mask);
+	config->gpio_regs->GPIOD = (config->gpio_regs->GPIOD & ~mask) | (value & mask);
 	return 0;
 }
 
