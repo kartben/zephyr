@@ -318,9 +318,10 @@ static int ads1118_configure_multiplexer(const struct device *dev,
 				channel_cfg->input_positive, channel_cfg->input_negative);
 			return -ENOTSUP;
 		}
+
+		*config_mux = ADS1118_CONFIG_MUX_DIFF_0_1;
 	}
 
-	*config_mux = ADS1118_CONFIG_MUX_DIFF_0_1;
 	data->differential = channel_cfg->differential;
 
 	return 0;
