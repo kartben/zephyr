@@ -69,6 +69,8 @@ const char *const gpio_pca_series_part_name[] = {
 	"pca9539",
 	"pca9554",
 	"pca9555",
+	"pca6408",
+	"pca6416",
 	"pcal9538",
 	"pcal9539",
 	"pcal6408",
