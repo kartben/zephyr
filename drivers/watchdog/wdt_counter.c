@@ -141,7 +141,7 @@ static int wdt_counter_feed(const struct device *dev, int chan_id)
 {
 	const struct wdt_counter_config *config = dev->config;
 
-	if (chan_id > counter_get_num_of_channels(config->counter)) {
+	if (chan_id >= counter_get_num_of_channels(config->counter)) {
 		return -EINVAL;
 	}
 
