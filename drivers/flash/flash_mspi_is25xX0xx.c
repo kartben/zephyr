@@ -953,7 +953,7 @@ static int flash_mspi_is25xX0xx_read_jedec_id(const struct device *flash, uint8_
 {
 	struct flash_mspi_is25xX0xx_data *data = flash->data;
 
-	id = &data->id;
+	memcpy(id, data->id, 3);
 	return 0;
 }
 #endif /* CONFIG_FLASH_JESD216_API */
