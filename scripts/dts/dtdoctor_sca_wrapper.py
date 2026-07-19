@@ -5,7 +5,7 @@
 
 """
 Compiler launcher wrapper that captures what appears to be Devicetree-related build errors, and
-diagnoses them using diagnose_build_error.py.
+diagnoses them using dtdoctor_analyzer.py.
 
 The tool is meant to be configured as a CMAKE_<LANG>_COMPILER_LAUNCHER or as a
 CMAKE_<LANG>_LINKER_LAUNCHER.
@@ -21,6 +21,20 @@ import os
 import re
 import subprocess
 import sys
+
+_ERROR_PATTERNS = [
+    r"(__device_dts_ord_\d+).*undeclared here",  # gcc
+    r"use of undeclared identifier '(__device_dts_ord_\d+)'",  # LLVM/clang (ATfE)
+    r"undefined reference to.*(__device_dts_ord_\d+)",  # GNU ld
+    r"undefined symbol: (__device_dts_ord_\d+)",  # LLVM/lld (ATfE)
+]
+
+
+def extract_symbols(text: str) -> set[str]:
+    """
+    Extract devicetree-related symbols from compiler/linker error output.
+    """
+    return {m for p in _ERROR_PATTERNS for m in re.findall(p, text)}
 
 
 def main() -> int:
@@ -44,18 +58,10 @@ def main() -> int:
     sys.stdout.write(proc.stdout)
     sys.stderr.write(proc.stderr)
 
-    # Extract __device_dts_ord_xxx symbols from errors and run diagnostics
+    # Extract devicetree symbols from errors and run diagnostics
     if proc.returncode != 0 and args.edt_pickle:
-        patterns = [
-            r"(__device_dts_ord_\d+).*undeclared here",  # gcc
-            r"undefined reference to.*(__device_dts_ord_\d+)",  # ld
-            r"use of undeclared identifier '(__device_dts_ord_\d+)'",  # LLVM/clang (ATfE)
-            r"undefined symbol: (__device_dts_ord_\d+)",  # LLVM/lld (ATfE)
-        ]
-        symbols = {m for p in patterns for m in re.findall(p, proc.stderr)}
-
         diag_script = os.path.join(os.path.dirname(__file__), "dtdoctor_analyzer.py")
-        for symbol in sorted(symbols):
+        for symbol in sorted(extract_symbols(proc.stderr)):
             subprocess.run(
                 [
                     sys.executable,

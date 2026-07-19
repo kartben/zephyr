@@ -103,7 +103,7 @@ def find_kconfig_deps(kconf: kconfiglib.Kconfig, dt_has_symbol: str) -> set[str]
     return deps
 
 
-def handle_enabled_node(node: edtlib.Node) -> list[str]:
+def handle_enabled_node(node: edtlib.Node, kconf_factory=setup_kconfig) -> list[str]:
     """
     Handle diagnosis for an enabled DT node (linker error, one or more Kconfigs might be gating
     the device driver).
@@ -111,18 +111,32 @@ def handle_enabled_node(node: edtlib.Node) -> list[str]:
     lines = [f"'{format_node(node)}' is enabled but no driver appears to be available for it.\n"]
 
     compats = list(getattr(node, "compats", []))
-    if compats:
-        kconf = setup_kconfig()
-        deps = set()
+    if not compats:
+        lines.append("Could not determine compatible; check driver Kconfig manually.")
+        return lines
+
+    kconf = None
+    if kconf_factory is not None:
+        try:
+            kconf = kconf_factory()
+        except Exception:
+            kconf = None
+
+    deps = set()
+    if kconf is not None:
         for compat in compats:
             dt_has = f"DT_HAS_{edtlib.str_as_token(compat.upper())}_ENABLED"
             deps.update(find_kconfig_deps(kconf, dt_has))
 
-        if deps:
-            lines.append("Try enabling these Kconfig options:\n")
-            lines.extend(f" - {dep}=y" for dep in sorted(deps))
+    if deps:
+        lines.append("Try enabling these Kconfig options:\n")
+        lines.extend(f" - {dep}=y" for dep in sorted(deps))
     else:
-        lines.append("Could not determine compatible; check driver Kconfig manually.")
+        compat_list = ", ".join(f"'{c}'" for c in compats)
+        lines.append(
+            f"Check that a driver for compatible {compat_list} exists and that\n"
+            "the Kconfig options gating it are enabled."
+        )
 
     return lines
 
@@ -172,24 +186,41 @@ def _alias2node(edt: edtlib.EDT) -> dict[str, edtlib.Node]:
     return {alias: node for node in edt.nodes for alias in node.aliases}
 
 
+def diagnose_ordinal(edt: edtlib.EDT, ordinal: int, kconf_factory) -> list[str]:
+    node = next((n for n in edt.nodes if n.dep_ordinal == ordinal), None)
+    if not node:
+        return [
+            f"No devicetree node with dependency ordinal {ordinal} was found.\n",
+            "The build directory may be out of date; try a pristine build.",
+        ]
+
+    if node.status == "okay":
+        return handle_enabled_node(node, kconf_factory)
+    return handle_disabled_node(node)
+
+
+def diagnose(edt: edtlib.EDT, symbol: str, kconf_factory=setup_kconfig) -> list[str] | None:
+    """
+    Diagnose the given symbol against the given EDT. Returns a list of lines with
+    troubleshooting information, or None if the symbol is not recognized.
+    """
+    sym = symbol.strip()
+
+    m = re.fullmatch(r"__device_dts_ord_(\d+)", sym)
+    if m:
+        return diagnose_ordinal(edt, int(m.group(1)), kconf_factory)
+
+    return None
+
+
 def main() -> int:
     args = parse_args()
 
-    m = re.search(r"__device_dts_ord_(\d+)", args.symbol)
-    if not m:
-        return 1
-
-    # Find node by ordinal amongst all nodes
     edt = load_edt(args.edt_pickle)
-    node = next((n for n in edt.nodes if n.dep_ordinal == int(m.group(1))), None)
-    if not node:
-        print(f"Ordinal {m.group(1)} not found in edt.pickle", file=sys.stderr)
+    lines = diagnose(edt, args.symbol)
+    if lines is None:
+        print(f"Symbol '{args.symbol}' does not look like a devicetree symbol", file=sys.stderr)
         return 1
-
-    if node.status == "okay":
-        lines = handle_enabled_node(node)
-    else:
-        lines = handle_disabled_node(node)
 
     print(tabulate([["\n".join(lines)]], headers=["DT Doctor"], tablefmt="grid"))
     return 0
