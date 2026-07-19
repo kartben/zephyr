@@ -15,7 +15,7 @@ LOG_MODULE_REGISTER(dac_ltc166x, CONFIG_DAC_LOG_LEVEL);
 
 #define LTC166X_REG_MASK               GENMASK(15, 12)
 #define LTC166X_DATA8_MASK             GENMASK(11, 4)
-#define LTC166X_DATA10_MASK            GENMASK(12, 2)
+#define LTC166X_DATA10_MASK            GENMASK(11, 2)
 
 struct ltc166x_config {
 	struct spi_dt_spec bus;
