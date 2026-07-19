@@ -127,7 +127,7 @@ static int gpio_aw9523b_pin_configure(const struct device *dev, gpio_pin_t pin, 
 	err = i2c_reg_update_byte_dt(&config->i2c, AW9523B_REG_OUTPUT(port), mask, out_high);
 	if (err) {
 		LOG_ERR("%s: Failed to set initial pin state (%d)", dev->name, err);
-		return err;
+		goto on_error;
 	}
 
 on_error:
