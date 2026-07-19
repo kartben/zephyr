@@ -122,12 +122,7 @@ static int adc_rx_channel_setup(const struct device *dev, const struct adc_chann
 		return -EINVAL;
 	}
 
-	if (channel_cfg->channel_id < 8) {
-		data->configured_channels |= (1U << channel_cfg->channel_id);
-	} else {
-		data->configured_channels |=
-			(1U << (channel_cfg->channel_id - CHANNELS_OVER_8_OFFSET));
-	}
+	data->configured_channels |= (1U << channel_cfg->channel_id);
 
 	data->adc_chnl_cfg.chan_mask |= (1U << channel_cfg->channel_id);
 	data->adc_chnl_cfg.add_mask |= (1U << channel_cfg->channel_id);
