@@ -6,6 +6,7 @@
 
 import argparse
 import collections
+import concurrent.futures
 import json
 import logging
 import os
@@ -2996,6 +2997,156 @@ def resolve_path_hint(hint):
         return hint
 
 
+def _run_test(testcase):
+    # Instantiates and runs a single compliance test, catching EndTest and
+    # reporting unexpected exceptions as test failures. Returns the test
+    # instance, whose 'case' and 'fmtd_failures' attributes hold the results.
+    test = testcase()
+    try:
+        test.run()
+    except EndTest:
+        pass
+    except BaseException:
+        test.failure(f"An exception occurred in {test.name}:\n{traceback.format_exc()}")
+    return test
+
+
+def _run_tests_sequential(testcases):
+    # Runs the compliance tests in 'testcases' one after the other, like
+    # check_compliance.py always did. Returns a list of
+    # (testcase, case, fmtd_failures) tuples.
+    results = []
+    for testcase in testcases:
+        print(f"Running {testcase.name:30} tests in {resolve_path_hint(testcase.path_hint)} ...")
+        test = _run_test(testcase)
+        results.append((testcase, test.case, test.fmtd_failures))
+    return results
+
+
+def _init_worker(git_top, commit_range, loglevel):
+    # One-time initialization of a worker process used by
+    # _run_tests_parallel(). Recreates global state normally set up by
+    # _main(): with the 'spawn' and 'forkserver' multiprocessing start methods
+    # workers do not inherit it from the parent, and with 'fork' the logging
+    # handler inherited from the parent must be dropped so that init_logs()
+    # does not end up duplicating log output.
+    global GIT_TOP, COMMIT_RANGE
+    GIT_TOP = git_top
+    COMMIT_RANGE = commit_range
+
+    root_logger = logging.getLogger('')
+    for handler in list(root_logger.handlers):
+        root_logger.removeHandler(handler)
+    init_logs(loglevel)
+
+
+def _run_test_in_worker(name):
+    # Runs the compliance test named 'name' in a worker process, capturing
+    # everything it writes to stdout/stderr so that the output of concurrently
+    # running checks does not get interleaved. The parent process prints the
+    # captured output as a single block once the check finishes.
+    #
+    # The results are returned in picklable form: junitparser's TestCase
+    # wraps an XML element, so it crosses the process boundary as XML.
+    testcase = next(tc for tc in inheritors(ComplianceTest) if tc.name == name)
+
+    # Redirect the stdout/stderr file descriptors themselves rather than just
+    # sys.stdout/sys.stderr, so that output written directly to the file
+    # descriptors, e.g. by child processes, is captured too.
+    with tempfile.TemporaryFile(mode='w+', encoding='utf-8', errors='backslashreplace') as capture:
+        sys.stdout.flush()
+        sys.stderr.flush()
+        stdout_fd = os.dup(1)
+        stderr_fd = os.dup(2)
+        os.dup2(capture.fileno(), 1)
+        os.dup2(capture.fileno(), 2)
+        try:
+            test = _run_test(testcase)
+        finally:
+            sys.stdout.flush()
+            sys.stderr.flush()
+            os.dup2(stdout_fd, 1)
+            os.dup2(stderr_fd, 2)
+            os.close(stdout_fd)
+            os.close(stderr_fd)
+        capture.seek(0)
+        output = capture.read()
+
+    return {
+        'case_xml': test.case.tostring(),
+        'fmtd_failures': [
+            {
+                'severity': f.severity,
+                'title': f.title,
+                'file': f.file,
+                'line': f.line,
+                'col': f.col,
+                'desc': f.desc,
+                'end_line': f.end_line,
+                'end_col': f.end_col,
+            }
+            for f in test.fmtd_failures
+        ],
+        'output': output,
+    }
+
+
+def _run_tests_parallel(testcases, jobs, loglevel):
+    # Runs the compliance tests in 'testcases' in parallel, using a pool of
+    # 'jobs' worker processes (one per CPU if 'jobs' is 0). Returns the same
+    # (testcase, case, fmtd_failures) tuples as _run_tests_sequential(), in
+    # the same order as 'testcases'.
+    jobs = jobs or os.cpu_count() or 1
+    jobs = min(jobs, len(testcases)) or 1
+
+    # Start the slowest checks first so that they are not left running alone
+    # at the end. The Kconfig-based checks each parse a full Kconfig tree,
+    # which dominates the total runtime.
+    testcases = sorted(testcases, key=lambda tc: (not issubclass(tc, KconfigCheck), tc.name))
+
+    print(f"Running {len(testcases)} checks using {jobs} parallel workers")
+
+    results = {}
+    with concurrent.futures.ProcessPoolExecutor(
+        max_workers=jobs,
+        initializer=_init_worker,
+        initargs=(GIT_TOP, COMMIT_RANGE, loglevel),
+    ) as executor:
+        futures = {executor.submit(_run_test_in_worker, tc.name): tc for tc in testcases}
+        for future in concurrent.futures.as_completed(futures):
+            testcase = futures[future]
+            # Print each check's output as a single block once it finishes,
+            # so that output from different checks is not interleaved. The
+            # header matches the one printed in sequential mode.
+            print(
+                f"Running {testcase.name:30} tests in {resolve_path_hint(testcase.path_hint)} ..."
+            )
+            try:
+                res = future.result()
+            except Exception:
+                # The worker process died (e.g. it ran out of memory). Report
+                # the check as failed, like _run_test() does for exceptions
+                # raised by the check itself.
+                test = testcase()
+                test.failure(
+                    f"An exception occurred in the worker process running "
+                    f"{testcase.name}:\n{traceback.format_exc()}"
+                )
+                results[testcase.name] = (testcase, test.case, test.fmtd_failures)
+                continue
+
+            if res['output']:
+                print(res['output'], end='' if res['output'].endswith('\n') else '\n')
+
+            case = TestCase.fromstring(res['case_xml'])
+            fmtd_failures = [FmtdFailure(**f) for f in res['fmtd_failures']]
+            results[testcase.name] = (testcase, case, fmtd_failures)
+
+    # Return the results in submission order rather than completion order, so
+    # that annotations and the JUnit output are deterministic.
+    return [results[tc.name] for tc in testcases]
+
+
 def parse_args(argv):
     default_range = 'HEAD~1..HEAD'
     # Git root empty tree sha1 (represents a tree with no files)
@@ -3064,8 +3215,27 @@ def parse_args(argv):
     parser.add_argument(
         '--annotate', action="store_true", help="Print GitHub Actions-compatible annotations."
     )
+    parser.add_argument(
+        '-p',
+        '--parallel',
+        nargs='?',
+        type=int,
+        const=0,
+        default=None,
+        metavar='N',
+        help='''Run the checks in parallel, using N worker processes (one per
+                CPU if N is 0 or omitted). Each check's output is buffered and
+                printed as a single block once the check finishes, so the
+                output of different checks is not interleaved. The default is
+                to run the checks sequentially.''',
+    )
 
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+
+    if args.parallel is not None and args.parallel < 0:
+        parser.error("argument -p/--parallel: N must be >= 0")
+
+    return args
 
 
 def _main(args):
@@ -3111,6 +3281,7 @@ def _main(args):
     included = list(map(lambda x: x.lower(), args.module))
     excluded = list(map(lambda x: x.lower(), args.exclude_module))
 
+    testcases = []
     for testcase in inheritors(ComplianceTest):
         # "Modules" and "testcases" are the same thing. Better flags would have
         # been --tests and --exclude-tests or the like, but it's awkward to
@@ -3123,21 +3294,20 @@ def _main(args):
             print("Skipping " + testcase.name)
             continue
 
-        test = testcase()
-        try:
-            print(f"Running {test.name:30} tests in {resolve_path_hint(test.path_hint)} ...")
-            test.run()
-        except EndTest:
-            pass
-        except BaseException:
-            test.failure(f"An exception occurred in {test.name}:\n{traceback.format_exc()}")
+        testcases.append(testcase)
 
+    if args.parallel is not None:
+        results = _run_tests_parallel(testcases, args.parallel, args.loglevel)
+    else:
+        results = _run_tests_sequential(testcases)
+
+    for testcase, case, fmtd_failures in results:
         # Annotate if required
         if args.annotate:
-            for res in test.fmtd_failures:
-                annotate(res, test.doc)
+            for res in fmtd_failures:
+                annotate(res, testcase.doc)
 
-        suite.add_testcase(test.case)
+        suite.add_testcase(case)
 
     if args.output:
         xml = JUnitXml()
