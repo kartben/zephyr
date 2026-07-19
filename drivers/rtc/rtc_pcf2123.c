@@ -280,7 +280,7 @@ static int pcf2123_get_time(const struct device *dev, struct rtc_time *timeptr)
 	 * Validate clock integrity.
 	 * The seconds register use bit 7 for checking integrity (page 12 in the datasheet).
 	 */
-	if (bcd2bin(regs[0]) & BIT(7)) {
+	if (regs[0] & BIT(7)) {
 		LOG_WRN("Clock integrity failed");
 		LOG_HEXDUMP_DBG(regs, sizeof(regs), "Read data");
 		return -ENODATA;
