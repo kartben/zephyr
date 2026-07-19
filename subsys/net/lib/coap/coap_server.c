@@ -523,9 +523,9 @@ int coap_service_start(const struct coap_service *service)
 		}
 
 		if (af == NET_AF_INET6) {
-			*service->port = addr_ptrs.addr6->sin6_port;
+			*service->port = net_ntohs(addr_ptrs.addr6->sin6_port);
 		} else {
-			*service->port = addr_ptrs.addr4->sin_port;
+			*service->port = net_ntohs(addr_ptrs.addr4->sin_port);
 		}
 	}
 
