@@ -301,7 +301,7 @@ static void tlv_mgmt_pre_send(struct ptp_tlv_mgmt *mgmt_tlv)
 		parent_ds->obsreved_parent_offset_scaled_log_variance =
 			net_htons(parent_ds->obsreved_parent_offset_scaled_log_variance);
 		parent_ds->obsreved_parent_clk_phase_change_rate =
-			net_htons(parent_ds->obsreved_parent_clk_phase_change_rate);
+			net_htonl(parent_ds->obsreved_parent_clk_phase_change_rate);
 		parent_ds->gm_clk_quality.offset_scaled_log_variance =
 			net_htons(parent_ds->gm_clk_quality.offset_scaled_log_variance);
 		break;
