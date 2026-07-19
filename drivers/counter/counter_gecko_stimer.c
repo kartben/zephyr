@@ -190,7 +190,7 @@ static int counter_gecko_set_alarm(const struct device *dev, uint8_t chan_id,
 		/* Absolute */
 		error_code = counter_gecko_get_value(dev, &now_ticks);
 		if (now_ticks < alarm_cfg->ticks) {
-			dev_data->alarm[chan_id].ticks = top_val + (alarm_cfg->ticks - now_ticks);
+			dev_data->alarm[chan_id].ticks = alarm_cfg->ticks - now_ticks;
 		} else {
 			dev_data->alarm[chan_id].ticks =
 				(top_val - (now_ticks - alarm_cfg->ticks)) % top_val;
