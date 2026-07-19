@@ -1098,7 +1098,6 @@ static int ads1x4s0x_adc_perform_read(const struct device *dev)
 	int result;
 	const struct ads1x4s0x_config *config = dev->config;
 	struct ads1x4s0x_data *data = dev->data;
-	void *buffer = data->buffer;
 
 	k_sem_take(&data->acquire_signal, K_FOREVER);
 	k_sem_reset(&data->data_ready_signal);
@@ -1122,7 +1121,7 @@ static int ads1x4s0x_adc_perform_read(const struct device *dev)
 		result = ads1x4s0x_read_sample_24(dev, (int32_t *)data->buffer);
 
 		if (result == 0) {
-			buffer = (int32_t *)buffer + 1;
+			data->buffer = (int32_t *)data->buffer + 1;
 			adc_context_on_sampling_done(&data->ctx, dev);
 			return 0;
 		}
@@ -1135,7 +1134,7 @@ static int ads1x4s0x_adc_perform_read(const struct device *dev)
 		result = ads1x4s0x_read_sample_16(dev, (int16_t *)data->buffer);
 
 		if (result == 0) {
-			buffer = (int16_t *)buffer + 1;
+			data->buffer = (int16_t *)data->buffer + 1;
 			adc_context_on_sampling_done(&data->ctx, dev);
 			return 0;
 		}
