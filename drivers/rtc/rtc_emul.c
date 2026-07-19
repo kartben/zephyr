@@ -61,8 +61,9 @@ static const uint8_t rtc_emul_days_in_month_with_leap[12] = {
 
 static bool rtc_emul_is_leap_year(struct rtc_time *datetime)
 {
-	if ((datetime->tm_year % 400 == 0) ||
-	    (((datetime->tm_year % 100) > 0) && ((datetime->tm_year % 4) == 0))) {
+	int year = datetime->tm_year + 1900;
+
+	if ((year % 400 == 0) || (((year % 100) > 0) && ((year % 4) == 0))) {
 		return true;
 	}
 
