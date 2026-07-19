@@ -89,7 +89,7 @@ bool z_soc_irq_is_pending(unsigned int irq)
 		mask = 1 << (irq - 32);
 	} else if (irq <= 95) {
 		ipr = aic->AIC_IPR2;
-		mask = 1 << (irq - 63);
+		mask = 1 << (irq - 64);
 	} else if (irq <= 127) {
 		ipr = aic->AIC_IPR3;
 		mask = 1 << (irq - 96);
