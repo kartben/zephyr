@@ -233,6 +233,213 @@ def test_stale_ordinal(check):
     )
 
 
+def test_missing_alias(check):
+    check(
+        "DT_N_ALIAS_my_usrt_P_gpios_IDX_0_PH_ORD",
+        """
+        Devicetree alias 'my_usrt' does not exist.
+
+        Note: in this identifier, characters like '-' in the actual alias name
+        appear as '_'.
+
+        Did you mean one of these existing aliases?
+         - my-uart (uart0: /soc/uart@1000)
+
+        To define the alias, add something like this to your devicetree overlay:
+
+            / {
+                    aliases {
+                            my-usrt = &some_node_label;
+                    };
+            };
+        """,
+    )
+
+
+def test_missing_nodelabel(check):
+    check(
+        "DT_N_NODELABEL_usrt0_ORD",
+        """
+        No devicetree node has the node label 'usrt0'.
+
+        Note: DT_NODELABEL() expects the lowercase-and-underscores form of the label.
+
+        Did you mean one of these existing node labels?
+         - uart0 (/soc/uart@1000)
+         - uart1 (/soc/uart@2000)
+        """,
+    )
+
+
+def test_missing_chosen(check):
+    check(
+        "DT_CHOSEN_zephyr_consol",
+        """
+        The devicetree has no chosen property named 'zephyr_consol'.
+
+        Note: in this identifier, characters like ',' or '-' in the actual chosen
+        property name appear as '_'.
+
+        Did you mean one of these existing chosen properties?
+         - zephyr,console (uart0: /soc/uart@1000)
+         - zephyr,shell-uart (uart1: /soc/uart@2000)
+
+        To define it, add something like this to your devicetree overlay:
+
+            / {
+                    chosen {
+                            some,property = &some_node_label;
+                    };
+            };
+        """,
+    )
+
+
+def test_missing_node_path(check):
+    check(
+        "DT_N_S_soc_S_spi_4000_P_reg",
+        """
+        No node with path '/soc/spi_4000' exists in the final devicetree.
+
+        Note: in this path, characters like '@', '-' or ',' appear as '_'.
+
+        The closest existing ancestor is '/soc', whose children are:
+         - uart@1000
+         - uart@2000
+         - i2c@3000
+
+        Did you mean one of these existing nodes?
+         - /soc/i2c@3000
+         - /soc/uart@2000
+         - /soc/uart@1000
+        """,
+    )
+
+
+def test_missing_child_node_path(check):
+    check(
+        "DT_N_S_soc_S_i2c_3000_S_sensor_20_P_reg",
+        """
+        No node with path '/soc/i2c@3000/sensor_20' exists in the final devicetree.
+
+        Note: in this path, characters like '@', '-' or ',' appear as '_'.
+
+        The closest existing ancestor is 'i2c0: /soc/i2c@3000', whose children are:
+         - sensor@10
+
+        Did you mean one of these existing nodes?
+         - /soc/i2c@3000/sensor@10
+         - /soc/i2c@3000
+         - /soc/uart@2000
+        """,
+    )
+
+
+def test_missing_property_declared_in_binding(check):
+    check(
+        "DT_N_S_soc_S_uart_1000_P_fifo_depth",
+        """
+        Node 'uart0: /soc/uart@1000' does not set the 'fifo-depth' property.
+
+        Description: Depth of the hardware FIFO
+        Type: int
+        Binding: <test-data>/bindings/vnd,serial.yaml
+
+        To set it, add something like this to your devicetree overlay:
+
+            &uart0 {
+                    fifo-depth = <...>;
+            };
+        """,
+    )
+
+
+def test_property_typo(check):
+    check(
+        "DT_N_S_soc_S_uart_1000_P_curent_speed",
+        """
+        Node 'uart0: /soc/uart@1000' has no property 'curent_speed'.
+
+        Did you mean one of these properties of the node?
+         - current-speed
+
+        Note: devicetree macros are only generated for properties that are
+        declared in the node's binding.
+        Binding: <test-data>/bindings/vnd,serial.yaml
+        """,
+    )
+
+
+def test_property_index_out_of_range(check):
+    check(
+        "DT_N_S_soc_S_uart_1000_P_calibration_IDX_5",
+        """
+        Index 5 of property 'calibration' on node 'uart0: /soc/uart@1000' is out of range.
+
+        The property only has 3 element(s) (valid indexes: 0 to 2).
+        """,
+    )
+
+
+def test_property_set_but_wrong_accessor(check):
+    check(
+        "DT_N_S_soc_S_uart_1000_P_current_speed_STRING_TOKEN",
+        """
+        Property 'current-speed' on node 'uart0: /soc/uart@1000' is set, but the
+        accessed macro does not exist.
+
+        Check that the devicetree API used matches the property's type ('int').
+        """,
+    )
+
+
+def test_instance_out_of_range(check):
+    check(
+        "DT_N_INST_3_vnd_serial_P_current_speed",
+        """
+        There is no instance 3 of compatible 'vnd,serial'.
+
+        There are 1 enabled node(s) with this compatible (valid instance numbers: 0 to 0):
+         - uart0: /soc/uart@1000
+
+        These nodes have the right compatible but are not enabled:
+         - uart1: /soc/uart@2000 (status: disabled)
+
+        Try setting their 'status' property to 'okay'.
+        """,
+    )
+
+
+def test_instance_unknown_compat(check):
+    check(
+        "DT_N_INST_0_vnd_serail_P_current_speed",
+        """
+        No devicetree node has a compatible matching 'vnd_serail'.
+
+        Did you mean one of these compatibles?
+         - vnd,serial
+         - vnd,sensor
+        """,
+    )
+
+
+def test_device_get_on_missing_nodelabel(check):
+    # DEVICE_DT_GET(DT_NODELABEL(usrt0)) leaves an unresolved __device_dts_ord_DT_..._ORD
+    # symbol; the inner node identifier is diagnosed
+    check(
+        "__device_dts_ord_DT_N_NODELABEL_usrt0_ORD",
+        """
+        No devicetree node has the node label 'usrt0'.
+
+        Note: DT_NODELABEL() expects the lowercase-and-underscores form of the label.
+
+        Did you mean one of these existing node labels?
+         - uart0 (/soc/uart@1000)
+         - uart1 (/soc/uart@2000)
+        """,
+    )
+
+
 @pytest.mark.parametrize("symbol", ["some_random_symbol", "DT_FOO", "z_impl_k_sleep"])
 def test_unrecognized_symbol(env, symbol):
     assert dtdoc.diagnose(env.edt, symbol) is None
@@ -242,13 +449,25 @@ def test_wrapper_extract_symbols_gcc():
     stderr = (
         "main.c:10:5: error: '__device_dts_ord_123' undeclared here (not in a function); "
         "did you mean '__device_dts_ord_16'?\n"
+        "main.c:12:5: error: 'DT_N_NODELABEL_foo_ORD' undeclared (first use in this function)\n"
     )
-    assert wrapper.extract_symbols(stderr) == {"__device_dts_ord_123"}
+    assert wrapper.extract_symbols(stderr) == {
+        "__device_dts_ord_123",
+        "DT_N_NODELABEL_foo_ORD",
+    }
 
 
 def test_wrapper_extract_symbols_clang():
-    stderr = "main.c:10:5: error: use of undeclared identifier '__device_dts_ord_42'\n"
-    assert wrapper.extract_symbols(stderr) == {"__device_dts_ord_42"}
+    stderr = (
+        "main.c:10:5: error: use of undeclared identifier '__device_dts_ord_42'\n"
+        "main.c:12:5: error: use of undeclared identifier 'DT_N_ALIAS_led0_P_gpios_IDX_0_PH_ORD'\n"
+        "main.c:14:5: error: use of undeclared identifier 'DT_CHOSEN_zephyr_display'\n"
+    )
+    assert wrapper.extract_symbols(stderr) == {
+        "__device_dts_ord_42",
+        "DT_N_ALIAS_led0_P_gpios_IDX_0_PH_ORD",
+        "DT_CHOSEN_zephyr_display",
+    }
 
 
 def test_wrapper_extract_symbols_ld():
@@ -264,3 +483,20 @@ def test_wrapper_extract_symbols_lld():
 def test_wrapper_extract_symbols_no_match():
     stderr = "main.c:10:5: error: 'foo' undeclared (first use in this function)\n"
     assert wrapper.extract_symbols(stderr) == set()
+
+
+def test_wrapper_extract_symbols_colored():
+    # Zephyr builds pass -fdiagnostics-color=always, so the captured stderr contains
+    # ANSI escape sequences, including inside the quoted identifiers
+    stderr = (
+        "main.c:23:15: \x1b[01;31m\x1b[Kerror: \x1b[m\x1b[K"
+        "'\x1b[01m\x1b[K__device_dts_ord_DT_CHOSEN_zephyr_display_ORD\x1b[m\x1b[K'"
+        " undeclared (first use in this function)\n"
+    )
+    assert wrapper.extract_symbols(stderr) == {"__device_dts_ord_DT_CHOSEN_zephyr_display_ORD"}
+
+
+def test_wrapper_extract_symbols_unicode_quotes():
+    # gcc quotes identifiers with Unicode quotation marks in UTF-8 locales
+    stderr = "main.c:10:5: error: ‘DT_N_NODELABEL_foo_ORD’ undeclared\n"
+    assert wrapper.extract_symbols(stderr) == {"DT_N_NODELABEL_foo_ORD"}
