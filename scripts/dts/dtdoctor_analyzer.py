@@ -147,7 +147,7 @@ def handle_disabled_node(node: edtlib.Node) -> list[str]:
         for name, n in (getattr(edt, "chosen_nodes", {}) or getattr(edt, "chosen", {})).items()
         if n is node
     ]
-    alias_refs = [name for name, n in getattr(edt, "aliases", {}).items() if n is node]
+    alias_refs = [name for name, n in _alias2node(edt).items() if n is node]
 
     if chosen_refs or alias_refs:
         lines.append("")
@@ -166,6 +166,10 @@ def handle_disabled_node(node: edtlib.Node) -> list[str]:
     lines.append("\nTry enabling the node by setting its 'status' property to 'okay'.")
 
     return lines
+
+
+def _alias2node(edt: edtlib.EDT) -> dict[str, edtlib.Node]:
+    return {alias: node for node in edt.nodes for alias in node.aliases}
 
 
 def main() -> int:
