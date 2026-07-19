@@ -1073,7 +1073,7 @@ int unsubscribe_ack_decode(const struct mqtt_client *client, struct buf_ctx *buf
 
 	err = unpack_uint16(buf, &param->message_id);
 	if (err < 0) {
-		return 0;
+		return err;
 	}
 
 	if (mqtt_is_version_5_0(client)) {
