@@ -476,7 +476,7 @@ static bool wg_psa_aead_decrypt(uint8_t *dst,
 
 	ret = wg_psa_aead_setup(nonce, nonce_buf, PSA_KEY_USAGE_DECRYPT, key, &key_id);
 	if (ret < 0) {
-		return ret;
+		return false;
 	}
 
 	status = psa_aead_decrypt(key_id, PSA_ALG_CHACHA20_POLY1305,
