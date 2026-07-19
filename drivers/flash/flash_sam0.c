@@ -363,7 +363,7 @@ static int flash_sam0_erase(const struct device *dev, off_t offset,
 {
 	int err;
 
-	err = flash_sam0_valid_range(offset, ROW_SIZE);
+	err = flash_sam0_valid_range(offset, size);
 	if (err != 0) {
 		return err;
 	}
