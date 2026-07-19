@@ -403,14 +403,14 @@ static int dac_mchp_init(const struct device *dev)
 	ret = clock_control_on(dev_cfg->dac_clock.clock_dev, dev_cfg->dac_clock.gclk_sys);
 	if (ret != 0 && ret != -EALREADY) {
 		LOG_ERR("Failed to enable the GCLK for DAC: %d", ret);
-		return 0;
+		return ret;
 	}
 
 	/* Enable MCLK */
 	ret = clock_control_on(dev_cfg->dac_clock.clock_dev, dev_cfg->dac_clock.mclk_sys);
 	if (ret != 0 && ret != -EALREADY) {
 		LOG_ERR("Failed to enable the MCLK for DAC: %d", ret);
-		return 0;
+		return ret;
 	}
 
 	ret = (ret == -EALREADY) ? 0 : ret;
