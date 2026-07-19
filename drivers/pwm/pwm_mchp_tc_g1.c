@@ -653,17 +653,8 @@ static int pwm_mchp_set_cycles(const struct device *pwm_dev, uint32_t channel, u
 	uint64_t top = BIT64(max_bit_width) - 1;
 	int ret_val;
 
-	k_mutex_lock(&mchp_pwm_data->lock, MCHP_PWM_LOCK_TIMEOUT);
 	bool invert_flag_set = ((flags & PWM_POLARITY_INVERTED) != 0);
-	bool not_inverted = tc_get_invert_status(pwm_reg, max_bit_width, channel);
-
-	if ((invert_flag_set == true) && (not_inverted == true)) {
-		ret_val = tc_set_invert(pwm_reg, max_bit_width, channel);
-		if (ret_val < 0) {
-			LOG_ERR("PWM peripheral busy");
-			return -EBUSY;
-		}
-	}
+	bool not_inverted;
 
 	if (channel >= mchp_pwm_cfg->channels) {
 		LOG_ERR("channel %d is invalid", channel);
@@ -675,16 +666,30 @@ static int pwm_mchp_set_cycles(const struct device *pwm_dev, uint32_t channel, u
 		return -EINVAL;
 	}
 
+	k_mutex_lock(&mchp_pwm_data->lock, MCHP_PWM_LOCK_TIMEOUT);
+	not_inverted = tc_get_invert_status(pwm_reg, max_bit_width, channel);
+
+	if ((invert_flag_set == true) && (not_inverted == true)) {
+		ret_val = tc_set_invert(pwm_reg, max_bit_width, channel);
+		if (ret_val < 0) {
+			LOG_ERR("PWM peripheral busy");
+			ret_val = -EBUSY;
+			goto out;
+		}
+	}
+
 	ret_val = tc_set_pulse_buf(pwm_reg, max_bit_width, channel, pulse);
 	if (ret_val < 0) {
 		LOG_ERR("PWM peripheral busy");
-		return -EBUSY;
+		ret_val = -EBUSY;
+		goto out;
 	}
 	ret_val = tc_set_period_buf(pwm_reg, max_bit_width, period);
 	if (ret_val < 0) {
 		LOG_ERR("PWM peripheral busy");
-		return -EBUSY;
+		ret_val = -EBUSY;
 	}
+out:
 	k_mutex_unlock(&mchp_pwm_data->lock);
 
 	return ret_val;
