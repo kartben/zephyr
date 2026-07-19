@@ -383,6 +383,15 @@ Other notable changes
     Ubuntu 24.04 LTS package repositories. See the :ref:`migration guide <migration_4.5>` for
     options if your distribution ships an older version.
 
+  * The configure-time generation of devicetree Kconfig symbols
+    (``gen_driver_kconfig_dts.py``) has been optimized, reducing overall configuration time.
+
+  * SPDX SBOM generation is now self-contained: a new ``spdx`` build system target generates
+    the SBOM in a single step (``west build -t spdx``), without requiring
+    :kconfig:option:`CONFIG_BUILD_OUTPUT_META` to be enabled or any other prior setup, and
+    ``west spdx`` enables the CMake file-based API on demand, so running ``west spdx --init``
+    before building is no longer needed. See :ref:`west-spdx` for details.
+
 * Kernel
 
   * :kconfig:option:`CONFIG_SCHED_CPU_MASK` no longer depends on

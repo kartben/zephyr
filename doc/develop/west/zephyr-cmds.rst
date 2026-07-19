@@ -96,18 +96,26 @@ machine-readable build provenance described in :ref:`west-spdx-build-profile`.
 Generating SPDX documents
 -------------------------
 
-#. Pre-populate a build directory :file:`BUILD_DIR` like this:
+The simplest way to generate an SBOM is the ``spdx`` build system target, which builds the
+application if needed and produces the SPDX documents in :file:`BUILD_DIR/spdx`:
 
-   .. code-block:: bash
+.. code-block:: bash
 
-      west spdx --init -d BUILD_DIR
+   west build -b <board> -d BUILD_DIR APP_DIR
+   west build -d BUILD_DIR -t spdx
 
-   This step ensures the build directory contains the CMake metadata (a CMake file-API query)
-   required for SPDX document generation.
+No configuration is required: the CMake metadata (a CMake file-API query) and the build meta
+file the SBOM generation relies on are produced automatically. The first SBOM generated for a
+build directory re-runs CMake once to enable the CMake file-based API; this also applies to
+``west spdx`` below.
 
-#. Enable :kconfig:option:`CONFIG_BUILD_OUTPUT_META` in your project.
+Alternatively, the ``west spdx`` command generates the documents for an already-built
+application and gives access to more options:
 
-#. Build your application using this pre-created build directory, like so:
+#. Enable :kconfig:option:`CONFIG_BUILD_OUTPUT_META` in your project, so that the build meta
+   file is kept up to date as part of every build.
+
+#. Build your application, like so:
 
    .. code-block:: bash
 
@@ -134,9 +142,7 @@ Generating SPDX documents
 
    .. code-block:: bash
 
-     west spdx --init  -d BUILD_DIR/hello_world
-     west build -d BUILD_DIR/hello_world
-     west spdx -d BUILD_DIR/hello_world
+     west build -d BUILD_DIR/hello_world -t spdx
 
 Output documents
 ----------------
