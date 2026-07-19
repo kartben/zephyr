@@ -14,6 +14,7 @@ Run with:
     pytest ./scripts/dts/dtdoctor_test.py
 """
 
+import pickle
 import sys
 import textwrap
 from pathlib import Path
@@ -500,3 +501,21 @@ def test_wrapper_extract_symbols_unicode_quotes():
     # gcc quotes identifiers with Unicode quotation marks in UTF-8 locales
     stderr = "main.c:10:5: error: ‘DT_N_NODELABEL_foo_ORD’ undeclared\n"
     assert wrapper.extract_symbols(stderr) == {"DT_N_NODELABEL_foo_ORD"}
+
+
+def test_wrapper_dedupes_diagnoses(env, tmp_path):
+    # A single faulty source line typically produces several distinct symbols that
+    # reduce to the same root cause: only one diagnosis should be reported
+    edt_pickle = tmp_path / "edt.pickle"
+    edt_pickle.write_bytes(pickle.dumps(env.edt))
+
+    outputs = wrapper.run_diagnostics(
+        {
+            "__device_dts_ord_DT_N_ALIAS_my_usrt_P_gpios_IDX_0_PH_ORD",
+            "DT_N_ALIAS_my_usrt_P_gpios_IDX_0_VAL_pin",
+        },
+        str(edt_pickle),
+    )
+
+    assert len(outputs) == 1
+    assert "alias 'my_usrt' does not exist" in outputs[0]

@@ -53,6 +53,26 @@ def extract_symbols(text: str) -> set[str]:
     return {m for p in _ERROR_PATTERNS for m in re.findall(p, text)}
 
 
+def run_diagnostics(symbols, edt_pickle: str) -> list[str]:
+    """
+    Run the analyzer for each symbol and return the unique diagnosis outputs, in symbol
+    order. A single faulty source line often produces several symbols that reduce to
+    the same root cause (e.g. every macro expanded from one nonexistent alias), so
+    identical diagnoses are only reported once.
+    """
+    diag_script = os.path.join(os.path.dirname(__file__), "dtdoctor_analyzer.py")
+    outputs = []
+    for symbol in sorted(symbols):
+        proc = subprocess.run(
+            [sys.executable, diag_script, "--edt-pickle", edt_pickle, "--symbol", symbol],
+            capture_output=True,
+            text=True,
+        )
+        if proc.stdout and proc.stdout not in outputs:
+            outputs.append(proc.stdout)
+    return outputs
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -76,18 +96,8 @@ def main() -> int:
 
     # Extract devicetree symbols from errors and run diagnostics
     if proc.returncode != 0 and args.edt_pickle:
-        diag_script = os.path.join(os.path.dirname(__file__), "dtdoctor_analyzer.py")
-        for symbol in sorted(extract_symbols(proc.stderr)):
-            subprocess.run(
-                [
-                    sys.executable,
-                    diag_script,
-                    "--edt-pickle",
-                    args.edt_pickle,
-                    "--symbol",
-                    symbol,
-                ]
-            )
+        for diagnosis in run_diagnostics(extract_symbols(proc.stderr), args.edt_pickle):
+            sys.stdout.write(diagnosis)
 
     return proc.returncode
 
