@@ -352,7 +352,7 @@ static int coap_server_poll_timeout(void)
 	int64_t now = k_uptime_get();
 
 	COAP_SERVICE_FOREACH(svc) {
-		if (svc->data->sock_fd < -1) {
+		if (svc->data->sock_fd < 0) {
 			continue;
 		}
 
