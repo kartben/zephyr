@@ -256,7 +256,7 @@ static int rtc_renesas_ra_alarm_get_supported_fields(const struct device *dev, u
 		return -EINVAL;
 	}
 
-	if (id > config->alarms_count) {
+	if (id >= config->alarms_count) {
 		LOG_ERR("Invalid alarm ID %d", id);
 		return -EINVAL;
 	}
@@ -281,7 +281,7 @@ static int rtc_renesas_ra_alarm_set_time(const struct device *dev, uint16_t id, 
 		return -EINVAL;
 	}
 
-	if (id > config->alarms_count) {
+	if (id >= config->alarms_count) {
 		LOG_ERR("Invalid alarm ID %d", id);
 		return -EINVAL;
 	}
@@ -337,7 +337,7 @@ static int rtc_renesas_ra_alarm_get_time(const struct device *dev, uint16_t id, 
 		return -EINVAL;
 	}
 
-	if (id > config->alarms_count) {
+	if (id >= config->alarms_count) {
 		LOG_ERR("Invalid alarm ID %d", id);
 		return -EINVAL;
 	}
@@ -395,7 +395,7 @@ static int rtc_renesas_ra_alarm_set_callback(const struct device *dev, uint16_t 
 	const struct rtc_renesas_ra_config *config = dev->config;
 	unsigned int key;
 
-	if (id > config->alarms_count) {
+	if (id >= config->alarms_count) {
 		LOG_ERR("invalid alarm ID %d", id);
 		return -EINVAL;
 	}
