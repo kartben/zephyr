@@ -22,18 +22,34 @@ import re
 import subprocess
 import sys
 
+# Devicetree-related symbols that may show up in compiler/linker error messages:
+# - __device_dts_ord_<N>: device symbol for a devicetree node (also matches the unresolved
+#   __device_dts_ord_DT_..._ORD form produced by DEVICE_DT_GET() on a nonexistent node)
+# - DT_N_*: unresolved node identifiers (nonexistent alias, node label, instance, path, or
+#   property macros)
+# - DT_CHOSEN_*: missing /chosen property
+_DT_SYM = r"(?:__device_dts_ord_\w+|DT_N_\w+|DT_CHOSEN_\w+)"
+
 _ERROR_PATTERNS = [
-    r"(__device_dts_ord_\d+).*undeclared here",  # gcc
-    r"use of undeclared identifier '(__device_dts_ord_\d+)'",  # LLVM/clang (ATfE)
-    r"undefined reference to.*(__device_dts_ord_\d+)",  # GNU ld
-    r"undefined symbol: (__device_dts_ord_\d+)",  # LLVM/lld (ATfE)
+    rf"'({_DT_SYM})' undeclared",  # gcc
+    rf"use of undeclared identifier '({_DT_SYM})'",  # LLVM/clang (ATfE)
+    rf"undefined reference to `?'?({_DT_SYM})",  # GNU ld
+    rf"undefined symbol: ({_DT_SYM})",  # LLVM/lld (ATfE)
 ]
+
+# Zephyr builds compile with -fdiagnostics-color=always, so the captured error output
+# contains ANSI SGR/erase-line escape sequences, including inside the quoted
+# identifiers the patterns above match on.
+_ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 
 
 def extract_symbols(text: str) -> set[str]:
     """
     Extract devicetree-related symbols from compiler/linker error output.
     """
+    text = _ANSI_ESCAPE_RE.sub("", text)
+    # gcc quotes identifiers with Unicode quotation marks in UTF-8 locales
+    text = text.replace("‘", "'").replace("’", "'")
     return {m for p in _ERROR_PATTERNS for m in re.findall(p, text)}
 
 
