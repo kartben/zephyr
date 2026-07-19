@@ -194,7 +194,7 @@ static int nios2_msgdma_transfer_stop(const struct device *dev,
 
 	LOG_DBG("msgdma csr status Reg: 0x%x", status);
 
-	return status;
+	return ret;
 }
 
 static DEVICE_API(dma, nios2_msgdma_driver_api) = {
