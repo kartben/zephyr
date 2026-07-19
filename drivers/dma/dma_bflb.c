@@ -232,7 +232,7 @@ static int dma_bflb_configure(const struct device *dev, uint32_t channel,
 		return -EINVAL;
 	}
 
-	size = block->block_size / config->dest_data_size;
+	size = block->block_size / config->source_data_size;
 	control |= (size << DMA_TRANSFERSIZE_SHIFT) & DMA_TRANSFERSIZE_MASK;
 
 	/* Clear interrupts */
