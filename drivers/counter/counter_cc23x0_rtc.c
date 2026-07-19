@@ -55,7 +55,7 @@ static int counter_cc23x0_get_value_64(const struct device *dev, uint64_t *ticks
 	 */
 
 	uint64_t rtc_time_now =
-		((HWREG(config->base + RTC_O_TIME524M) << 16) & 0xFFFFFFF800000000) |
+		(((uint64_t)HWREG(config->base + RTC_O_TIME524M) << 16) & 0xFFFFFFF800000000ULL) |
 		HWREG(config->base + RTC_O_TIME8U);
 
 	*ticks = rtc_time_now;
