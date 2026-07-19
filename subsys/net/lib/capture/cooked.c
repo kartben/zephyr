@@ -334,10 +334,10 @@ static int create_sll_header(struct net_if *iface,
 	} else {
 		hdr2.sll2_protocol = net_htons(ptype);
 		hdr2.sll2_reserved_mbz = 0;
-		hdr2.sll2_if_index = net_if_get_by_iface(iface);
+		hdr2.sll2_if_index = net_htonl(net_if_get_by_iface(iface));
 		hdr2.sll2_hatype = net_htons(ctx->hatype);
-		hdr2.sll2_pkttype = net_htons(type);
-		hdr2.sll2_halen = net_htons(ctx->halen);
+		hdr2.sll2_pkttype = type;
+		hdr2.sll2_halen = ctx->halen;
 		memcpy(hdr2.sll2_addr, ctx->addr, sizeof(ctx->addr));
 
 		hdr = (uint8_t *)&hdr2;
