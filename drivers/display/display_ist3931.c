@@ -248,12 +248,12 @@ static int ist3931_write(const struct device *dev, const uint16_t x, const uint1
 
 static inline int ist3931_blanking_on(const struct device *dev)
 {
-	return ist3931_driver_sleep_on_off(dev, false);
+	return ist3931_driver_sleep_on_off(dev, true);
 }
 
 static inline int ist3931_blanking_off(const struct device *dev)
 {
-	return ist3931_driver_sleep_on_off(dev, true);
+	return ist3931_driver_sleep_on_off(dev, false);
 }
 
 static DEVICE_API(display, ist3931_api) = {
