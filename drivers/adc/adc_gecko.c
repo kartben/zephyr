@@ -160,6 +160,7 @@ static void adc_context_start_sampling(struct adc_context *ctx)
 	struct adc_gecko_data *data = CONTAINER_OF(ctx, struct adc_gecko_data, ctx);
 
 	data->channels = ctx->sequence.channels;
+	data->repeat_buffer = data->buffer;
 	adc_gecko_start_channel(data->dev);
 }
 
