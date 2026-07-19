@@ -251,6 +251,7 @@ static void max32_dma_isr(const struct device *dev)
 	uint8_t channel_base = Wrap_MXC_DMA_GetChannelIndex(cfg->regs, 0);
 
 	for (ch = channel_base, c = 0; c < cfg->channels; ch++, c++) {
+		status = 0;
 		flags = MXC_DMA_ChannelGetFlags(ch);
 
 		/* Check if channel is in use, if not, move to next channel */
