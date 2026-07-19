@@ -92,10 +92,10 @@ static int wdt_kb1200_install_timeout(const struct device *dev,
 	/* Watchdog behavior flags */
 	if ((config->flags & WDT_FLAG_RESET_MASK) == WDT_FLAG_RESET_SOC) {
 		/* Reset: SoC */
-		cfg->wdt->WDTCFG_T = WDT_RESET_WHOLE_CHIP_WO_GPIO;
+		cfg->wdt->WDTCFG_T = WDT_RESET_WHOLE_CHIP;
 	} else if ((config->flags & WDT_FLAG_RESET_MASK) == WDT_FLAG_RESET_CPU_CORE) {
 		/* Reset: CPU core */
-		cfg->wdt->WDTCFG_T = WDT_RESET_WHOLE_CHIP;
+		cfg->wdt->WDTCFG_T = WDT_RESET_WHOLE_CHIP_WO_GPIO;
 	} else {
 		/* Reset: none */
 		cfg->wdt->WDTCFG_T = WDT_RESET_ONLY_MCU;
