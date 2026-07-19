@@ -459,7 +459,18 @@ static int rx8130ce_alarm_is_pending(const struct device *dev, uint16_t id)
 		goto error;
 	}
 
-	rc = (data->reg.ctrl0 & CTRL0_AIE) != 0;
+	rc = (data->reg.flag & FLAG_AF) != 0;
+	if (rc != 0) {
+		int err;
+
+		data->reg.flag &= ~FLAG_AF;
+		err = i2c_burst_write_dt(&cfg->i2c, EXTENSION, (uint8_t *)&data->reg,
+					 sizeof(data->reg));
+		if (err != 0) {
+			LOG_ERR("Failed to clear alarm flag");
+			rc = err;
+		}
+	}
 error:
 	k_sem_give(&data->lock);
 	return rc;
