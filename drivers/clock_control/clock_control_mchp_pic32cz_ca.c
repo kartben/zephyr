@@ -666,9 +666,9 @@ static int clock_get_rate_dpll_out(const struct device *dev, uint8_t dpll_out_id
 	pll = dpll_out_id / PLLOUT_COUNT;
 	ret_val = clock_get_rate_dpll(dev, pll, &src_freq);
 	if (ret_val == 0) {
-		postdiv = *(&oscctrl_regs->OSCCTRL_PLL0POSTDIVA + (pll * DPLLREG_OFFSET)) &
-			  (OSCCTRL_PLL0POSTDIVA_POSTDIV0_Msk
-			   << ((dpll_out_id % PLLOUT_COUNT) * PLLOUT_POSTDIV_SPAN));
+		postdiv = (*(&oscctrl_regs->OSCCTRL_PLL0POSTDIVA + (pll * DPLLREG_OFFSET)) >>
+			   ((dpll_out_id % PLLOUT_COUNT) * PLLOUT_POSTDIV_SPAN)) &
+			  OSCCTRL_PLL0POSTDIVA_POSTDIV0_Msk;
 		if (postdiv != 0) {
 			*freq = src_freq / postdiv;
 		}
