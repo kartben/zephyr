@@ -682,7 +682,7 @@ static int i2c_sf32lb_transfer(const struct device *dev, struct i2c_msg *msgs, u
 
 	k_mutex_unlock(&data->lock);
 
-	return 0;
+	return ret;
 }
 
 static int i2c_sf32lb_recover_bus(const struct device *dev)
