@@ -366,8 +366,8 @@ static int rzt2m_gpio_pin_interrupt_configure(const struct device *dev, gpio_pin
 	rzt2m_gpio_unlock();
 
 	uint32_t mdx_mask =
-		~((uint32_t)0b11 << irq); /* description of interrupt type has length of 2 bits */
-	ns_portnf_md_val = (ns_portnf_md_val & mdx_mask) | (md_mode << irq);
+		~((uint32_t)0b11 << (irq * 2)); /* description of interrupt type has length of 2 bits */
+	ns_portnf_md_val = (ns_portnf_md_val & mdx_mask) | (md_mode << (irq * 2));
 	syscon_write_reg(ns_portnf_md_dev, 0, ns_portnf_md_val); /* set interrupt type */
 
 	WRITE_BIT(*pmc_reg, pin, 1); /* enable special function on selected pin */
