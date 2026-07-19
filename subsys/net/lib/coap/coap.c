@@ -2052,7 +2052,7 @@ static bool sockaddr_equal(const struct net_sockaddr *a,
 		return net_ipv4_addr_cmp(&a4->sin_addr, &b4->sin_addr);
 	}
 
-	if (b->sa_family == NET_AF_INET6) {
+	if (a->sa_family == NET_AF_INET6) {
 		const struct net_sockaddr_in6 *a6 = net_sin6(a);
 		const struct net_sockaddr_in6 *b6 = net_sin6(b);
 
