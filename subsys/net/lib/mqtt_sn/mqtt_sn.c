@@ -359,7 +359,7 @@ static void mqtt_sn_gw_destroy_all(struct mqtt_sn_client *client)
 	}
 }
 
-static struct mqtt_sn_gateway *mqtt_sn_gw_create(uint8_t gw_id, short duration,
+static struct mqtt_sn_gateway *mqtt_sn_gw_create(uint8_t gw_id, int duration,
 						 struct mqtt_sn_data gw_addr)
 {
 	struct mqtt_sn_gateway *gw;
