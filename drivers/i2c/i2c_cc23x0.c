@@ -216,6 +216,7 @@ static int i2c_cc23x0_transfer(const struct device *dev, struct i2c_msg *msgs, u
 static int i2c_cc23x0_configure(const struct device *dev, uint32_t dev_config)
 {
 	const struct i2c_cc23x0_config *config = dev->config;
+	struct i2c_cc23x0_data *data = dev->data;
 	bool fast;
 
 	switch (I2C_SPEED_GET(dev_config)) {
@@ -246,6 +247,8 @@ static int i2c_cc23x0_configure(const struct device *dev, uint32_t dev_config)
 	I2CControllerInitExpClk(config->base, fast);
 
 	CLKCTLEnable(CLKCTL_BASE, CLKCTL_I2C0);
+
+	data->cfg = dev_config;
 
 	return 0;
 }
