@@ -39,9 +39,9 @@ K_SEM_DEFINE(mq_sem, 1, 1);
 sys_slist_t mq_list = SYS_SLIST_STATIC_INIT(&mq_list);
 
 static mqueue_object *find_in_list(const char *name);
-static int32_t send_message(mqueue_desc *mqd, const char *msg_ptr, size_t msg_len,
+static ALWAYS_INLINE int32_t send_message(mqueue_desc *mqd, const char *msg_ptr, size_t msg_len,
 			  k_timeout_t timeout);
-static int32_t receive_message(mqueue_desc *mqd, char *msg_ptr, size_t msg_len,
+static ALWAYS_INLINE int32_t receive_message(mqueue_desc *mqd, char *msg_ptr, size_t msg_len,
 			   k_timeout_t timeout);
 static void remove_notification(mqueue_object *msg_queue);
 static void remove_mq(mqueue_object *msg_queue);
@@ -451,14 +451,14 @@ static mqueue_object *find_in_list(const char *name)
 	return NULL;
 }
 
-static int32_t send_message(mqueue_desc *mqd, const char *msg_ptr, size_t msg_len,
+static ALWAYS_INLINE int32_t send_message(mqueue_desc *mqd, const char *msg_ptr, size_t msg_len,
 			  k_timeout_t timeout)
 {
 	int32_t ret = -1;
 	mqueue_object *mqueue;
 	uint32_t msgq_num;
 
-	if (mqd == NULL) {
+	if (unlikely(mqd == NULL)) {
 		errno = EBADF;
 		return ret;
 	}
@@ -469,13 +469,13 @@ static int32_t send_message(mqueue_desc *mqd, const char *msg_ptr, size_t msg_le
 
 	mqueue = mqd->mqueue;
 
-	if (msg_len > mqueue->queue.msg_size) {
+	if (unlikely(msg_len > mqueue->queue.msg_size)) {
 		errno = EMSGSIZE;
 		return ret;
 	}
 
 	/* Only track queue occupancy when a notification is registered */
-	bool notify = (mqueue->not.sigev_notify & SIGEV_MASK) != 0;
+	bool notify = unlikely((mqueue->not.sigev_notify & SIGEV_MASK) != 0);
 
 	if (notify) {
 		msgq_num = k_msgq_num_used_get(&mqueue->queue);
@@ -508,17 +508,17 @@ static int32_t send_message(mqueue_desc *mqd, const char *msg_ptr, size_t msg_le
 	return 0;
 }
 
-static int32_t receive_message(mqueue_desc *mqd, char *msg_ptr, size_t msg_len,
+static ALWAYS_INLINE int32_t receive_message(mqueue_desc *mqd, char *msg_ptr, size_t msg_len,
 			     k_timeout_t timeout)
 {
 	int ret = -1;
 
-	if (mqd == NULL) {
+	if (unlikely(mqd == NULL)) {
 		errno = EBADF;
 		return ret;
 	}
 
-	if (msg_len < mqd->mqueue->queue.msg_size) {
+	if (unlikely(msg_len < mqd->mqueue->queue.msg_size)) {
 		errno = EMSGSIZE;
 		return ret;
 	}
