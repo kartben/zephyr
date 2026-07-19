@@ -4,10 +4,12 @@
 
 import logging
 import os
+import subprocess
 from dataclasses import dataclass
 
 from packaging.version import Version
 
+from zspdx.cmakecache import parse_cmake_cache_file
 from zspdx.scanner import ScannerConfig, scan_sbom_graph
 from zspdx.version import SPDX_VERSION_2_3
 from zspdx.walker import Walker, WalkerConfig
@@ -72,10 +74,51 @@ def setup_cmake_query(build_dir):
     return True
 
 
+# Make sure the CMake file-based API replies for the build directory exist
+# and are up to date, enabling the API and re-running CMake once if needed.
+# Creating the query files is persistent: once they are present, every CMake
+# run refreshes the replies automatically, so the re-run is only ever needed
+# the first time an SBOM is generated for a given build directory.
+# Arguments:
+#   1) build_dir: build directory
+def ensure_cmake_file_api(build_dir):
+    if not setup_cmake_query(build_dir):
+        return False
+
+    cache_path = os.path.join(build_dir, "CMakeCache.txt")
+    reply_dir = os.path.join(build_dir, ".cmake", "api", "v1", "reply")
+    index = None
+    if os.path.isdir(reply_dir):
+        index = next((f for f in sorted(os.listdir(reply_dir)) if f.startswith("index")), None)
+
+    if index is not None:
+        try:
+            if os.path.getmtime(os.path.join(reply_dir, index)) >= os.path.getmtime(cache_path):
+                return True
+        except OSError:
+            pass
+
+    # The replies are missing or older than the last configure: re-run CMake
+    # so it picks up the query files, which it only reads on startup.
+    cmake = parse_cmake_cache_file(cache_path).get("CMAKE_COMMAND", "cmake")
+    _logger.info("enabling the CMake file-based API; re-running CMake in %s", build_dir)
+    proc = subprocess.run([cmake, "."], cwd=build_dir, capture_output=True, text=True)
+    if proc.returncode != 0:
+        _logger.error("failed to re-run CMake to enable its file-based API:\n%s", proc.stderr)
+        return False
+
+    return True
+
+
 # main entry point for SBOM maker
 # Arguments:
 #   1) cfg: SBOMConfig
 def make_spdx(cfg):
+    # make sure the CMake file-based API replies are available
+    if not ensure_cmake_file_api(cfg.build_dir):
+        _logger.error("could not enable the CMake file-based API; bailing")
+        return False
+
     # report any odd configuration settings
     if cfg.analyze_includes and not cfg.include_sdk:
         _logger.warning(
