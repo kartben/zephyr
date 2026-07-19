@@ -983,7 +983,7 @@ static int dma_iproc_pax_process_dma_blocks(const struct device *dev,
 	 * have same data transfer direction. Setting non_hdr_bd_count to 0,
 	 * helps generate separate packet.
 	 */
-	ring->non_hdr_bd_count = 0;
+	non_hdr_bd_count = 0;
 	dma_iproc_pax_gen_packets(dev, ring, MEMORY_TO_PERIPHERAL, &sync_pl,
 				  &non_hdr_bd_count);
 
