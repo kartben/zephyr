@@ -20,8 +20,12 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/net/socket.h>
+#include <zephyr/net/ethernet.h>
+#include <zephyr/net/net_pkt.h>
 #include <string.h>
 #include <stdio.h>
+
+#include "ipv6.h"
 
 #include "native_rtc.h"
 #include "nsi_main.h"
@@ -252,6 +256,240 @@ static void bench_udp_blast(int size, int total, int batch)
 	       size, total, (unsigned long long)dt, pps, mbps);
 }
 
+/* ------------- UDP over a fake Ethernet echo device ------------- */
+
+/* Two fake Ethernet devices that echo every sent frame back (swapping
+ * the MAC/IP addresses and UDP ports), one claiming full checksum
+ * offload support and one without. They allow benchmarking the
+ * Ethernet L2 datapath, the software checksum cost and the checksum
+ * offload decision logic.
+ */
+
+struct eth_bench_context {
+	struct net_if *iface;
+	uint8_t mac_addr[6];
+};
+
+static struct eth_bench_context eth_ctx_offload = {
+	.mac_addr = { 0x00, 0x00, 0x5e, 0x00, 0x53, 0x10 },
+};
+static struct eth_bench_context eth_ctx_sw_chksum = {
+	.mac_addr = { 0x00, 0x00, 0x5e, 0x00, 0x53, 0x20 },
+};
+
+static void eth_bench_iface_init(struct net_if *iface)
+{
+	const struct device *dev = net_if_get_device(iface);
+	struct eth_bench_context *ctx = dev->data;
+
+	ctx->iface = iface;
+	net_if_set_link_addr(iface, ctx->mac_addr, sizeof(ctx->mac_addr),
+			     NET_LINK_ETHERNET);
+	ethernet_init(iface);
+}
+
+static enum ethernet_hw_caps eth_bench_caps_offload(const struct device *dev,
+						    struct net_if *iface)
+{
+	return ETHERNET_HW_TX_CHKSUM_OFFLOAD | ETHERNET_HW_RX_CHKSUM_OFFLOAD;
+}
+
+static enum ethernet_hw_caps eth_bench_caps_none(const struct device *dev,
+						 struct net_if *iface)
+{
+	return 0;
+}
+
+static int eth_bench_send(const struct device *dev, struct net_pkt *pkt)
+{
+	struct net_eth_hdr *eth_hdr = (struct net_eth_hdr *)net_pkt_data(pkt);
+	struct net_eth_addr mac;
+	struct net_pkt *echoed;
+
+	/* Swap the Ethernet addresses so that the frame is accepted
+	 * when it is fed back to the RX path.
+	 */
+	mac = eth_hdr->src;
+	eth_hdr->src = eth_hdr->dst;
+	eth_hdr->dst = mac;
+
+	net_pkt_cursor_init(pkt);
+	net_pkt_skip(pkt, sizeof(struct net_eth_hdr));
+
+	{
+		NET_PKT_DATA_ACCESS_CONTIGUOUS_DEFINE(ipv6_access,
+						      struct net_ipv6_hdr);
+		struct net_ipv6_hdr *ipv6_hdr;
+		uint8_t addr[NET_IPV6_ADDR_SIZE];
+
+		ipv6_hdr = (struct net_ipv6_hdr *)net_pkt_get_data(pkt, &ipv6_access);
+		if (ipv6_hdr == NULL) {
+			return -EINVAL;
+		}
+
+		net_ipv6_addr_copy_raw(addr, ipv6_hdr->src);
+		net_ipv6_addr_copy_raw(ipv6_hdr->src, ipv6_hdr->dst);
+		net_ipv6_addr_copy_raw(ipv6_hdr->dst, addr);
+
+		net_pkt_skip(pkt, sizeof(struct net_ipv6_hdr));
+	}
+
+	{
+		NET_PKT_DATA_ACCESS_CONTIGUOUS_DEFINE(udp_access,
+						      struct net_udp_hdr);
+		struct net_udp_hdr *udp_hdr;
+		uint16_t port;
+
+		udp_hdr = (struct net_udp_hdr *)net_pkt_get_data(pkt, &udp_access);
+		if (udp_hdr == NULL) {
+			return -EINVAL;
+		}
+
+		port = udp_hdr->src_port;
+		udp_hdr->src_port = udp_hdr->dst_port;
+		udp_hdr->dst_port = port;
+	}
+
+	net_pkt_cursor_init(pkt);
+
+	echoed = net_pkt_rx_clone(pkt, K_MSEC(100));
+	if (echoed == NULL) {
+		return -ENOMEM;
+	}
+
+	if (net_recv_data(net_pkt_iface(echoed), echoed) < 0) {
+		net_pkt_unref(echoed);
+		return -EIO;
+	}
+
+	return 0;
+}
+
+static struct ethernet_api eth_bench_api_offload = {
+	.iface_api.init = eth_bench_iface_init,
+	.get_capabilities = eth_bench_caps_offload,
+	.send = eth_bench_send,
+};
+
+static struct ethernet_api eth_bench_api_sw_chksum = {
+	.iface_api.init = eth_bench_iface_init,
+	.get_capabilities = eth_bench_caps_none,
+	.send = eth_bench_send,
+};
+
+static int eth_bench_dev_init(const struct device *dev)
+{
+	ARG_UNUSED(dev);
+	return 0;
+}
+
+ETH_NET_DEVICE_INIT(eth_bench_offload, "eth_bench_offload",
+		    eth_bench_dev_init, NULL, &eth_ctx_offload, NULL,
+		    CONFIG_ETH_INIT_PRIORITY, &eth_bench_api_offload,
+		    NET_ETH_MTU);
+
+ETH_NET_DEVICE_INIT(eth_bench_sw_chksum, "eth_bench_sw_chksum",
+		    eth_bench_dev_init, NULL, &eth_ctx_sw_chksum, NULL,
+		    CONFIG_ETH_INIT_PRIORITY, &eth_bench_api_sw_chksum,
+		    NET_ETH_MTU);
+
+/* Local/peer addresses for both Ethernet benchmark interfaces. The
+ * peer address gets a static neighbor cache entry, the echo device
+ * swaps the addresses so that replies come back to the local socket.
+ */
+static const struct net_in6_addr eth_local[2] = {
+	{ { { 0x20, 0x01, 0xd, 0xb8, 0x1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x1 } } },
+	{ { { 0x20, 0x01, 0xd, 0xb8, 0x2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x1 } } },
+};
+static const struct net_in6_addr eth_peer[2] = {
+	{ { { 0x20, 0x01, 0xd, 0xb8, 0x1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x2 } } },
+	{ { { 0x20, 0x01, 0xd, 0xb8, 0x2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x2 } } },
+};
+
+static void eth_bench_setup(void)
+{
+	static const uint8_t peer_mac[6] = { 0x00, 0x00, 0x5e, 0x00, 0x53, 0xaa };
+	struct eth_bench_context *ctxs[2] = { &eth_ctx_offload, &eth_ctx_sw_chksum };
+
+	for (int i = 0; i < 2; i++) {
+		struct net_linkaddr lladdr;
+		struct net_if *iface = ctxs[i]->iface;
+
+		if (iface == NULL) {
+			printf("eth bench iface %d missing\n", i);
+			nsi_exit(1);
+		}
+
+		if (net_if_ipv6_addr_add(iface, (struct net_in6_addr *)&eth_local[i],
+					 NET_ADDR_MANUAL, 0) == NULL) {
+			printf("cannot add eth local addr %d\n", i);
+			nsi_exit(1);
+		}
+
+		(void)net_linkaddr_set(&lladdr, peer_mac, sizeof(peer_mac));
+
+		if (net_ipv6_nbr_add(iface, &eth_peer[i], &lladdr, false,
+				     NET_IPV6_NBR_STATE_REACHABLE) == NULL) {
+			printf("cannot add neighbor %d\n", i);
+			nsi_exit(1);
+		}
+	}
+}
+
+static void bench_eth_udp_pingpong(const char *label, int idx, int size, int rounds)
+{
+	struct sockaddr_in6 local = {
+		.sin6_family = AF_INET6,
+		.sin6_port = htons(UDP_PORT_A),
+	};
+	struct sockaddr_in6 peer = {
+		.sin6_family = AF_INET6,
+		.sin6_port = htons(UDP_PORT_B),
+	};
+	int sock = zsock_socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+
+	if (sock < 0) {
+		printf("eth socket fail %d\n", -errno);
+		nsi_exit(1);
+	}
+
+	memcpy(&local.sin6_addr, &eth_local[idx], sizeof(local.sin6_addr));
+	memcpy(&peer.sin6_addr, &eth_peer[idx], sizeof(peer.sin6_addr));
+
+	if (zsock_bind(sock, (struct sockaddr *)&local, sizeof(local)) < 0 ||
+	    zsock_connect(sock, (struct sockaddr *)&peer, sizeof(peer)) < 0) {
+		printf("eth bind/connect fail %d\n", -errno);
+		nsi_exit(1);
+	}
+
+	uint64_t t0 = now_us();
+
+	for (int i = 0; i < rounds; i++) {
+		if (zsock_send(sock, txbuf, size, 0) < 0) {
+			printf("eth send fail %d\n", -errno);
+			nsi_exit(1);
+		}
+
+		int len = zsock_recv(sock, rxbuf, sizeof(rxbuf), 0);
+
+		if (len != size) {
+			printf("eth recv fail len=%d %d\n", len, -errno);
+			nsi_exit(1);
+		}
+	}
+
+	uint64_t dt = now_us() - t0;
+
+	zsock_close(sock);
+
+	/* 2 packets per round (TX + echoed RX) */
+	double pps = (double)rounds * 2.0 * 1e6 / (double)dt;
+	double mbps = pps * size * 8.0 / 1e6;
+
+	printf("RESULT %s size=%-5d rounds=%d time_us=%llu pps=%.0f goodput_mbps=%.1f\n",
+	       label, size, rounds, (unsigned long long)dt, pps, mbps);
+}
+
 /* ------------- TCP bulk ------------- */
 
 struct tcp_arg {
@@ -388,6 +626,12 @@ int main(void)
 	bench_udp_pingpong("udp_pingpong", 1280, scaled(50000));
 
 	bench_udp_pingpong_socks(32, scaled(50000), 16);
+
+	eth_bench_setup();
+	bench_eth_udp_pingpong("eth_udp_offload", 0, 32, scaled(50000));
+	bench_eth_udp_pingpong("eth_udp_offload", 0, 1280, scaled(50000));
+	bench_eth_udp_pingpong("eth_udp_swcsum", 1, 32, scaled(50000));
+	bench_eth_udp_pingpong("eth_udp_swcsum", 1, 1280, scaled(50000));
 
 	bench_udp_blast(32, scaled(100000), 16);
 	bench_udp_blast(1280, scaled(100000), 16);

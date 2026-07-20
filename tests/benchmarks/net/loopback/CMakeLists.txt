@@ -5,3 +5,4 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(net_loopback_benchmark)
 
 target_sources(app PRIVATE src/main.c)
+target_include_directories(app PRIVATE ${ZEPHYR_BASE}/subsys/net/ip)
