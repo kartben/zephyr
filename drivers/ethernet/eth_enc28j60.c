@@ -554,7 +554,7 @@ static void enc28j60_read_packet(const struct device *dev, uint16_t frm_len)
 	struct net_buf *pkt_buf;
 	struct net_pkt *pkt;
 	uint16_t lengthfr;
-	uint8_t dummy[4];
+	uint8_t dummy[5];
 
 	/* Get the frame from the buffer */
 	pkt = net_pkt_rx_alloc_with_buffer(get_iface(context), frm_len, NET_AF_UNSPEC, 0,
@@ -593,15 +593,8 @@ static void enc28j60_read_packet(const struct device *dev, uint16_t frm_len)
 		pkt_buf = pkt_buf->frags;
 	} while (frm_len > 0);
 
-	/* Let's pop the useless CRC */
-	eth_enc28j60_read_mem(dev, dummy, 4);
-
-	/* Pops one padding byte from spi circular buffer
-	 * introduced by the device when the frame length is odd
-	 */
-	if (lengthfr & 0x01) {
-		eth_enc28j60_read_mem(dev, dummy, 1);
-	}
+	/* Pop the CRC, plus the device's pad byte on odd lengths, in one read */
+	eth_enc28j60_read_mem(dev, dummy, (lengthfr & 0x01) ? 5 : 4);
 
 	/* Feed buffer frame to IP stack */
 	LOG_DBG("%s: Received packet of length %u", dev->name, lengthfr);
