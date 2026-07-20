@@ -571,11 +571,10 @@ static void eth_intel_igc_tx_clean(struct eth_intel_igc_mac_data *data, uint8_t 
  * sets up the descriptor with the fragment data, and updates the write pointer.
  */
 static int eth_intel_igc_tx_frag(const struct device *dev, struct net_pkt *pkt,
-				 struct net_buf *frag, uint8_t queue)
+				 struct net_buf *frag, uint8_t queue, uint16_t total_len)
 {
 	const struct eth_intel_igc_mac_cfg *cfg = dev->config;
 	struct eth_intel_igc_mac_data *data = dev->data;
-	uint16_t total_len = net_pkt_get_len(pkt);
 	union dma_tx_desc *desc;
 	uint32_t idx = 0;
 
@@ -634,13 +633,15 @@ static int eth_intel_igc_tx_data(const struct device *dev, struct net_pkt *pkt)
 		queue = cfg->num_queues - 1;
 	}
 
+	uint16_t total_len = net_pkt_get_len(pkt);
+
 	NET_PKT_FRAG_FOR_EACH(pkt, frag) {
 		/* Hold the Header fragment until transmit clean done */
 		if (frag == pkt->frags) {
 			net_pkt_frag_ref(frag);
 		}
 
-		ret = eth_intel_igc_tx_frag(dev, pkt, frag, queue);
+		ret = eth_intel_igc_tx_frag(dev, pkt, frag, queue, total_len);
 		if (ret < 0) {
 			LOG_ERR("Failed to transmit in queue number: %d", queue);
 		}
