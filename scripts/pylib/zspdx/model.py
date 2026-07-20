@@ -18,12 +18,33 @@ class ComponentPurpose(StrEnum):
 
     These values intentionally match SPDX package purpose strings so serializers can map them
     directly when the target format supports the same vocabulary.
+
+    ``SPECIFICATION`` only exists in the SPDX 3.0 vocabulary; it marks reference-only packages
+    that describe a component (e.g. with CPE/PURL identifiers for vulnerability monitoring)
+    rather than carry its files. Serializers for formats without an equivalent purpose omit it.
     """
 
     APPLICATION = "APPLICATION"
     LIBRARY = "LIBRARY"
     SOURCE = "SOURCE"
     FILE = "FILE"
+    SPECIFICATION = "SPECIFICATION"
+
+
+class SbomType(StrEnum):
+    """Format-agnostic SBOM content types.
+
+    These values intentionally match the SPDX 3.0 SBOM type vocabulary (which mirrors the
+    CISA SBOM types) so serializers can map them directly when the target format supports
+    the same vocabulary.
+    """
+
+    DESIGN = "design"
+    SOURCE = "source"
+    BUILD = "build"
+    ANALYZED = "analyzed"
+    DEPLOYED = "deployed"
+    RUNTIME = "runtime"
 
 
 class RelationshipType(StrEnum):
@@ -64,6 +85,91 @@ class ExternalReferenceType(StrEnum):
     CPE23 = "cpe23Type"
     PURL = "purl"
     OTHER = "other"
+
+
+class VexStatus(StrEnum):
+    """VEX (Vulnerability Exploitability eXchange) statement statuses.
+
+    These values intentionally match the status labels used by the VEX minimum requirements
+    (and OpenVEX/CSAF); serializers map them to their own vocabulary, e.g. the SPDX 3.0
+    ``Vex*VulnAssessmentRelationship`` classes.
+    """
+
+    FIXED = "fixed"
+    NOT_AFFECTED = "not_affected"
+    AFFECTED = "affected"
+    UNDER_INVESTIGATION = "under_investigation"
+
+
+class VexJustification(StrEnum):
+    """VEX justification labels for ``not_affected`` statements.
+
+    These values intentionally match the machine-readable justification labels defined by the
+    CISA VEX working group (also used by OpenVEX and CSAF).
+    """
+
+    COMPONENT_NOT_PRESENT = "component_not_present"
+    VULNERABLE_CODE_NOT_PRESENT = "vulnerable_code_not_present"
+    VULNERABLE_CODE_NOT_IN_EXECUTE_PATH = "vulnerable_code_not_in_execute_path"
+    VULNERABLE_CODE_CANNOT_BE_CONTROLLED_BY_ADVERSARY = (
+        "vulnerable_code_cannot_be_controlled_by_adversary"
+    )
+    INLINE_MITIGATIONS_ALREADY_EXIST = "inline_mitigations_already_exist"
+
+
+@dataclass
+class VexStatement:
+    """Format-agnostic VEX statement asserting a component's status for one vulnerability.
+
+    Attributes:
+        vulnerability_id: Vulnerability identifier, such as a CVE ID (``CVE-2024-23170``) or any
+                          other advisory ID (e.g. ``GHSA-...``).
+        status: Exploitability status asserted for the component.
+        justification: Machine-readable justification; only meaningful for ``not_affected``.
+        impact_statement: Free-form explanation of why the vulnerability has no impact; only
+                          meaningful for ``not_affected``.
+        action_statement: Free-form remediation guidance; only meaningful for ``affected``.
+        notes: Free-form notes about the statement, e.g. a pointer to a cherry-picked fix.
+    """
+
+    vulnerability_id: str
+    status: VexStatus
+    justification: VexJustification | None = None
+    impact_statement: str = ""
+    action_statement: str = ""
+    notes: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.vulnerability_id:
+            raise ValueError("VEX statement vulnerability ID is required")
+        self.status = VexStatus(self.status)
+        if self.justification is not None:
+            self.justification = VexJustification(self.justification)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> VexStatement:
+        """Build a VEX statement from a ``module.yml`` ``security: vex:`` entry.
+
+        Args:
+            data: Mapping using the module metadata key spelling (``impact-statement``, ...).
+
+        Returns:
+            The parsed VEX statement.
+
+        Raises:
+            ValueError: If required fields are missing or enum values are unknown.
+            TypeError: If ``data`` is not a mapping.
+        """
+        if not isinstance(data, dict):
+            raise TypeError("VEX statement must be a mapping")
+        return cls(
+            vulnerability_id=data.get("vulnerability", ""),
+            status=data.get("status", ""),
+            justification=data.get("justification"),
+            impact_statement=data.get("impact-statement", ""),
+            action_statement=data.get("action-statement", ""),
+            notes=data.get("notes", ""),
+        )
 
 
 @dataclass
@@ -151,6 +257,8 @@ class SBOMComponent:
         license_info_from_files: License identifiers detected in the component's files.
         copyright_text: Copyright text for the component.
         external_references: Structured external references such as CPEs and package URLs.
+        vex_statements: VEX statements asserting this component's status for known
+                        vulnerabilities.
         supplier: Supplier or vendor name.
         target_build_file: Main build artifact when the component represents a build target.
         metadata: Additional data not represented by the common model fields.
@@ -169,6 +277,7 @@ class SBOMComponent:
     license_info_from_files: list[str] = field(default_factory=list)
     copyright_text: str = NOASSERTION
     external_references: list[ExternalReference] = field(default_factory=list)
+    vex_statements: list[VexStatement] = field(default_factory=list)
     supplier: str = ""
     target_build_file: SBOMFile | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -197,6 +306,27 @@ class SBOMComponent:
             raise TypeError("external reference must be a string or ExternalReference")
         self.external_references.append(reference)
         return reference
+
+    def add_vex_statement(self, statement: VexStatement | dict[str, Any]) -> VexStatement:
+        """Add a VEX statement.
+
+        Args:
+            statement: Structured VEX statement or a raw ``module.yml`` ``security: vex:``
+                       entry. Raw mappings are parsed with ``VexStatement.from_dict()``.
+
+        Returns:
+            The structured VEX statement added to this component.
+
+        Raises:
+            TypeError: If ``statement`` is neither a mapping nor ``VexStatement``.
+            ValueError: If the statement is missing required fields or uses unknown enum values.
+        """
+        if isinstance(statement, dict):
+            statement = VexStatement.from_dict(statement)
+        if not isinstance(statement, VexStatement):
+            raise TypeError("VEX statement must be a mapping or VexStatement")
+        self.vex_statements.append(statement)
+        return statement
 
 
 type SBOMElement = SBOMComponent | SBOMFile
@@ -232,6 +362,8 @@ class SBOMDocument:
               filename, namespace, and cross-document reference ID.
         title: Human-readable document name emitted as the SPDX ``DocumentName``. Falls back to
                ``name`` when empty, allowing the displayed name to differ from the identifier.
+        sbom_type: Type of SBOM content this document carries (e.g. source or build), or
+                   ``None`` when unspecified.
         namespace: Document namespace URI.
         components: Components contained in this document, keyed by component name.
         described_components: Names of the components that are the primary subject(s) of this
@@ -245,6 +377,7 @@ class SBOMDocument:
 
     name: str
     title: str = ""
+    sbom_type: SbomType | None = None
     namespace: str = ""
     components: dict[str, SBOMComponent] = field(default_factory=dict)
     described_components: list[str] = field(default_factory=list)

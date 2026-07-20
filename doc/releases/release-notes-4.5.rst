@@ -389,6 +389,19 @@ Other notable changes
     failure.  Use :c:func:`k_thread_cpu_pin` to reassign a thread to a
     different CPU.
 
+* SBOM generation
+
+  * Modules can now record VEX (Vulnerability Exploitability eXchange) statements in the
+    ``security: vex:`` section of their :file:`module.yml` file, e.g. to document CVE fixes
+    cherry-picked into the module repository. :ref:`west spdx <west-spdx>` emits them using the
+    SPDX 3.0 Security profile (and as package annotations in SPDX 2.x documents). See
+    :ref:`modules-vulnerability-monitoring`.
+
+  * ``west spdx`` gained a ``--cve-check`` option (SPDX 3.0 only) that checks the generated SBOM
+    for known, unpatched vulnerabilities using the `sbom-cve-check
+    <https://pypi.org/project/sbom-cve-check/>`_ tool, honoring the modules' VEX statements. See
+    :ref:`west-spdx-cve-check`.
+
 * Wi-Fi
 
   * Removed the ``samples/net/wifi/test_certs/rsa2k`` enterprise test

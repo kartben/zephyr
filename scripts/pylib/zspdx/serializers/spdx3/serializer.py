@@ -18,6 +18,10 @@ from zspdx.model import (
     SBOMFile,
     SBOMGraph,
     SBOMRelationship,
+    SbomType,
+    VexJustification,
+    VexStatement,
+    VexStatus,
 )
 from zspdx.serializers.helpers import (
     CPE23TYPE_REGEX,
@@ -70,6 +74,11 @@ class SPDX3Serializer:
         self.creator_agent = None  # SoftwareAgent for createdBy
         self.creation_info = None
         self.documents = {}  # doc_name -> SpdxDocument
+
+        # SPDX 3.0 Security profile state
+        self.vulnerability_elements = {}  # vulnerability id -> security_Vulnerability
+        # per-document software_Sbom root elements, keyed by document name
+        self.sbom_elements = {}
 
         # SPDX 3.0 Build profile state
         self.build = None  # overall build_Build element
@@ -129,6 +138,7 @@ class SPDX3Serializer:
             ComponentPurpose.LIBRARY: spdx.software_SoftwarePurpose.library,
             ComponentPurpose.SOURCE: spdx.software_SoftwarePurpose.source,
             ComponentPurpose.FILE: spdx.software_SoftwarePurpose.file,
+            ComponentPurpose.SPECIFICATION: spdx.software_SoftwarePurpose.specification,
         }
         return purpose_map.get(purpose, spdx.software_SoftwarePurpose.library)
 
@@ -773,6 +783,155 @@ class SPDX3Serializer:
         self.relationship_elements.append(rel)
         return rel
 
+    # ---- SPDX 3.0 Security profile (VEX) ------------------------------------------------
+
+    # Map model VEX statuses to (SPDX 3.0 VEX relationship class name, relationship type).
+    _VEX_STATUS_MAP = {
+        VexStatus.FIXED: (
+            "security_VexFixedVulnAssessmentRelationship",
+            spdx.RelationshipType.fixedIn,
+        ),
+        VexStatus.NOT_AFFECTED: (
+            "security_VexNotAffectedVulnAssessmentRelationship",
+            spdx.RelationshipType.doesNotAffect,
+        ),
+        VexStatus.AFFECTED: (
+            "security_VexAffectedVulnAssessmentRelationship",
+            spdx.RelationshipType.affects,
+        ),
+        VexStatus.UNDER_INVESTIGATION: (
+            "security_VexUnderInvestigationVulnAssessmentRelationship",
+            spdx.RelationshipType.underInvestigationFor,
+        ),
+    }
+
+    # Map model VEX justification labels to SPDX 3.0 VexJustificationType.
+    _VEX_JUSTIFICATION_MAP = {
+        VexJustification.COMPONENT_NOT_PRESENT: (
+            spdx.security_VexJustificationType.componentNotPresent
+        ),
+        VexJustification.VULNERABLE_CODE_NOT_PRESENT: (
+            spdx.security_VexJustificationType.vulnerableCodeNotPresent
+        ),
+        VexJustification.VULNERABLE_CODE_NOT_IN_EXECUTE_PATH: (
+            spdx.security_VexJustificationType.vulnerableCodeNotInExecutePath
+        ),
+        VexJustification.VULNERABLE_CODE_CANNOT_BE_CONTROLLED_BY_ADVERSARY: (
+            spdx.security_VexJustificationType.vulnerableCodeCannotBeControlledByAdversary
+        ),
+        VexJustification.INLINE_MITIGATIONS_ALREADY_EXIST: (
+            spdx.security_VexJustificationType.inlineMitigationsAlreadyExist
+        ),
+    }
+
+    _CVE_ID_REGEX = re.compile(r"CVE-\d{4}-\d{4,}", re.IGNORECASE)
+
+    def _get_or_create_vulnerability(self, vulnerability_id: str) -> spdx.security_Vulnerability:
+        """Get or create the ``security_Vulnerability`` element for a vulnerability ID.
+
+        The ID is recorded as a ``cve`` external identifier when it is a CVE ID, and as
+        ``securityOther`` otherwise. Note that CVE scanning tools (e.g. ``sbom-cve-check``)
+        typically only correlate vulnerabilities through their CVE external identifier.
+        """
+        vulnerability = self.vulnerability_elements.get(vulnerability_id)
+        if vulnerability is not None:
+            return vulnerability
+
+        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        vulnerability = spdx.security_Vulnerability()
+        vulnerability._id = self._shorten_id(
+            f"{namespace}/vulnerabilities/{normalize_spdx_name(vulnerability_id)}"
+        )
+        vulnerability.creationInfo = self.creation_info._id
+
+        ext_id = spdx.ExternalIdentifier()
+        if self._CVE_ID_REGEX.fullmatch(vulnerability_id):
+            ext_id.externalIdentifierType = spdx.ExternalIdentifierType.cve
+        else:
+            ext_id.externalIdentifierType = spdx.ExternalIdentifierType.securityOther
+        ext_id.identifier = vulnerability_id
+        vulnerability.externalIdentifier.append(ext_id)
+
+        self.elements.append(vulnerability)
+        self.vulnerability_elements[vulnerability_id] = vulnerability
+        return vulnerability
+
+    def _create_vex_statements(self):
+        """Create the Security profile elements for each component's VEX statements.
+
+        For every statement this emits the ``security_Vulnerability`` element (shared per
+        vulnerability ID), a ``hasAssociatedVulnerability`` relationship from the package to
+        the vulnerability, and the status-specific ``security_Vex*VulnAssessmentRelationship``
+        from the vulnerability back to the package. All these elements are anchored to the
+        package's document.
+        """
+        for component in self.sbom_data.components.values():
+            if not component.vex_statements:
+                continue
+            package = self.component_elements.get(component.name)
+            if not package:
+                _logger.warning(
+                    f"component {component.name} has VEX statements but no package element"
+                )
+                continue
+            for statement in component.vex_statements:
+                vulnerability = self._get_or_create_vulnerability(statement.vulnerability_id)
+                self._create_package_vulnerability_relationship(package, vulnerability)
+                self._create_vex_relationship(statement, vulnerability, package)
+
+    def _create_package_vulnerability_relationship(self, package, vulnerability):
+        """Relate a package to a vulnerability that has an assessment for it.
+
+        SBOM consumers discover a package's assessed vulnerabilities through this
+        package -> vulnerability ``hasAssociatedVulnerability`` edge; the assessment itself
+        is carried by the VEX relationship pointing the other way.
+        """
+        rel = spdx.Relationship()
+        rel._id = self._generate_relationship_id(len(self.relationship_elements))
+        rel.relationshipType = spdx.RelationshipType.hasAssociatedVulnerability
+        rel.from_ = package._id
+        rel.to = [vulnerability._id]
+        rel.creationInfo = self.creation_info._id
+        # anchor to the package's document
+        self.relationship_original_from[rel._id] = package._id
+        self.elements.append(rel)
+        self.relationship_elements.append(rel)
+        return rel
+
+    def _create_vex_relationship(
+        self, statement: VexStatement, vulnerability, package
+    ) -> spdx.Relationship:
+        """Create the status-specific VEX assessment relationship for one statement."""
+        class_name, rel_type = self._VEX_STATUS_MAP[statement.status]
+        rel = getattr(spdx, class_name)()
+        rel._id = self._generate_relationship_id(len(self.relationship_elements))
+        rel.relationshipType = rel_type
+        rel.from_ = vulnerability._id
+        rel.to = [package._id]
+        rel.creationInfo = self.creation_info._id
+
+        if statement.notes:
+            rel.security_statusNotes = statement.notes
+        if statement.status == VexStatus.NOT_AFFECTED:
+            if statement.justification is not None:
+                rel.security_justificationType = self._VEX_JUSTIFICATION_MAP[
+                    statement.justification
+                ]
+            if statement.impact_statement:
+                rel.security_impactStatement = statement.impact_statement
+        elif statement.status == VexStatus.AFFECTED and statement.action_statement:
+            rel.security_actionStatement = statement.action_statement
+
+        # anchor to the package's document, like the package -> vulnerability edge
+        self.relationship_original_from[rel._id] = package._id
+        self.elements.append(rel)
+        self.relationship_elements.append(rel)
+        return rel
+
+    def _document_has_vex(self, sbom_doc: SBOMDocument) -> bool:
+        """Whether any component of the document carries VEX statements."""
+        return any(component.vex_statements for component in sbom_doc.components.values())
+
     def _document_owned_elements(self, sbom_doc: SBOMDocument):
         """Yield the package and file elements defined by ``sbom_doc``."""
         for component in sbom_doc.components.values():
@@ -856,6 +1015,9 @@ class SPDX3Serializer:
         # Only the build document conforms to the Build profile.
         if self.build and sbom_doc.name == self._BUILD_DOCUMENT:
             document.profileConformance.append(spdx.ProfileIdentifierType.build)
+        # Documents carrying VEX statements conform to the Security profile.
+        if self._document_has_vex(sbom_doc):
+            document.profileConformance.append(spdx.ProfileIdentifierType.security)
         return document
 
     def _collect_document_element_ids(self, sbom_doc: SBOMDocument, components) -> tuple[set, set]:
@@ -992,14 +1154,51 @@ class SPDX3Serializer:
 
         self._add_external_maps(document, import_ids)
 
+        # The document's sole root is a software_Sbom element gathering the SBOM content;
+        # SBOM consumers (e.g. sbom-cve-check) locate the bill of materials through it.
+        sbom_element = self._create_sbom_element(sbom_doc)
+        document.element.append(sbom_element)
+        document.rootElement.append(sbom_element)
+
         for component in components:
             package = self.component_elements.get(component.name)
             if package:
-                document.rootElement.append(package)
+                sbom_element.rootElement.append(package)
 
         # The Build element is a root of the build document.
         if self.build and sbom_doc.name == self._BUILD_DOCUMENT:
-            document.rootElement.append(self.build)
+            sbom_element.rootElement.append(self.build)
+
+    # Map model SBOM types to SPDX 3.0 SbomType.
+    _SBOM_TYPE_MAP = {
+        SbomType.DESIGN: spdx.software_SbomType.design,
+        SbomType.SOURCE: spdx.software_SbomType.source,
+        SbomType.BUILD: spdx.software_SbomType.build,
+        SbomType.ANALYZED: spdx.software_SbomType.analyzed,
+        SbomType.DEPLOYED: spdx.software_SbomType.deployed,
+        SbomType.RUNTIME: spdx.software_SbomType.runtime,
+    }
+
+    def _create_sbom_element(self, sbom_doc: SBOMDocument) -> spdx.software_Sbom:
+        """Create the ``software_Sbom`` element serving as a document's root.
+
+        The SBOM is typed from the document's ``sbom_type``; documents without one carry
+        no explicit SBOM type.
+        """
+        namespace = (
+            sbom_doc.namespace.rstrip("/")
+            if sbom_doc.namespace
+            else self.sbom_data.namespace_prefix.rstrip("/")
+        )
+        sbom_element = spdx.software_Sbom()
+        sbom_element._id = self._shorten_id(f"{namespace}/sboms/{sbom_doc.name}")
+        sbom_element.creationInfo = self.creation_info._id
+        sbom_type = self._SBOM_TYPE_MAP.get(sbom_doc.sbom_type)
+        if sbom_type is not None:
+            sbom_element.software_sbomType.append(sbom_type)
+        self.elements.append(sbom_element)
+        self.sbom_elements[sbom_doc.name] = sbom_element
+        return sbom_element
 
     def _add_external_maps(self, document: spdx.SpdxDocument, import_ids: set):
         """Declare elements used by, but defined outside, this document.
@@ -1042,6 +1241,7 @@ class SPDX3Serializer:
             self._create_contains_relationships()
             self._create_build_relationships()
             self._create_license_relationships()
+            self._create_vex_statements()
             self._create_documents()
             self._write_documents(output_dir)
 

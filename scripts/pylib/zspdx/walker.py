@@ -23,6 +23,8 @@ from zspdx.model import (
     SBOMDocument,
     SBOMFile,
     SBOMGraph,
+    SbomType,
+    VexStatus,
 )
 
 _logger = logging.getLogger(__name__)
@@ -335,14 +337,22 @@ class Walker:
             metadata=build_info,
         )
 
-    def _create_document(self, name: str, title: str = "") -> SBOMDocument:
+    def _create_document(
+        self, name: str, title: str = "", sbom_type: SbomType | None = None
+    ) -> SBOMDocument:
         """Create a document with the given name and register it with SBOM data.
 
         ``name`` is the identifier used for the output filename, namespace and
         cross-document reference ID; ``title`` is the human-readable SPDX
-        ``DocumentName`` and defaults to ``name`` when not given.
+        ``DocumentName`` and defaults to ``name`` when not given; ``sbom_type``
+        classifies the document's content following the SBOM type vocabulary.
         """
-        doc = SBOMDocument(name=name, title=title, namespace=f"{self.cfg.namespace_prefix}/{name}")
+        doc = SBOMDocument(
+            name=name,
+            title=title,
+            sbom_type=sbom_type,
+            namespace=f"{self.cfg.namespace_prefix}/{name}",
+        )
         self.sbom_graph.add_document(doc)
         return doc
 
@@ -353,14 +363,19 @@ class Walker:
         # Create core documents. The app and zephyr documents historically carry a
         # "-sources" suffix in their DocumentName while keeping the unsuffixed
         # identifier for filename/namespace/reference purposes.
-        self.doc_app = self._create_document("app", "app-sources")
-        self.doc_zephyr = self._create_document("zephyr", "zephyr-sources")
-        self.doc_build = self._create_document("build")
-        self.doc_modules_deps = self._create_document("modules-deps")
+        #
+        # All documents except the build one describe content taken directly from the
+        # development environment - application/Zephyr/SDK source files and the included
+        # module dependencies - so they are 'source' SBOMs. The build document records
+        # the artifacts produced while building the releasable image: a 'build' SBOM.
+        self.doc_app = self._create_document("app", "app-sources", SbomType.SOURCE)
+        self.doc_zephyr = self._create_document("zephyr", "zephyr-sources", SbomType.SOURCE)
+        self.doc_build = self._create_document("build", sbom_type=SbomType.BUILD)
+        self.doc_modules_deps = self._create_document("modules-deps", sbom_type=SbomType.SOURCE)
 
         # SDK document is optional
         if self.cfg.include_sdk:
-            self.doc_sdk = self._create_document("sdk")
+            self.doc_sdk = self._create_document("sdk", sbom_type=SbomType.SOURCE)
 
     def setup_components(self):
         """Set up all SBOM components from meta file and configuration."""
@@ -498,8 +513,11 @@ class Walker:
         if zephyr is None:
             return None
 
-        # no PrimaryPackagePurpose: this is a reference-only dependency package with no files
-        component = SBOMComponent(name="zephyr-deps")
+        # reference-only dependency package with no files; the SPECIFICATION purpose marks it
+        # as a component description carrying security identifiers (CPE/PURL), which is also
+        # what CVE scanning tools such as sbom-cve-check look for (SPDX 3.0 only; SPDX 2.x
+        # keeps emitting no PrimaryPackagePurpose for it)
+        component = SBOMComponent(name="zephyr-deps", purpose=ComponentPurpose.SPECIFICATION)
         component.url = zephyr.get("remote", "")
         component.revision = zephyr.get("revision", "")
 
@@ -548,14 +566,38 @@ class Walker:
                 return False
 
             module_ext_ref = []
+            module_vex = []
             if module_security:
                 module_ext_ref = module_security.get("external-references", [])
+                module_vex = module_security.get("vex", [])
 
-            # set up module deps component (reference-only, no files; no purpose)
-            component = SBOMComponent(name=module_name + "-deps")
+            # set up module deps component (reference-only, no files; see zephyr-deps above
+            # for why the SPECIFICATION purpose is used)
+            component = SBOMComponent(
+                name=module_name + "-deps", purpose=ComponentPurpose.SPECIFICATION
+            )
 
             for ref in module_ext_ref:
                 component.add_external_reference(ref)
+
+            for vex_entry in module_vex:
+                try:
+                    statement = component.add_vex_statement(vex_entry)
+                except (TypeError, ValueError) as e:
+                    _logger.warning(
+                        f"module {module_name}: skipping invalid VEX statement {vex_entry}: {e}"
+                    )
+                    continue
+                if (
+                    statement.status == VexStatus.NOT_AFFECTED
+                    and statement.justification is None
+                    and not statement.impact_statement
+                ):
+                    _logger.warning(
+                        f"module {module_name}: VEX statement for "
+                        f"{statement.vulnerability_id} is 'not_affected' but has neither a "
+                        "justification nor an impact-statement"
+                    )
 
             self.sbom_graph.add_component(component, "modules-deps")
             self.component_modules_deps[module_name] = component
