@@ -1380,7 +1380,7 @@ static int eth_tx(const struct device *dev, struct net_pkt *pkt)
 		frag_len = frag->len;
 
 		/* Assure cache coherency before DMA read operation */
-		dcache_clean((uint32_t)frag_data, frag->size);
+		dcache_clean((uint32_t)frag_data, frag_len);
 
 #if GMAC_MULTIPLE_TX_PACKETS == 1
 		k_sem_take(&queue->tx_desc_sem, K_FOREVER);
