@@ -622,7 +622,7 @@ static int eth_enc28j60_rx(const struct device *dev)
 
 	do {
 		uint16_t frm_len = 0U;
-		uint8_t info[RSV_SIZE];
+		uint8_t info[2 + RSV_SIZE];
 		uint16_t next_packet;
 		uint8_t rdptl = 0U;
 		uint8_t rdpth = 0U;
@@ -634,8 +634,8 @@ static int eth_enc28j60_rx(const struct device *dev)
 		eth_enc28j60_write_reg(dev, ENC28J60_REG_ERDPTL, rdptl);
 		eth_enc28j60_write_reg(dev, ENC28J60_REG_ERDPTH, rdpth);
 
-		/* Read address for next packet */
-		eth_enc28j60_read_mem(dev, info, 2);
+		/* Read next-packet pointer and status vector in one read (ERDPT auto-increments) */
+		eth_enc28j60_read_mem(dev, info, 2 + RSV_SIZE);
 		next_packet = info[0] | (uint16_t)info[1] << 8;
 
 		/* Errata 14. Even values in ERXRDPT
@@ -647,17 +647,14 @@ static int eth_enc28j60_rx(const struct device *dev)
 			next_packet--;
 		}*/
 
-		/* Read reception status vector */
-		eth_enc28j60_read_mem(dev, info, 4);
-
 		/* Get the frame length from the rx status vector,
 		 * minus CRC size at the end which is always present
 		 */
-		if (sys_get_le16(info) <= 4U) {
-			LOG_ERR("Invalid enc28j60 frame length %u", sys_get_le16(info));
+		if (sys_get_le16(&info[2]) <= 4U) {
+			LOG_ERR("Invalid enc28j60 frame length %u", sys_get_le16(&info[2]));
 			break;
 		}
-		frm_len = sys_get_le16(info) - 4;
+		frm_len = sys_get_le16(&info[2]) - 4;
 
 		enc28j60_read_packet(dev, frm_len);
 
