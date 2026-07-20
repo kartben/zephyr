@@ -250,9 +250,10 @@ static void eth_xlnx_gem_isr(const struct device *dev)
 	const struct eth_xlnx_gem_dev_cfg *dev_conf = DEV_CFG(dev);
 	struct eth_xlnx_gem_dev_data *dev_data = DEV_DATA(dev);
 	uint32_t reg_val;
+	mm_reg_t mac_base = DEVICE_MMIO_NAMED_GET(dev, mac);
 
 	/* Read the interrupt status register */
-	reg_val = sys_read32(DEVICE_MMIO_NAMED_GET(dev, mac) + ETH_XLNX_GEM_ISR_OFFSET);
+	reg_val = sys_read32(mac_base + ETH_XLNX_GEM_ISR_OFFSET);
 
 	/*
 	 * TODO: handling if one or more error flag(s) are set in the
@@ -274,9 +275,9 @@ static void eth_xlnx_gem_isr(const struct device *dev)
 	 */
 	if ((reg_val & ETH_XLNX_GEM_IXR_TX_COMPLETE_BIT) != 0) {
 		sys_write32(ETH_XLNX_GEM_IXR_TX_COMPLETE_BIT,
-			    DEVICE_MMIO_NAMED_GET(dev, mac) + ETH_XLNX_GEM_IDR_OFFSET);
+			    mac_base + ETH_XLNX_GEM_IDR_OFFSET);
 		sys_write32(ETH_XLNX_GEM_IXR_TX_COMPLETE_BIT,
-			    DEVICE_MMIO_NAMED_GET(dev, mac) + ETH_XLNX_GEM_ISR_OFFSET);
+			    mac_base + ETH_XLNX_GEM_ISR_OFFSET);
 		if (dev_conf->defer_txd_to_queue) {
 			k_work_submit(&dev_data->tx_done_work);
 		} else {
@@ -285,9 +286,9 @@ static void eth_xlnx_gem_isr(const struct device *dev)
 	}
 	if ((reg_val & ETH_XLNX_GEM_IXR_FRAME_RX_BIT) != 0) {
 		sys_write32(ETH_XLNX_GEM_IXR_FRAME_RX_BIT,
-			    DEVICE_MMIO_NAMED_GET(dev, mac) + ETH_XLNX_GEM_IDR_OFFSET);
+			    mac_base + ETH_XLNX_GEM_IDR_OFFSET);
 		sys_write32(ETH_XLNX_GEM_IXR_FRAME_RX_BIT,
-			    DEVICE_MMIO_NAMED_GET(dev, mac) + ETH_XLNX_GEM_ISR_OFFSET);
+			    mac_base + ETH_XLNX_GEM_ISR_OFFSET);
 		if (dev_conf->defer_rxp_to_queue) {
 			k_work_submit(&dev_data->rx_pend_work);
 		} else {
@@ -306,7 +307,7 @@ static void eth_xlnx_gem_isr(const struct device *dev)
 	 */
 	sys_write32((0xFFFFFFFF & ~(ETH_XLNX_GEM_IXR_FRAME_RX_BIT |
 		    ETH_XLNX_GEM_IXR_TX_COMPLETE_BIT)),
-		    DEVICE_MMIO_NAMED_GET(dev, mac) + ETH_XLNX_GEM_ISR_OFFSET);
+		    mac_base + ETH_XLNX_GEM_ISR_OFFSET);
 }
 
 /**
