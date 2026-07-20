@@ -1400,21 +1400,20 @@ static void eth_xlnx_gem_handle_rx_pending(const struct device *dev)
 		 * by the controller.
 		 */
 		do {
+			uint32_t this_len = (rx_data_remaining < dev_conf->rx_buffer_size) ?
+					    rx_data_remaining : dev_conf->rx_buffer_size;
+
 			if (pkt != NULL) {
+				const void *rx_buffer = (const void *)
+					(dev_data->rx_bd_ring.first_bd[curr_bd_idx].addr &
+					 ETH_XLNX_GEM_RX_BD_BUFFER_ADDR_MASK);
 #ifdef CONFIG_DCACHE
-				sys_cache_data_invd_range(
-					(void *)(dev_data->rx_bd_ring.first_bd[curr_bd_idx].addr &
-					ETH_XLNX_GEM_RX_BD_BUFFER_ADDR_MASK),
-					dev_conf->rx_buffer_size);
+				sys_cache_data_invd_range((void *)rx_buffer,
+							  dev_conf->rx_buffer_size);
 #endif
-				net_pkt_write(pkt, (const void *)
-					      (dev_data->rx_bd_ring.first_bd[curr_bd_idx].addr &
-					      ETH_XLNX_GEM_RX_BD_BUFFER_ADDR_MASK),
-					      (rx_data_remaining < dev_conf->rx_buffer_size) ?
-					      rx_data_remaining : dev_conf->rx_buffer_size);
+				net_pkt_write(pkt, rx_buffer, this_len);
 			}
-			rx_data_remaining -= (rx_data_remaining < dev_conf->rx_buffer_size) ?
-					     rx_data_remaining : dev_conf->rx_buffer_size;
+			rx_data_remaining -= this_len;
 
 			/*
 			 * The entire packet data of the current BD has been
