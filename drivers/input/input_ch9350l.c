@@ -397,10 +397,10 @@ static int ch9350l_init(struct device const *dev)
 	static struct ch9350l_config const ch9350l_config_##inst = {				\
 		.uart = DEVICE_DT_GET(DT_INST_BUS(inst)),					\
 		.kb_codemap = COND_CODE_1(DT_NODE_HAS_PROP(DT_DRV_INST(inst), kb_codemap),	\
-					  ((int []) DT_INST_PROP(inst, kb_codemap)), NULL),	\
+					  ((const int []) DT_INST_PROP(inst, kb_codemap)), NULL),	\
 		.kb_codemap_len = DT_INST_PROP_LEN_OR(inst, kb_codemap, 0),			\
 		.mouse_codemap = COND_CODE_1(DT_NODE_HAS_PROP(DT_DRV_INST(inst), mouse_codemap),\
-				((int []) DT_INST_PROP(inst, mouse_codemap)), NULL),		\
+				((const int []) DT_INST_PROP(inst, mouse_codemap)), NULL),		\
 		.mouse_codemap_len = DT_INST_PROP_LEN_OR(inst, mouse_codemap, 0),		\
 	};											\
 												\
