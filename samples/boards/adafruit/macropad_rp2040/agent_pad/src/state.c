@@ -15,6 +15,7 @@
 static struct agent agents[AGENT_SLOTS];
 static int layer;
 static char note[NOTE_LEN];
+static bool armed;
 static atomic_t seq;
 
 static K_MUTEX_DEFINE(lock);
@@ -93,6 +94,36 @@ void state_note_set(const char *fmt, ...)
 	k_mutex_unlock(&lock);
 
 	bump();
+}
+
+void state_arm(const char *name)
+{
+	k_mutex_lock(&lock, K_FOREVER);
+	armed = true;
+	snprintf(note, sizeof(note), "%s?", name);
+	k_mutex_unlock(&lock);
+
+	bump();
+}
+
+void state_disarm(void)
+{
+	k_mutex_lock(&lock, K_FOREVER);
+	armed = false;
+	k_mutex_unlock(&lock);
+
+	bump();
+}
+
+bool state_armed(void)
+{
+	bool ret;
+
+	k_mutex_lock(&lock, K_FOREVER);
+	ret = armed;
+	k_mutex_unlock(&lock);
+
+	return ret;
 }
 
 void state_note_get(char *out, size_t len)

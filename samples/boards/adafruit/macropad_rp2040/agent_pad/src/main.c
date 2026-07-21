@@ -16,6 +16,7 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 #include "agent_pad.h"
 
 #define LAYER_HOLD_MS 600
+#define CONFIRM_MS    3000
 
 struct pad_event {
 	uint16_t code;
@@ -45,6 +46,63 @@ static void run_action(const struct key_action *action)
 	hid_kb_run(action);
 }
 
+static int armed_key = -1;
+
+static void arm_clear(void)
+{
+	if (armed_key < 0) {
+		return;
+	}
+
+	armed_key = -1;
+	leds_arm(-1);
+	state_disarm();
+}
+
+static void arm_expired(struct k_work *work)
+{
+	ARG_UNUSED(work);
+	arm_clear();
+}
+
+static K_WORK_DELAYABLE_DEFINE(arm_work, arm_expired);
+
+/*
+ * Waits out a timeout that is already running, so that it cannot clear an arm
+ * made moments later. Only safe to call from outside the work queue.
+ */
+static void disarm(void)
+{
+	struct k_work_sync sync;
+
+	k_work_cancel_delayable_sync(&arm_work, &sync);
+	arm_clear();
+}
+
+/*
+ * The keys that type into the agent are armed by a first press and only run
+ * on a second, so an unfamiliar layer can be read off the display without
+ * firing anything. Pressing a different key arms that one instead.
+ */
+static void handle_action_key(int key)
+{
+	const struct key_action *action = &layers[state_layer()].keys[key - AGENT_SLOTS];
+	bool confirmed = armed_key == key;
+
+	leds_flash(key);
+	disarm();
+
+	if (confirmed) {
+		run_action(action);
+		return;
+	}
+
+	armed_key = key;
+	leds_arm(key);
+	state_arm(action->name);
+	k_work_reschedule(&arm_work, K_MSEC(CONFIRM_MS));
+}
+
 static void handle_agent_key(int slot)
 {
 	struct agent agent;
@@ -70,6 +128,8 @@ static void handle_encoder_button(int32_t value)
 	}
 
 	if (k_uptime_get() - pressed_at >= LAYER_HOLD_MS) {
+		/* The armed key means something else on the next layer. */
+		disarm();
 		state_layer_next();
 		state_note_set("%s", layers[state_layer()].name);
 		chime_play(CHIME_LAYER);
@@ -101,8 +161,7 @@ static void handle_event(const struct pad_event *evt)
 		if (key < AGENT_SLOTS) {
 			handle_agent_key(key);
 		} else {
-			leds_flash(key);
-			run_action(&layer->keys[key - AGENT_SLOTS]);
+			handle_action_key(key);
 		}
 		return;
 	}

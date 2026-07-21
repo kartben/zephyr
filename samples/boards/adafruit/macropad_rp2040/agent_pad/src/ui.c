@@ -58,6 +58,7 @@ static void refresh(int tick)
 {
 	char note[NOTE_LEN];
 	struct agent agent;
+	bool armed = state_armed();
 
 	lv_label_set_text(layer_label, layers[state_layer()].name);
 	lv_label_set_text_fmt(page_label, "L%d", state_layer() + 1);
@@ -78,6 +79,10 @@ static void refresh(int tick)
 
 	state_note_get(note, sizeof(note));
 	lv_label_set_text(note_label, note);
+
+	/* An armed command reads out inverted until it is confirmed. */
+	lv_obj_set_style_bg_opa(note_label, armed ? LV_OPA_COVER : LV_OPA_TRANSP, 0);
+	lv_obj_set_style_text_color(note_label, armed ? lv_color_black() : lv_color_white(), 0);
 }
 
 static lv_obj_t *make_box(lv_obj_t *parent)
@@ -137,6 +142,8 @@ static void build_screen(void)
 	note_label = lv_label_create(scr);
 	lv_obj_set_pos(note_label, 2, SLOT_Y + SLOT_H + 4);
 	lv_obj_set_width(note_label, OLED_W - 4);
+	lv_obj_set_style_bg_color(note_label, lv_color_white(), 0);
+	lv_obj_set_style_pad_hor(note_label, 1, 0);
 	lv_label_set_long_mode(note_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
 }
 

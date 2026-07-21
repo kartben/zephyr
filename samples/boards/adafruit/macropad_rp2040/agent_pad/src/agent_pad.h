@@ -36,6 +36,9 @@ int state_layer(void);
 void state_layer_next(void);
 void state_note_set(const char *fmt, ...);
 void state_note_get(char *out, size_t len);
+void state_arm(const char *name);
+void state_disarm(void);
+bool state_armed(void);
 uint32_t state_seq(void);
 
 struct key_tap {
@@ -71,6 +74,7 @@ void link_notify_keypress(int slot);
 
 int leds_init(void);
 void leds_flash(int key);
+void leds_arm(int key);
 
 int ui_init(void);
 

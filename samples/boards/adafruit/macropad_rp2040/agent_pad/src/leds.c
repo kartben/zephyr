@@ -22,6 +22,7 @@ static const struct device *strip = DEVICE_DT_GET(DT_ALIAS(led_strip));
 
 static struct led_rgb pixels[NUM_PIXELS];
 static int64_t flash_until[NUM_PIXELS];
+static int armed_key = -1;
 
 /* Triangle wave, 0..255 over the given period. */
 static uint8_t wave(int64_t t, uint32_t period_ms)
@@ -86,11 +87,21 @@ static void render(int64_t t)
 		pixels[i] = scale(layer->color[0], layer->color[1], layer->color[2], LAYER_DIM);
 	}
 
+	/* Pulse the key waiting for its confirming press. */
+	if (armed_key >= 0) {
+		pixels[armed_key] = scale(0xff, 0xff, 0xff, 40 + wave(t, 400) / 2);
+	}
+
 	for (int i = 0; i < NUM_PIXELS; i++) {
 		if (t < flash_until[i]) {
 			pixels[i] = scale(0xff, 0xff, 0xff, 100);
 		}
 	}
+}
+
+void leds_arm(int key)
+{
+	armed_key = (key >= 0 && key < NUM_PIXELS) ? key : -1;
 }
 
 void leds_flash(int key)

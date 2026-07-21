@@ -47,6 +47,13 @@ keystrokes. Two layers are provided:
 * ``SLASH``: common slash commands (``/compact``, ``/clear``, ``/model``,
   ``/resume``, ``/review``, ``/help``).
 
+Macro keys are sent on a *second* press: the first press arms the key and shows
+what it will do, so a layer can be explored without having it memorized. The
+armed key pulses white and the ticker reads its name inverted, e.g.
+``/compact?``. Pressing it again sends the keystrokes, pressing another key arms
+that one instead, and the pad disarms itself after three seconds or on a layer
+change.
+
 **Rotary encoder** — rotate to scroll (:kbd:`Up`/:kbd:`Down`), short press for
 :kbd:`Enter`, long press to switch layers. The bottom row LEDs are tinted with
 the active layer's color.

@@ -25,6 +25,7 @@ LOG_MODULE_REGISTER(sim, LOG_LEVEL_INF);
 lv_obj_t *sim_build(lv_obj_t *root);
 
 static lv_obj_t *keys[12];
+static int armed_key = -1;
 static lv_obj_t *key_labels[12];
 static lv_obj_t *sent_label;
 static lv_obj_t *chime_label;
@@ -50,6 +51,11 @@ int leds_init(void)
 void leds_flash(int key)
 {
 	ARG_UNUSED(key);
+}
+
+void leds_arm(int key)
+{
+	armed_key = (key >= 0 && key < (int)ARRAY_SIZE(keys)) ? key : -1;
 }
 
 int chime_init(void)
@@ -132,6 +138,11 @@ static void sim_timer_cb(lv_timer_t *timer)
 							layer->color[2] / 3),
 					  0);
 		lv_label_set_text(key_labels[AGENT_SLOTS + i], layer->keys[i].name);
+	}
+
+	/* Mirror the pad's pulse on the key waiting to be confirmed. */
+	if (armed_key >= 0) {
+		lv_obj_set_style_bg_color(keys[armed_key], lv_color_white(), 0);
 	}
 
 	lv_label_set_text(sent_label, sent_text);
