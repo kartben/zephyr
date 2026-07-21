@@ -48,11 +48,22 @@ static int set_report(const struct device *dev, const uint8_t type, const uint8_
 	return 0;
 }
 
+/*
+ * Required because "keyboard" protocol-code declares a boot interface.
+ * HID_KEYBOARD_REPORT_DESC() already is the boot layout, so the report
+ * format is the same under either protocol and nothing has to change.
+ */
+static void set_protocol(const struct device *dev, const uint8_t proto)
+{
+	LOG_DBG("Protocol set to %s", proto == 0U ? "boot" : "report");
+}
+
 static const struct hid_device_ops kb_ops = {
 	.iface_ready = iface_ready,
 	.input_report_done = input_report_done,
 	.get_report = get_report,
 	.set_report = set_report,
+	.set_protocol = set_protocol,
 };
 
 static void submit(uint8_t mod, uint8_t code)
