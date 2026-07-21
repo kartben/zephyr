@@ -16,5 +16,10 @@ target_sources(app PRIVATE
 if(CONFIG_AGENT_PAD_SIM)
   target_sources(app PRIVATE src/sim.c)
 else()
-  target_sources(app PRIVATE src/hid_kb.c src/leds.c src/chime.c)
+  target_sources(app PRIVATE
+    src/hid_kb.c
+    src/leds.c
+    src/chime.c
+    src/agent_pad_font_12.c
+  )
 endif()

@@ -22,6 +22,8 @@ LOG_MODULE_REGISTER(ui, LOG_LEVEL_INF);
 
 #ifdef CONFIG_AGENT_PAD_SIM
 lv_obj_t *sim_build(lv_obj_t *root);
+#else
+LV_FONT_DECLARE(agent_pad_font_12);
 #endif
 
 static const struct device *display = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
@@ -98,6 +100,13 @@ static void build_screen(void)
 	lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
 	lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
 	lv_obj_set_style_text_color(scr, lv_color_white(), 0);
+#ifndef CONFIG_AGENT_PAD_SIM
+	/*
+	 * The OLED has no grey levels, so an antialiased font would lose
+	 * thin stems to thresholding in whichever polarity it is drawn.
+	 */
+	lv_obj_set_style_text_font(scr, &agent_pad_font_12, 0);
+#endif
 
 	header = make_box(scr);
 	lv_obj_set_pos(header, 0, 0);
