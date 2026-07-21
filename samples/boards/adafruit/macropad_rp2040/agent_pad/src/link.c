@@ -23,12 +23,17 @@ static const struct device *uart_dev = DEVICE_DT_GET(DT_ALIAS(pad_link));
 
 static char rx_line[LINE_LEN];
 static size_t rx_len;
+static bool ready;
 
 K_MSGQ_DEFINE(line_msgq, LINE_LEN, 8, 4);
 
 static void link_send(const char *line)
 {
 	uint32_t dtr;
+
+	if (!ready) {
+		return;
+	}
 
 	/* Skip when a DTR-capable port (CDC ACM) has no terminal attached. */
 	if (uart_line_ctrl_get(uart_dev, UART_LINE_CTRL_DTR, &dtr) == 0 && dtr == 0U) {
@@ -178,6 +183,7 @@ int link_init(void)
 
 	uart_irq_callback_set(uart_dev, uart_cb);
 	uart_irq_rx_enable(uart_dev);
+	ready = true;
 
 	return 0;
 }

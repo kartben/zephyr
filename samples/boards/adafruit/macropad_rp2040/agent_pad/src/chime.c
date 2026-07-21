@@ -34,6 +34,7 @@ static const struct device *speaker_reg = DEVICE_DT_GET(DT_NODELABEL(speaker_reg
 
 static const struct note *current;
 static int note_idx;
+static bool ready;
 
 static void play_note(struct k_work *work);
 static K_WORK_DELAYABLE_DEFINE(note_work, play_note);
@@ -54,7 +55,7 @@ static void play_note(struct k_work *work)
 
 void chime_play(enum chime chime)
 {
-	if (current != NULL) {
+	if (!ready || current != NULL) {
 		return;
 	}
 
@@ -65,6 +66,8 @@ void chime_play(enum chime chime)
 
 int chime_init(void)
 {
+	int ret;
+
 	if (!device_is_ready(buzzer) || !device_is_ready(speaker_reg)) {
 		LOG_ERR("Speaker devices not ready");
 		return -EIO;
@@ -72,5 +75,12 @@ int chime_init(void)
 
 	buzzer_set_volume(buzzer, VOLUME_PERCENT);
 
-	return regulator_enable(speaker_reg);
+	ret = regulator_enable(speaker_reg);
+	if (ret != 0) {
+		return ret;
+	}
+
+	ready = true;
+
+	return 0;
 }

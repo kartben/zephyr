@@ -121,13 +121,38 @@ static void handle_event(const struct pad_event *evt)
 	}
 }
 
+/*
+ * Everything here is optional: a pad with no USB host still shows agent
+ * status, and one with a dead speaker still types. Failures are reported on
+ * the display rather than taken as fatal.
+ */
+static const struct {
+	const char *name;
+	int (*init)(void);
+} subsystems[] = {
+	{"usb", hid_kb_init},
+	{"link", link_init},
+	{"leds", leds_init},
+	{"audio", chime_init},
+};
+
 int main(void)
 {
 	struct pad_event evt;
 
-	if (hid_kb_init() != 0 || link_init() != 0 || leds_init() != 0 || ui_init() != 0 ||
-	    chime_init() != 0) {
+	/*
+	 * The display is the only output that does not need a host, so it
+	 * comes up first and is the one hard dependency.
+	 */
+	if (ui_init() != 0) {
 		return -EIO;
+	}
+
+	for (size_t i = 0; i < ARRAY_SIZE(subsystems); i++) {
+		if (subsystems[i].init() != 0) {
+			LOG_WRN("%s unavailable", subsystems[i].name);
+			state_note_set("no %s", subsystems[i].name);
+		}
 	}
 
 	LOG_INF("Agent pad ready");
