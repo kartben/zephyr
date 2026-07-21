@@ -17,21 +17,52 @@ jobs:
       issues: write        # to comment on stale issues
 
     steps:
-    - uses: actions/stale@eb5cf3af3ac0a1aa4c9c45633dd1ae542a27a899 # v10.3.0
+    # Issues and pull requests are processed in two separate steps.
+    #
+    # Enhancement, Feature and RFC used to be labels but are now GitHub issue
+    # types, so `exempt-issue-labels` no longer matches them and those issues
+    # were being marked stale and closed. The action has no `exempt-issue-types`
+    # input (see actions/stale#1293), only the `only-issue-types` allowlist, so
+    # we invert the logic and process only the types that should go stale
+    # (Bug and Task), which leaves Enhancement, Feature and RFC exempt.
+    #
+    # `only-issue-types` is also applied to pull requests, which have no issue
+    # type, so a single combined step would skip every pull request. Issue and
+    # PR processing are therefore disabled in the other step via a negative
+    # `days-before-*` value.
+    - name: Stale issues
+      uses: actions/stale@eb5cf3af3ac0a1aa4c9c45633dd1ae542a27a899 # v10.3.0
+      with:
+        stale-issue-message: 'This issue has been marked as stale because it has been open (more
+          than) 30 days with no activity. Remove the stale label or add a comment saying that you
+          would like to have the label removed otherwise this issue will automatically be closed in
+          7 days. Note, that you can always re-open a closed issue at any time.'
+        days-before-issue-stale: 30
+        days-before-issue-close: 7
+        # Pull requests are handled in the next step.
+        days-before-pr-stale: -1
+        days-before-pr-close: -1
+        stale-issue-label: 'Stale'
+        # Only these issue types are eligible to go stale; every other type
+        # (Enhancement, Feature, RFC, ...) and untyped issues are exempt.
+        only-issue-types: 'Bug,Task'
+        # Remaining plain labels that still exempt an issue from going stale.
+        exempt-issue-labels: 'In progress,Feature Request,Meta,Process,Coverity'
+        operations-per-run: 400
+
+    - name: Stale pull requests
+      uses: actions/stale@eb5cf3af3ac0a1aa4c9c45633dd1ae542a27a899 # v10.3.0
       with:
         stale-pr-message: 'This pull request has been marked as stale because it has been open (more
           than) 30 days with no activity. Remove the stale label or add a comment saying that you
           would like to have the label removed otherwise this pull request will automatically be
           closed in 7 days. Note that if it gets closed, you can ask someone to reopen it for you if
           you do not have the permissions to do so.'
-        stale-issue-message: 'This issue has been marked as stale because it has been open (more
-          than) 30 days with no activity. Remove the stale label or add a comment saying that you
-          would like to have the label removed otherwise this issue will automatically be closed in
-          7 days. Note, that you can always re-open a closed issue at any time.'
-        days-before-stale: 30
-        days-before-close: 7
-        stale-issue-label: 'Stale'
+        days-before-pr-stale: 30
+        days-before-pr-close: 7
+        # Issues are handled in the previous step.
+        days-before-issue-stale: -1
+        days-before-issue-close: -1
         stale-pr-label: 'Stale'
         exempt-pr-labels: 'Blocked,In progress'
-        exempt-issue-labels: 'In progress,Enhancement,Feature,Feature Request,RFC,Meta,Process,Coverity'
         operations-per-run: 400
