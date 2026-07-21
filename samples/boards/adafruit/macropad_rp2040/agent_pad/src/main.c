@@ -149,9 +149,11 @@ int main(void)
 	}
 
 	for (size_t i = 0; i < ARRAY_SIZE(subsystems); i++) {
-		if (subsystems[i].init() != 0) {
-			LOG_WRN("%s unavailable", subsystems[i].name);
-			state_note_set("no %s", subsystems[i].name);
+		int ret = subsystems[i].init();
+
+		if (ret != 0) {
+			LOG_WRN("%s unavailable (%d)", subsystems[i].name, ret);
+			state_note_set("no %s %d", subsystems[i].name, ret);
 		}
 	}
 
