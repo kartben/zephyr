@@ -55,9 +55,9 @@ static uint32_t efuse_bflb_is_pds_busy(const struct device *dev)
  * system_set_root_clock_dividers(0, 0);
  * sys_write32(32 * 1000 * 1000, CORECLOCKREGISTER);)
  * Only Use with IRQs off
- * returns 0 when error
+ * returns 0 on success, -ETIMEDOUT on timeout
  */
-static void efuse_bflb_efuse_read(const struct device *dev)
+static int efuse_bflb_efuse_read(const struct device *dev)
 {
 	const struct efuse_bflb_config *config = dev->config;
 	uint32_t tmp;
@@ -68,6 +68,11 @@ static void efuse_bflb_efuse_read(const struct device *dev)
 		efuse_bflb_clock_delay_32M_ms(1);
 		timeout++;
 	} while (timeout < EF_CTRL_DFT_TIMEOUT_VAL && efuse_bflb_is_pds_busy(dev) > 0);
+
+	if (efuse_bflb_is_pds_busy(dev) > 0) {
+		LOG_ERR("eFuse busy timeout before read");
+		return -ETIMEDOUT;
+	}
 
 	/* do a 'ahb clock' setup */
 	tmp =	EF_CTRL_EFUSE_CTRL_PROTECT
@@ -133,11 +138,19 @@ static void efuse_bflb_efuse_read(const struct device *dev)
 	efuse_bflb_clock_delay_32M_ms(5);
 
 	/* wait for read to complete */
+	timeout = 0;
 	do {
 		efuse_bflb_clock_delay_32M_ms(1);
 		tmp = sys_read32(config->addr + EF_CTRL_EF_IF_CTRL_0_OFFSET);
-	} while ((tmp & EF_CTRL_EF_IF_0_BUSY_MSK) ||
-		!(tmp & EF_CTRL_EF_IF_0_AUTOLOAD_DONE_MSK));
+		timeout++;
+	} while (timeout < EF_CTRL_DFT_TIMEOUT_VAL &&
+		 ((tmp & EF_CTRL_EF_IF_0_BUSY_MSK) ||
+		  !(tmp & EF_CTRL_EF_IF_0_AUTOLOAD_DONE_MSK)));
+
+	if ((tmp & EF_CTRL_EF_IF_0_BUSY_MSK) || !(tmp & EF_CTRL_EF_IF_0_AUTOLOAD_DONE_MSK)) {
+		LOG_ERR("eFuse read completion timeout");
+		return -ETIMEDOUT;
+	}
 
 	/* do a 'ahb clock' setup */
 	tmp =	EF_CTRL_EFUSE_CTRL_PROTECT
@@ -157,15 +170,18 @@ static void efuse_bflb_efuse_read(const struct device *dev)
 		| (0 << EF_CTRL_EF_IF_0_TRIG_POS);
 
 	sys_write32(tmp, config->addr + EF_CTRL_EF_IF_CTRL_0_OFFSET);
+
+	return 0;
 }
 
-static void efuse_bflb_cache(const struct device *dev)
+static int efuse_bflb_cache(const struct device *dev)
 {
 	struct efuse_bflb_data *data = dev->data;
 	const struct efuse_bflb_config *config = dev->config;
 	uint32_t tmp;
 	uint8_t old_clock_root;
 	uint32_t key;
+	int ret;
 
 	key = irq_lock();
 
@@ -174,7 +190,14 @@ static void efuse_bflb_cache(const struct device *dev)
 	clock_bflb_set_root_clock(BFLB_MAIN_CLOCK_RC32M);
 	clock_bflb_settle();
 
-	efuse_bflb_efuse_read(dev);
+	ret = efuse_bflb_efuse_read(dev);
+	if (ret < 0) {
+		clock_bflb_set_root_clock(old_clock_root);
+		clock_bflb_settle();
+		irq_unlock(key);
+		return ret;
+	}
+
 	/* reads *must* be 32-bits aligned AND does not work with the method memcpy uses */
 	for (int i = 0; i < config->size / sizeof(uint32_t); i++) {
 		tmp = sys_read32(config->addr + i * 4);
@@ -189,12 +212,15 @@ static void efuse_bflb_cache(const struct device *dev)
 	data->cached = true;
 
 	irq_unlock(key);
+
+	return 0;
 }
 
 static int efuse_bflb_read(const struct device *dev, off_t offset, void *out, size_t len)
 {
 	const struct efuse_bflb_config *config = dev->config;
 	struct efuse_bflb_data *data = dev->data;
+	int ret;
 
 	if (len == 0) {
 		return 0;
@@ -213,7 +239,10 @@ static int efuse_bflb_read(const struct device *dev, off_t offset, void *out, si
 	}
 
 	if (!data->cached) {
-		efuse_bflb_cache(dev);
+		ret = efuse_bflb_cache(dev);
+		if (ret < 0) {
+			return ret;
+		}
 	}
 
 	memcpy(out, &data->cache[offset], len);
