@@ -186,6 +186,7 @@ static int mb85rcxx_write(const struct device *dev, off_t offset, const void *bu
 		if (ret < 0) {
 			LOG_ERR("failed to write to FRAM (err %d)", ret);
 			k_mutex_unlock(&data->lock);
+			mb85rcxx_write_protect_set(dev, 1);
 			return ret;
 		}
 
@@ -195,7 +196,10 @@ static int mb85rcxx_write(const struct device *dev, off_t offset, const void *bu
 	}
 
 	k_mutex_unlock(&data->lock);
-	mb85rcxx_write_protect_set(dev, 1);
+	ret = mb85rcxx_write_protect_set(dev, 1);
+	if (ret) {
+		LOG_ERR("failed to write-protect FRAM (err %d)", ret);
+	}
 	return ret;
 }
 
