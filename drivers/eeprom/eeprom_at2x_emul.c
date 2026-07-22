@@ -93,8 +93,12 @@ static int at24_emul_transfer(const struct emul *target, struct i2c_msg *msgs,
 			return 0;
 		}
 		data->cur_reg = msgs->buf[0];
-		len = MIN(msgs->len - 1, cfg->size - data->cur_reg);
-		memcpy(&cfg->buf[data->cur_reg], &msgs->buf[1], len);
+		if (data->cur_reg >= cfg->size) {
+			len = 0;
+		} else {
+			len = MIN(msgs->len - 1, cfg->size - data->cur_reg);
+			memcpy(&cfg->buf[data->cur_reg], &msgs->buf[1], len);
+		}
 		return 0;
 	case 2:
 		if (msgs->flags & I2C_MSG_READ) {
@@ -116,8 +120,12 @@ static int at24_emul_transfer(const struct emul *target, struct i2c_msg *msgs,
 	}
 
 	/* Read data from the EEPROM into the buffer */
-	len = MIN(msgs->len, cfg->size - data->cur_reg);
-	memcpy(msgs->buf, &cfg->buf[data->cur_reg], len);
+	if (data->cur_reg >= cfg->size) {
+		len = 0;
+	} else {
+		len = MIN(msgs->len, cfg->size - data->cur_reg);
+		memcpy(msgs->buf, &cfg->buf[data->cur_reg], len);
+	}
 	data->cur_reg += len;
 
 	return 0;
