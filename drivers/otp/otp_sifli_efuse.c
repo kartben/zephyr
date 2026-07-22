@@ -13,6 +13,7 @@
 #include <zephyr/drivers/otp.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys/byteorder.h>
+#include <zephyr/sys/math_extras.h>
 #include <zephyr/sys/minmax.h>
 #include <zephyr/sys/util.h>
 
@@ -156,9 +157,16 @@ static int otp_sifli_efuse_read(const struct device *dev, off_t offset, void *bu
 	const struct otp_sifli_efuse_config *config = dev->config;
 	struct otp_sifli_efuse_data *data = dev->data;
 	size_t total_size = config->bank_size * config->bank_num;
+	size_t start;
+	size_t end;
 	int ret = 0;
 
-	if (offset < 0 || (offset + len) > total_size) {
+	if (offset < 0) {
+		return -EINVAL;
+	}
+
+	start = (size_t)offset;
+	if (size_add_overflow(start, len, &end) || end > total_size) {
 		return -EINVAL;
 	}
 
