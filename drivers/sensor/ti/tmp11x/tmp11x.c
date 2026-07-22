@@ -158,9 +158,9 @@ int tmp11x_eeprom_write(const struct device *dev, off_t offset, const void *data
 		}
 	}
 
-	res = tmp11x_reg_write(dev, TMP11X_REG_EEPROM_UL, 0);
+	int lock_res = tmp11x_reg_write(dev, TMP11X_REG_EEPROM_UL, 0);
 
-	return res;
+	return res ? res : lock_res;
 }
 
 int tmp11x_eeprom_read(const struct device *dev, off_t offset, void *data, size_t len)
