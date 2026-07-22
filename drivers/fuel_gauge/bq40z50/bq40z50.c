@@ -141,7 +141,9 @@ static int bq40z50_get_buffer_prop(const struct device *dev, fuel_gauge_prop_t p
 			struct sbs_gauge_manufacturer_name *mfgname =
 				(struct sbs_gauge_manufacturer_name *)dst;
 
-			mfgname->manufacturer_name[mfgname->manufacturer_name_length] = '\0';
+			if (mfgname->manufacturer_name_length < SBS_GAUGE_MANUFACTURER_NAME_MAX_SIZE) {
+				mfgname->manufacturer_name[mfgname->manufacturer_name_length] = '\0';
+			}
 		} else {
 			ret = -EINVAL;
 		}
@@ -152,7 +154,9 @@ static int bq40z50_get_buffer_prop(const struct device *dev, fuel_gauge_prop_t p
 			ret = bq40z50_i2c_read(dev, BQ40Z50_DEVICENAME, dst, dst_len);
 			struct sbs_gauge_device_name *devname = (struct sbs_gauge_device_name *)dst;
 
-			devname->device_name[devname->device_name_length] = '\0';
+			if (devname->device_name_length < SBS_GAUGE_DEVICE_NAME_MAX_SIZE) {
+				devname->device_name[devname->device_name_length] = '\0';
+			}
 		} else {
 			ret = -EINVAL;
 		}
@@ -164,7 +168,9 @@ static int bq40z50_get_buffer_prop(const struct device *dev, fuel_gauge_prop_t p
 			struct sbs_gauge_device_chemistry *devchem =
 				(struct sbs_gauge_device_chemistry *)dst;
 
-			devchem->device_chemistry[devchem->device_chemistry_length] = '\0';
+			if (devchem->device_chemistry_length < SBS_GAUGE_DEVICE_CHEMISTRY_MAX_SIZE) {
+				devchem->device_chemistry[devchem->device_chemistry_length] = '\0';
+			}
 		} else {
 			ret = -EINVAL;
 		}
