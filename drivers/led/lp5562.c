@@ -791,8 +791,7 @@ static int lp5562_led_blink(const struct device *dev, uint32_t led,
 		return ret;
 	}
 
-	ret = lp5562_program_set_brightness(dev, engine, ++command_index,
-			LED_BRIGHTNESS_MAX);
+	ret = lp5562_program_set_brightness(dev, engine, ++command_index, 0);
 	if (ret) {
 		return ret;
 	}
