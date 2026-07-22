@@ -76,7 +76,10 @@ static int microchip_mcp7940n_bbram_is_invalid(const struct device *dev)
 	rc = i2c_reg_read_byte_dt(&config->i2c,
 				  MICROCHIP_MCP7940N_RTCWKDAY_REGISTER_ADDRESS,
 				  &buffer);
-
+	if (rc != 0) {
+		LOG_ERR("Failed to read RTCWKDAY register: %d", rc);
+		goto finish;
+	}
 
 	if ((buffer & MICROCHIP_MCP7940N_RTCWKDAY_PWRFAIL_BIT)) {
 		data_valid = false;
@@ -97,11 +100,11 @@ static int microchip_mcp7940n_bbram_is_invalid(const struct device *dev)
 finish:
 	k_mutex_unlock(&data->lock);
 
-	if (rc == 0 && data_valid == true) {
-		rc = 1;
+	if (rc != 0) {
+		return rc;
 	}
 
-	return rc;
+	return data_valid ? 0 : 1;
 }
 
 static int microchip_mcp7940n_bbram_check_standby_power(const struct device *dev)
@@ -117,7 +120,10 @@ static int microchip_mcp7940n_bbram_check_standby_power(const struct device *dev
 	rc = i2c_reg_read_byte_dt(&config->i2c,
 				  MICROCHIP_MCP7940N_RTCWKDAY_REGISTER_ADDRESS,
 				  &buffer);
-
+	if (rc != 0) {
+		LOG_ERR("Failed to read RTCWKDAY register: %d", rc);
+		goto finish;
+	}
 
 	if (!(buffer & MICROCHIP_MCP7940N_RTCWKDAY_VBATEN_BIT)) {
 		power_enabled = false;
@@ -138,11 +144,11 @@ static int microchip_mcp7940n_bbram_check_standby_power(const struct device *dev
 finish:
 	k_mutex_unlock(&data->lock);
 
-	if (rc == 0 && power_enabled == true) {
-		rc = 1;
+	if (rc != 0) {
+		return rc;
 	}
 
-	return rc;
+	return power_enabled ? 0 : 1;
 }
 
 static int microchip_mcp7940n_bbram_read(const struct device *dev, size_t offset, size_t size,
