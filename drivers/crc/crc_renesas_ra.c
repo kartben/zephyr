@@ -149,6 +149,8 @@ static int crc_renesas_ra_update(const struct device *dev, struct crc_ctx *ctx, 
 		__fallthrough;
 	case CRC16:
 		__fallthrough;
+	case CRC16_ITU_T:
+		__fallthrough;
 	case CRC16_CCITT: {
 		if (ctx->type == CRC8) {
 			init_val = (data->flag_crc_updated ? ctx->result : ctx->seed) & 0xFF;
