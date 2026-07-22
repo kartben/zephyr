@@ -74,6 +74,10 @@ static int otp_bsec_stm32_program(const struct device *dev, off_t offset, const 
 	unsigned int i;
 	int ret;
 
+	if (offset < 0) {
+		return -EINVAL;
+	}
+
 	/* Allow programming of 4bytes words only */
 	if (!IS_ALIGNED(len, BSEC_WORD_SIZE)) {
 		LOG_ERR("Invalid length to program OTP: %zu", len);
@@ -126,6 +130,10 @@ static int otp_bsec_stm32_read(const struct device *dev, off_t offset, void *buf
 	unsigned int nb_fuse;
 	unsigned int i;
 	int ret;
+
+	if (offset < 0) {
+		return -EINVAL;
+	}
 
 	/* Allow intra-word and spanned reads but not 0-sized reads */
 	nb_fuse = len != 0 ? DIV_ROUND_UP(offset % BSEC_WORD_SIZE + len, BSEC_WORD_SIZE) : 0;
