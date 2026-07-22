@@ -422,12 +422,9 @@ static void smsc_recv_pkt(struct eth_context *data)
 			}
 
 			/*
-			 * Pull the packet out of the device.
-			 */
-			smsc_select_bank(sc, 2);
-			smsc_write_1(sc, PNR, packet);
-
-			/*
+			 * Pull the packet out of the device; bank 2 and PNR are
+			 * still set from the header read above.
+			 *
 			 * Pointer start from 4 because we have already read status and len from
 			 * RX_FIFO
 			 */
