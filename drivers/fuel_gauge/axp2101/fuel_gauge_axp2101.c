@@ -144,10 +144,17 @@ static int get_bat_voltage(const struct device *dev, union fuel_gauge_prop_val *
 static int axp2101_get_prop(const struct device *dev, fuel_gauge_prop_t prop,
 			    union fuel_gauge_prop_val *val)
 {
+	int ret;
+
 	switch (prop) {
 	case FUEL_GAUGE_PRESENT_STATE:
-	case FUEL_GAUGE_CONNECT_STATE:
 		return is_battery_connect(dev, val);
+	case FUEL_GAUGE_CONNECT_STATE:
+		ret = is_battery_connect(dev, val);
+		if (ret == 0) {
+			val->connect_state = val->present_state ? 1 : 0;
+		}
+		return ret;
 	case FUEL_GAUGE_VOLTAGE_UV:
 		return get_bat_voltage(dev, val);
 	case FUEL_GAUGE_ABSOLUTE_STATE_OF_CHARGE_PCT:
