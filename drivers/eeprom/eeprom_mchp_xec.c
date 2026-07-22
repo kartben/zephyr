@@ -116,7 +116,7 @@ static uint8_t eeprom_xec_data_buffer_write(struct eeprom_xec_regs * const regs,
 	return transfer_size;
 }
 
-static void eeprom_xec_wait_transfer_compl(struct eeprom_xec_regs * const regs)
+static int eeprom_xec_wait_transfer_compl(struct eeprom_xec_regs * const regs)
 {
 	uint8_t sts = 0;
 	uint8_t retry_count = 0;
@@ -126,7 +126,7 @@ static void eeprom_xec_wait_transfer_compl(struct eeprom_xec_regs * const regs)
 	do {
 		if (retry_count >= XEC_EEPROM_XFER_COMPL_RETRY_COUNT) {
 			LOG_ERR("XEC EEPROM retry count exceeded");
-			break;
+			return -ETIMEDOUT;
 		}
 		k_sleep(K_USEC(XEC_EEPROM_DELAY_BUSY_POLL_US));
 
@@ -135,21 +135,22 @@ static void eeprom_xec_wait_transfer_compl(struct eeprom_xec_regs * const regs)
 
 	} while (sts == 0);
 
-	if (sts != 0) {
-		/* Clear the appropriate status bits */
-		regs->status = XEC_EEPROM_STS_TRANSFER_COMPL;
-	}
+	/* Clear the appropriate status bits */
+	regs->status = XEC_EEPROM_STS_TRANSFER_COMPL;
+
+	return 0;
 }
 
-static void eeprom_xec_wait_write_compl(struct eeprom_xec_regs * const regs)
+static int eeprom_xec_wait_write_compl(struct eeprom_xec_regs * const regs)
 {
 	uint8_t sts = 0;
 	uint8_t retry_count = 0;
+	int ret;
 
 	do {
 		if (retry_count >= XEC_EEPROM_XFER_COMPL_RETRY_COUNT) {
 			LOG_ERR("XEC EEPROM retry count exceeded");
-			break;
+			return -ETIMEDOUT;
 		}
 
 		regs->buffer[0] = 0;
@@ -157,7 +158,10 @@ static void eeprom_xec_wait_write_compl(struct eeprom_xec_regs * const regs)
 		/* Issue the READ_STS command */
 		regs->execute = XEC_EEPROM_EXC_CMD_READ_STS;
 
-		eeprom_xec_wait_transfer_compl(regs);
+		ret = eeprom_xec_wait_transfer_compl(regs);
+		if (ret) {
+			return ret;
+		}
 
 		sts = regs->buffer[0] & (XEC_EEPROM_STS_BYTE_WIP |
 							XEC_EEPROM_STS_BYTE_WENB);
@@ -165,26 +169,36 @@ static void eeprom_xec_wait_write_compl(struct eeprom_xec_regs * const regs)
 		retry_count++;
 
 	} while (sts != 0);
+
+	return 0;
 }
 
-static void eeprom_xec_data_read_32_bytes(struct eeprom_xec_regs * const regs,
+static int eeprom_xec_data_read_32_bytes(struct eeprom_xec_regs * const regs,
 							uint8_t *buf, size_t len, off_t offset)
 {
+	int ret;
+
 	/* Issue the READ command to transfer buffer to EEPROM memory */
 	eeprom_xec_execute_reg_set(regs, len, XEC_EEPROM_EXC_CMD_READ, offset);
 
 	/* Wait until the read operation has completed */
-	eeprom_xec_wait_transfer_compl(regs);
+	ret = eeprom_xec_wait_transfer_compl(regs);
+	if (ret) {
+		return ret;
+	}
 
 	/* Read the data in to the software buffer */
 	eeprom_xec_data_buffer_read(regs, len, buf);
+
+	return 0;
 }
 
-static void eeprom_xec_data_write_32_bytes(struct eeprom_xec_regs * const regs,
+static int eeprom_xec_data_write_32_bytes(struct eeprom_xec_regs * const regs,
 							uint8_t *buf, size_t len, off_t offset)
 {
 	uint16_t sz;
 	uint16_t rem_bytes;
+	int ret;
 
 	sz = offset % XEC_EEPROM_PAGE_SIZE;
 
@@ -200,9 +214,15 @@ static void eeprom_xec_data_write_32_bytes(struct eeprom_xec_regs * const regs,
 			eeprom_xec_execute_reg_set(regs, rem_bytes,
 						XEC_EEPROM_EXC_CMD_WRITE, offset);
 
-			eeprom_xec_wait_transfer_compl(regs);
+			ret = eeprom_xec_wait_transfer_compl(regs);
+			if (ret) {
+				return ret;
+			}
 
-			eeprom_xec_wait_write_compl(regs);
+			ret = eeprom_xec_wait_write_compl(regs);
+			if (ret) {
+				return ret;
+			}
 
 			offset += rem_bytes;
 			buf += rem_bytes;
@@ -215,9 +235,12 @@ static void eeprom_xec_data_write_32_bytes(struct eeprom_xec_regs * const regs,
 	/* Issue the WRITE command to transfer buffer to EEPROM memory */
 	eeprom_xec_execute_reg_set(regs, len, XEC_EEPROM_EXC_CMD_WRITE, offset);
 
-	eeprom_xec_wait_transfer_compl(regs);
+	ret = eeprom_xec_wait_transfer_compl(regs);
+	if (ret) {
+		return ret;
+	}
 
-	eeprom_xec_wait_write_compl(regs);
+	return eeprom_xec_wait_write_compl(regs);
 }
 
 static int eeprom_xec_read(const struct device *dev, off_t offset,
@@ -230,6 +253,7 @@ static int eeprom_xec_read(const struct device *dev, off_t offset,
 	uint8_t *data_buf = (uint8_t *)buf;
 	uint32_t chunk_idx = 0;
 	uint32_t chunk_size = XEC_EEPROM_TRANSFER_SIZE_READ;
+	int ret = 0;
 
 	if (len == 0) {
 		return 0;
@@ -248,13 +272,16 @@ static int eeprom_xec_read(const struct device *dev, off_t offset,
 		if ((len-chunk_idx) < XEC_EEPROM_TRANSFER_SIZE_READ) {
 			chunk_size = (len-chunk_idx);
 		}
-		eeprom_xec_data_read_32_bytes(regs, &data_buf[chunk_idx],
+		ret = eeprom_xec_data_read_32_bytes(regs, &data_buf[chunk_idx],
 						chunk_size, (offset+chunk_idx));
+		if (ret) {
+			break;
+		}
 	}
 	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 	k_mutex_unlock(&data->lock_mtx);
 
-	return 0;
+	return ret;
 }
 
 static int eeprom_xec_write(const struct device *dev, off_t offset,
@@ -266,6 +293,7 @@ static int eeprom_xec_write(const struct device *dev, off_t offset,
 	uint8_t *data_buf = (uint8_t *)buf;
 	uint32_t chunk_idx = 0;
 	uint32_t chunk_size = XEC_EEPROM_TRANSFER_SIZE_WRITE;
+	int ret = 0;
 
 	if (len == 0) {
 		return 0;
@@ -284,14 +312,17 @@ static int eeprom_xec_write(const struct device *dev, off_t offset,
 		if ((len-chunk_idx) < XEC_EEPROM_TRANSFER_SIZE_WRITE) {
 			chunk_size = (len-chunk_idx);
 		}
-		eeprom_xec_data_write_32_bytes(regs, &data_buf[chunk_idx],
+		ret = eeprom_xec_data_write_32_bytes(regs, &data_buf[chunk_idx],
 							chunk_size, (offset+chunk_idx));
+		if (ret) {
+			break;
+		}
 	}
 
 	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 	k_mutex_unlock(&data->lock_mtx);
 
-	return 0;
+	return ret;
 }
 
 static size_t eeprom_xec_size(const struct device *dev)
