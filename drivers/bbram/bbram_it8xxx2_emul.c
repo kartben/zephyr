@@ -7,6 +7,7 @@
 #include <zephyr/drivers/emul.h>
 #include <zephyr/drivers/emul_bbram.h>
 
+#include "bbram_utils.h"
 #include "it8xxx2.h"
 
 #define DT_DRV_COMPAT ite_it8xxx2_bbram
@@ -24,7 +25,7 @@ static int it8xxx2_emul_backend_set_data(const struct emul *target, size_t offse
 {
 	const struct bbram_it8xxx2_config *config = GET_CONFIG(target);
 
-	if (offset + count > config->size) {
+	if (!bbram_offset_is_valid(offset, count, config->size)) {
 		return -ERANGE;
 	}
 
@@ -37,7 +38,7 @@ static int it8xxx2_emul_backend_get_data(const struct emul *target, size_t offse
 {
 	const struct bbram_it8xxx2_config *config = GET_CONFIG(target);
 
-	if (offset + count > config->size) {
+	if (!bbram_offset_is_valid(offset, count, config->size)) {
 		return -ERANGE;
 	}
 

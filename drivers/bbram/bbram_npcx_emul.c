@@ -7,6 +7,7 @@
 #include <zephyr/drivers/emul.h>
 #include <zephyr/drivers/emul_bbram.h>
 
+#include "bbram_utils.h"
 #include "npcx.h"
 
 #define DT_DRV_COMPAT nuvoton_npcx_bbram
@@ -24,7 +25,7 @@ static int npcx_emul_backend_set_data(const struct emul *target, size_t offset, 
 {
 	const struct bbram_npcx_config *config = GET_CONFIG(target);
 
-	if (offset + count > config->size) {
+	if (!bbram_offset_is_valid(offset, count, config->size)) {
 		return -ERANGE;
 	}
 
@@ -37,7 +38,7 @@ static int npcx_emul_backend_get_data(const struct emul *target, size_t offset, 
 {
 	const struct bbram_npcx_config *config = GET_CONFIG(target);
 
-	if (offset + count > config->size) {
+	if (!bbram_offset_is_valid(offset, count, config->size)) {
 		return -ERANGE;
 	}
 

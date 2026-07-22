@@ -15,6 +15,8 @@
 #include <zephyr/sys/util.h>
 #include <zephyr/logging/log.h>
 
+#include "bbram_utils.h"
+
 LOG_MODULE_REGISTER(bbram_microchip_mcp7940n, CONFIG_BBRAM_LOG_LEVEL);
 
 #define MICROCHIP_MCP7940N_SRAM_OFFSET 0x20
@@ -159,7 +161,7 @@ static int microchip_mcp7940n_bbram_read(const struct device *dev, size_t offset
 	size_t i = 0;
 	int32_t rc = 0;
 
-	if (size == 0 || (offset + size) > MICROCHIP_MCP7940N_SRAM_SIZE) {
+	if (!bbram_offset_is_valid(offset, size, MICROCHIP_MCP7940N_SRAM_SIZE)) {
 		return -EINVAL;
 	}
 
@@ -192,7 +194,7 @@ static int microchip_mcp7940n_bbram_write(const struct device *dev, size_t offse
 	size_t i = 0;
 	int32_t rc = 0;
 
-	if (size == 0 || (offset + size) > MICROCHIP_MCP7940N_SRAM_SIZE) {
+	if (!bbram_offset_is_valid(offset, size, MICROCHIP_MCP7940N_SRAM_SIZE)) {
 		return -EINVAL;
 	}
 

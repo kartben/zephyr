@@ -24,6 +24,8 @@
 #include <zephyr/spinlock.h>
 #include <zephyr/drivers/mfd/mc146818.h>
 
+#include "bbram_utils.h"
+
 #define MIN_SIZE	1 /* Minimum size to write */
 #define MIN_OFFSET	0x0E /* Starting offset of memory */
 #define MAX_STD		0x7F /* Last offset of Standard memory bank */
@@ -44,8 +46,7 @@ static int bbram_mc146818_read(const struct device *dev, size_t offset,
 	const struct bbram_mc146818_config *config = dev->config;
 	struct bbram_mc146818_data *dev_data = dev->data;
 
-	if (size < MIN_SIZE || offset + size > config->mem_size
-	    || data == NULL) {
+	if (!bbram_offset_is_valid(offset, size, config->mem_size) || data == NULL) {
 		return -EFAULT;
 	}
 
@@ -82,8 +83,7 @@ static int bbram_mc146818_write(const struct device *dev, size_t offset,
 	const struct bbram_mc146818_config *config = dev->config;
 	struct bbram_mc146818_data *dev_data = dev->data;
 
-	if (size < MIN_SIZE || offset + size > config->mem_size
-	    || data == NULL) {
+	if (!bbram_offset_is_valid(offset, size, config->mem_size) || data == NULL) {
 		return -EFAULT;
 	}
 
