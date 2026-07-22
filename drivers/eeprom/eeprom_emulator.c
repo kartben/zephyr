@@ -778,7 +778,9 @@ static DEVICE_API(eeprom, eeprom_emu_api) = {
 
 #define EEPROM_EMU_RAMBUF(n) \
 	COND_CODE_0(EEPROM_EMU_ENABLE_RAMBUF(n), (), \
-		(static uint8_t eeprom_emu_##n##_rambuf[DT_INST_PROP(n, size)];))
+		(static uint8_t eeprom_emu_##n##_rambuf[RECALC_SIZE( \
+			DT_INST_PROP(n, size), \
+			(PART_CBS(EEPROM_PARTITION(n), DT_INST_PROP(n, size))))];))
 
 #define EEPROM_EMU_RAMBUF_LINK(n) \
 	COND_CODE_0(EEPROM_EMU_ENABLE_RAMBUF(n), (NULL), \
