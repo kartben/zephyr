@@ -26,7 +26,7 @@ struct otp_stm32_nvm_config {
 	size_t size;
 };
 
-static void slow_otp_readout(void *buf, const uint8_t *src, size_t len)
+static void slow_otp_readout(void *buf, const uint8_t *src, size_t len, const uint8_t *end)
 {
 	uintptr_t dst = (uintptr_t)buf;
 	size_t remaining = len;
@@ -57,14 +57,17 @@ static void slow_otp_readout(void *buf, const uint8_t *src, size_t len)
 
 	if (remaining == 1) {
 		/*
-		 * Ditto as above but for unaligned last byte.
-		 * src was incremented at the end of the loop
-		 * and already points to the target halfword;
-		 * however, we keep the LSB this time since
-		 * we want the byte at lower address.
+		 * Trailing odd byte: prefer a halfword starting at src, but
+		 * if that would read past the OTP region end, read the
+		 * preceding halfword and take the high byte instead.
 		 */
-		tmp = sys_read16((mem_addr_t)src);
-		sys_write8(tmp & 0xFFu, dst);
+		if (src + 1 >= end) {
+			tmp = sys_read16((mem_addr_t)(src - 1));
+			sys_write8(tmp >> 8u, dst);
+		} else {
+			tmp = sys_read16((mem_addr_t)src);
+			sys_write8(tmp & 0xFFu, dst);
+		}
 	}
 }
 
@@ -107,7 +110,7 @@ static int otp_stm32_nvm_read(const struct device *dev, off_t offset, void *buf,
 
 		__ASSERT_NO_MSG(cur == end);
 	} else {
-		slow_otp_readout(buf, &config->base[start], len);
+		slow_otp_readout(buf, &config->base[start], len, &config->base[config->size]);
 	}
 
 	if (IS_ENABLED(CONFIG_HAS_STM32_UNCACHED_ACCESS_ONLY_OTP)) {
