@@ -15,6 +15,8 @@
 
 #include <fsl_snvs_lp.h>
 
+#include "bbram_utils.h"
+
 #define LPGPR_REG_BYTES sizeof(uint32_t)
 
 struct bbram_nxp_snvs_gpr_data {
@@ -52,7 +54,7 @@ static int bbram_nxp_snvs_gpr_read(const struct device *dev, size_t offset, size
 	SNVS_Type *base = get_base(dev);
 	size_t to_copy;
 
-	if (size < 1 || offset + size > config->size) {
+	if (!bbram_offset_is_valid(offset, size, config->size)) {
 		return -EFAULT;
 	}
 
@@ -75,7 +77,7 @@ static int bbram_nxp_snvs_gpr_write(const struct device *dev, size_t offset, siz
 	SNVS_Type *base = get_base(dev);
 	size_t to_copy;
 
-	if (size < 1 || offset + size > config->size) {
+	if (!bbram_offset_is_valid(offset, size, config->size)) {
 		return -EFAULT;
 	}
 

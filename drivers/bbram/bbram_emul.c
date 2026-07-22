@@ -9,6 +9,9 @@
 #include <string.h>
 
 #include <zephyr/logging/log.h>
+
+#include "bbram_utils.h"
+
 LOG_MODULE_REGISTER(bbram, CONFIG_BBRAM_LOG_LEVEL);
 
 /** Device config */
@@ -97,7 +100,8 @@ static int bbram_emul_read(const struct device *dev, size_t offset, size_t size,
 	const struct bbram_emul_config *config = dev->config;
 	struct bbram_emul_data *dev_data = dev->data;
 
-	if (size < 1 || offset + size > config->size || bbram_emul_check_invalid(dev)) {
+	if (!bbram_offset_is_valid(offset, size, config->size) ||
+	    bbram_emul_check_invalid(dev)) {
 		return -EFAULT;
 	}
 
@@ -111,7 +115,8 @@ static int bbram_emul_write(const struct device *dev, size_t offset, size_t size
 	const struct bbram_emul_config *config = dev->config;
 	struct bbram_emul_data *dev_data = dev->data;
 
-	if (size < 1 || offset + size > config->size || bbram_emul_check_invalid(dev)) {
+	if (!bbram_offset_is_valid(offset, size, config->size) ||
+	    bbram_emul_check_invalid(dev)) {
 		return -EFAULT;
 	}
 

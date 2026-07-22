@@ -8,6 +8,8 @@
 
 #include <zephyr/drivers/bbram.h>
 #include <errno.h>
+
+#include "bbram_utils.h"
 #include <soc.h>
 #include <zephyr/sys/util.h>
 
@@ -54,7 +56,7 @@ static int bbram_xec_read(const struct device *dev, size_t offset, size_t size,
 {
 	const struct bbram_xec_config *dcfg = dev->config;
 
-	if (size < 1 || offset + size > dcfg->size) {
+	if (!bbram_offset_is_valid(offset, size, dcfg->size)) {
 		LOG_ERR("Invalid params");
 		return -EFAULT;
 	}
@@ -68,7 +70,7 @@ static int bbram_xec_write(const struct device *dev, size_t offset, size_t size,
 {
 	const struct bbram_xec_config *dcfg = dev->config;
 
-	if (size < 1 || offset + size > dcfg->size) {
+	if (!bbram_offset_is_valid(offset, size, dcfg->size)) {
 		LOG_ERR("Invalid params");
 		return -EFAULT;
 	}

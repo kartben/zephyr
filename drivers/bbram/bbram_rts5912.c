@@ -12,6 +12,9 @@
 #include <zephyr/sys/util.h>
 
 #include <zephyr/logging/log.h>
+
+#include "bbram_utils.h"
+
 LOG_MODULE_REGISTER(rts5912_bbram, CONFIG_BBRAM_LOG_LEVEL);
 
 struct bbram_rts5912_config {
@@ -35,7 +38,7 @@ static int bbram_rts5912_read(const struct device *dev, size_t offset, size_t si
 	uint32_t word;
 	size_t start_offset, bytes_to_read;
 
-	if (size < 1 || offset + size > config->size) {
+	if (!bbram_offset_is_valid(offset, size, config->size)) {
 		LOG_ERR("Invalid params");
 		return -EFAULT;
 	}
@@ -62,7 +65,7 @@ static int bbram_rts5912_write(const struct device *dev, size_t offset, size_t s
 	uint32_t word;
 	size_t start_offset, bytes_to_write;
 
-	if (size < 1 || offset + size > config->size) {
+	if (!bbram_offset_is_valid(offset, size, config->size)) {
 		LOG_ERR("Invalid params");
 		return -EFAULT;
 	}

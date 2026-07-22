@@ -15,6 +15,8 @@
 #include <stm32_ll_rtc.h>
 #include <stm32_backup_domain.h>
 
+#include "bbram_utils.h"
+
 LOG_MODULE_REGISTER(bbram, CONFIG_BBRAM_LOG_LEVEL);
 
 #define STM32_BKP_REG_BYTES		 4
@@ -44,7 +46,7 @@ static int bbram_stm32_read(const struct device *dev, size_t offset, size_t size
 	const struct bbram_stm32_config *config = dev->config;
 	uint32_t reg, begin, to_copy;
 
-	if (size < 1 || offset + size > config->size) {
+	if (!bbram_offset_is_valid(offset, size, config->size)) {
 		return -EFAULT;
 	}
 
@@ -73,7 +75,7 @@ static int bbram_stm32_write(const struct device *dev, size_t offset, size_t siz
 	const struct bbram_stm32_config *config = dev->config;
 	uint32_t reg, begin, to_copy;
 
-	if (size < 1 || offset + size > config->size) {
+	if (!bbram_offset_is_valid(offset, size, config->size)) {
 		return -EFAULT;
 	}
 

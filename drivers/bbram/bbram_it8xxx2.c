@@ -24,6 +24,7 @@ enum bram_indices {
 };
 #endif
 
+#include "bbram_utils.h"
 #include "it8xxx2.h"
 
 LOG_MODULE_REGISTER(it8xxx2_bbram, CONFIG_BBRAM_LOG_LEVEL);
@@ -53,7 +54,7 @@ static int bbram_it8xxx2_read(const struct device *dev, size_t offset, size_t si
 {
 	const struct bbram_it8xxx2_config *config = dev->config;
 
-	if (size < 1 || offset + size > config->size) {
+	if (!bbram_offset_is_valid(offset, size, config->size)) {
 		return -EINVAL;
 	}
 
@@ -66,7 +67,7 @@ static int bbram_it8xxx2_write(const struct device *dev, size_t offset, size_t s
 {
 	const struct bbram_it8xxx2_config *config = dev->config;
 
-	if (size < 1 || offset + size > config->size) {
+	if (!bbram_offset_is_valid(offset, size, config->size)) {
 		return -EINVAL;
 	}
 

@@ -13,6 +13,7 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(npcx_bbram, CONFIG_BBRAM_LOG_LEVEL);
 
+#include "bbram_utils.h"
 #include "npcx.h"
 
 /*
@@ -83,7 +84,8 @@ static int bbram_npcx_read(const struct device *dev, size_t offset, size_t size,
 {
 	const struct bbram_npcx_config *config = dev->config;
 
-	if (size < 1 || offset + size > config->size || bbram_npcx_check_invalid(dev)) {
+	if (!bbram_offset_is_valid(offset, size, config->size) ||
+	    bbram_npcx_check_invalid(dev)) {
 		return -EINVAL;
 	}
 
@@ -96,7 +98,8 @@ static int bbram_npcx_write(const struct device *dev, size_t offset, size_t size
 {
 	const struct bbram_npcx_config *config = dev->config;
 
-	if (size < 1 || offset + size > config->size || bbram_npcx_check_invalid(dev)) {
+	if (!bbram_offset_is_valid(offset, size, config->size) ||
+	    bbram_npcx_check_invalid(dev)) {
 		return -EINVAL;
 	}
 

@@ -12,6 +12,8 @@
 #include <zephyr/drivers/i2c_emul.h>
 #include <zephyr/logging/log.h>
 
+#include "bbram_utils.h"
+
 LOG_MODULE_DECLARE(bbram_microchip_mcp7940n, CONFIG_BBRAM_LOG_LEVEL);
 
 #define MICROCHIP_MCP7940N_SRAM_OFFSET               0x20
@@ -110,7 +112,7 @@ static int mcp7940n_emul_backend_set_data(const struct emul *target, size_t offs
 {
 	struct mcp7940n_emul_data *data = target->data;
 
-	if (offset + count > MICROCHIP_MCP7940N_SRAM_SIZE) {
+	if (!bbram_offset_is_valid(offset, count, MICROCHIP_MCP7940N_SRAM_SIZE)) {
 		return -ERANGE;
 	}
 
@@ -125,7 +127,7 @@ static int mcp7940n_emul_backend_get_data(const struct emul *target, size_t offs
 {
 	struct mcp7940n_emul_data *data = target->data;
 
-	if (offset + count > MICROCHIP_MCP7940N_SRAM_SIZE) {
+	if (!bbram_offset_is_valid(offset, count, MICROCHIP_MCP7940N_SRAM_SIZE)) {
 		return -ERANGE;
 	}
 
