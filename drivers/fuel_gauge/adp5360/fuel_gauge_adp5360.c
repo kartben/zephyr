@@ -562,7 +562,7 @@ static int fuel_gauge_adp5360_set_v_soc_probe(const struct device *dev)
 
 	/* Write the v_soc values to the corresponding registers in the ADP5360 MFD */
 	ret = mfd_adp5360_reg_burst_write(mfd_dev, FUEL_GAUGE_ADP5360_REG_V_SOC_0, buf,
-					  ARRAY_SIZE(buf) - 1);
+					  ARRAY_SIZE(buf));
 	if (ret < 0) {
 		LOG_ERR("Failed to write v_soc values to ADP5360 MFD: %d", ret);
 		return ret;
