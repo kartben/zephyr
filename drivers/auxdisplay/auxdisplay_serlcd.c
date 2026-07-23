@@ -350,7 +350,7 @@ static int auxdisplay_serlcd_write(const struct device *dev, const uint8_t *text
 						(character & ~SERLCD_CUSTOM_CHAR_BITMASK);
 
 			rc = auxdisplay_serlcd_send_command(dev, command);
-			if (!rc) {
+			if (rc < 0) {
 				return rc;
 			}
 			auxdisplay_serlcd_advance_current_position(dev);
@@ -362,8 +362,8 @@ static int auxdisplay_serlcd_write(const struct device *dev, const uint8_t *text
 			 */
 			continue;
 		} else {
-			rc = i2c_write_dt(&config->bus, text, len);
-			if (!rc) {
+			rc = i2c_write_dt(&config->bus, &character, sizeof(character));
+			if (rc < 0) {
 				return rc;
 			}
 			auxdisplay_serlcd_advance_current_position(dev);
