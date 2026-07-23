@@ -78,6 +78,7 @@ static int ws2812_strip_update(const struct ws2812_i2s_cfg *cfg, void *mem_block
 {
 	uint32_t *frame = mem_block;
 	uint32_t flush_time_us;
+	size_t tx_bytes;
 	int ret;
 
 	/* Add a pre-data reset, so the first pixel isn't skipped by the strip. */
@@ -91,8 +92,14 @@ static int ws2812_strip_update(const struct ws2812_i2s_cfg *cfg, void *mem_block
 		frame[i] = ws2812_i2s_reset_word(cfg);
 	}
 
+	/* Send only the filled words (pre-reset + data + post-reset); the mem
+	 * slab is not zeroed, so transmitting the full buffer would clock out
+	 * stale data on a partial update.
+	 */
+	tx_bytes = (WS2812_I2S_PRE_DELAY_WORDS + size + cfg->reset_words) * sizeof(uint32_t);
+
 	/* Flush the buffer on the wire. */
-	ret = i2s_write(cfg->dev, mem_block, cfg->tx_buf_bytes);
+	ret = i2s_write(cfg->dev, mem_block, tx_bytes);
 	if (ret < 0) {
 		k_mem_slab_free(cfg->mem_slab, mem_block);
 		LOG_ERR("Failed to write data: %d", ret);
@@ -112,7 +119,7 @@ static int ws2812_strip_update(const struct ws2812_i2s_cfg *cfg, void *mem_block
 	}
 
 	/* Wait until transaction is over */
-	flush_time_us = cfg->lrck_period * cfg->tx_buf_bytes / sizeof(uint32_t);
+	flush_time_us = cfg->lrck_period * tx_bytes / sizeof(uint32_t);
 	k_usleep(flush_time_us + cfg->extra_wait_time_us);
 
 	return ret;
