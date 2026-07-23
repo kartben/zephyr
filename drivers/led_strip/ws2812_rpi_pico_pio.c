@@ -116,13 +116,13 @@ static inline uint32_t ws2812_led_strip_map_color(const struct device *dev, stru
 	for (size_t j = 0; j < config->num_colors; j++) {
 		switch (config->color_mapping[j]) {
 		case LED_COLOR_ID_RED:
-			color |= pixel->r << (8 * (2 - j));
+			color |= (uint32_t)pixel->r << (8 * (config->num_colors - 1 - j));
 			break;
 		case LED_COLOR_ID_GREEN:
-			color |= pixel->g << (8 * (2 - j));
+			color |= (uint32_t)pixel->g << (8 * (config->num_colors - 1 - j));
 			break;
 		case LED_COLOR_ID_BLUE:
-			color |= pixel->b << (8 * (2 - j));
+			color |= (uint32_t)pixel->b << (8 * (config->num_colors - 1 - j));
 			break;
 		/* White channel is not supported by LED strip API. */
 		case LED_COLOR_ID_WHITE:
