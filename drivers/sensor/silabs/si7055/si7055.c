@@ -75,9 +75,13 @@ static int si7055_get_temperature(const struct device *dev)
  * @return 0
  */
 static int si7055_sample_fetch(const struct device *dev,
-			       enum sensor_channel chan)
+                               enum sensor_channel chan)
 {
 	int retval;
+
+	if (chan != SENSOR_CHAN_ALL && chan != SENSOR_CHAN_AMBIENT_TEMP) {
+		return -ENOTSUP;
+	}
 
 	retval = si7055_get_temperature(dev);
 
