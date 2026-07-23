@@ -1508,6 +1508,15 @@ def install_static_assets_as_needed(
 
 
 def load_board_catalog_into_domain(app: Sphinx) -> None:
+    if app.tags.has("skip_external_content"):
+        # Everything that consumes the board catalog (the board pages, the board
+        # catalog page, the code-sample listings, ...) comes from external
+        # content, so generating it would only slow the build down. The domain's
+        # initial_data already provides empty catalog entries, and
+        # zephyr.partial_build degrades any reference into the missing pages.
+        logger.info("skip_external_content active: not generating the board catalog")
+        return
+
     board_catalog = get_catalog(
         generate_hw_features=(
             app.builder.format == "html" and app.config.zephyr_generate_hw_features
