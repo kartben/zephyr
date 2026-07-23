@@ -1,0 +1,17 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	aliases {
+		pad-link = &uart1;
+	};
+};
+
+/* Keep the framebuffer small so software rendering stays responsive. */
+&ramfb0 {
+	width = <480>;
+	height = <272>;
+};

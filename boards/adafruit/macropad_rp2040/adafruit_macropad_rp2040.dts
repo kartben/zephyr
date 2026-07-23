@@ -124,6 +124,7 @@
 		steps-per-period = <4>;
 		sample-time-us = <2000>;
 		idle-timeout-ms = <200>;
+		invert-direction;
 	};
 
 	stemma_connector: stemma_connector {
