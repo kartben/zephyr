@@ -827,7 +827,7 @@ static int mcux_mipi_dsi_init(const struct device *dev)
 
 #define MCUX_MIPI_DSI_DEVICE(id)								\
 	COND_CODE_1(CONFIG_MIPI_DSI_MCUX_2L_SMARTDMA,						\
-	(), (static void mipi_dsi_##n##_irq_config_func(const struct device *dev)		\
+	(), (static void mipi_dsi_##id##_irq_config_func(const struct device *dev)		\
 	{											\
 		IRQ_CONNECT(DT_INST_IRQN(id), DT_INST_IRQ(id, priority),			\
 			mipi_dsi_isr, DEVICE_DT_INST_GET(id), 0);				\
@@ -838,7 +838,7 @@ static int mcux_mipi_dsi_init(const struct device *dev)
 		MCUX_DSI_DPI_CONFIG(id)								\
 		COND_CODE_1(CONFIG_MIPI_DSI_MCUX_2L_SMARTDMA,					\
 		(.smart_dma = DEVICE_DT_GET(DT_INST_DMAS_CTLR_BY_NAME(id, smartdma)),),		\
-		(.irq_config_func = mipi_dsi_##n##_irq_config_func,))				\
+		(.irq_config_func = mipi_dsi_##id##_irq_config_func,))				\
 		COND_CODE_1(CONFIG_MIPI_DSI_MCUX_NXP_DCNANO_LCDIF,				\
 		(.mipi_dbi = DEVICE_DT_GET(DT_NODELABEL(zephyr_lcdif)),), ())			\
 		.base = (MIPI_DSI_HOST_Type *)DT_INST_REG_ADDR(id),				\
