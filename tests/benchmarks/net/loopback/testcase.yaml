@@ -1,0 +1,18 @@
+common:
+  tags:
+    - net
+    - benchmark
+  # The benchmark measures host wall-clock time via the native simulator
+  # real time clock, so it can only run on native_sim.
+  platform_allow:
+    - native_sim
+    - native_sim/native/64
+  timeout: 600
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - "BENCH DONE"
+
+tests:
+  benchmark.net.loopback: {}
