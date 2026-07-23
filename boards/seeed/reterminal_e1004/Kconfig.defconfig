@@ -1,0 +1,52 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_RETERMINAL_E1004_ESP32S3_PROCPU
+
+if FUEL_GAUGE
+
+# Composite fuel gauge gets battery voltage from ADC-based voltage-divider sensor
+
+config ADC
+	default y
+
+config SENSOR
+	default y
+
+endif # FUEL_GAUGE
+
+if DISPLAY
+
+# The display driver's full-frame conversion buffer (~940 KiB for the
+# 1200x1600 panel) does not fit in internal SRAM, place it in PSRAM.
+
+config ESP_SPIRAM
+	default y
+
+config ESP_SPIRAM_BSS_RELOC_LIBS_AND_OBJS
+	default "libdrivers__display.a"
+
+endif # DISPLAY
+
+if LVGL
+
+choice LV_COLOR_DEPTH
+	default LV_COLOR_DEPTH_24
+endchoice
+
+config LV_Z_FULL_REFRESH
+	default y
+
+config LV_Z_VDB_CUSTOM_SECTION
+	default y
+
+config ESP_SPIRAM
+	default y
+
+endif # LVGL
+
+choice SPIRAM_MODE
+	default SPIRAM_MODE_OCT
+endchoice
+
+endif # BOARD_RETERMINAL_E1004_ESP32S3_PROCPU
