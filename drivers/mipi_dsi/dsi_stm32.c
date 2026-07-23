@@ -415,7 +415,7 @@ static ssize_t mipi_dsi_stm32_transfer(const struct device *dev, uint8_t channel
 		len = msg->tx_len;
 		break;
 	case MIPI_DSI_GENERIC_LONG_WRITE:
-		ret = HAL_DSI_LongWrite(&data->hdsi, channel, msg->type, msg->tx_len,
+		ret = HAL_DSI_LongWrite(&data->hdsi, channel, msg->type, msg->tx_len - 1,
 					((uint8_t *)msg->tx_buf)[0], &((uint8_t *)msg->tx_buf)[1]);
 		len = msg->tx_len;
 		break;
