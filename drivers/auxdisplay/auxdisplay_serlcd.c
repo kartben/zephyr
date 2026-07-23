@@ -290,7 +290,7 @@ static int auxdisplay_serlcd_custom_character_set(const struct device *dev,
 	character->character_code = SERLCD_CUSTOM_CHAR_INDEX_BASE | char_index;
 
 	rc = auxdisplay_serlcd_send_command(dev, SERLCD_COMMAND_SET_CUSTOM_CHAR + char_index);
-	if (!rc) {
+	if (rc < 0) {
 		return rc;
 	}
 
@@ -307,7 +307,7 @@ static int auxdisplay_serlcd_custom_character_set(const struct device *dev,
 			}
 		}
 		rc = i2c_write_dt(&config->bus, &buffer, sizeof(buffer));
-		if (!rc) {
+		if (rc < 0) {
 			return rc;
 		}
 	}
