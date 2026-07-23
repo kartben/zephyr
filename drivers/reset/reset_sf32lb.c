@@ -11,6 +11,7 @@
 #include <zephyr/drivers/reset.h>
 
 #define SF32LB_RESET_OFFSET(id) ((((id) >> 5U) & 0x1U) << 2U)
+#define SF32LB_RESET_BIT(id)    ((id) & 0x1FU)
 
 struct sf32lb_reset_config {
 	uintptr_t base;
@@ -20,7 +21,7 @@ static int sf32lb_reset_status(const struct device *dev, uint32_t id, uint8_t *s
 {
 	const struct sf32lb_reset_config *config = dev->config;
 
-	*status = !!sys_test_bit(config->base + SF32LB_RESET_OFFSET(id), id);
+	*status = !!sys_test_bit(config->base + SF32LB_RESET_OFFSET(id), SF32LB_RESET_BIT(id));
 
 	return 0;
 }
@@ -29,7 +30,7 @@ static int sf32lb_reset_line_assert(const struct device *dev, uint32_t id)
 {
 	const struct sf32lb_reset_config *config = dev->config;
 
-	sys_set_bit(config->base + SF32LB_RESET_OFFSET(id), id);
+	sys_set_bit(config->base + SF32LB_RESET_OFFSET(id), SF32LB_RESET_BIT(id));
 
 	return 0;
 }
@@ -38,7 +39,7 @@ static int sf32lb_reset_line_deassert(const struct device *dev, uint32_t id)
 {
 	const struct sf32lb_reset_config *config = dev->config;
 
-	sys_clear_bit(config->base + SF32LB_RESET_OFFSET(id), id);
+	sys_clear_bit(config->base + SF32LB_RESET_OFFSET(id), SF32LB_RESET_BIT(id));
 
 	return 0;
 }
