@@ -111,7 +111,7 @@ static inline uint8_t tlc5971_data_byte27(uint8_t control_data)
  */
 static inline uint8_t tlc5971_data_byte26(uint8_t control_data, uint8_t gbc_color_1)
 {
-	return FIELD_PREP(TLC5971_BYTE26_CTRL_MASK, control_data) |
+	return (control_data & TLC5971_BYTE26_CTRL_MASK) |
 	       FIELD_PREP(TLC5971_BYTE26_GBC1_MASK, (gbc_color_1 >> 2));
 }
 
