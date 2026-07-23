@@ -1,0 +1,19 @@
+# Copyright (c) 2026 The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config VIRTIO_GPU_DISPLAY
+	bool "VIRTIO GPU display"
+	default y
+	depends on DT_HAS_VIRTIO_GPU_ENABLED
+	select VIRTIO
+	help
+	  Enable the VIRTIO GPU 2D display driver.
+
+config VIRTIO_GPU_DISPLAY_QUEUE_SIZE
+	int "VIRTIO GPU virtqueue size"
+	depends on VIRTIO_GPU_DISPLAY
+	default 16
+	range 2 256
+	help
+	  Number of descriptors allocated for each VIRTIO GPU virtqueue. This
+	  value must be a power of two.

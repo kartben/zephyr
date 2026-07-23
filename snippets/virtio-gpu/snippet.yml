@@ -1,0 +1,22 @@
+name: virtio-gpu
+description: Use a VIRTIO GPU as the display on supported QEMU boards.
+
+boards:
+  qemu_x86:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: boards/qemu_x86.overlay
+  qemu_x86/atom:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: boards/qemu_x86.overlay
+  qemu_x86/atom/nopae:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: boards/qemu_x86.overlay
+  qemu_x86/atom/xip:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: boards/qemu_x86.overlay
+  qemu_x86/atom/nommu:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: boards/qemu_x86.overlay
+  qemu_x86_64:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: boards/qemu_x86.overlay

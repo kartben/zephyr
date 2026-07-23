@@ -1,0 +1,27 @@
+/*
+ * Copyright (c) 2026 The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	chosen {
+		zephyr,display = &virtio_gpu0;
+	};
+};
+
+&ramfb0 {
+	status = "disabled";
+};
+
+&virtio_gpu_pci {
+	status = "okay";
+};
+
+&virtio_gpu0 {
+	status = "okay";
+};
+
+&input0 {
+	display = <&virtio_gpu0>;
+};

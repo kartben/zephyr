@@ -21,6 +21,11 @@ tests:
     harness: none
     integration_platforms:
       - native_sim/native/64
+  sample.display.lvgl.virtio_gpu:
+    build_only: true
+    extra_args: SNIPPET=virtio-gpu
+    platform_allow:
+      - qemu_x86
   sample.display.lvgl.rk055hdmipi4m:
     tags: shield
     # This sample is intended to test the RT1170 and RT595, which require

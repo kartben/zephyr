@@ -72,6 +72,16 @@ if(CONFIG_INPUT_VIRTIO)
   set(QEMU_VIRTIO_INPUT_FLAGS -device virtio-tablet-pci,addr=05.0,id=input0)
 endif()
 
+if(CONFIG_VIRTIO_GPU_DISPLAY)
+  dt_chosen(virtio_gpu_display_path PROPERTY "zephyr,display")
+  dt_prop(QEMU_VIRTIO_GPU_XRES PATH "${virtio_gpu_display_path}" PROPERTY "width" REQUIRED)
+  dt_prop(QEMU_VIRTIO_GPU_YRES PATH "${virtio_gpu_display_path}" PROPERTY "height" REQUIRED)
+  set(QEMU_VIRTIO_GPU_FLAGS
+    -device virtio-gpu-pci,addr=06.0,xres=${QEMU_VIRTIO_GPU_XRES},yres=${QEMU_VIRTIO_GPU_YRES},edid=off
+    -vga none
+  )
+endif()
+
 set(QEMU_FLAGS_${ARCH}
   -m ${QEMU_MEMORY_SIZE_MB}
   -cpu ${QEMU_CPU_TYPE_${ARCH}}${QEMU_CPU_FLAGS}
@@ -79,6 +89,7 @@ set(QEMU_FLAGS_${ARCH}
   -device isa-debug-exit,iobase=0xf4,iosize=0x04
   ${QEMU_VIRTIO_ENTROPY_FLAGS}
   ${QEMU_VIRTIO_INPUT_FLAGS}
+  ${QEMU_VIRTIO_GPU_FLAGS}
   ${REBOOT_FLAG}
   )
 
