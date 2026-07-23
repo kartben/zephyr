@@ -96,7 +96,7 @@ static int acp_tdm_dai_set_config(const struct device *dev, const struct dai_con
 	if (params && params->tdm_slots) {
 		acp_cfg->acp_params->tdm_slots = params->tdm_slots;
 	}
-	acp_cfg->acp_params->sample_format = params->sample_format;
+	acp_cfg->acp_params->sample_format = params ? params->sample_format : 0;
 	LOG_DBG("tdm config: tdm_inst=%u rate=%u slots=%u format=0x%x", acp_cfg->dai_index,
 		acp_cfg->acp_params->fsync_rate, acp_cfg->acp_params->tdm_slots, cfg->format);
 
