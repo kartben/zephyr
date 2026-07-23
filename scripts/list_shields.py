@@ -128,8 +128,8 @@ def add_args_formatting(parser):
     parser.add_argument("--json", action='store_true',
                         help='''output list of shields in JSON format''')
 
-def dump_shields(shields):
-    if args.json:
+def dump_shields(shields, as_json):
+    if as_json:
         print(
             json.dumps([{'dir': shield.dir.as_posix(), 'name': shield.name} for shield in shields])
         )
@@ -139,4 +139,4 @@ def dump_shields(shields):
 
 if __name__ == '__main__':
     args = parse_args()
-    dump_shields(find_shields(args))
+    dump_shields(find_shields(args), args.json)

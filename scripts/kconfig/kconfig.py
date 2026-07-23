@@ -16,6 +16,10 @@
 # Also does various checks (most via Kconfiglib warnings).
 
 import argparse
+import contextlib
+import glob
+import hashlib
+import io
 import json
 import os
 import pickle
@@ -45,6 +49,14 @@ def main():
 
     if args.zephyr_base:
         os.environ['ZEPHYR_BASE'] = args.zephyr_base
+
+    if stamp_is_up_to_date(args):
+        return
+
+    # Capture everything this script prints to stderr (warnings) so that it
+    # can be stored in the stamp file and replayed on later runs where the
+    # reparse is skipped.
+    sys.stderr = _Tee(sys.stderr)
 
     print("Parsing " + args.kconfig_file)
     kconf = Kconfig(args.kconfig_file, warn_to_stderr=False,
@@ -145,6 +157,218 @@ def main():
 
     # Write the list of parsed Kconfig files to a file
     write_kconfig_filenames(kconf, args.kconfig_list_out)
+
+    write_stamp(args, kconf)
+
+
+# The stamp file allows kconfig.py to skip the full Kconfig parse on later
+# runs when it can prove that nothing which could influence any of its outputs
+# has changed. A full Zephyr Kconfig tree parse takes seconds, and CMake
+# reruns this script on every (re)configure, usually with everything
+# unchanged.
+#
+# The stamp records, from the last successful run:
+#
+# - the command line arguments,
+# - name and value of every environment variable that can influence parsing:
+#   the variables kconfiglib and kconfigfunctions read directly, plus every
+#   variable the Kconfig files referenced,
+# - the content (mtime/size, with a content hash fallback) of every parsed
+#   Kconfig file, every input configuration file, this script and its helper
+#   modules, and the EDT pickle consulted by the devicetree preprocessor
+#   functions,
+# - every 'source' statement pattern and the set of files it matched, so that
+#   adding a file which an 'osource' would now pick up invalidates the stamp,
+# - the content hash of every output file, so that externally modified or
+#   deleted outputs (e.g. a hand-edited .config) trigger a full run,
+# - the standard error output of the run, so warnings can be replayed.
+#
+# Any mismatch, error, or unexpected content simply results in a full run,
+# which rewrites the stamp. Set the ZEPHYR_KCONFIG_NO_SKIP environment
+# variable to a non-empty value to disable the mechanism entirely.
+
+STAMP_VERSION = 1
+
+_STAMP_ENV_VARS = (
+    # Read by kconfiglib.
+    "srctree",
+    "CONFIG_",
+    "KCONFIG_ALLCONFIG",
+    "KCONFIG_AUTOHEADER",
+    "KCONFIG_AUTOHEADER_HEADER",
+    "KCONFIG_CONFIG",
+    "KCONFIG_CONFIG_HEADER",
+    "KCONFIG_FUNCTIONS",
+    "KCONFIG_STRICT",
+    "KCONFIG_WARN_UNDEF",
+    "KCONFIG_WARN_UNDEF_ASSIGN",
+    # Read by kconfigfunctions.
+    "EDT_PICKLE",
+    "KCONFIG_DOC_MODE",
+    "SHIELD_AS_LIST",
+    "ZEPHYR_BASE",
+)
+
+
+class _Tee:
+    # Duplicates writes to 'stream' into an in-memory buffer.
+
+    def __init__(self, stream):
+        self.stream = stream
+        self.buffer = io.StringIO()
+
+    def write(self, data):
+        self.stream.write(data)
+        self.buffer.write(data)
+
+    def flush(self):
+        self.stream.flush()
+
+
+def stamp_path(args):
+    # One stamp per command line variant: the build system alternates between
+    # invoking this script with the handwritten configuration fragments and
+    # with the generated .config as input, and each variant can be skipped
+    # independently when nothing relevant to it has changed.
+    argv_tag = hashlib.sha256(
+        "\0".join(sys.argv[1:]).encode('utf-8')).hexdigest()[:12]
+    return f"{args.config_out}-stamp-{argv_tag}.json"
+
+
+def _file_digest(path):
+    with open(path, 'rb') as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
+
+def _stamp_file_entry(path):
+    st = os.stat(path)
+    return [path, st.st_mtime_ns, st.st_size, _file_digest(path)]
+
+
+def _stamp_input_files(args, kconf):
+    paths = {os.path.join(kconf.srctree, path)
+             for path in kconf.kconfig_filenames}
+    paths.update(args.configs_in)
+    # The scripts implementing the Kconfig processing.
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    paths.add(os.path.abspath(__file__))
+    paths.add(os.path.join(script_dir, "kconfiglib.py"))
+    paths.add(os.path.join(script_dir, "kconfigfunctions.py"))
+    # The devicetree the Kconfig preprocessor functions consult.
+    edt_pickle = os.environ.get("EDT_PICKLE")
+    if edt_pickle and os.path.exists(edt_pickle):
+        paths.add(edt_pickle)
+    return sorted(paths)
+
+
+def write_stamp(args, kconf):
+    try:
+        stamp = {
+            "version": STAMP_VERSION,
+            "argv": sys.argv[1:],
+            "env": {name: os.environ.get(name) for name in
+                    sorted(set(_STAMP_ENV_VARS) | kconf.env_vars)},
+            "files": [_stamp_file_entry(p) for p in
+                      _stamp_input_files(args, kconf)],
+            "globs": [[pattern, matches] for pattern, matches in
+                      kconf.source_globs],
+            "outputs": [[p, _file_digest(p)] for p in
+                        (args.config_out, args.header_out,
+                         args.kconfig_list_out,
+                         args.config_out + '-trace.pickle',
+                         args.config_out + '-trace.json')],
+            "stderr": sys.stderr.buffer.getvalue(),
+        }
+        with open(stamp_path(args), 'w', encoding='utf-8') as f:
+            json.dump(stamp, f)
+    except Exception:
+        # A missing stamp only means the next run is a full run.
+        with contextlib.suppress(OSError):
+            os.unlink(stamp_path(args))
+
+
+def _first_changed_glob(recorded):
+    # Returns the first recorded source pattern whose set of matched files
+    # would differ on a re-parse, or None.
+    for pattern, matches in recorded:
+        if glob.has_magic(pattern):
+            if sorted(glob.iglob(pattern)) != matches:
+                return pattern
+        else:
+            # For a pattern without wildcards, iglob() returns [pattern] if
+            # the path exists and [] otherwise, so a stat is all it takes.
+            if matches != ([pattern] if os.path.lexists(pattern) else []):
+                return pattern
+    return None
+
+
+def _first_changed_file(recorded):
+    # Returns the first recorded input file which changed, or None.
+    for path, mtime_ns, size, digest in recorded:
+        try:
+            st = os.stat(path)
+        except OSError:
+            return path
+        if st.st_mtime_ns == mtime_ns and st.st_size == size:
+            continue
+        # A rewritten file: fall back to comparing content. Several generated
+        # input files (e.g. the devicetree Kconfig and the EDT pickle) are
+        # rewritten with identical content on every configure.
+        if st.st_size != size or _file_digest(path) != digest:
+            return path
+    return None
+
+
+def _stamp_debug(reason):
+    if os.environ.get("ZEPHYR_KCONFIG_STAMP_DEBUG"):
+        print(f"kconfig stamp: full run: {reason}", file=sys.stderr)
+
+
+def stamp_is_up_to_date(args):
+    if os.environ.get("ZEPHYR_KCONFIG_NO_SKIP"):
+        return False
+
+    try:
+        with open(stamp_path(args), encoding='utf-8') as f:
+            stamp = json.load(f)
+
+        if stamp["version"] != STAMP_VERSION:
+            _stamp_debug("stamp version changed")
+            return False
+        if stamp["argv"] != sys.argv[1:]:
+            _stamp_debug(f"arguments changed: {stamp['argv']} "
+                         f"-> {sys.argv[1:]}")
+            return False
+        for name, value in stamp["env"].items():
+            if os.environ.get(name) != value:
+                _stamp_debug(f"environment variable {name} changed")
+                return False
+        for path, digest in stamp["outputs"]:
+            if _file_digest(path) != digest:
+                _stamp_debug(f"output changed or missing: {path}")
+                return False
+        changed = _first_changed_file(stamp["files"])
+        if changed is not None:
+            _stamp_debug(f"input changed: {changed}")
+            return False
+        changed = _first_changed_glob(stamp["globs"])
+        if changed is not None:
+            _stamp_debug(f"sourced files changed for: {changed}")
+            return False
+    except Exception as e:
+        _stamp_debug(f"no usable stamp ({e!r})")
+        return False
+
+    # Nothing that can influence the outputs has changed and the outputs
+    # themselves are intact: skip the parse and replay the warnings of the
+    # previous run, which would be generated again by a full run.
+    print("Kconfig configuration is up to date "
+          "(inputs unchanged since the last run, skipping the reparse; "
+          "set ZEPHYR_KCONFIG_NO_SKIP=1 to force a full run)")
+    err_output = stamp.get("stderr", "")
+    if err_output:
+        sys.stderr.write(err_output)
+    return True
 
 
 def check_no_promptless_assign(kconf):

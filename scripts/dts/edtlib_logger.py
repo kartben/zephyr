@@ -30,4 +30,7 @@ def setup_edtlib_logging() -> None:
 
     logger = logging.getLogger('edtlib')
     logger.setLevel(logging.WARNING)
+    # Replace any handler installed by an earlier call, so that scripts
+    # running in the same process do not produce duplicated log output.
+    logger.handlers.clear()
     logger.addHandler(handler)

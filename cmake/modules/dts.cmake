@@ -313,7 +313,17 @@ function(dts_edt_pickle)
   endif()
 
   string(REPLACE ";" " " EXTRA_DTC_FLAGS_RAW "${EXTRA_DTC_FLAGS}")
-  set(cmd_gen_edt ${PYTHON_EXECUTABLE} ${GEN_EDT_SCRIPT}
+
+  # Run GEN_EDT_SCRIPT, GEN_DEFINES_SCRIPT and GEN_DRIVER_KCONFIG_SCRIPT in a
+  # single Python process through the dts_pipeline.py driver. This saves two
+  # interpreter startups and repeated imports of the devicetree libraries on
+  # every configure. Each stage behaves exactly as if it had been invoked on
+  # its own. Note that gen_defines reads the freshly written
+  # ${EDT_PICKLE}.new, since ${EDT_PICKLE} is only updated below, after the
+  # pipeline has finished.
+  execute_process(
+    COMMAND ${PYTHON_EXECUTABLE} ${ZEPHYR_BASE}/scripts/dts/dts_pipeline.py
+    gen_edt
     --dts ${DTS_POST_CPP}
     --dtc-flags '${EXTRA_DTC_FLAGS_RAW}'
     --bindings-dirs ${CACHED_DTS_ROOT_BINDINGS}
@@ -321,10 +331,15 @@ function(dts_edt_pickle)
     --dts-out ${ZEPHYR_DTS}.new # for debugging and dtc
     --edt-pickle-out ${EDT_PICKLE}.new
     ${EXTRA_GEN_EDT_ARGS}
-  )
-
-  execute_process(
-    COMMAND ${cmd_gen_edt}
+    --then gen_defines
+    --header-out ${DEVICETREE_GENERATED_H}.new
+    --deps-out ${DEVICETREE_BINDINGS_USED}
+    --edt-pickle ${EDT_PICKLE}.new
+    --zephyr-base ${ZEPHYR_BASE}
+    ${EXTRA_GEN_DEFINES_ARGS}
+    --then gen_driver_kconfig_dts
+    --kconfig-out ${DTS_KCONFIG}
+    --bindings-dirs ${CACHED_DTS_ROOT_BINDINGS}
     WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
     COMMAND_ERROR_IS_FATAL ANY
   )
@@ -337,22 +352,10 @@ endfunction()
 
 function(dts_gen_defines)
   #
-  # Run GEN_DEFINES_SCRIPT.
+  # Post-process the GEN_DEFINES_SCRIPT output written by the pipeline in
+  # dts_edt_pickle().
   #
 
-  set(cmd_gen_defines ${PYTHON_EXECUTABLE} ${GEN_DEFINES_SCRIPT}
-    --header-out ${DEVICETREE_GENERATED_H}.new
-    --deps-out ${DEVICETREE_BINDINGS_USED}
-    --edt-pickle ${EDT_PICKLE}
-    --zephyr-base ${ZEPHYR_BASE}
-    ${EXTRA_GEN_DEFINES_ARGS}
-  )
-
-  execute_process(
-    COMMAND ${cmd_gen_defines}
-    WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
-    COMMAND_ERROR_IS_FATAL ANY
-  )
   zephyr_file_copy(${DEVICETREE_GENERATED_H}.new ${DEVICETREE_GENERATED_H} ONLY_IF_DIFFERENT)
   file(REMOVE ${DEVICETREE_GENERATED_H}.new)
   message(STATUS "Generated devicetree_generated.h: ${DEVICETREE_GENERATED_H}")
@@ -365,19 +368,10 @@ endfunction()
 
 function(dts_gen_driver_kconfig)
   #
-  # Run GEN_DRIVER_KCONFIG_SCRIPT.
+  # GEN_DRIVER_KCONFIG_SCRIPT already ran as part of the pipeline in
+  # dts_edt_pickle() and wrote ${DTS_KCONFIG} directly; nothing is left to do
+  # here. The function is kept so existing dts_init() flows keep working.
   #
-
-  execute_process(
-    COMMAND ${PYTHON_EXECUTABLE} ${GEN_DRIVER_KCONFIG_SCRIPT}
-    --kconfig-out ${DTS_KCONFIG}
-    --bindings-dirs ${CACHED_DTS_ROOT_BINDINGS}
-    WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
-    RESULT_VARIABLE ret
-  )
-  if(NOT "${ret}" STREQUAL "0")
-    message(FATAL_ERROR "gen_driver_kconfig_dts.py failed with return code: ${ret}")
-  endif()
 endfunction()
 
 function(dts_import)
