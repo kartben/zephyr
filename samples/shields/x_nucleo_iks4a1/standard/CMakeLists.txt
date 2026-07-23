@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-cmake_minimum_required(VERSION 3.20.0)
+cmake_minimum_required(VERSION 3.28.3)
 
 # This sample is specific to x_nucleo_iks4a1 shield. Enforce -DSHIELD option
 set(SHIELD x_nucleo_iks4a1)

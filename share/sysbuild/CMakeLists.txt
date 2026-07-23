@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.28.3)
 
 
 if(NOT DEFINED APP_DIR AND DEFINED ENV{APP_DIR})

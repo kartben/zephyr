@@ -111,6 +111,11 @@ Deprecated APIs and options
   * The :c:struct:`audio_codec_api` struct has been deprecated. Audio codec drivers are now
     expected to use the :c:macro:`DEVICE_API` macro to declare their driver API.
 
+* Build system
+
+  * The ``zephyr_file_copy()`` CMake function has been deprecated. Use the native
+    ``file(COPY_FILE ...)`` CMake command instead.
+
 * CPU Load
 
   * :kconfig:option:`CONFIG_CPU_LOAD_METRIC` and :c:func:`cpu_load_metric_get` are deprecated. The
@@ -378,6 +383,12 @@ Devicetree
 
 Other notable changes
 *********************
+
+* Build system
+
+  * The minimum required CMake version has been raised to 3.28.3, the version available in the
+    Ubuntu 24.04 LTS package repositories. See the :ref:`migration guide <migration_4.5>` for
+    options if your distribution ships an older version.
 
 * Kernel
 
