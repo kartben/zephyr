@@ -111,6 +111,11 @@ Deprecated APIs and options
   * The :c:struct:`audio_codec_api` struct has been deprecated. Audio codec drivers are now
     expected to use the :c:macro:`DEVICE_API` macro to declare their driver API.
 
+* Build system
+
+  * The ``zephyr_file_copy()`` CMake function has been deprecated. Use the native
+    ``file(COPY_FILE ...)`` CMake command instead.
+
 * CPU Load
 
   * :kconfig:option:`CONFIG_CPU_LOAD_METRIC` and :c:func:`cpu_load_metric_get` are deprecated. The
@@ -378,6 +383,21 @@ Devicetree
 
 Other notable changes
 *********************
+
+* Build system
+
+  * The minimum required CMake version has been raised to 3.28.0, a version satisfied by the CMake package in the
+    Ubuntu 24.04 LTS package repositories. See the :ref:`migration guide <migration_4.5>` for
+    options if your distribution ships an older version.
+
+  * The configure-time generation of devicetree Kconfig symbols
+    (``gen_driver_kconfig_dts.py``) has been optimized, reducing overall configuration time.
+
+  * SPDX SBOM generation is now self-contained: a new ``spdx`` build system target generates
+    the SBOM in a single step (``west build -t spdx``), without requiring
+    :kconfig:option:`CONFIG_BUILD_OUTPUT_META` to be enabled or any other prior setup, and
+    ``west spdx`` enables the CMake file-based API on demand, so running ``west spdx --init``
+    before building is no longer needed. See :ref:`west-spdx` for details.
 
 * Kernel
 
