@@ -218,7 +218,7 @@ static int ws2812_led_strip_dma_setup(const struct device *dev)
 	/* in pio_get_dreq, true => tx */
 	dma_cfg->dma_slot = RPI_PICO_DMA_DREQ_TO_SLOT(pio_get_dreq(pio, data->sm, true));
 
-	block_cfg->block_size = dev_cfg->length;
+	block_cfg->block_size = dev_cfg->length * sizeof(uint32_t);
 	dma_cfg->dma_callback = ws2812_led_strip_dma_callback;
 
 	block_cfg->dest_address = (uint32_t)&pio->txf[data->sm];
