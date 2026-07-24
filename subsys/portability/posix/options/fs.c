@@ -143,17 +143,11 @@ int unlink(const char *path)
 int stat(const char *path, struct stat *buf)
 {
 	int rc;
-	struct fs_statvfs stat_vfs;
 	struct fs_dirent stat_file;
+	const unsigned long blksize = 512;
 
 	if (buf == NULL) {
 		errno = EBADF;
-		return -1;
-	}
-
-	rc = fs_statvfs(path, &stat_vfs);
-	if (rc < 0) {
-		errno = -rc;
 		return -1;
 	}
 
@@ -177,12 +171,8 @@ int stat(const char *path, struct stat *buf)
 		return -1;
 	}
 	buf->st_size = stat_file.size;
-	buf->st_blksize = stat_vfs.f_bsize;
-	/*
-	 * This is a best effort guess, as this information is not provided
-	 * by the fs_stat function.
-	 */
-	buf->st_blocks = (stat_file.size + stat_vfs.f_bsize - 1) / stat_vfs.f_bsize;
+	buf->st_blksize = blksize;
+	buf->st_blocks = (stat_file.size + blksize - 1) / blksize;
 
 	return 0;
 }

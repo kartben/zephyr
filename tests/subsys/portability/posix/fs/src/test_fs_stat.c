@@ -73,10 +73,15 @@ ZTEST(posix_fs_stat_test, test_fs_stat_file)
 	zassert_equal(0, stat(TEST_FILE, &buf));
 	zassert_equal(TEST_FILE_SIZE, buf.st_size);
 	zassert_equal(S_IFREG, buf.st_mode);
+	zassert_not_equal(0, buf.st_blksize);
+	zassert_equal((TEST_FILE_SIZE + buf.st_blksize - 1) / buf.st_blksize, buf.st_blocks);
 
 	zassert_equal(0, stat(TEST_DIR_FILE, &buf));
 	zassert_equal(TEST_DIR_FILE_SIZE, buf.st_size);
 	zassert_equal(S_IFREG, buf.st_mode);
+	zassert_not_equal(0, buf.st_blksize);
+	zassert_equal((TEST_DIR_FILE_SIZE + buf.st_blksize - 1) / buf.st_blksize,
+		      buf.st_blocks);
 
 	zassert_not_equal(0, stat(TEST_ROOT "foo.txt", &buf));
 	zassert_not_equal(0, stat("", &buf));
