@@ -6,6 +6,12 @@ tests:
       - i2s
     filter: not CONFIG_I2S_TEST_USE_GPIO_LOOPBACK
     platform_exclude:
+      # The QEMU boards expose I2S through virtio-sound, which has no loopback
+      # path, so this suite cannot verify transmitted data on them.
+      - qemu_cortex_a53
+      - qemu_riscv64
+      - qemu_x86
+      - qemu_x86_64
       - nrf54h20dk/nrf54h20/cpuapp
       - mimxrt1060_evk/mimxrt1062/qspi
       - mimxrt1180_evk/mimxrt1189/cm33

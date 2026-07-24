@@ -9,6 +9,8 @@ toolchain:
   - cross-compile
 ram: 131072
 flash: 65536
+supported:
+  - i2s
 testing:
   default: true
   ignore_tags:

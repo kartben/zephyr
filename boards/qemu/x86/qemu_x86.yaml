@@ -9,6 +9,7 @@ toolchain:
   - zephyr
   - llvm
 supported:
+  - i2s
   - pci
   - nvs
   - netif:serial-net

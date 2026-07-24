@@ -39,4 +39,4 @@
 	};
 };
 
-/* virtio_mmio3 hosts the virtio,input device provided by the board. */
+/* virtio_mmio3 and virtio_mmio4 host the input and sound devices from the board. */

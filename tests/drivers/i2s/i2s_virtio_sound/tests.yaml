@@ -1,0 +1,17 @@
+tests:
+  drivers.i2s.virtio_sound:
+    depends_on: i2s
+    tags:
+      - drivers
+      - i2s
+      - virtio
+    harness: ztest
+    slow: true
+    filter: dt_compat_enabled("virtio,sound")
+    platform_allow:
+      - qemu_cortex_a53
+      - qemu_riscv64
+      - qemu_x86
+      - qemu_x86_64
+    integration_platforms:
+      - qemu_cortex_a53
