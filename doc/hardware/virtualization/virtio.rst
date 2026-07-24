@@ -125,8 +125,9 @@ will be invoked once the device returns the given descriptor chain. After that, 
 
 Guest-side Virtio drivers
 *************************
-Currently Zephyr provides drivers for Virtio over PCI and Virtio over MMIO and drivers for two devices using virtio - virtiofs, used
-to access the filesystem of the host and virtio-entropy, used as an entropy source.
+Currently Zephyr provides drivers for Virtio over PCI and Virtio over MMIO, along with drivers for
+several devices using virtio: virtiofs, used to access the filesystem of the host, virtio-entropy,
+used as an entropy source, virtio-net, virtio-console, virtio-input and virtio-sound.
 
 Virtiofs
 =========
@@ -140,6 +141,102 @@ Virtio-entropy
 ==============
 This driver allows using virtio-entropy as an entropy source in Zephyr. The operation of this device is simple - the driver places a
 buffer in the virtqueue and receives it back, filled with random data.
+
+Virtio-sound
+============
+This driver exposes a virtio-sound device (virtio device ID 25) through the :ref:`i2s_api`. A single
+devicetree node binds two virtio PCM streams: an output stream backing ``I2S_DIR_TX`` and an input
+stream backing ``I2S_DIR_RX``. The streams to use are picked automatically, or can be selected
+explicitly with the ``tx-stream-id`` and ``rx-stream-id`` properties, while ``stream-direction``
+restricts the node to a single direction.
+
+The ``qemu_cortex_a53``, ``qemu_riscv64``, ``qemu_x86`` and ``qemu_x86_64`` boards declare the node
+themselves, under the label ``virtio_sound``, so an application only has to set
+:kconfig:option:`CONFIG_I2S` and point at it, either with an alias:
+
+.. code-block:: devicetree
+
+   / {
+   	aliases {
+   		i2s-tx = &virtio_sound;
+   	};
+   };
+
+or by giving it the node label the application expects:
+
+.. code-block:: devicetree
+
+   i2s_rxtx: &virtio_sound {
+   	status = "okay";
+   };
+
+Applications that do not enable :kconfig:option:`CONFIG_I2S` are unaffected: the driver is not built,
+the VIRTIO core is not pulled in, and no audio device is added to the QEMU command line.
+
+PCM data is carried as virtio messages rather than through a shared memory region, so one I2S block
+maps to exactly one virtio period: :c:func:`i2s_write` places a descriptor chain holding the transfer
+header, the block and a status structure on the transmit virtqueue, and capture works the same way
+with the block and the status made device writeable. The control virtqueue carries the per-stream
+``SET_PARAMS``, ``PREPARE``, ``START``, ``STOP`` and ``RELEASE`` requests that back
+:c:func:`i2s_configure` and :c:func:`i2s_trigger`.
+
+A few things are worth keeping in mind when using this driver:
+
+* The memory slab passed to :c:func:`i2s_configure` must be statically defined. Descriptor addresses
+  are translated with :c:func:`k_mem_phys_addr`, which requires the kernel's permanent RAM mapping.
+* :c:func:`i2s_configure` and :c:func:`i2s_trigger` block on the control virtqueue and therefore have
+  to be called from thread context.
+* ``I2S_OPT_LOOPBACK`` and ``I2S_OPT_PINGPONG`` are rejected, and the clock related fields of
+  :c:struct:`i2s_config` are validated then ignored, since a virtual device has no clock lines.
+* ``I2S_TRIGGER_STOP`` behaves like ``I2S_TRIGGER_DRAIN`` on the transmit direction. Once a stream is
+  running, every block the application wrote is already owned by the device, and virtio-sound has no
+  request to stop after the current period: ``PCM_STOP`` pauses without returning buffers and only
+  ``PCM_RELEASE`` returns them. Draining is the only lossless mapping.
+* Jack, channel map and mixer control requests are not implemented.
+
+Because one I2S block is one virtio period, ``block_size`` decides how often the device has to be
+fed. Host audio backends work on their own timer, 10 ms in the QEMU case, so a block much shorter
+than that leaves the backend short of data on every tick and the output comes out chopped into
+audible pulses. This is a real difference from a hardware I2S controller, where a DMA engine clocks
+samples out continuously and periods of a millisecond or two are unremarkable. Aim for blocks of
+about 10 ms or more, keep several of them queued ahead of the device, and make sure the memory slab
+is large enough that blocks actually circulate rather than all being held by the application. The
+driver logs the negotiated period and buffer size in milliseconds at debug level, and warns once per
+run if the transmit stream runs out of queued blocks.
+
+Running under QEMU requires QEMU 8.2 or later. The device cannot be instantiated without an audio
+backend, so :kconfig:option:`CONFIG_QEMU_AUDIODEV` selects the one passed to ``-audiodev``. It
+defaults to ``none``, a timer driven null backend that is always available and exercises the whole
+driver path without touching host audio. Set it to ``wav`` to capture playback to a file, or to a
+host backend such as ``pa``, ``alsa`` or ``coreaudio`` to actually hear it.
+
+The quickest way to hear something is the :kconfig:option:`CONFIG_I2S_SHELL` test tone generator,
+which needs no application code at all:
+
+.. code-block:: console
+
+   west build -b qemu_cortex_a53 samples/subsys/shell/shell_module -- \
+       -DCONFIG_I2S=y -DCONFIG_I2S_SHELL=y \
+       -DCONFIG_I2S_SHELL_BLOCK_FRAMES=512 \
+       -DCONFIG_QEMU_AUDIODEV=\"coreaudio\"
+   west build -t run
+
+Then, at the shell prompt, stream a 440 Hz tone until you stop it:
+
+.. code-block:: console
+
+   uart:~$ i2s tone start virtio-sound 440 48000 16
+   uart:~$ i2s tone stop
+
+``CONFIG_I2S_SHELL_BLOCK_FRAMES`` is raised from its default of 64 on purpose. At 48 kHz stereo that
+default is a 1.33 ms block, and with the shell's eight blocks it leaves only about 10 ms of audio in
+the device, right at the QEMU backend's timer period. 512 frames gives an 85 ms cushion and a clean
+tone. Substitute ``wav`` for ``coreaudio`` to capture to ``qemu.wav`` instead of playing live, and
+exit QEMU with :kbd:`Ctrl-A` :kbd:`x` so the file is closed properly.
+
+The same device also backs :zephyr:code-sample:`i2s-output` and :zephyr:code-sample:`i2s-echo` on
+these boards, though both use small blocks by default and are better suited to checking the API than
+to listening.
 
 Virtio samples
 **************

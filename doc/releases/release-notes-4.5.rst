@@ -313,6 +313,10 @@ New Drivers
 
   * VIRTIO input device (:dtcompatible:`virtio,input`).
 
+* I2S
+
+  * VIRTIO sound device (:dtcompatible:`virtio,sound`).
+
 * Clock Monitor
 
   * :dtcompatible:`nxp,cmu-fc` — NXP Clock Monitoring Unit (Frequency Check)

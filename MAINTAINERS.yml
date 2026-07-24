@@ -2862,11 +2862,14 @@ Documentation Infrastructure:
   collaborators:
     - kgugala
   files:
+    - drivers/i2s/i2s_virtio_sound.c
     - drivers/virtio/
+    - dts/bindings/i2s/virtio,sound.yaml
     - dts/bindings/virtio/
     - include/zephyr/drivers/virtio.h
     - include/zephyr/drivers/virtio/
     - tests/drivers/build_all/virtio/
+    - tests/drivers/i2s/i2s_virtio_sound/
   labels:
     - "area: VIRTIO"
   tests:
