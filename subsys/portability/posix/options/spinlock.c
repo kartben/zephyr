@@ -36,29 +36,21 @@ static inline size_t to_posix_spinlock_idx(pthread_spinlock_t lock)
 static struct k_spinlock *get_posix_spinlock(pthread_spinlock_t *lock)
 {
 	size_t bit;
-	int actually_initialized;
 
 	if (lock == NULL) {
 		return NULL;
 	}
 
-	/* if the provided spinlock does not claim to be initialized, its invalid */
 	bit = to_posix_spinlock_idx(*lock);
 	if (!is_pthread_obj_initialized(*lock)) {
 		return NULL;
 	}
 
-	/* Mask off the MSB to get the actual bit index */
-	if (sys_bitarray_test_bit(&posix_spinlock_bitarray, bit, &actually_initialized) < 0) {
+	if (bit >= CONFIG_MAX_PTHREAD_SPINLOCK_COUNT) {
 		return NULL;
 	}
 
-	if (actually_initialized == 0) {
-		/* The spinlock claims to be initialized but is actually not */
-		return NULL;
-	}
-
-	return (struct k_spinlock *)&posix_spinlock_pool[bit];
+	return &posix_spinlock_pool[bit];
 }
 
 int pthread_spin_init(pthread_spinlock_t *lock, int pshared)
@@ -97,6 +89,8 @@ int pthread_spin_destroy(pthread_spinlock_t *lock)
 	bit = posix_spinlock_to_offset(l);
 	err = sys_bitarray_free(&posix_spinlock_bitarray, 1, bit);
 	__ASSERT_NO_MSG(err == 0);
+
+	*lock = 0;
 
 	return 0;
 }

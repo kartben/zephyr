@@ -43,24 +43,15 @@ static inline size_t to_posix_cond_idx(pthread_cond_t cond)
 
 static struct posix_cond *get_posix_cond(pthread_cond_t cond)
 {
-	int actually_initialized;
 	size_t bit = to_posix_cond_idx(cond);
 
-	/* if the provided cond does not claim to be initialized, its invalid */
 	if (!is_pthread_obj_initialized(cond)) {
 		LOG_DBG("Cond is uninitialized (%x)", cond);
 		return NULL;
 	}
 
-	/* Mask off the MSB to get the actual bit index */
-	if (sys_bitarray_test_bit(&posix_cond_bitarray, bit, &actually_initialized) < 0) {
+	if (bit >= CONFIG_MAX_PTHREAD_COND_COUNT) {
 		LOG_DBG("Cond is invalid (%x)", cond);
-		return NULL;
-	}
-
-	if (actually_initialized == 0) {
-		/* The cond claims to be initialized but is actually not */
-		LOG_DBG("Cond claims to be initialized (%x)", cond);
 		return NULL;
 	}
 

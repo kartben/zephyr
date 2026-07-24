@@ -68,6 +68,10 @@ ZTEST(posix_spinlocks, test_spin_lock_unlock)
 
 	zassert_ok(pthread_spin_destroy(&lock), "pthread_spin_init() failed");
 	zassert_equal(pthread_spin_destroy(&lock), EINVAL, "pthread_spin_unlock() did not fail");
+	zassert_equal(pthread_spin_lock(&lock), EINVAL,
+		      "pthread_spin_lock() did not return EINVAL after destroy");
+	zassert_equal(pthread_spin_unlock(&lock), EINVAL,
+		      "pthread_spin_unlock() did not return EINVAL after destroy");
 }
 
 ZTEST_SUITE(posix_spinlocks, NULL, NULL, NULL, NULL, NULL);

@@ -53,24 +53,15 @@ static inline size_t to_posix_mutex_idx(pthread_mutex_t mut)
 
 static struct k_mutex *get_posix_mutex(pthread_mutex_t mu)
 {
-	int actually_initialized;
 	size_t bit = to_posix_mutex_idx(mu);
 
-	/* if the provided mutex does not claim to be initialized, its invalid */
 	if (!is_pthread_obj_initialized(mu)) {
 		LOG_DBG("Mutex is uninitialized (%x)", mu);
 		return NULL;
 	}
 
-	/* Mask off the MSB to get the actual bit index */
-	if (sys_bitarray_test_bit(&posix_mutex_bitarray, bit, &actually_initialized) < 0) {
+	if (bit >= CONFIG_MAX_PTHREAD_MUTEX_COUNT) {
 		LOG_DBG("Mutex is invalid (%x)", mu);
-		return NULL;
-	}
-
-	if (actually_initialized == 0) {
-		/* The mutex claims to be initialized but is actually not */
-		LOG_DBG("Mutex claims to be initialized (%x)", mu);
 		return NULL;
 	}
 

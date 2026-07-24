@@ -56,24 +56,15 @@ static inline size_t to_posix_rwlock_idx(pthread_rwlock_t rwlock)
 
 static struct posix_rwlock *get_posix_rwlock(pthread_rwlock_t rwlock)
 {
-	int actually_initialized;
 	size_t bit = to_posix_rwlock_idx(rwlock);
 
-	/* if the provided rwlock does not claim to be initialized, its invalid */
 	if (!is_pthread_obj_initialized(rwlock)) {
 		LOG_DBG("RWlock is uninitialized (%x)", rwlock);
 		return NULL;
 	}
 
-	/* Mask off the MSB to get the actual bit index */
-	if (sys_bitarray_test_bit(&posix_rwlock_bitarray, bit, &actually_initialized) < 0) {
+	if (bit >= CONFIG_MAX_PTHREAD_RWLOCK_COUNT) {
 		LOG_DBG("RWlock is invalid (%x)", rwlock);
-		return NULL;
-	}
-
-	if (actually_initialized == 0) {
-		/* The rwlock claims to be initialized but is actually not */
-		LOG_DBG("RWlock claims to be initialized (%x)", rwlock);
 		return NULL;
 	}
 

@@ -43,21 +43,13 @@ static inline size_t to_posix_barrier_idx(pthread_barrier_t b)
 
 struct posix_barrier *get_posix_barrier(pthread_barrier_t b)
 {
-	int actually_initialized;
 	size_t bit = to_posix_barrier_idx(b);
 
-	/* if the provided barrier does not claim to be initialized, its invalid */
 	if (!is_pthread_obj_initialized(b)) {
 		return NULL;
 	}
 
-	/* Mask off the MSB to get the actual bit index */
-	if (sys_bitarray_test_bit(&posix_barrier_bitarray, bit, &actually_initialized) < 0) {
-		return NULL;
-	}
-
-	if (actually_initialized == 0) {
-		/* The barrier claims to be initialized but is actually not */
+	if (bit >= CONFIG_MAX_PTHREAD_BARRIER_COUNT) {
 		return NULL;
 	}
 
