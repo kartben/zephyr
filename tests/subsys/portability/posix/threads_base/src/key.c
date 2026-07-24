@@ -182,6 +182,27 @@ ZTEST(key, test_thread_specific_data_deallocation)
 		"failed to deallocate thread specific data");
 }
 
+ZTEST(key, test_key_getset_all_slots)
+{
+	pthread_key_t keys[CONFIG_POSIX_THREAD_KEYS_MAX];
+	int value = 99;
+
+	for (size_t i = 0; i < ARRAY_SIZE(keys); ++i) {
+		zassert_ok(pthread_key_create(&keys[i], NULL), "failed to create key %zu", i);
+	}
+
+	for (size_t i = 0; i < ARRAY_SIZE(keys); ++i) {
+		zassert_ok(pthread_setspecific(keys[i], &value), "setspecific failed for key %zu",
+			   i);
+		zassert_equal(pthread_getspecific(keys[i]), &value,
+			      "getspecific failed for key %zu", i);
+	}
+
+	for (size_t i = 0; i < ARRAY_SIZE(keys); ++i) {
+		zassert_ok(pthread_key_delete(keys[i]), "failed to delete key %zu", i);
+	}
+}
+
 static void before(void *arg)
 {
 	ARG_UNUSED(arg);

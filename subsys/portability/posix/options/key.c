@@ -46,20 +46,17 @@ static pthread_key_obj *get_posix_key(pthread_key_t key)
 	int actually_initialized;
 	size_t bit = to_posix_key_idx(key);
 
-	/* if the provided cond does not claim to be initialized, its invalid */
 	if (!is_pthread_obj_initialized(key)) {
 		LOG_DBG("Key is uninitialized (%x)", key);
 		return NULL;
 	}
 
-	/* Mask off the MSB to get the actual bit index */
 	if (sys_bitarray_test_bit(&posix_key_bitarray, bit, &actually_initialized) < 0) {
 		LOG_DBG("Key is invalid (%x)", key);
 		return NULL;
 	}
 
 	if (actually_initialized == 0) {
-		/* The cond claims to be initialized but is actually not */
 		LOG_DBG("Key claims to be initialized (%x)", key);
 		return NULL;
 	}
@@ -76,20 +73,26 @@ static pthread_key_obj *to_posix_key(pthread_key_t *key)
 		return get_posix_key(*key);
 	}
 
-	/* Try and automatically associate a pthread_key_obj */
 	if (sys_bitarray_alloc(&posix_key_bitarray, 1, &bit) < 0) {
-		/* No keys left to allocate */
 		return NULL;
 	}
 
-	/* Record the associated posix_cond in mu and mark as initialized */
 	*key = mark_pthread_obj_initialized(bit);
 	k = &posix_key_pool[bit];
-
-	/* Initialize the condition variable here */
 	memset(k, 0, sizeof(*k));
 
 	return k;
+}
+
+static void key_data_unlink(pthread_key_obj *key_obj, struct pthread_key_data *key_data)
+{
+	struct posix_thread *thread = key_data->thread;
+	size_t key_idx = key_data->key_idx;
+
+	sys_dlist_remove(&key_data->node);
+	thread->key_data[key_idx] = NULL;
+	thread->key_values[key_idx] = NULL;
+	k_free(key_data);
 }
 
 /**
@@ -108,8 +111,7 @@ int pthread_key_create(pthread_key_t *key,
 		return ENOMEM;
 	}
 
-	sys_slist_init(&(new_key->key_data_l));
-
+	sys_dlist_init(&new_key->key_data_l);
 	new_key->destructor = destructor;
 	LOG_DBG("Initialized key %p (%x)", new_key, *key);
 
@@ -127,7 +129,7 @@ int pthread_key_delete(pthread_key_t key)
 	int ret = EINVAL;
 	pthread_key_obj *key_obj = NULL;
 	struct pthread_key_data *key_data;
-	sys_snode_t *node_l, *next_node_l;
+	sys_dnode_t *node_l, *next_node_l;
 
 	SYS_SEM_LOCK(&pthread_key_lock) {
 		key_obj = get_posix_key(key);
@@ -136,16 +138,9 @@ int pthread_key_delete(pthread_key_t key)
 			SYS_SEM_LOCK_BREAK;
 		}
 
-		/* Delete thread-specific elements associated with the key */
-		SYS_SLIST_FOR_EACH_NODE_SAFE(&(key_obj->key_data_l), node_l, next_node_l) {
-
-			/* Remove the object from the list key_data_l */
-			key_data = (struct pthread_key_data *)sys_slist_get(&(key_obj->key_data_l));
-
-			/* Deallocate the object's memory */
-			k_free((void *)key_data);
-			LOG_DBG("Freed key data %p for key %x in thread %x", key_data, key,
-				pthread_self());
+		SYS_DLIST_FOR_EACH_NODE_SAFE(&key_obj->key_data_l, node_l, next_node_l) {
+			key_data = CONTAINER_OF(node_l, struct pthread_key_data, node);
+			key_data_unlink(key_obj, key_data);
 		}
 
 		bit = posix_key_to_offset(key_obj);
@@ -167,10 +162,10 @@ int pthread_key_delete(pthread_key_t key)
  */
 int pthread_setspecific(pthread_key_t key, const void *value)
 {
-	pthread_key_obj *key_obj = NULL;
+	pthread_key_obj *key_obj;
 	struct posix_thread *thread;
 	struct pthread_key_data *key_data;
-	sys_snode_t *node_l = NULL;
+	size_t key_idx;
 	int retval = 0;
 
 	thread = to_posix_thread(pthread_self());
@@ -178,58 +173,38 @@ int pthread_setspecific(pthread_key_t key, const void *value)
 		return EINVAL;
 	}
 
-	/* Traverse the list of keys set by the thread, looking for key.
-	 * If the key is already in the list, re-assign its value.
-	 * Else add the key to the thread's list.
-	 */
+	key_obj = get_posix_key(key);
+	if (key_obj == NULL) {
+		return EINVAL;
+	}
+
+	key_idx = to_posix_key_idx(key);
+	if (key_idx >= CONFIG_POSIX_THREAD_KEYS_MAX) {
+		return EINVAL;
+	}
+
+	if (thread->key_data[key_idx] != NULL) {
+		thread->key_values[key_idx] = (void *)value;
+		return 0;
+	}
+
 	SYS_SEM_LOCK(&pthread_key_lock) {
-		key_obj = get_posix_key(key);
-		if (key_obj == NULL) {
-			retval = EINVAL;
+		if (thread->key_data[key_idx] != NULL) {
+			thread->key_values[key_idx] = (void *)value;
 			SYS_SEM_LOCK_BREAK;
 		}
 
-		SYS_SLIST_FOR_EACH_NODE(&(thread->key_list), node_l) {
-			pthread_thread_data *thread_spec_data = (pthread_thread_data *)node_l;
-
-			if (thread_spec_data->key == key_obj) {
-				/* Key is already present so associate thread specific data */
-				thread_spec_data->spec_data = (void *)value;
-				LOG_DBG("Paired key %x to value %p for thread %x", key, value,
-					pthread_self());
-				break;
-			}
-		}
-
-		retval = 0;
-		if (node_l != NULL) {
-			/* Key is already present, so we are done */
-			SYS_SEM_LOCK_BREAK;
-		}
-
-		/* Key and data need to be added */
 		key_data = k_malloc(sizeof(struct pthread_key_data));
-
 		if (key_data == NULL) {
-			LOG_DBG("Failed to allocate key data for key %x", key);
 			retval = ENOMEM;
 			SYS_SEM_LOCK_BREAK;
 		}
 
-		LOG_DBG("Allocated key data %p for key %x in thread %x", key_data, key,
-			pthread_self());
-
-		/* Associate thread specific data, initialize new key */
-		key_data->thread_data.key = key_obj;
-		key_data->thread_data.spec_data = (void *)value;
-
-		/* Append new thread key data to thread's key list */
-		sys_slist_append((&thread->key_list), (sys_snode_t *)(&key_data->thread_data));
-
-		/* Append new key data to the key object's list */
-		sys_slist_append(&(key_obj->key_data_l), (sys_snode_t *)key_data);
-
-		LOG_DBG("Paired key %x to value %p for thread %x", key, value, pthread_self());
+		key_data->thread = thread;
+		key_data->key_idx = key_idx;
+		thread->key_values[key_idx] = (void *)value;
+		thread->key_data[key_idx] = key_data;
+		sys_dlist_append(&key_obj->key_data_l, &key_data->node);
 	}
 
 	return retval;
@@ -242,35 +217,51 @@ int pthread_setspecific(pthread_key_t key, const void *value)
  */
 void *pthread_getspecific(pthread_key_t key)
 {
-	pthread_key_obj *key_obj;
 	struct posix_thread *thread;
-	pthread_thread_data *thread_spec_data;
-	void *value = NULL;
-	sys_snode_t *node_l;
+	size_t key_idx;
 
 	thread = to_posix_thread(pthread_self());
 	if (thread == NULL) {
 		return NULL;
 	}
 
-	SYS_SEM_LOCK(&pthread_key_lock) {
-		key_obj = get_posix_key(key);
-		if (key_obj == NULL) {
-			value = NULL;
-			SYS_SEM_LOCK_BREAK;
-		}
-
-		/* Traverse the list of keys set by the thread, looking for key */
-
-		SYS_SLIST_FOR_EACH_NODE(&(thread->key_list), node_l) {
-			thread_spec_data = (pthread_thread_data *)node_l;
-			if (thread_spec_data->key == key_obj) {
-				/* Key is present, so get the set thread data */
-				value = thread_spec_data->spec_data;
-				break;
-			}
-		}
+	if (!is_pthread_obj_initialized(key)) {
+		return NULL;
 	}
 
-	return value;
+	key_idx = to_posix_key_idx(key);
+	if (key_idx >= CONFIG_POSIX_THREAD_KEYS_MAX || get_posix_key(key) == NULL) {
+		return NULL;
+	}
+
+	if (thread->key_data[key_idx] == NULL) {
+		return NULL;
+	}
+
+	return thread->key_values[key_idx];
+}
+
+void posix_key_thread_finalize(struct posix_thread *t)
+{
+	pthread_key_obj *key_obj;
+	struct pthread_key_data *key_data;
+
+	for (size_t key_idx = 0; key_idx < CONFIG_POSIX_THREAD_KEYS_MAX; key_idx++) {
+		key_data = t->key_data[key_idx];
+		if (key_data == NULL) {
+			continue;
+		}
+
+		key_obj = &posix_key_pool[key_idx];
+		if (key_obj->destructor != NULL) {
+			key_obj->destructor(t->key_values[key_idx]);
+		}
+
+		SYS_SEM_LOCK(&pthread_key_lock) {
+			sys_dlist_remove(&key_data->node);
+			t->key_data[key_idx] = NULL;
+			t->key_values[key_idx] = NULL;
+			k_free(key_data);
+		}
+	}
 }

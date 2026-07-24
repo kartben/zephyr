@@ -463,44 +463,9 @@ static void posix_thread_recycle_work_handler(struct k_work *work)
 }
 static K_WORK_DELAYABLE_DEFINE(posix_thread_recycle_work, posix_thread_recycle_work_handler);
 
-extern struct sys_sem pthread_key_lock;
-
 static void posix_thread_finalize(struct posix_thread *t, void *retval)
 {
-	sys_snode_t *node_l, *node_s;
-	pthread_key_obj *key_obj;
-	pthread_thread_data *thread_spec_data;
-	sys_snode_t *node_key_data, *node_key_data_s, *node_key_data_prev = NULL;
-	struct pthread_key_data *key_data;
-
-	SYS_SLIST_FOR_EACH_NODE_SAFE(&t->key_list, node_l, node_s) {
-		thread_spec_data = (pthread_thread_data *)node_l;
-		if (thread_spec_data != NULL) {
-			key_obj = thread_spec_data->key;
-			if (key_obj->destructor != NULL) {
-				(key_obj->destructor)(thread_spec_data->spec_data);
-			}
-
-			SYS_SEM_LOCK(&pthread_key_lock) {
-				SYS_SLIST_FOR_EACH_NODE_SAFE(
-					&key_obj->key_data_l,
-					node_key_data,
-					node_key_data_s) {
-					key_data = (struct pthread_key_data *)node_key_data;
-					if (&key_data->thread_data == thread_spec_data) {
-						sys_slist_remove(
-							&key_obj->key_data_l,
-							node_key_data_prev,
-							node_key_data
-						);
-						k_free(key_data);
-						break;
-					}
-					node_key_data_prev = node_key_data;
-				}
-			}
-		}
-	}
+	posix_key_thread_finalize(t);
 
 	/* move thread from run_q to done_q */
 	SYS_SEM_LOCK(&pthread_pool_lock) {
@@ -606,7 +571,8 @@ int pthread_create(pthread_t *th, const pthread_attr_t *_attr, void *(*threadrou
 
 			/* initialize thread state */
 			posix_thread_q_set(t, POSIX_THREAD_RUN_Q);
-			sys_slist_init(&t->key_list);
+			memset(t->key_data, 0, sizeof(t->key_data));
+			memset(t->key_values, 0, sizeof(t->key_values));
 			sys_slist_init(&t->cleanup_list);
 		}
 	}

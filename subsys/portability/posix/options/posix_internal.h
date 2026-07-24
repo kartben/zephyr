@@ -55,8 +55,8 @@ struct posix_thread {
 	/* List node for ready_q, run_q, or done_q */
 	sys_dnode_t q_node;
 
-	/* List of keys that thread has called pthread_setspecific() on */
-	sys_slist_t key_list;
+	void *key_values[CONFIG_POSIX_THREAD_KEYS_MAX];
+	struct pthread_key_data *key_data[CONFIG_POSIX_THREAD_KEYS_MAX];
 
 	/* pthread_attr_t */
 	struct posix_thread_attr attr;
@@ -86,26 +86,16 @@ struct posix_cond {
 };
 
 typedef struct pthread_key_obj {
-	/* List of pthread_key_data objects that contain thread
-	 * specific data for the key
-	 */
-	sys_slist_t key_data_l;
+	sys_dlist_t key_data_l;
 
 	/* Optional destructor that is passed to pthread_key_create() */
 	void (*destructor)(void *value);
 } pthread_key_obj;
 
-typedef struct pthread_thread_data {
-	sys_snode_t node;
-
-	/* Key and thread specific data passed to pthread_setspecific() */
-	pthread_key_obj *key;
-	void *spec_data;
-} pthread_thread_data;
-
 struct pthread_key_data {
-	sys_snode_t node;
-	pthread_thread_data thread_data;
+	sys_dnode_t node;
+	struct posix_thread *thread;
+	size_t key_idx;
 };
 
 static inline bool is_pthread_obj_initialized(uint32_t obj)
@@ -124,6 +114,8 @@ static inline uint32_t mark_pthread_obj_uninitialized(uint32_t obj)
 }
 
 struct posix_thread *to_posix_thread(pthread_t pth);
+
+void posix_key_thread_finalize(struct posix_thread *t);
 
 /* get and possibly initialize a posix_mutex */
 struct k_mutex *to_posix_mutex(pthread_mutex_t *mu);
