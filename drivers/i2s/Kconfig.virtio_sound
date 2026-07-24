@@ -1,0 +1,99 @@
+# Copyright (c) 2026 Benjamin Cabé <benjamin@zephyrproject.org>
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig I2S_VIRTIO_SOUND
+	bool "VIRTIO sound device driver"
+	default y
+	depends on DT_HAS_VIRTIO_SOUND_ENABLED
+	select VIRTIO
+	help
+	  Expose a VIRTIO sound device (virtio device ID 25) through the I2S
+	  API. One PCM output stream backs I2S_DIR_TX and one PCM input stream
+	  backs I2S_DIR_RX.
+
+	  Note that the memory slab passed to i2s_configure() must be
+	  statically defined: buffer addresses are translated with
+	  k_mem_phys_addr(), which requires the kernel's permanent RAM mapping.
+
+if I2S_VIRTIO_SOUND
+
+config I2S_VIRTIO_SOUND_TX_BLOCKS
+	int "Maximum number of TX blocks in flight"
+	default 16
+	range 2 64
+	help
+	  Upper bound on the number of blocks that can be queued for
+	  transmission at the same time. The effective value is clamped to
+	  what the device's transmit virtqueue can hold.
+
+	  This sets how much audio the device buffers, since the driver asks
+	  for a buffer of this many periods. Applications using small blocks
+	  need a high value to survive scheduling delays.
+
+config I2S_VIRTIO_SOUND_RX_BLOCKS
+	int "Number of RX blocks kept posted to the device"
+	default 16
+	range 2 64
+	help
+	  Number of blocks handed to the device for capture. The effective
+	  value is clamped to what the device's receive virtqueue can hold,
+	  and to half of the memory slab so that an application sharing one
+	  slab between capture and playback still has blocks to work with.
+
+config I2S_VIRTIO_SOUND_RX_QUEUE_SIZE
+	int "Depth of the RX block queue handed to the application"
+	default 4
+	range 1 32
+	help
+	  Number of received blocks that can wait for i2s_read() before an
+	  overrun is reported. The RX memory slab should hold at least
+	  I2S_VIRTIO_SOUND_RX_BLOCKS plus this many blocks.
+
+config I2S_VIRTIO_SOUND_MAX_STREAMS
+	int "Maximum number of PCM streams queried at initialization"
+	default 8
+	range 1 32
+	help
+	  Streams beyond this index are not considered when looking for the
+	  streams backing I2S_DIR_TX and I2S_DIR_RX.
+
+config I2S_VIRTIO_SOUND_EVENTQ
+	bool "Handle the VIRTIO sound event virtqueue"
+	default y
+	help
+	  Post buffers to the event virtqueue so that the device can report
+	  buffer underruns and overruns. Note that QEMU does not implement
+	  this queue, so transmit underruns go unreported there. Receive
+	  overruns are always detected, since they are observed locally when
+	  the application stops reading.
+
+config I2S_VIRTIO_SOUND_EVENT_BUFFERS
+	int "Number of event buffers"
+	default 4
+	range 1 16
+	depends on I2S_VIRTIO_SOUND_EVENTQ
+	help
+	  Number of buffers kept posted to the event virtqueue.
+
+config I2S_VIRTIO_SOUND_CTL_TIMEOUT_MS
+	int "Control queue transaction timeout (ms)"
+	default 1000
+	help
+	  How long to wait for the device to answer a control request. A
+	  request that times out leaves the device unusable, since the virtio
+	  core provides no way to reclaim the descriptors.
+
+config I2S_VIRTIO_SOUND_WORKQ_STACK_SIZE
+	int "Deferred control workqueue stack size"
+	default 1024
+	help
+	  Stack size of the thread issuing the control requests that the
+	  virtqueue callbacks cannot issue themselves.
+
+config I2S_VIRTIO_SOUND_WORKQ_PRIORITY
+	int "Deferred control workqueue thread priority"
+	default 5
+	help
+	  Priority of the deferred control workqueue thread.
+
+endif # I2S_VIRTIO_SOUND

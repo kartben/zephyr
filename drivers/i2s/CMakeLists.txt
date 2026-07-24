@@ -24,6 +24,7 @@ zephyr_library_sources_ifdef(CONFIG_I2S_SILABS_SIWX91X i2s_silabs_siwx91x.c)
 zephyr_library_sources_ifdef(CONFIG_I2S_STM32 i2s_stm32.c)
 zephyr_library_sources_ifdef(CONFIG_I2S_STM32_SAI i2s_stm32_sai.c)
 zephyr_library_sources_ifdef(CONFIG_I2S_TEST i2s_test.c)
+zephyr_library_sources_ifdef(CONFIG_I2S_VIRTIO_SOUND i2s_virtio_sound.c)
 zephyr_library_sources_ifdef(CONFIG_USERSPACE i2s_handlers.c)
 # zephyr-keep-sorted-stop
 
