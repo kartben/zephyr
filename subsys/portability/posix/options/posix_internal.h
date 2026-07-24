@@ -13,6 +13,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/posix/pthread.h>
+#include <zephyr/sys/atomic.h>
 #include <zephyr/sys/dlist.h>
 #include <zephyr/sys/slist.h>
 
@@ -40,7 +41,6 @@ struct posix_thread_attr
 		bool caller_destroys: 1;
 		bool initialized: 1;
 	};
-	bool cancelpending: 1;
 	bool cancelstate: 1;
 	bool canceltype: 1;
 	bool detachstate: 1;
@@ -48,6 +48,8 @@ struct posix_thread_attr
 
 struct posix_thread {
 	struct k_thread thread;
+
+	atomic_t cancel_pending;
 
 	/* List nodes for pthread_cleanup_push() / pthread_cleanup_pop() */
 	sys_slist_t cleanup_list;
@@ -124,6 +126,11 @@ static inline uint32_t mark_pthread_obj_uninitialized(uint32_t obj)
 }
 
 struct posix_thread *to_posix_thread(pthread_t pth);
+
+static inline struct posix_thread *current_posix_thread(void)
+{
+	return CONTAINER_OF(k_current_get(), struct posix_thread, thread);
+}
 
 /* get and possibly initialize a posix_mutex */
 struct k_mutex *to_posix_mutex(pthread_mutex_t *mu);

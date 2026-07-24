@@ -205,35 +205,30 @@ static inline void __z_pthread_cleanup_init(struct __pthread_cleanup *c, void (*
 
 void __z_pthread_cleanup_push(void *cleanup[3], void (*routine)(void *arg), void *arg)
 {
-	struct posix_thread *t = NULL;
+	struct posix_thread *t = current_posix_thread();
 	struct __pthread_cleanup *const c = (struct __pthread_cleanup *)cleanup;
 
-	SYS_SEM_LOCK(&pthread_pool_lock) {
-		t = to_posix_thread(pthread_self());
-		BUILD_ASSERT(3 * sizeof(void *) == sizeof(*c));
-		__ASSERT_NO_MSG(t != NULL);
-		__ASSERT_NO_MSG(c != NULL);
-		__ASSERT_NO_MSG(routine != NULL);
-		__z_pthread_cleanup_init(c, routine, arg);
-		sys_slist_prepend(&t->cleanup_list, &c->node);
-	}
+	BUILD_ASSERT(3 * sizeof(void *) == sizeof(*c));
+	__ASSERT_NO_MSG(t != NULL);
+	__ASSERT_NO_MSG(c != NULL);
+	__ASSERT_NO_MSG(routine != NULL);
+	__z_pthread_cleanup_init(c, routine, arg);
+	sys_slist_prepend(&t->cleanup_list, &c->node);
 }
 
 void __z_pthread_cleanup_pop(int execute)
 {
 	sys_snode_t *node;
-	struct __pthread_cleanup *c = NULL;
-	struct posix_thread *t = NULL;
+	struct __pthread_cleanup *c;
+	struct posix_thread *t = current_posix_thread();
 
-	SYS_SEM_LOCK(&pthread_pool_lock) {
-		t = to_posix_thread(pthread_self());
-		__ASSERT_NO_MSG(t != NULL);
-		node = sys_slist_get(&t->cleanup_list);
-		__ASSERT_NO_MSG(node != NULL);
-		c = CONTAINER_OF(node, struct __pthread_cleanup, node);
-		__ASSERT_NO_MSG(c != NULL);
-		__ASSERT_NO_MSG(c->routine != NULL);
-	}
+	__ASSERT_NO_MSG(t != NULL);
+	node = sys_slist_get(&t->cleanup_list);
+	__ASSERT_NO_MSG(node != NULL);
+	c = CONTAINER_OF(node, struct __pthread_cleanup, node);
+	__ASSERT_NO_MSG(c != NULL);
+	__ASSERT_NO_MSG(c->routine != NULL);
+
 	if (execute) {
 		c->routine(c->arg);
 	}
@@ -606,6 +601,7 @@ int pthread_create(pthread_t *th, const pthread_attr_t *_attr, void *(*threadrou
 
 			/* initialize thread state */
 			posix_thread_q_set(t, POSIX_THREAD_RUN_Q);
+			atomic_clear(&t->cancel_pending);
 			sys_slist_init(&t->key_list);
 			sys_slist_init(&t->cleanup_list);
 		}
@@ -716,40 +712,29 @@ int pthread_setconcurrency(int new_level)
  */
 int pthread_setcancelstate(int state, int *oldstate)
 {
-	int ret = EINVAL;
-	bool cancel_pending = false;
-	struct posix_thread *t = NULL;
-	bool cancel_type = -1;
+	struct posix_thread *t = current_posix_thread();
+	bool cancel_pending;
+	bool cancel_type;
 
 	if (state != PTHREAD_CANCEL_ENABLE && state != PTHREAD_CANCEL_DISABLE) {
 		LOG_DBG("Invalid pthread state %d", state);
 		return EINVAL;
 	}
 
-	SYS_SEM_LOCK(&pthread_pool_lock) {
-		t = to_posix_thread(pthread_self());
-		if (t == NULL) {
-			ret = EINVAL;
-			SYS_SEM_LOCK_BREAK;
-		}
-
-		if (oldstate != NULL) {
-			*oldstate = t->attr.cancelstate;
-		}
-
-		t->attr.cancelstate = state;
-		cancel_pending = t->attr.cancelpending;
-		cancel_type = t->attr.canceltype;
-
-		ret = 0;
+	if (oldstate != NULL) {
+		*oldstate = t->attr.cancelstate;
 	}
 
-	if (ret == 0 && state == PTHREAD_CANCEL_ENABLE &&
-	    cancel_type == PTHREAD_CANCEL_ASYNCHRONOUS && cancel_pending) {
+	t->attr.cancelstate = state;
+	cancel_pending = atomic_get(&t->cancel_pending) != 0;
+	cancel_type = t->attr.canceltype;
+
+	if (state == PTHREAD_CANCEL_ENABLE && cancel_type == PTHREAD_CANCEL_ASYNCHRONOUS &&
+	    cancel_pending) {
 		posix_thread_finalize(t, PTHREAD_CANCELED);
 	}
 
-	return ret;
+	return 0;
 }
 
 /**
@@ -759,30 +744,19 @@ int pthread_setcancelstate(int state, int *oldstate)
  */
 int pthread_setcanceltype(int type, int *oldtype)
 {
-	int ret = EINVAL;
-	struct posix_thread *t;
+	struct posix_thread *t = current_posix_thread();
 
 	if (type != PTHREAD_CANCEL_DEFERRED && type != PTHREAD_CANCEL_ASYNCHRONOUS) {
 		LOG_DBG("Invalid pthread cancel type %d", type);
 		return EINVAL;
 	}
 
-	SYS_SEM_LOCK(&pthread_pool_lock) {
-		t = to_posix_thread(pthread_self());
-		if (t == NULL) {
-			ret = EINVAL;
-			SYS_SEM_LOCK_BREAK;
-		}
-
-		if (oldtype != NULL) {
-			*oldtype = t->attr.canceltype;
-		}
-		t->attr.canceltype = type;
-
-		ret = 0;
+	if (oldtype != NULL) {
+		*oldtype = t->attr.canceltype;
 	}
+	t->attr.canceltype = type;
 
-	return ret;
+	return 0;
 }
 
 /**
@@ -792,26 +766,18 @@ int pthread_setcanceltype(int type, int *oldtype)
  */
 void pthread_testcancel(void)
 {
-	bool cancel_pended = false;
-	struct posix_thread *t = NULL;
+	struct posix_thread *t = current_posix_thread();
 
-	SYS_SEM_LOCK(&pthread_pool_lock) {
-		t = to_posix_thread(pthread_self());
-		if (t == NULL) {
-			SYS_SEM_LOCK_BREAK;
-		}
-		if (t->attr.cancelstate != PTHREAD_CANCEL_ENABLE) {
-			SYS_SEM_LOCK_BREAK;
-		}
-		if (t->attr.cancelpending) {
-			cancel_pended = true;
-			t->attr.cancelstate = PTHREAD_CANCEL_DISABLE;
-		}
+	if (t->attr.cancelstate != PTHREAD_CANCEL_ENABLE) {
+		return;
 	}
 
-	if (cancel_pended) {
-		posix_thread_finalize(t, PTHREAD_CANCELED);
+	if (atomic_get(&t->cancel_pending) == 0) {
+		return;
 	}
+
+	t->attr.cancelstate = PTHREAD_CANCEL_DISABLE;
+	posix_thread_finalize(t, PTHREAD_CANCELED);
 }
 
 /**
@@ -840,7 +806,7 @@ int pthread_cancel(pthread_t pthread)
 		}
 
 		ret = 0;
-		t->attr.cancelpending = true;
+		atomic_set(&t->cancel_pending, 1);
 		cancel_state = t->attr.cancelstate;
 		cancel_type = t->attr.canceltype;
 	}
@@ -1496,50 +1462,40 @@ int pthread_atfork(void (*prepare)(void), void (*parent)(void), void (*child)(vo
 /* this should probably go into signal.c but we need access to the lock */
 int pthread_sigmask(int how, const sigset_t *ZRESTRICT set, sigset_t *ZRESTRICT oset)
 {
-	int ret = ESRCH;
-	struct posix_thread *t = NULL;
+	struct posix_thread *t = current_posix_thread();
 
 	if (!(how == SIG_BLOCK || how == SIG_SETMASK || how == SIG_UNBLOCK)) {
 		return EINVAL;
 	}
 
-	SYS_SEM_LOCK(&pthread_pool_lock) {
-		t = to_posix_thread(pthread_self());
-		if (t == NULL) {
-			ret = ESRCH;
-			SYS_SEM_LOCK_BREAK;
-		}
-
-		if (oset != NULL) {
-			*oset = t->sigset;
-		}
-
-		ret = 0;
-		if (set == NULL) {
-			SYS_SEM_LOCK_BREAK;
-		}
-
-		const unsigned long *const x = (const unsigned long *)set;
-		unsigned long *const y = (unsigned long *)&t->sigset;
-
-		switch (how) {
-		case SIG_BLOCK:
-			for (size_t i = 0; i < sizeof(sigset_t) / sizeof(unsigned long); ++i) {
-				y[i] |= x[i];
-			}
-			break;
-		case SIG_SETMASK:
-			t->sigset = *set;
-			break;
-		case SIG_UNBLOCK:
-			for (size_t i = 0; i < sizeof(sigset_t) / sizeof(unsigned long); ++i) {
-				y[i] &= ~x[i];
-			}
-			break;
-		}
+	if (oset != NULL) {
+		*oset = t->sigset;
 	}
 
-	return ret;
+	if (set == NULL) {
+		return 0;
+	}
+
+	const unsigned long *const x = (const unsigned long *)set;
+	unsigned long *const y = (unsigned long *)&t->sigset;
+
+	switch (how) {
+	case SIG_BLOCK:
+		for (size_t i = 0; i < sizeof(sigset_t) / sizeof(unsigned long); ++i) {
+			y[i] |= x[i];
+		}
+		break;
+	case SIG_SETMASK:
+		t->sigset = *set;
+		break;
+	case SIG_UNBLOCK:
+		for (size_t i = 0; i < sizeof(sigset_t) / sizeof(unsigned long); ++i) {
+			y[i] &= ~x[i];
+		}
+		break;
+	}
+
+	return 0;
 }
 
 __boot_func
