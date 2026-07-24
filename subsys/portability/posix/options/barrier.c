@@ -84,21 +84,16 @@ int pthread_barrier_wait(pthread_barrier_t *b)
 	if (bar->count == bar->max) {
 		bar->count = 0;
 		ret = PTHREAD_BARRIER_SERIAL_THREAD;
-
-		goto unlock;
-	}
-
-	while (bar->count != 0) {
-		err = k_condvar_wait(&bar->cond, &bar->mutex, K_FOREVER);
+		err = k_condvar_broadcast(&bar->cond);
 		__ASSERT_NO_MSG(err == 0);
-		/* Note: count is reset to zero by the serialized thread */
+	} else {
+		while (bar->count != 0) {
+			err = k_condvar_wait(&bar->cond, &bar->mutex, K_FOREVER);
+			__ASSERT_NO_MSG(err == 0);
+		}
+		ret = 0;
 	}
 
-	ret = 0;
-
-unlock:
-	err = k_condvar_signal(&bar->cond);
-	__ASSERT_NO_MSG(err == 0);
 	err = k_mutex_unlock(&bar->mutex);
 	__ASSERT_NO_MSG(err == 0);
 
