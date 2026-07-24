@@ -827,6 +827,7 @@ xmc	Wuhan Xinxin Semiconductor Manufacturing Co., Ltd.
 xnano	Xnano
 xptek	Shenzhen Xptek Technology Co., Ltd
 xuantie	Alibaba Xuantie
+xteink	Xteink
 xunlong	Shenzhen Xunlong Software CO.,Limited
 xylon	Xylon
 yamaha	Yamaha Corporation

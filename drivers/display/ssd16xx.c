@@ -53,6 +53,11 @@ struct ssd16xx_quirks {
 	uint8_t pp_width_bits;
 	/* Width (bits) of integer type representing a y coordinate */
 	uint8_t pp_height_bits;
+	/*
+	 * If true, SSD16XX_CMD_GDO_CTRL uses (panel height - 1) as the gate
+	 * count (SSD1677 and similar). Otherwise (default) use (width - 1).
+	 */
+	bool gdo_last_gate_is_height;
 
 	/*
 	 * Device specific flags to be included in
@@ -755,7 +760,7 @@ static int ssd16xx_set_profile(const struct device *dev,
 	const struct ssd16xx_config *config = dev->config;
 	struct ssd16xx_data *data = dev->data;
 	const struct ssd16xx_profile *p;
-	const uint16_t last_gate = config->width - 1;
+	uint16_t last_gate = config->width - 1;
 	uint8_t gdo[3];
 	size_t gdo_len;
 	int err = 0;
@@ -776,6 +781,10 @@ static int ssd16xx_set_profile(const struct device *dev,
 
 	if (type == data->profile) {
 		return 0;
+	}
+
+	if (config->quirks->gdo_last_gate_is_height) {
+		last_gate = config->height - 1;
 	}
 
 	/*
@@ -986,6 +995,7 @@ static struct ssd16xx_quirks quirks_solomon_ssd1608 = {
 	.max_height = 240,
 	.pp_width_bits = 16,
 	.pp_height_bits = 16,
+	.gdo_last_gate_is_height = false,
 	.ctrl2_full = SSD16XX_GEN1_CTRL2_TO_PATTERN,
 	.ctrl2_partial = SSD16XX_GEN1_CTRL2_TO_PATTERN,
 };
@@ -997,6 +1007,7 @@ static struct ssd16xx_quirks quirks_solomon_ssd1673 = {
 	.max_height = 150,
 	.pp_width_bits = 8,
 	.pp_height_bits = 8,
+	.gdo_last_gate_is_height = false,
 	.ctrl2_full = SSD16XX_GEN1_CTRL2_TO_PATTERN,
 	.ctrl2_partial = SSD16XX_GEN1_CTRL2_TO_PATTERN,
 };
@@ -1008,8 +1019,21 @@ static struct ssd16xx_quirks quirks_solomon_ssd1675a = {
 	.max_height = 160,
 	.pp_width_bits = 8,
 	.pp_height_bits = 16,
+	.gdo_last_gate_is_height = false,
 	.ctrl2_full = SSD16XX_GEN1_CTRL2_TO_PATTERN,
 	.ctrl2_partial = SSD16XX_GEN1_CTRL2_TO_PATTERN,
+};
+#endif
+
+#if DT_HAS_COMPAT_STATUS_OKAY(solomon_ssd1677)
+static struct ssd16xx_quirks quirks_solomon_ssd1677 = {
+	.max_width = 960,
+	.max_height = 680,
+	.pp_width_bits = 16,
+	.pp_height_bits = 16,
+	.gdo_last_gate_is_height = true,
+	.ctrl2_full = SSD16XX_GEN2_CTRL2_DISPLAY,
+	.ctrl2_partial = SSD16XX_GEN2_CTRL2_DISPLAY | SSD16XX_GEN2_CTRL2_MODE2,
 };
 #endif
 
@@ -1019,6 +1043,7 @@ static const struct ssd16xx_quirks quirks_solomon_ssd1680 = {
 	.max_height = 176,
 	.pp_width_bits = 8,
 	.pp_height_bits = 16,
+	.gdo_last_gate_is_height = false,
 	.ctrl2_full = SSD16XX_GEN2_CTRL2_DISPLAY,
 	.ctrl2_partial = SSD16XX_GEN2_CTRL2_DISPLAY | SSD16XX_GEN2_CTRL2_MODE2,
 };
@@ -1030,6 +1055,7 @@ static struct ssd16xx_quirks quirks_solomon_ssd1681 = {
 	.max_height = 200,
 	.pp_width_bits = 8,
 	.pp_height_bits = 16,
+	.gdo_last_gate_is_height = false,
 	.ctrl2_full = SSD16XX_GEN2_CTRL2_DISPLAY,
 	.ctrl2_partial = SSD16XX_GEN2_CTRL2_DISPLAY | SSD16XX_GEN2_CTRL2_MODE2,
 };
@@ -1123,6 +1149,8 @@ DT_FOREACH_STATUS_OKAY_VARGS(solomon_ssd1673, SSD16XX_DEFINE,
 			     &quirks_solomon_ssd1673);
 DT_FOREACH_STATUS_OKAY_VARGS(solomon_ssd1675a, SSD16XX_DEFINE,
 			     &quirks_solomon_ssd1675a);
+DT_FOREACH_STATUS_OKAY_VARGS(solomon_ssd1677, SSD16XX_DEFINE,
+			     &quirks_solomon_ssd1677);
 DT_FOREACH_STATUS_OKAY_VARGS(solomon_ssd1680, SSD16XX_DEFINE,
 			     &quirks_solomon_ssd1680);
 DT_FOREACH_STATUS_OKAY_VARGS(solomon_ssd1681, SSD16XX_DEFINE,
