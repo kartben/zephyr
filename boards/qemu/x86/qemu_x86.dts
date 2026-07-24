@@ -98,6 +98,23 @@
 				status = "okay";
 			};
 		};
+
+		virtio_sound_pci: virtio-sound-pci {
+			compatible = "virtio,pci";
+
+			vendor-id = <0x1af4>;
+			device-id = <0x1059>;
+
+			interrupts = <10 IRQ_TYPE_LOWEST_EDGE_RISING 3>;
+			interrupt-parent = <&intc>;
+
+			status = "okay";
+
+			virtio_sound: virtio-sound {
+				compatible = "virtio,sound";
+				status = "okay";
+			};
+		};
 	};
 
 	sim_flash: sim_flash {

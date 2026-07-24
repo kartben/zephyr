@@ -57,3 +57,12 @@
 		status = "okay";
 	};
 };
+
+&virtio_mmio4 {
+	status = "okay";
+
+	virtio_sound: virtio-sound {
+		compatible = "virtio,sound";
+		status = "okay";
+	};
+};

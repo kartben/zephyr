@@ -20,10 +20,19 @@ if(CONFIG_INPUT_VIRTIO)
   set(QEMU_VIRTIO_INPUT_FLAGS -device virtio-tablet-device,bus=virtio-mmio-bus.3)
 endif()
 
+# virtio-sound requires QEMU 8.2 or later. The device cannot be instantiated
+# without an audiodev, hence the always available "none" backend by default.
+if(CONFIG_I2S_VIRTIO_SOUND)
+  set(QEMU_VIRTIO_SOUND_FLAGS
+    -audiodev ${CONFIG_QEMU_AUDIODEV},id=snd0
+    -device virtio-sound-device,bus=virtio-mmio-bus.4,audiodev=snd0)
+endif()
+
 set(QEMU_FLAGS_${ARCH}
   -cpu ${QEMU_CPU_TYPE_${ARCH}}
   ${QEMU_VIRTIO_ENTROPY_FLAGS}
   ${QEMU_VIRTIO_INPUT_FLAGS}
+  ${QEMU_VIRTIO_SOUND_FLAGS}
   -machine ${QEMU_MACH}
   )
 

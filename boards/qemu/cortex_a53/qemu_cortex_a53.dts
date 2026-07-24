@@ -300,6 +300,15 @@
 	};
 };
 
+&virtio_mmio4 {
+	status = "okay";
+
+	virtio_sound: virtio-sound {
+		compatible = "virtio,sound";
+		status = "okay";
+	};
+};
+
 &pcie {
 	eth0: pcie@1,0 {
 		compatible = "intel,e1000";
