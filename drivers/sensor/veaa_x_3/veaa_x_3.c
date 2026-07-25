@@ -189,9 +189,9 @@ static int veaa_x_3_init(const struct device *dev)
 }
 
 #define VEAA_X_3_RANGE_KPA_INIT(n)                                                                 \
-	COND_CODE_1(DT_INST_ENUM_HAS_VALUE(n, pressure_range_type, d11), ({.max = 1000, min = 5}), \
-		    (COND_CODE_1(DT_INST_ENUM_HAS_VALUE(n, pressure_range_type, d9),               \
-				 ({.max = 600, .min = 3}), ({.max = 200, .min = 1}))))
+	COND_CODE_1(DT_INST_ENUM_HAS_VALUE(n, pressure_range_type, d11), ({.max = 1000, .min = 5}), \
+		(COND_CODE_1(DT_INST_ENUM_HAS_VALUE(n, pressure_range_type, d9),            \
+			({.max = 600, .min = 3}), ({.max = 200, .min = 1}))))
 
 #define VEAA_X_3_TYPE_INIT(n)                                                                      \
 	COND_CODE_1(DT_INST_ENUM_HAS_VALUE(n, pressure_range_type, d11),                           \
