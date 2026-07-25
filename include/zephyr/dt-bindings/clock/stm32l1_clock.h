@@ -8,6 +8,11 @@
 
 #include "stm32_common_clocks.h"
 
+/**
+ * @addtogroup clock_control_dt_stm32
+ * @{
+ */
+
 /** Bus gatting clocks */
 #define STM32_CLOCK_BUS_AHB1    0x01c
 #define STM32_CLOCK_BUS_APB2    0x020
@@ -34,4 +39,6 @@
 
 #define RTC_SEL(val)		STM32_DT_CLOCK_SELECT((val), 17, 16, CSR_REG)
 
+
+/** @} */
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32L1_CLOCK_H_ */

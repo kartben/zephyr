@@ -8,6 +8,11 @@
 
 #include "stm32_common_clocks.h"
 
+/**
+ * @addtogroup clock_control_dt_stm32
+ * @{
+ */
+
 /** Bus gatting clocks */
 #define STM32_CLOCK_BUS_AHB1    0x014
 #define STM32_CLOCK_BUS_APB2    0x018
@@ -85,4 +90,6 @@
 #define ADC_PRE_DIV_128		0x1A
 #define ADC_PRE_DIV_256		0x1B
 
+
+/** @} */
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32F3_CLOCK_H_ */

@@ -11,6 +11,11 @@
 /* Ensure correct order by including generic F1 definitions first. */
 #include "stm32f1_clock.h"
 
+/**
+ * @addtogroup clock_control_dt_stm32
+ * @{
+ */
+
 /** Fixed clocks  */
 /* Low speed clocks defined in stm32_common_clocks.h */
 /* Common clocks with stm32f1x defined in stm32f1_clock.h */
@@ -22,4 +27,6 @@
 #define MCO1_SEL(val)           STM32_DT_CLOCK_SELECT((val), 27, 24, CFGR1_REG)
 /* No MCO prescaler support on STM32F1 series. */
 
+
+/** @} */
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32F10X_CLOCK_H_ */

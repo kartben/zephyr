@@ -8,6 +8,11 @@
 
 #include "stm32l4_clock.h"
 
+/**
+ * @addtogroup clock_control_dt_stm32
+ * @{
+ */
+
 /*
  * On STM32L4+ series, the SAI1 / SAI2 input clock selection fields
  * are located within the CCIPR2 register instead of the CCIPR register
@@ -19,4 +24,6 @@
 #define SAI1_SEL(val)		STM32_DT_CLOCK_SELECT((val), 7, 5, CCIPR2_REG)
 #define SAI2_SEL(val)		STM32_DT_CLOCK_SELECT((val), 10, 8, CCIPR2_REG)
 
+
+/** @} */
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32L4PLUS_CLOCK_H_ */

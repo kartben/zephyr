@@ -8,6 +8,11 @@
 
 #include "stm32_common_clocks.h"
 
+/**
+ * @addtogroup clock_control_dt_stm32
+ * @{
+ */
+
 /** Domain clocks */
 
 /* RM0486, Figures 37 and 45 on clock distribution description */
@@ -223,4 +228,6 @@
 /* ADC prescaler division factor helper */
 #define ADC_PRE_DIV(pres)	((pres - 1) & 0xFFU)
 
+
+/** @} */
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32N6_CLOCK_H_ */

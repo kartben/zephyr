@@ -8,6 +8,11 @@
 
 #include "stm32_common_clocks.h"
 
+/**
+ * @addtogroup clock_control_dt_stm32
+ * @{
+ */
+
 /** Peripheral clock sources */
 
 /* RM0493, Figure 34, clock tree */
@@ -105,4 +110,6 @@
 #define MCO_SEL_HCLK5 10
 
 
+
+/** @} */
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32WBA_CLOCK_H_ */

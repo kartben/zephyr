@@ -8,6 +8,11 @@
 
 #include "stm32_common_clocks.h"
 
+/**
+ * @addtogroup clock_control_dt_stm32
+ * @{
+ */
+
 /** Domain clocks */
 
 /* RM0487, Figure 36 Clock tree for STM32U3 Series */
@@ -115,4 +120,6 @@
 #define ADCDAC_PRE_DIV_256	0xE
 #define ADCDAC_PRE_DIV_512	0xF
 
+
+/** @} */
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_CLOCK_STM32U3_CLOCK_H_ */
