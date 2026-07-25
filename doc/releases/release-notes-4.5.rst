@@ -313,6 +313,10 @@ New Drivers
 
   * VIRTIO input device (:dtcompatible:`virtio,input`).
 
+* SPI
+
+  * VIRTIO SPI controller device (:dtcompatible:`virtio,spi`).
+
 * Clock Monitor
 
   * :dtcompatible:`nxp,cmu-fc` — NXP Clock Monitoring Unit (Frequency Check)

@@ -40,3 +40,15 @@
 };
 
 /* virtio_mmio3 hosts the virtio,input device provided by the board. */
+
+&virtio_mmio4 {
+	status = "okay";
+
+	virtio_spi: virtio-spi {
+		compatible = "virtio,spi";
+		status = "okay";
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+};

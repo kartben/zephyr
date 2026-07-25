@@ -71,4 +71,24 @@
 			status = "okay";
 		};
 	};
+
+	virtio_spi_pci: virtio-spi-pci {
+		compatible = "virtio,pci";
+
+		vendor-id = <0x1af4>;
+		device-id = <0x106d>;
+
+		interrupts = <0xb 0x0 0x0>;
+		interrupt-parent = <&intc>;
+
+		status = "okay";
+
+		virtio_spi: virtio-spi {
+			compatible = "virtio,spi";
+			status = "okay";
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+		};
+	};
 };
