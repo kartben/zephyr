@@ -6,6 +6,7 @@ import os
 import re
 import sys
 from collections import namedtuple
+from functools import cache
 from pathlib import Path
 
 import list_boards
@@ -13,6 +14,11 @@ import list_hardware
 import list_shields
 import yaml
 import zephyr_module
+
+try:
+    from yaml import CSafeLoader as SafeLoader
+except ImportError:
+    from yaml import SafeLoader
 from dts_binding_types import get_binding_type_from_path
 from gen_devicetree_rest import VndLookup
 from get_maintainer import Maintainers
@@ -153,12 +159,49 @@ def run_twister_cmake_only(outdir, vendor_filter, extra_flags):
     gen_catalogs.run_twister_cmake_only(Path(outdir), vendor_filter, extra_flags)
 
 
+@cache
+def _relative_paths_in_dir(directory):
+    """Sorted relative POSIX paths of all files under ``directory`` (cached).
+
+    Board and shield directories get probed with several recursive glob
+    patterns when guessing their image and documentation files; scanning each
+    directory once and matching in memory is substantially faster.
+    """
+    files = []
+    for dirpath, _, filenames in os.walk(directory):
+        rel = Path(dirpath).relative_to(directory).as_posix()
+        prefix = "" if rel == "." else rel + "/"
+        files.extend(prefix + filename for filename in filenames)
+    return tuple(sorted(files))
+
+
+@cache
+def _compile_glob(pattern):
+    """Compile a glob pattern to a regex, with Path.glob() semantics where
+    ``**/`` also matches zero directories (unlike fnmatch)."""
+    regex = ""
+    i = 0
+    while i < len(pattern):
+        if pattern[i:].startswith("**/"):
+            regex += r"(?:[^/]+/)*"
+            i += 3
+        elif pattern[i] == "*":
+            regex += r"[^/]*"
+            i += 1
+        else:
+            regex += re.escape(pattern[i])
+            i += 1
+    return re.compile(regex + r"\Z")
+
+
 def guess_file_from_patterns(directory, patterns, name, extensions):
+    files = _relative_paths_in_dir(directory)
     for pattern in patterns:
         for ext in extensions:
-            matching_file = next(directory.glob(pattern.format(name=name, ext=ext)), None)
-            if matching_file:
-                return matching_file
+            regex = _compile_glob(pattern.format(name=name, ext=ext))
+            for file in files:
+                if regex.match(file):
+                    return directory / file
     return None
 
 
@@ -209,6 +252,10 @@ def get_catalog(
                                    information generation to boards from this list of vendors.
     """
     import tempfile
+
+    # Directory contents may have changed since a previous call (e.g. in a
+    # long-lived process); the scan cache is only valid within one call.
+    _relative_paths_in_dir.cache_clear()
 
     vnd_lookup = VndLookup(ZEPHYR_BASE / "dts/bindings/vendor-prefixes.txt", [])
 
@@ -360,7 +407,7 @@ def get_catalog(
             for twister_file in board.dir.glob(pattern):
                 try:
                     with open(twister_file) as f:
-                        board_data = yaml.safe_load(f)
+                        board_data = yaml.load(f, Loader=SafeLoader)
                         board_archs.add(board_data.get("arch"))
                 except Exception as e:
                     logger.error(f"Error parsing twister file {twister_file}: {e}")

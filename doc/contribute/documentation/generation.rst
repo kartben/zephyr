@@ -281,7 +281,8 @@ For even faster iteration when working on narrative pages, additional
    Skip copying in the board, sample, and snippet pages that are maintained
    outside of the ``doc/`` folder (i.e. the contents of the
    :zephyr_file:`boards`, :zephyr_file:`samples`, and :zephyr_file:`snippets`
-   folders).
+   folders). The board catalog, which is only used by these pages, is not
+   generated either.
 
 Each option can be enabled individually::
 
