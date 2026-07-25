@@ -34,6 +34,10 @@ def parse_args():
     )
 
     parser.add_argument('input', help='Input json file')
+    parser.add_argument(
+        '--reference',
+        help='Reference json file used to generate a diff visualization',
+    )
     parser.add_argument('--html', help='Output html file')
     parser.add_argument(
         '--depth',
@@ -103,13 +107,112 @@ def generate_figure(data, depth=4):
     return fig
 
 
+def _build_child_lookup(node):
+    children = {}
+    for child in node.get('children', ()):
+        key = (child.get('identifier'), child.get('name'))
+        children[key] = child
+    return children
+
+
+def generate_diff_figure(reference_data, data, depth=4):
+    totalsize = data.get('total_size', 0)
+    ref_totalsize = reference_data.get('total_size', 0)
+    ids = []
+    labels = []
+    parents = []
+    values = []
+    deltas = []
+    hovertext = []
+
+    def iter_nodes(ref_node: dict | None, node: dict | None, parent=''):
+        if node is None and ref_node is None:
+            return
+
+        active_node = node if node is not None else ref_node
+        identifier = active_node.get('identifier')
+        if identifier is None:
+            return
+
+        if identifier in ids:
+            # Identifiers aren't unique, add a suffix to make them unique
+            idx = 0
+            while f'{identifier}_{idx}' in ids:
+                idx += 1
+            identifier = f'{identifier}_{idx}'
+
+        node_name = active_node.get('name', '')
+        curr_size = node.get('size', 0) if node else 0
+        ref_size = ref_node.get('size', 0) if ref_node else 0
+        delta = curr_size - ref_size
+
+        ids.append(identifier)
+        labels.append(node_name)
+        parents.append(parent)
+        values.append(max(curr_size, ref_size))
+        deltas.append(delta)
+
+        details = [f'delta: {delta:+,} bytes', f'current size: {curr_size:,} bytes', f'reference size: {ref_size:,} bytes']
+        if totalsize > 0:
+            details.append(f'current percentage: {curr_size / totalsize:.2%}')
+        if ref_totalsize > 0:
+            details.append(f'reference percentage: {ref_size / ref_totalsize:.2%}')
+        if 'address' in active_node:
+            details.append(f'address: 0x{active_node.get("address"):08x}')
+        if 'section' in active_node:
+            details.append(f'section: {active_node.get("section")}')
+        hovertext.append("<br>".join(details))
+
+        ref_children = _build_child_lookup(ref_node) if ref_node else {}
+        children = _build_child_lookup(node) if node else {}
+        child_keys = set(ref_children) | set(children)
+        for child_key in sorted(child_keys):
+            iter_nodes(ref_children.get(child_key), children.get(child_key), identifier)
+
+    iter_nodes(reference_data.get('symbols', {}), data.get('symbols', {}))
+
+    max_abs_delta = max((abs(delta) for delta in deltas), default=1)
+    if max_abs_delta == 0:
+        max_abs_delta = 1
+
+    fig = go.Figure(
+        go.Sunburst(
+            ids=ids,
+            labels=labels,
+            parents=parents,
+            values=values,
+            hovertext=hovertext,
+            marker={
+                'colors': deltas,
+                'colorscale': 'RdYlGn_r',
+                'cmid': 0,
+                'cmin': -max_abs_delta,
+                'cmax': max_abs_delta,
+                'colorbar': {'title': 'Delta (bytes)'},
+            },
+            branchvalues='total',
+            maxdepth=depth,
+        ),
+        skip_invalid=True,
+    )
+    fig.update_layout(margin={'t': 0, 'l': 0, 'r': 0, 'b': 0})
+    fig.update_traces(textfont=dict(size=24))
+
+    return fig
+
+
 def main():
     args = parse_args()
 
     with open(args.input) as f:
         data = json.load(f)
 
-    fig = generate_figure(data, args.depth)
+    if args.reference:
+        with open(args.reference) as f:
+            ref_data = json.load(f)
+        fig = generate_diff_figure(ref_data, data, args.depth)
+    else:
+        fig = generate_figure(data, args.depth)
 
     if args.html:
         fig.write_html(args.html, auto_open=False)
