@@ -8,12 +8,12 @@
 #include <zephyr/drivers/auxdisplay.h>
 #include <zephyr/shell/shell.h>
 
-#define AUXD_ARGV_DEVICE  1
-#define AUXD_ARGV_ARG0    2
-#define AUXD_ARGV_ARG1    3
-#define AUXD_ARGV_PATTERN 2
-#define AUXD_ARGV_X       3
-#define AUXD_ARGV_Y       4
+#define AUXD_ARGV_DEVICE 1
+#define AUXD_ARGV_ARG0   2
+#define AUXD_ARGV_ARG1   3
+#define AUXD_ARGV_TEXT   2
+#define AUXD_ARGV_X      3
+#define AUXD_ARGV_Y      4
 
 static int get_auxdisplay_device(const struct shell *sh, const char *name,
 				 const struct device **dev)
@@ -478,9 +478,6 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD_ARG(brightness, &dsub_device_name,
 		      SHELL_HELP("Get or set brightness level", "<device> [level]"),
 		      cmd_brightness, 2, 1),
-	SHELL_CMD_ARG(busy, &dsub_device_name,
-		      SHELL_HELP("Check if the display is busy", "<device>"),
-		      cmd_busy, 2, 0),
 	SHELL_CMD_ARG(clear, &dsub_device_name,
 		      SHELL_HELP("Clear the auxiliary display", "<device>"),
 		      cmd_clear, 2, 0),
