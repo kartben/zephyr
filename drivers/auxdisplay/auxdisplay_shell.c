@@ -10,6 +10,7 @@
 
 #define AUXD_ARGV_DEVICE  1
 #define AUXD_ARGV_ARG0    2
+#define AUXD_ARGV_ARG1    3
 #define AUXD_ARGV_PATTERN 2
 #define AUXD_ARGV_X       3
 #define AUXD_ARGV_Y       4
@@ -367,28 +368,6 @@ static int cmd_backlight(const struct shell *sh, size_t argc, char **argv)
 	return 0;
 }
 
-static int cmd_busy(const struct shell *sh, size_t argc, char **argv)
-{
-	const struct device *dev;
-	int err;
-
-	ARG_UNUSED(argc);
-
-	err = get_auxdisplay_device(sh, argv[AUXD_ARGV_DEVICE], &dev);
-	if (err < 0) {
-		return err;
-	}
-
-	err = auxdisplay_is_busy(dev);
-	if (err < 0) {
-		return report_error(sh, "busy", err);
-	}
-
-	shell_print(sh, "busy: %s", err ? "yes" : "no");
-
-	return 0;
-}
-
 static int cmd_cursor_pos(const struct shell *sh, size_t argc, char **argv)
 {
 	const struct device *dev;
@@ -412,7 +391,7 @@ static int cmd_cursor_pos(const struct shell *sh, size_t argc, char **argv)
 			return err;
 		}
 
-		err = parse_i16(sh, argv[3], "Y", &y);
+		err = parse_i16(sh, argv[AUXD_ARGV_ARG1], "Y", &y);
 		if (err < 0) {
 			return err;
 		}
