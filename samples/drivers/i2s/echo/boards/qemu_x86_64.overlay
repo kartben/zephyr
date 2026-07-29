@@ -1,0 +1,10 @@
+/*
+ * Copyright (c) 2026 Benjamin Cabé <benjamin@zephyrproject.org>
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* The sample looks the device up by this node label. */
+i2s_rxtx: &virtio_sound {
+	status = "okay";
+};

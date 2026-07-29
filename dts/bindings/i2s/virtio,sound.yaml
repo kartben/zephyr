@@ -1,0 +1,50 @@
+# Copyright (c) 2026 Benjamin Cabé <benjamin@zephyrproject.org>
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  VIRTIO Sound device (virtio device ID 25) exposed through the I2S API.
+
+  The node must be a child of a VIRTIO transport node, either "virtio,pci" or
+  "virtio,mmio". One VIRTIO PCM output stream backs I2S_DIR_TX and one input
+  stream backs I2S_DIR_RX.
+
+  Example, over MMIO:
+
+      &virtio_mmio4 {
+              status = "okay";
+
+              virtio_sound: virtio-sound {
+                      compatible = "virtio,sound";
+                      status = "okay";
+              };
+      };
+
+compatible: "virtio,sound"
+
+include: base.yaml
+
+properties:
+  stream-direction:
+    type: string
+    default: "both"
+    enum:
+      - "rx"
+      - "tx"
+      - "both"
+    description: |
+      Directions this node exposes through the I2S API. Defaults to "both". A
+      direction with no matching VIRTIO PCM stream is disabled at runtime.
+
+  tx-stream-id:
+    type: int
+    description: |
+      VIRTIO PCM stream ID backing I2S_DIR_TX. When omitted, the first stream
+      the device reports as an output stream is used. Initialization fails if
+      the given ID does not exist or is not an output stream.
+
+  rx-stream-id:
+    type: int
+    description: |
+      VIRTIO PCM stream ID backing I2S_DIR_RX. When omitted, the first stream
+      the device reports as an input stream is used. Initialization fails if
+      the given ID does not exist or is not an input stream.

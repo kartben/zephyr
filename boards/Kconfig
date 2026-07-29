@@ -96,6 +96,17 @@ config QEMU_ICOUNT_SLEEP
 	  if no timer is enabled. This behavior gives deterministic execution
 	  times from the guest point of view.
 
+config QEMU_AUDIODEV
+	string "QEMU audio backend"
+	depends on QEMU_TARGET
+	default "none"
+	help
+	  Backend passed to the QEMU -audiodev option for emulated audio
+	  devices. The default "none" is a timer driven null backend that is
+	  always available, including on headless machines. Set this to "wav",
+	  "pa", "alsa", "sdl", "pipewire" or "coreaudio" to reach real host
+	  audio; those backends have to be compiled into your QEMU build.
+
 config QEMU_IVSHMEM_PLAIN_MEM_SIZE
 	int "QEMU ivshmem-plain shared memory size in mega-bytes"
 	default 1

@@ -72,3 +72,5 @@
 		};
 	};
 };
+
+/* The virtio,sound device is provided by the board. */
