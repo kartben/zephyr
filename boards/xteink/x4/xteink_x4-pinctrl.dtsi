@@ -1,0 +1,22 @@
+/*
+ * Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/pinctrl/esp-pinctrl-common.h>
+#include <zephyr/dt-bindings/pinctrl/esp32c3-pinctrl.h>
+#include <zephyr/dt-bindings/pinctrl/esp32c3-gpio-sigmap.h>
+
+&pinctrl {
+	spim2_default: spim2_default {
+		group1 {
+			pinmux = <SPIM2_MISO_GPIO7>,
+				 <SPIM2_SCLK_GPIO8>;
+		};
+
+		group2 {
+			pinmux = <SPIM2_MOSI_GPIO10>;
+			output-low;
+		};
+	};
+};

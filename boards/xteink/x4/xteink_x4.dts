@@ -1,0 +1,104 @@
+/*
+ * Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+
+#include <espressif/esp32c3/esp32c3_fx4.dtsi>
+#include "xteink_x4-pinctrl.dtsi"
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <espressif/partitions_0x0_default.dtsi>
+
+/ {
+	model = "Xteink X4 eReader";
+	compatible = "xteink,x4";
+
+	chosen {
+		zephyr,sram = &sram1;
+		zephyr,console = &usb_serial;
+		zephyr,shell-uart = &usb_serial;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &slot0_partition;
+		zephyr,display = &gdeq0426t82;
+		zephyr,bt-hci = &esp32_bt_hci;
+	};
+
+	aliases {
+		sw0 = &button_power;
+		watchdog0 = &wdt0;
+	};
+
+	gpio_keys {
+		compatible = "gpio-keys";
+
+		button_power: button_power {
+			label = "Power";
+			gpios = <&gpio0 3 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			zephyr,code = <INPUT_KEY_POWER>;
+		};
+	};
+
+	mipi_dbi {
+		compatible = "zephyr,mipi-dbi-spi";
+		spi-dev = <&spi2>;
+		dc-gpios = <&gpio0 4 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpio0 5 GPIO_ACTIVE_LOW>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		gdeq0426t82: gdeq0426t82@0 {
+			compatible = "solomon,ssd1677";
+			reg = <0>;
+			mipi-max-frequency = <DT_FREQ_M(20)>;
+			width = <800>;
+			height = <480>;
+			busy-gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
+			tssv = <0x80>;
+			softstart = [AE C7 C3 C0 40];
+		};
+	};
+};
+
+&flash0 {
+	reg = <0x0 DT_SIZE_M(16)>;
+};
+
+&uart0 {
+	status = "disabled";
+};
+
+&usb_serial {
+	status = "okay";
+};
+
+&trng0 {
+	status = "okay";
+};
+
+&spi2 {
+	status = "okay";
+	pinctrl-0 = <&spim2_default>;
+	pinctrl-names = "default";
+	cs-gpios = <&gpio0 21 GPIO_ACTIVE_LOW>;
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&adc0 {
+	status = "okay";
+};
+
+&wdt0 {
+	status = "okay";
+};
+
+&esp32_bt_hci {
+	status = "okay";
+};
+
+&wifi {
+	status = "okay";
+};
