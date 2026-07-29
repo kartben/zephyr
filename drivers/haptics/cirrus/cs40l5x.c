@@ -1939,6 +1939,13 @@ static int cs40l5x_pm_resume(const struct device *const dev)
 
 	ret = cs40l5x_write_mailbox(dev, CS40L5X_MBOX_PREVENT_HIBERNATION);
 	if (ret < 0) {
+		(void)pm_device_runtime_put(cs40lxx_get_control_port(&config->io_bus));
+
+		if (IS_ENABLED(CONFIG_HAPTICS_CS40L5X_EXTERNAL_BOOST) &&
+		    config->external_boost != NULL) {
+			(void)regulator_disable(config->external_boost);
+		}
+
 		return ret;
 	}
 
