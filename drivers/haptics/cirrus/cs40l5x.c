@@ -1749,6 +1749,11 @@ int cs40l5x_upload_pcm(const struct device *const dev, const enum cs40l5x_custom
 		return -EINVAL;
 	}
 
+	if (index >= CS40L5X_NUM_CUSTOM_EFFECTS) {
+		LOG_INST_ERR(config->log, "invalid custom effect index provided (%d)", -EINVAL);
+		return -EINVAL;
+	}
+
 	ret = pm_device_runtime_get(dev);
 	if (ret < 0) {
 		return ret;
@@ -1861,6 +1866,11 @@ int cs40l5x_upload_pwle(const struct device *const dev, const enum cs40l5x_custo
 
 	if (num_sections == 0 || num_sections > CS40L5X_MAX_PWLE_SECTIONS) {
 		LOG_INST_ERR(config->log, "invalid PWLE section length provided (%d)", -EINVAL);
+		return -EINVAL;
+	}
+
+	if (index >= CS40L5X_NUM_CUSTOM_EFFECTS) {
+		LOG_INST_ERR(config->log, "invalid custom effect index provided (%d)", -EINVAL);
 		return -EINVAL;
 	}
 
