@@ -533,7 +533,7 @@ static int cs40l5x_process_mailbox(const struct device *const dev)
 			LOG_INST_DBG(config->log, "ReDC calibration started");
 			break;
 		case CS40L5X_MBOX_REDC_EST_DONE:
-			LOG_INST_DBG(config->log, "ReDC calibration started");
+			LOG_INST_DBG(config->log, "ReDC calibration complete");
 			k_sem_give(&data->calibration_semaphore);
 			break;
 		case CS40L5X_MBOX_F0_EST_START:
