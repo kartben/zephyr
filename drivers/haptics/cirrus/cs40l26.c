@@ -703,7 +703,7 @@ static int cs40l26_calibrate_redc(const struct device *const dev, uint32_t *cons
 		ret = cs40l26_poll_mailbox(dev, CS40L26_REDC_EST_START,
 					   CS40L26_T_CALIBRATION_START);
 		if (ret < 0) {
-			LOG_INST_DBG(config->log, "timed out waiting for F0 start (%d)", ret);
+			LOG_INST_DBG(config->log, "timed out waiting for ReDC start (%d)", ret);
 			return ret;
 		}
 
