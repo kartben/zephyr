@@ -314,6 +314,18 @@ This option can also be used with the :command:`make` wrapper::
    # To generate HTML output with supported features limited to a subset of vendors
    make html HW_FEATURES_VENDOR_FILTER=vendor1,vendor2
 
+AI assistant widget
+*******************
+
+The :ref:`Kapa.ai assistant <kapa_ai>` is not embedded in locally built documentation. It is only
+enabled when a Kapa.ai website ID is passed to the build, which the CI documentation workflow does
+for the builds that get published::
+
+   make html KAPA_WEBSITE_ID=<your-kapa-website-id>
+
+The same option applies to the :command:`make doxygen` target, which builds the API reference on its
+own.
+
 Viewing generated documentation locally
 ***************************************
 

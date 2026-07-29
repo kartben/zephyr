@@ -18,6 +18,9 @@ env:
   DOXYGEN_VERSION: 1.15.0
   DOXYGEN_SHA256SUM: 0ec2e5b2c3cd82b7106d19cb42d8466450730b8cb7a9e85af712be38bf4523a1
   JOB_COUNT: 8
+  # Enables the Kapa.ai AI assistant widget in the Sphinx and Doxygen output. Only set here so
+  # that local documentation builds don't embed the widget.
+  KAPA_WEBSITE_ID: 231c2d18-d9cd-4296-bbcd-971a391dfe34
 
 jobs:
   doc-file-check:
@@ -146,7 +149,7 @@ jobs:
           # Only API (Doxygen) input files changed: build the API docs alone and skip the much
           # slower Sphinx build. The standalone doxygen target writes to _build/doxygen; move it to
           # ${DOXYGEN_OUT_DIR}.
-          DOC_TAG=${DOC_TAG} make -C doc doxygen
+          DOC_TAG=${DOC_TAG} KAPA_WEBSITE_ID=${KAPA_WEBSITE_ID} make -C doc doxygen
           mkdir -p "$(dirname "${DOXYGEN_OUT_DIR}")"
           mv doc/_build/doxygen "${DOXYGEN_OUT_DIR}"
         else
@@ -157,6 +160,7 @@ jobs:
           fi
 
           DOC_TAG=${DOC_TAG} \
+          KAPA_WEBSITE_ID=${KAPA_WEBSITE_ID} \
           SPHINXOPTS="-j ${JOB_COUNT} -W --keep-going -T" \
           SPHINXOPTS_EXTRA="-q -t publish" \
           make -C doc ${DOC_TARGET} NO_EXTERNAL_DEPS=1

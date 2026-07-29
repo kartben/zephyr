@@ -22,6 +22,10 @@ set(NO_EXTERNAL_DEPS OFF CACHE BOOL "Enable serving external CSS/JS libraries lo
 set(DOC_TAG "development" CACHE STRING "Documentation tag")
 set(DTS_ROOTS "${ZEPHYR_BASE}" CACHE STRING "DT bindings root folders")
 set(DOXYGEN_FORCE_SINGLE_THREAD OFF CACHE BOOL "Enable Doxygen single thread mode")
+# Kapa.ai website ID enabling the AI assistant widget in the documentation. Empty by default so
+# that local builds don't embed the widget; the CI documentation workflow sets it.
+# See https://docs.kapa.ai/integrations/website-widget/installation/general
+set(KAPA_WEBSITE_ID "" CACHE STRING "Kapa.ai website ID (empty disables the AI assistant widget)")
 
 separate_arguments(SPHINXOPTS)
 separate_arguments(SPHINXOPTS_EXTRA)
@@ -47,10 +51,30 @@ endif()
 #-------------------------------------------------------------------------------
 # Environment & Paths
 
+# Doxygen HTML header. Generated in the build directory so that the Kapa.ai widget can be included
+# only when KAPA_WEBSITE_ID is set. The path is handed over to both Doxygen drivers: the standalone
+# `doxygen` target below (through the configured Doxyfile) and the zephyr.doxyrunner Sphinx
+# extension (through the environment, see conf.py).
+set(DOXYGEN_HTML_HEADER ${CMAKE_CURRENT_BINARY_DIR}/header.html)
+
+set(KAPA_WIDGET "")
+if(KAPA_WEBSITE_ID)
+  file(READ ${CMAKE_CURRENT_LIST_DIR}/_doxygen/kapa-widget.html KAPA_WIDGET)
+  string(CONFIGURE "${KAPA_WIDGET}" KAPA_WIDGET @ONLY)
+endif()
+
+configure_file(
+  ${CMAKE_CURRENT_LIST_DIR}/_doxygen/header.html.in
+  ${DOXYGEN_HTML_HEADER}
+  @ONLY
+)
+
 set(SPHINX_ENV
   DOXYGEN_EXECUTABLE=${DOXYGEN_EXECUTABLE}
   DOT_EXECUTABLE=${DOXYGEN_DOT_EXECUTABLE}
   DOCS_HTML_DIR=${CMAKE_CURRENT_BINARY_DIR}/html
+  DOXYGEN_HTML_HEADER=${DOXYGEN_HTML_HEADER}
+  KAPA_WEBSITE_ID=${KAPA_WEBSITE_ID}
 )
 
 set(DOXYGEN_CUSTOM_LINES)
