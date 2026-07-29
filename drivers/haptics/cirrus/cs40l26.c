@@ -1203,6 +1203,7 @@ static int cs40l26_pm_resume(const struct device *const dev)
 	ret = cs40l26_write_mailbox(dev, CS40L26_MBOX_PREVENT_HIBERNATION);
 	if (ret < 0) {
 		LOG_INST_DBG(config->log, "failed to disable hibernation (%d)", ret);
+		(void)pm_device_runtime_put(cs40lxx_get_control_port(&config->io_bus));
 		return ret;
 	}
 
