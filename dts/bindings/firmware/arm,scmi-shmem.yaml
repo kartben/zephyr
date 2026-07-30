@@ -1,7 +1,12 @@
 # Copyright 2024 NXP
 # SPDX-License-Identifier: Apache-2.0
 
-description: SCMI (System Control and Management Interface) SHMEM (shared memory)
+title: Arm SCMI shared memory region
+
+description: |
+  Shared memory region used by the Arm SCMI (System Control and Management Interface)
+  transport for message exchange between the SCMI agent and platform. This node
+  describes the memory area where SCMI messages are written and read.
 
 compatible: "arm,scmi-shmem"
 
