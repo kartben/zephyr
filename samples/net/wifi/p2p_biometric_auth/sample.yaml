@@ -1,0 +1,22 @@
+sample:
+  name: WiFi Direct P2P Biometric Auth
+  description: |
+    WiFi Direct hotspot that blinks LED0 when a peer tries to connect
+    and gates access through biometric (fingerprint) authentication.
+tests:
+  sample.net.wifi.p2p_biometric_auth:
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Enrollment complete"
+    tags:
+      - net
+      - wifi
+      - biometrics
+    depends_on: gpio wifi
+    filter: dt_enabled_alias_with_parent_compat("led0", "gpio-leds") and
+            dt_alias_exists("fingerprint")
+    platform_allow:
+      - native_sim
+      - native_sim/native/64
