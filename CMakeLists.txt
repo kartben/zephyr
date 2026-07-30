@@ -1938,15 +1938,18 @@ if(CONFIG_BUILD_OUTPUT_MOT)
 endif()
 
 set(KERNEL_META_PATH  ${PROJECT_BINARY_DIR}/${KERNEL_META_NAME} CACHE INTERNAL "")
+set(gen_meta_command
+  ${PYTHON_EXECUTABLE} ${ZEPHYR_BASE}/scripts/zephyr_module.py
+  ${ZEPHYR_MODULES_ARG}
+  ${EXTRA_ZEPHYR_MODULES_ARG}
+  --meta-out ${KERNEL_META_PATH}
+  --zephyr-base=${ZEPHYR_BASE}
+  $<$<BOOL:${CONFIG_BUILD_OUTPUT_META_STATE_PROPAGATE}>:--meta-state-propagate>
+)
 if(CONFIG_BUILD_OUTPUT_META)
   list(APPEND
     post_build_commands
-    COMMAND ${PYTHON_EXECUTABLE} ${ZEPHYR_BASE}/scripts/zephyr_module.py
-            ${ZEPHYR_MODULES_ARG}
-            ${EXTRA_ZEPHYR_MODULES_ARG}
-            --meta-out ${KERNEL_META_PATH}
-            --zephyr-base=${ZEPHYR_BASE}
-            $<$<BOOL:${CONFIG_BUILD_OUTPUT_META_STATE_PROPAGATE}>:--meta-state-propagate>
+    COMMAND ${gen_meta_command}
   )
   list(APPEND
     post_build_byproducts
@@ -1956,6 +1959,22 @@ else(CONFIG_BUILD_OUTPUT_META)
   # Prevent spdx to use invalid data
   file(REMOVE ${KERNEL_META_PATH})
 endif()
+
+# The 'spdx' target generates an SPDX software bill of materials for the build
+# (`west build -t spdx`). It enables the CMake file-based API and refreshes the
+# build meta file itself, so it works without any prior setup and regardless of
+# CONFIG_BUILD_OUTPUT_META. The file-based API must be enabled first: doing so
+# may re-run CMake, which deletes a meta file not maintained by the build.
+add_custom_target(spdx
+  COMMAND ${PYTHON_EXECUTABLE} ${ZEPHYR_BASE}/scripts/build/gen_spdx.py
+          --build-dir ${APPLICATION_BINARY_DIR} --init-file-api
+  COMMAND ${gen_meta_command}
+  COMMAND ${PYTHON_EXECUTABLE} ${ZEPHYR_BASE}/scripts/build/gen_spdx.py
+          --build-dir ${APPLICATION_BINARY_DIR}
+  COMMENT "Generating SPDX documents in ${APPLICATION_BINARY_DIR}/spdx"
+  USES_TERMINAL
+)
+add_dependencies(spdx ${logical_target_for_zephyr_elf})
 
 # Cleanup intermediate files
 if(CONFIG_CLEANUP_INTERMEDIATE_FILES)

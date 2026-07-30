@@ -172,9 +172,10 @@ class Walker:
         self.get_cache_file()
 
         # check if meta file is generated
-        if not self.meta_file:
+        if not self.meta_file or not os.path.exists(self.meta_file):
             _logger.error(
-                "CONFIG_BUILD_OUTPUT_META must be enabled to generate spdx files; bailing"
+                "zephyr.meta not found; build with `west build -t spdx`, or enable "
+                "CONFIG_BUILD_OUTPUT_META and rebuild before running `west spdx`; bailing"
             )
             return None
 
@@ -224,7 +225,10 @@ class Walker:
         cmake_reply_dir_path = os.path.join(self.cfg.build_dir, ".cmake", "api", "v1", "reply")
         if not os.path.exists(cmake_reply_dir_path):
             _logger.error(f'cmake api reply directory {cmake_reply_dir_path} does not exist')
-            _logger.error('was query directory created before cmake build ran?')
+            _logger.error(
+                'rebuild with `west build`, or re-run CMake, so that the CMake '
+                'file-based API replies are generated'
+            )
             return None
         if not os.path.isdir(cmake_reply_dir_path):
             _logger.error(
