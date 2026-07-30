@@ -7,6 +7,7 @@
 #ifndef _TRACE_CTF_H
 #define _TRACE_CTF_H
 
+#include <zephyr/device.h>
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
 
@@ -948,6 +949,53 @@ void sys_trace_gpio_fire_callback(const struct device *port, struct gpio_callbac
 #define sys_port_trace_gpio_fire_callbacks_enter(list, port, pins)                                 \
 	sys_trace_gpio_fire_callbacks_enter(list, port, pins)
 #define sys_port_trace_gpio_fire_callback(port, cb) sys_trace_gpio_fire_callback(port, cb)
+
+/* System Power Management */
+#define sys_port_trace_pm_system_suspend_enter(ticks)                                              \
+	sys_trace_pm_system_suspend_enter((int32_t)(ticks))
+#define sys_port_trace_pm_system_suspend_exit(ticks, state)                                        \
+	sys_trace_pm_system_suspend_exit((int32_t)(ticks), (uint8_t)(state))
+#define sys_port_trace_pm_state_set_enter(cpu, state, substate_id)                                 \
+	sys_trace_pm_state_set_enter((uint8_t)(cpu), (uint8_t)(state), (uint8_t)(substate_id))
+#define sys_port_trace_pm_state_set_exit(cpu, state, substate_id)                                  \
+	sys_trace_pm_state_set_exit((uint8_t)(cpu), (uint8_t)(state), (uint8_t)(substate_id))
+
+void sys_trace_pm_system_suspend_enter(int32_t ticks);
+void sys_trace_pm_system_suspend_exit(int32_t ticks, uint8_t state);
+void sys_trace_pm_state_set_enter(uint8_t cpu, uint8_t state, uint8_t substate_id);
+void sys_trace_pm_state_set_exit(uint8_t cpu, uint8_t state, uint8_t substate_id);
+
+/* Device Runtime Power Management */
+#define sys_port_trace_pm_device_runtime_get_enter(dev) sys_trace_pm_device_runtime_get_enter(dev)
+#define sys_port_trace_pm_device_runtime_get_exit(dev, ret)                                        \
+	sys_trace_pm_device_runtime_get_exit(dev, ret)
+#define sys_port_trace_pm_device_runtime_put_enter(dev) sys_trace_pm_device_runtime_put_enter(dev)
+#define sys_port_trace_pm_device_runtime_put_exit(dev, ret)                                        \
+	sys_trace_pm_device_runtime_put_exit(dev, ret)
+#define sys_port_trace_pm_device_runtime_put_async_enter(dev, delay)                               \
+	sys_trace_pm_device_runtime_put_async_enter(dev, delay)
+#define sys_port_trace_pm_device_runtime_put_async_exit(dev, delay, ret)                           \
+	sys_trace_pm_device_runtime_put_async_exit(dev, delay, ret)
+#define sys_port_trace_pm_device_runtime_enable_enter(dev)                                         \
+	sys_trace_pm_device_runtime_enable_enter(dev)
+#define sys_port_trace_pm_device_runtime_enable_exit(dev, ret)                                     \
+	sys_trace_pm_device_runtime_enable_exit(dev, ret)
+#define sys_port_trace_pm_device_runtime_disable_enter(dev)                                        \
+	sys_trace_pm_device_runtime_disable_enter(dev)
+#define sys_port_trace_pm_device_runtime_disable_exit(dev, ret)                                    \
+	sys_trace_pm_device_runtime_disable_exit(dev, ret)
+
+void sys_trace_pm_device_runtime_get_enter(const struct device *dev);
+void sys_trace_pm_device_runtime_get_exit(const struct device *dev, int ret);
+void sys_trace_pm_device_runtime_put_enter(const struct device *dev);
+void sys_trace_pm_device_runtime_put_exit(const struct device *dev, int ret);
+void sys_trace_pm_device_runtime_put_async_enter(const struct device *dev, k_timeout_t delay);
+void sys_trace_pm_device_runtime_put_async_exit(const struct device *dev, k_timeout_t delay,
+						int ret);
+void sys_trace_pm_device_runtime_enable_enter(const struct device *dev);
+void sys_trace_pm_device_runtime_enable_exit(const struct device *dev, int ret);
+void sys_trace_pm_device_runtime_disable_enter(const struct device *dev);
+void sys_trace_pm_device_runtime_disable_exit(const struct device *dev, int ret);
 
 #ifdef __cplusplus
 }

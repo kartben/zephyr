@@ -424,6 +424,24 @@ typedef enum {
 	CTF_EVENT_STACK_POP_BLOCKING = 0x145,
 	CTF_EVENT_STACK_POP_EXIT = 0x146,
 
+	/* System Power Management */
+	CTF_EVENT_PM_SYSTEM_SUSPEND_ENTER = 0x147,
+	CTF_EVENT_PM_SYSTEM_SUSPEND_EXIT = 0x148,
+	CTF_EVENT_PM_STATE_SET_ENTER = 0x149,
+	CTF_EVENT_PM_STATE_SET_EXIT = 0x14A,
+
+	/* Device Runtime Power Management */
+	CTF_EVENT_PM_DEVICE_RUNTIME_GET_ENTER = 0x14B,
+	CTF_EVENT_PM_DEVICE_RUNTIME_GET_EXIT = 0x14C,
+	CTF_EVENT_PM_DEVICE_RUNTIME_PUT_ENTER = 0x14D,
+	CTF_EVENT_PM_DEVICE_RUNTIME_PUT_EXIT = 0x14E,
+	CTF_EVENT_PM_DEVICE_RUNTIME_PUT_ASYNC_ENTER = 0x14F,
+	CTF_EVENT_PM_DEVICE_RUNTIME_PUT_ASYNC_EXIT = 0x150,
+	CTF_EVENT_PM_DEVICE_RUNTIME_ENABLE_ENTER = 0x151,
+	CTF_EVENT_PM_DEVICE_RUNTIME_ENABLE_EXIT = 0x152,
+	CTF_EVENT_PM_DEVICE_RUNTIME_DISABLE_ENTER = 0x153,
+	CTF_EVENT_PM_DEVICE_RUNTIME_DISABLE_EXIT = 0x154,
+
 } ctf_event_t;
 
 typedef struct {
@@ -2069,6 +2087,80 @@ static inline void ctf_top_stack_pop_blocking(uint32_t id, uint32_t timeout)
 static inline void ctf_top_stack_pop_exit(uint32_t id, uint32_t timeout, int32_t ret)
 {
 	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_STACK_POP_EXIT), id, timeout, ret);
+}
+
+/* System Power Management */
+static inline void ctf_top_pm_system_suspend_enter(int32_t ticks)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_PM_SYSTEM_SUSPEND_ENTER), ticks);
+}
+
+static inline void ctf_top_pm_system_suspend_exit(int32_t ticks, uint8_t state)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_PM_SYSTEM_SUSPEND_EXIT), ticks, state);
+}
+
+static inline void ctf_top_pm_state_set_enter(uint8_t cpu, uint8_t state, uint8_t substate_id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_PM_STATE_SET_ENTER), cpu, state, substate_id);
+}
+
+static inline void ctf_top_pm_state_set_exit(uint8_t cpu, uint8_t state, uint8_t substate_id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_PM_STATE_SET_EXIT), cpu, state, substate_id);
+}
+
+/* Device Runtime Power Management */
+static inline void ctf_top_pm_device_runtime_get_enter(uint32_t dev)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_PM_DEVICE_RUNTIME_GET_ENTER), dev);
+}
+
+static inline void ctf_top_pm_device_runtime_get_exit(uint32_t dev, int32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_PM_DEVICE_RUNTIME_GET_EXIT), dev, ret);
+}
+
+static inline void ctf_top_pm_device_runtime_put_enter(uint32_t dev)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_PM_DEVICE_RUNTIME_PUT_ENTER), dev);
+}
+
+static inline void ctf_top_pm_device_runtime_put_exit(uint32_t dev, int32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_PM_DEVICE_RUNTIME_PUT_EXIT), dev, ret);
+}
+
+static inline void ctf_top_pm_device_runtime_put_async_enter(uint32_t dev, uint32_t delay)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_PM_DEVICE_RUNTIME_PUT_ASYNC_ENTER), dev, delay);
+}
+
+static inline void ctf_top_pm_device_runtime_put_async_exit(uint32_t dev, uint32_t delay,
+							    int32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_PM_DEVICE_RUNTIME_PUT_ASYNC_EXIT), dev, delay,
+		  ret);
+}
+
+static inline void ctf_top_pm_device_runtime_enable_enter(uint32_t dev)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_PM_DEVICE_RUNTIME_ENABLE_ENTER), dev);
+}
+
+static inline void ctf_top_pm_device_runtime_enable_exit(uint32_t dev, int32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_PM_DEVICE_RUNTIME_ENABLE_EXIT), dev, ret);
+}
+
+static inline void ctf_top_pm_device_runtime_disable_enter(uint32_t dev)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_PM_DEVICE_RUNTIME_DISABLE_ENTER), dev);
+}
+
+static inline void ctf_top_pm_device_runtime_disable_exit(uint32_t dev, int32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_PM_DEVICE_RUNTIME_DISABLE_EXIT), dev, ret);
 }
 
 #endif /* SUBSYS_DEBUG_TRACING_CTF_TOP_H */
