@@ -14,6 +14,7 @@ Guides on how to set up toolchains for Zephyr development.
    arm_toolchain_for_embedded.rst
    cadence_xcc.rst
    designware_arc_mwdt.rst
+   filc.rst
    gnu_arm_embedded.rst
    iar_arm_toolchain.rst
    intel_oneapi_toolkit.rst
