@@ -148,6 +148,8 @@ bool pm_system_suspend(int32_t kernel_ticks)
 	k_spinlock_key_t key;
 	int32_t ticks, events_ticks;
 	uint32_t exit_latency_ticks;
+	enum pm_state state;
+	uint8_t substate_id;
 
 	SYS_PORT_TRACING_FUNC_ENTER(pm, system_suspend, kernel_ticks);
 
@@ -237,9 +239,20 @@ bool pm_system_suspend(int32_t kernel_ticks)
 	if (!IS_ENABLED(CONFIG_PM_STATE_SET_IRQ_UNLOCKED)) {
 		_kernel.idle = 0;
 	}
-	pm_state_set(z_cpus_pm_state[id]->state, z_cpus_pm_state[id]->substate_id);
+
+	/*
+	 * Keep a local copy of the state being entered: wake ISRs may complete
+	 * the resume bookkeeping and clear z_cpus_pm_state[id] before we get to
+	 * report which state we left.
+	 */
+	state = z_cpus_pm_state[id]->state;
+	substate_id = z_cpus_pm_state[id]->substate_id;
+
+	SYS_PORT_TRACING_FUNC_ENTER(pm, state_set, id, state, substate_id);
+	pm_state_set(state, substate_id);
 
 	/* Wake up sequence starts here */
+	SYS_PORT_TRACING_FUNC_EXIT(pm, state_set, id, state, substate_id);
 
 	if (IS_ENABLED(CONFIG_PM_STATS)) {
 		pm_stats_stop();

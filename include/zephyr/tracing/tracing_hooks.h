@@ -2573,6 +2573,36 @@
 #define sys_port_trace_pm_system_suspend_exit(ticks, state)
 #endif
 
+/**
+ * @brief Trace the CPU entering a SoC power state.
+ *
+ * Emitted right before the SoC specific code that puts the CPU into the
+ * selected power state runs.
+ *
+ * @param cpu CPU index.
+ * @param state PM state.
+ * @param substate_id PM substate identifier.
+ */
+#ifndef sys_port_trace_pm_state_set_enter
+#define sys_port_trace_pm_state_set_enter(cpu, state, substate_id)
+#endif
+
+/**
+ * @brief Trace the CPU leaving a SoC power state.
+ *
+ * Emitted as soon as the CPU resumes execution, before any post-operations
+ * for the state are run. The delta between this event and the matching
+ * @ref sys_port_trace_pm_state_set_enter is the time the CPU spent in the
+ * state.
+ *
+ * @param cpu CPU index.
+ * @param state PM state that was left.
+ * @param substate_id PM substate identifier.
+ */
+#ifndef sys_port_trace_pm_state_set_exit
+#define sys_port_trace_pm_state_set_exit(cpu, state, substate_id)
+#endif
+
 /** @} */ /* end of subsys_tracing_apis_pm_system */
 
 /**
