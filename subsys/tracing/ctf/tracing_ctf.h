@@ -997,6 +997,15 @@ void sys_trace_pm_device_runtime_enable_exit(const struct device *dev, int ret);
 void sys_trace_pm_device_runtime_disable_enter(const struct device *dev);
 void sys_trace_pm_device_runtime_disable_exit(const struct device *dev, int ret);
 
+/* Device Power Management Actions */
+#define sys_port_trace_pm_device_action_run_enter(dev, action)                                      \
+	sys_trace_pm_device_action_run_enter(dev, (uint8_t)(action))
+#define sys_port_trace_pm_device_action_run_exit(dev, action, ret)                                  \
+	sys_trace_pm_device_action_run_exit(dev, (uint8_t)(action), (int32_t)(ret))
+
+void sys_trace_pm_device_action_run_enter(const struct device *dev, uint8_t action);
+void sys_trace_pm_device_action_run_exit(const struct device *dev, uint8_t action, int32_t ret);
+
 #ifdef __cplusplus
 }
 #endif

@@ -2702,6 +2702,43 @@
 /** @} */ /* end of subsys_tracing_apis_pm_device_runtime */
 
 /**
+ * @brief Tracing hooks for device power management actions
+ * @defgroup subsys_tracing_apis_pm_device_action PM Device Action
+ * @ingroup subsys_tracing_apis
+ * @{
+ */
+
+/**
+ * @brief Trace a device power management action call entry.
+ *
+ * Emitted for every action the PM core runs on a device, whichever subsystem
+ * asked for it — the system managed suspend/resume walk, device runtime PM, or
+ * a power domain turning its children on or off.
+ *
+ * @param dev Device instance.
+ * @param action Device PM action.
+ */
+#ifndef sys_port_trace_pm_device_action_run_enter
+#define sys_port_trace_pm_device_action_run_enter(dev, action)
+#endif
+
+/**
+ * @brief Trace a device power management action call exit.
+ *
+ * @param dev Device instance.
+ * @param action Device PM action.
+ * @param ret Return value. -ENOSYS means the device has no PM support at all,
+ * -EALREADY that it was already in the target state, and -ENOTSUP that the
+ * action does not apply to its current state; the system managed suspend walk
+ * ignores all three and counts the device as not suspended.
+ */
+#ifndef sys_port_trace_pm_device_action_run_exit
+#define sys_port_trace_pm_device_action_run_exit(dev, action, ret)
+#endif
+
+/** @} */ /* end of subsys_tracing_apis_pm_device_action */
+
+/**
  * @brief Tracing hooks for network events
  * @defgroup subsys_tracing_apis_net Network
  * @ingroup subsys_tracing_apis

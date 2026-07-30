@@ -442,6 +442,10 @@ typedef enum {
 	CTF_EVENT_PM_DEVICE_RUNTIME_DISABLE_ENTER = 0x153,
 	CTF_EVENT_PM_DEVICE_RUNTIME_DISABLE_EXIT = 0x154,
 
+	/* Device Power Management Actions */
+	CTF_EVENT_PM_DEVICE_ACTION_RUN_ENTER = 0x155,
+	CTF_EVENT_PM_DEVICE_ACTION_RUN_EXIT = 0x156,
+
 } ctf_event_t;
 
 typedef struct {
@@ -2161,6 +2165,17 @@ static inline void ctf_top_pm_device_runtime_disable_enter(uint32_t dev)
 static inline void ctf_top_pm_device_runtime_disable_exit(uint32_t dev, int32_t ret)
 {
 	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_PM_DEVICE_RUNTIME_DISABLE_EXIT), dev, ret);
+}
+
+/* Device Power Management Actions */
+static inline void ctf_top_pm_device_action_run_enter(uint32_t dev, uint8_t action)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_PM_DEVICE_ACTION_RUN_ENTER), dev, action);
+}
+
+static inline void ctf_top_pm_device_action_run_exit(uint32_t dev, uint8_t action, int32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_PM_DEVICE_ACTION_RUN_EXIT), dev, action, ret);
 }
 
 #endif /* SUBSYS_DEBUG_TRACING_CTF_TOP_H */

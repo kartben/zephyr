@@ -7,6 +7,7 @@
 #include <zephyr/device.h>
 #include <zephyr/pm/device.h>
 #include <zephyr/sys/iterable_sections.h>
+#include <zephyr/tracing/tracing.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(pm_device, CONFIG_PM_DEVICE_LOG_LEVEL);
@@ -50,16 +51,21 @@ int pm_device_action_run(const struct device *dev,
 	struct pm_device_base *pm = dev->pm_base;
 	int ret;
 
+	SYS_PORT_TRACING_FUNC_ENTER(pm, device_action_run, dev, action);
+
 	if (pm == NULL) {
-		return -ENOSYS;
+		ret = -ENOSYS;
+		goto end;
 	}
 
 	/* Validate action against current state */
 	if (pm->state == action_target_state[action]) {
-		return -EALREADY;
+		ret = -EALREADY;
+		goto end;
 	}
 	if (pm->state != action_expected_state[action]) {
-		return -ENOTSUP;
+		ret = -ENOTSUP;
+		goto end;
 	}
 
 	ret = pm->action_cb(dev, action);
@@ -88,7 +94,7 @@ int pm_device_action_run(const struct device *dev,
 		default:
 			break;
 		}
-		return ret;
+		goto end;
 	}
 
 	pm->state = action_target_state[action];
@@ -98,7 +104,12 @@ int pm_device_action_run(const struct device *dev,
 		atomic_clear_bit(&pm->flags, PM_DEVICE_FLAG_TURN_ON_FAILED);
 	}
 
-	return 0;
+	ret = 0;
+
+end:
+	SYS_PORT_TRACING_FUNC_EXIT(pm, device_action_run, dev, action, ret);
+
+	return ret;
 }
 
 static int power_domain_add_or_remove(const struct device *dev,

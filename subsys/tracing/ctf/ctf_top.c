@@ -2070,3 +2070,14 @@ void sys_trace_pm_device_runtime_disable_exit(const struct device *dev, int ret)
 {
 	ctf_top_pm_device_runtime_disable_exit((uint32_t)(uintptr_t)dev, (int32_t)ret);
 }
+
+/* Device Power Management Actions */
+void sys_trace_pm_device_action_run_enter(const struct device *dev, uint8_t action)
+{
+	ctf_top_pm_device_action_run_enter((uint32_t)(uintptr_t)dev, action);
+}
+
+void sys_trace_pm_device_action_run_exit(const struct device *dev, uint8_t action, int32_t ret)
+{
+	ctf_top_pm_device_action_run_exit((uint32_t)(uintptr_t)dev, action, ret);
+}

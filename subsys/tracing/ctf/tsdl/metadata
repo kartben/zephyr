@@ -2952,3 +2952,23 @@ event {
 		int32_t ret;
 	};
 };
+
+/* Device Power Management Actions */
+event {
+	name = pm_device_action_run_enter;
+	id = 0x155;
+	fields := struct {
+		uint32_t dev;
+		uint8_t action;
+	};
+};
+
+event {
+	name = pm_device_action_run_exit;
+	id = 0x156;
+	fields := struct {
+		uint32_t dev;
+		uint8_t action;
+		int32_t ret;
+	};
+};
