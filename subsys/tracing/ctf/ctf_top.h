@@ -516,6 +516,10 @@ typedef enum {
 	CTF_EVENT_ZBUS_ASYNC_LISTENER_ENTER = 0x196,
 	CTF_EVENT_ZBUS_ASYNC_LISTENER_EXIT = 0x197,
 
+	/* Device Power Management Actions */
+	CTF_EVENT_PM_DEVICE_ACTION_RUN_ENTER = 0x198,
+	CTF_EVENT_PM_DEVICE_ACTION_RUN_EXIT = 0x199,
+
 } ctf_event_t;
 
 typedef struct {
@@ -2582,6 +2586,17 @@ static inline void ctf_top_zbus_async_listener_enter(uint32_t listener_id, uint3
 static inline void ctf_top_zbus_async_listener_exit(uint32_t listener_id, uint32_t chan_id)
 {
 	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_ZBUS_ASYNC_LISTENER_EXIT), listener_id, chan_id);
+}
+
+/* Device Power Management Actions */
+static inline void ctf_top_pm_device_action_run_enter(uint32_t dev, uint8_t action)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_PM_DEVICE_ACTION_RUN_ENTER), dev, action);
+}
+
+static inline void ctf_top_pm_device_action_run_exit(uint32_t dev, uint8_t action, int32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_PM_DEVICE_ACTION_RUN_EXIT), dev, action, ret);
 }
 
 #endif /* SUBSYS_DEBUG_TRACING_CTF_TOP_H */

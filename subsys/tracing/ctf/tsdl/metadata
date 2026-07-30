@@ -3550,3 +3550,22 @@ event {
 		uint32_t chan;
 	};
 };
+
+event {
+	name = pm_device_action_run_enter;
+	id = 0x198;
+	fields := struct {
+		uint32_t dev;
+		uint8_t action;
+	};
+};
+
+event {
+	name = pm_device_action_run_exit;
+	id = 0x199;
+	fields := struct {
+		uint32_t dev;
+		uint8_t action;
+		int32_t ret;
+	};
+};

@@ -2469,3 +2469,14 @@ void sys_trace_zbus_async_listener_exit(const struct zbus_async_listener_work *a
 	ctf_top_zbus_async_listener_exit((uint32_t)(uintptr_t)async_listener,
 					 (uint32_t)(uintptr_t)chan);
 }
+
+/* Device Power Management Actions */
+void sys_trace_pm_device_action_run_enter(const struct device *dev, uint8_t action)
+{
+	ctf_top_pm_device_action_run_enter((uint32_t)(uintptr_t)dev, action);
+}
+
+void sys_trace_pm_device_action_run_exit(const struct device *dev, uint8_t action, int32_t ret)
+{
+	ctf_top_pm_device_action_run_exit((uint32_t)(uintptr_t)dev, action, ret);
+}
