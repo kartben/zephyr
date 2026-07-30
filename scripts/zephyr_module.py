@@ -672,6 +672,10 @@ def process_meta(zephyr_base, west_projs, modules, extra_modules=None,
 
         meta_module['name'] = module.meta.get('name')
 
+        depends = module.meta.get('build', {}).get('depends')
+        if depends:
+            meta_module['depends'] = list(depends)
+
         if module.meta.get('security'):
             meta_module['security'] = module.meta.get('security')
         meta_modules.append(meta_module)
@@ -784,7 +788,10 @@ def parse_modules(zephyr_base, manifest=None, west_projs=None, modules=None,
 
         meta = process_module(project, require_yaml_validation)
         if meta:
-            depends = meta.get('build', {}).get('depends', [])
+            # copy: the topological sort below consumes this list, and the module
+            # metadata is read again afterwards (process_meta records the dependencies
+            # in the meta file)
+            depends = list(meta.get('build', {}).get('depends', []))
             all_modules_by_name[meta['name']] = Module(project, meta, depends)
 
         elif project in extra_modules:
