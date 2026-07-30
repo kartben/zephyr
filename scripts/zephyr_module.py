@@ -145,6 +145,37 @@ properties:
         type: array
         items:
           type: string
+      vex:
+        type: array
+        items:
+          type: object
+          properties:
+            vulnerability:
+              type: string
+            status:
+              type: string
+              enum:
+                - fixed
+                - not_affected
+                - affected
+                - under_investigation
+            justification:
+              type: string
+              enum:
+                - component_not_present
+                - vulnerable_code_not_present
+                - vulnerable_code_not_in_execute_path
+                - vulnerable_code_cannot_be_controlled_by_adversary
+                - inline_mitigations_already_exist
+            impact-statement:
+              type: string
+            action-statement:
+              type: string
+            notes:
+              type: string
+          required:
+            - vulnerability
+            - status
   package-managers:
     type: object
     properties:

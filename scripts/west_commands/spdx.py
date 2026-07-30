@@ -54,6 +54,17 @@ class ZephyrSpdx(WestCommand):
         parser.add_argument(
             '--include-sdk', action="store_true", help="also generate SPDX document for SDK"
         )
+        parser.add_argument(
+            '--cve-check',
+            action="store_true",
+            help="check the generated SBOM for known CVEs with the sbom-cve-check tool "
+            "(requires --spdx-version 3 and the sbom-cve-check package)",
+        )
+        parser.add_argument(
+            '--cve-check-databases-dir',
+            help="directory for the sbom-cve-check vulnerability databases "
+            "(default: SBOM_CVE_CHECK_DATABASES_DIR or the tool's cache directory)",
+        )
 
         return parser
 
@@ -72,6 +83,8 @@ class ZephyrSpdx(WestCommand):
         self.dbg("  --spdx-version is", args.spdx_version)
         self.dbg("  --analyze-includes is", args.analyze_includes)
         self.dbg("  --include-sdk is", args.include_sdk)
+        self.dbg("  --cve-check is", args.cve_check)
+        self.dbg("  --cve-check-databases-dir is", args.cve_check_databases_dir)
 
         if args.init:
             self.do_run_init(args)
@@ -107,6 +120,10 @@ class ZephyrSpdx(WestCommand):
         except Exception:
             self.die(f"Invalid SPDX version: {args.spdx_version}")
         cfg.spdx_version = version_obj
+        if args.cve_check and version_obj.major != 3:
+            self.die(
+                "--cve-check requires SPDX 3 output; call `west spdx --spdx-version 3 --cve-check`"
+            )
         if args.namespace_prefix:
             cfg.namespace_prefix = args.namespace_prefix
         else:
@@ -135,3 +152,9 @@ class ZephyrSpdx(WestCommand):
 
         if not make_spdx(cfg):
             self.die("Failed to create SPDX output")
+
+        if args.cve_check:
+            from zspdx.cvecheck import run_cve_check
+
+            if not run_cve_check(cfg.spdx_dir, args.cve_check_databases_dir or ""):
+                self.die("CVE check failed or found unpatched vulnerabilities (see above)")

@@ -156,6 +156,16 @@ For SPDX 3.0, every document declares conformance to the Core, Software and Simp
 profiles, and :file:`build.jsonld` additionally declares the :ref:`Build profile
 <west-spdx-build-profile>` that captures how the artifacts were produced.
 
+Each document also carries the `SBOM type
+<https://spdx.github.io/spdx-spec/v3.0.1/model/Software/Vocabularies/SbomType/>`_ of its content:
+``app``, ``zephyr``, ``modules-deps`` and ``sdk`` are *source* SBOMs (their content comes directly
+from the development environment: source files and included dependencies), while ``build`` is a
+*build* SBOM (artifacts produced while building the releasable image). SPDX 3.0 documents are
+rooted in a ``software_Sbom`` element typed accordingly; SPDX 2.x documents record the type in
+their ``CreatorComment`` (e.g. ``SBOM Type: Source``), following the `OpenChain Telco SBOM Guide
+<https://github.com/OpenChain-Project/Telco-WG/blob/main/OpenChain-Telco-SBOM-Guide_EN.md>`_
+convention.
+
 Each file in the bill-of-materials is scanned, so that its hashes (SHA256, SHA1, and MD5)
 can be recorded, along with any detected licenses if an
 ``SPDX-License-Identifier`` comment appears in the file.
@@ -203,6 +213,59 @@ Each intermediate target, such as a static library, also gets its own sub-build 
 sources, tools and compile flags that produced its artifact, so any output can be traced back to how
 it was built.
 
+.. _west-spdx-security-profile:
+
+VEX statements and the Security profile
+---------------------------------------
+
+Modules can record `VEX`_ (Vulnerability Exploitability eXchange) statements in the ``security:
+vex:`` section of their :file:`module.yml` file, asserting their status with respect to known
+vulnerabilities — for example that a CVE fix was cherry-picked into the module's Zephyr fork even
+though no fixed upstream release is referenced by its CPE. See :ref:`modules
+<modules-vulnerability-monitoring>` for the file format.
+
+When generating SPDX 3.0 documents, these statements are emitted in :file:`modules-deps.jsonld`
+using the `SPDX 3.0 Security profile`_: each vulnerability becomes a ``security_Vulnerability``
+element tied to the module's package, and each statement becomes the corresponding VEX assessment
+relationship (``fixedIn``, ``doesNotAffect``, ``affects`` or ``underInvestigationFor``). SBOM
+consumers, including the ``sbom-cve-check`` tool used by :ref:`west-spdx-cve-check`, pick these
+assessments up automatically.
+
+For SPDX 2.x output, which has no security vocabulary, the statements are preserved as
+human-readable package ``Annotation`` entries instead.
+
+.. _west-spdx-cve-check:
+
+Checking for known vulnerabilities: ``--cve-check``
+---------------------------------------------------
+
+Passing ``--cve-check`` (SPDX 3.0 only) checks the generated SBOM for known vulnerabilities right
+after generation:
+
+.. code-block:: bash
+
+   west spdx -d BUILD_DIR --spdx-version 3.0 --cve-check
+
+The check is performed by the third-party `sbom-cve-check`_ tool, which must be installed
+separately (it is part of Zephyr's optional requirements):
+
+.. code-block:: bash
+
+   pip install sbom-cve-check
+
+The tool matches the CPE and PURL identifiers recorded in :file:`modules-deps.jsonld` (see
+:ref:`modules <modules-vulnerability-monitoring>`) against public vulnerability databases (NVD and
+the CVE List), and honors the VEX assessments embedded in the SBOM: vulnerabilities recorded as
+``fixed`` or ``not_affected`` in a module's :file:`module.yml` are not reported as unpatched.
+
+The plain-text report is written to :file:`BUILD_DIR/spdx/cve-check-summary.txt`; ``west spdx``
+fails when unpatched vulnerabilities are found, making the option suitable for CI. On first use the
+tool downloads its vulnerability databases (several gigabytes) to its cache directory; use
+``--cve-check-databases-dir`` (or the ``SBOM_CVE_CHECK_DATABASES_DIR`` environment variable) to
+store them elsewhere, e.g. in a location shared between CI runs. For advanced usage — additional
+report formats, database configuration, filtering — run ``sbom-cve-check`` directly on the
+generated :file:`modules-deps.jsonld`.
+
 Command-line options
 --------------------
 
@@ -232,6 +295,14 @@ Command-line options
   document, :file:`sdk.spdx` (or :file:`sdk.jsonld`), which lists header files
   included from the SDK.
 
+- ``--cve-check``: after generating the documents, check them for known vulnerabilities
+  using the ``sbom-cve-check`` tool. Requires ``--spdx-version 3``. See
+  :ref:`west-spdx-cve-check`.
+
+- ``--cve-check-databases-dir DIR``: directory where ``sbom-cve-check`` stores its
+  vulnerability databases. Defaults to the ``SBOM_CVE_CHECK_DATABASES_DIR`` environment
+  variable, or the tool's cache directory.
+
 .. warning::
 
    The generation of SBOM documents for the ``native_sim`` platform is currently not supported.
@@ -240,6 +311,13 @@ Command-line options
 
 .. _SPDX 3.0 Build profile:
    https://spdx.github.io/spdx-spec/v3.0.1/model/Build/Build/
+
+.. _SPDX 3.0 Security profile:
+   https://spdx.github.io/spdx-spec/v3.0.1/model/Security/Security/
+
+.. _VEX: https://www.cisa.gov/resources-tools/resources/minimum-requirements-vulnerability-exploitability-exchange-vex
+
+.. _sbom-cve-check: https://pypi.org/project/sbom-cve-check/
 
 .. _SPDX specification clause 6:
    https://spdx.github.io/spdx-spec/v2.2.2/document-creation-information/
