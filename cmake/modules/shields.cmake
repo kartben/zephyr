@@ -59,15 +59,24 @@ set(list_shields_commands
   ${board_root_args} --json
 )
 
-# Get list of shields in JSON format
-execute_process(${list_shields_commands}
-  OUTPUT_VARIABLE shields_json
-  ERROR_VARIABLE err_shields
-  RESULT_VARIABLE ret_val
-)
+# Get list of shields in JSON format.
+# The boards module may already have written the listing to a file during this
+# configure run (via list_boards.py --shields-out), saving a process
+# invocation. Fall back to invoking list_shields.py directly when the listing
+# is not available, for example on errors or when the boards module did not
+# run.
+if(DEFINED ZEPHYR_SHIELDS_LISTING_FILE AND EXISTS ${ZEPHYR_SHIELDS_LISTING_FILE})
+  file(READ ${ZEPHYR_SHIELDS_LISTING_FILE} shields_json)
+else()
+  execute_process(${list_shields_commands}
+    OUTPUT_VARIABLE shields_json
+    ERROR_VARIABLE err_shields
+    RESULT_VARIABLE ret_val
+  )
 
-if(ret_val)
-  message(FATAL_ERROR "Error finding shields\nError message: ${err_shields}")
+  if(ret_val)
+    message(FATAL_ERROR "Error finding shields\nError message: ${err_shields}")
+  endif()
 endif()
 
 string(JSON shields_length LENGTH ${shields_json})

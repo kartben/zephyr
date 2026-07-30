@@ -180,9 +180,24 @@ set(format_str "{NAME}\;{DIR}\;")
 set(format_str "${format_str}{REVISION_FORMAT}\;{REVISION_DEFAULT}\;{REVISION_EXACT}\;")
 set(format_str "${format_str}{REVISIONS}\;{SOCS}\;{QUALIFIERS}")
 
+# In addition to the board lookup, have list_boards.py write out the hardware
+# (archs/socs) and shields listings which the hwm_v2 and shields modules need
+# later during this configure run. This saves separate invocations of
+# list_hardware.py and list_shields.py, including a duplicate scan of all
+# soc.yml files. Both listings are best-effort: if a listing file is missing
+# after this call, the consuming module falls back to invoking the dedicated
+# script itself, keeping error reporting identical.
+set(ZEPHYR_HW_V2_LISTING_FORMAT "{TYPE}\;{NAME}\;{DIR}")
+set(ZEPHYR_HW_V2_LISTING_FILE ${CMAKE_BINARY_DIR}/CMakeFiles/hw_v2_listing.txt)
+set(ZEPHYR_SHIELDS_LISTING_FILE ${CMAKE_BINARY_DIR}/CMakeFiles/shields_listing.json)
+file(REMOVE ${ZEPHYR_HW_V2_LISTING_FILE} ${ZEPHYR_SHIELDS_LISTING_FILE})
+
 list(TRANSFORM BOARD_DIRECTORIES PREPEND "--board-dir=" OUTPUT_VARIABLE board_dir_arg)
 execute_process(${list_boards_commands} --board=${BOARD} ${board_dir_arg}
   --cmakeformat=${format_str}
+  --hardware-out=${ZEPHYR_HW_V2_LISTING_FILE}
+  --hardware-cmakeformat=${ZEPHYR_HW_V2_LISTING_FORMAT}
+  --shields-out=${ZEPHYR_SHIELDS_LISTING_FILE}
                 OUTPUT_VARIABLE ret_board
                 ERROR_VARIABLE err_board
                 RESULT_VARIABLE ret_val

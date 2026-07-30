@@ -828,6 +828,7 @@ class Kconfig(object):
         "missing_syms",
         "modules",
         "n",
+        "source_globs",
         "named_choices",
         "srctree",
         "syms",
@@ -1048,6 +1049,14 @@ class Kconfig(object):
         # Not used internally. Provided as a convenience.
         self.kconfig_filenames = [filename]
         self.env_vars = set()
+
+        # Zephyr extension: every 'source' statement pattern (after macro
+        # expansion and $srctree prefixing) together with the sorted list of
+        # files it matched. Not used internally. Provided as a convenience for
+        # tools which need to detect when a re-parse would source a different
+        # set of files, e.g. because a file matching an 'osource' pattern was
+        # added or removed.
+        self.source_globs = []
 
         # Keeps track of the location in the parent Kconfig files. Kconfig
         # files usually source other Kconfig files. See _enter_file().
@@ -2968,6 +2977,8 @@ class Kconfig(object):
                 #   Kconfig symbols, which indirectly ensures a consistent
                 #   ordering in e.g. .config files
                 filenames = sorted(iglob(join(self._srctree_prefix, pattern)))
+                self.source_globs.append(
+                    (join(self._srctree_prefix, pattern), filenames))
 
                 if not filenames and t0 in _OBL_SOURCE_TOKENS:
                     raise KconfigError(

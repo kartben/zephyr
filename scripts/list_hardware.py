@@ -356,8 +356,9 @@ def dump_v2_system(args, type, system):
     print(info)
 
 
-def dump_v2_systems(args):
-    systems = find_v2_systems(args)
+def dump_v2_systems(args, systems=None):
+    if systems is None:
+        systems = find_v2_systems(args)
 
     for f in systems.get_families():
         dump_v2_system(args, 'family', f)

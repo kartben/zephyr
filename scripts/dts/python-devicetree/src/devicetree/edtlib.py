@@ -286,6 +286,19 @@ class Binding:
         basename = os.path.basename(self.path or "")
         return f"<Binding {basename}" + compat + ">"
 
+    def __getstate__(self):
+        # Store the included binding paths sorted, so that pickling the same
+        # binding produces the same bytes on every run. Sets are serialized
+        # in iteration order, which varies between processes for strings due
+        # to hash randomization.
+        state = self.__dict__.copy()
+        state["_included_binding_paths"] = sorted(self._included_binding_paths)
+        return state
+
+    def __setstate__(self, state):
+        state["_included_binding_paths"] = set(state["_included_binding_paths"])
+        self.__dict__.update(state)
+
     @property
     def title(self) -> Optional[str]:
         "See the class docstring"
@@ -2496,6 +2509,19 @@ class EDT:
     def __repr__(self) -> str:
         return (f"<EDT for '{self.dts_path}', binding directories "
                 f"'{self.bindings_dirs}'>")
+
+    def __getstate__(self):
+        # Store the inferred binding paths sorted, so that pickling the same
+        # EDT produces the same bytes on every run. Sets are serialized in
+        # iteration order, which varies between processes for strings due to
+        # hash randomization.
+        state = self.__dict__.copy()
+        state["_infer_binding_for_paths"] = sorted(self._infer_binding_for_paths)
+        return state
+
+    def __setstate__(self, state):
+        state["_infer_binding_for_paths"] = set(state["_infer_binding_for_paths"])
+        self.__dict__.update(state)
 
     def __deepcopy__(self, memo) -> 'EDT':
         """

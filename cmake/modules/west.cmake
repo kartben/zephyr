@@ -32,15 +32,31 @@ if(DEFINED WEST_PYTHON)
 endif()
 
 if(NOT WEST_VERSION)
+  # Obtain the west version and the workspace top directory in a single
+  # process invocation. The topdir lookup replicates what 'west topdir'
+  # prints, without paying for a full west command line startup. A missing
+  # workspace only omits the second output line, it is not an error.
   execute_process(
     COMMAND
     ${PYTHON_EXECUTABLE}
     -c
-    "import west.version; print(west.version.__version__, end='')"
-    OUTPUT_VARIABLE WEST_VERSION
+    "import west.version\nprint(west.version.__version__)\nfrom pathlib import PurePath\nfrom west.util import WestNotFound, west_topdir\ntry:\n    print(PurePath(west_topdir()).as_posix())\nexcept WestNotFound:\n    pass"
+    OUTPUT_VARIABLE west_version_topdir_output
     ERROR_VARIABLE west_version_err
     RESULT_VARIABLE west_version_output_result
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    WORKING_DIRECTORY ${ZEPHYR_BASE}
     )
+
+  if(NOT west_version_output_result)
+    set(west_topdir_probed TRUE)
+    string(REPLACE "\n" ";" west_version_topdir_output "${west_version_topdir_output}")
+    list(GET west_version_topdir_output 0 WEST_VERSION)
+    list(LENGTH west_version_topdir_output west_output_length)
+    if(west_output_length GREATER 1)
+      list(GET west_version_topdir_output 1 west_topdir_candidate)
+    endif()
+  endif()
 
   if(west_version_output_result)
     if(DEFINED WEST_PYTHON)
@@ -83,19 +99,28 @@ if(WEST_VERSION)
   message(STATUS "Found west (found suitable version \"${WEST_VERSION}\", minimum required is \"${MIN_WEST_VERSION}\")")
 
   if(NOT WEST_TOPDIR)
-    execute_process(
-      COMMAND ${WEST} topdir
-      OUTPUT_VARIABLE WEST_TOPDIR
-      ERROR_QUIET
-      RESULT_VARIABLE west_topdir_result
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-      WORKING_DIRECTORY ${ZEPHYR_BASE}
-    )
-
-    if(west_topdir_result)
-      # west topdir is undefined.
+    if(DEFINED west_topdir_candidate)
+      # Already determined together with the west version above.
+      set(WEST_TOPDIR ${west_topdir_candidate})
+    elseif(west_topdir_probed)
+      # The probe above ran and found no west workspace.
       # That's fine; west is optional, so could be custom Zephyr project.
       set(WEST WEST-NOTFOUND CACHE INTERNAL "West")
+    else()
+      execute_process(
+        COMMAND ${WEST} topdir
+        OUTPUT_VARIABLE WEST_TOPDIR
+        ERROR_QUIET
+        RESULT_VARIABLE west_topdir_result
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        WORKING_DIRECTORY ${ZEPHYR_BASE}
+      )
+
+      if(west_topdir_result)
+        # west topdir is undefined.
+        # That's fine; west is optional, so could be custom Zephyr project.
+        set(WEST WEST-NOTFOUND CACHE INTERNAL "West")
+      endif()
     endif()
   endif()
 endif()
