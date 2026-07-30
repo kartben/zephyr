@@ -75,3 +75,70 @@ Change ``nrf52840dk/nrf52840`` appropriately for other supported boards.
 
 After flashing, the sample starts blinking the LED as described above. It also
 prints information to the board's console.
+
+Build errors
+************
+
+You will see a build error at the source code line defining the ``pwm_led0``
+variable if you try to build this sample for an unsupported board.
+
+On GCC-based toolchains, the error looks like this:
+
+.. code-block:: none
+
+   error: '__device_dts_ord_DT_N_ALIAS_pwm_led0_P_pwms_IDX_0_PH_ORD' undeclared here (not in a function)
+
+Adding board support
+********************
+
+To add support for your board, create a :ref:`devicetree overlay
+<set-devicetree-overlays>` that defines a ``pwm-leds`` node and the
+``pwm-led0`` alias. The overlay file should be named
+:file:`boards/<your_board>.overlay` in the sample directory, or placed in your
+application directory.
+
+A minimal overlay looks like this:
+
+.. code-block:: DTS
+
+   / {
+   	aliases {
+   		pwm-led0 = &my_pwm_led;
+   	};
+
+   	pwmleds {
+   		compatible = "pwm-leds";
+   		my_pwm_led: my_pwm_led {
+   			pwms = <&pwm0 0 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+   		};
+   	};
+   };
+
+   &pwm0 {
+   	status = "okay";
+   };
+
+Replace ``&pwm0``, channel ``0``, and ``PWM_POLARITY_NORMAL`` with the values
+appropriate for your hardware. The ``pwms`` property uses the format
+``<&pwm_controller channel period flags>``.
+
+Tips:
+
+- See :dtcompatible:`pwm-leds` for more information on defining PWM-based LEDs
+  in devicetree.
+
+- If you're not sure what to do, check the overlays for boards already
+  supported by this sample (in the :zephyr_file:`samples/basic/blinky_pwm/boards`
+  directory) that use the same SoC as your target. See
+  :ref:`get-devicetree-outputs` for details on inspecting devicetree output.
+
+- See :zephyr_file:`include/zephyr/dt-bindings/pwm/pwm.h` for the flags and
+  helper macros (such as ``PWM_MSEC()``) you can use in devicetree.
+
+- If your board uses pin control (``pinctrl``), you may also need to define a
+  ``pinctrl`` configuration for the PWM controller. Check your SoC's pin
+  control bindings and existing board overlays for reference.
+
+- If the LED is built in to your board hardware, the alias should be defined in
+  your :ref:`BOARD.dts file <devicetree-in-out-files>`. Otherwise, define one
+  in a :ref:`devicetree overlay <set-devicetree-overlays>`.
