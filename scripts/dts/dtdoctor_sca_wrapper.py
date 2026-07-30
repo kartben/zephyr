@@ -44,13 +44,17 @@ def main() -> int:
     sys.stdout.write(proc.stdout)
     sys.stderr.write(proc.stderr)
 
-    # Extract __device_dts_ord_xxx symbols from errors and run diagnostics
+    # Extract __device_dts_ord_xxx and __device_dts_xxx symbols from errors and run diagnostics
     if proc.returncode != 0 and args.edt_pickle:
         patterns = [
-            r"(__device_dts_ord_\d+).*undeclared here",  # gcc
-            r"undefined reference to.*(__device_dts_ord_\d+)",  # ld
-            r"use of undeclared identifier '(__device_dts_ord_\d+)'",  # LLVM/clang (ATfE)
-            r"undefined symbol: \(__device_dts_ord_(\d+)",  # LLVM/lld (ATfE)
+            r"(__device_dts_ord_\d+).*undeclared here",  # gcc ordinal
+            r"undefined reference to.*(__device_dts_ord_\d+)",  # ld ordinal
+            r"use of undeclared identifier '(__device_dts_ord_\d+)'",  # LLVM/clang ordinal (ATfE)
+            r"undefined symbol: \((__device_dts_ord_\d+)",  # LLVM/lld ordinal (ATfE)
+            r"(__device_dts_(?!ord_)[0-9A-Fa-f]+).*undeclared here",  # gcc hash
+            r"undefined reference to.*(__device_dts_(?!ord_)[0-9A-Fa-f]+)",  # ld hash
+            r"use of undeclared identifier '(__device_dts_(?!ord_)[0-9A-Fa-f]+)'",  # LLVM/clang hash (ATfE)
+            r"undefined symbol: \((__device_dts_(?!ord_)[0-9A-Fa-f]+)",  # LLVM/lld hash (ATfE)
         ]
         symbols = {m for p in patterns for m in re.findall(p, proc.stderr)}
 
