@@ -672,6 +672,24 @@ class TestModuleRelationships:
             modules_doc, module_deps.spdx_id, "DEPENDENCY_OF", zephyr_deps.spdx_id
         ), f"modules-deps.spdx: expected {module_deps.spdx_id} DEPENDENCY_OF {zephyr_deps.spdx_id}"
 
+    def test_declared_module_dependencies(self, modules_doc, module_meta):
+        """Test that a module's `build: depends:` entries become DEPENDS_ON edges."""
+        checked = 0
+        for name, module in module_meta.items():
+            pkg = find_package_by_name(modules_doc, f"{name}-deps")
+            if pkg is None:
+                continue
+            for dependency in module.get("depends", []):
+                dep_pkg = find_package_by_name(modules_doc, f"{dependency}-deps")
+                if dep_pkg is None:
+                    continue
+                assert has_relationship(
+                    modules_doc, pkg.spdx_id, "DEPENDS_ON", dep_pkg.spdx_id
+                ), f"modules-deps.spdx: expected {pkg.spdx_id} DEPENDS_ON {dep_pkg.spdx_id}"
+                checked += 1
+        if checked == 0:
+            pytest.skip("No module in this build declares a dependency on another module")
+
 
 class TestCrossReferences:
     """Tests for cross-document reference validation."""

@@ -873,6 +873,21 @@ class Walker:
                     ("component", component.name, "component", zephyr_deps.name, "DEPENDENCY_OF")
                 )
 
+            # a module that declares `build: depends:` in its module.yml needs those
+            # other modules to work, which is the dependency relationship a consumer
+            # walks to build the graph; without it every module looks like a direct
+            # and independent dependency of Zephyr alone
+            for dependency in module.get("depends", []):
+                self.pending_relationships.append(
+                    (
+                        "component",
+                        component.name,
+                        "component",
+                        f"{dependency}-deps",
+                        "DEPENDS_ON",
+                    )
+                )
+
         return True
 
     # walk through targets and gather information

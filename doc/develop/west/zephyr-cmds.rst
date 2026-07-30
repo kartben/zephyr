@@ -187,6 +187,11 @@ The two specification families express build provenance differently:
   instead, using ``hasInput``/``hasOutput``/``usesTool`` relationships scoped to the ``build``
   lifecycle.
 
+The module dependency graph is recorded in :file:`modules-deps`: every module is a dependency of
+Zephyr, and a module that lists other modules under ``build: depends:`` in its :file:`module.yml`
+gets a ``DEPENDS_ON`` relationship to each of them, so a consumer can tell a direct dependency from
+one that is only pulled in by another module.
+
 .. _west-spdx-provenance:
 
 Recording who made what
