@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
-cmake_minimum_required(VERSION 3.20.0)
+cmake_minimum_required(VERSION 3.28.3)
 
 # This sample is specific to lmp90100_evb shield. Enforce -DSHIELD option
 set(SHIELD lmp90100_evb)
