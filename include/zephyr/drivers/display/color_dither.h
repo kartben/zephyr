@@ -135,7 +135,7 @@ struct display_color_dither_rgb_error {
 
 #if COLOR_DITHER_ERRDIFF_NROWS > 0
 #define COLOR_DITHER_ERRDIFF_LEN(w)   ((w) + 2U)
-#define COLOR_DITHER_ERRDIFF_ROW(tag) color_dither_errdiff_row_##tag
+#define COLOR_DITHER_ERRDIFF_ROW(tag) _CONCAT(color_dither_errdiff_row_, tag)
 
 #define COLOR_DITHER_ERRDIFF_DEFINE(tag, w)                                                        \
 	static struct display_color_dither_rgb_error COLOR_DITHER_ERRDIFF_ROW(                     \
@@ -201,6 +201,23 @@ struct display_color_dither_state {
 #if defined(CONFIG_DISPLAY_COLOR_DITHER) || defined(__DOXYGEN__)
 
 /**
+ * @brief Define color dithering backing storage for one display device node.
+ *
+ * Node-based variant of @ref DISPLAY_COLOR_DITHER_DEFINE, for drivers that instantiate devices
+ * from node identifiers (e.g. drivers covering several compatibles). This allocates the
+ * conversion buffer and optional error-diffusion rows.
+ * Buffer dimensions come from the node's @c width and @c height devicetree properties.
+ *
+ * @kconfig_dep{CONFIG_DISPLAY_COLOR_DITHER}
+ *
+ * @param node_id Devicetree node identifier.
+ */
+#define DISPLAY_COLOR_DITHER_DEFINE_NODE(node_id)                                                  \
+	static uint8_t _CONCAT(color_dither_buf_, node_id)[COLOR_DITHER_I4_BYTES(                  \
+		DT_PROP(node_id, width), DT_PROP(node_id, height))];                               \
+	COLOR_DITHER_ERRDIFF_DEFINE(node_id, DT_PROP(node_id, width))
+
+/**
  * @brief Define color dithering backing storage for one display driver instance.
  *
  * Use once for each driver instance that can use the helper. This allocates the conversion buffer
@@ -211,10 +228,30 @@ struct display_color_dither_state {
  *
  * @param inst  DT instance index.
  */
-#define DISPLAY_COLOR_DITHER_DEFINE(inst)                                                          \
-	static uint8_t color_dither_buf_##inst[COLOR_DITHER_I4_BYTES(DT_INST_PROP(inst, width),    \
-								     DT_INST_PROP(inst, height))]; \
-	COLOR_DITHER_ERRDIFF_DEFINE(inst, DT_INST_PROP(inst, width))
+#define DISPLAY_COLOR_DITHER_DEFINE(inst) DISPLAY_COLOR_DITHER_DEFINE_NODE(DT_DRV_INST(inst))
+
+/**
+ * @brief Initialize a driver's @ref display_color_dither_state member for one display device
+ *        node.
+ *
+ * Node-based variant of @ref DISPLAY_COLOR_DITHER_INIT, to be paired with
+ * @ref DISPLAY_COLOR_DITHER_DEFINE_NODE for the same node.
+ *
+ * @param node_id Devicetree node identifier.
+ */
+#define DISPLAY_COLOR_DITHER_INIT_NODE(node_id)                                                    \
+	{                                                                                          \
+		.input_format = COLOR_DITHER_DEFAULT_FMT,                                          \
+		.converted_buf = _CONCAT(color_dither_buf_, node_id),                              \
+		.converted_buf_size = sizeof(_CONCAT(color_dither_buf_, node_id)),                 \
+		.err_rows =                                                                        \
+			{                                                                          \
+				COLOR_DITHER_ERRDIFF_R0(node_id),                                  \
+				COLOR_DITHER_ERRDIFF_R1(node_id),                                  \
+				COLOR_DITHER_ERRDIFF_R2(node_id),                                  \
+			},                                                                         \
+		.err_row_len = COLOR_DITHER_ERRDIFF_LEN(DT_PROP(node_id, width)),                  \
+	}
 
 /**
  * @brief Initialize a driver's @ref display_color_dither_state member for one display driver
@@ -227,19 +264,7 @@ struct display_color_dither_state {
  *
  * @param inst DT instance index.
  */
-#define DISPLAY_COLOR_DITHER_INIT(inst)                                                            \
-	{                                                                                          \
-		.input_format = COLOR_DITHER_DEFAULT_FMT,                                          \
-		.converted_buf = color_dither_buf_##inst,                                          \
-		.converted_buf_size = sizeof(color_dither_buf_##inst),                             \
-		.err_rows =                                                                        \
-			{                                                                          \
-				COLOR_DITHER_ERRDIFF_R0(inst),                                     \
-				COLOR_DITHER_ERRDIFF_R1(inst),                                     \
-				COLOR_DITHER_ERRDIFF_R2(inst),                                     \
-			},                                                                         \
-		.err_row_len = COLOR_DITHER_ERRDIFF_LEN(DT_INST_PROP(inst, width)),                \
-	}
+#define DISPLAY_COLOR_DITHER_INIT(inst) DISPLAY_COLOR_DITHER_INIT_NODE(DT_DRV_INST(inst))
 
 /**
  * @brief Prepare a write buffer for a @ref PIXEL_FORMAT_I_4 native path.
@@ -330,7 +355,11 @@ bool display_color_dither_is_active(const struct display_color_dither_state *sta
 
 /** @cond INTERNAL_HIDDEN */
 
+#define DISPLAY_COLOR_DITHER_DEFINE_NODE(node_id)
 #define DISPLAY_COLOR_DITHER_DEFINE(inst)
+#define DISPLAY_COLOR_DITHER_INIT_NODE(node_id)                                                    \
+	{                                                                                          \
+	}
 #define DISPLAY_COLOR_DITHER_INIT(inst)                                                            \
 	{                                                                                          \
 	}
