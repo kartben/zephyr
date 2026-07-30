@@ -169,9 +169,8 @@ Glossary of Terms
       features, and that the vendor typically names and markets together.
 
    software component
-      A software component is a self-contained, modular, and replaceable part of
-      the Zephyr source code. A driver, a subsystem or an applications are all
-      examples of software components present in Zephyr.
+      A software component is a self-contained, modular, and replaceable part of the Zephyr source
+      code. A driver or subsystem is an example of a software component present in Zephyr.
 
    subsystem
        A subsystem refers to a logically distinct part of the operating system
