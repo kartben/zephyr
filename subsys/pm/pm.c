@@ -262,9 +262,13 @@ bool pm_system_suspend(int32_t kernel_ticks)
 
 	pm_system_resume();
 	k_sched_unlock();
-	SYS_PORT_TRACING_FUNC_EXIT(pm, system_suspend, ticks,
-				   z_cpus_pm_state[id] ?
-				   z_cpus_pm_state[id]->state : PM_STATE_ACTIVE);
+	/*
+	 * Report the state from the local latched above, not from
+	 * z_cpus_pm_state[id]: pm_system_resume() has just cleared it, so reading
+	 * it here would say PM_STATE_ACTIVE on every successful suspend and make
+	 * this event indistinguishable from the paths that really did stay active.
+	 */
+	SYS_PORT_TRACING_FUNC_EXIT(pm, system_suspend, ticks, state);
 
 	return true;
 }
