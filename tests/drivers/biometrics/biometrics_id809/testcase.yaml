@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+
+tests:
+  drivers.biometrics.biometrics_id809.build:
+    build_only: true
+    integration_platforms:
+      - native_sim
+    platform_allow:
+      - native_sim
+      - native_sim/native/64
+    tags:
+      - biometrics
+      - drivers
