@@ -16,27 +16,13 @@
   data-target-memory="{{ board.target_memory | default([]) | tojson | forceescape }}"
   data-vendor="{{ board.vendor }}"
   data-socs="{{ board.socs | join(" ") }}"
+  {# `unique` dedupes with a set, unlike an "if not in list" accumulator loop #}
   data-supported-features="
-    {%- set feature_types = [] -%}
-    {%- for target in board.supported_features.values() -%}
-      {%- for feature_type in target.features.keys() -%}
-        {%- if feature_type not in feature_types -%}
-          {%- set _ = feature_types.append(feature_type) -%}
-        {%- endif -%}
-      {%- endfor -%}
-    {%- endfor -%}
-    {{- feature_types|join(' ') -}}
+    {{- board.supported_features.values() | map(attribute='features') | map('list')
+        | sum(start=[]) | unique(case_sensitive=true) | join(' ') -}}
   "
   data-compatibles="
-    {%- set all_compatibles = [] -%}
-    {%- for target_compatibles in board.compatibles.values() -%}
-      {%- for compatible in target_compatibles -%}
-        {%- if compatible not in all_compatibles -%}
-          {%- set _ = all_compatibles.append(compatible) -%}
-        {%- endif -%}
-      {%- endfor -%}
-    {%- endfor -%}
-    {{- all_compatibles|join(' ') -}}
+    {{- board.compatibles.values() | sum(start=[]) | unique(case_sensitive=true) | join(' ') -}}
   "
   data-maintained="{{ board.maintained | tojson }}"
   tabindex="0">
