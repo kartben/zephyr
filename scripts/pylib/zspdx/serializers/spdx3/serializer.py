@@ -4,7 +4,6 @@
 import logging
 import os
 import re
-from datetime import UTC, datetime
 
 from spdx_python_model import v3_0_1 as spdx
 
@@ -22,6 +21,7 @@ from zspdx.model import (
 from zspdx.serializers.helpers import (
     CPE23TYPE_REGEX,
     PURL_REGEX,
+    creation_timestamp,
     generate_download_url,
     get_standard_licenses,
     normalize_spdx_name,
@@ -169,7 +169,7 @@ class SPDX3Serializer:
         if self.creation_info is None:
             self.creation_info = spdx.CreationInfo()
             self.creation_info._id = self._shorten_id(f"{namespace}/creationinfo")
-            self.creation_info.created = datetime.now(UTC)
+            self.creation_info.created = creation_timestamp()
             # createdBy references the Agent that created this SPDX document (REQUIRED)
             self.creation_info.createdBy.append(self.creator_agent._id)
             # createdUsing references the Tool that created this SPDX document (optional)

@@ -90,6 +90,23 @@ foreach(spdx_version ${SPDX_VERSIONS_TO_TEST})
     PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   )
 
+  # Same build, same SOURCE_DATE_EPOCH and namespace: the documents must be identical
+  add_test(
+    NAME spdx_reproducible_${version_suffix}
+    COMMAND ${CMAKE_COMMAND}
+      -DBUILD_DIR=${CMAKE_BINARY_DIR}
+      -DSPDX_VERSION=${spdx_version}
+      -DWORK_DIR=${CMAKE_BINARY_DIR}/spdx-reproducible-${version_suffix}
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/spdx_reproducible.cmake
+  )
+
+  set_tests_properties(
+    spdx_reproducible_${version_suffix}
+    PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+      DEPENDS spdx_gen_${version_suffix}
+  )
+
   if(spdx_version VERSION_LESS "3.0")
     add_spdx2_validation_tests(${spdx_version} ${version_suffix})
   else()

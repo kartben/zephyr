@@ -156,6 +156,24 @@ For SPDX 3.0, every document declares conformance to the Core, Software and Simp
 profiles, and :file:`build.jsonld` additionally declares the :ref:`Build profile
 <west-spdx-build-profile>` that captures how the artifacts were produced.
 
+.. _west-spdx-reproducibility:
+
+Reproducible output
+-------------------
+
+Regenerating an SBOM for an unchanged build normally produces documents that differ from their
+predecessors, which makes it impossible to tell a re-run apart from a real change. Two inputs cause
+that, and both can be pinned:
+
+- The creation timestamp, which follows `SOURCE_DATE_EPOCH`_ when that variable holds a Unix
+  timestamp.
+- The document namespace, which is a random UUID unless ``-n`` supplies a stable prefix.
+
+.. code-block:: bash
+
+   SOURCE_DATE_EPOCH=$(git -C $ZEPHYR_BASE log -1 --format=%ct) \
+     west spdx -d BUILD_DIR -n https://example.com/sboms/my-product-1.2.3
+
 Each file in the bill-of-materials is scanned, so that its hashes (SHA256, SHA1, and MD5)
 can be recorded, along with any detected licenses if an
 ``SPDX-License-Identifier`` comment appears in the file.
@@ -243,6 +261,12 @@ Command-line options
 
 .. _SPDX specification clause 6:
    https://spdx.github.io/spdx-spec/v2.2.2/document-creation-information/
+
+.. _SOURCE_DATE_EPOCH:
+   https://reproducible-builds.org/docs/source-date-epoch/
+
+.. _CISA SBOM minimum elements:
+   https://www.cisa.gov/resources-tools/resources/2026-minimum-elements-software-bill-materials-sbom
 
 .. _west-blobs:
 
