@@ -121,6 +121,20 @@ class WalkerConfig:
     # should also add an SPDX document for the SDK?
     include_sdk: bool = False
 
+    # entity that generated this SBOM, recorded as the SPDX Creator; when empty it is
+    # derived from the repository the Zephyr tree points at
+    sbom_author: str = ""
+
+    # entity distributing the software described by this SBOM. When set it becomes the
+    # supplier of every package, which is what a downstream distributor wants; when empty
+    # each package's supplier is derived from the repository the component came from
+    supplier: str = ""
+
+    # fallback producer for components with no repository to derive one from (the
+    # application sources, the build artifacts, and any repository whose URL cannot be
+    # parsed)
+    originator: str = ""
+
 
 # Walker is the main analysis class: it walks through the CMake codemodel,
 # build files, and corresponding source and SDK files, and gathers the
@@ -221,17 +235,53 @@ class Walker:
         _host_type, namespace, _package = parsed
         return KNOWN_NAMESPACE_ORGANIZATIONS.get(namespace, namespace)
 
-    def _apply_scm_identity(self, component, url, revision):
-        """Attach supplier and a package URL derived from a module's SCM location.
+    @staticmethod
+    def _originator_from_cpe(component):
+        """Return the vendor named by the component's CPE reference, or "".
 
-        Sets ``component.supplier`` from the organization owning the repository when
-        not already set, and adds a revision-pinned purl unless the component already
-        carries one (e.g. a curated purl from the module's security metadata).
+        A module that curates a CPE in its ``module.yml`` security metadata names the
+        upstream vendor there, which is a better producer than anything derived from a
+        repository URL.
         """
+        for ref in component.external_references:
+            if ref.reference_type != ExternalReferenceType.CPE23:
+                continue
+            # cpe:2.3:<part>:<vendor>:<product>:<version>:...
+            fields = ref.locator.split(":", 5)
+            if len(fields) > 4 and fields[3] not in ("", "*", "-"):
+                return fields[3]
+        return ""
+
+    def _apply_provenance(self, component, url=""):
+        """Record who produced a component and who distributed it.
+
+        All a west workspace knows is the repository each component came from, so the
+        organization owning it is used for both the producer (SPDX
+        ``PackageOriginator``) and the supplier (SPDX ``PackageSupplier``) unless
+        something better is available: a CPE names the producer, and ``--supplier``
+        names the distributor. ``--supplier`` overrides every package, since a
+        distributor supplies everything it ships, while ``--originator`` only fills in
+        producers that could not be derived at all.
+        """
+        organization = self._organization_from_url(url)
+
+        if not component.originator:
+            component.originator = organization or self.cfg.originator
+
+        if self.cfg.supplier:
+            component.supplier = self.cfg.supplier
+        elif not component.supplier:
+            component.supplier = organization or component.originator
+
+    def _apply_scm_identity(self, component, url, revision):
+        """Attach provenance and a package URL derived from a module's SCM location.
+
+        Adds a revision-pinned purl unless the component already carries one (e.g. a
+        curated purl from the module's security metadata).
+        """
+        self._apply_provenance(component, url)
         if not url:
             return
-        if not component.supplier:
-            component.supplier = self._organization_from_url(url)
         has_purl = any(
             ref.reference_type == ExternalReferenceType.PURL
             for ref in component.external_references
@@ -274,6 +324,25 @@ class Walker:
             version += f"-{extra}"
         return version
 
+    def _resolve_sbom_author(self, zephyr):
+        """Determine the entity to credit as the SBOM author.
+
+        ``--sbom-author`` wins, since only the person running the tool knows who they
+        generate the SBOM for. Without it, fall back to the organization owning the
+        repository the Zephyr tree points at, which stays correct for a fork or a
+        downstream workspace. Returns "" when nothing is known.
+        """
+        if self.cfg.sbom_author:
+            return self.cfg.sbom_author
+
+        author = self._organization_from_url(zephyr.get("remote") or zephyr.get("url", ""))
+        if not author:
+            _logger.warning(
+                "cannot determine who is generating this SBOM; pass `west spdx "
+                "--sbom-author` (or set zephyr.spdx.author in west config) to record it"
+            )
+        return author
+
     def _set_creation_metadata(self, zephyr):
         """Record SBOM creator provenance (author organization and tool version).
 
@@ -281,14 +350,8 @@ class Walker:
         fields, so the SBOM advertises a human/organization author alongside the
         versioned generation tool.
         """
-        # who generates the SBOM is not knowable from the workspace alone; the
-        # organization owning the Zephyr repository it was built from is the closest
-        # answer, and it stays correct for a fork or a downstream workspace
         zephyr = zephyr or {}
-        author = self._organization_from_url(zephyr.get("remote") or zephyr.get("url", ""))
-        if not author:
-            _logger.warning("cannot determine which organization is generating this SBOM")
-        self.sbom_graph.metadata["creator_organization"] = author
+        self.sbom_graph.metadata["creator_organization"] = self._resolve_sbom_author(zephyr)
         self.sbom_graph.metadata["tool_name"] = SPDX_TOOL_NAME
         self.sbom_graph.metadata["tool_version"] = self._read_zephyr_version(zephyr.get("path", ""))
 
@@ -527,6 +590,10 @@ class Walker:
             base_dir=self.cm.paths_source,
         )
 
+        # the application is not a west project, so its provenance can only come from
+        # what the caller told us about themselves
+        self._apply_provenance(component)
+
         self.sbom_graph.add_component(component, "app")
         self.doc_app.add_described_component(component)
         self.component_app = component
@@ -555,7 +622,7 @@ class Walker:
         zephyr_url = zephyr.get("remote") or zephyr.get("url", "")
         if zephyr_url:
             component.url = zephyr_url
-        component.supplier = self._organization_from_url(zephyr_url)
+        self._apply_provenance(component, zephyr_url)
 
         if zephyr.get("revision"):
             component.revision = zephyr.get("revision")
@@ -630,6 +697,10 @@ class Walker:
             base_dir=self.sdk_path,
         )
 
+        # the SDK is installed outside the west workspace, so it carries no SCM
+        # provenance of its own
+        self._apply_provenance(component)
+
         self.sbom_graph.add_component(component, "sdk")
         self.doc_sdk.add_described_component(component)
         self.component_sdk = component
@@ -646,7 +717,7 @@ class Walker:
         # no PrimaryPackagePurpose: this is a reference-only dependency package with no files
         component = SBOMComponent(name="zephyr-deps", comment=ZEPHYR_DEPS_COMMENT)
         component.url = zephyr.get("remote") or zephyr.get("url", "")
-        component.supplier = self._organization_from_url(component.url)
+        self._apply_provenance(component, component.url)
         component.revision = zephyr.get("revision", "")
 
         purl = None
@@ -717,6 +788,7 @@ class Walker:
             # identity then fills in a supplier and a purl when none was provided.
             for ref in module_ext_ref:
                 component.add_external_reference(ref)
+            component.originator = self._originator_from_cpe(component)
             if module_url:
                 self._apply_scm_identity(component, module_url, module_revision)
 
@@ -825,6 +897,10 @@ class Walker:
             name=cfg_target.name,
             base_dir=self.cm.paths_build,
         )
+
+        # build artifacts are produced by whoever ran the build, not by any of the
+        # upstream projects the sources came from
+        self._apply_provenance(component)
 
         # add Component to SBOM data and build document
         self.sbom_graph.add_component(component, "build")

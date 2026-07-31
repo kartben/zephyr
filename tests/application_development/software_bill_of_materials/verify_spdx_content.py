@@ -97,6 +97,13 @@ def get_supplier_name(package):
     return str(package.supplier)
 
 
+def get_originator_name(package):
+    """Return the package originator as a string, or None if unset."""
+    if package.originator is None:
+        return None
+    return str(package.originator)
+
+
 def has_relationship(doc, spdx_element_id, rel_type, related_id):
     """Return True if doc has a relationship of rel_type to related_id."""
     for rel in doc.relationships:
@@ -490,12 +497,33 @@ class TestPackageProvenance:
             f"modules-deps.spdx: zephyr-deps has no revision-pinned purl, got {purls}"
         )
 
+    def test_every_package_declares_a_producer(self, app_doc, zephyr_doc, build_doc, modules_doc):
+        """Test that every package states a supplier and an originator.
+
+        The CISA SBOM minimum elements require a value for every package, with unknown
+        information stated explicitly rather than omitted.
+        """
+        for doc_name, doc in (
+            ("app.spdx", app_doc),
+            ("zephyr.spdx", zephyr_doc),
+            ("build.spdx", build_doc),
+            ("modules-deps.spdx", modules_doc),
+        ):
+            for pkg in doc.packages:
+                assert pkg.supplier is not None, (
+                    f"{doc_name}: package '{pkg.name}' declares no supplier"
+                )
+                assert pkg.originator is not None, (
+                    f"{doc_name}: package '{pkg.name}' declares no originator"
+                )
+
     def test_module_deps_supplier_and_purl(self, modules_doc):
         """Test first module-deps supplier and purl reference."""
         pkg = first_module_deps_package(modules_doc)
         if pkg is None:
             pytest.skip("No module-deps packages in modules-deps.spdx")
         assert get_supplier_name(pkg), f"modules-deps.spdx: {pkg.name} has no supplier"
+        assert get_originator_name(pkg), f"modules-deps.spdx: {pkg.name} has no originator"
         purls = get_purl_refs(pkg)
         assert purls, f"modules-deps.spdx: {pkg.name} has no purl references"
         assert any("@" in p for p in purls), (

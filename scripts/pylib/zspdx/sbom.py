@@ -37,6 +37,15 @@ class SBOMConfig:
     # should also add an SPDX document for the SDK?
     include_sdk: bool = False
 
+    # entity that generated this SBOM (SPDX Creator)
+    sbom_author: str = ""
+
+    # entity distributing the software described by this SBOM (SPDX PackageSupplier)
+    supplier: str = ""
+
+    # fallback producer for components with no discoverable upstream (SPDX PackageOriginator)
+    originator: str = ""
+
 
 # create Cmake file-based API directories and query file
 # Arguments:
@@ -91,6 +100,9 @@ def make_spdx(cfg):
     walker_cfg.build_dir = cfg.build_dir
     walker_cfg.analyze_includes = cfg.analyze_includes
     walker_cfg.include_sdk = cfg.include_sdk
+    walker_cfg.sbom_author = cfg.sbom_author
+    walker_cfg.supplier = cfg.supplier
+    walker_cfg.originator = cfg.originator
 
     # make and run the walker
     w = Walker(walker_cfg)

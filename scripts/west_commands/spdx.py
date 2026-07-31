@@ -54,6 +54,24 @@ class ZephyrSpdx(WestCommand):
         parser.add_argument(
             '--include-sdk', action="store_true", help="also generate SPDX document for SDK"
         )
+        parser.add_argument(
+            '--sbom-author',
+            help="organization generating this SBOM, recorded as the SPDX creator "
+            "(default: west config zephyr.spdx.author, else the organization the Zephyr "
+            "repository was fetched from)",
+        )
+        parser.add_argument(
+            '--supplier',
+            help="organization distributing the software described by this SBOM, recorded "
+            "as the supplier of every package (default: west config zephyr.spdx.supplier, "
+            "else the organization each repository was fetched from)",
+        )
+        parser.add_argument(
+            '--originator',
+            help="organization to credit as the producer of components with no upstream "
+            "repository, such as the application sources and the build artifacts "
+            "(default: west config zephyr.spdx.originator)",
+        )
 
         return parser
 
@@ -72,6 +90,9 @@ class ZephyrSpdx(WestCommand):
         self.dbg("  --spdx-version is", args.spdx_version)
         self.dbg("  --analyze-includes is", args.analyze_includes)
         self.dbg("  --include-sdk is", args.include_sdk)
+        self.dbg("  --sbom-author is", args.sbom_author)
+        self.dbg("  --supplier is", args.supplier)
+        self.dbg("  --originator is", args.originator)
 
         if args.init:
             self.do_run_init(args)
@@ -94,6 +115,12 @@ class ZephyrSpdx(WestCommand):
                 "You can manually create an empty file at "
                 "$BUILDDIR/.cmake/api/v1/query/codemodel-v2"
             )
+
+    def provenance_option(self, value, config_name):
+        """Return a provenance option, falling back to `zephyr.spdx.<config_name>`."""
+        if value:
+            return value
+        return self.config.get(f'zephyr.spdx.{config_name}', default='')
 
     def do_run_spdx(self, args):
         if not args.build_dir:
@@ -122,6 +149,13 @@ class ZephyrSpdx(WestCommand):
             cfg.analyze_includes = True
         if args.include_sdk:
             cfg.include_sdk = True
+
+        # provenance of the SBOM and of what it describes: the command line wins, then
+        # west config, so that a downstream or fork workspace can be configured once
+        # instead of on every invocation
+        cfg.sbom_author = self.provenance_option(args.sbom_author, 'author')
+        cfg.supplier = self.provenance_option(args.supplier, 'supplier')
+        cfg.originator = self.provenance_option(args.originator, 'originator')
 
         # make sure SPDX directory exists, or create it if it doesn't
         if os.path.exists(cfg.spdx_dir):

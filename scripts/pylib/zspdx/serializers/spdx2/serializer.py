@@ -8,6 +8,7 @@ import os
 from datetime import UTC, datetime
 
 from zspdx.model import (
+    NOASSERTION,
     ComponentPurpose,
     ExternalReferenceType,
     SBOMComponent,
@@ -268,6 +269,18 @@ DocumentNamespace: {namespace}
                 package_version = package_version or metadata[5]
         return package_name, supplier, package_version
 
+    @staticmethod
+    def _actor(name):
+        """Format an organization name as an SPDX actor, or NOASSERTION if unknown."""
+        if not name or name == NOASSERTION:
+            return NOASSERTION
+        # names that already carry an SPDX actor type are passed through, so a caller
+        # can say `--supplier "Person: Jane Doe"` instead of being forced to an
+        # organization
+        if name.startswith(("Organization:", "Person:")):
+            return name
+        return f"Organization: {name}"
+
     def _write_files_analyzed(self, f, component):
         """Write the FilesAnalyzed section and verification code for a component."""
         if not component.files:
@@ -318,9 +331,11 @@ PackageCopyrightText: {component.copyright_text}
         elif component.revision:
             f.write(f"PackageVersion: {component.revision}\n")
 
-        # Supplier
-        if supplier:
-            f.write(f"PackageSupplier: Organization: {supplier}\n")
+        # Supplier and originator. Both are always written: when nothing is known,
+        # NOASSERTION says so explicitly rather than leaving the consumer to guess
+        # whether the information was unavailable or simply not collected.
+        f.write(f"PackageSupplier: {self._actor(supplier)}\n")
+        f.write(f"PackageOriginator: {self._actor(component.originator)}\n")
 
         # External references
         for ref in component.external_references:
