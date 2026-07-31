@@ -154,7 +154,9 @@ JSON-LD format:
 
 For SPDX 3.0, every document declares conformance to the Core, Software and Simple Licensing
 profiles, and :file:`build.jsonld` additionally declares the :ref:`Build profile
-<west-spdx-build-profile>` that captures how the artifacts were produced.
+<west-spdx-build-profile>` that captures how the artifacts were produced. Each document's root is a
+``software_Sbom`` element whose ``sbomType`` is ``build``, recording that the SBOM was generated
+from a completed build rather than from source alone or from a deployed image.
 
 Each file in the bill-of-materials is scanned, so that its hashes (SHA256, SHA1, and MD5)
 can be recorded, along with any detected licenses if an
@@ -288,6 +290,10 @@ Command-line options
 - ``--originator ORIGINATOR``: the organization to credit as the producer of the
   components that do not come from a west project, namely the application sources and
   the build artifacts. Defaults to ``zephyr.spdx.originator`` from west config.
+
+- ``--sbom-version VERSION``: the version of the SBOM document itself, as opposed to the
+  version of the software it describes. Defaults to ``1.0.0``. Bump it when regenerating
+  an SBOM for software that has not changed, for instance after correcting metadata.
 
   ``AUTHOR``, ``SUPPLIER`` and ``ORIGINATOR`` are organization names, optionally prefixed
   with ``Organization:`` or ``Person:`` to pick the SPDX actor type explicitly.

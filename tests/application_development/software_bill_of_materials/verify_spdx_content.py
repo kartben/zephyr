@@ -197,6 +197,17 @@ class TestCommonValidation:
             f"{doc_name}: expected Tool creator '{expected_tool}', got {tool_creators}"
         )
 
+    def test_document_comment(self, doc_with_name):
+        """Test that the document states its own version and generation context."""
+        doc, doc_name = doc_with_name
+        comment = doc.creation_info.document_comment or ""
+        assert "SBOM version:" in comment, (
+            f"{doc_name}: document comment does not state the SBOM version, got '{comment}'"
+        )
+        assert "SBOM generation context: build" in comment, (
+            f"{doc_name}: document comment does not state the generation context, got '{comment}'"
+        )
+
     def test_document_name(self, doc_with_name):
         """Test that document name is not empty."""
         doc, doc_name = doc_with_name

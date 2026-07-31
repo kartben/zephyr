@@ -26,6 +26,11 @@ the CMake file-based API, which the SPDX command relies upon.
 This can be done by calling `west spdx --init` prior to
 calling `west build`."""
 
+# Version recorded for the generated SBOM documents when the caller does not provide
+# one. The CISA SBOM minimum elements recommend that an SBOM following them starts at
+# major version 1.
+DEFAULT_SBOM_VERSION = "1.0.0"
+
 
 class ZephyrSpdx(WestCommand):
     def __init__(self):
@@ -72,6 +77,12 @@ class ZephyrSpdx(WestCommand):
             "repository, such as the application sources and the build artifacts "
             "(default: west config zephyr.spdx.originator)",
         )
+        parser.add_argument(
+            '--sbom-version',
+            default=DEFAULT_SBOM_VERSION,
+            help="version of the SBOM document itself, as opposed to the version of the "
+            f"software it describes (default: {DEFAULT_SBOM_VERSION})",
+        )
 
         return parser
 
@@ -93,6 +104,7 @@ class ZephyrSpdx(WestCommand):
         self.dbg("  --sbom-author is", args.sbom_author)
         self.dbg("  --supplier is", args.supplier)
         self.dbg("  --originator is", args.originator)
+        self.dbg("  --sbom-version is", args.sbom_version)
 
         if args.init:
             self.do_run_init(args)
@@ -156,6 +168,7 @@ class ZephyrSpdx(WestCommand):
         cfg.sbom_author = self.provenance_option(args.sbom_author, 'author')
         cfg.supplier = self.provenance_option(args.supplier, 'supplier')
         cfg.originator = self.provenance_option(args.originator, 'originator')
+        cfg.sbom_version = args.sbom_version
 
         # make sure SPDX directory exists, or create it if it doesn't
         if os.path.exists(cfg.spdx_dir):

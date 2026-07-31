@@ -906,6 +906,10 @@ class SPDX3Serializer:
         )
         document.creationInfo = self.creation_info
 
+        comment = self._document_comment()
+        if comment:
+            document.comment = comment
+
         data_license = self._create_license_expression("CC0-1.0")
         if data_license:
             document.dataLicense = data_license._id
@@ -917,6 +921,15 @@ class SPDX3Serializer:
         if self.build and sbom_doc.name == self._BUILD_DOCUMENT:
             document.profileConformance.append(spdx.ProfileIdentifierType.build)
         return document
+
+    def _document_comment(self) -> str:
+        """State the SBOM's own version, which SPDX 3.0 has no field for.
+
+        The lifecycle phase is not mentioned here: the ``software_Sbom`` element carries
+        it as ``sbomType``.
+        """
+        sbom_version = self.sbom_data.metadata.get("sbom_version")
+        return f"SBOM version: {sbom_version}." if sbom_version else ""
 
     def _collect_document_element_ids(self, sbom_doc: SBOMDocument, components) -> tuple[set, set]:
         """Gather the IDs of every element that belongs to this document.
@@ -1059,14 +1072,47 @@ class SPDX3Serializer:
 
         self._add_external_maps(document, import_ids)
 
+        roots = []
         for component in components:
             package = self.component_elements.get(component.name)
             if package:
-                document.rootElement.append(package)
+                roots.append(package)
 
         # The Build element is a root of the build document.
         if self.build and sbom_doc.name == self._BUILD_DOCUMENT:
-            document.rootElement.append(self.build)
+            roots.append(self.build)
+
+        # The document's own root is the Sbom collecting those elements.
+        sbom = self._create_sbom(document, sbom_doc, roots)
+        document.rootElement.append(sbom)
+
+    def _create_sbom(self, document: spdx.SpdxDocument, sbom_doc: SBOMDocument, roots: list):
+        """Collect a document's contents into a ``software_Sbom`` element.
+
+        SPDX 3.0 distinguishes a document, which is a transport container, from the
+        SBOM it carries. Declaring the SBOM explicitly is also how the lifecycle phase
+        is stated: ``sbomType`` is the CISA SBOM Generation Context element, and
+        ``build`` is what ``west spdx`` produces, since it runs on a completed build and
+        describes both the sources that went in and the artifacts that came out.
+        """
+        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        sbom = spdx.software_Sbom()
+        sbom._id = self._shorten_id(f"{namespace}/sboms/{sbom_doc.name}")
+        sbom.name = document.name
+        sbom.creationInfo = self.creation_info._id
+        sbom.software_sbomType.append(spdx.software_SbomType.build)
+
+        for profile in document.profileConformance:
+            sbom.profileConformance.append(profile)
+
+        for element in document.element:
+            sbom.element.append(element)
+        for root in roots:
+            sbom.rootElement.append(root)
+
+        self.elements.append(sbom)
+        document.element.append(sbom)
+        return sbom
 
     def _add_external_maps(self, document: spdx.SpdxDocument, import_ids: set):
         """Declare elements used by, but defined outside, this document.
