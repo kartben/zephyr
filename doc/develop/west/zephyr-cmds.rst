@@ -160,7 +160,9 @@ from a completed build rather than from source alone or from a deployed image.
 
 Each file in the bill-of-materials is scanned, so that its hashes (SHA256, SHA1, and MD5)
 can be recorded, along with any detected licenses if an
-``SPDX-License-Identifier`` comment appears in the file.
+``SPDX-License-Identifier`` comment appears in the file. Packages that produce a build artifact
+also carry the hashes of that artifact, so a package can be integrity-checked without resolving
+the files it contains.
 
 Copyright notices are extracted using the third-party :command:`reuse` tool from the REUSE group.
 When found, these notices are added to SPDX documents as ``FileCopyrightText`` fields (SPDX 2.x)

@@ -541,7 +541,6 @@ class TestPackageProvenance:
             f"modules-deps.spdx: {pkg.name} purl should include revision suffix, got {purls}"
         )
 
-
     def test_identifiers_carry_no_workspace_state(self, zephyr_doc, modules_doc):
         """Test that no identifier keeps a workspace-state marker.
 
@@ -561,6 +560,16 @@ class TestPackageProvenance:
                     f"{doc_name}: {pkg.name} download location keeps a workspace-state "
                     f"marker: {download}"
                 )
+
+    def test_build_artifact_packages_carry_checksums(self, build_doc):
+        """Test that packages producing an artifact record its hashes."""
+        pkg = find_package_by_name(build_doc, "zephyr_final")
+        if pkg is None:
+            pytest.skip("No zephyr_final package in build.spdx")
+        algorithms = {checksum.algorithm for checksum in pkg.checksums}
+        assert ChecksumAlgorithm.SHA256 in algorithms, (
+            f"build.spdx: zephyr_final has no SHA256 package checksum, got {algorithms}"
+        )
 
 
 class TestPackageComments:

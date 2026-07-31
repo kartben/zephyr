@@ -328,6 +328,21 @@ DocumentNamespace: {namespace}
             return name
         return f"Organization: {name}"
 
+    def _write_package_checksums(self, f, component):
+        """Write the checksums of the artifact a build target produced.
+
+        Only build-target packages have an artifact to hash; source and dependency
+        packages describe a tree or an upstream project, and SPDX conveys their
+        integrity through the package verification code instead.
+        """
+        build_file = component.target_build_file
+        if not build_file:
+            return
+        for algorithm in ("SHA256", "SHA1", "MD5"):
+            value = build_file.hashes.get(algorithm)
+            if value:
+                f.write(f"PackageChecksum: {algorithm}: {value}\n")
+
     def _write_files_analyzed(self, f, component):
         """Write the FilesAnalyzed section and verification code for a component."""
         if not component.files:
@@ -383,6 +398,9 @@ PackageCopyrightText: {component.copyright_text}
         # whether the information was unavailable or simply not collected.
         f.write(f"PackageSupplier: {self._actor(supplier)}\n")
         f.write(f"PackageOriginator: {self._actor(component.originator)}\n")
+
+        # Checksum of the artifact this package produced, when it has one
+        self._write_package_checksums(f, component)
 
         # External references
         for ref in component.external_references:

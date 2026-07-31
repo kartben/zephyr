@@ -593,6 +593,12 @@ class SPDX3Serializer:
         if originator_agent:
             package.originatedBy.append(originator_agent._id)
 
+        # Hashes of the artifact a build target produced, so the package itself (and
+        # not only its file) can be integrity-checked.
+        if component.target_build_file:
+            for hash_obj in self._hashes(component.target_build_file.hashes):
+                package.verifiedUsing.append(hash_obj)
+
         # Download location
         if component.url:
             package.software_downloadLocation = generate_download_url(
@@ -632,6 +638,28 @@ class SPDX3Serializer:
         self.component_elements[component.name] = package
         return package
 
+    @staticmethod
+    def _hashes(hashes: dict) -> list:
+        """Convert a mapping of algorithm name to value into SPDX 3.0 Hash objects."""
+        algorithms = {
+            "SHA1": spdx.HashAlgorithm.sha1,
+            "SHA256": spdx.HashAlgorithm.sha256,
+            "MD5": spdx.HashAlgorithm.md5,
+        }
+        hash_objects = []
+        for hash_type, hash_value in hashes.items():
+            if not hash_value:
+                continue
+            algorithm = algorithms.get(hash_type)
+            if algorithm is None:
+                _logger.warning(f"Unknown hash algorithm: {hash_type}")
+                continue
+            hash_obj = spdx.Hash()
+            hash_obj.algorithm = algorithm
+            hash_obj.hashValue = hash_value
+            hash_objects.append(hash_obj)
+        return hash_objects
+
     def _create_software_file(self, file_obj: SBOMFile) -> spdx.software_File:
         """Convert SBOMFile to SPDX 3.0 software_File."""
         file_element = spdx.software_File()
@@ -647,20 +675,8 @@ class SPDX3Serializer:
         file_element.software_copyrightText = file_obj.copyright_text or NOASSERTION
 
         # Hashes - SPDX 3.0 uses verifiedUsing with Hash (which is a type of IntegrityMethod)
-        for hash_type, hash_value in file_obj.hashes.items():
-            if hash_value:
-                hash_obj = spdx.Hash()
-                if hash_type == "SHA1":
-                    hash_obj.algorithm = spdx.HashAlgorithm.sha1
-                elif hash_type == "SHA256":
-                    hash_obj.algorithm = spdx.HashAlgorithm.sha256
-                elif hash_type == "MD5":
-                    hash_obj.algorithm = spdx.HashAlgorithm.md5
-                else:
-                    _logger.warning(f"Unknown hash algorithm: {hash_type}")
-                    continue
-                hash_obj.hashValue = hash_value
-                file_element.verifiedUsing.append(hash_obj)
+        for hash_obj in self._hashes(file_obj.hashes):
+            file_element.verifiedUsing.append(hash_obj)
 
         # License information will be added via relationships after file creation
 
