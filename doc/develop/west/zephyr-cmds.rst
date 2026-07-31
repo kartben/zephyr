@@ -183,6 +183,49 @@ The two specification families express build provenance differently:
   instead, using ``hasInput``/``hasOutput``/``usesTool`` relationships scoped to the ``build``
   lifecycle.
 
+.. _west-spdx-provenance:
+
+Recording who made what
+-----------------------
+
+SBOM consumers, and the `CISA SBOM minimum elements`_, expect an SBOM to say who generated it and
+who produced each component. A west workspace only records the repository each component sits in,
+so that is what ``west spdx`` derives from, and it is deliberately modest about it:
+
+- The **SBOM author** (SPDX ``Creator``) defaults to the organization owning the repository the
+  Zephyr tree points at, so an upstream build is attributed to the Zephyr Project and a fork build
+  to the fork's organization. Override it with ``--sbom-author``.
+
+- The **component producer** (SPDX ``PackageOriginator``) of each source and dependency package is
+  the organization owning that component's repository, unless the module declares a CPE in its
+  :ref:`security metadata <modules-vulnerability-monitoring>`, whose vendor is used instead. Note
+  that a repository URL only says where code is hosted: a workspace built from a downstream
+  manifest of forked repositories resolves every producer to the downstream organization, because
+  nothing in the workspace records what the fork was made from. Declaring a CPE or a purl in the
+  module's security metadata is the way to keep crediting the original project.
+
+- The **supplier** (SPDX ``PackageSupplier``) of each package defaults to the same organization,
+  and ``--supplier`` overrides it for every package, which is what a distributor shipping the whole
+  build needs.
+
+Whatever cannot be derived is stated as ``NOASSERTION`` rather than left out, and the packages that
+do not come from a west project at all (the application sources and the build artifacts) take the
+values passed on the command line. Downstream distributors should therefore set at least
+``--supplier``, which becomes the supplier of every package:
+
+.. code-block:: bash
+
+   west spdx -d BUILD_DIR --sbom-author "Acme Corporation" --supplier "Acme Corporation"
+
+The same values can be set once per workspace with :ref:`west config <west-config>` instead of on
+every invocation:
+
+.. code-block:: bash
+
+   west config zephyr.spdx.author "Acme Corporation"
+   west config zephyr.spdx.supplier "Acme Corporation"
+   west config zephyr.spdx.originator "Acme Corporation"
+
 .. _west-spdx-build-profile:
 
 Build profile (SPDX 3.0)
@@ -232,11 +275,31 @@ Command-line options
   document, :file:`sdk.spdx` (or :file:`sdk.jsonld`), which lists header files
   included from the SDK.
 
+- ``--sbom-author AUTHOR``: the organization generating the SBOM, recorded as the SPDX
+  creator. Defaults to ``zephyr.spdx.author`` from west config, and then to the
+  organization the Zephyr repository was fetched from. See
+  :ref:`west-spdx-provenance`.
+
+- ``--supplier SUPPLIER``: the organization distributing the software described by the
+  SBOM. When given, it becomes the supplier of every package. Defaults to
+  ``zephyr.spdx.supplier`` from west config, and then to the organization each
+  repository was fetched from.
+
+- ``--originator ORIGINATOR``: the organization to credit as the producer of the
+  components that do not come from a west project, namely the application sources and
+  the build artifacts. Defaults to ``zephyr.spdx.originator`` from west config.
+
+  ``AUTHOR``, ``SUPPLIER`` and ``ORIGINATOR`` are organization names, optionally prefixed
+  with ``Organization:`` or ``Person:`` to pick the SPDX actor type explicitly.
+
 .. warning::
 
    The generation of SBOM documents for the ``native_sim`` platform is currently not supported.
 
 .. _SPDX: https://spdx.dev/
+
+.. _CISA SBOM minimum elements:
+   https://www.cisa.gov/resources-tools/resources/2026-minimum-elements-software-bill-materials-sbom
 
 .. _SPDX 3.0 Build profile:
    https://spdx.github.io/spdx-spec/v3.0.1/model/Build/Build/

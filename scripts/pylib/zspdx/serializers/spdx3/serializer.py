@@ -194,21 +194,31 @@ class SPDX3Serializer:
         self._create_build_object()
 
     def _get_organization(self, name: str):
-        """Return a shared Organization element for ``name``, creating it once.
+        """Return a shared Agent element for ``name``, creating it once.
 
-        Organizations are deduplicated by name so a supplier that is also the SBOM
-        author (or supplies many packages) is emitted as a single Agent that every
-        reference points at. Returns ``None`` when ``name`` is empty.
+        Agents are deduplicated by name so a supplier that is also the SBOM author (or
+        supplies many packages) is emitted as a single Agent that every reference points
+        at. A name prefixed with ``Person:`` becomes a Person rather than an
+        Organization, matching what the SPDX 2.x actor syntax allows the caller to pass
+        to ``--supplier`` and friends. Returns ``None`` when ``name`` is empty or
+        explicitly unknown.
         """
-        if not name:
+        if not name or name == NOASSERTION:
             return None
         agent = self.organizations.get(name)
         if agent is None:
             namespace = self.sbom_data.namespace_prefix.rstrip("/")
-            slug = normalize_spdx_name(name).lower().replace(" ", "-")
+            actor_name = name
             agent = spdx.Organization()
+            actor_types = (("Person:", spdx.Person), ("Organization:", spdx.Organization))
+            for prefix, agent_class in actor_types:
+                if name.startswith(prefix):
+                    actor_name = name[len(prefix) :].strip()
+                    agent = agent_class()
+                    break
+            slug = normalize_spdx_name(actor_name).lower().replace(" ", "-")
             agent._id = self._shorten_id(f"{namespace}/agents/{slug}")
-            agent.name = name
+            agent.name = actor_name
             agent.creationInfo = self.creation_info._id
             self.elements.append(agent)
             self.organizations[name] = agent
@@ -579,6 +589,10 @@ class SPDX3Serializer:
         if supplier_agent:
             package.suppliedBy = supplier_agent._id
 
+        originator_agent = self._get_organization(component.originator)
+        if originator_agent:
+            package.originatedBy.append(originator_agent._id)
+
         # Download location
         if component.url:
             package.software_downloadLocation = generate_download_url(
@@ -935,9 +949,10 @@ class SPDX3Serializer:
         if self.author_agent:
             element_ids.add(self.author_agent._id)
         for component in components:
-            supplier_agent = self.organizations.get(component.supplier)
-            if supplier_agent:
-                element_ids.add(supplier_agent._id)
+            for actor in (component.supplier, component.originator):
+                agent = self.organizations.get(actor)
+                if agent:
+                    element_ids.add(agent._id)
         data_license = self._create_license_expression("CC0-1.0")
         if data_license:
             element_ids.add(data_license._id)
