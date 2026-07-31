@@ -354,6 +354,76 @@ typedef enum {
 	CTF_EVENT_SYS_INIT_ENTER = 0x104,
 	CTF_EVENT_SYS_INIT_EXIT = 0x105,
 
+	/* Queue */
+	CTF_EVENT_QUEUE_INIT = 0x106,
+	CTF_EVENT_QUEUE_CANCEL_WAIT = 0x107,
+	CTF_EVENT_QUEUE_QUEUE_INSERT_ENTER = 0x108,
+	CTF_EVENT_QUEUE_QUEUE_INSERT_BLOCKING = 0x109,
+	CTF_EVENT_QUEUE_QUEUE_INSERT_EXIT = 0x10A,
+	CTF_EVENT_QUEUE_APPEND_ENTER = 0x10B,
+	CTF_EVENT_QUEUE_APPEND_EXIT = 0x10C,
+	CTF_EVENT_QUEUE_ALLOC_APPEND_ENTER = 0x10D,
+	CTF_EVENT_QUEUE_ALLOC_APPEND_EXIT = 0x10E,
+	CTF_EVENT_QUEUE_PREPEND_ENTER = 0x10F,
+	CTF_EVENT_QUEUE_PREPEND_EXIT = 0x110,
+	CTF_EVENT_QUEUE_ALLOC_PREPEND_ENTER = 0x111,
+	CTF_EVENT_QUEUE_ALLOC_PREPEND_EXIT = 0x112,
+	CTF_EVENT_QUEUE_INSERT_ENTER = 0x113,
+	CTF_EVENT_QUEUE_INSERT_BLOCKING = 0x114,
+	CTF_EVENT_QUEUE_INSERT_EXIT = 0x115,
+	CTF_EVENT_QUEUE_APPEND_LIST_ENTER = 0x116,
+	CTF_EVENT_QUEUE_APPEND_LIST_EXIT = 0x117,
+	CTF_EVENT_QUEUE_MERGE_SLIST_ENTER = 0x118,
+	CTF_EVENT_QUEUE_MERGE_SLIST_EXIT = 0x119,
+	CTF_EVENT_QUEUE_GET_ENTER = 0x11A,
+	CTF_EVENT_QUEUE_GET_BLOCKING = 0x11B,
+	CTF_EVENT_QUEUE_GET_EXIT = 0x11C,
+	CTF_EVENT_QUEUE_REMOVE_ENTER = 0x11D,
+	CTF_EVENT_QUEUE_REMOVE_EXIT = 0x11E,
+	CTF_EVENT_QUEUE_UNIQUE_APPEND_ENTER = 0x11F,
+	CTF_EVENT_QUEUE_UNIQUE_APPEND_EXIT = 0x120,
+	CTF_EVENT_QUEUE_PEEK_HEAD = 0x121,
+	CTF_EVENT_QUEUE_PEEK_TAIL = 0x122,
+	/* FIFO */
+	CTF_EVENT_FIFO_INIT_ENTER = 0x123,
+	CTF_EVENT_FIFO_INIT_EXIT = 0x124,
+	CTF_EVENT_FIFO_CANCEL_WAIT_ENTER = 0x125,
+	CTF_EVENT_FIFO_CANCEL_WAIT_EXIT = 0x126,
+	CTF_EVENT_FIFO_PUT_ENTER = 0x127,
+	CTF_EVENT_FIFO_PUT_EXIT = 0x128,
+	CTF_EVENT_FIFO_ALLOC_PUT_ENTER = 0x129,
+	CTF_EVENT_FIFO_ALLOC_PUT_EXIT = 0x12A,
+	CTF_EVENT_FIFO_PUT_LIST_ENTER = 0x12B,
+	CTF_EVENT_FIFO_PUT_LIST_EXIT = 0x12C,
+	CTF_EVENT_FIFO_PUT_SLIST_ENTER = 0x12D,
+	CTF_EVENT_FIFO_PUT_SLIST_EXIT = 0x12E,
+	CTF_EVENT_FIFO_GET_ENTER = 0x12F,
+	CTF_EVENT_FIFO_GET_EXIT = 0x130,
+	CTF_EVENT_FIFO_PEEK_HEAD_ENTER = 0x131,
+	CTF_EVENT_FIFO_PEEK_HEAD_EXIT = 0x132,
+	CTF_EVENT_FIFO_PEEK_TAIL_ENTER = 0x133,
+	CTF_EVENT_FIFO_PEEK_TAIL_EXIT = 0x134,
+	/* LIFO */
+	CTF_EVENT_LIFO_INIT_ENTER = 0x135,
+	CTF_EVENT_LIFO_INIT_EXIT = 0x136,
+	CTF_EVENT_LIFO_PUT_ENTER = 0x137,
+	CTF_EVENT_LIFO_PUT_EXIT = 0x138,
+	CTF_EVENT_LIFO_ALLOC_PUT_ENTER = 0x139,
+	CTF_EVENT_LIFO_ALLOC_PUT_EXIT = 0x13A,
+	CTF_EVENT_LIFO_GET_ENTER = 0x13B,
+	CTF_EVENT_LIFO_GET_EXIT = 0x13C,
+	/* Stack */
+	CTF_EVENT_STACK_INIT = 0x13D,
+	CTF_EVENT_STACK_ALLOC_INIT_ENTER = 0x13E,
+	CTF_EVENT_STACK_ALLOC_INIT_EXIT = 0x13F,
+	CTF_EVENT_STACK_CLEANUP_ENTER = 0x140,
+	CTF_EVENT_STACK_CLEANUP_EXIT = 0x141,
+	CTF_EVENT_STACK_PUSH_ENTER = 0x142,
+	CTF_EVENT_STACK_PUSH_EXIT = 0x143,
+	CTF_EVENT_STACK_POP_ENTER = 0x144,
+	CTF_EVENT_STACK_POP_BLOCKING = 0x145,
+	CTF_EVENT_STACK_POP_EXIT = 0x146,
+
 } ctf_event_t;
 
 typedef struct {
@@ -1672,6 +1742,333 @@ static inline void ctf_top_event_wait_blocking(uint32_t event_id, uint32_t event
 static inline void ctf_top_event_wait_exit(uint32_t event_id, uint32_t events, int32_t ret)
 {
 	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_EVENT_WAIT_EXIT), event_id, events, ret);
+}
+
+
+/* Queue / FIFO / LIFO / Stack */
+static inline void ctf_top_queue_init(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_INIT), id);
+}
+
+static inline void ctf_top_queue_cancel_wait(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_CANCEL_WAIT), id);
+}
+
+static inline void ctf_top_queue_queue_insert_enter(uint32_t id, uint8_t alloc)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_QUEUE_INSERT_ENTER), id, alloc);
+}
+
+static inline void ctf_top_queue_queue_insert_blocking(uint32_t id, uint8_t alloc, uint32_t timeout)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_QUEUE_INSERT_BLOCKING), id, alloc, timeout);
+}
+
+static inline void ctf_top_queue_queue_insert_exit(uint32_t id, uint8_t alloc, int32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_QUEUE_INSERT_EXIT), id, alloc, ret);
+}
+
+static inline void ctf_top_queue_append_enter(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_APPEND_ENTER), id);
+}
+
+static inline void ctf_top_queue_append_exit(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_APPEND_EXIT), id);
+}
+
+static inline void ctf_top_queue_alloc_append_enter(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_ALLOC_APPEND_ENTER), id);
+}
+
+static inline void ctf_top_queue_alloc_append_exit(uint32_t id, int32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_ALLOC_APPEND_EXIT), id, ret);
+}
+
+static inline void ctf_top_queue_prepend_enter(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_PREPEND_ENTER), id);
+}
+
+static inline void ctf_top_queue_prepend_exit(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_PREPEND_EXIT), id);
+}
+
+static inline void ctf_top_queue_alloc_prepend_enter(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_ALLOC_PREPEND_ENTER), id);
+}
+
+static inline void ctf_top_queue_alloc_prepend_exit(uint32_t id, int32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_ALLOC_PREPEND_EXIT), id, ret);
+}
+
+static inline void ctf_top_queue_insert_enter(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_INSERT_ENTER), id);
+}
+
+static inline void ctf_top_queue_insert_blocking(uint32_t id, uint32_t timeout)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_INSERT_BLOCKING), id, timeout);
+}
+
+static inline void ctf_top_queue_insert_exit(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_INSERT_EXIT), id);
+}
+
+static inline void ctf_top_queue_append_list_enter(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_APPEND_LIST_ENTER), id);
+}
+
+static inline void ctf_top_queue_append_list_exit(uint32_t id, int32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_APPEND_LIST_EXIT), id, ret);
+}
+
+static inline void ctf_top_queue_merge_slist_enter(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_MERGE_SLIST_ENTER), id);
+}
+
+static inline void ctf_top_queue_merge_slist_exit(uint32_t id, int32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_MERGE_SLIST_EXIT), id, ret);
+}
+
+static inline void ctf_top_queue_get_enter(uint32_t id, uint32_t timeout)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_GET_ENTER), id, timeout);
+}
+
+static inline void ctf_top_queue_get_blocking(uint32_t id, uint32_t timeout)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_GET_BLOCKING), id, timeout);
+}
+
+static inline void ctf_top_queue_get_exit(uint32_t id, uint32_t timeout, uint32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_GET_EXIT), id, timeout, ret);
+}
+
+static inline void ctf_top_queue_remove_enter(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_REMOVE_ENTER), id);
+}
+
+static inline void ctf_top_queue_remove_exit(uint32_t id, uint8_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_REMOVE_EXIT), id, ret);
+}
+
+static inline void ctf_top_queue_unique_append_enter(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_UNIQUE_APPEND_ENTER), id);
+}
+
+static inline void ctf_top_queue_unique_append_exit(uint32_t id, uint8_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_UNIQUE_APPEND_EXIT), id, ret);
+}
+
+static inline void ctf_top_queue_peek_head(uint32_t id, uint32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_PEEK_HEAD), id, ret);
+}
+
+static inline void ctf_top_queue_peek_tail(uint32_t id, uint32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_QUEUE_PEEK_TAIL), id, ret);
+}
+
+static inline void ctf_top_fifo_init_enter(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_FIFO_INIT_ENTER), id);
+}
+
+static inline void ctf_top_fifo_init_exit(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_FIFO_INIT_EXIT), id);
+}
+
+static inline void ctf_top_fifo_cancel_wait_enter(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_FIFO_CANCEL_WAIT_ENTER), id);
+}
+
+static inline void ctf_top_fifo_cancel_wait_exit(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_FIFO_CANCEL_WAIT_EXIT), id);
+}
+
+static inline void ctf_top_fifo_put_enter(uint32_t id, uint32_t data)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_FIFO_PUT_ENTER), id, data);
+}
+
+static inline void ctf_top_fifo_put_exit(uint32_t id, uint32_t data)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_FIFO_PUT_EXIT), id, data);
+}
+
+static inline void ctf_top_fifo_alloc_put_enter(uint32_t id, uint32_t data)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_FIFO_ALLOC_PUT_ENTER), id, data);
+}
+
+static inline void ctf_top_fifo_alloc_put_exit(uint32_t id, uint32_t data, int32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_FIFO_ALLOC_PUT_EXIT), id, data, ret);
+}
+
+static inline void ctf_top_fifo_put_list_enter(uint32_t id, uint32_t head, uint32_t tail)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_FIFO_PUT_LIST_ENTER), id, head, tail);
+}
+
+static inline void ctf_top_fifo_put_list_exit(uint32_t id, uint32_t head, uint32_t tail)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_FIFO_PUT_LIST_EXIT), id, head, tail);
+}
+
+static inline void ctf_top_fifo_put_slist_enter(uint32_t id, uint32_t list)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_FIFO_PUT_SLIST_ENTER), id, list);
+}
+
+static inline void ctf_top_fifo_put_slist_exit(uint32_t id, uint32_t list)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_FIFO_PUT_SLIST_EXIT), id, list);
+}
+
+static inline void ctf_top_fifo_get_enter(uint32_t id, uint32_t timeout)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_FIFO_GET_ENTER), id, timeout);
+}
+
+static inline void ctf_top_fifo_get_exit(uint32_t id, uint32_t timeout, uint32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_FIFO_GET_EXIT), id, timeout, ret);
+}
+
+static inline void ctf_top_fifo_peek_head_enter(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_FIFO_PEEK_HEAD_ENTER), id);
+}
+
+static inline void ctf_top_fifo_peek_head_exit(uint32_t id, uint32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_FIFO_PEEK_HEAD_EXIT), id, ret);
+}
+
+static inline void ctf_top_fifo_peek_tail_enter(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_FIFO_PEEK_TAIL_ENTER), id);
+}
+
+static inline void ctf_top_fifo_peek_tail_exit(uint32_t id, uint32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_FIFO_PEEK_TAIL_EXIT), id, ret);
+}
+
+static inline void ctf_top_lifo_init_enter(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_LIFO_INIT_ENTER), id);
+}
+
+static inline void ctf_top_lifo_init_exit(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_LIFO_INIT_EXIT), id);
+}
+
+static inline void ctf_top_lifo_put_enter(uint32_t id, uint32_t data)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_LIFO_PUT_ENTER), id, data);
+}
+
+static inline void ctf_top_lifo_put_exit(uint32_t id, uint32_t data)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_LIFO_PUT_EXIT), id, data);
+}
+
+static inline void ctf_top_lifo_alloc_put_enter(uint32_t id, uint32_t data)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_LIFO_ALLOC_PUT_ENTER), id, data);
+}
+
+static inline void ctf_top_lifo_alloc_put_exit(uint32_t id, uint32_t data, int32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_LIFO_ALLOC_PUT_EXIT), id, data, ret);
+}
+
+static inline void ctf_top_lifo_get_enter(uint32_t id, uint32_t timeout)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_LIFO_GET_ENTER), id, timeout);
+}
+
+static inline void ctf_top_lifo_get_exit(uint32_t id, uint32_t timeout, uint32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_LIFO_GET_EXIT), id, timeout, ret);
+}
+
+static inline void ctf_top_stack_init(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_STACK_INIT), id);
+}
+
+static inline void ctf_top_stack_alloc_init_enter(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_STACK_ALLOC_INIT_ENTER), id);
+}
+
+static inline void ctf_top_stack_alloc_init_exit(uint32_t id, int32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_STACK_ALLOC_INIT_EXIT), id, ret);
+}
+
+static inline void ctf_top_stack_cleanup_enter(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_STACK_CLEANUP_ENTER), id);
+}
+
+static inline void ctf_top_stack_cleanup_exit(uint32_t id, int32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_STACK_CLEANUP_EXIT), id, ret);
+}
+
+static inline void ctf_top_stack_push_enter(uint32_t id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_STACK_PUSH_ENTER), id);
+}
+
+static inline void ctf_top_stack_push_exit(uint32_t id, int32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_STACK_PUSH_EXIT), id, ret);
+}
+
+static inline void ctf_top_stack_pop_enter(uint32_t id, uint32_t timeout)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_STACK_POP_ENTER), id, timeout);
+}
+
+static inline void ctf_top_stack_pop_blocking(uint32_t id, uint32_t timeout)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_STACK_POP_BLOCKING), id, timeout);
+}
+
+static inline void ctf_top_stack_pop_exit(uint32_t id, uint32_t timeout, int32_t ret)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_STACK_POP_EXIT), id, timeout, ret);
 }
 
 #endif /* SUBSYS_DEBUG_TRACING_CTF_TOP_H */
