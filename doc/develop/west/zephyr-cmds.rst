@@ -228,6 +228,12 @@ every invocation:
    west config zephyr.spdx.supplier "Acme Corporation"
    west config zephyr.spdx.originator "Acme Corporation"
 
+A workspace that no longer matches its manifest — uncommitted changes, a revision or URL the
+manifest does not ask for, or extra modules — is reported in the package comment, and the package
+identifiers keep pointing at the plain revision so that they remain usable for vulnerability
+matching and for fetching the code.
+
+
 .. _west-spdx-build-profile:
 
 Build profile (SPDX 3.0)

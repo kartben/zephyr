@@ -60,6 +60,15 @@ ZEPHYR_DEPS_COMMENT = (
     "shared by every module dependency package; it carries no files."
 )
 
+# Suffixes zephyr_module.py appends to a revision to flag a workspace that no longer
+# matches its manifest, and the sentence emitted for each of them.
+WORKSPACE_STATE_MARKERS = ("-dirty", "-off", "-extra")
+WORKSPACE_STATE_COMMENTS = {
+    "dirty": "the working tree had uncommitted changes when this SBOM was generated",
+    "off": "the checked-out revision or URL differs from the one the west manifest asks for",
+    "extra": "the build included modules that are not part of the west manifest",
+}
+
 # Matches a git repository URL of the form '<protocol><host>/<namespace>/<package>',
 # capturing the host type (e.g. "github"), the namespace and the package name.
 COMMON_GIT_URL_REGEX = (
@@ -255,6 +264,43 @@ class Walker:
                 return fields[3]
         return ""
 
+    @staticmethod
+    def _split_revision(revision):
+        """Return the ``(commit, state)`` parts of a revision recorded in zephyr.meta.
+
+        zephyr_module.py marks a revision that no longer describes plain manifest code
+        by appending ``-dirty`` (uncommitted changes), ``-off`` (revision or URL differs
+        from the west manifest) and ``-extra`` (the build pulled in extra modules).
+        Those markers must not reach package URLs and download locations, where they
+        produce identifiers no vulnerability database can match and no client can
+        fetch, so they are split off and reported separately.
+        """
+        revision = revision or ""
+        state = []
+        stripped = True
+        while stripped:
+            stripped = False
+            for marker in WORKSPACE_STATE_MARKERS:
+                if revision.endswith(marker):
+                    revision = revision[: -len(marker)]
+                    state.append(marker.lstrip("-"))
+                    stripped = True
+        return revision, sorted(state)
+
+    def _note_workspace_state(self, component, revision):
+        """Spell out in the package comment how the workspace deviates from its manifest.
+
+        The deviation is recorded in the revision as a suffix, which is stripped from
+        the identifiers; dropping it silently would hide that the code the SBOM
+        describes is not exactly the code its identifiers point at.
+        """
+        _commit, state = self._split_revision(revision)
+        notes = [WORKSPACE_STATE_COMMENTS[m] for m in state if m in WORKSPACE_STATE_COMMENTS]
+        if not notes:
+            return
+        sentence = f"Workspace state: {'; '.join(notes)}."
+        component.comment = f"{component.comment} {sentence}".strip()
+
     def _apply_provenance(self, component, url=""):
         """Record who produced a component and who distributed it.
 
@@ -290,7 +336,8 @@ class Walker:
             for ref in component.external_references
         )
         if not has_purl:
-            purl = self._build_purl(url, revision)
+            commit, _state = self._split_revision(revision)
+            purl = self._build_purl(url, commit)
             if purl:
                 component.add_external_reference(purl)
 
@@ -632,8 +679,10 @@ class Walker:
             component.url = zephyr_url
         self._apply_provenance(component, zephyr_url)
 
-        if zephyr.get("revision"):
-            component.revision = zephyr.get("revision")
+        zephyr_revision, _state = self._split_revision(zephyr.get("revision"))
+        if zephyr_revision:
+            component.revision = zephyr_revision
+        self._note_workspace_state(component, zephyr.get("revision"))
 
         purl = None
         zephyr_tags = zephyr.get("tags", "")
@@ -671,7 +720,7 @@ class Walker:
             module_path = module.get("path", None)
             # west may record the module remote as either "remote" or "url"
             module_url = module.get("remote") or module.get("url")
-            module_revision = module.get("revision", None)
+            module_revision, _state = self._split_revision(module.get("revision"))
 
             if not module_name:
                 _logger.error("cannot find module name in meta file; bailing")
@@ -690,6 +739,7 @@ class Walker:
             if module_url:
                 module_component.url = module_url
                 self._apply_scm_identity(module_component, module_url, module_revision)
+            self._note_workspace_state(module_component, module.get("revision"))
 
             self.sbom_graph.add_component(module_component, "zephyr")
             self.doc_zephyr.add_described_component(module_component)
@@ -726,7 +776,8 @@ class Walker:
         component = SBOMComponent(name="zephyr-deps", comment=ZEPHYR_DEPS_COMMENT)
         component.url = zephyr.get("remote") or zephyr.get("url", "")
         self._apply_provenance(component, component.url)
-        component.revision = zephyr.get("revision", "")
+        component.revision, _state = self._split_revision(zephyr.get("revision"))
+        self._note_workspace_state(component, zephyr.get("revision"))
 
         purl = None
         zephyr_tags = zephyr.get("tags", None)
@@ -743,8 +794,8 @@ class Walker:
                 if component.version == "" and version:
                     component.version = version.group('version')
         else:
-            if zephyr.get("revision"):
-                purl = self._build_purl(component.url, zephyr.get("revision"))
+            if component.revision:
+                purl = self._build_purl(component.url, component.revision)
             if purl:
                 component.add_external_reference(purl)
 
@@ -752,8 +803,8 @@ class Walker:
             cpe = f'cpe:2.3:o:zephyrproject:zephyr:{component.version}:-:*:*:*:*:*:*'
             component.add_external_reference(cpe)
 
-        if component.version == "" and zephyr.get("revision"):
-            component.version = zephyr.get("revision")
+        if component.version == "" and component.revision:
+            component.version = component.revision
 
         self.sbom_graph.add_component(component, "modules-deps")
         self.doc_modules_deps.add_described_component(component)
@@ -774,7 +825,7 @@ class Walker:
             module_name = module.get("name", None)
             module_security = module.get("security", None)
             module_url = module.get("remote") or module.get("url")
-            module_revision = module.get("revision", None)
+            module_revision, _state = self._split_revision(module.get("revision"))
 
             if not module_name:
                 _logger.error("cannot find module name in meta file; bailing")
@@ -799,6 +850,7 @@ class Walker:
             component.originator = self._originator_from_cpe(component)
             if module_url:
                 self._apply_scm_identity(component, module_url, module_revision)
+            self._note_workspace_state(component, module.get("revision"))
 
             self.sbom_graph.add_component(component, "modules-deps")
             self.component_modules_deps[module_name] = component
