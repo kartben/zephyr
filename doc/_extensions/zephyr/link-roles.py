@@ -7,6 +7,7 @@
 import re
 import subprocess
 from collections.abc import Sequence
+from functools import cache
 from pathlib import Path
 from typing import Any, Final
 
@@ -25,11 +26,21 @@ try:
 except ImportError:
     west_manifest = None
 
+MANIFEST_PROJECT_NAMES: Final[frozenset[str]] = (
+    frozenset(p.name for p in west_manifest.projects) if west_manifest else frozenset()
+)
 
 logger = logging.getLogger(__name__)
 
 
+@cache
 def get_github_rev():
+    """Return the tag the tree is checked out at, or "main" (cached).
+
+    The roles below are used tens of thousands of times in a full build (the
+    board pages alone reference one file per hardware feature), and the revision
+    cannot change while the build runs, so the git call is only made once.
+    """
     try:
         output = subprocess.check_output(
             "git describe --exact-match", shell=True, stderr=subprocess.DEVNULL
@@ -101,8 +112,7 @@ def modulelink(default_module=None, format="blob"):
         # software with forks of the zephyr repository, and getting
         # :zephyr_file: / :zephyr_raw: output that links to the fork,
         # instead of mainline zephyr.
-        projects = [p.name for p in west_manifest.projects] if west_manifest else []
-        if module in projects:
+        if module in MANIFEST_PROJECT_NAMES:
             project = west_manifest.get_projects([module])[0]
             baseurl = project.url
             rev = project.revision
