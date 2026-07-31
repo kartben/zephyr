@@ -503,6 +503,17 @@ class TestPackageProvenance:
         )
 
 
+    def test_build_artifact_packages_carry_checksums(self, build_doc):
+        """Test that packages producing an artifact record its hashes."""
+        pkg = find_package_by_name(build_doc, "zephyr_final")
+        if pkg is None:
+            pytest.skip("No zephyr_final package in build.spdx")
+        algorithms = {checksum.algorithm for checksum in pkg.checksums}
+        assert ChecksumAlgorithm.SHA256 in algorithms, (
+            f"build.spdx: zephyr_final has no SHA256 package checksum, got {algorithms}"
+        )
+
+
 class TestPackageComments:
     """Tests for package role comments."""
 
