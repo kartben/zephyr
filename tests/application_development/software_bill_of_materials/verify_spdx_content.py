@@ -503,6 +503,27 @@ class TestPackageProvenance:
         )
 
 
+    def test_identifiers_carry_no_workspace_state(self, zephyr_doc, modules_doc):
+        """Test that no identifier keeps a workspace-state marker.
+
+        zephyr.meta flags a workspace that deviates from its manifest by suffixing the
+        revision; such a suffix in a purl or a download location produces an identifier
+        that matches nothing.
+        """
+        markers = ("-dirty", "-off", "-extra")
+        for doc_name, doc in (("zephyr.spdx", zephyr_doc), ("modules-deps.spdx", modules_doc)):
+            for pkg in doc.packages:
+                for locator in get_purl_refs(pkg):
+                    assert not locator.endswith(markers), (
+                        f"{doc_name}: {pkg.name} purl keeps a workspace-state marker: {locator}"
+                    )
+                download = str(pkg.download_location)
+                assert not download.endswith(markers), (
+                    f"{doc_name}: {pkg.name} download location keeps a workspace-state "
+                    f"marker: {download}"
+                )
+
+
 class TestPackageComments:
     """Tests for package role comments."""
 
