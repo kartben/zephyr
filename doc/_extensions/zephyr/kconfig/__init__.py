@@ -286,11 +286,16 @@ class KconfigDomain(Domain):
     directives = {"search": KconfigSearch}
     initial_data: dict[str, Any] = {"options": set()}
 
+    # Lookup index for resolve_xref, built on demand from the (large) options set
+    # and invalidated whenever that set is modified.
+    _options_index: dict[str, tuple[str, str]] | None = None
+
     def get_objects(self) -> Iterable[tuple[str, str, str, str, str, int]]:
         yield from self.data["options"]
 
     def merge_domaindata(self, docnames: list[str], otherdata: dict) -> None:
         self.data["options"].update(otherdata["options"])
+        self._options_index = None
 
     def resolve_xref(
         self,
@@ -316,18 +321,26 @@ class KconfigDomain(Domain):
                 return contnode
         else:
             # Handle regular option links
-            match = [
-                (docname, anchor)
-                for name, _, _, docname, anchor, _ in self.get_objects()
-                if name == target
-            ]
-
-            if match:
-                todocname, anchor = match[0]
-
-                return make_refnode(builder, fromdocname, todocname, anchor, contnode, anchor)
-            else:
+            match = self._get_options_index().get(target)
+            if match is None:
                 return None
+
+            todocname, anchor = match
+            return make_refnode(builder, fromdocname, todocname, anchor, contnode, anchor)
+
+    def _get_options_index(self) -> dict[str, tuple[str, str]]:
+        """Return the option name to (docname, anchor) index, building it if needed.
+
+        Zephyr defines tens of thousands of options and the documentation holds
+        thousands of references to them, so resolving each reference with a scan
+        of the options set would be quadratic.
+        """
+        if self._options_index is None:
+            self._options_index = {
+                name: (docname, anchor) for name, _, _, docname, anchor, _ in self.data["options"]
+            }
+
+        return self._options_index
 
     def _find_search_docname(self, env: BuildEnvironment) -> str | None:
         """Find the document containing the kconfig search directive."""
@@ -355,6 +368,7 @@ class KconfigDomain(Domain):
         """Register a new Kconfig option to the domain."""
 
         self.data["options"].add((option, option, "option", self.env.docname, option, 1))
+        self._options_index = None
 
 
 def sc_fmt(sc):

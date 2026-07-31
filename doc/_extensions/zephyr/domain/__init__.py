@@ -205,9 +205,10 @@ class ConvertCodeSampleNode(SphinxTransform):
             # Replace the custom node with the new section
             node.replace_self(new_section)
 
-            # Remove the moved siblings from their original parent
-            for sibling in siblings_to_move:
-                parent.remove(sibling)
+            # Remove the moved siblings from their original parent. They sit right
+            # after the (just replaced) node, so drop the whole slice at once
+            # rather than searching for each of them in turn.
+            del parent.children[index + 1 :]
 
             # Add a "See Also" section at the end with links to relevant APIs
             if node["relevant-api"]:
@@ -280,8 +281,7 @@ class ConvertCodeSampleCategoryNode(SphinxTransform):
             siblings_to_move = parent.children[index + 1 :]
 
             node.children[0].extend(siblings_to_move)
-            for sibling in siblings_to_move:
-                parent.remove(sibling)
+            del parent.children[index + 1 :]
 
         # note document as needing toc patching
         self.document["needs_toc_patch"] = True
@@ -397,8 +397,7 @@ class ConvertBoardNode(SphinxTransform):
             node.replace_self(new_section)
 
             # Remove the moved siblings from their original parent
-            for sibling in siblings_to_move:
-                parent.remove(sibling)
+            del parent.children[index + 1 :]
 
 
 class CodeSampleCategoriesTocPatching(SphinxPostTransform):
@@ -424,25 +423,16 @@ class CodeSampleCategoriesTocPatching(SphinxPostTransform):
         list_item += compact_paragraph
 
         sorted_children = sorted(tree.children, key=lambda x: x.category["name"])
+        code_samples = self.env.get_domain("zephyr").code_samples_in_category(tree.category["id"])
 
         # add bullet list for children (if there are any, i.e. there are subcategories or at least
         # one code sample in the category)
-        if sorted_children or any(
-            code_sample.get("category") == tree.category["id"]
-            for code_sample in self.env.domaindata["zephyr"]["code-samples"].values()
-        ):
+        if sorted_children or code_samples:
             bullet_list = nodes.bullet_list()
             for child in sorted_children:
                 self.output_sample_categories_list_items(child, bullet_list)
 
-            for code_sample in sorted(
-                [
-                    code_sample
-                    for code_sample in self.env.domaindata["zephyr"]["code-samples"].values()
-                    if code_sample.get("category") == tree.category["id"]
-                ],
-                key=lambda x: x["name"].casefold(),
-            ):
+            for code_sample in sorted(code_samples, key=lambda x: x["name"].casefold()):
                 li = nodes.list_item()
                 sample_xref = nodes.reference(
                     "",
@@ -502,11 +492,7 @@ class ProcessCodeSampleListingNode(SphinxPostTransform):
 
         # list samples from this category
         list = create_code_sample_list(
-            [
-                code_sample
-                for code_sample in self.env.domaindata["zephyr"]["code-samples"].values()
-                if code_sample.get("category") == tree.category["id"]
-            ]
+            self.env.get_domain("zephyr").code_samples_in_category(tree.category["id"])
         )
         section += list
 
@@ -601,11 +587,7 @@ class ProcessRelatedCodeSamplesNode(SphinxPostTransform):
             id = node["id"]  # the ID of the node is the name of the doxygen group for which we
             # want to list related code samples
 
-            code_samples = self.env.domaindata["zephyr"]["code-samples"].values()
-            # Filter out code samples that don't reference this doxygen group
-            code_samples = [
-                code_sample for code_sample in code_samples if id in code_sample["relevant-api"]
-            ]
+            code_samples = self.env.get_domain("zephyr").code_samples_for_api(id)
 
             if len(code_samples) > 0:
                 admonition = nodes.admonition()
@@ -1271,12 +1253,18 @@ class ZephyrDomain(Domain):
         "runners": {},
     }
 
+    # Lookup indexes over "code-samples", built on demand by the post-transforms
+    # and invalidated whenever the code samples change.
+    _samples_by_category: dict[str, list[dict]] | None = None
+    _samples_by_api: dict[str, list[dict]] | None = None
+
     def clear_doc(self, docname: str) -> None:
         self.data["code-samples"] = {
             sample_id: sample_data
             for sample_id, sample_data in self.data["code-samples"].items()
             if sample_data["docname"] != docname
         }
+        self.invalidate_code_sample_indexes()
 
         self.data["code-samples-categories"] = {
             category_id: category_data
@@ -1299,6 +1287,7 @@ class ZephyrDomain(Domain):
     def merge_domaindata(self, docnames: list[str], otherdata: dict) -> None:
         self.data["code-samples"].update(otherdata["code-samples"])
         self.data["code-samples-categories"].update(otherdata["code-samples-categories"])
+        self.invalidate_code_sample_indexes()
 
         # self.data["boards"] contains all the boards right from builder-inited time, but it still
         # potentially needs merging since a board's docname property is set by BoardDirective to
@@ -1411,8 +1400,41 @@ class ZephyrDomain(Domain):
                 elem["description"].astext() if type == "code-sample" else None,
             )
 
+    def invalidate_code_sample_indexes(self) -> None:
+        """Drop the cached code sample indexes, to be rebuilt on next use."""
+        self._samples_by_category = None
+        self._samples_by_api = None
+
+    def code_samples_in_category(self, category_id: str) -> list[dict]:
+        """Return the code samples belonging to the given category.
+
+        Categories are assigned by :func:`compute_sample_categories_hierarchy`,
+        so this is only meaningful once the whole environment has been read.
+        """
+        if self._samples_by_category is None:
+            index: dict[str, list[dict]] = {}
+            for code_sample in self.data["code-samples"].values():
+                category = code_sample.get("category")
+                if category is not None:
+                    index.setdefault(category, []).append(code_sample)
+            self._samples_by_category = index
+
+        return self._samples_by_category.get(category_id, [])
+
+    def code_samples_for_api(self, api: str) -> list[dict]:
+        """Return the code samples listing the given Doxygen group as relevant API."""
+        if self._samples_by_api is None:
+            index: dict[str, list[dict]] = {}
+            for code_sample in self.data["code-samples"].values():
+                for group in code_sample["relevant-api"]:
+                    index.setdefault(group, []).append(code_sample)
+            self._samples_by_api = index
+
+        return self._samples_by_api.get(api, [])
+
     def add_code_sample(self, code_sample):
         self.data["code-samples"][code_sample["id"]] = code_sample
+        self.invalidate_code_sample_indexes()
 
     def add_code_sample_category(self, code_sample_category):
         self.data["code-samples-categories"][code_sample_category["id"]] = code_sample_category
@@ -1486,6 +1508,9 @@ def compute_sample_categories_hierarchy(app: Sphinx, env: BuildEnvironment) -> N
             while not hasattr(node, "category"):
                 node = node.parent
             code_sample["category"] = node.category["id"]
+
+    # categories were just (re)assigned, any index built from them is stale
+    domain.invalidate_code_sample_indexes()
 
 
 def install_static_assets_as_needed(

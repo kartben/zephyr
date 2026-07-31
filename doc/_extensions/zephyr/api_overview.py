@@ -11,14 +11,10 @@ from doxmlparser.compound import DoxCompoundKind
 from sphinx.util.docutils import SphinxDirective
 
 
-def get_group(innergroup, all_groups):
+def get_group(innergroup, groups_by_id):
     try:
-        return [
-            group
-            for group in all_groups
-            if group.get_compounddef()[0].get_id() == innergroup.get_refid()
-        ][0]
-    except IndexError as e:
+        return groups_by_id[innergroup.get_refid()]
+    except KeyError as e:
         raise Exception(f"Unexpected group {innergroup.get_refid()}") from e
 
 
@@ -49,15 +45,19 @@ class ApiOverview(SphinxDirective):
     def run(self):
         groups = parse_xml_dir(self.config.api_overview_doxygen_out_dir + "/xml")
 
+        # Index groups by id so that walking the group hierarchy (and telling
+        # top-level groups apart from nested ones) stays linear in the number of
+        # groups, of which Zephyr has more than a thousand.
+        groups_by_id = {group.get_compounddef()[0].get_id(): group for group in groups}
         inners = [group.get_compounddef()[0].get_innergroup() for group in groups]
-        inner_ids = [i.get_refid() for inner in inners for i in inner]
+        inner_ids = {i.get_refid() for inner in inners for i in inner}
         toplevel = [
             group for group in groups if group.get_compounddef()[0].get_id() not in inner_ids
         ]
 
-        return [self.generate_table(toplevel, groups)]
+        return [self.generate_table(toplevel, groups_by_id)]
 
-    def generate_table(self, toplevel, groups):
+    def generate_table(self, toplevel, groups_by_id):
         table = nodes.table()
         tgroup = nodes.tgroup()
 
@@ -76,7 +76,7 @@ class ApiOverview(SphinxDirective):
         rows = []
         tbody = nodes.tbody()
         for t in toplevel:
-            self.visit_group(t, groups, rows)
+            self.visit_group(t, groups_by_id, rows)
         tbody.extend(rows)
         tgroup += tbody
 
@@ -84,7 +84,7 @@ class ApiOverview(SphinxDirective):
 
         return table
 
-    def visit_group(self, group, all_groups, rows, indent=0):
+    def visit_group(self, group, groups_by_id, rows, indent=0):
         version = since = ""
         github_uri = self.config.api_overview_base_url + "/releases/tag/"
         cdef = group.get_compounddef()[0]
@@ -142,7 +142,7 @@ class ApiOverview(SphinxDirective):
         rows.append(row_node)
 
         for innergroup in cdef.get_innergroup():
-            self.visit_group(get_group(innergroup, all_groups), all_groups, rows, indent + 6)
+            self.visit_group(get_group(innergroup, groups_by_id), groups_by_id, rows, indent + 6)
 
 
 def setup(app) -> dict[str, Any]:
