@@ -219,9 +219,16 @@ function fillSocSocSelect(families, series = undefined, selectOnFill = false) {
   const socSocSelect = document.getElementById("soc");
 
   families = families?.length ? families : Object.keys(socs_data);
-  series = series?.length ? series : families.flatMap((f) => Object.keys(socs_data[f]));
+  // Walk each family's own series instead of every (family, series) pair
+  const seriesFilter = series?.length ? new Set(series) : null;
   const matchingSocs = [
-    ...new Set(families.flatMap((f) => series.flatMap((s) => socs_data[f][s] || []))),
+    ...new Set(
+      families.flatMap((f) =>
+        Object.entries(socs_data[f]).flatMap(([s, socs]) =>
+          !seriesFilter || seriesFilter.has(s) ? socs : [],
+        ),
+      ),
+    ),
   ];
 
   socSocSelect.innerHTML = "";
@@ -313,19 +320,13 @@ function setupCompatiblesField() {
   const datalist = document.getElementById("compatibles-list");
 
   // Collect all unique compatibles from boards
-  const allCompatibles = Array.from(document.querySelectorAll(".board-card")).reduce(
-    (acc, board) => {
-      (board.getAttribute("data-compatibles") || "").split(" ").forEach((compat) => {
-        if (compat && !acc.includes(compat)) {
-          acc.push(compat);
-        }
-      });
-      return acc;
-    },
-    [],
-  );
-
-  allCompatibles.sort();
+  const allCompatibles = [
+    ...new Set(
+      Array.from(document.querySelectorAll(".board-card")).flatMap((board) =>
+        (board.getAttribute("data-compatibles") || "").split(" ").filter(Boolean),
+      ),
+    ),
+  ].sort();
 
   function addCompatible(compatible) {
     if (selectedCompatibles.includes(compatible) || compatible === "") return;
@@ -500,12 +501,19 @@ function updateOptionsAvailability(selectElement, availableValues) {
   });
 }
 
-function wildcardMatch(pattern, str) {
-  // Convert wildcard pattern to regex
-  // Escape special regex characters except *
-  const regexPattern = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
-  const regex = new RegExp(`^${regexPattern}$`, "i");
-  return regex.test(str);
+const wildcardRegexCache = new Map();
+
+/* Compiled (and memoized) regex for a wildcard pattern, so that filtering does not
+ * recompile the same pattern once per board and per compatible. */
+function wildcardRegex(pattern) {
+  let regex = wildcardRegexCache.get(pattern);
+  if (!regex) {
+    // Escape special regex characters except *
+    const regexPattern = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
+    regex = new RegExp(`^${regexPattern}$`, "i");
+    wildcardRegexCache.set(pattern, regex);
+  }
+  return regex;
 }
 
 function makeMemorySliderConfig(maxBoardBytes) {
@@ -812,6 +820,10 @@ function filterBoards() {
   const availableArchs = new Set();
   const availableVendors = new Set();
 
+  // Hoisted out of the per-board loop: these only depend on the filter form.
+  const selectedSocs = new Set([...socSocSelect.selectedOptions].map(({ value }) => value));
+  const compatiblePatterns = selectedCompatibles.map(wildcardRegex);
+
   Array.from(boards).forEach(function (board) {
     const boardName = board.getAttribute("data-name").toLowerCase();
     const boardArchs = (board.getAttribute("data-arch") || "").split(" ").filter(Boolean);
@@ -826,8 +838,6 @@ function filterBoards() {
       .filter(Boolean);
     const isShield = board.classList.contains("shield");
 
-    const selectedSocs = [...socSocSelect.selectedOptions].map(({ value }) => value);
-
     const typeVisible = isShield ? showShields : showBoards;
     const nameMatch = !nameInput || boardName.includes(nameInput);
     const archMatch = !archSelect || boardArchs.includes(archSelect);
@@ -841,17 +851,14 @@ function filterBoards() {
         flashMaxBytes,
       );
     const vendorMatch = !vendorSelect || boardVendor === vendorSelect;
-    const socMatch =
-      selectedSocs.length === 0 || selectedSocs.some((soc) => boardSocs.includes(soc));
+    const socMatch = selectedSocs.size === 0 || boardSocs.some((soc) => selectedSocs.has(soc));
     const hwCapsMatch =
       selectedHWTags.length === 0 ||
       selectedHWTags.every((tag) => boardSupportedFeatures.includes(tag));
     // Check if board matches all selected compatibles (with wildcard support)
     const compatiblesMatch =
-      selectedCompatibles.length === 0 ||
-      selectedCompatibles.every((pattern) =>
-        boardCompatibles.some((compatible) => wildcardMatch(pattern, compatible)),
-      );
+      compatiblePatterns.length === 0 ||
+      compatiblePatterns.every((regex) => boardCompatibles.some((c) => regex.test(c)));
 
     const otherFiltersMatch =
       typeVisible && nameMatch && memoryMatch && socMatch && hwCapsMatch && compatiblesMatch;
