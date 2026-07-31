@@ -173,7 +173,54 @@ DocumentNamespace: {namespace}
         # after the section (e.g. once Created has been seen).
         if external_refs:
             self._write_external_document_refs(f, doc)
-        f.write(f"{creators}Created: {created}\n\n")
+        f.write(f"{creators}Created: {created}\n")
+
+        document_comment = self._document_comment()
+        if document_comment:
+            f.write(f"DocumentComment: <text>{document_comment}</text>\n")
+        f.write("\n")
+
+    def _creators(self):
+        """Build the SPDX Creator values: an organization author and the tool.
+
+        An ``Organization`` creator gives the SBOM a declared author, and the
+        ``Tool`` creator carries a version suffix so downstream tooling can
+        identify which generator produced the document.
+        """
+        metadata = self.sbom_graph.metadata
+        creators = []
+
+        organization = metadata.get("creator_organization")
+        if organization:
+            creators.append(f"Organization: {organization}")
+
+        tool_name = metadata.get("tool_name") or "Zephyr SPDX builder"
+        tool_version = metadata.get("tool_version")
+        if tool_version:
+            tool_name = f"{tool_name}-{tool_version}"
+        creators.append(f"Tool: {tool_name}")
+
+        return creators
+
+    def _document_comment(self):
+        """Describe the SBOM itself: its own version and the lifecycle phase it covers.
+
+        SPDX 2.x has no field for either, so they are stated in the document comment,
+        which is where the CISA SBOM Version and SBOM Generation Context elements can
+        be recorded without inventing non-standard tags.
+        """
+        metadata = self.sbom_graph.metadata
+        parts = []
+        sbom_version = metadata.get("sbom_version")
+        if sbom_version:
+            parts.append(f"SBOM version: {sbom_version}.")
+        context = metadata.get("generation_context")
+        if context:
+            parts.append(
+                f"SBOM generation context: {context} (generated from the source tree and "
+                "the artifacts of a completed build)."
+            )
+        return " ".join(parts)
 
     def _creators(self):
         """Build the SPDX Creator values: an organization author and the tool.

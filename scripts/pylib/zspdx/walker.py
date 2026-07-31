@@ -135,6 +135,9 @@ class WalkerConfig:
     # parsed)
     originator: str = ""
 
+    # version of this SBOM document, as opposed to the version of the software it describes
+    sbom_version: str = ""
+
 
 # Walker is the main analysis class: it walks through the CMake codemodel,
 # build files, and corresponding source and SDK files, and gathers the
@@ -354,6 +357,11 @@ class Walker:
         self.sbom_graph.metadata["creator_organization"] = self._resolve_sbom_author(zephyr)
         self.sbom_graph.metadata["tool_name"] = SPDX_TOOL_NAME
         self.sbom_graph.metadata["tool_version"] = self._read_zephyr_version(zephyr.get("path", ""))
+        self.sbom_graph.metadata["sbom_version"] = self.cfg.sbom_version
+        # `west spdx` runs against a completed build and describes both the sources that
+        # went in and the artifacts that came out, which is the "build" lifecycle phase
+        # of the CISA SBOM Generation Context element.
+        self.sbom_graph.metadata["generation_context"] = "build"
 
     # primary entry point
     def collect_sbom_graph(self):

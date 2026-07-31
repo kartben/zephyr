@@ -46,6 +46,9 @@ class SBOMConfig:
     # fallback producer for components with no discoverable upstream (SPDX PackageOriginator)
     originator: str = ""
 
+    # version of the SBOM document itself
+    sbom_version: str = ""
+
 
 # create Cmake file-based API directories and query file
 # Arguments:
@@ -103,6 +106,7 @@ def make_spdx(cfg):
     walker_cfg.sbom_author = cfg.sbom_author
     walker_cfg.supplier = cfg.supplier
     walker_cfg.originator = cfg.originator
+    walker_cfg.sbom_version = cfg.sbom_version
 
     # make and run the walker
     w = Walker(walker_cfg)
