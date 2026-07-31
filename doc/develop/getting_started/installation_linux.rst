@@ -22,19 +22,25 @@ software from sources other than the package manager.
    use their own configuration files, most notably ``apt`` and
    ``git``.
 
-Update Your Operating System
-****************************
+Ubuntu
+======
 
-Ensure your host system is up to date.
+For Ubuntu 24.04 LTS and later, follow the installation steps provided in the
+:ref:`Getting Started Guide <getting_started>`. This guide covers host OS updates
+and dependency installation for Ubuntu in the :ref:`host_setup` and
+:ref:`install-required-tools` sections.
+
+.. _linux_requirements:
+
+Other Linux Distributions
+==========================
+
+For distributions other than Ubuntu, follow the instructions below.
+
+Update Your Operating System
+*****************************
 
 .. tabs::
-
-   .. group-tab:: Ubuntu
-
-      .. code-block:: console
-
-         sudo apt-get update
-         sudo apt-get upgrade
 
    .. group-tab:: Fedora
 
@@ -54,32 +60,10 @@ Ensure your host system is up to date.
 
          sudo pacman -Syu
 
-.. _linux_requirements:
-
 Install Requirements and Dependencies
-*************************************
-
-.. NOTE FOR DOCS AUTHORS: DO NOT PUT DOCUMENTATION BUILD DEPENDENCIES HERE.
-
-   This section is for dependencies to build Zephyr binaries, *NOT* this
-   documentation. If you need to add a dependency only required for building
-   the docs, add it to doc/README.rst. (This change was made following the
-   introduction of LaTeX->PDF support for the docs, as the texlive footprint is
-   massive and not needed by users not building PDF documentation.)
-
-Note that both Ninja and Make are installed with these instructions; you only
-need one.
+**************************************
 
 .. tabs::
-
-   .. group-tab:: Ubuntu
-
-      .. code-block:: console
-
-         sudo apt-get install --no-install-recommends git cmake ninja-build gperf \
-           ccache dfu-util device-tree-compiler wget \
-           python3-dev python3-pip python3-setuptools python3-tk python3-wheel xz-utils file \
-           make gcc gcc-multilib g++-multilib libsdl2-dev libmagic1
 
    .. group-tab:: Fedora
 

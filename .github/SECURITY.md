@@ -15,8 +15,15 @@ versions are:
   - v4.3: Prior release
   - v3.7: Current LTS
 
-## Reporting process
+## Reporting security vulnerabilities
 
-Please see our [Security Vulnerability
-Reporting](https://docs.zephyrproject.org/latest/security/reporting.html)
-page for details on the process.
+For detailed information on how to report security vulnerabilities, including
+reporting expectations, guidelines, and the vulnerability management process,
+please see our comprehensive
+[Security Vulnerability Reporting](https://docs.zephyrproject.org/latest/security/reporting.html)
+documentation.
+
+In summary:
+- Report via draft [security advisory](https://github.com/zephyrproject-rtos/zephyr/security/advisories) on GitHub
+- Or email: vulnerabilities@zephyrproject.org
+- Reports acknowledged and analyzed within 1 week
