@@ -5,7 +5,6 @@
 import hashlib
 import logging
 import os
-from datetime import UTC, datetime
 
 from zspdx.model import (
     NOASSERTION,
@@ -17,6 +16,7 @@ from zspdx.model import (
     SBOMFile,
 )
 from zspdx.serializers.helpers import (
+    creation_timestamp,
     generate_download_url,
     get_standard_licenses,
     normalize_spdx_name,
@@ -157,7 +157,7 @@ class SPDX2Serializer:
         normalized_name = normalize_spdx_name(doc.title or doc.name)
         created = self.document_created_timestamps.get(doc.name)
         if created is None:
-            created = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+            created = creation_timestamp().strftime("%Y-%m-%dT%H:%M:%SZ")
             self.document_created_timestamps[doc.name] = created
 
         creators = "".join(f"Creator: {creator}\n" for creator in self._creators())

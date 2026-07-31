@@ -683,9 +683,9 @@ class TestModuleRelationships:
                 dep_pkg = find_package_by_name(modules_doc, f"{dependency}-deps")
                 if dep_pkg is None:
                     continue
-                assert has_relationship(
-                    modules_doc, pkg.spdx_id, "DEPENDS_ON", dep_pkg.spdx_id
-                ), f"modules-deps.spdx: expected {pkg.spdx_id} DEPENDS_ON {dep_pkg.spdx_id}"
+                assert has_relationship(modules_doc, pkg.spdx_id, "DEPENDS_ON", dep_pkg.spdx_id), (
+                    f"modules-deps.spdx: expected {pkg.spdx_id} DEPENDS_ON {dep_pkg.spdx_id}"
+                )
                 checked += 1
         if checked == 0:
             pytest.skip("No module in this build declares a dependency on another module")
