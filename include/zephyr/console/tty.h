@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the buffered serial port (tty) APIs built on top of UART devices.
+ * @ingroup console_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_CONSOLE_TTY_H_
 #define ZEPHYR_INCLUDE_CONSOLE_TTY_H_
 
