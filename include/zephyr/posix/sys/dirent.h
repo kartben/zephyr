@@ -26,11 +26,13 @@
 extern "C" {
 #endif
 
+/** A type representing a directory stream */
 typedef void DIR;
 
+/** Directory entry structure */
 struct dirent {
-	unsigned int d_ino;
-	char d_name[NAME_MAX + 1];
+	unsigned int d_ino;        /**< File serial number */
+	char d_name[NAME_MAX + 1]; /**< Filename string of entry */
 };
 
 #ifdef __cplusplus

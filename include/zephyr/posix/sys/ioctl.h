@@ -25,6 +25,11 @@
 extern "C" {
 #endif
 
+/**
+ * @brief Perform control operations on an open file descriptor
+ *
+ * See IEEE 1003.1
+ */
 int ioctl(int fd, unsigned long request, ...);
 
 #ifdef __cplusplus

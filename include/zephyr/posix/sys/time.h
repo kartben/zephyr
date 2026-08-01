@@ -35,6 +35,11 @@ struct timeval {
 extern "C" {
 #endif
 
+/**
+ * @brief Get the date and time
+ *
+ * See IEEE 1003.1
+ */
 int gettimeofday(struct timeval *tv, void *tz);
 
 #ifdef __cplusplus
