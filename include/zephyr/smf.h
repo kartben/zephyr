@@ -8,6 +8,7 @@
  * @file
  *
  * @brief State Machine Framework header file
+ * @ingroup smf
  */
 
 #ifndef ZEPHYR_INCLUDE_SMF_H_
