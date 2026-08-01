@@ -16,6 +16,11 @@ extern "C" {
 
 /**
  * @file
+ * @brief Various helper APIs for converting between time units.
+ * @ingroup timeutil_unit_apis
+ */
+
+/**
  * @defgroup timeutil_unit_apis Time Units Helpers
  * @ingroup timeutil_apis
  *
@@ -70,6 +75,7 @@ static inline unsigned int z_impl_sys_clock_hw_cycles_per_sec_runtime_get(void)
 }
 #endif /* CONFIG_TIMER_READS_ITS_FREQUENCY_AT_RUNTIME */
 
+/** @cond INTERNAL_HIDDEN */
 #if defined(__cplusplus) && (__cplusplus >= 201402L)
 	#if defined(CONFIG_TIMER_READS_ITS_FREQUENCY_AT_RUNTIME) || \
 		defined(CONFIG_SYSTEM_CLOCK_HW_CYCLES_PER_SEC_RUNTIME_UPDATE)
@@ -80,6 +86,7 @@ static inline unsigned int z_impl_sys_clock_hw_cycles_per_sec_runtime_get(void)
 #else
   #define TIME_CONSTEXPR
 #endif
+/** @endcond */
 
 /**
  * @brief Get the system timer frequency.
