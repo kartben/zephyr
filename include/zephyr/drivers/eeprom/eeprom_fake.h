@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Fake EEPROM driver API functions.
+ * @ingroup eeprom_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_EEPROM_FAKE_EEPROM_H_
 #define ZEPHYR_INCLUDE_DRIVERS_EEPROM_FAKE_EEPROM_H_
 
