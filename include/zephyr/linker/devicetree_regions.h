@@ -7,6 +7,12 @@
  * Generate memory regions from devicetree nodes.
  */
 
+/**
+ * @file
+ * @brief Header file for the macros to generate linker memory regions from devicetree nodes.
+ * @ingroup devicetree
+ */
+
 #ifndef ZEPHYR_INCLUDE_LINKER_DEVICETREE_REGIONS_H_
 #define ZEPHYR_INCLUDE_LINKER_DEVICETREE_REGIONS_H_
 

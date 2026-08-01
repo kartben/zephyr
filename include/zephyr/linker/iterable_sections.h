@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for iterable section linker script macros.
+ * @ingroup iterable_section_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_LINKER_ITERABLE_SECTIONS_H_
 #define ZEPHYR_INCLUDE_LINKER_ITERABLE_SECTIONS_H_
 

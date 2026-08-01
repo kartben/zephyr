@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief GCC toolchain linker defs
+ * @ingroup internal_api
  *
  * This header file defines the necessary macros used by the linker script for
  * use with the GCC linker.

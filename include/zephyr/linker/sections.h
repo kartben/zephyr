@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Definitions of various linker Sections.
+ * @ingroup internal_api
  *
  * Linker Section declarations used by linker script, C files and Assembly
  * files.

@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for platform independent linker script macros and defines.
+ * @ingroup internal_api
+ */
+
 /*
  * DESCRIPTION
  * Platform independent, commonly used macros and defines related to linker

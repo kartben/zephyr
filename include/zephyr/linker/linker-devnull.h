@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for macros defining a memory segment kept in the ELF file but not in the binary.
+ * @ingroup internal_api
+ */
+
 /*
  * DESCRIPTION
  * Platform independent set of macros for creating a memory segment for
