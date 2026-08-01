@@ -1,5 +1,6 @@
 /** @file
  *  @brief BBC micro:bit display APIs.
+ *  @ingroup mb_display
  */
 
 /*

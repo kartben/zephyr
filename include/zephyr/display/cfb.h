@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public Monochrome Character Framebuffer API
+ * @ingroup monochrome_character_framebuffer
  */
 
 #ifndef ZEPHYR_INCLUDE_DISPLAY_CFB_H_
