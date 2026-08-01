@@ -23,27 +23,55 @@ extern "C" {
 #include <zephyr/device.h>
 #include <zephyr/drivers/sensor.h>
 
-/* Status register fields */
+/**
+ * @name Status register fields
+ * @{
+ */
+
+/** An error has occurred, see the error register fields */
 #define CCS811_STATUS_ERROR             BIT(0)
+/** A new data sample is ready */
 #define CCS811_STATUS_DATA_READY        BIT(3)
+/** A valid application firmware is loaded */
 #define CCS811_STATUS_APP_VALID         BIT(4)
+/** Firmware is in application mode rather than boot mode */
 #define CCS811_STATUS_FW_MODE           BIT(7)
 
-/* Error register fields */
+/** @} */
+
+/**
+ * @name Error register fields
+ * @{
+ */
+
+/** Write to an invalid register address was requested */
 #define CCS811_ERROR_WRITE_REG_INVALID  BIT(0)
+/** Read from an invalid register address was requested */
 #define CCS811_ERROR_READ_REG_INVALID   BIT(1)
+/** An invalid measurement mode was requested */
 #define CCS811_ERROR_MEASMODE_INVALID   BIT(2)
+/** Sensor resistance measurement reached or exceeded the maximum range */
 #define CCS811_ERROR_MAX_RESISTANCE     BIT(3)
+/** Heater current is not in range */
 #define CCS811_ERROR_HEATER_FAULT       BIT(4)
+/** Heater voltage is not applied correctly */
 #define CCS811_ERROR_HEATER_SUPPLY      BIT(5)
 
-/* Measurement mode constants */
-#define CCS811_MODE_IDLE                0x00
-#define CCS811_MODE_IAQ_1SEC            0x10
-#define CCS811_MODE_IAQ_10SEC           0x20
-#define CCS811_MODE_IAQ_60SEC           0x30
-#define CCS811_MODE_IAQ_250MSEC         0x40
-#define CCS811_MODE_MSK                 0x70
+/** @} */
+
+/**
+ * @name Measurement mode constants
+ * @{
+ */
+
+#define CCS811_MODE_IDLE                0x00 /**< Idle, no measurements */
+#define CCS811_MODE_IAQ_1SEC            0x10 /**< Measurement every second */
+#define CCS811_MODE_IAQ_10SEC           0x20 /**< Measurement every 10 seconds */
+#define CCS811_MODE_IAQ_60SEC           0x30 /**< Measurement every 60 seconds */
+#define CCS811_MODE_IAQ_250MSEC         0x40 /**< Measurement every 250 milliseconds */
+#define CCS811_MODE_MSK                 0x70 /**< Mask for the measurement mode bits */
+
+/** @} */
 
 /** @brief Information collected from the sensor on each fetch. */
 struct ccs811_result_type {
@@ -90,9 +118,10 @@ const struct ccs811_result_type *ccs811_result(const struct device *dev);
  * firmware versions.
  */
 struct ccs811_configver_type {
-	uint16_t fw_boot_version;
-	uint16_t fw_app_version;
-	uint8_t hw_version;
+	uint16_t fw_boot_version; /**< Firmware bootloader version */
+	uint16_t fw_app_version;  /**< Firmware application version */
+	uint8_t hw_version;       /**< Hardware version */
+	/** Configured measurement mode, one of the CCS811_MODE_* constants */
 	uint8_t mode;
 };
 
