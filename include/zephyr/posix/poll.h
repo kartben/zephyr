@@ -3,6 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the POSIX poll function and definitions.
+ * @ingroup bsd_sockets
+ */
+
 #ifndef ZEPHYR_INCLUDE_POSIX_POLL_H_
 #define ZEPHYR_INCLUDE_POSIX_POLL_H_
 

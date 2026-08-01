@@ -3,6 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for ARP hardware address type definitions.
+ * @ingroup bsd_sockets
+ */
+
 #ifndef ZEPHYR_INCLUDE_POSIX_NET_IF_ARP_H_
 #define ZEPHYR_INCLUDE_POSIX_NET_IF_ARP_H_
 

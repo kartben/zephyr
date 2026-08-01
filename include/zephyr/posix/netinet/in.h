@@ -3,6 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the POSIX internet address family definitions.
+ * @ingroup bsd_sockets
+ */
+
 #ifndef ZEPHYR_INCLUDE_POSIX_NETINET_IN_H_
 #define ZEPHYR_INCLUDE_POSIX_NETINET_IN_H_
 
