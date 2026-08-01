@@ -338,8 +338,10 @@ struct bt_mesh_cfg_cli {
 	/** Optional callback for Mesh Configuration Client Status messages. */
 	const struct bt_mesh_cfg_cli_cb *cb;
 
+	/** @cond INTERNAL_HIDDEN */
 	/* Internal parameters for tracking message responses. */
 	struct bt_mesh_msg_ack_ctx ack_ctx;
+	/** @endcond */
 };
 
 /**
@@ -1735,8 +1737,13 @@ struct bt_mesh_comp_p1_item_long {
 
 /** Extended Model Item */
 struct bt_mesh_comp_p1_ext_item {
-	enum { SHORT, LONG } type;
+	/** Type of Extended Model Item */
+	enum {
+		SHORT, /**< Item is in short representation */
+		LONG,  /**< Item is in long representation */
+	} type;
 
+	/** Extended Model Item in the representation given by type */
 	union {
 		/** Item in short representation */
 		struct bt_mesh_comp_p1_item_short short_item;
