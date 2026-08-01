@@ -31,8 +31,10 @@ extern "C" {
 #include <zephyr/types.h>
 #include <zephyr/sys/clock.h>
 
+/** @brief Mutex that may reside in user memory */
 struct sys_mutex {
-	/* Currently unused, but will be used to store state for fast mutexes
+	/**
+	 * Currently unused, but will be used to store state for fast mutexes
 	 * that can be locked/unlocked with atomic ops if there is no
 	 * contention
 	 */
