@@ -42,6 +42,14 @@
  * a bit of RAM, but systems with PCI express are not RAM constrained.
  */
 #if defined(CONFIG_MMU) || defined(CONFIG_PCIE) || defined(CONFIG_EXTERNAL_ADDRESS_TRANSLATION)
+/**
+ * @brief Indicates that MMIO addresses are maintained in RAM
+ *
+ * Defined when the system stores device MMIO addresses in RAM, because they
+ * must be set up at runtime (e.g. memory-mapped into the virtual address
+ * space, or queried from the PCIe bus). When undefined, MMIO addresses are
+ * build-time constants kept in ROM.
+ */
 #define DEVICE_MMIO_IS_IN_RAM
 #endif
 
