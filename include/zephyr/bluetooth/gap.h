@@ -155,8 +155,8 @@ enum bt_gap_adv_prop {
 /** Sentinel value indicating that no timeout is set. */
 #define BT_GAP_NO_TIMEOUT                       0x0000
 
-/* The maximum allowed high duty cycle directed advertising timeout, 1.28
- * seconds in 10 ms unit.
+/** The maximum allowed high duty cycle directed advertising timeout, 1.28
+ *  seconds in 10 ms unit.
  */
 #define BT_GAP_ADV_HIGH_DUTY_CYCLE_MAX_TIMEOUT  128
 
