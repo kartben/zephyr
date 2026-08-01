@@ -6,6 +6,7 @@
 
 /** @file
  * @brief OpenThread stack public header
+ * @ingroup openthread
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_OPENTHREAD_H_
