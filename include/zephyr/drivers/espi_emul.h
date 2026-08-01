@@ -31,6 +31,7 @@
 extern "C" {
 #endif
 
+/** Chip-select value of the emulated eSPI host */
 #define EMUL_ESPI_HOST_CHIPSEL 0
 
 struct espi_emul;
@@ -101,16 +102,17 @@ typedef int (*emul_trigger_event)(const struct device *dev, struct espi_event *e
 
 /** Definition of the eSPI device emulator API */
 struct emul_espi_device_api {
-	emul_espi_api_set_vw set_vw;
-	emul_espi_api_get_vw get_vw;
+	emul_espi_api_set_vw set_vw; /**< Set a virtual wire level, see emul_espi_api_set_vw */
+	emul_espi_api_get_vw get_vw; /**< Get a virtual wire level, see emul_espi_api_get_vw */
 #ifdef CONFIG_ESPI_PERIPHERAL_ACPI_SHM_REGION
+	/** Get the ACPI shared memory address, see emul_espi_api_get_acpi_shm */
 	emul_espi_api_get_acpi_shm get_acpi_shm;
 #endif
 };
 
 /** Node in a linked list of emulators for eSPI devices */
 struct espi_emul {
-	sys_snode_t node;
+	sys_snode_t node; /**< Node in the linked list of emulators */
 	/** Target emulator - REQUIRED for all emulated bus nodes of any type */
 	const struct emul *target;
 	/** API provided for this device */
@@ -121,13 +123,14 @@ struct espi_emul {
 
 /** Definition of the eSPI controller emulator API */
 __subsystem struct emul_espi_driver_api {
-	/* The struct espi_driver_api has to be first in
-	 * struct emul_espi_driver_api to make pointer casting working
+	/**
+	 * Standard eSPI driver API. Has to be first in
+	 * struct emul_espi_driver_api to make pointer casting work.
 	 */
 	struct espi_driver_api espi_api;
 	/* The rest, emulator specific functions */
-	emul_trigger_event trigger_event;
-	emul_find_emul find_emul;
+	emul_trigger_event trigger_event; /**< Trigger an event, see emul_trigger_event */
+	emul_find_emul find_emul;         /**< Find an emulated device, see emul_find_emul */
 };
 
 /** @cond INTERNAL_HIDDEN */

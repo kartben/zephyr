@@ -121,18 +121,18 @@ struct espi_saf_pr;
  * @brief eSPI SAF configuration parameters
  */
 struct espi_saf_cfg {
-	uint8_t nflash_devices;
-	struct espi_saf_hw_cfg hwcfg;
-	struct espi_saf_flash_cfg *flash_cfgs;
+	uint8_t nflash_devices;                /**< Number of attached flash devices */
+	struct espi_saf_hw_cfg hwcfg;          /**< SoC-specific SAF hardware configuration */
+	struct espi_saf_flash_cfg *flash_cfgs; /**< Configurations of the attached flash devices */
 };
 
 /**
  * @brief eSPI SAF transaction packet format
  */
 struct espi_saf_packet {
-	uint32_t flash_addr;
-	uint8_t *buf;
-	uint32_t len;
+	uint32_t flash_addr; /**< Flash address of the transaction */
+	uint8_t *buf;        /**< Data buffer */
+	uint32_t len;        /**< Length of the transaction in bytes */
 };
 
 /*
