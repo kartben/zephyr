@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the kernel demand paging APIs.
+ * @ingroup demand_paging
+ */
+
 #ifndef ZEPHYR_INCLUDE_KERNEL_MM_DEMAND_PAGING_H
 #define ZEPHYR_INCLUDE_KERNEL_MM_DEMAND_PAGING_H
 

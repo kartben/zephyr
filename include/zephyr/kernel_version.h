@@ -6,6 +6,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the kernel version support APIs.
+ * @ingroup version_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_KERNEL_VERSION_H_
 #define ZEPHYR_INCLUDE_KERNEL_VERSION_H_
 

@@ -8,6 +8,7 @@
  * @file
  *
  * @brief Macros for declaring thread stacks
+ * @ingroup thread_stack_api
  */
 
 /**

@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the kernel memory management internal APIs.
+ * @ingroup kernel_mm_internal_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_KERNEL_INTERNAL_MM_H
 #define ZEPHYR_INCLUDE_KERNEL_INTERNAL_MM_H
 

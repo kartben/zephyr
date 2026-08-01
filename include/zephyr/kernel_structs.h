@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for essential kernel structure definitions usable without kernel.h.
+ * @ingroup internal_api
+ */
+
 /*
  * The purpose of this file is to provide essential/minimal kernel structure
  * definitions, so that they can be used without including kernel.h.

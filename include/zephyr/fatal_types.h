@@ -6,6 +6,7 @@
 
 /** @file
  *  @brief Fatal base type definitions
+ *  @ingroup fatal_types
  */
 
 #ifndef ZEPHYR_INCLUDE_FATAL_TYPES_H

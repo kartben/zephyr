@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public interface for spinlocks
+ * @ingroup spinlock_apis
  */
 
 #ifndef ZEPHYR_INCLUDE_SPINLOCK_H_
