@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief IRQ Offload interface
+ * @ingroup isr_apis
  */
 #ifndef ZEPHYR_INCLUDE_IRQ_OFFLOAD_H_
 #define ZEPHYR_INCLUDE_IRQ_OFFLOAD_H_

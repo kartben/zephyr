@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Software-managed ISR table
+ * @ingroup internal_api
  *
  * Data types for a software-managed ISR table, with a parameter per-ISR.
  */

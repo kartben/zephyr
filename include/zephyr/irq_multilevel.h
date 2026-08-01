@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public interface for multi-level interrupts
+ * @ingroup isr_apis
  */
 #ifndef ZEPHYR_INCLUDE_IRQ_MULTILEVEL_H_
 #define ZEPHYR_INCLUDE_IRQ_MULTILEVEL_H_

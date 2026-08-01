@@ -6,6 +6,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the shared interrupt driver API.
+ * @ingroup io_interfaces
+ */
+
 #ifndef ZEPHYR_INCLUDE_SHARED_IRQ_H_
 #define ZEPHYR_INCLUDE_SHARED_IRQ_H_
 
