@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the Intel ADSP microphone privacy driver interface definitions.
+ * @ingroup misc_interfaces
+ */
+
 #ifndef __ZEPHYR_INCLUDE_MIC_PRIVACY_H__
 #define __ZEPHYR_INCLUDE_MIC_PRIVACY_H__
 
