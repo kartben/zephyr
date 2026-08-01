@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <zephyr/device.h>
 #include <zephyr/kernel.h>
 #include <kernel_internal.h>
 #include <ctf_top.h>
@@ -1646,4 +1647,79 @@ void sys_trace_k_event_wait_blocking(struct k_event *event, uint32_t events, uin
 void sys_trace_k_event_wait_exit(struct k_event *event, uint32_t events, int ret)
 {
 	ctf_top_event_wait_exit((uint32_t)(uintptr_t)event, events, (int32_t)ret);
+}
+
+/* System Power Management */
+void sys_trace_pm_system_suspend_enter(int32_t ticks)
+{
+	ctf_top_pm_system_suspend_enter(ticks);
+}
+
+void sys_trace_pm_system_suspend_exit(int32_t ticks, uint8_t state)
+{
+	ctf_top_pm_system_suspend_exit(ticks, state);
+}
+
+void sys_trace_pm_state_set_enter(uint8_t cpu, uint8_t state, uint8_t substate_id)
+{
+	ctf_top_pm_state_set_enter(cpu, state, substate_id);
+}
+
+void sys_trace_pm_state_set_exit(uint8_t cpu, uint8_t state, uint8_t substate_id)
+{
+	ctf_top_pm_state_set_exit(cpu, state, substate_id);
+}
+
+
+/* Device Runtime Power Management */
+void sys_trace_pm_device_runtime_get_enter(const struct device *dev)
+{
+	ctf_top_pm_device_runtime_get_enter((uint32_t)(uintptr_t)dev);
+}
+
+void sys_trace_pm_device_runtime_get_exit(const struct device *dev, int ret)
+{
+	ctf_top_pm_device_runtime_get_exit((uint32_t)(uintptr_t)dev, (int32_t)ret);
+}
+
+void sys_trace_pm_device_runtime_put_enter(const struct device *dev)
+{
+	ctf_top_pm_device_runtime_put_enter((uint32_t)(uintptr_t)dev);
+}
+
+void sys_trace_pm_device_runtime_put_exit(const struct device *dev, int ret)
+{
+	ctf_top_pm_device_runtime_put_exit((uint32_t)(uintptr_t)dev, (int32_t)ret);
+}
+
+void sys_trace_pm_device_runtime_put_async_enter(const struct device *dev, k_timeout_t delay)
+{
+	ctf_top_pm_device_runtime_put_async_enter((uint32_t)(uintptr_t)dev, (uint32_t)delay.ticks);
+}
+
+void sys_trace_pm_device_runtime_put_async_exit(const struct device *dev, k_timeout_t delay,
+						int ret)
+{
+	ctf_top_pm_device_runtime_put_async_exit((uint32_t)(uintptr_t)dev, (uint32_t)delay.ticks,
+						 (int32_t)ret);
+}
+
+void sys_trace_pm_device_runtime_enable_enter(const struct device *dev)
+{
+	ctf_top_pm_device_runtime_enable_enter((uint32_t)(uintptr_t)dev);
+}
+
+void sys_trace_pm_device_runtime_enable_exit(const struct device *dev, int ret)
+{
+	ctf_top_pm_device_runtime_enable_exit((uint32_t)(uintptr_t)dev, (int32_t)ret);
+}
+
+void sys_trace_pm_device_runtime_disable_enter(const struct device *dev)
+{
+	ctf_top_pm_device_runtime_disable_enter((uint32_t)(uintptr_t)dev);
+}
+
+void sys_trace_pm_device_runtime_disable_exit(const struct device *dev, int ret)
+{
+	ctf_top_pm_device_runtime_disable_exit((uint32_t)(uintptr_t)dev, (int32_t)ret);
 }
