@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for DWARF Control Flow Integrity (CFI) architecture support.
+ * @ingroup arch-interface
+ */
+
 /*
  * DWARF Control Flow Integrity (CFI) support for architectures.
  */

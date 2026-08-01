@@ -7,6 +7,7 @@
 /**
  * @file
  * Public APIs for architectural cache controller drivers
+ * @ingroup arch-cache
  */
 
 #ifndef ZEPHYR_INCLUDE_ARCH_CACHE_H_

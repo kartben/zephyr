@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the exception dump hooks and architecture-specific exception definitions.
+ * @ingroup arch-interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_ARCH_EXCEPTION_H_
 #define ZEPHYR_INCLUDE_ARCH_EXCEPTION_H_
 

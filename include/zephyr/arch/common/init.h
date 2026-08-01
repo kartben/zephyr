@@ -3,6 +3,12 @@
  * Copyright The Zephyr Project Contributors
  */
 
+/**
+ * @file
+ * @brief Header file for the early boot initialization routines implemented by architectures.
+ * @ingroup arch-interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_ARCH_COMMON_INIT_H_
 #define ZEPHYR_INCLUDE_ARCH_COMMON_INIT_H_
 

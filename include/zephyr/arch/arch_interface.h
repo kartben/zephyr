@@ -5,6 +5,12 @@
  */
 
 /**
+ * @file
+ * @brief Header file for architecture-specific API prototypes required by public kernel headers.
+ * @ingroup arch-interface
+ */
+
+/**
  * @defgroup arch-interface Architecture Interface
  * @ingroup internal_api
  * @brief Internal kernel APIs with public scope

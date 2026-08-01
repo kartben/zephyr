@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for helpers defining code ranges with recoverable CPU exceptions.
+ * @ingroup arch-interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_ARCH_COMMON_EXC_HANDLE_H_
 #define ZEPHYR_INCLUDE_ARCH_COMMON_EXC_HANDLE_H_
 
