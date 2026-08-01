@@ -16,6 +16,7 @@
 struct k_sem;
 struct device;
 
+/** @cond INTERNAL_HIDDEN */
 #define AW9523B_REG_INPUT0  0x00
 #define AW9523B_REG_INPUT1  0x01
 #define AW9523B_REG_OUTPUT0 0x02
@@ -45,7 +46,15 @@ struct device;
 #define AW9523B_REG_DIM14   0x2E
 #define AW9523B_REG_DIM15   0x2F
 #define AW9523B_REG_SW_RSTN 0x7F
+/** @endcond */
 
+/**
+ * @brief Get the semaphore that serializes access to the AW9523B.
+ *
+ * @param dev AW9523B MFD device.
+ *
+ * @return Pointer to the semaphore.
+ */
 struct k_sem *aw9523b_get_lock(const struct device *dev);
 
 #endif /* ZEPHYR_INCLUDE_DRIVERS_MFD_AW9523B_H_ */
