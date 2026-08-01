@@ -214,9 +214,9 @@ struct netmidi2_ep {
 	const char *piid;
 	/** The local endpoint address */
 	union {
-		struct net_sockaddr addr;
-		struct net_sockaddr_in addr4;
-		struct net_sockaddr_in6 addr6;
+		struct net_sockaddr addr;      /**< Family-agnostic address */
+		struct net_sockaddr_in addr4;  /**< IPv4 address */
+		struct net_sockaddr_in6 addr6; /**< IPv6 address */
 	};
 	/** The listening socket wrapped in a poll descriptor */
 	struct zsock_pollfd pollsock;
@@ -230,6 +230,7 @@ struct netmidi2_ep {
 	 */
 	enum netmidi2_auth_type auth_type;
 #if defined(CONFIG_NETMIDI2_HOST_AUTH) || defined(__DOXYGEN__)
+	/** Credentials used to authenticate clients, as selected by auth_type */
 	union {
 		/** A shared authentication key */
 		const char *shared_auth_secret;
