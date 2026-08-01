@@ -16,7 +16,9 @@
 #include <zephyr/devicetree.h>
 #include <soc.h>
 
+/** Devicetree node identifier for the FlexRAM node */
 #define FLEXRAM_DT_NODE    DT_INST(0, nxp_flexram)
+/** Devicetree node identifier for the IOMUXC GPR node */
 #define IOMUXC_GPR_DT_NODE DT_NODELABEL(iomuxcgpr)
 
 #if defined(CONFIG_NXP_FLEXRAM_MAGIC_ADDR_API) || \

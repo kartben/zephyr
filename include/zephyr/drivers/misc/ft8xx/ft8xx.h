@@ -34,12 +34,12 @@ extern "C" {
  * The content of this structure is filled by ft8xx_calibrate().
  */
 struct ft8xx_touch_transform {
-	uint32_t a; /*< Coefficient A of the bitmap transform matrix */
-	uint32_t b; /*< Coefficient B of the bitmap transform matrix */
-	uint32_t c; /*< Coefficient C of the bitmap transform matrix */
-	uint32_t d; /*< Coefficient D of the bitmap transform matrix */
-	uint32_t e; /*< Coefficient E of the bitmap transform matrix */
-	uint32_t f; /*< Coefficient F of the bitmap transform matrix */
+	uint32_t a; /**< Coefficient A of the bitmap transform matrix */
+	uint32_t b; /**< Coefficient B of the bitmap transform matrix */
+	uint32_t c; /**< Coefficient C of the bitmap transform matrix */
+	uint32_t d; /**< Coefficient D of the bitmap transform matrix */
+	uint32_t e; /**< Coefficient E of the bitmap transform matrix */
+	uint32_t f; /**< Coefficient F of the bitmap transform matrix */
 };
 
 /**
