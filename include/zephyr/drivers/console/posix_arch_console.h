@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the POSIX architecture console driver helpers.
+ * @ingroup console_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_CONSOLE_POSIX_ARCH_CONSOLE_H_
 #define ZEPHYR_INCLUDE_DRIVERS_CONSOLE_POSIX_ARCH_CONSOLE_H_
 

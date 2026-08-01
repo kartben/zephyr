@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for common console input definitions.
+ * @ingroup console_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_CONSOLE_CONSOLE_H_
 #define ZEPHYR_INCLUDE_DRIVERS_CONSOLE_CONSOLE_H_
 

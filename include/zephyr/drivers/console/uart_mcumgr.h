@@ -6,6 +6,7 @@
 
 /** @file
  * @brief A driver for sending and receiving mcumgr packets over UART.
+ * @ingroup mcumgr_transport_serial
  *
  * @see include/mgmt/serial.h
  */
