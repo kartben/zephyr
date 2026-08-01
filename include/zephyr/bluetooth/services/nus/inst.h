@@ -21,6 +21,7 @@
 extern "C" {
 #endif
 
+/** @brief Nordic UART Service (NUS) instance, defined with BT_NUS_INST_DEFINE() */
 struct bt_nus_inst {
 	/** Pointer to the NUS Service Instance  */
 	const struct bt_gatt_service_static *svc;
@@ -29,9 +30,14 @@ struct bt_nus_inst {
 	sys_slist_t *cbs;
 };
 
+/** NUS Service UUID */
 #define BT_UUID_NUS_SERVICE BT_UUID_DECLARE_128(BT_UUID_NUS_SRV_VAL)
+/** NUS TX Characteristic UUID */
 #define BT_UUID_NUS_TX_CHAR BT_UUID_DECLARE_128(BT_UUID_NUS_TX_CHAR_VAL)
+/** NUS RX Characteristic UUID */
 #define BT_UUID_NUS_RX_CHAR BT_UUID_DECLARE_128(BT_UUID_NUS_RX_CHAR_VAL)
+
+/** @cond INTERNAL_HIDDEN */
 
 /** Required as the service may be instantiated outside of the module */
 ssize_t nus_bt_chr_write(struct bt_conn *conn, const struct bt_gatt_attr *attr,
@@ -61,6 +67,8 @@ STRUCT_SECTION_ITERABLE(bt_nus_inst, _name) = {							   \
 	.svc = &_name##_svc,									   \
 	.cbs = &_name##_cbs,									   \
 }
+
+/** @endcond */
 
 #ifdef __cplusplus
 }
