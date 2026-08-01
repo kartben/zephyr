@@ -91,7 +91,9 @@ struct usbd_msg {
 	enum usbd_msg_type type;
 	/** Message status, value or data */
 	union {
+		/** Status or value of the message */
 		int status;
+		/** Pointer to a device associated with the message */
 		const struct device *dev;
 	};
 };
