@@ -6,6 +6,7 @@
 /**
  * @file
  * @brief USB Video Class (UVC) public header
+ * @ingroup usbd_uvc
  */
 
 #ifndef ZEPHYR_INCLUDE_USB_CLASS_USBD_UVC_H

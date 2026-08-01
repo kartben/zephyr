@@ -36,6 +36,7 @@
 /**
  * @file
  * @brief USB Device Firmware Upgrade (DFU) public header
+ * @ingroup usb
  *
  * @deprecated This API is deprecated.
  *

@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief USB Audio Class 2 device public header
+ * @ingroup uac2_device
  *
  * This header describes only class API interaction with application.
  * The audio device itself is modelled with devicetree zephyr,uac2 compatible.

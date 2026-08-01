@@ -10,6 +10,7 @@
 /**
  * @file
  * @brief USB Communications Device Class (CDC) public header
+ * @ingroup usb
  *
  * Header follows the Class Definitions for
  * Communications Devices Specification (CDC120-20101103-track.pdf),

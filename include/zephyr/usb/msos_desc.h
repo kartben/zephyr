@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief MS OS 2.0 descriptor definitions
+ * @ingroup usb
  *
  */
 

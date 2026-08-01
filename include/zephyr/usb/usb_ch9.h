@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief USB Chapter 9 structures and definitions
+ * @ingroup usb
  *
  * This file contains the USB Chapter 9 structures definitions
  * and follows, with few exceptions, the USB Specification 2.0.

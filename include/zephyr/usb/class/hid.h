@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief USB Human Interface Device (HID) common definitions header
+ * @ingroup usb_hid_definitions
  *
  * Header follows Device Class Definition for Human Interface Devices (HID)
  * Version 1.11 document (HID1_11-1.pdf).

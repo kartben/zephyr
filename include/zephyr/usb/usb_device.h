@@ -31,6 +31,7 @@
 /**
  * @file
  * @brief USB device core layer APIs and structures
+ * @ingroup _usb_device_core_api
  *
  * This file contains the USB device core layer APIs and structures.
  */

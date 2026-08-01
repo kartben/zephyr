@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief New USB device stack APIs and structures
+ * @ingroup usbd_api
  *
  * This file contains the USB device stack APIs and structures.
  */

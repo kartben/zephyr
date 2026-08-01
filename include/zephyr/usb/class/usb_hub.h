@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief USB Hub Class device API header
+ * @ingroup usb
  */
 
 #ifndef ZEPHYR_INCLUDE_USB_CLASS_USB_HUB_H_

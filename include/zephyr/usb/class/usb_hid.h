@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief USB HID Class device API header
+ * @ingroup usb_hid_class
  */
 
 #ifndef ZEPHYR_INCLUDE_USB_HID_CLASS_DEVICE_H_

@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief USBD HID device API header
+ * @ingroup usbd_hid_device
  */
 
 #ifndef ZEPHYR_INCLUDE_USBD_HID_CLASS_DEVICE_H_

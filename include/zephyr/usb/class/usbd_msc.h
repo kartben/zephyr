@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief USBD Mass Storage Class public header
+ * @ingroup usbd_msc_device
  *
  * Header exposes API for registering LUNs.
  */

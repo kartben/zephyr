@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief USB support message types and structure
+ * @ingroup usbd_msg_api
  */
 
 #ifndef ZEPHYR_INCLUDE_USBD_MSG_H_
