@@ -22,16 +22,27 @@ extern "C" {
  * @brief Group structure
  */
 struct group {
-	/**< the name of the group */
+	/** the name of the group */
 	char *gr_name;
-	/**< numerical group ID */
+	/** numerical group ID */
 	gid_t gr_gid;
-	/**< pointer to a null-terminated array of character pointers to member names */
+	/** pointer to a null-terminated array of character pointers to member names */
 	char **gr_mem;
 };
 
+/**
+ * @brief Search the group database for an entry with a matching group name.
+ *
+ * See IEEE 1003.1
+ */
 int getgrnam_r(const char *name, struct group *grp, char *buffer, size_t bufsize,
 	       struct group **result);
+
+/**
+ * @brief Search the group database for an entry with a matching group ID.
+ *
+ * See IEEE 1003.1
+ */
 int getgrgid_r(gid_t gid, struct group *grp, char *buffer, size_t bufsize, struct group **result);
 
 #ifdef __cplusplus

@@ -41,20 +41,25 @@
 #ifndef ZEPHYR_INCLUDE_POSIX_FNMATCH_H_
 #define ZEPHYR_INCLUDE_POSIX_FNMATCH_H_
 
-#define FNM_NOMATCH 1 /* Match failed. */
-#define FNM_NOSYS   2 /* Function not implemented. */
-#define FNM_NORES   3 /* Out of resources */
+#define FNM_NOMATCH 1 /**< Match failed. */
+#define FNM_NOSYS   2 /**< Function not implemented. */
+#define FNM_NORES   3 /**< Out of resources */
 
-#define FNM_NOESCAPE	0x01 /* Disable backslash escaping. */
-#define FNM_PATHNAME	0x02 /* Slash must be matched by slash. */
-#define FNM_PERIOD	0x04 /* Period must be matched by period. */
-#define FNM_CASEFOLD	0x08 /* Pattern is matched case-insensitive */
-#define FNM_LEADING_DIR 0x10 /* Ignore /<tail> after Imatch. */
+#define FNM_NOESCAPE	0x01 /**< Disable backslash escaping. */
+#define FNM_PATHNAME	0x02 /**< Slash must be matched by slash. */
+#define FNM_PERIOD	0x04 /**< Period must be matched by period. */
+#define FNM_CASEFOLD	0x08 /**< Pattern is matched case-insensitive */
+#define FNM_LEADING_DIR 0x10 /**< Match if the pattern matches a leading part ending at a slash */
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/**
+ * @brief Match a string against a shell wildcard pattern.
+ *
+ * See IEEE 1003.1
+ */
 int fnmatch(const char *, const char *, int);
 
 #ifdef __cplusplus

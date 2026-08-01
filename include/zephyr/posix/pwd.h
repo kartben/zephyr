@@ -18,21 +18,35 @@ extern "C" {
 
 #include <zephyr/posix/sys/stat.h>
 
+/**
+ * @brief User account information structure
+ */
 struct passwd {
-	/* user's login name */
+	/** user's login name */
 	char *pw_name;
-	/* numerical user ID */
+	/** numerical user ID */
 	uid_t pw_uid;
-	/* numerical group ID */
+	/** numerical group ID */
 	gid_t pw_gid;
-	/* initial working directory */
+	/** initial working directory */
 	char *pw_dir;
-	/* program to use as shell */
+	/** program to use as shell */
 	char *pw_shell;
 };
 
+/**
+ * @brief Search the user database for an entry with a matching login name.
+ *
+ * See IEEE 1003.1
+ */
 int getpwnam_r(const char *nam, struct passwd *pwd, char *buffer, size_t bufsize,
 	       struct passwd **result);
+
+/**
+ * @brief Search the user database for an entry with a matching user ID.
+ *
+ * See IEEE 1003.1
+ */
 int getpwuid_r(uid_t uid, struct passwd *pwd, char *buffer, size_t bufsize, struct passwd **result);
 
 #ifdef __cplusplus

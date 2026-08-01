@@ -23,17 +23,42 @@ extern "C" {
 #if (_POSIX_C_SOURCE >= 200809L) || (_XOPEN_SOURCE >= 700)
 int alphasort(const struct dirent **d1, const struct dirent **d2);
 #endif
+/**
+ * @brief Close a directory stream.
+ *
+ * See IEEE 1003.1
+ */
 int closedir(DIR *dirp);
 #if (_POSIX_C_SOURCE >= 200809L) || (_XOPEN_SOURCE >= 700)
 int dirfd(DIR *dirp);
 #endif
+/**
+ * @brief Open a directory stream for the directory associated with a file descriptor.
+ *
+ * See IEEE 1003.1
+ */
 DIR *fdopendir(int fd);
+/**
+ * @brief Open a directory stream.
+ *
+ * See IEEE 1003.1
+ */
 DIR *opendir(const char *dirname);
+/**
+ * @brief Read the next entry from a directory stream.
+ *
+ * See IEEE 1003.1
+ */
 struct dirent *readdir(DIR *dirp);
 #if (_POSIX_C_SOURCE >= 199506L) || (_XOPEN_SOURCE >= 500)
 int readdir_r(DIR *ZRESTRICT dirp, struct dirent *ZRESTRICT entry,
 	      struct dirent **ZRESTRICT result);
 #endif
+/**
+ * @brief Reset a directory stream to the beginning of the directory.
+ *
+ * See IEEE 1003.1
+ */
 void rewinddir(DIR *dirp);
 #if (_POSIX_C_SOURCE >= 200809L) || (_XOPEN_SOURCE >= 700)
 int scandir(const char *dir, struct dirent ***namelist, int (*sel)(const struct dirent *),
