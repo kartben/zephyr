@@ -65,10 +65,10 @@ typedef enum e_transfer_irq {
 	TRANSFER_IRQ_EACH = 1 /**< Interrupt on each transfer. */
 } transfer_irq_t;
 
-/**< Interrupt on each transfer. */
+/** @brief Transfer chain mode. */
 typedef enum e_transfer_chain_mode {
 	TRANSFER_CHAIN_MODE_DISABLED = 0, /**< Chaining disabled. */
-	TRANSFER_CHAIN_MODE_EACH = 2,     /**< Chaining disabled. */
+	TRANSFER_CHAIN_MODE_EACH = 2,     /**< Chain on each transfer. */
 	TRANSFER_CHAIN_MODE_END = 3       /**< Chain at end. */
 } transfer_chain_mode_t;
 
@@ -96,27 +96,28 @@ typedef enum e_dtc_act_status {
 
 /** @brief Transfer information structure. */
 typedef struct st_transfer_info {
+	/** Transfer settings. */
 	union {
 		struct {
-			unsigned int: 16;
-			unsigned int: 2;
+			unsigned int: 16; /**< Reserved. */
+			unsigned int: 2;  /**< Reserved. */
 
 			transfer_addr_mode_t dest_addr_mode: 2; /**< Destination address mode. */
 
-			transfer_repeat_area_t repeat_area: 1; /**< Destination address mode. */
+			transfer_repeat_area_t repeat_area: 1; /**< Repeat area. */
 
 			transfer_irq_t irq: 1; /**< IRQ type. */
 
 			transfer_chain_mode_t chain_mode: 2; /**< Chain mode. */
 
-			unsigned int: 2;
+			unsigned int: 2; /**< Reserved. */
 
 			transfer_addr_mode_t src_addr_mode: 2; /**< Source address mode. */
 
 			transfer_size_t size: 2; /**< Transfer data size. */
 
 			transfer_mode_t mode: 2; /**< Transfer mode. */
-		} transfer_settings_word_b;
+		} transfer_settings_word_b; /**< Settings bitfields. */
 
 		uint32_t transfer_settings_word; /**< Raw settings. */
 	};
