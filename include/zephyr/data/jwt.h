@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the JSON Web Token (JWT) generation library.
+ * @ingroup jwt
+ */
+
 #ifndef ZEPHYR_INCLUDE_DATA_JWT_H_
 #define ZEPHYR_INCLUDE_DATA_JWT_H_
 
