@@ -37,6 +37,7 @@ extern "C" {
 
 #include <zephyr/device.h>
 
+/** Fuel gauge property types */
 enum fuel_gauge_prop_type {
 	/** Runtime Dynamic Battery Parameters */
 	/**
@@ -202,6 +203,7 @@ enum fuel_gauge_prop_type {
 	FUEL_GAUGE_PROP_MAX = UINT16_MAX,
 };
 
+/** A fuel gauge property identifier, one of the enum fuel_gauge_prop_type values */
 typedef uint16_t fuel_gauge_prop_t;
 
 /** Property field to value/type union */
@@ -429,26 +431,33 @@ union fuel_gauge_prop_val {
 	uint32_t therm_voltage_uv;
 };
 
-/**
+/*
  * Data structures for reading SBS buffer properties
  */
+
+/** Maximum size of the SBS manufacturer name buffer, in bytes */
 #define SBS_GAUGE_MANUFACTURER_NAME_MAX_SIZE 20
+/** Maximum size of the SBS device name buffer, in bytes */
 #define SBS_GAUGE_DEVICE_NAME_MAX_SIZE       20
+/** Maximum size of the SBS device chemistry buffer, in bytes */
 #define SBS_GAUGE_DEVICE_CHEMISTRY_MAX_SIZE  4
 
+/** Buffer for the FUEL_GAUGE_MANUFACTURER_NAME property */
 struct sbs_gauge_manufacturer_name {
-	uint8_t manufacturer_name_length;
-	char manufacturer_name[SBS_GAUGE_MANUFACTURER_NAME_MAX_SIZE];
+	uint8_t manufacturer_name_length; /**< Length of the manufacturer name, in bytes */
+	char manufacturer_name[SBS_GAUGE_MANUFACTURER_NAME_MAX_SIZE]; /**< Manufacturer name */
 } __packed;
 
+/** Buffer for the FUEL_GAUGE_DEVICE_NAME property */
 struct sbs_gauge_device_name {
-	uint8_t device_name_length;
-	char device_name[SBS_GAUGE_DEVICE_NAME_MAX_SIZE];
+	uint8_t device_name_length; /**< Length of the device name, in bytes */
+	char device_name[SBS_GAUGE_DEVICE_NAME_MAX_SIZE]; /**< Device name */
 } __packed;
 
+/** Buffer for the FUEL_GAUGE_DEVICE_CHEMISTRY property */
 struct sbs_gauge_device_chemistry {
-	uint8_t device_chemistry_length;
-	char device_chemistry[SBS_GAUGE_DEVICE_CHEMISTRY_MAX_SIZE];
+	uint8_t device_chemistry_length; /**< Length of the device chemistry, in bytes */
+	char device_chemistry[SBS_GAUGE_DEVICE_CHEMISTRY_MAX_SIZE]; /**< Device chemistry */
 } __packed;
 
 /**
