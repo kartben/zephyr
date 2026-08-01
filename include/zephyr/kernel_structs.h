@@ -41,8 +41,12 @@
 #endif
 #endif
 
+/** @cond INTERNAL_HIDDEN */
+
 #define K_NUM_THREAD_PRIO (CONFIG_NUM_PREEMPT_PRIORITIES + CONFIG_NUM_COOP_PRIORITIES + 1)
 #define PRIQ_BITMAP_SIZE  (DIV_ROUND_UP(K_NUM_THREAD_PRIO, BITS_PER_LONG))
+
+/** @endcond */
 
 #ifdef __cplusplus
 extern "C" {
@@ -266,7 +270,9 @@ __attribute_const__ struct k_thread *z_smp_current_get(void);
 #define _current _kernel.cpus[0].current
 #endif
 
+/** @cond INTERNAL_HIDDEN */
 #define CPU_ID ((CONFIG_MP_MAX_NUM_CPUS == 1) ? 0 : _current_cpu->id)
+/** @endcond */
 
 /* This is always invoked from a context where preemption is disabled */
 #define z_current_thread_set(thread) ({ _current_cpu->current = (thread); })
@@ -341,6 +347,15 @@ struct _timeout {
 	_timeout_func_t fn;
 };
 
+/**
+ * @brief Callback invoked when a thread's time slice expires.
+ *
+ * Registered with k_thread_time_slice_set(). Called in interrupt context,
+ * before the thread is removed from and re-added to the run queue.
+ *
+ * @param thread Thread whose time slice expired
+ * @param data Parameter given to k_thread_time_slice_set()
+ */
 typedef void (*k_thread_timeslice_fn_t)(struct k_thread *thread, void *data);
 
 #ifdef __cplusplus
