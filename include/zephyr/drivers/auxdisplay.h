@@ -52,7 +52,9 @@ enum auxdisplay_position {
 	 */
 	AUXDISPLAY_POSITION_RELATIVE_DIRECTION,
 
+	/** @cond INTERNAL_HIDDEN */
 	AUXDISPLAY_POSITION_COUNT,
+	/** @endcond */
 };
 
 /** @brief Used for setting character append position */
@@ -63,7 +65,9 @@ enum auxdisplay_direction {
 	/** Each character will be placed to the left of existing characters */
 	AUXDISPLAY_DIRECTION_LEFT,
 
+	/** @cond INTERNAL_HIDDEN */
 	AUXDISPLAY_DIRECTION_COUNT,
+	/** @endcond */
 };
 
 /** @brief Light levels for brightness and/or backlight. If not supported by a
