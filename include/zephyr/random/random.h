@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief Random number generator header file
+ * @ingroup random_api
  *
  * This header file declares prototypes for the kernel's random number
  * generator APIs.
