@@ -13,6 +13,7 @@
 
 #include <zephyr/types.h>
 
+/** Maximum number of heaps that can be registered in a multi-heap */
 #define MAX_MULTI_HEAPS 8
 
 /**
@@ -64,16 +65,23 @@ typedef void *(*sys_multi_heap_fn_t)(struct sys_multi_heap *mheap, void *cfg,
 				     size_t align, size_t size);
 
 
+/** @brief Record of a heap registered in a multi-heap */
 struct sys_multi_heap_rec {
+	/** Heap backend */
 	struct sys_heap *heap;
+	/** User data provided when the heap was added */
 	void *user_data;
 };
+
+/** @cond INTERNAL_HIDDEN */
 
 struct sys_multi_heap {
 	unsigned int nheaps;
 	sys_multi_heap_fn_t choice;
 	struct sys_multi_heap_rec heaps[MAX_MULTI_HEAPS];
 };
+
+/** @endcond */
 
 /**
  * @brief Initialize multi-heap
@@ -197,6 +205,16 @@ void sys_multi_heap_free(struct sys_multi_heap *mheap, void *block);
 void *sys_multi_heap_aligned_realloc(struct sys_multi_heap *mheap, void *cfg,
 				     void *ptr, size_t align, size_t bytes);
 
+/** @brief Expand the size of an existing allocation on the multi heap
+ *
+ * Behaves as sys_multi_heap_aligned_realloc() with no alignment requirement.
+ *
+ * @param mheap Multi heap pointer
+ * @param cfg Opaque configuration parameter, as for sys_multi_heap_fn_t
+ * @param ptr Original pointer returned from a previous allocation
+ * @param bytes Number of bytes requested for the new block
+ * @return Pointer to memory the caller can now use, or NULL
+ */
 #define sys_multi_heap_realloc(mheap, cfg, ptr, bytes) \
 	sys_multi_heap_aligned_realloc(mheap, cfg, ptr, 0, bytes)
 
