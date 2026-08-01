@@ -52,9 +52,16 @@
 #include <zephyr/devicetree.h>
 #endif
 
-/* The GCC for Renesas RX processors adds leading underscores to C-symbols
- * by default. As a workaround for symbols defined in linker scripts to be
- * available in C code, an alias with a leading underscore has to be provided.
+/**
+ * @def PLACE_SYMBOL_HERE
+ *
+ * Define a linker script symbol at the current location counter.
+ *
+ * On Renesas RX, where the compiler adds leading underscores to C symbols,
+ * an alias with a leading underscore is provided as well so that the symbol
+ * stays reachable from C code.
+ *
+ * @param symbol Name of the symbol to define
  */
 #if defined(CONFIG_RX)
 #define PLACE_SYMBOL_HERE(symbol)                                                                  \
@@ -65,14 +72,22 @@
 #endif
 
 #ifdef _LINKER
-/*
- * generate a symbol to mark the start of the objects array for
- * the specified object and level, then link all of those objects
- * (sorted by priority). Ensure the objects aren't discarded if there is
- * no direct reference to them
- */
 
 /* clang-format off */
+/**
+ * @def CREATE_OBJ_LEVEL
+ *
+ * Link in all objects of a given type registered at a given initialization
+ * level.
+ *
+ * Generates a symbol to mark the start of the objects array for
+ * the specified object and level, then links all of those objects
+ * (sorted by priority). Ensures the objects aren't discarded if there is
+ * no direct reference to them.
+ *
+ * @param object Object type name
+ * @param level Initialization level name
+ */
 #define CREATE_OBJ_LEVEL(object, level)				\
 		PLACE_SYMBOL_HERE(__##object##_##level##_start);\
 		KEEP(*(SORT(.z_##object##_##level##_P_?_*)));	\

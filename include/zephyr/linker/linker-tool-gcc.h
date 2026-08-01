@@ -66,12 +66,24 @@
 	#error Arch not supported.
 #endif
 
-/*
- * The GROUP_START() and GROUP_END() macros are used to define a group
- * of sections located in one memory area, such as RAM, ROM, etc.
- * The <where> parameter is the name of the memory area.
+/**
+ * @def GROUP_START
+ *
+ * Open a group of sections located in one memory area, such as RAM, ROM, etc.
+ *
+ * Must be paired with GROUP_END() using the same memory area.
+ *
+ * @param where Name of the memory area
  */
 #define GROUP_START(where)
+
+/**
+ * @def GROUP_END
+ *
+ * Close a group of sections opened with GROUP_START().
+ *
+ * @param where Name of the memory area
+ */
 #define GROUP_END(where)
 
 /**
@@ -209,6 +221,13 @@
 	SECTION_PROLOGUE(name, options, align)
 #endif
 
+/**
+ * @def COMMON_SYMBOLS
+ *
+ * Input section selector collecting the common symbols of all input files.
+ *
+ * Used inside an output section description of a linker script.
+ */
 #define COMMON_SYMBOLS *(COMMON)
 
 #endif /* ZEPHYR_INCLUDE_LINKER_LINKER_TOOL_GCC_H_ */
