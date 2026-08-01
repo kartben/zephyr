@@ -23,22 +23,24 @@
  * RSTC_RCAUSE register in the Microchip RSTC G1 reset controller.
  */
 enum rstc_g1_rcause {
-	RSTC_G1_RCAUSE_POR = 0,   /* Power-on Reset */
-	RSTC_G1_RCAUSE_BOD12 = 1, /* Brown-Out 1.2V Detector Reset */
-	RSTC_G1_RCAUSE_BOD33 = 2, /* Brown-Out 3.3V Detector Reset */
-	RSTC_G1_RCAUSE_NVM = 3,   /* NVM Reset */
-	RSTC_G1_RCAUSE_EXT = 4,   /* External Reset */
-	RSTC_G1_RCAUSE_WDT = 5,   /* Watchdog Reset */
-	RSTC_G1_RCAUSE_SYST = 6,  /* System Reset Request */
-	RSTC_G1_RCAUSE_BACKUP = 7 /* Backup Reset */
+	RSTC_G1_RCAUSE_POR = 0,   /**< Power-on Reset */
+	RSTC_G1_RCAUSE_BOD12 = 1, /**< Brown-Out 1.2V Detector Reset */
+	RSTC_G1_RCAUSE_BOD33 = 2, /**< Brown-Out 3.3V Detector Reset */
+	RSTC_G1_RCAUSE_NVM = 3,   /**< NVM Reset */
+	RSTC_G1_RCAUSE_EXT = 4,   /**< External Reset */
+	RSTC_G1_RCAUSE_WDT = 5,   /**< Watchdog Reset */
+	RSTC_G1_RCAUSE_SYST = 6,  /**< System Reset Request */
+	RSTC_G1_RCAUSE_BACKUP = 7 /**< Backup Reset */
 };
 
 #ifdef CONFIG_SOC_FAMILY_MICROCHIP_PIC32CM_JH
 /* Reserved reset-cause bits on PIC32CM JH */
 #define RSTC_RESERVED_BIT_3     BIT(3)
 #define RSTC_RESERVED_BIT_7     BIT(7)
+/** Mask of RCAUSE register bits reserved on the selected SoC family */
 #define RSTC_UNSUPPORTED_RCAUSE ((RSTC_RESERVED_BIT_3) | (RSTC_RESERVED_BIT_7))
 #else
+/** Mask of RCAUSE register bits reserved on the selected SoC family */
 #define RSTC_UNSUPPORTED_RCAUSE 0U
 #endif /* CONFIG_SOC_FAMILY_MICROCHIP_PIC32CM_JH */
 
