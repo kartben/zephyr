@@ -21,9 +21,12 @@
 extern "C" {
 #endif
 
+/** Provide semaphore-like semantics for reads from the ZVFS eventfd */
 #define ZVFS_EFD_SEMAPHORE 2
+/** Set the ZVFS eventfd file descriptor to non-blocking mode */
 #define ZVFS_EFD_NONBLOCK 0x4000
 
+/** Type for ZVFS eventfd counter values */
 typedef uint64_t zvfs_eventfd_t;
 
 /**
