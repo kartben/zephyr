@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief RTP (Real-time Transport Protocol) API
+ * @ingroup rtp
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_RTP_H_

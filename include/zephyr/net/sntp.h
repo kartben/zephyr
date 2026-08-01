@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief SNTP (Simple Network Time Protocol)
+ * @ingroup sntp
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_SNTP_H_

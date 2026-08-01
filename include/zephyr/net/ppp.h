@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief PPP (Point-to-Point Protocol)
+ * @ingroup ppp
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_PPP_H_

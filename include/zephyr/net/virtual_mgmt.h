@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Virtual Interface Management interface public header
+ * @ingroup virtual_mgmt
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_VIRTUAL_MGMT_H_

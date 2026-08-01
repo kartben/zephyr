@@ -8,6 +8,7 @@
  * @file
  *
  * @brief QUIC implementation for Zephyr.
+ * @ingroup quic
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_QUIC_H_

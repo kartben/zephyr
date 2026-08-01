@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public functions for the Precision Time Protocol.
+ * @ingroup ptp
  *
  * References are to version 2019 of IEEE 1588, ("PTP")
  */

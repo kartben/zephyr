@@ -1,5 +1,6 @@
 /** @file
  * @brief Trickle timer library
+ * @ingroup trickle
  *
  * This implements Trickle timer as specified in RFC 6206
  */

@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Wireguard VPN
+ * @ingroup wg_vpn_service
  *
  */
 

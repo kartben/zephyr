@@ -1,5 +1,6 @@
 /** @file
  * @brief Virtual Network Interface
+ * @ingroup virtual
  */
 
 /*
