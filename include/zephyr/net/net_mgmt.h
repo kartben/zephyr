@@ -167,6 +167,7 @@ struct net_mgmt_event_callback {
 	 */
 	sys_snode_t node;
 
+	/** How the owner of this structure is notified about an event */
 	union {
 		/** Actual callback function being used to notify the owner
 		 */
