@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for TI CC1200 IEEE 802.15.4 driver RF register settings.
+ * @ingroup ieee802154_driver
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_IEEE802154_CC1200_H_
 #define ZEPHYR_INCLUDE_DRIVERS_IEEE802154_CC1200_H_
 
