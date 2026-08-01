@@ -109,6 +109,10 @@ struct i3c_target_config {
 	const struct i3c_target_callbacks *callbacks;
 };
 
+/**
+ * @brief Structure providing callbacks to be implemented for devices
+ *        that support the I3C target API.
+ */
 struct i3c_target_callbacks {
 	/**
 	 * @brief Function called when a write to the device is initiated.
@@ -273,10 +277,19 @@ struct i3c_target_callbacks {
 	int (*controller_handoff_cb)(struct i3c_target_config *config);
 };
 
+/**
+ * @cond INTERNAL_HIDDEN
+ *
+ * These are for internal use only, so skip these in
+ * public documentation.
+ */
 __subsystem struct i3c_target_driver_api {
 	int (*driver_register)(const struct device *dev);
 	int (*driver_unregister)(const struct device *dev);
 };
+/**
+ * INTERNAL_HIDDEN @endcond
+ */
 
 /**
  * @brief Accept or Decline Controller Handoffs
