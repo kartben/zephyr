@@ -1,5 +1,6 @@
 /** @file
  * @brief Network packet capture definitions
+ * @ingroup net_capture
  *
  * Definitions for capturing network packets.
  */

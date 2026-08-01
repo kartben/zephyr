@@ -6,6 +6,7 @@
 
 /** @file
  * @brief Dummy layer 2
+ * @ingroup dummy
  *
  * This is not to be included by the application.
  */

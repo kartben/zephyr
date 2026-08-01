@@ -6,6 +6,7 @@
 
 /** @file
  *  @brief CAN bus socket API definitions.
+ *  @ingroup socket_can
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_CANBUS_H_

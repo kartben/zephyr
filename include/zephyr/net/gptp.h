@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public functions for the Precision Time Protocol Stack.
+ * @ingroup gptp
  *
  */
 
