@@ -1,0 +1,54 @@
+{
+  "doxygen/rtio": [
+    {
+      "name": "llext",
+      "scopes": [
+        "llext"
+      ]
+    },
+    {
+      "name": "rtio",
+      "scopes": [
+        "rtio"
+      ]
+    },
+    {
+      "name": "drivers-i2c-speed",
+      "scopes": [
+        "drivers: i2c"
+      ]
+    }
+  ],
+  "doxygen/networking": [
+    {
+      "name": "http-parser",
+      "scopes": [
+        "net: http: parser"
+      ]
+    }
+  ],
+  "doxygen/drivers-modem": [
+    {
+      "name": "modem-hl7800",
+      "scopes": [
+        "drivers: modem: hl7800"
+      ]
+    }
+  ],
+  "doxygen/drivers-virtio": [
+    {
+      "name": "instrumentation",
+      "scopes": [
+        "instrumentation"
+      ]
+    }
+  ],
+  "doxygen/drivers-serial-uart": [
+    {
+      "name": "drivers-pcie",
+      "scopes": [
+        "drivers: pcie"
+      ]
+    }
+  ]
+}
