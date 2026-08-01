@@ -42,8 +42,8 @@ enum bt_df_cte_type {
 
 /** Allowed antenna switching slots: 1 us or 2 us */
 enum bt_df_antenna_switching_slot {
-	BT_DF_ANTENNA_SWITCHING_SLOT_1US = 0x1,
-	BT_DF_ANTENNA_SWITCHING_SLOT_2US = 0x2
+	BT_DF_ANTENNA_SWITCHING_SLOT_1US = 0x1, /**< 1 us antenna switching slot. */
+	BT_DF_ANTENNA_SWITCHING_SLOT_2US = 0x2  /**< 2 us antenna switching slot. */
 };
 
 /** Possible statuses of PDU that contained reported CTE. */
@@ -112,6 +112,7 @@ struct bt_df_per_adv_sync_cte_rx_param {
 	const uint8_t *ant_ids;
 };
 
+/** Format of the IQ samples in a report. */
 enum bt_df_iq_sample {
 	/** Reported IQ samples have 8 bits signed integer format. Size defined in BT Core 5.3
 	 * Vol 4, Part E sections 7.7.65.21 and 7.7.65.22.
@@ -121,6 +122,7 @@ enum bt_df_iq_sample {
 	BT_DF_IQ_SAMPLE_16_BITS_INT,
 };
 
+/** IQ samples report of CTE received in a periodic advertising train. */
 struct bt_df_per_adv_sync_iq_samples_report {
 	/** Channel index used to receive PDU with CTE that was sampled. */
 	uint8_t chan_idx;
@@ -142,11 +144,14 @@ struct bt_df_per_adv_sync_iq_samples_report {
 	enum bt_df_iq_sample sample_type;
 	/** Pointer to IQ samples data. */
 	union {
+		/** 8 bits IQ samples, valid if sample_type is @ref BT_DF_IQ_SAMPLE_8_BITS_INT. */
 		struct bt_hci_le_iq_sample const *sample;
+		/** 16 bits IQ samples, valid if sample_type is @ref BT_DF_IQ_SAMPLE_16_BITS_INT. */
 		struct bt_hci_le_iq_sample16 const *sample16;
 	};
 };
 
+/** Constant Tone Extension parameters for reception in connected mode. */
 struct bt_df_conn_cte_rx_param {
 	/**
 	 * @brief Bitfield with allowed CTE types.
@@ -162,6 +167,7 @@ struct bt_df_conn_cte_rx_param {
 	const uint8_t *ant_ids;
 };
 
+/** Reception status of an IQ samples report in connected mode. */
 enum bt_df_conn_iq_report_err {
 	/** IQ samples report received successfully. */
 	BT_DF_IQ_REPORT_ERR_SUCCESS,
@@ -171,6 +177,7 @@ enum bt_df_conn_iq_report_err {
 	BT_DF_IQ_REPORT_ERR_PEER_REJECTED,
 };
 
+/** IQ samples report of CTE received in connected mode. */
 struct bt_df_conn_iq_samples_report {
 	/** Report receive failed reason. */
 	enum bt_df_conn_iq_report_err err;
@@ -196,7 +203,9 @@ struct bt_df_conn_iq_samples_report {
 	uint8_t sample_count;
 	/** Pointer to IQ samples data. */
 	union {
+		/** 8 bits IQ samples, valid if sample_type is @ref BT_DF_IQ_SAMPLE_8_BITS_INT. */
 		struct bt_hci_le_iq_sample const *sample;
+		/** 16 bits IQ samples, valid if sample_type is @ref BT_DF_IQ_SAMPLE_16_BITS_INT. */
 		struct bt_hci_le_iq_sample16 const *sample16;
 	};
 };
@@ -213,6 +222,7 @@ struct bt_df_conn_cte_tx_param {
 	const uint8_t *ant_ids;
 };
 
+/** Constant Tone Extension parameters for the CTE Request procedure in connected mode. */
 struct bt_df_conn_cte_req_params {
 	/**
 	 * @brief Requested interval for initiating the CTE Request procedure.
