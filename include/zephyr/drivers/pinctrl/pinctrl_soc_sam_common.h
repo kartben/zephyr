@@ -6,7 +6,8 @@
 
 /**
  * @file
- * Atmel SAM SoC specific helpers for pinctrl driver
+ * @brief Atmel SAM SoC specific helpers for pinctrl driver.
+ * @ingroup pinctrl_interface_ext
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_PINCTRL_PINCTRL_SOC_SAM_COMMON_H_
