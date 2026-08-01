@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the Inter-VM Shared Memory (ivshmem) APIs.
+ * @ingroup ivshmem
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_VIRTUALIZATION_IVSHMEM_H_
 #define ZEPHYR_INCLUDE_DRIVERS_VIRTUALIZATION_IVSHMEM_H_
 
