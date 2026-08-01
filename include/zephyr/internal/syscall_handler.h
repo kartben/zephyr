@@ -3,6 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the user mode and system call internal APIs.
+ * @ingroup syscall_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_INTERNAL_SYSCALL_HANDLER_H_
 #define ZEPHYR_INCLUDE_INTERNAL_SYSCALL_HANDLER_H_
 

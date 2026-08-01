@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the memory domain and memory partition APIs.
+ * @ingroup mem_domain_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_APP_MEMORY_MEM_DOMAIN_H_
 #define ZEPHYR_INCLUDE_APP_MEMORY_MEM_DOMAIN_H_
 
