@@ -13,6 +13,7 @@
 #ifndef ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_INTC_RZ_TINT_H_
 #define ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_INTC_RZ_TINT_H_
 
+/** RZ GPIO interrupt (TINT) trigger types. */
 enum intc_rz_tint_trigger {
 	/** Interrupt triggered on falling edge */
 	RZ_TINT_FAILING_EDGE,

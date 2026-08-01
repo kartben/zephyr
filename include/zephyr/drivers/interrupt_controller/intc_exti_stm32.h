@@ -25,13 +25,13 @@ extern "C" {
  * @brief EXTI interrupt trigger type
  */
 typedef enum {
-	/* No trigger */
+	/** No trigger */
 	STM32_EXTI_TRIG_NONE  = 0x0,
-	/* Trigger on rising edge */
+	/** Trigger on rising edge */
 	STM32_EXTI_TRIG_RISING  = 0x1,
-	/* Trigger on falling edge */
+	/** Trigger on falling edge */
 	STM32_EXTI_TRIG_FALLING = 0x2,
-	/* Trigger on both rising and falling edge */
+	/** Trigger on both rising and falling edge */
 	STM32_EXTI_TRIG_BOTH = 0x3,
 } stm32_exti_trigger_type;
 
@@ -39,13 +39,13 @@ typedef enum {
  * @brief EXTI line mode
  */
 typedef enum {
-	/* Generate interrupts only */
+	/** Generate interrupts only */
 	STM32_EXTI_MODE_IT  = 0x0,
-	/* Generate events only */
+	/** Generate events only */
 	STM32_EXTI_MODE_EVENT  = 0x1,
-	/* Generate interrupts and events */
+	/** Generate interrupts and events */
 	STM32_EXTI_MODE_BOTH = 0x2,
-	/* Disable interrupts and events */
+	/** Disable interrupts and events */
 	STM32_EXTI_MODE_NONE = 0x3,
 } stm32_exti_mode;
 

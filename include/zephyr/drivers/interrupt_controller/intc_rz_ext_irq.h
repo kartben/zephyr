@@ -13,9 +13,13 @@
 #ifndef ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_INTC_RZ_EXT_IRQ_H_
 #define ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_INTC_RZ_EXT_IRQ_H_
 
+/** Interrupt triggered on falling edge */
 #define RZ_EXT_IRQ_TRIG_FALLING   0
+/** Interrupt triggered on rising edge */
 #define RZ_EXT_IRQ_TRIG_RISING    1
+/** Interrupt triggered on both edges */
 #define RZ_EXT_IRQ_TRIG_BOTH_EDGE 2
+/** Interrupt triggered on low level */
 #define RZ_EXT_IRQ_TRIG_LEVEL_LOW 3
 
 /** RZ external interrupt callback */
