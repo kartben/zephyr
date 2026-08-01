@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the loopback disk device registration APIs.
+ * @ingroup disk_driver_interface_ext
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_LOOPBACK_DISK_ACCESS_H_
 #define ZEPHYR_INCLUDE_DRIVERS_LOOPBACK_DISK_ACCESS_H_
 
