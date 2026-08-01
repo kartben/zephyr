@@ -92,6 +92,9 @@ struct net_if_addr {
 #endif
 #endif /* CONFIG_NET_NATIVE_IPV6 */
 
+	/** Duplicate address detection (IPv6) or address conflict detection
+	 * (IPv4) state.
+	 */
 	union {
 #if defined(CONFIG_NET_IPV6_DAD)
 		struct {
@@ -3339,7 +3342,7 @@ void net_if_unregister_timestamp_cb(struct net_if_timestamp_cb *handle);
  */
 void net_if_call_timestamp_cb(struct net_pkt *pkt);
 
-/*
+/**
  * @brief Add timestamped TX buffer to be handled
  *
  * @param pkt Timestamped buffer
