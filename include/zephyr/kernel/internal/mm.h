@@ -51,6 +51,8 @@
 #define K_MEM_VIRT_OFFSET	0
 #endif /* CONFIG_MMU */
 
+/** @cond INTERNAL_HIDDEN */
+
 #if DT_CHOSEN_SRAM_ADDR != 0
 #define IS_SRAM_ADDRESS_LOWER(ADDR)  ((ADDR) >= DT_CHOSEN_SRAM_ADDR)
 #else
@@ -67,6 +69,8 @@
 #define IS_SRAM_ADDRESS(ADDR)            \
 	(IS_SRAM_ADDRESS_LOWER(ADDR) &&  \
 	 IS_SRAM_ADDRESS_UPPER(ADDR))
+
+/** @endcond */
 
 /**
  * @brief Get physical address from virtual address.
