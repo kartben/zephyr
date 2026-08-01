@@ -7,6 +7,7 @@
 /**
  * @file mchp_clock_pic32cm_sg_gc.h
  * @brief Clock control header file for Microchip pic32cm_sg_gc family.
+ * @ingroup clock_control_mchp
  *
  * This file provides clock driver interface definitions and structures
  * for pic32cm_sg_gc family
