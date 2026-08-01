@@ -100,9 +100,9 @@ enum mdio_opcode {
 #define MDIO_PKGID1			0x000EU
 /** Package identifier (2) */
 #define MDIO_PKGID2			0x000FU
-/* PCS Register: EEE capability Register */
+/** PCS EEE capability */
 #define MDIO_PCS_EEE_CAP		0x0014U
-/* Auto-negotiation Register: EEE advertisement Register */
+/** Auto-negotiation EEE advertisement */
 #define MDIO_AN_EEE_ADV			0x003CU
 
 

@@ -41,6 +41,13 @@ struct dsa_tag_register {
 	struct net_pkt *(*xmit)(struct net_if *iface, struct net_pkt *pkt);
 };
 
+/**
+ * @brief Register a DSA tag protocol implementation
+ *
+ * @param _proto Protocol ID, one of the DSA_TAG_PROTO_* values
+ * @param _recv Received packet handler
+ * @param _xmit Transmit packet handler
+ */
 #define DSA_TAG_REGISTER(_proto, _recv, _xmit)                                                     \
 	static const STRUCT_SECTION_ITERABLE(dsa_tag_register, __dsa_tag_register_##_proto) = {    \
 		.proto = _proto,                                                                   \
