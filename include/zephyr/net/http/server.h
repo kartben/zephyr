@@ -153,12 +153,23 @@ enum http_compression {
 BUILD_ASSERT(offsetof(struct http_resource_detail_static_fs, common) == 0);
 /** @endcond */
 
+/** @brief Mapping of a file extension to an HTTP content type */
 struct http_content_type {
-	const char *extension;
-	size_t extension_len;
-	const char *content_type;
+	const char *extension;   /**< File extension, without the leading dot */
+	size_t extension_len;    /**< Length of the file extension */
+	const char *content_type; /**< Content type registered for the extension */
 };
 
+/**
+ * @brief Register a file extension to content type mapping
+ *
+ * The mapping is used to determine the Content-Type header of static
+ * filesystem resources based on the file extension.
+ *
+ * @param _extension File extension, given as a plain identifier without the
+ *                   leading dot, e.g. json
+ * @param _content_type Content type string, e.g. "application/json"
+ */
 #define HTTP_SERVER_CONTENT_TYPE(_extension, _content_type)                                        \
 	const STRUCT_SECTION_ITERABLE(http_content_type, _extension) = {                           \
 		.extension = STRINGIFY(_extension),                                                \
@@ -166,6 +177,11 @@ struct http_content_type {
 		.content_type = _content_type,                                                     \
 	};
 
+/**
+ * @brief Iterate over all registered content type mappings
+ *
+ * @param _it Name of the http_content_type iteration variable
+ */
 #define HTTP_SERVER_CONTENT_TYPE_FOREACH(_it) STRUCT_SECTION_FOREACH(http_content_type, _it)
 
 struct http_client_ctx;
