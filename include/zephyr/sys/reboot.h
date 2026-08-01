@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Common target reboot functionality
+ * @ingroup os_services
  *
  * @details See subsys/os/Kconfig and the reboot help for details.
  */

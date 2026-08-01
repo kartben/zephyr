@@ -5,6 +5,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the low-level debug output (printk) APIs.
+ * @ingroup cbprintf_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_PRINTK_H_
 #define ZEPHYR_INCLUDE_SYS_PRINTK_H_
 

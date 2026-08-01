@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for speculative execution side channel mitigation helpers.
+ * @ingroup kernel_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_SPECULATION_H_
 #define ZEPHYR_INCLUDE_SYS_SPECULATION_H_
 

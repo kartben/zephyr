@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief Atomic type definitions for the atomic operations API.
+ * @ingroup atomic_apis
  */
 
 #ifndef ZEPHYR_INCLUDE_SYS_ATOMIC_TYPES_H_

@@ -8,6 +8,7 @@
  * @file
  *
  * @brief public sys_sem APIs.
+ * @ingroup user_semaphore_apis
  */
 
 #ifndef ZEPHYR_INCLUDE_SYS_SEM_H_

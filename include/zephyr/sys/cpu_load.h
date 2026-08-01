@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the CPU load monitoring APIs.
+ * @ingroup cpu_load
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_CPU_LOAD_H_
 #define ZEPHYR_INCLUDE_SYS_CPU_LOAD_H_
 

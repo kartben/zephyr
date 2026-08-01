@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Internal generic linked-list macro generators shared by slist/dlist/sflist.
+ * @ingroup internal_api
  */
 
 #ifndef ZEPHYR_INCLUDE_SYS_LIST_GEN_H_

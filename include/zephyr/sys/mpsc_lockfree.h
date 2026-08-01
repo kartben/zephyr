@@ -29,6 +29,7 @@ extern "C" {
  *
  * @brief A wait-free intrusive multi producer single consumer (MPSC) queue using
  * a singly linked list. Ordering is First-In-First-Out.
+ * @ingroup mpsc_lockfree
  *
  * Based on the well known and widely used wait-free MPSC queue described by
  * Dmitry Vyukov with some slight changes to account for needs of an

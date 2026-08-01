@@ -3,6 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for device driver memory-mapped I/O (MMIO) region helpers.
+ * @ingroup device-mmio
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_DEVICE_MMIO_H
 #define ZEPHYR_INCLUDE_SYS_DEVICE_MMIO_H
 

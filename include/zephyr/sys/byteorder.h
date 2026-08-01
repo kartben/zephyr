@@ -1,5 +1,6 @@
 /** @file
  *  @brief Byte order helpers.
+ *  @ingroup sys-util
  */
 
 /*

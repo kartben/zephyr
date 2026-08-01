@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Compiler-builtin implementation of the memory barrier API.
+ * @ingroup barrier_apis
  *
  * The public documentation for these barriers lives in <zephyr/sys/barrier.h>.
  */

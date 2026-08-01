@@ -8,6 +8,7 @@
  * @file
  *
  * @brief Memory Statistics
+ * @ingroup heaps
  */
 
 #ifndef ZEPHYR_INCLUDE_SYS_MEM_STATS_H_

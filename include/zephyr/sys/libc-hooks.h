@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the private hooks connecting C library internals to kernel system calls.
+ * @ingroup internal_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_LIBC_HOOKS_H_
 #define ZEPHYR_INCLUDE_SYS_LIBC_HOOKS_H_
 

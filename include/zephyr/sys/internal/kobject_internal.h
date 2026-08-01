@@ -3,6 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the internal kernel object metadata and permission tracking APIs.
+ * @ingroup usermode_internal_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_INTERNAL_KOBJECT_INTERNAL_H
 #define ZEPHYR_INCLUDE_SYS_INTERNAL_KOBJECT_INTERNAL_H
 

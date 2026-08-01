@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the thread-safe command line option parsing API (sys_getopt).
+ * @ingroup utilities
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_SYS_GETOPT_H_
 #define ZEPHYR_INCLUDE_SYS_SYS_GETOPT_H_
 

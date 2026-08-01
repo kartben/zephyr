@@ -6,6 +6,8 @@
 
 /**
  * @file
+ * @brief Header file for the general purpose hashmap API.
+ * @ingroup hashmap_apis
  * @addtogroup hashmap_apis
  * @{
  */

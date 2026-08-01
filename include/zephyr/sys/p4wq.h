@@ -3,6 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the Pooled Parallel Preemptible Priority-based Work Queues (P4WQ) API.
+ * @ingroup workqueue_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_P4WQ_H_
 #define ZEPHYR_INCLUDE_SYS_P4WQ_H_
 

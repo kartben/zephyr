@@ -2,6 +2,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the multi-heap allocator wrapping multiple separately managed heaps.
+ * @ingroup multi_heap_wrapper
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_MULTI_HEAP_H_
 #define ZEPHYR_INCLUDE_SYS_MULTI_HEAP_H_
 

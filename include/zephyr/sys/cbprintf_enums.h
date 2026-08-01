@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Argument-type tags used by the cbprintf packaging format.
+ * @ingroup internal_api
  */
 
 #ifndef ZEPHYR_INCLUDE_SYS_CBPRINTF_ENUMS_H_

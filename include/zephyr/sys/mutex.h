@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the user memory mutex API (sys_mutex).
+ * @ingroup user_mutex_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_MUTEX_H_
 #define ZEPHYR_INCLUDE_SYS_MUTEX_H_
 

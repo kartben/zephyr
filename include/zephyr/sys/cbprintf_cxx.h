@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief C++ helpers for detecting string-pointer arguments in cbprintf().
+ * @ingroup internal_api
  */
 
 #ifndef ZEPHYR_INCLUDE_SYS_CBPRINTF_CXX_H_

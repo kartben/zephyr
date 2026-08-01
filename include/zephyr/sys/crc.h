@@ -11,6 +11,7 @@
  */
 /** @file
  * @brief CRC computation function
+ * @ingroup checksum
  */
 
 #ifndef ZEPHYR_INCLUDE_SYS_CRC_H_

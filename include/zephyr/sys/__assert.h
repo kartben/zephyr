@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the runtime assertion macros (__ASSERT and friends).
+ * @ingroup debug
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS___ASSERT_H_
 #define ZEPHYR_INCLUDE_SYS___ASSERT_H_
 

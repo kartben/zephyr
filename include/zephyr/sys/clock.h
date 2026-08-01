@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief System clock APIs
+ * @ingroup clock_apis
  *
  * Declare variables used by both system timer device driver and kernel
  * components that use timer functionality.

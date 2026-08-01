@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the heap listener API.
+ * @ingroup heap_listener_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_HEAP_LISTENER_H
 #define ZEPHYR_INCLUDE_SYS_HEAP_LISTENER_H
 

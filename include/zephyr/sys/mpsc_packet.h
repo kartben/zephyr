@@ -3,6 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for MPSC packet buffer header definitions.
+ * @ingroup mpsc_packet
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_MPSC_PACKET_H_
 #define ZEPHYR_INCLUDE_SYS_MPSC_PACKET_H_
 

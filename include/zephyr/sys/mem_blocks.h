@@ -8,6 +8,7 @@
  * @file
  *
  * @brief Memory Blocks Allocator
+ * @ingroup mem_blocks_apis
  */
 
 #ifndef ZEPHYR_INCLUDE_SYS_MEM_BLOCKS_H_

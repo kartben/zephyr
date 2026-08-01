@@ -3,6 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the multi producer, single consumer (MPSC) packet buffer API.
+ * @ingroup mpsc_buf
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_MPSC_PBUF_H_
 #define ZEPHYR_INCLUDE_SYS_MPSC_PBUF_H_
 

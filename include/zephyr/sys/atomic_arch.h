@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief Architecture-specific atomic operation declarations.
+ * @ingroup atomic_apis
  *
  * The public documentation for these operations lives in <zephyr/sys/atomic.h>.
  */

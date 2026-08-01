@@ -3,6 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the low level heap allocator API (sys_heap).
+ * @ingroup low_level_heap_allocator
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_SYS_HEAP_H_
 #define ZEPHYR_INCLUDE_SYS_SYS_HEAP_H_
 

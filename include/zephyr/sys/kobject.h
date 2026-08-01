@@ -3,6 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the kernel object permission and allocation APIs.
+ * @ingroup usermode_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_KOBJECT_H
 #define ZEPHYR_INCLUDE_SYS_KOBJECT_H
 

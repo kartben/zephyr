@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Internal helpers backing the cbprintf() implementation.
+ * @ingroup internal_api
  */
 
 #ifndef ZEPHYR_INCLUDE_SYS_CBPRINTF_INTERNAL_H_
