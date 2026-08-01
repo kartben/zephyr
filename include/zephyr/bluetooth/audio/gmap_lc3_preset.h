@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Header for Bluetooth GMAP LC3 presets.
+ * @ingroup bt_gmap_lc3_preset
  *
  * Copyright (c) 2023-2024 Nordic Semiconductor ASA
  *

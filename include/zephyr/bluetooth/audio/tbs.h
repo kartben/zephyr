@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Public APIs for Bluetooth Telephone Bearer Service.
+ * @ingroup bt_tbs
  *
  * Copyright (c) 2020 Bose Corporation
  * Copyright (c) 2021-2026 Nordic Semiconductor ASA

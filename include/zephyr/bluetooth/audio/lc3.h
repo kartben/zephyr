@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Bluetooth LC3 codec handling
+ * @ingroup bt_lc3
  */
 
 /*

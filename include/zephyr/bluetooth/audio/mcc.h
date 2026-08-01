@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Bluetooth Media Control Client (MCC) APIs.
+ * @ingroup bt_mcc
  */
 
 /*

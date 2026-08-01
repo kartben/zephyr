@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Bluetooth Media Proxy APIs
+ * @ingroup bt_media_proxy
  */
 
 /*

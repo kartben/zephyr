@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Header for Bluetooth Audio Content Control Identifier.
+ * @ingroup bt_ccid
  *
  * Copyright (c) 2020 Bose Corporation
  * Copyright (c) 2021-2024 Nordic Semiconductor ASA

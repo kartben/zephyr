@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Bluetooth Audio Input Control Service APIs.
+ * @ingroup bt_aics
  */
 
 /*

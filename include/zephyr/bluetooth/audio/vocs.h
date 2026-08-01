@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Bluetooth Volume Offset Control Service (VOCS) APIs.
+ * @ingroup bt_vocs
  */
 
 /*

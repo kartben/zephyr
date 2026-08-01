@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Bluetooth Published Audio Capabilities Service (PACS) APIs
+ * @ingroup bt_pacs
  */
 
 /* Copyright (c) 2021 Intel Corporation

@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Bluetooth Hearing Access Service (HAS) APIs.
+ * @ingroup bt_has
  */
 
 /*

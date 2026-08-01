@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Bluetooth Common Audio Profile (CAP) APIs.
+ * @ingroup bt_cap
  */
 
 /*
