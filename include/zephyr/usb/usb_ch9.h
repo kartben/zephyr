@@ -436,6 +436,7 @@ struct usb_ep_descriptor {
 	uint8_t bDescriptorType;
 	/** Endpoint address. */
 	uint8_t bEndpointAddress;
+	/** Endpoint attributes. */
 	union {
 		/** Raw endpoint attributes. */
 		uint8_t bmAttributes;
