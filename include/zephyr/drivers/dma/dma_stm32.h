@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for STM32 DMA driver Devicetree helper macros.
+ * @ingroup dma_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_DMA_DMA_STM32_H_
 #define ZEPHYR_INCLUDE_DRIVERS_DMA_DMA_STM32_H_
 

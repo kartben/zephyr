@@ -5,6 +5,12 @@
  *
  */
 
+/**
+ * @file
+ * @brief Header file for Nuvoton NPCX GDMA driver channel configuration macros.
+ * @ingroup dma_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_DMA_DMA_NPCX_GDMA_H_
 #define ZEPHYR_INCLUDE_DRIVERS_DMA_DMA_NPCX_GDMA_H_
 

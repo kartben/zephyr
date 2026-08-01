@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the Intel LPSS DMA driver APIs.
+ * @ingroup dma_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_DMA_DMA_INTEL_LPSS_H_
 #define ZEPHYR_INCLUDE_DRIVERS_DMA_DMA_INTEL_LPSS_H_
 

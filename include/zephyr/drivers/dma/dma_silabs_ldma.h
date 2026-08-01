@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for Silicon Labs LDMA driver specific helpers and APIs.
+ * @ingroup dma_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_DMA_DMA_SILABS_LDMA_H_
 #define ZEPHYR_INCLUDE_DRIVERS_DMA_DMA_SILABS_LDMA_H_
 

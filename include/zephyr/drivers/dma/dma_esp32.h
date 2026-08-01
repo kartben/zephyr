@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for Espressif ESP32 DMA driver GDMA trigger sources and Devicetree helpers.
+ * @ingroup dma_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_DMA_DMA_ESP32_H_
 #define ZEPHYR_INCLUDE_DRIVERS_DMA_DMA_ESP32_H_
 

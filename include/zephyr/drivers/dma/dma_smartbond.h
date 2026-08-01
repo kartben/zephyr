@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for Renesas SmartBond vendor specific DMA trigger sources.
+ * @ingroup dma_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_DMA_DMA_SMARTBOND_H_
 #define ZEPHYR_INCLUDE_DRIVERS_DMA_DMA_SMARTBOND_H_
 
