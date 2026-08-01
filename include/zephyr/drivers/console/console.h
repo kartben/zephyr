@@ -17,6 +17,7 @@
 extern "C" {
 #endif
 
+/** @brief Maximum length of a console input line. */
 #define CONSOLE_MAX_LINE_LEN CONFIG_CONSOLE_INPUT_MAX_LINE_LEN
 
 /** @brief Console input representation

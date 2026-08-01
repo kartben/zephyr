@@ -19,6 +19,12 @@
 extern "C" {
 #endif
 
+/**
+ * @brief Display any console output that is still buffered.
+ *
+ * Ensure that everything sent to the console so far is displayed, even
+ * if the last line was not yet terminated with a newline.
+ */
 void posix_flush_stdout(void);
 
 #ifdef __cplusplus
