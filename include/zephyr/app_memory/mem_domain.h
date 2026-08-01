@@ -100,6 +100,7 @@ struct k_mem_domain {
 	uint8_t num_partitions;
 };
 
+/** Memory domain type */
 typedef struct k_mem_domain k_mem_domain_t;
 
 /**
