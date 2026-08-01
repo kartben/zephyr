@@ -382,9 +382,9 @@ struct ieee802154_phy_supported_channels {
 enum ieee802154_phy_hrp_uwb_nominal_prf {
 	/** standard modes, see section 8.3.2, table 8-88. */
 	IEEE802154_PHY_HRP_UWB_PRF_OFF = 0,
-	IEEE802154_PHY_HRP_UWB_NOMINAL_4_M = BIT(0),
-	IEEE802154_PHY_HRP_UWB_NOMINAL_16_M = BIT(1),
-	IEEE802154_PHY_HRP_UWB_NOMINAL_64_M = BIT(2),
+	IEEE802154_PHY_HRP_UWB_NOMINAL_4_M = BIT(0),  /**< Nominal mean PRF of 4 MHz */
+	IEEE802154_PHY_HRP_UWB_NOMINAL_16_M = BIT(1), /**< Nominal mean PRF of 16 MHz */
+	IEEE802154_PHY_HRP_UWB_NOMINAL_64_M = BIT(2), /**< Nominal mean PRF of 64 MHz */
 
 	/**
 	 * enhanced ranging device (ERDEV) modes not specified in table 8-88,
@@ -392,7 +392,9 @@ enum ieee802154_phy_hrp_uwb_nominal_prf {
 	 * section 15.3.4.2 and section 15.3.4.3.
 	 */
 	IEEE802154_PHY_HRP_UWB_NOMINAL_64_M_BPRF = BIT(3),
+	/** Nominal mean PRF of 128 MHz (HPRF mode) */
 	IEEE802154_PHY_HRP_UWB_NOMINAL_128_M_HPRF = BIT(4),
+	/** Nominal mean PRF of 256 MHz (HPRF mode) */
 	IEEE802154_PHY_HRP_UWB_NOMINAL_256_M_HPRF = BIT(5),
 };
 
@@ -597,6 +599,7 @@ typedef void (*ieee802154_event_cb_t)(const struct device *dev,
 
 /** Filter value, see @ref ieee802154_radio_api::filter */
 struct ieee802154_filter {
+	/** Filter value, the valid member is defined by the filter type */
 	union {
 		/** Extended address, in little endian */
 		uint8_t *ieee_addr;
@@ -1341,6 +1344,7 @@ enum ieee802154_attr {
  * driver and valid throughout the lifetime of the driver instance.
  */
 struct ieee802154_attr_value {
+	/** Attribute value, the valid member depends on the queried attribute */
 	union {
 		/* TODO: Implement configuration of phyCurrentPage once drivers
 		 * need to support channel page switching at runtime.
