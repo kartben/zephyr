@@ -20,6 +20,7 @@
 extern "C" {
 #endif
 
+/** Extended sensor attributes for the TMP108 */
 enum sensor_attribute_tmp_108 {
 	/** Turn on power saving/one shot mode */
 	SENSOR_ATTR_TMP108_ONE_SHOT_MODE = SENSOR_ATTR_PRIV_START,
