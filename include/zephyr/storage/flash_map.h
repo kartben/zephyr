@@ -9,6 +9,7 @@
 /**
  * @file
  * @brief Public API for flash map
+ * @ingroup flash_area_api
  */
 
 #ifndef ZEPHYR_INCLUDE_STORAGE_FLASH_MAP_H_

@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Disk Access layer API
+ * @ingroup disk_access_interface
  *
  * This file contains APIs for disk access.
  */

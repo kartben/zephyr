@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief Public API for stream writes to flash
+ * @ingroup stream_flash
  */
 
 #ifndef ZEPHYR_INCLUDE_STORAGE_STREAM_FLASH_H_
