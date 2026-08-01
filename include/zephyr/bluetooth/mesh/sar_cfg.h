@@ -36,7 +36,7 @@ struct bt_mesh_sar_tx {
 	/** SAR Unicast Retransmissions Without Progress Count state */
 	uint8_t unicast_retrans_without_prog_count;
 
-	/* SAR Unicast Retransmissions Interval Step state */
+	/** SAR Unicast Retransmissions Interval Step state */
 	uint8_t unicast_retrans_int_step;
 
 	/** SAR Unicast Retransmissions Interval Increment state */

@@ -30,8 +30,8 @@ extern "C" {
 
 /** Available authentication algorithms. */
 enum {
-	BT_MESH_PROV_AUTH_CMAC_AES128_AES_CCM,
-	BT_MESH_PROV_AUTH_HMAC_SHA256_AES_CCM,
+	BT_MESH_PROV_AUTH_CMAC_AES128_AES_CCM,  /**< CMAC-AES128 with AES-CCM */
+	BT_MESH_PROV_AUTH_HMAC_SHA256_AES_CCM,  /**< HMAC-SHA256 with AES-CCM */
 };
 
 /** OOB Type field values. */
@@ -42,7 +42,7 @@ enum {
 
 /** Available Provisioning output authentication actions. */
 typedef enum {
-	BT_MESH_NO_OUTPUT       = 0,
+	BT_MESH_NO_OUTPUT       = 0,        /**< No output action */
 	BT_MESH_BLINK           = BIT(0),   /**< Blink */
 	BT_MESH_BEEP            = BIT(1),   /**< Beep */
 	BT_MESH_VIBRATE         = BIT(2),   /**< Vibrate */
@@ -52,7 +52,7 @@ typedef enum {
 
 /** Available Provisioning input authentication actions. */
 typedef enum {
-	BT_MESH_NO_INPUT      = 0,
+	BT_MESH_NO_INPUT      = 0,	   /**< No input action */
 	BT_MESH_PUSH          = BIT(0),	   /**< Push */
 	BT_MESH_TWIST         = BIT(1),	   /**< Twist */
 	BT_MESH_ENTER_NUMBER  = BIT(2),	   /**< Input number */

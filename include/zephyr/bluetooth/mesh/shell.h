@@ -34,11 +34,11 @@ extern "C" {
 
 /** Target context for the mesh shell */
 struct bt_mesh_shell_target {
-	/* Current destination address */
+	/** Current destination address */
 	uint16_t dst;
-	/* Current net index */
+	/** Current net index */
 	uint16_t net_idx;
-	/* Current app index */
+	/** Current app index */
 	uint16_t app_idx;
 };
 
