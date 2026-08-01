@@ -15,6 +15,11 @@
 
 #include <stdbool.h>
 
+/**
+ * @brief Function called on a CPU before it starts scheduling threads.
+ *
+ * @param arg Argument passed to k_smp_cpu_start() or k_smp_cpu_resume().
+ */
 typedef void (*smp_init_fn)(void *arg);
 
 /**

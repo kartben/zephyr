@@ -210,6 +210,14 @@ struct _thread_userspace_local_data {
 };
 #endif /* CONFIG_THREAD_USERSPACE_LOCAL_DATA */
 
+/**
+ * @ingroup thread_apis
+ * Runtime statistics of a thread or of a CPU
+ *
+ * Which fields are present depends on the enabled runtime statistics
+ * options. Retrieved with k_thread_runtime_stats_get() and
+ * k_thread_runtime_stats_cpu_get().
+ */
 typedef struct k_thread_runtime_stats {
 #ifdef CONFIG_SCHED_THREAD_USAGE
 	/*
@@ -264,6 +272,7 @@ struct z_poller {
  */
 struct k_thread {
 
+	/** common thread state used by the scheduler */
 	struct _thread_base base;
 
 	/** defined by the architecture, but all archs need these */
@@ -386,6 +395,11 @@ struct k_thread {
 };
 
 typedef struct k_thread _thread_t;
+
+/**
+ * @ingroup thread_apis
+ * Thread identifier
+ */
 typedef struct k_thread *k_tid_t;
 
 #endif /* ZEPHYR_INCLUDE_KERNEL_THREAD_H_ */
