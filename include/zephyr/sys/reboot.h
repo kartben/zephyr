@@ -21,7 +21,19 @@
 extern "C" {
 #endif
 
+/**
+ * @brief Warm reboot: restart the system without a full hardware reset.
+ *
+ * The exact behavior is architecture and platform specific; not all
+ * platforms distinguish reboot types.
+ */
 #define SYS_REBOOT_WARM 0
+
+/**
+ * @brief Cold reboot: restart the system from a state equivalent to power-on.
+ *
+ * The exact behavior is architecture and platform specific.
+ */
 #define SYS_REBOOT_COLD 1
 
 /**
