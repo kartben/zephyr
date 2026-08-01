@@ -85,6 +85,7 @@ union cbprintf_package_hdr {
 	/** Header description */
 	struct cbprintf_package_desc desc;
 
+	/** Raw pointer-sized view of the header */
 	void *raw;
 
 #if defined(CONFIG_CBPRINTF_PACKAGE_HEADER_STORE_CREATION_FLAGS) && !defined(CONFIG_64BIT)
