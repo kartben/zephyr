@@ -19,8 +19,13 @@ extern "C" {
 
 #include <zephyr/drivers/sensor.h>
 
+/**
+ * @brief Extended sensor attributes for the IT8XXX2 voltage comparator
+ */
 enum it8xxx2_vcmp_sensor_attribute {
+	/** Lower voltage threshold, in millivolts */
 	SENSOR_ATTR_LOWER_VOLTAGE_THRESH = SENSOR_ATTR_PRIV_START,
+	/** Upper voltage threshold, in millivolts */
 	SENSOR_ATTR_UPPER_VOLTAGE_THRESH,
 };
 
