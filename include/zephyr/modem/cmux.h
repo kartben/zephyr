@@ -51,11 +51,21 @@ extern "C" {
 
 struct modem_cmux;
 
+/** Modem CMUX event */
 enum modem_cmux_event {
+	/** CMUX connection has been established */
 	MODEM_CMUX_EVENT_CONNECTED = 0,
+	/** CMUX connection has been closed down */
 	MODEM_CMUX_EVENT_DISCONNECTED,
 };
 
+/**
+ * @brief Callback called when a CMUX event occurs
+ *
+ * @param cmux CMUX instance the event occurred on
+ * @param event CMUX event
+ * @param user_data Free to use user data set in @ref modem_cmux_config
+ */
 typedef void (*modem_cmux_callback)(struct modem_cmux *cmux, enum modem_cmux_event event,
 				    void *user_data);
 
