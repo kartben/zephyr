@@ -213,7 +213,7 @@ typedef enum bt_l2cap_chan_status {
 	/** @brief Channel encryption pending status */
 	BT_L2CAP_STATUS_ENCRYPT_PENDING,
 
-	/* Total number of status - must be at the end of the enum */
+	/** Total number of status - must be at the end of the enum */
 	BT_L2CAP_NUM_STATUS,
 } __packed bt_l2cap_chan_status_t;
 
@@ -223,9 +223,14 @@ struct bt_l2cap_chan {
 	struct bt_conn			*conn;
 	/** Channel operations reference */
 	const struct bt_l2cap_chan_ops	*ops;
+	/** @cond INTERNAL_HIDDEN
+	 *  Fields used internally by the stack.
+	 */
 	sys_snode_t			node;
 	bt_l2cap_chan_destroy_t		destroy;
+	/** @endcond */
 
+	/** Channel status flags, one bit per @ref bt_l2cap_chan_status value */
 	ATOMIC_DEFINE(status, BT_L2CAP_NUM_STATUS);
 };
 
@@ -487,7 +492,11 @@ struct bt_l2cap_br_endpoint {
 
 /** I-Frame transmission window for none `BASIC` mode L2cap connected channel. */
 struct bt_l2cap_br_window {
+	/** @cond INTERNAL_HIDDEN
+	 *  Field used for list handling.
+	 */
 	sys_snode_t node;
+	/** @endcond */
 
 	/** tx seq */
 	uint16_t tx_seq;
@@ -503,10 +512,12 @@ struct bt_l2cap_br_window {
 	bool srej;
 	/** retransmit flag */
 	bool retransmit;
+	/** @cond INTERNAL_HIDDEN */
 	/* Save PDU state */
 	struct net_buf_simple_state sdu_state;
-	/** @internal Holds the sending buffer. */
+	/* Holds the sending buffer. */
 	struct net_buf *sdu;
+	/** @endcond */
 };
 
 /** @brief BREDR L2CAP Channel structure. */
@@ -517,19 +528,27 @@ struct bt_l2cap_br_chan {
 	struct bt_l2cap_br_endpoint     rx;
 	/** Channel Transmission Endpoint */
 	struct bt_l2cap_br_endpoint     tx;
-	/* For internal use only */
+	/** @cond INTERNAL_HIDDEN
+	 *  For internal use only.
+	 */
 	atomic_t                        flags[1];
+	/** @endcond */
 
+	/** Channel state */
 	bt_l2cap_chan_state_t           state;
 	/** Remote PSM to be connected */
 	uint16_t                        psm;
 	/** Helps match request context during CoC */
 	uint8_t                         ident;
+	/** Required minimum security level */
 	bt_security_t                   required_sec_level;
 
-	/* Response Timeout eXpired (RTX) timer */
+	/** @cond INTERNAL_HIDDEN
+	 *  Response Timeout eXpired (RTX) timer.
+	 */
 	struct k_work_delayable	        rtx_work;
 	struct k_work_sync              rtx_sync;
+	/** @endcond */
 
 	/** @internal To be used with @ref bt_conn.upper_data_ready */
 	sys_snode_t                     _pdu_ready;
@@ -539,6 +558,7 @@ struct bt_l2cap_br_chan {
 	sys_slist_t                     _pdu_tx_queue;
 
 #if defined(CONFIG_BT_L2CAP_RET_FC) || defined(__DOXYGEN__)
+	/** @cond INTERNAL_HIDDEN */
 	/** @internal Holds the remaining length of current sending buffer */
 	size_t                          _pdu_remaining;
 
@@ -608,6 +628,7 @@ struct bt_l2cap_br_chan {
 	struct k_work_delayable         ret_work;
 	/** @internal Monitor Timer */
 	struct k_work_delayable         monitor_work;
+	/** @endcond */
 #endif /* CONFIG_BT_L2CAP_RET_FC */
 };
 
@@ -729,7 +750,7 @@ struct bt_l2cap_chan_ops {
 	 */
 	void (*status)(struct bt_l2cap_chan *chan, atomic_t *status);
 
-	/* @brief Channel released callback
+	/** @brief Channel released callback
 	 *
 	 * If this callback is set it is called when the stack has release all
 	 * references to the channel object.
@@ -849,7 +870,11 @@ struct bt_l2cap_server {
 	int (*accept)(struct bt_conn *conn, struct bt_l2cap_server *server,
 		      struct bt_l2cap_chan **chan);
 
+	/** @cond INTERNAL_HIDDEN
+	 *  Field used for list handling.
+	 */
 	sys_snode_t node;
+	/** @endcond */
 };
 
 /** @brief Register L2CAP server.
