@@ -28,8 +28,10 @@ extern "C" {
  */
 #define BT_UUID_NUS_SRV_VAL \
 	BT_UUID_128_ENCODE(0x6e400001, 0xb5a3, 0xf393, 0xe0a9, 0xe50e24dcca9e)
+/** @brief UUID value of the NUS RX Characteristic */
 #define BT_UUID_NUS_RX_CHAR_VAL \
 	BT_UUID_128_ENCODE(0x6e400002, 0xb5a3, 0xf393, 0xe0a9, 0xe50e24dcca9e)
+/** @brief UUID value of the NUS TX Characteristic */
 #define BT_UUID_NUS_TX_CHAR_VAL \
 	BT_UUID_128_ENCODE(0x6e400003, 0xb5a3, 0xf393, 0xe0a9, 0xe50e24dcca9e)
 
