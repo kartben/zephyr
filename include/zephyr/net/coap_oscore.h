@@ -7,6 +7,7 @@
 
 /** @file
  * @brief CoAP OSCORE API
+ * @ingroup coap_oscore
  *
  * A public API for creating OSCORE (RFC 8613) security contexts that can be
  * attached to a CoAP client or service.

@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief CoAP Events code public header
+ * @ingroup coap_mgmt
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_COAP_MGMT_H_

@@ -9,6 +9,7 @@
  * @file
  *
  * @brief CoAP implementation for Zephyr.
+ * @ingroup coap
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_COAP_H_

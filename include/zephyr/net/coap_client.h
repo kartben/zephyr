@@ -1,5 +1,6 @@
 /** @file
  * @brief CoAP client API
+ * @ingroup coap_client
  *
  * An API for applications to do CoAP requests
  */
