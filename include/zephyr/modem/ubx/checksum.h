@@ -14,10 +14,14 @@
 #ifndef ZEPHYR_INCLUDE_MODEM_UBX_CHECKSUM_H_
 #define ZEPHYR_INCLUDE_MODEM_UBX_CHECKSUM_H_
 
-/** Macrobatics to compute UBX checksum at compile time */
-
+/**
+ * @brief Compute the first UBX checksum byte (CK_A) at compile time
+ *
+ * @param ... Bytes covered by the checksum (at most 20)
+ */
 #define UBX_CSUM_A(...) UBX_CSUM_A_(__VA_ARGS__)
 
+/** @cond INTERNAL_HIDDEN */
 #define UBX_CSUM_A_(...) UBX_CSUM_A_I(__VA_ARGS__,						   \
 				      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
@@ -25,9 +29,16 @@
 		     a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, ...)			   \
 	((a1) + (a2) + (a3) + (a4) + (a5) + (a6) + (a7) + (a8) + (a9) + (a10) +			   \
 	 (a11) + (a12) + (a13) + (a14) + (a15) + (a16) + (a17) + (a18) + (a19) + (a20)) & 0xFF
+/** @endcond */
 
+/**
+ * @brief Compute the second UBX checksum byte (CK_B) at compile time
+ *
+ * @param ... Bytes covered by the checksum (at most 20)
+ */
 #define UBX_CSUM_B(...) UBX_CSUM_B_(__VA_ARGS__)
 
+/** @cond INTERNAL_HIDDEN */
 #define UBX_CSUM_B_(...) UBX_CSUM_B_I(NUM_VA_ARGS(__VA_ARGS__), __VA_ARGS__,			   \
 				     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
@@ -38,7 +49,16 @@
 	 ((len - 8) * a9) + ((len - 9) * a10) + ((len - 10) * a11) + ((len - 11) * a12) +	   \
 	 ((len - 12) * a13) + ((len - 13) * a14) + ((len - 14) * a15) + ((len - 15) * a16) +	   \
 	 ((len - 16) * a17) + ((len - 17) * a18) + ((len - 18) * a19) + ((len - 19) * a20)) & 0xFF
+/** @endcond */
 
+/**
+ * @brief Compute both UBX checksum bytes (CK_A, CK_B) at compile time
+ *
+ * Expands to the two comma separated checksum bytes of a UBX frame,
+ * suitable for use in a byte array initializer.
+ *
+ * @param ... Bytes covered by the checksum (at most 20)
+ */
 #define UBX_CSUM(...) UBX_CSUM_A(__VA_ARGS__), UBX_CSUM_B(__VA_ARGS__)
 
 #endif /* ZEPHYR_INCLUDE_MODEM_UBX_CHECKSUM_H_ */
