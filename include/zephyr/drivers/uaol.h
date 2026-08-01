@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public APIs for USB Audio Offload Link (UAOL) drivers
+ * @ingroup audio_interface
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_UAOL_H_
