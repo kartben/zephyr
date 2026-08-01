@@ -1,5 +1,6 @@
 /** @file
  *  @brief Attribute Protocol handling.
+ *  @ingroup bt_att
  */
 
 /*

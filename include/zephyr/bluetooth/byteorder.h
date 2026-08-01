@@ -1,5 +1,6 @@
 /** @file
  *  @brief Bluetooth byteorder API
+ *  @ingroup bt_byteorder
  */
 
 /*

@@ -1,5 +1,6 @@
 /** @file
  *  @brief Bluetooth data buffer API
+ *  @ingroup bt_buf
  */
 
 /*

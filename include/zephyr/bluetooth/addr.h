@@ -1,5 +1,6 @@
 /** @file
  *  @brief Bluetooth device address definitions and utilities.
+ *  @ingroup bt_addr
  */
 
 /*

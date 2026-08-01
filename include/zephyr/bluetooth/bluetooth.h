@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Bluetooth subsystem core APIs.
+ * @ingroup bluetooth
  */
 
 /*

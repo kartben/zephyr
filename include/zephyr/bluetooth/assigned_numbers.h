@@ -1,5 +1,6 @@
 /** @file
  *  @brief Bluetooth Assigned Numbers, codes and identifiers.
+ *  @ingroup bt_assigned_numbers
  */
 
 /*
