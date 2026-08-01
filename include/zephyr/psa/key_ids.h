@@ -8,6 +8,7 @@
  * @file zephyr/psa/key_ids.h
  *
  * @brief This file defines the key ID ranges of the existing users of the PSA Crypto API.
+ * @ingroup psa_secure_storage
  *
  * In addition to the application, different subsystems store and use persistent keys through the
  * PSA Crypto API. Because they are not aware of each other, collisions are avoided by having them
