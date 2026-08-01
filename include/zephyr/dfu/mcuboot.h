@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief MCUboot public API for MCUboot control of image boot process
+ * @ingroup mcuboot_api
  *
  * The header declares API functions that can be used to get information
  * on and select application images for boot.

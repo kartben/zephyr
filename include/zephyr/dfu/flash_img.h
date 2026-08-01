@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief Flash image header file
+ * @ingroup flash_img_api
  *
  * This header file declares prototypes for the flash image APIs used for DFU.
  */
