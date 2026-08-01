@@ -3,6 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the TLE9104 MFD driver.
+ * @ingroup mfd_interfaces
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MFD_TLE9104_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MFD_TLE9104_H_
 

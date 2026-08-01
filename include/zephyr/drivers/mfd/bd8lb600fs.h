@@ -3,6 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the BD8LB600FS MFD driver.
+ * @ingroup mdf_interface_bd8lb600fs
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MFD_BD8LB600FS_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MFD_BD8LB600FS_H_
 

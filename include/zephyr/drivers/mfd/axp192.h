@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the AXP192 MFD driver.
+ * @ingroup mdf_interface_axp192
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MFD_AXP192_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MFD_AXP192_H_
 

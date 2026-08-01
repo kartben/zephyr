@@ -3,6 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the nPM13xx MFD driver.
+ * @ingroup mfd_interface_npm13xx
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MFD_NPM13XX_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MFD_NPM13XX_H_
 

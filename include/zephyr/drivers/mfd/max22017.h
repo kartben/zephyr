@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the MAX22017 MFD driver.
+ * @ingroup mdf_interface_max22017
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MFD_MAX22017_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MFD_MAX22017_H_
 

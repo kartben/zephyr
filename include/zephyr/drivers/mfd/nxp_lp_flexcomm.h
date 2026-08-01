@@ -3,6 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the NXP LP Flexcomm MFD driver.
+ * @ingroup mfd_interfaces
+ */
+
 #ifndef ZEPHYR_DRIVERS_NXP_LP_FLEXCOMM_H_
 #define ZEPHYR_DRIVERS_NXP_LP_FLEXCOMM_H_
 

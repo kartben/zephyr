@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the DS3231 MFD driver.
+ * @ingroup mfd_interfaces
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MFD_DS3231_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MFD_DS3231_H_
 

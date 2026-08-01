@@ -3,6 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the nPM2100 MFD driver.
+ * @ingroup mdf_interface_npm2100
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MFD_NPM2100_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MFD_NPM2100_H_
 

@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the PCA9422 MFD driver.
+ * @ingroup mdf_interface_pca9422
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MFD_PCA9422_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MFD_PCA9422_H_
 

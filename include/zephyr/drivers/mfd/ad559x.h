@@ -3,6 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the AD559X MFD driver.
+ * @ingroup mdf_interface_ad559x
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MFD_AD559X_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MFD_AD559X_H_
 
