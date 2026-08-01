@@ -95,7 +95,7 @@ struct mipi_dsi_device {
 	uint32_t mode_flags;
 };
 
-/*
+/**
  * Per message flag to indicate the message must be sent
  * using Low Power Mode instead of controller default.
  */
@@ -123,10 +123,13 @@ struct mipi_dsi_msg {
 
 /** MIPI-DSI host driver API. */
 __subsystem struct mipi_dsi_driver_api {
+	/** See mipi_dsi_attach() for argument descriptions */
 	int (*attach)(const struct device *dev, uint8_t channel,
 		      const struct mipi_dsi_device *mdev);
+	/** See mipi_dsi_transfer() for argument descriptions */
 	ssize_t (*transfer)(const struct device *dev, uint8_t channel,
 			    struct mipi_dsi_msg *msg);
+	/** See mipi_dsi_detach() for argument descriptions */
 	int (*detach)(const struct device *dev, uint8_t channel,
 		      const struct mipi_dsi_device *mdev);
 };
