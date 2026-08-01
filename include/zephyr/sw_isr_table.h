@@ -297,6 +297,7 @@ struct z_shared_isr_table_entry z_shared_sw_isr_table[];
 
 #endif
 
+/** @brief Number of entries in the interrupt tables. */
 #define IRQ_TABLE_SIZE (CONFIG_NUM_IRQS - CONFIG_GEN_IRQ_START_VECTOR)
 
 #ifdef CONFIG_DYNAMIC_INTERRUPTS
