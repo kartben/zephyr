@@ -5,7 +5,9 @@
  */
 
 /**
- * @brief STM32 EXTI interrupt controller API
+ * @file
+ * @brief Header file for the STM32 EXTI interrupt controller API.
+ * @ingroup misc_interfaces
  *
  * This API is used to interact with STM32 EXTI interrupt controller
  */

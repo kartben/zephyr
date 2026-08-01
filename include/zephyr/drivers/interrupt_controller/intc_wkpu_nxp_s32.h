@@ -5,7 +5,9 @@
  */
 
 /**
- * @brief Driver for Wake-up interrupt/event controller in NXP S32 MCUs
+ * @file
+ * @brief Header file for the NXP S32 wake-up interrupt/event controller driver.
+ * @ingroup misc_interfaces
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_INTC_WKPU_NXP_S32_H_

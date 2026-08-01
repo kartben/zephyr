@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief MAX32 RV32 interrupt controller API
+ * @ingroup misc_interfaces
  *
  * This API is used to interact with MAX32 RV32 interrupt controller
  */

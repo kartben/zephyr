@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Driver for Platform Level Interrupt Controller (PLIC)
+ * @ingroup misc_interfaces
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_RISCV_PLIC_H_

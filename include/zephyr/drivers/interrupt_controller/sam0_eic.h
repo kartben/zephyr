@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the Atmel SAM0 EIC (External Interrupt Controller) driver API.
+ * @ingroup misc_interfaces
+ */
+
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_SAM0_EIC_H_
 #define ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_SAM0_EIC_H_

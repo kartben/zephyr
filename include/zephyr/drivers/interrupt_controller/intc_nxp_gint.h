@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief NXP Grouped GPIO Input Interrupt (GINT) driver API
+ * @ingroup misc_interfaces
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_INTC_NXP_GINT_H_

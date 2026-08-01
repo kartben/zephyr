@@ -6,7 +6,9 @@
  */
 
 /**
- * @brief GPIO interrupt controller API for STM32 MCUs
+ * @file
+ * @brief Header file for the STM32 GPIO interrupt controller API.
+ * @ingroup misc_interfaces
  *
  * This API is used to interact with the GPIO interrupt controller
  * of STM32 microcontrollers.

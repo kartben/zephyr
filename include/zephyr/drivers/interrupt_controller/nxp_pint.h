@@ -5,7 +5,9 @@
  */
 
 /**
- * @brief Driver for Pin interrupt and pattern match engine in NXP MCUs
+ * @file
+ * @brief Header file for the NXP pin interrupt and pattern match engine driver.
+ * @ingroup misc_interfaces
  *
  * The Pin interrupt and pattern match engine (PINT) supports
  * sourcing inputs from any pins on GPIO ports 0 and 1 of NXP MCUs

@@ -6,6 +6,7 @@
 /**
  * @file
  * @brief RISC-V APLIC (Advanced Platform-Level Interrupt Controller) driver API
+ * @ingroup misc_interfaces
  *
  * This header provides the API and register definitions for the RISC-V
  * Advanced Platform-Level Interrupt Controller (APLIC).

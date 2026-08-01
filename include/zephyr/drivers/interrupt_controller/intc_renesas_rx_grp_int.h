@@ -6,6 +6,7 @@
 /**
  * @file
  * @brief Renesas RX group interrupt controller header file
+ * @ingroup misc_interfaces
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_INTC_RENESAS_RX_GRP_INT_H_

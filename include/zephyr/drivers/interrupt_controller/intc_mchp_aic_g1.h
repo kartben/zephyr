@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Microchip AIC G1 Driver Interface Functions
+ * @ingroup misc_interfaces
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_INTC_MCHP_AIC_G1_H_

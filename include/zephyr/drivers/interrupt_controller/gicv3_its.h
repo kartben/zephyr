@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Driver for ARM Generic Interrupt Controller V3 Interrupt Translation Service
+ * @ingroup misc_interfaces
  *
  * The Generic Interrupt Controller (GIC) Interrupt Translation Service translates an input
  * EventID from a device, identified by its DeviceID, determines a corresponding INTID for

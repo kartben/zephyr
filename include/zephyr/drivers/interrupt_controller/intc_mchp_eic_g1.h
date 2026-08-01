@@ -8,6 +8,7 @@
  * @file intc_mchp_eic_g1.h
  * @brief EIC driver header file for Microchip eic g1 peripheral.
  * This can be used to access the APIs implemented for the eic driver.
+ * @ingroup misc_interfaces
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_INTC_MCHP_EIC_G1_H_

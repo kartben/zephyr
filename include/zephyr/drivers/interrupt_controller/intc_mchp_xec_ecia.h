@@ -5,7 +5,9 @@
  */
 
 /**
- * @brief Driver for External interrupt controller in Microchip XEC devices
+ * @file
+ * @brief Header file for the Microchip XEC external interrupt controller driver.
+ * @ingroup misc_interfaces
  *
  * Based on reference manuals:
  *   Reference Manuals for MEC152x and MEC172x ARM(r) 32-bit MCUs

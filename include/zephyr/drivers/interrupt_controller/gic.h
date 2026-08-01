@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Driver for ARM Generic Interrupt Controller
+ * @ingroup misc_interfaces
  *
  * The Generic Interrupt Controller (GIC) is the default interrupt controller
  * for the ARM A and R profile cores.  This driver is used by the ARM arch
