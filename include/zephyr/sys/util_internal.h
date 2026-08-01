@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief Misc utilities
+ * @ingroup internal_api
  *
  * Repetitive or obscure helper macros needed by sys/util.h.
  */

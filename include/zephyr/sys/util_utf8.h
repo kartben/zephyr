@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief UTF-8 utilities
+ * @ingroup sys-util
  *
  * Misc UTF-8 utilities.
  */

@@ -2,6 +2,13 @@
  * Copyright (c) 2021 Intel Corporation
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the lockless shared memory window byte stream.
+ * @ingroup datastructure_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_WINSTREAM_H_
 #define ZEPHYR_INCLUDE_SYS_WINSTREAM_H_
 

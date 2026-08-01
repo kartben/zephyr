@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief Utilities supporting operation on time data structures.
+ * @ingroup timeutil_apis
  *
  * POSIX defines gmtime() to convert from time_t to struct tm, but all
  * inverse transformations are non-standard or require access to time
