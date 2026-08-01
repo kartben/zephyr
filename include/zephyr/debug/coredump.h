@@ -19,19 +19,30 @@ extern "C" {
  * Define COREDUMP_*_STR as public to allow coredump_backend_other to re-use
  * these strings if necessary
  */
+
+/** Marker for the beginning of a coredump in the output */
 #define COREDUMP_BEGIN_STR      "BEGIN#"
+
+/** Marker for the end of a coredump in the output */
 #define COREDUMP_END_STR        "END#"
+
+/** Marker in the output signifying that the coredump could not be produced */
 #define COREDUMP_ERROR_STR      "ERROR CANNOT DUMP#"
 
 /*
  * Need to prefix coredump strings to make it easier to parse
  * as log module adds its own prefixes.
  */
+
+/** Prefix for each line of coredump output, to ease parsing of log output */
 #define COREDUMP_PREFIX_STR     "#CD:"
 
 /**
  * @file
- *
+ * @brief Coredump APIs and definitions
+ */
+
+/**
  * @defgroup coredump_apis Coredump APIs
  * @since 2.4
  * @version 1.0.0
