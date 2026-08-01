@@ -3,6 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Public API for the Zbus message bus.
+ * @ingroup zbus_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_ZBUS_ZBUS_H_
 #define ZEPHYR_INCLUDE_ZBUS_ZBUS_H_
 
