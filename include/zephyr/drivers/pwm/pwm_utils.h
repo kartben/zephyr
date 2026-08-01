@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for PWM driver implementation utilities.
+ * @ingroup pwm_interface_backend
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_PWM_PWM_UTILS_H_
 #define ZEPHYR_INCLUDE_DRIVERS_PWM_PWM_UTILS_H_
 

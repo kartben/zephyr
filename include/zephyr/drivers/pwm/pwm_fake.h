@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the fake PWM driver API.
+ * @ingroup pwm_interface
+ */
+
 #ifndef INCLUDE_DRIVERS_PWM_PWM_FAKE_H_
 #define INCLUDE_DRIVERS_PWM_PWM_FAKE_H_
 
