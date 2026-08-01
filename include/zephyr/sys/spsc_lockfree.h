@@ -58,19 +58,19 @@
  * @warning Not to be manipulated without the macros!
  */
 struct spsc {
-	/* private value only the producer thread should mutate */
+	/** Private value only the producer thread should mutate */
 	unsigned long acquire;
 
-	/* private value only the consumer thread should mutate */
+	/** Private value only the consumer thread should mutate */
 	unsigned long consume;
 
-	/* producer mutable, consumer readable */
+	/** Producer mutable, consumer readable */
 	atomic_t in;
 
-	/* consumer mutable, producer readable */
+	/** Consumer mutable, producer readable */
 	atomic_t out;
 
-	/* mask used to automatically wrap values */
+	/** Mask used to automatically wrap values */
 	const unsigned long mask;
 };
 
