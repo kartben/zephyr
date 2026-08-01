@@ -6,7 +6,11 @@
 
 /**
  * @file ocpp.h
- *
+ * @brief OCPP Charge Point implementation
+ * @ingroup ocpp_api
+ */
+
+/**
  * @defgroup ocpp_api OCPP library
  * @since 4.3
  * @version 0.1.0
@@ -46,6 +50,7 @@ enum ocpp_auth_status {
 	OCPP_AUTH_CONCURRENT_TX /**< Parallel access of same IdTag */
 };
 
+/** @brief Reason of the OCPP user callback notification */
 enum ocpp_notify_reason {
 	/** User must fill the current reading */
 	OCPP_USR_GET_METER_VALUE,
@@ -85,7 +90,7 @@ enum ocpp_meter_measurand {
 	OCPP_OMM_TEMPERATURE,			/**< temperature inside charge point, in Celsius */
 	OCPP_OMM_VOLTAGE_AC_RMS,		/**< AC RMS supply voltage, in V */
 
-	OCPP_OMM_END
+	OCPP_OMM_END			/**< Number of measurands */
 };
 
 /** @brief OCPP user callback notification/request of input/output values
@@ -105,22 +110,22 @@ union ocpp_io_value {
 
 		 /** To be filled by user, value as string */
 		char val[CISTR50];
-	} meter_val;
+	} meter_val; /**< Valid if reason is OCPP_USR_GET_METER_VALUE */
 
 	struct {
 		char idtag[CISTR50];	/**< Input to user */
 
 		/** Input to user(optional). connector id -1 means invalid */
 		int id_con;
-	} start_charge;
+	} start_charge; /**< Valid if reason is OCPP_USR_START_CHARGING */
 
 	struct {
 		int id_con;	/**< Input to user, to stop charging connector */
-	} stop_charge;
+	} stop_charge; /**< Valid if reason is OCPP_USR_STOP_CHARGING */
 
 	struct {
 		int id_con;	/**< Input to user, to unlock connector id. */
-	} unlock_con;
+	} unlock_con; /**< Valid if reason is OCPP_USR_UNLOCK_CONNECTOR */
 };
 
 /** @brief Parameters for ocpp_init information about Charge Point (CP)
