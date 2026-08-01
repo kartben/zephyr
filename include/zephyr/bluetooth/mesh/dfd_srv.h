@@ -6,6 +6,11 @@
 
 /**
  * @file
+ * @brief API for the Firmware Distribution Server model
+ * @ingroup bt_mesh_dfd_srv
+ */
+
+/**
  * @defgroup bt_mesh_dfd_srv Firmware Distribution Server model
  * @ingroup bt_mesh_dfd
  * @{
@@ -25,6 +30,7 @@
 extern "C" {
 #endif
 
+/** @cond INTERNAL_HIDDEN */
 #ifndef CONFIG_BT_MESH_DFD_SRV_TARGETS_MAX
 #define CONFIG_BT_MESH_DFD_SRV_TARGETS_MAX 0
 #endif
@@ -36,6 +42,7 @@ extern "C" {
 #ifndef CONFIG_BT_MESH_DFD_SRV_SLOT_SPACE
 #define CONFIG_BT_MESH_DFD_SRV_SLOT_SPACE 0
 #endif
+/** @endcond */
 
 struct bt_mesh_dfd_srv;
 
@@ -209,22 +216,39 @@ struct bt_mesh_dfd_srv_cb {
 
 /** Firmware Distribution Server instance. */
 struct bt_mesh_dfd_srv {
+	/** Callback structure. */
 	const struct bt_mesh_dfd_srv_cb *cb;
+	/** Model entry pointer. */
 	const struct bt_mesh_model *mod;
+	/** Underlying Firmware Update Client. */
 	struct bt_mesh_dfu_cli dfu;
+	/** DFU Target nodes in the Distribution Receivers List. */
 	struct bt_mesh_dfu_target targets[CONFIG_BT_MESH_DFD_SRV_TARGETS_MAX];
+	/** Pull mode contexts for the DFU Target nodes. */
 	struct bt_mesh_blob_target_pull pull_ctxs[CONFIG_BT_MESH_DFD_SRV_TARGETS_MAX];
+	/** BLOB stream to read the distributed firmware image from. */
 	const struct bt_mesh_blob_io *io;
+	/** Number of DFU Target nodes in the Distribution Receivers List. */
 	uint16_t target_cnt;
+	/** Slot index of the firmware image being distributed. */
 	uint16_t slot_idx;
+	/** Whether to apply the firmware image after the transfer completes. */
 	bool apply;
+	/** Current Firmware Distribution phase. */
 	enum bt_mesh_dfd_phase phase;
+	/** BLOB Transfer Client transfer inputs. */
 	struct bt_mesh_blob_cli_inputs inputs;
 
+	/** Firmware upload state. */
 	struct {
+		/** Current upload phase. */
 		enum bt_mesh_dfd_upload_phase phase;
+		/** DFU image slot of the ongoing upload. */
 		struct bt_mesh_dfu_slot *slot;
+		/** @cond INTERNAL_HIDDEN */
 		const struct flash_area *area;
+		/** @endcond */
+		/** Underlying BLOB Transfer Server. */
 		struct bt_mesh_blob_srv blob;
 #ifdef CONFIG_BT_MESH_DFD_SRV_OOB_UPLOAD
 		bool is_oob;
