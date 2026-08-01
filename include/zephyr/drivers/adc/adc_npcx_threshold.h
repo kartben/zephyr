@@ -15,28 +15,43 @@
 
 #include <zephyr/device.h>
 
+/** @brief Relation between measured value and threshold value for event assertion. */
 enum adc_npcx_threshold_param_l_h {
+	/** Threshold event asserts when the measured value is higher than the threshold. */
 	ADC_NPCX_THRESHOLD_PARAM_L_H_HIGHER,
+	/**
+	 * Threshold event asserts when the measured value is lower than or
+	 * equal to the threshold.
+	 */
 	ADC_NPCX_THRESHOLD_PARAM_L_H_LOWER,
 };
 
+/** @brief ADC threshold parameters. */
 enum adc_npcx_threshold_param_type {
-	/* Selects ADC channel to be used for measurement */
+	/** Selects ADC channel to be used for measurement. */
 	ADC_NPCX_THRESHOLD_PARAM_CHNSEL,
-	/* Sets relation between measured value and assetion threshold value.*/
+	/**
+	 * Sets relation between measured value and assertion threshold value,
+	 * one of @ref adc_npcx_threshold_param_l_h.
+	 */
 	ADC_NPCX_THRESHOLD_PARAM_L_H,
-	/* Sets the threshold value to which measured data is compared. */
+	/** Sets the threshold value to which measured data is compared. */
 	ADC_NPCX_THRESHOLD_PARAM_THVAL,
-	/* Sets worker queue thread to be notified */
+	/**
+	 * Sets the work item to be scheduled when the threshold event asserts,
+	 * given as the address of a struct k_work.
+	 */
 	ADC_NPCX_THRESHOLD_PARAM_WORK,
 
+	/** Number of ADC threshold parameters. */
 	ADC_NPCX_THRESHOLD_PARAM_MAX,
 };
 
+/** @brief Container for an ADC threshold parameter and its value. */
 struct adc_npcx_threshold_param {
-	/* Threshold ocntrol parameter */
+	/** Threshold control parameter. */
 	enum adc_npcx_threshold_param_type type;
-	/* Parameter value */
+	/** Parameter value. */
 	uint32_t val;
 };
 
