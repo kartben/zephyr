@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Renesas RX DTC Driver Header File
+ * @ingroup misc_interfaces
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MISC_RENESAS_RX_DTC_RENESAS_RX_DTC_H_
