@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief This file extends interface of ieee802154_radio.h for OpenThread.
+ * @ingroup ieee802154_driver
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_IEEE802154_RADIO_OPENTHREAD_H_

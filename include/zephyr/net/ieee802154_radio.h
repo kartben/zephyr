@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief Public IEEE 802.15.4 Driver API
+ * @ingroup ieee802154_driver
  *
  * @note All references to the standard in this file cite IEEE 802.15.4-2020.
  */

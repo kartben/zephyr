@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief IEEE 802.15.4 MAC frame related functions
+ * @ingroup ieee802154_l2
  *
  * @details This is not to be included by the application.
  *

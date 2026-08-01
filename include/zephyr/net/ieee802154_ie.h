@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief IEEE 802.15.4 MAC information element (IE) related types and helpers
+ * @ingroup ieee802154_driver
  *
  * This is not to be included by the application. This file contains only those
  * parts of the types required for IE support that need to be visible to IEEE
