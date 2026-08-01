@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Memory Management Driver APIs
+ * @ingroup mm_drv_apis
  *
  * This contains APIs for a system-wide memory management
  * driver. Only one instance is permitted on the system.

@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Memory Banks Driver APIs
+ * @ingroup mm_drv_bank_apis
  *
  * This contains generic APIs to be used by a system-wide memory management
  * driver to track page usage within memory banks.

@@ -6,6 +6,12 @@
  *
  */
 
+/**
+ * @file
+ * @brief Header file for the memory context save and restore API of the Intel ADSP MTL TLB driver.
+ * @ingroup mm_drv_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MM_MM_DRV_INTEL_ADSP_MTL_TLB_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MM_MM_DRV_INTEL_ADSP_MTL_TLB_H_
 
