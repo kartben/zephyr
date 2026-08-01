@@ -309,8 +309,20 @@ typedef void (*coap_notify_t)(struct coap_resource *resource,
  * them, by fetching their state or requesting updates to them.
  */
 struct coap_resource {
-	/** Which function to be called for each CoAP method */
-	coap_method_t get, post, put, del, fetch, patch, ipatch;
+	/** Function to be called for the CoAP GET method */
+	coap_method_t get;
+	/** Function to be called for the CoAP POST method */
+	coap_method_t post;
+	/** Function to be called for the CoAP PUT method */
+	coap_method_t put;
+	/** Function to be called for the CoAP DELETE method */
+	coap_method_t del;
+	/** Function to be called for the CoAP FETCH method */
+	coap_method_t fetch;
+	/** Function to be called for the CoAP PATCH method */
+	coap_method_t patch;
+	/** Function to be called for the CoAP iPATCH method */
+	coap_method_t ipatch;
 	/** Notify function to call */
 	coap_notify_t notify;
 	/** Resource path */
