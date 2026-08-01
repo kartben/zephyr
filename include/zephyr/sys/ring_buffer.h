@@ -93,6 +93,12 @@ static inline void ring_buf_internal_reset(struct ring_buf *buf, ring_buf_idx_t 
 
 /** @endcond */
 
+/**
+ * @brief Initialize a ring buffer with a designated buffer and size.
+ *
+ * @param buf Buffer to use for the ring buffer data storage.
+ * @param size8 Size of @p buf, in bytes.
+ */
 #define RING_BUF_INIT(buf, size8)	\
 {					\
 	.buffer = (buf),		\
