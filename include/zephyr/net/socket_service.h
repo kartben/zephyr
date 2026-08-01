@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief BSD Socket service API
+ * @ingroup bsd_socket_service
  *
  * API can be used to install a k_work that is called
  * if there is data received to a socket.

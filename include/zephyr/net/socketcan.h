@@ -1,5 +1,6 @@
 /** @file
  * @brief SocketCAN definitions.
+ * @ingroup socket_can
  *
  * Definitions for SocketCAN support.
  */

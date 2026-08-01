@@ -1,5 +1,6 @@
 /** @file
  * @brief NET_MGMT socket definitions.
+ * @ingroup socket_net_mgmt
  *
  * Definitions for NET_MGMT socket support.
  */

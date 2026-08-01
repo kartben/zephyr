@@ -7,6 +7,7 @@
 /** @file socket_select.h
  *
  * @brief BSD select support functions.
+ * @ingroup bsd_sockets
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_SOCKET_SELECT_H_
