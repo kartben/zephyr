@@ -33,15 +33,25 @@ extern "C" {
  *
  */
 enum updatehub_response {
+	/** Failed to connect to the UpdateHub server */
 	UPDATEHUB_NETWORKING_ERROR = 0,
+	/** Incompatible hardware */
 	UPDATEHUB_INCOMPATIBLE_HARDWARE,
+	/** The current image is not confirmed */
 	UPDATEHUB_UNCONFIRMED_IMAGE,
+	/** Failed to parse or to encode the metadata */
 	UPDATEHUB_METADATA_ERROR,
+	/** Failed while downloading the update package */
 	UPDATEHUB_DOWNLOAD_ERROR,
+	/** Failed while installing the update package */
 	UPDATEHUB_INSTALL_ERROR,
+	/** Failed to initialize the flash */
 	UPDATEHUB_FLASH_INIT_ERROR,
+	/** Success */
 	UPDATEHUB_OK,
+	/** An update is available */
 	UPDATEHUB_HAS_UPDATE,
+	/** No update available */
 	UPDATEHUB_NO_UPDATE,
 };
 
