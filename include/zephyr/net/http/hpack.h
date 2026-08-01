@@ -1,5 +1,6 @@
 /** @file
  * @brief HTTP HPACK
+ * @ingroup http_hpack
  */
 
 /*

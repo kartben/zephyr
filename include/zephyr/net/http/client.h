@@ -1,5 +1,6 @@
 /** @file
  * @brief HTTP client API
+ * @ingroup http_client
  *
  * An API for applications do HTTP requests
  */
