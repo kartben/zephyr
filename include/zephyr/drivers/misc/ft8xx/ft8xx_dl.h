@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief FT8XX display list commands
+ * @ingroup ft8xx_dl
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MISC_FT8XX_FT8XX_DL_H_

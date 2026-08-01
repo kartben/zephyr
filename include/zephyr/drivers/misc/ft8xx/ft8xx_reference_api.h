@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief FT8XX reference API
+ * @ingroup ft8xx_reference_api
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MISC_FT8XX_FT8XX_REFERENCE_API_H_

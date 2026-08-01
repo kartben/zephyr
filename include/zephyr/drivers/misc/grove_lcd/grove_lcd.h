@@ -4,6 +4,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the Grove RGB LCD display APIs.
+ * @ingroup grove_display
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MISC_GROVE_LCD_GROVE_LCD_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MISC_GROVE_LCD_GROVE_LCD_H_
 
