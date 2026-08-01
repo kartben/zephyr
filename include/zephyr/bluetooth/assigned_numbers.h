@@ -1496,13 +1496,48 @@ enum bt_audio_location {
  * @{
  */
 
+/**
+ * @brief Compose a Class of Device (CoD) value from its fields.
+ *
+ * @param major_service Major Service Classes bits, relative to the start of
+ *                      the Major Service Classes field.
+ * @param major_device Major Device Class field value
+ *                     (one of the BT_COD_MAJOR_DEVICE_CLASS_* values).
+ * @param minor_device Minor Device Class field value
+ *                     (one of the BT_COD_MINOR_DEVICE_CLASS_* values).
+ *
+ * @return CoD value as a 24-bit integer.
+ */
 #define BT_COD(major_service, major_device, minor_device)                                          \
 	(((uint32_t)major_service << 13) | ((uint32_t)major_device << 8) |                         \
 	 ((uint32_t)minor_device << 2))
+/**
+ * @brief Check whether a Class of Device has a valid format type.
+ *
+ * Only CoD format type 1 (format type field set to 0b00) is defined.
+ *
+ * @param cod CoD as a 3-byte array in little-endian byte order.
+ *
+ * @return true if the CoD format type is valid, false otherwise.
+ */
 #define BT_COD_VALID(cod) ((0 == (cod[0] & (BIT(0) | BIT(1)))) ? true : false)
 #define BT_COD_MAJOR_SERVICE_CLASSES(cod)                                                          \
 	((((uint32_t)cod[2] & 0xFF) >> 5) | (((uint32_t)cod[1] & 0xD0) >> 5))
+/**
+ * @brief Get the Major Device Class field of a Class of Device.
+ *
+ * @param cod CoD as a 3-byte array in little-endian byte order.
+ *
+ * @return Major Device Class field value (BT_COD_MAJOR_DEVICE_CLASS_*).
+ */
 #define BT_COD_MAJOR_DEVICE_CLASS(cod) ((((uint32_t)cod[1]) & 0x1FUL))
+/**
+ * @brief Get the Minor Device Class field of a Class of Device.
+ *
+ * @param cod CoD as a 3-byte array in little-endian byte order.
+ *
+ * @return Minor Device Class field value (BT_COD_MINOR_DEVICE_CLASS_*).
+ */
 #define BT_COD_MINOR_DEVICE_CLASS(cod) (((((uint32_t)cod[0]) & 0xFF) >> 2))
 
 /**
