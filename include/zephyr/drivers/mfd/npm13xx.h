@@ -28,22 +28,28 @@ extern "C" {
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
 
+/**
+ * @brief npm13xx event types.
+ *
+ * Callbacks registered with mfd_npm13xx_add_callback() are invoked with the
+ * corresponding event bit, i.e. BIT(event), set in the callback pin mask.
+ */
 enum mfd_npm13xx_event_t {
-	NPM13XX_EVENT_CHG_COMPLETED,
-	NPM13XX_EVENT_CHG_ERROR,
-	NPM13XX_EVENT_BATTERY_DETECTED,
-	NPM13XX_EVENT_BATTERY_REMOVED,
-	NPM13XX_EVENT_SHIPHOLD_PRESS,
-	NPM13XX_EVENT_SHIPHOLD_RELEASE,
-	NPM13XX_EVENT_WATCHDOG_WARN,
-	NPM13XX_EVENT_VBUS_DETECTED,
-	NPM13XX_EVENT_VBUS_REMOVED,
-	NPM13XX_EVENT_GPIO0_EDGE,
-	NPM13XX_EVENT_GPIO1_EDGE,
-	NPM13XX_EVENT_GPIO2_EDGE,
-	NPM13XX_EVENT_GPIO3_EDGE,
-	NPM13XX_EVENT_GPIO4_EDGE,
-	NPM13XX_EVENT_MAX
+	NPM13XX_EVENT_CHG_COMPLETED,    /**< Charging completed */
+	NPM13XX_EVENT_CHG_ERROR,        /**< Charging error */
+	NPM13XX_EVENT_BATTERY_DETECTED, /**< Battery detected */
+	NPM13XX_EVENT_BATTERY_REMOVED,  /**< Battery removed */
+	NPM13XX_EVENT_SHIPHOLD_PRESS,   /**< Ship-hold button pressed */
+	NPM13XX_EVENT_SHIPHOLD_RELEASE, /**< Ship-hold button released */
+	NPM13XX_EVENT_WATCHDOG_WARN,    /**< Watchdog warning */
+	NPM13XX_EVENT_VBUS_DETECTED,    /**< VBUS detected */
+	NPM13XX_EVENT_VBUS_REMOVED,     /**< VBUS removed */
+	NPM13XX_EVENT_GPIO0_EDGE,       /**< Edge event on GPIO0 */
+	NPM13XX_EVENT_GPIO1_EDGE,       /**< Edge event on GPIO1 */
+	NPM13XX_EVENT_GPIO2_EDGE,       /**< Edge event on GPIO2 */
+	NPM13XX_EVENT_GPIO3_EDGE,       /**< Edge event on GPIO3 */
+	NPM13XX_EVENT_GPIO4_EDGE,       /**< Edge event on GPIO4 */
+	NPM13XX_EVENT_MAX               /**< Number of event types */
 };
 
 /**
