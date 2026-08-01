@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for I3C Common Command Codes (CCC) definitions and helpers.
+ * @ingroup i3c_ccc
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_I3C_CCC_H_
 #define ZEPHYR_INCLUDE_DRIVERS_I3C_CCC_H_
 

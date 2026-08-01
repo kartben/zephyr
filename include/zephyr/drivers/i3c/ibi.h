@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the I3C In-Band Interrupts (IBI) APIs.
+ * @ingroup i3c_ibi
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_I3C_IBI_H_
 #define ZEPHYR_INCLUDE_DRIVERS_I3C_IBI_H_
 

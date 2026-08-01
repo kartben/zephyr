@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for I3C device Devicetree helper macros.
+ * @ingroup i3c_devicetree
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_I3C_DEVICETREE_H_
 #define ZEPHYR_INCLUDE_DRIVERS_I3C_DEVICETREE_H_
 

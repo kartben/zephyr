@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for I3C bus address management helpers.
+ * @ingroup i3c_addresses
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_I3C_ADDRESSES_H_
 #define ZEPHYR_INCLUDE_DRIVERS_I3C_ADDRESSES_H_
 

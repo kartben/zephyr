@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for I3C transaction error types.
+ * @ingroup i3c_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_I3C_ERROR_TYPES_H_
 #define ZEPHYR_INCLUDE_DRIVERS_I3C_ERROR_TYPES_H_
 
