@@ -37,7 +37,16 @@
 extern "C" {
 #endif
 
-/* Wrapper around printk to avoid including printk.h in assert.h */
+/**
+ * @brief Print an assertion message.
+ *
+ * Called by the __ASSERT() machinery to output assertion failure messages.
+ * The default implementation prints to the console and is defined as a weak
+ * symbol, so it can be overridden to redirect or capture assertion output.
+ *
+ * @param fmt Format string.
+ * @param ... Optional arguments for the format string.
+ */
 void __printf_like(1, 2) assert_print(const char *fmt, ...);
 
 #ifdef __cplusplus
