@@ -13,6 +13,7 @@
  *        protocol handler. SDM Mailbox protocol will be embedded in
  *        Arm SiP Services SMC protocol and sent to/from SDM via Arm
  *        SiP Services.
+ * @ingroup sip_svc
  */
 
 #define SIP_SVP_MB_MAX_WORD_SIZE		1024

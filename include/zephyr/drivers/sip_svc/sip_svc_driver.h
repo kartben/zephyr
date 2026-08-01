@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the Arm SiP services driver interface.
+ * @ingroup sip_svc
+ */
+
 #ifndef ZEPHYR_INCLUDE_SIP_SVC_DRIVER_H_
 #define ZEPHYR_INCLUDE_SIP_SVC_DRIVER_H_
 

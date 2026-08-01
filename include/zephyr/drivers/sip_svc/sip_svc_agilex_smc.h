@@ -11,6 +11,7 @@
  * @file
  * @brief Intel SoC FPGA Agilex customized Arm SiP Services
  *        SMC protocol.
+ * @ingroup sip_svc
  */
 
 /* @brief SMC return status
