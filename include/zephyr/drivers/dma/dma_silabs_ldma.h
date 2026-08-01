@@ -15,16 +15,32 @@
 
 #include <zephyr/drivers/dma.h>
 
+/** Source select field of a request signal in hardware REQSEL encoding. */
 #define SILABS_LDMA_SOURCE_MASK  GENMASK(21, 16)
+/** Signal select field of a request signal in hardware REQSEL encoding. */
 #define SILABS_LDMA_SIG_MASK     GENMASK(3, 0)
 
+/** Source select field of a request signal in dma_slot encoding. */
 #define SILABS_DMA_SLOT_SOURCE_MASK  GENMASK(7, 3)
+/** Signal select field of a request signal in dma_slot encoding. */
 #define SILABS_DMA_SLOT_SIG_MASK     GENMASK(2, 0)
 
+/**
+ * @brief Convert a request signal from hardware REQSEL encoding to dma_slot encoding.
+ *
+ * @param signal Peripheral request signal in hardware REQSEL encoding.
+ * @return Request signal in the compact encoding used in the dma_slot field.
+ */
 #define SILABS_LDMA_REQSEL_TO_SLOT(signal)             \
 	FIELD_PREP(SILABS_DMA_SLOT_SOURCE_MASK, FIELD_GET(SILABS_LDMA_SOURCE_MASK, signal)) | \
 	FIELD_PREP(SILABS_DMA_SLOT_SIG_MASK, FIELD_GET(SILABS_LDMA_SIG_MASK, signal))
 
+/**
+ * @brief Convert a request signal from dma_slot encoding to hardware REQSEL encoding.
+ *
+ * @param slot Peripheral request signal in dma_slot encoding.
+ * @return Request signal in hardware REQSEL encoding.
+ */
 #define SILABS_LDMA_SLOT_TO_REQSEL(slot)     \
 	FIELD_PREP(SILABS_LDMA_SOURCE_MASK, FIELD_GET(SILABS_DMA_SLOT_SOURCE_MASK, slot)) | \
 	FIELD_PREP(SILABS_LDMA_SIG_MASK, FIELD_GET(SILABS_DMA_SLOT_SIG_MASK, slot))
