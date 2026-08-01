@@ -23,6 +23,8 @@
  */
 
 #include <stdint.h>
+
+/** PSA Crypto key identifier */
 typedef uint32_t psa_key_id_t;
 
 /** PSA key ID range to be used by OpenThread. The base ID is equal to the default value upstream:
