@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the fake comparator driver API.
+ * @ingroup comparator_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_COMPARATOR_FAKE_H_
 #define ZEPHYR_INCLUDE_DRIVERS_COMPARATOR_FAKE_H_
 
