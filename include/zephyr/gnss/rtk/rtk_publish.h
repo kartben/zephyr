@@ -18,7 +18,13 @@
 #include <stddef.h>
 #include <zephyr/gnss/rtk/rtk.h>
 
-/* Internal function used by RTK clients to publish data-correction. */
+/**
+ * @brief Publish RTK correction data to the registered RTK data callbacks.
+ *
+ * Internal function used by RTK clients to publish data-correction.
+ *
+ * @param data Correction data to publish.
+ */
 void gnss_rtk_publish_data(const struct gnss_rtk_data *data);
 
 #endif /* ZEPHYR_INCLUDE_GNSS_RTK_RTK_PUBLISH_H_ */
