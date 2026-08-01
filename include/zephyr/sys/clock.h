@@ -49,6 +49,7 @@ typedef int64_t k_ticks_t;
 typedef uint32_t k_ticks_t;
 #endif
 
+/** Tick count value used to specify a timeout that never expires */
 #define K_TICKS_FOREVER ((k_ticks_t)(-1))
 
 /**
@@ -64,7 +65,7 @@ typedef uint32_t k_ticks_t;
  * equality with the `K_TIMEOUT_EQ()` macro.
  */
 typedef struct {
-	k_ticks_t ticks;
+	k_ticks_t ticks; /**< Timeout in ticks, not to be inspected by applications */
 } k_timeout_t;
 
 /**
@@ -290,7 +291,7 @@ int64_t sys_clock_tick_get(void);
  * @see sys_timepoint_expired()
  */
 typedef struct {
-	uint64_t tick;
+	uint64_t tick; /**< Timepoint in ticks, not to be inspected by applications */
 } k_timepoint_t;
 
 /**
