@@ -38,12 +38,13 @@ struct z_symtab_entry {
  * INTERNAL_HIDDEN @endcond
  */
 
+/** Symbol table */
 struct symtab_info {
-	/* Absolute address of the first symbol */
+	/** Absolute address of the first symbol */
 	const uintptr_t first_addr;
-	/* Number of symbol entries */
+	/** Number of symbol entries */
 	const uint32_t length;
-	/* Symbol entries */
+	/** Symbol entries */
 	const struct z_symtab_entry *const entries;
 };
 

@@ -18,6 +18,17 @@
 #include <zephyr/toolchain.h>
 #include <stdbool.h>
 
+/**
+ * @brief Log the stack usage of a thread.
+ *
+ * Log the unused and used amount of the stack of @p thread, along with
+ * the usage percentage, through the "os" logging module at INFO level.
+ *
+ * Does nothing unless @kconfig{CONFIG_INIT_STACKS} and
+ * @kconfig{CONFIG_THREAD_STACK_INFO} are enabled.
+ *
+ * @param thread Thread whose stack usage is logged.
+ */
 static inline void log_stack_usage(const struct k_thread *thread)
 {
 #if defined(CONFIG_INIT_STACKS) && defined(CONFIG_THREAD_STACK_INFO)
