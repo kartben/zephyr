@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the GNSS RTK correction data frame decoder API.
+ * @ingroup gnss_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_GNSS_RTK_DECODER_H_
 #define ZEPHYR_INCLUDE_GNSS_RTK_DECODER_H_
 

@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the Internal API used by GNSS RTK clients to publish correction data.
+ * @ingroup internal_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_GNSS_RTK_RTK_PUBLISH_H_
 #define ZEPHYR_INCLUDE_GNSS_RTK_RTK_PUBLISH_H_
 
