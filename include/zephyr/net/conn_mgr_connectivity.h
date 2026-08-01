@@ -8,6 +8,7 @@
  * @file
  * @brief API for controlling generic network association routines on network devices that
  * support it.
+ * @ingroup conn_mgr_connectivity
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_CONN_MGR_CONNECTIVITY_H_

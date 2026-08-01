@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief API for monitoring network connections and interfaces.
+ * @ingroup conn_mgr
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_CONN_MGR_MONITOR_H_
