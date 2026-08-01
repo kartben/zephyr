@@ -125,8 +125,9 @@ will be invoked once the device returns the given descriptor chain. After that, 
 
 Guest-side Virtio drivers
 *************************
-Currently Zephyr provides drivers for Virtio over PCI and Virtio over MMIO and drivers for two devices using virtio - virtiofs, used
-to access the filesystem of the host and virtio-entropy, used as an entropy source.
+Currently Zephyr provides drivers for Virtio over PCI and Virtio over MMIO, as well as drivers for devices using virtio, such as
+virtiofs, used to access the filesystem of the host, virtio-entropy, used as an entropy source, and virtio-spi, used to access a
+SPI controller of the host.
 
 Virtiofs
 =========
@@ -140,6 +141,14 @@ Virtio-entropy
 ==============
 This driver allows using virtio-entropy as an entropy source in Zephyr. The operation of this device is simple - the driver places a
 buffer in the virtqueue and receives it back, filled with random data.
+
+Virtio-SPI
+==========
+This driver exposes a SPI controller of the host as a regular Zephyr SPI controller, allowing devices connected to it to be
+described in the devicetree and driven with the :ref:`spi_api` API. Every SPI transfer is sent to the device as a descriptor
+chain made of a header describing the parameters of the transfer (chip select, word size, mode, frequency, ...), the buffer with
+the data to be written and/or the buffer for the data to be read, and finally a device writeable byte holding the result of the
+transfer.
 
 Virtio samples
 **************
