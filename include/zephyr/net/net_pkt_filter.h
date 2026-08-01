@@ -245,6 +245,19 @@ bool npf_remove_all_rules(struct npf_rule_list *rules);
 		.tests = { FOR_EACH(Z_NPF_TEST_ADDR, (,), __VA_ARGS__) }, \
 	}
 
+/**
+ * @brief Statically define one packet filter priority rule
+ *
+ * This creates a rule from a variable amount of filter conditions, like
+ * @ref NPF_RULE. When all conditions are true the priority of the network
+ * packet is set to the given value and evaluation continues with the next
+ * rule in the list.
+ *
+ * @param _name Name for this rule.
+ * @param _priority Priority assigned to matching packets, one of the
+ *                  @ref net_priority values.
+ * @param ... List of conditions for this rule.
+ */
 #define NPF_PRIORITY(_name, _priority, ...)				\
 	struct npf_rule _name = {					\
 		.result = NET_CONTINUE,					\
