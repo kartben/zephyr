@@ -3,6 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the nRF Coresight ETR buffer flush API.
+ * @ingroup debug
+ */
+
 #ifndef _ZEPHYR_DRIVERS_DEBUG_CORESIGHT_NRF_ETR_H_
 #define _ZEPHYR_DRIVERS_DEBUG_CORESIGHT_NRF_ETR_H_
 
