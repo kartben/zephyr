@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief USB host controller (UHC) driver API
+ * @ingroup uhc_api
  */
 
 #ifndef ZEPHYR_INCLUDE_UHC_H

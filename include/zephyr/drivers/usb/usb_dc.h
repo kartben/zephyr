@@ -9,6 +9,7 @@
 /**
  * @file
  * @brief USB device controller APIs
+ * @ingroup _usb_device_controller_api
  *
  * This file contains the USB device controller APIs. All device controller
  * drivers should implement the APIs described in this file.

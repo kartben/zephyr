@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public APIs for the USB BC1.2 battery charging detect drivers.
+ * @ingroup b12_interface
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_USB_USB_BC12_H_

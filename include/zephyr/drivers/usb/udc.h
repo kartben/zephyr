@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief New USB device controller (UDC) driver API
+ * @ingroup udc_api
  */
 
 #ifndef ZEPHYR_INCLUDE_UDC_H

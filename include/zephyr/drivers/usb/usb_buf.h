@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Buffers for USB device support
+ * @ingroup usb_buf
  */
 
 #ifndef ZEPHYR_INCLUDE_USB_BUF_H
