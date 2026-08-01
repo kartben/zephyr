@@ -212,8 +212,11 @@ struct bt_iso_chan {
 	struct bt_iso_chan_qos		*qos;
 	/** Channel state */
 	enum bt_iso_state		state;
-	/** @internal Node used internally by the stack */
+	/** @cond INTERNAL_HIDDEN
+	 *  Node used internally by the stack.
+	 */
 	sys_snode_t node;
+	/** @endcond */
 };
 
 /** @brief ISO Channel IO QoS structure. */
