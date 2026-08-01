@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Header file for the shell log backend.
+ * @ingroup shell_api
  */
 
 #ifndef ZEPHYR_INCLUDE_SHELL_SHELL_LOG_BACKEND_H_
