@@ -117,6 +117,7 @@ int bt_br_discovery_start(const struct bt_br_discovery_param *param,
  */
 int bt_br_discovery_stop(void);
 
+/** Listener context for BR/EDR discovery (inquiry) */
 struct bt_br_discovery_cb {
 
 	/**
@@ -134,7 +135,11 @@ struct bt_br_discovery_cb {
 	void (*timeout)(const struct bt_br_discovery_result *results,
 				  size_t count);
 
+	/** @cond INTERNAL_HIDDEN
+	 *  Field used for list handling.
+	 */
 	sys_snode_t node;
+	/** @endcond */
 };
 
 /**
@@ -159,6 +164,7 @@ void bt_br_discovery_cb_register(struct bt_br_discovery_cb *cb);
  */
 void bt_br_discovery_cb_unregister(struct bt_br_discovery_cb *cb);
 
+/** BR/EDR Out Of Band information */
 struct bt_br_oob {
 	/** BR/EDR address. */
 	bt_addr_t addr;
