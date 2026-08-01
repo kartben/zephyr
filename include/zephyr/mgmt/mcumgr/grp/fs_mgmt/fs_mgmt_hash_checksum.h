@@ -6,6 +6,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the MCUmgr fs_mgmt hash and checksum handler registration API.
+ * @ingroup mcumgr_fs_mgmt
+ */
+
 #ifndef ZEPHYR_INCLUDE_MGMT_MCUMGR_GRP_FS_MGMT_FS_MGMT_HASH_CHECKSUM_H_
 #define ZEPHYR_INCLUDE_MGMT_MCUMGR_GRP_FS_MGMT_FS_MGMT_HASH_CHECKSUM_H_
 

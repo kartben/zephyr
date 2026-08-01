@@ -21,6 +21,8 @@
  * sequentially from the start of the packet to the end.  Each response is sent
  * individually in its own packet.  If a request elicits an error response,
  * processing of the packet is aborted.
+ *
+ * @ingroup mcumgr
  */
 
 #ifndef ZEPHYR_INCLUDE_MGMT_MCUMGR_SMP_SMP_H_
