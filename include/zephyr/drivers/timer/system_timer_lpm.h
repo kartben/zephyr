@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief System timer low-power companion interface
+ * @ingroup clock_lpm
  *
  * Declare the internal API used to hand off timekeeping across low-power
  * states when the primary system timer cannot remain active.
