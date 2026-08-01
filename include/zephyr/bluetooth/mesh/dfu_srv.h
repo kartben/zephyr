@@ -6,6 +6,11 @@
 
 /**
  * @file
+ * @brief API for the Bluetooth Mesh Firmware Update Server model
+ * @ingroup bt_mesh_dfu_srv
+ */
+
+/**
  * @defgroup bt_mesh_dfu_srv Firmware Update Server model
  * @ingroup bt_mesh_dfu
  * @{
@@ -184,6 +189,7 @@ struct bt_mesh_dfu_srv {
 	size_t img_count;
 
 	/* Runtime state */
+	/** @cond INTERNAL_HIDDEN */
 	const struct bt_mesh_model *mod;
 	struct {
 		/* Effect of transfer, @see bt_mesh_dfu_effect. */
@@ -195,6 +201,7 @@ struct bt_mesh_dfu_srv {
 		uint16_t timeout_base;
 		uint16_t meta;
 	} update;
+	/** @endcond */
 };
 
 /** @brief Accept the received DFU transfer.
