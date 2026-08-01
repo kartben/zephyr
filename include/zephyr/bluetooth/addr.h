@@ -27,23 +27,25 @@ extern "C" {
  * @{
  */
 
+/** Public Device Address */
 #define BT_ADDR_LE_PUBLIC       0x00
+/** Random Device Address */
 #define BT_ADDR_LE_RANDOM       0x01
+/** Public Identity Address (corresponds to Resolved Private Address) */
 #define BT_ADDR_LE_PUBLIC_ID    0x02
+/** Random (static) Identity Address (corresponds to Resolved Private Address) */
 #define BT_ADDR_LE_RANDOM_ID    0x03
-#define BT_ADDR_LE_UNRESOLVED   0xFE /* Resolvable Private Address
-				      * (Controller unable to resolve)
-				      */
-#define BT_ADDR_LE_ANONYMOUS    0xFF /* No address provided
-				      * (anonymous advertisement)
-				      */
+/** Resolvable Private Address (Controller unable to resolve) */
+#define BT_ADDR_LE_UNRESOLVED   0xFE
+/** No address provided (anonymous advertisement) */
+#define BT_ADDR_LE_ANONYMOUS    0xFF
 
 /** Length in bytes of a standard Bluetooth address */
 #define BT_ADDR_SIZE 6
 
 /** Bluetooth Device Address */
 typedef struct {
-	uint8_t  val[BT_ADDR_SIZE];
+	uint8_t  val[BT_ADDR_SIZE]; /**< Address, little-endian byte order */
 } bt_addr_t;
 /**/
 
@@ -52,14 +54,18 @@ typedef struct {
 
 /** Bluetooth LE Device Address */
 typedef struct {
-	uint8_t      type;
-	bt_addr_t a;
+	uint8_t      type; /**< Address type, one of the BT_ADDR_LE_* values */
+	bt_addr_t a;       /**< Address, little-endian byte order */
 } bt_addr_le_t;
 
 /* Global Bluetooth address constants defined in bluetooth/common/addr.c */
+/** Bluetooth device "any" address, not a valid address */
 extern const bt_addr_t bt_addr_any;
+/** Bluetooth device "none" address, not a valid address */
 extern const bt_addr_t bt_addr_none;
+/** Bluetooth LE device "any" address, not a valid address */
 extern const bt_addr_le_t bt_addr_le_any;
+/** Bluetooth LE device "none" address, not a valid address */
 extern const bt_addr_le_t bt_addr_le_none;
 
 /** Bluetooth device "any" address, not a valid address */

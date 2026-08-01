@@ -109,7 +109,7 @@ static inline enum bt_buf_type bt_buf_type_from_h4(uint8_t h4_type, enum bt_buf_
 	}
 }
 
-/* Headroom reserved in buffers, primarily for HCI transport encoding purposes */
+/** Headroom reserved in buffers, primarily for HCI transport encoding purposes */
 #define BT_BUF_RESERVE 1
 
 /** Helper to include reserved HCI data in buffer calculations */
@@ -136,14 +136,18 @@ static inline enum bt_buf_type bt_buf_type_from_h4(uint8_t h4_type, enum bt_buf_
 #define BT_BUF_EVT_RX_SIZE BT_BUF_EVT_SIZE(CONFIG_BT_BUF_EVT_RX_SIZE)
 
 #if defined(CONFIG_BT_ISO)
+/** Data size needed for HCI ISO RX buffers */
 #define BT_BUF_ISO_RX_SIZE BT_BUF_ISO_SIZE(CONFIG_BT_ISO_RX_MTU)
+/** Buffer count needed for HCI ISO RX buffers */
 #define BT_BUF_ISO_RX_COUNT CONFIG_BT_ISO_RX_BUF_COUNT
 #else
+/** Data size needed for HCI ISO RX buffers */
 #define BT_BUF_ISO_RX_SIZE 0
+/** Buffer count needed for HCI ISO RX buffers */
 #define BT_BUF_ISO_RX_COUNT 0
 #endif /* CONFIG_BT_ISO */
 
-/* see Core Spec v6.0 vol.4 part E 7.4.5 */
+/** Maximum number of HCI ACL RX buffers, see Core Spec v6.0 vol.4 part E 7.4.5 */
 #define BT_BUF_ACL_RX_COUNT_MAX 65535
 
 #if defined(CONFIG_BT_CONN) && defined(CONFIG_BT_HCI_HOST)
@@ -154,10 +158,14 @@ static inline enum bt_buf_type bt_buf_type_from_h4(uint8_t h4_type, enum bt_buf_
  * re-assembly into, and if all links are re-assembling, there will be no buffer
  * available for the HCI driver to allocate from.
  */
+/** Number of extra incoming ACL data buffers */
 #define BT_BUF_ACL_RX_COUNT_EXTRA CONFIG_BT_BUF_ACL_RX_COUNT_EXTRA
+/** Buffer count needed for incoming HCI ACL data */
 #define BT_BUF_ACL_RX_COUNT       (1 + BT_BUF_ACL_RX_COUNT_EXTRA)
 #else
+/** Number of extra incoming ACL data buffers */
 #define BT_BUF_ACL_RX_COUNT_EXTRA 0
+/** Buffer count needed for incoming HCI ACL data */
 #define BT_BUF_ACL_RX_COUNT       0
 #endif /* CONFIG_BT_CONN && CONFIG_BT_HCI_HOST */
 
