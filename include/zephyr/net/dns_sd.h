@@ -1,5 +1,6 @@
 /** @file
  *  @brief DNS Service Discovery
+ *  @ingroup dns_sd
  */
 
 /*

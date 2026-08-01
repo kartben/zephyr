@@ -1,5 +1,6 @@
 /** @file
  * @brief DNS resolving library
+ * @ingroup dns_resolve
  *
  * An API for applications to resolve a DNS name.
  */
