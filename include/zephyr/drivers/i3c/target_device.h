@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the I3C target device APIs.
+ * @ingroup i3c_target_device
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_I3C_TARGET_DEVICE_H_
 #define ZEPHYR_INCLUDE_DRIVERS_I3C_TARGET_DEVICE_H_
 

@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for implementing I3C drivers on top of RTIO.
+ * @ingroup i3c_interface
+ */
+
 #ifndef ZEPHYR_DRIVERS_I3C_RTIO_H_
 #define ZEPHYR_DRIVERS_I3C_RTIO_H_
 
