@@ -28,16 +28,21 @@ extern "C" {
 
 #include <zephyr/device.h>
 
+/**
+ * @brief Interrupt handler for a pca9422 child device.
+ *
+ * @param dev Child device the interrupt is dispatched to.
+ */
 typedef void (*child_isr_t)(const struct device *dev);
 
 /**
  * @brief Child device of pca9422
  */
 enum child_dev {
-	PCA9422_DEV_REG = 0, /** Regulator */
-	PCA9422_DEV_CHG,     /** Charger */
-	PCA9422_DEV_FG,      /** Fuelgauge */
-	PCA9422_DEV_MAX,     /** Maximum number of child devices */
+	PCA9422_DEV_REG = 0, /**< Regulator */
+	PCA9422_DEV_CHG,     /**< Charger */
+	PCA9422_DEV_FG,      /**< Fuelgauge */
+	PCA9422_DEV_MAX,     /**< Maximum number of child devices */
 };
 
 /**

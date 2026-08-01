@@ -28,36 +28,43 @@ extern "C" {
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
 
+/**
+ * @brief npm2100 event sources
+ *
+ * Events are selected in the pin mask of a @ref gpio_callback, and reported
+ * to the callback handler, using their bit position, i.e. BIT(event).
+ */
 enum mfd_npm2100_event {
-	NPM2100_EVENT_SYS_DIETEMP_WARN,
-	NPM2100_EVENT_SYS_SHIPHOLD_FALL,
-	NPM2100_EVENT_SYS_SHIPHOLD_RISE,
-	NPM2100_EVENT_SYS_PGRESET_FALL,
-	NPM2100_EVENT_SYS_PGRESET_RISE,
-	NPM2100_EVENT_SYS_TIMER_EXPIRY,
-	NPM2100_EVENT_ADC_VBAT_READY,
-	NPM2100_EVENT_ADC_DIETEMP_READY,
-	NPM2100_EVENT_ADC_DROOP_DETECT,
-	NPM2100_EVENT_ADC_VOUT_READY,
-	NPM2100_EVENT_GPIO0_FALL,
-	NPM2100_EVENT_GPIO0_RISE,
-	NPM2100_EVENT_GPIO1_FALL,
-	NPM2100_EVENT_GPIO1_RISE,
-	NPM2100_EVENT_BOOST_VBAT_WARN,
-	NPM2100_EVENT_BOOST_VOUT_MIN,
-	NPM2100_EVENT_BOOST_VOUT_WARN,
-	NPM2100_EVENT_BOOST_VOUT_DPS,
-	NPM2100_EVENT_BOOST_VOUT_OK,
-	NPM2100_EVENT_LDOSW_OCP,
-	NPM2100_EVENT_LDOSW_VINTFAIL,
-	NPM2100_EVENT_MAX
+	NPM2100_EVENT_SYS_DIETEMP_WARN,  /**< Die temperature warning */
+	NPM2100_EVENT_SYS_SHIPHOLD_FALL, /**< Falling edge on SHPHLD pin */
+	NPM2100_EVENT_SYS_SHIPHOLD_RISE, /**< Rising edge on SHPHLD pin */
+	NPM2100_EVENT_SYS_PGRESET_FALL,  /**< Falling edge on PG/RESET pin */
+	NPM2100_EVENT_SYS_PGRESET_RISE,  /**< Rising edge on PG/RESET pin */
+	NPM2100_EVENT_SYS_TIMER_EXPIRY,  /**< Timer expired */
+	NPM2100_EVENT_ADC_VBAT_READY,    /**< Battery voltage measurement ready */
+	NPM2100_EVENT_ADC_DIETEMP_READY, /**< Die temperature measurement ready */
+	NPM2100_EVENT_ADC_DROOP_DETECT,  /**< Voltage droop detected */
+	NPM2100_EVENT_ADC_VOUT_READY,    /**< Output voltage measurement ready */
+	NPM2100_EVENT_GPIO0_FALL,        /**< Falling edge on GPIO0 pin */
+	NPM2100_EVENT_GPIO0_RISE,        /**< Rising edge on GPIO0 pin */
+	NPM2100_EVENT_GPIO1_FALL,        /**< Falling edge on GPIO1 pin */
+	NPM2100_EVENT_GPIO1_RISE,        /**< Rising edge on GPIO1 pin */
+	NPM2100_EVENT_BOOST_VBAT_WARN,   /**< Battery voltage warning threshold crossed */
+	NPM2100_EVENT_BOOST_VOUT_MIN,    /**< Output voltage minimum threshold crossed */
+	NPM2100_EVENT_BOOST_VOUT_WARN,   /**< Output voltage warning threshold crossed */
+	NPM2100_EVENT_BOOST_VOUT_DPS,    /**< Output voltage DPS threshold crossed */
+	NPM2100_EVENT_BOOST_VOUT_OK,     /**< Output voltage in normal range */
+	NPM2100_EVENT_LDOSW_OCP,         /**< LDOSW overcurrent protection triggered */
+	NPM2100_EVENT_LDOSW_VINTFAIL,    /**< LDOSW VINT failure */
+	NPM2100_EVENT_MAX                /**< Number of events */
 };
 
+/** @brief npm2100 timer modes */
 enum mfd_npm2100_timer_mode {
-	NPM2100_TIMER_MODE_GENERAL_PURPOSE,
-	NPM2100_TIMER_MODE_WDT_RESET,
-	NPM2100_TIMER_MODE_WDT_POWER_CYCLE,
-	NPM2100_TIMER_MODE_WAKEUP,
+	NPM2100_TIMER_MODE_GENERAL_PURPOSE, /**< General purpose timer */
+	NPM2100_TIMER_MODE_WDT_RESET,       /**< Watchdog timer, full power reset on expiry */
+	NPM2100_TIMER_MODE_WDT_POWER_CYCLE, /**< Watchdog timer, power cycle on expiry */
+	NPM2100_TIMER_MODE_WAKEUP,          /**< Wakeup timer, wake from hibernate on expiry */
 };
 
 /**
