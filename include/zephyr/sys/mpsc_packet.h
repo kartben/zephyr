@@ -42,14 +42,18 @@ extern "C" {
 
 /** @brief Generic packet header. */
 struct mpsc_pbuf_hdr {
+	/** @cond INTERNAL_HIDDEN */
 	MPSC_PBUF_HDR;
+	/** @endcond */
 	/** Remaining bits of the first word, not used by the packet buffer */
 	uint32_t data: 32 - MPSC_PBUF_HDR_BITS;
 };
 
 /** @brief Skip packet used internally by the packet buffer. */
 struct mpsc_pbuf_skip {
+	/** @cond INTERNAL_HIDDEN */
 	MPSC_PBUF_HDR;
+	/** @endcond */
 	/** Number of 32 bit words to skip */
 	uint32_t len: 32 - MPSC_PBUF_HDR_BITS;
 };
