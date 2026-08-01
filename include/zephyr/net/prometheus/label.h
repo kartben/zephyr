@@ -21,6 +21,7 @@
 /** Maximum number of labels per metric */
 #define MAX_PROMETHEUS_LABELS_PER_METRIC CONFIG_PROMETHEUS_LABEL_MAX_COUNT
 #else
+/** Maximum number of labels per metric */
 #define MAX_PROMETHEUS_LABELS_PER_METRIC 1
 #endif /* CONFIG_PROMETHEUS */
 
