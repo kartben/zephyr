@@ -23,6 +23,8 @@ extern "C" {
 
 struct sys_notify;
 
+/** @cond INTERNAL_HIDDEN */
+
 /*
  * Flag value that overwrites the method field when the operation has
  * completed.
@@ -56,6 +58,8 @@ struct sys_notify;
 #define SYS_NOTIFY_METHOD_MASK 0x03U
 #define SYS_NOTIFY_METHOD_POS 0
 
+/** @endcond */
+
 /**
  * @brief Identify the region of sys_notify flags available for
  * containing services.
@@ -71,9 +75,11 @@ struct sys_notify;
  */
 #define SYS_NOTIFY_EXTENSION_POS 2
 
-/*
- * Mask isolating the bits of sys_notify::flags that are available
- * for extension.
+/**
+ * @brief Mask isolating the bits of the sys_notify flags field that
+ * are available for extension.
+ *
+ * See @ref SYS_NOTIFY_EXTENSION_POS.
  */
 #define SYS_NOTIFY_EXTENSION_MASK (~BIT_MASK(SYS_NOTIFY_EXTENSION_POS))
 
@@ -142,6 +148,7 @@ typedef void (*sys_notify_generic_callback)();
  * fields directly.
  */
 struct sys_notify {
+	/** @cond INTERNAL_HIDDEN */
 	union method {
 		/* Pointer to signal used to notify client.
 		 *
@@ -178,8 +185,10 @@ struct sys_notify {
 	 * success or failure for spin-wait synchronous operations.
 	 */
 	int volatile result;
+	/** @endcond */
 };
 
+/** @cond INTERNAL_HIDDEN */
 /** @internal */
 static inline uint32_t sys_notify_get_method(const struct sys_notify *notify)
 {
@@ -187,6 +196,7 @@ static inline uint32_t sys_notify_get_method(const struct sys_notify *notify)
 
 	return method & SYS_NOTIFY_METHOD_MASK;
 }
+/** @endcond */
 
 /**
  * @brief Validate and initialize the notify structure.
