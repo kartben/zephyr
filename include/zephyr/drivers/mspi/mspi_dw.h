@@ -22,10 +22,10 @@ extern "C" {
  * MSPI driver when calling mspi_timing_config
  */
 struct mspi_dw_timing_cfg {
-	uint32_t rx_sample_dly; /* RX sample delay, written to RX_SAMPLE_DLY register */
+	uint32_t rx_sample_dly; /**< RX sample delay, written to RX_SAMPLE_DLY register */
 };
 
-/* Configure RX_SAMPLE_DLY register for MSPI DW SSI */
+/** Timing parameter mask bit that selects the RX sample delay configuration */
 #define MSPI_DW_RX_TIMING_CFG BIT(0)
 
 #ifdef __cplusplus
