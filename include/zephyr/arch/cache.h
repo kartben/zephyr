@@ -37,7 +37,9 @@
  */
 void arch_dcache_enable(void);
 
+/** @cond INTERNAL_HIDDEN */
 #define cache_data_enable arch_dcache_enable
+/** @endcond */
 
 /**
  * @brief Disable the d-cache
@@ -46,7 +48,9 @@ void arch_dcache_enable(void);
  */
 void arch_dcache_disable(void);
 
+/** @cond INTERNAL_HIDDEN */
 #define cache_data_disable arch_dcache_disable
+/** @endcond */
 
 /**
  * @brief Flush the d-cache
@@ -59,7 +63,9 @@ void arch_dcache_disable(void);
  */
 int arch_dcache_flush_all(void);
 
+/** @cond INTERNAL_HIDDEN */
 #define cache_data_flush_all arch_dcache_flush_all
+/** @endcond */
 
 /**
  * @brief Invalidate the d-cache
@@ -72,7 +78,9 @@ int arch_dcache_flush_all(void);
  */
 int arch_dcache_invd_all(void);
 
+/** @cond INTERNAL_HIDDEN */
 #define cache_data_invd_all arch_dcache_invd_all
+/** @endcond */
 
 /**
  * @brief Flush and Invalidate the d-cache
@@ -85,7 +93,9 @@ int arch_dcache_invd_all(void);
  */
 int arch_dcache_flush_and_invd_all(void);
 
+/** @cond INTERNAL_HIDDEN */
 #define cache_data_flush_and_invd_all arch_dcache_flush_and_invd_all
+/** @endcond */
 
 /**
  * @brief Flush an address range in the d-cache
@@ -108,7 +118,9 @@ int arch_dcache_flush_and_invd_all(void);
  */
 int arch_dcache_flush_range(void *addr, size_t size);
 
+/** @cond INTERNAL_HIDDEN */
 #define cache_data_flush_range(addr, size) arch_dcache_flush_range(addr, size)
+/** @endcond */
 
 /**
  * @brief Invalidate an address range in the d-cache
@@ -132,7 +144,9 @@ int arch_dcache_flush_range(void *addr, size_t size);
  */
 int arch_dcache_invd_range(void *addr, size_t size);
 
+/** @cond INTERNAL_HIDDEN */
 #define cache_data_invd_range(addr, size) arch_dcache_invd_range(addr, size)
+/** @endcond */
 
 /**
  * @brief Flush and Invalidate an address range in the d-cache
@@ -157,8 +171,10 @@ int arch_dcache_invd_range(void *addr, size_t size);
 
 int arch_dcache_flush_and_invd_range(void *addr, size_t size);
 
+/** @cond INTERNAL_HIDDEN */
 #define cache_data_flush_and_invd_range(addr, size) \
 	arch_dcache_flush_and_invd_range(addr, size)
+/** @endcond */
 
 #if defined(CONFIG_DCACHE_LINE_SIZE_DETECT) || defined(__DOXYGEN__)
 
@@ -177,7 +193,9 @@ int arch_dcache_flush_and_invd_range(void *addr, size_t size);
  */
 size_t arch_dcache_line_size_get(void);
 
+/** @cond INTERNAL_HIDDEN */
 #define cache_data_line_size_get arch_dcache_line_size_get
+/** @endcond */
 
 #endif /* CONFIG_DCACHE_LINE_SIZE_DETECT || __DOXYGEN__ */
 
@@ -192,7 +210,9 @@ size_t arch_dcache_line_size_get(void);
  */
 void arch_icache_enable(void);
 
+/** @cond INTERNAL_HIDDEN */
 #define cache_instr_enable arch_icache_enable
+/** @endcond */
 
 /**
  * @brief Disable the i-cache
@@ -201,7 +221,9 @@ void arch_icache_enable(void);
  */
 void arch_icache_disable(void);
 
+/** @cond INTERNAL_HIDDEN */
 #define cache_instr_disable arch_icache_disable
+/** @endcond */
 
 /**
  * @brief Flush the i-cache
@@ -214,7 +236,9 @@ void arch_icache_disable(void);
  */
 int arch_icache_flush_all(void);
 
+/** @cond INTERNAL_HIDDEN */
 #define cache_instr_flush_all arch_icache_flush_all
+/** @endcond */
 
 /**
  * @brief Invalidate the i-cache
@@ -227,7 +251,9 @@ int arch_icache_flush_all(void);
  */
 int arch_icache_invd_all(void);
 
+/** @cond INTERNAL_HIDDEN */
 #define cache_instr_invd_all arch_icache_invd_all
+/** @endcond */
 
 /**
  * @brief Flush and Invalidate the i-cache
@@ -240,7 +266,9 @@ int arch_icache_invd_all(void);
  */
 int arch_icache_flush_and_invd_all(void);
 
+/** @cond INTERNAL_HIDDEN */
 #define cache_instr_flush_and_invd_all arch_icache_flush_and_invd_all
+/** @endcond */
 
 /**
  * @brief Flush an address range in the i-cache
@@ -263,7 +291,9 @@ int arch_icache_flush_and_invd_all(void);
  */
 int arch_icache_flush_range(void *addr, size_t size);
 
+/** @cond INTERNAL_HIDDEN */
 #define cache_instr_flush_range(addr, size) arch_icache_flush_range(addr, size)
+/** @endcond */
 
 /**
  * @brief Invalidate an address range in the i-cache
@@ -287,7 +317,9 @@ int arch_icache_flush_range(void *addr, size_t size);
  */
 int arch_icache_invd_range(void *addr, size_t size);
 
+/** @cond INTERNAL_HIDDEN */
 #define cache_instr_invd_range(addr, size) arch_icache_invd_range(addr, size)
+/** @endcond */
 
 /**
  * @brief Flush and Invalidate an address range in the i-cache
@@ -311,8 +343,10 @@ int arch_icache_invd_range(void *addr, size_t size);
  */
 int arch_icache_flush_and_invd_range(void *addr, size_t size);
 
+/** @cond INTERNAL_HIDDEN */
 #define cache_instr_flush_and_invd_range(addr, size) \
 	arch_icache_flush_and_invd_range(addr, size)
+/** @endcond */
 
 #if defined(CONFIG_ICACHE_LINE_SIZE_DETECT) || defined(__DOXYGEN__)
 
@@ -332,31 +366,94 @@ int arch_icache_flush_and_invd_range(void *addr, size_t size);
 
 size_t arch_icache_line_size_get(void);
 
+/** @cond INTERNAL_HIDDEN */
 #define cache_instr_line_size_get arch_icache_line_size_get
+/** @endcond */
 
 #endif /* CONFIG_ICACHE_LINE_SIZE_DETECT || __DOXYGEN__ */
 
 #endif /* CONFIG_ICACHE || __DOXYGEN__ */
 
 #if CONFIG_CACHE_HAS_MIRRORED_MEMORY_REGIONS  || __DOXYGEN__
+/**
+ * @brief Test if a pointer is in cached region
+ *
+ * Some hardware may map the same physical memory twice so that it can be
+ * seen in both (incoherent) cached mappings and a coherent "shared" area.
+ * This tests if a particular pointer is within the cached, coherent area.
+ *
+ * @param ptr Pointer
+ *
+ * @retval True if pointer is in cached region.
+ * @retval False if pointer is not in cached region.
+ */
 bool arch_cache_is_ptr_cached(void *ptr);
+/** @cond INTERNAL_HIDDEN */
 #define cache_is_ptr_cached(ptr) arch_cache_is_ptr_cached(ptr)
+/** @endcond */
 
+/**
+ * @brief Test if a pointer is in un-cached region
+ *
+ * Some hardware may map the same physical memory twice so that it can be
+ * seen in both (incoherent) cached mappings and a coherent "shared" area.
+ * This tests if a particular pointer is within the un-cached, incoherent
+ * area.
+ *
+ * @param ptr Pointer
+ *
+ * @retval True if pointer is not in cached region.
+ * @retval False if pointer is in cached region.
+ */
 bool arch_cache_is_ptr_uncached(void *ptr);
+/** @cond INTERNAL_HIDDEN */
 #define cache_is_ptr_uncached(ptr) arch_cache_is_ptr_uncached(ptr)
+/** @endcond */
 
+/**
+ * @brief Get a cached pointer to a RAM address
+ *
+ * Return a pointer that refers to the same memory as @p ptr through the
+ * cached mapping.
+ *
+ * @param ptr A pointer to a valid C object
+ *
+ * @return A pointer to the same object through the cached mapping
+ */
 void __sparse_cache *arch_cache_cached_ptr_get(void *ptr);
+/** @cond INTERNAL_HIDDEN */
 #define cache_cached_ptr(ptr) arch_cache_cached_ptr_get(ptr)
+/** @endcond */
 
+/**
+ * @brief Get an uncached pointer to a RAM address
+ *
+ * Return a pointer that refers to the same memory as @p ptr while
+ * bypassing the cache.
+ *
+ * @param ptr A pointer to a valid C object
+ *
+ * @return A pointer to the same object bypassing the cache
+ */
 void *arch_cache_uncached_ptr_get(void __sparse_cache *ptr);
+/** @cond INTERNAL_HIDDEN */
 #define cache_uncached_ptr(ptr) arch_cache_uncached_ptr_get(ptr)
+/** @endcond */
 #endif /* CONFIG_CACHE_HAS_MIRRORED_MEMORY_REGIONS */
 
 
+/**
+ * @brief Initialize the architecture-specific caches
+ *
+ * Perform the cache initialization the architecture requires, such as
+ * enabling the caches. Called early during boot.
+ */
 void arch_cache_init(void);
 
 #if defined(CONFIG_CACHE_CAN_SAY_MEM_COHERENCE) || defined(__DOXYGEN__)
+/** @cond INTERNAL_HIDDEN */
 #define cache_is_mem_coherent(ptr) arch_mem_coherent(ptr)
+/** @endcond */
 #endif
 
 /**
