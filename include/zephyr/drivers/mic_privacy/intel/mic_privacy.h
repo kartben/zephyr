@@ -36,6 +36,7 @@ enum mic_privacy_policy {
  */
 union mic_privacy_mask {
 	uint32_t value; /**< Raw mask value */
+	/** Per link masks */
 	struct {
 		uint32_t sndw:7; /**< SoundWire link mask */
 		uint32_t dmic:1; /**< DMIC link mask */
