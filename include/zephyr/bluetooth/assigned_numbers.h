@@ -1521,6 +1521,14 @@ enum bt_audio_location {
  * @return true if the CoD format type is valid, false otherwise.
  */
 #define BT_COD_VALID(cod) ((0 == (cod[0] & (BIT(0) | BIT(1)))) ? true : false)
+/**
+ * @brief Get the Major Service Classes field of a Class of Device.
+ *
+ * @param cod CoD as a 3-byte array in little-endian byte order.
+ *
+ * @return Major Service Classes bits, relative to the start of the Major
+ *         Service Classes field.
+ */
 #define BT_COD_MAJOR_SERVICE_CLASSES(cod)                                                          \
 	((((uint32_t)cod[2] & 0xFF) >> 5) | (((uint32_t)cod[1] & 0xD0) >> 5))
 /**
