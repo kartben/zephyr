@@ -1,5 +1,6 @@
 /** @file
  *  @brief Audio Video Remote Control Cover Art Profile header.
+ *  @ingroup bt_avrcp_cover_art
  */
 
 /*

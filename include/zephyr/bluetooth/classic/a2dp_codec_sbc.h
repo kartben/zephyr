@@ -1,5 +1,6 @@
 /** @file
  * @brief Advance Audio Distribution Profile - SBC Codec header.
+ * @ingroup bt_a2dp
  */
 /*
  * SPDX-License-Identifier: Apache-2.0

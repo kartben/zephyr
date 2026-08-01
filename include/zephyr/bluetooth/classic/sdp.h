@@ -1,5 +1,6 @@
 /** @file
  *  @brief Service Discovery Protocol handling.
+ *  @ingroup bt_sdp
  */
 
 /*

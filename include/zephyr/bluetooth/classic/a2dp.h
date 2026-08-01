@@ -1,5 +1,6 @@
 /** @file
  * @brief Advanced Audio Distribution Profile header.
+ * @ingroup bt_a2dp
  */
 
 /*

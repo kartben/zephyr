@@ -1,5 +1,6 @@
 /** @file
  *  @brief Handsfree Profile Audio Gateway handling.
+ *  @ingroup bt_hfp_ag
  */
 
 /*

@@ -1,5 +1,6 @@
 /** @file
  *  @brief Handsfree Profile handling.
+ *  @ingroup bt_hfp
  */
 
 /*

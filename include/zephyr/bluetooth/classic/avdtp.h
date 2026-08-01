@@ -1,5 +1,6 @@
 /** @file
  * @brief Audio/Video Distribution Transport Protocol header.
+ * @ingroup bt_a2dp
  */
 
 /*

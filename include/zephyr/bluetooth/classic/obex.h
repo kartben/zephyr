@@ -6,6 +6,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the IrDA Object Exchange Protocol (OBEX) handling.
+ * @ingroup bt_obex
+ */
+
 #ifndef ZEPHYR_INCLUDE_BLUETOOTH_CLASSIC_OBEX_H_
 #define ZEPHYR_INCLUDE_BLUETOOTH_CLASSIC_OBEX_H_
 
