@@ -260,10 +260,11 @@ enum coap_content_format {
  * in RFC 7967.
  */
 enum coap_no_response {
-	COAP_NO_RESPONSE_SUPPRESS_2_XX = 0x02,
-	COAP_NO_RESPONSE_SUPPRESS_4_XX = 0x08,
-	COAP_NO_RESPONSE_SUPPRESS_5_XX = 0x10,
+	COAP_NO_RESPONSE_SUPPRESS_2_XX = 0x02, /**< Suppress 2.xx success responses */
+	COAP_NO_RESPONSE_SUPPRESS_4_XX = 0x08, /**< Suppress 4.xx client error responses */
+	COAP_NO_RESPONSE_SUPPRESS_5_XX = 0x10, /**< Suppress 5.xx server error responses */
 
+	/** Suppress responses of all classes */
 	COAP_NO_RESPONSE_SUPPRESS_ALL = COAP_NO_RESPONSE_SUPPRESS_2_XX |
 					COAP_NO_RESPONSE_SUPPRESS_4_XX |
 					COAP_NO_RESPONSE_SUPPRESS_5_XX,
