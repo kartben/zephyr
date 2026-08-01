@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for Designware MSPI driver timing configuration definitions.
+ * @ingroup mspi_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MSPI_DW_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MSPI_DW_H_
 
