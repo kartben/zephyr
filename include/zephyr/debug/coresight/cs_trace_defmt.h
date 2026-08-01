@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the coresight trace deformatter API.
+ * @ingroup coresight_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_DEBUG_CORESIGHT_CS_TRACE_DEFMT_H__
 #define ZEPHYR_INCLUDE_DEBUG_CORESIGHT_CS_TRACE_DEFMT_H__
 

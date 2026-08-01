@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the MIPI System Trace Protocol (STP) decoder API.
+ * @ingroup mipi_stp_decoder_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_DEBUG_MIPI_STP_DECODER_H__
 #define ZEPHYR_INCLUDE_DEBUG_MIPI_STP_DECODER_H__
 

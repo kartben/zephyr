@@ -1,6 +1,7 @@
 /**
  * @file debug/stack.h
  * Stack usage analysis helpers
+ * @ingroup debug
  */
 
 /*

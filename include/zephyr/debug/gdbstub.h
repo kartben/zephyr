@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for GDB remote debugging stub definitions and APIs.
+ * @ingroup debug
+ */
+
 #ifndef ZEPHYR_INCLUDE_DEBUG_GDBSTUB_H_
 #define ZEPHYR_INCLUDE_DEBUG_GDBSTUB_H_
 

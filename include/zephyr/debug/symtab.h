@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the symbol table API.
+ * @ingroup symtab_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_DEBUG_SYMTAB_H_
 #define ZEPHYR_INCLUDE_DEBUG_SYMTAB_H_
 

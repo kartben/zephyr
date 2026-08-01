@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the thread analyzer module.
+ * @ingroup thread_analyzer
+ */
+
 #ifndef ZEPHYR_INCLUDE_DEBUG_THREAD_ANALYZER_H_
 #define ZEPHYR_INCLUDE_DEBUG_THREAD_ANALYZER_H_
 
