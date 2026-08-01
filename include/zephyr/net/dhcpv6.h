@@ -6,6 +6,7 @@
 
 /** @file
  *  @brief DHCPv6 client
+ *  @ingroup dhcpv6
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_DHCPV6_H_
