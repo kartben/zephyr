@@ -1,5 +1,6 @@
 /** @file
  *  @brief DHCPv4 Server API
+ *  @ingroup dhcpv4_server
  */
 
 /*
