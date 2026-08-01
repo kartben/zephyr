@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public API for boot mode interface
+ * @ingroup boot_mode_interface
  */
 
 #ifndef ZEPHYR_INCLUDE_RETENTION_BOOTMODE_H_
