@@ -12,6 +12,7 @@
  * @file
  *
  * @brief Prometheus summary APIs.
+ * @ingroup prometheus
  *
  * @addtogroup prometheus
  * @{

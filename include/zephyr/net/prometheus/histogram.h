@@ -12,6 +12,7 @@
  * @file
  *
  * @brief Prometheus histogram APIs.
+ * @ingroup prometheus
  *
  * @addtogroup prometheus
  * @{

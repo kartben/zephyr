@@ -12,6 +12,7 @@
  * @file
  *
  * @brief Prometheus metric interface.
+ * @ingroup prometheus
  *
  * @addtogroup prometheus
  * @{

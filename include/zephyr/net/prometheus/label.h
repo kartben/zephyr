@@ -11,6 +11,7 @@
  * @file
  *
  * @brief Prometheus label interface.
+ * @ingroup prometheus
  *
  * @addtogroup prometheus
  * @{
