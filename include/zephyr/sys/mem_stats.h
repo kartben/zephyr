@@ -20,12 +20,11 @@ extern "C" {
 
 #include <stddef.h>
 
-/* A common structure used to report runtime memory usage statistics */
-
+/** A common structure used to report runtime memory usage statistics */
 struct sys_memory_stats {
-	size_t  free_bytes;
-	size_t  allocated_bytes;
-	size_t  max_allocated_bytes;
+	size_t  free_bytes;          /**< Number of free bytes */
+	size_t  allocated_bytes;     /**< Number of currently allocated bytes */
+	size_t  max_allocated_bytes; /**< Peak number of allocated bytes */
 };
 
 #ifdef __cplusplus

@@ -29,19 +29,20 @@ extern "C" {
  * @{
  */
 
+/** @brief Heap event types for which listeners can be notified */
 enum heap_event_types {
-	/*
+	/**
 	 * Dummy event so an un-initialized but zero-ed listener node
 	 * will not trigger any callbacks.
 	 */
 	HEAP_EVT_UNKNOWN = 0,
 
-	HEAP_RESIZE,
-	HEAP_ALLOC,
-	HEAP_FREE,
-	HEAP_REALLOC,
+	HEAP_RESIZE,  /**< Heap has been resized */
+	HEAP_ALLOC,   /**< Memory has been allocated from heap */
+	HEAP_FREE,    /**< Memory has been freed back to heap */
+	HEAP_REALLOC, /**< Memory has been reallocated on heap */
 
-	HEAP_MAX_EVENTS
+	HEAP_MAX_EVENTS /**< Number of heap event types */
 };
 
 /**
@@ -96,6 +97,7 @@ typedef void (*heap_listener_alloc_cb_t)(uintptr_t heap_id,
 typedef void (*heap_listener_free_cb_t)(uintptr_t heap_id,
 					void *mem, size_t bytes);
 
+/** @brief Heap event listener node */
 struct heap_listener {
 	/** Singly linked list node */
 	sys_snode_t node;
@@ -113,10 +115,11 @@ struct heap_listener {
 	 */
 	enum heap_event_types event;
 
+	/** Callback invoked on the event, according to the event member */
 	union {
-		heap_listener_alloc_cb_t alloc_cb;
-		heap_listener_free_cb_t free_cb;
-		heap_listener_resize_cb_t resize_cb;
+		heap_listener_alloc_cb_t alloc_cb;   /**< Allocation event callback */
+		heap_listener_free_cb_t free_cb;     /**< Free event callback */
+		heap_listener_resize_cb_t resize_cb; /**< Resize event callback */
 	};
 };
 
