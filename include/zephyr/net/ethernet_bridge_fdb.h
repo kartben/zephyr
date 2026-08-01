@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Definitions for Ethernet bridge FDB
+ * @ingroup eth_bridge_fdb
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_ETHERNET_BRIDGE_FDB_H_

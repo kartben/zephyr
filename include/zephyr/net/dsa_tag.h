@@ -6,6 +6,7 @@
 /**
  * @file
  * @brief Definitions for DSA tag protocol
+ * @ingroup dsa_tag
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_DSA_TAG_H_

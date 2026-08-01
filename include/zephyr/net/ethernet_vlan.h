@@ -1,5 +1,6 @@
 /** @file
  * @brief VLAN specific definitions.
+ * @ingroup vlan_api
  *
  * Virtual LAN specific definitions.
  */
