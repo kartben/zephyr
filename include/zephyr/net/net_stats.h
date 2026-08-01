@@ -969,6 +969,11 @@ NET_MGMT_DEFINE_REQUEST_HANDLER(NET_REQUEST_STATS_RESET_WIFI);
 /** @endcond */
 #endif /* CONFIG_NET_STATISTICS_WIFI */
 
+/** @cond INTERNAL_HIDDEN */
+
+/* Helper macros used by the NET_STATS_PROMETHEUS macros below when the
+ * network interface instantiation macros create the Prometheus metrics.
+ */
 #define NET_STATS_GET_METRIC_NAME(_name) _name
 #define NET_STATS_GET_COLLECTOR_NAME(dev_id, sfx) net_stats_##dev_id##_##sfx##_collector
 #define NET_STATS_GET_VAR(dev_id, sfx, var) zephyr_net_##var
@@ -1193,9 +1198,7 @@ NET_MGMT_DEFINE_REQUEST_HANDLER(NET_REQUEST_STATS_RESET_WIFI);
 		NET_STATS_GET_VAR(dev_id, sfx, raw_bytes_recv),		\
 		&(iface)->stats.raw.bytes.received)
 #else
-/** @cond INTERNAL_HIDDEN */
 #define NET_STATS_PROMETHEUS_RAW(iface, dev_id, sfx)
-/** @endcond */
 #endif
 
 /* TCP layer statistics */
@@ -1624,6 +1627,8 @@ NET_MGMT_DEFINE_REQUEST_HANDLER(NET_REQUEST_STATS_RESET_WIFI);
 	NET_STATS_PROMETHEUS_DNS(iface, dev_id, sfx);			\
 	NET_STATS_PROMETHEUS_TX_TIME(iface, dev_id, sfx);		\
 	NET_STATS_PROMETHEUS_RX_TIME(iface, dev_id, sfx)
+
+/** @endcond */
 
 /**
  * @}
