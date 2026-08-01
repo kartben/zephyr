@@ -26,13 +26,18 @@
 extern "C" {
 #endif
 
+/** Size of a buffer in the receive pool, in bytes */
 #define SMP_SHELL_RX_BUF_SIZE	127
 
 /** @brief Data used by SMP shell */
 struct smp_shell_data {
+	/** Pool of buffers for received data. */
 	struct net_buf_pool *buf_pool;
+	/** FIFO of received frames ready to be processed. */
 	struct k_fifo buf_ready;
+	/** Buffer that is currently being filled with received data. */
 	struct net_buf *buf;
+	/** State of SMP frame escape sequence detection. */
 	atomic_t esc_state;
 };
 

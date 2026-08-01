@@ -46,16 +46,22 @@ enum smp_mcumgr_version_t {
 	SMP_MCUMGR_VERSION_2,
 };
 
+/** @brief Reader for decoding CBOR data from a net_buf. */
 struct cbor_nb_reader {
+	/** Buffer holding the data to decode. */
 	struct net_buf *nb;
 	/* CONFIG_MCUMGR_SMP_CBOR_MAX_DECODING_LEVELS + 2 translates to minimal
 	 * zcbor backup states.
 	 */
+	/** zcbor decoding state. */
 	zcbor_state_t zs[CONFIG_MCUMGR_SMP_CBOR_MAX_DECODING_LEVELS + 2];
 };
 
+/** @brief Writer for encoding CBOR data into a net_buf. */
 struct cbor_nb_writer {
+	/** Buffer to write the encoded data to. */
 	struct net_buf *nb;
+	/** zcbor encoding state. */
 	zcbor_state_t zs[CONFIG_MCUMGR_SMP_CBOR_MAX_ENCODING_LEVELS + 2];
 
 #if defined(CONFIG_MCUMGR_SMP_SUPPORT_ORIGINAL_PROTOCOL)
@@ -83,8 +89,11 @@ void smp_packet_free(struct net_buf *nb);
  * @brief Decodes, encodes, and transmits SMP packets.
  */
 struct smp_streamer {
+	/** Transport used to allocate, free and send packets. */
 	struct smp_transport *smpt;
+	/** Reader used to decode the request. */
 	struct cbor_nb_reader *reader;
+	/** Writer used to encode the response. */
 	struct cbor_nb_writer *writer;
 
 #ifdef CONFIG_MCUMGR_SMP_VERBOSE_ERR_RESPONSE
