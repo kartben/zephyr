@@ -38,6 +38,13 @@
 
 /** @endcond */
 
+/** @brief Initializer of the runtime context of a model.
+ *
+ *  To be used as part of the initializer of a @ref bt_mesh_model, as done
+ *  by the model instantiation macros like @ref BT_MESH_MODEL_CB.
+ *
+ *  @param _user_data Model user data.
+ */
 #define BT_MESH_MODEL_RUNTIME_INIT(_user_data)			\
 	.rt = &(struct bt_mesh_model_rt_ctx){ .user_data = (_user_data) },
 
@@ -164,7 +171,7 @@ struct bt_mesh_elem {
 	struct bt_mesh_elem_rt_ctx {
 		/** Unicast Address. Set at runtime during provisioning. */
 		uint16_t addr;
-	} * const rt;
+	} * const rt; /**< Mesh Element runtime information */
 
 	/** Location Descriptor (GATT Bluetooth Namespace Descriptors) */
 	const uint16_t loc;
@@ -712,6 +719,7 @@ struct bt_mesh_mod_id_vnd {
 
 /** Abstraction that describes a Mesh Model instance */
 struct bt_mesh_model {
+	/** Model ID, either a SIG model ID or a vendor model ID */
 	union {
 		/** SIG model ID */
 		const uint16_t id;
@@ -719,29 +727,31 @@ struct bt_mesh_model {
 		const struct bt_mesh_mod_id_vnd vnd;
 	};
 
-	/* Model runtime information */
+	/** Model runtime information */
 	struct bt_mesh_model_rt_ctx {
-		uint8_t  elem_idx;   /* Belongs to Nth element */
-		uint8_t  mod_idx;    /* Is the Nth model in the element */
-		uint16_t flags;      /* Model flags for internal bookkeeping */
+		uint8_t  elem_idx;   /**< Belongs to Nth element */
+		uint8_t  mod_idx;    /**< Is the Nth model in the element */
+		uint16_t flags;      /**< Model flags for internal bookkeeping */
 
 #ifdef CONFIG_BT_MESH_MODEL_EXTENSIONS
-		/* Pointer to the next model in a model extension list. */
+		/** Pointer to the next model in a model extension list. */
 		const struct bt_mesh_model *next;
 #endif
 		/** Model-specific user data */
 		void *user_data;
-	} * const rt;
+	} * const rt; /**< Model runtime information */
 
 	/** Model Publication */
 	struct bt_mesh_model_pub * const pub;
 
 	/** AppKey List */
 	uint16_t * const keys;
+	/** Number of entries in the AppKey List */
 	const uint16_t keys_cnt;
 
 	/** Subscription List (group or virtual addresses) */
 	uint16_t * const groups;
+	/** Number of entries in the Subscription List */
 	const uint16_t groups_cnt;
 
 #if (CONFIG_BT_MESH_LABEL_COUNT > 0) || defined(__DOXYGEN__)
@@ -756,7 +766,7 @@ struct bt_mesh_model {
 	const struct bt_mesh_model_cb * const cb;
 
 #if defined(CONFIG_BT_MESH_LARGE_COMP_DATA_SRV) || defined(__DOXYGEN__)
-	/* Pointer to the array of model metadata entries. */
+	/** Pointer to the array of model metadata entries. */
 	const struct bt_mesh_models_metadata_entry * const metadata;
 #endif
 };
