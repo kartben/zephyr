@@ -96,14 +96,23 @@ typedef uint32_t (*sip_svc_plat_get_error_code_t)(const struct device *dev,
  *
  */
 __subsystem struct svc_driver_api {
+	/** Execute the supervisory call, see sip_supervisory_call() */
 	sip_supervisory_call_t sip_supervisory_call;
+	/** Validate a function id, see sip_svc_plat_func_id_valid() */
 	sip_svc_plat_func_id_valid_t sip_svc_plat_func_id_valid;
+	/** Generate the transaction id from client id, see sip_svc_plat_format_trans_id() */
 	sip_svc_plat_format_trans_id_t sip_svc_plat_format_trans_id;
+	/** Retrieve client transaction id, see sip_svc_plat_get_trans_idx() */
 	sip_svc_plat_get_trans_idx_t sip_svc_plat_get_trans_idx;
+	/** Update transaction id in a request packet, see sip_svc_plat_update_trans_id() */
 	sip_svc_plat_update_trans_id_t sip_svc_plat_update_trans_id;
+	/** Free the command buffer of an ASYNC packet, see sip_svc_plat_free_async_memory() */
 	sip_svc_plat_free_async_memory_t sip_svc_plat_free_async_memory;
+	/** Construct an ASYNC polling packet, see sip_svc_plat_async_res_req() */
 	sip_svc_plat_async_res_req_t sip_svc_plat_async_res_req;
+	/** Check the response of a polling request, see sip_svc_plat_async_res_res() */
 	sip_svc_plat_async_res_res_t sip_svc_plat_async_res_res;
+	/** Retrieve the error code from a response, see sip_svc_plat_get_error_code() */
 	sip_svc_plat_get_error_code_t sip_svc_plat_get_error_code;
 };
 
