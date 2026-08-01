@@ -114,13 +114,19 @@ struct disk_info {
  * @brief Disk operations
  */
 struct disk_operations {
+	/** Initialize the disk, see disk_access_init() */
 	int (*init)(struct disk_info *disk);
+	/** Get disk status, see disk_access_status() */
 	int (*status)(struct disk_info *disk);
+	/** Read sectors from the disk, see disk_access_read() */
 	int (*read)(struct disk_info *disk, uint8_t *data_buf,
 		    uint32_t start_sector, uint32_t num_sector);
+	/** Write sectors to the disk, see disk_access_write() */
 	int (*write)(struct disk_info *disk, const uint8_t *data_buf,
 		     uint32_t start_sector, uint32_t num_sector);
+	/** Erase disk sectors, see disk_access_erase() */
 	int (*erase)(struct disk_info *disk, uint32_t start_sector, uint32_t num_sector);
+	/** Perform an I/O control request, see disk_access_ioctl() */
 	int (*ioctl)(struct disk_info *disk, uint8_t cmd, void *buff);
 };
 
