@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief PWMs Devicetree macro public API header file.
+ * @ingroup devicetree-pwms
  */
 
 /*

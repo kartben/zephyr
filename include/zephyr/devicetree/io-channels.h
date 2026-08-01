@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief IO channels devicetree macro public API header file.
+ * @ingroup devicetree-io-channels
  */
 
 /*

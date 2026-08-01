@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Display Devicetree macro public API header file.
+ * @ingroup devicetree-display
  */
 
 /*

@@ -9,6 +9,7 @@
 /**
  * @file
  * @brief Devicetree pin control helpers
+ * @ingroup devicetree-pinctrl
  */
 
 /**

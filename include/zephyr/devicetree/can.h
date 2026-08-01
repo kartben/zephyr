@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief CAN devicetree macro public API header file.
+ * @ingroup devicetree-can
  */
 
 /*

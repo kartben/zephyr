@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Port / Endpoint Devicetree macro public API header file.
+ * @ingroup devicetree-port-endpoint
  */
 
 /*

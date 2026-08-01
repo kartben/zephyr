@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Interrupt controller devicetree macro public API header file.
+ * @ingroup devicetree-interrupt_controller
  */
 
 #ifndef ZEPHYR_INCLUDE_DEVICETREE_INTERRUPT_CONTROLLER_H_

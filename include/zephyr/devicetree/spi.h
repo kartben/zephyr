@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief SPI Devicetree macro public API header file.
+ * @ingroup devicetree-spi
  */
 
 /*
