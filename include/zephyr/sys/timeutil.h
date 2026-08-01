@@ -41,42 +41,66 @@
 extern "C" {
 #endif
 
-/* Maximum and minimum value TIME_T can hold */
+/** Maximum value that can be represented in a @c time_t */
 #define SYS_TIME_T_MAX ((((time_t)1 << (8 * sizeof(time_t) - 2)) - 1) * 2 + 1)
+/** Minimum value that can be represented in a @c time_t */
 #define SYS_TIME_T_MIN (-SYS_TIME_T_MAX - 1)
 
-/* Converts ticks to seconds, discarding any fractional seconds */
+/**
+ * @brief Convert ticks to seconds, discarding any fractional seconds.
+ *
+ * @param ticks Tick count to convert. @c K_TICKS_FOREVER converts to
+ *              @ref SYS_TIME_T_MAX.
+ * @return Number of whole seconds corresponding to @p ticks.
+ */
 #define SYS_TICKS_TO_SECS(ticks)                                                                   \
 	(((uint64_t)(ticks) >= (uint64_t)K_TICKS_FOREVER) ? SYS_TIME_T_MAX                         \
 							  : k_ticks_to_sec_floor64(ticks))
 
-/* Converts ticks to nanoseconds, modulo NSEC_PER_SEC */
+/**
+ * @brief Convert ticks to nanoseconds, modulo @c NSEC_PER_SEC.
+ *
+ * @param ticks Tick count to convert. @c K_TICKS_FOREVER converts to
+ *              @c NSEC_PER_SEC - 1.
+ * @return Nanosecond remainder of @p ticks after removing whole seconds.
+ */
 #define SYS_TICKS_TO_NSECS(ticks)                                                                  \
 	(((uint64_t)(ticks) >= (uint64_t)K_TICKS_FOREVER)                                          \
 		 ? (NSEC_PER_SEC - 1)                                                              \
 		 : k_ticks_to_ns_floor64((uint64_t)(ticks) % CONFIG_SYS_CLOCK_TICKS_PER_SEC))
 
-/* Define a timespec */
+/**
+ * @brief Define a timespec object.
+ *
+ * @param sec Seconds value, clamped to the range of @c time_t.
+ * @param nsec Nanoseconds value.
+ * @return A @c struct @c timespec compound literal.
+ */
 #define SYS_TIMESPEC(sec, nsec)                                                                    \
 	((struct timespec){                                                                        \
 		.tv_sec = (time_t)CLAMP((int64_t)(sec), SYS_TIME_T_MIN, SYS_TIME_T_MAX),           \
 		.tv_nsec = (long)(nsec),                                                           \
 	})
 
-/* Initialize a struct timespec object from a tick count */
+/**
+ * @brief Initialize a struct timespec object from a tick count.
+ *
+ * @param ticks Tick count to convert.
+ * @return A @c struct @c timespec compound literal representing @p ticks.
+ */
 #define SYS_TICKS_TO_TIMESPEC(ticks) SYS_TIMESPEC(SYS_TICKS_TO_SECS(ticks), \
 						  SYS_TICKS_TO_NSECS(ticks))
 
-/* The semantic equivalent of K_NO_WAIT but expressed as a timespec object*/
+/** The semantic equivalent of @c K_NO_WAIT but expressed as a timespec object */
 #define SYS_TIMESPEC_NO_WAIT SYS_TICKS_TO_TIMESPEC(0)
 
-/* The semantic equivalent of K_TICK_MIN but expressed as a timespec object */
+/** The semantic equivalent of @c K_TICK_MIN but expressed as a timespec object */
 #define SYS_TIMESPEC_MIN SYS_TICKS_TO_TIMESPEC(K_TICK_MIN)
 
-/* The semantic equivalent of K_TICK_MAX but expressed as a timespec object */
+/** The semantic equivalent of @c K_TICK_MAX but expressed as a timespec object */
 #define SYS_TIMESPEC_MAX SYS_TICKS_TO_TIMESPEC(K_TICK_MAX)
 
-/* The semantic equivalent of K_FOREVER but expressed as a timespec object*/
+/** The semantic equivalent of @c K_FOREVER but expressed as a timespec object */
 #define SYS_TIMESPEC_FOREVER SYS_TIMESPEC(SYS_TIME_T_MAX, NSEC_PER_SEC - 1)
 
 /**
@@ -89,7 +113,7 @@ extern "C" {
  * @{
  */
 
-/* Base Year value use in calculations in "timeutil_timegm64" API */
+/** Base year of the @c tm_year field of @c struct @c tm, as used by timeutil_timegm64() */
 #define TIME_UTILS_BASE_YEAR 1900
 
 /**
