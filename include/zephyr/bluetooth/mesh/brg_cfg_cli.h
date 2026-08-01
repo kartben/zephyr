@@ -107,8 +107,10 @@ struct bt_mesh_brg_cfg_cli {
 	/** Event handler callbacks */
 	const struct bt_mesh_brg_cfg_cli_cb *cb;
 
+	/** @cond INTERNAL_HIDDEN */
 	/* Internal parameters for tracking message responses. */
 	struct bt_mesh_msg_ack_ctx ack_ctx;
+	/** @endcond */
 };
 
 /** @brief Sends a Subnet Bridge Get message to the given destination address
