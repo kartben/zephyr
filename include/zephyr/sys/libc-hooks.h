@@ -27,6 +27,8 @@ extern "C" {
  * that need to call into the kernel as system calls
  */
 
+/** @cond INTERNAL_HIDDEN */
+
 #if defined(CONFIG_NEWLIB_LIBC) || defined(CONFIG_ARCMWDT_LIBC)
 
 /* syscall generation ignores preprocessor, ensure this is defined to ensure
@@ -51,6 +53,8 @@ __syscall size_t zephyr_fwrite(const void *ZRESTRICT ptr, size_t size,
 #endif /* CONFIG_NEWLIB_LIBC */
 
 void __stdout_hook_install(int (*hook)(int));
+
+/** @endcond */
 
 #ifdef CONFIG_USERSPACE
 #ifdef CONFIG_COMMON_LIBC_MALLOC
