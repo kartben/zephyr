@@ -11,6 +11,7 @@
 /**
  * @file
  * @brief cache API interface
+ * @ingroup cache_interface
  */
 
 #include <zephyr/kernel.h>
