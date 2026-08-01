@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for emulated GNSS driver test APIs.
+ * @ingroup gnss_interface
+ */
+
 #ifndef ZEPHYR_DRIVERS_GNSS_GNSS_EMUL_H_
 #define ZEPHYR_DRIVERS_GNSS_GNSS_EMUL_H_
 
