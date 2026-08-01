@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public API for ISO-TP (ISO 15765-2:2016)
+ * @ingroup can_isotp
  *
  * ISO-TP is a transport protocol for CAN (Controller Area Network)
  */
