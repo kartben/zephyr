@@ -11,6 +11,7 @@
 /**
  * @file
  * @brief Cleanup helper API interface
+ * @ingroup cleanup_interface
  */
 
 /**
