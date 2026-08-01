@@ -24,10 +24,15 @@
 extern "C" {
 #endif
 
+/** @brief Open Addressing / Linear Probe Hashmap data */
 struct sys_hashmap_oa_lp_data {
+	/** Pointer to the bucket array */
 	void *buckets;
+	/** The number of buckets currently allocated */
 	size_t n_buckets;
+	/** The number of entries currently in the Hashmap */
 	size_t size;
+	/** The number of removed entries not yet reclaimed (tombstones) */
 	size_t n_tombstones;
 };
 
@@ -99,6 +104,7 @@ struct sys_hashmap_oa_lp_data {
 	SYS_HASHMAP_OA_LP_DEFINE_STATIC_ADVANCED(_name, _hash_func, _alloc_func, __VA_ARGS__)
 #endif
 
+/** @brief API table for the Open Addressing / Linear Probe Hashmap implementation */
 extern const struct sys_hashmap_api sys_hashmap_oa_lp_api;
 
 #ifdef __cplusplus
