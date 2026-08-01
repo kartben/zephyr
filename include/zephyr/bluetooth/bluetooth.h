@@ -1079,6 +1079,11 @@ struct bt_le_per_adv_param {
 		BT_LE_ADV_PARAM_INIT(_options, _int_min, _int_max, _peer) \
 	 })
 
+/**
+ * @brief High duty cycle directed connectable advertising
+ *
+ * @param _peer Peer address, target of the directed advertising.
+ */
 #define BT_LE_ADV_CONN_DIR(_peer) BT_LE_ADV_PARAM(BT_LE_ADV_OPT_CONN, 0, 0, _peer)
 
 /**
@@ -1133,6 +1138,11 @@ struct bt_le_per_adv_param {
 	BT_LE_ADV_PARAM(BT_LE_ADV_OPT_CONN, BT_GAP_ADV_FAST_INT_MIN_2, BT_GAP_ADV_FAST_INT_MAX_2,  \
 			NULL)
 
+/**
+ * @brief Low duty cycle directed connectable advertising
+ *
+ * @param _peer Peer address, target of the directed advertising.
+ */
 #define BT_LE_ADV_CONN_DIR_LOW_DUTY(_peer)                                                         \
 	BT_LE_ADV_PARAM(BT_LE_ADV_OPT_CONN | BT_LE_ADV_OPT_DIR_MODE_LOW_DUTY,                      \
 			BT_GAP_ADV_FAST_INT_MIN_2, BT_GAP_ADV_FAST_INT_MAX_2, _peer)
@@ -1210,6 +1220,10 @@ struct bt_le_per_adv_param {
 		BT_LE_EXT_ADV_START_PARAM_INIT((_timeout), (_n_evts)) \
 	})
 
+/**
+ * Default extended advertising start parameters: no advertising duration limit
+ * and no limit on the number of advertising events.
+ */
 #define BT_LE_EXT_ADV_START_DEFAULT BT_LE_EXT_ADV_START_PARAM(0, 0)
 
 /**
@@ -1240,6 +1254,10 @@ struct bt_le_per_adv_param {
 		BT_LE_PER_ADV_PARAM_INIT(_int_min, _int_max, _options) \
 	})
 
+/**
+ * Default periodic advertising parameters: slow periodic advertising interval
+ * and no options.
+ */
 #define BT_LE_PER_ADV_DEFAULT BT_LE_PER_ADV_PARAM(BT_GAP_PER_ADV_SLOW_INT_MIN, \
 						  BT_GAP_PER_ADV_SLOW_INT_MAX, \
 						  BT_LE_PER_ADV_OPT_NONE)
@@ -1916,7 +1934,11 @@ struct bt_le_per_adv_sync_cb {
 	void (*cte_report_cb)(struct bt_le_per_adv_sync *sync,
 			      struct bt_df_per_adv_sync_iq_samples_report const *info);
 
+	/** @cond INTERNAL_HIDDEN
+	 *  Field used for list handling.
+	 */
 	sys_snode_t node;
+	/** @endcond */
 };
 
 /** Periodic advertising sync options */
@@ -2338,6 +2360,7 @@ int bt_le_per_adv_list_remove(const bt_addr_le_t *addr, uint8_t sid);
 int bt_le_per_adv_list_clear(void);
 
 
+/** LE scan options */
 enum bt_le_scan_opt {
 	/** Convenience value when no options are specified. */
 	BT_LE_SCAN_OPT_NONE = 0,
@@ -2359,6 +2382,7 @@ enum bt_le_scan_opt {
 	BT_LE_SCAN_OPT_NO_1M = BIT(3),
 };
 
+/** LE scan type */
 enum bt_le_scan_type {
 	/** Scan without requesting additional information from advertisers. */
 	BT_LE_SCAN_TYPE_PASSIVE = 0x00,
@@ -2500,7 +2524,11 @@ struct bt_le_scan_cb {
 	/** @brief The scanner has stopped scanning after scan timeout. */
 	void (*timeout)(void);
 
+	/** @cond INTERNAL_HIDDEN
+	 *  Field used for list handling.
+	 */
 	sys_snode_t node;
+	/** @endcond */
 };
 
 /**
