@@ -3,6 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the NXP MCUX DSI 2L peripheral specific message flags.
+ * @ingroup mipi_dsi_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MIPI_DSI_MCUX_2L_
 #define ZEPHYR_INCLUDE_DRIVERS_MIPI_DSI_MCUX_2L_
 
