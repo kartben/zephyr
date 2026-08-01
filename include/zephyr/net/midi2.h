@@ -3,6 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the Network MIDI 2.0 (UDP transport for Universal MIDI Packets) APIs.
+ * @ingroup net_midi2
+ */
+
 #ifndef ZEPHYR_INCLUDE_NET_MIDI2_H_
 #define ZEPHYR_INCLUDE_NET_MIDI2_H_
 
