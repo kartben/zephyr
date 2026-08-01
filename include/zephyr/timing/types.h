@@ -13,6 +13,7 @@
 #ifndef ZEPHYR_INCLUDE_TIMING_TYPES_H_
 #define ZEPHYR_INCLUDE_TIMING_TYPES_H_
 
+/** @brief Timing counter value, as returned by timing_counter_get(). */
 typedef uint64_t timing_t;
 
 #endif /* ZEPHYR_INCLUDE_TIMING_TYPES_H_ */
