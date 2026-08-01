@@ -5,6 +5,12 @@
  *
  */
 
+/**
+ * @file
+ * @brief Header file for STM32 specific I2C driver API extensions.
+ * @ingroup i2c_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_I2C_STM32_H_
 #define ZEPHYR_INCLUDE_DRIVERS_I2C_STM32_H_
 

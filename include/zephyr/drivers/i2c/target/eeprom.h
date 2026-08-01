@@ -2,6 +2,7 @@
  * @file
  *
  * @brief Public APIs for the I2C EEPROM Target driver.
+ * @ingroup i2c_eeprom_target_api
  */
 
 /*
