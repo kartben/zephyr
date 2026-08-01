@@ -30,6 +30,7 @@ extern "C" {
  * @{
  */
 
+/** Boot mode values */
 enum BOOT_MODE_TYPES {
 	/** Default (normal) boot, to user application */
 	BOOT_MODE_TYPE_NORMAL = 0x00,
