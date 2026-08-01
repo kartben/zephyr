@@ -64,9 +64,14 @@ enum semihost_instr {
 	/*
 	 * Time operations
 	 */
+
+	/** Get the number of centiseconds since execution started. */
 	SEMIHOST_CLOCK          = 0x10,
+	/** Get the number of elapsed target ticks since execution started. */
 	SEMIHOST_ELAPSED        = 0x30,
+	/** Get the tick frequency. */
 	SEMIHOST_TICKFREQ       = 0x31,
+	/** Get the current time in seconds since the Unix epoch. */
 	SEMIHOST_TIME           = 0x11,
 
 	/*
@@ -77,8 +82,11 @@ enum semihost_instr {
 	SEMIHOST_ERRNO          = 0x13,
 	/** Get commandline parameters for the application to run with */
 	SEMIHOST_GET_CMDLINE    = 0x15,
+	/** Get the system heap parameters. */
 	SEMIHOST_HEAPINFO       = 0x16,
+	/** Check whether the return code of a semihosting call is an error status. */
 	SEMIHOST_ISERROR        = 0x08,
+	/** Pass a command to the host command-line interpreter. */
 	SEMIHOST_SYSTEM         = 0x12
 };
 
@@ -89,18 +97,18 @@ enum semihost_instr {
  * i.e. SEMIHOST_OPEN_RB_PLUS == "rb+"
  */
 enum semihost_open_mode {
-	SEMIHOST_OPEN_R         = 0,
-	SEMIHOST_OPEN_RB        = 1,
-	SEMIHOST_OPEN_R_PLUS    = 2,
-	SEMIHOST_OPEN_RB_PLUS   = 3,
-	SEMIHOST_OPEN_W         = 4,
-	SEMIHOST_OPEN_WB        = 5,
-	SEMIHOST_OPEN_W_PLUS    = 6,
-	SEMIHOST_OPEN_WB_PLUS   = 7,
-	SEMIHOST_OPEN_A         = 8,
-	SEMIHOST_OPEN_AB        = 9,
-	SEMIHOST_OPEN_A_PLUS    = 10,
-	SEMIHOST_OPEN_AB_PLUS   = 11,
+	SEMIHOST_OPEN_R         = 0,  /**< Open for reading ("r") */
+	SEMIHOST_OPEN_RB        = 1,  /**< Open for reading, binary ("rb") */
+	SEMIHOST_OPEN_R_PLUS    = 2,  /**< Open for reading and writing ("r+") */
+	SEMIHOST_OPEN_RB_PLUS   = 3,  /**< Open for reading and writing, binary ("rb+") */
+	SEMIHOST_OPEN_W         = 4,  /**< Create/truncate for writing ("w") */
+	SEMIHOST_OPEN_WB        = 5,  /**< Create/truncate for writing, binary ("wb") */
+	SEMIHOST_OPEN_W_PLUS    = 6,  /**< Create/truncate for reading and writing ("w+") */
+	SEMIHOST_OPEN_WB_PLUS   = 7,  /**< Create/truncate for read/write, binary ("wb+") */
+	SEMIHOST_OPEN_A         = 8,  /**< Open/create for appending ("a") */
+	SEMIHOST_OPEN_AB        = 9,  /**< Open/create for appending, binary ("ab") */
+	SEMIHOST_OPEN_A_PLUS    = 10, /**< Open/create for reading and appending ("a+") */
+	SEMIHOST_OPEN_AB_PLUS   = 11, /**< Open/create for reading and appending, binary ("ab+") */
 };
 
 /**

@@ -36,11 +36,16 @@
 #endif
 #endif
 
-/*
- * Inform the unwinder that the return address is undefined.
- * This prevents bogus unwinding and potential faults.
- */
 #ifndef ARCH_CFI_UNDEFINED_RETURN_ADDRESS
+/**
+ * @brief Inform the unwinder that the return address is undefined
+ *
+ * Emit DWARF call frame information marking the return address as
+ * undefined at the current point, so that stack unwinding stops there
+ * instead of producing bogus frames and potential faults.
+ *
+ * Expands to nothing on architectures without CFI support.
+ */
 #define ARCH_CFI_UNDEFINED_RETURN_ADDRESS()
 #endif
 

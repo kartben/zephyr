@@ -107,6 +107,18 @@ static inline void arch_exception_call_dump_hook(const char *format, ...)
 
 #else
 
+/**
+ * @brief Print a line of exception dump output
+ *
+ * Emit one printf-style formatted line of fatal error and exception dump
+ * output. Depending on the configuration, the line is routed to the
+ * registered exception dump hook, to the logging subsystem, and/or to
+ * printk(). The line terminator is appended automatically, so the format
+ * string should not end with a newline.
+ *
+ * @param format printf-style format string
+ * @param ... Arguments for @p format
+ */
 #if defined(CONFIG_LOG)
 #define EXCEPTION_DUMP(...) LOG_ERR(__VA_ARGS__)
 #else
