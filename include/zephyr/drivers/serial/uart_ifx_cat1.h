@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for Infineon CAT1 UART driver internal interrupt helpers.
+ * @ingroup uart_interface
+ */
+
 #include <zephyr/drivers/uart.h>
 #include <string.h>
 #include <cy_scb_uart.h>

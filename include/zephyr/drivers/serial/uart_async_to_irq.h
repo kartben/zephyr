@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the adaptation layer exposing the interrupt driven API on top of the async UART API.
+ * @ingroup uart_interface
+ */
+
 #ifndef ZEPHYR_DRIVERS_SERIAL_UART_ASYNC_TO_IRQ_H_
 #define ZEPHYR_DRIVERS_SERIAL_UART_ASYNC_TO_IRQ_H_
 

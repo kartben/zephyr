@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Helper module for receiving using UART Asynchronous API.
+ * @ingroup uart_interface
  */
 
 #ifndef ZEPHYR_DRIVERS_SERIAL_UART_ASYNC_RX_H_

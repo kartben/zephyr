@@ -5,7 +5,9 @@
  */
 
 /**
+ * @file
  * Header file for the ALTERA UART
+ * @ingroup uart_interface
  */
 
 #ifndef ZEPHYR_DRIVERS_SERIAL_UART_ALTERA_H_
@@ -20,7 +22,9 @@
  * to set call back function for eop interrupt.
  * Flag is cleared after uart_irq_callback_user_data_set is called.
  */
+/** Command for uart_drv_cmd() to enable the end of packet feature. */
 #define CMD_ENABLE_EOP	0x01
+/** Command for uart_drv_cmd() to disable the end of packet feature. */
 #define CMD_DISABLE_EOP	0x02
 
 #endif /* ZEPHYR_DRIVERS_SERIAL_UART_ALTERA_H_ */
