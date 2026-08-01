@@ -17,6 +17,7 @@ extern "C" {
 /**
  * @file
  * @brief Flash simulator specific API.
+ * @ingroup flash_interface
  *
  * Extension for flash simulator.
  */
