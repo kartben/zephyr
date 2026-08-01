@@ -24,7 +24,9 @@
 extern "C" {
 #endif
 
-/*
+/**
+ * @brief Upper bound on the tick count passed to sys_clock_set_timeout()
+ *
  * Maximum number of ticks the kernel will ever ask a timer driver to wait
  * before the next sys_clock_announce(). It is half of the unsigned tick
  * range so that the elapsed-tick count the driver eventually announces is
