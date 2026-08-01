@@ -31,20 +31,34 @@ extern "C" {
  * @{
  */
 
-/* Battery chemistry enumeration.
+/**
+ * @brief Battery chemistry
+ *
  * Value names must match those from dts/bindings/battery.yaml
  */
 enum battery_chemistry {
+	/** Unknown chemistry */
 	BATTERY_CHEMISTRY_UNKNOWN = 0,
+	/** Nickel-cadmium (NiCd) */
 	BATTERY_CHEMISTRY_NICKEL_CADMIUM,
+	/** Nickel-metal hydride (NiMH) */
 	BATTERY_CHEMISTRY_NICKEL_METAL_HYDRIDE,
+	/** Lithium-ion, blanket type for all lithium-ion based chemistries */
 	BATTERY_CHEMISTRY_LITHIUM_ION,
+	/** Lithium-ion polymer */
 	BATTERY_CHEMISTRY_LITHIUM_ION_POLYMER,
+	/** Lithium iron phosphate */
 	BATTERY_CHEMISTRY_LITHIUM_ION_IRON_PHOSPHATE,
+	/** Lithium-ion manganese oxide */
 	BATTERY_CHEMISTRY_LITHIUM_ION_MANGANESE_OXIDE,
 };
 
-/* Length of open circuit voltage table */
+/**
+ * @brief Length of an open circuit voltage table
+ *
+ * Open circuit voltage tables hold one entry per 10% state of charge step,
+ * covering 0% to 100% charge.
+ */
 #define BATTERY_OCV_TABLE_LEN 11
 
 /**
