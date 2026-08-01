@@ -3,6 +3,12 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the ACPI device enumeration and resource discovery APIs.
+ */
+
 #ifndef ZEPHYR_INCLUDE_ACPI_ACPI_H_
 #define ZEPHYR_INCLUDE_ACPI_ACPI_H_
 #include <acpica/source/include/acpi.h>
