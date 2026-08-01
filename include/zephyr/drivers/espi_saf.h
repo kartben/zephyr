@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public APIs for eSPI driver
+ * @ingroup espi_saf_interface
  */
 
 #ifndef ZEPHYR_INCLUDE_ESPI_SAF_H_
