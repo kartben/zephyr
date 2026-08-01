@@ -35,8 +35,14 @@ extern "C" {
  */
 struct sys_sem {
 #ifdef CONFIG_USERSPACE
+	/**
+	 * @cond INTERNAL_HIDDEN
+	 */
 	struct k_futex futex;
 	int limit;
+	/**
+	 * INTERNAL_HIDDEN @endcond
+	 */
 #else
 	struct k_sem kernel_sem;
 #endif
