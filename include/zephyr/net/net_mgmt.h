@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Network Management API public header
+ * @ingroup net_mgmt
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_NET_MGMT_H_

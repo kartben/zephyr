@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Network subsystem logging helpers.
+ * @ingroup internal_api
  *
  * These macros are private to the network subsystem and should not be used
  * by the application or other subsystems.

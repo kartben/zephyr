@@ -1,5 +1,6 @@
 /** @file
  * @brief Network context definitions
+ * @ingroup net_context
  *
  * An API for applications to define a network connection.
  */

@@ -1,5 +1,6 @@
 /** @file
  * @brief Loopback control interface
+ * @ingroup networking
  */
 
 /*

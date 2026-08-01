@@ -1,5 +1,6 @@
 /** @file
  * @brief IPv6 and IPv4 definitions
+ * @ingroup ip_4_6
  *
  * Generic IPv6 and IPv4 address definitions.
  */

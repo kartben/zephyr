@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public API for network link address
+ * @ingroup net_linkaddr
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_NET_LINKADDR_H_

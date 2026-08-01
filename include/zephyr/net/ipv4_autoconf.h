@@ -6,6 +6,7 @@
 
 /** @file
  * @brief IPv4 Autoconfiguration
+ * @ingroup ip_4_6
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_IPV4_AUTOCONF_H_

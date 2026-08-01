@@ -1,5 +1,6 @@
 /** @file
  * @brief Network packet filtering public header file
+ * @ingroup net_pkt_filter
  *
  * The network packet filtering provides a mechanism for deciding the fate
  * of an incoming or outgoing packet based on a set of basic rules.

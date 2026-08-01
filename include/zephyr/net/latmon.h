@@ -1,5 +1,6 @@
 /** @file
  *  @brief Latency Monitor API
+ *  @ingroup latmon
  */
 
 /*

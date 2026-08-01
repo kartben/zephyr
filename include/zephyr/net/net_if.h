@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public API for network interface
+ * @ingroup net_if
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_NET_IF_H_

@@ -1,5 +1,6 @@
 /** @file
  * @brief Routines for network subsystem initialization.
+ * @ingroup net_config
  */
 
 /*

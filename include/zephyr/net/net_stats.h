@@ -1,5 +1,6 @@
 /** @file
  * @brief Network statistics
+ * @ingroup net_stats
  *
  * Network statistics data. This should only be enabled when
  * debugging as it consumes memory.

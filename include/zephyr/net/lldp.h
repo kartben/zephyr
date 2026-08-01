@@ -1,5 +1,6 @@
 /** @file
  @brief LLDP definitions and handler
+ @ingroup lldp
 
  This is not to be included by the application.
  */

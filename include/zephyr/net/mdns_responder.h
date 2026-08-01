@@ -6,6 +6,7 @@
 
 /** @file
  * @brief mDNS responder API
+ * @ingroup dns_sd
  *
  * This file contains the mDNS responder API. These APIs are used by the
  * to register mDNS records.

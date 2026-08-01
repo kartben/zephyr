@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public API for offloading IP stack
+ * @ingroup net_offload
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_NET_OFFLOAD_H_

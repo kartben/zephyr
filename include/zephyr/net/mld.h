@@ -7,6 +7,7 @@
 
 /** @file
  * @brief Multicast Listener Discovery API
+ * @ingroup mld
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_MLD_H_

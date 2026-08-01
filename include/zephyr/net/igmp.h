@@ -6,6 +6,7 @@
 
 /** @file
  * @brief IGMP API
+ * @ingroup igmp
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_IGMP_H_
