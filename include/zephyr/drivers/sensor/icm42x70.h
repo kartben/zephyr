@@ -18,9 +18,13 @@
  * cannot be expressed within the sensor driver abstraction.
  */
 
-/** ICM42X70 power mode */
-#define ICM42X70_LOW_NOISE_MODE (0)
-#define ICM42X70_LOW_POWER_MODE (1)
+/**
+ * @name ICM42X70 power modes
+ * @{
+ */
+#define ICM42X70_LOW_NOISE_MODE (0) /**< Low-noise mode */
+#define ICM42X70_LOW_POWER_MODE (1) /**< Low-power mode */
+/** @} */
 
 /**
  * @brief Extended sensor attributes for ICM42X70 MEMS sensor

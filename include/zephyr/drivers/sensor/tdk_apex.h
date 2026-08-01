@@ -18,11 +18,15 @@
  * cannot be expressed within the sensor driver abstraction.
  */
 
-/** TDK APEX features */
-#define TDK_APEX_PEDOMETER (1)
-#define TDK_APEX_TILT      (2)
-#define TDK_APEX_SMD       (3)
-#define TDK_APEX_WOM       (4)
+/**
+ * @name TDK APEX features
+ * @{
+ */
+#define TDK_APEX_PEDOMETER (1) /**< Pedometer, tracks step count */
+#define TDK_APEX_TILT      (2) /**< Tilt detection */
+#define TDK_APEX_SMD       (3) /**< Significant motion detection */
+#define TDK_APEX_WOM       (4) /**< Wake on motion */
+/** @} */
 
 /**
  * @brief Extended sensor channel for TDK MEMS supportintg APEX features
