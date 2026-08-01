@@ -35,9 +35,12 @@ struct bt_mesh_blob_io_flash {
 	off_t offset;
 
 
+	/** @cond INTERNAL_HIDDEN */
 	/* Internal flash area pointer. */
 	const struct flash_area *area;
-	/* BLOB stream. */
+	/** @endcond */
+
+	/** BLOB stream. */
 	struct bt_mesh_blob_io io;
 };
 

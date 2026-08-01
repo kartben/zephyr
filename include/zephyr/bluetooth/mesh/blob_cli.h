@@ -67,10 +67,10 @@ struct bt_mesh_blob_target {
 	/** BLOB transfer status, see @ref bt_mesh_blob_status. */
 	uint8_t status;
 
-	uint8_t procedure_complete:1, /* Procedure has been completed. */
-		acked:1,              /* Message has been acknowledged. Not used when sending. */
-		timedout:1,           /* Target node didn't respond after specified timeout. */
-		skip:1;               /* Skip Target node from broadcast. */
+	uint8_t procedure_complete:1, /**< Procedure has been completed. */
+		acked:1,              /**< Message has been acknowledged. Not used when sending. */
+		timedout:1,           /**< Target node didn't respond after specified timeout. */
+		skip:1;               /**< Skip Target node from broadcast. */
 };
 
 /** BLOB transfer information.
@@ -301,6 +301,7 @@ struct bt_mesh_blob_cli {
 	const struct bt_mesh_blob_cli_cb *cb;
 
 	/* Runtime state */
+	/** @cond INTERNAL_HIDDEN */
 	const struct bt_mesh_model *mod;
 
 	struct {
@@ -326,6 +327,7 @@ struct bt_mesh_blob_cli {
 	enum bt_mesh_blob_cli_state state;
 	struct bt_mesh_blob_block block;
 	struct bt_mesh_blob_cli_caps caps;
+	/** @endcond */
 };
 
 /** @brief Retrieve transfer capabilities for a list of Target nodes.
