@@ -23,6 +23,8 @@ extern "C" {
 
 #if defined(CONFIG_MULTI_LEVEL_INTERRUPTS) || defined(__DOXYGEN__)
 
+/** @cond INTERNAL_HIDDEN */
+
 typedef union _z_irq {
 	/* Zephyr multilevel-encoded IRQ */
 	uint32_t irq;
@@ -87,6 +89,8 @@ static inline unsigned int _z_irq_get_level(_z_irq_t z_irq)
 
 	return 1;
 }
+
+/** @endcond */
 
 /**
  * @brief Return IRQ level
