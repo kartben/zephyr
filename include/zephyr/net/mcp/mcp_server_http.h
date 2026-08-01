@@ -10,7 +10,7 @@
 /**
  * @file
  * @brief Model Context Protocol (MCP) Server HTTP API
- * @addtogroup mcp_server
+ * @ingroup mcp_server
  */
 
 #include <zephyr/kernel.h>
