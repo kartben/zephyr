@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Fake CAN controller driver API for testing purposes.
+ * @ingroup can_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_CAN_CAN_FAKE_H_
 #define ZEPHYR_INCLUDE_DRIVERS_CAN_CAN_FAKE_H_
 
