@@ -43,20 +43,22 @@ extern "C" {
 /** @brief Generic packet header. */
 struct mpsc_pbuf_hdr {
 	MPSC_PBUF_HDR;
+	/** Remaining bits of the first word, not used by the packet buffer */
 	uint32_t data: 32 - MPSC_PBUF_HDR_BITS;
 };
 
 /** @brief Skip packet used internally by the packet buffer. */
 struct mpsc_pbuf_skip {
 	MPSC_PBUF_HDR;
+	/** Number of 32 bit words to skip */
 	uint32_t len: 32 - MPSC_PBUF_HDR_BITS;
 };
 
 /** @brief Generic packet header. */
 union mpsc_pbuf_generic {
-	struct mpsc_pbuf_hdr hdr;
-	struct mpsc_pbuf_skip skip;
-	uint32_t raw;
+	struct mpsc_pbuf_hdr hdr;   /**< Generic packet header */
+	struct mpsc_pbuf_skip skip; /**< Skip packet header */
+	uint32_t raw;               /**< Contents as a raw 32 bit word */
 };
 
 /**
