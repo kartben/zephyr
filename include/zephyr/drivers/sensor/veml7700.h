@@ -46,33 +46,33 @@ extern "C" {
  * @brief VEML7700 gain options for ambient light measurements.
  */
 enum veml7700_als_gain {
-	VEML7700_ALS_GAIN_1   = 0x00, /* 0b00 */
-	VEML7700_ALS_GAIN_2   = 0x01, /* 0b01 */
-	VEML7700_ALS_GAIN_1_8 = 0x02, /* 0b10 */
-	VEML7700_ALS_GAIN_1_4 = 0x03, /* 0b11 */
+	VEML7700_ALS_GAIN_1   = 0x00, /**< 1x gain (0b00) */
+	VEML7700_ALS_GAIN_2   = 0x01, /**< 2x gain (0b01) */
+	VEML7700_ALS_GAIN_1_8 = 0x02, /**< 1/8x gain (0b10) */
+	VEML7700_ALS_GAIN_1_4 = 0x03, /**< 1/4x gain (0b11) */
 };
 
 /**
  * @brief VEML7700 integration time options for ambient light measurements.
  */
 enum veml7700_als_it {
-	VEML7700_ALS_IT_25,
-	VEML7700_ALS_IT_50,
-	VEML7700_ALS_IT_100,
-	VEML7700_ALS_IT_200,
-	VEML7700_ALS_IT_400,
-	VEML7700_ALS_IT_800
+	VEML7700_ALS_IT_25,  /**< 25 ms integration time */
+	VEML7700_ALS_IT_50,  /**< 50 ms integration time */
+	VEML7700_ALS_IT_100, /**< 100 ms integration time */
+	VEML7700_ALS_IT_200, /**< 200 ms integration time */
+	VEML7700_ALS_IT_400, /**< 400 ms integration time */
+	VEML7700_ALS_IT_800  /**< 800 ms integration time */
 };
 
 /**
  * @brief VEML7700 ALS interrupt persistence protect number options.
  */
 enum veml7700_int_mode {
-	VEML7700_INT_DISABLED = 0xFF,
-	VEML7700_ALS_PERS_1   = 0x00, /* 0b00 */
-	VEML7700_ALS_PERS_2   = 0x01, /* 0b01 */
-	VEML7700_ALS_PERS_4   = 0x02, /* 0b10 */
-	VEML7700_ALS_PERS_8   = 0x03, /* 0b11 */
+	VEML7700_INT_DISABLED = 0xFF, /**< ALS interrupt disabled */
+	VEML7700_ALS_PERS_1   = 0x00, /**< 1 measurement (0b00) */
+	VEML7700_ALS_PERS_2   = 0x01, /**< 2 measurements (0b01) */
+	VEML7700_ALS_PERS_4   = 0x02, /**< 4 measurements (0b10) */
+	VEML7700_ALS_PERS_8   = 0x03, /**< 8 measurements (0b11) */
 };
 
 /**

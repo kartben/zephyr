@@ -44,16 +44,16 @@ enum veml60xx_it {
 	/** @endcond */
 };
 
-/*
+/**
  * @brief VEML60xx integration time struct.
  */
 struct veml60xx_it_data {
-	enum veml60xx_it num;
-	uint8_t val;
-	int us;
+	enum veml60xx_it num; /**< Integration time option described by this entry */
+	uint8_t val;          /**< Value for the ALS_IT configuration bits */
+	int us;               /**< Integration time in microseconds */
 };
 
-/*
+/**
  * @brief VEML60xx integration time setting values.
  *
  * The enumerators of enum veml60xx_it provide indices into this array to get
@@ -96,16 +96,37 @@ enum veml60xx_pers {
 };
 
 
+/**
+ * @brief Check whether a value is a valid gain option.
+ *
+ * @param gain Value to check against the enum veml60xx_gain options.
+ *
+ * @return true if the value is a valid gain option, false otherwise.
+ */
 static inline bool veml60xx_gain_in_range(int32_t gain)
 {
 	return (gain >= VEML60XX_GAIN_1) && (gain <= VEML60XX_GAIN_0_5);
 }
 
+/**
+ * @brief Check whether a value is a valid integration time option.
+ *
+ * @param it Value to check against the enum veml60xx_it options.
+ *
+ * @return true if the value is a valid integration time option, false otherwise.
+ */
 static inline bool veml60xx_it_in_range(int32_t it)
 {
 	return (it >= VEML60XX_IT_3_125) && (it <= VEML60XX_IT_400);
 }
 
+/**
+ * @brief Check whether a value is a valid persistence protect number option.
+ *
+ * @param pers Value to check against the enum veml60xx_pers options.
+ *
+ * @return true if the value is a valid persistence protect number option, false otherwise.
+ */
 static inline bool veml60xx_pers_in_range(int32_t pers)
 {
 	return (pers >= VEML60XX_PERS_1) && (pers <= VEML60XX_PERS_8);
