@@ -62,7 +62,7 @@ enum i3c_addr_slot_status {
  * @brief Structure to keep track of addresses on I3C bus.
  */
 struct i3c_addr_slots {
-	/* 2 bits per slot */
+	/** Bitmap of the status of each address, 2 status bits per slot */
 	unsigned long slots[((I3C_MAX_ADDR + 1) * 2) / BITS_PER_LONG];
 };
 
