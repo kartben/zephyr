@@ -152,9 +152,13 @@ struct zbus_runtime_channel {
  * A observer can be a listener or a subscriber.
  */
 enum __packed zbus_observer_type {
+	/** Callback executed synchronously by the publisher */
 	ZBUS_OBSERVER_LISTENER_TYPE,
+	/** Thread notified asynchronously through a message queue */
 	ZBUS_OBSERVER_SUBSCRIBER_TYPE,
+	/** Thread receiving a copy of the message asynchronously through a FIFO */
 	ZBUS_OBSERVER_MSG_SUBSCRIBER_TYPE,
+	/** Callback executed asynchronously from a work queue */
 	ZBUS_OBSERVER_ASYNC_LISTENER_TYPE,
 };
 
@@ -1157,7 +1161,9 @@ static inline void zbus_chan_pub_stats_update(const struct zbus_channel *chan)
  * @kconfig_dep{CONFIG_ZBUS_RUNTIME_OBSERVERS}
  */
 struct zbus_observer_node {
+	/** Linked list node for iteration */
 	sys_snode_t node;
+	/** Refer to @ref zbus_observer */
 	const struct zbus_observer *obs;
 #if defined(CONFIG_ZBUS_RUNTIME_OBSERVERS_NODE_ALLOC_NONE)
 	const struct zbus_channel *chan;
