@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the Bluetooth LE direction finding APIs.
+ * @ingroup bluetooth
+ */
+
 #ifndef ZEPHYR_INCLUDE_BLUETOOTH_DIRECTION_H_
 #define ZEPHYR_INCLUDE_BLUETOOTH_DIRECTION_H_
 

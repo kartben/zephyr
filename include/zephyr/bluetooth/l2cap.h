@@ -1,5 +1,6 @@
 /** @file
  *  @brief Bluetooth L2CAP handling
+ *  @ingroup bt_l2cap
  */
 
 /*

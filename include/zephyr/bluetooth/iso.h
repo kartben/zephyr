@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Bluetooth ISO handling
+ * @ingroup bt_iso
  */
 
 /*

@@ -1,5 +1,6 @@
 /** @file
  *  @brief Bluetooth subsystem controller APIs.
+ *  @ingroup bt_ctrl
  */
 
 /*

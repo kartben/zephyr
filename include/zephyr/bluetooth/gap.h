@@ -1,5 +1,6 @@
 /** @file
  *  @brief Bluetooth Generic Access Profile defines and Assigned Numbers.
+ *  @ingroup bt_gap_defines
  */
 
 /*

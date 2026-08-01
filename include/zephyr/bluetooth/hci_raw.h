@@ -1,5 +1,6 @@
 /** @file
  *  @brief Bluetooth HCI RAW channel handling
+ *  @ingroup hci_raw
  */
 
 /*

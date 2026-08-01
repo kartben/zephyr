@@ -1,5 +1,6 @@
 /** @file
  *  @brief Generic Attribute Profile handling.
+ *  @ingroup bt_gatt
  */
 
 /*

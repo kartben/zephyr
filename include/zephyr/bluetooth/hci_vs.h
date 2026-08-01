@@ -6,6 +6,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the Bluetooth vendor specific Host Controller Interface definitions.
+ * @ingroup bt_hci_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_BLUETOOTH_HCI_VS_H_
 #define ZEPHYR_INCLUDE_BLUETOOTH_HCI_VS_H_
 

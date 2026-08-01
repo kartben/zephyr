@@ -1,5 +1,6 @@
 /** @file
  *  @brief Bluetooth UUID handling
+ *  @ingroup bt_uuid
  */
 
 /*

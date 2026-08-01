@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the SBC audio codec encoder and decoder APIs.
+ * @ingroup bt_a2dp
+ */
+
 #ifndef ZEPHYR_INCLUDE_BLUETOOTH_SBC_H_
 #define ZEPHYR_INCLUDE_BLUETOOTH_SBC_H_
 
