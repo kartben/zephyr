@@ -29,21 +29,26 @@
  * Pin interrupt sources available for use.
  */
 enum nxp_pint_trigger {
-	/* Do not generate Pin Interrupt */
+	/** Do not generate Pin Interrupt */
 	NXP_PINT_NONE = kPINT_PinIntEnableNone,
-	/* Generate Pin Interrupt on rising edge */
+	/** Generate Pin Interrupt on rising edge */
 	NXP_PINT_RISING  = kPINT_PinIntEnableRiseEdge,
-	/* Generate Pin Interrupt on falling edge */
+	/** Generate Pin Interrupt on falling edge */
 	NXP_PINT_FALLING  = kPINT_PinIntEnableFallEdge,
-	/* Generate Pin Interrupt on both edges */
+	/** Generate Pin Interrupt on both edges */
 	NXP_PINT_BOTH = kPINT_PinIntEnableBothEdges,
-	/* Generate Pin Interrupt on low level */
+	/** Generate Pin Interrupt on low level */
 	NXP_PINT_LOW  = kPINT_PinIntEnableLowLevel,
-	/* Generate Pin Interrupt on high level */
+	/** Generate Pin Interrupt on high level */
 	NXP_PINT_HIGH = kPINT_PinIntEnableHighLevel
 };
 
-/* Callback for NXP PINT interrupt */
+/**
+ * @brief Callback for NXP PINT interrupt
+ *
+ * @param pin Pin that triggered the interrupt
+ * @param user User data passed to nxp_pint_pin_set_callback()
+ */
 typedef void (*nxp_pint_cb_t) (uint8_t pin, void *user);
 
 /**

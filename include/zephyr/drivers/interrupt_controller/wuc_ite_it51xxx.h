@@ -26,6 +26,7 @@
 /** WUC both edge trigger mode */
 #define WUC_TYPE_EDGE_BOTH    (WUC_TYPE_EDGE_RISING | WUC_TYPE_EDGE_FALLING)
 
+/** WUC level trigger mode */
 #define WUC_TYPE_LEVEL_TRIG BIT(2)
 /** WUC level high trigger mode */
 #define WUC_TYPE_LEVEL_HIGH BIT(3)
