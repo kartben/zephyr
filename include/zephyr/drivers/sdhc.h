@@ -36,6 +36,7 @@ extern "C" {
  * @name SD command timeouts
  * @{
  */
+/** Infinite timeout, the request will wait forever for completion */
 #define SDHC_TIMEOUT_FOREVER (-1)
 /** @} */
 
@@ -54,7 +55,10 @@ struct sdhc_command {
 	int timeout_ms; /*!< Command timeout in milliseconds */
 };
 
+/** Mask to extract the native response type from sdhc_command::response_type */
 #define SDHC_NATIVE_RESPONSE_MASK 0xF
+
+/** Mask to extract the SPI response type from sdhc_command::response_type */
 #define SDHC_SPI_RESPONSE_TYPE_MASK 0xF0
 
 /**
@@ -83,8 +87,8 @@ struct sdhc_data {
  * drain mode
  */
 enum sdhc_bus_mode {
-	SDHC_BUSMODE_OPENDRAIN = 1,
-	SDHC_BUSMODE_PUSHPULL = 2,
+	SDHC_BUSMODE_OPENDRAIN = 1, /*!< Open drain bus mode */
+	SDHC_BUSMODE_PUSHPULL = 2, /*!< Push/pull bus mode */
 };
 
 /**
@@ -95,8 +99,8 @@ enum sdhc_bus_mode {
  * the SD card.
  */
 enum sdhc_power {
-	SDHC_POWER_OFF = 1,
-	SDHC_POWER_ON = 2,
+	SDHC_POWER_OFF = 1, /*!< Power off the SD card */
+	SDHC_POWER_ON = 2, /*!< Power on the SD card */
 };
 
 /**
@@ -106,9 +110,9 @@ enum sdhc_power {
  * use 4 bit data bus, all cards start in 1 bit mode
  */
 enum sdhc_bus_width {
-	SDHC_BUS_WIDTH1BIT = 1U,
-	SDHC_BUS_WIDTH4BIT = 4U,
-	SDHC_BUS_WIDTH8BIT = 8U,
+	SDHC_BUS_WIDTH1BIT = 1U, /*!< 1 bit data bus */
+	SDHC_BUS_WIDTH4BIT = 4U, /*!< 4 bit data bus */
+	SDHC_BUS_WIDTH8BIT = 8U, /*!< 8 bit data bus */
 };
 
 /**
