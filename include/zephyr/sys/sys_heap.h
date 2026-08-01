@@ -64,13 +64,23 @@ extern "C" {
 /* Forward declaration; full definition in <zephyr/sys/bitarray.h>. */
 struct sys_bitarray;
 
+/**
+ * @brief Low level heap allocator object
+ *
+ * The contents of this struct are internal to the heap implementation.
+ * Initialize the heap with sys_heap_init() before use.
+ *
+ * @ingroup low_level_heap_allocator
+ */
 struct sys_heap {
+	/** @cond INTERNAL_HIDDEN */
 	struct z_heap *heap;
 	void *init_mem;
 	size_t init_bytes;
 #ifdef CONFIG_SYS_HEAP_KASAN
 	struct sys_bitarray *kasan_ba;
 #endif
+	/** @endcond */
 };
 
 struct z_heap_stress_result {
