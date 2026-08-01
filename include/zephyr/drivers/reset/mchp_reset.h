@@ -6,6 +6,7 @@
 /**
  * @file mchp_reset.h
  * @brief Microchip Reset header
+ * @ingroup reset_controller_interface
  *
  * This header defines the macros for use with the Microchip reset controller driver.
  */

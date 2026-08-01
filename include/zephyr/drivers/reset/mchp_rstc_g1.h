@@ -7,6 +7,7 @@
 /**
  * @file mchp_rstc_g1.h
  * @brief Microchip RSTC G1 reset controller header
+ * @ingroup reset_controller_interface
  *
  * This header includes the  Microchip RSTC G1 macro definitions.
  */
