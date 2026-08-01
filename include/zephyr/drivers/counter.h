@@ -899,6 +899,16 @@ static inline uint8_t z_impl_counter_get_num_of_channels(const struct device *de
 	return config->channels;
 }
 
+/**
+ * @brief Function to get counter frequency.
+ *
+ * @param[in]  dev    Pointer to the device structure for the driver instance.
+ *
+ * @return Frequency of the counter in Hz, or zero if the counter does
+ * not have a fixed frequency. If the frequency is higher than or equal
+ * to UINT32_MAX, UINT32_MAX is returned and counter_get_frequency_64()
+ * should be used instead.
+ */
 __syscall uint32_t counter_get_frequency(const struct device *dev);
 
 #ifdef CONFIG_COUNTER_64BITS_FREQ
