@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the NPCX ADC threshold detection API.
+ * @ingroup adc_interface_ext
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_ADC_ADC_NPCX_THRESHOLD_H_
 #define ZEPHYR_INCLUDE_DRIVERS_ADC_ADC_NPCX_THRESHOLD_H_
 

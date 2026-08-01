@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the NPCX ADC voltage to time (V2T) mode API.
+ * @ingroup adc_interface_ext
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_ADC_ADC_NPCX_V2T_H_
 #define ZEPHYR_INCLUDE_DRIVERS_ADC_ADC_NPCX_V2T_H_
 
