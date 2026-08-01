@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Infineon TCPWM helper macros for TCPWM based drivers.
+ * @ingroup clock_apis
+ */
+
 /*
  * The TCPWM function and macros in the PDL use a complex set of arrays and marcos to
  * reference a specific TCPWM instance.  With the information in the .dtsi file, we

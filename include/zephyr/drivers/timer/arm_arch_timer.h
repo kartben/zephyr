@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Devicetree derived macros for the ARM architected timer driver.
+ * @ingroup clock_apis
+ */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_TIMER_ARM_ARCH_TIMER_H_
 #define ZEPHYR_INCLUDE_DRIVERS_TIMER_ARM_ARCH_TIMER_H_

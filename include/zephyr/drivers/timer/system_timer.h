@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief Timer driver API
+ * @ingroup clock_apis
  *
  * Declare API implemented by system timer driver and used by kernel components.
  */

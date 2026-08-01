@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Internal APIs for the nRF RTC based system timer driver.
+ * @ingroup clock_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_TIMER_NRF_RTC_TIMER_H
 #define ZEPHYR_INCLUDE_DRIVERS_TIMER_NRF_RTC_TIMER_H
 

@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Internal APIs for the NXP OS Timer based system timer driver.
+ * @ingroup clock_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_TIMER_NXP_OS_TIMER_H
 #define ZEPHYR_INCLUDE_DRIVERS_TIMER_NXP_OS_TIMER_H
 
