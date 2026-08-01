@@ -3,6 +3,12 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the POSIX user database access functions.
+ */
+
 #ifndef ZEPHYR_INCLUDE_POSIX_PWD_H_
 #define ZEPHYR_INCLUDE_POSIX_PWD_H_
 

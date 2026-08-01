@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the POSIX file control definitions.
+ */
+
 #ifndef ZEPHYR_INCLUDE_POSIX_FCNTL_H_
 #define ZEPHYR_INCLUDE_POSIX_FCNTL_H_
 

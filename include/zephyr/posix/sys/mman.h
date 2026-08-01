@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the POSIX memory management declarations.
+ */
+
 #ifndef ZEPHYR_INCLUDE_POSIX_SYS_MMAN_H_
 #define ZEPHYR_INCLUDE_POSIX_SYS_MMAN_H_
 

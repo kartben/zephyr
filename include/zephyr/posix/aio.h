@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the POSIX asynchronous I/O support.
+ */
+
 #ifndef ZEPHYR_INCLUDE_POSIX_AIO_H_
 #define ZEPHYR_INCLUDE_POSIX_AIO_H_
 

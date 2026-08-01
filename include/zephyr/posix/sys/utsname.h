@@ -3,6 +3,12 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the POSIX system identification support.
+ */
+
 #ifndef ZEPHYR_INCLUDE_POSIX_SYS_UTSNAME_H_
 #define ZEPHYR_INCLUDE_POSIX_SYS_UTSNAME_H_
 

@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the POSIX type definitions.
+ */
+
 #ifndef ZEPHYR_INCLUDE_POSIX_POSIX_TYPES_H_
 #define ZEPHYR_INCLUDE_POSIX_POSIX_TYPES_H_
 

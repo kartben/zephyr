@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the POSIX directory entry type definitions.
+ */
+
 #ifndef ZEPHYR_INCLUDE_POSIX_SYS_DIRENT_H_
 #define ZEPHYR_INCLUDE_POSIX_SYS_DIRENT_H_
 

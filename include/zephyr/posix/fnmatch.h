@@ -33,6 +33,11 @@
  *    @(#)fnmatch.h    8.1 (Berkeley) 6/2/93
  */
 
+/**
+ * @file
+ * @brief Header file for the POSIX filename pattern matching support.
+ */
+
 #ifndef ZEPHYR_INCLUDE_POSIX_FNMATCH_H_
 #define ZEPHYR_INCLUDE_POSIX_FNMATCH_H_
 

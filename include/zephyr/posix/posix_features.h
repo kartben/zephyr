@@ -5,6 +5,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the POSIX feature test macro definitions derived from Kconfig options.
+ */
+
 #ifndef ZEPHYR_INCLUDE_POSIX_POSIX_FEATURES_H_
 #define ZEPHYR_INCLUDE_POSIX_POSIX_FEATURES_H_
 
