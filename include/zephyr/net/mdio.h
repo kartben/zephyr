@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Definitions for IEEE 802.3 management interface
+ * @ingroup ethernet_mdio
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_MDIO_H_
