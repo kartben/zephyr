@@ -31,14 +31,16 @@ extern "C" {
  *   - SENSOR_ATTR_OFFSET
  */
 struct sensor_three_axis_attribute {
+	/** Shift value for @c x, @c y and @c z */
 	int8_t shift;
+	/** Attribute value for each of the three axes */
 	union {
 		struct {
-			q31_t x;
-			q31_t y;
-			q31_t z;
+			q31_t x; /**< X-axis value */
+			q31_t y; /**< Y-axis value */
+			q31_t z; /**< Z-axis value */
 		};
-		q31_t values[3];
+		q31_t values[3]; /**< Array of the X, Y and Z values */
 	};
 };
 

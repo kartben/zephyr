@@ -398,7 +398,7 @@ enum sensor_attribute {
 	 * outside the threshold for the trigger to fire.
 	 */
 	SENSOR_ATTR_SLOPE_DUR,
-	/* Hysteresis for trigger thresholds. */
+	/** Hysteresis for trigger thresholds. */
 	SENSOR_ATTR_HYSTERESIS,
 	/** Oversampling factor */
 	SENSOR_ATTR_OVERSAMPLING,
@@ -697,9 +697,13 @@ struct sensor_decoder_api {
  * @endcode
  */
 struct sensor_decode_context {
+	/** Decoder used to decode the buffer */
 	const struct sensor_decoder_api *decoder;
+	/** Buffer of encoded sensor data to decode */
 	const uint8_t *buffer;
+	/** Channel to decode from the buffer */
 	struct sensor_chan_spec channel;
+	/** Current frame iterator */
 	uint32_t fit;
 };
 
@@ -727,6 +731,19 @@ static inline int sensor_decode(struct sensor_decode_context *ctx, void *out, ui
 	return ctx->decoder->decode(ctx->buffer, ctx->channel, &ctx->fit, max_count, out);
 }
 
+/**
+ * @brief Get the size needed to decode the natively supported sensor channel types
+ *
+ * Variant of sensor_decoder_api::get_size_info for the channel types decoded to
+ * the generic sensor data types.
+ *
+ * @param[in]  channel The channel to query
+ * @param[out] base_size The size of decoding the first frame
+ * @param[out] frame_size The additional size of every additional frame
+ *
+ * @retval 0 on success
+ * @retval -ENOTSUP if the channel is not supported
+ */
 int sensor_natively_supported_channel_size_info(struct sensor_chan_spec channel, size_t *base_size,
 						size_t *frame_size);
 
@@ -742,16 +759,25 @@ enum sensor_stream_data_opt {
 	SENSOR_STREAM_DATA_DROP = 2,
 };
 
+/**
+ * @brief Trigger to stream on, along with what to do with the associated data
+ */
 struct sensor_stream_trigger {
+	/** Trigger type on which to generate stream events */
 	enum sensor_trigger_type trigger;
+	/** What to do with the data associated with the trigger */
 	enum sensor_stream_data_opt opt;
 };
 
+/**
+ * @brief Initialize a sensor_stream_trigger
+ */
 #define SENSOR_STREAM_TRIGGER_PREP(_trigger, _opt)                                                 \
 	{                                                                                          \
 		.trigger = (_trigger), .opt = (_opt),                                              \
 	}
 
+/** @cond INTERNAL_HIDDEN */
 /*
  * Internal data structure used to store information about the IODevice for async reading and
  * streaming sensor data.
@@ -766,6 +792,7 @@ struct sensor_read_config {
 	size_t count;
 	const size_t max;
 };
+/** @endcond */
 
 /**
  * @brief Define a reading instance of a sensor
@@ -1015,16 +1042,16 @@ static inline int z_impl_sensor_channel_get(const struct device *dev,
 
 #if defined(CONFIG_SENSOR_ASYNC_API) || defined(__DOXYGEN__)
 
-/*
+/**
  * Generic data structure used for encoding the sample timestamp and number of channels sampled.
  */
 struct __attribute__((__packed__)) sensor_data_generic_header {
 	/** The timestamp at which the data was collected from the sensor */
 	uint64_t timestamp_ns;
 
-	/*
-	 ** The number of channels present in the frame.
-	 * This will be the true number of elements in channel_info and in the q31 values that
+	/**
+	 * The number of channels present in the frame.
+	 * This will be the true number of elements in @c channels and in the q31 values that
 	 * follow the header.
 	 */
 	uint32_t num_channels;
@@ -1074,7 +1101,7 @@ static inline int z_impl_sensor_get_decoder(const struct device *dev,
  * invalid. Please be sure the flush or wait for all pending operations to complete before using the
  * data after a configuration change.
  *
- * It is also important that the `data` field of the iodev is a @ref sensor_read_config.
+ * It is also important that the `data` field of the iodev is a @c sensor_read_config.
  *
  * @param[in] iodev The iodev to reconfigure
  * @param[in] sensor The sensor to read from
@@ -1105,6 +1132,20 @@ static inline int z_impl_sensor_reconfigure_read_iodev(const struct rtio_iodev *
 	return 0;
 }
 
+/**
+ * @brief Start streaming samples from a sensor
+ *
+ * Using @p iodev, submit a multishot read to the device using the provided RTIO context
+ * @p ctx. The stream produces completion events on the context until it is canceled
+ * with rtio_sqe_cancel() on @p handle.
+ *
+ * @param[in]  iodev The iodev created by @ref SENSOR_DT_STREAM_IODEV
+ * @param[in]  ctx The RTIO context to service the stream
+ * @param[in]  userdata Opaque pointer passed along with the completion events
+ * @param[out] handle Handle of the multishot read, used to cancel the stream
+ * @return 0 on success
+ * @return < 0 on error
+ */
 static inline int sensor_stream(const struct rtio_iodev *iodev, struct rtio *ctx, void *userdata,
 				struct rtio_sqe **handle)
 {
@@ -1549,8 +1590,10 @@ struct sensor_info {
 
 #else
 
+/** @cond INTERNAL_HIDDEN */
 #define SENSOR_INFO_DEFINE(name, ...)
 #define SENSOR_INFO_DT_DEFINE(node_id)
+/** @endcond */
 
 #endif /* CONFIG_SENSOR_INFO */
 
