@@ -16,13 +16,20 @@
 
 #include <zephyr/device.h>
 
+/** Operating mode of an STM32 I2C peripheral */
 enum i2c_stm32_mode {
-	I2CSTM32MODE_I2C,
-	I2CSTM32MODE_SMBUSHOST,
-	I2CSTM32MODE_SMBUSDEVICE,
-	I2CSTM32MODE_SMBUSDEVICEARP,
+	I2CSTM32MODE_I2C,            /**< Regular I2C mode */
+	I2CSTM32MODE_SMBUSHOST,      /**< SMBus host mode */
+	I2CSTM32MODE_SMBUSDEVICE,    /**< SMBus device mode */
+	I2CSTM32MODE_SMBUSDEVICEARP, /**< SMBus device mode with Address Resolution Protocol */
 };
 
+/**
+ * @brief Set the operating mode of an STM32 I2C peripheral.
+ *
+ * @param dev I2C controller device
+ * @param mode Mode to operate in
+ */
 void i2c_stm32_set_smbus_mode(const struct device *dev, enum i2c_stm32_mode mode);
 
 #ifdef CONFIG_SMBUS_STM32_SMBALERT
