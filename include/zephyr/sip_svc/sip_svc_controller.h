@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the internal control structures of the ARM SiP services subsystem.
+ * @ingroup sip_svc
+ */
+
 #ifndef ZEPHYR_INCLUDE_SIP_SVC_SIP_SVC_CONTROLLER_H_
 #define ZEPHYR_INCLUDE_SIP_SVC_SIP_SVC_CONTROLLER_H_
 

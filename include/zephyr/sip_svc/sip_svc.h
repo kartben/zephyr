@@ -8,8 +8,17 @@
 #define ZEPHYR_INCLUDE_SIP_SVC_SIP_SVC_H_
 
 /**
+ * @brief Arm SiP services
+ * @defgroup sip_svc Arm SiP Services
+ * @ingroup os_services
+ * @{
+ * @}
+ */
+
+/**
  * @file
  * @brief Public API for ARM SiP services
+ * @ingroup sip_svc
  *
  * ARM SiP service provides the capability to send the
  * SMC/HVC call from kernel running at EL1 to hypervisor/secure
