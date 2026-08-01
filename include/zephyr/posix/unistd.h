@@ -61,9 +61,31 @@ extern char *optarg;
 extern int opterr, optind, optopt;
 #endif
 
+/**
+ * @brief Fill a buffer with random bytes
+ */
 int getentropy(void *buffer, size_t length);
+
+/**
+ * @brief Get the process ID
+ *
+ * See IEEE 1003.1
+ */
 pid_t getpid(void);
+
+/**
+ * @brief Sleep for a specified number of seconds
+ *
+ * See IEEE 1003.1
+ */
 unsigned sleep(unsigned int seconds);
+
+/**
+ * @brief Suspend execution for an interval in microseconds
+ *
+ * @note usleep() was removed in IEEE 1003.1 Issue 7; it is provided for
+ * compatibility.
+ */
 int usleep(useconds_t useconds);
 #if _POSIX_C_SOURCE >= 2
 size_t confstr(int name, char *buf, size_t len);
@@ -72,6 +94,11 @@ size_t confstr(int name, char *buf, size_t len);
 #ifdef CONFIG_POSIX_SYSCONF_IMPL_MACRO
 #define sysconf(x) (long)CONCAT(__z_posix_sysconf, x)
 #else
+/**
+ * @brief Get configurable system variables
+ *
+ * See IEEE 1003.1
+ */
 long sysconf(int opt);
 #endif /* CONFIG_POSIX_SYSCONF_IMPL_FULL */
 
