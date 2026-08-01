@@ -5,6 +5,12 @@
  */
 
 /**
+ * @file
+ * @brief Header file for the UpdateHub Firmware Over-the-Air update API.
+ * @ingroup updatehub
+ */
+
+/**
  * @brief UpdateHub Firmware Over-the-Air for Zephyr Project.
  * @defgroup updatehub UpdateHub Firmware Over-the-Air
  * @ingroup third_party
