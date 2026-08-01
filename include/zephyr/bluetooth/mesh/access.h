@@ -1,5 +1,6 @@
 /** @file
  *  @brief Access layer APIs.
+ *  @ingroup bt_mesh_access
  */
 
 /*

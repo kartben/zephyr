@@ -1,5 +1,6 @@
 /** @file
  *  @brief Bluetooth Mesh Profile APIs.
+ *  @ingroup bt_mesh
  */
 
 /*

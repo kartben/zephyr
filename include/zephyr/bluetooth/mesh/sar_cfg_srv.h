@@ -6,6 +6,7 @@
 
 /** @file
  *  @brief Bluetooth Mesh SAR Configuration Server Model APIs.
+ *  @ingroup bt_mesh_sar_cfg_srv
  */
 #ifndef ZEPHYR_INCLUDE_BLUETOOTH_MESH_SAR_CFG_SRV_H_
 #define ZEPHYR_INCLUDE_BLUETOOTH_MESH_SAR_CFG_SRV_H_

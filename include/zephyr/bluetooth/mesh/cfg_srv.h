@@ -1,5 +1,6 @@
 /** @file
  *  @brief Configuration Server Model APIs.
+ *  @ingroup bt_mesh_cfg_srv
  */
 
 /*

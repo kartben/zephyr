@@ -1,5 +1,6 @@
 /** @file
  *  @brief Health Server Model APIs.
+ *  @ingroup bt_mesh_health_srv
  */
 
 /*

@@ -1,5 +1,6 @@
 /** @file
  *  @brief Proxy APIs.
+ *  @ingroup bt_mesh_proxy
  */
 
 /*

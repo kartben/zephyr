@@ -1,5 +1,6 @@
 /** @file
  *  @brief Keys APIs.
+ *  @ingroup bt_mesh
  */
 
 /*

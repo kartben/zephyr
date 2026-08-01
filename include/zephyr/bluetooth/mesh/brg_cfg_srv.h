@@ -6,6 +6,7 @@
 
 /** @file
  *  @brief Bluetooth Mesh Bridge Configuration Server Model APIs.
+ *  @ingroup bt_mesh_brg_cfg_srv
  */
 #ifndef ZEPHYR_INCLUDE_BLUETOOTH_MESH_BRG_CFG_SRV_H__
 #define ZEPHYR_INCLUDE_BLUETOOTH_MESH_BRG_CFG_SRV_H__

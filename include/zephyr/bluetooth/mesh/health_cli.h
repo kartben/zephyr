@@ -1,5 +1,6 @@
 /** @file
  *  @brief Health Client Model APIs.
+ *  @ingroup bt_mesh_health_cli
  */
 
 /*

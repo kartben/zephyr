@@ -1,5 +1,6 @@
 /** @file
  * @brief Health faults
+ * @ingroup bt_mesh_health_faults
  */
 
 /*

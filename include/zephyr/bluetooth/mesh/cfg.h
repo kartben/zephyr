@@ -1,5 +1,6 @@
 /** @file
  *  @brief Runtime configuration APIs.
+ *  @ingroup bt_mesh_cfg
  */
 
 /*
