@@ -101,6 +101,9 @@ int disk_access_read(const char *pdrv, uint8_t *data_buf,
 int disk_access_write(const char *pdrv, const uint8_t *data_buf,
 		      uint32_t start_sector, uint32_t num_sector);
 
+/**
+ * @brief Type of erase performed by disk_access_erase()
+ */
 enum disk_access_erase_type {
 	/** Erase the physical bytes on the disk to their natural erase value (0x00 or 0xFF) */
 	DISK_ACCESS_ERASE_PHYSICAL = 0,
