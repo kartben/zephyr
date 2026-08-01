@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the TTY modem pipe backend.
+ * @ingroup modem
+ */
+
 #include <zephyr/kernel.h>
 #include <zephyr/types.h>
 #include <zephyr/device.h>

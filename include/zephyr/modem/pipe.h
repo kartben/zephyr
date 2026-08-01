@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the modem pipe API.
+ * @ingroup modem_pipe
+ */
+
 #include <zephyr/types.h>
 #include <zephyr/kernel.h>
 

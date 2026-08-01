@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the UBX protocol frame definitions and message types.
+ * @ingroup modem_ubx
+ */
+
 #ifndef ZEPHYR_INCLUDE_MODEM_UBX_PROTOCOL_H_
 #define ZEPHYR_INCLUDE_MODEM_UBX_PROTOCOL_H_
 

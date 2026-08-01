@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the Modem PPP module bridging a modem pipe to the PPP network interface.
+ * @ingroup modem_ppp
+ */
+
 #include <zephyr/kernel.h>
 #include <zephyr/types.h>
 #include <zephyr/net/net_if.h>

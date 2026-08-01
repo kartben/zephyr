@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the modem CMUX module.
+ * @ingroup modem_cmux
+ */
+
 /*
  * This library uses CMUX to create multiple data channels, called DLCIs, on a single serial bus.
  * Each DLCI has an address from 1 to 63. DLCI address 0 is reserved for control commands.

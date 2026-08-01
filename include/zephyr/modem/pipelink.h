@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the modem pipelink API.
+ * @ingroup modem_pipelink
+ */
+
 #include <zephyr/modem/pipe.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/sys/util.h>

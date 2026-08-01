@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for UBX protocol configuration key identifiers.
+ * @ingroup modem_ubx
+ */
+
 #ifndef ZEPHYR_INCLUDE_MODEM_UBX_KEYS_H_
 #define ZEPHYR_INCLUDE_MODEM_UBX_KEYS_H_
 
