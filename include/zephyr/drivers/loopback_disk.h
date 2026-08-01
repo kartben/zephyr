@@ -20,9 +20,13 @@
  * @brief Context object for an active loopback disk device
  */
 struct loopback_disk_access {
+	/** Disk info structure registered with the disk subsystem */
 	struct disk_info info;
+	/** Path of the backing file */
 	const char *file_path;
+	/** File object of the opened backing file */
 	struct fs_file_t file;
+	/** Size of the disk, in sectors */
 	size_t num_sectors;
 };
 
