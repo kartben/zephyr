@@ -6,7 +6,8 @@
 
 /**
  * @file
- * Bouffalo Lab SoC specific helpers for pinctrl driver
+ * @brief Bouffalo Lab SoC specific helpers for pinctrl driver.
+ * @ingroup pinctrl_interface_ext
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_PINCTRL_PINCTRL_SOC_BFLB_COMMON_H_

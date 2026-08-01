@@ -5,6 +5,12 @@
  *
  */
 
+/**
+ * @file
+ * @brief Renesas R-Car SoC specific helpers for pinctrl driver.
+ * @ingroup pinctrl_interface_ext
+ */
+
 #ifndef ZEPHYR_SOC_ARM_RENESAS_RCAR_COMMON_PINCTRL_SOC_H_
 #define ZEPHYR_SOC_ARM_RENESAS_RCAR_COMMON_PINCTRL_SOC_H_
 
