@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Backend API for emulated GPIO
+ * @ingroup gpio_emul
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_GPIO_GPIO_EMUL_H_

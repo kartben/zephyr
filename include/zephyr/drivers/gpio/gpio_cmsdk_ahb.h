@@ -3,6 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the ARM CMSDK AHB GPIO register map and helper definitions.
+ * @ingroup gpio_interface_ext
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_GPIO_GPIO_CMSDK_AHB_H_
 #define ZEPHYR_INCLUDE_DRIVERS_GPIO_GPIO_CMSDK_AHB_H_
 

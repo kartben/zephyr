@@ -5,6 +5,12 @@
  * Author: Lin Yu-Cheng <lin_yu_cheng@realtek.com>
  */
 
+/**
+ * @file
+ * @brief Header file for the Realtek RTS5912 GPIO helper functions.
+ * @ingroup gpio_interface_ext
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_GPIO_GPIO_RTS5912_H_
 #define ZEPHYR_INCLUDE_DRIVERS_GPIO_GPIO_RTS5912_H_
 

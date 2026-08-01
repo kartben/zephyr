@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for Intel GPIO driver ACPI resource definitions.
+ * @ingroup gpio_interface_ext
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_GPIO_GPIO_INTEL_H_
 #define ZEPHYR_INCLUDE_DRIVERS_GPIO_GPIO_INTEL_H_
 

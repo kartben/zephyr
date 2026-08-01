@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the nRF-specific GPIO driver API extensions.
+ * @ingroup gpio_interface_ext
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_GPIO_GPIO_NRF_H
 #define ZEPHYR_INCLUDE_DRIVERS_GPIO_GPIO_NRF_H
 
