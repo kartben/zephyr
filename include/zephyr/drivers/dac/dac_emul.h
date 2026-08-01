@@ -2,6 +2,7 @@
  * @file
  *
  * @brief Backend API for emulated DAC
+ * @ingroup dac_interface
  */
 
 /*
