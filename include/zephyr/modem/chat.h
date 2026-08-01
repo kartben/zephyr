@@ -67,6 +67,13 @@ struct modem_chat_match {
 	modem_chat_match_callback callback;
 };
 
+/**
+ * @brief Initializer for a modem chat match with wildcards disabled
+ *
+ * @param _match String to match
+ * @param _separators String of argument separator characters
+ * @param _callback Callback called when the match is received
+ */
 #define MODEM_CHAT_MATCH(_match, _separators, _callback)                                           \
 	{                                                                                          \
 		.match = (uint8_t *)(_match), .match_size = (uint8_t)(sizeof(_match) - 1),         \
@@ -75,6 +82,13 @@ struct modem_chat_match {
 		.callback = _callback,                                                             \
 	}
 
+/**
+ * @brief Initializer for a modem chat match with wildcards enabled
+ *
+ * @param _match String to match, may contain wildcards
+ * @param _separators String of argument separator characters
+ * @param _callback Callback called when the match is received
+ */
 #define MODEM_CHAT_MATCH_WILDCARD(_match, _separators, _callback)                                  \
 	{                                                                                          \
 		.match = (uint8_t *)(_match), .match_size = (uint8_t)(sizeof(_match) - 1),         \
@@ -83,6 +97,16 @@ struct modem_chat_match {
 		.callback = _callback,                                                             \
 	}
 
+/**
+ * @brief Initializer for a modem chat match with all options
+ *
+ * @param _match String to match
+ * @param _separators String of argument separator characters
+ * @param _callback Callback called when the match is received
+ * @param _wildcards Set to true to enable the use of wildcards when matching
+ * @param _partial Set to true if the script shall not continue to the next
+ *                 step when the match is received
+ */
 #define MODEM_CHAT_MATCH_INITIALIZER(_match, _separators, _callback, _wildcards, _partial)         \
 	{                                                                                          \
 		.match = (uint8_t *)(_match),                                                      \
@@ -94,20 +118,42 @@ struct modem_chat_match {
 		.callback = _callback,                                                             \
 	}
 
+/**
+ * @brief Define a static modem chat match
+ *
+ * @param _sym Name of the modem chat match variable
+ * @param _match String to match
+ * @param _separators String of argument separator characters
+ * @param _callback Callback called when the match is received
+ */
 #define MODEM_CHAT_MATCH_DEFINE(_sym, _match, _separators, _callback)                              \
 	const static struct modem_chat_match _sym = MODEM_CHAT_MATCH(_match, _separators, _callback)
 
+/**
+ * @brief Define a static modem chat match with wildcards enabled
+ *
+ * @param _sym Name of the modem chat match variable
+ * @param _match String to match, may contain wildcards
+ * @param _separators String of argument separator characters
+ * @param _callback Callback called when the match is received
+ */
 #define MODEM_CHAT_MATCH_WILDCARD_DEFINE(_sym, _match, _separators, _callback)                     \
 	const static struct modem_chat_match _sym =                                                \
 		MODEM_CHAT_MATCH_WILDCARD(_match, _separators, _callback)
 
-/* Helper struct to match any response without callback. */
+/** Helper match which matches any response without a callback. */
 extern const struct modem_chat_match modem_chat_any_match;
 
+/**
+ * @brief Define a static array of modem chat matches
+ *
+ * @param _sym Name of the modem chat match array variable
+ * @param ... Modem chat matches, e.g. created with @ref MODEM_CHAT_MATCH
+ */
 #define MODEM_CHAT_MATCHES_DEFINE(_sym, ...)                                                       \
 	const static struct modem_chat_match _sym[] = {__VA_ARGS__}
 
-/* Helper struct to match nothing. */
+/** Helper empty array of modem chat matches which matches nothing. */
 extern const struct modem_chat_match modem_chat_empty_matches[0];
 
 /**
@@ -126,6 +172,12 @@ struct modem_chat_script_chat {
 	uint16_t timeout;
 };
 
+/**
+ * @brief Initializer for a script chat with a single expected response
+ *
+ * @param _request Request string to send to the modem
+ * @param _response_match Modem chat match the response is matched against
+ */
 #define MODEM_CHAT_SCRIPT_CMD_RESP(_request, _response_match)                                      \
 	{                                                                                          \
 		.request = (uint8_t *)(_request),                                                  \
@@ -135,6 +187,13 @@ struct modem_chat_script_chat {
 		.timeout = 0,                                                                      \
 	}
 
+/**
+ * @brief Initializer for a script chat with multiple expected responses
+ *
+ * @param _request Request string to send to the modem
+ * @param _response_matches Array of modem chat matches the response is
+ *                          matched against
+ */
 #define MODEM_CHAT_SCRIPT_CMD_RESP_MULT(_request, _response_matches)                               \
 	{                                                                                          \
 		.request = (uint8_t *)(_request),                                                  \
@@ -144,6 +203,13 @@ struct modem_chat_script_chat {
 		.timeout = 0,                                                                      \
 	}
 
+/**
+ * @brief Initializer for a script chat with no expected response
+ *
+ * @param _request Request string to send to the modem
+ * @param _timeout_ms Time to wait before continuing to the next step, in
+ *                    milliseconds
+ */
 #define MODEM_CHAT_SCRIPT_CMD_RESP_NONE(_request, _timeout_ms)                                     \
 	{                                                                                          \
 		.request = (uint8_t *)(_request),                                                  \
@@ -153,15 +219,25 @@ struct modem_chat_script_chat {
 		.timeout = _timeout_ms,                                                            \
 	}
 
+/**
+ * @brief Define a static array of script chats
+ *
+ * @param _sym Name of the script chat array variable
+ * @param ... Script chats, e.g. created with @ref MODEM_CHAT_SCRIPT_CMD_RESP
+ */
 #define MODEM_CHAT_SCRIPT_CMDS_DEFINE(_sym, ...)                                                   \
 	const static struct modem_chat_script_chat _sym[] = {__VA_ARGS__}
 
-/* Helper struct to have no chat script command. */
+/** Helper empty array of script chats containing no script chat command. */
 extern const struct modem_chat_script_chat modem_chat_empty_script_chats[0];
 
+/** Result of a chat script execution */
 enum modem_chat_script_result {
+	/** Script ran to completion */
 	MODEM_CHAT_SCRIPT_RESULT_SUCCESS,
+	/** Script was aborted */
 	MODEM_CHAT_SCRIPT_RESULT_ABORT,
+	/** Script execution timed out */
 	MODEM_CHAT_SCRIPT_RESULT_TIMEOUT
 };
 
@@ -195,6 +271,16 @@ struct modem_chat_script {
 	uint32_t timeout;
 };
 
+/**
+ * @brief Define a static modem chat script
+ *
+ * @param _sym Name of the modem chat script variable
+ * @param _script_chats Array of script chats run by the script
+ * @param _abort_matches Array of modem chat matches which abort the script
+ * @param _callback Callback called when the script execution terminates
+ * @param _timeout_s Timeout within which the script must terminate, in
+ *                   seconds
+ */
 #define MODEM_CHAT_SCRIPT_DEFINE(_sym, _script_chats, _abort_matches, _callback, _timeout_s)       \
 	const static struct modem_chat_script _sym = {                                             \
 		.name = #_sym,                                                                     \
@@ -206,19 +292,35 @@ struct modem_chat_script {
 		.timeout = _timeout_s,                                                             \
 	}
 
+/**
+ * @brief Define a static modem chat script without abort matches
+ *
+ * @param _sym Name of the modem chat script variable
+ * @param _script_chats Array of script chats run by the script
+ * @param _callback Callback called when the script execution terminates
+ * @param _timeout_s Timeout within which the script must terminate, in
+ *                   seconds
+ */
 #define MODEM_CHAT_SCRIPT_NO_ABORT_DEFINE(_sym, _script_chats, _callback, _timeout_s)              \
 	MODEM_CHAT_SCRIPT_DEFINE(_sym, _script_chats, modem_chat_empty_matches,                    \
 				 _callback, _timeout_s)
 
+/**
+ * @brief Define a static modem chat script containing no script chats
+ *
+ * @param _sym Name of the modem chat script variable
+ */
 #define MODEM_CHAT_SCRIPT_EMPTY_DEFINE(_sym)                                                       \
 	MODEM_CHAT_SCRIPT_NO_ABORT_DEFINE(_sym, modem_chat_empty_script_chats, NULL, 0)
 
+/** @cond INTERNAL_HIDDEN */
 enum modem_chat_script_send_state {
 	/* No data to send */
 	MODEM_CHAT_SCRIPT_SEND_STATE_IDLE,
 	/* Sending request */
 	MODEM_CHAT_SCRIPT_SEND_STATE_REQUEST,
 };
+/** @endcond */
 
 /**
  * @brief Chat instance internal context
