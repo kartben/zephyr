@@ -5,6 +5,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for TI LP50xx LED driver channel definitions.
+ * @ingroup led_interface
+ */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_LED_LP50XX_H_
 #define ZEPHYR_INCLUDE_DRIVERS_LED_LP50XX_H_

@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Fake LED controller driver API functions.
+ * @ingroup led_fake
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_LED_LED_FAKE_H_
