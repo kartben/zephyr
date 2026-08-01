@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for extended sensor attributes of the NXP TPM quadrature decoder.
+ * @ingroup sensor_interface_ext_nxp
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_SENSOR_QDEC_NXP_TPM_H_
 #define ZEPHYR_INCLUDE_DRIVERS_SENSOR_QDEC_NXP_TPM_H_
 

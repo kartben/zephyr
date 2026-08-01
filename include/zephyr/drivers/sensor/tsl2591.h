@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Extended public API for AMS's TSL2591 ambient light sensor
+ * @ingroup sensor_interface_ext_ams
  *
  * This exposes attributes for the TSL2591 which can be used for
  * setting the on-chip gain, integration time, and persist filter parameters.

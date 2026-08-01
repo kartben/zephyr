@@ -12,6 +12,7 @@
 /**
  * @file
  * @brief Extended public API for ICM4268X
+ * @ingroup sensor_interface_ext_tdk
  *
  * Pin function configuration via attributes under the current sensor driver abstraction.
  */

@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for extended sensor channels of the Microchip MTCH9010 liquid detection sensor.
+ * @ingroup sensor_interface_ext_microchip
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_SENSOR_MTCH9010_H_
 #define ZEPHYR_INCLUDE_DRIVERS_SENSOR_MTCH9010_H_
 

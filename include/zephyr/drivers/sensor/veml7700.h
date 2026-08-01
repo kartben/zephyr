@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for extended public API of the Vishay VEML7700 ambient light sensor.
+ * @ingroup sensor_interface_ext_vishay
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_SENSOR_VEML7700_H_
 #define ZEPHYR_INCLUDE_DRIVERS_SENSOR_VEML7700_H_
 

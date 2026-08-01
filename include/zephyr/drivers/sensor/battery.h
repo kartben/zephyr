@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for battery chemistry and open circuit voltage table helpers.
+ * @ingroup battery_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_SENSOR_BATTERY_H_
 #define ZEPHYR_INCLUDE_DRIVERS_SENSOR_BATTERY_H_
 

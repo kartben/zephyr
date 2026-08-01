@@ -3,6 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for extended sensor channels and attributes of the nPM2100 PMIC battery monitor.
+ * @ingroup sensor_interface_ext_nordic
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_SENSOR_NPM2100_VBAT_H_
 #define ZEPHYR_INCLUDE_DRIVERS_SENSOR_NPM2100_VBAT_H_
 

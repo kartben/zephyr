@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief Extended public API for the NXP MCUX Analog Comparator (ACMP)
+ * @ingroup sensor_interface_ext_nxp
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_SENSOR_MCUX_ACMP_H_

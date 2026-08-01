@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Extended public API for AMS's TSL2540 ambient light sensor
+ * @ingroup sensor_interface_ext_ams
  *
  * This exposes attributes for the TSL2540 which can be used for
  * setting the on-chip gain and integration time parameters.

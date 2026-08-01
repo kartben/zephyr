@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Extended public API for HDC302X Temperature Sensors
+ * @ingroup sensor_interface_ext_ti
  *
  * This exposes attributes for the HDC302X which can be used for
  * setting the Low power parameters.

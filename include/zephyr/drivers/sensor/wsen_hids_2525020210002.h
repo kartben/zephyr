@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Extended public API for WSEN-HIDS-2525020210002 Sensor
+ * @ingroup sensor_interface_ext_we
  *
  */
 

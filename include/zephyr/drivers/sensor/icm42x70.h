@@ -12,6 +12,7 @@
 /**
  * @file
  * @brief Extended public API for ICM42X70 MEMS sensor
+ * @ingroup sensor_interface_ext_tdk
  *
  * Some capabilities and operational requirements for this sensor
  * cannot be expressed within the sensor driver abstraction.

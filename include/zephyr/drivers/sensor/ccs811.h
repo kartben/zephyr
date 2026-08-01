@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Extended public API for CCS811 Indoor Air Quality Sensor
+ * @ingroup sensor_interface_ext_ams
  *
  * Some capabilities and operational requirements for this sensor
  * cannot be expressed within the sensor driver abstraction.

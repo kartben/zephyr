@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Extended public API for TI's TMP108 temperature sensor
+ * @ingroup sensor_interface_ext_ti
  *
  * This exposes attributes for the TMP108 which can be used for
  * setting the on-chip Temperature Mode and alert parameters.

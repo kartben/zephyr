@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief Data structure for the NXP MCUX low-power analog comparator (LPCMP)
+ * @ingroup sensor_interface_ext_nxp
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_SENSOR_MCUX_LPCMP_H_

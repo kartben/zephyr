@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for extended sensor channels and attributes of the PZEM004T energy monitor.
+ * @ingroup sensor_interface_ext
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_SENSOR_PZEM004T_H_
 #define ZEPHYR_INCLUDE_DRIVERS_SENSOR_PZEM004T_H_
 

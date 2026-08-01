@@ -3,6 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for extended sensor channels and attributes of the nPM13xx PMIC charger.
+ * @ingroup sensor_interface_ext_nordic
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_SENSOR_NPM13XX_CHARGER_H_
 #define ZEPHYR_INCLUDE_DRIVERS_SENSOR_NPM13XX_CHARGER_H_
 
