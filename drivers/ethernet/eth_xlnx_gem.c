@@ -250,9 +250,10 @@ static void eth_xlnx_gem_isr(const struct device *dev)
 	const struct eth_xlnx_gem_dev_cfg *dev_conf = DEV_CFG(dev);
 	struct eth_xlnx_gem_dev_data *dev_data = DEV_DATA(dev);
 	uint32_t reg_val;
+	mm_reg_t mac_base = DEVICE_MMIO_NAMED_GET(dev, mac);
 
 	/* Read the interrupt status register */
-	reg_val = sys_read32(DEVICE_MMIO_NAMED_GET(dev, mac) + ETH_XLNX_GEM_ISR_OFFSET);
+	reg_val = sys_read32(mac_base + ETH_XLNX_GEM_ISR_OFFSET);
 
 	/*
 	 * TODO: handling if one or more error flag(s) are set in the
@@ -274,9 +275,9 @@ static void eth_xlnx_gem_isr(const struct device *dev)
 	 */
 	if ((reg_val & ETH_XLNX_GEM_IXR_TX_COMPLETE_BIT) != 0) {
 		sys_write32(ETH_XLNX_GEM_IXR_TX_COMPLETE_BIT,
-			    DEVICE_MMIO_NAMED_GET(dev, mac) + ETH_XLNX_GEM_IDR_OFFSET);
+			    mac_base + ETH_XLNX_GEM_IDR_OFFSET);
 		sys_write32(ETH_XLNX_GEM_IXR_TX_COMPLETE_BIT,
-			    DEVICE_MMIO_NAMED_GET(dev, mac) + ETH_XLNX_GEM_ISR_OFFSET);
+			    mac_base + ETH_XLNX_GEM_ISR_OFFSET);
 		if (dev_conf->defer_txd_to_queue) {
 			k_work_submit(&dev_data->tx_done_work);
 		} else {
@@ -285,9 +286,9 @@ static void eth_xlnx_gem_isr(const struct device *dev)
 	}
 	if ((reg_val & ETH_XLNX_GEM_IXR_FRAME_RX_BIT) != 0) {
 		sys_write32(ETH_XLNX_GEM_IXR_FRAME_RX_BIT,
-			    DEVICE_MMIO_NAMED_GET(dev, mac) + ETH_XLNX_GEM_IDR_OFFSET);
+			    mac_base + ETH_XLNX_GEM_IDR_OFFSET);
 		sys_write32(ETH_XLNX_GEM_IXR_FRAME_RX_BIT,
-			    DEVICE_MMIO_NAMED_GET(dev, mac) + ETH_XLNX_GEM_ISR_OFFSET);
+			    mac_base + ETH_XLNX_GEM_ISR_OFFSET);
 		if (dev_conf->defer_rxp_to_queue) {
 			k_work_submit(&dev_data->rx_pend_work);
 		} else {
@@ -306,7 +307,7 @@ static void eth_xlnx_gem_isr(const struct device *dev)
 	 */
 	sys_write32((0xFFFFFFFF & ~(ETH_XLNX_GEM_IXR_FRAME_RX_BIT |
 		    ETH_XLNX_GEM_IXR_TX_COMPLETE_BIT)),
-		    DEVICE_MMIO_NAMED_GET(dev, mac) + ETH_XLNX_GEM_ISR_OFFSET);
+		    mac_base + ETH_XLNX_GEM_ISR_OFFSET);
 }
 
 /**
@@ -1399,21 +1400,20 @@ static void eth_xlnx_gem_handle_rx_pending(const struct device *dev)
 		 * by the controller.
 		 */
 		do {
+			uint32_t this_len = (rx_data_remaining < dev_conf->rx_buffer_size) ?
+					    rx_data_remaining : dev_conf->rx_buffer_size;
+
 			if (pkt != NULL) {
+				const void *rx_buffer = (const void *)
+					(dev_data->rx_bd_ring.first_bd[curr_bd_idx].addr &
+					 ETH_XLNX_GEM_RX_BD_BUFFER_ADDR_MASK);
 #ifdef CONFIG_DCACHE
-				sys_cache_data_invd_range(
-					(void *)(dev_data->rx_bd_ring.first_bd[curr_bd_idx].addr &
-					ETH_XLNX_GEM_RX_BD_BUFFER_ADDR_MASK),
-					dev_conf->rx_buffer_size);
+				sys_cache_data_invd_range((void *)rx_buffer,
+							  dev_conf->rx_buffer_size);
 #endif
-				net_pkt_write(pkt, (const void *)
-					      (dev_data->rx_bd_ring.first_bd[curr_bd_idx].addr &
-					      ETH_XLNX_GEM_RX_BD_BUFFER_ADDR_MASK),
-					      (rx_data_remaining < dev_conf->rx_buffer_size) ?
-					      rx_data_remaining : dev_conf->rx_buffer_size);
+				net_pkt_write(pkt, rx_buffer, this_len);
 			}
-			rx_data_remaining -= (rx_data_remaining < dev_conf->rx_buffer_size) ?
-					     rx_data_remaining : dev_conf->rx_buffer_size;
+			rx_data_remaining -= this_len;
 
 			/*
 			 * The entire packet data of the current BD has been

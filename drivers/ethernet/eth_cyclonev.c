@@ -439,7 +439,8 @@ static int eth_cyclonev_send(const struct device *dev, struct net_pkt *pkt)
 
 		/* Copy data to local buffer   */
 
-		memcpy(&p->tx_buf[p->tx_current_desc_number * ETH_BUFFER_SIZE], frag->data, len);
+		/* DMA sends only frag->len bytes from this slice */
+		memcpy(&p->tx_buf[p->tx_current_desc_number * ETH_BUFFER_SIZE], frag->data, frag->len);
 
 		/* Set the buffer size.  */
 		tx_desc->control_buffer_size = (frag->len & ETH_DMATXDESC_TBS1);
