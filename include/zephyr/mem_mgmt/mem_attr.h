@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for APIs retrieving the memory attributes of Devicetree memory regions.
+ * @ingroup memory_attr_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_MEM_MGMT_MEM_ATTR_H_
 #define ZEPHYR_INCLUDE_MEM_MGMT_MEM_ATTR_H_
 
