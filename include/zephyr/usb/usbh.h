@@ -67,6 +67,15 @@ struct usbh_context {
 	struct sys_bitarray *addr_ba;
 };
 
+/**
+ * @brief Define USB host support context
+ *
+ * Macro defines USB host support context and the bit array used to
+ * allocate USB device addresses.
+ *
+ * @param device_name Name of the USB host support context
+ * @param uhc_dev     Pointer to UHC device struct
+ */
 #define USBH_CONTROLLER_DEFINE(device_name, uhc_dev)			\
 	SYS_BITARRAY_DEFINE_STATIC(ba_##device_name, 128);		\
 	static STRUCT_SECTION_ITERABLE(usbh_context, device_name) = {	\
