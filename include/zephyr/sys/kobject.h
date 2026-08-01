@@ -48,7 +48,7 @@ enum k_objects {
 	/** @endcond
 	 */
 
-	K_OBJ_LAST
+	K_OBJ_LAST /**< Marks the end of the list, not a valid object type */
 };
 /**
  * @defgroup usermode_apis User Mode APIs

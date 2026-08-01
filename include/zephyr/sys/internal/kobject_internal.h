@@ -35,26 +35,26 @@ struct z_stack_data {
 };
 #endif /* CONFIG_GEN_PRIV_STACKS */
 
-/* Object extra data. Only some objects use this, determined by object type */
+/** Object extra data. Only some objects use this, determined by object type */
 union k_object_data {
-	/* Backing mutex for K_OBJ_SYS_MUTEX */
+	/** Backing mutex for K_OBJ_SYS_MUTEX */
 	struct k_mutex *mutex;
 
-	/* Numerical thread ID for K_OBJ_THREAD */
+	/** Numerical thread ID for K_OBJ_THREAD */
 	unsigned int thread_id;
 
 #if defined(CONFIG_GEN_PRIV_STACKS) || defined(__DOXYGEN__)
-	/* Metadata for K_OBJ_THREAD_STACK_ELEMENT */
+	/** Metadata for K_OBJ_THREAD_STACK_ELEMENT */
 	const struct z_stack_data *stack_data;
 #else
-	/* Stack buffer size for K_OBJ_THREAD_STACK_ELEMENT */
+	/** Stack buffer size for K_OBJ_THREAD_STACK_ELEMENT */
 	size_t stack_size;
 #endif /* CONFIG_GEN_PRIV_STACKS */
 
-	/* Futex wait queue and spinlock for K_OBJ_FUTEX */
+	/** Futex wait queue and spinlock for K_OBJ_FUTEX */
 	struct z_futex_data *futex_data;
 
-	/* All other objects */
+	/** All other objects */
 	int unused;
 };
 
@@ -66,15 +66,28 @@ union k_object_data {
  *       functionality in the Zephyr tree.
  */
 struct k_object {
+	/** Address of the kernel object */
 	void *name;
+	/** Per-thread permission bitfield */
 	uint8_t perms[CONFIG_MAX_THREAD_BYTES];
+	/** Object type, one of @ref k_objects */
 	uint8_t type;
+	/** Object state flags (K_OBJ_FLAG_* macros) */
 	uint8_t flags;
+	/** Object extra data */
 	union k_object_data data;
 } __packed __aligned(4);
 
+/**
+ * @brief Static kernel object access grant, created by K_THREAD_ACCESS_GRANT()
+ *
+ * Iterated during early boot to grant a statically defined thread access to
+ * a list of kernel objects.
+ */
 struct k_object_assignment {
+	/** Thread to grant access to the objects */
 	struct k_thread *thread;
+	/** NULL-terminated array of kernel object addresses */
 	void * const *objects;
 };
 
@@ -103,7 +116,7 @@ static inline void k_object_init(const void *obj)
 /* LCOV_EXCL_STOP */
 #endif /* !CONFIG_USERSPACE */
 
-#ifdef CONFIG_DYNAMIC_OBJECTS
+#if defined(CONFIG_DYNAMIC_OBJECTS) || defined(__DOXYGEN__)
 /**
  * Allocate memory and install as a generic kernel object
  *
