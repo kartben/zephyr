@@ -53,9 +53,13 @@
 #include <zephyr/arch/arm64/arm-smccc.h>
 #include <zephyr/drivers/sip_svc/sip_svc_proto.h>
 
+/** Invalid state, the client is not registered */
 #define SIP_SVC_CLIENT_ST_INVALID 0
+/** Initial state, the client is registered and has no channel open */
 #define SIP_SVC_CLIENT_ST_IDLE	  1
+/** The client has successfully opened the channel */
 #define SIP_SVC_CLIENT_ST_OPEN	  2
+/** The client has closed the channel while transactions are still incomplete */
 #define SIP_SVC_CLIENT_ST_ABORT	  3
 
 /** @brief ARM sip service callback function prototype for response after completion
