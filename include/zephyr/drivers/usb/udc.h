@@ -23,9 +23,13 @@
  * @brief Maximum packet size of control endpoint supported by the controller.
  */
 enum udc_mps0 {
+	/** Maximum packet size of 8 bytes */
 	UDC_MPS0_8,
+	/** Maximum packet size of 16 bytes */
 	UDC_MPS0_16,
+	/** Maximum packet size of 32 bytes */
 	UDC_MPS0_32,
+	/** Maximum packet size of 64 bytes */
 	UDC_MPS0_64,
 };
 
@@ -166,6 +170,7 @@ enum udc_event_type {
 struct udc_event {
 	/** Event type */
 	enum udc_event_type type;
+	/** Event data */
 	union {
 		/** Event value */
 		uint32_t value;
@@ -228,32 +233,49 @@ typedef int (*udc_event_cb_t)(const struct device *dev,
  *   device_speed(), test_mode() are only required for HS controllers
  */
 struct udc_api {
+	/** Obtain the actual USB device speed, see udc_device_speed() */
 	enum udc_bus_speed (*device_speed)(const struct device *dev);
+	/** Queue a transfer request on an endpoint, see udc_ep_enqueue() */
 	int (*ep_enqueue)(const struct device *dev,
 			  struct udc_ep_config *const cfg,
 			  struct net_buf *const buf);
+	/** Remove all requests from an endpoint queue, see udc_ep_dequeue() */
 	int (*ep_dequeue)(const struct device *dev,
 			  struct udc_ep_config *const cfg);
+	/** Halt an endpoint, see udc_ep_set_halt() */
 	int (*ep_set_halt)(const struct device *dev,
 			   struct udc_ep_config *const cfg);
+	/** Clear endpoint halt, see udc_ep_clear_halt() */
 	int (*ep_clear_halt)(const struct device *dev,
 			     struct udc_ep_config *const cfg);
+	/** Try an endpoint configuration, see udc_ep_try_config() */
 	int (*ep_try_config)(const struct device *dev,
 			     struct udc_ep_config *const cfg);
+	/** Configure and enable an endpoint, see udc_ep_enable() */
 	int (*ep_enable)(const struct device *dev,
 			 struct udc_ep_config *const cfg);
+	/** Disable an endpoint, see udc_ep_disable() */
 	int (*ep_disable)(const struct device *dev,
 			  struct udc_ep_config *const cfg);
+	/** Initiate host wakeup procedure, see udc_host_wakeup() */
 	int (*host_wakeup)(const struct device *dev);
+	/** Set USB device address, see udc_set_address() */
 	int (*set_address)(const struct device *dev,
 			   const uint8_t addr);
+	/** Enable test mode, see udc_test_mode() */
 	int (*test_mode)(const struct device *dev,
 			 const uint8_t mode, const bool dryrun);
+	/** Enable the controller, see udc_enable() */
 	int (*enable)(const struct device *dev);
+	/** Disable the controller, see udc_disable() */
 	int (*disable)(const struct device *dev);
+	/** Initialize the controller, see udc_init() */
 	int (*init)(const struct device *dev);
+	/** Shut down the controller, see udc_shutdown() */
 	int (*shutdown)(const struct device *dev);
+	/** Lock driver access */
 	void (*lock)(const struct device *dev);
+	/** Unlock driver access */
 	void (*unlock)(const struct device *dev);
 };
 

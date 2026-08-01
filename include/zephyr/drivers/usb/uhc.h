@@ -31,9 +31,13 @@
 
 /** USB device state */
 enum usb_device_state {
+	/** Device is not connected */
 	USB_STATE_NOTCONNECTED,
+	/** Device is connected and responds to the default address */
 	USB_STATE_DEFAULT,
+	/** Device has a unique address assigned */
 	USB_STATE_ADDRESSED,
+	/** Device is configured */
 	USB_STATE_CONFIGURED,
 };
 
@@ -53,8 +57,10 @@ enum usb_device_speed {
 	USB_SPEED_SPEED_SS,
 };
 
+/** Maximum number of USB device interfaces supported by the host stack */
 #define UHC_INTERFACES_MAX 32
 
+/** Host representation of a USB device interface */
 struct usb_host_interface {
 	/** Pointer to the interface descriptor */
 	struct usb_desc_header *dhp;
@@ -64,6 +70,7 @@ struct usb_host_interface {
 	uint8_t alternate;
 };
 
+/** Host representation of a USB device endpoint */
 struct usb_host_ep {
 	/** Pointer to the endpoint descriptor */
 	struct usb_ep_descriptor *desc;
@@ -103,8 +110,11 @@ struct usb_device {
  * @brief USB control transfer stage
  */
 enum uhc_control_stage {
+	/** Setup stage */
 	UHC_CONTROL_STAGE_SETUP = 0,
+	/** Data stage */
 	UHC_CONTROL_STAGE_DATA,
+	/** Status stage */
 	UHC_CONTROL_STAGE_STATUS,
 };
 
@@ -196,6 +206,7 @@ struct uhc_event {
 	sys_snode_t node;
 	/** Event type */
 	enum uhc_event_type type;
+	/** Event data */
 	union {
 		/** Event status value, if any */
 		int status;

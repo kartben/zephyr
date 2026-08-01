@@ -93,6 +93,7 @@ enum bc12_type {
 struct bc12_partner_state {
 	/** Current role of the BC1.2 device. */
 	enum bc12_role bc12_role;
+	/** Role dependent state */
 	union {
 		struct {
 			/**
