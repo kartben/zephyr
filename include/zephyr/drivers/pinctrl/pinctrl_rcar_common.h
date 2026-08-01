@@ -19,10 +19,11 @@
 #include <stdint.h>
 #include <zephyr/sys/util_macro.h>
 
+/** Type for R-Car pin function */
 struct rcar_pin_func {
-	uint8_t bank:5;      /* bank number 0 - 18 */
-	uint8_t shift:5;     /* bit shift 0 - 28 */
-	uint8_t func:4;      /* choice from 0x0 to 0xF */
+	uint8_t bank:5;      /**< IPSR bank number 0 - 18 */
+	uint8_t shift:5;     /**< IPSR field bit shift 0 - 28 */
+	uint8_t func:4;      /**< Function choice from 0x0 to 0xF */
 };
 
 /** Pull-up, pull-down, or bias disable is requested */
@@ -36,23 +37,43 @@ struct rcar_pin_func {
 /** Ignore IPSR settings for alternate function pin */
 #define RCAR_PIN_FLAGS_FUNC_DUMMY BIT(4)
 
+/** Pull-up enabled */
 #define RCAR_PIN_PULL_UP      (RCAR_PIN_FLAGS_PULL_SET | RCAR_PIN_FLAGS_PUEN | RCAR_PIN_FLAGS_PUD)
+/** Pull-down enabled */
 #define RCAR_PIN_PULL_DOWN    (RCAR_PIN_FLAGS_PULL_SET | RCAR_PIN_FLAGS_PUEN)
+/** Pull disabled */
 #define RCAR_PIN_PULL_DISABLE  RCAR_PIN_FLAGS_PULL_SET
 
 /** Type for R-Car pin. */
 typedef struct pinctrl_soc_pin {
-	uint16_t pin;
-	struct rcar_pin_func func;
-	uint8_t flags;
-	uint8_t drive_strength;
-	uint8_t voltage;
+	uint16_t pin;              /**< Pin ID */
+	struct rcar_pin_func func; /**< Pin function */
+	uint8_t flags;             /**< Flags (bias and pin mode) */
+	uint8_t drive_strength;    /**< Drive strength in mA, 0 if not set */
+	uint8_t voltage;           /**< I/O voltage (PIN_VOLTAGE_*) */
 } pinctrl_soc_pin_t;
 
+/**
+ * @brief Utility macro to get the IPSR function encoding from the pin property.
+ *
+ * @param node_id Node identifier.
+ */
 #define RCAR_IPSR(node_id) DT_PROP_BY_IDX(node_id, pin, 1)
+
+/**
+ * @brief Utility macro to check if an alternate function is selected.
+ *
+ * @param node_id Node identifier.
+ */
 #define RCAR_HAS_IPSR(node_id) DT_PROP_HAS_IDX(node_id, pin, 1)
 
-/* Offsets are defined in dt-bindings pinctrl-rcar-common.h */
+/**
+ * @brief Utility macro to initialize R-Car pin function.
+ *
+ * Offsets are defined in dt-bindings pinctrl-rcar-common.h
+ *
+ * @param node_id Node identifier.
+ */
 #define RCAR_PIN_FUNC(node_id)			       \
 	{					       \
 		((RCAR_IPSR(node_id) >> 10U) & 0x1FU), \
@@ -60,11 +81,23 @@ typedef struct pinctrl_soc_pin {
 		((RCAR_IPSR(node_id) & 0xFU))	       \
 	}
 
+/**
+ * @brief Utility macro to check if a pin alternate function is a dummy.
+ *
+ * A dummy function is used for pins whose IPSR settings must be ignored.
+ *
+ * @param node_id Node identifier.
+ */
 #define RCAR_PIN_IS_FUNC_DUMMY(node_id)					       \
 	((((RCAR_IPSR(node_id) >> 10U) & 0x1FU) == 0x1F) &&		       \
 	 (((RCAR_IPSR(node_id) >> 4U) & 0x1FU) == 0x1F) &&		       \
 	 ((RCAR_IPSR(node_id) & 0xFU) == 0xF))
 
+/**
+ * @brief Utility macro to initialize R-Car pin flags (bias and pin mode).
+ *
+ * @param node_id Node identifier.
+ */
 #define RCAR_PIN_FLAGS(node_id)						       \
 	DT_PROP(node_id, bias_pull_up)   * RCAR_PIN_PULL_UP |		       \
 	DT_PROP(node_id, bias_pull_down) * RCAR_PIN_PULL_DOWN |		       \
@@ -72,6 +105,11 @@ typedef struct pinctrl_soc_pin {
 	RCAR_HAS_IPSR(node_id) * RCAR_PIN_FLAGS_FUNC_SET |		       \
 	RCAR_PIN_IS_FUNC_DUMMY(node_id) * RCAR_PIN_FLAGS_FUNC_DUMMY
 
+/**
+ * @brief Utility macro to initialize a R-Car pin.
+ *
+ * @param node_id Node identifier.
+ */
 #define RCAR_DT_PIN(node_id)						       \
 	{								       \
 		.pin = DT_PROP_BY_IDX(node_id, pin, 0),			       \
@@ -106,21 +144,24 @@ typedef struct pinctrl_soc_pin {
 #define Z_PINCTRL_STATE_PINS_INIT(node_id, prop) \
 	{ DT_FOREACH_PROP_ELEM(node_id, prop, Z_PINCTRL_STATE_PIN_INIT) }
 
+/** Type for a field of a drive strength control register */
 struct pfc_drive_reg_field {
-	uint16_t pin;
-	uint8_t offset;
-	uint8_t size;
+	uint16_t pin;   /**< Pin ID */
+	uint8_t offset; /**< Field bit offset in the register */
+	uint8_t size;   /**< Field size, in bits */
 };
 
+/** Type for R-Car drive strength control registers */
 struct pfc_drive_reg {
-	uint32_t reg;
-	const struct pfc_drive_reg_field fields[8];
+	uint32_t reg;                               /**< Register offset */
+	const struct pfc_drive_reg_field fields[8]; /**< Register fields */
 };
 
+/** Type for R-Car bias control registers */
 struct pfc_bias_reg {
-	uint32_t puen;		/** Pull-enable or pull-up control register */
-	uint32_t pud;		/** Pull-up/down or pull-down control register */
-	const uint16_t pins[32];
+	uint32_t puen;		/**< Pull-enable or pull-up control register */
+	uint32_t pud;		/**< Pull-up/down or pull-down control register */
+	const uint16_t pins[32];	/**< Pin IDs, one per register bit */
 };
 
 /**
