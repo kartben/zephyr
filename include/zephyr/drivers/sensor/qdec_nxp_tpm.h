@@ -16,8 +16,9 @@
 
 #include <zephyr/drivers/sensor.h>
 
+/** Extended sensor attributes for the TPM quadrature decoder */
 enum sensor_attribute_qdec_tpm {
-	/* Number of counts per revolution */
+	/** Number of counts per revolution */
 	SENSOR_ATTR_QDEC_MOD_VAL = SENSOR_ATTR_PRIV_START,
 };
 
