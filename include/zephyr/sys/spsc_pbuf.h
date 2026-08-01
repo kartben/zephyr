@@ -46,6 +46,7 @@ extern "C" {
 
 /**@} */
 
+/** @cond INTERNAL_HIDDEN */
 #ifdef CONFIG_DCACHE_LINE_SIZE
 #define Z_SPSC_PBUF_LOCAL_DCACHE_LINE CONFIG_DCACHE_LINE_SIZE
 #else
@@ -58,6 +59,7 @@ extern "C" {
 
 #define Z_SPSC_PBUF_DCACHE_LINE \
 	MAX(CONFIG_SPSC_PBUF_REMOTE_DCACHE_LINE, Z_SPSC_PBUF_LOCAL_DCACHE_LINE)
+/** @endcond */
 
 /** @brief Maximum packet length. */
 #define SPSC_PBUF_MAX_LEN 0xFF00
@@ -70,9 +72,9 @@ extern "C" {
  * writer.
  */
 struct spsc_pbuf_common {
-	uint32_t len;		/* Length of data[] in bytes. */
-	uint32_t flags;		/* Flags. See @ref SPSC_PBUF_FLAGS */
-	uint32_t rd_idx;	/* Index of the first valid byte in data[] */
+	uint32_t len;		/**< Length of data[] in bytes. */
+	uint32_t flags;		/**< Flags. See @ref SPSC_PBUF_FLAGS */
+	uint32_t rd_idx;	/**< Index of the first valid byte in data[] */
 };
 
 /* Padding to fill cache line. */
@@ -85,15 +87,16 @@ struct spsc_pbuf_common {
  * that it is in different cache line than the data changed by the reader.
  */
 struct spsc_pbuf_ext_cache {
+	/** Padding to put the writer data in a different cache line than the reader data. */
 	uint8_t reserved[Z_SPSC_PBUF_PADDING];
-	uint32_t wr_idx;	/* Index of the first free byte in data[] */
-	uint8_t data[];		/* Buffer data. */
+	uint32_t wr_idx;	/**< Index of the first free byte in data[] */
+	uint8_t data[];		/**< Buffer data. */
 };
 
 /** @brief Remaining part of a packet buffer when cache is not used. */
 struct spsc_pbuf_ext_nocache {
-	uint32_t wr_idx;	/* Index of the first free byte in data[] */
-	uint8_t data[];		/* Buffer data. */
+	uint32_t wr_idx;	/**< Index of the first free byte in data[] */
+	uint8_t data[];		/**< Buffer data. */
 };
 
 /**
@@ -109,10 +112,12 @@ struct spsc_pbuf_ext_nocache {
  *
  */
 struct spsc_pbuf {
+	/** Common part of the packet buffer control block. */
 	struct spsc_pbuf_common common;
+	/** Remaining part of the packet buffer, depending on cache usage. */
 	union {
-		struct spsc_pbuf_ext_cache cache;
-		struct spsc_pbuf_ext_nocache nocache;
+		struct spsc_pbuf_ext_cache cache;	/**< Used when cache is handled. */
+		struct spsc_pbuf_ext_nocache nocache;	/**< Used when cache is not handled. */
 	} ext;
 };
 
