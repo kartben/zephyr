@@ -78,9 +78,9 @@ extern "C" {
  * Report types used in Get/Set Report requests.
  */
 enum {
-	HID_REPORT_TYPE_INPUT = 1,
-	HID_REPORT_TYPE_OUTPUT,
-	HID_REPORT_TYPE_FEATURE,
+	HID_REPORT_TYPE_INPUT = 1,	/**< Input report */
+	HID_REPORT_TYPE_OUTPUT,		/**< Output report */
+	HID_REPORT_TYPE_FEATURE,	/**< Feature report */
 };
 
 /**

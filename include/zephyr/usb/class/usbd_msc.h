@@ -17,10 +17,19 @@
 #ifndef ZEPHYR_INCLUDE_USB_CLASS_USBD_MSC_H_
 #define ZEPHYR_INCLUDE_USB_CLASS_USBD_MSC_H_
 
+/**
+ * @brief Logical Unit (disk) mapping exposed by USB Mass Storage Class
+ *
+ * Use @ref USBD_DEFINE_MSC_LUN to define and register a logical unit.
+ */
 struct usbd_msc_lun {
+	/** Disk name as used in @ref disk_access_interface */
 	const char *disk;
+	/** T10 Vendor Identification reported in the SCSI Inquiry data */
 	const char *vendor;
+	/** T10 Product Identification reported in the SCSI Inquiry data */
 	const char *product;
+	/** T10 Product Revision Level reported in the SCSI Inquiry data */
 	const char *revision;
 };
 
