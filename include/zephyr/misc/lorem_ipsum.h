@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for Lorem Ipsum placeholder strings.
+ * @ingroup internal_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_MISC_LOREM_IPSUM_H_
 #define ZEPHYR_INCLUDE_MISC_LOREM_IPSUM_H_
 
