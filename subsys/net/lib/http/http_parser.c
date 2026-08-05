@@ -364,9 +364,9 @@ static struct {
 	{"HPE_INVALID_CONTENT_LENGTH", "invalid character in content-length "
 				       "header"},
 	{"HPE_UNEXPECTED_CONTENT_LENGTH", "unexpected content-length header"},
+	{"HPE_INVALID_CHUNK_SIZE", "invalid character in chunk size header"},
 	{"HPE_INVALID_CONTENT_RANGE", "invalid character in content-range header"},
 	{"HPE_UNEXPECTED_CONTENT_RANGE", "unexpected content-range header"},
-	{"HPE_INVALID_CHUNK_SIZE", "invalid character in chunk size header"},
 	{"HPE_INVALID_CONSTANT", "invalid constant string"},
 	{"HPE_INVALID_INTERNAL_STATE", "encountered unexpected internal state"},
 	{"HPE_STRICT", "strict mode assertion failed"},
