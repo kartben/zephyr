@@ -20,11 +20,20 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
+
+/**
+ * @file
+ * @brief State machine definitions for the HTTP parser.
+ * @ingroup http_parser
+ */
+
 #ifndef ZEPHYR_INCLUDE_NET_HTTP_PARSER_STATE_H_
 #define ZEPHYR_INCLUDE_NET_HTTP_PARSER_STATE_H_
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/** @cond INTERNAL_HIDDEN */
 
 enum state {
 	s_dead = 1, /* important that this is > 0 */
@@ -94,6 +103,8 @@ enum state {
 	s_body_identity_eof,
 	s_message_done
 };
+
+/** @endcond */
 
 #ifdef __cplusplus
 }
