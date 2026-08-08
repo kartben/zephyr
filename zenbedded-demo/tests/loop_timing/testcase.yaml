@@ -1,0 +1,13 @@
+# Copyright (c) 2026 zenbedded contributors
+# SPDX-License-Identifier: Apache-2.0
+
+tests:
+  zenbedded.loop_timing:
+    platform_allow:
+      - native_sim
+    tags:
+      - zenbedded
+      - control
+      - timing
+    integration_platforms:
+      - native_sim

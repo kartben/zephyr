@@ -1,0 +1,124 @@
+# Copyright (c) 2026 zenbedded contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  A single gravity-loaded revolute joint.
+
+  Every tunable the control loop needs lives here: travel limits, effort caps,
+  PID gains and the park behaviour. Adding a joint is a devicetree edit plus a
+  rebuild, with no C changes.
+
+  Integer properties carry milli-units (or micro-units where noted) so that
+  devicetree stays integral; the joint table converts once, at compile time,
+  into the float SI units the control math uses.
+
+compatible: "zenbedded,revolute-joint"
+
+properties:
+  joint-name:
+    type: string
+    required: true
+    description: |
+      Joint name, used verbatim as a Zenoh key segment and as the ros2_control
+      joint name. Must not contain '/', '*' or '?'.
+
+  motor:
+    type: phandle
+    description: |
+      Motor driver node (PWM + direction, or an FOC driver). Required by the
+      hardware plant backend (CONFIG_ZENBEDDED_PLANT_HW, Phase 4); unused by
+      the simulated backend.
+
+  encoder:
+    type: phandle
+    description: |
+      Position sensor node (timer qdec or SPI encoder). Required by the
+      hardware plant backend (Phase 4); unused by the simulated backend.
+
+      Do not point this at an I2C encoder: it will not hold 1 kHz cleanly.
+
+  limit-lo-mrad:
+    type: int
+    required: true
+    description: Lower travel limit, milliradians.
+
+  limit-hi-mrad:
+    type: int
+    required: true
+    description: Upper travel limit, milliradians.
+
+  max-effort-mnm:
+    type: int
+    required: true
+    description: |
+      Effort ceiling in milli-newton-metres, applied in the FOLLOWING and
+      DEGRADED modes.
+
+  hold-effort-mnm:
+    type: int
+    required: true
+    description: |
+      Effort ceiling in milli-newton-metres, applied in the HOLDING and PARK
+      modes. Must not exceed max-effort-mnm.
+
+  pid-kp-milli:
+    type: int
+    required: true
+    description: Proportional gain, milli-newton-metres per radian of error.
+
+  pid-ki-milli:
+    type: int
+    required: true
+    description: Integral gain, milli-newton-metres per radian-second of error.
+
+  pid-kd-milli:
+    type: int
+    required: true
+    description: |
+      Derivative gain, milli-newton-metre-seconds per radian. Applied to
+      measured velocity rather than to the error derivative, so that a step
+      change in the setpoint produces no derivative kick.
+
+  park-target-mrad:
+    type: int
+    default: 0
+    description: |
+      Position the joint descends to in PARK mode, milliradians. For a
+      gravity-loaded joint this should be the gravitational rest position, so
+      that holding effort has already decayed to zero by the time the driver is
+      disabled and the coast is continuous.
+
+  park-rate-mrad-s:
+    type: int
+    default: 300
+    description: |
+      Maximum speed of the PARK descent, milliradians per second. This bounds
+      how fast a joint can fall when the host is gone.
+
+  sim-inertia-ukgm2:
+    type: int
+    default: 5000
+    description: |
+      Simulated plant rotor inertia, micro-kilogram-metres-squared. Simulated
+      backend only.
+
+  sim-damping-unms:
+    type: int
+    default: 20000
+    description: |
+      Simulated plant viscous damping, micro-newton-metre-seconds per radian.
+      Simulated backend only.
+
+  sim-gravity-mnm:
+    type: int
+    default: 120
+    description: |
+      Peak simulated gravity torque in milli-newton-metres, applied as
+      -sim-gravity-mnm * sin(position). Zero at park-target-mrad = 0, maximum
+      with the link horizontal. Simulated backend only.
+
+      Keep this below hold-effort-mnm. If gravity can out-torque the HOLDING
+      clamp then the joint sags the moment it enters HOLDING and the PARK
+      descent stops being rate-limited in any meaningful sense: the joint is
+      falling, not descending. That is a badly specified joint rather than a
+      failover policy worth demonstrating.

@@ -14,6 +14,123 @@ module = ZENBEDDED
 module-str = zenbedded
 source "subsys/logging/Kconfig.template.log_config"
 
-# Phase 1 adds the control-core options here.
+menu "Control loop"
+
+config ZENBEDDED_CONTROL_PERIOD_US
+	int "Control loop period (us)"
+	default 1000
+	range 100 100000
+	help
+	  Period of the control loop. The loop is woken by the kernel timer,
+	  never by k_sleep(), and the loop-period histogram buckets are derived
+	  from this value.
+
+config ZENBEDDED_CONTROL_PRIO
+	int "Control thread cooperative priority"
+	default 1
+	range 0 15
+	help
+	  Cooperative priority of the control thread, passed through
+	  K_PRIO_COOP(). The comms thread must be preemptible and therefore is
+	  always strictly lower priority, whatever this is set to.
+
+config ZENBEDDED_CONTROL_STACK_SIZE
+	int "Control thread stack size"
+	default 2048
+
+config ZENBEDDED_CONTROL_AUTOSTART
+	bool "Start the control thread automatically"
+	default y
+	help
+	  Start the 1 kHz control thread at boot. Tests turn this off so they
+	  can drive zb_control_step() directly, in virtual time, and get
+	  deterministic results.
+
+endmenu
+
+menu "Failover"
+
+config ZENBEDDED_AGE_DEGRADED_MS
+	int "FOLLOWING -> DEGRADED threshold (ms)"
+	default 30
+	help
+	  Age of the last accepted command beyond which the joint stops
+	  tracking and holds its last valid setpoint at full gains.
+
+config ZENBEDDED_AGE_HOLDING_MS
+	int "DEGRADED -> HOLDING threshold (ms)"
+	default 500
+	help
+	  Age beyond which holding effort is clamped to hold-effort-mnm.
+
+config ZENBEDDED_AGE_PARK_MS
+	int "HOLDING -> PARK threshold (ms)"
+	default 3000
+	help
+	  Age beyond which the joint performs a rate-limited descent to its
+	  park target and then disables the driver.
+
+config ZENBEDDED_RESUME_EPSILON_MRAD
+	int "Resume acceptance window (mrad)"
+	default 50
+	help
+	  Once the joint has left FOLLOWING it refuses to resume until it
+	  receives a command within this distance of its current position.
+	  This is what stops ros2_control from slamming the arm with whatever
+	  stale command was sitting in its buffer at reactivation.
+
+config ZENBEDDED_RESUME_RAMP_MS
+	int "Gain ramp on resume (ms)"
+	default 250
+	help
+	  After a resume command is accepted, control gains are ramped from
+	  zero to full over this interval.
+
+config ZENBEDDED_PARK_SETTLE_MRAD
+	int "PARK settle window (mrad)"
+	default 20
+	help
+	  Distance from the park target within which the joint is considered
+	  parked.
+
+config ZENBEDDED_PARK_SETTLE_MRAD_S
+	int "PARK settle speed (mrad/s)"
+	default 50
+	help
+	  Speed below which the joint is considered settled. Once inside both
+	  the settle window and this speed, the driver is disabled and the
+	  joint coasts.
+
+endmenu
+
+choice ZENBEDDED_PLANT
+	prompt "Plant backend"
+	default ZENBEDDED_PLANT_SIM
+	help
+	  Selects what the control core drives. Both backends sit behind the
+	  same internal API (include/zenbedded/plant.h), so the control core,
+	  the failover machine and the tests are identical either way.
+
+config ZENBEDDED_PLANT_SIM
+	bool "Simulated second-order plant"
+	help
+	  Second-order plant with a gravity term, integrated in the control
+	  step. Inertia, damping and gravity torque come from devicetree. Lets
+	  the whole control core be tested headless.
+
+config ZENBEDDED_PLANT_HW
+	bool "Real motor and encoder"
+	help
+	  Drives the motor and encoder phandles from devicetree. Phase 4.
+
+endchoice
+
+config ZENBEDDED_HIST
+	bool "Loop period histogram"
+	default y
+	help
+	  Bin the control loop period on-device into a fixed-size RAM
+	  histogram. Publishing per-sample timestamps at 1 kHz would inject the
+	  jitter the demo is trying to measure.
 
 endif # ZENBEDDED

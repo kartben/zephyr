@@ -1,0 +1,26 @@
+# Copyright (c) 2026 zenbedded contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Root node of a zenbedded robot.
+
+  Groups one or more revolute joints and carries the robot identifier used as
+  the first segment of every Zenoh key expression:
+
+      zb/<robot-id>/<joint-name>/cmd
+      zb/<robot-id>/<joint-name>/state
+      zb/<robot-id>/diag/loop
+      zb/<robot-id>/diag/mode
+
+  Child nodes with compatible "zenbedded,revolute-joint" and status "okay" are
+  compiled into a const joint table in ROM. There is no runtime discovery.
+
+compatible: "zenbedded,robot"
+
+properties:
+  robot-id:
+    type: string
+    required: true
+    description: |
+      Robot identifier, used verbatim as a Zenoh key segment. Must not contain
+      '/', '*' or '?', which are reserved by the Zenoh key expression syntax.

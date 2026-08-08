@@ -1,0 +1,35 @@
+/*
+ * Copyright (c) 2026 zenbedded contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The joint topology. Board-independent: with the simulated plant backend the
+ * joint needs no board resources at all, and Phase 4 adds the motor/encoder
+ * phandles in a board overlay rather than changing anything here.
+ *
+ * Adding a second joint is an edit to this file and a rebuild. There is no C to
+ * touch: the joint table is generated from these nodes at compile time.
+ * (Per SPEC.md, that wait is deliberate — one joint until Phase 4 passes.)
+ */
+
+/ {
+	robot: robot {
+		compatible = "zenbedded,robot";
+		robot-id = "arm0";
+
+		joint0: joint0 {
+			compatible = "zenbedded,revolute-joint";
+			joint-name = "shoulder";
+			status = "okay";
+
+			limit-lo-mrad = <(-1570)>;
+			limit-hi-mrad = <1570>;
+			max-effort-mnm = <400>;
+			hold-effort-mnm = <150>;
+
+			pid-kp-milli = <1200>;
+			pid-ki-milli = <80>;
+			pid-kd-milli = <45>;
+		};
+	};
+};
