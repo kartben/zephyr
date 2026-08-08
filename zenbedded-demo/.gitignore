@@ -1,0 +1,6 @@
+build/
+build-*/
+twister-out/
+twister-out.*/
+*.pyc
+__pycache__/

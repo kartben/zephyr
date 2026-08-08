@@ -1,0 +1,16 @@
+# Copyright (c) 2026 zenbedded contributors
+# SPDX-License-Identifier: Apache-2.0
+
+extends: default
+
+rules:
+  document-start: disable
+  line-length:
+    max: 100
+    allow-non-breakable-words: true
+  truthy:
+    check-keys: false
+  comments:
+    min-spaces-from-content: 1
+  braces:
+    max-spaces-inside: 1

@@ -1,0 +1,46 @@
+# West manifest for the standalone zenbedded-demo workspace.
+#
+# Used when this directory is the manifest repository:
+#
+#   west init -m https://github.com/<org>/zenbedded-demo --mr main zb-ws
+#   cd zb-ws && west update
+#
+# Inside this repository (a Zephyr fork) the surrounding zephyr tree is already
+# the workspace, and the app/tests locate this directory through
+# ZEPHYR_EXTRA_MODULES. See README.md.
+
+manifest:
+  version: "1.2"
+
+  remotes:
+    - name: zephyrproject-rtos
+      url-base: https://github.com/zephyrproject-rtos
+    - name: eclipse-zenoh
+      url-base: https://github.com/eclipse-zenoh
+
+  group-filter: [-zenoh]
+
+  projects:
+    # Zephyr, imported as a submanifest. The allowlist keeps the workspace to
+    # what the two supported targets actually need: native_sim pulls nothing,
+    # nucleo_f767zi pulls the STM32 HAL and CMSIS.
+    - name: zephyr
+      remote: zephyrproject-rtos
+      revision: main
+      import:
+        name-allowlist:
+          - cmsis
+          - cmsis_6
+          - hal_stm32
+          - segger
+
+    # Phase 2 transport. Held in the 'zenoh' group so Phase 0/1 workspaces stay
+    # small; enable with `west config manifest.group-filter +zenoh && west update`.
+    - name: zenoh-pico
+      remote: eclipse-zenoh
+      revision: main
+      path: modules/lib/zenoh-pico
+      groups: [zenoh]
+
+  self:
+    path: zenbedded-demo

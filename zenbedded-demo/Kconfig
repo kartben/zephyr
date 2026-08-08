@@ -1,0 +1,19 @@
+# Copyright (c) 2026 zenbedded contributors
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig ZENBEDDED
+	bool "zenbedded joint control core"
+	help
+	  Real-time joint control core for the zenbedded demo. Provides the
+	  1 kHz control thread, PID, failover state machine, lock-free setpoint
+	  handoff and loop-period histogram.
+
+if ZENBEDDED
+
+module = ZENBEDDED
+module-str = zenbedded
+source "subsys/logging/Kconfig.template.log_config"
+
+# Phase 1 adds the control-core options here.
+
+endif # ZENBEDDED
