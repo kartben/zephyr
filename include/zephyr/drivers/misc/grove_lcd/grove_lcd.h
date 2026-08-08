@@ -4,6 +4,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the Grove RGB LCD display APIs.
+ * @ingroup grove_display
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MISC_GROVE_LCD_GROVE_LCD_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MISC_GROVE_LCD_GROVE_LCD_H_
 
@@ -49,12 +56,12 @@ void glcd_cursor_pos_set(const struct device *dev, uint8_t col, uint8_t row);
 void glcd_clear(const struct device *dev);
 
 /* Defines for the GLCD_CMD_DISPLAY_SWITCH options */
-#define GLCD_DS_DISPLAY_ON		(1 << 2)
-#define GLCD_DS_DISPLAY_OFF		(0 << 2)
-#define GLCD_DS_CURSOR_ON		(1 << 1)
-#define GLCD_DS_CURSOR_OFF		(0 << 1)
-#define GLCD_DS_BLINK_ON		(1 << 0)
-#define GLCD_DS_BLINK_OFF		(0 << 0)
+#define GLCD_DS_DISPLAY_ON		(1 << 2) /**< Turn the display on */
+#define GLCD_DS_DISPLAY_OFF		(0 << 2) /**< Turn the display off */
+#define GLCD_DS_CURSOR_ON		(1 << 1) /**< Show the cursor */
+#define GLCD_DS_CURSOR_OFF		(0 << 1) /**< Hide the cursor */
+#define GLCD_DS_BLINK_ON		(1 << 0) /**< Enable cursor blinking */
+#define GLCD_DS_BLINK_OFF		(0 << 0) /**< Disable cursor blinking */
 /**
  *  @brief Function to change the display state.
  *  @details This function provides the user the ability to change the state
@@ -104,11 +111,11 @@ void glcd_input_state_set(const struct device *dev, uint8_t opt);
 uint8_t glcd_input_state_get(const struct device *dev);
 
 /* Defines for the LCD_FUNCTION_SET */
-#define GLCD_FS_8BIT_MODE	(1 << 4)
-#define GLCD_FS_ROWS_2		(1 << 3)
-#define GLCD_FS_ROWS_1		(0 << 3)
-#define GLCD_FS_DOT_SIZE_BIG	(1 << 2)
-#define GLCD_FS_DOT_SIZE_LITTLE	(0 << 2)
+#define GLCD_FS_8BIT_MODE	(1 << 4) /**< Use 8-bit interface mode */
+#define GLCD_FS_ROWS_2		(1 << 3) /**< Display two rows */
+#define GLCD_FS_ROWS_1		(0 << 3) /**< Display one row */
+#define GLCD_FS_DOT_SIZE_BIG	(1 << 2) /**< Use big dot size */
+#define GLCD_FS_DOT_SIZE_LITTLE	(0 << 2) /**< Use little dot size */
 /* Bits 0, 1 are not defined for this register */
 
 /**
@@ -133,10 +140,10 @@ uint8_t glcd_function_get(const struct device *dev);
 
 
 /* Available color selections */
-#define GROVE_RGB_WHITE		0
-#define GROVE_RGB_RED		1
-#define GROVE_RGB_GREEN		2
-#define GROVE_RGB_BLUE		3
+#define GROVE_RGB_WHITE		0 /**< White background */
+#define GROVE_RGB_RED		1 /**< Red background */
+#define GROVE_RGB_GREEN		2 /**< Green background */
+#define GROVE_RGB_BLUE		3 /**< Blue background */
 /**
  *  @brief Set LCD background to a predefined color
  *  @param dev Pointer to device structure for driver instance.

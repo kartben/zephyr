@@ -10,6 +10,7 @@
  * @file zephyr/psa/ps_ids.h
  *
  * @brief This file defines the UID ranges of the existing users of the PSA PS API.
+ * @ingroup psa_secure_storage
  *
  * @see @ref zephyr/psa/key_ids.h
  */

@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the MCUmgr callback API event definitions.
+ * @ingroup mcumgr_callback_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_MGMT_MCUMGR_MGMT_CALLBACK_DEFINES_H_
 #define ZEPHYR_INCLUDE_MGMT_MCUMGR_MGMT_CALLBACK_DEFINES_H_
 
@@ -56,14 +62,22 @@ enum mgmt_cb_return {
  * MGMT event callback group IDs. Note that this is not a 1:1 mapping with #mcumgr_group_t values.
  */
 enum mgmt_cb_groups {
+	/** All groups */
 	MGMT_EVT_GRP_ALL			= 0,
+	/** SMP command processing events */
 	MGMT_EVT_GRP_SMP,
+	/** OS management group events */
 	MGMT_EVT_GRP_OS,
+	/** Image management group events */
 	MGMT_EVT_GRP_IMG,
+	/** File system management group events */
 	MGMT_EVT_GRP_FS,
+	/** Settings management group events */
 	MGMT_EVT_GRP_SETTINGS,
+	/** Enumeration management group events */
 	MGMT_EVT_GRP_ENUM,
 
+	/** Start of user-defined callback group IDs */
 	MGMT_EVT_GRP_USER_CUSTOM_START		= MGMT_GROUP_ID_PERUSER,
 };
 

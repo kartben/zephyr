@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief PPP (Point-to-Point Protocol)
+ * @ingroup ppp
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_PPP_H_
@@ -387,10 +388,12 @@ struct lcp_options {
 	bool acfc;
 };
 
+/** @cond INTERNAL_HIDDEN */
 #define LCP_NUM_MY_OPTIONS	(1						\
 	+ IS_ENABLED(CONFIG_NET_L2_PPP_OPTION_MRU)			\
 	+ IS_ENABLED(CONFIG_NET_L2_PPP_OPTION_PFC)			\
 	+ IS_ENABLED(CONFIG_NET_L2_PPP_OPTION_ACFC))
+/** @endcond */
 
 /** IPv4 control protocol options */
 struct ipcp_options {

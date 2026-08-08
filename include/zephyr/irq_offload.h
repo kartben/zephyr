@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief IRQ Offload interface
+ * @ingroup isr_apis
  */
 #ifndef ZEPHYR_INCLUDE_IRQ_OFFLOAD_H_
 #define ZEPHYR_INCLUDE_IRQ_OFFLOAD_H_
@@ -15,6 +16,11 @@
 extern "C" {
 #endif
 
+/**
+ * @brief Function to be run in interrupt context by irq_offload()
+ *
+ * @param parameter Argument passed to irq_offload()
+ */
 typedef void (*irq_offload_routine_t)(const void *parameter);
 
 /**

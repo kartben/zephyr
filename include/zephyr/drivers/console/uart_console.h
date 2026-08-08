@@ -6,6 +6,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the UART console driver API.
+ * @ingroup console_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_CONSOLE_UART_CONSOLE_H_
 #define ZEPHYR_INCLUDE_DRIVERS_CONSOLE_UART_CONSOLE_H_
 

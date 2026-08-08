@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the MCUmgr management API.
+ * @ingroup mcumgr_mgmt_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_MGMT_MCUMGR_MGMT_MGMT_H_
 #define ZEPHYR_INCLUDE_MGMT_MCUMGR_MGMT_MGMT_H_
 
@@ -48,6 +54,7 @@ typedef void *(*mgmt_alloc_rsp_fn)(const void *src_buf, void *arg);
  */
 typedef void (*mgmt_reset_buf_fn)(void *buf, void *arg);
 
+/** @cond INTERNAL_HIDDEN */
 #ifdef CONFIG_MCUMGR_SMP_VERBOSE_ERR_RESPONSE
 #define MGMT_CTXT_SET_RC_RSN(mc, rsn) ((mc->rc_rsn) = (rsn))
 #define MGMT_CTXT_RC_RSN(mc) ((mc)->rc_rsn)
@@ -55,6 +62,7 @@ typedef void (*mgmt_reset_buf_fn)(void *buf, void *arg);
 #define MGMT_CTXT_SET_RC_RSN(mc, rsn)
 #define MGMT_CTXT_RC_RSN(mc) NULL
 #endif
+/** @endcond */
 
 /** @typedef mgmt_handler_fn
  * @brief Processes a request and writes the corresponding response.
@@ -90,6 +98,7 @@ struct mgmt_group {
 
 	/** Array of handlers; one entry per command ID. */
 	const struct mgmt_handler *mg_handlers;
+	/** Number of entries in @a mg_handlers. */
 	uint16_t mg_handlers_count;
 
 	/** The numeric ID of this group. */

@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief System clock APIs legacy header file
+ * @ingroup clock_apis
  * @deprecated Please include zephyr/sys/clock.h straight instead
  */
 

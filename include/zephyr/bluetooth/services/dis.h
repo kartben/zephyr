@@ -1,5 +1,6 @@
 /** @file
  *  @brief GATT Device Information Service
+ *  @ingroup bluetooth
  */
 
 /*

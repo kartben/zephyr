@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for minimal architecture-specific definitions of generic kernel structures.
+ * @ingroup arch-interface
+ */
+
 /*
  * The purpose of this file is to provide essential/minimal architecture-
  * specific structure definitions to be included in generic kernel

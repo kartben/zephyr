@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the MCUmgr event notification callback API.
+ * @ingroup mcumgr_callback_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_MGMT_MCUMGR_MGMT_CALLBACKS_H_
 #define ZEPHYR_INCLUDE_MGMT_MCUMGR_MGMT_CALLBACKS_H_
 
@@ -125,6 +131,7 @@ struct mgmt_evt_op_cmd_arg {
 	/** Message ID within group */
 	uint8_t id;
 
+	/** Event specific data */
 	union {
 		/** #mcumgr_op_t used in #MGMT_EVT_OP_CMD_RECV */
 		uint8_t op;

@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the memory mapped registers I/O functions in non-arch-specific C code.
+ * @ingroup arch-interface
+ */
+
 /* Memory mapped registers I/O functions in non-arch-specific C code */
 
 #ifndef ZEPHYR_INCLUDE_ARCH_COMMON_SYS_IO_H_

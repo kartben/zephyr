@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Header for Bluetooth BAP.
+ * @ingroup bt_bap
  *
  * Copyright (c) 2020 Bose Corporation
  * Copyright (c) 2021-2026 Nordic Semiconductor ASA

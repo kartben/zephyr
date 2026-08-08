@@ -1,5 +1,6 @@
 /** @file
  * @brief Network packet buffer descriptor API
+ * @ingroup net_pkt
  *
  * @note This structure is not thread-safe. Single-thread access is expected
  * for a given net_pkt instance at any one time (Exclusive Ownership model).
@@ -1756,7 +1757,7 @@ void net_pkt_frag_insert_debug(struct net_pkt *pkt, struct net_buf *frag,
 	*/
 /** @endcond */
 
-#if defined(NET_PKT_DEBUG_ENABLED)
+#if defined(NET_PKT_DEBUG_ENABLED) || defined(__DOXYGEN__)
 /**
  * @brief Print fragment list and the fragment sizes
  *

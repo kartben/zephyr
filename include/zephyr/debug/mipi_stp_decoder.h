@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the MIPI System Trace Protocol (STP) decoder API.
+ * @ingroup mipi_stp_decoder_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_DEBUG_MIPI_STP_DECODER_H__
 #define ZEPHYR_INCLUDE_DEBUG_MIPI_STP_DECODER_H__
 
@@ -21,21 +27,21 @@ extern "C" {
 
 /** @brief STPv2 opcodes. */
 enum mipi_stp_decoder_ctrl_type {
-	STP_DATA4 = 1,
-	STP_DATA8 = 2,
-	STP_DATA16 = 4,
-	STP_DATA32 = 8,
-	STP_DATA64 = 16,
-	STP_DECODER_NULL = 128,
-	STP_DECODER_MAJOR,
-	STP_DECODER_MERROR,
-	STP_DECODER_CHANNEL,
-	STP_DECODER_VERSION,
-	STP_DECODER_FREQ,
-	STP_DECODER_GERROR,
-	STP_DECODER_FLAG,
-	STP_DECODER_ASYNC,
-	STP_DECODER_NOT_SUPPORTED,
+	STP_DATA4 = 1,		/**< 4-bit data. */
+	STP_DATA8 = 2,		/**< 8-bit data. */
+	STP_DATA16 = 4,		/**< 16-bit data. */
+	STP_DATA32 = 8,		/**< 32-bit data. */
+	STP_DATA64 = 16,	/**< 64-bit data. */
+	STP_DECODER_NULL = 128,	/**< NULL packet. */
+	STP_DECODER_MAJOR,	/**< Master select packet. */
+	STP_DECODER_MERROR,	/**< Master error packet. */
+	STP_DECODER_CHANNEL,	/**< Channel select packet. */
+	STP_DECODER_VERSION,	/**< Version packet. */
+	STP_DECODER_FREQ,	/**< Frequency packet. */
+	STP_DECODER_GERROR,	/**< Global error packet. */
+	STP_DECODER_FLAG,	/**< Flag packet. */
+	STP_DECODER_ASYNC,	/**< Synchronization (ASYNC) packet. */
+	STP_DECODER_NOT_SUPPORTED,	/**< Packet not supported by the decoder. */
 };
 
 /** @brief Convert type to a string literal.

@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Connectivity implementation for drivers exposing the wifi_mgmt API
+ * @ingroup conn_mgr_connectivity_impl
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_CONN_MGR_CONNECTIVITY_WIFI_MGMT_H_

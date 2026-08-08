@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for implementing I3C drivers on top of RTIO.
+ * @ingroup i3c_interface
+ */
+
 #ifndef ZEPHYR_DRIVERS_I3C_RTIO_H_
 #define ZEPHYR_DRIVERS_I3C_RTIO_H_
 
@@ -20,14 +26,14 @@ extern "C" {
  * @brief Driver context for implementing i3c with rtio
  */
 struct i3c_rtio {
-	struct k_sem lock;
-	struct k_spinlock slock;
-	struct rtio *r;
-	struct mpsc io_q;
-	struct rtio_iodev iodev;
-	struct rtio_iodev_sqe *txn_head;
-	struct rtio_iodev_sqe *txn_curr;
-	struct i3c_device_desc *i3c_desc;
+	struct k_sem lock; /**< Serializes the blocking calls */
+	struct k_spinlock slock; /**< Protects the submission queue and transaction state */
+	struct rtio *r; /**< RTIO context used for the blocking calls */
+	struct mpsc io_q; /**< Queue of pending submissions */
+	struct rtio_iodev iodev; /**< RTIO I/O device backing this I3C bus */
+	struct rtio_iodev_sqe *txn_head; /**< First submission of the transaction in progress */
+	struct rtio_iodev_sqe *txn_curr; /**< Submission currently being worked on */
+	struct i3c_device_desc *i3c_desc; /**< Target device used by the blocking calls */
 };
 
 /**

@@ -1,5 +1,6 @@
 /** @file
  *  @brief Attribute Protocol handling.
+ *  @ingroup bt_att
  */
 
 /*
@@ -95,12 +96,12 @@ extern "C" {
 /** Out of Range */
 #define BT_ATT_ERR_OUT_OF_RANGE			0xff
 
-/* Version 5.2, Vol 3, Part F, 3.2.9 defines maximum attribute length to 512 */
+/** Maximum length of an attribute value (Version 5.2, Vol 3, Part F, 3.2.9) */
 #define BT_ATT_MAX_ATTRIBUTE_LEN		512
 
-/* Handle 0x0000 is reserved for future use */
+/** First valid attribute handle; handle 0x0000 is reserved for future use */
 #define BT_ATT_FIRST_ATTRIBUTE_HANDLE           0x0001
-/* 0xffff is defined as the maximum, and thus last, valid attribute handle */
+/** Last (maximum) valid attribute handle */
 #define BT_ATT_LAST_ATTRIBUTE_HANDLE            0xffff
 
 /** Converts a ATT error to string.

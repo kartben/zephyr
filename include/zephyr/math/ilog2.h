@@ -16,6 +16,7 @@
 /**
  * @file
  * @brief Provide ilog2() function
+ * @ingroup math_ilog2
  */
 
 /**

@@ -8,6 +8,7 @@
  * @file
  *
  * @brief Memory Blocks Allocator
+ * @ingroup mem_blocks_apis
  */
 
 #ifndef ZEPHYR_INCLUDE_SYS_MEM_BLOCKS_H_
@@ -25,6 +26,7 @@ extern "C" {
 #include <zephyr/sys/bitarray.h>
 #include <zephyr/sys/mem_stats.h>
 
+/** Maximum number of allocators in a multi memory blocks allocator group */
 #define MAX_MULTI_ALLOCATORS 8
 
 /**

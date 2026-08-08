@@ -185,6 +185,16 @@ enum lwm2m_rd_client_event {
 typedef void (*lwm2m_ctx_event_cb_t)(struct lwm2m_ctx *ctx,
 				     enum lwm2m_rd_client_event event);
 
+/**
+ * @brief Callback to set custom socket options.
+ *
+ * The callback is called after a socket has been created and before it is
+ * connected, see @ref lwm2m_ctx::set_socketoptions.
+ *
+ * @param client_ctx LwM2M context whose socket the options are set for
+ *
+ * @return 0 for success or negative in case of error.
+ */
 typedef int (*lwm2m_set_sockopt_cb_t)(struct lwm2m_ctx *client_ctx);
 
 /**

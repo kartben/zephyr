@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public API for retention API
+ * @ingroup retention_api
  */
 
 #ifndef ZEPHYR_INCLUDE_RETENTION_RETENTION_H_

@@ -6,6 +6,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the memory bit manipulation functions in non-arch-specific C code.
+ * @ingroup arch-interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_ARCH_COMMON_SYS_BITOPS_H_
 #define ZEPHYR_INCLUDE_ARCH_COMMON_SYS_BITOPS_H_
 

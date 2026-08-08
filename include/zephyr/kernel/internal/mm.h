@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the kernel memory management internal APIs.
+ * @ingroup kernel_mm_internal_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_KERNEL_INTERNAL_MM_H
 #define ZEPHYR_INCLUDE_KERNEL_INTERNAL_MM_H
 
@@ -45,6 +51,8 @@
 #define K_MEM_VIRT_OFFSET	0
 #endif /* CONFIG_MMU */
 
+/** @cond INTERNAL_HIDDEN */
+
 #if DT_CHOSEN_SRAM_ADDR != 0
 #define IS_SRAM_ADDRESS_LOWER(ADDR)  ((ADDR) >= DT_CHOSEN_SRAM_ADDR)
 #else
@@ -61,6 +69,8 @@
 #define IS_SRAM_ADDRESS(ADDR)            \
 	(IS_SRAM_ADDRESS_LOWER(ADDR) &&  \
 	 IS_SRAM_ADDRESS_UPPER(ADDR))
+
+/** @endcond */
 
 /**
  * @brief Get physical address from virtual address.

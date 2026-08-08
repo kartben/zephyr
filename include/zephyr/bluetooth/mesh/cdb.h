@@ -23,6 +23,7 @@
 extern "C" {
 #endif
 
+/** @cond INTERNAL_HIDDEN */
 #if defined(CONFIG_BT_MESH_CDB)
 #define NODE_COUNT    CONFIG_BT_MESH_CDB_NODE_COUNT
 #define SUBNET_COUNT  CONFIG_BT_MESH_CDB_SUBNET_COUNT
@@ -32,14 +33,19 @@ extern "C" {
 #define SUBNET_COUNT  0
 #define APP_KEY_COUNT 0
 #endif
+/** @endcond */
 
+/** CDB node flags */
 enum {
+	/** Node has been configured with keys and bindings. */
 	BT_MESH_CDB_NODE_CONFIGURED,
 
+	/** Number of defined node flags. */
 	BT_MESH_CDB_NODE_FLAG_COUNT
 };
 
 /* doc string cdb node start */
+/** Node stored in the Mesh Configuration Database. */
 struct bt_mesh_cdb_node {
 	/** Node UUID */
 	uint8_t  uuid[16];
@@ -57,6 +63,7 @@ struct bt_mesh_cdb_node {
 /* doc string cdb node end */
 
 /* doc string cdb subnet start */
+/** Subnet stored in the Mesh Configuration Database. */
 struct bt_mesh_cdb_subnet {
 	/** Network key index */
 	uint16_t net_idx;
@@ -64,12 +71,14 @@ struct bt_mesh_cdb_subnet {
 	uint8_t kr_phase;
 	/** Old and new keys for Key Refresh */
 	struct {
+		/** Network key */
 		struct bt_mesh_key net_key;
 	} keys[2];
 };
 /* doc string cdb subnet end */
 
 /* doc string cdb app key start */
+/** Application key stored in the Mesh Configuration Database. */
 struct bt_mesh_cdb_app_key {
 	/** Bound network key index */
 	uint16_t net_idx;
@@ -77,11 +86,13 @@ struct bt_mesh_cdb_app_key {
 	uint16_t app_idx;
 	/** Old and new keys for Key Refresh */
 	struct {
+		/** Application key */
 		struct bt_mesh_key app_key;
 	} keys[2];
 };
 /* doc string cdb app key end */
 
+/** @cond INTERNAL_HIDDEN */
 enum {
 	BT_MESH_CDB_VALID,
 	BT_MESH_CDB_SUBNET_PENDING,
@@ -91,8 +102,10 @@ enum {
 
 	BT_MESH_CDB_FLAG_COUNT,
 };
+/** @endcond */
 
 /* doc string cdb start */
+/** Mesh Configuration Database state. */
 struct bt_mesh_cdb {
 	/** Network IV Index */
 	uint32_t iv_index;
@@ -244,9 +257,10 @@ int bt_mesh_cdb_node_key_import(struct bt_mesh_cdb_node *node, const uint8_t in[
  */
 int bt_mesh_cdb_node_key_export(const struct bt_mesh_cdb_node *node, uint8_t out[16]);
 
+/** Return values of the @ref bt_mesh_cdb_node_func_t iterator callback. */
 enum {
-	BT_MESH_CDB_ITER_STOP = 0,
-	BT_MESH_CDB_ITER_CONTINUE,
+	BT_MESH_CDB_ITER_STOP = 0, /**< Stop the node iteration. */
+	BT_MESH_CDB_ITER_CONTINUE, /**< Continue the node iteration. */
 };
 
 /** @typedef bt_mesh_cdb_node_func_t

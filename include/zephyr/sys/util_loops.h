@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Internals for looping macros
+ * @ingroup internal_api
  *
  * Repetitive or obscure helper macros needed by sys/util.h.
  */

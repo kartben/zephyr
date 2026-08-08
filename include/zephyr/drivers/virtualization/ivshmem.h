@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the Inter-VM Shared Memory (ivshmem) APIs.
+ * @ingroup ivshmem
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_VIRTUALIZATION_IVSHMEM_H_
 #define ZEPHYR_INCLUDE_DRIVERS_VIRTUALIZATION_IVSHMEM_H_
 
@@ -23,19 +29,41 @@
 extern "C" {
 #endif
 
+/** Undefined ivshmem protocol identifier (ivshmem-v2), see ivshmem_get_protocol() */
 #define IVSHMEM_V2_PROTO_UNDEFINED	0x0000
+/** Network ivshmem protocol identifier (ivshmem-v2), see ivshmem_get_protocol() */
 #define IVSHMEM_V2_PROTO_NET		0x0001
 
+/**
+ * @brief Callback API to get the shared memory region.
+ * See @a ivshmem_get_mem() for argument definitions.
+ */
 typedef size_t (*ivshmem_get_mem_f)(const struct device *dev,
 				    uintptr_t *memmap);
 
+/**
+ * @brief Callback API to get our VM ID.
+ * See @a ivshmem_get_id() for argument definitions.
+ */
 typedef uint32_t (*ivshmem_get_id_f)(const struct device *dev);
 
+/**
+ * @brief Callback API to get the number of interrupt vectors.
+ * See @a ivshmem_get_vectors() for argument definitions.
+ */
 typedef uint16_t (*ivshmem_get_vectors_f)(const struct device *dev);
 
+/**
+ * @brief Callback API to interrupt another VM.
+ * See @a ivshmem_int_peer() for argument definitions.
+ */
 typedef int (*ivshmem_int_peer_f)(const struct device *dev,
 				  uint32_t peer_id, uint16_t vector);
 
+/**
+ * @brief Callback API to register an interrupt notification handler.
+ * See @a ivshmem_register_handler() for argument definitions.
+ */
 typedef int (*ivshmem_register_handler_f)(const struct device *dev,
 					  struct k_poll_signal *signal,
 					  uint16_t vector);
@@ -64,11 +92,19 @@ typedef int (*ivshmem_enable_interrupts_f)(const struct device *dev,
 
 #endif /* CONFIG_IVSHMEM_V2 */
 
+/**
+ * @driver_ops{ivshmem}
+ */
 __subsystem struct ivshmem_driver_api {
+	/** @driver_ops_mandatory @copybrief ivshmem_get_mem */
 	ivshmem_get_mem_f get_mem;
+	/** @driver_ops_mandatory @copybrief ivshmem_get_id */
 	ivshmem_get_id_f get_id;
+	/** @driver_ops_mandatory @copybrief ivshmem_get_vectors */
 	ivshmem_get_vectors_f get_vectors;
+	/** @driver_ops_mandatory @copybrief ivshmem_int_peer */
 	ivshmem_int_peer_f int_peer;
+	/** @driver_ops_mandatory @copybrief ivshmem_register_handler */
 	ivshmem_register_handler_f register_handler;
 #ifdef CONFIG_IVSHMEM_V2
 	ivshmem_get_rw_mem_section_f get_rw_mem_section;

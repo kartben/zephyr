@@ -6,6 +6,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the shared interrupt driver API.
+ * @ingroup io_interfaces
+ */
+
 #ifndef ZEPHYR_INCLUDE_SHARED_IRQ_H_
 #define ZEPHYR_INCLUDE_SHARED_IRQ_H_
 
@@ -15,7 +21,15 @@
 extern "C" {
 #endif
 
+/**
+ * @brief Interrupt service routine of a device sharing an interrupt line.
+ *
+ * @param dev Pointer to the device that services the interrupt.
+ * @param irq_number Number of the shared interrupt line.
+ */
 typedef int (*isr_t)(const struct device *dev, unsigned int irq_number);
+
+/** @cond INTERNAL_HIDDEN */
 
 /* driver API definition */
 typedef int (*shared_irq_register_t)(const struct device *dev,
@@ -31,6 +45,8 @@ __subsystem struct shared_irq_driver_api {
 	shared_irq_enable_t enable;
 	shared_irq_disable_t disable;
 };
+
+/** @endcond */
 
 /**
  *  @brief Register a device ISR

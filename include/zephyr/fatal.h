@@ -6,6 +6,7 @@
 
 /** @file
  *  @brief Fatal error functions
+ *  @ingroup fatal_apis
  */
 
 #ifndef ZEPHYR_INCLUDE_FATAL_H

@@ -3,6 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the Pooled Parallel Preemptible Priority-based Work Queues (P4WQ) API.
+ * @ingroup workqueue_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_P4WQ_H_
 #define ZEPHYR_INCLUDE_SYS_P4WQ_H_
 
@@ -35,12 +42,18 @@ typedef void (*k_p4wq_done_handler_t)(struct k_p4wq_work *work);
  */
 struct k_p4wq_work {
 	/* Filled out by submitting code */
+	/** Thread scheduling priority of the work item, as per k_thread_priority_set() */
 	int32_t priority;
+	/** Scheduling deadline of the work item, as per k_thread_deadline_set() */
 	int32_t deadline;
+	/** Handler function invoked to perform the work */
 	k_p4wq_handler_t handler;
+	/** True if k_p4wq_wait() on this work item shall block until it completes */
 	bool sync;
+	/** Semaphore given when the work item completes, unless the queue has a done handler */
 	struct k_sem done_sem;
 
+	/** @cond INTERNAL_HIDDEN */
 	/* reserved for implementation */
 	union {
 		struct rbnode rbnode;
@@ -48,10 +61,34 @@ struct k_p4wq_work {
 	};
 	struct k_thread *thread;
 	struct k_p4wq *queue;
+	/** @endcond */
 };
 
+/**
+ * @brief Flag indicating that the queue object is an array with one queue per
+ * pool thread.
+ *
+ * Set automatically by K_P4WQ_ARRAY_DEFINE().
+ */
 #define K_P4WQ_QUEUE_PER_THREAD		BIT(0)
+
+/**
+ * @brief Flag indicating that the queue threads shall not be started
+ * automatically.
+ *
+ * Threads added to the queue while this flag is set are only started once
+ * k_p4wq_enable_static_thread() is called on them.
+ */
 #define K_P4WQ_DELAYED_START		BIT(1)
+
+/**
+ * @brief Flag indicating that the application supplies the CPU affinity mask
+ * of the queue threads.
+ *
+ * The mask is applied to each thread by calling
+ * k_p4wq_enable_static_thread(). Implies @ref K_P4WQ_DELAYED_START for
+ * statically defined queues.
+ */
 #define K_P4WQ_USER_CPU_MASK		BIT(2)
 
 /**
@@ -60,6 +97,7 @@ struct k_p4wq_work {
  * Kernel pooled parallel preemptible priority-based work queue
  */
 struct k_p4wq {
+	/** @cond INTERNAL_HIDDEN */
 	struct k_spinlock lock;
 
 	/* Pending threads waiting for work items
@@ -86,8 +124,10 @@ struct k_p4wq {
 	 * and k_p4wq_work is not needed by p4wq anymore
 	 */
 	k_p4wq_done_handler_t done_handler;
+	/** @endcond */
 };
 
+/** @cond INTERNAL_HIDDEN */
 struct k_p4wq_initparam {
 	uint32_t num;
 	uintptr_t stack_size;
@@ -97,6 +137,7 @@ struct k_p4wq_initparam {
 	uint32_t flags;
 	k_p4wq_done_handler_t done_handler;
 };
+/** @endcond */
 
 /**
  * @brief Statically initialize a P4 Work Queue
@@ -242,6 +283,21 @@ bool k_p4wq_cancel(struct k_p4wq *queue, struct k_p4wq_work *item);
  */
 int k_p4wq_wait(struct k_p4wq_work *work, k_timeout_t timeout);
 
+/**
+ * @brief Enable a statically defined thread of a P4 Queue
+ *
+ * Applies @p cpu_mask to @p thread if the queue was defined with the
+ * K_P4WQ_USER_CPU_MASK flag, then starts the thread if the queue was defined
+ * with the K_P4WQ_DELAYED_START or K_P4WQ_USER_CPU_MASK flag. Has no effect
+ * on threads of queues defined without these flags.
+ *
+ * @note When @kconfig{CONFIG_SCHED_CPU_MASK_PIN_ONLY} is enabled,
+ * @p cpu_mask must select exactly one CPU.
+ *
+ * @param queue P4 Queue the thread was added to
+ * @param thread Thread to enable
+ * @param cpu_mask Mask of CPUs the thread may run on (bit n for CPU n)
+ */
 void k_p4wq_enable_static_thread(struct k_p4wq *queue, struct k_thread *thread,
 				 uint32_t cpu_mask);
 

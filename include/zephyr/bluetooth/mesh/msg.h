@@ -1,5 +1,6 @@
 /** @file
  *  @brief Message APIs.
+ *  @ingroup bt_mesh_msg
  */
 
 /*

@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for I3C transaction error types.
+ * @ingroup i3c_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_I3C_ERROR_TYPES_H_
 #define ZEPHYR_INCLUDE_DRIVERS_I3C_ERROR_TYPES_H_
 
@@ -40,7 +46,10 @@ enum i3c_sdr_controller_error_types {
 	/** No error (not official error type) */
 	I3C_ERROR_CE_NONE,
 
+	/** Maximum controller error type value */
 	I3C_ERROR_CE_MAX = I3C_ERROR_CE_UNKNOWN,
+
+	/** Invalid controller error type */
 	I3C_ERROR_CE_INVALID,
 };
 
@@ -88,7 +97,10 @@ enum i3c_sdr_target_error_types {
 	/** No error (not official error type) */
 	I3C_ERROR_TE_NONE,
 
+	/** Maximum target error type value */
 	I3C_ERROR_TE_MAX = I3C_ERROR_TE_UNKNOWN,
+
+	/** Invalid target error type */
 	I3C_ERROR_TE_INVALID,
 };
 

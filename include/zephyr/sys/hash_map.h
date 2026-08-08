@@ -6,6 +6,8 @@
 
 /**
  * @file
+ * @brief Header file for the general purpose hashmap API.
+ * @ingroup hashmap_apis
  * @addtogroup hashmap_apis
  * @{
  */
@@ -102,8 +104,18 @@ extern "C" {
  */
 #define SYS_HASHMAP_DEFINE_STATIC(_name) SYS_HASHMAP_DEFAULT_DEFINE_STATIC(_name)
 
-/*
- * A safe wrapper for realloc(), invariant of which libc provides it.
+/**
+ * @brief Default Hashmap allocator
+ *
+ * A safe wrapper for realloc(), invariant of which libc provides it,
+ * following the @ref sys_hashmap_allocator_t contract.
+ *
+ * @param ptr Previously allocated memory region, or NULL to make a new
+ *            allocation.
+ * @param size New size of the allocation, in bytes, or 0 to free @p ptr.
+ *
+ * @return Pointer to the allocated memory, or NULL on failure or when
+ *         @p size is 0.
  */
 static inline void *sys_hashmap_default_allocator(void *ptr, size_t size)
 {

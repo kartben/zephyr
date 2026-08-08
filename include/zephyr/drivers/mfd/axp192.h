@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the AXP192 MFD driver.
+ * @ingroup mdf_interface_axp192
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MFD_AXP192_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MFD_AXP192_H_
 
@@ -21,15 +27,15 @@ extern "C" {
  * @brief GPIO function type. Only one function can be configured per GPIO.
  */
 enum axp192_gpio_func {
-	AXP192_GPIO_FUNC_INPUT = BIT(0),
-	AXP192_GPIO_FUNC_OUTPUT_OD = BIT(1),
-	AXP192_GPIO_FUNC_OUTPUT_LOW = BIT(2),
-	AXP192_GPIO_FUNC_LDO = BIT(3),
-	AXP192_GPIO_FUNC_ADC = BIT(4),
-	AXP192_GPIO_FUNC_PWM = BIT(5),
-	AXP192_GPIO_FUNC_FLOAT = BIT(6),
-	AXP192_GPIO_FUNC_CHARGE_CTL = BIT(7),
-	AXP192_GPIO_FUNC_INVALID
+	AXP192_GPIO_FUNC_INPUT = BIT(0),       /**< Input function */
+	AXP192_GPIO_FUNC_OUTPUT_OD = BIT(1),   /**< Open-drain output function */
+	AXP192_GPIO_FUNC_OUTPUT_LOW = BIT(2),  /**< Low output function */
+	AXP192_GPIO_FUNC_LDO = BIT(3),         /**< LDO function (GPIO0 only) */
+	AXP192_GPIO_FUNC_ADC = BIT(4),         /**< ADC input function */
+	AXP192_GPIO_FUNC_PWM = BIT(5),         /**< PWM output function */
+	AXP192_GPIO_FUNC_FLOAT = BIT(6),       /**< Floating function */
+	AXP192_GPIO_FUNC_CHARGE_CTL = BIT(7),  /**< Charge control function */
+	AXP192_GPIO_FUNC_INVALID               /**< Invalid function (end marker) */
 };
 
 /**

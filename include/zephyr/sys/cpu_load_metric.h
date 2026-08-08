@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Deprecated CPU load metric header.
+ * @ingroup cpu_load
  *
  * @deprecated Include <zephyr/sys/cpu_load.h> instead. The cpu_load_metric_get()
  *	       function is kept there as a deprecated wrapper around

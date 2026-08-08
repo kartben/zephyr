@@ -1,5 +1,6 @@
 /** @file
  *  @brief Health Client Model APIs.
+ *  @ingroup bt_mesh_health_cli
  */
 
 /*
@@ -115,8 +116,10 @@ struct bt_mesh_health_cli {
 	 */
 	int (*update)(struct bt_mesh_health_cli *cli, struct net_buf_simple *pub_buf);
 
+	/** @cond INTERNAL_HIDDEN */
 	/* Internal parameters for tracking message responses. */
 	struct bt_mesh_msg_ack_ctx ack_ctx;
+	/** @endcond */
 };
 
 /**

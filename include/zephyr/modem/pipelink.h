@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the modem pipelink API.
+ * @ingroup modem_pipelink
+ */
+
 #include <zephyr/modem/pipe.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/sys/util.h>
@@ -150,12 +156,27 @@ void modem_pipelink_notify_disconnected(struct modem_pipelink *link);
  * @{
  */
 
+/**
+ * @brief Declare pipelink from device driver instance number and name
+ * @param inst Device driver instance number
+ * @param name Pipelink name
+ */
 #define MODEM_PIPELINK_DT_INST_DECLARE(inst, name) \
 	MODEM_PIPELINK_DT_DECLARE(DT_DRV_INST(inst), name)
 
+/**
+ * @brief Define pipelink from device driver instance number and name
+ * @param inst Device driver instance number
+ * @param name Pipelink name
+ */
 #define MODEM_PIPELINK_DT_INST_DEFINE(inst, name) \
 	MODEM_PIPELINK_DT_DEFINE(DT_DRV_INST(inst), name)
 
+/**
+ * @brief Get pointer to pipelink from device driver instance number and name
+ * @param inst Device driver instance number
+ * @param name Pipelink name
+ */
 #define MODEM_PIPELINK_DT_INST_GET(inst, name) \
 	MODEM_PIPELINK_DT_GET(DT_DRV_INST(inst), name)
 

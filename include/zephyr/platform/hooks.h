@@ -9,6 +9,7 @@
 /**
  * @file
  * @brief SoC and Board hooks
+ * @ingroup sys_init
  *
  * This header file contains function prototypes for the interfaces between
  * Zephyr's architecture and initialization code and SoC/board-specific logic

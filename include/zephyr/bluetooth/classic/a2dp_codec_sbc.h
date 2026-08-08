@@ -1,5 +1,6 @@
 /** @file
  * @brief Advance Audio Distribution Profile - SBC Codec header.
+ * @ingroup bt_a2dp
  */
 /*
  * SPDX-License-Identifier: Apache-2.0
@@ -26,37 +27,90 @@ extern "C" {
 #endif
 
 /* Sampling Frequency */
+/** SBC sampling frequency 16000 Hz */
 #define A2DP_SBC_SAMP_FREQ_16000 BIT(7)
+/** SBC sampling frequency 32000 Hz */
 #define A2DP_SBC_SAMP_FREQ_32000 BIT(6)
+/** SBC sampling frequency 44100 Hz */
 #define A2DP_SBC_SAMP_FREQ_44100 BIT(5)
+/** SBC sampling frequency 48000 Hz */
 #define A2DP_SBC_SAMP_FREQ_48000 BIT(4)
 
 /* Channel Mode */
+/** SBC channel mode Mono */
 #define A2DP_SBC_CH_MODE_MONO   BIT(3)
+/** SBC channel mode Dual Channel */
 #define A2DP_SBC_CH_MODE_DUAL   BIT(2)
+/** SBC channel mode Stereo */
 #define A2DP_SBC_CH_MODE_STEREO BIT(1)
+/** SBC channel mode Joint Stereo */
 #define A2DP_SBC_CH_MODE_JOINT  BIT(0)
 
 /* Block Length */
+/** SBC block length 4 */
 #define A2DP_SBC_BLK_LEN_4  BIT(7)
+/** SBC block length 8 */
 #define A2DP_SBC_BLK_LEN_8  BIT(6)
+/** SBC block length 12 */
 #define A2DP_SBC_BLK_LEN_12 BIT(5)
+/** SBC block length 16 */
 #define A2DP_SBC_BLK_LEN_16 BIT(4)
 
 /* Subbands */
+/** SBC 4 subbands */
 #define A2DP_SBC_SUBBAND_4 BIT(3)
+/** SBC 8 subbands */
 #define A2DP_SBC_SUBBAND_8 BIT(2)
 
 /* Allocation Method */
+/** SBC bit allocation method SNR */
 #define A2DP_SBC_ALLOC_MTHD_SNR      BIT(1)
+/** SBC bit allocation method Loudness */
 #define A2DP_SBC_ALLOC_MTHD_LOUDNESS BIT(0)
 
+/**
+ * @brief Get the Sampling Frequency field of SBC codec parameters.
+ *
+ * @param cap Pointer to SBC codec parameters, see @ref bt_a2dp_codec_sbc_params.
+ *
+ * @return Sampling Frequency field value.
+ */
 #define BT_A2DP_SBC_SAMP_FREQ(cap)    ((cap->config[0] >> 4) & 0x0f)
+/**
+ * @brief Get the Channel Mode field of SBC codec parameters.
+ *
+ * @param cap Pointer to SBC codec parameters, see @ref bt_a2dp_codec_sbc_params.
+ *
+ * @return Channel Mode field value.
+ */
 #define BT_A2DP_SBC_CHAN_MODE(cap)    ((cap->config[0]) & 0x0f)
+/**
+ * @brief Get the Block Length field of SBC codec parameters.
+ *
+ * @param cap Pointer to SBC codec parameters, see @ref bt_a2dp_codec_sbc_params.
+ *
+ * @return Block Length field value.
+ */
 #define BT_A2DP_SBC_BLK_LEN(cap)      ((cap->config[1] >> 4) & 0x0f)
+/**
+ * @brief Get the Subbands field of SBC codec parameters.
+ *
+ * @param cap Pointer to SBC codec parameters, see @ref bt_a2dp_codec_sbc_params.
+ *
+ * @return Subbands field value.
+ */
 #define BT_A2DP_SBC_SUB_BAND(cap)     ((cap->config[1] >> 2) & 0x03)
+/**
+ * @brief Get the Allocation Method field of SBC codec parameters.
+ *
+ * @param cap Pointer to SBC codec parameters, see @ref bt_a2dp_codec_sbc_params.
+ *
+ * @return Allocation Method field value.
+ */
 #define BT_A2DP_SBC_ALLOC_MTHD(cap)   ((cap->config[1]) & 0x03)
+/** Minimum allowed SBC bitpool value */
 #define BT_A2DP_SBC_MIN_BITPOOL_VALUE  2
+/** Maximum allowed SBC bitpool value */
 #define BT_A2DP_SBC_MAX_BITPOOL_VALUE  250
 
 /** @brief SBC Codec */
@@ -99,6 +153,18 @@ struct bt_a2dp_codec_sbc_params {
 #define BT_A2DP_SBC_MEDIA_HDR_F_SET(hdr, val)\
 	hdr = ((hdr) & ~BIT(7)) | FIELD_PREP(BIT(7), (val))
 
+/**
+ * @brief Encode an SBC media payload header.
+ *
+ * @param num_frames Number of frames contained in the packet if @p f is 0,
+ *                   otherwise number of remaining fragments, including the
+ *                   current fragment.
+ * @param l Set to 1 for the last packet of a fragmented SBC frame, otherwise 0.
+ * @param s Set to 1 for the starting packet of a fragmented SBC frame, otherwise 0.
+ * @param f Set to 1 if the SBC frame is fragmented, otherwise 0.
+ *
+ * @return Encoded SBC media payload header value.
+ */
 #define BT_A2DP_SBC_MEDIA_HDR_ENCODE(num_frames, l, s, f)\
 	FIELD_PREP(GENMASK(3, 0), num_frames) | FIELD_PREP(BIT(5), l) |\
 	FIELD_PREP(BIT(6), s) | FIELD_PREP(BIT(7), f)

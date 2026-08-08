@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Backend APIs for the BC1.2 emulators.
+ * @ingroup b12_emulator_backend
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_USB_EMUL_BC12_H_

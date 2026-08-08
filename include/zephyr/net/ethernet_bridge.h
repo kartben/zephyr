@@ -1,5 +1,6 @@
 /** @file
  * @brief Ethernet Bridge public header file
+ * @ingroup eth_bridge
  *
  * Ethernet Bridges connect two or more Ethernet networks together and
  * transparently forward packets from one network to the others as if

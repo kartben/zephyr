@@ -26,6 +26,7 @@
  * @brief A lock-free and type safe power of 2 fixed sized single producer
  * single consumer (SPSC) queue using a ringbuffer and atomics to ensure
  * coherency.
+ * @ingroup spsc_lockfree
  *
  * This SPSC queue implementation works on an array which wraps using a power of
  * two size and uses a bit mask to perform a modulus. Atomics are used to allow
@@ -57,19 +58,19 @@
  * @warning Not to be manipulated without the macros!
  */
 struct spsc {
-	/* private value only the producer thread should mutate */
+	/** Private value only the producer thread should mutate */
 	unsigned long acquire;
 
-	/* private value only the consumer thread should mutate */
+	/** Private value only the consumer thread should mutate */
 	unsigned long consume;
 
-	/* producer mutable, consumer readable */
+	/** Producer mutable, consumer readable */
 	atomic_t in;
 
-	/* consumer mutable, producer readable */
+	/** Consumer mutable, producer readable */
 	atomic_t out;
 
-	/* mask used to automatically wrap values */
+	/** Mask used to automatically wrap values */
 	const unsigned long mask;
 };
 

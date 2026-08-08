@@ -10,6 +10,7 @@
 /**
  * @file
  * @brief Map devicetree macro public API header file.
+ * @ingroup devicetree-map
  *
  * This module provides helper macros that facilitate interrupt mapping and
  * specifier mapping based on DeviceTree specifications. It enables the extraction

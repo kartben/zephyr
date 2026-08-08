@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the private hooks connecting C library internals to kernel system calls.
+ * @ingroup internal_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_LIBC_HOOKS_H_
 #define ZEPHYR_INCLUDE_SYS_LIBC_HOOKS_H_
 
@@ -20,6 +26,8 @@ extern "C" {
  * Private header for specifying accessory functions to the C library internals
  * that need to call into the kernel as system calls
  */
+
+/** @cond INTERNAL_HIDDEN */
 
 #if defined(CONFIG_NEWLIB_LIBC) || defined(CONFIG_ARCMWDT_LIBC)
 
@@ -45,6 +53,8 @@ __syscall size_t zephyr_fwrite(const void *ZRESTRICT ptr, size_t size,
 #endif /* CONFIG_NEWLIB_LIBC */
 
 void __stdout_hook_install(int (*hook)(int));
+
+/** @endcond */
 
 #ifdef CONFIG_USERSPACE
 #ifdef CONFIG_COMMON_LIBC_MALLOC

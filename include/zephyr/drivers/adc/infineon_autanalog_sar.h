@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief Public extended API for the Infineon AutAnalog SAR ADC driver.
+ * @ingroup infineon_autanalog_sar_interface
  *
  * Provides vendor-specific helpers for reading FIR and FIFO.
  */

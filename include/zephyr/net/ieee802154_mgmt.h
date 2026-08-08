@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief IEEE 802.15.4 Management interface public header
+ * @ingroup ieee802154_mgmt
  *
  * @note All references to the standard in this file cite IEEE 802.15.4-2020.
  */

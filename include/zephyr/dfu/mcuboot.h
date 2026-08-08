@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief MCUboot public API for MCUboot control of image boot process
+ * @ingroup mcuboot_api
  *
  * The header declares API functions that can be used to get information
  * on and select application images for boot.
@@ -79,6 +80,7 @@ extern "C" {
 #define BOOT_SWAP_TYPE_FAIL     5
 #endif
 
+/** Maximum length of an image version string, including the null terminator */
 #define BOOT_IMG_VER_STRLEN_MAX 25  /* 255.255.65535.4294967295\0 */
 
 /** Value reserved to signalize invalid slot or failure to determine slot number */
@@ -95,10 +97,10 @@ extern "C" {
  * represents the information it contains.
  */
 struct mcuboot_img_sem_ver {
-	uint8_t major;
-	uint8_t minor;
-	uint16_t revision;
-	uint32_t build_num;
+	uint8_t major;      /**< Major version number */
+	uint8_t minor;      /**< Minor version number */
+	uint16_t revision;  /**< Revision number */
+	uint32_t build_num; /**< Build number */
 };
 
 /**
@@ -237,8 +239,9 @@ int mcuboot_swap_type(void);
 int mcuboot_swap_type_multi(int image_index);
 
 
-/** Boot upgrade request modes */
+/** Boot upgrade request mode: run the image once, then confirm or revert */
 #define BOOT_UPGRADE_TEST       0
+/** Boot upgrade request mode: run the image forever */
 #define BOOT_UPGRADE_PERMANENT  1
 
 /**

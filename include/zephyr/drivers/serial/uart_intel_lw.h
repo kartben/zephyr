@@ -5,7 +5,9 @@
  */
 
 /**
+ * @file
  * Header file for the INTEL LW UART
+ * @ingroup uart_interface
  */
 
 #ifndef ZEPHYR_DRIVERS_SERIAL_UART_INTEL_LW_H_
@@ -20,7 +22,9 @@
  * to set call back function for eop interrupt.
  * Flag is cleared after uart_irq_callback_user_data_set is called.
  */
+/** Command for uart_drv_cmd() to enable the end of packet feature. */
 #define CMD_ENABLE_EOP          0x01
+/** Command for uart_drv_cmd() to disable the end of packet feature. */
 #define CMD_DISABLE_EOP         0x02
 
 /* Transmit break feature.
@@ -30,7 +34,9 @@
  * Please also call uart_intel_lw_err_check, to clear the error caused
  * by transmit break.
  */
+/** Command for uart_drv_cmd() to break an ongoing transmit. */
 #define CMD_TRBK_EN             0x03
+/** Command for uart_drv_cmd() to resume transmit after a break. */
 #define CMD_TRBK_DIS            0x04
 
 /* This driver supports interrupt driven api.
@@ -39,7 +45,9 @@
  * uart_drv_cmd with CMD_POLL_ASSERT_RTS before polling out/in.
  * Then use CMD_POLL_DEASSERT_RTS to resume normal operation after polling.
  */
+/** Command for uart_drv_cmd() to assert RTS before polling for data. */
 #define CMD_POLL_ASSERT_RTS     0x05
+/** Command for uart_drv_cmd() to deassert RTS after polling for data. */
 #define CMD_POLL_DEASSERT_RTS   0x06
 
 #endif /* ZEPHYR_DRIVERS_SERIAL_UART_INTEL_LW_H_ */

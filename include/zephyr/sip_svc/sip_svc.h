@@ -8,8 +8,17 @@
 #define ZEPHYR_INCLUDE_SIP_SVC_SIP_SVC_H_
 
 /**
+ * @brief Arm SiP services
+ * @defgroup sip_svc Arm SiP Services
+ * @ingroup os_services
+ * @{
+ * @}
+ */
+
+/**
  * @file
  * @brief Public API for ARM SiP services
+ * @ingroup sip_svc
  *
  * ARM SiP service provides the capability to send the
  * SMC/HVC call from kernel running at EL1 to hypervisor/secure
@@ -44,9 +53,13 @@
 #include <zephyr/arch/arm64/arm-smccc.h>
 #include <zephyr/drivers/sip_svc/sip_svc_proto.h>
 
+/** Invalid state, the client is not registered */
 #define SIP_SVC_CLIENT_ST_INVALID 0
+/** Initial state, the client is registered and has no channel open */
 #define SIP_SVC_CLIENT_ST_IDLE	  1
+/** The client has successfully opened the channel */
 #define SIP_SVC_CLIENT_ST_OPEN	  2
+/** The client has closed the channel while transactions are still incomplete */
 #define SIP_SVC_CLIENT_ST_ABORT	  3
 
 /** @brief ARM sip service callback function prototype for response after completion

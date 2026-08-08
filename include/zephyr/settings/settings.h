@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the settings subsystem API.
+ * @ingroup settings
+ */
+
 #ifndef ZEPHYR_INCLUDE_SETTINGS_SETTINGS_H_
 #define ZEPHYR_INCLUDE_SETTINGS_SETTINGS_H_
 

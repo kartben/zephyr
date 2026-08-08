@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public interface for multi-level interrupts
+ * @ingroup isr_apis
  */
 #ifndef ZEPHYR_INCLUDE_IRQ_MULTILEVEL_H_
 #define ZEPHYR_INCLUDE_IRQ_MULTILEVEL_H_
@@ -21,6 +22,8 @@ extern "C" {
 #endif
 
 #if defined(CONFIG_MULTI_LEVEL_INTERRUPTS) || defined(__DOXYGEN__)
+
+/** @cond INTERNAL_HIDDEN */
 
 typedef union _z_irq {
 	/* Zephyr multilevel-encoded IRQ */
@@ -86,6 +89,8 @@ static inline unsigned int _z_irq_get_level(_z_irq_t z_irq)
 
 	return 1;
 }
+
+/** @endcond */
 
 /**
  * @brief Return IRQ level

@@ -8,6 +8,7 @@
  * @file
  *
  * @brief Public header file for the NS16550 UART
+ * @ingroup uart_interface
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_SERIAL_UART_NS16550_H_

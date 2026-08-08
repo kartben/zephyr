@@ -32,8 +32,8 @@
 extern "C" {
 #endif
 
-/* Name of the PTP clock driver */
 #if !defined(PTP_CLOCK_NAME)
+/** Name of the PTP clock driver */
 #define PTP_CLOCK_NAME "PTP_CLOCK"
 #endif
 

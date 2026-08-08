@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Bluetooth Media Control Service (MCS) APIs.
+ * @ingroup bt_mcs
  */
 /*
  * Copyright (c) 2019 - 2024 Nordic Semiconductor ASA

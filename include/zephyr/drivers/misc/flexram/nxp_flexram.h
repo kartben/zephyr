@@ -4,13 +4,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the NXP FlexRAM on-chip RAM controller driver API.
+ * @ingroup misc_interfaces
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MISC_FLEXRAM_NXP_FLEXRAM_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MISC_FLEXRAM_NXP_FLEXRAM_H_
 
 #include <zephyr/devicetree.h>
 #include <soc.h>
 
+/** Devicetree node identifier for the FlexRAM node */
 #define FLEXRAM_DT_NODE    DT_INST(0, nxp_flexram)
+/** Devicetree node identifier for the IOMUXC GPR node */
 #define IOMUXC_GPR_DT_NODE DT_NODELABEL(iomuxcgpr)
 
 #if defined(CONFIG_NXP_FLEXRAM_MAGIC_ADDR_API) || \

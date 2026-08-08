@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Interfaces for Renesas RX external interrupt.
+ * @ingroup misc_interfaces
  * @{
  */
 

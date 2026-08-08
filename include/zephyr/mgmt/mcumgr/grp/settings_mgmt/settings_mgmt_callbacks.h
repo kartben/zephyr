@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for MCUmgr Settings Management callback definitions.
+ * @ingroup mcumgr_callback_api_settings_mgmt
+ */
+
 #ifndef ZEPHYR_INCLUDE_MGMT_MCUMGR_GRP_SETTINGS_MGMT_SETTINGS_MGMT_CALLBACKS_H_
 #define ZEPHYR_INCLUDE_MGMT_MCUMGR_GRP_SETTINGS_MGMT_SETTINGS_MGMT_CALLBACKS_H_
 
@@ -34,6 +40,7 @@ enum settings_mgmt_group_events {
  * @name Settings access types
  * @{
  */
+/** Type of access to a setting */
 enum settings_mgmt_access_types {
 	SETTINGS_ACCESS_READ,   /**< Setting is being read */
 	SETTINGS_ACCESS_WRITE,  /**< Setting is being written */

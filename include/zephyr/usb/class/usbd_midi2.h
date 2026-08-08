@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the USB MIDI 2.0 Class device API.
+ * @ingroup usbd_midi2
+ */
+
 #ifndef ZEPHYR_INCLUDE_USB_CLASS_USBD_MIDI_H_
 #define ZEPHYR_INCLUDE_USB_CLASS_USBD_MIDI_H_
 

@@ -5,12 +5,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for Infineon CAT1 UART driver internal interrupt helpers.
+ * @ingroup uart_interface
+ */
+
 #include <zephyr/drivers/uart.h>
 #include <string.h>
 #include <cy_scb_uart.h>
 #include <cy_gpio.h>
 #include <cy_syslib.h>
 #include <cy_sysint.h>
+
+/** @cond INTERNAL_HIDDEN */
 
 #define _IFX_CAT1_SCB_BLOCK_ID_INVALID (0xFF)
 
@@ -23,6 +31,8 @@
 #define IFX_CAT1_IRQ_MUXING (CY_CPU_CORTEX_M0P || CPUSS_SYSTEM_IRQ_PRESENT)
 
 #define IFX_CAT1_IRQ_LEGACY_M0 (CY_CPU_CORTEX_M0P && (1u == CY_IP_M4CPUSS_VERSION))
+
+/** @endcond */
 
 #if (IFX_CAT1_IRQ_MUXING)
 static inline void _ifx_cat1_irq_set_priority(cy_en_intr_t system_irq, uint8_t intr_priority)

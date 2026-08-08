@@ -6,6 +6,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the IPM console driver.
+ * @ingroup console_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_CONSOLE_IPM_CONSOLE_H_
 #define ZEPHYR_INCLUDE_DRIVERS_CONSOLE_IPM_CONSOLE_H_
 
@@ -17,16 +23,21 @@
 extern "C" {
 #endif
 
+/** @brief Flag selecting stdout as the source or destination of console messages. */
 #define IPM_CONSOLE_STDOUT	(BIT(0))
+/** @brief Flag selecting printk() as the source or destination of console messages. */
 #define IPM_CONSOLE_PRINTK	(BIT(1))
 
 /*
  * Good way to determine these numbers other than trial-and-error?
  * using printf() in the thread seems to require a lot more stack space
  */
+/** @brief Size in bytes of the stack for the IPM console receiver thread. */
 #define IPM_CONSOLE_STACK_SIZE		CONFIG_IPM_CONSOLE_STACK_SIZE
+/** @brief Cooperative priority of the IPM console receiver thread. */
 #define IPM_CONSOLE_PRI			2
 
+/** @brief Configuration of an IPM console receiver instance. */
 struct ipm_console_receiver_config_info {
 	/** Name of the low-level IPM driver to bind to */
 	char *bind_to;
@@ -63,6 +74,7 @@ struct ipm_console_receiver_config_info {
 	unsigned int flags;
 };
 
+/** @brief Runtime data of an IPM console receiver instance. */
 struct ipm_console_receiver_runtime_data {
 	/** Buffer for received bytes from the low-level IPM device */
 	struct ring_buf rb;
@@ -82,6 +94,7 @@ struct ipm_console_receiver_runtime_data {
 	struct k_thread rx_thread;
 };
 
+/** @brief Configuration of an IPM console sender instance. */
 struct ipm_console_sender_config_info {
 	/** Name of the low-level driver to bind to */
 	char *bind_to;

@@ -1,5 +1,6 @@
 /** @file
  * @brief Websocket API
+ * @ingroup websocket
  *
  * An API for applications to setup websocket connections
  */

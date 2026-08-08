@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief IEEE 802.15.4 MAC information element (IE) related types and helpers
+ * @ingroup ieee802154_driver
  *
  * This is not to be included by the application. This file contains only those
  * parts of the types required for IE support that need to be visible to IEEE
@@ -88,6 +89,7 @@ struct ieee802154_header_ie_csl_reduced {
 
 /** @brief Generic CSL IE, see section 7.4.2.3. */
 struct ieee802154_header_ie_csl {
+	/** CSL IE content, either the full or the reduced variant */
 	union {
 		/** CSL full information */
 		struct ieee802154_header_ie_csl_full full;
@@ -122,6 +124,7 @@ struct ieee802154_header_ie_rendezvous_time_reduced {
 
 /** @brief Rendezvous Time IE, see section 7.4.2.6. */
 struct ieee802154_header_ie_rendezvous_time {
+	/** Rendezvous Time IE content, either the full or the reduced variant */
 	union {
 		/** Rendezvous time full information */
 		struct ieee802154_header_ie_rendezvous_time_full full;

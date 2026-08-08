@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Bluetooth Call Control Profile (CCP) APIs.
+ * @ingroup bt_ccp
  */
 
 /*

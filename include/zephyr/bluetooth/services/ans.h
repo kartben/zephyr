@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the Alert Notification Service (ANS) APIs.
+ * @ingroup bt_ans
+ */
+
 #ifndef ZEPHYR_INCLUDE_BLUETOOTH_SERVICES_ANS_H_
 #define ZEPHYR_INCLUDE_BLUETOOTH_SERVICES_ANS_H_
 

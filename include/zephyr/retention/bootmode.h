@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public API for boot mode interface
+ * @ingroup boot_mode_interface
  */
 
 #ifndef ZEPHYR_INCLUDE_RETENTION_BOOTMODE_H_
@@ -29,6 +30,7 @@ extern "C" {
  * @{
  */
 
+/** Boot mode values */
 enum BOOT_MODE_TYPES {
 	/** Default (normal) boot, to user application */
 	BOOT_MODE_TYPE_NORMAL = 0x00,

@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Lowercase min/max/clamp helpers.
+ * @ingroup sys-util
  *
  * These short-named macros are kept out of @ref util.h so they are not pulled
  * in transitively by broad headers such as <pthread.h>. Source files that need

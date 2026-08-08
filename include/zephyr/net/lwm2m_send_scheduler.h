@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the LwM2M send scheduler API.
+ * @ingroup lwm2m_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_NET_LWM2M_SEND_SCHEDULER_H_
 #define ZEPHYR_INCLUDE_NET_LWM2M_SEND_SCHEDULER_H_
 

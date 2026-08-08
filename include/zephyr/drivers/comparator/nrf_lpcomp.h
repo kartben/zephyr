@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the Nordic LPCOMP comparator driver specific API.
+ * @ingroup comparator_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_COMP_NRF_LPCOMP_H_
 #define ZEPHYR_INCLUDE_DRIVERS_COMP_NRF_LPCOMP_H_
 

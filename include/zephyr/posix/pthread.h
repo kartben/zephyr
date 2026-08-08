@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the POSIX threads (pthreads) support.
+ */
+
 #ifndef ZEPHYR_INCLUDE_POSIX_PTHREAD_H_
 #define ZEPHYR_INCLUDE_POSIX_PTHREAD_H_
 

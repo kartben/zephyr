@@ -1,5 +1,6 @@
 /** @file
  *  @brief Buffer management.
+ *  @ingroup net_buf
  */
 
 /*

@@ -2,6 +2,7 @@
  * @file
  *
  * @brief Public APIs for Ethernet PHY drivers.
+ * @ingroup ethernet_phy
  */
 
 /*

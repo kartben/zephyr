@@ -10,6 +10,7 @@
 /**
  * @file
  * @brief Texas Instruments ADS1220 ADC driver API
+ * @ingroup ads1220_interface
  *
  * This file contains the API for the ADS1220 24-bit, 4-channel, low-power,
  * Delta-Sigma ADC with integrated PGA, VREF, SPI interface, and two IDACs.

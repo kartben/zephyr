@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the ZVFS event file descriptor API used to implement POSIX eventfd.
+ * @ingroup internal_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_ZVFS_EVENTFD_H_
 #define ZEPHYR_INCLUDE_ZVFS_EVENTFD_H_
 
@@ -15,9 +21,12 @@
 extern "C" {
 #endif
 
+/** Provide semaphore-like semantics for reads from the ZVFS eventfd */
 #define ZVFS_EFD_SEMAPHORE 2
+/** Set the ZVFS eventfd file descriptor to non-blocking mode */
 #define ZVFS_EFD_NONBLOCK 0x4000
 
+/** Type for ZVFS eventfd counter values */
 typedef uint64_t zvfs_eventfd_t;
 
 /**

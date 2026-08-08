@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public Monochrome Character Framebuffer API
+ * @ingroup monochrome_character_framebuffer
  */
 
 #ifndef ZEPHYR_INCLUDE_DISPLAY_CFB_H_
@@ -29,29 +30,47 @@ extern "C" {
  * @{
  */
 
+/** @brief Display parameters queried with cfb_get_display_parameter() */
 enum cfb_display_param {
+	/** Display height in pixels */
 	CFB_DISPLAY_HEIGHT		= 0,
+	/** Display width in pixels */
 	CFB_DISPLAY_WIDTH,
+	/** Number of pixels per tile */
 	CFB_DISPLAY_PPT,
+	/** Number of tile rows */
 	CFB_DISPLAY_ROWS,
+	/** Number of tile columns */
 	CFB_DISPLAY_COLS,
 };
 
+/** @brief Font capabilities, describing the layout of the font data */
 enum cfb_font_caps {
+	/** Monochrome data, a byte holds 8 vertically adjacent pixels */
 	CFB_FONT_MONO_VPACKED		= BIT(0),
+	/** Monochrome data, a byte holds 8 horizontally adjacent pixels */
 	CFB_FONT_MONO_HPACKED		= BIT(1),
+	/** The most significant bit of a data byte is the first pixel */
 	CFB_FONT_MSB_FIRST		= BIT(2),
 };
 
+/** @brief Font description */
 struct cfb_font {
+	/** Raw data of the font */
 	const void *data;
+	/** Font capabilities */
 	enum cfb_font_caps caps;
+	/** Width of the font in pixels */
 	uint8_t width;
+	/** Height of the font in pixels */
 	uint8_t height;
+	/** Character mapped to the first font element */
 	uint8_t first_char;
+	/** Character mapped to the last font element */
 	uint8_t last_char;
 };
 
+/** @brief Position in the framebuffer, in pixels */
 struct cfb_position {
 	/** X position */
 	int16_t x;

@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the modem pipe API.
+ * @ingroup modem_pipe
+ */
+
 #include <zephyr/types.h>
 #include <zephyr/kernel.h>
 
@@ -25,9 +31,13 @@ extern "C" {
 
 /** Modem pipe event */
 enum modem_pipe_event {
+	/** Pipe has been opened */
 	MODEM_PIPE_EVENT_OPENED = 0,
+	/** Pipe has data ready to be received */
 	MODEM_PIPE_EVENT_RECEIVE_READY,
+	/** Pipe has no more data to transmit */
 	MODEM_PIPE_EVENT_TRANSMIT_IDLE,
+	/** Pipe has been closed */
 	MODEM_PIPE_EVENT_CLOSED,
 };
 
@@ -49,6 +59,13 @@ struct modem_pipe;
  * @endcond
  */
 
+/**
+ * @brief Callback called when a pipe event occurs
+ *
+ * @param pipe Pipe instance the event occurred on
+ * @param event Pipe event
+ * @param user_data Free to use user data set with modem_pipe_attach()
+ */
 typedef void (*modem_pipe_api_callback)(struct modem_pipe *pipe, enum modem_pipe_event event,
 					void *user_data);
 

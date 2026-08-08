@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Bluetooth Audio Stream Control Service (ASCS) APIs.
+ * @ingroup bt_ascs
  */
 
 /*

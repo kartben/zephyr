@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public API for network L2 interface
+ * @ingroup net_l2
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_NET_L2_H_

@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the symbol table API.
+ * @ingroup symtab_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_DEBUG_SYMTAB_H_
 #define ZEPHYR_INCLUDE_DEBUG_SYMTAB_H_
 
@@ -32,12 +38,13 @@ struct z_symtab_entry {
  * INTERNAL_HIDDEN @endcond
  */
 
+/** Symbol table */
 struct symtab_info {
-	/* Absolute address of the first symbol */
+	/** Absolute address of the first symbol */
 	const uintptr_t first_addr;
-	/* Number of symbol entries */
+	/** Number of symbol entries */
 	const uint32_t length;
-	/* Symbol entries */
+	/** Symbol entries */
 	const struct z_symtab_entry *const entries;
 };
 

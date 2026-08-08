@@ -8,6 +8,7 @@
  * @file
  *
  * @brief Header files included by kernel.h.
+ * @ingroup internal_api
  */
 
 #ifndef ZEPHYR_INCLUDE_KERNEL_INCLUDES_H_

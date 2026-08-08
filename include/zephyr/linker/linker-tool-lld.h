@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief LLVM LLD linker defs
+ * @ingroup internal_api
  *
  * This header file defines the necessary macros used by the linker script for
  * use with the LLD linker.

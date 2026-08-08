@@ -6,6 +6,7 @@
 
 /** @file
  * @brief TLS credentials management
+ * @ingroup tls_credentials
  *
  * An API for applications to configure TLS credentials.
  */

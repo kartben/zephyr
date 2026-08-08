@@ -11,6 +11,7 @@
  * @file
  *
  * @brief Utility functions for the generation and parsing of Universal Unique Identifier.
+ * @ingroup uuid
  * @details This driver is compliant with RFC9562: https://datatracker.ietf.org/doc/rfc9562/
  */
 

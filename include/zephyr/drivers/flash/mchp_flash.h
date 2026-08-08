@@ -7,6 +7,7 @@
 /**
  * @file mchp_flash.h
  * @brief Microchip Flash Controller Driver Header
+ * @ingroup flash_interface
  *
  * @details
  * This header provides conditional inclusion of Microchip flash controller

@@ -6,7 +6,8 @@
 
 /**
  * @file
- * Atmel SAM SoC specific helpers for pinctrl driver
+ * @brief Atmel SAM SoC specific helpers for pinctrl driver.
+ * @ingroup pinctrl_interface_ext
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_PINCTRL_PINCTRL_SOC_SAM_COMMON_H_
@@ -77,21 +78,37 @@ typedef uint32_t pinctrl_soc_pin_t;
  * @{
  */
 
+/** Default pin flags value (no flags set) */
 #define SAM_PINCTRL_FLAGS_DEFAULT       (0U)
+/** Position of the pin flags bit field */
 #define SAM_PINCTRL_FLAGS_POS           (0U)
+/** Mask of the whole pin flags bit field */
 #define SAM_PINCTRL_FLAGS_MASK          (0x3F << SAM_PINCTRL_FLAGS_POS)
+/** Mask of a single pin flag */
 #define SAM_PINCTRL_FLAG_MASK           (1U)
+/** Position of the pull-up flag */
 #define SAM_PINCTRL_PULLUP_POS          (SAM_PINCTRL_FLAGS_POS)
+/** Pull-up flag */
 #define SAM_PINCTRL_PULLUP              (1U << SAM_PINCTRL_PULLUP_POS)
+/** Position of the pull-down flag */
 #define SAM_PINCTRL_PULLDOWN_POS        (SAM_PINCTRL_PULLUP_POS + 1U)
+/** Pull-down flag */
 #define SAM_PINCTRL_PULLDOWN            (1U << SAM_PINCTRL_PULLDOWN_POS)
+/** Position of the open-drain flag */
 #define SAM_PINCTRL_OPENDRAIN_POS       (SAM_PINCTRL_PULLDOWN_POS + 1U)
+/** Open-drain flag */
 #define SAM_PINCTRL_OPENDRAIN           (1U << SAM_PINCTRL_OPENDRAIN_POS)
+/** Position of the input-enable flag */
 #define SAM_PINCTRL_INPUTENABLE_POS     (SAM_PINCTRL_OPENDRAIN_POS + 1U)
+/** Input-enable flag */
 #define SAM_PINCTRL_INPUTENABLE         (1U << SAM_PINCTRL_INPUTENABLE_POS)
+/** Position of the output-enable flag */
 #define SAM_PINCTRL_OUTPUTENABLE_POS    (SAM_PINCTRL_INPUTENABLE_POS + 1U)
+/** Output-enable flag */
 #define SAM_PINCTRL_OUTPUTENABLE        (1U << SAM_PINCTRL_OUTPUTENABLE_POS)
+/** Position of the drive-strength flag */
 #define SAM_PINCTRL_DRIVESTRENGTH_POS   (SAM_PINCTRL_OUTPUTENABLE_POS + 1U)
+/** Drive-strength flag */
 #define SAM_PINCTRL_DRIVESTRENGTH       (1U << SAM_PINCTRL_DRIVESTRENGTH_POS)
 
 /** @} */
@@ -105,6 +122,11 @@ typedef uint32_t pinctrl_soc_pin_t;
 #define SAM_PINCTRL_FLAG_GET(pincfg, pos) \
 	(((pincfg) >> pos) & SAM_PINCTRL_FLAG_MASK)
 
+/**
+ * Obtain the whole pin flags bit field from pinctrl_soc_pin_t configuration.
+ *
+ * @param pincfg pinctrl_soc_pin_t bit field value.
+ */
 #define SAM_PINCTRL_FLAGS_GET(pincfg) \
 	(((pincfg) >> SAM_PINCTRL_FLAGS_POS) & SAM_PINCTRL_FLAGS_MASK)
 

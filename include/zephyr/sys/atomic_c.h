@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Interrupt-locking C implementation of the atomic operations API.
+ * @ingroup atomic_apis
  *
  * The public documentation for these operations lives in <zephyr/sys/atomic.h>.
  */

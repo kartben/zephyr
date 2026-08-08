@@ -6,6 +6,7 @@
 /**
  * @file adxl355.h
  * @brief Header file for extended sensor API of ADXL355 sensor
+ * @ingroup sensor_interface_ext_adi
  *
  */
 

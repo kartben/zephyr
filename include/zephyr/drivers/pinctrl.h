@@ -19,6 +19,11 @@
  * @version 0.8.0
  * @ingroup io_interfaces
  * @{
+ *
+ * @defgroup pinctrl_interface_ext SoC-specific pin control helpers
+ *
+ * @{
+ * @}
  */
 
 #include <errno.h>

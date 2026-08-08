@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for sensor channel reading data types.
+ * @ingroup sensor_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_SENSOR_DATA_TYPES_H
 #define ZEPHYR_INCLUDE_DRIVERS_SENSOR_DATA_TYPES_H
 

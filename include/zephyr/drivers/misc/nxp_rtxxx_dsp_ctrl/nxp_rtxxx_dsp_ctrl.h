@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the NXP RTxxx DSP control driver API.
+ * @ingroup misc_interfaces
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MISC_NXP_RTXXX_DSP_CTRL_NXP_RTXXX_DSP_CTRL_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MISC_NXP_RTXXX_DSP_CTRL_NXP_RTXXX_DSP_CTRL_H_
 
@@ -14,10 +20,15 @@
  * @brief Describes an image section type selection.
  */
 enum nxp_rtxxx_dsp_ctrl_section_type {
+	/** Reset vector section */
 	NXP_RTXXX_DSP_CTRL_SECTION_RESET = NXP_RTXXX_DSP_REGION_RESET,
+	/** Code (text) section */
 	NXP_RTXXX_DSP_CTRL_SECTION_TEXT = NXP_RTXXX_DSP_REGION_TEXT,
+	/** Data section */
 	NXP_RTXXX_DSP_CTRL_SECTION_DATA = NXP_RTXXX_DSP_REGION_DATA
 };
+
+/** @cond INTERNAL_HIDDEN */
 
 typedef int (*nxp_rtxxx_dsp_ctrl_api_load_section)(
 	const struct device *,
@@ -33,6 +44,8 @@ struct nxp_rtxxx_dsp_ctrl_api {
 	nxp_rtxxx_dsp_ctrl_api_enable enable;
 	nxp_rtxxx_dsp_ctrl_api_disable disable;
 };
+
+/** @endcond */
 
 /**
  * @brief Loads a specified image representing a specified section to a particular region in the

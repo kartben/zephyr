@@ -1,5 +1,6 @@
 /** @file
  *  @brief Health Server Model APIs.
+ *  @ingroup bt_mesh_health_srv
  */
 
 /*
@@ -185,6 +186,13 @@ struct bt_mesh_health_srv {
  */
 #define BT_MESH_HEALTH_TEST_INFO_METADATA_ID 0x0000
 
+/**
+ *
+ *  Health Test Information Metadata entry initializer.
+ *
+ *  @param tests Array of Health Test Information data, formatted with
+ *               @ref BT_MESH_HEALTH_TEST_INFO.
+ */
 #define BT_MESH_HEALTH_TEST_INFO_METADATA(tests)                               \
 	{                                                                      \
 		.len = ARRAY_SIZE(tests),                                      \

@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for runtime linker section query utilities.
+ * @ingroup internal_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_LINKER_UTILS_H_
 #define ZEPHYR_INCLUDE_LINKER_UTILS_H_
 

@@ -1,5 +1,6 @@
 /** @file
  *  @brief Service Discovery Protocol handling.
+ *  @ingroup bt_sdp
  */
 
 /*
@@ -119,6 +120,7 @@ extern "C" {
  * @}
  */
 
+/** Service record handle of the SDP server's own service record */
 #define BT_SDP_SERVER_RECORD_HANDLE 0x0000
 
 /**
@@ -222,10 +224,14 @@ extern "C" {
  * #define XXXLangBase yyyy
  * #define AttrServiceName_XXX 0x0000+XXXLangBase
  */
+/** Base attribute ID of the primary (universal) language */
 #define BT_SDP_PRIMARY_LANG_BASE  0x0100
 
+/** Service Name attribute ID of the primary language */
 #define BT_SDP_ATTR_SVCNAME_PRIMARY (0x0000 + BT_SDP_PRIMARY_LANG_BASE)
+/** Service Description attribute ID of the primary language */
 #define BT_SDP_ATTR_SVCDESC_PRIMARY (0x0001 + BT_SDP_PRIMARY_LANG_BASE)
+/** Provider Name attribute ID of the primary language */
 #define BT_SDP_ATTR_PROVNAME_PRIMARY (0x0002 + BT_SDP_PRIMARY_LANG_BASE)
 
 /**
@@ -330,8 +336,15 @@ extern "C" {
  * @}
  */
 
+/** Mask of the type descriptor bits in the data element header */
 #define BT_SDP_TYPE_DESC_MASK 0xf8
+/** Mask of the size index bits in the data element header */
 #define BT_SDP_SIZE_DESC_MASK 0x07
+/** @brief First size index for which the data size is held in an extra field
+ *
+ *  For size index 5, 6 and 7 the data size is contained in an additional
+ *  field of 1, 2 and 4 bytes respectively.
+ */
 #define BT_SDP_SIZE_INDEX_OFFSET 5
 
 /** @brief SDP Generic Data Element Value. */
@@ -339,7 +352,7 @@ struct bt_sdp_data_elem {
 	uint8_t        type;		/**< Type of the data element */
 	uint32_t       data_size;	/**< Size of the data element */
 	uint32_t       total_size;	/**< Total size of the data element */
-	const void *data;
+	const void *data;		/**< Data of the data element */
 };
 
 /** @brief SDP Attribute Value. */
@@ -354,7 +367,11 @@ struct bt_sdp_record {
 	struct bt_sdp_attribute     *attrs;       /**< Base addr of attr array */
 	size_t                      attr_count;   /**< Number of attributes */
 	uint8_t                     index;        /**< Index of the record in LL */
+	/** @cond INTERNAL_HIDDEN
+	 *  Field used for list handling.
+	 */
 	sys_snode_t                 node;
+	/** @endcond */
 };
 
 /*
@@ -589,7 +606,9 @@ struct bt_sdp_client_result {
  *  The value informs the caller to perform further pending actions or stop them.
  */
 enum {
+	/** Stop retrieving follow-up resolved records for the given UUID */
 	BT_SDP_DISCOVER_UUID_STOP = 0,
+	/** Continue retrieving follow-up resolved records for the given UUID */
 	BT_SDP_DISCOVER_UUID_CONTINUE,
 };
 
@@ -663,6 +682,9 @@ struct bt_sdp_attribute_id_list {
 /** @brief Main user structure used in SDP discovery of remote. */
 struct bt_sdp_discover_params {
 	sys_snode_t _node;
+	/** Service to be discovered on the remote, given either by UUID or by
+	 *  service record handle depending on the discover type
+	 */
 	union {
 		/** UUID (service) to be discovered on remote SDP entity */
 		const struct bt_uuid *uuid;
@@ -955,15 +977,15 @@ struct bt_sdp_attr_value {
 	enum bt_sdp_attr_value_type type;
 	/** Union containing the actual attribute value based on type */
 	union {
-		/**< Boolean value (when type is BT_SDP_ATTR_VALUE_TYPE_BOOL) */
+		/** Boolean value (when type is BT_SDP_ATTR_VALUE_TYPE_BOOL) */
 		bool value;
-		/**< Unsigned integer value (when type is BT_SDP_ATTR_VALUE_TYPE_UINT) */
+		/** Unsigned integer value (when type is BT_SDP_ATTR_VALUE_TYPE_UINT) */
 		struct bt_sdp_attr_value_uint uint;
-		/**< Signed integer value (when type is BT_SDP_ATTR_VALUE_TYPE_SINT) */
+		/** Signed integer value (when type is BT_SDP_ATTR_VALUE_TYPE_SINT) */
 		struct bt_sdp_attr_value_int sint;
-		/**< Text string value (when type is BT_SDP_ATTR_VALUE_TYPE_TEXT) */
+		/** Text string value (when type is BT_SDP_ATTR_VALUE_TYPE_TEXT) */
 		struct bt_sdp_attr_value_text text;
-		/**< URL string value (when type is BT_SDP_ATTR_VALUE_TYPE_URL) */
+		/** URL string value (when type is BT_SDP_ATTR_VALUE_TYPE_URL) */
 		struct bt_sdp_attr_value_url url;
 	};
 };

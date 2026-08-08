@@ -34,9 +34,9 @@ enum bt_mesh_brg_cfg_state {
 	BT_MESH_BRG_CFG_ENABLED,
 };
 
-/* Bridging from Addr1 to Addr2. */
+/** Bridging from Addr1 to Addr2. */
 #define BT_MESH_BRG_CFG_DIR_ONEWAY 1
-/* Bidirectional bridging between Addr1 and Addr2. */
+/** Bidirectional bridging between Addr1 and Addr2. */
 #define BT_MESH_BRG_CFG_DIR_TWOWAY 2
 
 /** Bridging Table state entry corresponding to a entry in the Bridging Table. */
@@ -63,9 +63,9 @@ struct bt_mesh_brg_cfg_table_status {
 
 /** Used to filter set of pairs of NetKey Indexes from the Bridging Table */
 struct bt_mesh_brg_cfg_filter_netkey {
-	uint16_t filter: 2,    /* Filter applied to the set of pairs of NetKey Indexes */
-		prohibited: 2, /* Prohibited */
-		net_idx: 12;   /* NetKey Index used for filtering or ignored */
+	uint16_t filter: 2,    /**< Filter applied to the set of pairs of NetKey Indexes */
+		prohibited: 2, /**< Prohibited */
+		net_idx: 12;   /**< NetKey Index used for filtering or ignored */
 };
 
 /** Bridged Subnets List response */

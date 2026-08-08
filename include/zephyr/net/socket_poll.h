@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for BSD sockets compatible poll() definitions.
+ * @ingroup bsd_sockets
+ */
+
 #ifndef ZEPHYR_INCLUDE_NET_SOCKET_POLL_H_
 #define ZEPHYR_INCLUDE_NET_SOCKET_POLL_H_
 

@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the MCUmgr Image Management group API.
+ * @ingroup mcumgr_img_mgmt
+ */
+
 #ifndef ZEPHYR_INCLUDE_MGMT_MCUMGR_GRP_IMG_MGMT_IMG_MGMT_H_
 #define ZEPHYR_INCLUDE_MGMT_MCUMGR_GRP_IMG_MGMT_IMG_MGMT_H_
 
@@ -28,7 +34,8 @@
 extern "C" {
 #endif
 
-#define IMG_MGMT_DATA_SHA_LEN	32 /* SHA256 */
+/** Length of the hash of image data (SHA256), in bytes */
+#define IMG_MGMT_DATA_SHA_LEN	32
 
 /**
  * @name Image state flags
@@ -44,7 +51,7 @@ extern "C" {
 #define IMG_MGMT_STATE_F_PERMANENT	0x08
 /** @} */
 
-/* 255.255.65535.4294967295\0 */
+/** Maximum length of an image version string: "255.255.65535.4294967295" with null terminator */
 #define IMG_MGMT_VER_MAX_STR_LEN	(sizeof("255.255.65535.4294967295"))
 
 /**
@@ -185,22 +192,33 @@ enum img_mgmt_err_code_t {
  * IMG_MGMT_ID_UPLOAD statuses.
  */
 enum img_mgmt_id_upload_t {
+	/** Image upload has started. */
 	IMG_MGMT_ID_UPLOAD_STATUS_START		= 0,
+	/** Image upload is ongoing. */
 	IMG_MGMT_ID_UPLOAD_STATUS_ONGOING,
+	/** Image upload is complete. */
 	IMG_MGMT_ID_UPLOAD_STATUS_COMPLETE,
 };
 
+/** @cond INTERNAL_HIDDEN */
 extern int boot_current_slot;
 extern struct img_mgmt_state g_img_mgmt_state;
+/** @endcond */
 
 /** Represents an individual upload request. */
 struct img_mgmt_upload_req {
-	uint32_t image;	/* 0 by default */
-	size_t off;	/* SIZE_MAX if unspecified */
-	size_t size;	/* SIZE_MAX if unspecified */
+	/** Image number, 0 by default. */
+	uint32_t image;
+	/** Offset of the data chunk in the image; SIZE_MAX if unspecified. */
+	size_t off;
+	/** Total size of the image; SIZE_MAX if unspecified. */
+	size_t size;
+	/** Chunk of image data to write. */
 	struct zcbor_string img_data;
+	/** Hash of the image data; used for resumption of a partial upload. */
 	struct zcbor_string data_sha;
-	bool upgrade;			/* Only allow greater version numbers. */
+	/** Only allow upload of an image with a greater version number. */
+	bool upgrade;
 };
 
 /** Global state for upload in progress. */
@@ -211,8 +229,9 @@ struct img_mgmt_state {
 	size_t off;
 	/** Total size of image data. */
 	size_t size;
-	/** Hash of image data; used for resumption of a partial upload. */
+	/** Length of the data in @a data_sha. */
 	uint8_t data_sha_len;
+	/** Hash of image data; used for resumption of a partial upload. */
 	uint8_t data_sha[IMG_MGMT_DATA_SHA_LEN];
 };
 
@@ -234,7 +253,7 @@ struct img_mgmt_upload_action {
 #endif
 };
 
-/*
+/**
  * @brief Read info of an image at the specified slot number
  *
  * @param image_slot	image slot number
@@ -369,8 +388,10 @@ void img_mgmt_reset_upload(void);
 #endif
 
 #ifdef CONFIG_MCUMGR_GRP_IMG_VERBOSE_ERR
+/** @cond INTERNAL_HIDDEN */
 #define IMG_MGMT_UPLOAD_ACTION_SET_RC_RSN(action, rsn) ((action)->rc_rsn = (rsn))
 #define IMG_MGMT_UPLOAD_ACTION_RC_RSN(action) ((action)->rc_rsn)
+/** @endcond */
 int img_mgmt_error_rsp(struct smp_streamer *ctxt, int rc, const char *rsn);
 extern const char *img_mgmt_err_str_app_reject;
 extern const char *img_mgmt_err_str_hdr_malformed;
@@ -384,8 +405,10 @@ extern const char *img_mgmt_err_str_image_bad_flash_addr;
 extern const char *img_mgmt_err_str_image_too_large;
 extern const char *img_mgmt_err_str_data_overrun;
 #else
+/** @cond INTERNAL_HIDDEN */
 #define IMG_MGMT_UPLOAD_ACTION_SET_RC_RSN(action, rsn)
 #define IMG_MGMT_UPLOAD_ACTION_RC_RSN(action) NULL
+/** @endcond */
 #endif
 
 /**

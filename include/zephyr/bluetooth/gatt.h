@@ -1,5 +1,6 @@
 /** @file
  *  @brief Generic Attribute Profile handling.
+ *  @ingroup bt_gatt
  */
 
 /*
@@ -491,8 +492,9 @@ struct bt_gatt_chrc {
 	uint8_t	properties;
 };
 
-/** Characteristic Extended Properties Bit field values */
+/** Characteristic Extended Properties Bit field: Reliable Write */
 #define BT_GATT_CEP_RELIABLE_WRITE		0x0001
+/** Characteristic Extended Properties Bit field: Writable Auxiliaries */
 #define BT_GATT_CEP_WRITABLE_AUX		0x0002
 
 /** @brief Characteristic Extended Properties Attribute Value.
@@ -705,7 +707,9 @@ bool bt_gatt_service_is_registered(const struct bt_gatt_service *svc);
  *  type callbacks.
  */
 enum bt_gatt_iter {
+	/** Stop the iteration. */
 	BT_GATT_ITER_STOP = 0,
+	/** Continue to the next attribute. */
 	BT_GATT_ITER_CONTINUE,
 };
 
@@ -1836,6 +1840,11 @@ struct bt_gatt_discover_params {
 	const struct bt_uuid *uuid;
 	/** Discover attribute callback */
 	bt_gatt_discover_func_t func;
+	/** @brief Union with the start handle of the discovery
+	 *
+	 *  The @p _included member is only for stack-internal use during
+	 *  included service discovery.
+	 */
 	union {
 		/** See @ref bt_gatt_include for more on included services. */
 		struct {
@@ -1937,13 +1946,16 @@ struct bt_gatt_read_params {
 	 *  If equals to 0 by_uuid is used for Read Using Characteristic UUID.
 	 */
 	size_t handle_count;
+	/** Read parameters, the member to use is selected by @p handle_count */
 	union {
+		/** Single attribute read, used when @p handle_count is 1. */
 		struct {
 			/** Attribute handle. */
 			uint16_t handle;
 			/** Attribute data offset. */
 			uint16_t offset;
 		} single;
+		/** Multiple attributes read, used when @p handle_count is greater than 1. */
 		struct {
 			/** Attribute handles to read with Read Multiple
 			 *  Characteristic Values.
@@ -1961,6 +1973,7 @@ struct bt_gatt_read_params {
 			 */
 			bool variable;
 		} multiple;
+		/** Read Using Characteristic UUID, used when @p handle_count is 0. */
 		struct {
 			/** @brief Requested start attribute handle number.
 			 *
@@ -2224,6 +2237,7 @@ enum bt_gatt_sub_flag {
 	 */
 	BT_GATT_SUBSCRIBE_FLAG_SENT,
 
+	/** Number of subscription flags. */
 	BT_GATT_SUBSCRIBE_NUM_FLAGS
 };
 

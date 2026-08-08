@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the IS31FL3733 LED driver extended API.
+ * @ingroup led_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_LED_IS31FL3733_H_
 #define ZEPHYR_INCLUDE_DRIVERS_LED_IS31FL3733_H_
 

@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Lightweight heap write address sanitizer (Heap KASAN) API.
+ * @ingroup heap_kasan_apis
  */
 
 #ifndef ZEPHYR_INCLUDE_SYS_HEAP_KASAN_H_

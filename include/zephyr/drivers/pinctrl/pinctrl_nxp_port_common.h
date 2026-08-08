@@ -4,11 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/*
+/**
  * @file
- * NXP PORT SOC specific helpers for pinctrl driver
+ * @brief NXP PORT SoC specific helpers for pinctrl driver.
+ * @ingroup pinctrl_interface_ext
  */
-
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_PINCTRL_PINCTRL_NXP_PORT_COMMON_H_
 #define ZEPHYR_INCLUDE_DRIVERS_PINCTRL_PINCTRL_NXP_PORT_COMMON_H_

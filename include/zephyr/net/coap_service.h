@@ -6,6 +6,7 @@
 
 /** @file
  * @brief CoAP Service API
+ * @ingroup coap_service
  *
  * An API for applications to respond to CoAP requests
  */

@@ -3,6 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the multi producer, single consumer (MPSC) packet buffer API.
+ * @ingroup mpsc_buf
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_MPSC_PBUF_H_
 #define ZEPHYR_INCLUDE_SYS_MPSC_PBUF_H_
 
@@ -115,31 +122,34 @@ struct mpsc_pbuf_buffer {
 	/** Callback for getting packet length. */
 	mpsc_pbuf_get_wlen get_wlen;
 
-	/* Buffer. */
+	/** Buffer. */
 	uint32_t *buf;
 
-	/* Buffer size in 32 bit words. */
+	/** Buffer size in 32 bit words. */
 	uint32_t size;
 
-	/* Store max buffer usage. */
+	/** Store max buffer usage. */
 	uint32_t max_usage;
 
+	/** Semaphore used to wait for free space in the buffer. */
 	struct k_sem sem;
 };
 
 /** @brief MPSC packet buffer configuration. */
 struct mpsc_pbuf_buffer_config {
-	/* Pointer to a memory used for storing packets. */
+	/** Pointer to a memory used for storing packets. */
 	uint32_t *buf;
 
-	/* Buffer size in 32 bit words. */
+	/** Buffer size in 32 bit words. */
 	uint32_t size;
 
-	/* Callbacks. */
+	/** Callback called when a packet is dropped. */
 	mpsc_pbuf_notify_drop notify_drop;
+
+	/** Callback for getting packet length. */
 	mpsc_pbuf_get_wlen get_wlen;
 
-	/* Configuration flags. */
+	/** Configuration flags. */
 	uint32_t flags;
 };
 

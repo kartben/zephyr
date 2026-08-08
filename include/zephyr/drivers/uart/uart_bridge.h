@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the UART bridge driver APIs.
+ * @ingroup uart_interface
+ */
+
 #include <zephyr/device.h>
 
 #ifdef __cplusplus

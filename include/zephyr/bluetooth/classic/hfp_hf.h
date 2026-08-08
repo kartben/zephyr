@@ -1,5 +1,6 @@
 /** @file
  *  @brief Handsfree Profile handling.
+ *  @ingroup bt_hfp
  */
 
 /*
@@ -24,8 +25,11 @@ extern "C" {
 #endif
 
 /* HFP CODEC IDs */
+/** HFP codec ID of CVSD */
 #define BT_HFP_HF_CODEC_CVSD    0x01
+/** HFP codec ID of mSBC */
 #define BT_HFP_HF_CODEC_MSBC    0x02
+/** HFP codec ID of LC3-SWB */
 #define BT_HFP_HF_CODEC_LC3_SWB 0x03
 
 /**
@@ -989,15 +993,20 @@ int bt_hfp_hf_transmit_dtmf_code(struct bt_hfp_hf_call *call, char code);
  */
 int bt_hfp_hf_query_subscriber(struct bt_hfp_hf *hf);
 
-/* HFP HF Indicators */
+/** @brief AG indicators
+ *
+ *  Enumeration defining the indexes of the AG indicators.
+ *  The indexes are used to build the indicator status bitmap passed to
+ *  bt_hfp_hf_indicator_status().
+ */
 enum hfp_hf_ag_indicators {
-	HF_SERVICE_IND = 0, /* AG service indicator */
-	HF_CALL_IND,        /* AG call indicator */
-	HF_CALL_SETUP_IND,  /* AG call setup indicator */
-	HF_CALL_HELD_IND,   /* AG call held indicator */
-	HF_SIGNAL_IND,      /* AG signal indicator */
-	HF_ROAM_IND,        /* AG roaming indicator */
-	HF_BATTERY_IND      /* AG battery indicator */
+	HF_SERVICE_IND = 0, /**< AG service indicator */
+	HF_CALL_IND,        /**< AG call indicator */
+	HF_CALL_SETUP_IND,  /**< AG call setup indicator */
+	HF_CALL_HELD_IND,   /**< AG call held indicator */
+	HF_SIGNAL_IND,      /**< AG signal indicator */
+	HF_ROAM_IND,        /**< AG roaming indicator */
+	HF_BATTERY_IND      /**< AG battery indicator */
 };
 
 /** @brief Handsfree HF set AG indicator activated/deactivated status

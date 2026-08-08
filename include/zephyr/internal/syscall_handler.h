@@ -3,6 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the user mode and system call internal APIs.
+ * @ingroup syscall_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_INTERNAL_SYSCALL_HANDLER_H_
 #define ZEPHYR_INCLUDE_INTERNAL_SYSCALL_HANDLER_H_
 
@@ -474,6 +481,22 @@ int k_usermode_string_copy(char *dst, const char *src, size_t maxlen);
 #define K_SYSCALL_MEMORY_WRITE(ptr, size) \
 	K_SYSCALL_MEMORY(ptr, size, 1)
 
+/**
+ * @brief Validate user thread has read and/or write permission for sized array
+ *
+ * Used when the memory region is expressed in terms of number of elements and
+ * each element size, handles any overflow issues with computing the total
+ * array bounds. Otherwise see K_SYSCALL_MEMORY.
+ *
+ * @param ptr Memory area to examine
+ * @param nmemb Number of elements in the array
+ * @param size Size of each array element
+ * @param write If the thread should be able to write to this memory, not just
+ *		read it
+ * @return 0 on success, nonzero on failure
+ * @note This is an internal API. Do not use unless you are extending
+ *       functionality in the Zephyr tree.
+ */
 #define K_SYSCALL_MEMORY_ARRAY(ptr, nmemb, size, write) \
 	({ \
 		size_t product; \
@@ -519,6 +542,26 @@ int k_usermode_string_copy(char *dst, const char *src, size_t maxlen);
 #define K_SYSCALL_MEMORY_ARRAY_WRITE(ptr, nmemb, size) \
 	K_SYSCALL_MEMORY_ARRAY(ptr, nmemb, size, 1)
 
+/**
+ * @brief Validate a kernel object and report the reason on failure
+ *
+ * Calls k_object_validate() and, when logging is enabled, dumps a description
+ * of the failure.
+ *
+ * @param ko Kernel object metadata pointer, or NULL
+ * @param obj Kernel object pointer the metadata was looked up from
+ * @param otype Expected type of the kernel object, or K_OBJ_ANY if type
+ *	  doesn't matter, or K_OBJ_DRIVER_ANY for any driver object
+ * @param init Indicate whether the object needs to already be in initialized
+ *             or uninitialized state, or that we don't care
+ * @note This is an internal API. Do not use unless you are extending
+ *       functionality in the Zephyr tree.
+ *
+ * @return 0 If the object is valid
+ *         -EBADF if not a valid object of the specified type
+ *         -EPERM If the caller does not have permissions
+ *         -EINVAL Object is not initialized
+ */
 static inline int k_object_validation_check(struct k_object *ko,
 					 const void *obj,
 					 enum k_objects otype,
@@ -539,6 +582,19 @@ static inline int k_object_validation_check(struct k_object *ko,
 	return ret;
 }
 
+/**
+ * @brief Runtime check kernel object pointer against an initialization state
+ *
+ * Calls k_object_validate() and triggers a kernel oops if the check fails.
+ *
+ * @param ptr Untrusted kernel object pointer
+ * @param type Expected kernel object type
+ * @param init Indicate whether the object needs to already be in initialized
+ *             or uninitialized state, or that we don't care
+ * @return 0 on success, nonzero on failure
+ * @note This is an internal API. Do not use unless you are extending
+ *       functionality in the Zephyr tree.
+ */
 #define K_SYSCALL_IS_OBJ(ptr, type, init) \
 	K_SYSCALL_VERIFY_MSG(k_object_validation_check(			\
 				     k_object_find((const void *)(ptr)),	\

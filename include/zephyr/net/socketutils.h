@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Socket utility functions.
+ * @ingroup bsd_sockets
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_SOCKETUTILS_H_

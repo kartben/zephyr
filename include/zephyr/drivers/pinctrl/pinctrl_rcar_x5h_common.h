@@ -11,6 +11,7 @@
 /**
  * @file
  * @brief Renesas R-Car Gen5 pinctrl common definitions.
+ * @ingroup pinctrl_interface_ext
  */
 
 #include <stdint.h>

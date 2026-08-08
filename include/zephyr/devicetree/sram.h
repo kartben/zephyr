@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Chosen SRAM Devicetree macro public API header file.
+ * @ingroup devicetree-chosen-sram
  */
 
 /*

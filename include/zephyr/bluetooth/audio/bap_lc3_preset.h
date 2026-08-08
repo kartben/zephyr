@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Header for Bluetooth BAP LC3 presets.
+ * @ingroup bt_bap_lc3_preset
  *
  * Copyright (c) 2023-2024 Nordic Semiconductor ASA
  *

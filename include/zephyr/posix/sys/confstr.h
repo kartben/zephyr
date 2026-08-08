@@ -3,6 +3,12 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the POSIX configuration string variable definitions.
+ */
+
 #ifndef ZEPHYR_INCLUDE_POSIX_SYS_CONFSTR_H_
 #define ZEPHYR_INCLUDE_POSIX_SYS_CONFSTR_H_
 

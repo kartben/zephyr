@@ -6,6 +6,7 @@
 /**
  * @file
  * @brief CPU devicetree macro public API header file.
+ * @ingroup devicetree-cpu
  */
 #ifndef ZEPHYR_INCLUDE_DEVICETREE_CPU_H_
 #define ZEPHYR_INCLUDE_DEVICETREE_CPU_H_

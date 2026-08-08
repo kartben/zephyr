@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Peripheral Sensor Interface (PSI5) driver API.
+ * @ingroup psi5_interface
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_PSI5_H_

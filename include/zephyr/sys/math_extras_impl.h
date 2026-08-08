@@ -10,6 +10,7 @@
 /**
  * @file
  * @brief Inline implementation of functions declared in math_extras.h.
+ * @ingroup math_extras
  */
 
 #ifndef ZEPHYR_INCLUDE_SYS_MATH_EXTRAS_H_

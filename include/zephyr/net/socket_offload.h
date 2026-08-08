@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Socket Offload Redirect API
+ * @ingroup bsd_sockets
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_SOCKET_OFFLOAD_H_

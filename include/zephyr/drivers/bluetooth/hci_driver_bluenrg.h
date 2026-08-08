@@ -1,5 +1,6 @@
 /** @file
  *  @brief BlueNRG HCI extended API.
+ *  @ingroup bluenrg_hci_driver
  */
 
 /*

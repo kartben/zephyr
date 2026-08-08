@@ -6,6 +6,7 @@
 
 /** @file
  *  @brief Fatal base type definitions
+ *  @ingroup fatal_types
  */
 
 #ifndef ZEPHYR_INCLUDE_FATAL_TYPES_H
@@ -21,6 +22,7 @@ extern "C" {
  * @{
  */
 
+/** @brief Reason for a fatal error */
 enum k_fatal_error_reason {
 	/** Generic CPU exception, not covered by other codes */
 	K_ERR_CPU_EXCEPTION,

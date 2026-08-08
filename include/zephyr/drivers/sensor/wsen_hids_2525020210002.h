@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Extended public API for WSEN-HIDS-2525020210002 Sensor
+ * @ingroup sensor_interface_ext_we
  *
  */
 
@@ -19,25 +20,38 @@ extern "C" {
 
 #include <zephyr/drivers/sensor.h>
 
+/** Extended sensor attributes for the WSEN-HIDS-2525020210002 */
 enum sensor_attribute_wsen_hids_2525020210002 {
+	/**
+	 * @brief Measurement precision
+	 *
+	 * Use hids_2525020210002_precision_t for attribute values.
+	 */
 	SENSOR_ATTR_WSEN_HIDS_2525020210002_PRECISION = SENSOR_ATTR_PRIV_START,
+	/**
+	 * @brief Heater option
+	 *
+	 * Use hids_2525020210002_heater_t for attribute values.
+	 */
 	SENSOR_ATTR_WSEN_HIDS_2525020210002_HEATER
 };
 
+/** Measurement precision options for the WSEN-HIDS-2525020210002 */
 typedef enum {
-	hids_2525020210002_precision_Low = 0x0,
-	hids_2525020210002_precision_Medium = 0x1,
-	hids_2525020210002_precision_High = 0x2
+	hids_2525020210002_precision_Low = 0x0,    /**< Low precision */
+	hids_2525020210002_precision_Medium = 0x1, /**< Medium precision */
+	hids_2525020210002_precision_High = 0x2    /**< High precision */
 } hids_2525020210002_precision_t;
 
+/** Heater options for the WSEN-HIDS-2525020210002 */
 typedef enum {
-	hids_2525020210002_heater_Off = 0x0,
-	hids_2525020210002_heater_On_200mW_1s = 0x1,
-	hids_2525020210002_heater_On_200mW_100ms = 0x2,
-	hids_2525020210002_heater_On_110mW_1s = 0x3,
-	hids_2525020210002_heater_On_110mW_100ms = 0x4,
-	hids_2525020210002_heater_On_20mW_1s = 0x5,
-	hids_2525020210002_heater_On_20mW_100ms = 0x6,
+	hids_2525020210002_heater_Off = 0x0,            /**< Heater off */
+	hids_2525020210002_heater_On_200mW_1s = 0x1,    /**< Heater on, 200 mW for 1 s */
+	hids_2525020210002_heater_On_200mW_100ms = 0x2, /**< Heater on, 200 mW for 100 ms */
+	hids_2525020210002_heater_On_110mW_1s = 0x3,    /**< Heater on, 110 mW for 1 s */
+	hids_2525020210002_heater_On_110mW_100ms = 0x4, /**< Heater on, 110 mW for 100 ms */
+	hids_2525020210002_heater_On_20mW_1s = 0x5,     /**< Heater on, 20 mW for 1 s */
+	hids_2525020210002_heater_On_20mW_100ms = 0x6,  /**< Heater on, 20 mW for 100 ms */
 } hids_2525020210002_heater_t;
 
 #ifdef __cplusplus

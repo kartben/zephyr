@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public API for boot mode interface
+ * @ingroup bootloader_info_interface
  */
 
 #ifndef ZEPHYR_INCLUDE_RETENTION_BLINFO_H_

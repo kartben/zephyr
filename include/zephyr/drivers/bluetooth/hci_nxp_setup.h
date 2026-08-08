@@ -1,5 +1,6 @@
 /** @file
  *  @brief NXP HCI extended API.
+ *  @ingroup bt_hci_api
  */
 
 /*

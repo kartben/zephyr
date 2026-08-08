@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the memory attribute based heap allocation APIs.
+ * @ingroup memory_attr_heap
+ */
+
 #ifndef ZEPHYR_INCLUDE_MEM_MGMT_MEM_ATTR_HEAP_H_
 #define ZEPHYR_INCLUDE_MEM_MGMT_MEM_ATTR_HEAP_H_
 

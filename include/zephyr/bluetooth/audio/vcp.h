@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Bluetooth Volume Control Profile (VCP) APIs.
+ * @ingroup bt_vcp
  */
 
 /*

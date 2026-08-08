@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the adaptation layer exposing the interrupt driven API on top of the async UART API.
+ * @ingroup uart_interface
+ */
+
 #ifndef ZEPHYR_DRIVERS_SERIAL_UART_ASYNC_TO_IRQ_H_
 #define ZEPHYR_DRIVERS_SERIAL_UART_ASYNC_TO_IRQ_H_
 
@@ -37,7 +43,7 @@ struct uart_async_to_irq_data;
  */
 struct uart_async_to_irq_config;
 
-/* @brief Function that triggers trampoline to the interrupt context.
+/** @brief Function that triggers trampoline to the interrupt context.
  *
  * This context is used to call user UART interrupt handler. It is to used to
  * fulfill the requirement that UART interrupt driven API shall be called from
@@ -115,7 +121,7 @@ void uart_async_to_irq_trampoline_cb(const struct device *dev);
  */
 int uart_async_to_irq_init(const struct device *dev);
 
-/* @brief Enable RX for interrupt driven API.
+/** @brief Enable RX for interrupt driven API.
  *
  * @param dev UART device. Device must support asynchronous API.
  *
@@ -125,7 +131,7 @@ int uart_async_to_irq_init(const struct device *dev);
  */
 int uart_async_to_irq_rx_enable(const struct device *dev);
 
-/* @brief Disable RX for interrupt driven API.
+/** @brief Disable RX for interrupt driven API.
  *
  * @param dev UART device. Device must support asynchronous API.
  *

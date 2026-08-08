@@ -6,6 +6,7 @@
 
 /** @file
  *  @brief Bluetooth Mesh SAR Configuration Client Model APIs.
+ *  @ingroup bt_mesh_sar_cfg_cli
  */
 #ifndef ZEPHYR_INCLUDE_BLUETOOTH_MESH_SAR_CFG_CLI_H_
 #define ZEPHYR_INCLUDE_BLUETOOTH_MESH_SAR_CFG_CLI_H_
@@ -29,14 +30,16 @@ struct bt_mesh_sar_cfg_cli {
 	/** Access model pointer. */
 	const struct bt_mesh_model *model;
 
-	/* Publication structure instance */
+	/** Publication structure instance */
 	struct bt_mesh_model_pub pub;
 
-	/* Synchronous message timeout in milliseconds. */
+	/** Synchronous message timeout in milliseconds. */
 	int32_t timeout;
 
+	/** @cond INTERNAL_HIDDEN */
 	/* Internal parameters for tracking message responses. */
 	struct bt_mesh_msg_ack_ctx ack_ctx;
+	/** @endcond */
 };
 
 /**

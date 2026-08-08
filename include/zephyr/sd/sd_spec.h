@@ -8,6 +8,11 @@
  * SD card specification
  */
 
+/**
+ * @file
+ * @brief Header file for the SD card specification definitions shared by the SD subsystem and SDHC drivers.
+ */
+
 #ifndef ZEPHYR_INCLUDE_SD_SD_SPEC_H_
 #define ZEPHYR_INCLUDE_SD_SD_SPEC_H_
 

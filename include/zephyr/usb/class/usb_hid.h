@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief USB HID Class device API header
+ * @ingroup usb_hid_class
  */
 
 #ifndef ZEPHYR_INCLUDE_USB_HID_CLASS_DEVICE_H_
@@ -34,28 +35,71 @@ extern "C" {
  * @{
  */
 
+/**
+ * @brief Callback function signature for HID Get Report and Set Report requests
+ *
+ * For host to device direction (Set Report), @p len and @p data contain the
+ * length and the pointer of the received report. For device to host direction
+ * (Get Report), the callback must update @p len and @p data with the length
+ * and the address of the buffer to be transmitted.
+ *
+ * @param[in]     dev   Pointer to USB HID device
+ * @param[in]     setup Pointer to Control Setup packet of the request
+ * @param[in,out] len   Pointer to the length of the data buffer
+ * @param[in,out] data  Pointer to the data buffer
+ *
+ * @return 0 on success, negative errno code on fail.
+ */
 typedef int (*hid_cb_t)(const struct device *dev,
 			struct usb_setup_packet *setup, int32_t *len,
 			uint8_t **data);
+
+/**
+ * @brief Callback function signature for HID interrupt endpoint events
+ *
+ * @param[in] dev Pointer to USB HID device
+ */
 typedef void (*hid_int_ready_callback)(const struct device *dev);
+
+/**
+ * @brief Callback function signature for HID protocol change notification
+ *
+ * @param[in] dev      Pointer to USB HID device
+ * @param[in] protocol New protocol, HID_PROTOCOL_BOOT or HID_PROTOCOL_REPORT
+ */
 typedef void (*hid_protocol_cb_t)(const struct device *dev, uint8_t protocol);
+
+/**
+ * @brief Callback function signature for idle rate expiry notification
+ *
+ * @param[in] dev       Pointer to USB HID device
+ * @param[in] report_id Report ID for which the idle rate elapsed
+ */
 typedef void (*hid_idle_cb_t)(const struct device *dev, uint16_t report_id);
 
 /**
  * @brief USB HID device interface
  */
 struct hid_ops {
+	/** Callback invoked to handle the HID Get Report request */
 	hid_cb_t get_report;
+	/** Callback invoked to handle the HID Set Report request */
 	hid_cb_t set_report;
+	/** Callback invoked when the host changed the protocol */
 	hid_protocol_cb_t protocol_change;
+	/** Callback invoked when the idle rate set by the host elapsed */
 	hid_idle_cb_t on_idle;
-	/*
-	 * int_in_ready is an optional callback that is called when
-	 * the current interrupt IN transfer has completed.  This can
-	 * be used to wait for the endpoint to go idle or to trigger
-	 * the next transfer.
+	/**
+	 * Optional callback that is called when the current interrupt IN
+	 * transfer has completed.  This can be used to wait for the
+	 * endpoint to go idle or to trigger the next transfer.
 	 */
 	hid_int_ready_callback int_in_ready;
+	/**
+	 * Optional callback that is called when a transfer on the
+	 * interrupt OUT endpoint has completed and data is ready to
+	 * be read.
+	 */
 	hid_int_ready_callback int_out_ready;
 };
 

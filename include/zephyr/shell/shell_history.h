@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Header file for the shell command history.
+ * @ingroup shell_api
  */
 
 #ifndef ZEPHYR_INCLUDE_SHELL_SHELL_HISTORY_H_

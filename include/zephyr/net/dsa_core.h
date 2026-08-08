@@ -5,6 +5,7 @@
 
 /** @file
  * @brief Distributed Switch Architecture (DSA)
+ * @ingroup dsa_core
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_DSA_CORE_H_

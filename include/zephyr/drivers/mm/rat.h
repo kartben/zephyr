@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the TI Region based Address Translation (RAT) driver API.
+ * @ingroup mm_drv_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MM_RAT_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MM_RAT_H_
 

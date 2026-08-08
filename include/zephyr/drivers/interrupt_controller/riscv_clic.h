@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Driver for Core-Local Interrupt Controller (CLIC)
+ * @ingroup misc_interfaces
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_RISCV_CLIC_H_

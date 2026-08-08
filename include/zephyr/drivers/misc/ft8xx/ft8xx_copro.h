@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief FT8XX coprocessor functions
+ * @ingroup ft8xx_copro
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MISC_FT8XX_FT8XX_COPRO_H_

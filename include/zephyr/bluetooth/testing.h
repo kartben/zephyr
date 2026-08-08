@@ -4,6 +4,7 @@
 
 /** @brief Internal testing interfaces for Bluetooth
  *  @file
+ *  @ingroup internal_api
  *  @internal
  *
  *  The interfaces in this file are internal and not stable.

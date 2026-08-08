@@ -13,7 +13,10 @@
  *        protocol handler. SDM Mailbox protocol will be embedded in
  *        Arm SiP Services SMC protocol and sent to/from SDM via Arm
  *        SiP Services.
+ * @ingroup sip_svc
  */
+
+/** @cond INTERNAL_HIDDEN */
 
 #define SIP_SVP_MB_MAX_WORD_SIZE		1024
 #define SIP_SVP_MB_HEADER_TRANS_ID_OFFSET	24
@@ -38,5 +41,7 @@
 #define SIP_SVC_MB_HEADER_GET_LENGTH(header) \
 	((header) >> SIP_SVP_MB_HEADER_LENGTH_OFFSET & \
 		SIP_SVP_MB_HEADER_LENGTH_MASK)
+
+/** @endcond */
 
 #endif /* ZEPHYR_INCLUDE_SIP_SVC_AGILEX_MB_H_ */

@@ -2,6 +2,7 @@
  * @file
  *
  * @brief Backend API for emulated ADC
+ * @ingroup adc_emul
  */
 
 /*

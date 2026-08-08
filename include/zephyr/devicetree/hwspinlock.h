@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief HW spinlock Devicetree macro public API header file.
+ * @ingroup devicetree-hwspinlock
  */
 
 #ifndef ZEPHYR_INCLUDE_DEVICETREE_HWSPINLOCK_H_

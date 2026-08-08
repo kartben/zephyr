@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the common find_msb_set() and find_lsb_set() implementations.
+ * @ingroup arch-interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_ARCH_COMMON_FFS_H_
 #define ZEPHYR_INCLUDE_ARCH_COMMON_FFS_H_
 

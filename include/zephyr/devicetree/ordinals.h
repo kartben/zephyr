@@ -9,6 +9,7 @@
 /**
  * @file
  * @brief Devicetree node dependency ordinals
+ * @ingroup devicetree-dep-ord
  */
 
 /**

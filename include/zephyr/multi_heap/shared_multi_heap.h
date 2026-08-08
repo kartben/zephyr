@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public API for Shared Multi-Heap framework
+ * @ingroup shared_multi_heap
  */
 
 #ifndef ZEPHYR_INCLUDE_MULTI_HEAP_SHARED_MULTI_HEAP_H_

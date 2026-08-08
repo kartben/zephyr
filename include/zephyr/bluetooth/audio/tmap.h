@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Header for Bluetooth TMAP.
+ * @ingroup bt_tmap
  *
  * Copyright 2023 NXP
  * Copyright (c) 2024-2025 Nordic Semiconductor ASA

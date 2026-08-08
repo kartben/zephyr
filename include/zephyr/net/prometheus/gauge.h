@@ -12,6 +12,7 @@
  * @file
  *
  * @brief Prometheus gauge APIs.
+ * @ingroup prometheus
  *
  * @addtogroup prometheus
  * @{

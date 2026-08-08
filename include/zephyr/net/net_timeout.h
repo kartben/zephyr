@@ -1,5 +1,6 @@
 /** @file
  * @brief Network timer with wrap around
+ * @ingroup net_timeout
  *
  * Timer that runs longer than about 49 days needs to calculate wraps.
  */

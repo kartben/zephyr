@@ -1,5 +1,6 @@
 /** @file
  @brief UDP utility functions
+ @ingroup internal_api
  */
 
 /*

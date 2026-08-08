@@ -4,12 +4,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for TI CC1200 IEEE 802.15.4 driver RF register settings.
+ * @ingroup ieee802154_driver
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_IEEE802154_CC1200_H_
 #define ZEPHYR_INCLUDE_DRIVERS_IEEE802154_CC1200_H_
 
 #include <zephyr/device.h>
 
-/* RF settings
+/**
+ * @brief RF settings for the CC1200
  *
  * First 42 entries are for the 42 first registers from
  * address 0x04 to 0x2D included.
@@ -19,18 +26,21 @@
  * If CONFIG_IEEE802154_CC1200_RF_PRESET is not used, one will need
  * to provide 'cc1200_rf_settings' with proper settings. These can
  * be generated through TI's SmartRF application.
- *
  */
 struct cc1200_rf_registers_set {
+	/** Center frequency of channel 0, in kHz. */
 	uint32_t chan_center_freq0;
-	/* to fit in uint16_t, spacing is a multiple of 100 Hz,
+	/**
+	 * Channel spacing, in multiples of 100 Hz to fit in uint16_t.
 	 * 12.5KHz for instance will be 125.
 	 */
 	uint16_t channel_spacing;
+	/** Values for the registers listed above. */
 	uint8_t registers[100];
 };
 
 #ifndef CONFIG_IEEE802154_CC1200_RF_PRESET
+/** RF settings to be provided when not using an RF preset. */
 extern const struct cc1200_rf_registers_set cc1200_rf_settings;
 #endif
 

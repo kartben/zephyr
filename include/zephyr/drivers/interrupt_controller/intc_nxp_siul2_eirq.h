@@ -5,7 +5,9 @@
  */
 
 /**
- * @brief Driver for NXP SIUL2 external interrupt/event controller.
+ * @file
+ * @brief Header file for the NXP SIUL2 external interrupt/event controller driver.
+ * @ingroup misc_interfaces
  *
  */
 

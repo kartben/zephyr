@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the ITE IT8XXX2 wake-up controller (WUC) driver API.
+ * @ingroup misc_interfaces
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_WUC_ITE_IT8XXX2_H_
 #define ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_WUC_ITE_IT8XXX2_H_
 

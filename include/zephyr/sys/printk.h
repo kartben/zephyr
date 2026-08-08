@@ -5,6 +5,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the low-level debug output (printk) APIs.
+ * @ingroup cbprintf_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_PRINTK_H_
 #define ZEPHYR_INCLUDE_SYS_PRINTK_H_
 
@@ -58,6 +65,15 @@ extern "C" {
 __printf_like(1, 2) void printk(const char *fmt, ...);
 #endif /* CONFIG_LOG_PRINTK_STATIC */
 
+/**
+ * @brief Print kernel debugging message using a va_list.
+ *
+ * Equivalent to printk() except that the format arguments are passed as a
+ * @c va_list. See printk() for the supported conversion specifiers.
+ *
+ * @param fmt Format string.
+ * @param ap Variable argument list.
+ */
 __printf_like(1, 0) void vprintk(const char *fmt, va_list ap);
 
 #else
@@ -66,6 +82,15 @@ static inline __printf_like(1, 2) void printk(const char *fmt, ...)
 	ARG_UNUSED(fmt);
 }
 
+/**
+ * @brief Print kernel debugging message using a va_list.
+ *
+ * Equivalent to printk() except that the format arguments are passed as a
+ * @c va_list. See printk() for the supported conversion specifiers.
+ *
+ * @param fmt Format string.
+ * @param ap Variable argument list.
+ */
 static inline __printf_like(1, 0) void vprintk(const char *fmt, va_list ap)
 {
 	ARG_UNUSED(fmt);
@@ -82,8 +107,41 @@ static inline __printf_like(1, 0) void vprintk(const char *fmt, va_list ap)
 
 #else
 
+/**
+ * @brief Write formatted output to a buffer.
+ *
+ * Equivalent to printk() except that the output is written to @p str, which
+ * is null terminated and truncated to @p size characters (including the
+ * terminating null byte). See printk() for the supported conversion
+ * specifiers.
+ *
+ * @param str Output buffer.
+ * @param size Size of the output buffer, in bytes.
+ * @param fmt Format string.
+ * @param ... Optional list of format arguments.
+ *
+ * @return Number of characters that would have been written to @p str,
+ *         excluding the terminating null byte, had the buffer been large
+ *         enough.
+ */
 __printf_like(3, 4) int snprintk(char *str, size_t size,
 					const char *fmt, ...);
+
+/**
+ * @brief Write formatted output to a buffer using a va_list.
+ *
+ * Equivalent to snprintk() except that the format arguments are passed as a
+ * @c va_list.
+ *
+ * @param str Output buffer.
+ * @param size Size of the output buffer, in bytes.
+ * @param fmt Format string.
+ * @param ap Variable argument list.
+ *
+ * @return Number of characters that would have been written to @p str,
+ *         excluding the terminating null byte, had the buffer been large
+ *         enough.
+ */
 __printf_like(3, 0) int vsnprintk(char *str, size_t size,
 					  const char *fmt, va_list ap);
 

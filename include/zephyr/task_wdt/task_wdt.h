@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Task watchdog header file
+ * @ingroup task_wdt_api
  *
  * This header file declares prototypes for the task watchdog APIs.
  *

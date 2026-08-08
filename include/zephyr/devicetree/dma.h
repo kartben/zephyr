@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief DMA Devicetree macro public API header file.
+ * @ingroup devicetree-dmas
  */
 
 /*

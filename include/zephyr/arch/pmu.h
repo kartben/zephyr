@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Hardware Performance Monitoring Unit (PMU) API
+ * @ingroup pmu
  */
 
 #ifndef ZEPHYR_INCLUDE_ZEPHYR_PMU_H_

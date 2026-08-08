@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Extended public API for TI's TMP108 temperature sensor
+ * @ingroup sensor_interface_ext_ti
  *
  * This exposes attributes for the TMP108 which can be used for
  * setting the on-chip Temperature Mode and alert parameters.
@@ -19,6 +20,7 @@
 extern "C" {
 #endif
 
+/** Extended sensor attributes for the TMP108 */
 enum sensor_attribute_tmp_108 {
 	/** Turn on power saving/one shot mode */
 	SENSOR_ATTR_TMP108_ONE_SHOT_MODE = SENSOR_ATTR_PRIV_START,

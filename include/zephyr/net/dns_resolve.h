@@ -1,5 +1,6 @@
 /** @file
  * @brief DNS resolving library
+ * @ingroup dns_resolve
  *
  * An API for applications to resolve a DNS name.
  */
@@ -366,6 +367,7 @@ struct dns_addrinfo {
 	/** Address family of the address information and discriminator */
 	uint8_t ai_family;
 
+	/** Resolved data, use ai_family to determine which member is valid */
 	union {
 		/** A or AAAA records */
 		struct {
@@ -515,7 +517,7 @@ struct dns_resolve_context {
 		/** Dispatch DNS data between resolver and responder */
 		struct dns_socket_dispatcher dispatcher;
 /** @endcond */
-	} servers[DNS_RESOLVER_MAX_POLL];
+	} servers[DNS_RESOLVER_MAX_POLL]; /**< Configured DNS servers */
 
 /** @cond INTERNAL_HIDDEN */
 	/** Socket polling for each server connection */
@@ -579,7 +581,7 @@ struct dns_resolve_context {
 		 */
 		uint16_t query_hash;
 
-		/* Number of additional queries sent to resolve CNAME record
+		/** Number of additional queries sent to resolve CNAME record
 		 * name aliases.
 		 */
 		uint8_t additional_queries;
@@ -604,7 +606,7 @@ struct dns_resolve_context {
 
 		/** Most recent terminal status reported by an attempted server. */
 		enum dns_resolve_status last_status;
-	} queries[DNS_NUM_CONCUR_QUERIES];
+	} queries[DNS_NUM_CONCUR_QUERIES]; /**< Pending DNS queries */
 
 	/** Is this context in use */
 	enum dns_resolve_context_state state;

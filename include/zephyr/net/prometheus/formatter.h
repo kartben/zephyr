@@ -11,6 +11,7 @@
  * @file
  *
  * @brief Prometheus formatter APIs.
+ * @ingroup prometheus
  *
  * @addtogroup prometheus
  * @{

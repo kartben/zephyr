@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the JSON parsing and encoding library.
+ * @ingroup json
+ */
+
 #ifndef ZEPHYR_INCLUDE_DATA_JSON_H_
 #define ZEPHYR_INCLUDE_DATA_JSON_H_
 

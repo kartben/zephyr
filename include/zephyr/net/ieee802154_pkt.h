@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief Packet data common to all IEEE 802.15.4 L2 layers
+ * @ingroup ieee802154
  *
  * All references to the spec refer to IEEE 802.15.4-2020.
  */

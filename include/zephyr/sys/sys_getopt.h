@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the thread-safe command line option parsing API (sys_getopt).
+ * @ingroup utilities
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_SYS_GETOPT_H_
 #define ZEPHYR_INCLUDE_SYS_SYS_GETOPT_H_
 
@@ -13,49 +19,80 @@ extern "C" {
 
 #include <zephyr/kernel.h>
 
+/**
+ * @brief getopt parsing state
+ *
+ * State of command line argument parsing for one caller, as returned by
+ * sys_getopt_state_get().
+ */
 struct sys_getopt_state {
-	int opterr;   /* if error message should be printed */
-	int optind;   /* index into parent argv vector */
-	int optopt;   /* character checked for validity */
-	int optreset; /* reset getopt */
-	char *optarg; /* argument associated with option */
+	int opterr;   /**< If error message should be printed */
+	int optind;   /**< Index into parent argv vector */
+	int optopt;   /**< Character checked for validity */
+	int optreset; /**< Reset getopt */
+	char *optarg; /**< Argument associated with option */
 
+	/** @cond INTERNAL_HIDDEN */
 	char *place; /* option letter processing */
 
 #if CONFIG_GETOPT_LONG
 	int nonopt_start;
 	int nonopt_end;
 #endif
+	/** @endcond */
 };
 
-extern int sys_getopt_optreset; /* reset getopt */
-extern char *sys_getopt_optarg;
-extern int sys_getopt_opterr;
-extern int sys_getopt_optind;
-extern int sys_getopt_optopt;
+/**
+ * @name Global getopt variables
+ *
+ * Mirrors of the getopt state of the most recent sys_getopt() (or variant)
+ * call. They are shared by all threads, so they only reflect the parsing
+ * state when a single thread uses getopt; with multiple threads, use
+ * sys_getopt_state_get() instead.
+ * @{
+ */
+extern int sys_getopt_optreset; /**< Reset getopt */
+extern char *sys_getopt_optarg; /**< Argument associated with option */
+extern int sys_getopt_opterr;   /**< If error message should be printed */
+extern int sys_getopt_optind;   /**< Index into parent argv vector */
+extern int sys_getopt_optopt;   /**< Character checked for validity */
+/** @} */
 
+/** The long option takes no argument */
 #define sys_getopt_no_argument       0
+/** The long option requires an argument */
 #define sys_getopt_required_argument 1
+/** The long option takes an optional argument */
 #define sys_getopt_optional_argument 2
 
+/**
+ * @brief Long option descriptor
+ *
+ * Describes a single long option for sys_getopt_long() and
+ * sys_getopt_long_only().
+ */
 struct sys_getopt_option {
-	/* name of long option */
+	/** Name of long option */
 	const char *name;
-	/*
-	 * one of no_argument, required_argument, and optional_argument:
-	 * whether option takes an argument
+	/**
+	 * One of sys_getopt_no_argument, sys_getopt_required_argument or
+	 * sys_getopt_optional_argument: whether option takes an argument
 	 */
 	int has_arg;
-	/* if not NULL, set *flag to val when option found */
+	/** If not NULL, set *flag to val when option found */
 	int *flag;
-	/* if flag not NULL, value to set *flag to; else return value */
+	/** If flag not NULL, value to set *flag to; else return value */
 	int val;
 };
 
-/* Function initializes getopt_state structure for current thread */
+/** @brief Initialize the getopt state of the current thread. */
 void sys_getopt_init(void);
 
-/* Function returns getopt_state structure for the current thread. */
+/**
+ * @brief Get the getopt state of the current thread.
+ *
+ * @return Pointer to the getopt state of the current thread.
+ */
 struct sys_getopt_state *sys_getopt_state_get(void);
 
 /**

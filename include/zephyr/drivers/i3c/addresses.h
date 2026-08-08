@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for I3C bus address management helpers.
+ * @ingroup i3c_addresses
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_I3C_ADDRESSES_H_
 #define ZEPHYR_INCLUDE_DRIVERS_I3C_ADDRESSES_H_
 
@@ -56,7 +62,7 @@ enum i3c_addr_slot_status {
  * @brief Structure to keep track of addresses on I3C bus.
  */
 struct i3c_addr_slots {
-	/* 2 bits per slot */
+	/** Bitmap of the status of each address, 2 status bits per slot */
 	unsigned long slots[((I3C_MAX_ADDR + 1) * 2) / BITS_PER_LONG];
 };
 

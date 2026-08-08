@@ -1,5 +1,6 @@
 /** @file
  * @brief HTTP response status codes
+ * @ingroup http_status_codes
  */
 
 /*

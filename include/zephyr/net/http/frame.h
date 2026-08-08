@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief HTTP2 frame information.
+ * @ingroup http_server
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_HTTP_FRAME_H_

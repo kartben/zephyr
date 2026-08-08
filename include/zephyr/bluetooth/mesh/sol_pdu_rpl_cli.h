@@ -30,8 +30,10 @@ struct bt_mesh_sol_pdu_rpl_cli {
 	/** Solicitation PDU RPL model entry pointer. */
 	const struct bt_mesh_model *model;
 
+	/** @cond INTERNAL_HIDDEN */
 	/* Internal parameters for tracking message responses. */
 	struct bt_mesh_msg_ack_ctx ack_ctx;
+	/** @endcond */
 
 	/** @brief Optional callback for Solicitation PDU RPL Status messages.
 	 *

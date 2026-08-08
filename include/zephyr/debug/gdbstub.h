@@ -4,25 +4,51 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for GDB remote debugging stub definitions and APIs.
+ * @ingroup debug
+ */
+
 #ifndef ZEPHYR_INCLUDE_DEBUG_GDBSTUB_H_
 #define ZEPHYR_INCLUDE_DEBUG_GDBSTUB_H_
 
 /* Map from CPU exceptions to GDB  */
+
+/** Invalid instruction exception code reported to GDB */
 #define GDB_EXCEPTION_INVALID_INSTRUCTION   4UL
+
+/** Breakpoint exception code reported to GDB */
 #define GDB_EXCEPTION_BREAKPOINT            5UL
+
+/** Memory fault exception code reported to GDB */
 #define GDB_EXCEPTION_MEMORY_FAULT          7UL
+
+/** Arithmetic (e.g. divide) error exception code reported to GDB */
 #define GDB_EXCEPTION_DIVIDE_ERROR          8UL
+
+/** Invalid memory access exception code reported to GDB */
 #define GDB_EXCEPTION_INVALID_MEMORY        11UL
+
+/** Overflow exception code reported to GDB */
 #define GDB_EXCEPTION_OVERFLOW              16UL
 
 /* Access permissions for memory regions */
+
+/** No access allowed to the memory region */
 #define GDB_MEM_REGION_NO_ACCESS            0UL
+
+/** Memory region can be read */
 #define GDB_MEM_REGION_READ                 BIT(0)
+
+/** Memory region can be written */
 #define GDB_MEM_REGION_WRITE                BIT(1)
 
+/** Memory region with read-only access */
 #define GDB_MEM_REGION_RO \
 	(GDB_MEM_REGION_READ)
 
+/** Memory region with read and write access */
 #define GDB_MEM_REGION_RW \
 	(GDB_MEM_REGION_READ | GDB_MEM_REGION_WRITE)
 
@@ -45,8 +71,13 @@ struct gdb_mem_region {
  * State of the packet processing loop
  */
 enum gdb_loop_state {
+	/** Waiting for packets from GDB and processing them */
 	GDB_LOOP_RECEIVING,
+
+	/** Exit the processing loop and resume program execution */
 	GDB_LOOP_CONTINUE,
+
+	/** Error while processing the current packet */
 	GDB_LOOP_ERROR,
 };
 

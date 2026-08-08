@@ -576,7 +576,9 @@ void modem_cellular_chat_callback_handler(struct modem_chat *chat,
  * Registered with MODEM_CELLULAR_BOARD_INIT_DEFINE.
  */
 struct modem_cellular_board_init {
+	/** Modem instance the init script applies to. */
 	const struct device *dev;
+	/** Board-specific init chat script to run on the modem. */
 	const struct modem_chat_script *script;
 };
 

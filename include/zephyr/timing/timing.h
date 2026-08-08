@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for timing measurement APIs.
+ * @ingroup timing_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_TIMING_TIMING_H_
 #define ZEPHYR_INCLUDE_TIMING_TIMING_H_
 

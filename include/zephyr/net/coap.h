@@ -9,6 +9,7 @@
  * @file
  *
  * @brief CoAP implementation for Zephyr.
+ * @ingroup coap
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_COAP_H_
@@ -259,10 +260,11 @@ enum coap_content_format {
  * in RFC 7967.
  */
 enum coap_no_response {
-	COAP_NO_RESPONSE_SUPPRESS_2_XX = 0x02,
-	COAP_NO_RESPONSE_SUPPRESS_4_XX = 0x08,
-	COAP_NO_RESPONSE_SUPPRESS_5_XX = 0x10,
+	COAP_NO_RESPONSE_SUPPRESS_2_XX = 0x02, /**< Suppress 2.xx success responses */
+	COAP_NO_RESPONSE_SUPPRESS_4_XX = 0x08, /**< Suppress 4.xx client error responses */
+	COAP_NO_RESPONSE_SUPPRESS_5_XX = 0x10, /**< Suppress 5.xx server error responses */
 
+	/** Suppress responses of all classes */
 	COAP_NO_RESPONSE_SUPPRESS_ALL = COAP_NO_RESPONSE_SUPPRESS_2_XX |
 					COAP_NO_RESPONSE_SUPPRESS_4_XX |
 					COAP_NO_RESPONSE_SUPPRESS_5_XX,
@@ -307,8 +309,20 @@ typedef void (*coap_notify_t)(struct coap_resource *resource,
  * them, by fetching their state or requesting updates to them.
  */
 struct coap_resource {
-	/** Which function to be called for each CoAP method */
-	coap_method_t get, post, put, del, fetch, patch, ipatch;
+	/** Function to be called for the CoAP GET method */
+	coap_method_t get;
+	/** Function to be called for the CoAP POST method */
+	coap_method_t post;
+	/** Function to be called for the CoAP PUT method */
+	coap_method_t put;
+	/** Function to be called for the CoAP DELETE method */
+	coap_method_t del;
+	/** Function to be called for the CoAP FETCH method */
+	coap_method_t fetch;
+	/** Function to be called for the CoAP PATCH method */
+	coap_method_t patch;
+	/** Function to be called for the CoAP iPATCH method */
+	coap_method_t ipatch;
 	/** Notify function to call */
 	coap_notify_t notify;
 	/** Resource path */

@@ -29,6 +29,7 @@ extern "C" {
  *
  * @brief A wait-free intrusive multi producer single consumer (MPSC) queue using
  * a singly linked list. Ordering is First-In-First-Out.
+ * @ingroup mpsc_lockfree
  *
  * Based on the well known and widely used wait-free MPSC queue described by
  * Dmitry Vyukov with some slight changes to account for needs of an
@@ -50,6 +51,9 @@ extern "C" {
  * On SMP atomics *must* be used to ensure the pointers
  * are updated in the correct order.
  */
+
+/** @cond INTERNAL_HIDDEN */
+
 #if defined(CONFIG_SMP)
 
 typedef atomic_ptr_t mpsc_ptr_t;
@@ -73,20 +77,22 @@ typedef struct mpsc_node *mpsc_ptr_t;
 
 #endif /* defined(CONFIG_SMP) */
 
+/** @endcond */
+
 /**
  * @brief Queue member
  */
 struct mpsc_node {
-	mpsc_ptr_t next;
+	mpsc_ptr_t next; /**< Next node in the queue */
 };
 
 /**
  * @brief MPSC Queue
  */
 struct mpsc {
-	mpsc_ptr_t head;
-	struct mpsc_node *tail;
-	struct mpsc_node stub;
+	mpsc_ptr_t head;        /**< Head of the queue, where nodes are pushed */
+	struct mpsc_node *tail; /**< Tail of the queue, where nodes are popped */
+	struct mpsc_node stub;  /**< Sentinel node, not carrying any data */
 };
 
 /**

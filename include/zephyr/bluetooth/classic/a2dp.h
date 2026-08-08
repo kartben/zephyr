@@ -1,5 +1,6 @@
 /** @file
  * @brief Advanced Audio Distribution Profile header.
+ * @ingroup bt_a2dp
  */
 
 /*
@@ -346,10 +347,14 @@ struct bt_a2dp_ep {
 	struct bt_a2dp_codec_ie *codec_cap;
 	/** AVDTP Stream End Point Identifier */
 	struct bt_avdtp_sep sep;
-	/* Internally used stream object pointer */
+	/** @cond INTERNAL_HIDDEN
+	 *  Internally used stream object pointer
+	 */
 	struct bt_a2dp_stream *stream;
+	/** @endcond */
 };
 
+/** @brief Stream End Point information */
 struct bt_a2dp_ep_info {
 	/** Code Type @ref bt_a2dp_codec_type */
 	uint8_t codec_type;
@@ -365,7 +370,9 @@ struct bt_a2dp_ep_info {
  *  The value informs the caller to perform further pending actions or stop them.
  */
 enum {
+	/** Stop the stream endpoint discovery */
 	BT_A2DP_DISCOVER_EP_STOP = 0,
+	/** Continue to discover the next stream endpoint */
 	BT_A2DP_DISCOVER_EP_CONTINUE,
 };
 
@@ -397,6 +404,7 @@ enum {
 typedef uint8_t (*bt_a2dp_discover_ep_cb)(struct bt_a2dp *a2dp, struct bt_a2dp_ep_info *info,
 					  struct bt_a2dp_ep **ep);
 
+/** @brief Parameters for bt_a2dp_discover() */
 struct bt_a2dp_discover_param {
 	/** discover callback */
 	bt_a2dp_discover_ep_cb cb;

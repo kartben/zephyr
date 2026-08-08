@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Backend API for emulated UART
+ * @ingroup uart_emul_interface
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_SERIAL_UART_EMUL_H_

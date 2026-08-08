@@ -6,6 +6,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file automatically including the architecture-specific arch.h header.
+ * @ingroup arch-interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_ARCH_CPU_H_
 #define ZEPHYR_INCLUDE_ARCH_CPU_H_
 

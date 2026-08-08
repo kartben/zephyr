@@ -9,6 +9,7 @@
 /**
  * @file
  * @brief cleanup helper macros for kernel functions
+ * @ingroup cleanup_interface
  */
 
 #if defined(CONFIG_SCOPE_CLEANUP_HELPERS)

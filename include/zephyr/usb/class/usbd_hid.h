@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief USBD HID device API header
+ * @ingroup usbd_hid_device
  */
 
 #ifndef ZEPHYR_INCLUDE_USBD_HID_CLASS_DEVICE_H_
@@ -77,9 +78,9 @@ extern "C" {
  * Report types used in Get/Set Report requests.
  */
 enum {
-	HID_REPORT_TYPE_INPUT = 1,
-	HID_REPORT_TYPE_OUTPUT,
-	HID_REPORT_TYPE_FEATURE,
+	HID_REPORT_TYPE_INPUT = 1,	/**< Input report */
+	HID_REPORT_TYPE_OUTPUT,		/**< Output report */
+	HID_REPORT_TYPE_FEATURE,	/**< Feature report */
 };
 
 /**

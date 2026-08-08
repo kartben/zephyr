@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Helper module for receiving using UART Asynchronous API.
+ * @ingroup uart_interface
  */
 
 #ifndef ZEPHYR_DRIVERS_SERIAL_UART_ASYNC_RX_H_
@@ -18,41 +19,41 @@ extern "C" {
 
 #include <zephyr/kernel.h>
 
-/* @brief RX buffer structure which holds the buffer and its state. */
+/** @brief RX buffer structure which holds the buffer and its state. */
 struct uart_async_rx_buf {
-	/* Write index which is incremented whenever new data is reported to be
+	/** Write index which is incremented whenever new data is reported to be
 	 * received to that buffer.
 	 */
 	uint8_t wr_idx:7;
 
-	/* Set to one if buffer is released by the driver. */
+	/** Set to one if buffer is released by the driver. */
 	uint8_t completed:1;
 
-	/* Location which is passed to the UART driver. */
+	/** Location which is passed to the UART driver. */
 	uint8_t buffer[];
 };
 
 /** @brief UART asynchronous RX helper structure. */
 struct uart_async_rx {
-	/* Pointer to the configuration structure. Structure must be persistent. */
+	/** Pointer to the configuration structure. Structure must be persistent. */
 	const struct uart_async_rx_config *config;
 
-	/* Total amount of pending bytes. Bytes may be spread across multiple RX buffers. */
+	/** Total amount of pending bytes. Bytes may be spread across multiple RX buffers. */
 	atomic_t pending_bytes;
 
-	/* Number of buffers which are free. */
+	/** Number of buffers which are free. */
 	atomic_t free_buf_cnt;
 
-	/* Single buffer size. */
+	/** Single buffer size. */
 	uint8_t buf_len;
 
-	/* Index of the next buffer to be provided to the driver. */
+	/** Index of the next buffer to be provided to the driver. */
 	uint8_t drv_buf_idx;
 
-	/* Current buffer from which data is being consumed. */
+	/** Current buffer from which data is being consumed. */
 	uint8_t rd_buf_idx;
 
-	/* Current read index in the buffer from which data is being consumed.
+	/** Current read index in the buffer from which data is being consumed.
 	 * Read index which is incremented whenever data is consumed from the buffer.
 	 */
 	uint8_t rd_idx;
@@ -60,13 +61,13 @@ struct uart_async_rx {
 
 /** @brief UART asynchronous RX helper configuration structure. */
 struct uart_async_rx_config {
-	/* Pointer to the buffer. */
+	/** Pointer to the buffer. */
 	uint8_t *buffer;
 
-	/* Buffer length. */
+	/** Buffer length. */
 	size_t length;
 
-	/* Number of buffers into provided space shall be split. */
+	/** Number of buffers into provided space shall be split. */
 	uint8_t buf_cnt;
 };
 

@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the JSON Web Token (JWT) generation library.
+ * @ingroup jwt
+ */
+
 #ifndef ZEPHYR_INCLUDE_DATA_JWT_H_
 #define ZEPHYR_INCLUDE_DATA_JWT_H_
 
@@ -46,10 +52,10 @@ struct jwt_builder {
 	 */
 	bool overflowed;
 
-	/* Pending bytes yet to be converted to base64. */
+	/** Pending bytes yet to be converted to base64. */
 	unsigned char wip[3];
 
-	/* Number of pending bytes. */
+	/** Number of pending bytes. */
 	int pending;
 };
 

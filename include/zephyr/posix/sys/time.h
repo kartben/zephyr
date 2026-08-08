@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the POSIX time types and functions.
+ */
+
 #ifndef ZEPHYR_INCLUDE_POSIX_SYS_TIME_H_
 #define ZEPHYR_INCLUDE_POSIX_SYS_TIME_H_
 
@@ -30,6 +35,11 @@ struct timeval {
 extern "C" {
 #endif
 
+/**
+ * @brief Get the date and time
+ *
+ * See IEEE 1003.1
+ */
 int gettimeofday(struct timeval *tv, void *tz);
 
 #ifdef __cplusplus

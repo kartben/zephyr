@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief IEEE 802.15.4 native L2 stack public header
+ * @ingroup ieee802154
  *
  * @note All references to the standard in this file cite IEEE 802.15.4-2020.
  */

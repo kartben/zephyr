@@ -139,6 +139,7 @@ struct bt_mesh_blob_srv {
 	const struct bt_mesh_blob_srv_cb *cb;
 
 	/* Runtime state: */
+	/** @cond INTERNAL_HIDDEN */
 	const struct bt_mesh_blob_io *io;
 	struct k_work_delayable rx_timeout;
 	struct bt_mesh_blob_block block;
@@ -162,6 +163,7 @@ struct bt_mesh_blob_srv {
 		uint16_t chunk_idx;
 		struct k_work_delayable report;
 	} pull;
+	/** @endcond */
 };
 
 /** @brief Prepare BLOB Transfer Server for an incoming transfer.

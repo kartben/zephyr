@@ -1,5 +1,6 @@
 /** @file
  * @brief Hostname configuration definitions
+ * @ingroup net_hostname
  */
 
 /*

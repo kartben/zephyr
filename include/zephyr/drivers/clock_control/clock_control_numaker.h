@@ -59,6 +59,7 @@ struct numaker_scc_subsys_pcc_rate {
 struct numaker_scc_subsys {
 	uint32_t subsys_id; /**< SCC subsystem ID (see @ref NUMAKER_SCC_SUBSYS_ID_PCC). */
 
+	/** @brief Subsystem-specific configuration, selected by @c subsys_id. */
 	union {
 		struct numaker_scc_subsys_pcc pcc; /**< Peripheral clock configuration. */
 	};
@@ -66,6 +67,7 @@ struct numaker_scc_subsys {
 
 /** @brief NuMaker clock subsystem rate selector. */
 struct numaker_scc_subsys_rate {
+	/** @brief Subsystem-specific rate information. */
 	union {
 		struct numaker_scc_subsys_pcc_rate pcc; /**< Peripheral clock rate information. */
 	};

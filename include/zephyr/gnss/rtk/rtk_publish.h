@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the Internal API used by GNSS RTK clients to publish correction data.
+ * @ingroup internal_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_GNSS_RTK_RTK_PUBLISH_H_
 #define ZEPHYR_INCLUDE_GNSS_RTK_RTK_PUBLISH_H_
 
@@ -12,7 +18,13 @@
 #include <stddef.h>
 #include <zephyr/gnss/rtk/rtk.h>
 
-/* Internal function used by RTK clients to publish data-correction. */
+/**
+ * @brief Publish RTK correction data to the registered RTK data callbacks.
+ *
+ * Internal function used by RTK clients to publish data-correction.
+ *
+ * @param data Correction data to publish.
+ */
 void gnss_rtk_publish_data(const struct gnss_rtk_data *data);
 
 #endif /* ZEPHYR_INCLUDE_GNSS_RTK_RTK_PUBLISH_H_ */

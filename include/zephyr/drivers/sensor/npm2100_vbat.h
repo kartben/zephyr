@@ -3,12 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for extended sensor channels and attributes of the nPM2100 PMIC battery monitor.
+ * @ingroup sensor_interface_ext_nordic
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_SENSOR_NPM2100_VBAT_H_
 #define ZEPHYR_INCLUDE_DRIVERS_SENSOR_NPM2100_VBAT_H_
 
 #include <zephyr/drivers/sensor.h>
 
-/* NPM2100 vbat specific channels */
+/** @brief nPM2100 vbat specific channels */
 enum sensor_channel_npm2100_vbat {
 	SENSOR_CHAN_NPM2100_VBAT_STATUS = SENSOR_CHAN_PRIV_START,
 	SENSOR_CHAN_NPM2100_VOLT_DROOP,
@@ -17,8 +23,13 @@ enum sensor_channel_npm2100_vbat {
 	SENSOR_CHAN_NPM2100_DPS_DURATION,
 };
 
-/* NPM2100 vbat specific attributes */
+/** @brief nPM2100 vbat specific attributes */
 enum sensor_attr_npm2100_vbat {
+	/**
+	 * Delay of the battery voltage ADC measurement, in microseconds.
+	 *
+	 * Used with the SENSOR_CHAN_GAUGE_VOLTAGE channel.
+	 */
 	SENSOR_ATTR_NPM2100_ADC_DELAY = SENSOR_ATTR_PRIV_START,
 };
 

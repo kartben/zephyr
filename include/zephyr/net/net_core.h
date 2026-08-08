@@ -1,5 +1,6 @@
 /** @file
  * @brief Network core definitions
+ * @ingroup networking
  *
  * Definitions for networking support.
  */

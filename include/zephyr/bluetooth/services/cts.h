@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the Current Time Service (CTS) APIs.
+ * @ingroup bt_cts
+ */
+
 #ifndef ZEPHYR_INCLUDE_BLUETOOTH_SERVICES_CTS_H_
 #define ZEPHYR_INCLUDE_BLUETOOTH_SERVICES_CTS_H_
 
@@ -76,15 +82,15 @@ enum bt_cts_dst_offset {
  * @brief CTS time update reason bits as defined in the specification
  */
 enum bt_cts_update_reason {
-	/* Unknown reason of update no bit is set */
+	/** Unknown reason of update, no bit is set */
 	BT_CTS_UPDATE_REASON_UNKNOWN = 0,
-	/* When time is changed manually e.g. through UI */
+	/** When time is changed manually e.g. through UI */
 	BT_CTS_UPDATE_REASON_MANUAL = BIT(0),
-	/* If time is changed through external reference */
+	/** If time is changed through external reference */
 	BT_CTS_UPDATE_REASON_EXTERNAL_REF = BIT(1),
-	/* time changed due to timezone adjust */
+	/** Time changed due to timezone adjust */
 	BT_CTS_UPDATE_REASON_TIME_ZONE_CHANGE = BIT(2),
-	/* time changed due to dst offset change */
+	/** Time changed due to DST offset change */
 	BT_CTS_UPDATE_REASON_DAYLIGHT_SAVING = BIT(3),
 };
 
@@ -93,15 +99,15 @@ enum bt_cts_update_reason {
  * specifications for more details
  */
 struct bt_cts_time_format {
-	uint16_t year;
-	uint8_t mon;
-	uint8_t mday;
-	uint8_t hours;
-	uint8_t min;
-	uint8_t sec;
-	uint8_t wday;
-	uint8_t fractions256;
-	uint8_t reason;
+	uint16_t year;        /**< Year, in little-endian byte order */
+	uint8_t mon;          /**< Month of the year, starting from 1 */
+	uint8_t mday;         /**< Day of the month, starting from 1 */
+	uint8_t hours;        /**< Hours past midnight */
+	uint8_t min;          /**< Minutes since the start of the hour */
+	uint8_t sec;          /**< Seconds since the start of the minute */
+	uint8_t wday;         /**< Day of the week, 1 (Monday) to 7 (Sunday) */
+	uint8_t fractions256; /**< Fractions of a second, in 1/256th of a second units */
+	uint8_t reason;       /**< Time update reason, see @ref bt_cts_update_reason */
 } __packed;
 
 /**

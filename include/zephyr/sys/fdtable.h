@@ -4,6 +4,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the file descriptor table (zvfs) mapping descriptors to I/O objects.
+ * @ingroup internal_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_FDTABLE_H_
 #define ZEPHYR_INCLUDE_SYS_FDTABLE_H_
 

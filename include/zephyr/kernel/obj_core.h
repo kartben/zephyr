@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the kernel object core and statistics APIs.
+ * @ingroup obj_core_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_KERNEL_OBJ_CORE_H_
 #define ZEPHYR_INCLUDE_KERNEL_OBJ_CORE_H_
 

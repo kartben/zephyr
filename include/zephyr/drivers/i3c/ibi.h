@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the I3C In-Band Interrupts (IBI) APIs.
+ * @ingroup i3c_ibi
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_I3C_IBI_H_
 #define ZEPHYR_INCLUDE_DRIVERS_I3C_IBI_H_
 
@@ -20,9 +26,11 @@
 #include <zephyr/kernel.h>
 #include <zephyr/sys/slist.h>
 
+/** @cond INTERNAL_HIDDEN */
 #ifndef CONFIG_I3C_IBI_MAX_PAYLOAD_SIZE
 #define CONFIG_I3C_IBI_MAX_PAYLOAD_SIZE 0
 #endif
+/** @endcond */
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,6 +51,7 @@ enum i3c_ibi_type {
 	/** Hot Join Request */
 	I3C_IBI_HOTJOIN,
 
+	/** Maximum value of the actual IBI types */
 	I3C_IBI_TYPE_MAX = I3C_IBI_HOTJOIN,
 
 	/**
@@ -87,6 +96,7 @@ struct i3c_ibi_payload {
  * @brief Node about a queued IBI.
  */
 struct i3c_ibi_work {
+	/** List node for the IBI work item. */
 	sys_snode_t node;
 
 	/**
@@ -99,6 +109,7 @@ struct i3c_ibi_work {
 	 */
 	enum i3c_ibi_type type;
 
+	/** Device associated with this IBI. */
 	union {
 		/**
 		 * Use for @see I3C_IBI_HOTJOIN.
@@ -112,6 +123,7 @@ struct i3c_ibi_work {
 		struct i3c_device_desc *target;
 	};
 
+	/** Payload of the IBI, or generic callback function. */
 	union {
 		/**
 		 * IBI payload.

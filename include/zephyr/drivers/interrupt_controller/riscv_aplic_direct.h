@@ -6,6 +6,7 @@
 /**
  * @file
  * @brief RISC-V APLIC direct delivery mode driver API
+ * @ingroup misc_interfaces
  *
  * This header provides the API for the RISC-V Advanced Platform-Level
  * Interrupt Controller (APLIC) operating in direct delivery mode.

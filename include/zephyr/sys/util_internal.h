@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief Misc utilities
+ * @ingroup internal_api
  *
  * Repetitive or obscure helper macros needed by sys/util.h.
  */
@@ -142,6 +143,7 @@
 #define Z_LIST_NO_EMPTIES(e) \
 	COND_CODE_1(IS_EMPTY(e), (), (Z_LIST_ADD_ELEM(e)))
 
+/** @cond INTERNAL_HIDDEN */
 #define UTIL_CAT(a, ...) UTIL_PRIMITIVE_CAT(a, __VA_ARGS__)
 #define UTIL_PRIMITIVE_CAT(a, ...) a##__VA_ARGS__
 #define UTIL_CHECK_N(x, n, ...) n
@@ -176,6 +178,7 @@
 	_41, _42, _43, _44, _45, _46, _47, _48, _49, _50,	\
 	_51, _52, _53, _54, _55, _56, _57, _58, _59, _60,	\
 	_61, _62, N, ...) N
+/** INTERNAL_HIDDEN @endcond */
 
 /* Used by MACRO_MAP_CAT */
 #define Z_MACRO_MAP_CAT_(...)						\

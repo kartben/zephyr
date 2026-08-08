@@ -1,5 +1,6 @@
 /** @file
  *  @brief Audio Video Remote Control Profile header.
+ *  @ingroup bt_avrcp
  */
 
 /*

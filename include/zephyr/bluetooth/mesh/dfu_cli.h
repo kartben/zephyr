@@ -6,6 +6,11 @@
 
 /**
  * @file
+ * @brief API for the Bluetooth Mesh Firmware Update Client model
+ * @ingroup bt_mesh_dfu_cli
+ */
+
+/**
  * @defgroup bt_mesh_dfu_cli Firmware Uppdate Client model
  * @ingroup bt_mesh_dfu
  * @{
@@ -189,6 +194,7 @@ struct bt_mesh_dfu_cli {
 
 	/* runtime state */
 
+	/** @cond INTERNAL_HIDDEN */
 	uint32_t op;
 	const struct bt_mesh_model *mod;
 
@@ -209,11 +215,12 @@ struct bt_mesh_dfu_cli {
 		void *params;
 		bt_mesh_dfu_img_cb_t img_cb;
 	} req;
+	/** @endcond */
 };
 
 /** BLOB parameters for Firmware Update Client transfer: */
 struct bt_mesh_dfu_cli_xfer_blob_params {
-	/* Logarithmic representation of the block size. */
+	/** Logarithmic representation of the block size. */
 	uint8_t block_size_log;
 	/** Base chunk size. May be smaller for the last chunk. */
 	uint16_t chunk_size;

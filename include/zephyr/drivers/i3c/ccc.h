@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for I3C Common Command Codes (CCC) definitions and helpers.
+ * @ingroup i3c_ccc
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_I3C_CCC_H_
 #define ZEPHYR_INCLUDE_DRIVERS_I3C_CCC_H_
 
@@ -281,6 +287,7 @@ struct i3c_ccc_target_payload {
  * @brief Payload structure for one CCC transaction.
  */
 struct i3c_ccc_payload {
+	/** CCC command and associated data. */
 	struct {
 		/**
 		 * The CCC ID (@c I3C_CCC_*).
@@ -315,6 +322,7 @@ struct i3c_ccc_payload {
 		enum i3c_sdr_controller_error_types err;
 	} ccc;
 
+	/** Targets and their associated payloads, used with Direct CCCs. */
 	struct {
 		/**
 		 * Array of struct i3c_ccc_target_payload.
@@ -356,6 +364,7 @@ struct i3c_ccc_events {
 /** Enable Events (ENEC) - Hot-Join Event. */
 #define I3C_CCC_ENEC_EVT_ENHJ		BIT(3)
 
+/** Enable Events (ENEC) - All Events. */
 #define I3C_CCC_ENEC_EVT_ALL		\
 	(I3C_CCC_ENEC_EVT_ENINTR | I3C_CCC_ENEC_EVT_ENCR | I3C_CCC_ENEC_EVT_ENHJ)
 
@@ -368,6 +377,7 @@ struct i3c_ccc_events {
 /** Disable Events (DISEC) - Hot-Join Event. */
 #define I3C_CCC_DISEC_EVT_DISHJ		BIT(3)
 
+/** Disable Events (DISEC) - All Events. */
 #define I3C_CCC_DISEC_EVT_ALL		\
 	(I3C_CCC_DISEC_EVT_DISINTR | I3C_CCC_DISEC_EVT_DISCR | I3C_CCC_DISEC_EVT_DISHJ)
 
@@ -448,6 +458,7 @@ struct i3c_ccc_deftgts_target {
 	/** Dynamic Address of a target device, or a group address */
 	uint8_t addr;
 
+	/** Device Characteristic Register or Legacy Virtual Register */
 	union {
 		/**
 		 * Device Characteristic Register of a I3C target device
@@ -587,6 +598,7 @@ enum i3c_ccc_getstatus_defbyte {
  * @brief Payload for GETSTATUS CCC (Get Device Status).
  */
 union i3c_ccc_getstatus {
+	/** GETSTATUS Format 1 */
 	struct {
 		/**
 		 * Device Status
@@ -604,6 +616,7 @@ union i3c_ccc_getstatus {
 		uint16_t status;
 	} fmt1;
 
+	/** GETSTATUS Format 2 */
 	union {
 		/**
 		 * Defining Byte 0x00: TGTSTAT
@@ -626,6 +639,7 @@ union i3c_ccc_getstatus {
 		 */
 		uint16_t precr;
 
+		/** Raw response value of GETSTATUS Format 2. */
 		uint16_t raw_u16;
 	} fmt2;
 } __packed;
@@ -744,6 +758,7 @@ enum i3c_ccc_getmxds_defbyte {
  * @brief Payload for GETMXDS CCC (Get Max Data Speed).
  */
 union i3c_ccc_getmxds {
+	/** GETMXDS Format 1 */
 	struct {
 		/** maxWr */
 		uint8_t maxwr;
@@ -752,6 +767,7 @@ union i3c_ccc_getmxds {
 		uint8_t maxrd;
 	} fmt1;
 
+	/** GETMXDS Format 2 */
 	struct {
 		/** maxWr */
 		uint8_t maxwr;
@@ -767,6 +783,7 @@ union i3c_ccc_getmxds {
 		uint8_t maxrdturn[3];
 	} fmt2;
 
+	/** GETMXDS Format 3 */
 	struct {
 		/**
 		 * Defining Byte 0x00: WRRDTURN
@@ -924,6 +941,7 @@ enum i3c_ccc_getcaps_defbyte {
  * GETCAPS1 byte.
  */
 union i3c_ccc_getcaps {
+	/** GETCAPS Format 1 */
 	union {
 		/**
 		 * I3C v1.0 HDR Capabilities
@@ -962,6 +980,7 @@ union i3c_ccc_getcaps {
 		uint8_t getcaps[4];
 	} fmt1;
 
+	/** GETCAPS Format 2 */
 	union {
 		/**
 		 * Defining Byte 0x00: TGTCAPS

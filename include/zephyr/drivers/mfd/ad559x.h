@@ -3,6 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the AD559X MFD driver.
+ * @ingroup mdf_interface_ad559x
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MFD_AD559X_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MFD_AD559X_H_
 
@@ -12,6 +18,7 @@ extern "C" {
 
 #include <zephyr/device.h>
 
+/** @cond INTERNAL_HIDDEN */
 #define AD559X_REG_SEQ_ADC        0x02U
 #define AD559X_REG_GEN_CTRL       0x03U
 #define AD559X_REG_ADC_CONFIG     0x04U
@@ -27,7 +34,9 @@ extern "C" {
 #define AD559X_DAC_RANGE BIT(4)
 #define AD559X_ADC_RANGE BIT(5)
 #define AD559X_EN_REF    BIT(9)
+/** @endcond */
 
+/** Number of I/O pins available on the AD559x. */
 #define AD559X_PIN_MAX 8U
 
 /**

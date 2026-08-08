@@ -17,6 +17,7 @@ extern "C" {
 /**
  * @file
  * @brief Provide linear interpolation functions
+ * @ingroup math_interpolation
  */
 
 /**

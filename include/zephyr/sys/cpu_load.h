@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the CPU load monitoring APIs.
+ * @ingroup cpu_load
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_CPU_LOAD_H_
 #define ZEPHYR_INCLUDE_SYS_CPU_LOAD_H_
 
@@ -78,11 +84,14 @@ void cpu_load_on_exit_idle(void);
  */
 void cpu_load_log_control(bool enable);
 
-/* Optional callback for cpu_load_cb_reg
+/** @brief Optional callback type for cpu_load_cb_reg().
  *
- * This will be called from the k_timer expiry_fn used for periodic logging.
- * CONFIG_CPU_LOAD_LOG_PERIODICALLY must be configured to a positive value.
- * Time spent in this callback must be kept to a minimum.
+ * Called from the periodic load logging context when the measured load is
+ * greater than or equal to the registered threshold.
+ * @kconfig{CONFIG_CPU_LOAD_LOG_PERIODICALLY} must be configured to a positive
+ * value. Time spent in this callback must be kept to a minimum.
+ *
+ * @param percent CPU load in percent (0...100).
  */
 typedef void (*cpu_load_cb_t)(uint8_t percent);
 

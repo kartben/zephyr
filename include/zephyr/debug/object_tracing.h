@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for monitored thread list traversal macros.
+ * @ingroup debug
+ */
+
 #ifndef ZEPHYR_INCLUDE_DEBUG_OBJECT_TRACING_H_
 #define ZEPHYR_INCLUDE_DEBUG_OBJECT_TRACING_H_
 

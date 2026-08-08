@@ -27,6 +27,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
+/**
+ * @file
+ * @brief Header file for the POSIX file status functions and mode definitions.
+ */
+
 #ifndef ZEPHYR_INCLUDE_POSIX_SYS_STAT_H_
 #define ZEPHYR_INCLUDE_POSIX_SYS_STAT_H_
 

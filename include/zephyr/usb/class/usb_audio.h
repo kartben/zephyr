@@ -9,6 +9,7 @@
 /**
  * @file
  * @brief USB Audio Device Class public header
+ * @ingroup usb
  *
  * Header follows below documentation:
  * - USB Device Class Definition for Audio Devices (audio10.pdf)

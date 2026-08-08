@@ -6,6 +6,7 @@
 /**
  * @file
  * @brief RISC-V AIA (Advanced Interrupt Architecture) unified coordinator API.
+ * @ingroup misc_interfaces
  *
  * Provides a single API wrapping APLIC and IMSIC for Zephyr's interrupt
  * management. The coordinator is exposed to Zephyr as a PLIC-like second-level

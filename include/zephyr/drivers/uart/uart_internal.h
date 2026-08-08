@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief Internal APIs for UART drivers
+ * @ingroup uart_interface
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_UART_UART_INTERNAL_H_

@@ -10,6 +10,7 @@
 /**
  * @file
  * @brief Devicetree main header
+ * @ingroup devicetree
  *
  * API for accessing the current application's devicetree macros.
  */

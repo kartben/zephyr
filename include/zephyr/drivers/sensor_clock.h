@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the sensor clock cycle retrieval and conversion APIs.
+ * @ingroup sensor_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_SENSOR_CLOCK_H_
 #define ZEPHYR_INCLUDE_DRIVERS_SENSOR_CLOCK_H_
 

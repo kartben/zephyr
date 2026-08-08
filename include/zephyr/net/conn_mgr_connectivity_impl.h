@@ -8,6 +8,7 @@
  * @file
  * @brief API for defining conn_mgr connectivity implementations (allowing ifaces to be used with
  * conn_mgr_connectivity).
+ * @ingroup conn_mgr_connectivity_impl
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_CONN_MGR_CONNECTIVITY_IMPL_H_

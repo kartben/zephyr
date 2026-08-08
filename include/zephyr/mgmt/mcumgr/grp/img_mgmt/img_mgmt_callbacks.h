@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for MCUmgr Image Management callback definitions.
+ * @ingroup mcumgr_callback_api_img_mgmt
+ */
+
 #ifndef ZEPHYR_INCLUDE_MGMT_MCUMGR_GRP_IMG_MGMT_IMG_MGMT_CALLBACKS_H_
 #define ZEPHYR_INCLUDE_MGMT_MCUMGR_GRP_IMG_MGMT_IMG_MGMT_CALLBACKS_H_
 
@@ -102,11 +108,25 @@ struct img_mgmt_image_confirmed {
  * slot state response.
  */
 struct img_mgmt_state_slot_encode {
+	/** Result of the encoding operations, must be updated when appending fields. */
 	bool *ok;
+
+	/**
+	 * The zcbor encoder which is currently being used to output information, additional fields
+	 * can be added using this.
+	 */
 	zcbor_state_t *zse;
+
+	/** The slot which is currently being encoded. */
 	const uint32_t slot;
+
+	/** Version string of the image in the slot. */
 	const char *version;
+
+	/** Hash of the image in the slot. */
 	const uint8_t *hash;
+
+	/** Flags of the image in the slot. */
 	const int flags;
 };
 

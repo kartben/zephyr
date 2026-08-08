@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Network Events code public header
+ * @ingroup net_mgmt
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_NET_EVENT_H_

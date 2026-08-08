@@ -28,6 +28,7 @@ extern "C" {
  * @{
  */
 
+/** @cond INTERNAL_HIDDEN */
 #ifndef CONFIG_BT_MESH_DFU_FWID_MAXLEN
 #define CONFIG_BT_MESH_DFU_FWID_MAXLEN 0
 #endif
@@ -43,6 +44,7 @@ extern "C" {
 #ifndef CONFIG_BT_MESH_DFU_SLOT_CNT
 #define CONFIG_BT_MESH_DFU_SLOT_CNT 0
 #endif
+/** @endcond */
 
 /** DFU transfer phase. */
 enum bt_mesh_dfu_phase {

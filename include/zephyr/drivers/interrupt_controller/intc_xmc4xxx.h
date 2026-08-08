@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the Infineon XMC4xxx GPIO interrupt controller driver API.
+ * @ingroup misc_interfaces
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_INTC_XMC4XXX_H_
 #define ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_INTC_XMC4XXX_H_
 

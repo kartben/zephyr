@@ -8,6 +8,7 @@
  * @file
  *
  * @brief Public kernel APIs.
+ * @ingroup kernel_apis
  */
 
 #ifndef ZEPHYR_INCLUDE_KERNEL_H_

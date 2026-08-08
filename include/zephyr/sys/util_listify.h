@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief Internal helper macros backing UTIL_LISTIFY().
+ * @ingroup internal_api
  */
 
 #ifndef ZEPHYR_INCLUDE_SYS_UTIL_LOOPS_H_

@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Wakeup Controller Devicetree macro public API header file.
+ * @ingroup devicetree-wakeup-controller
  */
 
 /*

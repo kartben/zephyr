@@ -8,6 +8,7 @@
  * @file zephyr/psa/key_ids.h
  *
  * @brief This file defines the key ID ranges of the existing users of the PSA Crypto API.
+ * @ingroup psa_secure_storage
  *
  * In addition to the application, different subsystems store and use persistent keys through the
  * PSA Crypto API. Because they are not aware of each other, collisions are avoided by having them
@@ -22,6 +23,8 @@
  */
 
 #include <stdint.h>
+
+/** PSA Crypto key identifier */
 typedef uint32_t psa_key_id_t;
 
 /** PSA key ID range to be used by OpenThread. The base ID is equal to the default value upstream:

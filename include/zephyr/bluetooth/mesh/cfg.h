@@ -1,5 +1,6 @@
 /** @file
  *  @brief Runtime configuration APIs.
+ *  @ingroup bt_mesh_cfg
  */
 
 /*
@@ -37,36 +38,59 @@ enum bt_mesh_feat_state {
 };
 
 /* Key Refresh Phase */
+/** Normal network operation. No Key Refresh procedure is in progress. */
 #define BT_MESH_KR_NORMAL                   0x00
+/** Key Refresh Phase 1: New keys are distributed, old keys are used for sending. */
 #define BT_MESH_KR_PHASE_1                  0x01
+/** Key Refresh Phase 2: New keys are used for sending, old keys are still accepted. */
 #define BT_MESH_KR_PHASE_2                  0x02
+/** Key Refresh Phase 3: Old keys are revoked, the network returns to normal operation. */
 #define BT_MESH_KR_PHASE_3                  0x03
 
 /* Legacy feature defines */
+/** Relay feature is supported, but disabled. */
 #define BT_MESH_RELAY_DISABLED              BT_MESH_FEATURE_DISABLED
+/** Relay feature is supported and enabled. */
 #define BT_MESH_RELAY_ENABLED               BT_MESH_FEATURE_ENABLED
+/** Relay feature is not supported. */
 #define BT_MESH_RELAY_NOT_SUPPORTED         BT_MESH_FEATURE_NOT_SUPPORTED
 
+/** Secure Network Beacon is disabled. */
 #define BT_MESH_BEACON_DISABLED             BT_MESH_FEATURE_DISABLED
+/** Secure Network Beacon is enabled. */
 #define BT_MESH_BEACON_ENABLED              BT_MESH_FEATURE_ENABLED
 
+/** Mesh Private beacon is disabled. */
 #define BT_MESH_PRIV_BEACON_DISABLED        BT_MESH_FEATURE_DISABLED
+/** Mesh Private beacon is enabled. */
 #define BT_MESH_PRIV_BEACON_ENABLED         BT_MESH_FEATURE_ENABLED
 
+/** GATT Proxy feature is supported, but disabled. */
 #define BT_MESH_GATT_PROXY_DISABLED         BT_MESH_FEATURE_DISABLED
+/** GATT Proxy feature is supported and enabled. */
 #define BT_MESH_GATT_PROXY_ENABLED          BT_MESH_FEATURE_ENABLED
+/** GATT Proxy feature is not supported. */
 #define BT_MESH_GATT_PROXY_NOT_SUPPORTED    BT_MESH_FEATURE_NOT_SUPPORTED
 
+/** Private GATT Proxy feature is supported, but disabled. */
 #define BT_MESH_PRIV_GATT_PROXY_DISABLED      BT_MESH_FEATURE_DISABLED
+/** Private GATT Proxy feature is supported and enabled. */
 #define BT_MESH_PRIV_GATT_PROXY_ENABLED       BT_MESH_FEATURE_ENABLED
+/** Private GATT Proxy feature is not supported. */
 #define BT_MESH_PRIV_GATT_PROXY_NOT_SUPPORTED BT_MESH_FEATURE_NOT_SUPPORTED
 
+/** Friend feature is supported, but disabled. */
 #define BT_MESH_FRIEND_DISABLED             BT_MESH_FEATURE_DISABLED
+/** Friend feature is supported and enabled. */
 #define BT_MESH_FRIEND_ENABLED              BT_MESH_FEATURE_ENABLED
+/** Friend feature is not supported. */
 #define BT_MESH_FRIEND_NOT_SUPPORTED        BT_MESH_FEATURE_NOT_SUPPORTED
 
+/** Node Identity advertising is stopped. */
 #define BT_MESH_NODE_IDENTITY_STOPPED       BT_MESH_FEATURE_DISABLED
+/** Node Identity advertising is running. */
 #define BT_MESH_NODE_IDENTITY_RUNNING       BT_MESH_FEATURE_ENABLED
+/** Node Identity advertising is not supported. */
 #define BT_MESH_NODE_IDENTITY_NOT_SUPPORTED BT_MESH_FEATURE_NOT_SUPPORTED
 
 /** @brief Enable or disable sending of the Secure Network Beacon.

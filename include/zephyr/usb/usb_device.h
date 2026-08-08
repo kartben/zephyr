@@ -31,6 +31,7 @@
 /**
  * @file
  * @brief USB device core layer APIs and structures
+ * @ingroup _usb_device_core_api
  *
  * This file contains the USB device core layer APIs and structures.
  */
@@ -51,24 +52,84 @@ extern "C" {
  * These macros should be used to place the USB descriptors
  * in predetermined order in the RAM.
  */
+
+/**
+ * @brief Helper macro to place the device descriptor in the right memory section
+ *
+ * @deprecated Use @ref usbd_api instead
+ *
+ * @param p Descriptor set identifier, primary or secondary
+ */
 #define USBD_DEVICE_DESCR_DEFINE(p) \
 	static __in_section(usb, descriptor_##p, 0) __used __aligned(1) __DEPRECATED_MACRO
+
+/**
+ * @brief Helper macro to place the class descriptors in the right memory section
+ *
+ * @deprecated Use @ref usbd_api instead
+ *
+ * @param p        Descriptor set identifier, primary or secondary
+ * @param instance Class instance number used to order the descriptors
+ */
 #define USBD_CLASS_DESCR_DEFINE(p, instance) \
 	static __in_section(usb, descriptor_##p.1, instance) __used __aligned(1) __DEPRECATED_MACRO
+
+/**
+ * @brief Helper macro to place the miscellaneous descriptors in the right memory section
+ *
+ * @deprecated Use @ref usbd_api instead
+ *
+ * @param p Descriptor set identifier, primary or secondary
+ */
 #define USBD_MISC_DESCR_DEFINE(p) \
 	static __in_section(usb, descriptor_##p, 2) __used __aligned(1) __DEPRECATED_MACRO
+
+/**
+ * @brief Helper macro to place the user descriptors in the right memory section
+ *
+ * @deprecated Use @ref usbd_api instead
+ *
+ * @param p Descriptor set identifier, primary or secondary
+ */
 #define USBD_USER_DESCR_DEFINE(p) \
 	static __in_section(usb, descriptor_##p, 3) __used __aligned(1) __DEPRECATED_MACRO
+
+/**
+ * @brief Helper macro to place the string descriptors in the right memory section
+ *
+ * @deprecated Use @ref usbd_api instead
+ *
+ * @param p Descriptor set identifier, primary or secondary
+ */
 #define USBD_STRING_DESCR_DEFINE(p) \
 	static __in_section(usb, descriptor_##p, 4) __used __aligned(1) __DEPRECATED_MACRO
+
+/**
+ * @brief Helper macro to place the user string descriptors in the right memory section
+ *
+ * @deprecated Use @ref usbd_api instead
+ *
+ * @param p Descriptor set identifier, primary or secondary
+ */
 #define USBD_STRING_DESCR_USER_DEFINE(p) \
 	static __in_section(usb, descriptor_##p, 5) __used __aligned(1) __DEPRECATED_MACRO
+
+/**
+ * @brief Helper macro to place the termination descriptor in the right memory section
+ *
+ * @deprecated Use @ref usbd_api instead
+ *
+ * @param p Descriptor set identifier, primary or secondary
+ */
 #define USBD_TERM_DESCR_DEFINE(p) \
 	static __in_section(usb, descriptor_##p, 6) __used __aligned(1) __DEPRECATED_MACRO
 
-/*
- * This macro should be used to place the struct usb_cfg_data
- * inside usb data section in the RAM.
+/**
+ * @brief Helper macro to place the struct usb_cfg_data in the usb data section
+ *
+ * @deprecated Use @ref usbd_api instead
+ *
+ * @param name Name of the usb_cfg_data variable to be defined
  */
 #define USBD_DEFINE_CFG_DATA(name) \
 	static STRUCT_SECTION_ITERABLE(usb_cfg_data, name) __DEPRECATED_MACRO
@@ -373,9 +434,9 @@ __deprecated int usb_ep_read_continue(uint8_t ep);
 typedef void (*usb_transfer_callback)(uint8_t ep, int tsize, void *priv);
 
 /* USB transfer flags */
-#define USB_TRANS_READ       BIT(0) __DEPRECATED_MACRO   /** Read transfer flag */
-#define USB_TRANS_WRITE      BIT(1) __DEPRECATED_MACRO   /** Write transfer flag */
-#define USB_TRANS_NO_ZLP     BIT(2) __DEPRECATED_MACRO   /** No zero-length packet flag */
+#define USB_TRANS_READ       BIT(0) __DEPRECATED_MACRO   /**< Read transfer flag */
+#define USB_TRANS_WRITE      BIT(1) __DEPRECATED_MACRO   /**< Write transfer flag */
+#define USB_TRANS_NO_ZLP     BIT(2) __DEPRECATED_MACRO   /**< No zero-length packet flag */
 
 /**
  * @brief Transfer management endpoint callback

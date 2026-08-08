@@ -2,6 +2,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the Encrypted Advertising Data (EAD) APIs.
+ * @ingroup bt_ead
+ */
+
 #include <stddef.h>
 #include <stdint.h>
 

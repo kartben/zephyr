@@ -3,6 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for macros used to place application data in memory partitions.
+ * @ingroup mem_domain_apis_app
+ */
+
 #ifndef ZEPHYR_INCLUDE_APP_MEMORY_APP_MEMDOMAIN_H_
 #define ZEPHYR_INCLUDE_APP_MEMORY_APP_MEMDOMAIN_H_
 

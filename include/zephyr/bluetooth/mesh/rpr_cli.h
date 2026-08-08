@@ -85,6 +85,7 @@ struct bt_mesh_rpr_cli {
 
 	/* Internal parameters */
 
+	/** @cond INTERNAL_HIDDEN */
 	struct bt_mesh_msg_ack_ctx scan_ack_ctx;
 	struct bt_mesh_msg_ack_ctx prov_ack_ctx;
 
@@ -98,6 +99,7 @@ struct bt_mesh_rpr_cli {
 	} link;
 
 	const struct bt_mesh_model *mod;
+	/** @endcond */
 };
 
 /** @brief Get scanning capabilities of Remote Provisioning Server.

@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Bluetooth Coordinated Set Identification Profile (CSIP) APIs.
+ * @ingroup bt_csip
  */
 
 /*

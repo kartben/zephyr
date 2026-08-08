@@ -4,11 +4,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the APIs used to start and resume CPUs in an SMP system.
+ * @ingroup kernel_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_KERNEL_SMP_H_
 #define ZEPHYR_INCLUDE_KERNEL_SMP_H_
 
 #include <stdbool.h>
 
+/**
+ * @brief Function called on a CPU before it starts scheduling threads.
+ *
+ * @param arg Argument passed to k_smp_cpu_start() or k_smp_cpu_resume().
+ */
 typedef void (*smp_init_fn)(void *arg);
 
 /**

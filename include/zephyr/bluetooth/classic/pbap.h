@@ -1,5 +1,6 @@
 /** @file
  *  @brief Phone Book Access Profile handling.
+ *  @ingroup bt_pbap
  */
 
 /*

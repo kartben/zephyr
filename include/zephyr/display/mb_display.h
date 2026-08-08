@@ -1,5 +1,6 @@
 /** @file
  *  @brief BBC micro:bit display APIs.
+ *  @ingroup mb_display
  */
 
 /*
@@ -35,14 +36,17 @@ extern "C" {
  * using the MB_IMAGE() macro.
  */
 struct mb_image {
+	/** Pixels of the image, accessible per pixel or per row */
 	union {
+		/** Rows of the image, each pixel addressed separately */
 		struct {
-			uint8_t c1:1,
-				c2:1,
-				c3:1,
-				c4:1,
-				c5:1;
+			uint8_t c1:1, /**< Pixel of the leftmost column */
+				c2:1, /**< Pixel of the second column */
+				c3:1, /**< Pixel of the third column */
+				c4:1, /**< Pixel of the fourth column */
+				c5:1; /**< Pixel of the rightmost column */
 		} r[5];
+		/** Rows of the image, one bit per column */
 		uint8_t row[5];
 	};
 };

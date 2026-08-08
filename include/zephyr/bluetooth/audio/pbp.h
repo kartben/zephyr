@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Public Broadcast Profile (PBP) APIs.
+ * @ingroup bt_pbp
  */
 /*
  * Copyright 2023 NXP

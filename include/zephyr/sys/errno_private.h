@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Internal accessor for the errno value.
+ * @ingroup internal_api
  */
 
 #ifndef ZEPHYR_INCLUDE_SYS_ERRNO_PRIVATE_H_

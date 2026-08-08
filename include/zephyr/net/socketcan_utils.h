@@ -1,5 +1,6 @@
 /** @file
  * @brief SocketCAN utilities.
+ * @ingroup socket_can
  *
  * Utilities for SocketCAN support.
  */

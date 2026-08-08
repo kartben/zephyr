@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Bluetooth data types and helpers.
+ * @ingroup bt_gap
  */
 
 /*

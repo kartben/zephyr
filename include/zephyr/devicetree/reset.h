@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Reset Controller Devicetree macro public API header file.
+ * @ingroup devicetree-reset-controller
  */
 
 /*

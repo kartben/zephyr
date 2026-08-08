@@ -11,6 +11,7 @@
  */
 /** @file
  * @brief CRC computation function
+ * @ingroup checksum
  */
 
 #ifndef ZEPHYR_INCLUDE_SYS_CRC_H_
@@ -26,15 +27,14 @@
 extern "C" {
 #endif
 
-/* Initial value expected to be used at the beginning of the crc8_ccitt
- * computation.
- */
+/** Initial value expected to be used at the beginning of the crc8_ccitt computation. */
 #define CRC8_CCITT_INITIAL_VALUE 0xFF
+/** Initial value expected to be used at the beginning of the crc8_rohc computation. */
 #define CRC8_ROHC_INITIAL_VALUE  0xFF
 
-/* Initial value expected to be used at the beginning of the OpenPGP CRC-24 computation. */
+/** Initial value expected to be used at the beginning of the OpenPGP CRC-24 computation. */
 #define CRC24_PGP_INITIAL_VALUE 0x00B704CEU
-/*
+/**
  * The CRC-24 value is stored on a 32-bit value, only the 3 least significant bytes
  * are meaningful. Use the following mask to only keep the CRC-24 value.
  */

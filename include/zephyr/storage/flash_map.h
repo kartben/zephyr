@@ -9,6 +9,7 @@
 /**
  * @file
  * @brief Public API for flash map
+ * @ingroup flash_area_api
  */
 
 #ifndef ZEPHYR_INCLUDE_STORAGE_FLASH_MAP_H_
@@ -57,7 +58,7 @@ extern "C" {
 struct flash_area {
 	/** ID number */
 	uint8_t fa_id;
-	uint16_t pad16;
+	uint16_t _pad16;
 	/** Start offset from the beginning of the flash device */
 	off_t fa_off;
 	/** Total size */

@@ -1,5 +1,6 @@
 /** @file
  *  @brief DHCPv4 Client Handler
+ *  @ingroup dhcpv4
  */
 
 /*

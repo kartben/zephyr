@@ -8,6 +8,7 @@
  * @file
  *
  * @brief Macros for declaring thread stacks
+ * @ingroup thread_stack_api
  */
 
 /**
@@ -90,6 +91,22 @@ static inline char *z_stack_ptr_align(char *ptr)
 #define Z_STACK_PTR_TO_FRAME(type, ptr) \
 	(type *)((ptr) - sizeof(type))
 
+/**
+ * @brief Indicate how much additional memory is reserved for kernel stack
+ *        objects
+ *
+ * Any given stack declaration may have additional memory in it for guard
+ * areas or platform-specific data. This macro indicates how much space is
+ * reserved for this.
+ *
+ * This value only indicates memory that is permanently reserved in the stack
+ * object. Memory that is "borrowed" from the thread's stack buffer is never
+ * accounted for here.
+ *
+ * Reserved memory is at the beginning of the stack object. The reserved area
+ * must be appropriately sized such that the stack buffer immediately following
+ * it is correctly aligned.
+ */
 #ifdef ARCH_KERNEL_STACK_RESERVED
 #define K_KERNEL_STACK_RESERVED	((size_t)ARCH_KERNEL_STACK_RESERVED)
 #else
@@ -106,6 +123,18 @@ static inline char *z_stack_ptr_align(char *ptr)
 #define Z_KERNEL_STACK_OBJ_ALIGN	ARCH_STACK_PTR_ALIGN
 #endif /* ARCH_KERNEL_STACK_OBJ_ALIGN */
 
+/**
+ * @brief Calculate size of kernel stacks to be allocated in a stack array
+ *
+ * This macro calculates the size to be allocated for the stacks inside a
+ * kernel stack array. It accepts the indicated "size" as a parameter and if
+ * required, pads some extra bytes (e.g. for MPU scenarios). The returned size
+ * ensures each array member will be aligned to the required stack base
+ * alignment.
+ *
+ * @param size Size of the stack memory region
+ * @return Appropriate size for an array member
+ */
 #define K_KERNEL_STACK_LEN(size) \
 	ROUND_UP(Z_KERNEL_STACK_SIZE_ADJUST(size), Z_KERNEL_STACK_OBJ_ALIGN)
 
@@ -381,10 +410,38 @@ struct _thread_hw_shadow_stack_static {
 #define K_KERNEL_STACK_MEMBER(sym, size) \
 	Z_KERNEL_STACK_DEFINE_IN(sym, size,)
 
+/**
+ * @brief Return the size in bytes of a kernel stack memory region
+ *
+ * Convenience macro for passing the desired stack size to k_thread_create()
+ * since the underlying implementation may actually create something larger
+ * (for instance a guard area).
+ *
+ * The value returned here is not guaranteed to match the 'size' parameter
+ * passed to K_KERNEL_STACK_DEFINE and may be larger, but is always safe to
+ * pass to k_thread_create() for the associated stack object.
+ *
+ * @param sym Stack memory symbol
+ * @return Size of the stack buffer
+ */
 #define K_KERNEL_STACK_SIZEOF(sym) (sizeof(sym) - K_KERNEL_STACK_RESERVED)
 
 /** @} */
 
+/**
+ * @brief Get a pointer to the physical kernel stack buffer
+ *
+ * Obtain a pointer to the non-reserved area of a kernel stack object.
+ * This is not guaranteed to be the beginning of the thread-writable region;
+ * this does not account for any memory carved-out for MPU stack overflow
+ * guards.
+ *
+ * Use with care. The true bounds of the stack buffer are available in the
+ * stack_info member of its associated thread.
+ *
+ * @param sym defined stack symbol name
+ * @return The buffer itself, a char *
+ */
 static inline char *K_KERNEL_STACK_BUFFER(k_thread_stack_t *sym)
 {
 	return (char *)sym + K_KERNEL_STACK_RESERVED;

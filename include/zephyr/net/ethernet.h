@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Ethernet
+ * @ingroup ethernet
  */
 
 /*

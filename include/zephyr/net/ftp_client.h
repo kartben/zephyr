@@ -6,6 +6,7 @@
 
 /** @file
  *  @brief FTP client library
+ *  @ingroup ftp_client
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_FTP_CLIENT_H_

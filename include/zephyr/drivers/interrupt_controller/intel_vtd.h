@@ -3,10 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the Intel VT-D interrupt remapping driver API.
+ * @ingroup misc_interfaces
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_INTEL_VTD_H_
 #define ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_INTEL_VTD_H_
 
 #include <zephyr/drivers/pcie/msi.h>
+
+/** @cond INTERNAL_HIDDEN */
 
 typedef int (*vtd_alloc_entries_f)(const struct device *dev,
 				   uint8_t n_entries);
@@ -57,6 +65,8 @@ __subsystem struct vtd_driver_api {
 	vtd_set_irte_msi_f set_irte_msi;
 	vtd_irte_is_msi_f irte_is_msi;
 };
+
+/** @endcond */
 
 /**
  * @brief Allocate contiguous IRTEs
@@ -184,6 +194,13 @@ static inline int vtd_get_irte_by_irq(const struct device *dev,
 	return DEVICE_API_GET(vtd, dev)->get_irte_by_irq(dev, irq);
 }
 
+/**
+ * @brief Set whether the IRTE is used for MSI
+ *
+ * @param dev Pointer to the device structure for the driver instance
+ * @param irte_idx A previously allocated irte entry index number
+ * @param msi True if the IRTE is used for MSI, false otherwise
+ */
 static inline void vtd_set_irte_msi(const struct device *dev,
 				    uint8_t irte_idx,
 				    bool msi)
@@ -191,6 +208,14 @@ static inline void vtd_set_irte_msi(const struct device *dev,
 	DEVICE_API_GET(vtd, dev)->set_irte_msi(dev, irte_idx, msi);
 }
 
+/**
+ * @brief Check whether the IRTE is used for MSI
+ *
+ * @param dev Pointer to the device structure for the driver instance
+ * @param irte_idx A previously allocated irte entry index number
+ *
+ * @return True if the IRTE is used for MSI, false otherwise
+ */
 static inline bool vtd_irte_is_msi(const struct device *dev,
 				   uint8_t irte_idx)
 {

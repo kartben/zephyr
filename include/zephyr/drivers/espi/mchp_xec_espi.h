@@ -7,6 +7,7 @@
 /**
  * @file mchp_xec_espi.h
  * @brief Microchip eSPI Driver Header
+ * @ingroup espi_interface
  *
  * @details
  * This header provides conditional inclusion of Microchip eSPI controller

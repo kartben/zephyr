@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Interfaces for Renesas RA external interrupt.
+ * @ingroup misc_interfaces
  * @{
  */
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MISC_RENESAS_RA_EXTERNAL_INTERRUPT_RENESAS_RA_EXTERNAL_INTERRUPT_H_

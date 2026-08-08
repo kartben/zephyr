@@ -12,6 +12,7 @@
  * @file
  *
  * @brief Prometheus counter APIs.
+ * @ingroup prometheus
  *
  * @addtogroup prometheus
  * @{

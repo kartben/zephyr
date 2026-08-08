@@ -83,7 +83,9 @@ extern "C" {
  * @{
  */
 
+/** @cond INTERNAL_HIDDEN */
 #define PWM_EVENT_TYPE_SHIFT		0U
+/** @endcond */
 
 /** Configure the event to trigger at the end of each PWM period */
 #define PWM_EVENT_TYPE_PERIOD		(1U << PWM_EVENT_TYPE_SHIFT)

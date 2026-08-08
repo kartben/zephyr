@@ -1,5 +1,6 @@
 /** @file
  *  @brief Bluetooth Mesh statistic APIs.
+ *  @ingroup bt_mesh_stat
  */
 
 /*

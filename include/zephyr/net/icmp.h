@@ -117,6 +117,7 @@ struct net_icmp_ctx {
  * @brief Struct presents either IPv4 or IPv6 header in ICMP response message.
  */
 struct net_icmp_ip_hdr {
+	/** IP header of the response message, use family to select the member */
 	union {
 		/** IPv4 header in response message. */
 		struct net_ipv4_hdr *ipv4;

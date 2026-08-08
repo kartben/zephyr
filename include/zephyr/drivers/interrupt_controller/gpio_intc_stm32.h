@@ -6,7 +6,9 @@
  */
 
 /**
- * @brief GPIO interrupt controller API for STM32 MCUs
+ * @file
+ * @brief Header file for the STM32 GPIO interrupt controller API.
+ * @ingroup misc_interfaces
  *
  * This API is used to interact with the GPIO interrupt controller
  * of STM32 microcontrollers.
@@ -47,17 +49,17 @@ void stm32_gpio_intc_disable_line(stm32_gpio_irq_line_t line);
  * @brief GPIO interrupt trigger flags
  */
 enum stm32_gpio_irq_trigger {
-	/* No trigger */
+	/** No trigger */
 	STM32_GPIO_IRQ_TRIG_NONE  = 0x0,
-	/* Trigger on rising edge */
+	/** Trigger on rising edge */
 	STM32_GPIO_IRQ_TRIG_RISING  = 0x1,
-	/* Trigger on falling edge */
+	/** Trigger on falling edge */
 	STM32_GPIO_IRQ_TRIG_FALLING = 0x2,
-	/* Trigger on both rising and falling edge */
+	/** Trigger on both rising and falling edge */
 	STM32_GPIO_IRQ_TRIG_BOTH = 0x3,
-	/* Trigger on high level */
+	/** Trigger on high level */
 	STM32_GPIO_IRQ_TRIG_HIGH_LEVEL = 0x4,
-	/* Trigger on low level */
+	/** Trigger on low level */
 	STM32_GPIO_IRQ_TRIG_LOW_LEVEL = 0x5
 };
 

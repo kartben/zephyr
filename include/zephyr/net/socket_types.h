@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief socket types definitionis
+ * @ingroup bsd_sockets
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_SOCKET_TYPES_H_

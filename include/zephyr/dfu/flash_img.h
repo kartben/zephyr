@@ -8,6 +8,7 @@
 /**
  * @file
  * @brief Flash image header file
+ * @ingroup flash_img_api
  *
  * This header file declares prototypes for the flash image APIs used for DFU.
  */
@@ -29,10 +30,18 @@
 extern "C" {
 #endif
 
+/**
+ * @brief Context needed for writing an image to flash
+ *
+ * The context has to be initialized with flash_img_init() or
+ * flash_img_init_id() before it is used.
+ */
 struct flash_img_context {
+	/** @cond INTERNAL_HIDDEN */
 	uint8_t buf[CONFIG_IMG_BLOCK_BUF_SIZE];
 	const struct flash_area *flash_area;
 	struct stream_flash_ctx stream;
+	/** @endcond */
 };
 
 /**
@@ -42,8 +51,8 @@ struct flash_img_context {
  * to verify flash integrity.  The current available algorithm is SHA-256.
  */
 struct flash_img_check {
-	const uint8_t *match;		/** Match vector data */
-	size_t clen;			/** Content to be compared */
+	const uint8_t *match;		/**< Match vector data */
+	size_t clen;			/**< Content to be compared */
 };
 
 /**

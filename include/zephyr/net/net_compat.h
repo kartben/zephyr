@@ -1,5 +1,6 @@
 /** @file
  * @brief Network namespace compatibility mode header
+ * @ingroup net_compat
  *
  * Allows to use relevant network symbols without the "net_", "NET_" or
  * "ZSOCK_" prefixes.

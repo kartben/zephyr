@@ -9,6 +9,7 @@
 /**
  * @file
  * @brief Internal lookup table backing UTIL_INC().
+ * @ingroup internal_api
  */
 
 /**

@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Renesas RZ Interrupt Controller API
+ * @ingroup misc_interfaces
  *
  * This is used for Renesas RZ Interrupt Controller Unit supporting selectable interrupts
  */

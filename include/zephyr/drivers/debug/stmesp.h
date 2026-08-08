@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for Coresight STM Extended Stimulus Ports (STMESP) write interfaces.
+ * @ingroup stmsp_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_DEBUG_CORESIGHT_STMESP_H_
 #define ZEPHYR_INCLUDE_DRIVERS_DEBUG_CORESIGHT_STMESP_H_
 

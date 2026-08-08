@@ -1,5 +1,6 @@
 /** @file
  *  @brief Handsfree Profile Audio Gateway handling.
+ *  @ingroup bt_hfp_ag
  */
 
 /*
@@ -24,21 +25,24 @@
 extern "C" {
 #endif
 
-/* HFP AG Indicators */
+/** HFP AG Indicators */
 enum bt_hfp_ag_indicator {
-	BT_HFP_AG_SERVICE_IND = 0,    /* Service availability indicator */
-	BT_HFP_AG_CALL_IND = 1,       /* call status indicator */
-	BT_HFP_AG_CALL_SETUP_IND = 2, /* Call set up status indicator */
-	BT_HFP_AG_CALL_HELD_IND = 3,  /* Call hold status indicator */
-	BT_HFP_AG_SIGNAL_IND = 4,    /* Signal strength indicator */
-	BT_HFP_AG_ROAM_IND = 5,       /* Roaming status indicator */
-	BT_HFP_AG_BATTERY_IND = 6,    /* Battery change indicator */
-	BT_HFP_AG_IND_MAX             /* Indicator MAX value */
+	BT_HFP_AG_SERVICE_IND = 0,    /**< Service availability indicator */
+	BT_HFP_AG_CALL_IND = 1,       /**< Call status indicator */
+	BT_HFP_AG_CALL_SETUP_IND = 2, /**< Call set up status indicator */
+	BT_HFP_AG_CALL_HELD_IND = 3,  /**< Call hold status indicator */
+	BT_HFP_AG_SIGNAL_IND = 4,    /**< Signal strength indicator */
+	BT_HFP_AG_ROAM_IND = 5,       /**< Roaming status indicator */
+	BT_HFP_AG_BATTERY_IND = 6,    /**< Battery change indicator */
+	BT_HFP_AG_IND_MAX             /**< Indicator MAX value */
 };
 
-/* HFP CODEC */
+/* HFP CODEC IDs */
+/** HFP codec ID of CVSD */
 #define BT_HFP_AG_CODEC_CVSD    0x01
+/** HFP codec ID of mSBC */
 #define BT_HFP_AG_CODEC_MSBC    0x02
+/** HFP codec ID of LC3-SWB */
 #define BT_HFP_AG_CODEC_LC3_SWB 0x03
 
 /**
@@ -80,40 +84,38 @@ struct bt_hfp_ag_call;
 typedef int (*bt_hfp_ag_query_subscriber_func_t)(struct bt_hfp_ag *ag, char *number, uint8_t type,
 						 uint8_t service);
 
-/* HF indicators */
+/** HF indicators */
 enum hfp_ag_hf_indicators {
-	HFP_AG_ENHANCED_SAFETY_IND = 1, /* Enhanced Safety */
-	HFP_AG_BATTERY_LEVEL_IND = 2,   /* Remaining level of Battery */
+	HFP_AG_ENHANCED_SAFETY_IND = 1, /**< Enhanced Safety */
+	HFP_AG_BATTERY_LEVEL_IND = 2,   /**< Remaining level of Battery */
 };
 
-/* The status of the call */
+/** The status of the call */
 enum __packed bt_hfp_ag_call_status {
-	BT_HFP_AG_CALL_STATUS_ACTIVE = 0,       /* Call is active */
-	BT_HFP_AG_CALL_STATUS_HELD = 1,         /* Call is on hold */
-	BT_HFP_AG_CALL_STATUS_DIALING = 2,      /* Outgoing call is being dialed */
-	BT_HFP_AG_CALL_STATUS_ALERTING = 3,     /* Outgoing call is being alerted */
-	BT_HFP_AG_CALL_STATUS_INCOMING = 4,     /* Incoming call is came */
-	BT_HFP_AG_CALL_STATUS_WAITING = 5,      /* Incoming call is waiting */
-	BT_HFP_AG_CALL_STATUS_INCOMING_HELD = 6 /* Call held by Response and Hold */
+	BT_HFP_AG_CALL_STATUS_ACTIVE = 0,       /**< Call is active */
+	BT_HFP_AG_CALL_STATUS_HELD = 1,         /**< Call is on hold */
+	BT_HFP_AG_CALL_STATUS_DIALING = 2,      /**< Outgoing call is being dialed */
+	BT_HFP_AG_CALL_STATUS_ALERTING = 3,     /**< Outgoing call is being alerted */
+	BT_HFP_AG_CALL_STATUS_INCOMING = 4,     /**< Incoming call */
+	BT_HFP_AG_CALL_STATUS_WAITING = 5,      /**< Incoming call is waiting */
+	BT_HFP_AG_CALL_STATUS_INCOMING_HELD = 6 /**< Call held by Response and Hold */
 };
 
-/* The direction of the call */
+/** The direction of the call */
 enum __packed bt_hfp_ag_call_dir {
-	BT_HFP_AG_CALL_DIR_OUTGOING = 0, /* It is a outgoing call */
-	BT_HFP_AG_CALL_DIR_INCOMING = 1, /* It is a incoming call */
+	BT_HFP_AG_CALL_DIR_OUTGOING = 0, /**< Outgoing call */
+	BT_HFP_AG_CALL_DIR_INCOMING = 1, /**< Incoming call */
 };
 
-/** @brief The ongoing call
- *
- *  @param number Phone number terminated with '\0' of the call.
- *  @param type Specify the format of the phone number.
- *  @param dir Call direction.
- *  @param status The status of the call.
- */
+/** @brief The ongoing call */
 struct bt_hfp_ag_ongoing_call {
+	/** Phone number of the call, terminated with '\0' */
 	char number[CONFIG_BT_HFP_AG_PHONE_NUMBER_MAX_LEN + 1];
+	/** Format of the phone number */
 	uint8_t type;
+	/** Call direction */
 	enum bt_hfp_ag_call_dir dir;
+	/** The status of the call */
 	enum bt_hfp_ag_call_status status;
 };
 

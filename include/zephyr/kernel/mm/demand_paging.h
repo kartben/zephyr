@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the kernel demand paging APIs.
+ * @ingroup demand_paging
+ */
+
 #ifndef ZEPHYR_INCLUDE_KERNEL_MM_DEMAND_PAGING_H
 #define ZEPHYR_INCLUDE_KERNEL_MM_DEMAND_PAGING_H
 
@@ -36,6 +42,7 @@ struct k_mem_page_frame;
  */
 struct k_mem_paging_stats_t {
 #if defined(CONFIG_DEMAND_PAGING_STATS) || defined(__DOXYGEN__)
+	/** Page fault statistics */
 	struct {
 		/** Number of page faults */
 		unsigned long			cnt;
@@ -52,6 +59,7 @@ struct k_mem_paging_stats_t {
 #endif /* !CONFIG_DEMAND_PAGING_ALLOW_IRQ */
 	} pagefaults;
 
+	/** Page eviction statistics */
 	struct {
 		/** Number of clean pages selected for eviction */
 		unsigned long			clean;
@@ -67,10 +75,11 @@ struct k_mem_paging_stats_t {
  */
 struct k_mem_paging_histogram_t {
 #if defined(CONFIG_DEMAND_PAGING_TIMING_HISTOGRAM) || defined(__DOXYGEN__)
-	/* Counts for each bin in timing histogram */
+	/** Counts for each bin in timing histogram */
 	unsigned long	counts[CONFIG_DEMAND_PAGING_TIMING_HISTOGRAM_NUM_BINS];
 
-	/* Bounds for the bins in timing histogram,
+	/**
+	 * Bounds for the bins in timing histogram,
 	 * excluding the first and last (hence, NUM_SLOTS - 1).
 	 */
 	unsigned long	bounds[CONFIG_DEMAND_PAGING_TIMING_HISTOGRAM_NUM_BINS];

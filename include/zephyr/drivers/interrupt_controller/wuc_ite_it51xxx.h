@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the ITE IT51XXX wake-up controller (WUC) driver API.
+ * @ingroup misc_interfaces
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_WUC_ITE_IT51XXX_H_
 #define ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_WUC_ITE_IT51XXX_H_
 
@@ -20,6 +26,7 @@
 /** WUC both edge trigger mode */
 #define WUC_TYPE_EDGE_BOTH    (WUC_TYPE_EDGE_RISING | WUC_TYPE_EDGE_FALLING)
 
+/** WUC level trigger mode */
 #define WUC_TYPE_LEVEL_TRIG BIT(2)
 /** WUC level high trigger mode */
 #define WUC_TYPE_LEVEL_HIGH BIT(3)

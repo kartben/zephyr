@@ -1,5 +1,6 @@
 /** @file
  * @brief HTTP request methods
+ * @ingroup http_methods
  */
 
 /*

@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for common console input definitions.
+ * @ingroup console_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_CONSOLE_CONSOLE_H_
 #define ZEPHYR_INCLUDE_DRIVERS_CONSOLE_CONSOLE_H_
 
@@ -11,6 +17,7 @@
 extern "C" {
 #endif
 
+/** @brief Maximum length of a console input line. */
 #define CONSOLE_MAX_LINE_LEN CONFIG_CONSOLE_INPUT_MAX_LINE_LEN
 
 /** @brief Console input representation

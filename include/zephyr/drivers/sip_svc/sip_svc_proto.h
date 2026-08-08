@@ -11,6 +11,7 @@
  * @file
  * @brief Arm SiP services communication protocol
  *        between service provider and client.
+ * @ingroup sip_svc
  *
  * Client to fill in the input data in struct sip_svc_request format
  * when requesting SMC/HVC service via 'send' function.

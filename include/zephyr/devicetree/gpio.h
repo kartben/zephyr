@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief GPIO Devicetree macro public API header file.
+ * @ingroup devicetree-gpio
  */
 
 /*

@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief USB Device Firmware Upgrade (DFU) public header
+ * @ingroup usbd_dfu
  *
  * Header exposes API for registering DFU images.
  */

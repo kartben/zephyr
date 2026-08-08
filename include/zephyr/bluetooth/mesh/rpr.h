@@ -40,27 +40,45 @@ extern "C" {
 /** Maximum extended scan duration in seconds */
 #define BT_MESH_RPR_EXT_SCAN_TIME_MAX 21
 
+/** Remote Provisioning status codes. */
 enum bt_mesh_rpr_status {
+	/** Success. */
 	BT_MESH_RPR_SUCCESS,
+	/** Scanning cannot start. */
 	BT_MESH_RPR_ERR_SCANNING_CANNOT_START,
+	/** Invalid state. */
 	BT_MESH_RPR_ERR_INVALID_STATE,
+	/** Limited resources. */
 	BT_MESH_RPR_ERR_LIMITED_RESOURCES,
+	/** Link cannot open. */
 	BT_MESH_RPR_ERR_LINK_CANNOT_OPEN,
+	/** Link open failed. */
 	BT_MESH_RPR_ERR_LINK_OPEN_FAILED,
+	/** Link closed by device. */
 	BT_MESH_RPR_ERR_LINK_CLOSED_BY_DEVICE,
+	/** Link closed by server. */
 	BT_MESH_RPR_ERR_LINK_CLOSED_BY_SERVER,
+	/** Link closed by client. */
 	BT_MESH_RPR_ERR_LINK_CLOSED_BY_CLIENT,
+	/** Link closed as cannot receive PDU. */
 	BT_MESH_RPR_ERR_LINK_CLOSED_AS_CANNOT_RECEIVE_PDU,
+	/** Link closed as cannot send PDU. */
 	BT_MESH_RPR_ERR_LINK_CLOSED_AS_CANNOT_SEND_PDU,
+	/** Link closed as cannot deliver PDU report. */
 	BT_MESH_RPR_ERR_LINK_CLOSED_AS_CANNOT_DELIVER_PDU_REPORT,
 };
 
+/** Remote Provisioning Server scan state. */
 enum bt_mesh_rpr_scan {
+	/** No scanning is in progress. */
 	BT_MESH_RPR_SCAN_IDLE,
+	/** Scanning for multiple devices. */
 	BT_MESH_RPR_SCAN_MULTI,
+	/** Scanning for a single device. */
 	BT_MESH_RPR_SCAN_SINGLE,
 };
 
+/** Remote Provisioning Node Refresh procedures. */
 enum bt_mesh_rpr_node_refresh {
 	/** Change the Device key. */
 	BT_MESH_RPR_NODE_REFRESH_DEVKEY,
@@ -70,11 +88,17 @@ enum bt_mesh_rpr_node_refresh {
 	BT_MESH_RPR_NODE_REFRESH_COMPOSITION,
 };
 
+/** Remote Provisioning link state. */
 enum bt_mesh_rpr_link_state {
+	/** Link is idle. */
 	BT_MESH_RPR_LINK_IDLE,
+	/** Link is opening. */
 	BT_MESH_RPR_LINK_OPENING,
+	/** Link is active. */
 	BT_MESH_RPR_LINK_ACTIVE,
+	/** Outbound PDU transfer is in progress. */
 	BT_MESH_RPR_LINK_SENDING,
+	/** Link is closing. */
 	BT_MESH_RPR_LINK_CLOSING,
 };
 

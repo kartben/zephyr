@@ -3,43 +3,54 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the TLE9104 MFD driver.
+ * @ingroup mfd_interfaces
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MFD_TLE9104_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MFD_TLE9104_H_
 
 #include <stdbool.h>
 #include <zephyr/device.h>
 
+/** Number of TLE9104 output channels */
 #define TLE9104_GPIO_COUNT 4
 
+/** @brief Diagnostics of an output in the on state */
 enum tle9104_on_state_diagnostics {
-	/* overtemperature */
+	/** overtemperature */
 	TLE9104_ONDIAG_OT = 5,
-	/* overcurrent timeout */
+	/** overcurrent timeout */
 	TLE9104_ONDIAG_OCTIME = 4,
-	/* overtemperature during overcurrent */
+	/** overtemperature during overcurrent */
 	TLE9104_ONDIAG_OCOT = 3,
-	/* short to battery */
+	/** short to battery */
 	TLE9104_ONDIAG_SCB = 2,
-	/* no failure */
+	/** no failure */
 	TLE9104_ONDIAG_NOFAIL = 1,
-	/* no diagnosis done */
+	/** no diagnosis done */
 	TLE9104_ONDIAG_UNKNOWN = 0,
 };
 
+/** @brief Diagnostics of an output in the off state */
 enum tle9104_off_state_diagnostics {
-	/* short to ground */
+	/** short to ground */
 	TLE9104_OFFDIAG_SCG = 3,
-	/* open load */
+	/** open load */
 	TLE9104_OFFDIAG_OL = 2,
-	/* no failure */
+	/** no failure */
 	TLE9104_OFFDIAG_NOFAIL = 1,
-	/* no diagnosis done */
+	/** no diagnosis done */
 	TLE9104_OFFDIAG_UNKNOWN = 0,
 };
 
+/** @brief Diagnostics of a single output channel */
 struct gpio_tle9104_channel_diagnostics {
-	enum tle9104_on_state_diagnostics on: 3;
-	enum tle9104_off_state_diagnostics off: 2;
+	enum tle9104_on_state_diagnostics on: 3;   /**< on state diagnostics */
+	enum tle9104_off_state_diagnostics off: 2; /**< off state diagnostics */
 };
 
 /**

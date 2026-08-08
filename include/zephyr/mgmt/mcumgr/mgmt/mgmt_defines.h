@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the MCUmgr management API opcode, error code and group definitions.
+ * @ingroup mcumgr_mgmt_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_MGMT_MCUMGR_MGMT_MGMT_DEFINES_H_
 #define ZEPHYR_INCLUDE_MGMT_MCUMGR_MGMT_MGMT_DEFINES_H_
 
@@ -39,6 +45,7 @@ enum mcumgr_op_t {
 	/** Write response op-code */
 	MGMT_OP_WRITE_RSP,
 
+	/** Number of operation codes */
 	MGMT_OP_COUNT,
 };
 
@@ -140,6 +147,7 @@ enum mcumgr_err_t {
 	MGMT_ERR_EPERUSER	= 256
 };
 
+/** Size of the SMP header, in bytes */
 #define MGMT_HDR_SIZE		8
 
 /**

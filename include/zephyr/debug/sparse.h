@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for sparse static analysis tool annotations.
+ * @ingroup internal_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_DEBUG_SPARSE_H
 #define ZEPHYR_INCLUDE_DEBUG_SPARSE_H
 

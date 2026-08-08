@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public API for dumping GCC gcov code coverage data.
+ * @ingroup debug
  */
 
 #ifndef ZEPHYR_INCLUDE_DEBUG_GCOV_H_

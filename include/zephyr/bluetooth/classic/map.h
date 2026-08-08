@@ -1,5 +1,6 @@
 /** @file
  *  @brief Message Access Profile header.
+ *  @ingroup bt_map
  */
 
 /*

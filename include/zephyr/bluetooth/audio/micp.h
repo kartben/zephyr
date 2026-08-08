@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Bluetooth Microphone Control Profile (MICP) APIs.
+ * @ingroup bt_micp
  */
 
 /*

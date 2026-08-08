@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the POSIX asynchronous I/O support.
+ */
+
 #ifndef ZEPHYR_INCLUDE_POSIX_AIO_H_
 #define ZEPHYR_INCLUDE_POSIX_AIO_H_
 
@@ -17,14 +22,17 @@
 extern "C" {
 #endif
 
+/**
+ * @brief Asynchronous I/O control block
+ */
 struct aiocb {
-	int aio_fildes;
-	off_t aio_offset;
-	volatile void *aio_buf;
-	size_t aio_nbytes;
-	int aio_reqprio;
-	struct sigevent aio_sigevent;
-	int aio_lio_opcode;
+	int aio_fildes;               /**< File descriptor */
+	off_t aio_offset;             /**< File offset */
+	volatile void *aio_buf;       /**< Location of buffer */
+	size_t aio_nbytes;            /**< Length of transfer */
+	int aio_reqprio;              /**< Request priority offset */
+	struct sigevent aio_sigevent; /**< Signal number and value */
+	int aio_lio_opcode;           /**< Operation to be performed */
 };
 
 #if _POSIX_C_SOURCE >= 200112L

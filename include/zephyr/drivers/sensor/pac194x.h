@@ -7,6 +7,7 @@
  /**
   * @file
   * @brief Header file for extended sensor API of PAC194x/PAC195x sensor
+  * @ingroup sensor_interface_ext_microchip
   */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_SENSOR_PAC194X_H_

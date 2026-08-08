@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief New USB device stack APIs and structures
+ * @ingroup usbd_api
  *
  * This file contains the USB device stack APIs and structures.
  */
@@ -37,13 +38,15 @@ extern "C" {
  * @{
  */
 
-/* 1 if USB device stack is compiled with High-Speed support */
+/** 1 if USB device stack is compiled with High-Speed support */
 #define USBD_SUPPORTS_HIGH_SPEED IS_EQ(CONFIG_USBD_MAX_SPEED, 1)
 
-/* Maximum bulk max packet size the stack supports */
+/** Maximum bulk max packet size the stack supports */
 #define USBD_MAX_BULK_MPS COND_CODE_1(USBD_SUPPORTS_HIGH_SPEED, (512), (64))
 
-/*
+/**
+ * @brief Get the length of the string descriptor (bLength)
+ *
  * The length of the string descriptor (bLength) is calculated from the
  * size of the two octets bLength and bDescriptorType plus the
  * length of the UTF16LE string:
@@ -51,7 +54,12 @@ extern "C" {
  *   bLength = 2 + bString_length
  *   bLength = 2 + sizeof(initializer_string) * 2 - 2
  *   bLength = sizeof(initializer_string) * 2
+ *
  * Use this macro to determine the bLength of the string descriptor.
+ *
+ * @param s String literal used to initialize the string descriptor
+ *
+ * @return bLength value of the string descriptor
  */
 #define USB_STRING_DESCRIPTOR_LENGTH(s)	(sizeof(s) * 2)
 
@@ -158,7 +166,9 @@ struct usbd_vreq_node {
 struct usbd_bos_desc_data {
 	/** Descriptor usage type (not bDescriptorType) */
 	enum usbd_bos_desc_utype utype : 8;
+	/** Usage type specific data */
 	union {
+		/** Pointer to a vendor request node */
 		struct usbd_vreq_node *const vreq_nd;
 	};
 };
@@ -172,8 +182,11 @@ struct usbd_bos_desc_data {
 struct usbd_desc_node {
 	/** slist node struct */
 	sys_dnode_t node;
+	/** Descriptor type specific data */
 	union {
+		/** String descriptor data */
 		struct usbd_str_desc_data str;
+		/** BOS capability descriptor data */
 		struct usbd_bos_desc_data bos;
 	};
 	/** Opaque pointer to a descriptor payload */
@@ -204,6 +217,7 @@ struct usbd_config_node {
 };
 
 /* TODO: Kconfig option USBD_NUMOF_INTERFACES_MAX? */
+/** Maximum number of interfaces in a configuration supported by the device stack */
 #define USBD_NUMOF_INTERFACES_MAX	16U
 
 /**
@@ -213,9 +227,9 @@ struct usbd_config_node {
  * states, as it is better to track them separately.
  */
 enum usbd_ch9_state {
-	USBD_STATE_DEFAULT = 0,
-	USBD_STATE_ADDRESS,
-	USBD_STATE_CONFIGURED,
+	USBD_STATE_DEFAULT = 0,	/**< Default state */
+	USBD_STATE_ADDRESS,	/**< Address state */
+	USBD_STATE_CONFIGURED,	/**< Configured state */
 };
 
 

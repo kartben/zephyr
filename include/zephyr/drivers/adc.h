@@ -802,6 +802,9 @@ struct adc_sequence {
 	bool calibrate;
 };
 
+/**
+ * Header for a buffer of decoded ADC data.
+ */
 struct adc_data_header {
 	/**
 	 * The closest timestamp for when the first frame was generated as attained by
@@ -820,14 +823,20 @@ struct adc_data_header {
  * Data for the adc channel.
  */
 struct adc_data {
+	/** Header describing the set of readings. */
 	struct adc_data_header header;
+	/** Shift value for all the readings. */
 	int8_t shift;
+	/** A single decoded ADC reading. */
 	struct adc_sample_data {
+		/** Timestamp of the reading as a delta from the base timestamp, in nanoseconds. */
 		uint32_t timestamp_delta;
+		/** Sample value. */
 		union {
+			/** Reading value in Q31 format. */
 			q31_t value;
 		};
-	} readings[1];
+	} readings[1]; /**< Readings array; the header's reading_count gives the element count. */
 };
 
 /**
@@ -872,9 +881,12 @@ enum adc_stream_data_opt {
 	ADC_STREAM_DATA_DROP = 2,
 };
 
+/**
+ * Trigger configuration for streaming ADC data.
+ */
 struct adc_stream_trigger {
-	enum adc_trigger_type trigger;
-	enum adc_stream_data_opt opt;
+	enum adc_trigger_type trigger; /**< Trigger the configuration applies to. */
+	enum adc_stream_data_opt opt;  /**< What to do with the data when the trigger fires. */
 };
 
 /**
@@ -889,6 +901,7 @@ struct adc_chan_spec {
 	uint8_t chan_resolution;  /**< A ADC channel resolution */
 };
 
+/** @cond INTERNAL_HIDDEN */
 /*
  * Internal data structure used to store information about the IODevice for async reading and
  * streaming adc data.
@@ -904,6 +917,7 @@ struct adc_read_config {
 	size_t adc_spec_cnt;
 	size_t trigger_cnt;
 };
+/** @endcond */
 
 /**
  * @brief Decodes a single raw data buffer
@@ -1539,6 +1553,8 @@ static inline bool adc_is_ready_dt(const struct adc_dt_spec *spec)
 	COND_CODE_1(DT_HAS_COMPAT_STATUS_OKAY(DT_DRV_COMPAT), (), (static))			\
 	const STRUCT_SECTION_ITERABLE(adc_decoder_api, ADC_DECODER_NAME())
 
+/** @cond INTERNAL_HIDDEN */
+
 #define Z_MAYBE_ADC_DECODER_DECLARE_INTERNAL_IDX(node_id, prop, idx)				\
 	extern const struct adc_decoder_api UTIL_CAT(						\
 		DT_STRING_TOKEN_BY_IDX(node_id, prop, idx), __adc_decoder_api);
@@ -1553,6 +1569,8 @@ DT_FOREACH_STATUS_OKAY_NODE(Z_MAYBE_ADC_DECODER_DECLARE_INTERNAL)
 
 /* The default adc iodev API */
 extern const struct rtio_iodev_api __adc_iodev_api;
+
+/** @endcond */
 
 /**
  * @brief Define an RTIO IO device for ADC streaming.

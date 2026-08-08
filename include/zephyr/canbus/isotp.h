@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public API for ISO-TP (ISO 15765-2:2016)
+ * @ingroup can_isotp
  *
  * ISO-TP is a transport protocol for CAN (Controller Area Network)
  */
@@ -176,8 +177,8 @@ struct isotp_msg_id {
 	 * priority sections and modifies TA section in flow control frames.
 	 */
 	union {
-		uint32_t std_id  : 11;
-		uint32_t ext_id  : 29;
+		uint32_t std_id  : 11; /**< 11-bit standard CAN identifier */
+		uint32_t ext_id  : 29; /**< 29-bit extended CAN identifier */
 	};
 	/** ISO-TP extended address (if used) */
 	uint8_t ext_addr;

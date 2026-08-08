@@ -6,6 +6,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the Bluetooth Basic Imaging Profile handling.
+ * @ingroup bt_bip
+ */
+
 #ifndef ZEPHYR_INCLUDE_BLUETOOTH_CLASSIC_BIP_H_
 #define ZEPHYR_INCLUDE_BLUETOOTH_CLASSIC_BIP_H_
 
@@ -888,11 +894,13 @@ struct bt_bip_server {
 	/** @internal Server state (atomic) */
 	atomic_t _state;
 
+	/** @cond INTERNAL_HIDDEN */
 	/** @internal Associated client (for secondary connections) */
 	union {
 		struct bt_bip_client *_primary_client;
 		struct bt_bip_client *_secondary_client;
 	};
+	/** @endcond */
 
 	/** @internal Pending request callback */
 	void (*_req_cb)(struct bt_bip_server *server, bool final, struct net_buf *buf);
@@ -928,11 +936,13 @@ struct bt_bip_client {
 	/** @internal Client state (atomic) */
 	atomic_t _state;
 
+	/** @cond INTERNAL_HIDDEN */
 	/** @internal Associated server (for secondary connections) */
 	union {
 		struct bt_bip_server *_primary_server;
 		struct bt_bip_server *_secondary_server;
 	};
+	/** @endcond */
 
 	/** @internal Pending response callback */
 	void (*_rsp_cb)(struct bt_bip_client *client, uint8_t rsp_code, struct net_buf *buf);

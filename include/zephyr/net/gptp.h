@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public functions for the Precision Time Protocol Stack.
+ * @ingroup gptp
  *
  */
 
@@ -134,6 +135,7 @@ struct gptp_port_identity {
 
 /** gPTP message flags */
 struct gptp_flags {
+	/** Flags, accessible as individual octets or as one 16-bit value */
 	union {
 		/** Byte access. */
 		uint8_t octets[2];

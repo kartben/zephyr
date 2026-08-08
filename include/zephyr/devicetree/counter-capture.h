@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Counter capture Devicetree macro public API header file.
+ * @ingroup devicetree-counter-captures
  */
 
 /*

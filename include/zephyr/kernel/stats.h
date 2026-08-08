@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the structures used to track internal kernel statistics on thread and CPU usage.
+ * @ingroup internal_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_KERNEL_STATS_H_
 #define ZEPHYR_INCLUDE_KERNEL_STATS_H_
 

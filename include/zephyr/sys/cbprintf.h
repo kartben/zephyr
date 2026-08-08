@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the callback based formatted output (cbprintf) APIs.
+ * @ingroup cbprintf_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_CBPRINTF_H_
 #define ZEPHYR_INCLUDE_SYS_CBPRINTF_H_
 
@@ -79,6 +85,7 @@ union cbprintf_package_hdr {
 	/** Header description */
 	struct cbprintf_package_desc desc;
 
+	/** Raw pointer-sized view of the header */
 	void *raw;
 
 #if defined(CONFIG_CBPRINTF_PACKAGE_HEADER_STORE_CREATION_FLAGS) && !defined(CONFIG_64BIT)

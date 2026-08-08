@@ -9,6 +9,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file automatically including the architecture-specific arch_inlines.h header.
+ * @ingroup arch-interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_ARCH_ARCH_INLINES_H_
 #define ZEPHYR_INCLUDE_ARCH_ARCH_INLINES_H_
 

@@ -1,5 +1,6 @@
 /** @file
  *  @brief Bluetooth RFCOMM handling
+ *  @ingroup bt_rfcomm
  */
 
 /*

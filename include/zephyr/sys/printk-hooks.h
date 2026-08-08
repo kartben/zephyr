@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Header file for hooks allowing to redirect printk() character output.
+ * @ingroup internal_api
  */
 
 #ifndef ZEPHYR_INCLUDE_SYS_PRINTK_HOOKS_H_

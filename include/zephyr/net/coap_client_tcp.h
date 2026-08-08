@@ -10,6 +10,7 @@
 /**
  * @file
  * @brief CoAP TCP client API
+ * @ingroup coap_client_tcp
  *
  * An API for applications to send CoAP requests over reliable transports
  * (TCP/TLS) as specified in RFC 8323.

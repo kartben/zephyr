@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Macro utilities
+ * @ingroup sys-util
  *
  * Macro utilities are the public interface for C/C++ code and device tree
  * related implementation.  In general, C/C++ will include <sys/util.h>

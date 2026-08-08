@@ -1,5 +1,6 @@
 /** @file
  *  @brief Byte order helpers.
+ *  @ingroup sys-util
  */
 
 /*
@@ -66,6 +67,54 @@
 				   (((x) & 0xff) << 56)))
 #endif
 
+/** @def BSWAP_16
+ *  @brief Byte swap a 16-bit integer.
+ *
+ *  @param x 16-bit integer to swap.
+ *
+ *  @return Byte-swapped value.
+ */
+
+/** @def BSWAP_24
+ *  @brief Byte swap a 24-bit integer stored in a 32-bit value.
+ *
+ *  @param x 24-bit integer to swap.
+ *
+ *  @return Byte-swapped value.
+ */
+
+/** @def BSWAP_32
+ *  @brief Byte swap a 32-bit integer.
+ *
+ *  @param x 32-bit integer to swap.
+ *
+ *  @return Byte-swapped value.
+ */
+
+/** @def BSWAP_40
+ *  @brief Byte swap a 40-bit integer stored in a 64-bit value.
+ *
+ *  @param x 40-bit integer to swap.
+ *
+ *  @return Byte-swapped value.
+ */
+
+/** @def BSWAP_48
+ *  @brief Byte swap a 48-bit integer stored in a 64-bit value.
+ *
+ *  @param x 48-bit integer to swap.
+ *
+ *  @return Byte-swapped value.
+ */
+
+/** @def BSWAP_64
+ *  @brief Byte swap a 64-bit integer.
+ *
+ *  @param x 64-bit integer to swap.
+ *
+ *  @return Byte-swapped value.
+ */
+
 /** @def sys_le16_to_cpu
  *  @brief Convert 16-bit integer from little-endian to host endianness.
  *
@@ -114,6 +163,22 @@
  *  @return 32-bit integer in little-endian format.
  */
 
+/** @def sys_le40_to_cpu
+ *  @brief Convert 40-bit integer from little-endian to host endianness.
+ *
+ *  @param val 40-bit integer in little-endian format.
+ *
+ *  @return 40-bit integer in host endianness.
+ */
+
+/** @def sys_cpu_to_le40
+ *  @brief Convert 40-bit integer from host endianness to little-endian.
+ *
+ *  @param val 40-bit integer in host endianness.
+ *
+ *  @return 40-bit integer in little-endian format.
+ */
+
 /** @def sys_le48_to_cpu
  *  @brief Convert 48-bit integer from little-endian to host endianness.
  *
@@ -128,6 +193,22 @@
  *  @param val 48-bit integer in host endianness.
  *
  *  @return 48-bit integer in little-endian format.
+ */
+
+/** @def sys_le64_to_cpu
+ *  @brief Convert 64-bit integer from little-endian to host endianness.
+ *
+ *  @param val 64-bit integer in little-endian format.
+ *
+ *  @return 64-bit integer in host endianness.
+ */
+
+/** @def sys_cpu_to_le64
+ *  @brief Convert 64-bit integer from host endianness to little-endian.
+ *
+ *  @param val 64-bit integer in host endianness.
+ *
+ *  @return 64-bit integer in little-endian format.
  */
 
 /** @def sys_be16_to_cpu
@@ -178,6 +259,22 @@
  *  @return 32-bit integer in big-endian format.
  */
 
+/** @def sys_be40_to_cpu
+ *  @brief Convert 40-bit integer from big-endian to host endianness.
+ *
+ *  @param val 40-bit integer in big-endian format.
+ *
+ *  @return 40-bit integer in host endianness.
+ */
+
+/** @def sys_cpu_to_be40
+ *  @brief Convert 40-bit integer from host endianness to big-endian.
+ *
+ *  @param val 40-bit integer in host endianness.
+ *
+ *  @return 40-bit integer in big-endian format.
+ */
+
 /** @def sys_be48_to_cpu
  *  @brief Convert 48-bit integer from big-endian to host endianness.
  *
@@ -192,6 +289,22 @@
  *  @param val 48-bit integer in host endianness.
  *
  *  @return 48-bit integer in big-endian format.
+ */
+
+/** @def sys_be64_to_cpu
+ *  @brief Convert 64-bit integer from big-endian to host endianness.
+ *
+ *  @param val 64-bit integer in big-endian format.
+ *
+ *  @return 64-bit integer in host endianness.
+ */
+
+/** @def sys_cpu_to_be64
+ *  @brief Convert 64-bit integer from host endianness to big-endian.
+ *
+ *  @param val 64-bit integer in host endianness.
+ *
+ *  @return 64-bit integer in big-endian format.
  */
 
 /** @def sys_uint16_to_array

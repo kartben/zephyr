@@ -3,6 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the NCT38xx MFD driver.
+ * @ingroup mfd_interfaces
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MFD_NCT38XX_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MFD_NCT38XX_H_
 

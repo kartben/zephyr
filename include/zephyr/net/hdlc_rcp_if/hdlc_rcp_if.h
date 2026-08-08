@@ -10,6 +10,7 @@
 /**
  * @file
  * @brief Public APIs of HDLC RCP communication Interface
+ * @ingroup openthread
  *
  * This file provide the HDLC APIs to be used by an RCP host
  */

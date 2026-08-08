@@ -8,6 +8,7 @@
  * @file
  *
  * @brief State Machine Framework header file
+ * @ingroup smf
  */
 
 #ifndef ZEPHYR_INCLUDE_SMF_H_
@@ -61,8 +62,8 @@ extern "C" {
  * @brief enum for the return value of a state_execution function
  */
 enum smf_state_result {
-	SMF_EVENT_HANDLED,
-	SMF_EVENT_PROPAGATE,
+	SMF_EVENT_HANDLED,   /**< The event was handled, do not pass it to the parent state */
+	SMF_EVENT_PROPAGATE, /**< The event was not handled, pass it to the parent state */
 };
 
 /**

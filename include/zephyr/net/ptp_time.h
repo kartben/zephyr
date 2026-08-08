@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public functions for the Precision Time Protocol time specification.
+ * @ingroup ptp_time
  *
  * References are to version 2019 of IEEE 1588, ("PTP")
  * and version 2020 of IEEE 802.1AS ("gPTP").

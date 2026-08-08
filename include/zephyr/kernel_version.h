@@ -6,6 +6,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the kernel version support APIs.
+ * @ingroup version_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_KERNEL_VERSION_H_
 #define ZEPHYR_INCLUDE_KERNEL_VERSION_H_
 
@@ -32,8 +38,32 @@ extern "C" {
  *
  * Part 2: The least significant byte is reserved for future use.
  */
+
+/**
+ * @brief Extract the major release from a kernel version
+ *
+ * @param ver Kernel version, as returned by sys_kernel_version_get()
+ *
+ * @return Major release number, in the range 0 to 255
+ */
 #define SYS_KERNEL_VER_MAJOR(ver) (((ver) >> 24) & 0xFF)
+
+/**
+ * @brief Extract the minor release from a kernel version
+ *
+ * @param ver Kernel version, as returned by sys_kernel_version_get()
+ *
+ * @return Minor release number, in the range 0 to 255
+ */
 #define SYS_KERNEL_VER_MINOR(ver) (((ver) >> 16) & 0xFF)
+
+/**
+ * @brief Extract the patchlevel release from a kernel version
+ *
+ * @param ver Kernel version, as returned by sys_kernel_version_get()
+ *
+ * @return Patchlevel release number, in the range 0 to 255
+ */
 #define SYS_KERNEL_VER_PATCHLEVEL(ver) (((ver) >> 8) & 0xFF)
 
 /* kernel version routines */

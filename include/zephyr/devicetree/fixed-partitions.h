@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Flash Devicetree macro public API header file.
+ * @ingroup devicetree-fixed-partition
  */
 
 /*

@@ -1,5 +1,6 @@
 /** @file
  *  @brief Bluetooth L2CAP BR/EDR handling
+ *  @ingroup bt_l2cap_br
  */
 
 /*

@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Header for Bluetooth Gaming Audio Profile (GMAP).
+ * @ingroup bt_gmap
  *
  * Copyright (c) 2023-2024 Nordic Semiconductor ASA
  *

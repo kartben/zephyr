@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief This file extends interface of ieee802154_radio.h for OpenThread.
+ * @ingroup ieee802154_driver
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_IEEE802154_RADIO_OPENTHREAD_H_
@@ -144,6 +145,7 @@ enum ieee802154_openthread_config_type {
 
 /** OpenThread specific configuration data of ieee802154 driver. */
 struct ieee802154_openthread_config {
+	/** Configuration value, the valid member depends on the configuration type */
 	union {
 		/** Common configuration */
 		struct ieee802154_config common;
@@ -198,6 +200,7 @@ enum ieee802154_openthread_attr {
  *  This type extends @ref ieee802154_attr_value
  */
 struct ieee802154_openthread_attr_value {
+	/** Attribute value, the valid member depends on the queried attribute */
 	union {
 		/** Common attribute value */
 		struct ieee802154_attr_value common;

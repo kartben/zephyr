@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief FT8XX memory map
+ * @ingroup ft8xx_memory
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MISC_FT8XX_FT8XX_MEMORY_H_

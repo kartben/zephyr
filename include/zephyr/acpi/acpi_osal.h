@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file selecting the OS abstraction layer for the ACPICA library.
+ * @ingroup internal_api
+ */
+
 #ifndef ZEPHYR_INCLUDE_ACPI_ACPI_OSAL_H_
 #define ZEPHYR_INCLUDE_ACPI_ACPI_OSAL_H_
 

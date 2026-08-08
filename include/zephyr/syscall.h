@@ -5,6 +5,12 @@
  */
 
 
+/**
+ * @file
+ * @brief Header file for the system call declaration macros and marshalling infrastructure.
+ * @ingroup syscall_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYSCALL_H_
 #define ZEPHYR_INCLUDE_SYSCALL_H_
 

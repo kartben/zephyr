@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the NXP SMARTDMA driver APIs.
+ * @ingroup dma_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_DMA_DMA_MCUX_SMARTDMA_H_
 #define ZEPHYR_INCLUDE_DRIVERS_DMA_DMA_MCUX_SMARTDMA_H_
 

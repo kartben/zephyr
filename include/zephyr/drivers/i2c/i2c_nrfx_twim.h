@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the nRF TWIM I2C driver exclusive bus access API.
+ * @ingroup i2c_interface
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_I2C_NRFX_TWIM_H
 #define ZEPHYR_INCLUDE_DRIVERS_I2C_NRFX_TWIM_H
 

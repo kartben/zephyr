@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the loopback disk device registration APIs.
+ * @ingroup disk_driver_interface_ext
+ */
+
 #ifndef ZEPHYR_INCLUDE_DRIVERS_LOOPBACK_DISK_ACCESS_H_
 #define ZEPHYR_INCLUDE_DRIVERS_LOOPBACK_DISK_ACCESS_H_
 
@@ -14,9 +20,13 @@
  * @brief Context object for an active loopback disk device
  */
 struct loopback_disk_access {
+	/** Disk info structure registered with the disk subsystem */
 	struct disk_info info;
+	/** Path of the backing file */
 	const char *file_path;
+	/** File object of the opened backing file */
 	struct fs_file_t file;
+	/** Size of the disk, in sectors */
 	size_t num_sectors;
 };
 

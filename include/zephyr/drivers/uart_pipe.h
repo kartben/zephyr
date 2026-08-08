@@ -1,5 +1,6 @@
 /** @file
  *  @brief Pipe UART driver header file.
+ *  @ingroup uart_interface
  *
  *  A pipe UART driver that allows applications to handle all aspects of
  *  received protocol data.

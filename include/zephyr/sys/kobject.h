@@ -3,6 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/**
+ * @file
+ * @brief Header file for the kernel object permission and allocation APIs.
+ * @ingroup usermode_apis
+ */
+
 #ifndef ZEPHYR_INCLUDE_SYS_KOBJECT_H
 #define ZEPHYR_INCLUDE_SYS_KOBJECT_H
 
@@ -41,7 +48,7 @@ enum k_objects {
 	/** @endcond
 	 */
 
-	K_OBJ_LAST
+	K_OBJ_LAST /**< Marks the end of the list, not a valid object type */
 };
 /**
  * @defgroup usermode_apis User Mode APIs

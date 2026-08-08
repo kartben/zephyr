@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Clocks Devicetree macro public API header file.
+ * @ingroup devicetree-clocks
  */
 
 /*

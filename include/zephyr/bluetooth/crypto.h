@@ -1,5 +1,6 @@
 /** @file
  *  @brief Bluetooth subsystem crypto APIs.
+ *  @ingroup bt_crypto
  */
 
 /*

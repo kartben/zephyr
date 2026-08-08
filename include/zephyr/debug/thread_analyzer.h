@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the thread analyzer module.
+ * @ingroup thread_analyzer
+ */
+
 #ifndef ZEPHYR_INCLUDE_DEBUG_THREAD_ANALYZER_H_
 #define ZEPHYR_INCLUDE_DEBUG_THREAD_ANALYZER_H_
 
@@ -23,6 +29,7 @@ extern "C" {
  *  @{
  */
 
+/** Thread information provided by the thread analyzer */
 struct thread_analyzer_info {
 	/** The name of the thread or stringified address of the thread handle
 	 * if name is not set.
@@ -56,18 +63,18 @@ struct thread_analyzer_info {
 #endif
 };
 
-/** Stack safety issue codes */
+/* Stack safety issue codes */
 
-/* No stack safety issues detected */
+/** No stack safety issues detected */
 #define THREAD_ANALYZE_STACK_SAFETY_NO_ISSUES 0
 
-/* Unused stack space is below the defined threshold */
+/** Unused stack space is below the defined threshold */
 #define THREAD_ANALYZE_STACK_SAFETY_THRESHOLD_EXCEEDED 1
 
-/* No unused stack space is left */
+/** No unused stack space is left */
 #define THREAD_ANALYZE_STACK_SAFETY_AT_LIMIT 2
 
-/* Stack overflow detected */
+/** Stack overflow detected */
 #define THREAD_ANALYZE_STACK_SAFETY_OVERFLOW 3
 
 /** @brief Thread analyzer stack safety callback function

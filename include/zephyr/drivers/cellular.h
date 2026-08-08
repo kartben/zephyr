@@ -90,8 +90,11 @@ struct cellular_network {
 
 /** Cellular signal type */
 enum cellular_signal_type {
+	/** Received Signal Strength Indicator */
 	CELLULAR_SIGNAL_RSSI,
+	/** Reference Signal Received Power */
 	CELLULAR_SIGNAL_RSRP,
+	/** Reference Signal Received Quality */
 	CELLULAR_SIGNAL_RSRQ,
 };
 
@@ -151,7 +154,7 @@ enum cellular_event {
 	CELLULAR_EVENT_NETWORK_STATUS_CHANGED = BIT(3),
 };
 
-/* Opaque bit-mask large enough for all current & future events */
+/** Opaque bit-mask of @ref cellular_event values */
 typedef uint32_t cellular_event_mask_t;
 
 /** Payload for @ref CELLULAR_EVENT_MODEM_INFO_CHANGED. */

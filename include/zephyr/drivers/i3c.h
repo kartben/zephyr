@@ -42,12 +42,13 @@
 extern "C" {
 #endif
 
-/**
- * @brief Max and min Open Drain timings.
- *        Standard I3C SDR and I2C FM speed
- */
+/** Minimum Open Drain SCL low period, in nanoseconds. */
 #define I3C_OD_TLOW_MIN_NS            200
+
+/** Maximum Open Drain SCL high period, in nanoseconds, on a mixed bus. */
 #define I3C_OD_MIXED_BUS_THIGH_MAX_NS 41
+
+/** Minimum Open Drain SCL high period, in nanoseconds, of the first broadcast address. */
 #define I3C_OD_FIRST_BC_THIGH_MIN_NS  200
 
 /**
@@ -262,7 +263,10 @@ enum i3c_bus_mode {
 	 */
 	I3C_BUS_MODE_MIXED_SLOW,
 
+	/** Maximum valid bus mode value. */
 	I3C_BUS_MODE_MAX = I3C_BUS_MODE_MIXED_SLOW,
+
+	/** Invalid bus mode. */
 	I3C_BUS_MODE_INVALID,
 };
 
@@ -278,7 +282,10 @@ enum i3c_i2c_speed_type {
 	/** I2C FM+ mode */
 	I3C_I2C_SPEED_FMPLUS,
 
+	/** Maximum valid I2C speed value. */
 	I3C_I2C_SPEED_MAX = I3C_I2C_SPEED_FMPLUS,
+
+	/** Invalid I2C speed. */
 	I3C_I2C_SPEED_INVALID,
 };
 
@@ -303,7 +310,10 @@ enum i3c_data_rate {
 	/** High Data Rate - Bulk Transport */
 	I3C_DATA_RATE_HDR_BT,
 
+	/** Maximum valid data rate value. */
 	I3C_DATA_RATE_MAX = I3C_DATA_RATE_HDR_BT,
+
+	/** Invalid data rate. */
 	I3C_DATA_RATE_INVALID,
 };
 
@@ -449,8 +459,13 @@ struct i3c_msg {
  * @brief Type of configuration being passed to configure function.
  */
 enum i3c_config_type {
+	/** Configuration for controller mode, use with struct i3c_config_controller. */
 	I3C_CONFIG_CONTROLLER,
+
+	/** Configuration for target mode, use with struct i3c_config_target. */
 	I3C_CONFIG_TARGET,
+
+	/** Custom configuration, use with struct i3c_config_custom. */
 	I3C_CONFIG_CUSTOM,
 };
 
@@ -464,6 +479,7 @@ struct i3c_config_controller {
 	 */
 	bool is_secondary;
 
+	/** SCL frequencies. */
 	struct {
 		/** SCL frequency (in Hz) for I3C transfers. */
 		uint32_t i3c;
@@ -472,6 +488,7 @@ struct i3c_config_controller {
 		uint32_t i2c;
 	} scl;
 
+	/** Requested minimum SCL Open Drain timings. */
 	struct {
 		/**
 		 * Requested minimum SCL Open Drain High period in Nanoseconds
@@ -509,6 +526,7 @@ struct i3c_config_custom {
 	/** ID of the configuration parameter. */
 	uint32_t id;
 
+	/** Value or pointer of the configuration parameter. */
 	union {
 		/** Value of configuration parameter. */
 		uintptr_t val;
@@ -986,6 +1004,7 @@ struct i3c_device_id {
  * Internal field @c node should not be initialized or modified manually.
  */
 struct i3c_device_desc {
+	/** Private, do not modify */
 	sys_snode_t node;
 
 	/** I3C bus to which this target device is attached */
@@ -1060,6 +1079,7 @@ struct i3c_device_desc {
 	 */
 	uint8_t dcr;
 
+	/** Maximum data speed information (from the GETMXDS CCC). */
 	struct {
 		/** Maximum Read Speed */
 		uint8_t maxrd;
@@ -1071,6 +1091,7 @@ struct i3c_device_desc {
 		uint32_t max_read_turnaround;
 	} data_speed;
 
+	/** Maximum data length information (from the GETMRL and GETMWL CCCs). */
 	struct {
 		/** Maximum Read Length */
 		uint16_t mrl;
@@ -1137,7 +1158,7 @@ struct i3c_device_desc {
 		uint8_t getcap4;
 	} getcaps;
 
-	/* Describes Controller Feature Capabilities */
+	/** Describes Controller Feature Capabilities */
 	struct {
 		/**
 		 * CRCAPS1
@@ -1189,6 +1210,7 @@ struct i3c_device_desc {
  * reference to I3C controller device APIs.
  */
 struct i3c_i2c_device_desc {
+	/** Private, do not modify */
 	sys_snode_t node;
 
 	/** I3C bus to which this I2C device is attached */
@@ -1228,6 +1250,7 @@ struct i3c_dev_attached_list {
 	 */
 	struct i3c_addr_slots addr_slots;
 
+	/** Linked lists of attached I3C and I2C devices. */
 	struct {
 		/**
 		 * Linked list of attached I3C devices.
@@ -2952,8 +2975,14 @@ static inline bool i3c_i2c_device_desc_in_pool(struct i3c_i2c_device_desc *desc)
 
 #if defined(CONFIG_I3C_RTIO) || defined(__DOXYGEN__)
 
+/**
+ * @brief RTIO iodev data for an I3C device, filled by I3C_DT_IODEV_DEFINE().
+ */
 struct i3c_iodev_data {
+	/** I3C bus to which the device is attached */
 	const struct device *bus;
+
+	/** Device ID used to find the device descriptor on the bus */
 	const struct i3c_device_id dev_id;
 };
 
@@ -2988,7 +3017,9 @@ static inline void i3c_iodev_submit(struct rtio_iodev_sqe *iodev_sqe)
 	api->iodev_submit(data->bus, iodev_sqe);
 }
 
+/** @cond INTERNAL_HIDDEN */
 extern const struct rtio_iodev_api i3c_iodev_api;
+/** @endcond */
 
 /**
  * @brief Define an iodev for a given dt node on the bus

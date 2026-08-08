@@ -6,6 +6,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the IrDA Object Exchange Protocol (OBEX) handling.
+ * @ingroup bt_obex
+ */
+
 #ifndef ZEPHYR_INCLUDE_BLUETOOTH_CLASSIC_OBEX_H_
 #define ZEPHYR_INCLUDE_BLUETOOTH_CLASSIC_OBEX_H_
 
@@ -27,6 +33,7 @@
 extern "C" {
 #endif
 
+/** Minimum OBEX MTU in bytes */
 #define BT_OBEX_MIN_MTU 255
 
 /** @brief OBEX Response Code. */
@@ -238,6 +245,12 @@ enum __packed bt_obex_header_id {
  */
 #define BT_OBEX_DATA_LEN_OF_HEADER_BODY(len) ((len) - BT_OBEX_HDR_LEN_OF_HEADER_BODY)
 
+/** @brief Buffer headroom needed for the OBEX packet header
+ *
+ *  The OBEX layer prepends the packet header to the buffer passed to the
+ *  sending functions, so a buffer used to send an OBEX packet needs to
+ *  have at least this many bytes of headroom reserved.
+ */
 #define BT_OBEX_SEND_BUF_RESERVE 7
 
 struct bt_obex;
@@ -481,10 +494,15 @@ enum __packed bt_obex_state {
 	BT_OBEX_DISCONNECTING,
 };
 
+/** @brief OBEX UUID helper type that can store any UUID size. */
 union bt_obex_uuid {
+	/** Generic UUID view. */
 	struct bt_uuid uuid;
+	/** 16-bit UUID view. */
 	struct bt_uuid_16 u16;
+	/** 32-bit UUID view. */
 	struct bt_uuid_32 u32;
+	/** 128-bit UUID view. */
 	struct bt_uuid_128 u128;
 };
 
@@ -1252,9 +1270,9 @@ int bt_obex_add_header_conn_id(struct net_buf *buf, uint32_t conn_id);
  * and bt_obex_add_header_auth_rsp() function.
  */
 struct bt_obex_tlv {
-	uint8_t type;
-	uint8_t data_len;
-	const uint8_t *data;
+	uint8_t type;         /**< Tag of the TLV triplet */
+	uint8_t data_len;     /**< Length of the value in bytes */
+	const uint8_t *data;  /**< Value of the TLV triplet */
 };
 
 /** @brief Add Header: extended application request & response information.

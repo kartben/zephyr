@@ -1,5 +1,6 @@
 /** @file
  *  @brief Heartbeat APIs.
+ *  @ingroup bt_mesh_heartbeat
  */
 
 /*

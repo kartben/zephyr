@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Header file for the shell formatted output helpers.
+ * @ingroup shell_api
  */
 
 #ifndef ZEPHYR_INCLUDE_SHELL_SHELL_FPRINTF_H_

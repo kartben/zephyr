@@ -7,6 +7,7 @@
 /**
  * @file max30009.h
  * @brief Header file for extended sensor API of MAX30009 sensor
+ * @ingroup sensor_interface_ext_adi
  *
  */
 

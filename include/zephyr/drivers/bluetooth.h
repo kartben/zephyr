@@ -38,6 +38,9 @@
 extern "C" {
 #endif
 
+/**
+ * @brief Parameters for bt_hci_setup()
+ */
 struct bt_hci_setup_params {
 	/** The public identity address to give to the controller. This field is used when the
 	 *  driver selects @kconfig{CONFIG_BT_HCI_SET_PUBLIC_ADDR} to indicate that it supports
@@ -46,10 +49,11 @@ struct bt_hci_setup_params {
 	bt_addr_t public_addr;
 };
 
+/** Quirk flags for HCI devices */
 enum {
-	/* The host should never send HCI_Reset */
+	/** The host should never send HCI_Reset */
 	BT_HCI_QUIRK_NO_RESET = BIT(0),
-	/* The controller does not auto-initiate a DLE procedure when the
+	/** The controller does not auto-initiate a DLE procedure when the
 	 * initial connection data length parameters are not equal to the
 	 * default data length parameters. Therefore the host should initiate
 	 * the DLE procedure after connection establishment.
@@ -65,23 +69,73 @@ enum {
 	BT_HCI_QUIRK_NO_AUTO_DLE = BIT(1),
 };
 
+/** @cond INTERNAL_HIDDEN */
 #define BT_DT_HCI_QUIRK_OR(node_id, prop, idx) \
 	UTIL_CAT(BT_HCI_QUIRK_, DT_STRING_UPPER_TOKEN_BY_IDX(node_id, prop, idx))
+/** @endcond */
+
+/**
+ * @brief Get the HCI quirks from a devicetree node
+ *
+ * Expands to the bitwise OR of the quirk flags corresponding to the node's
+ * @c bt-hci-quirks property, or to 0 if the property does not exist.
+ *
+ * @param node_id Devicetree node identifier
+ */
 #define BT_DT_HCI_QUIRKS_GET(node_id) COND_CODE_1(DT_NODE_HAS_PROP(node_id, bt_hci_quirks), \
 						  (DT_FOREACH_PROP_ELEM_SEP(node_id, \
 									    bt_hci_quirks, \
 									    BT_DT_HCI_QUIRK_OR, \
 									    (|))), \
 						  (0))
+
+/**
+ * @brief Get the HCI quirks from a @c DT_DRV_COMPAT instance
+ *
+ * @param inst @c DT_DRV_COMPAT instance number
+ * @see BT_DT_HCI_QUIRKS_GET()
+ */
 #define BT_DT_HCI_QUIRKS_INST_GET(inst) BT_DT_HCI_QUIRKS_GET(DT_DRV_INST(inst))
 
+/**
+ * @brief Get the HCI transport name from a devicetree node
+ *
+ * Expands to the node's @c bt-hci-name string property, or to "HCI" if the
+ * property does not exist.
+ *
+ * @param node_id Devicetree node identifier
+ */
 #define BT_DT_HCI_NAME_GET(node_id) DT_PROP_OR(node_id, bt_hci_name, "HCI")
+
+/**
+ * @brief Get the HCI transport name from a @c DT_DRV_COMPAT instance
+ *
+ * @param inst @c DT_DRV_COMPAT instance number
+ * @see BT_DT_HCI_NAME_GET()
+ */
 #define BT_DT_HCI_NAME_INST_GET(inst) BT_DT_HCI_NAME_GET(DT_DRV_INST(inst))
 
+/** @cond INTERNAL_HIDDEN */
 /* Fallback default when there's no property, same as "virtual" */
 #define BT_PRIV_HCI_BUS_DEFAULT (0)
+/** @endcond */
+
+/**
+ * @brief Get the HCI bus of a devicetree node
+ *
+ * Expands to the index of the node's @c bt-hci-bus enumerated property value,
+ * or to the default (virtual) bus if the property does not exist.
+ *
+ * @param node_id Devicetree node identifier
+ */
 #define BT_DT_HCI_BUS_GET(node_id) DT_ENUM_IDX_OR(node_id, bt_hci_bus, BT_PRIV_HCI_BUS_DEFAULT)
 
+/**
+ * @brief Get the HCI bus from a @c DT_DRV_COMPAT instance
+ *
+ * @param inst @c DT_DRV_COMPAT instance number
+ * @see BT_DT_HCI_BUS_GET()
+ */
 #define BT_DT_HCI_BUS_INST_GET(inst) BT_DT_HCI_BUS_GET(DT_DRV_INST(inst))
 
 /**

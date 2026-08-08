@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the Immediate Alert Service (IAS) APIs.
+ * @ingroup bt_ias
+ */
+
 #ifndef ZEPHYR_INCLUDE_BLUETOOTH_SERVICES_IAS_H_
 #define ZEPHYR_INCLUDE_BLUETOOTH_SERVICES_IAS_H_
 
@@ -24,6 +30,7 @@
 extern "C" {
 #endif
 
+/** Alert levels defined by the Immediate Alert Service. */
 enum bt_ias_alert_lvl {
 	/** No alerting should be done on device */
 	BT_IAS_ALERT_LVL_NO_ALERT,
@@ -73,6 +80,7 @@ int bt_ias_local_alert_stop(void);
 #define BT_IAS_CB_DEFINE(_name)                                                                    \
 	static const STRUCT_SECTION_ITERABLE(bt_ias_cb, _CONCAT(bt_ias_cb_, _name))
 
+/** @brief Immediate Alert Service client callback structure. */
 struct bt_ias_client_cb {
 	/** @brief Callback function for bt_ias_discover.
 	 *

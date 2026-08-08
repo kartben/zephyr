@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief FT8XX common functions
+ * @ingroup ft8xx_common
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MISC_FT8XX_FT8XX_COMMON_H_

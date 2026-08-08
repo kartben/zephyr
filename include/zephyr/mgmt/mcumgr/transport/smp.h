@@ -5,6 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the MCUmgr SMP transport API.
+ * @ingroup mcumgr_transport_smp
+ */
+
 #ifndef ZEPHYR_INCLUDE_MGMT_MCUMGR_TRANSPORT_SMP_H_
 #define ZEPHYR_INCLUDE_MGMT_MCUMGR_TRANSPORT_SMP_H_
 
@@ -129,13 +135,13 @@ struct smp_transport_api_t {
  * @brief SMP transport object for sending SMP responses.
  */
 struct smp_transport {
-	/* Must be the first member. */
+	/** Work item for processing incoming requests. Must be the first member. */
 	struct k_work work;
 
-	/* FIFO containing incoming requests to be processed. */
+	/** FIFO containing incoming requests to be processed. */
 	struct k_fifo fifo;
 
-	/* Function pointers */
+	/** Transport API functions. */
 	struct smp_transport_api_t functions;
 
 #ifdef CONFIG_MCUMGR_TRANSPORT_REASSEMBLY
@@ -171,6 +177,7 @@ enum smp_transport_type {
  * @brief SMP Client transport structure
  */
 struct smp_client_transport_entry {
+	/** Entry list node. */
 	sys_snode_t node;
 	/** Transport structure pointer */
 	struct smp_transport *smpt;

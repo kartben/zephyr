@@ -1,5 +1,6 @@
 /** @file
  * @brief Offloaded network device iface API
+ * @ingroup offloaded_netdev
  *
  * This is not to be included by the application.
  */

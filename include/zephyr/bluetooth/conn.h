@@ -1,5 +1,6 @@
 /** @file
  *  @brief Bluetooth connection handling
+ *  @ingroup bt_conn
  */
 
 /*

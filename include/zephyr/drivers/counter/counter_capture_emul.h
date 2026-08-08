@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Backend API for emulated counter capture
+ * @ingroup counter_emul
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_COUNTER_COUNTER_CAPTURE_EMUL_H_

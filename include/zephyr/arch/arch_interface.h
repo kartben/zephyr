@@ -5,6 +5,12 @@
  */
 
 /**
+ * @file
+ * @brief Header file for architecture-specific API prototypes required by public kernel headers.
+ * @ingroup arch-interface
+ */
+
+/**
  * @defgroup arch-interface Architecture Interface
  * @ingroup internal_api
  * @brief Internal kernel APIs with public scope
@@ -701,6 +707,16 @@ void arch_sched_broadcast_ipi(void);
  */
 void arch_sched_directed_ipi(uint32_t cpu_bitmap);
 
+/**
+ * @brief Initialize the architecture-specific SMP support
+ *
+ * Perform architecture-specific initialization required for SMP operation,
+ * such as installing and enabling the inter-processor interrupts used by
+ * the scheduler. Called once by the kernel early during boot, before the
+ * secondary CPUs are started.
+ *
+ * @retval 0 on success
+ */
 int arch_smp_init(void);
 
 #endif /* CONFIG_SMP */

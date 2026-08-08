@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief BSD Sockets compatible API definitions
+ * @ingroup bsd_sockets
  *
  * An API for applications to use BSD Sockets like API.
  */

@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the POSIX directory entry type definitions.
+ */
+
 #ifndef ZEPHYR_INCLUDE_POSIX_SYS_DIRENT_H_
 #define ZEPHYR_INCLUDE_POSIX_SYS_DIRENT_H_
 
@@ -21,11 +26,13 @@
 extern "C" {
 #endif
 
+/** A type representing a directory stream */
 typedef void DIR;
 
+/** Directory entry structure */
 struct dirent {
-	unsigned int d_ino;
-	char d_name[NAME_MAX + 1];
+	unsigned int d_ino;        /**< File serial number */
+	char d_name[NAME_MAX + 1]; /**< Filename string of entry */
 };
 
 #ifdef __cplusplus

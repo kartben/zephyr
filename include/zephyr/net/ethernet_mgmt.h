@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Ethernet Management interface public header
+ * @ingroup ethernet_mgmt
  */
 
 #ifndef ZEPHYR_INCLUDE_NET_ETHERNET_MGMT_H_

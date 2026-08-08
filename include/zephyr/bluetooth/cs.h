@@ -1,5 +1,6 @@
 /** @file
  *  @brief Bluetooth Channel Sounding handling
+ *  @ingroup bt_le_cs
  */
 
 /*

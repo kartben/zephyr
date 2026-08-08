@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Bluetooth Audio handling
+ * @ingroup bt_audio
  */
 
 /*

@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Misc utilities
+ * @ingroup sys-util
  *
  * Misc utilities usable by the kernel and application code.
  */

@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Header file for logging internal functions.
+ * @ingroup internal_api
  */
 
 #ifndef ZEPHYR_INCLUDE_LOGGING_LOG_INTERNAL_H_

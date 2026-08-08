@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Public APIs for the CDC ACM class driver
+ * @ingroup uart_interface
  */
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_UART_CDC_ACM_H_

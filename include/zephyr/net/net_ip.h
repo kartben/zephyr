@@ -1,5 +1,6 @@
 /** @file
  * @brief IPv6 and IPv4 definitions
+ * @ingroup ip_4_6
  *
  * Generic IPv6 and IPv4 address definitions.
  */
@@ -142,6 +143,7 @@ enum net_sock_type {
 
 /** IPv6 address struct */
 struct net_in6_addr {
+	/** IPv6 address, accessible in different word sizes */
 	union {
 		uint8_t s6_addr[16];   /**< IPv6 address buffer */
 		uint16_t s6_addr16[8]; /**< In big endian */
@@ -154,6 +156,7 @@ struct net_in6_addr {
 
 /** IPv4 address struct */
 struct net_in_addr {
+	/** IPv4 address, accessible in different word sizes */
 	union {
 		uint8_t s4_addr[4];    /**< IPv4 address buffer */
 		uint16_t s4_addr16[2]; /**< In big endian */
@@ -447,9 +450,9 @@ struct net_linger {
 #endif
 #endif
 
-/** @endcond */
-
 #define SOCKADDR_ALIGN (4)
+
+/** @endcond */
 
 /** Generic sockaddr struct. Must be cast to proper type. */
 struct net_sockaddr {
@@ -874,10 +877,11 @@ static inline bool net_ipv6_is_my_addr_raw(const uint8_t *addr)
 {
 	return net_if_ipv6_addr_lookup_raw(addr, NULL) != NULL;
 }
-/** @endcond */
 
+/* Documented in net_if.h */
 extern struct net_if_addr *net_if_ipv6_addr_lookup(const struct net_in6_addr *addr,
 						   struct net_if **iface);
+/** @endcond */
 
 /**
  * @brief Check if IPv6 address is found in one of the network interfaces.
@@ -891,8 +895,11 @@ static inline bool net_ipv6_is_my_addr(struct net_in6_addr *addr)
 	return net_if_ipv6_addr_lookup(addr, NULL) != NULL;
 }
 
+/** @cond INTERNAL_HIDDEN */
+/* Documented in net_if.h */
 extern struct net_if_mcast_addr *net_if_ipv6_maddr_lookup(
 	const struct net_in6_addr *addr, struct net_if **iface);
+/** @endcond */
 
 /**
  * @brief Check if IPv6 multicast address is found in one of the
@@ -1272,8 +1279,12 @@ const struct net_in_addr *net_ipv4_unspecified_address(void);
 const struct net_in_addr *net_ipv4_broadcast_address(void);
 
 struct net_if;
+
+/** @cond INTERNAL_HIDDEN */
+/* Documented in net_if.h */
 extern bool net_if_ipv4_addr_mask_cmp(struct net_if *iface,
 				      const struct net_in_addr *addr);
+/** @endcond */
 
 /**
  * @brief Check if the given address belongs to same subnet that
@@ -1314,10 +1325,11 @@ static inline bool net_ipv4_is_addr_bcast_raw(struct net_if *iface,
 	return false;
 }
 #endif
-/** @endcond */
 
+/* Documented in net_if.h */
 extern bool net_if_ipv4_is_addr_bcast(struct net_if *iface,
 				      const struct net_in_addr *addr);
+/** @endcond */
 
 /**
  * @brief Check if the given IPv4 address is a broadcast address.
@@ -1363,10 +1375,11 @@ static inline bool net_ipv4_is_my_addr_raw(const uint8_t *addr)
 
 	return ret;
 }
-/** @endcond */
 
+/* Documented in net_if.h */
 extern struct net_if_addr *net_if_ipv4_addr_lookup(const struct net_in_addr *addr,
 						   struct net_if **iface);
+/** @endcond */
 
 /**
  * @brief Check if the IPv4 address is assigned to any network interface

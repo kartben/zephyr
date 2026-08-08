@@ -1,5 +1,6 @@
 /** @file
  * @brief Network interface promiscuous mode support
+ * @ingroup promiscuous
  *
  * An API for applications to start listening network traffic.
  * This requires support from network device driver and from application.

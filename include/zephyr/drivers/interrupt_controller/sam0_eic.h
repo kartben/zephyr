@@ -4,28 +4,39 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file
+ * @brief Header file for the Atmel SAM0 EIC (External Interrupt Controller) driver API.
+ * @ingroup misc_interfaces
+ */
+
 
 #ifndef ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_SAM0_EIC_H_
 #define ZEPHYR_INCLUDE_DRIVERS_INTERRUPT_CONTROLLER_SAM0_EIC_H_
 
 #include <zephyr/types.h>
 
-/* callback for EIC interrupt */
+/**
+ * @brief Callback for EIC interrupt
+ *
+ * @param pins Bitmask of pins on the port that triggered the interrupt
+ * @param data User data passed to sam0_eic_acquire()
+ */
 typedef void (*sam0_eic_callback_t)(uint32_t pins, void *data);
 
 /**
  * @brief EIC trigger condition
  */
 enum sam0_eic_trigger {
-	/* Rising edge */
+	/** Rising edge */
 	SAM0_EIC_RISING,
-	/* Falling edge */
+	/** Falling edge */
 	SAM0_EIC_FALLING,
-	/* Both edges */
+	/** Both edges */
 	SAM0_EIC_BOTH,
-	/* High level detection */
+	/** High level detection */
 	SAM0_EIC_HIGH,
-	/* Low level detection */
+	/** Low level detection */
 	SAM0_EIC_LOW,
 };
 

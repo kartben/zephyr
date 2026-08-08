@@ -9,6 +9,7 @@
 /**
  * @file
  * @brief Internal helper macros backing Z_IS_EQ().
+ * @ingroup internal_api
  */
 
 #ifndef ZEPHYR_INCLUDE_SYS_UTIL_INTERNAL_H_

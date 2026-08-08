@@ -7,6 +7,7 @@
 /**
  * @file
  * @brief Toolchain-agnostic linker defs
+ * @ingroup internal_api
  *
  * This header file is used to automatically select the proper set of macro
  * definitions (based on the toolchain) for the linker script.

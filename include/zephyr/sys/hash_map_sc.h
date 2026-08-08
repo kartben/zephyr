@@ -94,6 +94,7 @@ extern "C" {
 	SYS_HASHMAP_SC_DEFINE_STATIC_ADVANCED(_name, _hash_func, _alloc_func, __VA_ARGS__)
 #endif
 
+/** @brief API table for the Separate Chaining Hashmap implementation */
 extern const struct sys_hashmap_api sys_hashmap_sc_api;
 
 #ifdef __cplusplus
