@@ -104,6 +104,7 @@ int adxl355_trigger_set(const struct device *dev, const struct sensor_trigger *t
 	ret = gpio_pin_interrupt_configure_dt(&cfg->interrupt_gpio, GPIO_INT_DISABLE);
 	if (ret) {
 		LOG_ERR("Failed to disable interrupt: %d", ret);
+		(void)adxl355_set_op_mode(dev, ADXL355_MEASURE);
 		return ret;
 	}
 
@@ -127,7 +128,8 @@ int adxl355_trigger_set(const struct device *dev, const struct sensor_trigger *t
 		break;
 	default:
 		LOG_ERR("Unsupported trigger type: %d", trig->type);
-		return -ENOTSUP;
+		ret = -ENOTSUP;
+		goto restore;
 	}
 
 	if (handler == NULL) {
@@ -141,12 +143,13 @@ int adxl355_trigger_set(const struct device *dev, const struct sensor_trigger *t
 	ret = adxl355_reg_update(dev, ADXL355_INT_MAP, int_mask, int_en);
 	if (ret) {
 		LOG_ERR("Failed to update interrupt map: %d", ret);
-		return ret;
+		goto restore;
 	}
 
 	ret = gpio_pin_interrupt_configure_dt(&cfg->interrupt_gpio, GPIO_INT_EDGE_TO_ACTIVE);
 	if (ret) {
 		LOG_ERR("Failed to enable interrupt: %d", ret);
+		(void)adxl355_set_op_mode(dev, ADXL355_MEASURE);
 		return ret;
 	}
 
@@ -157,6 +160,11 @@ int adxl355_trigger_set(const struct device *dev, const struct sensor_trigger *t
 	}
 
 	return 0;
+
+restore:
+	(void)gpio_pin_interrupt_configure_dt(&cfg->interrupt_gpio, GPIO_INT_EDGE_TO_ACTIVE);
+	(void)adxl355_set_op_mode(dev, ADXL355_MEASURE);
+	return ret;
 }
 
 int adxl355_init_interrupt(const struct device *dev)

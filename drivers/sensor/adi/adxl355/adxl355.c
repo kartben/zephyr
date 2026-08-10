@@ -940,7 +940,8 @@ static int adxl355_attr_set(const struct device *dev, enum sensor_channel chan,
 			break;
 		default:
 			LOG_ERR("Channel %u not supported for configuration attribute", chan);
-			return -ENOTSUP;
+			ret = -ENOTSUP;
+			break;
 		}
 		break;
 	case SENSOR_ATTR_OFFSET:
@@ -952,7 +953,8 @@ static int adxl355_attr_set(const struct device *dev, enum sensor_channel chan,
 			break;
 		default:
 			LOG_ERR("Channel %u not supported for offset attribute", chan);
-			return -ENOTSUP;
+			ret = -ENOTSUP;
+			break;
 		}
 		break;
 	case SENSOR_ATTR_ADXL355_FIFO_WATERMARK:
@@ -990,10 +992,12 @@ static int adxl355_attr_set(const struct device *dev, enum sensor_channel chan,
 		break;
 	default:
 		LOG_ERR("Attribute not supported");
-		return -ENOTSUP;
+		ret = -ENOTSUP;
+		break;
 	}
 	if (ret != 0) {
 		LOG_ERR("Failed to set attribute");
+		(void)adxl355_set_op_mode(dev, ADXL355_MEASURE);
 		return ret;
 	}
 	ret = adxl355_set_op_mode(dev, ADXL355_MEASURE);
