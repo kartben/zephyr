@@ -85,14 +85,16 @@ static void input_sbus_report(const struct device *dev, unsigned int sbus_channe
 	struct input_sbus_data *const data = dev->data;
 
 	int channel = data->channel_mapping[sbus_channel];
+	int last;
 
 	/* Not Mapped */
 	if (channel == -1) {
 		return;
 	}
 
-	if (value >= (data->last_reported_value[channel] + REPORT_FILTER) ||
-	    value <= (data->last_reported_value[channel] - REPORT_FILTER)) {
+	last = data->last_reported_value[channel];
+
+	if ((int)value >= last + REPORT_FILTER || (int)value <= last - REPORT_FILTER) {
 		switch (config->channel_info[channel].type) {
 		case INPUT_EV_ABS:
 		case INPUT_EV_MSC:
