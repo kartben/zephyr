@@ -799,6 +799,7 @@ static int icm42x70_attr_set(const struct device *dev, enum sensor_channel chan,
 			     enum sensor_attribute attr, const struct sensor_value *val)
 {
 	struct icm42x70_data *drv_data = dev->data;
+	int res = 0;
 
 	__ASSERT_NO_MSG(val != NULL);
 
@@ -824,7 +825,7 @@ static int icm42x70_attr_set(const struct device *dev, enum sensor_channel chan,
 #endif
 		} else {
 			LOG_ERR("Not supported ATTR");
-			return -EINVAL;
+			res = -EINVAL;
 		}
 	} else if (SENSOR_CHANNEL_IS_ACCEL(chan)) {
 		icm42x70_accel_config(drv_data, attr, val);
@@ -837,12 +838,12 @@ static int icm42x70_attr_set(const struct device *dev, enum sensor_channel chan,
 	} else {
 		LOG_ERR("Unsupported channel");
 		(void)drv_data;
-		return -EINVAL;
+		res = -EINVAL;
 	}
 
 	icm42x70_unlock(dev);
 
-	return 0;
+	return res;
 }
 
 static int icm42x70_attr_get(const struct device *dev, enum sensor_channel chan,

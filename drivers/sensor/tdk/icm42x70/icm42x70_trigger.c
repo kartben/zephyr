@@ -76,6 +76,7 @@ int icm42x70_trigger_set(const struct device *dev, const struct sensor_trigger *
 {
 	struct icm42x70_data *data = dev->data;
 	const struct icm42x70_config *cfg = dev->config;
+	int res = 0;
 
 	if (!handler) {
 		return -EINVAL;
@@ -93,13 +94,13 @@ int icm42x70_trigger_set(const struct device *dev, const struct sensor_trigger *
 		data->data_ready_trigger = trig;
 #endif
 	} else {
-		return -ENOTSUP;
+		res = -ENOTSUP;
 	}
 
 	icm42x70_unlock(dev);
 	gpio_pin_interrupt_configure_dt(&cfg->gpio_int, GPIO_INT_EDGE_TO_ACTIVE);
 
-	return 0;
+	return res;
 }
 
 int icm42x70_trigger_init(const struct device *dev)
