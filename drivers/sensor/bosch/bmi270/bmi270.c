@@ -455,7 +455,7 @@ static int8_t write_config_file(const struct device *dev)
 	LOG_DBG("writing config file %s", cfg->feature->name);
 
 	/* Disable loading of the configuration */
-	for (index = 0; index < cfg->feature->config_file_len;
+	for (index = 0; (index < cfg->feature->config_file_len) && (ret == 0);
 	     index += BMI270_WR_LEN) {
 		/* Store 0 to 3 bits of address in first byte */
 		addr_array[0] = (uint8_t)((index / 2) & 0x0F);
