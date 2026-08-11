@@ -70,11 +70,13 @@ int analog_axis_calibration_get(const struct device *dev,
 {
 	const struct analog_axis_config *cfg = dev->config;
 	struct analog_axis_data *data = dev->data;
-	struct analog_axis_calibration *cal = &cfg->calibration[channel];
+	struct analog_axis_calibration *cal;
 
-	if (channel >= cfg->num_channels) {
+	if (channel < 0 || channel >= cfg->num_channels) {
 		return -EINVAL;
 	}
+
+	cal = &cfg->calibration[channel];
 
 	k_sem_take(&data->cal_lock, K_FOREVER);
 	memcpy(out_cal, cal, sizeof(struct analog_axis_calibration));
@@ -98,11 +100,17 @@ int analog_axis_calibration_set(const struct device *dev,
 {
 	const struct analog_axis_config *cfg = dev->config;
 	struct analog_axis_data *data = dev->data;
-	struct analog_axis_calibration *cal = &cfg->calibration[channel];
+	struct analog_axis_calibration *cal;
 
-	if (channel >= cfg->num_channels) {
+	if (channel < 0 || channel >= cfg->num_channels) {
 		return -EINVAL;
 	}
+
+	if (new_cal->in_max == new_cal->in_min) {
+		return -EINVAL;
+	}
+
+	cal = &cfg->calibration[channel];
 
 	k_sem_take(&data->cal_lock, K_FOREVER);
 	memcpy(cal, new_cal, sizeof(struct analog_axis_calibration));
@@ -213,7 +221,7 @@ static void analog_axis_loop(const struct device *dev)
 		out = clamp(out, axis_cfg->out_min, axis_cfg->out_max);
 
 		if (axis_cfg->invert_output) {
-			out = axis_cfg->out_max - out;
+			out = axis_cfg->out_min + axis_cfg->out_max - out;
 		}
 
 		if (axis_data->last_out != out) {
@@ -281,8 +289,8 @@ static int analog_axis_validate(const struct device *dev)
 			return -EINVAL;
 		}
 
-		if (axis_cfg->adc.channel_id < channel_id) {
-			LOG_ERR("Channel must have increasing id: %d < %d",
+		if (axis_cfg->adc.channel_id <= channel_id) {
+			LOG_ERR("Channel must have increasing id: %d <= %d",
 				axis_cfg->adc.channel_id,
 				channel_id);
 			return -EINVAL;

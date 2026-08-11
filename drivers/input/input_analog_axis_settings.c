@@ -91,12 +91,17 @@ int analog_axis_calibration_save(const struct device *dev)
 
 	analog_axis_calibration_log(dev);
 
+	axes = analog_axis_num_axes(dev);
+	if (axes > MAX_AXES) {
+		LOG_ERR("Too many axes for settings buffer: %d > %d", axes, MAX_AXES);
+		return -E2BIG;
+	}
+
 	ret = snprintk(path, sizeof(path), "aa-cal/%s", dev->name);
-	if (ret < 0) {
+	if (ret < 0 || ret >= (int)sizeof(path)) {
 		return -EINVAL;
 	}
 
-	axes = analog_axis_num_axes(dev);
 	for (int i = 0; i < axes; i++) {
 		analog_axis_calibration_get(dev, i, &cal[i]);
 	}

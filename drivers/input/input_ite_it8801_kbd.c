@@ -84,6 +84,8 @@ static kbd_row_t kbd_it8801_read_row(const struct device *dev)
 	ret = i2c_reg_read_byte_dt(&config->i2c_dev, config->reg_ksidr, &value);
 	if (ret != 0) {
 		LOG_ERR("Failed to read row (ret %d)", ret);
+		/* Avoid reporting phantom keys from an uninitialized value */
+		return 0;
 	}
 
 	/* Bits are active-low, so invert returned levels */
@@ -99,6 +101,7 @@ static void it8801_input_alert_handler(const struct device *dev)
 	ret = i2c_reg_read_byte_dt(&config->i2c_dev, config->reg_ksieer, &ksieer_val);
 	if (ret != 0) {
 		LOG_ERR("Failed to read KBD interrupt status (ret %d)", ret);
+		return;
 	}
 
 	if (ksieer_val != 0) {

@@ -61,6 +61,11 @@ struct input_sbus_config {
 #define CHANNEL_VALUE_ZERO CONFIG_INPUT_SBUS_CHANNEL_VALUE_ZERO
 #define CHANNEL_VALUE_ONE  CONFIG_INPUT_SBUS_CHANNEL_VALUE_ONE
 
+static inline unsigned int sbus_uabs_diff(unsigned int a, unsigned int b)
+{
+	return (a > b) ? (a - b) : (b - a);
+}
+
 struct input_sbus_data {
 	struct k_thread thread;
 	struct k_sem report_lock;
@@ -91,8 +96,7 @@ static void input_sbus_report(const struct device *dev, unsigned int sbus_channe
 		return;
 	}
 
-	if (value >= (data->last_reported_value[channel] + REPORT_FILTER) ||
-	    value <= (data->last_reported_value[channel] - REPORT_FILTER)) {
+	if (sbus_uabs_diff(value, data->last_reported_value[channel]) >= REPORT_FILTER) {
 		switch (config->channel_info[channel].type) {
 		case INPUT_EV_ABS:
 		case INPUT_EV_MSC:

@@ -10,6 +10,7 @@
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/input/input.h>
 #include <zephyr/input/input_touch.h>
+#include <zephyr/kernel.h>
 #include <zephyr/pm/device.h>
 #include <zephyr/sys/byteorder.h>
 
@@ -108,10 +109,16 @@ static int ili2132a_init(const struct device *dev)
 		return ret;
 	}
 
+	/* Hold reset asserted long enough for a reliable hardware reset */
+	k_msleep(10);
+
 	ret = gpio_pin_set_dt(&dev_cfg->rst, 0);
 	if (ret < 0) {
 		return ret;
 	}
+
+	/* Allow the controller to leave reset before enabling interrupts */
+	k_msleep(50);
 
 	gpio_init_callback(&data->gpio_cb, gpio_isr, BIT(dev_cfg->irq.pin));
 	ret = gpio_add_callback(dev_cfg->irq.port, &data->gpio_cb);

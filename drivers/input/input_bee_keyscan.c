@@ -71,11 +71,8 @@ struct bee_keyscan_data {
 	struct input_kbd_matrix_common_data common;
 	struct keyscan_key_index new_keys[BEE_KEYSCAN_FIFO_DEPTH];
 	uint8_t new_press_num;
-
-#ifndef CONFIG_BEE_INPUT_KEYSCAN_AUTOSCAN_MODE
 	struct k_work work;
 	const struct device *dev;
-#endif
 };
 
 static void bee_keyscan_set_pre_guard(KEYSCAN_TypeDef *keyscan, uint8_t cnt)
@@ -182,6 +179,12 @@ static void bee_keyscan_process_matrix(const struct device *dev, uint8_t new_pre
 		matrix_new_state[c] |= BIT(r);
 	}
 
+	if (cfg_common->actual_key_mask != NULL) {
+		for (int c = 0; c < cfg_common->col_size; c++) {
+			matrix_new_state[c] &= cfg_common->actual_key_mask[c];
+		}
+	}
+
 	if (cfg_common->ghostkey_check && input_kbd_matrix_ghosting(dev)) {
 		goto restart_manual;
 	}
@@ -206,7 +209,6 @@ restart_manual:
 #endif
 }
 
-#ifndef CONFIG_BEE_INPUT_KEYSCAN_AUTOSCAN_MODE
 static void bee_keyscan_work_handler(struct k_work *work)
 {
 	struct bee_keyscan_data *data = CONTAINER_OF(work, struct bee_keyscan_data, work);
@@ -218,12 +220,11 @@ static void bee_keyscan_work_handler(struct k_work *work)
 
 	KeyScan_INTMask(keyscan, KEYSCAN_INT_SCAN_END, DISABLE);
 }
-#endif
 
 static void bee_keyscan_isr(const struct device *dev)
 {
 	const struct bee_keyscan_config *config = dev->config;
-	__maybe_unused struct bee_keyscan_data *data = dev->data;
+	struct bee_keyscan_data *data = dev->data;
 	KEYSCAN_TypeDef *keyscan = config->reg;
 	uint8_t new_press_num = KeyScan_GetFifoDataNum(keyscan);
 
@@ -242,18 +243,13 @@ static void bee_keyscan_isr(const struct device *dev)
 		data->new_press_num = new_press_num;
 
 		KeyScan_ClearINTPendingBit(keyscan, KEYSCAN_INT_SCAN_END);
-
-#if CONFIG_BEE_INPUT_KEYSCAN_AUTOSCAN_MODE
-		bee_keyscan_process_matrix(dev, data->new_press_num, data->new_keys);
-		KeyScan_INTMask(keyscan, KEYSCAN_INT_SCAN_END, DISABLE);
-#else
 		k_work_submit(&data->work);
-#endif
 	}
 
 #if CONFIG_BEE_INPUT_KEYSCAN_AUTOSCAN_MODE
 	if (KeyScan_GetFlagState(keyscan, KEYSCAN_INT_FLAG_ALL_RELEASE) == SET) {
-		bee_keyscan_process_matrix(dev, 0, NULL);
+		data->new_press_num = 0;
+		k_work_submit(&data->work);
 		KeyScan_ClearINTPendingBit(keyscan, KEYSCAN_INT_ALL_RELEASE);
 	}
 #endif
@@ -262,7 +258,7 @@ static void bee_keyscan_isr(const struct device *dev)
 static int bee_keyscan_init(const struct device *dev)
 {
 	const struct bee_keyscan_config *config = dev->config;
-	__maybe_unused struct bee_keyscan_data *data = dev->data;
+	struct bee_keyscan_data *data = dev->data;
 	int ret;
 
 	ret = pinctrl_apply_state(config->pcfg, PINCTRL_STATE_DEFAULT);
@@ -279,10 +275,8 @@ static int bee_keyscan_init(const struct device *dev)
 					: KeyScan_Manual_Scan_Mode,
 				KeyScan_Manual_Sel_Key);
 
-#ifndef CONFIG_BEE_INPUT_KEYSCAN_AUTOSCAN_MODE
 	k_work_init(&data->work, bee_keyscan_work_handler);
 	data->dev = dev;
-#endif
 
 	config->irq_config_func();
 

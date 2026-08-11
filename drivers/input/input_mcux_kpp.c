@@ -155,13 +155,16 @@ static int input_kpp_init(const struct device *dev)
 
 	kppConfig.activeRow = 0xFF;
 	kppConfig.activeColumn = 0xFF;
-	kppConfig.interrupt = kKPP_keyDepressInterrupt;
+	/* Initialize without enabling IRQ so work/state can be set up first */
+	kppConfig.interrupt = 0;
+
+	drv_data->dev = dev;
+	k_work_init_delayable(&drv_data->work, kpp_work_handler);
 
 	KPP_Init(config->base, &kppConfig);
 
 	get_source_clk_rate(dev, &drv_data->clock_rate);
 
-	drv_data->dev = dev;
 	stable = KPP_keyPressScanning(config->base, drv_data->read_keys_old, drv_data->clock_rate);
 
 	if (stable != kStatus_Success) {
@@ -169,10 +172,10 @@ static int input_kpp_init(const struct device *dev)
 		return -EIO;
 	}
 
-	k_work_init_delayable(&drv_data->work, kpp_work_handler);
-
 	IRQ_CONNECT(DT_INST_IRQN(0), DT_INST_IRQ(0, priority),
 		kpp_isr, DEVICE_DT_INST_GET(0), 0);
+	irq_enable(DT_INST_IRQN(0));
+	KPP_EnableInterrupts(config->base, kKPP_keyDepressInterrupt);
 	return 0;
 }
 

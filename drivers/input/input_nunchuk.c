@@ -66,8 +66,13 @@ static void nunchuk_poll(struct k_work *work)
 	uint8_t joystick_x, joystick_y;
 	bool button_c, button_z;
 	bool y_changed;
+	int ret;
 
-	nunchuk_read_registers(dev, buffer);
+	ret = nunchuk_read_registers(dev, buffer);
+	if (ret < 0) {
+		LOG_ERR("Failed to read nunchuk registers: %d", ret);
+		goto reschedule;
+	}
 
 	joystick_x = buffer[0];
 	joystick_y = buffer[1];
@@ -121,6 +126,7 @@ static void nunchuk_poll(struct k_work *work)
 		input_report_key(dev, INPUT_BTN_C, !data->button_c, true, K_FOREVER);
 	}
 
+reschedule:
 	if (data->interval_ms.ticks != 0) {
 		k_work_reschedule(dwork, data->interval_ms);
 	}

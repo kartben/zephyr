@@ -151,34 +151,51 @@ int pat912x_set_resolution(const struct device *dev,
 {
 	const struct pat912x_config *cfg = dev->config;
 	int ret;
+	int ret_wp;
+
+	if (res_x_cpi < 0 && res_y_cpi < 0) {
+		return 0;
+	}
+
+	if (res_x_cpi >= 0 && !IN_RANGE(res_x_cpi, 0, RES_MAX)) {
+		LOG_ERR("res_x_cpi out of range: %d", res_x_cpi);
+		return -EINVAL;
+	}
+
+	if (res_y_cpi >= 0 && !IN_RANGE(res_y_cpi, 0, RES_MAX)) {
+		LOG_ERR("res_y_cpi out of range: %d", res_y_cpi);
+		return -EINVAL;
+	}
+
+	/* RES_X/RES_Y are write-protected; unlock before programming */
+	ret = i2c_reg_write_byte_dt(&cfg->i2c, PAT912X_WRITE_PROTECT, WRITE_PROTECT_DISABLE);
+	if (ret < 0) {
+		return ret;
+	}
 
 	if (res_x_cpi >= 0) {
-		if (!IN_RANGE(res_x_cpi, 0, RES_MAX)) {
-			LOG_ERR("res_x_cpi out of range: %d", res_x_cpi);
-			return -EINVAL;
-		}
-
 		ret = i2c_reg_write_byte_dt(&cfg->i2c, PAT912X_RES_X,
 					    res_x_cpi / RES_SCALING_FACTOR);
 		if (ret < 0) {
-			return ret;
+			goto restore_wp;
 		}
 	}
 
 	if (res_y_cpi >= 0) {
-		if (!IN_RANGE(res_y_cpi, 0, RES_MAX)) {
-			LOG_ERR("res_y_cpi out of range: %d", res_y_cpi);
-			return -EINVAL;
-		}
-
 		ret = i2c_reg_write_byte_dt(&cfg->i2c, PAT912X_RES_Y,
 					    res_y_cpi / RES_SCALING_FACTOR);
 		if (ret < 0) {
-			return ret;
+			goto restore_wp;
 		}
 	}
 
-	return 0;
+restore_wp:
+	ret_wp = i2c_reg_write_byte_dt(&cfg->i2c, PAT912X_WRITE_PROTECT, WRITE_PROTECT_ENABLE);
+	if (ret < 0) {
+		return ret;
+	}
+
+	return ret_wp;
 }
 
 static int pat912x_configure(const struct device *dev)

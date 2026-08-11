@@ -57,6 +57,18 @@ struct gt911_config {
 	uint8_t alt_addr;
 };
 
+/** gt911 point reg */
+struct gt911_point_reg {
+	uint8_t id;        /*!< Track ID. */
+	uint8_t low_x;     /*!< Low byte of x coordinate. */
+	uint8_t high_x;    /*!< High byte of x coordinate. */
+	uint8_t low_y;     /*!< Low byte of y coordinate. */
+	uint8_t high_y;    /*!< High byte of x coordinate. */
+	uint8_t low_size;  /*!< Low byte of point size. */
+	uint8_t high_size; /*!< High byte of point size. */
+	uint8_t reserved;  /*!< Reserved. */
+};
+
 /** GT911 data. */
 struct gt911_data {
 	/** Device pointer. */
@@ -65,6 +77,10 @@ struct gt911_data {
 	struct k_work work;
 	/** Actual device I2C address */
 	uint8_t actual_address;
+	/** Previous touch point count for release tracking. */
+	uint8_t prev_points;
+	/** Previous touch point registers for release tracking. */
+	struct gt911_point_reg prev_point_reg[CONFIG_INPUT_GT911_MAX_TOUCH_POINTS];
 #ifdef CONFIG_INPUT_GT911_INTERRUPT
 	/** Interrupt GPIO callback. */
 	struct gpio_callback int_gpio_cb;
@@ -78,18 +94,6 @@ struct gt911_data {
 };
 
 INPUT_TOUCH_STRUCT_CHECK(struct gt911_config);
-
-/** gt911 point reg */
-struct gt911_point_reg {
-	uint8_t id;        /*!< Track ID. */
-	uint8_t low_x;     /*!< Low byte of x coordinate. */
-	uint8_t high_x;    /*!< High byte of x coordinate. */
-	uint8_t low_y;     /*!< Low byte of y coordinate. */
-	uint8_t high_y;    /*!< High byte of x coordinate. */
-	uint8_t low_size;  /*!< Low byte of point size. */
-	uint8_t high_size; /*!< High byte of point size. */
-	uint8_t reserved;  /*!< Reserved. */
-};
 
 /*
  * Device-specific wrappers around i2c_write_dt and i2c_write_read_dt.
@@ -116,6 +120,7 @@ static int gt911_i2c_write_read(const struct device *dev, const void *write_buf,
 
 static int gt911_process(const struct device *dev)
 {
+	struct gt911_data *data = dev->data;
 	int r;
 	uint16_t reg_addr;
 	uint8_t status;
@@ -124,9 +129,7 @@ static int gt911_process(const struct device *dev)
 	uint16_t row;
 	uint16_t col;
 	uint8_t points;
-	static uint8_t prev_points;
 	struct gt911_point_reg point_reg[CONFIG_INPUT_GT911_MAX_TOUCH_POINTS];
-	static struct gt911_point_reg prev_point_reg[CONFIG_INPUT_GT911_MAX_TOUCH_POINTS];
 
 	/* obtain number of touch points */
 	reg_addr = GT911_REG_STATUS;
@@ -143,20 +146,14 @@ static int gt911_process(const struct device *dev)
 	/*
 	 * Note- since we program the max number of touch inputs during init,
 	 * the controller won't report more than the maximum number of touch
-	 * points we are configured to support
+	 * points we are configured to support. Clamp anyway to protect against
+	 * a stuck/noisy bus returning an out-of-range count.
 	 */
-	points = status & GT911_TOUCH_POINTS_MSK;
+	points = MIN(status & GT911_TOUCH_POINTS_MSK, CONFIG_INPUT_GT911_MAX_TOUCH_POINTS);
 
-	/* need to clear the status */
-	static const uint8_t clear_buffer[3] = {(uint8_t)GT911_REG_STATUS,
-						(uint8_t)(GT911_REG_STATUS >> 8), 0};
-
-	r = gt911_i2c_write(dev, clear_buffer, sizeof(clear_buffer));
-	if (r < 0) {
-		return r;
-	}
-
-	/* current points array */
+	/* current points array - read before clearing status so the buffer
+	 * cannot be reused by the controller mid-transfer.
+	 */
 	for (i = 0; i < points; i++) {
 		reg_addr = GT911_REG_POINT_ADDR(i);
 		r = gt911_i2c_write_read(dev, &reg_addr, sizeof(reg_addr), &point_reg[i],
@@ -165,6 +162,15 @@ static int gt911_process(const struct device *dev)
 		if (r < 0) {
 			return r;
 		}
+	}
+
+	/* need to clear the status after reading coordinates */
+	static const uint8_t clear_buffer[3] = {(uint8_t)GT911_REG_STATUS,
+						(uint8_t)(GT911_REG_STATUS >> 8), 0};
+
+	r = gt911_i2c_write(dev, clear_buffer, sizeof(clear_buffer));
+	if (r < 0) {
+		return r;
 	}
 
 	/* touch events */
@@ -181,28 +187,30 @@ static int gt911_process(const struct device *dev)
 	}
 
 	/* release events */
-	for (i = 0; i < prev_points; i++) {
+	for (i = 0; i < data->prev_points; i++) {
 		/* We look for the prev_point in the current points list */
 		for (j = 0; j < points; j++) {
-			if (prev_point_reg[i].id == point_reg[j].id) {
+			if (data->prev_point_reg[i].id == point_reg[j].id) {
 				break;
 			}
 		}
 
 		if (j == points) {
 			if (CONFIG_INPUT_GT911_MAX_TOUCH_POINTS > 1) {
-				input_report_abs(dev, INPUT_ABS_MT_SLOT, prev_point_reg[i].id, true,
-						 K_FOREVER);
+				input_report_abs(dev, INPUT_ABS_MT_SLOT, data->prev_point_reg[i].id,
+						 true, K_FOREVER);
 			}
-			row = ((prev_point_reg[i].high_y) << 8U) | prev_point_reg[i].low_y;
-			col = ((prev_point_reg[i].high_x) << 8U) | prev_point_reg[i].low_x;
+			row = ((data->prev_point_reg[i].high_y) << 8U) |
+			      data->prev_point_reg[i].low_y;
+			col = ((data->prev_point_reg[i].high_x) << 8U) |
+			      data->prev_point_reg[i].low_x;
 			input_touchscreen_report_pos(dev, col, row, K_FOREVER);
 			input_report_key(dev, INPUT_BTN_TOUCH, 0, true, K_FOREVER);
 		}
 	}
 
-	memcpy(prev_point_reg, point_reg, sizeof(point_reg));
-	prev_points = points;
+	memcpy(data->prev_point_reg, point_reg, sizeof(point_reg));
+	data->prev_points = points;
 
 	return 0;
 }

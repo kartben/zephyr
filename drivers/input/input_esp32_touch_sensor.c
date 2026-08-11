@@ -330,7 +330,7 @@ static int esp32_touch_sensor_init(const struct device *dev)
 		const struct esp32_touch_sensor_channel_config *channel_cfg =
 			&dev_cfg->channel_cfg[i];
 
-		if (!(channel_cfg->channel_num > 0 && channel_cfg->channel_num < TOUCH_CHAN_MAX)) {
+		if (!(channel_cfg->channel_num < TOUCH_CHAN_MAX)) {
 			LOG_ERR("Touch %d configuration failed: "
 				"Touch channel error",
 				i);

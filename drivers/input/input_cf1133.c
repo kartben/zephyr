@@ -278,6 +278,12 @@ static int cf1133_init(const struct device *dev)
 	data->dev = dev;
 	k_work_init(&data->work, cf1133_work_handler);
 
+	ret = cf1133_ts_init(dev);
+	if (ret < 0) {
+		LOG_ERR("Init information of sensor failed: %d", ret);
+		return ret;
+	}
+
 #ifdef CONFIG_INPUT_CF1133_INTERRUPT
 
 	LOG_DBG("Int conf for TS gpio: %p", &config->int_gpio);
@@ -313,11 +319,6 @@ static int cf1133_init(const struct device *dev)
 		      K_MSEC(CONFIG_INPUT_CF1133_PERIOD_MS));
 #endif
 
-	ret = cf1133_ts_init(dev);
-	if (ret < 0) {
-		LOG_ERR("Init information of sensor failed: %d", ret);
-		return ret;
-	}
 	return 0;
 }
 

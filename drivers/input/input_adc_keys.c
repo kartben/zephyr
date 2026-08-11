@@ -45,12 +45,11 @@ struct adc_keys_data {
 	struct adc_sequence seq;
 };
 
-static inline int32_t adc_keys_read(const struct device *dev)
+static inline int adc_keys_read(const struct device *dev, int32_t *sample_mv)
 {
 	const struct adc_keys_config *cfg = dev->config;
 	struct adc_keys_data *data = dev->data;
 	uint16_t sample_raw;
-	int32_t sample_mv;
 	int ret;
 
 	data->seq.buffer = &sample_raw;
@@ -59,13 +58,17 @@ static inline int32_t adc_keys_read(const struct device *dev)
 	ret = adc_read(cfg->channel.dev, &data->seq);
 	if (ret) {
 		LOG_ERR("ADC read failed %d", ret);
-		return cfg->keyup_mv;
+		return ret;
 	}
 
-	sample_mv = (int32_t)sample_raw;
-	adc_raw_to_millivolts_dt(&cfg->channel, &sample_mv);
+	*sample_mv = (int32_t)sample_raw;
+	ret = adc_raw_to_millivolts_dt(&cfg->channel, sample_mv);
+	if (ret) {
+		LOG_ERR("ADC raw to mV failed %d", ret);
+		return ret;
+	}
 
-	return sample_mv;
+	return 0;
 }
 
 static inline void adc_keys_process(const struct device *dev)
@@ -76,8 +79,13 @@ static inline void adc_keys_process(const struct device *dev)
 	const struct adc_keys_code_config *code_cfg;
 	struct adc_keys_key_state *key_state;
 	uint16_t key_code;
+	int ret;
 
-	sample_mv = adc_keys_read(dev);
+	ret = adc_keys_read(dev, &sample_mv);
+	if (ret) {
+		/* Leave key state unchanged on acquisition/conversion failure */
+		return;
+	}
 
 	/*
 	 * Find the closest key press threshold to the sample value.
