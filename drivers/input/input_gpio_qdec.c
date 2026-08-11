@@ -105,6 +105,13 @@ static void gpio_qdec_poll_mode(const struct device *dev)
 
 	atomic_set(&data->polling, 1);
 
+	/*
+	 * Arm the idle timeout here as well: the sample timer handler only
+	 * re-arms it when it observes an actual step change, so without this a
+	 * spurious wakeup would leave the driver polling forever.
+	 */
+	k_work_reschedule(&data->idle_work, K_MSEC(cfg->idle_timeout_ms));
+
 	LOG_DBG("polling start");
 }
 
