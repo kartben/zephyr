@@ -113,11 +113,10 @@ static int bmm150_set_odr(const struct device *dev, uint8_t val)
 	return -ENOTSUP;
 }
 
-#if defined(BMM150_SET_ATTR_REP)
+#if defined(BMM150_MAGN_SET_ATTR)
 static int bmm150_read_rep_xy(const struct device *dev)
 {
-	struct bmm150_data *data = dev->driver->data;
-	const struct bmm150_config *config = dev->config;
+	struct bmm150_data *data = dev->data;
 	uint8_t reg_val;
 
 	if (bmm150_reg_read(dev, BMM150_REG_REP_XY, &reg_val, 1) < 0) {
@@ -132,7 +131,6 @@ static int bmm150_read_rep_xy(const struct device *dev)
 static int bmm150_read_rep_z(const struct device *dev)
 {
 	struct bmm150_data *data = dev->data;
-	const struct bmm150_config *config = dev->config;
 	uint8_t reg_val;
 
 	if (bmm150_reg_read(dev, BMM150_REG_REP_Z, &reg_val, 1) < 0) {
@@ -178,7 +176,6 @@ static int bmm150_compute_max_odr(const struct device *dev, int rep_xy,
 static int bmm150_read_odr(const struct device *dev)
 {
 	struct bmm150_data *data = dev->data;
-	const struct bmm150_config *config = dev->config;
 	uint8_t i, odr_val, reg_val;
 
 	if (bmm150_reg_read(dev, BMM150_REG_OPMODE_ODR, &reg_val, 1) < 0) {
@@ -202,7 +199,6 @@ static int bmm150_read_odr(const struct device *dev)
 static int bmm150_write_rep_xy(const struct device *dev, int val)
 {
 	struct bmm150_data *data = dev->data;
-	const struct bmm150_config *config = dev->config;
 
 	if (bmm150_reg_update_byte(dev,
 				   BMM150_REG_REP_XY,
@@ -221,7 +217,6 @@ static int bmm150_write_rep_xy(const struct device *dev, int val)
 static int bmm150_write_rep_z(const struct device *dev, int val)
 {
 	struct bmm150_data *data = dev->data;
-	const struct bmm150_config *config = dev->config;
 
 	if (bmm150_reg_update_byte(dev,
 				   BMM150_REG_REP_Z,
@@ -448,13 +443,15 @@ static inline int bmm150_attr_set_rep(const struct device *dev,
 }
 #endif
 
-#if defined(BMM150_SET_ATTR_REP)
+#if defined(BMM150_MAGN_SET_ATTR)
 static int bmm150_attr_set(const struct device *dev,
 			   enum sensor_channel chan,
 			   enum sensor_attribute attr,
 			   const struct sensor_value *val)
 {
-	struct bmm150_magn_data *data = dev->data;
+#if defined(CONFIG_BMM150_SAMPLING_RATE_RUNTIME)
+	struct bmm150_data *data = dev->data;
+#endif
 
 	switch (attr) {
 #if defined(CONFIG_BMM150_SAMPLING_RATE_RUNTIME)
@@ -478,8 +475,7 @@ static int bmm150_attr_set(const struct device *dev,
 #endif
 #if defined(BMM150_SET_ATTR_REP)
 	case SENSOR_ATTR_OVERSAMPLING:
-		bmm150_attr_set_rep(dev, chan, val);
-		break;
+		return bmm150_attr_set_rep(dev, chan, val);
 #endif
 	default:
 		return -EINVAL;
@@ -490,7 +486,7 @@ static int bmm150_attr_set(const struct device *dev,
 #endif
 
 static DEVICE_API(sensor, bmm150_api_funcs) = {
-#if defined(BMM150_SET_ATTR_REP)
+#if defined(BMM150_MAGN_SET_ATTR)
 	.attr_set = bmm150_attr_set,
 #endif
 	.sample_fetch = bmm150_sample_fetch,
