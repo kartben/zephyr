@@ -119,15 +119,17 @@ static int tma525b_process(const struct device *dev)
 
 	touch_data = (struct tma525b_touch_data *)data->touch_buf;
 
-	/* Validate touch data length */
-	if (touch_data->length <= 0x02 || touch_data->length > TMA525B_TOUCH_DATA_LEN) {
-		LOG_DBG("Invalid touch data length: %d", touch_data->length);
+	/* Validate touch data length (wire format is little-endian) */
+	uint16_t touch_len = sys_le16_to_cpu(touch_data->length);
+
+	if (touch_len <= 0x02 || touch_len > TMA525B_TOUCH_DATA_LEN) {
+		LOG_DBG("Invalid touch data length: %d", touch_len);
 		return -EINVAL;
 	}
 
 	/* Read the full touch data according to length */
 	ret = i2c_burst_read_dt(&config->bus, TMA525B_TOUCH_DATA_SUBADDR, data->touch_buf,
-				touch_data->length);
+				touch_len);
 	if (ret < 0) {
 		LOG_ERR("Failed to read touch data: %d", ret);
 		return ret;
@@ -142,14 +144,25 @@ static int tma525b_process(const struct device *dev)
 	/* Get number of touches */
 	touch_count = MIN(touch_data->num_touch, CONFIG_INPUT_TMA525B_MAX_TOUCH_POINTS);
 
+	/*
+	 * Preserve previous touch state before overwriting it. Release detection
+	 * below must compare against the prior frame, not the current one.
+	 */
+	uint8_t prev_touch_count = data->prev_touch_count;
+	typeof(data->prev_touches) prev_touches;
+
+	memcpy(prev_touches, data->prev_touches, sizeof(prev_touches));
+
+	uint8_t curr_touch_count = 0;
+
 	/* Process current touch points */
 	for (uint8_t i = 0; i < touch_count; i++) {
 		int x, y;
 
 		touch_id = TMA525B_TOUCH_POINT_GET_ID(touch_data->touch[i].event_id);
 		event = TMA525B_TOUCH_POINT_GET_EVENT(touch_data->touch[i].event_id);
-		x = touch_data->touch[i].x;
-		y = touch_data->touch[i].y;
+		x = sys_le16_to_cpu(touch_data->touch[i].x);
+		y = sys_le16_to_cpu(touch_data->touch[i].y);
 
 		/* Update coordinates only if there is valid touch event */
 		if (event == TOUCH_RESERVED) {
@@ -170,19 +183,19 @@ static int tma525b_process(const struct device *dev)
 		}
 
 		/* Store current touch for tracking */
-		data->prev_touches[i].id = touch_id;
-		data->prev_touches[i].x = x;
-		data->prev_touches[i].y = y;
+		data->prev_touches[curr_touch_count].id = touch_id;
+		data->prev_touches[curr_touch_count].x = x;
+		data->prev_touches[curr_touch_count].y = y;
+		curr_touch_count++;
 	}
 
 	/* Handle release events for touches that disappeared */
-	for (uint8_t i = 0; i < data->prev_touch_count; i++) {
+	for (uint8_t i = 0; i < prev_touch_count; i++) {
 		bool touch_found = false;
 
 		/* Look for previous touch in current touch list */
-		for (uint8_t j = 0; j < touch_count; j++) {
-			if (data->prev_touches[i].id ==
-			    TMA525B_TOUCH_POINT_GET_ID(touch_data->touch[j].event_id)) {
+		for (uint8_t j = 0; j < curr_touch_count; j++) {
+			if (prev_touches[i].id == data->prev_touches[j].id) {
 				touch_found = true;
 				break;
 			}
@@ -191,17 +204,17 @@ static int tma525b_process(const struct device *dev)
 		/* If previous touch not found, report release */
 		if (!touch_found) {
 			if (CONFIG_INPUT_TMA525B_MAX_TOUCH_POINTS > 1) {
-				input_report_abs(dev, INPUT_ABS_MT_SLOT, data->prev_touches[i].id,
-						 true, K_FOREVER);
+				input_report_abs(dev, INPUT_ABS_MT_SLOT, prev_touches[i].id, true,
+						 K_FOREVER);
 			}
-			input_touchscreen_report_pos(dev, data->prev_touches[i].x,
-						     data->prev_touches[i].y, K_FOREVER);
+			input_touchscreen_report_pos(dev, prev_touches[i].x, prev_touches[i].y,
+						     K_FOREVER);
 			input_report_key(dev, INPUT_BTN_TOUCH, 0, true, K_FOREVER);
 		}
 	}
 
 	/* Update previous touch count */
-	data->prev_touch_count = touch_count;
+	data->prev_touch_count = curr_touch_count;
 
 	return 0;
 }
@@ -264,19 +277,15 @@ static int tma525b_chip_init(const struct device *dev)
 			if ((read_buf[0] == 0x02U && read_buf[1] == 0x00U) ||
 			    read_buf[1] == 0xFFU) {
 				LOG_INF("TMA525B entered application mode");
-				break;
+				return 0;
 			}
 		}
 		k_sleep(K_MSEC(TMA525B_BOOT_DELAY_MS));
 		retry++;
 	}
 
-	if (retry == 0U) {
-		LOG_ERR("TMA525B failed to enter application mode");
-		return -ENODEV;
-	}
-
-	return 0;
+	LOG_ERR("TMA525B failed to enter application mode");
+	return -ENODEV;
 }
 
 static int tma525b_init(const struct device *dev)

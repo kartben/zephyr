@@ -96,9 +96,9 @@ child-binding:
     group:
       type: int
       required: true
-      description: Group number (0 to 7)
-      min: 0
-      max: 7
+      description: Group number (1 to 8)
+      min: 1
+      max: 8
 
     channel-ios:
       type: int

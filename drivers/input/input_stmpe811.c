@@ -446,8 +446,12 @@ static int stmpe811_verify_chip_id(const struct device *dev)
 {
 	const struct stmpe811_config *config = dev->config;
 	uint8_t buf[2];
+	int ret;
 
-	i2c_burst_read_dt(&config->bus, STMPE811_CHP_ID_LSB_REG, buf, 2);
+	ret = i2c_burst_read_dt(&config->bus, STMPE811_CHP_ID_LSB_REG, buf, 2);
+	if (ret < 0) {
+		return ret;
+	}
 
 	if (sys_get_be16(buf) != CHIP_ID) {
 		return -EINVAL;

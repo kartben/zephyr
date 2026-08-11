@@ -103,6 +103,8 @@ static void input_kbd_matrix_scan(const struct device *dev)
 	for (int col = 0; col < cfg->col_size; col++) {
 		if (cfg->actual_key_mask != NULL &&
 		    cfg->actual_key_mask[col] == 0) {
+			/* Clear stale state so masking a column can generate releases */
+			cfg->matrix_new_state[col] = 0;
 			continue;
 		}
 

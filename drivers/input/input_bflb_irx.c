@@ -49,7 +49,7 @@ LOG_MODULE_REGISTER(input_bflb_irx, CONFIG_INPUT_LOG_LEVEL);
 #endif
 
 #define IRX_US_TO_PW(rate, us) (((rate / USEC_PER_SEC) * us  - 1) & UINT16_MAX)
-#define IRX_PW_TO_US(rate, pw) ((pw * USEC_PER_SEC) / rate)
+#define IRX_PW_TO_US(rate, pw) ((uint32_t)(((uint64_t)(pw) * USEC_PER_SEC) / (rate)))
 
 #define IRX_WAIT_TIMEOUT_MS 1000
 

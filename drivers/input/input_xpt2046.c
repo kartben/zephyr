@@ -119,9 +119,11 @@ static void xpt2046_release_handler(struct k_work *kw)
 	if (gpio_pin_get_dt(&config->int_gpio) == 0) {
 		data->pressed = false;
 		input_report_key(data->dev, INPUT_BTN_TOUCH, 0, true, K_FOREVER);
+		/* Re-arm edge interrupt for the next press */
+		(void)gpio_add_callback(config->int_gpio.port, &data->int_gpio_cb);
 	} else {
-		/* Re-check later */
-		k_work_reschedule(&data->dwork, K_MSEC(10));
+		/* Still pressed: PENIRQ stays active, so resample periodically */
+		k_work_submit(&data->work);
 	}
 }
 
@@ -142,6 +144,13 @@ static void xpt2046_work_handler(struct k_work *kw)
 
 	for (int i = 0; i < rounds; i++) {
 		if (xpt2046_read_and_cumulate(&config->bus, &tx_bufs, &rx_bufs, &meas) != 0) {
+			/* Restore interrupt so a transient SPI error cannot permanently
+			 * disable touch detection.
+			 */
+			ret = gpio_add_callback(config->int_gpio.port, &data->int_gpio_cb);
+			if (ret < 0) {
+				LOG_ERR("Could not set gpio callback");
+			}
 			return;
 		}
 	}
@@ -181,8 +190,16 @@ static void xpt2046_work_handler(struct k_work *kw)
 		data->last_y = y;
 		data->pressed = pressed;
 
-		/* Ensure that we send released event */
-		k_work_reschedule(&data->dwork, K_MSEC(100));
+		/* Keep sampling while pressed; PENIRQ stays asserted so edge IRQs
+		 * will not fire again until release.
+		 */
+		k_work_reschedule(&data->dwork, K_MSEC(10));
+		return;
+	}
+
+	if (data->pressed) {
+		data->pressed = false;
+		input_report_key(data->dev, INPUT_BTN_TOUCH, 0, true, K_FOREVER);
 	}
 
 	ret = gpio_add_callback(config->int_gpio.port, &data->int_gpio_cb);
