@@ -45,7 +45,7 @@
 #define LIS3MDL_FS_IDX                  ((CONFIG_LIS3MDL_FS / 4) - 1)
 
 /* guard against invalid CONFIG_LIS3MDL_FS values */
-#if CONFIG_LIS3MDL_FS % 4 != 0 || LIS3MDL_FS_IDX < -1 || LIS3MDL_FS_IDX >= 4
+#if CONFIG_LIS3MDL_FS % 4 != 0 || LIS3MDL_FS_IDX < 0 || LIS3MDL_FS_IDX >= 4
 #error "Invalid value for CONFIG_LIS3MDL_FS"
 #endif
 
