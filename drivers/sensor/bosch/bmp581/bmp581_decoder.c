@@ -150,6 +150,7 @@ static int bmp581_convert_raw_to_q31_value(const struct bmp581_encoded_header *h
 					   struct sensor_chan_spec *chan_spec,
 					   const struct bmp581_frame *frame,
 					   uint32_t *fit,
+					   uint16_t idx,
 					   struct sensor_q31_data *out)
 {
 	if (((header->events & BMP581_EVENT_FIFO_WM) != 0 && *fit >= header->fifo_count) ||
@@ -166,7 +167,7 @@ static int bmp581_convert_raw_to_q31_value(const struct bmp581_encoded_header *h
 		int32_t raw_temp_signed = sign_extend(raw_temp, 23);
 
 		out->shift = (31 - 16); /* 16 left shifts gives us the value in celsius */
-		out->readings[*fit].value = raw_temp_signed;
+		out->readings[idx].value = raw_temp_signed;
 		break;
 	}
 	case SENSOR_CHAN_PRESS: {
@@ -188,7 +189,7 @@ static int bmp581_convert_raw_to_q31_value(const struct bmp581_encoded_header *h
 		 * converting to kPa. Hence, left-shift 16 spaces.
 		 */
 		out->shift = (31 - 6 - 10);
-		out->readings[*fit].value = (int32_t)raw_press_signed;
+		out->readings[idx].value = (int32_t)raw_press_signed;
 		break;
 	}
 	default:
@@ -227,25 +228,31 @@ static int bmp581_decoder_decode(const uint8_t *buffer,
 		edata->header.timestamp -
 		(uint64_t)(total_frames > 0 ? total_frames - 1 : 0) * period_ns;
 
-	int err;
-	uint32_t fit_0 = *fit;
-	uint32_t frame_idx = 0;
+	int err = 0;
+	uint16_t frame_idx = 0;
 
-	do {
+	while (frame_idx < max_count) {
+		uint32_t src_idx = *fit;
+
 		err = bmp581_convert_raw_to_q31_value(&edata->header, &chan_spec,
-						      edata->frame, fit, out);
-		if (err == 0) {
-			out->readings[frame_idx].timestamp_delta = frame_idx * period_ns;
-			frame_idx++;
+						      edata->frame, fit, frame_idx, out);
+		if (err != 0) {
+			break;
 		}
-	} while (err == 0 && *fit < max_count);
 
-	if (*fit == fit_0 || err != 0) {
+		/* base_timestamp_ns is anchored to the first frame of the buffer, so the
+		 * delta is relative to the source frame, not to this call's first reading.
+		 */
+		out->readings[frame_idx].timestamp_delta = src_idx * period_ns;
+		frame_idx++;
+	}
+
+	if (frame_idx == 0) {
 		return err;
 	}
 
-	out->header.reading_count = *fit;
-	return *fit - fit_0;
+	out->header.reading_count = frame_idx;
+	return frame_idx;
 }
 
 static bool bmp581_decoder_has_trigger(const uint8_t *buffer, enum sensor_trigger_type trigger)
