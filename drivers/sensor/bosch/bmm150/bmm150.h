@@ -130,7 +130,7 @@ extern const struct bmm150_bus_io bmm150_bus_io_i2c;
 #endif
 
 #if defined(CONFIG_BMM150_SAMPLING_RATE_RUNTIME) || \
-	defined(BMM150_MAGN_SET_ATTR_REP)
+	defined(BMM150_SET_ATTR_REP)
 	#define BMM150_MAGN_SET_ATTR
 #endif
 
