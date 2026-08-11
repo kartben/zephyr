@@ -108,7 +108,7 @@ extern const struct bmm150_bus_io bmm150_bus_io_i2c;
 #define BMM150_REGVAL_TO_REPXY(regval)     (((regval) * 2) + 1)
 #define BMM150_REGVAL_TO_REPZ(regval)      ((regval) + 1)
 #define BMM150_REPXY_TO_REGVAL(rep)        (((rep) - 1) / 2)
-#define BMM150_REPZ_TO_REGVAL(rep)         BMM150_REPXY_TO_REGVAL(rep)
+#define BMM150_REPZ_TO_REGVAL(rep)         ((rep) - 1)
 
 #define BMM150_REG_INT                     0x4D
 
