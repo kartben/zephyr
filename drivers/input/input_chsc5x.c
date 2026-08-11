@@ -275,7 +275,7 @@ static int chsc5x_init(const struct device *dev)
 };
 
 #define CHSC5X_DEFINE(index)                                                                       \
-	PM_DEVICE_DT_INST_DEFINE(inst, chsc5x_pm_action);                                          \
+	PM_DEVICE_DT_INST_DEFINE(index, chsc5x_pm_action);                                         \
 	static const struct chsc5x_config chsc5x_config_##index = {                                \
 		.common = INPUT_TOUCH_DT_INST_COMMON_CONFIG_INIT(index),                           \
 		.i2c = I2C_DT_SPEC_INST_GET(index),                                                \
@@ -283,7 +283,7 @@ static int chsc5x_init(const struct device *dev)
 		.reset_gpio = GPIO_DT_SPEC_INST_GET_OR(index, reset_gpios, {0}),                   \
 	};                                                                                         \
 	static struct chsc5x_data chsc5x_data_##index;                                             \
-	DEVICE_DT_INST_DEFINE(index, chsc5x_init, PM_DEVICE_DT_INST_GET(inst),                     \
+	DEVICE_DT_INST_DEFINE(index, chsc5x_init, PM_DEVICE_DT_INST_GET(index),                    \
 			      &chsc5x_data_##index, &chsc5x_config_##index, POST_KERNEL,           \
 			      CONFIG_INPUT_INIT_PRIORITY, NULL);
 
