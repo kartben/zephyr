@@ -620,20 +620,24 @@ static int bmp581_init(const struct device *dev)
 		return ret;
 	}
 
-	if (drv->chip_id != 0) {
-		ret = power_up_check(dev);
-		if (ret == BMP5_OK) {
-			ret = validate_chip_id(drv);
-			if (ret != BMP5_OK) {
-				LOG_ERR("Unexpected chip id (%x). Expected (%x or %x)",
-					drv->chip_id, BMP5_CHIP_ID_PRIM, BMP5_CHIP_ID_SEC);
-			}
-		}
-	} else {
+	if (drv->chip_id == 0) {
 		/* that means something went wrong */
 		LOG_ERR("Unexpected chip id (%x). Expected (%x or %x)", drv->chip_id,
 			BMP5_CHIP_ID_PRIM, BMP5_CHIP_ID_SEC);
 		return -EINVAL;
+	}
+
+	ret = power_up_check(dev);
+	if (ret != BMP5_OK) {
+		LOG_ERR("NVM power-up check failed: %d", ret);
+		return ret;
+	}
+
+	ret = validate_chip_id(drv);
+	if (ret != BMP5_OK) {
+		LOG_ERR("Unexpected chip id (%x). Expected (%x or %x)", drv->chip_id,
+			BMP5_CHIP_ID_PRIM, BMP5_CHIP_ID_SEC);
+		return ret;
 	}
 
 	ret = set_iir_filters_config(&drv->osr_odr_press_config, dev);
