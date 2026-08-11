@@ -240,7 +240,7 @@ static int bmp581_decoder_decode(const uint8_t *buffer,
 		}
 	} while (err == 0 && *fit < max_count);
 
-	if (*fit == fit_0 || err != 0) {
+	if (*fit == fit_0) {
 		return err;
 	}
 
