@@ -67,27 +67,30 @@ static int bosch_bmi323_bus_write_words(const struct device *dev, uint8_t offset
 	return bus->api->write_words(bus->context, offset, words, words_count);
 }
 
-static int32_t bosch_bmi323_lsb_from_fullscale(int64_t fullscale)
-{
-	return (fullscale * 1000) / INT16_MAX;
-}
-
 /* lsb is the value of one 1/1000000 LSB */
 static int64_t bosch_bmi323_value_to_micro(int16_t value, int32_t lsb)
 {
 	return ((int64_t)value) * lsb;
 }
 
-/* lsb is the value of one 1/1000000 LSB */
-static void bosch_bmi323_value_to_sensor_value(struct sensor_value *result, int16_t value,
-						   int32_t lsb)
+/* fullscale is the accelerometer range in milli-G */
+static void bosch_bmi323_acc_to_sensor_value(struct sensor_value *result, int16_t value,
+					     int64_t fullscale)
 {
-	int64_t ll_value = (int64_t)value * lsb;
-	int32_t int_part = (int32_t)(ll_value / 1000000);
-	int32_t frac_part = (int32_t)(ll_value % 1000000);
+	int64_t micro = ((int64_t)value * fullscale * SENSOR_G) / (1000LL * INT16_MAX);
 
-	result->val1 = int_part;
-	result->val2 = frac_part;
+	result->val1 = (int32_t)(micro / 1000000);
+	result->val2 = (int32_t)(micro % 1000000);
+}
+
+/* fullscale is the gyroscope range in milli-dps */
+static void bosch_bmi323_gyro_to_sensor_value(struct sensor_value *result, int16_t value,
+					      int64_t fullscale)
+{
+	int64_t micro = ((int64_t)value * fullscale * SENSOR_PI) / (180000LL * INT16_MAX);
+
+	result->val1 = (int32_t)(micro / 1000000);
+	result->val2 = (int32_t)(micro % 1000000);
 }
 
 static bool bosch_bmi323_value_is_valid(int16_t value)
@@ -891,7 +894,6 @@ static int bosch_bmi323_driver_api_fetch_acc_samples(const struct device *dev)
 	struct sensor_value full_scale;
 	int16_t *buf = (int16_t *)data->acc_samples;
 	int ret;
-	int32_t lsb;
 
 	if (data->acc_full_scale == 0) {
 		ret = bosch_bmi323_driver_api_get_acc_full_scale(dev, &full_scale);
@@ -915,12 +917,10 @@ static int bosch_bmi323_driver_api_fetch_acc_samples(const struct device *dev)
 		return -ENODATA;
 	}
 
-	lsb = bosch_bmi323_lsb_from_fullscale(data->acc_full_scale);
-
 	/* Reuse vector backwards to avoid overwriting the raw values */
-	bosch_bmi323_value_to_sensor_value(&data->acc_samples[2], buf[2], lsb);
-	bosch_bmi323_value_to_sensor_value(&data->acc_samples[1], buf[1], lsb);
-	bosch_bmi323_value_to_sensor_value(&data->acc_samples[0], buf[0], lsb);
+	bosch_bmi323_acc_to_sensor_value(&data->acc_samples[2], buf[2], data->acc_full_scale);
+	bosch_bmi323_acc_to_sensor_value(&data->acc_samples[1], buf[1], data->acc_full_scale);
+	bosch_bmi323_acc_to_sensor_value(&data->acc_samples[0], buf[0], data->acc_full_scale);
 
 	data->acc_samples_valid = true;
 
@@ -933,7 +933,6 @@ static int bosch_bmi323_driver_api_fetch_gyro_samples(const struct device *dev)
 	struct sensor_value full_scale;
 	int16_t *buf = (int16_t *)data->gyro_samples;
 	int ret;
-	int32_t lsb;
 
 	if (data->gyro_full_scale == 0) {
 		ret = bosch_bmi323_driver_api_get_gyro_full_scale(dev, &full_scale);
@@ -958,12 +957,10 @@ static int bosch_bmi323_driver_api_fetch_gyro_samples(const struct device *dev)
 		return -ENODATA;
 	}
 
-	lsb = bosch_bmi323_lsb_from_fullscale(data->gyro_full_scale);
-
 	/* Reuse vector backwards to avoid overwriting the raw values */
-	bosch_bmi323_value_to_sensor_value(&data->gyro_samples[2], buf[2], lsb);
-	bosch_bmi323_value_to_sensor_value(&data->gyro_samples[1], buf[1], lsb);
-	bosch_bmi323_value_to_sensor_value(&data->gyro_samples[0], buf[0], lsb);
+	bosch_bmi323_gyro_to_sensor_value(&data->gyro_samples[2], buf[2], data->gyro_full_scale);
+	bosch_bmi323_gyro_to_sensor_value(&data->gyro_samples[1], buf[1], data->gyro_full_scale);
+	bosch_bmi323_gyro_to_sensor_value(&data->gyro_samples[0], buf[0], data->gyro_full_scale);
 
 	data->gyro_samples_valid = true;
 
@@ -1202,7 +1199,7 @@ static int bosch_bmi323_pm_resume(const struct device *dev)
 
 	/* Soft reset restores chip to power-on defaults: 8g accel, 2000dps gyro */
 	data->acc_full_scale = 8000;  /* ±8G in milli-G */
-	data->gyro_full_scale = 2000000;  /* ±2000dps in micro-dps */
+	data->gyro_full_scale = 2000000;  /* ±2000dps in milli-dps */
 
 	ret = bosch_bmi323_bus_init(dev);
 
@@ -1295,7 +1292,7 @@ static int bosch_bmi323_init(const struct device *dev)
 
 	/* Initialize to chip power-on defaults: 8g accel, 2000dps gyro */
 	data->acc_full_scale = 8000;  /* ±8G in milli-G */
-	data->gyro_full_scale = 2000000;  /* ±2000dps in micro-dps */
+	data->gyro_full_scale = 2000000;  /* ±2000dps in milli-dps */
 
 #ifdef CONFIG_SENSOR_ASYNC_API
 	/* Init MPSC ring buffer indices */
