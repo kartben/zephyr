@@ -166,19 +166,18 @@ static void process_data(struct k_work *work)
 	}
 
 	/** Buttons */
-	int changed_buttons = data->curr_buttons_data ^ data->prev_buttons_data;
-	int button_position = 0;
+	const int num_buttons = data->touch_instance.p_cfg->num_buttons;
+	uint64_t changed_buttons = data->curr_buttons_data ^ data->prev_buttons_data;
 
-	while (changed_buttons != 0) {
-		if (changed_buttons & BIT(0)) {
+	for (int button_position = 0; button_position < num_buttons && changed_buttons != 0;
+	     button_position++, changed_buttons >>= 1) {
+		if (changed_buttons & BIT64(0)) {
 			int index = config->button_position_index[button_position];
 
 			input_report_key(dev, config->buttons[index].event,
-					 data->curr_buttons_data & BIT(button_position), true,
-					 K_FOREVER);
+					 (data->curr_buttons_data & BIT64(button_position)) != 0,
+					 true, K_FOREVER);
 		}
-		button_position++;
-		changed_buttons = changed_buttons >> 1;
 	}
 	data->prev_buttons_data = data->curr_buttons_data;
 
