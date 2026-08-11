@@ -7,6 +7,7 @@
 #include <zephyr/rtio/rtio.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/drivers/sensor_clock.h>
 
 #include "adis1647x.h"
 
@@ -68,6 +69,7 @@ static void adis1647x_submit_one_shot(const struct device *dev, struct rtio_iode
 	uint32_t min_buffer_len = sizeof(struct adis1647x_sample_data);
 	uint8_t *buffer;
 	uint32_t buffer_len;
+	uint64_t cycles;
 	int rc;
 
 	rc = rtio_sqe_rx_buf(iodev_sqe, min_buffer_len, min_buffer_len, &buffer, &buffer_len);
@@ -77,10 +79,18 @@ static void adis1647x_submit_one_shot(const struct device *dev, struct rtio_iode
 		return;
 	}
 
+	rc = sensor_clock_get_cycles(&cycles);
+	if (rc != 0) {
+		LOG_ERR("Failed to get sensor clock cycles");
+		rtio_iodev_sqe_err(iodev_sqe, rc);
+		return;
+	}
+
 	struct adis1647x_sample_data *sample = (struct adis1647x_sample_data *)buffer;
 
 	sample->accel_scale_num = data->accel_scale_num;
 	sample->gyro_scale_num = data->gyro_scale_num;
+	sample->timestamp = sensor_clock_cycles_to_ns(cycles);
 
 	struct rtio_sqe *xfer_sqe = rtio_sqe_acquire(data->rtio_ctx);
 	struct rtio_sqe *complete_sqe = rtio_sqe_acquire(data->rtio_ctx);
