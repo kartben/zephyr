@@ -83,23 +83,30 @@ static int set_power_mode(enum bmp5_powermode powermode, const struct device *de
 		return ret;
 	}
 
+	/*
+	 * BMP5_REG_ODR_CONFIG also holds the output data rate, so it has to be read back before
+	 * any of the writes below to avoid clobbering the configured ODR.
+	 */
+	ret = bmp581_reg_read_rtio(&conf->bus, BMP5_REG_ODR_CONFIG, &odr, 1);
+	if (ret != BMP5_OK) {
+		LOG_DBG("Failed to read odr config to set power mode!");
+		return ret;
+	}
+
 	if (current_powermode != BMP5_POWERMODE_STANDBY) {
 		/*
 		 * Device should be set to standby before transitioning to forced mode or normal
 		 * mode or continuous mode.
 		 */
-		ret = bmp581_reg_read_rtio(&conf->bus, BMP5_REG_ODR_CONFIG, &odr, 1);
-		if (ret == BMP5_OK) {
-			/* Setting deep_dis = 1(BMP5_DEEP_DISABLED) disables the deep standby mode
-			 */
-			odr = BMP5_SET_BITSLICE(odr, BMP5_DEEP_DISABLE, BMP5_DEEP_DISABLED);
-			odr = BMP5_SET_BITS_POS_0(odr, BMP5_POWERMODE, BMP5_POWERMODE_STANDBY);
-			ret = bmp581_reg_write_rtio(&conf->bus, BMP5_REG_ODR_CONFIG, &odr, 1);
 
-			if (ret != BMP5_OK) {
-				LOG_DBG("Failed to set power mode to BMP5_POWERMODE_STANDBY.");
-				return ret;
-			}
+		/* Setting deep_dis = 1(BMP5_DEEP_DISABLED) disables the deep standby mode */
+		odr = BMP5_SET_BITSLICE(odr, BMP5_DEEP_DISABLE, BMP5_DEEP_DISABLED);
+		odr = BMP5_SET_BITS_POS_0(odr, BMP5_POWERMODE, BMP5_POWERMODE_STANDBY);
+		ret = bmp581_reg_write_rtio(&conf->bus, BMP5_REG_ODR_CONFIG, &odr, 1);
+
+		if (ret != BMP5_OK) {
+			LOG_DBG("Failed to set power mode to BMP5_POWERMODE_STANDBY.");
+			return ret;
 		}
 	}
 
