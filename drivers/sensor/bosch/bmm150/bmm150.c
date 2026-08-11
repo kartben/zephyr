@@ -543,10 +543,31 @@ static int bmm150_full_por(const struct device *dev)
 	return 0;
 }
 
+static int bmm150_set_config(const struct device *dev)
+{
+	struct bmm150_preset preset = bmm150_presets_table[BMM150_DEFAULT_PRESET];
+
+	if (bmm150_set_odr(dev, preset.odr) < 0) {
+		LOG_ERR("failed to set ODR to %d", preset.odr);
+		return -EIO;
+	}
+
+	if (bmm150_reg_write(dev, BMM150_REG_REP_XY, BMM150_REPXY_TO_REGVAL(preset.rep_xy)) < 0) {
+		LOG_ERR("failed to set REP XY to %d", preset.rep_xy);
+		return -EIO;
+	}
+
+	if (bmm150_reg_write(dev, BMM150_REG_REP_Z, BMM150_REPZ_TO_REGVAL(preset.rep_z)) < 0) {
+		LOG_ERR("failed to set REP Z to %d", preset.rep_z);
+		return -EIO;
+	}
+
+	return 0;
+}
+
 static int bmm150_init_chip(const struct device *dev)
 {
 	struct bmm150_data *data = dev->data;
-	struct bmm150_preset preset;
 	uint8_t chip_id;
 	int ret = -EIO;
 
@@ -566,23 +587,7 @@ static int bmm150_init_chip(const struct device *dev)
 	}
 
 	/* Setting preset mode */
-	preset = bmm150_presets_table[BMM150_DEFAULT_PRESET];
-	if (bmm150_set_odr(dev, preset.odr) < 0) {
-		LOG_ERR("failed to set ODR to %d",
-			    preset.odr);
-		goto err_poweroff;
-	}
-
-	if (bmm150_reg_write(dev, BMM150_REG_REP_XY, BMM150_REPXY_TO_REGVAL(preset.rep_xy))
-	    < 0) {
-		LOG_ERR("failed to set REP XY to %d",
-			    preset.rep_xy);
-		goto err_poweroff;
-	}
-
-	if (bmm150_reg_write(dev, BMM150_REG_REP_Z, BMM150_REPZ_TO_REGVAL(preset.rep_z)) < 0) {
-		LOG_ERR("failed to set REP Z to %d",
-			    preset.rep_z);
+	if (bmm150_set_config(dev) < 0) {
 		goto err_poweroff;
 	}
 
@@ -639,12 +644,29 @@ static int pm_action(const struct device *dev, enum pm_device_action action)
 
 		k_sleep(BMM150_START_UP_TIME);
 
+		/* Suspend mode only retains the power control register */
+		ret |= bmm150_set_config(dev);
+		if (ret != 0) {
+			LOG_ERR("failed to re-apply configuration: %d", ret);
+			break;
+		}
+
 		ret |= bmm150_opmode(dev, BMM150_MODE_NORMAL);
 		if (ret != 0) {
 			LOG_ERR("failed to enter normal mode: %d", ret);
 		}
 #ifdef CONFIG_BMM150_TRIGGER
 		else {
+			struct bmm150_data *data = dev->data;
+
+			ret = bmm150_reg_update_byte(dev, BMM150_REG_INT_DRDY, BMM150_MASK_DRDY_EN,
+						     (data->drdy_handler != NULL)
+							     << BMM150_SHIFT_DRDY_EN);
+			if (ret != 0) {
+				LOG_ERR("failed to restore DRDY interrupt: %d", ret);
+				break;
+			}
+
 			ret = bmm150_trigger_mode_power_ctrl(dev, true);
 		}
 #endif
