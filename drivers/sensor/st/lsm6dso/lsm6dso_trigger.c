@@ -19,6 +19,11 @@
 
 LOG_MODULE_DECLARE(LSM6DSO, CONFIG_SENSOR_LOG_LEVEL);
 
+/* Data-ready flags are only cleared when the handler reads the output data
+ * registers, which a handler is not required to do, so bound the drain loop.
+ */
+#define LSM6DSO_MAX_DRAIN_ITERATIONS 4
+
 #if defined(CONFIG_LSM6DSO_ENABLE_TEMP)
 /**
  * lsm6dso_enable_t_int - TEMP enable selected int pin to generate interrupt
@@ -419,6 +424,7 @@ static void lsm6dso_handle_interrupt(const struct device *dev)
 	stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
 	lsm6dso_all_sources_t sources;
 	bool pending_status = false;
+	unsigned int drain = 0;
 
 	while (1) {
 
@@ -456,6 +462,10 @@ static void lsm6dso_handle_interrupt(const struct device *dev)
 			break;
 		}
 
+		if (++drain >= LSM6DSO_MAX_DRAIN_ITERATIONS) {
+			break;
+		}
+
 	}
 
 #if defined(CONFIG_LSM6DSO_TILT)
@@ -486,6 +496,7 @@ static void lsm6dso_handle_interrupt(const struct device *dev)
 	const struct lsm6dso_config *cfg = dev->config;
 	stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
 	lsm6dso_status_reg_t status;
+	unsigned int drain = 0;
 
 	while (1) {
 		if (lsm6dso_status_reg_get(ctx, &status) < 0) {
@@ -493,9 +504,10 @@ static void lsm6dso_handle_interrupt(const struct device *dev)
 			return;
 		}
 
-		if ((status.xlda == 0) && (status.gda == 0)
+		if (!(status.xlda && (lsm6dso->handler_drdy_acc != NULL)) &&
+		    !(status.gda && (lsm6dso->handler_drdy_gyr != NULL))
 #if defined(CONFIG_LSM6DSO_ENABLE_TEMP)
-		    && (status.tda == 0)
+		    && !(status.tda && (lsm6dso->handler_drdy_temp != NULL))
 #endif
 		) {
 			break;
@@ -514,6 +526,10 @@ static void lsm6dso_handle_interrupt(const struct device *dev)
 			lsm6dso->handler_drdy_temp(dev, lsm6dso->trig_drdy_temp);
 		}
 #endif
+
+		if (++drain >= LSM6DSO_MAX_DRAIN_ITERATIONS) {
+			break;
+		}
 	}
 
 	gpio_pin_interrupt_configure_dt(&cfg->gpio_drdy, GPIO_INT_EDGE_TO_ACTIVE);
