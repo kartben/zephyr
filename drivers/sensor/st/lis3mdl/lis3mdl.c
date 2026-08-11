@@ -52,8 +52,9 @@ static int lis3mdl_channel_get(const struct device *dev,
 				lis3mdl_magn_gain[LIS3MDL_FS_IDX]);
 	} else if (chan == SENSOR_CHAN_DIE_TEMP) {
 		/* temp_val = 25 + sample / 8 */
-		lis3mdl_convert(val, drv_data->temp_sample, 8);
-		val->val1 += 25;
+		int64_t micro_c = 25000000LL + ((int64_t)drv_data->temp_sample * 1000000LL) / 8;
+
+		(void)sensor_value_from_micro(val, micro_c);
 	} else {
 		return -ENOTSUP;
 	}
