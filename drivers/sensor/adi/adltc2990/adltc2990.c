@@ -379,6 +379,11 @@ static int fetch_pin_current_value(const struct device *dev,
 {
 	int ret;
 
+	if (mode != VOLTAGE_DIFFERENTIAL) {
+		LOG_DBG("Pin is not configured to measure current");
+		return 0;
+	}
+
 	ret = fetch_pin_differential_voltage_value(dev, mode, pin);
 	if (ret) {
 		return ret;
