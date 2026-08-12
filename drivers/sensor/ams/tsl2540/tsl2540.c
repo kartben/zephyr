@@ -139,6 +139,9 @@ static int tsl2540_attr_set_gain(const struct device *dev, enum sensor_gain_tsl2
 		value2 = TSL2540_CFG2_G128;
 		again = TSL2540_AGAIN_S128;
 		break;
+	default:
+		LOG_ERR("Invalid gain mode %d", (int)gain);
+		return -EINVAL;
 	}
 
 	if (i2c_reg_write_byte_dt(&cfg->i2c_spec, TSL2540_REG_CFG_1, value) < 0) {
@@ -219,7 +222,7 @@ static int tsl2540_attr_set(const struct device *dev, enum sensor_channel chan,
 #endif /* CONFIG_TSL2540_TRIGGER */
 
 	if (attr == SENSOR_ATTR_GAIN) {
-		tsl2540_attr_set_gain(dev, (enum sensor_gain_tsl2540)val->val1);
+		ret = tsl2540_attr_set_gain(dev, (enum sensor_gain_tsl2540)val->val1);
 		goto exit;
 	}
 
