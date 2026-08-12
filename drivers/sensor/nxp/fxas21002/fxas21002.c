@@ -39,10 +39,10 @@ int fxas21002_read_spi(const struct device *dev,
 {
 	const struct fxas21002_config *cfg = dev->config;
 
-	/* Reads must clock out a dummy byte after sending the address. */
-	uint8_t reg_buf[3] = { DIR_READ(reg), 0, 0 };
+	/* A read is a single command byte; data follows immediately. */
+	uint8_t reg_buf[1] = { DIR_READ(reg) };
 	const struct spi_buf buf[2] = {
-		{ .buf = reg_buf, .len = 3 },
+		{ .buf = reg_buf, .len = 1 },
 		{ .buf = data, .len = length }
 	};
 	const struct spi_buf_set tx = { .buffers = buf, .count = 1 };
@@ -55,7 +55,6 @@ int fxas21002_byte_read_spi(const struct device *dev,
 			    uint8_t reg,
 			    uint8_t *byte)
 {
-	/* Reads must clock out a dummy byte after sending the address. */
 	uint8_t data[] = { DIR_READ(reg), 0};
 	int ret;
 
