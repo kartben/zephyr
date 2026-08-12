@@ -107,9 +107,10 @@ static inline void lps2xdf_press_convert(const struct device *dev,
 	val->val1 = press_tmp / divider;
 
 	/* For the decimal part use (3125 / 128) as a factor instead of
-	 * (1000000 / 40960) to avoid int32 overflow
+	 * (1000000 / 40960), and (6250 / 128) instead of (1000000 / 20480),
+	 * to avoid int32 overflow
 	 */
-	val->val2 = (press_tmp % divider) * 3125 / 128;
+	val->val2 = (press_tmp % divider) * (cfg->fs == 0 ? 3125 : 6250) / 128;
 }
 
 
