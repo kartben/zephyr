@@ -123,14 +123,14 @@ int ccs811_baseline_fetch(const struct device *dev)
 	const uint8_t cmd = CCS811_REG_BASELINE;
 	const struct ccs811_config *config = dev->config;
 	int rc;
-	uint16_t baseline;
+	uint16_t baseline = 0;
 
 	set_wake(dev, true);
 
 	rc = i2c_write_read_dt(&config->i2c, &cmd, sizeof(cmd), (uint8_t *)&baseline,
 			       sizeof(baseline));
 	set_wake(dev, false);
-	if (rc <= 0) {
+	if (rc == 0) {
 		rc = baseline;
 	}
 
