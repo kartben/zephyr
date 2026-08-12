@@ -704,6 +704,9 @@ static DEVICE_API(sensor, apds9960_driver_api) = {
 #define APDS9960_CONFIG_GESTURE(inst)
 #endif
 
+/* The devicetree enums spell 2-bit register fields in hex, i.e. 0x00/0x01/0x10/0x11 */
+#define APDS9960_DT_2BIT(v) ((((v) & 0x10) >> 3) | ((v) & 0x01))
+
 #define APDS9960_INIT(i)                                                                           \
 	static struct apds9960_data apds9960_data_##i;                                             \
 	static const struct apds9960_config apds9960_config_##i = {                                \
@@ -711,7 +714,8 @@ static DEVICE_API(sensor, apds9960_driver_api) = {
 		APDS9960_CONFIG_INTERRUPT(i)                                                       \
 		.pgain = DT_INST_PROP(i, pgain) << 1,                                              \
 		.again = DT_INST_PROP(i, again),                                                   \
-		.ppcount = DT_INST_PROP(i, ppulse_length) | (DT_INST_PROP(i, ppulse_count) - 1),   \
+		.ppcount = (APDS9960_DT_2BIT(DT_INST_PROP(i, ppulse_length)) << 6) |               \
+			   ((DT_INST_PROP(i, ppulse_count) - 1) & 0x3F),                           \
 		.pled_boost = DT_INST_PROP(i, pled_boost) << 4,                                    \
 		APDS9960_CONFIG_GESTURE(i)                                                         \
 	};                                                                                         \
