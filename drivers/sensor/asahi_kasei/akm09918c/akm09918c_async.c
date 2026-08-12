@@ -65,6 +65,8 @@ void akm09918c_submit(const struct device *dev, struct rtio_iodev_sqe *iodev_sqe
 		rtio_sqe_prep_callback_no_cqe(cb_sqe, akm09918_after_start_cb, (void *)iodev_sqe,
 					      NULL);
 		rtio_submit(data->rtio_ctx, 0);
+		/* The device returns to power-down mode after a single measurement */
+		data->mode = AKM09918C_CNTL2_PWR_DOWN;
 	} else {
 		rtio_sqe_drop_all(data->rtio_ctx);
 		rtio_iodev_sqe_err(iodev_sqe, -ENOMEM);
