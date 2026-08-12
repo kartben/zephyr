@@ -286,6 +286,14 @@ static int iis2dh_init(const struct device *dev)
 
 #if (CONFIG_IIS2DH_RANGE != 0)
 	iis2dh_set_fs_raw(dev, CONFIG_IIS2DH_RANGE);
+#else
+	/* Full scale is selected at runtime: seed the cached gain with the
+	 * device power-on default full scale (+/-2g) so that conversions are
+	 * correct before any SENSOR_ATTR_FULL_SCALE is set.
+	 */
+	if (iis2dh_set_fs_raw(dev, IIS2DH_2g) < 0) {
+		return -EIO;
+	}
 #endif
 
 #ifdef CONFIG_IIS2DH_TRIGGER
