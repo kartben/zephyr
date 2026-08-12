@@ -118,10 +118,10 @@ static void lis2mdl_channel_get_temp(const struct device *dev,
 				       struct sensor_value *val)
 {
 	struct lis2mdl_data *drv_data = dev->data;
-
 	/* formula is temp = 25 + (temp / 8) C */
-	val->val1 = 25  + drv_data->temp_sample / 8;
-	val->val2 = (drv_data->temp_sample % 8) * 1000000 / 8;
+	int64_t micro_c = 25000000LL + ((int64_t)drv_data->temp_sample * 1000000LL) / 8;
+
+	(void)sensor_value_from_micro(val, micro_c);
 }
 
 static int lis2mdl_channel_get(const struct device *dev,
