@@ -72,14 +72,17 @@ static void vcnl4040_handle_int(const struct device *dev)
 
 	data->int_type = int_source >> 8;
 
-	if (data->int_type == VCNL4040_PROXIMITY_AWAY ||
-	    data->int_type == VCNL4040_PROXIMITY_CLOSE) {
+	if (data->int_type & (VCNL4040_PROXIMITY_AWAY | VCNL4040_PROXIMITY_CLOSE)) {
 		vcnl4040_handle_proxy_int(dev);
-	} else if (data->int_type == VCNL4040_AMBIENT_HIGH ||
-		   data->int_type == VCNL4040_AMBIENT_LOW) {
+	}
+
+	if (data->int_type & (VCNL4040_AMBIENT_HIGH | VCNL4040_AMBIENT_LOW)) {
 		vcnl4040_handle_als_int(dev);
-	} else {
-		LOG_ERR("Unknown interrupt source %d", data->int_type);
+	}
+
+	if ((data->int_type & (VCNL4040_PROXIMITY_AWAY | VCNL4040_PROXIMITY_CLOSE |
+			       VCNL4040_AMBIENT_HIGH | VCNL4040_AMBIENT_LOW)) == 0) {
+		LOG_ERR("Unknown interrupt source 0x%02x", data->int_type);
 	}
 
 	gpio_pin_interrupt_configure_dt(&config->int_gpio, GPIO_INT_EDGE_TO_ACTIVE);

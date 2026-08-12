@@ -87,11 +87,12 @@ enum proximity_type {
 	VCNL4040_PROXIMITY_INT_CLOSE_AWAY,
 };
 
+/* Flags of the INT_FLAG register high byte */
 enum interrupt_type {
-	VCNL4040_PROXIMITY_AWAY = 1,
-	VCNL4040_PROXIMITY_CLOSE,
-	VCNL4040_AMBIENT_HIGH = 4,
-	VCNL4040_AMBIENT_LOW,
+	VCNL4040_PROXIMITY_AWAY = BIT(0),
+	VCNL4040_PROXIMITY_CLOSE = BIT(1),
+	VCNL4040_AMBIENT_HIGH = BIT(4),
+	VCNL4040_AMBIENT_LOW = BIT(5),
 };
 
 struct vcnl4040_config {
@@ -111,7 +112,7 @@ struct vcnl4040_data {
 #ifdef CONFIG_VCNL4040_TRIGGER
 	const struct device *dev;
 	struct gpio_callback gpio_cb;
-	enum interrupt_type int_type;
+	uint8_t int_type;
 	sensor_trigger_handler_t proxy_handler;
 	const struct sensor_trigger *proxy_trigger;
 	sensor_trigger_handler_t als_handler;
