@@ -859,7 +859,7 @@ static void rx_rspi_spti_isr(const struct device *dev)
  * The receive interrupt will handle any remaining data.
  */
 #if RSPI_CFG_HIGH_SPEED_READ == 0
-		if ((data->preg->SPCR.BIT.MSTR) || (rspi_tcb->txcount > 0)) {
+		if ((data->preg->SPCR.BIT.MSTR) || (rspi_tcb->tx_count > 0)) {
 			data->preg->SPCR.BIT.SPTIE = 0;
 		}
 #endif
