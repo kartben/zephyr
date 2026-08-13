@@ -919,7 +919,7 @@ static void spi_stm32_iodev_msg_start(const struct device *dev, struct spi_confi
 	data->ctx.owner = config;
 
 #ifdef CONFIG_SPI_SLAVE
-	ctx->recv_frames = 0;
+	data->ctx.recv_frames = 0;
 #endif /* CONFIG_SPI_SLAVE */
 
 	if (!spi_stm32_transfer_ongoing(data)) {
