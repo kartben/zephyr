@@ -48,14 +48,16 @@ class SPDX3Serializer:
     # Name of the SBOMDocument that hosts the Build profile (build targets).
     _BUILD_DOCUMENT = "build"
 
-    # build_buildType is mandatory and must be a URI; used when the SBOMBuild
-    # does not provide an absolute URI of its own.
-    _DEFAULT_BUILD_TYPE = "urn:spdx.dev:zephyr-cmake"
-
     # Issuing authority recorded on Zephyr-defined "<scheme>:<value>" external
     # identifiers of type 'other'. A bare domain: it identifies the project,
     # not a resolvable location.
     _ZEPHYR_ID_AUTHORITY = "zephyrproject.org"
+
+    # build_buildType is mandatory and must be a URI. Zephyr-defined build
+    # types live under this URN prefix; the CMake one is the default when the
+    # SBOMBuild does not provide an absolute URI of its own.
+    _BUILD_TYPE_PREFIX = "urn:zephyrproject.org:build-type"
+    _DEFAULT_BUILD_TYPE = f"{_BUILD_TYPE_PREFIX}:cmake"
 
     def __init__(self, sbom_graph: SBOMGraph, spdx_version=SPDX_VERSION_3_0):
         self.sbom_data = sbom_graph
@@ -264,7 +266,7 @@ class SPDX3Serializer:
 
         ext_ids = []
         if path:
-            ext_ids.append((spdx.ExternalIdentifierType.other, path))
+            ext_ids.append((spdx.ExternalIdentifierType.other, f"tool-path:{path}"))
         if version:
             pkg = os.path.basename(path) if path else key
             ext_ids.append((spdx.ExternalIdentifierType.packageUrl, f"pkg:generic/{pkg}@{version}"))
@@ -272,6 +274,9 @@ class SPDX3Serializer:
 
         for id_type, id_value in ext_ids:
             if not id_value:
+                continue
+            if id_type == spdx.ExternalIdentifierType.other:
+                tool.externalIdentifier.append(self._other_identifier(id_value))
                 continue
             ext_id = spdx.ExternalIdentifier()
             ext_id.externalIdentifierType = id_type
@@ -367,8 +372,8 @@ class SPDX3Serializer:
                 self.build.build_buildId = sbom_build.id
             if sbom_build.build_type:
                 build_type = sbom_build.build_type
-                if not build_type.startswith("http"):
-                    build_type = f"https://zephyrproject.org/build-types/{build_type}"
+                if not build_type.startswith(("http", "urn:")):
+                    build_type = f"{self._BUILD_TYPE_PREFIX}:{build_type}"
                 self.build.build_buildType = build_type
             if sbom_build.started_at:
                 self.build.build_buildStartTime = sbom_build.started_at
