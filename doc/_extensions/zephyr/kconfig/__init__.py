@@ -377,6 +377,13 @@ def kconfig_build_resources(app: Sphinx) -> None:
     if not app.config.kconfig_generate_db:
         return
 
+    # Non-HTML builders only need the database when documents get (re-)read, as it is
+    # otherwise solely used by the HTML search page. When the build environment (e.g. shared
+    # doctrees from a previous HTML build, as used by the zephyr.llms_txt markdown sub-build)
+    # already contains the database, skip the expensive regeneration.
+    if app.builder.format != "html" and hasattr(app.env, "kconfig_db"):
+        return
+
     with progress_message("Building Kconfig database..."):
         kconfig, sysbuild_kconfig, module_paths = kconfig_load(app)
         db = list()
