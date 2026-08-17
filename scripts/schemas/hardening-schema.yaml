@@ -1,0 +1,105 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (c) 2026 The Zephyr Project Contributors
+
+# JSON Schema for the Zephyr security hardening database
+# (scripts/kconfig/hardening.yaml).
+# When possible, constraints and validation rules should be modeled directly
+# in this file. Consistency with the actual Kconfig tree (symbol existence,
+# value/type coherence) is enforced by check_compliance.py (KconfigCheck).
+#
+# A rule recommends either an exact value:
+#
+# rules:
+#   BOOT_BANNER:
+#     value: n
+#     rationale: |
+#       The boot banner discloses the exact Zephyr version to anyone with
+#       console access.
+#     references: [CWE-200]
+#
+# or an integer constraint (int/hex symbols only):
+#
+# rules:
+#   STACK_POINTER_RANDOM:
+#     min: 100
+#     rationale: |
+#       0 disables stack pointer randomization entirely.
+#
+# Rules belong to one or more profiles (default: [base]). Profiles may extend
+# a single parent profile.
+#
+# Note: a per-rule 'severity' field (possibly CVSS-style scoring) is a
+# deliberate future addition; 'additionalProperties: false' means introducing
+# it will be an explicit schema change.
+
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://zephyrproject.org/schemas/zephyr/hardening"
+title: Zephyr hardening database schema
+description: Schema for validating the Zephyr security hardening database
+type: object
+additionalProperties: false
+required:
+  - profiles
+  - rules
+properties:
+  profiles:
+    type: object
+    minProperties: 1
+    additionalProperties: false
+    patternProperties:
+      "^[a-z][a-z0-9-]*$":
+        type: object
+        additionalProperties: false
+        required:
+          - description
+        properties:
+          description:
+            type: string
+          extends:
+            type: string
+  rules:
+    type: object
+    additionalProperties: false
+    patternProperties:
+      # Kconfig symbol name, without the CONFIG_ prefix. Keying the mapping
+      # by symbol makes duplicate entries structurally impossible.
+      "^[A-Z0-9_]+$":
+        type: object
+        additionalProperties: false
+        required:
+          - rationale
+        # Exactly one of: an exact 'value', or a 'min'/'max' constraint.
+        oneOf:
+          - required: [value]
+            not:
+              anyOf:
+                - required: [min]
+                - required: [max]
+          - anyOf:
+              - required: [min]
+              - required: [max]
+            not:
+              required: [value]
+        properties:
+          value:
+            oneOf:
+              - type: string
+              - type: integer
+              - type: boolean
+          min:
+            type: integer
+          max:
+            type: integer
+          rationale:
+            type: string
+          references:
+            type: array
+            minItems: 1
+            items:
+              type: string
+          profiles:
+            type: array
+            minItems: 1
+            items:
+              type: string
