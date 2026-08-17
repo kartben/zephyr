@@ -220,6 +220,11 @@ if(NOT DEFINED KCONFIG_TARGETS)
   set(KCONFIG_TARGETS menuconfig guiconfig hardenconfig traceconfig)
 endif()
 
+# Hardening profile and additional database files for the hardenconfig
+# target, see scripts/kconfig/hardenconfig.py.
+zephyr_get(HARDENCONFIG_PROFILE SYSBUILD LOCAL)
+zephyr_get(HARDENCONFIG_EXTRA_SOURCES SYSBUILD LOCAL)
+
 # Create the Kconfig targets. Skipped if KCONFIG_VARIANT_SOURCE is set, because
 # a variant image shall not be configured independently of its source image.
 if(NOT KCONFIG_VARIANT_SOURCE)
@@ -232,6 +237,8 @@ if(NOT KCONFIG_VARIANT_SOURCE)
       ${CMAKE_COMMAND} -E env
       ZEPHYR_BASE=${ZEPHYR_BASE}
       ${COMMON_KCONFIG_ENV_SETTINGS}
+      HARDENCONFIG_PROFILE=${HARDENCONFIG_PROFILE}
+      "HARDENCONFIG_EXTRA_SOURCES=${HARDENCONFIG_EXTRA_SOURCES}"
       SHIELD_AS_LIST='${SHIELD_AS_LIST_ESCAPED}'
       DTS_POST_CPP=${DTS_POST_CPP}
       DTS_ROOT_BINDINGS=${DTS_ROOT_BINDINGS}

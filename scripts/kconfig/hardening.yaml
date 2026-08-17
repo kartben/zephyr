@@ -1,0 +1,509 @@
+# Copyright (c) 2026 The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Zephyr security hardening database, maintained by the Zephyr Security
+# Working Group.
+#
+# Consumed by 'west build -t hardenconfig' (scripts/kconfig/hardenconfig.py)
+# and validated against scripts/schemas/hardening-schema.yaml. CI
+# (check_compliance.py, KconfigCheck) additionally verifies that every rule
+# references an existing Kconfig symbol and that recommended values are
+# coherent with the symbol's type, so entries cannot silently go stale.
+#
+# Every rule must carry a rationale explaining the recommendation. Rules
+# without an explicit 'profiles:' list belong to the 'base' profile.
+
+profiles:
+  base:
+    description: |
+      Baseline hardening every production build should satisfy: enable
+      available memory-protection and exploit-mitigation features, and
+      disable inherently insecure options.
+  strict:
+    extends: base
+    description: |
+      Baseline plus removal of debugging, tracing and observability
+      features that enlarge the attack surface or disclose internal
+      state. Some products legitimately keep a subset of these enabled.
+
+rules:
+  # --- Memory protection and exploit mitigation ---
+
+  BOUNDS_CHECK_BYPASS_MITIGATION:
+    value: y
+    rationale: |
+      Inserts speculation barriers after bounds checks on array indexes
+      passed in from user mode, mitigating Spectre V1 style bounds check
+      bypass attacks.
+    references: [CWE-1037]
+
+  BUILTIN_STACK_GUARD:
+    value: y
+    rationale: |
+      Uses the ARM stack pointer limit registers to fault immediately on
+      thread or interrupt stack overflow instead of letting it corrupt
+      adjacent memory.
+    references: [CWE-121, CWE-787]
+
+  EXECUTE_XOR_WRITE:
+    value: y
+    rationale: |
+      Enforces W^X: no memory page is both writable and executable,
+      preventing injected data from being executed as code.
+    references: [CWE-119]
+
+  HW_STACK_PROTECTION:
+    value: y
+    rationale: |
+      Uses hardware (MPU/MMU) to catch thread stack overflows at the
+      moment they happen instead of after memory has been corrupted.
+    references: [CWE-121, CWE-787]
+
+  MPU_STACK_GUARD:
+    value: y
+    rationale: |
+      Places an MPU guard region below each thread stack so overflows
+      trigger a fault instead of silently corrupting adjacent memory.
+      Not applicable on hardware without an MPU.
+    references: [CWE-121, CWE-787]
+
+  STACK_CANARIES:
+    value: y
+    rationale: |
+      Compiler-inserted stack canaries detect stack buffer overflows
+      before a corrupted return address is used, turning an exploitable
+      overflow into a controlled error.
+    references: [CWE-121]
+
+  STACK_POINTER_RANDOM:
+    min: 100
+    rationale: |
+      Randomizing each thread's initial stack pointer makes stack
+      addresses unpredictable, raising the cost of stack-smashing and
+      return-oriented-programming attacks. 0 disables randomization
+      entirely; at least 100 bytes of random offset is recommended.
+    references: [CWE-121]
+
+  STACK_SENTINEL:
+    value: y
+    rationale: |
+      Places a software sentinel value at the end of each thread stack
+      and checks it at context switches, catching overflows on hardware
+      without MPU/MMU stack protection.
+    references: [CWE-121, CWE-787]
+
+  X86_MMU:
+    value: y
+    rationale: |
+      Enables the x86 MMU so kernel and thread memory can be protected
+      with per-page permissions, including making memory non-executable.
+    references: [CWE-119]
+
+  OVERRIDE_FRAME_POINTER_DEFAULT:
+    value: y
+    rationale: |
+      Makes frame pointer usage an explicit build decision instead of
+      inheriting whatever the compiler's optimization level picks,
+      keeping the stack layout of release builds deterministic and
+      reviewable.
+
+  # --- Boot ---
+
+  BOOT_BANNER:
+    value: n
+    rationale: |
+      The boot banner prints the exact Zephyr version to the console,
+      letting anyone with console access fingerprint the firmware and
+      match it against known vulnerabilities for that release.
+    references: [CWE-200]
+
+  BOOT_DELAY:
+    value: 0
+    rationale: |
+      A boot delay widens the window in which an attacker can interact
+      with the system before the application has initialized, and serves
+      no purpose in production.
+
+  # --- Bluetooth ---
+
+  BT_CONN_DISABLE_SECURITY:
+    value: n
+    rationale: |
+      Disables security checks on incoming Bluetooth requests, allowing
+      unauthenticated access to characteristics and services. Intended
+      strictly for qualification testing.
+    references: [CWE-306]
+
+  BT_FIXED_PASSKEY:
+    value: n
+    rationale: |
+      A fixed pairing passkey is shared across all devices of a product
+      and can be extracted once and replayed forever, defeating MITM
+      protection during pairing.
+    references: [CWE-798]
+
+  BT_KEYS_LOG_LEVEL_DBG:
+    value: n
+    rationale: |
+      Debug logging of the Bluetooth keys subsystem can write link keys
+      and identity keys to the log output, exposing long-term secrets to
+      anyone able to read the logs.
+    references: [CWE-532]
+
+  BT_LOG_SNIFFER_INFO:
+    value: n
+    rationale: |
+      Emits pairing information in the log output specifically so that
+      sniffers can decrypt the connection - exactly what an attacker
+      with log access needs.
+    references: [CWE-532]
+
+  BT_OOB_DATA_FIXED:
+    value: n
+    rationale: |
+      Uses a compile-time fixed value in place of random out-of-band
+      pairing data, making OOB pairing predictable and replayable.
+    references: [CWE-798]
+
+  BT_SMP_ENFORCE_MITM:
+    value: y
+    rationale: |
+      Requires man-in-the-middle protection during Bluetooth pairing
+      whenever the local or remote device is capable of it, preventing
+      silent downgrades to unauthenticated pairing.
+    references: [CWE-757]
+
+  BT_SMP_LOG_LEVEL_DBG:
+    value: n
+    rationale: |
+      Debug logging of the Security Manager Protocol can expose pairing
+      keys and intermediate values of the pairing procedure in the log
+      output.
+    references: [CWE-532]
+
+  BT_STORE_DEBUG_KEYS:
+    value: n
+    rationale: |
+      Persists keys distributed by devices using the well-known debug
+      key pair; such peers offer no confidentiality, and storing their
+      keys treats them as trusted bonds.
+    references: [CWE-798]
+
+  BT_TESTING:
+    value: n
+    rationale: |
+      Exposes Bluetooth stack-internal testing hooks that bypass normal
+      state checks and are not meant to be reachable in production
+      builds.
+    references: [CWE-489]
+
+  BT_USE_DEBUG_KEYS:
+    value: n
+    rationale: |
+      Pairs using the publicly known debug key pair from the Bluetooth
+      specification instead of a random key pair, so any sniffer can
+      decrypt the pairing and subsequent traffic.
+    references: [CWE-798]
+
+  # --- Random number generation ---
+
+  TEST_RANDOM_GENERATOR:
+    value: n
+    rationale: |
+      Allows non-random number generators to back the system RNG. Values
+      produced this way are predictable and must never seed security
+      functions.
+    references: [CWE-338]
+
+  TIMER_RANDOM_GENERATOR:
+    value: n
+    rationale: |
+      Derives "random" numbers from the system timer, which an attacker
+      can observe or influence, making all derived values predictable.
+    references: [CWE-338]
+
+  # --- Build output ---
+
+  BUILD_OUTPUT_STRIPPED:
+    value: y
+    rationale: |
+      Produces a stripped binary so symbol names and debug information
+      are not shipped on the device, where they would ease reverse
+      engineering.
+    references: [CWE-200]
+
+  # --- Trusted Firmware-M ---
+
+  TFM_CMAKE_BUILD_TYPE_DEBUG:
+    value: n
+    rationale: |
+      Builds the TF-M secure firmware without optimizations and with
+      debug aids, which is not a supported configuration for protecting
+      secure-world assets.
+
+  TFM_DUMMY_PROVISIONING:
+    value: n
+    rationale: |
+      Provisions TF-M with publicly known dummy keys and identity data,
+      so attestation and anything derived from the provisioned material
+      offers no security.
+    references: [CWE-798]
+
+  # --- Driver and SoC specific ---
+
+  CORTEX_M_DEBUG_MONITOR_HOOK:
+    value: n
+    rationale: |
+      Configures the debug monitor exception for debugging use; a
+      production image should not route debug events to a low-priority
+      handler that debugging tools can attach to.
+    references: [CWE-1244]
+
+  DMA_INTEL_ADSP_GPDMA_DEBUG:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Extra DMA driver debug output discloses internal transfer state
+      and addresses, and belongs only in development builds.
+    references: [CWE-200]
+
+  ESPI_PERIPHERAL_DEBUG_PORT_80:
+    value: n
+    rationale: |
+      Exposes the host's POST-code debug port through the eSPI
+      peripheral, giving an observer a side channel into host boot
+      progress.
+    references: [CWE-200]
+
+  ETH_E1000_VERBOSE_DEBUG:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Verbose Ethernet driver debugging logs frame-level details of
+      network traffic, disclosing traffic contents and internal state.
+    references: [CWE-532]
+
+  MODEM_CONTEXT_VERBOSE_DEBUG:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Verbose modem logging dumps all data exchanged with the modem,
+      which can include credentials such as APN settings, PINs and
+      server addresses.
+    references: [CWE-532]
+
+  SOC_ATMEL_SAM_DISABLE_ERASE_PIN:
+    value: y
+    rationale: |
+      With the ERASE pin left in system mode, anyone with physical
+      access can wipe the entire flash - including its security
+      settings - by asserting one pin. Disabling it removes this
+      trivial physical attack.
+    references: [CWE-1263]
+
+  SOC_ATMEL_SAM_WAIT_MODE:
+    value: n
+    rationale: |
+      Keeps the CPU clock running in low-power states solely so a JTAG
+      debugger can stay attached; production devices should not be
+      optimized for debugger attachment.
+    references: [CWE-1244]
+
+  SOC_MEC1501_DEBUG_DISABLED:
+    value: y
+    rationale: |
+      Disables the SoC's debug interface, preventing an attacker with
+      physical access from attaching a debugger to inspect or modify
+      the running firmware.
+    references: [CWE-1244]
+
+  # --- Debug and observability features (strict profile) ---
+
+  ASSERT:
+    value: n
+    profiles: [strict]
+    rationale: |
+      __ASSERT checks print internal state and halt the system, turning
+      a recoverable condition into a denial of service and a source of
+      information disclosure in production.
+    references: [CWE-617]
+
+  DEBUG:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Global switch for debug support: lowers optimization and enables
+      debug-friendly behavior across the tree, none of which belongs in
+      a production image.
+    references: [CWE-489]
+
+  DEBUG_COREDUMP:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Core dumps copy RAM contents - potentially including keys and
+      other secrets - to a console or flash partition where an attacker
+      with device access can retrieve them.
+    references: [CWE-528]
+
+  DEBUG_THREAD_INFO:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Exports kernel-internal thread bookkeeping for debuggers and
+      awareness tools, mapping out exactly the structures an attacker
+      wants to locate.
+    references: [CWE-200]
+
+  EARLY_CONSOLE:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Routes diagnostic output to the console from the earliest boot
+      stages, exposing boot-time internals on a port that production
+      devices should keep quiet.
+    references: [CWE-200]
+
+  EXCEPTION_DEBUG:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Prints detailed fault information - register contents, fault
+      addresses - on exceptions, handing an attacker feedback for
+      developing memory-corruption exploits.
+    references: [CWE-209]
+
+  FAULT_DUMP:
+    value: 0
+    profiles: [strict]
+    rationale: |
+      Fault dumps print registers and fault state to the console on
+      crashes; level 0 keeps that exploit-development feedback out of
+      production builds.
+    references: [CWE-209]
+
+  GDBSTUB:
+    value: n
+    profiles: [strict]
+    rationale: |
+      A GDB stub gives whoever reaches its transport full remote control
+      of the target: memory read/write, register access and execution
+      control.
+    references: [CWE-489]
+
+  INIT_STACKS:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Initializing stacks with a known fill pattern exists to support
+      stack usage analysis; it aids introspection of runtime behavior
+      and is unnecessary in production.
+
+  LOG:
+    value: n
+    profiles: [strict]
+    rationale: |
+      The logging subsystem discloses internal operation and any data
+      that subsystems choose to log. On a production device its output
+      is available to whoever holds the port.
+    references: [CWE-532]
+
+  PRINTK:
+    value: n
+    profiles: [strict]
+    rationale: |
+      printk output goes straight to the console; leaving it enabled in
+      production leaks whatever diagnostic messages remain in the code.
+    references: [CWE-532]
+
+  SHELL:
+    value: n
+    profiles: [strict]
+    rationale: |
+      The shell offers interactive inspection and control of the running
+      system to anyone with access to its transport - an intentionally
+      powerful interface that production images should not expose.
+    references: [CWE-489]
+
+  STACK_USAGE:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Generates per-function stack usage build artifacts and runtime
+      support for stack analysis; a development-time analysis aid only.
+
+  STATS:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Statistics collection exposes counters about internal operation
+      that profile device behavior and support reconnaissance.
+    references: [CWE-200]
+
+  THREAD_ANALYZER:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Periodically prints per-thread stack usage and CPU statistics,
+      broadcasting a map of the system's runtime structure.
+    references: [CWE-200]
+
+  THREAD_MONITOR:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Maintains a walkable list of all threads and their properties for
+      debug tools, simplifying enumeration of the system's tasks.
+    references: [CWE-200]
+
+  THREAD_NAME:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Stores human-readable thread names in RAM, labeling kernel
+      structures for anyone able to read memory or logs.
+    references: [CWE-200]
+
+  TRACING:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Kernel tracing streams scheduling and kernel object activity to a
+      host tool, providing detailed observability that has no place in
+      a hardened production image.
+    references: [CWE-200]
+
+  X86_DEBUG_INFO:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Adds x86 kernel debugging information and hooks intended for
+      development-time diagnosis.
+    references: [CWE-489]
+
+  # --- Test infrastructure (strict profile) ---
+
+  TEST:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Marks the build as a testing image and relaxes defaults
+      accordingly; test scaffolding must not ship in production
+      firmware.
+    references: [CWE-489]
+
+  TEST_USERSPACE:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Adds test-only userspace hooks so test cases can exercise kernel
+      internals, weakening the user/kernel boundary in the process.
+    references: [CWE-489]
+
+  ZTEST:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Links the ztest unit-testing framework into the image; test
+      runners and their hooks do not belong in production firmware.
+    references: [CWE-489]
