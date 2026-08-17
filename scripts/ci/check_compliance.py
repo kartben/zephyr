@@ -841,6 +841,7 @@ class KconfigCheck(ComplianceTest):
         self.check_soc_name_sync(kconf)
         self.check_no_undef_outside_kconfig(kconf)
         self.check_disallowed_defconfigs(kconf)
+        self.check_hardening_data(kconf)
 
     def get_modules(self, _module_dirs_file, modules_file, sysbuild_modules_file, settings_file):
         """
@@ -1389,6 +1390,61 @@ Found disallowed Kconfig symbol in SoC Kconfig files: {sym_name:35}
             [sym.name for sym in kconf_syms] + re.findall(regex, grep_stdout, re.MULTILINE)
         ).union(self.get_logging_syms(kconf))
 
+    def check_hardening_data(self, kconf):
+        """
+        Checks that the hardening database (scripts/kconfig/hardening.yaml)
+        parses, matches its schema, and only references Kconfig symbols that
+        exist, with values coherent with each symbol's type.
+        """
+        # scripts/kconfig is on sys.path since parse_kconfig() ran
+        import hardeninglib
+
+        database_path = "scripts/kconfig/hardening.yaml"
+        hint = f"Hint: update '{database_path}' accordingly."
+
+        try:
+            database = hardeninglib.load_database()
+        except hardeninglib.HardeningDatabaseError as e:
+            self.failure(f"Malformed hardening database: {e}\n{hint}")
+            return
+
+        for error in hardeninglib.check_profile_integrity(database):
+            self.failure(f"Hardening database: {error}\n{hint}")
+
+        defined_syms = self.get_defined_syms(kconf)
+        for name, rule in database['rules'].items():
+            if name not in defined_syms:
+                self.failure(
+                    f"CONFIG_{name} in {database_path} does not exist in "
+                    f"Kconfig. {hint}")
+                continue
+
+            sym = kconf.syms.get(name)
+            if sym is None:
+                # Defined only in a sample/test Kconfig tree; the symbol's
+                # type is not available for further checking.
+                continue
+
+            if sym.orig_type in (kconfiglib.BOOL, kconfiglib.TRISTATE):
+                if rule['min'] is not None or rule['max'] is not None:
+                    self.failure(
+                        f"CONFIG_{name} in {database_path} has a min/max "
+                        f"constraint, but is not an int/hex symbol. {hint}")
+                elif rule['value'] not in ('y', 'n', 'm'):
+                    self.failure(
+                        f"CONFIG_{name} in {database_path} recommends value "
+                        f"'{rule['value']}', which is not valid for a "
+                        f"bool/tristate symbol. {hint}")
+            elif sym.orig_type in (kconfiglib.INT, kconfiglib.HEX):
+                if rule['value'] is not None:
+                    try:
+                        int(rule['value'], 0)
+                    except ValueError:
+                        self.failure(
+                            f"CONFIG_{name} in {database_path} recommends "
+                            f"value '{rule['value']}', which is not valid "
+                            f"for an int/hex symbol. {hint}")
+
     def check_top_menu_not_too_long(self, kconf):
         """
         Checks that there aren't too many items in the top-level menu (which
@@ -1686,6 +1742,9 @@ class KconfigBasicCheck(KconfigCheck):
     def check_no_undef_outside_kconfig(self, kconf):
         pass
 
+    def check_hardening_data(self, kconf):
+        pass
+
 
 class KconfigBasicNoModulesCheck(KconfigBasicCheck):
     """
@@ -1745,6 +1804,11 @@ class SysbuildKconfigCheck(KconfigCheck):
         "SECOND_SAMPLE",  # Used in sysbuild documentation
         # zephyr-keep-sorted-stop
     }
+
+    def check_hardening_data(self, kconf):
+        # The hardening database references application Kconfig symbols,
+        # which do not exist in the sysbuild Kconfig tree.
+        pass
 
 
 class SysbuildKconfigBasicCheck(SysbuildKconfigCheck, KconfigBasicCheck):
