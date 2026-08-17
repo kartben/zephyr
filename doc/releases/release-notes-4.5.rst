@@ -501,6 +501,15 @@ Other notable changes
     Ubuntu 24.04 LTS package repositories. See the :ref:`migration guide <migration_4.5>` for
     options if your distribution ships an older version.
 
+  * The :ref:`hardening tool <hardening>` (``west build -t hardenconfig``) now sources its
+    recommendations from a schema-validated YAML database (:file:`scripts/kconfig/hardening.yaml`)
+    instead of a CSV file. Every recommendation now carries a rationale, displayed in the report;
+    recommendations are grouped into profiles (``base`` and ``strict``, selectable with
+    ``-DHARDENCONFIG_PROFILE=``); integer recommendations can express minimum/maximum constraints;
+    JSON output and a failing exit code are available for CI use; and out-of-tree databases can be
+    layered with ``-DHARDENCONFIG_EXTRA_SOURCES=``. The database is validated in CI against the
+    actual Kconfig tree so entries can no longer go stale.
+
 * Kernel
 
   * :kconfig:option:`CONFIG_SCHED_CPU_MASK` no longer depends on
