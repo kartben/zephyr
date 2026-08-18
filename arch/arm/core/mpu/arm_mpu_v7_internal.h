@@ -265,14 +265,10 @@ static int mpu_configure_dynamic_mpu_regions(const struct z_arm_mpu_partition
 
 	/* In ARMv7-M architecture the dynamic regions are
 	 * programmed on top of existing SRAM region configuration.
-	 */
-#if defined(CONFIG_CPU_AARCH32_CORTEX_R)
-	mpu_reg_index = mpu_configure_regions(dynamic_regions,
-		regions_num, mpu_reg_index, false);
-#else
-	/* Program the regions with a flat loop instead of the generic
+	 *
+	 * Program the regions with a flat loop instead of the generic
 	 * mpu_configure_regions() helper chain: the per-region function
-	 * call layers and their repeated MPU_TYPE bound re-reads add a
+	 * call layers and their repeated region count re-reads add a
 	 * large fixed cost on every context switch, for checks that
 	 * cannot fail for the kernel-supplied dynamic regions.
 	 */
@@ -287,6 +283,20 @@ static int mpu_configure_dynamic_mpu_regions(const struct z_arm_mpu_partition
 				continue;
 			}
 
+#if defined(CONFIG_CPU_AARCH32_CORTEX_R)
+			set_region_number(mpu_reg_index);
+
+			/* Clear the size register first, disabling the
+			 * entry while it is re-configured.
+			 */
+			set_region_size(0);
+
+			set_region_base_address(
+				(uint32_t)part->start & MPU_RBAR_ADDR_Msk);
+			set_region_attributes(part->attr.rasr_attr);
+			set_region_size(size_to_mpu_rasr_size(part->size)
+				| MPU_RASR_ENABLE_Msk);
+#else
 			/* Writing RBAR with VALID set also updates RNR, so
 			 * the RASR write addresses the same region.
 			 */
@@ -295,11 +305,11 @@ static int mpu_configure_dynamic_mpu_regions(const struct z_arm_mpu_partition
 			MPU->RASR = part->attr.rasr_attr
 				| size_to_mpu_rasr_size(part->size)
 				| MPU_RASR_ENABLE_Msk;
+#endif
 
 			mpu_reg_index++;
 		}
 	}
-#endif
 
 	if (mpu_reg_index != -EINVAL) {
 
