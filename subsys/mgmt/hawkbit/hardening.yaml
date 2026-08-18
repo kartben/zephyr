@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Security hardening database fragment for hawkBit.
+
+rules:
+  HAWKBIT_USE_TLS:
+    value: y
+    rationale: |
+      Without TLS the hawkBit client talks plain HTTP, sending its DDI security token in a request
+      header where any on-path observer can steal it and impersonate the device to the update
+      server, as well as read and tamper with the whole update dialogue.
+    references: [CWE-319]

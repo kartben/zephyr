@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Security hardening database fragment for UpdateHub.
+
+rules:
+  UPDATEHUB_DTLS:
+    value: y
+    rationale: |
+      Runs the UpdateHub CoAP session over DTLS instead of plaintext UDP, keeping the device
+      identity, probe data and update dialogue confidential and out of reach of on-path tampering;
+      without it only the image signature check stands between the client and an active attacker.
+    references: [CWE-319]

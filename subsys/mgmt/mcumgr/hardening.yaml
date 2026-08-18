@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Security hardening database fragment for MCUmgr.
+
+rules:
+  MCUMGR_GRP_FS:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Gives MCUmgr clients read and write access to the entire file system, including
+      application-stored secrets such as private keys; the option's own help strongly discourages
+      production use without a filtering access hook.
+    references: [CWE-552]
+
+  MCUMGR_GRP_IMG_VERBOSE_ERR:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Adds human-readable reason strings to failed image upload responses, giving a remote client
+      detailed diagnostic feedback on why the firmware update pipeline rejected its input;
+      production clients only need the error code.
+    references: [CWE-209]
+
+  MCUMGR_GRP_SHELL:
+    value: n
+    rationale: |
+      Executes arbitrary shell commands received over the MCUmgr transport and returns their output,
+      extending the full power of the shell to remote management clients whose transport may itself
+      be unauthenticated.
+    references: [CWE-489]
+
+  MCUMGR_TRANSPORT_UDP_DTLS:
+    value: y
+    rationale: |
+      Without DTLS the SMP UDP server accepts management commands (firmware upload, reboot, file and
+      settings access) from anyone who can reach the port, with no authentication or confidentiality
+      at all. DTLS is the only transport security this backend offers.
+    references: [CWE-306, CWE-319]
