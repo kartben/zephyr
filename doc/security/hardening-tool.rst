@@ -32,23 +32,31 @@ Usage
 
 The output should be similar to the table below. For each configuration option set to a value that
 could lead to a security vulnerability, the table will propose a recommended value that should be
-used instead, together with the reason the option matters.
+used instead, together with the reason the option matters and references to the relevant
+`CWE <https://cwe.mitre.org/>`_ entries.
 
 .. code-block:: console
 
    Hardening report for profile: strict
-   +------------------------------+-----------+---------------+----------------+--------------------------------------------------+
-   | Name                         | Current   | Recommended   | Check result   | Rationale                                        |
-   +==============================+===========+===============+================+==================================================+
-   | CONFIG_BUILD_OUTPUT_STRIPPED | n         | y             | FAIL           | Produces a stripped binary so symbol names and   |
-   |                              |           |               |                | debug information are not shipped on the device, |
-   |                              |           |               |                | where they would ease reverse engineering.       |
-   +------------------------------+-----------+---------------+----------------+--------------------------------------------------+
-   | CONFIG_STACK_SENTINEL        | n         | y             | FAIL           | Places a software sentinel value at the end of   |
-   |                              |           |               |                | each thread stack and checks it at context       |
-   |                              |           |               |                | switches, catching overflows on hardware without |
-   |                              |           |               |                | MPU/MMU stack protection.                        |
-   +------------------------------+-----------+---------------+----------------+--------------------------------------------------+
+   +------------------------------+-----------+---------------+----------+---------------------------------+-----------------------+
+   | Name                         | Current   | Recommended   | Result   | Rationale                       | References            |
+   +==============================+===========+===============+==========+=================================+=======================+
+   | CONFIG_BUILD_OUTPUT_STRIPPED | n         | y             | FAIL     | Produces a stripped binary so   | CWE-200: Exposure of  |
+   |                              |           |               |          | symbol names and debug          | Sensitive Information |
+   |                              |           |               |          | information are not shipped on  | to an Unauthorized    |
+   |                              |           |               |          | the device, where they would    | Actor                 |
+   |                              |           |               |          | ease reverse engineering.       |                       |
+   +------------------------------+-----------+---------------+----------+---------------------------------+-----------------------+
+   | CONFIG_STACK_SENTINEL        | n         | y             | FAIL     | Places a software sentinel      | CWE-121: Stack-based  |
+   |                              |           |               |          | value at the end of each thread | Buffer Overflow       |
+   |                              |           |               |          | stack and checks it at context  | CWE-787: Out-of-      |
+   |                              |           |               |          | switches, catching overflows on | bounds Write          |
+   |                              |           |               |          | hardware without MPU/MMU stack  |                       |
+   |                              |           |               |          | protection.                     |                       |
+   +------------------------------+-----------+---------------+----------+---------------------------------+-----------------------+
+
+CWE identifiers are resolved to their names using the `cwe2
+<https://pypi.org/project/cwe2/>`_ Python package.
 
 Options that are not applicable to the current target (for example, MPU-based protections on
 hardware without an MPU, or symbols that are not user-configurable in the current configuration)
