@@ -370,6 +370,16 @@ cross-file optimization opportunities.
 
 .. note::
 
+   Unity builds and :kconfig:option:`CONFIG_LTO` optimize along the same axis,
+   and link time optimization is considerably more effective at it, as it is
+   not limited to the sources of a single library. Where both can be used they
+   are worth comparing, and enabling unity builds on top of link time
+   optimization only marginally improves the footprint. Unity builds remain
+   useful where link time optimization cannot be enabled, and they shorten
+   compilation rather than lengthening it.
+
+.. note::
+
    The ``kernel`` library is only built as a unity build when
    :kconfig:option:`CONFIG_KERNEL_WHOLE_ARCHIVE` is enabled. It is otherwise
    the one library the linker is allowed to pick individual object files from,
