@@ -422,7 +422,8 @@ can be excluded from the command line instead:
        -DZEPHYR_UNITY_BUILD_EXCLUDE="lib_a;lib_b"
 
 The following Zephyr libraries currently opt out because their sources cannot
-share a translation unit: the Bluetooth host and controller, and ``nrfx``.
+share a translation unit: the Bluetooth controller, the Bluetooth mesh stack
+and ``nrfx``.
 
 .. _build_system_scripts:
 
