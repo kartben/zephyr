@@ -293,8 +293,11 @@ static ALWAYS_INLINE void isr_enter_hook(void)
 static inline void *return_to(void *interrupted)
 {
 #ifdef CONFIG_MULTITHREADING
-	return _current_cpu->nested <= 1 ?
-		z_get_next_switch_handle(interrupted) : interrupted;
+	if (_current_cpu->nested > 1) {
+		return interrupted;
+	}
+
+	return z_sched_next_handle(_current, interrupted);
 #else
 	return interrupted;
 #endif /* CONFIG_MULTITHREADING */
