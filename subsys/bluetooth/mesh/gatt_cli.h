@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_MESH_GATT_CLI_H_
+#define ZEPHYR_BT_MESH_GATT_CLI_H_
 
 struct bt_mesh_gatt_cli {
 	struct bt_uuid_16 srv_uuid;
@@ -27,3 +29,5 @@ int bt_mesh_gatt_send(struct bt_conn *conn,
 void bt_mesh_gatt_client_init(void);
 
 void bt_mesh_gatt_client_deinit(void);
+
+#endif /* ZEPHYR_BT_MESH_GATT_CLI_H_ */

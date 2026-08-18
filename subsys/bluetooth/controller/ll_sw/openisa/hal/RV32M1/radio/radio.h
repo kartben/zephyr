@@ -5,6 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_OPENISA_HAL_RV32M1_RADIO_RADIO_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_OPENISA_HAL_RV32M1_RADIO_RADIO_H_
+
 #define RADIO_TXP_DEFAULT 0
 
 
@@ -106,3 +109,5 @@ uint32_t radio_ar_has_match(void);
 uint32_t radio_sleep(void);
 uint32_t radio_wake(void);
 uint32_t radio_is_off(void);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_OPENISA_HAL_RV32M1_RADIO_RADIO_H_ */

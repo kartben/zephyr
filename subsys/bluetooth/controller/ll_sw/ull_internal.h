@@ -7,6 +7,10 @@
 /**
  *  User CPR Interval
  */
+
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_ULL_INTERNAL_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_ULL_INTERNAL_H_
+
 #if !defined(CONFIG_BT_CTLR_USER_CPR_INTERVAL_MIN)
 #if defined(CONFIG_BT_CTLR_CONN_INTERVAL_LOW_LATENCY)
 #define CONN_INTERVAL_MIN(x) (0U)
@@ -178,3 +182,5 @@ void ull_rxfifo_alloc(uint8_t s, uint8_t n, uint8_t f, uint8_t *l, uint8_t *m,
 void *ull_rxfifo_release(uint8_t s, uint8_t n, uint8_t f, uint8_t *l, uint8_t *m,
 			 memq_link_t *link, struct node_rx_hdr *rx);
 uint32_t ull_get_wrapped_time_us(uint32_t time_now_us, int32_t time_diff_us);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_ULL_INTERNAL_H_ */

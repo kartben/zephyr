@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_ADV_INTERNAL_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_ADV_INTERNAL_H_
+
 struct pdu_adv *lll_adv_pdu_latest_get(struct lll_adv_pdu *pdu,
 				       uint8_t *is_modified);
 
@@ -71,3 +74,5 @@ bool lll_adv_connect_ind_check(struct lll_adv *lll, struct pdu_adv *ci,
 uint32_t lll_adv_free_pdu_fifo_count_get(void);
 uint32_t lll_adv_pdu_mem_free_count_get(void);
 #endif /* CONFIG_ZTEST */
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_ADV_INTERNAL_H_ */

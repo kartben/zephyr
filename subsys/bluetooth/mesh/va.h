@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_MESH_VA_H_
+#define ZEPHYR_BT_MESH_VA_H_
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -80,3 +83,5 @@ void bt_mesh_va_pending_store(void);
 
 /** @brief Remove all stored virtual addresses and remove them from the persistent storage. */
 void bt_mesh_va_clear(void);
+
+#endif /* ZEPHYR_BT_MESH_VA_H_ */

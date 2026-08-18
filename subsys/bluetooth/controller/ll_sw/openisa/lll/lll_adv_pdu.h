@@ -5,6 +5,10 @@
  */
 
 /* The Aux Offset shall be at least the length of the packet plus T_MAFS */
+
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_OPENISA_LLL_LLL_ADV_PDU_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_OPENISA_LLL_LLL_ADV_PDU_H_
+
 #define PDU_ADV_AUX_OFFSET_MIN_US 300
 
 int lll_adv_data_init(struct lll_adv_pdu *pdu);
@@ -49,3 +53,5 @@ static inline struct pdu_adv *lll_adv_scan_rsp_peek(struct lll_adv *lll)
 {
 	return (void *)lll->scan_rsp.pdu[lll->scan_rsp.last];
 }
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_OPENISA_LLL_LLL_ADV_PDU_H_ */

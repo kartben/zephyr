@@ -5,6 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_INCLUDE_LL_FEAT_H_
+#define ZEPHYR_BT_CONTROLLER_INCLUDE_LL_FEAT_H_
+
 #define LL_VERSION_NUMBER BT_HCI_VERSION_5_4
 
 #if defined(CONFIG_BT_CTLR_LE_ENC)
@@ -311,3 +314,5 @@
 /* Mask for host controlled features */
 #define LL_FEAT_HOST_BIT_MASK  (LL_FEAT_HOST_BITS_ISO_CHANNELS |\
 				LL_FEAT_HOST_BITS_CONN_SUBRATING)
+
+#endif /* ZEPHYR_BT_CONTROLLER_INCLUDE_LL_FEAT_H_ */

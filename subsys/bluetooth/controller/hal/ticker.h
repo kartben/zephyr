@@ -5,9 +5,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_HAL_TICKER_H_
+#define ZEPHYR_BT_CONTROLLER_HAL_TICKER_H_
+
 #include "hal/ticker_vendor_hal.h"
 
 uint8_t hal_ticker_instance0_caller_id_get(uint8_t user_id);
 void hal_ticker_instance0_sched(uint8_t caller_id, uint8_t callee_id, uint8_t chain,
 				void *instance);
 void hal_ticker_instance0_trigger_set(uint32_t value);
+
+#endif /* ZEPHYR_BT_CONTROLLER_HAL_TICKER_H_ */

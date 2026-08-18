@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_MESH_LPN_H_
+#define ZEPHYR_BT_MESH_LPN_H_
+
 int bt_mesh_lpn_friend_update(struct bt_mesh_net_rx *rx,
 			      struct net_buf_simple *buf);
 int bt_mesh_lpn_friend_offer(struct bt_mesh_net_rx *rx,
@@ -60,3 +63,5 @@ void bt_mesh_lpn_disable(bool force);
 void bt_mesh_lpn_friendship_end(void);
 
 int bt_mesh_lpn_init(void);
+
+#endif /* ZEPHYR_BT_MESH_LPN_H_ */

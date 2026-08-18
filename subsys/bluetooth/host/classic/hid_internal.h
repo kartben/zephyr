@@ -8,6 +8,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_HOST_CLASSIC_HID_INTERNAL_H_
+#define ZEPHYR_BT_HOST_CLASSIC_HID_INTERNAL_H_
+
 #include <zephyr/bluetooth/classic/hid_device.h>
 #include <zephyr/bluetooth/l2cap.h>
 
@@ -136,3 +139,5 @@ struct bt_hid_device {
 	struct k_work_delayable intr_timeout;
 	struct k_work vcu_disconnect;
 };
+
+#endif /* ZEPHYR_BT_HOST_CLASSIC_HID_INTERNAL_H_ */

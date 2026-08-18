@@ -2,6 +2,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_COMMON_BT_STR_H_
+#define ZEPHYR_BT_COMMON_BT_STR_H_
+
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/uuid.h>
 
@@ -13,3 +16,5 @@
  */
 const char *bt_hex(const void *buf, size_t len);
 const char *bt_uuid_str(const struct bt_uuid *uuid);
+
+#endif /* ZEPHYR_BT_COMMON_BT_STR_H_ */

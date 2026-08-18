@@ -5,6 +5,10 @@
  */
 
 /* nRF51 and nRF52 Series IRQ mapping*/
+
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_SWI_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_SWI_H_
+
 #if defined(CONFIG_SOC_SERIES_NRF51) || defined(CONFIG_SOC_COMPATIBLE_NRF52X)
 
 #define HAL_SWI_RADIO_IRQ  SWI4_IRQn
@@ -82,3 +86,5 @@ static inline void hal_swi_job_pend(void)
 {
 	NVIC_SetPendingIRQ(HAL_SWI_JOB_IRQ);
 }
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_SWI_H_ */

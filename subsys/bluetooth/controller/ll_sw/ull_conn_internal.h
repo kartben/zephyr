@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_ULL_CONN_INTERNAL_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_ULL_CONN_INTERNAL_H_
+
 struct ll_conn *ll_conn_acquire(void);
 void ll_conn_release(struct ll_conn *conn);
 uint16_t ll_conn_handle_get(struct ll_conn *conn);
@@ -149,3 +152,5 @@ void ull_path_loss_set_parameters(void);
  * @brief Enable path loss reporting
  */
 void ull_enable_path_loss_reporting(void);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_ULL_CONN_INTERNAL_H_ */

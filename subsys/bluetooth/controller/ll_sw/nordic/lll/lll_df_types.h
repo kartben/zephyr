@@ -5,6 +5,10 @@
  */
 
 /* @brief Max supported CTE length in 8us units */
+
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_DF_TYPES_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_DF_TYPES_H_
+
 #define LLL_DF_MAX_CTE_LEN 20
 /* @brief Min supported CTE length in 8us units */
 #define LLL_DF_MIN_CTE_LEN 2
@@ -184,3 +188,5 @@ struct lll_df_conn_tx_cfg {
 	uint8_t cte_types_allowed:3; /* Bitfield with allowed CTE types */
 	uint8_t ant_ids[BT_CTLR_DF_MAX_ANT_SW_PATTERN_LEN];
 };
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_DF_TYPES_H_ */

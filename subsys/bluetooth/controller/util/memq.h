@@ -9,6 +9,10 @@
  * @brief   Element of a memory-queue
  * @details Elements form a linked list, and as payload carries a pointer
  */
+
+#ifndef ZEPHYR_BT_CONTROLLER_UTIL_MEMQ_H_
+#define ZEPHYR_BT_CONTROLLER_UTIL_MEMQ_H_
+
 struct _memq_link {
 	struct _memq_link *next; /* permit chaining */
 	void              *mem;  /* payload */
@@ -34,3 +38,5 @@ memq_link_t *memq_peek(memq_link_t *head, memq_link_t *tail, void **mem);
 memq_link_t *memq_peek_n(memq_link_t *head, memq_link_t *tail, uint8_t n,
 			 void **mem);
 memq_link_t *memq_dequeue(memq_link_t *tail, memq_link_t **head, void **mem);
+
+#endif /* ZEPHYR_BT_CONTROLLER_UTIL_MEMQ_H_ */

@@ -5,6 +5,10 @@
  */
 
 /* Tree walk return codes */
+
+#ifndef ZEPHYR_BT_MESH_ACCESS_H_
+#define ZEPHYR_BT_MESH_ACCESS_H_
+
 enum bt_mesh_walk {
 	BT_MESH_WALK_STOP,
 	BT_MESH_WALK_CONTINUE,
@@ -119,3 +123,5 @@ void bt_mesh_access_suspend(void);
 /** @brief Reset the Access layer.
  */
 void bt_mesh_access_reset(void);
+
+#endif /* ZEPHYR_BT_MESH_ACCESS_H_ */

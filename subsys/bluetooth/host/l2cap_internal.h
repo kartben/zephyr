@@ -7,6 +7,10 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+#ifndef ZEPHYR_BT_HOST_L2CAP_INTERNAL_H_
+#define ZEPHYR_BT_HOST_L2CAP_INTERNAL_H_
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -234,3 +238,5 @@ struct bt_l2cap_server *bt_l2cap_server_lookup_psm(uint16_t psm);
 struct net_buf *l2cap_data_pull(struct bt_conn *conn,
 				size_t amount,
 				size_t *length);
+
+#endif /* ZEPHYR_BT_HOST_L2CAP_INTERNAL_H_ */

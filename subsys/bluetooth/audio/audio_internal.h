@@ -6,6 +6,10 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+#ifndef ZEPHYR_BT_AUDIO_AUDIO_INTERNAL_H_
+#define ZEPHYR_BT_AUDIO_AUDIO_INTERNAL_H_
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -96,3 +100,5 @@ uint16_t bt_audio_get_max_ntf_size(struct bt_conn *conn);
  * @retval BT_ATT_ERR_ENCRYPTION_KEY_SIZE Key size is not 128-bit
  */
 uint8_t bt_audio_security_check(const struct bt_conn *conn);
+
+#endif /* ZEPHYR_BT_AUDIO_AUDIO_INTERNAL_H_ */

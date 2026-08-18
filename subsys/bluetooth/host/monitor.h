@@ -8,6 +8,10 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+#ifndef ZEPHYR_BT_HOST_MONITOR_H_
+#define ZEPHYR_BT_HOST_MONITOR_H_
+
 #include <stdint.h>
 
 #include <zephyr/net_buf.h>
@@ -135,3 +139,5 @@ static inline void bt_monitor_new_index(uint8_t type, uint8_t bus, const bt_addr
 }
 
 #endif
+
+#endif /* ZEPHYR_BT_HOST_MONITOR_H_ */

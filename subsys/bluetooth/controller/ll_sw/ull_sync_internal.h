@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_ULL_SYNC_INTERNAL_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_ULL_SYNC_INTERNAL_H_
+
 int ull_sync_init(void);
 int ull_sync_reset(void);
 uint16_t ull_sync_handle_get(struct ll_sync_set *sync);
@@ -31,3 +34,5 @@ void ull_sync_transfer_received(struct ll_conn *conn, uint16_t service_data,
 				uint8_t addr_type, uint8_t sca, uint8_t phy,
 				uint8_t *adv_addr, uint16_t sync_conn_event_count,
 				uint8_t addr_resolved);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_ULL_SYNC_INTERNAL_H_ */

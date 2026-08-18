@@ -15,6 +15,10 @@
  * @note Pay attention that both types AoD and AoA
  * support 2US switching-sampling as mandatory.
  */
+
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_ULL_DF_TYPES_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_ULL_DF_TYPES_H_
+
 enum df_switch_sample_support {
 	DF_AOD_1US_TX = BIT(0),
 	DF_AOD_1US_RX = BIT(1),
@@ -46,3 +50,5 @@ enum df_switch_sample_support {
 #endif
 
 #define IQ_REPORT_CNT (SYNC_IQ_REPORT_CNT + CONN_IQ_REPORT_CNT + DTM_IQ_REPORT_CNT)
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_ULL_DF_TYPES_H_ */

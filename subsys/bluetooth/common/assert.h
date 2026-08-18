@@ -2,6 +2,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_COMMON_ASSERT_H_
+#define ZEPHYR_BT_COMMON_ASSERT_H_
+
 #include <zephyr/kernel.h>
 
 #if defined(CONFIG_BT_ASSERT_VERBOSE)
@@ -39,3 +42,5 @@
 #define BT_ASSERT(cond)		      __ASSERT_NO_MSG(cond)
 #define BT_ASSERT_MSG(cond, msg, ...) __ASSERT(cond, msg, ##__VA_ARGS__)
 #endif /* CONFIG_BT_ASSERT*/
+
+#endif /* ZEPHYR_BT_COMMON_ASSERT_H_ */

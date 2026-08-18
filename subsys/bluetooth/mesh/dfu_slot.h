@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_MESH_DFU_SLOT_H_
+#define ZEPHYR_BT_MESH_DFU_SLOT_H_
+
 #include <zephyr/bluetooth/mesh.h>
 
 /** @brief Slot iteration callback.
@@ -133,3 +136,5 @@ int bt_mesh_dfu_slot_img_idx_get(const struct bt_mesh_dfu_slot *slot);
  *  @return The number of slots iterated over.
  */
 size_t bt_mesh_dfu_slot_foreach(bt_mesh_dfu_slot_cb_t cb, void *user_data);
+
+#endif /* ZEPHYR_BT_MESH_DFU_SLOT_H_ */

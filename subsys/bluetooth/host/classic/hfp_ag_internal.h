@@ -9,6 +9,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_HOST_CLASSIC_HFP_AG_INTERNAL_H_
+#define ZEPHYR_BT_HOST_CLASSIC_HFP_AG_INTERNAL_H_
+
 #include "hfp_internal.h"
 
 #if defined(CONFIG_BT_HFP_AG_EXT_ERR)
@@ -318,3 +321,5 @@ struct bt_hfp_ag {
 	/* TX work */
 	struct k_work_delayable tx_work;
 };
+
+#endif /* ZEPHYR_BT_HOST_CLASSIC_HFP_AG_INTERNAL_H_ */

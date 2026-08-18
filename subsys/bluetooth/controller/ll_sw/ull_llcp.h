@@ -8,6 +8,9 @@
  * and having to update all the dependencies
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_ULL_LLCP_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_ULL_LLCP_H_
+
 enum { ULL_CP_CONNECTED, ULL_CP_DISCONNECTED };
 
 /**
@@ -307,3 +310,5 @@ void ull_lp_past_conn_evt_done(struct ll_conn *conn, struct node_rx_event_done *
  * @brief Validation of PHY, checking if exactly one bit set, and no bit set is rfu's
  */
 bool phy_valid(uint8_t phy);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_ULL_LLCP_H_ */

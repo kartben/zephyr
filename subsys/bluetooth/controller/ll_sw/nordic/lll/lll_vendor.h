@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_VENDOR_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_VENDOR_H_
+
 #if DT_NODE_HAS_PROP(DT_NODELABEL(hfxo), startup_time_us)
 #define EVENT_OVERHEAD_XTAL_US        DT_PROP(DT_NODELABEL(hfxo), startup_time_us)
 #else
@@ -90,3 +93,5 @@
  * for CIS_Offset_Min.
  */
 #define EVENT_OVERHEAD_CIS_SETUP_US         MAX(EVENT_OVERHEAD_START_US, 500U)
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_VENDOR_H_ */

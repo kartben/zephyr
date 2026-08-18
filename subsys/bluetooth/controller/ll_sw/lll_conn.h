@@ -3,6 +3,10 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_LLL_CONN_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_LLL_CONN_H_
+
 #if defined(CONFIG_BT_CTLR_CONN_META)
 #include "lll_conn_meta.h"
 #endif /* CONFIG_BT_CTLR_CONN_META */
@@ -216,3 +220,5 @@ extern struct lll_conn *ull_conn_lll_get(uint16_t handle);
 extern void ull_conn_lll_tx_demux_sched(struct lll_conn *lll);
 extern void ull_conn_lll_ack_enqueue(uint16_t handle, struct node_tx *tx);
 extern uint16_t ull_conn_lll_max_tx_octets_get(struct lll_conn *lll);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_LLL_CONN_H_ */

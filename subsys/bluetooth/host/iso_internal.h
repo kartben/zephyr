@@ -9,6 +9,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_HOST_ISO_INTERNAL_H_
+#define ZEPHYR_BT_HOST_ISO_INTERNAL_H_
+
 #include <stdint.h>
 
 #include <zephyr/bluetooth/conn.h>
@@ -136,3 +139,5 @@ enum bt_iso_timestamp {
 	BT_ISO_TS_ABSENT = 0,
 	BT_ISO_TS_PRESENT,
 };
+
+#endif /* ZEPHYR_BT_HOST_ISO_INTERNAL_H_ */

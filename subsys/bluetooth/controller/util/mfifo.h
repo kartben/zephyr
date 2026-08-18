@@ -41,6 +41,10 @@
  *       different, but it is trailing and sizeof is not applied here, so it can
  *       be a flexible array member.
  */
+
+#ifndef ZEPHYR_BT_CONTROLLER_UTIL_MFIFO_H_
+#define ZEPHYR_BT_CONTROLLER_UTIL_MFIFO_H_
+
 #define MFIFO_DEFINE(name, sz, cnt) \
 		const struct { \
 			uint16_t s; /* Stride between elements */ \
@@ -349,3 +353,5 @@ static inline void *mfifo_dequeue(uint8_t *fifo, uint8_t size, uint8_t count,
 		mfifo_dequeue(mfifo_fifo_##name.m, mfifo_##name.s, \
 			      mfifo_##name.n, mfifo_fifo_##name.l, \
 			      &mfifo_fifo_##name.f)
+
+#endif /* ZEPHYR_BT_CONTROLLER_UTIL_MFIFO_H_ */

@@ -10,6 +10,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_HOST_CONN_INTERNAL_H_
+#define ZEPHYR_BT_HOST_CONN_INTERNAL_H_
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -652,3 +655,5 @@ void bt_conn_tx_processor(void);
  * - unref the conn when popping the conn from the slist
  */
 void bt_conn_data_ready(struct bt_conn *conn);
+
+#endif /* ZEPHYR_BT_HOST_CONN_INTERNAL_H_ */

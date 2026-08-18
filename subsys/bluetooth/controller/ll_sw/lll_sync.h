@@ -5,6 +5,10 @@
  */
 
 /* Periodic advertisements synchronization status. */
+
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_LLL_SYNC_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_LLL_SYNC_H_
+
 enum sync_status {
 	SYNC_STAT_ALLOWED,
 	SYNC_STAT_READY,
@@ -89,3 +93,5 @@ enum sync_status lll_sync_cte_is_allowed(uint8_t cte_type_mask, uint8_t filter_p
 					 uint8_t rx_cte_time, uint8_t rx_cte_type);
 extern uint16_t ull_sync_lll_handle_get(struct lll_sync *lll);
 extern struct lll_sync *ull_sync_lll_is_valid_get(struct lll_sync *lll);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_LLL_SYNC_H_ */

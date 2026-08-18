@@ -11,6 +11,10 @@
  *  dealing with setting channel to proper state depending on operational
  *  context.
  */
+
+#ifndef ZEPHYR_BT_HOST_CLASSIC_SCO_INTERNAL_H_
+#define ZEPHYR_BT_HOST_CLASSIC_SCO_INTERNAL_H_
+
 enum bt_sco_state {
 	/** Channel disconnected */
 	BT_SCO_STATE_DISCONNECTED,
@@ -296,3 +300,5 @@ int bt_sco_hci_cb_unregister(struct bt_sco_hci_cb *cb);
  */
 #define BT_SCO_HCI_CB_DEFINE(_name) \
 	static const STRUCT_SECTION_ITERABLE(bt_sco_hci_cb, _CONCAT(bt_sco_hci_cb_, _name))
+
+#endif /* ZEPHYR_BT_HOST_CLASSIC_SCO_INTERNAL_H_ */

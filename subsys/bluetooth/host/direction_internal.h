@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_HOST_DIRECTION_INTERNAL_H_
+#define ZEPHYR_BT_HOST_DIRECTION_INTERNAL_H_
+
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/direction.h>
 #include <zephyr/net_buf.h>
@@ -26,3 +29,5 @@ int hci_df_vs_prepare_connection_iq_report(struct net_buf *buf,
 int hci_df_prepare_conn_cte_req_failed(struct net_buf *buf,
 				       struct bt_df_conn_iq_samples_report *report,
 				       struct bt_conn **conn_to_report);
+
+#endif /* ZEPHYR_BT_HOST_DIRECTION_INTERNAL_H_ */

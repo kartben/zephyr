@@ -5,6 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_TICKER_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_TICKER_H_
+
 #if defined(CONFIG_BT_CTLR_NRF_GRTC)
 #define HAL_TICKER_CNTR_CLK_UNIT_FSEC 1000000000UL
 
@@ -117,3 +120,5 @@ static inline void hal_ticker_add_jitter(uint32_t *ticks, uint32_t *remainder)
 	/* pico seconds to micro seconds unit */
 	*remainder /= HAL_TICKER_PSEC_PER_USEC;
 }
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_TICKER_H_ */

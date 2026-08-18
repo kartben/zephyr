@@ -9,6 +9,10 @@
  * the preprocessor condition being tested is 0. In this case, we use
  * the default value of 0.
  */
+
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_DF_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_DF_H_
+
 #define PDU_ANTENNA DT_PROP_OR(RADIO_NODE, dfe_pdu_antenna, 0)
 
 /* Function configures Radio with information about GPIO pins that may be
@@ -64,3 +68,5 @@ uint32_t radio_df_iq_samples_amount_get(void);
 uint8_t radio_df_cte_status_get(void);
 /* Get information if CTE was present in a received packet */
 bool radio_df_cte_ready(void);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_DF_H_ */

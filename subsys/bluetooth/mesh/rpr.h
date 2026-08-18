@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_MESH_RPR_H_
+#define ZEPHYR_BT_MESH_RPR_H_
+
 #define RPR_OP_EXTENDED_SCAN_REPORT BT_MESH_MODEL_OP_2(0x80, 0x57)
 #define RPR_OP_EXTENDED_SCAN_START BT_MESH_MODEL_OP_2(0x80, 0x56)
 #define RPR_OP_LINK_CLOSE BT_MESH_MODEL_OP_2(0x80, 0x5A)
@@ -35,3 +38,5 @@ static inline bool rpr_node_equal(const struct bt_mesh_rpr_node *a,
 }
 
 enum bt_mesh_rpr_node_refresh bt_mesh_node_refresh_get(void);
+
+#endif /* ZEPHYR_BT_MESH_RPR_H_ */

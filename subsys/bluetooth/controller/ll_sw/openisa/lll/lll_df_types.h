@@ -9,5 +9,11 @@
  */
 
 /* Forward declarations of types to avoid build errors in ULL code. */
+
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_OPENISA_LLL_LLL_DF_TYPES_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_OPENISA_LLL_LLL_DF_TYPES_H_
+
 struct lll_df_sync;
 struct lll_df_conn_rx_cfg;
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_OPENISA_LLL_LLL_DF_TYPES_H_ */

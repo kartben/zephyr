@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_LLL_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_LLL_H_
+
 #if defined(CONFIG_BT_CTLR_RX_PDU_META)
 #include "lll_meta.h"
 #endif /* CONFIG_BT_CTLR_RX_PDU_META */
@@ -640,3 +643,5 @@ int lll_prepare_resolve(lll_is_abort_cb_t is_abort_cb, lll_abort_cb_t abort_cb,
 			lll_prepare_cb_t prepare_cb,
 			struct lll_prepare_param *prepare_param,
 			uint8_t is_resume, uint8_t is_dequeue);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_LLL_H_ */

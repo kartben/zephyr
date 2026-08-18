@@ -9,4 +9,10 @@
  */
 
 /** Device Identification Init. **/
+
+#ifndef ZEPHYR_BT_HOST_CLASSIC_DID_INTERNAL_H_
+#define ZEPHYR_BT_HOST_CLASSIC_DID_INTERNAL_H_
+
 void bt_did_init(void);
+
+#endif /* ZEPHYR_BT_HOST_CLASSIC_DID_INTERNAL_H_ */

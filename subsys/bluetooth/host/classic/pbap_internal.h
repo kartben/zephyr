@@ -6,6 +6,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_HOST_CLASSIC_PBAP_INTERNAL_H_
+#define ZEPHYR_BT_HOST_CLASSIC_PBAP_INTERNAL_H_
+
 #include <zephyr/kernel.h>
 #include <zephyr/bluetooth/classic/pbap.h>
 
@@ -174,3 +177,5 @@ enum __packed bt_pbap_transport_state {
 #define BT_PBAP_PSE_SUPPORTED_REPOSITORIES                                                         \
 	(BT_PBAP_PSE_REPOSITORY_LOCAL_PHONE_BOOK_ENABLE | BT_PBAP_PSE_REPOSITORY_SIM_ENABLE |      \
 	 BT_PBAP_PSE_REPOSITORY_SPEED_DIAL_ENABLE | BT_PBAP_PSE_REPOSITORY_FAVORITES_ENABLE)
+
+#endif /* ZEPHYR_BT_HOST_CLASSIC_PBAP_INTERNAL_H_ */

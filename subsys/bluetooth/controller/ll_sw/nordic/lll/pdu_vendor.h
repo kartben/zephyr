@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_PDU_VENDOR_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_PDU_VENDOR_H_
+
 #if defined(CONFIG_BT_CTLR_DATA_LENGTH_CLEAR)
 #define OCTET3_LEN 0U
 #else /* !CONFIG_BT_CTLR_DATA_LENGTH_CLEAR */
@@ -44,3 +47,5 @@ struct pdu_iso_vnd_octet3 {
 		uint8_t resv[OCTET3_LEN]; /* nRF specific octet3 required for NRF_CCM use */
 	} __packed;
 } __packed;
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_PDU_VENDOR_H_ */

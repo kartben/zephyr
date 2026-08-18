@@ -5,6 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_UTIL_MEM_H_
+#define ZEPHYR_BT_CONTROLLER_UTIL_MEM_H_
+
 #ifndef MALIGN
 /**
  * @brief Force compiler to place memory at-least on a x-byte boundary
@@ -65,3 +68,5 @@ void mem_rcopy(uint8_t *dst, uint8_t const *src, uint16_t len);
 uint8_t mem_nz(uint8_t *src, uint16_t len);
 
 int mem_ut(void);
+
+#endif /* ZEPHYR_BT_CONTROLLER_UTIL_MEM_H_ */

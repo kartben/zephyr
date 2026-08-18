@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_PROF_INTERNAL_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_PROF_INTERNAL_H_
+
 void lll_prof_enter_radio(void);
 void lll_prof_exit_radio(void);
 uint16_t lll_prof_radio_get(void);
@@ -25,3 +28,5 @@ uint16_t lll_prof_cputime_get(void);
 void lll_prof_send(void);
 struct node_rx_pdu *lll_prof_reserve(void);
 void lll_prof_reserve_send(struct node_rx_pdu *rx);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_PROF_INTERNAL_H_ */

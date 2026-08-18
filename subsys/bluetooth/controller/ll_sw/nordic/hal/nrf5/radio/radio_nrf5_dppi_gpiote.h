@@ -6,6 +6,9 @@
 
 /* Extracted from radio_nrf_dppi.h functions that reference gpiote variables. */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF5_DPPI_GPIOTE_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF5_DPPI_GPIOTE_H_
+
 #if defined(HAL_RADIO_GPIO_HAVE_PA_PIN) || defined(HAL_RADIO_GPIO_HAVE_LNA_PIN)
 static inline void hal_palna_ppi_setup(void)
 {
@@ -69,3 +72,5 @@ static inline void hal_fem_ppi_setup(void)
 }
 
 #endif /* HAL_RADIO_FEM_IS_NRF21540 */
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF5_DPPI_GPIOTE_H_ */

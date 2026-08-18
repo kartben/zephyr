@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_ULL_ADV_INTERNAL_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_ULL_ADV_INTERNAL_H_
+
 #define ULL_ADV_RANDOM_DELAY HAL_TICKER_US_TO_TICKS(10000)
 
 /* Bitmask value returned by ull_adv_is_enabled() */
@@ -352,3 +355,5 @@ uint32_t ull_adv_iso_max_time_get(const struct ll_adv_iso_set *adv_iso);
 /* helper function to release unused DF configuration memory */
 void ull_df_adv_cfg_release(struct lll_df_adv_cfg *df_adv_cfg);
 #endif /* CONFIG_BT_CTLR_DF_ADV_CTE_TX */
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_ULL_ADV_INTERNAL_H_ */

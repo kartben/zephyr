@@ -8,6 +8,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_HOST_GATT_INTERNAL_H_
+#define ZEPHYR_BT_HOST_GATT_INTERNAL_H_
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -75,3 +78,5 @@ bool bt_gatt_attr_write_authorize(struct bt_conn *conn, const struct bt_gatt_att
  * When @kconfig{CONFIG_BT_GATT_SERVICE_CHANGED} is disabled this always returns false.
  */
 bool bt_gatt_is_db_hash_valid(void);
+
+#endif /* ZEPHYR_BT_HOST_GATT_INTERNAL_H_ */

@@ -7,6 +7,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_AUDIO_CSIP_INTERNAL_H_
+#define ZEPHYR_BT_AUDIO_CSIP_INTERNAL_H_
+
 #include <stdint.h>
 
 #include <zephyr/bluetooth/audio/csip.h>
@@ -52,3 +55,5 @@ struct bt_csip_set_coordinator_svc_inst {
 
 struct bt_csip_set_coordinator_csis_inst *
 bt_csip_set_coordinator_csis_inst_by_handle(struct bt_conn *conn, uint16_t start_handle);
+
+#endif /* ZEPHYR_BT_AUDIO_CSIP_INTERNAL_H_ */

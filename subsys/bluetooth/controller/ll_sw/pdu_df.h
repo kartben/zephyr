@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_PDU_DF_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_PDU_DF_H_
+
 struct pdu_cte_info {
 #ifdef CONFIG_LITTLE_ENDIAN
 	uint8_t  time:5;
@@ -15,3 +18,5 @@ struct pdu_cte_info {
 	uint8_t  time:5;
 #endif /* CONFIG_LITTLE_ENDIAN */
 } __packed;
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_PDU_DF_H_ */

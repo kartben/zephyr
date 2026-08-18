@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_ULL_SYNC_TYPES_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_ULL_SYNC_TYPES_H_
+
 #define LL_SYNC_STATE_IDLE       0x00
 #define LL_SYNC_STATE_ADDR_MATCH 0x01
 #define LL_SYNC_STATE_CREATED    0x02
@@ -149,3 +152,5 @@ struct node_rx_sync_iso {
 	uint16_t interval;
 };
 #endif /* CONFIG_BT_CTLR_SYNC_ISO */
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_ULL_SYNC_TYPES_H_ */

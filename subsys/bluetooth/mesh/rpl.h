@@ -5,6 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_MESH_RPL_H_
+#define ZEPHYR_BT_MESH_RPL_H_
+
 struct bt_mesh_rpl {
 	uint64_t src:15,
 		 old_iv:1,
@@ -27,3 +30,5 @@ void bt_mesh_rpl_clear(void);
 void bt_mesh_rpl_update(struct bt_mesh_rpl *rpl,
 			struct bt_mesh_net_rx *rx);
 void bt_mesh_rpl_pending_store_all_nodes(void);
+
+#endif /* ZEPHYR_BT_MESH_RPL_H_ */

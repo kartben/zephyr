@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_LLL_ADV_AUX_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_LLL_ADV_AUX_H_
+
 int lll_adv_aux_init(void);
 int lll_adv_aux_reset(void);
 void lll_adv_aux_prepare(void *param);
@@ -14,3 +17,5 @@ extern struct pdu_adv_aux_ptr *
 				    uint32_t remainder_us, uint32_t start_us);
 
 extern void ull_adv_aux_lll_auxptr_fill(struct pdu_adv *pdu, struct lll_adv *lll_adv);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_LLL_ADV_AUX_H_ */

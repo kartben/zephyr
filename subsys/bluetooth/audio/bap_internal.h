@@ -9,6 +9,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_AUDIO_BAP_INTERNAL_H_
+#define ZEPHYR_BT_AUDIO_BAP_INTERNAL_H_
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -149,3 +152,5 @@ bool bt_bap_unicast_client_has_ep(const struct bt_bap_ep *ep);
 bool bt_bap_unicast_server_has_ep(const struct bt_bap_ep *ep);
 struct bt_conn *bt_bap_unicast_client_ep_get_conn(const struct bt_bap_ep *ep);
 struct bt_conn *bt_bap_unicast_server_ep_get_conn(const struct bt_bap_ep *ep);
+
+#endif /* ZEPHYR_BT_AUDIO_BAP_INTERNAL_H_ */

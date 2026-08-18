@@ -9,6 +9,10 @@
  */
 
 /* HFP Profile Version */
+
+#ifndef ZEPHYR_BT_HOST_CLASSIC_HFP_INTERNAL_H_
+#define ZEPHYR_BT_HOST_CLASSIC_HFP_INTERNAL_H_
+
 #define BT_HFP_VERSION_0_96 0x0096 /* HFP Rev. 0.96 */
 #define BT_HFP_VERSION_1_0  0x0100 /* HFP Rev. 1.0 */
 #define BT_HFP_VERSION_1_5  0x0105 /* HFP Rev. 1.5 */
@@ -183,3 +187,5 @@ enum {
 };
 
 #define IS_VALID_BATTERY_LEVEL(level) (((level) >= 0) && ((level) <= 100))
+
+#endif /* ZEPHYR_BT_HOST_CLASSIC_HFP_INTERNAL_H_ */

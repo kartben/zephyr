@@ -9,6 +9,10 @@
 /*
  * The PDU identifiers of SDP packets between client and server
  */
+
+#ifndef ZEPHYR_BT_HOST_CLASSIC_SDP_INTERNAL_H_
+#define ZEPHYR_BT_HOST_CLASSIC_SDP_INTERNAL_H_
+
 #define BT_SDP_ERROR_RSP           0x01
 #define BT_SDP_SVC_SEARCH_REQ      0x02
 #define BT_SDP_SVC_SEARCH_RSP      0x03
@@ -70,3 +74,5 @@ struct bt_sdp_pdu_cstate {
 } __packed;
 
 void bt_sdp_init(void);
+
+#endif /* ZEPHYR_BT_HOST_CLASSIC_SDP_INTERNAL_H_ */

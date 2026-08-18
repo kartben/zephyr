@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_SCAN_INTERNAL_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_SCAN_INTERNAL_H_
+
 void lll_scan_isr_resume(void *param);
 bool lll_scan_isr_rx_check(const struct lll_scan *lll, uint8_t irkmatch_ok,
 			   uint8_t devmatch_ok, uint8_t rl_idx);
@@ -27,3 +30,5 @@ bool lll_scan_aux_addr_match_get(const struct lll_scan *lll,
 				 uint8_t *const devmatch_id,
 				 uint8_t *const irkmatch_ok,
 				 uint8_t *const irkmatch_id);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_SCAN_INTERNAL_H_ */

@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_MESH_FRIEND_H_
+#define ZEPHYR_BT_MESH_FRIEND_H_
+
 enum bt_mesh_friend_pdu_type {
 	BT_MESH_FRIEND_PDU_SINGLE,
 	BT_MESH_FRIEND_PDU_PARTIAL,
@@ -45,3 +48,5 @@ int bt_mesh_friend_sub_rem(struct bt_mesh_net_rx *rx,
 			   struct net_buf_simple *buf);
 
 int bt_mesh_friend_init(void);
+
+#endif /* ZEPHYR_BT_MESH_FRIEND_H_ */

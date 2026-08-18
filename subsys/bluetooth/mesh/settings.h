@@ -5,6 +5,10 @@
  */
 
 /* Pending storage actions. */
+
+#ifndef ZEPHYR_BT_MESH_SETTINGS_H_
+#define ZEPHYR_BT_MESH_SETTINGS_H_
+
 enum bt_mesh_settings_flag {
 	BT_MESH_SETTINGS_RPL_PENDING,
 	BT_MESH_SETTINGS_NET_KEYS_PENDING,
@@ -55,3 +59,5 @@ void bt_mesh_settings_store_cancel(enum bt_mesh_settings_flag flag);
 void bt_mesh_settings_store_pending(void);
 int bt_mesh_settings_set(settings_read_cb read_cb, void *cb_arg,
 			 void *out, size_t read_len);
+
+#endif /* ZEPHYR_BT_MESH_SETTINGS_H_ */

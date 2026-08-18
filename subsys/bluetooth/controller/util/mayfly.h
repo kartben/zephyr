@@ -5,6 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_UTIL_MAYFLY_H_
+#define ZEPHYR_BT_CONTROLLER_UTIL_MAYFLY_H_
+
 #define MAYFLY_CALL_ID_0       0
 #define MAYFLY_CALL_ID_1       1
 #define MAYFLY_CALL_ID_2       2
@@ -31,3 +34,5 @@ extern uint32_t mayfly_is_enabled(uint8_t caller_id, uint8_t callee_id);
 extern uint32_t mayfly_prio_is_equal(uint8_t caller_id, uint8_t callee_id);
 extern void mayfly_pend(uint8_t caller_id, uint8_t callee_id);
 extern uint32_t mayfly_is_running(void);
+
+#endif /* ZEPHYR_BT_CONTROLLER_UTIL_MAYFLY_H_ */

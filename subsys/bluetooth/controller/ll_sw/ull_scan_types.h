@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_ULL_SCAN_TYPES_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_ULL_SCAN_TYPES_H_
+
 struct ll_scan_set {
 	struct ull_hdr  ull;
 	struct lll_scan lll;
@@ -89,3 +92,5 @@ struct ll_scan_aux_set {
 #endif
 #endif /* !CONFIG_BT_CTLR_SCAN_AUX_USE_CHAINS */
 };
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_ULL_SCAN_TYPES_H_ */

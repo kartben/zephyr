@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_MESH_KEYS_H_
+#define ZEPHYR_BT_MESH_KEYS_H_
+
 #define BT_MESH_KEY_PRIMARY 0x0000
 
 enum bt_mesh_key_evt {
@@ -28,3 +31,5 @@ int bt_mesh_key_export(uint8_t out[16], const struct bt_mesh_key *in);
 void bt_mesh_key_assign(struct bt_mesh_key *dst, const struct bt_mesh_key *src);
 int bt_mesh_key_destroy(const struct bt_mesh_key *key);
 int bt_mesh_key_compare(const uint8_t raw_key[16], const struct bt_mesh_key *mesh_key);
+
+#endif /* ZEPHYR_BT_MESH_KEYS_H_ */

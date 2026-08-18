@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_LLL_CHAN_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_LLL_CHAN_H_
+
 uint8_t lll_chan_sel_1(uint8_t *chan_use, uint8_t hop, uint16_t latency,
 		       uint8_t *chan_map, uint8_t chan_count);
 
@@ -19,3 +22,5 @@ uint8_t lll_chan_iso_subevent(uint16_t chan_id, const uint8_t *chan_map,
 			      uint16_t *remap_idx);
 
 void lll_chan_sel_2_ut(void);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_LLL_CHAN_H_ */

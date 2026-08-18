@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_MESH_FOUNDATION_H_
+#define ZEPHYR_BT_MESH_FOUNDATION_H_
+
 #define OP_APP_KEY_ADD                     BT_MESH_MODEL_OP_1(0x00)
 #define OP_APP_KEY_UPDATE                  BT_MESH_MODEL_OP_1(0x01)
 #define OP_DEV_COMP_DATA_STATUS            BT_MESH_MODEL_OP_1(0x02)
@@ -179,3 +182,5 @@ static inline void key_idx_unpack_pair(struct net_buf_simple *buf, uint16_t *idx
 	*idx2 = sys_get_le16(&buf->data[1]) >> 4;
 	net_buf_simple_pull(buf, 3);
 }
+
+#endif /* ZEPHYR_BT_MESH_FOUNDATION_H_ */

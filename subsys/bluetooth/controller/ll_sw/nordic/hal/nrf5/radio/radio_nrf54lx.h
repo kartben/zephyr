@@ -5,6 +5,10 @@
  */
 
 /* Use the NRF_RTC instance for coarse radio event scheduling */
+
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF54LX_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF54LX_H_
+
 #if !defined(CONFIG_BT_CTLR_NRF_GRTC)
 #define NRF_RTC NRF_RTC10
 #endif /* !CONFIG_BT_CTLR_NRF_GRTC */
@@ -833,3 +837,5 @@ static inline uint32_t hal_radio_rx_chain_delay_ns_get(uint8_t phy, uint8_t flag
 #endif /* CONFIG_BT_CTLR_PHY_CODED */
 	}
 }
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF54LX_H_ */

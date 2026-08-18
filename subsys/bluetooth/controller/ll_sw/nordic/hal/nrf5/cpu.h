@@ -5,6 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_CPU_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_CPU_H_
+
 #include <zephyr/kernel.h>
 
 static inline void cpu_sleep(void)
@@ -35,3 +38,5 @@ static inline void cpu_dmb(void)
 #error "Unsupported CPU."
 #endif
 }
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_CPU_H_ */

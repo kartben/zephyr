@@ -8,6 +8,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_AUDIO_HAS_INTERNAL_H_
+#define ZEPHYR_BT_AUDIO_HAS_INTERNAL_H_
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -182,3 +185,5 @@ struct bt_has_client {
 	struct bt_gatt_subscribe_params control_point_subscription;
 	struct bt_gatt_subscribe_params active_index_subscription;
 };
+
+#endif /* ZEPHYR_BT_AUDIO_HAS_INTERNAL_H_ */

@@ -5,6 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_HCI_HCI_INTERNAL_H_
+#define ZEPHYR_BT_CONTROLLER_HCI_HCI_INTERNAL_H_
+
 #if defined(CONFIG_BT_HCI_ACL_FLOW_CONTROL)
 extern int32_t    hci_hbuf_total;
 extern uint32_t    hci_hbuf_sent;
@@ -72,3 +75,5 @@ uint8_t hci_vendor_read_ctlr_delay(uint8_t coding_format,
 				   const uint8_t *codec_config,
 				   uint32_t *min_delay,
 				   uint32_t *max_delay);
+
+#endif /* ZEPHYR_BT_CONTROLLER_HCI_HCI_INTERNAL_H_ */

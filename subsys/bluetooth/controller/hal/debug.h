@@ -5,6 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_HAL_DEBUG_H_
+#define ZEPHYR_BT_CONTROLLER_HAL_DEBUG_H_
+
 #include "common/assert.h"
 
 #if defined(CONFIG_BT_CTLR_ASSERT_HANDLER)
@@ -102,3 +105,5 @@ BUILD_ASSERT(IS_ENABLED(CONFIG_CPU_CORTEX_M));
 #endif /* !CONFIG_BT_CTLR_ASSERT_OVERHEAD_START */
 
 #include "hal/debug_vendor_hal.h"
+
+#endif /* ZEPHYR_BT_CONTROLLER_HAL_DEBUG_H_ */

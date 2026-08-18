@@ -4,6 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 /* Needed for the DT_INST_* defines below */
+
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_OPENISA_HAL_RV32M1_LL_IRQS_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_OPENISA_HAL_RV32M1_LL_IRQS_H_
+
 #include <zephyr/devicetree.h>
 
 #define LL_SWI4_IRQn EMVSIM0_IRQn
@@ -25,3 +29,5 @@
 
 #define LL_RTC0_IRQn LL_RTC0_IRQn_1st_lvl
 #define LL_RADIO_IRQn LL_RADIO_IRQn_1st_lvl
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_OPENISA_HAL_RV32M1_LL_IRQS_H_ */

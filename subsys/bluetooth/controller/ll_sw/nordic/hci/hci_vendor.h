@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HCI_HCI_VENDOR_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HCI_HCI_VENDOR_H_
+
 #if defined(CONFIG_SOC_COMPATIBLE_NRF)
 #define BT_HCI_VS_HW_PLAT BT_HCI_VS_HW_PLAT_NORDIC
 #if defined(CONFIG_SOC_SERIES_NRF51)
@@ -28,3 +31,5 @@ inline int hci_vendor_cmd_handle(uint16_t ocf, struct net_buf *cmd,
 {
 	return hci_vendor_cmd_handle_common(ocf, cmd, evt);
 }
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HCI_HCI_VENDOR_H_ */

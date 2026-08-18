@@ -10,4 +10,10 @@
  */
 
 /* To be called when first SEP is being registered */
+
+#ifndef ZEPHYR_BT_HOST_CLASSIC_A2DP_INTERNAL_H_
+#define ZEPHYR_BT_HOST_CLASSIC_A2DP_INTERNAL_H_
+
 void bt_a2dp_init(void);
+
+#endif /* ZEPHYR_BT_HOST_CLASSIC_A2DP_INTERNAL_H_ */

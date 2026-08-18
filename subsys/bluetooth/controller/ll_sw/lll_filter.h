@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_LLL_FILTER_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_LLL_FILTER_H_
+
 #if defined(CONFIG_BT_CTLR_FAL_SIZE) && defined(CONFIG_BT_CTLR_RL_SIZE)
 #define LLL_FILTER_SIZE MAX(CONFIG_BT_CTLR_FAL_SIZE, CONFIG_BT_CTLR_RL_SIZE)
 #elif defined(CONFIG_BT_CTLR_FAL_SIZE)
@@ -126,3 +129,5 @@ extern uint8_t ull_filter_deferred_targeta_resolve(bt_addr_t *rpa,
 						uint8_t rl_idx,
 						resolve_callback_t cb);
 #endif
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_LLL_FILTER_H_ */

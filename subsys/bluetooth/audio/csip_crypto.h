@@ -5,6 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_AUDIO_CSIP_CRYPTO_H_
+#define ZEPHYR_BT_AUDIO_CSIP_CRYPTO_H_
+
 #include <stdint.h>
 
 #include <zephyr/bluetooth/audio/csip.h>
@@ -78,3 +81,5 @@ int bt_csip_sef(const uint8_t k[BT_CSIP_CRYPTO_KEY_SIZE], const uint8_t sirk[BT_
  */
 int bt_csip_sdf(const uint8_t k[BT_CSIP_CRYPTO_KEY_SIZE], const uint8_t enc_sirk[BT_CSIP_SIRK_SIZE],
 		uint8_t out_sirk[BT_CSIP_SIRK_SIZE]);
+
+#endif /* ZEPHYR_BT_AUDIO_CSIP_CRYPTO_H_ */

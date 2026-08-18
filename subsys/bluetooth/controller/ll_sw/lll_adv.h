@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_LLL_ADV_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_LLL_ADV_H_
+
 struct lll_adv_iso_stream {
 	/* Associated BIG Handle */
 	uint8_t big_handle;
@@ -239,3 +242,5 @@ int lll_adv_reset(void);
 void lll_adv_prepare(void *param);
 
 extern uint16_t ull_adv_lll_handle_get(struct lll_adv *lll);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_LLL_ADV_H_ */

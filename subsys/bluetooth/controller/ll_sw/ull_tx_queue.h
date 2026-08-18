@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_ULL_TX_QUEUE_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_ULL_TX_QUEUE_H_
+
 struct ull_tx_q {
 	uint8_t pause_data; /* Data pause state of the tx queue */
 
@@ -68,3 +71,5 @@ struct node_tx *ull_tx_q_peek(struct ull_tx_q *queue);
  * @return Head tx node of the tx queue.
  */
 struct node_tx *ull_tx_q_dequeue(struct ull_tx_q *queue);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_ULL_TX_QUEUE_H_ */

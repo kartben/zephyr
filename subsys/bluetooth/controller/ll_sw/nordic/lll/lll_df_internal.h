@@ -5,6 +5,10 @@
  */
 
 /* Forward declaration to avoid unnecessary includes. */
+
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_DF_INTERNAL_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_DF_INTERNAL_H_
+
 struct lll_adv_sync;
 struct lll_sync;
 
@@ -72,3 +76,5 @@ void lll_df_cte_tx_disable(void);
 
 /* Enabled parsing of a PDU for CTEInfo */
 void lll_df_conf_cte_info_parsing_enable(void);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_DF_INTERNAL_H_ */

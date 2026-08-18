@@ -10,6 +10,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_HOST_CLASSIC_AVCTP_INTERNAL_H_
+#define ZEPHYR_BT_HOST_CLASSIC_AVCTP_INTERNAL_H_
+
 typedef enum __packed {
 	BT_AVCTP_IPID_NONE = 0b0,
 	BT_AVCTP_IPID_INVALID = 0b1,
@@ -171,3 +174,5 @@ struct net_buf *bt_avctp_create_pdu(struct net_buf_pool *pool);
 
 /* Send AVCTP PDU */
 int bt_avctp_send(struct bt_avctp *session, struct net_buf *buf, bt_avctp_cr_t cr, uint8_t tid);
+
+#endif /* ZEPHYR_BT_HOST_CLASSIC_AVCTP_INTERNAL_H_ */

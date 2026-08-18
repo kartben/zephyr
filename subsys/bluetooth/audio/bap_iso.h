@@ -7,6 +7,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_AUDIO_BAP_ISO_H_
+#define ZEPHYR_BT_AUDIO_BAP_ISO_H_
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -57,3 +60,5 @@ void bt_bap_iso_bind_stream(struct bt_bap_iso *bap_iso, struct bt_bap_stream *st
 			    enum bt_audio_dir dir);
 void bt_bap_iso_unbind_stream(struct bt_bap_stream *stream, enum bt_audio_dir dir);
 struct bt_bap_stream *bt_bap_iso_get_stream(struct bt_bap_iso *iso, enum bt_audio_dir dir);
+
+#endif /* ZEPHYR_BT_AUDIO_BAP_ISO_H_ */

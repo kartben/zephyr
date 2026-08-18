@@ -12,6 +12,10 @@
  * by the member first, such that the buffer is the latest committed by
  * the thread context.
  */
+
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_ADV_TYPES_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_ADV_TYPES_H_
+
 struct lll_adv_pdu {
 	uint8_t volatile first;
 	uint8_t          last;
@@ -26,3 +30,5 @@ struct lll_adv_pdu {
 	void             *extra_data[DOUBLE_BUFFER_SIZE];
 #endif /* CONFIG_BT_CTLR_ADV_EXT_PDU_EXTRA_DATA_MEMORY */
 };
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_ADV_TYPES_H_ */

@@ -8,6 +8,10 @@
 /* HAL header files for nRF5x SoCs.
  * These has to come before the radio_*.h include below.
  */
+
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF5_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF5_H_
+
 #include <hal/nrf_radio.h>
 
 /* Common radio resources */
@@ -117,3 +121,5 @@
 
 /* This is the minimum prepare duration required to setup radio for deferred transmission */
 #define HAL_RADIO_TMR_DEFERRED_TX_DELAY_US 50U
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF5_H_ */

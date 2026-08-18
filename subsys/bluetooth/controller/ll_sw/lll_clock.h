@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_LLL_CLOCK_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_LLL_CLOCK_H_
+
 int lll_clock_init(void);
 int lll_clock_deinit(void);
 int lll_clock_wait(void);
@@ -13,3 +16,5 @@ int lll_hfclock_off(void);
 uint8_t lll_clock_sca_local_get(void);
 uint32_t lll_clock_ppm_local_get(void);
 uint32_t lll_clock_ppm_get(uint8_t sca);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_LLL_CLOCK_H_ */

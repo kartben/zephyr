@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_MESH_PROXY_H_
+#define ZEPHYR_BT_MESH_PROXY_H_
+
 #if defined(CONFIG_BT_MESH_DEBUG_USE_ID_ADDR)
 #define ADV_OPT_USE_IDENTITY BT_LE_ADV_OPT_USE_IDENTITY
 #else
@@ -29,3 +32,5 @@ void bt_mesh_proxy_identity_stop(struct bt_mesh_subnet *sub);
 bool bt_mesh_proxy_relay(struct bt_mesh_adv *adv, uint16_t dst);
 void bt_mesh_proxy_addr_add(struct net_buf_simple *buf, uint16_t addr);
 uint8_t bt_mesh_proxy_srv_connected_cnt(void);
+
+#endif /* ZEPHYR_BT_MESH_PROXY_H_ */

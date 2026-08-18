@@ -6,6 +6,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_AUDIO_BAP_UNICAST_CLIENT_INTERNAL_H_
+#define ZEPHYR_BT_AUDIO_BAP_UNICAST_CLIENT_INTERNAL_H_
+
 #include <stdint.h>
 #include <stddef.h>
 
@@ -41,3 +44,5 @@ int bt_bap_unicast_client_ep_send(struct bt_conn *conn, struct bt_bap_ep *ep,
 				  struct net_buf_simple *buf);
 
 struct bt_bap_iso *bt_bap_unicast_client_new_audio_iso(void);
+
+#endif /* ZEPHYR_BT_AUDIO_BAP_UNICAST_CLIENT_INTERNAL_H_ */

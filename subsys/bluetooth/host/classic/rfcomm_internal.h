@@ -8,6 +8,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_HOST_CLASSIC_RFCOMM_INTERNAL_H_
+#define ZEPHYR_BT_HOST_CLASSIC_RFCOMM_INTERNAL_H_
+
 #include <zephyr/bluetooth/classic/rfcomm.h>
 
 typedef enum {
@@ -183,3 +186,5 @@ struct bt_rfcomm_rls {
 
 /* Initialize RFCOMM signal layer */
 void bt_rfcomm_init(void);
+
+#endif /* ZEPHYR_BT_HOST_CLASSIC_RFCOMM_INTERNAL_H_ */

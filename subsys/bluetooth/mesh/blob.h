@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_MESH_BLOB_H_
+#define ZEPHYR_BT_MESH_BLOB_H_
+
 #include <string.h>
 #include <zephyr/sys/util.h>
 
@@ -152,3 +155,5 @@ void blob_cli_broadcast_tx_complete(struct bt_mesh_blob_cli *cli);
  * @param cli BLOB Transfer Client instance.
  */
 void blob_cli_broadcast_abort(struct bt_mesh_blob_cli *cli);
+
+#endif /* ZEPHYR_BT_MESH_BLOB_H_ */

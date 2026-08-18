@@ -5,6 +5,10 @@
  */
 
 /* LLCP Memory Pool Descriptor */
+
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_ULL_LLCP_INTERNAL_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_ULL_LLCP_INTERNAL_H_
+
 struct llcp_mem_pool {
 	void *free;
 	uint8_t *pool;
@@ -835,3 +839,5 @@ uint8_t llcp_common_tx_buffer_alloc_count(void);
 struct proc_ctx *llcp_proc_ctx_acquire(void);
 struct proc_ctx *llcp_create_procedure(enum llcp_proc proc);
 #endif
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_ULL_LLCP_INTERNAL_H_ */

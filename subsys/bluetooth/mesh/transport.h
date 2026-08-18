@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_MESH_TRANSPORT_H_
+#define ZEPHYR_BT_MESH_TRANSPORT_H_
+
 #define TRANS_SEQ_AUTH_NVAL            0xffffffffffffffff
 
 #define BT_MESH_SDU_UNSEG_MAX          11
@@ -102,3 +105,5 @@ int bt_mesh_trans_recv(struct net_buf_simple *buf, struct bt_mesh_net_rx *rx);
 
 void bt_mesh_trans_init(void);
 void bt_mesh_trans_reset(void);
+
+#endif /* ZEPHYR_BT_MESH_TRANSPORT_H_ */

@@ -9,6 +9,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_AUDIO_TBS_INTERNAL_H_
+#define ZEPHYR_BT_AUDIO_TBS_INTERNAL_H_
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -401,3 +404,5 @@ struct bt_tbs_instance {
 	ATOMIC_DEFINE(flags, BT_TBS_CLIENT_FLAG_NUM_FLAGS);
 };
 #endif /* CONFIG_BT_TBS_CLIENT */
+
+#endif /* ZEPHYR_BT_AUDIO_TBS_INTERNAL_H_ */

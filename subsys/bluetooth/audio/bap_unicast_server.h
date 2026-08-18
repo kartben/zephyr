@@ -6,6 +6,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_AUDIO_BAP_UNICAST_SERVER_H_
+#define ZEPHYR_BT_AUDIO_BAP_UNICAST_SERVER_H_
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -19,3 +22,5 @@ int bt_bap_unicast_server_metadata(struct bt_bap_stream *stream, const uint8_t m
 				   size_t meta_len);
 int bt_bap_unicast_server_disable(struct bt_bap_stream *stream);
 int bt_bap_unicast_server_release(struct bt_bap_stream *stream);
+
+#endif /* ZEPHYR_BT_AUDIO_BAP_UNICAST_SERVER_H_ */

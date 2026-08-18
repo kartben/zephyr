@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_ULL_SYNC_ISO_INTERNAL_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_ULL_SYNC_ISO_INTERNAL_H_
+
 int ull_sync_iso_init(void);
 int ull_sync_iso_reset(void);
 struct ll_sync_iso_set *ull_sync_iso_by_stream_get(uint16_t handle);
@@ -15,3 +18,5 @@ void ull_sync_iso_setup(struct ll_sync_iso_set *sync_iso,
 void ull_sync_iso_estab_done(struct node_rx_event_done *done);
 void ull_sync_iso_done(struct node_rx_event_done *done);
 void ull_sync_iso_done_terminate(struct node_rx_event_done *done);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_ULL_SYNC_ISO_INTERNAL_H_ */

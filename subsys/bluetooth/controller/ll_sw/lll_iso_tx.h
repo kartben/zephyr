@@ -5,6 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_LLL_ISO_TX_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_LLL_ISO_TX_H_
+
 struct node_tx_iso {
 	union {
 		void        *next;
@@ -15,3 +18,5 @@ struct node_tx_iso {
 	uint64_t sdu_fragments : 8;
 	uint8_t  pdu[];
 };
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_LLL_ISO_TX_H_ */

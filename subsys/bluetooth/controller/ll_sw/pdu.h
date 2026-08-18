@@ -9,6 +9,9 @@
  * PDU fields sizes
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_PDU_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_PDU_H_
+
 #define PDU_PREAMBLE_SIZE(phy) (phy&0x3)
 #define PDU_ACCESS_ADDR_SIZE   4
 #define PDU_HEADER_SIZE        2
@@ -1281,3 +1284,5 @@ struct pdu_dtm {
 
 /* Direct Test Mode maximum payload size */
 #define PDU_DTM_PAYLOAD_SIZE_MAX 255
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_PDU_H_ */

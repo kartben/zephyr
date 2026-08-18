@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_MESH_NET_H_
+#define ZEPHYR_BT_MESH_NET_H_
+
 #include <stdint.h>
 
 #include "adv.h"
@@ -362,3 +365,5 @@ static inline void send_cb_finalize(const struct bt_mesh_send_cb *cb,
 		cb->end(0, cb_data);
 	}
 }
+
+#endif /* ZEPHYR_BT_MESH_NET_H_ */

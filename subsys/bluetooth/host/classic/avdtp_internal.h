@@ -7,6 +7,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_HOST_CLASSIC_AVDTP_INTERNAL_H_
+#define ZEPHYR_BT_HOST_CLASSIC_AVDTP_INTERNAL_H_
+
 #include <zephyr/bluetooth/classic/avdtp.h>
 
 /* @brief A2DP ROLE's */
@@ -341,3 +344,5 @@ int bt_avdtp_send_media_data(struct bt_avdtp_sep *sep, struct net_buf *buf);
 
 /* get media l2cap connection MTU */
 uint32_t bt_avdtp_get_media_mtu(struct bt_avdtp_sep *sep);
+
+#endif /* ZEPHYR_BT_HOST_CLASSIC_AVDTP_INTERNAL_H_ */

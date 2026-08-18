@@ -10,6 +10,10 @@
  * The structure may be used as a header for any kind of data structure that requires
  * double buffering.
  */
+
+#ifndef ZEPHYR_BT_CONTROLLER_UTIL_DBUF_H_
+#define ZEPHYR_BT_CONTROLLER_UTIL_DBUF_H_
+
 struct dbuf_hdr {
 	/* The current element that is in use. */
 	uint8_t volatile first;
@@ -105,3 +109,5 @@ static inline bool dbuf_is_modified(const struct dbuf_hdr *hdr)
 {
 	return hdr->first != hdr->last;
 }
+
+#endif /* ZEPHYR_BT_CONTROLLER_UTIL_DBUF_H_ */

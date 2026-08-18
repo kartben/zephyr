@@ -7,6 +7,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_AUDIO_BAP_STREAM_H_
+#define ZEPHYR_BT_AUDIO_BAP_STREAM_H_
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -39,3 +42,5 @@ enum bt_bap_ascs_reason bt_bap_stream_verify_qos(const struct bt_bap_stream *str
 
 struct bt_iso_chan *bt_bap_stream_iso_chan_get(struct bt_bap_stream *stream);
 bool bt_bap_stream_valid_state_transition(const struct bt_bap_ep *ep, enum bt_bap_ep_state state);
+
+#endif /* ZEPHYR_BT_AUDIO_BAP_STREAM_H_ */

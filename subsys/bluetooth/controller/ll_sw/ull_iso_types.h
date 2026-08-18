@@ -5,6 +5,10 @@
  */
 
 /* BIS Broadcaster */
+
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_ULL_ISO_TYPES_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_ULL_ISO_TYPES_H_
+
 #if defined(CONFIG_BT_CTLR_ADV_ISO)
 #define LL_BIS_ADV_HANDLE_BASE BT_CTLR_ADV_ISO_STREAM_HANDLE_BASE
 #define LL_BIS_ADV_IDX_FROM_HANDLE(conn_handle) \
@@ -106,3 +110,5 @@ struct ll_iso_datapath {
 	isoal_sink_handle_t sink_hdl;
 	isoal_source_handle_t source_hdl;
 };
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_ULL_ISO_TYPES_H_ */

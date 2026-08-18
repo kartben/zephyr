@@ -6,6 +6,9 @@
 
 /* NOTE: Definitions used internal to ULL implementations */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_ULL_SCAN_INTERNAL_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_ULL_SCAN_INTERNAL_H_
+
 #define SCAN_HANDLE_1M        0
 #define SCAN_HANDLE_PHY_CODED 1
 
@@ -96,3 +99,5 @@ int ull_scan_aux_stop(void *parent);
 #else /* !CONFIG_BT_CTLR_SCAN_AUX_USE_CHAINS */
 int ull_scan_aux_stop(struct ll_scan_aux_set *aux);
 #endif /* !CONFIG_BT_CTLR_SCAN_AUX_USE_CHAINS */
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_ULL_SCAN_INTERNAL_H_ */

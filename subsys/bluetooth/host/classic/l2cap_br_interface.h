@@ -8,6 +8,10 @@
  */
 
 /* Need a name different than bt_l2cap_fixed_chan for a different section */
+
+#ifndef ZEPHYR_BT_HOST_CLASSIC_L2CAP_BR_INTERFACE_H_
+#define ZEPHYR_BT_HOST_CLASSIC_L2CAP_BR_INTERFACE_H_
+
 struct bt_l2cap_br_fixed_chan {
 	uint16_t		cid;
 	int (*accept)(struct bt_conn *conn, struct bt_l2cap_chan **chan);
@@ -73,3 +77,5 @@ uint8_t bt_l2cap_br_get_remote_fixed_chan(struct bt_conn *conn);
 
 /* L2CAP data receiving complete. */
 int bt_l2cap_br_chan_recv_complete(struct bt_l2cap_chan *chan);
+
+#endif /* ZEPHYR_BT_HOST_CLASSIC_L2CAP_BR_INTERFACE_H_ */

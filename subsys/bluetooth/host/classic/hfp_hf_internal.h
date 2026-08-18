@@ -8,6 +8,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_HOST_CLASSIC_HFP_HF_INTERNAL_H_
+#define ZEPHYR_BT_HOST_CLASSIC_HFP_HF_INTERNAL_H_
+
 #include "hfp_internal.h"
 
 #if defined(CONFIG_BT_HFP_HF_CLI)
@@ -257,3 +260,5 @@ struct bt_hfp_hf {
 
 	ATOMIC_DEFINE(flags, BT_HFP_HF_NUM_FLAGS);
 };
+
+#endif /* ZEPHYR_BT_HOST_CLASSIC_HFP_HF_INTERNAL_H_ */

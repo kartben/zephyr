@@ -5,6 +5,10 @@
  */
 
 /* The Aux Offset shall be at least the length of the packet plus T_MAFS */
+
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_ADV_PDU_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_ADV_PDU_H_
+
 #define PDU_ADV_AUX_OFFSET_MIN_US 300
 
 #if defined(CONFIG_BT_CTLR_ADV_PDU_LINK)
@@ -246,3 +250,5 @@ static inline void lll_adv_pdu_linked_append_end(struct pdu_adv *pdu,
 	lll_adv_pdu_linked_append(pdu, last);
 }
 #endif
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_ADV_PDU_H_ */

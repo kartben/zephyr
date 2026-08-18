@@ -9,6 +9,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_HOST_SMP_H_
+#define ZEPHYR_BT_HOST_SMP_H_
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -212,3 +215,5 @@ static inline const char *bt_smp_err_to_str(uint8_t smp_err)
 	return "";
 }
 #endif
+
+#endif /* ZEPHYR_BT_HOST_SMP_H_ */

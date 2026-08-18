@@ -7,6 +7,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_AUDIO_PACS_INTERNAL_H_
+#define ZEPHYR_BT_AUDIO_PACS_INTERNAL_H_
+
 #include <stdint.h>
 
 #include <zephyr/bluetooth/audio/audio.h>
@@ -42,3 +45,5 @@ struct bt_pacs_context {
 
 const struct bt_audio_codec_cap *bt_pacs_get_codec_cap(enum bt_audio_dir dir,
 						       const struct bt_pac_codec *codec_id);
+
+#endif /* ZEPHYR_BT_AUDIO_PACS_INTERNAL_H_ */

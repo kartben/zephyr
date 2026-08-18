@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_ULL_DF_INTERNAL_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_ULL_DF_INTERNAL_H_
+
 int ull_df_init(void);
 int ull_df_reset(void);
 
@@ -23,3 +26,5 @@ void ull_df_sync_cfg_init(struct lll_df_sync *cfg);
 bool ull_df_sync_cfg_is_not_enabled(struct lll_df_sync *df_cfg);
 /* Returns information if CTE sampling for a connection is not enabled. */
 bool ull_df_conn_cfg_is_not_enabled(struct lll_df_conn_rx_cfg *rx_cfg);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_ULL_DF_INTERNAL_H_ */

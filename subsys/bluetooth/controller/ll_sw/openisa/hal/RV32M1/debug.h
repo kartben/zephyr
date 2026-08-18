@@ -27,6 +27,10 @@
  * J2.19 : DEBUG_RADIO_ACTIVE
  *
  */
+
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_OPENISA_HAL_RV32M1_DEBUG_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_OPENISA_HAL_RV32M1_DEBUG_H_
+
 #ifdef CONFIG_BT_CTLR_DEBUG_PINS
 
 #include <zephyr/drivers/gpio.h>
@@ -190,3 +194,5 @@ extern const struct device *vega_debug_portd;
 #define DEBUG_RADIO_CLOSE_M(flag)
 
 #endif
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_OPENISA_HAL_RV32M1_DEBUG_H_ */

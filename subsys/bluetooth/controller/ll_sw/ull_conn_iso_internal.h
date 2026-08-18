@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_ULL_CONN_ISO_INTERNAL_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_ULL_CONN_ISO_INTERNAL_H_
+
 #define IS_PERIPHERAL(cig) \
 	(IS_ENABLED(CONFIG_BT_CTLR_PERIPHERAL_ISO) && \
 	 (cig->lll.role == BT_HCI_ROLE_PERIPHERAL))
@@ -51,3 +54,5 @@ void ull_conn_iso_transmit_test_cig_interval(uint16_t handle,
 void ull_conn_iso_ticker_cb(uint32_t ticks_at_expire, uint32_t ticks_drift,
 			    uint32_t remainder, uint16_t lazy, uint8_t force,
 			    void *param);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_ULL_CONN_ISO_INTERNAL_H_ */

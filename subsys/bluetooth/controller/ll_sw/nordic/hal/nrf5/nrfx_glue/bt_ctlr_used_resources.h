@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_NRFX_GLUE_BT_CTLR_USED_RESOURCES_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_NRFX_GLUE_BT_CTLR_USED_RESOURCES_H_
+
 #include "../radio/radio_nrf5_resources.h"
 #include "../radio/radio_nrf5_fem.h"
 
@@ -106,3 +109,5 @@
 #else
 #define BT_CTLR_USED_PPI_GROUPS 0
 #endif
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_NRFX_GLUE_BT_CTLR_USED_RESOURCES_H_ */

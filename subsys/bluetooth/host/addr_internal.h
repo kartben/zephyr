@@ -7,6 +7,10 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+#ifndef ZEPHYR_BT_HOST_ADDR_INTERNAL_H_
+#define ZEPHYR_BT_HOST_ADDR_INTERNAL_H_
+
 #include <zephyr/bluetooth/addr.h>
 
 void bt_addr_le_copy_resolved(bt_addr_le_t *dst, const bt_addr_le_t *src);
@@ -48,3 +52,5 @@ void bt_addr_le_copy_resolved(bt_addr_le_t *dst, const bt_addr_le_t *src);
  * regular @ref bt_addr_le_t.
  */
 bool bt_addr_le_is_resolved(const bt_addr_le_t *hci_addr_field_value);
+
+#endif /* ZEPHYR_BT_HOST_ADDR_INTERNAL_H_ */

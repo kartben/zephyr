@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_OPENISA_LLL_PDU_VENDOR_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_OPENISA_LLL_PDU_VENDOR_H_
+
 #include <zephyr/sys/util.h>
 
 /* Minimum vendor specific Rx payload buffer allocation */
@@ -28,3 +31,5 @@ struct pdu_cis_vnd_octet3 {
 struct pdu_iso_vnd_octet3 {
 	FLEXIBLE_ARRAY_DECLARE(uint8_t, resv);
 } __packed;
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_OPENISA_LLL_PDU_VENDOR_H_ */

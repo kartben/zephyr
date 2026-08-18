@@ -6,6 +6,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_AUDIO_CAP_INTERNAL_H_
+#define ZEPHYR_BT_AUDIO_CAP_INTERNAL_H_
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -367,3 +370,5 @@ void bt_cap_handover_receive_state_updated(const struct bt_conn *conn,
 bool bt_cap_handover_is_handover_broadcast_source(
 	const struct bt_cap_broadcast_source *cap_broadcast_source);
 int bt_cap_handover_broadcast_reception_stopped(struct bt_cap_common_proc *active_proc);
+
+#endif /* ZEPHYR_BT_AUDIO_CAP_INTERNAL_H_ */

@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_MESH_DFU_H_
+#define ZEPHYR_BT_MESH_DFU_H_
+
 #define BT_MESH_DFU_OP_UPDATE_INFO_GET BT_MESH_MODEL_OP_2(0x83, 0x08)
 #define BT_MESH_DFU_OP_UPDATE_INFO_STATUS BT_MESH_MODEL_OP_2(0x83, 0x09)
 
@@ -42,3 +45,5 @@ static inline uint16_t dfu_metadata_checksum(struct net_buf_simple *buf)
 
 	return (sum[0] << 8U) | sum[1];
 }
+
+#endif /* ZEPHYR_BT_MESH_DFU_H_ */

@@ -9,6 +9,10 @@
  *
  * @{
  */
+
+#ifndef ZEPHYR_BT_CONTROLLER_TICKER_TICKER_H_
+#define ZEPHYR_BT_CONTROLLER_TICKER_TICKER_H_
+
 #define TICKER_STATUS_SUCCESS 0 /**< Success. */
 #define TICKER_STATUS_FAILURE 1 /**< Failure. */
 #define TICKER_STATUS_BUSY    2 /**< Busy, requested feature will
@@ -291,3 +295,5 @@ uint8_t ticker_update_ext(uint8_t instance_index, uint8_t user_id,
 #endif /* !CONFIG_BT_TICKER_EXT_EXPIRE_INFO */
 
 #endif /* CONFIG_BT_TICKER_EXT */
+
+#endif /* ZEPHYR_BT_CONTROLLER_TICKER_TICKER_H_ */

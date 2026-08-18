@@ -12,6 +12,9 @@
  * properties to the generic macros required by the nRF5 radio HAL.
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF5_FEM_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF5_FEM_H_
+
 #include <zephyr/devicetree.h>
 #include <zephyr/dt-bindings/gpio/gpio.h>
 
@@ -58,3 +61,5 @@
 #define HAL_RADIO_GPIO_LNA_POL_INV 1
 #endif
 #endif	/* HAL_RADIO_GPIO_HAVE_LNA_PIN */
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF5_FEM_H_ */

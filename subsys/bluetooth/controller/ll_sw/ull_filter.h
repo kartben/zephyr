@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_ULL_FILTER_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_ULL_FILTER_H_
+
 void ull_filter_reset(bool init);
 bool ull_filter_ull_pal_addr_match(const uint8_t addr_type,
 				   const uint8_t *const addr);
@@ -20,3 +23,5 @@ const uint8_t *ull_filter_adva_get(uint8_t rl_idx);
 const uint8_t *ull_filter_tgta_get(uint8_t rl_idx);
 uint8_t ull_filter_rl_find(uint8_t id_addr_type, uint8_t const *const id_addr,
 			uint8_t *const free);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_ULL_FILTER_H_ */

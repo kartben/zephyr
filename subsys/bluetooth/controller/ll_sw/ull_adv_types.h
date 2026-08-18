@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_ULL_ADV_TYPES_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_ULL_ADV_TYPES_H_
+
 #if defined(CONFIG_BT_CTLR_DF_ADV_CTE_TX)
 struct lll_df_adv_cfg;
 #endif /* CONFIG_BT_CTLR_DF_ADV_CTE_TX */
@@ -131,3 +134,5 @@ struct ll_adv_iso_set {
 	uint8_t  hci_handle;
 #endif /* CONFIG_BT_CTLR_HCI_ADV_HANDLE_MAPPING */
 };
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_ULL_ADV_TYPES_H_ */

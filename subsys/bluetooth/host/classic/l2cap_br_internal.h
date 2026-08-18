@@ -8,6 +8,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_HOST_CLASSIC_L2CAP_BR_INTERNAL_H_
+#define ZEPHYR_BT_HOST_CLASSIC_L2CAP_BR_INTERNAL_H_
+
 #include <zephyr/bluetooth/l2cap.h>
 #include <zephyr/sys/iterable_sections.h>
 #include <zephyr/sys/util.h>
@@ -422,3 +425,5 @@ struct net_buf *bt_l2cap_create_pdu_timeout(struct net_buf_pool *pool,
 	bt_l2cap_create_pdu_timeout(_pool, _reserve, K_FOREVER)
 
 bt_security_t bt_l2cap_br_get_max_sec_level(void);
+
+#endif /* ZEPHYR_BT_HOST_CLASSIC_L2CAP_BR_INTERNAL_H_ */

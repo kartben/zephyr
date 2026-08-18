@@ -6,6 +6,10 @@
  */
 
 /* Use the NRF_RTC instance for coarse radio event scheduling */
+
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF5340_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF5340_H_
+
 #define NRF_RTC NRF_RTC0
 
 /* Override EVENT_TIMER_ID from 4 to 0, as nRF5340 does not have 4 timer
@@ -737,3 +741,5 @@ static inline uint32_t hal_radio_rx_chain_delay_ns_get(uint8_t phy, uint8_t flag
 #endif /* CONFIG_BT_CTLR_PHY_CODED */
 	}
 }
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF5340_H_ */

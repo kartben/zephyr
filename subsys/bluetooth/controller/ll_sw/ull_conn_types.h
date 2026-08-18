@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_ULL_CONN_TYPES_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_ULL_CONN_TYPES_H_
+
 #define IS_ACL_HANDLE(_handle) ((_handle) < CONFIG_BT_MAX_CONN)
 
 enum llcp {
@@ -314,3 +317,5 @@ struct node_rx_path_loss {
 	uint8_t current_path_loss;
 	uint8_t zone_entered;
 };
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_ULL_CONN_TYPES_H_ */

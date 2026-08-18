@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_ISOAL_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_ISOAL_H_
+
 #if defined(CONFIG_BT_CTLR_ISO_RX_SDU_BUFFERS) && (CONFIG_BT_CTLR_ISO_RX_SDU_BUFFERS > 0)
 #define ISOAL_BUFFER_RX_SDUS_ENABLE
 #endif /* CONFIG_BT_CTLR_ISO_RX_SDU_BUFFERS > 0 */
@@ -496,3 +499,5 @@ isoal_status_t isoal_tx_get_sync_info(isoal_source_handle_t source_hdl,
 
 void isoal_tx_event_prepare(isoal_source_handle_t source_hdl,
 			    uint64_t event_number);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_ISOAL_H_ */

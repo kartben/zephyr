@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_LLL_DF_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_LLL_DF_H_
+
 int lll_df_init(void);
 int lll_df_reset(void);
 
@@ -18,3 +21,5 @@ void *ull_df_iq_report_alloc_peek(uint8_t count);
  * returned pointer equals to peeked one.
  */
 void *ull_df_iq_report_alloc(void);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_LLL_DF_H_ */

@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_ULL_LLCP_FEATURES_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_ULL_LLCP_FEATURES_H_
+
 static inline void feature_unmask_features(struct ll_conn *conn, uint64_t ll_feat_mask)
 {
 	conn->llcp.fex.features_used &= ~ll_feat_mask;
@@ -211,3 +214,5 @@ static inline bool feature_peer_periodic_sync_recv(struct ll_conn *conn)
  * le_pwr_ind
  * le_path_loss
  */
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_ULL_LLCP_FEATURES_H_ */

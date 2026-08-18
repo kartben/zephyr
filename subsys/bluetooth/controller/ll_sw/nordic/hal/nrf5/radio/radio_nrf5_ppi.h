@@ -5,6 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF5_PPI_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF5_PPI_H_
+
 #if defined(CONFIG_BT_CTLR_PHY_CODED)
 /* The 2 adjacent TIMER EVENTS_COMPARE event offsets used for implementing
  * SW_SWITCH_TIMER-based auto-switch for TIFS, when receiving in LE Coded PHY.
@@ -710,3 +713,5 @@ static inline void hal_radio_sw_switch_ppi_group_setup(void)
 }
 
 #endif /* !CONFIG_BT_CTLR_TIFS_HW */
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF5_PPI_H_ */

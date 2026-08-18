@@ -5,6 +5,10 @@
  */
 
 /** Provisioning protocol timeout in seconds. */
+
+#ifndef ZEPHYR_BT_MESH_PROV_BEARER_H_
+#define ZEPHYR_BT_MESH_PROV_BEARER_H_
+
 #define PROTOCOL_TIMEOUT_SEC     60
 #define PROTOCOL_TIMEOUT_EXT_SEC 120
 
@@ -144,3 +148,5 @@ void bt_mesh_pb_gatt_init(void);
 
 void bt_mesh_pb_adv_reset(void);
 void bt_mesh_pb_gatt_reset(void);
+
+#endif /* ZEPHYR_BT_MESH_PROV_BEARER_H_ */

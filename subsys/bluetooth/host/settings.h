@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_HOST_SETTINGS_H_
+#define ZEPHYR_BT_HOST_SETTINGS_H_
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -69,3 +72,5 @@ int bt_settings_delete_link_key(const bt_addr_le_t *addr);
 
 int bt_settings_store_keys(uint8_t id, const bt_addr_le_t *addr, const void *value, size_t val_len);
 int bt_settings_delete_keys(uint8_t id, const bt_addr_le_t *addr);
+
+#endif /* ZEPHYR_BT_HOST_SETTINGS_H_ */

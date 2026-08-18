@@ -5,6 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_HOST_ADV_H_
+#define ZEPHYR_BT_HOST_ADV_H_
+
 #include <stdbool.h>
 
 #include <zephyr/bluetooth/bluetooth.h>
@@ -23,3 +26,5 @@ int bt_le_adv_set_enable_ext(struct bt_le_ext_adv *adv,
 int bt_le_adv_set_enable_legacy(struct bt_le_ext_adv *adv, bool enable);
 int bt_le_lim_adv_cancel_timeout(struct bt_le_ext_adv *adv);
 void bt_adv_reset_adv_pool(void);
+
+#endif /* ZEPHYR_BT_HOST_ADV_H_ */

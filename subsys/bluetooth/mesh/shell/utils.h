@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_MESH_SHELL_UTILS_H_
+#define ZEPHYR_BT_MESH_SHELL_UTILS_H_
+
 #include <stdint.h>
 #include <zephyr/shell/shell.h>
 
@@ -42,3 +45,5 @@ int bt_mesh_shell_mdl_instance_set(const struct shell *sh, const struct bt_mesh_
 int bt_mesh_shell_mdl_print_all(const struct shell *sh, uint16_t mod_id);
 
 int bt_mesh_shell_mdl_cmds_help(const struct shell *sh, size_t argc, char **argv);
+
+#endif /* ZEPHYR_BT_MESH_SHELL_UTILS_H_ */

@@ -7,6 +7,10 @@
 
 /* Set of macros related with Radio packet configuration flags */
 /* PDU type, 2 bit field*/
+
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_H_
+
 #define RADIO_PKT_CONF_PDU_TYPE_POS (0U)
 #define RADIO_PKT_CONF_PDU_TYPE_MSK (BIT_MASK(2U))
 #define RADIO_PKT_CONF_PDU_TYPE_AC  (0U)
@@ -192,3 +196,5 @@ uint8_t radio_ar_resolve(const uint8_t *addr);
  * switching according to CTEInfo in received PDU.
  */
 void radio_df_cte_inline_set_enabled(bool cte_info_in_s1);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_H_ */

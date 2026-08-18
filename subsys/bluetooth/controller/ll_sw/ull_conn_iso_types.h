@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_ULL_CONN_ISO_TYPES_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_ULL_CONN_ISO_TYPES_H_
+
 struct ll_conn;
 
 typedef void (*ll_iso_stream_released_cb_t)(struct ll_conn *conn);
@@ -112,3 +115,5 @@ struct node_rx_conn_iso_estab {
 	uint16_t cis_handle;
 	uint8_t  status;
 };
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_ULL_CONN_ISO_TYPES_H_ */

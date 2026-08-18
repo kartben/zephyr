@@ -6,6 +6,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_HOST_CLASSIC_OBEX_INTERNAL_H_
+#define ZEPHYR_BT_HOST_CLASSIC_OBEX_INTERNAL_H_
+
 #define BT_OBEX_VERSION 0x10
 
 #define BT_OBEX_OPCODE_CONNECT  0x80
@@ -62,3 +65,5 @@ int bt_obex_transport_connected(struct bt_obex *obex);
 
 /* Notify OBEX that the transport has been disconnected */
 int bt_obex_transport_disconnected(struct bt_obex *obex);
+
+#endif /* ZEPHYR_BT_HOST_CLASSIC_OBEX_INTERNAL_H_ */

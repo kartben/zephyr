@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_OPENISA_HAL_RV32M1_SWI_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_OPENISA_HAL_RV32M1_SWI_H_
+
 #include "ll_irqs.h"
 
 #define SetPendingIRQ(x) (EVENT_UNIT->INTPTPENDSET |= (uint32_t)(1 << (x)))
@@ -44,3 +47,5 @@ static inline void hal_swi_job_pend(void)
 {
 	SetPendingIRQ(HAL_SWI_JOB_IRQ);
 }
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_OPENISA_HAL_RV32M1_SWI_H_ */

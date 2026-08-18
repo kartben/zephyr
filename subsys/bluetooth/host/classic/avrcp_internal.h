@@ -10,6 +10,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_HOST_CLASSIC_AVRCP_INTERNAL_H_
+#define ZEPHYR_BT_HOST_CLASSIC_AVRCP_INTERNAL_H_
+
 #include <zephyr/bluetooth/classic/avrcp.h>
 
 #define AVCTP_VER_1_4 (0x0104u)
@@ -283,3 +286,5 @@ struct bt_avrcp_tg *bt_avrcp_get_tg(struct bt_conn *conn, uint16_t psm);
 struct bt_avrcp_ct;
 
 struct bt_conn *bt_avrcp_ct_get_acl_conn(struct bt_avrcp_ct *ct);
+
+#endif /* ZEPHYR_BT_HOST_CLASSIC_AVRCP_INTERNAL_H_ */

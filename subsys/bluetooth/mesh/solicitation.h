@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_MESH_SOLICITATION_H_
+#define ZEPHYR_BT_MESH_SOLICITATION_H_
+
 void bt_mesh_sol_reset(void);
 
 void bt_mesh_sol_recv(struct net_buf_simple *buf, uint8_t uuid_list_len);
@@ -15,3 +18,5 @@ void bt_mesh_srpl_pending_store(void);
 void bt_mesh_sseq_pending_store(void);
 
 int bt_mesh_sol_send(void);
+
+#endif /* ZEPHYR_BT_MESH_SOLICITATION_H_ */

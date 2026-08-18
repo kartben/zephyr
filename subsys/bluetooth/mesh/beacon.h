@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_MESH_BEACON_H_
+#define ZEPHYR_BT_MESH_BEACON_H_
+
 void bt_mesh_beacon_enable(void);
 void bt_mesh_beacon_disable(void);
 void bt_mesh_beacon_cache_clear(struct bt_mesh_subnet *sub);
@@ -15,3 +18,5 @@ int bt_mesh_beacon_create(struct bt_mesh_subnet *sub, struct net_buf_simple *buf
 
 void bt_mesh_beacon_init(void);
 void bt_mesh_beacon_update(struct bt_mesh_subnet *sub);
+
+#endif /* ZEPHYR_BT_MESH_BEACON_H_ */

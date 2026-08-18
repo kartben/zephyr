@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_INTERNAL_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_INTERNAL_H_
+
 int lll_prepare_done(void *param);
 int lll_done(void *param);
 bool lll_is_done(void *param, bool *is_resume);
@@ -25,3 +28,5 @@ void lll_isr_abort(void *param);
 void lll_isr_done(void *param);
 void lll_isr_cleanup(void *param);
 void lll_isr_early_abort(void *param);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_INTERNAL_H_ */

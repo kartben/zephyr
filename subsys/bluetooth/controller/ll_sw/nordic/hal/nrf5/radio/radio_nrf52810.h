@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF52810_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF52810_H_
+
 #include <nrfx.h>
 
 /* Use the NRF_RTC instance for coarse radio event scheduling */
@@ -452,3 +455,5 @@ static inline uint32_t hal_radio_rx_chain_delay_ns_get(uint8_t phy, uint8_t flag
 		return HAL_RADIO_NRF52810_RX_CHAIN_DELAY_2M_NS;
 	}
 }
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF52810_H_ */

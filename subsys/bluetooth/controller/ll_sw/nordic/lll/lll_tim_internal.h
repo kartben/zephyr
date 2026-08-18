@@ -9,6 +9,10 @@
  * "4 / 1000" is an approximation of the propagation time in us of the
  * signal to travel 1 meter.
  */
+
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_TIM_INTERNAL_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_TIM_INTERNAL_H_
+
 #define RANGE_DISTANCE 1000 /* meters */
 #define RANGE_DELAY_US (2 * RANGE_DISTANCE * 4 / 1000)
 
@@ -24,3 +28,5 @@ static inline uint32_t addr_us_get(uint8_t phy)
 		return 376;
 	}
 }
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_LLL_LLL_TIM_INTERNAL_H_ */

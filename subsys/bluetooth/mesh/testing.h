@@ -10,6 +10,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_MESH_TESTING_H_
+#define ZEPHYR_BT_MESH_TESTING_H_
+
 #include <stdint.h>
 
 #include <zephyr/bluetooth/mesh.h>
@@ -85,3 +88,5 @@ void bt_mesh_test_model_bound(uint16_t addr, const struct bt_mesh_model *model, 
 void bt_mesh_test_model_unbound(uint16_t addr, const struct bt_mesh_model *model, uint16_t key_idx);
 void bt_mesh_test_prov_invalid_bearer(uint8_t opcode);
 void bt_mesh_test_trans_incomp_timer_exp(void);
+
+#endif /* ZEPHYR_BT_MESH_TESTING_H_ */

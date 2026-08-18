@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_LLL_CONN_ISO_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_LLL_CONN_ISO_H_
+
 #define LLL_CIS_FLUSH_NONE      0
 #define LLL_CIS_FLUSH_PENDING   1
 #define LLL_CIS_FLUSH_COMPLETE  2
@@ -147,3 +150,5 @@ extern void
 ull_conn_iso_lll_cis_established(struct lll_conn_iso_stream *cis_lll);
 extern void ll_iso_rx_put(memq_link_t *link, void *rx);
 extern void ll_rx_sched(void);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_LLL_CONN_ISO_H_ */

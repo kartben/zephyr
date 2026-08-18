@@ -6,6 +6,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_HOST_CLASSIC_BR_H_
+#define ZEPHYR_BT_HOST_CLASSIC_BR_H_
+
 int bt_br_init(void);
 
 void bt_br_discovery_reset(void);
@@ -13,3 +16,5 @@ void bt_br_discovery_reset(void);
 bool bt_br_update_sec_level(struct bt_conn *conn);
 
 int bt_br_write_local_name(const char *name);
+
+#endif /* ZEPHYR_BT_HOST_CLASSIC_BR_H_ */

@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_LLL_SYNC_ISO_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_LLL_SYNC_ISO_H_
+
 struct lll_sync_iso_stream {
 	uint8_t big_handle;
 	uint8_t bis_index;
@@ -113,3 +116,5 @@ extern uint8_t ull_sync_iso_lll_index_get(struct lll_sync_iso *lll);
 extern struct lll_sync_iso_stream *ull_sync_iso_lll_stream_get(uint16_t handle);
 extern void ll_iso_rx_put(memq_link_t *link, void *rx);
 extern void ll_rx_sched(void);
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_LLL_SYNC_ISO_H_ */

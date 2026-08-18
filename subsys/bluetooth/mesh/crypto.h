@@ -5,6 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_MESH_CRYPTO_H_
+#define ZEPHYR_BT_MESH_CRYPTO_H_
+
 #include "keys.h"
 
 enum bt_mesh_nonce_type {
@@ -154,3 +157,5 @@ int bt_mesh_beacon_decrypt(const struct bt_mesh_key *pbk, const uint8_t random[1
 
 int bt_mesh_beacon_encrypt(const struct bt_mesh_key *pbk, uint8_t flags, uint32_t iv_index,
 			   const uint8_t random[13], uint8_t data[5], uint8_t auth[8]);
+
+#endif /* ZEPHYR_BT_MESH_CRYPTO_H_ */

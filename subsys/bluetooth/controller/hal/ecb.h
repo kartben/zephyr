@@ -5,6 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_HAL_ECB_H_
+#define ZEPHYR_BT_CONTROLLER_HAL_ECB_H_
+
 typedef void (*ecb_fp) (uint32_t status, uint8_t *cipher_be, void *context);
 
 struct ecb {
@@ -29,3 +32,5 @@ void ecb_encrypt(uint8_t const *const key_le, uint8_t const *const clear_text_le
 void ecb_encrypt_nonblocking(struct ecb *e);
 
 int ecb_ut(void);
+
+#endif /* ZEPHYR_BT_CONTROLLER_HAL_ECB_H_ */

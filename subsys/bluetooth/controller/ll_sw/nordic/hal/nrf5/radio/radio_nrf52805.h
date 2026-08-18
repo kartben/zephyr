@@ -5,6 +5,10 @@
  */
 
 /* Use the NRF_RTC instance for coarse radio event scheduling */
+
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF52805_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF52805_H_
+
 #define NRF_RTC NRF_RTC0
 
 /* HAL abstraction of event timer prescaler value */
@@ -433,3 +437,5 @@ static inline uint32_t hal_radio_rx_chain_delay_ns_get(uint8_t phy, uint8_t flag
 		return HAL_RADIO_NRF52805_RX_CHAIN_DELAY_2M_NS;
 	}
 }
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF52805_H_ */

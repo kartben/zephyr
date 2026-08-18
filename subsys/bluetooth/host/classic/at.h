@@ -8,6 +8,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_HOST_CLASSIC_AT_H_
+#define ZEPHYR_BT_HOST_CLASSIC_AT_H_
+
 enum at_result {
 	AT_RESULT_OK,
 	AT_RESULT_ERROR,
@@ -116,3 +119,5 @@ int at_open_list(struct at_client *at);
 bool at_has_next_list(struct at_client *at);
 const char *at_get_string(struct at_client *at);
 const char *at_get_raw_string(struct at_client *at, size_t *string_len);
+
+#endif /* ZEPHYR_BT_HOST_CLASSIC_AT_H_ */

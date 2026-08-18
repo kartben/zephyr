@@ -7,6 +7,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_BT_AUDIO_BAP_ENDPOINT_H_
+#define ZEPHYR_BT_AUDIO_BAP_ENDPOINT_H_
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -206,3 +209,5 @@ static inline const char *bt_bap_ep_state_str(enum bt_bap_ep_state state)
 		return "unknown";
 	}
 }
+
+#endif /* ZEPHYR_BT_AUDIO_BAP_ENDPOINT_H_ */

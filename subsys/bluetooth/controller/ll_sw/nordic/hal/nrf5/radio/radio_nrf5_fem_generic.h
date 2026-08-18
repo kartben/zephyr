@@ -21,6 +21,9 @@
  *  LNA offset        crx-settle-time-us
  */
 
+#ifndef ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF5_FEM_GENERIC_H_
+#define ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF5_FEM_GENERIC_H_
+
 #define HAL_RADIO_GPIO_PA_PROP_NAME         "ctx-gpios"
 #define HAL_RADIO_GPIO_PA_OFFSET_PROP_NAME  "ctx-settle-time-us"
 #define HAL_RADIO_GPIO_LNA_PROP_NAME        "crx-gpios"
@@ -47,3 +50,5 @@
 #else  /* !FEM_HAS_PROP(crx_gpios) */
 #define HAL_RADIO_GPIO_LNA_OFFSET_MISSING 0
 #endif	/* FEM_HAS_PROP(crx_gpios) */
+
+#endif /* ZEPHYR_BT_CONTROLLER_LL_SW_NORDIC_HAL_NRF5_RADIO_RADIO_NRF5_FEM_GENERIC_H_ */
