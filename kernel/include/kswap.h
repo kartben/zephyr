@@ -22,6 +22,41 @@ extern void z_check_stack_sentinel(void);
 
 extern struct k_spinlock _sched_spinlock;
 
+/* Wrapper around z_get_next_switch_handle() for the benefit of non-SMP
+ * platforms.  Exposes the (extremely) common early exit case -- an
+ * interrupt that did not make a different thread runnable -- in a
+ * context that can be (much) better optimized in surrounding C code.
+ * Takes a _current pointer that the outer scope surely already has, to
+ * avoid having to refetch it across a lock, and the same "interrupted"
+ * handle that z_get_next_switch_handle() takes.  That handle is returned
+ * unchanged when no switch is needed, so callers with nothing to hand
+ * over can pass NULL and simply test the result for NULL.
+ *
+ * The shortcut is not valid on SMP, where the decision has to be taken
+ * under the scheduler lock.  Everywhere else it has to replicate the
+ * bookkeeping z_get_next_switch_handle() would have done for a
+ * same-thread "switch": the stack sentinel check, and the usage
+ * accounting restart that architectures stopping accounting on interrupt
+ * entry (via z_sched_usage_stop()) rely on.  Both compile out entirely
+ * when their respective options are disabled.
+ *
+ * Mystic arts for cycle nerds, basically.  Replace with
+ * z_get_next_switch_handle() if this becomes a maintenance hassle.
+ */
+static ALWAYS_INLINE void *z_sched_next_handle(struct k_thread *curr, void *interrupted)
+{
+#ifndef CONFIG_SMP
+	if (curr == _kernel.ready_q.cache) {
+		z_check_stack_sentinel();
+		z_sched_usage_switch(curr);
+		return interrupted;
+	}
+#else
+	ARG_UNUSED(curr);
+#endif
+	return z_get_next_switch_handle(interrupted);
+}
+
 /* In SMP, the irq_lock() is a spinlock which is implicitly released
  * and reacquired on context switch to preserve the existing
  * semantics.  This means that whenever we are about to return to a

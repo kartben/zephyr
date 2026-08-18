@@ -6,6 +6,7 @@
  */
 #include <zephyr/sys/util.h>
 #include <ksched.h>
+#include <kswap.h>
 
 /* The basic exception frame, popped by the hardware during return */
 struct hw_frame_base {
@@ -528,7 +529,7 @@ bool arm_m_must_switch(void)
 	}
 
 	struct k_thread *last_thread = _current;
-	void *next = z_sched_next_handle(last_thread);
+	void *next = z_sched_next_handle(last_thread, NULL);
 
 	if (next == NULL) {
 		return false;
