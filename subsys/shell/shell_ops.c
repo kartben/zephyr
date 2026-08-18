@@ -535,7 +535,7 @@ void z_shell_vt100_colors_restore(const struct shell *sh,
 	vt100_bgcolor_set(sh, color->bgcol);
 }
 
-static void z_shell_print(const struct shell *sh, enum shell_vt100_color color, bool do_cbprintf,
+static void shell_ops_print(const struct shell *sh, enum shell_vt100_color color, bool do_cbprintf,
 	void *ptr, va_list args)
 {
 	if (IS_ENABLED(CONFIG_SHELL_VT100_COLORS) &&
@@ -566,13 +566,13 @@ void z_shell_cbpprintf(const struct shell *sh, enum shell_vt100_color color, voi
 {
 	va_list no_used = {0};
 
-	z_shell_print(sh, color, true, package, no_used);
+	shell_ops_print(sh, color, true, package, no_used);
 }
 
 void z_shell_vfprintf(const struct shell *sh, enum shell_vt100_color color,
 		      const char *fmt, va_list args)
 {
-	z_shell_print(sh, color, false, (void *)fmt, args);
+	shell_ops_print(sh, color, false, (void *)fmt, args);
 }
 
 void z_shell_fprintf(const struct shell *sh,

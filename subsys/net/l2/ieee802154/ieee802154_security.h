@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_SUBSYS_NET_L2_IEEE802154_IEEE802154_SECURITY_H_
+#define ZEPHYR_SUBSYS_NET_L2_IEEE802154_IEEE802154_SECURITY_H_
+
 /**
  * @file
  * @brief 802.15.4 6LoWPAN authentication and encryption
@@ -60,3 +63,5 @@ int ieee802154_security_init(struct ieee802154_security_ctx *sec_ctx);
 #define ieee802154_security_init(...) 0
 
 #endif /* CONFIG_NET_L2_IEEE802154_SECURITY */
+
+#endif /* ZEPHYR_SUBSYS_NET_L2_IEEE802154_IEEE802154_SECURITY_H_ */

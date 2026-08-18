@@ -79,7 +79,7 @@ static void dict_char_out_hex(const struct device *uart_dev, uint8_t *data, size
 	}
 }
 
-static int char_out(uint8_t *data, size_t length, void *ctx)
+static int uart_char_out(uint8_t *data, size_t length, void *ctx)
 {
 	int err;
 	const struct lbu_cb_ctx *cb_ctx = ctx;
@@ -234,7 +234,7 @@ const struct log_backend_api log_backend_uart_api = {
 
 #define LBU_DEFINE(node_id, ...)                                                                   \
 	static uint8_t lbu_buffer##__VA_ARGS__[CONFIG_LOG_BACKEND_UART_BUFFER_SIZE] NOCACHE_ATTR;  \
-	LOG_OUTPUT_DEFINE(lbu_output##__VA_ARGS__, char_out, lbu_buffer##__VA_ARGS__,              \
+	LOG_OUTPUT_DEFINE(lbu_output##__VA_ARGS__, uart_char_out, lbu_buffer##__VA_ARGS__,         \
 			  CONFIG_LOG_BACKEND_UART_BUFFER_SIZE);                                    \
                                                                                                    \
 	static struct lbu_data lbu_data##__VA_ARGS__ = {                                           \

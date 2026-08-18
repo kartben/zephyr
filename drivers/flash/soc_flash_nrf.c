@@ -277,13 +277,13 @@ static int flash_nrf_get_size(const struct device *dev, uint64_t *size)
 }
 
 #if defined(CONFIG_FLASH_PAGE_LAYOUT)
-static struct flash_pages_layout dev_layout;
+static struct flash_pages_layout nrf_dev_layout;
 
 static void flash_nrf_pages_layout(const struct device *dev,
 				     const struct flash_pages_layout **layout,
 				     size_t *layout_size)
 {
-	*layout = &dev_layout;
+	*layout = &nrf_dev_layout;
 	*layout_size = 1;
 }
 #endif /* CONFIG_FLASH_PAGE_LAYOUT */
@@ -316,8 +316,8 @@ static int nrf_flash_init(const struct device *dev)
 #endif /* !CONFIG_SOC_FLASH_NRF_RADIO_SYNC_NONE */
 
 #if defined(CONFIG_FLASH_PAGE_LAYOUT)
-	dev_layout.pages_count = nrfx_nvmc_flash_page_count_get();
-	dev_layout.pages_size = nrfx_nvmc_flash_page_size_get();
+	nrf_dev_layout.pages_count = nrfx_nvmc_flash_page_count_get();
+	nrf_dev_layout.pages_size = nrfx_nvmc_flash_page_size_get();
 #endif
 
 	return 0;

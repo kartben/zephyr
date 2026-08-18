@@ -142,6 +142,13 @@ zephyr_library_sources_ifdef(CONFIG_CLOCK_CONTROL_NRF_IRON_HSFLL_LOCAL clock_con
 zephyr_library_sources_ifdef(CONFIG_CLOCK_CONTROL_NRF_LFCLK clock_control_nrf_lfclk.c)
 zephyr_library_sources_ifdef(CONFIG_CLOCK_CONTROL_NRF_XO clock_control_nrf_xo.c)
 zephyr_library_sources_ifdef(CONFIG_CLOCK_CONTROL_NRF_XO24M clock_control_nrf_xo24m.c)
+
+# The nRF HFCLK and LFCLK drivers are close variants of each other and reuse the
+# same file local symbol names, so they cannot share a translation unit.
+zephyr_library_unity_build_exclude(
+  clock_control_nrf_hfclk.c
+  clock_control_nrf_lfclk.c
+)
 zephyr_library_sources_ifdef(CONFIG_CLOCK_CONTROL_NUMAKER_SCC clock_control_numaker_scc.c)
 zephyr_library_sources_ifdef(CONFIG_CLOCK_CONTROL_NUMICRO_M4_SCC clock_control_numicro_m4_scc.c)
 zephyr_library_sources_ifdef(CONFIG_CLOCK_CONTROL_NXP_MCXW7X clock_control_nxp_mcxw7x.c)

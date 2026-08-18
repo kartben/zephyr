@@ -3,6 +3,11 @@
 zephyr_library()
 zephyr_library_link_libraries(subsys__bluetooth)
 
+# The controller sources reach for same named headers (hal/ccm.h, hal/radio.h,
+# ...) through different include paths, so combining them into a single
+# translation unit picks up the wrong definitions.
+zephyr_library_property(NO_UNITY_BUILD TRUE)
+
 zephyr_library_sources(
   lll/lll.c
   lll/lll_clock.c

@@ -7,6 +7,12 @@ if(CONFIG_BT_CTLR_ADVANCED_FEATURES)
 endif()
 
 zephyr_library()
+
+# The controller's private headers largely lack include guards, and several
+# same named headers (hal/ccm.h, hal/radio.h, pdu_vendor.h, ...) are resolved
+# through different include paths depending on the source file, so the
+# controller sources cannot be combined into a single translation unit.
+zephyr_library_property(NO_UNITY_BUILD TRUE)
 zephyr_library_link_libraries(subsys__bluetooth)
 
 if(CONFIG_BT_SHELL AND CONFIG_BT_LL_SW_SPLIT)

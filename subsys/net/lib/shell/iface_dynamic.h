@@ -5,6 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_SUBSYS_NET_LIB_SHELL_IFACE_DYNAMIC_H_
+#define ZEPHYR_SUBSYS_NET_LIB_SHELL_IFACE_DYNAMIC_H_
+
 /* Dynamic shell command completion for network interface.
  * This is be used by multiple commands.
  */
@@ -85,3 +88,5 @@ static void iface_index_get(size_t idx, struct shell_static_entry *entry)
 	entry->subcmd = &iface_index;
 	entry->syntax = set_iface_index_buffer(idx);
 }
+
+#endif /* ZEPHYR_SUBSYS_NET_LIB_SHELL_IFACE_DYNAMIC_H_ */

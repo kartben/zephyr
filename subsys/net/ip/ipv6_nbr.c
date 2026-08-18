@@ -134,7 +134,7 @@ const char *net_ipv6_nbr_state2str(enum net_ipv6_nbr_state state)
 	return "<invalid state>";
 }
 
-static inline struct net_nbr *get_nbr(int idx)
+static inline struct net_nbr *get_ipv6_nbr(int idx)
 {
 	return &net_neighbor_pool[idx].nbr;
 }
@@ -167,7 +167,7 @@ static void ipv6_nbr_set_state(struct net_nbr *nbr,
 			stale_counter = 0U;
 
 			for (i = 0; i < CONFIG_NET_IPV6_MAX_NEIGHBORS; i++) {
-				n = get_nbr(i);
+				n = get_ipv6_nbr(i);
 				if (!n || !n->ref) {
 					continue;
 				}
@@ -200,7 +200,7 @@ static void iface_cb(struct net_if *iface, void *user_data)
 	net_ipv6_nbr_lock();
 
 	for (i = 0; i < CONFIG_NET_IPV6_MAX_NEIGHBORS; i++) {
-		struct net_nbr *nbr = get_nbr(i);
+		struct net_nbr *nbr = get_ipv6_nbr(i);
 
 		if (!nbr->ref || nbr->iface != iface) {
 			continue;
@@ -231,7 +231,7 @@ void nbr_print(void)
 	int i;
 
 	for (i = 0; i < CONFIG_NET_IPV6_MAX_NEIGHBORS; i++) {
-		struct net_nbr *nbr = get_nbr(i);
+		struct net_nbr *nbr = get_ipv6_nbr(i);
 
 		if (!nbr->ref) {
 			continue;
@@ -263,7 +263,7 @@ static struct net_nbr *nbr_lookup(struct net_nbr_table *table,
 	int i;
 
 	for (i = 0; i < CONFIG_NET_IPV6_MAX_NEIGHBORS; i++) {
-		struct net_nbr *nbr = get_nbr(i);
+		struct net_nbr *nbr = get_ipv6_nbr(i);
 
 		if (!nbr->ref) {
 			continue;
@@ -353,7 +353,7 @@ void net_ipv6_nbr_clear_cache(struct net_if *iface)
 	net_ipv6_nbr_lock();
 
 	for (int i = 0; i < CONFIG_NET_IPV6_MAX_NEIGHBORS; i++) {
-		struct net_nbr *nbr = get_nbr(i);
+		struct net_nbr *nbr = get_ipv6_nbr(i);
 		struct net_in6_addr addr;
 
 		if (!nbr->ref || nbr->iface != iface ||
@@ -392,7 +392,8 @@ static void ipv6_ns_reply_timeout(struct k_work *work)
 
 	for (i = 0; i < CONFIG_NET_IPV6_MAX_NEIGHBORS; i++) {
 		int64_t remaining;
-		nbr = get_nbr(i);
+
+		nbr = get_ipv6_nbr(i);
 
 		if (!nbr || !nbr->ref) {
 			continue;
@@ -603,7 +604,7 @@ static void ipv6_nd_remove_old_stale_nbr(void)
 	int i;
 
 	for (i = 0; i < CONFIG_NET_IPV6_MAX_NEIGHBORS; i++) {
-		nbr = get_nbr(i);
+		nbr = get_ipv6_nbr(i);
 		if (!nbr || !nbr->ref) {
 			continue;
 		}
@@ -629,7 +630,7 @@ static void ipv6_nd_remove_old_stale_nbr(void)
 	}
 
 	if (nbr_idx != -1) {
-		nbr = get_nbr(nbr_idx);
+		nbr = get_ipv6_nbr(nbr_idx);
 		if (!nbr) {
 			return;
 		}
@@ -766,7 +767,7 @@ struct net_in6_addr *net_ipv6_nbr_lookup_by_index(struct net_if *iface,
 	net_ipv6_nbr_lock();
 
 	for (i = 0; i < CONFIG_NET_IPV6_MAX_NEIGHBORS; i++) {
-		struct net_nbr *nbr = get_nbr(i);
+		struct net_nbr *nbr = get_ipv6_nbr(i);
 
 		if (!nbr->ref) {
 			continue;
@@ -1124,7 +1125,7 @@ struct net_nbr *net_ipv6_get_nbr(struct net_if *iface, uint8_t idx)
 	net_ipv6_nbr_lock();
 
 	for (i = 0; i < CONFIG_NET_IPV6_MAX_NEIGHBORS; i++) {
-		struct net_nbr *nbr = get_nbr(i);
+		struct net_nbr *nbr = get_ipv6_nbr(i);
 
 		if (nbr->ref) {
 			if (iface && nbr->iface != iface) {
@@ -1617,7 +1618,7 @@ static void ipv6_nd_reachable_timeout(struct k_work *work)
 	for (i = 0; i < CONFIG_NET_IPV6_MAX_NEIGHBORS; i++) {
 		int64_t remaining;
 
-		nbr = get_nbr(i);
+		nbr = get_ipv6_nbr(i);
 		if (!nbr || !nbr->ref) {
 			continue;
 		}

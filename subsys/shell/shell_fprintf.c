@@ -8,7 +8,7 @@
 #include <zephyr/shell/shell.h>
 #include <zephyr/sys/cbprintf.h>
 
-static int out_func(int c, void *ctx)
+static int shell_out_func(int c, void *ctx)
 {
 	const struct shell_fprintf *sh_fprintf;
 	const struct shell *sh;
@@ -17,7 +17,7 @@ static int out_func(int c, void *ctx)
 	sh = (const struct shell *)sh_fprintf->user_ctx;
 
 	if ((sh->shell_flag == SHELL_FLAG_OLF_CRLF) && (c == '\n')) {
-		(void)out_func('\r', ctx);
+		(void)shell_out_func('\r', ctx);
 	}
 
 	sh_fprintf->buffer[sh_fprintf->ctrl_blk->buffer_cnt] = (uint8_t)c;
@@ -33,7 +33,7 @@ static int out_func(int c, void *ctx)
 void z_shell_fprintf_fmt(const struct shell_fprintf *sh_fprintf,
 			 const char *fmt, va_list args)
 {
-	(void)cbvprintf(out_func, (void *)sh_fprintf, fmt, args);
+	(void)cbvprintf(shell_out_func, (void *)sh_fprintf, fmt, args);
 
 	if (sh_fprintf->ctrl_blk->autoflush) {
 		z_shell_fprintf_buffer_flush(sh_fprintf);
@@ -42,7 +42,7 @@ void z_shell_fprintf_fmt(const struct shell_fprintf *sh_fprintf,
 
 void z_shell_cbpprintf_fmt(const struct shell_fprintf *sh_fprintf, void *package)
 {
-	(void)cbpprintf(out_func, (void *)sh_fprintf, package);
+	(void)cbpprintf(shell_out_func, (void *)sh_fprintf, package);
 
 	if (sh_fprintf->ctrl_blk->autoflush) {
 		z_shell_fprintf_buffer_flush(sh_fprintf);

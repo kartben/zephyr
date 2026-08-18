@@ -3,6 +3,12 @@
 
 zephyr_library_named("nrfx")
 
+# nrfx is not compatible with unity builds: nrfx_log.h registers a log module
+# from an include guarded header, so only the first source file of a unity
+# source file would get one, and the nrfx drivers reuse the same file local
+# symbol names across the variants of a peripheral.
+zephyr_library_property(NO_UNITY_BUILD TRUE)
+
 # The nrfx source directory can be override through the definition of the NRFX_DIR symbol
 # during the invocation of the build system
 zephyr_get(NRFX_DIR SYSBUILD GLOBAL)

@@ -63,7 +63,7 @@ static void zephyr_timer_wrapper(struct k_timer *ztimer)
 	(timer->evp.sigev_notify_function)(timer->evp.sigev_value);
 }
 
-static void *zephyr_thread_wrapper(void *arg)
+static void *timer_thread_wrapper(void *arg)
 {
 	int ret;
 	struct timer_obj *timer = (struct timer_obj *)arg;
@@ -175,7 +175,7 @@ int timer_create(clockid_t clockid, struct sigevent *evp, timer_t *timerid)
 		}
 
 		ret = pthread_create(&timer->thread, evp->sigev_notify_attributes,
-							zephyr_thread_wrapper, timer);
+							timer_thread_wrapper, timer);
 		if (ret != 0) {
 			LOG_DBG("pthread_create() failed: %d", ret);
 			errno = ret;

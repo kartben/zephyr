@@ -6,6 +6,10 @@ zephyr_library()
 
 zephyr_library_sources_ifdef(CONFIG_USERSPACE hwinfo_handlers.c)
 zephyr_library_sources_ifdef(CONFIG_HWINFO hwinfo_weak_impl.c)
+# hwinfo_weak_impl.c holds the weak default implementations which the actual
+# hwinfo driver overrides. Weak linkage only works across translation units, so
+# this file must not share one with a driver.
+zephyr_library_unity_build_exclude(hwinfo_weak_impl.c)
 zephyr_library_sources_ifdef(CONFIG_HWINFO_SHELL hwinfo_shell.c)
 
 if(CONFIG_HWINFO_NATIVE)

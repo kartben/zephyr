@@ -2,6 +2,10 @@
 
 zephyr_library()
 zephyr_library_sources(sys_clock_init.c)
+# sys_clock_init.c holds the weak default implementations of the system timer
+# interface, which the actual timer driver overrides. Weak linkage only works
+# across translation units, so this file must not share one with a driver.
+zephyr_library_unity_build_exclude(sys_clock_init.c)
 
 zephyr_library_include_directories(${ZEPHYR_BASE}/drivers/counter)
 # zephyr-keep-sorted-start
