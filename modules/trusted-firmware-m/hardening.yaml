@@ -16,3 +16,21 @@ rules:
       Provisions TF-M with publicly known dummy keys and identity data, so attestation and anything
       derived from the provisioned material offers no security.
     references: [CWE-798]
+
+  TFM_EXCEPTION_INFO_DUMP:
+    value: n
+    profiles: [strict]
+    rationale: |
+      On fatal errors in the TF-M secure firmware this captures and prints exception details
+      (registers and fault state of the secure world), handing an attacker feedback for developing
+      exploits against the trusted execution environment.
+    references: [CWE-209]
+
+  TFM_SPM_LOG_LEVEL_DEBUG:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Debug-level logging from the TF-M Secure Partition Manager prints secure-world internals
+      (partition boundaries and service activity) on a port readable by whoever holds it, describing
+      exactly the isolation structure an attacker probing the SPE wants to map.
+    references: [CWE-532]
