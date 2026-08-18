@@ -638,8 +638,16 @@ endfunction()
 # ALLOW_EMPTY <TRUE:FALSE>: Allow a Zephyr library to be empty.
 #                           An empty Zephyr library will generate a CMake
 #                           configure time warning unless `ALLOW_EMPTY` is TRUE.
+# NO_UNITY_BUILD <TRUE:FALSE>: Never build this Zephyr library as a unity
+#                           (jumbo) build, even when unity builds have been
+#                           requested globally with `ZEPHYR_UNITY_BUILD`.
+#                           Use this for libraries which are known to be
+#                           incompatible with unity builds, for example
+#                           because they rely on file local macros or on
+#                           `static` symbols whose names are reused between
+#                           the source files of the library.
 function(zephyr_library_property)
-  set(single_args "ALLOW_EMPTY")
+  set(single_args "ALLOW_EMPTY;NO_UNITY_BUILD")
   cmake_parse_arguments(LIB_PROP "" "${single_args}" "" ${ARGN})
 
   if(LIB_PROP_UNPARSED_ARGUMENTS)
@@ -650,6 +658,99 @@ function(zephyr_library_property)
     if(DEFINED LIB_PROP_${arg})
       set_property(TARGET ${ZEPHYR_CURRENT_LIBRARY} PROPERTY ${arg} ${LIB_PROP_${arg}})
     endif()
+  endforeach()
+endfunction()
+
+# Exclude one or more source files of the current Zephyr library from unity
+# (jumbo) builds.
+#
+# Usage:
+#   zephyr_library_unity_build_exclude(<source> [<source> ...])
+#
+# The listed sources are still compiled into the Zephyr library, but always as
+# individual translation units. This is a more fine grained alternative to
+# `zephyr_library_property(NO_UNITY_BUILD TRUE)` and should be preferred
+# whenever only a few source files of a library are incompatible with unity
+# builds.
+#
+# Note that CMake already excludes source files carrying source specific
+# COMPILE_OPTIONS, COMPILE_DEFINITIONS, COMPILE_FLAGS or INCLUDE_DIRECTORIES
+# properties from unity builds, so those do not have to be listed here.
+function(zephyr_library_unity_build_exclude)
+  if(NOT ARGV)
+    message(FATAL_ERROR "zephyr_library_unity_build_exclude() requires at least one source file")
+  endif()
+
+  set_property(SOURCE ${ARGV} DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+               PROPERTY SKIP_UNITY_BUILD_INCLUSION TRUE
+  )
+endfunction()
+
+# Enable unity (jumbo) builds on the given targets, if the user has asked for
+# them and the target has not opted out.
+#
+# Usage:
+#   zephyr_unity_build_apply(<target> [<target> ...])
+#
+# Unity builds are requested by the user by invoking CMake with
+# `-DZEPHYR_UNITY_BUILD=y` and are therefore off by default. The size of the
+# generated unity source files is controlled by `ZEPHYR_UNITY_BUILD_BATCH_SIZE`,
+# where the default of 0 means that all sources of a target end up in a single
+# translation unit.
+#
+# Targets which are known not to work with unity builds can opt out with
+# `zephyr_library_property(NO_UNITY_BUILD TRUE)`, individual source files can
+# opt out with `zephyr_library_unity_build_exclude()`. Users can additionally
+# exclude libraries, for example ones coming from a Zephyr module which cannot
+# be modified, by listing their names in `ZEPHYR_UNITY_BUILD_EXCLUDE`.
+#
+# This is called by the Zephyr build system for all Zephyr libraries, it is not
+# expected to be needed by applications or modules.
+function(zephyr_unity_build_apply)
+  if(NOT ZEPHYR_UNITY_BUILD)
+    return()
+  endif()
+
+  # File local macros which Zephyr source files commonly (re)define before
+  # including a header that consumes them. Without undefining them in between
+  # the sources of a unity source file, the compiler warns about the
+  # redefinitions and, worse, a source file which does not define them would
+  # silently inherit the value from the previous source file.
+  set(undefs "DT_DRV_COMPAT" "LOG_LEVEL" "LOG_MODULE_NAME")
+  list(TRANSFORM undefs PREPEND "#undef ")
+  list(JOIN undefs "\n" code_before_include)
+
+  foreach(target ${ARGV})
+    if(NOT TARGET ${target})
+      continue()
+    endif()
+
+    get_property(target_type TARGET ${target} PROPERTY TYPE)
+    get_property(target_imported TARGET ${target} PROPERTY IMPORTED)
+    if(target_imported OR target_type STREQUAL "INTERFACE_LIBRARY")
+      continue()
+    endif()
+
+    get_property(no_unity_build TARGET ${target} PROPERTY NO_UNITY_BUILD)
+    if(no_unity_build OR "${target}" IN_LIST ZEPHYR_UNITY_BUILD_EXCLUDE)
+      continue()
+    endif()
+
+    set_property(TARGET ${target} PROPERTY UNITY_BUILD TRUE)
+    set_property(TARGET ${target} PROPERTY UNITY_BUILD_MODE BATCH)
+    set_property(TARGET ${target} PROPERTY UNITY_BUILD_BATCH_SIZE
+                 ${ZEPHYR_UNITY_BUILD_BATCH_SIZE}
+    )
+    # Z_LOG_UNITY_ID is used by <zephyr/logging/log_core.h> to give the file
+    # local state created by LOG_MODULE_REGISTER()/LOG_MODULE_DECLARE() a name
+    # which is unique within the generated unity source file.
+    set_property(TARGET ${target} PROPERTY UNITY_BUILD_UNIQUE_ID Z_LOG_UNITY_ID)
+    # Undefine the macros which Zephyr source files are expected to define
+    # before including the headers that consume them, so that a definition made
+    # by one source file does not leak into the next one.
+    set_property(TARGET ${target} PROPERTY UNITY_BUILD_CODE_BEFORE_INCLUDE
+                 "${code_before_include}"
+    )
   endforeach()
 endfunction()
 

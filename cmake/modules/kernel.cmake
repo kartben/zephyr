@@ -187,6 +187,32 @@ endforeach()
 # - COMPILES_OPTIONS: Used by application memory partition feature
 add_custom_target(zephyr_property_target)
 
+# Unity (jumbo) build support.
+#
+# When enabled, the sources of each Zephyr library are combined into a small
+# number of generated unity source files, which are compiled instead of the
+# original sources. This speeds up compilation and, because the compiler sees
+# a whole library at once, it usually also reduces the footprint of the
+# resulting image.
+#
+# Unity builds are not compatible with every source file: sources that rely on
+# file local macros or that reuse `static` symbol names may fail to compile.
+# Libraries and source files can opt out with
+# `zephyr_library_property(NO_UNITY_BUILD TRUE)` and
+# `zephyr_library_unity_build_exclude()` respectively.
+if(NOT DEFINED ZEPHYR_UNITY_BUILD_BATCH_SIZE)
+  set(ZEPHYR_UNITY_BUILD_BATCH_SIZE 0)
+endif()
+set(ZEPHYR_UNITY_BUILD "${ZEPHYR_UNITY_BUILD}" CACHE BOOL
+    "Combine the sources of each Zephyr library into unity (jumbo) source files"
+)
+set(ZEPHYR_UNITY_BUILD_BATCH_SIZE "${ZEPHYR_UNITY_BUILD_BATCH_SIZE}" CACHE STRING
+    "Maximum number of sources per generated unity source file, 0 means no limit"
+)
+set(ZEPHYR_UNITY_BUILD_EXCLUDE "${ZEPHYR_UNITY_BUILD_EXCLUDE}" CACHE STRING
+    "List of Zephyr library names to exclude from unity builds"
+)
+
 # "app" is a CMake library containing all the application code and is
 # modified by the entry point ${APPLICATION_SOURCE_DIR}/CMakeLists.txt
 # that was specified when cmake was called.

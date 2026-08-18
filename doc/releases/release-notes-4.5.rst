@@ -565,6 +565,10 @@ Other notable changes
     Ubuntu 24.04 LTS package repositories. See the :ref:`migration guide <migration_4.5>` for
     options if your distribution ships an older version.
 
+  * CMake :ref:`unity (jumbo) builds <unity_builds>` can now be enabled for all Zephyr libraries with
+    ``-DZEPHYR_UNITY_BUILD=y``. Letting the compiler see a whole library at once shortens build
+    times and typically reduces the footprint of the resulting image.
+
 * Kernel
 
   * :kconfig:option:`CONFIG_SCHED_CPU_MASK` no longer depends on

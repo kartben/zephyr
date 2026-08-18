@@ -343,6 +343,87 @@ target. This is accomplished in a straightforward manner with *objdump*.
     :width: 80%
 
 
+.. _unity_builds:
+
+Unity Builds
+============
+
+CMake can combine the source files of a library into a small number of
+generated *unity* (or *jumbo*) source files, which ``#include`` the original
+sources and are compiled in their place. This reduces the number of times the
+common Zephyr headers have to be parsed, and it lets the compiler optimize
+across the source files of a library, which typically results in a smaller
+image.
+
+Unity builds are disabled by default. To enable them for all Zephyr libraries,
+including ``app``, configure the build with:
+
+.. code-block:: console
+
+   west build -b <board> <app> -- -DZEPHYR_UNITY_BUILD=y
+
+By default all the sources of a library end up in a single unity source file.
+Use ``-DZEPHYR_UNITY_BUILD_BATCH_SIZE=<n>`` to instead generate one unity
+source file per ``<n>`` sources, which lowers the peak memory usage of the
+compiler and restores some build parallelism at the cost of fewer
+cross-file optimization opportunities.
+
+.. note::
+
+   The ``kernel`` library is only built as a unity build when
+   :kconfig:option:`CONFIG_KERNEL_WHOLE_ARCHIVE` is enabled. It is otherwise
+   the one library the linker is allowed to pick individual object files from,
+   and merging its sources would pull in every kernel object file, increasing
+   the footprint instead of reducing it.
+
+Compatibility
+-------------
+
+Not every source file can share a translation unit with its siblings. The
+common reasons a source file breaks a unity build are:
+
+* Two source files of the same library define ``static`` symbols, or file
+  local types and macros, using the same name.
+* A source file provides a ``__weak`` default implementation which another
+  source file of the same library overrides. Weak linkage only resolves
+  between translation units.
+* A source file relies on a macro such as ``DT_DRV_COMPAT``, ``LOG_LEVEL`` or
+  ``LOG_MODULE_NAME`` being defined before a header is included, while another
+  source file of the same library expects a different value, or none at all.
+  The build system automatically ``#undef``\ s these three macros in between
+  the sources of a unity source file.
+* A header that is protected by an include guard defines file local state,
+  such as a header calling :c:macro:`LOG_MODULE_REGISTER`. Only the first
+  source file of the unity source file would get it.
+
+CMake already excludes any source file that carries source specific
+``COMPILE_OPTIONS``, ``COMPILE_DEFINITIONS``, ``COMPILE_FLAGS`` or
+``INCLUDE_DIRECTORIES`` properties from unity builds.
+
+Libraries which are known not to work as a unity build opt out with:
+
+.. code-block:: cmake
+
+   zephyr_library_property(NO_UNITY_BUILD TRUE)
+
+When only a few source files of a library are affected, exclude just those,
+so that the rest of the library still benefits:
+
+.. code-block:: cmake
+
+   zephyr_library_unity_build_exclude(some_source.c another_source.c)
+
+Libraries that cannot be modified, typically ones coming from a Zephyr module,
+can be excluded from the command line instead:
+
+.. code-block:: console
+
+   west build -b <board> <app> -- -DZEPHYR_UNITY_BUILD=y \
+       -DZEPHYR_UNITY_BUILD_EXCLUDE="lib_a;lib_b"
+
+The following Zephyr libraries currently opt out because their sources cannot
+share a translation unit: the Bluetooth host and controller, and ``nrfx``.
+
 .. _build_system_scripts:
 
 Supporting Scripts and Tools

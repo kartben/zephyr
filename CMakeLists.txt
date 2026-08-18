@@ -1094,6 +1094,22 @@ foreach(zephyr_lib ${ZEPHYR_LIBS_PROPERTY})
   add_dependencies(${zephyr_lib} zephyr_generated_headers)
 endforeach()
 
+# Enable unity (jumbo) builds, if requested with `-DZEPHYR_UNITY_BUILD=y`.
+# This is done here, once all Zephyr libraries (including the ones coming from
+# Zephyr modules) are known and have been given the chance to opt out with
+# `zephyr_library_property(NO_UNITY_BUILD TRUE)`.
+#
+# Note that 'kernel' is deliberately left out unless it is linked with
+# --whole-archive anyway: it is the only library the linker is allowed to pick
+# individual object files from, and merging its sources into a single object
+# file would drag in every kernel object, including the iterable section
+# entries which are KEEP'ed and therefore survive --gc-sections.
+set(UNITY_BUILD_LIBS ${ZEPHYR_LIBS_PROPERTY})
+if(CONFIG_KERNEL_WHOLE_ARCHIVE)
+  list(APPEND UNITY_BUILD_LIBS kernel)
+endif()
+zephyr_unity_build_apply(${UNITY_BUILD_LIBS})
+
 if(CONFIG_KERNEL_WHOLE_ARCHIVE)
   set(WHOLE_ARCHIVE_LIBS ${ZEPHYR_LIBS_PROPERTY} kernel)
 else()

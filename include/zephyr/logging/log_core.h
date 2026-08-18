@@ -24,6 +24,26 @@
  * messages (macros like @ref LOG_ERR).
  */
 
+/* LOG_MODULE_REGISTER()/LOG_MODULE_DECLARE() create file local state which is
+ * referred to by the logging macros through the names below.
+ *
+ * CMake unity (jumbo) builds combine several source files into a single
+ * translation unit, in which case that state would be defined more than once.
+ * To avoid this, the Zephyr build system asks CMake to define Z_LOG_UNITY_ID
+ * to a per-source-file unique identifier, which is appended to the names of
+ * the file local state. As these are macros, they are expanded with the value
+ * of Z_LOG_UNITY_ID that is in effect for the source file being compiled, so
+ * every source file of a unity build gets its own set of variables.
+ *
+ * Outside of unity builds Z_LOG_UNITY_ID is not defined and the names are left
+ * untouched.
+ */
+#ifdef Z_LOG_UNITY_ID
+#define __log_current_const_data   _CONCAT(__log_current_const_data_, Z_LOG_UNITY_ID)
+#define __log_current_dynamic_data _CONCAT(__log_current_dynamic_data_, Z_LOG_UNITY_ID)
+#define __log_level                _CONCAT(__log_level_, Z_LOG_UNITY_ID)
+#endif
+
 /**
  * @addtogroup log_api
  * @{
