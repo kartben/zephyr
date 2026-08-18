@@ -12,3 +12,20 @@ rules:
       access to its transport, an intentionally powerful interface that production images should not
       expose.
     references: [CWE-489]
+
+  DEVMEM_SHELL:
+    value: n
+    rationale: |
+      The devmem shell command gives anyone who reaches the shell transport arbitrary read and write
+      access to physical memory, turning any shell backend into a memory-disclosure and
+      code-injection primitive. It is enabled by default whenever the shell is not minimal, so
+      products that keep a shell ship it unknowingly.
+    references: [CWE-668]
+
+  SHELL_BACKEND_TELNET:
+    value: n
+    rationale: |
+      Exposes the full Zephyr shell over an unauthenticated, unencrypted TCP port, giving anyone who
+      can reach the device on the network the same control as a local console user, including flash
+      writes, reboot and secret exfiltration through any shell-exposed subsystem.
+    references: [CWE-306, CWE-319]

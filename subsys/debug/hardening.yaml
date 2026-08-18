@@ -88,3 +88,21 @@ rules:
       Periodically prints per-thread stack usage and CPU statistics, broadcasting a map of the
       system's runtime structure.
     references: [CWE-200]
+
+  EXCEPTION_STACK_TRACE:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Prints a stack trace of function addresses on every exception, handing an attacker probing for
+      memory-corruption bugs exact code addresses and call-path feedback for exploit development.
+    references: [CWE-209]
+
+  SYMTAB:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Embeds a table with the name and address of every function into the shipped image, handing
+      anyone who obtains the binary or can read memory a complete map for reverse engineering and
+      exploit targeting. Stripping the ELF (BUILD_OUTPUT_STRIPPED) is pointless if the symbol table
+      is compiled into the firmware itself.
+    references: [CWE-200]

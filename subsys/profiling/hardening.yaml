@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Security hardening database fragment for profiling.
+
+rules:
+  PROFILING:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Enables profiling tools such as the perf shell command, which samples program counters and
+      call stacks of the running system and exports them over the shell, disclosing code addresses
+      and execution behavior to whoever holds the transport.
+    references: [CWE-200]
