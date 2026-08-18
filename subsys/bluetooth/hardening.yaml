@@ -59,3 +59,84 @@ rules:
       Pairs using the publicly known debug key pair from the Bluetooth specification instead of a
       random key pair, so any sniffer can decrypt the pairing and subsequent traffic.
     references: [CWE-798]
+
+  BT_BR_MIN_ENC_KEY_SIZE:
+    min: 16
+    rationale: |
+      The BR/EDR encryption key size is negotiated with the peer, and accepting fewer than 16 octets
+      enables the KNOB entropy-downgrade attack (CVE-2019-9506) in which a MITM forces a key short
+      enough to brute-force. Requiring 16 octets is the direct mitigation.
+    references: [CWE-326, CWE-757, CVE-2019-9506]
+
+  BT_CSIP_SET_COORDINATOR_TEST_SAMPLE_DATA:
+    value: n
+    rationale: |
+      Makes the set coordinator locate members and decrypt SIRKs using the CSIS specification's
+      publicly known sample SIRK, prand and LTK, so it relies on key material anyone can look up and
+      only interoperates with test devices.
+    references: [CWE-798]
+
+  BT_CSIP_SET_MEMBER_TEST_SAMPLE_DATA:
+    value: n
+    rationale: |
+      Uses the publicly documented sample SIRK, prand and LTK from the CSIS specification instead of
+      device-specific values, letting anyone track the set member and decrypt its encrypted SIRK
+      with data printed in the spec.
+    references: [CWE-798]
+
+  BT_DEBUG_MONITOR_UART:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Streams the Bluetooth monitor protocol (full HCI traffic and stack logs decodable with btmon)
+      over the console UART, handing anyone with the port a complete trace of Bluetooth activity
+      including pairing procedures.
+    references: [CWE-532]
+
+  BT_ID_ALLOW_UNAUTH_OVERWRITE:
+    value: n
+    rationale: |
+      Allows a peer that already holds an unauthenticated bond on another local identity to pair
+      again without authentication, giving an address-spoofing attacker a cross-identity path to
+      replace a bond and eroding the isolation between local identities.
+    references: [CWE-290]
+
+  BT_MESH_DEBUG_USE_ID_ADDR:
+    value: n
+    rationale: |
+      Forces all mesh advertising to use the fixed local identity address instead of rotating
+      private addresses, letting any passive observer track the node permanently. A trace-analysis
+      aid whose help says it must never ship in production.
+    references: [CWE-200]
+
+  BT_MESH_IV_UPDATE_TEST:
+    value: n
+    rationale: |
+      Removes the specification's 96-hour rate limit on the IV Update procedure so the IV state can
+      be flipped at any time, test behavior that weakens the orderly IV Index transitions the mesh
+      replay-protection state machine depends on.
+    references: [CWE-489]
+
+  BT_SMP_ALLOW_UNAUTH_OVERWRITE:
+    value: n
+    rationale: |
+      Lets a peer replace an existing unauthenticated bond just by pairing again, so an attacker who
+      spoofs the peer's address can silently take over the bond. Keeping it disabled forces an
+      explicit bt_unpair before re-bonding.
+    references: [CWE-290]
+
+  BT_SMP_MIN_ENC_KEY_SIZE:
+    min: 16
+    rationale: |
+      Accepting encryption keys shorter than 16 octets lets a peer negotiate the link's key entropy
+      down, enabling KNOB-style attacks (CVE-2019-9506) where the key becomes brute-forceable
+      offline. Requiring the full 16-octet key size removes the downgrade path.
+    references: [CWE-326, CWE-757, CVE-2019-9506]
+
+  BT_SMP_SC_PAIR_ONLY:
+    value: y
+    rationale: |
+      Disables LE legacy pairing so all pairing uses LE Secure Connections with ECDH key exchange.
+      Legacy pairing (except OOB) derives keys from material a passive sniffer of the pairing
+      exchange can capture and brute-force.
+    references: [CWE-757, CWE-326]
