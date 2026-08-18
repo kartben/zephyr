@@ -55,3 +55,36 @@ rules:
       Stores human-readable thread names in RAM, labeling kernel structures for anyone able to read
       memory or logs.
     references: [CWE-200]
+
+  MEM_DOMAIN_ISOLATED_STACKS:
+    value: y
+    rationale: |
+      Keeps thread stacks isolated even between threads sharing a memory domain, so one compromised
+      user thread cannot read or corrupt its domain peers' stacks, including their return addresses.
+    references: [CWE-668, CWE-787]
+
+  OBJ_CORE:
+    value: n
+    profiles: [strict]
+    rationale: |
+      The object core framework links every participating kernel object into walkable per-type lists
+      so their state can be retrieved by automated means, a ready-made enumeration facility for
+      debug tooling that production images should not carry.
+    references: [CWE-200]
+
+  THREAD_RUNTIME_STATS:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Collects per-thread and system-wide execution cycle statistics at every context switch,
+      profiling the system's runtime behavior for whoever can query it and adding scheduler overhead
+      in production.
+    references: [CWE-200]
+
+  USERSPACE_THREAD_MAY_RAISE_PRIORITY:
+    value: n
+    rationale: |
+      Allows a user-mode thread to raise its own scheduling priority, letting compromised user code
+      starve or preempt higher-priority system threads. The option exists only for tests and must
+      not be reachable in production.
+    references: [CWE-269]

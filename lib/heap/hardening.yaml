@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Security hardening database fragment for the sys_heap allocator.
+
+rules:
+  SYS_HEAP_HARDENING_NONE:
+    value: n
+    rationale: |
+      Disables all runtime validation in the sys_heap allocator, removing the double-free and
+      overflow detection the other hardening levels provide on the alloc and free paths. Production
+      builds should keep at least basic heap hardening enabled.
+    references: [CWE-122, CWE-415]
+
+  SYS_HEAP_INFO:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Prints the heap's internal structure (chunk layout and free-list state) to the console,
+      handing an attacker the allocator layout information needed to turn a heap overflow into a
+      reliable exploit. Upstream marks it for debugging only.
+    references: [CWE-200]
+
+  SYS_HEAP_RUNTIME_STATS:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Gathers per-heap allocation statistics that profile the device's memory behavior, helping an
+      attacker confirm heap exhaustion and grooming attempts while adding bookkeeping to every
+      allocation and free.
+    references: [CWE-200]
+
+  SYS_HEAP_STRESS:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Compiles the general-purpose heap stress-test harness into the image; upstream marks it for
+      testing and validation only, and test scaffolding must not ship in production firmware.
+    references: [CWE-489]
