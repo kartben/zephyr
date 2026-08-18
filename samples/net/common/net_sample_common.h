@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_SAMPLES_NET_COMMON_NET_SAMPLE_COMMON_H_
+#define ZEPHYR_SAMPLES_NET_COMMON_NET_SAMPLE_COMMON_H_
+
 #include <zephyr/net/net_ip.h>
 #include <zephyr/net/socket.h>
 #include <zephyr/net/net_if.h>
@@ -76,3 +79,5 @@ static inline void close_quic(int quic_sock)
 }
 
 #endif /* CONFIG_QUIC */
+
+#endif /* ZEPHYR_SAMPLES_NET_COMMON_NET_SAMPLE_COMMON_H_ */

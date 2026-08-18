@@ -8,3 +8,8 @@ project(logger)
 
 FILE(GLOB app_sources src/*.c)
 target_sources(app PRIVATE ${app_sources})
+
+# ext_log_system.c and ext_log_system_adapter.c both provide a file local
+# 'log_handler' which the ext_log() macro resolves to, so they cannot share a
+# translation unit in a unity build.
+zephyr_library_unity_build_exclude(src/ext_log_system_adapter.c)

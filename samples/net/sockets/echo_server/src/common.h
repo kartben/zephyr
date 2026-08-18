@@ -5,6 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef ZEPHYR_SAMPLES_NET_SOCKETS_ECHO_SERVER_COMMON_H_
+#define ZEPHYR_SAMPLES_NET_SOCKETS_ECHO_SERVER_COMMON_H_
+
 #include "net_sample_common.h"
 
 #define MY_PORT 4242
@@ -91,3 +94,5 @@ static inline int init_usb(void)
 	return 0;
 }
 #endif /* CONFIG_USB_DEVICE_STACK */
+
+#endif /* ZEPHYR_SAMPLES_NET_SOCKETS_ECHO_SERVER_COMMON_H_ */
