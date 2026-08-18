@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Security hardening database fragment for TI SimpleLink SoCs.
+
+rules:
+  CC3220SF_DEBUG:
+    value: n
+    rationale: |
+      Prepends the TI debug header to the flash image, telling the CC3220SF boot ROM to skip flash
+      image verification so unauthenticated images run. Production images must boot with
+      verification intact.
+    references: [CWE-345]
+
+  CC3235SF_DEBUG:
+    value: n
+    rationale: |
+      Prepends the TI debug header to the flash image, telling the CC3235SF boot ROM to skip flash
+      image verification so unauthenticated images run. Production images must boot with
+      verification intact.
+    references: [CWE-345]

@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Security hardening database fragment for STM32 SoCs.
+
+rules:
+  STM32_ENABLE_DEBUG_SLEEP_STOP:
+    value: n
+    rationale: |
+      Keeps the STM32 DBGMCU powered in sleep and stop modes solely so a debugger or RTT session can
+      stay attached; production devices should not keep the debug block alive in low-power states.
+    references: [CWE-1244]

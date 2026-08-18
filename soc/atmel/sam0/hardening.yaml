@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Security hardening database fragment for Atmel SAM0 SoCs.
+
+rules:
+  SOC_ATMEL_SAML_DEBUG_PAUSE:
+    value: n
+    rationale: |
+      Inserts a delay in early boot solely so a debugger can attach before the system clock is
+      configured; a production device should not pause at reset waiting for debugger attachment.
+    references: [CWE-1244]

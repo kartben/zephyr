@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Security hardening database fragment for ITE EC SoCs.
+
+rules:
+  SOC_IT8XXX2_JTAG_DEBUG_INTERFACE:
+    value: n
+    rationale: |
+      Routes five GPIOs of the ITE embedded controller out as a JTAG debug interface, giving anyone
+      with physical access debugger-level control over the EC.
+    references: [CWE-1244]

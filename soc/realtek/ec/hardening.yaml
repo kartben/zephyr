@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Security hardening database fragment for Realtek EC SoCs.
+
+rules:
+  RTS5912_DEBUG_SWJ:
+    value: n
+    rationale: |
+      Enables the serial-wire/JTAG debug connection on the RTS5912 embedded controller, giving
+      anyone with physical access debugger-level control over a chip that holds platform security
+      roles. Production ECs should keep the debug port disabled.
+    references: [CWE-1244]

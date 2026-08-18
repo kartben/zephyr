@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Security hardening database fragment for Nuvoton NPCX SoCs.
+
+rules:
+  SOC_NPCK_DEBUG_DISABLE:
+    value: y
+    rationale: |
+      Disables all of the NPCK3 embedded controller's debug interfaces during initialization,
+      preventing an attacker with physical access from attaching a debugger to inspect or modify the
+      running firmware.
+    references: [CWE-1244]
