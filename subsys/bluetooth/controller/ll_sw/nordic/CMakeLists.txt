@@ -3,9 +3,9 @@
 zephyr_library()
 zephyr_library_link_libraries(subsys__bluetooth)
 
-# The controller sources reach for same named headers (hal/ccm.h, hal/radio.h,
-# ...) through different include paths, so combining them into a single
-# translation unit picks up the wrong definitions.
+# The LLL sources systematically reuse the same file local symbol names
+# (init_reset, prepare_cb, isr_done, isr_rx_pdu, ...) for the per state
+# implementations, so they cannot share a translation unit.
 zephyr_library_property(NO_UNITY_BUILD TRUE)
 
 zephyr_library_sources(

@@ -3,11 +3,6 @@
 zephyr_library()
 zephyr_library_link_libraries(subsys__bluetooth)
 
-# The host's private headers (conn_internal.h, hci_core.h, ...) do not use
-# include guards, so the host sources cannot be combined into a single
-# translation unit.
-zephyr_library_property(NO_UNITY_BUILD TRUE)
-
 add_subdirectory_ifdef(CONFIG_BT_CLASSIC classic)
 add_subdirectory_ifdef(CONFIG_BT_SHELL shell)
 

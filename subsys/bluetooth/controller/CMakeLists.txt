@@ -8,10 +8,9 @@ endif()
 
 zephyr_library()
 
-# The controller's private headers largely lack include guards, and several
-# same named headers (hal/ccm.h, hal/radio.h, pdu_vendor.h, ...) are resolved
-# through different include paths depending on the source file, so the
-# controller sources cannot be combined into a single translation unit.
+# The controller sources systematically reuse the same file local symbol names
+# (init_reset, disabled_cb, ticker_stop_op_cb, ...) for the per state
+# implementations, so they cannot share a translation unit.
 zephyr_library_property(NO_UNITY_BUILD TRUE)
 zephyr_library_link_libraries(subsys__bluetooth)
 

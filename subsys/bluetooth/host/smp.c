@@ -4812,7 +4812,7 @@ static uint8_t smp_keypress_notif(struct bt_smp *smp, struct net_buf *buf)
 static const struct {
 	uint8_t  (*func)(struct bt_smp *smp, struct net_buf *buf);
 	uint8_t  expect_len;
-} handlers[] = {
+} smp_handlers[] = {
 	{ }, /* No op-code defined for 0x00 */
 	{ smp_pairing_req,         sizeof(struct bt_smp_pairing) },
 	{ smp_pairing_rsp,         sizeof(struct bt_smp_pairing) },
@@ -4864,12 +4864,12 @@ static int bt_smp_recv(struct bt_l2cap_chan *chan, struct net_buf *buf)
 	 * If a packet is received with a Code that is reserved for future use
 	 * it shall be ignored.
 	 */
-	if (hdr->code >= ARRAY_SIZE(handlers)) {
+	if (hdr->code >= ARRAY_SIZE(smp_handlers)) {
 		LOG_WRN("Received reserved SMP code 0x%02x", hdr->code);
 		return 0;
 	}
 
-	if (!handlers[hdr->code].func) {
+	if (!smp_handlers[hdr->code].func) {
 		LOG_WRN("Unhandled SMP code 0x%02x", hdr->code);
 		smp_error(smp, BT_SMP_ERR_CMD_NOTSUPP);
 		return 0;
@@ -4884,13 +4884,13 @@ static int bt_smp_recv(struct bt_l2cap_chan *chan, struct net_buf *buf)
 		return 0;
 	}
 
-	if (buf->len != handlers[hdr->code].expect_len) {
+	if (buf->len != smp_handlers[hdr->code].expect_len) {
 		LOG_ERR("Invalid len %u for code 0x%02x", buf->len, hdr->code);
 		smp_error(smp, BT_SMP_ERR_INVALID_PARAMS);
 		return 0;
 	}
 
-	err = handlers[hdr->code].func(smp, buf);
+	err = smp_handlers[hdr->code].func(smp, buf);
 	if (err) {
 		smp_error(smp, err);
 	}

@@ -3,6 +3,11 @@
 zephyr_library()
 zephyr_library_link_libraries(subsys__bluetooth)
 
+# Mesh names its file local callbacks after the event they handle
+# (subnet_evt, gatt_connected, prov_link_opened, ...), so the same names are
+# defined by several sources and they cannot share a translation unit.
+zephyr_library_property(NO_UNITY_BUILD TRUE)
+
 zephyr_library_sources_ifdef(CONFIG_BT_MESH
     main.c
     cfg.c
