@@ -25,3 +25,11 @@ rules:
       Fault dumps print registers and fault state to the console on crashes; level 0 keeps that
       exploit-development feedback out of production builds.
     references: [CWE-209]
+
+  MPU_ALLOW_FLASH_WRITE:
+    value: n
+    rationale: |
+      Programs the MPU to give read-write-execute access to flash, making the firmware's own code
+      region writable at runtime and letting any memory-corruption bug escalate to persistent code
+      modification.
+    references: [CWE-119]

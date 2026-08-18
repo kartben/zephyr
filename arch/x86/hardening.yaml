@@ -17,3 +17,34 @@ rules:
       Enables the x86 MMU so kernel and thread memory can be protected with per-page permissions,
       including making memory non-executable.
     references: [CWE-119]
+
+  X86_DISABLE_SSBD:
+    value: y
+    rationale: |
+      Disables Speculative Store Bypass so loads cannot speculatively consume stale data past an
+      older store, mitigating Spectre V4 style side-channel attacks from user threads. Has no effect
+      on CPUs that do not require it.
+    references: [CWE-1037]
+
+  X86_ENABLE_EXTENDED_IBRS:
+    value: y
+    rationale: |
+      Enables always-on Extended IBRS, restricting indirect branch speculation so user code cannot
+      poison branch predictions used by the kernel (Spectre V2).
+    references: [CWE-1037]
+
+  X86_KPTI:
+    value: y
+    rationale: |
+      Kernel page table isolation keeps kernel mappings out of user-mode page tables, preventing
+      Meltdown-style speculative reads of kernel RAM from user threads. Disabling it to recover
+      syscall performance hands userspace the kernel's memory on affected CPUs.
+    references: [CWE-200]
+
+  X86_VERY_EARLY_CONSOLE:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Emits printk output on a 16550 UART from the very start of kernel init, exposing boot-time
+      internals on a port a production device should keep quiet.
+    references: [CWE-200]
