@@ -1,0 +1,48 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Security hardening database fragment for networking.
+
+rules:
+  COAP_TEST_API_ENABLE:
+    value: n
+    rationale: |
+      Exposes internal CoAP APIs that exist only for the unit test suite; the option's own comment
+      says not to enable it in applications, and test scaffolding must not be reachable in
+      production firmware.
+    references: [CWE-489]
+
+  NET_CAPTURE:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Copies every frame the device sends or receives and tunnels it over IPIP/UDP to another host
+      for Wireshark analysis, a wiretap built into the firmware that discloses all device traffic to
+      whoever controls the capture endpoint.
+    references: [CWE-200]
+
+  NET_TCP_ISN_RFC6528:
+    value: y
+    rationale: |
+      Derives TCP initial sequence numbers with the keyed hash of RFC 6528, keeping ISNs
+      unpredictable to off-path attackers who would otherwise get a head start on connection
+      spoofing, reset and data-injection attacks. When disabled, each ISN is a bare random draw with
+      no secret keying of the address/port tuple.
+    references: [CWE-330]
+
+  NET_ZPERF:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Links the zperf network benchmarking library into the image, able to generate arbitrary
+      traffic load and, with server support, accept unauthenticated iperf sessions from the network,
+      qualification tooling that has no place in a hardened production image.
+    references: [CWE-489]
+
+  WIFI_CREDENTIALS_STATIC:
+    value: n
+    rationale: |
+      Compiles a fixed Wi-Fi SSID and password into the firmware image, so the same network
+      credential ships in every device and can be recovered by anyone who obtains one image or one
+      unit.
+    references: [CWE-798]
