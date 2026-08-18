@@ -1,0 +1,62 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Security hardening database fragment for mbed TLS.
+
+rules:
+  MBEDTLS_DEBUG_C:
+    value: n
+    rationale: |
+      Compiles the Mbed TLS debug functions, which at higher levels dump TLS handshake internals
+      (negotiated parameters, certificate contents and intermediate secrets) to whoever can read the
+      log output.
+    references: [CWE-532]
+
+  MBEDTLS_MEMORY_DEBUG:
+    value: n
+    profiles: [strict]
+    rationale: |
+      Enables debugging of the Mbed TLS buffer allocator, printing allocation failures and providing
+      debug output of allocated memory, crypto-library heap internals that belong only in
+      development builds.
+    references: [CWE-200]
+
+  MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG_ALLOW_NON_CSPRNG:
+    value: n
+    rationale: |
+      Allows the PSA crypto external RNG to be backed by non-cryptographically-secure random
+      sources, making every key, nonce and signature derived through PSA predictable. The option's
+      own help text restricts it to testing and warns against production use.
+    references: [CWE-338]
+
+  MBEDTLS_SSL_EARLY_DATA:
+    value: n
+    rationale: |
+      TLS 1.3 0-RTT early data is sent before the handshake completes and carries no replay
+      protection, so an attacker can capture it and replay whatever request it contained. Safe only
+      when the application layer is strictly idempotent.
+    references: [CWE-294]
+
+  MBEDTLS_SSL_ENCRYPT_THEN_MAC:
+    value: y
+    rationale: |
+      The Encrypt-then-MAC extension (RFC 7366) replaces MAC-then-encrypt for TLS 1.2 CBC
+      ciphersuites, removing the padding-oracle attack surface behind Lucky Thirteen and its
+      variants. Disabling it reverts to the weaker legacy construction.
+    references: [CWE-203]
+
+  MBEDTLS_SSL_EXTENDED_MASTER_SECRET:
+    value: y
+    rationale: |
+      Binds the TLS 1.2 master secret to the full handshake transcript (RFC 7627), defeating
+      triple-handshake attacks where a man-in-the-middle synchronizes secrets across two
+      connections. Upstream Mbed TLS enables it by default; Zephyr's Kconfig leaves it off.
+    references: [CWE-300]
+
+  PSA_CRYPTO_ENABLE_ALL:
+    value: n
+    rationale: |
+      Enables every PSA crypto feature at once, including weak algorithms such as MD5 and SHA-1,
+      instead of the specific set the product needs. A production build should enable exactly the
+      algorithms it uses.
+    references: [CWE-327]
