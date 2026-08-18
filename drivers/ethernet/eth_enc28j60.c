@@ -554,7 +554,7 @@ static void enc28j60_read_packet(const struct device *dev, uint16_t frm_len)
 	struct net_buf *pkt_buf;
 	struct net_pkt *pkt;
 	uint16_t lengthfr;
-	uint8_t dummy[4];
+	uint8_t dummy[5];
 
 	/* Get the frame from the buffer */
 	pkt = net_pkt_rx_alloc_with_buffer(get_iface(context), frm_len, NET_AF_UNSPEC, 0,
@@ -593,15 +593,8 @@ static void enc28j60_read_packet(const struct device *dev, uint16_t frm_len)
 		pkt_buf = pkt_buf->frags;
 	} while (frm_len > 0);
 
-	/* Let's pop the useless CRC */
-	eth_enc28j60_read_mem(dev, dummy, 4);
-
-	/* Pops one padding byte from spi circular buffer
-	 * introduced by the device when the frame length is odd
-	 */
-	if (lengthfr & 0x01) {
-		eth_enc28j60_read_mem(dev, dummy, 1);
-	}
+	/* Pop the CRC, plus the device's pad byte on odd lengths, in one read */
+	eth_enc28j60_read_mem(dev, dummy, (lengthfr & 0x01) ? 5 : 4);
 
 	/* Feed buffer frame to IP stack */
 	LOG_DBG("%s: Received packet of length %u", dev->name, lengthfr);
@@ -629,7 +622,7 @@ static int eth_enc28j60_rx(const struct device *dev)
 
 	do {
 		uint16_t frm_len = 0U;
-		uint8_t info[RSV_SIZE];
+		uint8_t info[2 + RSV_SIZE];
 		uint16_t next_packet;
 		uint8_t rdptl = 0U;
 		uint8_t rdpth = 0U;
@@ -641,8 +634,8 @@ static int eth_enc28j60_rx(const struct device *dev)
 		eth_enc28j60_write_reg(dev, ENC28J60_REG_ERDPTL, rdptl);
 		eth_enc28j60_write_reg(dev, ENC28J60_REG_ERDPTH, rdpth);
 
-		/* Read address for next packet */
-		eth_enc28j60_read_mem(dev, info, 2);
+		/* Read next-packet pointer and status vector in one read (ERDPT auto-increments) */
+		eth_enc28j60_read_mem(dev, info, 2 + RSV_SIZE);
 		next_packet = info[0] | (uint16_t)info[1] << 8;
 
 		/* Errata 14. Even values in ERXRDPT
@@ -654,17 +647,14 @@ static int eth_enc28j60_rx(const struct device *dev)
 			next_packet--;
 		}*/
 
-		/* Read reception status vector */
-		eth_enc28j60_read_mem(dev, info, 4);
-
 		/* Get the frame length from the rx status vector,
 		 * minus CRC size at the end which is always present
 		 */
-		if (sys_get_le16(info) <= 4U) {
-			LOG_ERR("Invalid enc28j60 frame length %u", sys_get_le16(info));
+		if (sys_get_le16(&info[2]) <= 4U) {
+			LOG_ERR("Invalid enc28j60 frame length %u", sys_get_le16(&info[2]));
 			break;
 		}
-		frm_len = sys_get_le16(info) - 4;
+		frm_len = sys_get_le16(&info[2]) - 4;
 
 		enc28j60_read_packet(dev, frm_len);
 

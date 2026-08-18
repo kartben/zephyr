@@ -571,11 +571,10 @@ static void eth_intel_igc_tx_clean(struct eth_intel_igc_mac_data *data, uint8_t 
  * sets up the descriptor with the fragment data, and updates the write pointer.
  */
 static int eth_intel_igc_tx_frag(const struct device *dev, struct net_pkt *pkt,
-				 struct net_buf *frag, uint8_t queue)
+				 struct net_buf *frag, uint8_t queue, uint16_t total_len)
 {
 	const struct eth_intel_igc_mac_cfg *cfg = dev->config;
 	struct eth_intel_igc_mac_data *data = dev->data;
-	uint16_t total_len = net_pkt_get_len(pkt);
 	union dma_tx_desc *desc;
 	uint32_t idx = 0;
 
@@ -634,13 +633,15 @@ static int eth_intel_igc_tx_data(const struct device *dev, struct net_pkt *pkt)
 		queue = cfg->num_queues - 1;
 	}
 
+	uint16_t total_len = net_pkt_get_len(pkt);
+
 	NET_PKT_FRAG_FOR_EACH(pkt, frag) {
 		/* Hold the Header fragment until transmit clean done */
 		if (frag == pkt->frags) {
 			net_pkt_frag_ref(frag);
 		}
 
-		ret = eth_intel_igc_tx_frag(dev, pkt, frag, queue);
+		ret = eth_intel_igc_tx_frag(dev, pkt, frag, queue, total_len);
 		if (ret < 0) {
 			LOG_ERR("Failed to transmit in queue number: %d", queue);
 		}
@@ -724,8 +725,10 @@ static void eth_intel_igc_rx_data(struct eth_intel_igc_mac_data *data, uint8_t q
 			continue;
 		}
 
-		if (!net_if_is_up(data->iface) || !desc->writeback.pkt_len) {
-			LOG_ERR("RX interface is down or pkt_len is %d", desc->writeback.pkt_len);
+		uint16_t pkt_len = desc->writeback.pkt_len;
+
+		if (!net_if_is_up(data->iface) || !pkt_len) {
+			LOG_ERR("RX interface is down or pkt_len is %d", pkt_len);
 			eth_intel_igc_rx_data_hdl_err(data, queue, idx, desc, NULL);
 			continue;
 		}
@@ -734,7 +737,7 @@ static void eth_intel_igc_rx_data(struct eth_intel_igc_mac_data *data, uint8_t q
 		rx_buf = data->rx.buf + ((queue * cfg->num_rx_desc + idx) * ETH_MAX_FRAME_SZ);
 
 		/* Allocate packet buffer as per address family */
-		pkt = net_pkt_rx_alloc_with_buffer(data->iface, desc->writeback.pkt_len,
+		pkt = net_pkt_rx_alloc_with_buffer(data->iface, pkt_len,
 						   eth_intel_igc_get_sa_family(rx_buf), 0,
 						   K_MSEC(200));
 		if (pkt == NULL) {
@@ -744,7 +747,7 @@ static void eth_intel_igc_rx_data(struct eth_intel_igc_mac_data *data, uint8_t q
 		}
 
 		/* Write DMA buffer to packet */
-		ret = net_pkt_write(pkt, (void *)rx_buf, desc->writeback.pkt_len);
+		ret = net_pkt_write(pkt, (void *)rx_buf, pkt_len);
 		if (ret < 0) {
 			LOG_ERR("Failed to write Receive buffer to packet");
 			eth_intel_igc_rx_data_hdl_err(data, queue, idx, desc, pkt);

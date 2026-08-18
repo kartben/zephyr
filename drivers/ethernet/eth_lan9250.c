@@ -742,13 +742,9 @@ static void lan9250_thread(void *p1, void *p2, void *p3)
 	struct lan9250_runtime *context = dev->data;
 	uint32_t int_sts;
 	uint16_t tmp = 0;
-	uint32_t ier;
 
 	while (true) {
 		k_sem_take(&context->int_sem, K_FOREVER);
-
-		/* Save interrupt enable register value */
-		lan9250_read_sys_reg(dev, LAN9250_INT_EN, &ier);
 
 		/* Disable interrupts to release the interrupt line */
 		lan9250_write_sys_reg(dev, LAN9250_INT_EN, 0);
@@ -773,7 +769,8 @@ static void lan9250_thread(void *p1, void *p2, void *p3)
 		}
 
 		/* Re-enable interrupts */
-		lan9250_write_sys_reg(dev, LAN9250_INT_EN, ier);
+		lan9250_write_sys_reg(dev, LAN9250_INT_EN,
+				      LAN9250_INT_EN_PHY_INT_EN | LAN9250_INT_EN_RSFL_EN);
 	}
 }
 
