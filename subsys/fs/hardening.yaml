@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Security hardening database fragment for filesystems.
+
+rules:
+  FILE_SYSTEM_SHELL:
+    value: n
+    rationale: |
+      The file system shell lets whoever reaches the console browse, read and write files, and with
+      the mount command (enabled by default) mount any storage partition, exposing stored data and
+      allowing persistent modification of it.
+    references: [CWE-489]

@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Security hardening database fragment for EEPROM drivers.
+
+rules:
+  EEPROM_SHELL:
+    value: n
+    rationale: |
+      The EEPROM shell provides raw read and write commands for EEPROM devices, which typically hold
+      calibration data, identity and credentials; console access becomes full disclosure and tamper
+      access to that data.
+    references: [CWE-489]

@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Security hardening database fragment for the settings subsystem.
+
+rules:
+  SETTINGS_SHELL:
+    value: n
+    rationale: |
+      Shell commands for listing and reading settings expose the persisted state of every subsystem,
+      including Bluetooth bonding keys and application credentials stored through the settings API,
+      to anyone holding the console.
+    references: [CWE-200]
