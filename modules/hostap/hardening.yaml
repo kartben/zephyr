@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Security hardening database fragment for the Wi-Fi supplicant (hostap).
+
+rules:
+  SAE_PWE_EARLY_EXIT:
+    value: n
+    rationale: |
+      Stops the WPA3-SAE password element derivation as soon as the PWE is found instead of
+      completing the fixed number of iterations that defends against timing side channels, reopening
+      Dragonblood-style password recovery attacks.
+    references: [CWE-208]
+
+  WIFI_NM_WPA_SUPPLICANT_DEBUG_SHOW_KEYS:
+    value: n
+    rationale: |
+      Includes key material (Wi-Fi passwords, PMKs and encryption keys) in the WPA supplicant debug
+      output, the equivalent of wpa_supplicant's -K flag, handing network credentials to anyone able
+      to read the logs.
+    references: [CWE-532]
