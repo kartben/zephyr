@@ -70,6 +70,10 @@ Removed APIs and options
 
 * Architectures
 
+   * RISC-V
+
+      * ``CONFIG_EXTRA_EXCEPTION_INFO``
+
    * Xtensa
 
       * ``CONFIG_XTENSA_BACKTRACE_EXCEPTION_DUMP_HOOK``
