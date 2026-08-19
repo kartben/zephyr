@@ -98,6 +98,9 @@ Removed APIs and options
       buffers unconditionally. Applications still setting these options can
       simply drop them.
 
+    * ``CONFIG_BT_AUTO_PHY_UPDATE``, replaced by the ``BT_AUTO_PHY_CENTRAL`` and
+      ``BT_AUTO_PHY_PERIPHERAL`` choices
+
 * Build system
 
     * The CMake ``flash``, ``debug``, ``debugserver``, ``attach`` and ``rtt`` targets,
