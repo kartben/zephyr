@@ -83,8 +83,13 @@ if(WEST_VERSION)
   message(STATUS "Found west (found suitable version \"${WEST_VERSION}\", minimum required is \"${MIN_WEST_VERSION}\")")
 
   if(NOT WEST_TOPDIR)
+    # Use west's Python API instead of the much slower 'west topdir' command
+    # line; as_posix() keeps the path format both it and 'west build' produce.
     execute_process(
-      COMMAND ${WEST} topdir
+      COMMAND
+      ${PYTHON_EXECUTABLE}
+      -c
+      "import west.util; from pathlib import PurePath; print(PurePath(west.util.west_topdir()).as_posix())"
       OUTPUT_VARIABLE WEST_TOPDIR
       ERROR_QUIET
       RESULT_VARIABLE west_topdir_result
