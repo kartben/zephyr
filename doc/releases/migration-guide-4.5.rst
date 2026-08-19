@@ -1508,6 +1508,12 @@ Other subsystems
   :c:func:`cpu_load_get_cpu`. Note that :c:func:`cpu_load_get_cpu` returns the load in per mille
   (0...1000) rather than percent; use :c:macro:`CPU_LOAD_PERMILLE_TO_PERCENT` to convert.
 
+POSIX
+=====
+
+* ``CONFIG_POSIX_READER_WRITER_LOCKS`` has been removed. Use
+  :kconfig:option:`CONFIG_POSIX_RW_LOCKS` instead.
+
 Random
 ======
 
