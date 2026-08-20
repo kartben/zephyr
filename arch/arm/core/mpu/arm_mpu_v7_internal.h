@@ -26,14 +26,14 @@ static void mpu_init(void)
  * Note:
  *   The caller must provide a valid region index.
  */
-static void region_init(const uint32_t index,
+static ALWAYS_INLINE void region_init(const uint32_t index,
 	const struct arm_mpu_region *region_conf)
 {
+	/* Configure the region */
+#if defined(CONFIG_CPU_AARCH32_CORTEX_R)
 	/* Select the region you want to access */
 	set_region_number(index);
 
-	/* Configure the region */
-#if defined(CONFIG_CPU_AARCH32_CORTEX_R)
 	/*
 	 * Clear size register, which disables the entry.  It cannot be
 	 * enabled as we reconfigure it.
@@ -44,6 +44,10 @@ static void region_init(const uint32_t index,
 	set_region_attributes(region_conf->attr.rasr);
 	set_region_size(region_conf->size | MPU_RASR_ENABLE_Msk);
 #else
+	/* Writing the region number in RBAR.REGION with RBAR.VALID set
+	 * also updates RNR, so the region does not need to be selected
+	 * with a separate RNR write first.
+	 */
 	MPU->RBAR = (region_conf->base & MPU_RBAR_ADDR_Msk)
 				| MPU_RBAR_VALID_Msk | index;
 	MPU->RASR = region_conf->attr.rasr | MPU_RASR_ENABLE_Msk;
@@ -85,7 +89,7 @@ static int mpu_partition_is_valid(const struct z_arm_mpu_partition *part)
  * power-of-two value, and the returned SIZE field value corresponds
  * to that power-of-two value.
  */
-static inline uint32_t size_to_mpu_rasr_size(uint32_t size)
+static ALWAYS_INLINE uint32_t size_to_mpu_rasr_size(uint32_t size)
 {
 	/* The minimal supported region size is 32 bytes */
 	if (size <= 32U) {
@@ -110,7 +114,7 @@ static inline uint32_t size_to_mpu_rasr_size(uint32_t size)
  * region attribute configuration and size and fill-in a driver-specific
  * structure with the correct MPU region configuration.
  */
-static inline void get_region_attr_from_mpu_partition_info(
+static ALWAYS_INLINE void get_region_attr_from_mpu_partition_info(
 	arm_mpu_region_attr_t *p_attr,
 	const k_mem_partition_attr_t *attr, uint32_t base, uint32_t size)
 {
@@ -249,6 +253,23 @@ static int mpu_configure_static_mpu_regions(const struct z_arm_mpu_partition
 static int mpu_configure_dynamic_mpu_regions(const struct z_arm_mpu_partition
 	dynamic_regions[], uint8_t regions_num)
 {
+#if defined(CONFIG_CPU_CORTEX_M)
+	/* Index one past the highest dynamic MPU region ever programmed.
+	 * All regions at or above this index are known to be disabled, so
+	 * they do not need to be cleared again on every reconfiguration
+	 * (i.e. on every context switch).  UINT8_MAX marks the initial,
+	 * unknown hardware state, making the first call clear all regions
+	 * above the static ones.  A single instance is sufficient: this
+	 * runs uniprocessor-only and always with interrupts locked, except
+	 * for boot-time and enter-user-mode calls that cannot race with
+	 * anything that programs different regions.
+	 */
+	static uint8_t dyn_regions_end = UINT8_MAX;
+
+	if (dyn_regions_end == UINT8_MAX) {
+		dyn_regions_end = get_num_regions();
+	}
+#endif
 	int mpu_reg_index = static_regions_num;
 
 	/* In ARMv7-M architecture the dynamic regions are
@@ -261,9 +282,16 @@ static int mpu_configure_dynamic_mpu_regions(const struct z_arm_mpu_partition
 	if (mpu_reg_index != -EINVAL) {
 
 		/* Disable the non-programmed MPU regions. */
+#if defined(CONFIG_CPU_CORTEX_M)
+		for (int i = mpu_reg_index; i < dyn_regions_end; i++) {
+			ARM_MPU_ClrRegion(i);
+		}
+		dyn_regions_end = (uint8_t)mpu_reg_index;
+#else
 		for (int i = mpu_reg_index; i < get_num_regions(); i++) {
 			ARM_MPU_ClrRegion(i);
 		}
+#endif
 	}
 
 	return mpu_reg_index;
