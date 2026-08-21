@@ -577,6 +577,12 @@ Other notable changes
     Ubuntu 24.04 LTS package repositories. See the :ref:`migration guide <migration_4.5>` for
     options if your distribution ships an older version.
 
+  * Listing boards, SoCs and shields is now cached in the user cache directory, so that repeated
+    CMake configures, twister runs and documentation builds no longer re-parse every
+    :file:`board.yml`, :file:`soc.yml` and :file:`shield.yml` in the tree. Entries are keyed by the
+    contents of those files, so nothing needs to be done to keep the cache up to date. See
+    :envvar:`ZEPHYR_LIST_CACHE_DIR` and :envvar:`ZEPHYR_LIST_CACHE_DISABLE`.
+
 * Kernel
 
   * :kconfig:option:`CONFIG_SCHED_CPU_MASK` no longer depends on

@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import jsonschema
+import list_cache
 import list_hardware
 import yaml
 from jsonschema.exceptions import best_match
@@ -223,41 +224,50 @@ def extend_v2_boards(boards, board_extensions):
             node.variants.append(Variant.from_dict(v))
 
 
+def find_v2_board_files(board_roots, board_dirs=None):
+    '''List the board.yml files under the given board roots, in a stable order.
+
+    board_dirs, if given, selects those board directories instead of searching.
+    '''
+    if board_dirs:
+        return [d / BOARD_YML for d in board_dirs]
+
+    board_files = []
+    for root in unique_paths(board_roots):
+        board_files.extend(sorted((root / 'boards').rglob(BOARD_YML)))
+
+    return board_files
+
+
 # Note that this does not share the args.board functionality of find_v2_boards
 def find_v2_board_dirs(args):
-    dirs = []
-    board_files = []
-    for root in unique_paths(args.board_roots):
-        board_files.extend((root / 'boards').rglob(BOARD_YML))
-
-    dirs = [board_yml.parent for board_yml in board_files if board_yml.is_file()]
-    return dirs
+    return [f.parent for f in find_v2_board_files(args.board_roots) if f.is_file()]
 
 
 def find_v2_boards(args):
-    root_args = argparse.Namespace(**{'soc_roots': args.soc_roots})
-    systems = list_hardware.find_v2_systems(root_args)
+    board_files = find_v2_board_files(args.board_roots, args.board_dir)
+    soc_files = list_hardware.find_v2_soc_files(args.soc_roots)
 
-    boards = {}
-    board_extensions = []
-    board_files = []
-    if args.board_dir:
-        board_files = [d / BOARD_YML for d in args.board_dir]
-    else:
-        for root in unique_paths(args.board_roots):
-            board_files.extend((root / 'boards').rglob(BOARD_YML))
+    def load():
+        systems = list_hardware.load_v2_systems(soc_files)
+        boards = {}
+        board_extensions = []
 
-    for board_yml in board_files:
-        b, e = load_v2_boards(args.board, board_yml, systems)
-        conflict_boards = set(boards.keys()).intersection(b.keys())
-        if conflict_boards:
-            raise RuntimeError(f'Board(s): {conflict_boards}, defined multiple times.\n'
-                               f'Last defined in {board_yml}')
-        boards.update(b)
-        board_extensions.extend(e)
+        for board_yml in board_files:
+            b, e = load_v2_boards(args.board, board_yml, systems)
+            conflict_boards = set(boards.keys()).intersection(b.keys())
+            if conflict_boards:
+                raise RuntimeError(f'Board(s): {conflict_boards}, defined multiple times.\n'
+                                   f'Last defined in {board_yml}')
+            boards.update(b)
+            board_extensions.extend(e)
 
-    extend_v2_boards(boards, board_extensions)
-    return boards
+        extend_v2_boards(boards, board_extensions)
+        return boards
+
+    # Boards describe themselves in terms of SoCs, so soc.yml files are inputs
+    # to this listing as well.
+    return list_cache.cached('boards', board_files + soc_files, (args.board,), load)
 
 
 def parse_args():

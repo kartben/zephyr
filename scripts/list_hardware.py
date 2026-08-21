@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePath
 
 import jsonschema
+import list_cache
 import yaml
 from jsonschema.exceptions import best_match
 
@@ -238,17 +239,31 @@ def find_v2_archs(args):
     return ret
 
 
-def find_v2_systems(args):
+def find_v2_soc_files(soc_roots):
+    '''List the soc.yml files under the given SoC roots, in a stable order.'''
     yml_files = []
-    systems = Systems()
-    for root in unique_paths(args.soc_roots):
+    for root in unique_paths(soc_roots):
         yml_files.extend(sorted((root / 'soc').rglob(SOC_YML)))
 
-    for soc_yml in yml_files:
-        if soc_yml.is_file():
-            systems.extend(Systems.from_file(soc_yml))
+    return yml_files
 
-    return systems
+
+def load_v2_systems(soc_files):
+    '''Load the systems described by the given soc.yml files.'''
+
+    def load():
+        systems = Systems()
+        for soc_yml in soc_files:
+            if soc_yml.is_file():
+                systems.extend(Systems.from_file(soc_yml))
+
+        return systems
+
+    return list_cache.cached('systems', soc_files, (), load)
+
+
+def find_v2_systems(args):
+    return load_v2_systems(find_v2_soc_files(args.soc_roots))
 
 
 def parse_args():

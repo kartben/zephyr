@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import jsonschema
+import list_cache
 import yaml
 from jsonschema.exceptions import best_match
 
@@ -55,14 +56,31 @@ def process_shield_data(shield_data, shield_dir):
         supported_features=shield_data.get('supported_features', []),
     )
 
+def find_shield_files(board_roots):
+    '''List the files find_shields_in() reads or names shields after.
+
+    A shield is described by its shield.yml, or, for shields that predate it,
+    by the .overlay files sitting next to a Kconfig.shield.
+    '''
+    files = []
+    for root in board_roots:
+        shields = root / 'boards' / 'shields'
+        for pattern in (f'*/{SHIELD_YML}', '*/Kconfig.shield', '*/*.overlay'):
+            files.extend(sorted(shields.glob(pattern)))
+
+    return files
+
 def find_shields(args):
-    ret = []
+    def load():
+        ret = []
 
-    for root in args.board_roots:
-        for shields in find_shields_in(root):
-            ret.append(shields)
+        for root in args.board_roots:
+            for shields in find_shields_in(root):
+                ret.append(shields)
 
-    return sorted(ret, key=shield_key)
+        return sorted(ret, key=shield_key)
+
+    return list_cache.cached('shields', find_shield_files(args.board_roots), (), load)
 
 def find_shields_in(root):
     shields = root / 'boards' / 'shields'

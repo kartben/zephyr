@@ -206,6 +206,21 @@ a comprehensive list.
 
    See :ref:`gs-board-aliases`
 
+.. envvar:: ZEPHYR_LIST_CACHE_DIR
+
+   Directory in which the results of listing boards, SoCs and shields are
+   cached. Defaults to the :file:`zephyr/list` subdirectory of the user cache
+   directory, which is :file:`~/.cache` on Linux (or ``XDG_CACHE_HOME`` if set),
+   :file:`~/Library/Caches` on macOS and :file:`%LOCALAPPDATA%\\.cache` on
+   Windows.
+
+.. envvar:: ZEPHYR_LIST_CACHE_DISABLE
+
+   Set to a non-empty value to re-read every :file:`board.yml`, :file:`soc.yml`
+   and :file:`shield.yml` file on each listing rather than reusing a cached
+   result. Entries are keyed by the contents of those files, so this should
+   only be needed when debugging the listing scripts themselves.
+
 The following additional environment variables are significant when configuring
 the :ref:`toolchain <gs_toolchain>` used to build Zephyr applications.
 
