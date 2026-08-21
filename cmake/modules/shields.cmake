@@ -56,12 +56,12 @@ list(TRANSFORM BOARD_ROOT PREPEND "--board-root=" OUTPUT_VARIABLE board_root_arg
 
 set(list_shields_commands
   COMMAND ${PYTHON_EXECUTABLE} ${ZEPHYR_BASE}/scripts/list_shields.py
-  ${board_root_args} --json
+  ${board_root_args}
 )
 
-# Get list of shields in JSON format
-execute_process(${list_shields_commands}
-  OUTPUT_VARIABLE shields_json
+# Get list of shields, one '<name>;<dir>' pair per line.
+execute_process(${list_shields_commands} --cmakeformat={NAME}\;{DIR}
+  OUTPUT_VARIABLE shields_output
   ERROR_VARIABLE err_shields
   RESULT_VARIABLE ret_val
 )
@@ -70,19 +70,21 @@ if(ret_val)
   message(FATAL_ERROR "Error finding shields\nError message: ${err_shields}")
 endif()
 
-string(JSON shields_length LENGTH ${shields_json})
+# Splitting on newlines turns the output into a flat list which alternates
+# between a shield name and the directory that shield lives in.
+string(STRIP "${shields_output}" shields_output)
+string(REPLACE "\n" ";" shields_list "${shields_output}")
 
-if(shields_length GREATER 0)
-  math(EXPR shields_length "${shields_length} - 1")
-
-  foreach(i RANGE ${shields_length})
-    string(JSON shield GET "${shields_json}" "${i}")
-    string(JSON shield_name GET ${shield} name)
-    string(JSON shield_dir GET ${shield} dir)
+set(shield_name)
+foreach(item IN LISTS shields_list)
+  if(DEFINED shield_name)
     list(APPEND SHIELD_LIST ${shield_name})
-    set(SHIELD_DIR_${shield_name} ${shield_dir})
-  endforeach()
-endif()
+    set(SHIELD_DIR_${shield_name} ${item})
+    unset(shield_name)
+  else()
+    set(shield_name ${item})
+  endif()
+endforeach()
 
 # Process shields in-order
 if(DEFINED SHIELD)

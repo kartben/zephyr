@@ -5,7 +5,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import argparse
-import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -125,14 +124,16 @@ def add_args(parser):
                         help='add a board root, may be given more than once')
 
 def add_args_formatting(parser):
-    parser.add_argument("--json", action='store_true',
-                        help='''output list of shields in JSON format''')
+    parser.add_argument("--cmakeformat", default=None,
+                        help='''CMake format string to use to list each shield''')
 
 def dump_shields(shields):
-    if args.json:
-        print(
-            json.dumps([{'dir': shield.dir.as_posix(), 'name': shield.name} for shield in shields])
-        )
+    if args.cmakeformat is not None:
+        for shield in shields:
+            print(args.cmakeformat.format(
+                NAME=shield.name,
+                DIR=shield.dir.as_posix(),
+            ))
     else:
         for shield in shields:
             print(f'  {shield.name}')
