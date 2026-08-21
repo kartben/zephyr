@@ -54,6 +54,10 @@ configurations for supported development platforms:
    macOS setup alternatives <getting_started/installation_mac.rst>
    Windows setup alternatives <getting_started/installation_win.rst>
 
+You can also skip the host setup entirely and work from a Docker container
+that has all the required tools and the Zephyr SDK preinstalled; see
+:ref:`docker_development`.
+
 .. _gs_toolchain:
 
 Install a Toolchain

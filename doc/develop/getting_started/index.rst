@@ -11,6 +11,12 @@ Follow this guide to:
 - Get the source code
 - Build, flash, and run a sample application
 
+.. note::
+
+   As an alternative to the setup described below, you can use the official Docker images to
+   build and test Zephyr applications in a container, without installing anything else on your
+   host. See :ref:`docker_development`.
+
 .. _host_setup:
 
 Select and Update OS
