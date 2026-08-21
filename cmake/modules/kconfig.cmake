@@ -351,23 +351,25 @@ set(config_checksum_files ${merge_config_files})
 if(DEFINED ZEPHYR_DTS)
   set(config_checksum_files ${config_checksum_files};${ZEPHYR_DTS})
 endif()
-set(merge_config_files_checksum "")
+set(merge_config_files_checksums)
 foreach(f ${config_checksum_files})
   file(MD5 ${f} checksum)
-  set(merge_config_files_checksum "${merge_config_files_checksum}${checksum}")
+  list(APPEND merge_config_files_checksums ${checksum})
 endforeach()
+list(JOIN merge_config_files_checksums "" merge_config_files_checksum)
 
 # Add to the checksum all the Kconfig files which were used last time
-set(merge_kconfig_checksum "")
+set(merge_kconfig_checksums)
 if(EXISTS ${PARSED_KCONFIG_SOURCES_TXT})
   file(STRINGS ${PARSED_KCONFIG_SOURCES_TXT} parsed_kconfig_sources_list ENCODING UTF-8)
   foreach(f ${parsed_kconfig_sources_list})
     if(EXISTS ${f})
       file(MD5 ${f} checksum)
-      set(merge_kconfig_checksum "${merge_kconfig_checksum}${checksum}")
+      list(APPEND merge_kconfig_checksums ${checksum})
     endif()
   endforeach()
 endif()
+list(JOIN merge_kconfig_checksums "" merge_kconfig_checksum)
 
 # Create a new .config if it does not exists, or if the checksum of
 # the dependencies has changed
@@ -437,20 +439,19 @@ file(STRINGS ${PARSED_KCONFIG_SOURCES_TXT} parsed_kconfig_sources_list ENCODING 
 
 # Recalculate the Kconfig files' checksum, since the list of files may have
 # changed.
-set(merge_kconfig_checksum "")
+set(merge_kconfig_checksums)
 foreach(f ${parsed_kconfig_sources_list})
   file(MD5 ${f} checksum)
-  set(merge_kconfig_checksum "${merge_kconfig_checksum}${checksum}")
+  list(APPEND merge_kconfig_checksums ${checksum})
 endforeach()
+list(JOIN merge_kconfig_checksums "" merge_kconfig_checksum)
 
 # Force CMAKE configure when the Kconfig sources or configuration files changes.
-foreach(kconfig_input
-    ${merge_config_files}
-    ${DOTCONFIG}
-    ${parsed_kconfig_sources_list}
-    )
-  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${kconfig_input})
-endforeach()
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+  ${merge_config_files}
+  ${DOTCONFIG}
+  ${parsed_kconfig_sources_list}
+)
 
 if(CREATE_NEW_DOTCONFIG)
   # Write the new configuration fragment checksum. Only do this if kconfig.py
