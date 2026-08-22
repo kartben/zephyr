@@ -17,8 +17,9 @@ from pathlib import Path
 
 import pytest
 
-# The tools under test live at the top of scripts/.
+# The tools under test live at the top of scripts/, and in scripts/kconfig.
 sys.path.insert(0, str(Path(__file__).parents[2]))
+sys.path.insert(0, str(Path(__file__).parents[2] / "kconfig"))
 
 # A minimal, valid Zephyr module: enough for zephyr_module.py to recognize it.
 MODULE_FILES = {
