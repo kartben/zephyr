@@ -87,6 +87,12 @@ WORKSPACE = {
         \tbool "TDK lite"
         \tselect TDK_LOW_LEVEL_DRIVER
         """,
+    # A driver that merely suggests it, which is lost without the module.
+    "zephyr/drivers/sensor/tdk_soft/Kconfig": """\
+        config TDK_SOFT
+        \tbool "TDK soft"
+        \timply TDK_LOW_LEVEL_DRIVER
+        """,
     "zephyr/drivers/sensor/vendor/CMakeLists.txt": """\
         zephyr_library_include_directories(${ZEPHYR_HAL_VENDOR_MODULE_DIR}/sensor)
         """,
@@ -171,13 +177,28 @@ def test_an_ungated_glue_symbol_declares_nothing(modules):
     assert "soc/vendor" in vendor.undeclared_consumers
 
 
-def test_selecting_a_module_symbol_does_not_declare_the_dependency(modules):
-    """A select is simply lost when the module is inactive, so it gates nothing."""
+def test_selecting_a_gated_symbol_is_a_loud_dependency(modules):
+    """Zephyr errors on a select whose target's dependencies are unmet.
+
+    Kconfig alone would drop the select silently, but Zephyr's kconfig
+    wrapper turns the warning into an error, and the selected symbol's own
+    module dependency keeps the requirement visible to inference. The build
+    model knows, so the select counts as declared.
+    """
     tdk = modules["hal_tdk"]
 
     assert ("select", "drivers/sensor/tdk_lite/Kconfig") in {
+        (ref.kind, ref.path) for ref in tdk.declared}
+    assert "drivers/sensor/tdk_lite" not in tdk.undeclared_consumers
+
+
+def test_implying_a_gated_symbol_really_is_silent(modules):
+    """An imply of an unmet symbol is simply lost, so it declares nothing."""
+    tdk = modules["hal_tdk"]
+
+    assert ("imply", "drivers/sensor/tdk_soft/Kconfig") in {
         (ref.kind, ref.path) for ref in tdk.undeclared}
-    assert "drivers/sensor/tdk_lite" in tdk.undeclared_consumers
+    assert "drivers/sensor/tdk_soft" in tdk.undeclared_consumers
 
 
 def test_reacting_to_an_absent_module_is_not_a_dependency(modules):

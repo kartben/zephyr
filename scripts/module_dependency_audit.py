@@ -17,13 +17,17 @@ feature depending on the module disappears when the module does:
   proxy       depending on a module-conditional symbol: one that Zephyr's
               in-tree glue for the module declares under the module's
               presence symbol, and that therefore cannot be set without it
+  select      selecting a module-conditional symbol. Kconfig alone would
+              drop such a select silently, but Zephyr turns the resulting
+              dangling-select warning into a hard error, and the selected
+              symbol's own dependency keeps the requirement visible to
+              requirement inference, so the build model does know about it
 
 Undeclared dependencies are the places where a build would only succeed
 because the module happens to be in the workspace:
 
-  select      selecting a module-conditional symbol, which quietly does
-              nothing when the module is not there, leaving the selecting
-              feature enabled
+  imply       implying a module-conditional symbol, which really is silent:
+              the implied symbol simply stays off without the module
   capability  using a symbol the module's glue declares without gating it on
               the module, such as the HAS_<VENDOR>_HAL symbols a SoC selects
   cmake       ZEPHYR_<MODULE>_MODULE_DIR, ZEPHYR_<MODULE>_CMAKE_DIR, ...
@@ -86,7 +90,7 @@ KCONFIG_HELP_RE = re.compile(r"\s*(?:help|---help---)\s*$")
 QUOTED_RE = re.compile(r'"[^"]*"')
 KCONFIG_COMMENT_RE = re.compile(r"(?<!\$)#.*$")
 # 'select FOO if BAR' enables FOO, it does not depend on it.
-KCONFIG_SELECT_RE = re.compile(r"^\s*(?:select|imply)\s+([A-Z0-9_]+)(.*)$")
+KCONFIG_SELECT_RE = re.compile(r"^\s*(select|imply)\s+([A-Z0-9_]+)(.*)$")
 
 CMAKE_FILES = ("CMakeLists.txt",)
 CMAKE_SUFFIXES = (".cmake",)
@@ -99,7 +103,7 @@ GLUE_ROOT = "modules"
 # Manifest groups whose projects do not take part in firmware builds.
 TOOLING_GROUPS = {"babblesim", "ci", "testing", "tools"}
 
-DECLARED_KINDS = ("kconfig", "proxy")
+DECLARED_KINDS = ("kconfig", "proxy", "select")
 # What a reference in a given part of the tree says about a module.
 AREA_CLASSES = {
     "arch": "platform", "dts": "platform", "soc": "platform",
@@ -503,15 +507,16 @@ def _significant_lines(text: str, is_kconfig: bool):
 def _line_references(line: str, is_kconfig: bool, symbols: dict[str, tuple[str, bool]]):
     """Yield (sanitized module name, evidence kind) for one line of a build file."""
 
-    def owned(symbol, selected):
+    def owned(symbol, keyword):
         """What naming a module owned symbol here says about the module."""
         owner, conditional = symbols[symbol]
         if not conditional:
             # An ordinary symbol: setting it does not require the module.
             return sanitize(owner), "capability"
-        # A module-conditional symbol gates its user, unless it is selected,
-        # in which case the select is simply lost without the module.
-        return sanitize(owner), "select" if selected else "proxy"
+        # A module-conditional symbol gates whoever depends on it. Selecting
+        # it is a loud dependency (Zephyr errors on the dangling select);
+        # implying it really is silent, the imply is simply lost.
+        return sanitize(owner), keyword or "proxy"
 
     conditions = line
     if is_kconfig:
@@ -526,16 +531,16 @@ def _line_references(line: str, is_kconfig: bool, symbols: dict[str, tuple[str, 
 
         selection = KCONFIG_SELECT_RE.match(line)
         if selection:
-            if selection.group(1) in symbols:
-                yield owned(selection.group(1), selected=True)
-            conditions = selection.group(2)
+            if selection.group(2) in symbols:
+                yield owned(selection.group(2), selection.group(1))
+            conditions = selection.group(3)
         symbol_re = KCONFIG_SYMBOL_RE
     else:
         symbol_re = CMAKE_SYMBOL_RE
 
     for match in symbol_re.finditer(conditions):
         if match.group(1) in symbols and not conditions[:match.start()].rstrip().endswith("!"):
-            yield owned(match.group(1), selected=False)
+            yield owned(match.group(1), None)
 
     for match in MODULE_VARIABLE_RE.finditer(line):
         if match.group(1) != "CURRENT":
