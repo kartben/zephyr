@@ -4,3 +4,5 @@ board:
   vendor: tdk
   socs:
     - name: same70q21b
+  modules:
+    - hal_tdk

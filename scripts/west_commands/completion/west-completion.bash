@@ -1017,6 +1017,38 @@ __comp_west_blobs()
 	esac
 }
 
+__comp_west_modules()
+{
+	local other_opts="
+		--board -b
+		--shield
+		--board-root
+		--soc-root
+		--format -f
+		--dry-run
+		--all
+		--all-declared
+		--defaults
+		--no-defaults
+	"
+
+	case "$prev" in
+		$(__west_to_extglob "$other_opts") )
+			return
+			;;
+		modules)
+			__set_comp "list fetch check"
+			return
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			__set_comp $other_opts
+			;;
+	esac
+}
+
 __comp_west_twister()
 {
 	local bool_opts="
@@ -1278,6 +1310,7 @@ __comp_west()
 		zephyr-export
 		spdx
 		blobs
+		modules
 		bindesc
 		robot
 		simulate

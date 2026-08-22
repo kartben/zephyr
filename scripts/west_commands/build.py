@@ -25,7 +25,7 @@ from build_helpers import (
     load_domains,
 )
 from zcmake import DEFAULT_CMAKE_GENERATOR, CMakeCache, run_build, run_cmake
-from zephyr_ext_common import Forceable
+from zephyr_ext_common import ZEPHYR_BASE, Forceable
 
 _ARG_SEPARATOR = '--'
 
@@ -42,6 +42,7 @@ west build [-h] [-b BOARD[@REV]] [-d BUILD_DIR]
            [--sysbuild | --no-sysbuild] [--domain DOMAIN]
            [--extra-conf FILE.conf]
            [--extra-dtc-overlay FILE.overlay]
+           [--fetch-modules]
            [source_dir] -- [cmake_opt [cmake_opt ...]]
 '''
 
@@ -201,6 +202,10 @@ class Build(Forceable):
 
         group.add_argument('--sysbuild', action=argparse.BooleanOptionalAction,
                            help='''create multi domain build system or disable it (default)''')
+        group.add_argument('--fetch-modules', action='store_true',
+                           help='''fetch west projects required by the board
+                           and shields before CMake runs. Also enabled by
+                           west config zephyr.fetch-modules=true''')
 
         group = parser.add_argument_group('pristine builds',
                                           PRISTINE_DESCRIPTION)
@@ -283,6 +288,8 @@ class Build(Forceable):
         if self.args.test_item:
             self._resolve_test_item(board)
 
+        self._maybe_fetch_modules(board)
+
         self._run_cmake(board, origin)
         if args.cmake_only:
             return
@@ -311,6 +318,45 @@ class Build(Forceable):
         elif getattr(self, 'config_board', None):
             board, origin = self.config_board, 'configfile'
         return board, origin
+
+    def _maybe_fetch_modules(self, board):
+        fetch = getattr(self.args, 'fetch_modules', False)
+        if not fetch:
+            cfg = self.config.get('zephyr.fetch-modules', default=None)
+            fetch = str(cfg).lower() in ('true', '1', 'yes', 'y', 'on')
+        if not fetch:
+            return
+        if not board:
+            self.wrn('west build --fetch-modules requires a board; skipping')
+            return
+
+        sys.path.append(os.fspath(pathlib.Path(__file__).resolve().parent.parent))
+        import list_modules
+
+        shields = list(getattr(self.args, 'shields', None) or [])
+        try:
+            resolved = list_modules.resolve_modules(
+                board_name=board,
+                shields=shields,
+                board_roots=[ZEPHYR_BASE],
+                soc_roots=[ZEPHYR_BASE],
+                include_defaults=True,
+                zephyr_base=ZEPHYR_BASE,
+            )
+        except RuntimeError as e:
+            self.wrn(f'could not resolve required modules: {e}')
+            return
+
+        if not resolved.names:
+            return
+
+        self._banner('fetching required modules: ' + ', '.join(resolved.names))
+        cmd = [
+            sys.executable, '-m', 'west', 'update',
+            '--group-filter=+hal,+fs,+crypto,+debug,+bootloader,+tee,+tools',
+        ]
+        cmd.extend(resolved.names)
+        self.check_call(cmd)
 
     def _parse_remainder(self, remainder):
         self.args.source_dir = None

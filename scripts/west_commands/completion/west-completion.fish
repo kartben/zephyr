@@ -187,6 +187,7 @@ function __zephyr_west_complete_help
                     "zephyr-export" "export Zephyr installation as a CMake config package" \
                     "spdx" "create SPDX bill of materials" \
                     "blobs" "work with binary blobs" \
+                    "modules" "list or fetch modules required by hardware" \
                     "bindesc" "work with Binary Descriptors" \
                     "robot" "run RobotFramework test suites" \
                     "simulate" "simulate board" \
@@ -665,6 +666,15 @@ complete -c west -n "__zephyr_west_use_subcommand; and __zephyr_west_check_if_in
 complete -c west -n "__zephyr_west_seen_subcommand_from blobs; and not __fish_seen_subcommand_from list fetch clean" -ra "list\t'list binary blobs' fetch\t'fetch binary blobs' clean\t'clean working tree of binary blobs'"
 complete -c west -n "__zephyr_west_seen_subcommand_from blobs; and __fish_seen_subcommand_from list fetch clean" -ra "(__zephyr_west_complete_projects)"
 complete -c west -n "__zephyr_west_seen_subcommand_from blobs; and not __fish_seen_subcommand_from fetch clean" -o f -l format -r -d "format string"
+
+# modules
+complete -c west -n "__zephyr_west_use_subcommand; and __zephyr_west_check_if_in_workspace" -ra modules -d "list or fetch modules required by hardware"
+complete -c west -n "__zephyr_west_seen_subcommand_from modules; and not __fish_seen_subcommand_from list fetch check" -ra "list\t'list required modules' fetch\t'fetch required modules' check\t'check required modules are present'"
+complete -c west -n "__zephyr_west_seen_subcommand_from modules" -s b -l board -r -d "board name or board target"
+complete -c west -n "__zephyr_west_seen_subcommand_from modules" -l shield -r -d "shield name"
+complete -c west -n "__zephyr_west_seen_subcommand_from modules" -s f -l format -r -d "format string"
+complete -c west -n "__zephyr_west_seen_subcommand_from modules" -l dry-run -d "print projects that would be fetched"
+complete -c west -n "__zephyr_west_seen_subcommand_from modules" -l all -d "fetch every active west project"
 
 # sdk
 complete -c west -n "__zephyr_west_use_subcommand; and __zephyr_west_check_if_in_workspace" -ra sdk -d "manage SDKs"

@@ -56,6 +56,10 @@ exactly the same name you would supply to CMake if you were to invoke it with:
    You can use the :ref:`west boards <west-boards>` command to list all
    supported boards.
 
+   ``west build --fetch-modules`` (or ``west config zephyr.fetch-modules true``)
+   fetches only the west projects declared for that board before CMake runs.
+   See :ref:`west-modules-opt-in`.
+
 A build directory named :file:`build` will be created, and the application will
 be compiled there after ``west build`` runs CMake to create a build system in
 that directory. If ``west build`` finds an existing build directory, the

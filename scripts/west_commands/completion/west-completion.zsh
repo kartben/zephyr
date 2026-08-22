@@ -40,6 +40,7 @@ _west_cmds() {
   'zephyr-export[export Zephyr installation as a CMake config package]'
   'spdx[create SPDX bill of materials]'
   'blobs[work with binary blobs]'
+  'modules[list or fetch modules required by hardware]'
   'bindesc[work with Binary Descriptors]'
   'robot[run RobotFramework test suites]'
   'simulate[simulate a Zephyr application]'
@@ -416,6 +417,25 @@ _west_spdx() {
   '--include-sdk[also generate SPDX document for SDK]'
   )
   _arguments -S $opts
+}
+
+_west_modules() {
+  local -a module_cmds=(
+  'list[list required modules]'
+  'fetch[fetch required modules]'
+  'check[check required modules are present]'
+  )
+
+  _arguments -S \
+    '1: :->cmds' \
+    '-b[board name or board target]:board:' \
+    '--board[board name or board target]:board:' \
+    '--shield[shield name]:shield:' \
+    '--dry-run[print projects that would be fetched]' \
+    '--all[fetch every active west project]' \
+    '--all-declared[use every module declared in hardware metadata]' \
+    '-f[format string]:format:' \
+    '--format[format string]:format:'
 }
 
 _west_blobs() {

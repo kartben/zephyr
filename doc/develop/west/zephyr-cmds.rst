@@ -248,6 +248,24 @@ Command-line options
 .. _SPDX specification clause 6:
    https://spdx.github.io/spdx-spec/v2.2.2/document-creation-information/
 
+.. _west-modules:
+
+Listing and fetching required modules: ``west modules``
+*******************************************************
+
+The ``modules`` command lists or fetches the west projects declared for
+a board and optional shields. It is the opt-in alternative to downloading
+every HAL with ``west update``. See :ref:`west-modules-opt-in`.
+
+.. code-block:: console
+
+   west modules list -b nucleo_f401re
+   west modules fetch -b nucleo_f401re --shield x_nucleo_iks01a3
+   west modules fetch --dry-run -b qemu_x86
+   west modules check -b nrf52840dk/nrf52840
+
+``west build --fetch-modules`` performs the same fetch before CMake.
+
 .. _west-blobs:
 
 Working with binary blobs: ``west blobs``

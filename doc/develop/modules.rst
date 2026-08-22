@@ -64,6 +64,18 @@ Modules are found by the Zephyr build system either via :ref:`west itself
 The contents of this page only apply to modules, and not to west projects in
 general (unless they are a module themselves).
 
+Hardware-declared module dependencies
+*************************************
+
+Vendor HALs and some other modules are large. SoC, board, and shield
+metadata can list the west projects they need in a ``modules:`` key so
+that fetching those projects can be opt-in. See :ref:`west-modules-opt-in`.
+
+Kconfig options such as ``ZEPHYR_<NAME>_MODULE`` still describe
+*whether a module is present*. They do not download it. Drivers that
+``depends on ZEPHYR_HAL_ST_MODULE`` (for example) remain disabled until
+that module is cloned.
+
 Module Repositories
 *******************
 

@@ -1,6 +1,11 @@
 # Copyright (c) 2025 Microchip Technology Inc.
 # SPDX-License-Identifier: Apache-2.0
 
+modules:
+- cmsis
+- cmsis_6
+- hal_microchip
+
 family:
 - name: microchip_sam_d5x_e5x
   series:
