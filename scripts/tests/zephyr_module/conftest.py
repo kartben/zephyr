@@ -11,10 +11,14 @@ be exercised without any network access.
 
 import shutil
 import subprocess
+import sys
 import textwrap
 from pathlib import Path
 
 import pytest
+
+# The tools under test live at the top of scripts/.
+sys.path.insert(0, str(Path(__file__).parents[2]))
 
 # A minimal, valid Zephyr module: enough for zephyr_module.py to recognize it.
 MODULE_FILES = {
@@ -22,6 +26,15 @@ MODULE_FILES = {
     "zephyr/CMakeLists.txt": "",
     "zephyr/Kconfig": "",
 }
+
+
+def write_tree(root: Path, files: dict[str, str]) -> Path:
+    """Write ``{relative path: content}`` under ``root``, creating directories."""
+    for relative, content in files.items():
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(textwrap.dedent(content))
+    return root
 
 
 def git(args: list[str], cwd: Path) -> str:
