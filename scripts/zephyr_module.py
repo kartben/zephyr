@@ -23,12 +23,14 @@ maintained in modules in addition to what is available in the main Zephyr tree.
 
 import argparse
 import hashlib
+import json
 import os
 import re
 import subprocess
 import sys
 import yaml
 from collections import namedtuple
+from dataclasses import dataclass
 from pathlib import Path, PurePath, PurePosixPath
 
 try:
@@ -173,6 +175,224 @@ BLOB_PRESENT = 'A'
 BLOB_NOT_PRESENT = 'D'
 BLOB_OUTDATED = 'M'
 
+# Keep sanitization in sync with process_module() and doc/develop/modules.rst.
+MODULE_NAME_SANITIZE_RE = re.compile('[^a-zA-Z0-9]')
+MODULE_REQUIREMENTS_SCHEMA_VERSION = 1
+
+
+def sanitize_module_name(name):
+    """Return the Kconfig/CMake-safe form of a logical Zephyr module name."""
+    return MODULE_NAME_SANITIZE_RE.sub('_', name)
+
+
+def module_kconfig_symbol(name):
+    return f'ZEPHYR_{sanitize_module_name(name).upper()}_MODULE'
+
+
+def module_requirement_symbol(name):
+    return f'{module_kconfig_symbol(name)}_REQUIRED'
+
+
+class ModuleNameCollision(ValueError):
+    """Two logical module names sanitize to the same Kconfig symbol."""
+
+
+class MissingModuleDependency(Exception):
+    """A present module lists a build.depends name that is not present."""
+
+    def __init__(self, missing):
+        # missing: list[(module_path, [dep_name, ...])]
+        self.missing = missing
+        lines = ['Missing module dependencies:']
+        for project, depends in missing:
+            dep_list = ', '.join(depends)
+            lines.append(f'{project} depends on missing module(s): {dep_list}')
+        super().__init__('\n'.join(lines))
+
+
+class CyclicModuleDependency(Exception):
+    """Present modules have a cycle in build.depends."""
+
+    def __init__(self, modules):
+        # modules: list[(module_path, [remaining_dep_name, ...])]
+        self.modules = modules
+        lines = ['Cyclic module dependencies:']
+        for project, depends in modules:
+            dep_list = ', '.join(depends)
+            lines.append(f'{project} depends on: {dep_list}')
+        super().__init__('\n'.join(lines))
+
+
+@dataclass(frozen=True)
+class ModuleRequirement:
+    """One logical Zephyr module that may be required by a build."""
+
+    name: str
+    present: bool
+    kconfig_symbol: str
+    requirement_symbol: str
+    west_project: str | None = None
+
+    def to_dict(self):
+        data = {
+            'module': self.name,
+            'present': self.present,
+            'kconfig_symbol': self.kconfig_symbol,
+            'requirement_symbol': self.requirement_symbol,
+        }
+        if self.west_project is not None:
+            data['west_project'] = self.west_project
+        return data
+
+
+class ModuleRequirementSet:
+    """Deterministic collection of module requirements, keyed by logical name."""
+
+    def __init__(self, requirements=None):
+        self._by_name = {}
+        if requirements:
+            for req in requirements:
+                self.add(req)
+
+    def add(self, requirement):
+        existing = self._by_name.get(requirement.name)
+        if existing is None:
+            self._by_name[requirement.name] = requirement
+            return
+        # Later sources may add presence or a west project mapping.
+        self._by_name[requirement.name] = ModuleRequirement(
+            name=requirement.name,
+            present=existing.present or requirement.present,
+            kconfig_symbol=existing.kconfig_symbol,
+            requirement_symbol=existing.requirement_symbol,
+            west_project=requirement.west_project or existing.west_project,
+        )
+
+    def validate_symbol_collisions(self):
+        by_symbol = {}
+        for req in self:
+            symbol = req.kconfig_symbol
+            previous = by_symbol.get(symbol)
+            if previous and previous != req.name:
+                raise ModuleNameCollision(
+                    f'module names {previous!r} and {req.name!r} both sanitize '
+                    f'to Kconfig symbol {symbol}'
+                )
+            by_symbol[symbol] = req.name
+
+    def get(self, name):
+        return self._by_name.get(name)
+
+    def __iter__(self):
+        return iter(sorted(self._by_name.values(), key=lambda r: r.name))
+
+    def __len__(self):
+        return len(self._by_name)
+
+    def evaluate(self, enabled_symbols):
+        """Return (required, missing) lists from a set of enabled Kconfig names.
+
+        enabled_symbols contains unprefixed names such as
+        ZEPHYR_HAL_TDK_MODULE_REQUIRED.
+        """
+        required = []
+        missing = []
+        for req in self:
+            if req.requirement_symbol not in enabled_symbols:
+                continue
+            required.append(req)
+            if not req.present and req.kconfig_symbol not in enabled_symbols:
+                missing.append(req)
+        return required, missing
+
+    def to_document(self, required, missing):
+        return {
+            'schema_version': MODULE_REQUIREMENTS_SCHEMA_VERSION,
+            'required': [req.to_dict() for req in required],
+            'missing': [req.name for req in missing],
+        }
+
+
+def requirement_kconfig_snippet(requirement):
+    name = requirement.name
+    symbol = requirement.requirement_symbol
+    return (
+        f'config {symbol}\n'
+        f'\tbool\n'
+        f'\thelp\n'
+        f"\t  Selected when the current configuration requires Zephyr "
+        f"module '{name}'.\n"
+    )
+
+
+def generate_requirement_kconfig(requirement_set):
+    if not len(requirement_set):
+        return '# No known module requirement symbols.\n'
+    parts = [
+        '# Generated module requirement symbols.\n',
+        '# These exist even when the corresponding module repository is absent.\n',
+    ]
+    for req in requirement_set:
+        parts.append(requirement_kconfig_snippet(req))
+    return '\n'.join(parts) + '\n'
+
+
+def logical_name_from_userdata(userdata, default):
+    if not isinstance(userdata, dict):
+        return default
+    zephyr = userdata.get('zephyr')
+    if isinstance(zephyr, dict) and zephyr.get('module'):
+        return zephyr['module']
+    return default
+
+
+def parse_west_yml_projects(west_yml):
+    """Return (logical_name, west_project_name) pairs from a west.yml file.
+
+    This is a fallback used when no west workspace is available. It reads
+    project names only; URLs and revisions are never treated as fetch
+    instructions.
+    """
+    west_yml = Path(west_yml)
+    if not west_yml.is_file():
+        return []
+    with west_yml.open(encoding='utf-8') as f:
+        data = yaml.load(f.read(), Loader=SafeLoader) or {}
+    projects = data.get('manifest', {}).get('projects', []) or []
+    pairs = []
+    for project in projects:
+        if not isinstance(project, dict) or not project.get('name'):
+            continue
+        name = project['name']
+        pairs.append((logical_name_from_userdata(project.get('userdata'), name),
+                      name))
+    return pairs
+
+
+def parse_dotconfig_enabled(dotconfig):
+    """Return the set of enabled (unprefixed) Kconfig symbol names."""
+    enabled = set()
+    path = Path(dotconfig)
+    if not path.is_file():
+        return enabled
+    prefix = 'CONFIG_'
+    with path.open(encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line.startswith(prefix) or not line.endswith('=y'):
+                continue
+            enabled.add(line[len(prefix):-2])
+    return enabled
+
+
+def write_json_atomic(path, data):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + '.tmp')
+    text = json.dumps(data, indent=2) + '\n'
+    tmp.write_text(text, encoding='utf-8')
+    tmp.replace(path)
+
 
 try:
     import jsonschema
@@ -222,13 +442,13 @@ def process_module(module, require_yaml_validation=True):
                 sys.exit('Missing jsonschema dependency')
 
             meta['name'] = meta.get('name', module_path.name)
-            meta['name-sanitized'] = re.sub('[^a-zA-Z0-9]', '_', meta['name'])
+            meta['name-sanitized'] = sanitize_module_name(meta['name'])
             return meta
 
     if Path(module_path.joinpath('zephyr/CMakeLists.txt')).is_file() and \
        Path(module_path.joinpath('zephyr/Kconfig')).is_file():
         return {'name': module_path.name,
-                'name-sanitized': re.sub('[^a-zA-Z0-9]', '_', module_path.name),
+                'name-sanitized': sanitize_module_name(module_path.name),
                 'build': {'cmake': 'zephyr', 'kconfig': 'zephyr/Kconfig'}}
 
     return None
@@ -706,7 +926,7 @@ def process_meta(zephyr_base, west_projs, modules, extra_modules=None,
     return meta
 
 
-def west_projects(manifest=None):
+def west_projects(manifest=None, active_only=True):
     manifest_path = None
     projects = []
     # West is imported here, as it is optional
@@ -733,13 +953,14 @@ def west_projects(manifest=None):
     try:
         if not manifest:
             manifest = Manifest.from_file()
-        if version.parse(WestVersion) >= version.parse('0.9.0'):
+        if version.parse(WestVersion) >= version.parse('0.9.0') and active_only:
             projects = [p for p in manifest.get_projects([])
                         if manifest.is_active(p)]
         else:
             projects = manifest.get_projects([])
         manifest_path = manifest.abspath
-        return {'manifest_path': manifest_path, 'projects': projects}
+        return {'manifest_path': manifest_path, 'projects': projects,
+                'manifest': manifest}
     except (ManifestImportFailed, MalformedManifest,
             ManifestVersionError, MalformedConfig) as e:
         sys.exit(f'ERROR: {e}')
@@ -749,6 +970,62 @@ def west_projects(manifest=None):
         # but the project is not required to use west.
         pass
     return None
+
+
+Module = namedtuple('Module', ['project', 'meta', 'depends'])
+
+
+def sort_modules(all_modules_by_name):
+    """Topologically sort modules, distinguishing missing deps from cycles.
+
+    all_modules_by_name maps logical module name -> Module.
+    Returns a list of Module in dependency order.
+    """
+    # Working copies so the original depends lists stay intact.
+    remaining = {
+        name: list(module.depends)
+        for name, module in all_modules_by_name.items()
+    }
+    dep_modules = []
+    start_modules = []
+    sorted_modules = []
+
+    for name, module in all_modules_by_name.items():
+        if not remaining[name]:
+            start_modules.append(module)
+        else:
+            dep_modules.append(module)
+
+    while start_modules:
+        node = start_modules.pop(0)
+        sorted_modules.append(node)
+        node_name = node.meta['name']
+        to_remove = []
+        for module in dep_modules:
+            module_name = module.meta['name']
+            if node_name in remaining[module_name]:
+                remaining[module_name].remove(node_name)
+                if not remaining[module_name]:
+                    start_modules.append(module)
+                    to_remove.append(module)
+        for module in to_remove:
+            dep_modules.remove(module)
+
+    if dep_modules:
+        missing = []
+        cyclic = []
+        for module in dep_modules:
+            unresolved = remaining[module.meta['name']]
+            missing_deps = [d for d in unresolved if d not in all_modules_by_name]
+            if missing_deps:
+                missing.append((module.project, missing_deps))
+            else:
+                cyclic.append((module.project, unresolved))
+        if missing:
+            raise MissingModuleDependency(missing)
+        raise CyclicModuleDependency(cyclic)
+
+    return sorted_modules
 
 
 def parse_modules(zephyr_base, manifest=None, west_projs=None, modules=None,
@@ -767,15 +1044,7 @@ def parse_modules(zephyr_base, manifest=None, west_projs=None, modules=None,
                 continue
             extra_modules.extend(PurePosixPath(p) for p in extra_module.split(';') if p)
 
-    Module = namedtuple('Module', ['project', 'meta', 'depends'])
-
     all_modules_by_name = {}
-    # dep_modules is a list of all modules that has an unresolved dependency
-    dep_modules = []
-    # start_modules is a list modules with no depends left (no incoming edge)
-    start_modules = []
-    # sorted_modules is a topological sorted list of the modules
-    sorted_modules = []
 
     for project in modules + extra_modules:
         # Avoid including Zephyr base project as module.
@@ -784,44 +1053,78 @@ def parse_modules(zephyr_base, manifest=None, west_projs=None, modules=None,
 
         meta = process_module(project, require_yaml_validation)
         if meta:
-            depends = meta.get('build', {}).get('depends', [])
+            depends = list(meta.get('build', {}).get('depends', []))
             all_modules_by_name[meta['name']] = Module(project, meta, depends)
 
         elif project in extra_modules:
             sys.exit(f'{project}, given in ZEPHYR_EXTRA_MODULES, '
                      'is not a valid zephyr module')
 
-    for module in all_modules_by_name.values():
-        if not module.depends:
-            start_modules.append(module)
-        else:
-            dep_modules.append(module)
+    try:
+        return sort_modules(all_modules_by_name)
+    except (MissingModuleDependency, CyclicModuleDependency) as e:
+        sys.exit(str(e))
 
-    # This will do a topological sort to ensure the modules are ordered
-    # according to dependency settings.
-    while start_modules:
-        node = start_modules.pop(0)
-        sorted_modules.append(node)
-        node_name = node.meta['name']
-        to_remove = []
-        for module in dep_modules:
-            if node_name in module.depends:
-                module.depends.remove(node_name)
-                if not module.depends:
-                    start_modules.append(module)
-                    to_remove.append(module)
-        for module in to_remove:
-            dep_modules.remove(module)
 
-    if dep_modules:
-        # If there are any modules with unresolved dependencies, then the
-        # modules contains unmet or cyclic dependencies. Error out.
-        error = 'Unmet or cyclic dependencies in modules:\n'
-        for module in dep_modules:
-            error += f'{module.project} depends on: {module.depends}\n'
-        sys.exit(error)
+def collect_requireable_modules(zephyr_base, manifest=None, west_projs=None,
+                                modules=None, extra_modules=None,
+                                require_yaml_validation=True):
+    """Collect logical module names that can be required, even if absent.
 
-    return sorted_modules
+    Presence is determined from modules that are actually available to
+    the build. Names come from:
+
+    1. ZEPHYR_BASE/west.yml project names, as a west-less fallback
+    2. All resolved west projects (active and inactive) when a workspace
+       exists. Downstream overrides win because they are the resolved
+       definition.
+    3. Present modules (module.yml names), which mark the requirement
+       satisfied.
+    """
+    reqs = ModuleRequirementSet()
+
+    west_yml = Path(zephyr_base) / 'west.yml' if zephyr_base else None
+    if west_yml:
+        for logical, project_name in parse_west_yml_projects(west_yml):
+            reqs.add(ModuleRequirement(
+                name=logical,
+                present=False,
+                kconfig_symbol=module_kconfig_symbol(logical),
+                requirement_symbol=module_requirement_symbol(logical),
+                west_project=project_name,
+            ))
+
+    all_west = west_projects(manifest, active_only=False)
+    if all_west:
+        for project in all_west['projects']:
+            userdata = getattr(project, 'userdata', None)
+            logical = logical_name_from_userdata(userdata, project.name)
+            reqs.add(ModuleRequirement(
+                name=logical,
+                present=False,
+                kconfig_symbol=module_kconfig_symbol(logical),
+                requirement_symbol=module_requirement_symbol(logical),
+                west_project=project.name,
+            ))
+
+    present = parse_modules(zephyr_base, manifest, west_projs, modules,
+                            extra_modules, require_yaml_validation)
+    for module in present:
+        name = module.meta['name']
+        reqs.add(ModuleRequirement(
+            name=name,
+            present=True,
+            kconfig_symbol=module_kconfig_symbol(name),
+            requirement_symbol=module_requirement_symbol(name),
+        ))
+
+    reqs.validate_symbol_collisions()
+    return reqs
+
+
+def evaluate_module_requirements(requirement_set, dotconfig):
+    enabled = parse_dotconfig_enabled(dotconfig)
+    return requirement_set.evaluate(enabled)
 
 def write_if_different(file, data):
     if Path(file).is_file():
@@ -871,7 +1174,44 @@ def main():
                         help='List of extra modules to parse')
     parser.add_argument('-z', '--zephyr-base',
                         help='Path to zephyr repository')
+    parser.add_argument('--requirements-kconfig-out',
+                        help="""File to write with Kconfig requirement
+                             symbols for known modules, including modules
+                             that are not currently present.""")
+    parser.add_argument('--requirements-map-out',
+                        help="""JSON file mapping logical module names to
+                             Kconfig symbols and west project names.""")
+    parser.add_argument('--evaluate-requirements', action='store_true',
+                        help="""Evaluate CONFIG_*_MODULE_REQUIRED symbols
+                             from --dotconfig against --requirements-map-out
+                             and write --requirements-result-out.""")
+    parser.add_argument('--dotconfig',
+                        help='Kconfig .config file to evaluate')
+    parser.add_argument('--requirements-result-out',
+                        help='JSON file written by --evaluate-requirements')
     args = parser.parse_args()
+
+    if args.evaluate_requirements:
+        if not args.dotconfig or not args.requirements_map_out:
+            parser.error('--evaluate-requirements requires --dotconfig and '
+                         '--requirements-map-out')
+        if not args.requirements_result_out:
+            parser.error('--evaluate-requirements requires --requirements-result-out')
+        with open(args.requirements_map_out, encoding='utf-8') as fp:
+            mapping = json.load(fp)
+        reqs = ModuleRequirementSet()
+        for entry in mapping.get('modules', []):
+            reqs.add(ModuleRequirement(
+                name=entry['name'],
+                present=bool(entry.get('present')),
+                kconfig_symbol=entry['kconfig_symbol'],
+                requirement_symbol=entry['requirement_symbol'],
+                west_project=entry.get('west_project'),
+            ))
+        required, missing = evaluate_module_requirements(reqs, args.dotconfig)
+        write_json_atomic(args.requirements_result_out,
+                          reqs.to_document(required, missing))
+        return
 
     kconfig_module_dirs = ""
     kconfig_module_dirs_cmake = "set(kconfig_env_dirs)\n"
@@ -894,6 +1234,28 @@ def main():
     west_projs = west_projects()
     modules = parse_modules(args.zephyr_base, None, west_projs,
                             args.modules, args.extra_modules)
+
+    if args.requirements_kconfig_out or args.requirements_map_out:
+        reqs = collect_requireable_modules(
+            args.zephyr_base, None, west_projs, args.modules, args.extra_modules)
+        if args.requirements_kconfig_out:
+            write_if_different(args.requirements_kconfig_out,
+                               generate_requirement_kconfig(reqs))
+        if args.requirements_map_out:
+            write_json_atomic(args.requirements_map_out, {
+                'schema_version': MODULE_REQUIREMENTS_SCHEMA_VERSION,
+                'modules': [
+                    {
+                        'name': req.name,
+                        'kconfig_symbol': req.kconfig_symbol,
+                        'requirement_symbol': req.requirement_symbol,
+                        'present': req.present,
+                        **({'west_project': req.west_project}
+                           if req.west_project is not None else {}),
+                    }
+                    for req in reqs
+                ],
+            })
 
     for module in modules:
         kconfig_module_dirs += process_kconfig_module_dir(module.project, module.meta, False)

@@ -4,6 +4,12 @@
 config ZEPHYR_HAL_TDK_MODULE
 	bool
 
+config ZEPHYR_HAL_TDK_MODULE_REQUIRED
+	bool
+	help
+	  Selected when the current configuration requires the hal_tdk
+	  Zephyr module to be available.
+
 menu "TDK drivers"
 
 config TDK_HAL

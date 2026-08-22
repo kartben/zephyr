@@ -631,6 +631,10 @@ when building Zephyr without the module present, it's recommended for the module
 have default definitions for these symbols in its respective Kconfig file under
 ``modules/`` in the Zephyr main tree.
 
+A separate ``ZEPHYR_<MODULE_NAME>_MODULE_REQUIRED`` symbol records that the
+current configuration needs the module even when it is not available. See
+:ref:`modules_required`.
+
 In CMake, ``ZEPHYR_<MODULE_NAME>_CMAKE_DIR`` contains the
 absolute path to the directory containing the :file:`CMakeLists.txt` file that
 is included into CMake build system. This variable's value is empty if the
@@ -800,6 +804,210 @@ module ``bar`` to be present in the build system:
 This example will ensure that ``bar`` is present when ``foo`` is included into
 the build system, and it will also ensure that ``bar`` is processed before
 ``foo``.
+
+Missing ``build.depends`` entries are reported as missing module dependencies.
+Cycles among present modules are reported as cycles. The two cases are not
+treated as the same error.
+
+.. _modules_required:
+
+Build-time module requirements
+==============================
+
+Module *availability* and module *requirement* are different states.
+
+``ZEPHYR_<MODULE>_MODULE``
+  The module is currently available to the build. The generated
+  :file:`Kconfig.modules` snippet sets this symbol when the module repository
+  is present (via west or :makevar:`ZEPHYR_MODULES` /
+  :makevar:`EXTRA_ZEPHYR_MODULES`).
+
+``ZEPHYR_<MODULE>_MODULE_REQUIRED``
+  The current configuration needs that module before configure can continue.
+  Features select this symbol even when the module repository is absent.
+
+The two symbols can be combined. This configuration is meaningful:
+
+.. code-block:: kconfig
+
+   CONFIG_ZEPHYR_HAL_TDK_MODULE=n
+   CONFIG_ZEPHYR_HAL_TDK_MODULE_REQUIRED=y
+
+It means: this build asked for ``hal_tdk``, and ``hal_tdk`` is not available.
+
+Declaring a requirement
+-----------------------
+
+A SoC, driver, or software feature can select a requirement symbol instead of
+(or in addition to) depending on availability:
+
+.. code-block:: kconfig
+
+   config FOO
+           bool
+           default y if SOME_BUILD_CONDITION
+           select ZEPHYR_BAR_MODULE_REQUIRED
+
+Keep any hard ``depends on ZEPHYR_BAR_MODULE`` on the implementation layer
+that cannot compile without the module sources. Do not use availability as
+the only record that the feature was wanted.
+
+Requirement symbols are generated from known module names (resolved west
+projects, including inactive ones, and :file:`west.yml` project names when
+west is not in use) so they exist when the module checkout is missing. The
+logical module name is preserved in a mapping file; do not reconstruct it
+by lowercasing a Kconfig symbol.
+
+Do not add module lists to every :file:`board.yml`. A board overlay that
+happens to enable a sensor must not make that sensor's HAL a board property.
+
+Build artifact
+--------------
+
+Immediately after Kconfig, CMake writes:
+
+.. code-block:: none
+
+   <build>/zephyr/modules-required.json
+
+The schema is:
+
+.. code-block:: json
+
+   {
+     "schema_version": 1,
+     "required": [
+       {
+         "module": "hal_tdk",
+         "present": false,
+         "kconfig_symbol": "ZEPHYR_HAL_TDK_MODULE",
+         "requirement_symbol": "ZEPHYR_HAL_TDK_MODULE_REQUIRED",
+         "west_project": "hal_tdk"
+       }
+     ],
+     "missing": ["hal_tdk"]
+   }
+
+If any required module is missing, configure stops with a diagnostic that
+names the module and explains both west and non-west remedies. CMake never
+downloads repositories. A previous :file:`modules-required.json` is deleted
+before the new file is written so an unrelated configure failure cannot be
+mistaken for a current missing-module result.
+
+A present module supplied through :makevar:`ZEPHYR_MODULES` or
+:makevar:`EXTRA_ZEPHYR_MODULES` satisfies the requirement by logical name.
+The checkout path does not have to match the west manifest path.
+
+Using west
+----------
+
+West remains optional. When it is the fetch backend, the *resolved* manifest
+is the source of truth for project URL, revision, path, and downstream
+overrides. Zephyr never hard-codes upstream GitHub URLs.
+
+Stock west can update a named project that is inactive only because a group
+such as ``hal`` is disabled, when that project is defined in the workspace
+manifest repository:
+
+.. code-block:: console
+
+   west update hal_tdk
+
+That command uses the resolved revision and does not persist
+``manifest.project-filter`` or ``manifest.group-filter`` changes.
+
+Automatic fetching from ``west build`` is **not implemented**. West currently
+refuses a named update of a project that exists only via an imported
+manifest:
+
+.. code-block:: console
+
+   west update P
+   # refusing to update project: P
+   #   It or they were resolved via project imports.
+   #   Only plain "west update" can currently update them.
+
+That restriction is implemented in west itself (see ``west update`` in
+west v1.4+). Using ``manifest.project-filter``, rewriting :file:`.west/config`,
+or activating an entire group just to obtain one project would abuse west
+as a package manager and is not done here.
+
+Until west grows a supported primitive that materializes one named resolved
+project (including imported and group-inactive projects) without persisting
+workspace configuration, Zephyr only discovers and reports requirements.
+
+A later west change should keep these semantics:
+
+* Zephyr decides *what* is required; west decides *how* to materialize it.
+* One-shot, non-persistent, named update of a resolved project.
+* Downstream overrides and imports are honored.
+* An explicit ``manifest.project-filter=-name`` deactivation is not
+  overridden unless the user passes a force flag.
+* ``west update --group-filter=+hal`` must not be required, because it
+  would fetch every HAL.
+
+Minimal workspace experiment
+----------------------------
+
+The default :file:`west.yml` ``group-filter`` is unchanged. To try a
+HAL-inactive workspace:
+
+.. code-block:: console
+
+   west config manifest.group-filter -- "-hal"
+   west update
+
+Unrelated vendor HAL checkouts stay absent. A build that needs ``hal_stm32``
+or ``hal_tdk`` fails with :file:`modules-required.json` listing the missing
+logical names. Obtain those projects from the resolved manifest, or supply
+them with :makevar:`ZEPHYR_MODULES`.
+
+Do not change the upstream default to ``-hal`` until requirement coverage
+for in-tree SoCs and drivers is complete.
+
+Continuous integration
+----------------------
+
+CI can read :file:`<build>/zephyr/modules-required.json` after a configure
+attempt (including a failed one that stopped on missing modules). The
+``required`` and ``missing`` arrays are sorted by logical name so unions
+across many boards can be computed later. This series does not implement
+matrix unioning.
+
+Sysbuild
+--------
+
+Each image writes its own :file:`modules-required.json` under that image's
+Zephyr binary directory. This series does not aggregate requirements across
+sysbuild domains. Treat per-image files as the supported interface.
+
+Modules that cannot yet be made lazy
+------------------------------------
+
+Requirement discovery uses in-tree Kconfig, devicetree, and already-present
+module metadata. A module cannot be inactive-by-default yet if the build
+needs one of the following from that module *before* requirements are
+known:
+
+* board, SoC, or DTS roots
+* west extension commands used by the fetch/configure path
+* manifest imports of further projects
+
+First-wave candidates that *are* safe to make opt-in once their consumers
+declare requirements:
+
+* vendor HALs used by in-tree SoC or driver Kconfig (``hal_stm32``,
+  ``hal_tdk``, and similar)
+* optional libraries selected by software features (``liblc3``, ``lvgl``,
+  ``mbedtls``, ...)
+
+Keep the following active until their consumers can be expressed without
+the checkout:
+
+* modules that provide board/SoC/DTS roots
+* modules that provide west commands needed before they are fetched
+* modules with ``import:``
+* tooling and testing projects
 
 .. _modules_module_ext_root:
 

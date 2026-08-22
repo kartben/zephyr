@@ -44,9 +44,15 @@ endif()
 file(MAKE_DIRECTORY ${KCONFIG_BINARY_DIR})
 set(kconfig_modules_file ${KCONFIG_BINARY_DIR}/Kconfig.modules)
 set(kconfig_sysbuild_file ${KCONFIG_BINARY_DIR}/Kconfig.sysbuild.modules)
+set(kconfig_module_requirements_file ${KCONFIG_BINARY_DIR}/Kconfig.module_requirements)
+set(module_requirement_map_file ${KCONFIG_BINARY_DIR}/module-requirement-map.json)
 set(cmake_modules_file ${CMAKE_BINARY_DIR}/zephyr_modules.txt)
 set(cmake_sysbuild_file ${CMAKE_BINARY_DIR}/sysbuild_modules.txt)
 set(zephyr_settings_file ${CMAKE_BINARY_DIR}/zephyr_settings.txt)
+set(ZEPHYR_MODULE_REQUIREMENT_ARGS
+  --requirements-kconfig-out ${kconfig_module_requirements_file}
+  --requirements-map-out ${module_requirement_map_file}
+)
 
 if(WEST OR ZEPHYR_MODULES)
   # Zephyr module uses west, so only call it if west is installed or
@@ -62,6 +68,7 @@ if(WEST OR ZEPHYR_MODULES)
     --sysbuild-kconfig-out ${kconfig_sysbuild_file}
     --sysbuild-cmake-out ${cmake_sysbuild_file}
     --settings-out ${zephyr_settings_file}
+    ${ZEPHYR_MODULE_REQUIREMENT_ARGS}
     WORKING_DIRECTORY ${ZEPHYR_BASE}
     ERROR_VARIABLE
     zephyr_module_error_text
@@ -179,5 +186,24 @@ else()
   file(WRITE ${kconfig_sysbuild_file}
     "# No west and no Zephyr modules\n"
     )
+
+  # Requirement symbols must still exist so a west-less build can declare
+  # that an absent module is required.
+  execute_process(
+    COMMAND
+    ${PYTHON_EXECUTABLE} ${ZEPHYR_BASE}/scripts/zephyr_module.py
+    --zephyr-base=${ZEPHYR_BASE}
+    ${EXTRA_ZEPHYR_MODULES_ARG}
+    ${ZEPHYR_MODULE_REQUIREMENT_ARGS}
+    WORKING_DIRECTORY ${ZEPHYR_BASE}
+    ERROR_VARIABLE
+    zephyr_module_error_text
+    RESULT_VARIABLE
+    zephyr_module_return
+  )
+
+  if(${zephyr_module_return})
+      message(FATAL_ERROR "${zephyr_module_error_text}")
+  endif()
 
 endif()

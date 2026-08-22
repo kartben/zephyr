@@ -1,0 +1,8 @@
+common:
+  tags: cmake modules
+  build_only: true
+  platform_allow: native_sim
+tests:
+  buildsystem.module_requirements.extra_module_satisfies:
+    extra_args:
+      - EXTRA_ZEPHYR_MODULES=${ZEPHYR_BASE}/tests/cmake/module_requirements/dummy_hal_tdk
