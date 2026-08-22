@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 menu "nrf-regtool options"
+	depends on ZEPHYR_HAL_NORDIC_MODULE
 	depends on SOC_SERIES_NRF92
 
 config NRF_REGTOOL_GENERATE_UICR
