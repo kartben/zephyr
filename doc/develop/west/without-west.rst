@@ -69,6 +69,12 @@ If you don't have west installed and your application *does* need one
 of these repositories, you must set :makevar:`ZEPHYR_MODULES`
 yourself as shown above.
 
+If a feature selects ``ZEPHYR_<MODULE>_MODULE_REQUIRED`` and the module is
+not provided, configure fails and writes
+:file:`<build>/zephyr/modules-required.json`. That error does not require
+west; supply the logical module with :makevar:`ZEPHYR_MODULES` or
+:makevar:`EXTRA_ZEPHYR_MODULES`. See :ref:`modules_required`.
+
 See :ref:`modules` for more details.
 
 Similarly, if your application requires binary blobs and you are not using
