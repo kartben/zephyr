@@ -6,6 +6,12 @@
 config ZEPHYR_HAL_STM32_MODULE
 	bool
 
+config ZEPHYR_HAL_STM32_MODULE_REQUIRED
+	bool
+	help
+	  Selected when the current configuration requires the hal_stm32
+	  Zephyr module to be available.
+
 config ZEPHYR_HAL_STM32_MODULE_BLOBS
 	bool
 
@@ -15,6 +21,7 @@ config HAS_STM32LIB
 config HAS_STM32CUBE
 	bool
 	select HAS_CMSIS_CORE
+	select ZEPHYR_HAL_STM32_MODULE_REQUIRED
 	depends on SOC_FAMILY_STM32
 
 config STM32CUBE_SOC_NAME_OVERRIDE
