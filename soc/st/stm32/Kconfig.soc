@@ -5,6 +5,7 @@
 
 config SOC_FAMILY_STM32
 	bool
+	depends on ZEPHYR_HAL_STM32_MODULE
 
 config SOC_FAMILY
 	default "stm32" if SOC_FAMILY_STM32

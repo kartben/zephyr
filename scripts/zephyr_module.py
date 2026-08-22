@@ -23,6 +23,7 @@ maintained in modules in addition to what is available in the main Zephyr tree.
 
 import argparse
 import hashlib
+import json
 import os
 import re
 import subprocess
@@ -195,6 +196,28 @@ def validate_setting(setting, module_path, filename=None):
         if not checkfile.resolve().is_file():
             return False
     return True
+
+
+Module = namedtuple('Module', ['project', 'meta', 'depends'])
+
+# How the build decides which of the available modules take part in it.
+#   all     every module found in the workspace is part of the build, which is
+#           how Zephyr has always worked
+#   strict  only the modules the build depends on are, so that having a module
+#           in the workspace is not the same as using it
+ACTIVATION_ALL = 'all'
+ACTIVATION_STRICT = 'strict'
+ACTIVATION_MODES = (ACTIVATION_ALL, ACTIVATION_STRICT)
+
+# Why a module is part of the build, in the order the resolver settles them.
+REASON_EXPLICIT = 'explicit'
+REASON_METADATA = 'metadata'
+REASON_REQUIRED = 'required'
+REASON_DEPENDENCY = 'dependency'
+REASON_AVAILABLE = 'available'
+
+Resolution = namedtuple('Resolution', ['activation', 'active', 'reasons', 'required_by',
+                                       'missing'])
 
 
 def process_module(module, require_yaml_validation=True):
@@ -412,6 +435,24 @@ def process_kconfig(module, meta):
     else:
         name_sanitized = meta['name-sanitized']
         return '\n'.join(kconfig_module_opts(name_sanitized, blobs, taint_blobs)) + '\n'
+
+
+def process_kconfig_inactive(meta):
+    """Declare an available module's symbols without making it part of the build.
+
+    The symbols have to exist for dependency checking and referencing to work,
+    the same way modules/Kconfig keeps the symbols of absent modules defined.
+    Leaving out the 'default y' is what keeps the module out of the build.
+    """
+    name_sanitized = meta['name-sanitized']
+    snippet = [f'config ZEPHYR_{name_sanitized.upper()}_MODULE',
+               '	bool']
+
+    if meta.get('blobs'):
+        snippet += [f'\nconfig ZEPHYR_{name_sanitized.upper()}_MODULE_BLOBS',
+                    '	bool']
+
+    return '\n'.join(snippet) + '\n\n'
 
 
 def process_sysbuildkconfig(module, meta):
@@ -760,14 +801,7 @@ def parse_modules(zephyr_base, manifest=None, west_projs=None, modules=None,
                    if west_projs else [])
 
     if extra_modules is None:
-        extra_modules = []
-        for var in ['EXTRA_ZEPHYR_MODULES', 'ZEPHYR_EXTRA_MODULES']:
-            extra_module = os.environ.get(var, None)
-            if not extra_module:
-                continue
-            extra_modules.extend(PurePosixPath(p) for p in extra_module.split(';') if p)
-
-    Module = namedtuple('Module', ['project', 'meta', 'depends'])
+        extra_modules = extra_modules_from_env()
 
     all_modules_by_name = {}
     # dep_modules is a list of all modules that has an unresolved dependency
@@ -791,11 +825,16 @@ def parse_modules(zephyr_base, manifest=None, west_projs=None, modules=None,
             sys.exit(f'{project}, given in ZEPHYR_EXTRA_MODULES, '
                      'is not a valid zephyr module')
 
+    # The sort consumes the dependencies, so work on a copy: callers need to
+    # know what a module depends on to resolve which modules a build needs.
+    unresolved = {module.meta['name']: list(module.depends)
+                  for module in all_modules_by_name.values()}
+
     for module in all_modules_by_name.values():
-        if not module.depends:
-            start_modules.append(module)
-        else:
+        if unresolved[module.meta['name']]:
             dep_modules.append(module)
+        else:
+            start_modules.append(module)
 
     # This will do a topological sort to ensure the modules are ordered
     # according to dependency settings.
@@ -805,9 +844,10 @@ def parse_modules(zephyr_base, manifest=None, west_projs=None, modules=None,
         node_name = node.meta['name']
         to_remove = []
         for module in dep_modules:
-            if node_name in module.depends:
-                module.depends.remove(node_name)
-                if not module.depends:
+            depends = unresolved[module.meta['name']]
+            if node_name in depends:
+                depends.remove(node_name)
+                if not depends:
                     start_modules.append(module)
                     to_remove.append(module)
         for module in to_remove:
@@ -818,10 +858,147 @@ def parse_modules(zephyr_base, manifest=None, west_projs=None, modules=None,
         # modules contains unmet or cyclic dependencies. Error out.
         error = 'Unmet or cyclic dependencies in modules:\n'
         for module in dep_modules:
-            error += f'{module.project} depends on: {module.depends}\n'
+            error += f'{module.project} depends on: {unresolved[module.meta["name"]]}\n'
         sys.exit(error)
 
     return sorted_modules
+
+def provides_build_metadata(meta):
+    """Does this module contribute information the build needs up front?
+
+    Board, SoC, DTS and similar roots have to be known before Kconfig can run,
+    and sysbuild integration is resolved before any image configuration
+    exists. Neither can be derived from a build's dependencies, so modules
+    that provide them stay part of every build for now.
+    """
+    build = meta.get('build', {})
+    if build.get('settings'):
+        return True
+    return any(build.get(key) for key in ('sysbuild-cmake', 'sysbuild-kconfig',
+                                          'sysbuild-cmake-ext', 'sysbuild-kconfig-ext'))
+
+
+def resolve_modules(modules, required=None, explicit=None, activation=ACTIVATION_ALL):
+    """Decide which of the available modules take part in this build.
+
+    'modules' is every module found in the workspace, topologically sorted.
+    'required' maps the names of modules the build depends on to whatever
+    established that, such as the Kconfig symbols that need them. 'explicit'
+    holds the paths of modules the user supplied by hand, which counts as
+    deliberate activation.
+
+    With ACTIVATION_ALL, every module found is part of the build, which is how
+    Zephyr has always worked. With ACTIVATION_STRICT, a module takes part only
+    if the build asked for it, directly or through another module's
+    build.depends, so that a fully populated workspace does not quietly hide a
+    dependency nobody declared.
+    """
+    if activation not in ACTIVATION_MODES:
+        sys.exit(f'ERROR: unknown module activation mode "{activation}"; '
+                 f'expected one of: {", ".join(ACTIVATION_MODES)}')
+
+    required = dict(required or {})
+    explicit = {PurePath(path).as_posix() for path in (explicit or [])}
+    by_name = {module.meta['name']: module for module in modules}
+
+    reasons = {}
+    if activation == ACTIVATION_ALL:
+        reasons = dict.fromkeys(by_name, REASON_AVAILABLE)
+    else:
+        for name, module in by_name.items():
+            if PurePath(module.project).as_posix() in explicit:
+                reasons[name] = REASON_EXPLICIT
+            elif provides_build_metadata(module.meta):
+                reasons[name] = REASON_METADATA
+        for name in required:
+            if name in by_name:
+                reasons.setdefault(name, REASON_REQUIRED)
+
+    required_by = {name: list(why) for name, why in required.items()}
+    missing = {name: list(why) for name, why in required.items() if name not in by_name}
+
+    # A module the build needs brings in the modules it needs itself.
+    pending = list(reasons)
+    while pending:
+        module = by_name[pending.pop()]
+        for dependency in module.depends:
+            required_by.setdefault(dependency, []).append(module.meta['name'])
+            if dependency not in by_name:
+                missing.setdefault(dependency, []).append(module.meta['name'])
+            elif dependency not in reasons:
+                reasons[dependency] = REASON_DEPENDENCY
+                pending.append(dependency)
+
+    active = [module for module in modules if module.meta['name'] in reasons]
+    return Resolution(activation, active, reasons, required_by, missing)
+
+
+def resolution_report(modules, resolution):
+    """Describe what the build does with every module in the workspace."""
+    entries = []
+    for module in modules:
+        name = module.meta['name']
+        reason = resolution.reasons.get(name)
+        entries.append({
+            'name': name,
+            'path': PurePath(module.project).as_posix(),
+            'available': True,
+            'active': reason is not None,
+            'reason': reason,
+            'required': reason in (REASON_REQUIRED, REASON_DEPENDENCY),
+            'required_by': sorted(set(resolution.required_by.get(name, []))),
+        })
+
+    return {
+        'schema_version': 1,
+        'activation': resolution.activation,
+        'modules': entries,
+        'missing': [{'name': name, 'required_by': sorted(set(why))}
+                    for name, why in sorted(resolution.missing.items())],
+    }
+
+
+def read_requirements(requirements_file):
+    """Read the modules a build requires from a requirements file.
+
+    The file is the machine readable form requirement analysis produces:
+
+        {"schema_version": 1,
+         "required": [{"name": "hal_tdk", "required_by": ["ICM42X70"]}]}
+    """
+    with open(requirements_file, encoding='utf-8') as f:
+        content = json.load(f)
+
+    if content.get('schema_version') != 1:
+        sys.exit(f'ERROR: {requirements_file} has unsupported schema version '
+                 f'{content.get("schema_version")}, expected 1')
+
+    return {entry['name']: entry.get('required_by', []) for entry in content.get('required', [])}
+
+
+def missing_module_error(missing):
+    """Explain that the build needs modules the workspace does not have."""
+    lines = []
+    for name, why in sorted(missing.items()):
+        lines.append(f'ERROR: required module \'{name}\' is unavailable')
+        if why:
+            lines.append(f'       required by: {", ".join(sorted(set(why)))}')
+    lines.append('')
+    lines.append('Add the module to the workspace, or supply it directly with')
+    lines.append('ZEPHYR_MODULES or EXTRA_ZEPHYR_MODULES.')
+    return '\n'.join(lines)
+
+
+def extra_modules_from_env():
+    """Modules the user added through the environment."""
+    extra_modules = []
+    for var in ['EXTRA_ZEPHYR_MODULES', 'ZEPHYR_EXTRA_MODULES']:
+        extra_module = os.environ.get(var, None)
+        if not extra_module:
+            continue
+        extra_modules.extend(PurePosixPath(p) for p in extra_module.split(';') if p)
+    return extra_modules
+
 
 def write_if_different(file, data):
     if Path(file).is_file():
@@ -871,6 +1048,20 @@ def main():
                         help='List of extra modules to parse')
     parser.add_argument('-z', '--zephyr-base',
                         help='Path to zephyr repository')
+    parser.add_argument('--activation', choices=ACTIVATION_MODES, default=ACTIVATION_ALL,
+                        help="""Which modules take part in the build: 'all'
+                             activates every module in the workspace, 'strict'
+                             only the ones the build depends on""")
+    parser.add_argument('--required', action='append', default=[], metavar='MODULE',
+                        help="""Name of a module this build requires; may be
+                             given more than once""")
+    parser.add_argument('--required-file',
+                        help="""File listing the modules this build requires,
+                             as produced by requirement analysis""")
+    parser.add_argument('--modules-out',
+                        help="""File to write with a machine readable account
+                             of which modules are required, available, active
+                             and missing""")
     args = parser.parse_args()
 
     kconfig_module_dirs = ""
@@ -895,7 +1086,26 @@ def main():
     modules = parse_modules(args.zephyr_base, None, west_projs,
                             args.modules, args.extra_modules)
 
+    required = read_requirements(args.required_file) if args.required_file else {}
+    for name in args.required:
+        required.setdefault(name, [])
+
+    # Modules the user named are wanted on purpose, whatever the build needs.
+    explicit = list(args.modules or [])
+    explicit += list(args.extra_modules) if args.extra_modules else extra_modules_from_env()
+
+    resolution = resolve_modules(modules, required, explicit, args.activation)
+    if resolution.missing:
+        sys.exit(missing_module_error(resolution.missing))
+
+    active = {module.meta['name'] for module in resolution.active}
+
     for module in modules:
+        if module.meta['name'] not in active:
+            # Available, but nothing in this build depends on it.
+            kconfig += process_kconfig_inactive(module.meta)
+            continue
+
         kconfig_module_dirs += process_kconfig_module_dir(module.project, module.meta, False)
         kconfig_module_dirs_cmake += process_kconfig_module_dir(module.project, module.meta, True)
         kconfig += process_kconfig(module.project, module.meta)
@@ -938,8 +1148,12 @@ def main():
     if args.twister_out:
         write_if_different(args.twister_out, twister)
 
+    if args.modules_out:
+        write_if_different(args.modules_out,
+                           json.dumps(resolution_report(modules, resolution), indent=2) + '\n')
+
     if args.meta_out:
-        meta = process_meta(args.zephyr_base, west_projs, modules,
+        meta = process_meta(args.zephyr_base, west_projs, resolution.active,
                             args.extra_modules, args.meta_state_propagate)
 
         # Ignore references and insert data instead
