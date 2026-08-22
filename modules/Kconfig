@@ -20,6 +20,9 @@ comment "Available modules."
 
 osource "$(KCONFIG_BINARY_DIR)/Kconfig.modules"
 
+# Requirement symbols exist even when the corresponding module is absent.
+osource "$(KCONFIG_BINARY_DIR)/Kconfig.module_requirements"
+
 source "modules/Kconfig.atmel"
 source "modules/Kconfig.chre"
 source "modules/Kconfig.cypress"

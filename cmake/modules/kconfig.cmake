@@ -486,6 +486,11 @@ endif()
 # Import the .config file and make all settings available in CMake processing.
 import_kconfig(${KCONFIG_NAMESPACE} ${DOTCONFIG})
 
+# Check module requirements immediately after Kconfig, before SoC, driver,
+# or module CMake can fail on a missing repository.
+include(module_requirements)
+zephyr_check_module_requirements()
+
 # Cache the CLI Kconfig symbols that survived through Kconfig, prefixed with CLI_.
 # Remove those who might have changed compared to earlier runs, if they no longer appears.
 foreach (name ${cache_variable_names})

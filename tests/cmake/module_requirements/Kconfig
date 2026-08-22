@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+config APPLICATION_REQUIRE_HAL_TDK
+	bool
+	default y
+	select ZEPHYR_HAL_TDK_MODULE_REQUIRED
+
+source "Kconfig.zephyr"
