@@ -1501,9 +1501,17 @@ https://docs.zephyrproject.org/latest/build/kconfig/tips.html#menuconfig-symbols
             logging.info(f"Loading allowed undefined symbols from {path}")
             undef_kconfig_allowlist_extra = get_set_from_file(path)
 
+        # Checks parsing a partial Kconfig tree may declare a pattern of
+        # symbols that the full tree is known to define.
+        allowlist_re = getattr(self, "UNDEF_KCONFIG_INSIDE_ALLOWLIST_RE", None)
+
         def is_allowed(warning):
             m = _sym_re.search(warning)
-            return m is not None and m.group(1) in undef_kconfig_allowlist_extra
+            if m is None:
+                return False
+            if allowlist_re is not None and allowlist_re.fullmatch(m.group(1)):
+                return True
+            return m.group(1) in undef_kconfig_allowlist_extra
 
         undef_ref_warnings = "\n\n\n".join(
             warning
@@ -1722,6 +1730,15 @@ class KconfigHWMv2Check(KconfigBasicCheck):
     # Use dedicated Kconfig board / soc v2 scheme file.
     # This file sources only v2 scheme tree.
     FILENAME = os.path.join(os.path.dirname(__file__), "Kconfig.board.v2")
+
+    # A SoC or board declares that it requires a Zephyr module by depending
+    # on the module's presence symbol. Those symbols exist in every full
+    # Kconfig parse whether or not the module does: the in-tree module glue
+    # declares them, and the generated Kconfig.modules redeclares the ones
+    # for modules present in the workspace. This standalone tree sources
+    # neither, so references to them are the one thing the hardware model
+    # tree may name without defining.
+    UNDEF_KCONFIG_INSIDE_ALLOWLIST_RE = re.compile(r"ZEPHYR_[A-Z0-9_]+_MODULE(_BLOBS)?")
 
 
 class SysbuildKconfigCheck(KconfigCheck):
