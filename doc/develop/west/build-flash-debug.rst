@@ -57,7 +57,8 @@ exactly the same name you would supply to CMake if you were to invoke it with:
    supported boards.
 
    ``west build --fetch-modules`` (or ``west config zephyr.fetch-modules true``)
-   fetches only the west projects declared for that board before CMake runs.
+   fetches only the west projects that build needs (SoC, drivers implied
+   by DTS, shields, application) before CMake runs.
    See :ref:`west-modules-opt-in`.
 
 A build directory named :file:`build` will be created, and the application will

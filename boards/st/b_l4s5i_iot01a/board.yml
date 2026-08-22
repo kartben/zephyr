@@ -4,5 +4,3 @@ board:
   vendor: st
   socs:
     - name: stm32l4s5xx
-  modules:
-    - hal_st

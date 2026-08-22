@@ -4,13 +4,9 @@ shields:
     vendor: st
     supported_features:
       - sensor
-    modules:
-      - hal_st
 
   - name: x_nucleo_iks01a3_shub
     full_name: X-NUCLEO-IKS01A3 (SensorHub / Mode 2)
     vendor: st
     supported_features:
       - sensor
-    modules:
-      - hal_st

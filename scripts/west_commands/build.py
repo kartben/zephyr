@@ -203,8 +203,9 @@ class Build(Forceable):
         group.add_argument('--sysbuild', action=argparse.BooleanOptionalAction,
                            help='''create multi domain build system or disable it (default)''')
         group.add_argument('--fetch-modules', action='store_true',
-                           help='''fetch west projects required by the board
-                           and shields before CMake runs. Also enabled by
+                           help='''fetch west projects required by this build
+                           (SoC, drivers implied by DTS, shields, app)
+                           before CMake runs. Also enabled by
                            west config zephyr.fetch-modules=true''')
 
         group = parser.add_argument_group('pristine builds',
@@ -326,8 +327,8 @@ class Build(Forceable):
             fetch = str(cfg).lower() in ('true', '1', 'yes', 'y', 'on')
         if not fetch:
             return
-        if not board:
-            self.wrn('west build --fetch-modules requires a board; skipping')
+        if not board and not self.source_dir:
+            self.wrn('west build --fetch-modules needs a board or source dir; skipping')
             return
 
         sys.path.append(os.fspath(pathlib.Path(__file__).resolve().parent.parent))
@@ -342,6 +343,7 @@ class Build(Forceable):
                 soc_roots=[ZEPHYR_BASE],
                 include_defaults=True,
                 zephyr_base=ZEPHYR_BASE,
+                app_dir=self.source_dir,
             )
         except RuntimeError as e:
             self.wrn(f'could not resolve required modules: {e}')

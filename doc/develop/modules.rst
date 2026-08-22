@@ -67,14 +67,15 @@ general (unless they are a module themselves).
 Hardware-declared module dependencies
 *************************************
 
-Vendor HALs and some other modules are large. SoC, board, and shield
-metadata can list the west projects they need in a ``modules:`` key so
-that fetching those projects can be opt-in. See :ref:`west-modules-opt-in`.
+Vendor HALs and other modules are large. The thing that *uses* a
+module should declare it: SoC YAML, driver Kconfig
+(``depends on ZEPHYR_<NAME>_MODULE``), optional binding ``modules:``,
+or a sample's Twister ``modules:`` list. A board name is only used to
+resolve that graph. See :ref:`west-modules-opt-in`.
 
-Kconfig options such as ``ZEPHYR_<NAME>_MODULE`` still describe
-*whether a module is present*. They do not download it. Drivers that
-``depends on ZEPHYR_HAL_ST_MODULE`` (for example) remain disabled until
-that module is cloned.
+``ZEPHYR_<NAME>_MODULE`` still means "this module is present" at
+Kconfig time. The opt-in fetch path uses the same symbols so a driver
+does not need a second declaration.
 
 Module Repositories
 *******************

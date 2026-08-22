@@ -369,8 +369,8 @@ installation.
 
       To reduce disk space usage and avoid downloading unnecessary modules or vendor HALs during
       setup, you may configure :ref:`west-manifest-groups` before running ``west update``,
-      or fetch only the projects a board needs with :ref:`west-modules-opt-in`
-      (``west modules fetch -b <board>``).
+      or fetch only the projects a build needs with :ref:`west-modules-opt-in`
+      (``west modules fetch -b <board>``, plus ``--shield`` / ``--app``).
 
 #. Install Zephyr's Python dependencies:
 

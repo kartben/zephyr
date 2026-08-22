@@ -22,7 +22,7 @@ class Modules(WestCommand):
         super().__init__(
             'modules',
             '',
-            description='List or fetch west projects required by hardware',
+            description='List or fetch west projects required by a build',
             accepts_unknown_args=False,
         )
 
@@ -32,14 +32,16 @@ class Modules(WestCommand):
             formatter_class=argparse.RawDescriptionHelpFormatter,
             description=self.description,
             epilog=textwrap.dedent(f'''\
-            Resolve west projects declared in soc.yml / board.yml /
-            shield.yml and optionally fetch only those projects.
+            Resolve west projects declared by SoCs, drivers, bindings,
+            shields, and applications, then optionally fetch only those
+            projects. A board is a query, not the only place deps live.
 
             Examples:
 
               west modules list -b nucleo_f401re
               west modules fetch -b nucleo_f401re
-              west modules fetch -b nrf52840dk/nrf52840 --shield x_nucleo_iks01a3
+              west modules fetch -b nucleo_f401re --shield x_nucleo_iks01a3
+              west modules fetch -b qemu_x86 --app samples/modules/lvgl/demos
               west modules fetch --dry-run -b qemu_x86
 
             Default ``west update`` behavior is unchanged. This command
@@ -76,6 +78,13 @@ class Modules(WestCommand):
             help='shield name; may be given more than once',
         )
         parser.add_argument(
+            '--app',
+            dest='app_dir',
+            type=Path,
+            default=None,
+            help='application directory (overlays, prj.conf, tests.yaml)',
+        )
+        parser.add_argument(
             '--board-root',
             dest='board_roots',
             default=[],
@@ -101,7 +110,7 @@ class Modules(WestCommand):
         parser.add_argument(
             '--all-declared',
             action='store_true',
-            help='operate on every module declared in hardware metadata',
+            help='operate on every module declared in YAML or Kconfig',
         )
 
         group = parser.add_argument_group('west modules list options')
@@ -136,7 +145,7 @@ class Modules(WestCommand):
                 zephyr_base=ZEPHYR_BASE,
             )
 
-        if not args.board and not args.shields and not args.fetch_all:
+        if not args.board and not args.shields and not args.app_dir and not args.fetch_all:
             if args.subcmd == 'list':
                 return list_modules.list_declared_modules(
                     board_roots=board_roots,
@@ -144,7 +153,7 @@ class Modules(WestCommand):
                     zephyr_base=ZEPHYR_BASE,
                 )
             self.die(
-                'specify -b/--board, --shield, --all-declared, or --all'
+                'specify -b/--board, --shield, --app, --all-declared, or --all'
             )
 
         return list_modules.resolve_modules(
@@ -154,6 +163,7 @@ class Modules(WestCommand):
             soc_roots=soc_roots,
             include_defaults=args.include_defaults,
             zephyr_base=ZEPHYR_BASE,
+            app_dir=args.app_dir,
         )
 
     def _present_project_names(self):
@@ -204,6 +214,8 @@ class Modules(WestCommand):
                 hint += f' -b {args.board}'
             for shield in args.shields:
                 hint += f' --shield {shield}'
+            if args.app_dir:
+                hint += f' --app {args.app_dir}'
             self.die(
                 'missing required modules: '
                 + ', '.join(missing)
@@ -213,7 +225,7 @@ class Modules(WestCommand):
         # fetch
         names = resolved.names
         if not names:
-            self.inf('no required modules declared for this hardware')
+            self.inf('no required modules declared for this build')
             return
 
         if args.dry_run:

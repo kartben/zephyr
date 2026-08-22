@@ -2,8 +2,8 @@
 #
 # Copyright The Zephyr Project Contributors
 
-# Check that west projects declared by soc.yml / board.yml / shield.yml
-# are present in the current workspace.
+# Check that west projects required by this build (SoC, drivers implied
+# by DTS, shields, application) are present in the current workspace.
 #
 # Outcome:
 # - ZEPHYR_REQUIRED_MODULES is set to the resolved project names.
@@ -44,6 +44,9 @@ if(DEFINED SHIELD_AS_LIST)
   foreach(shield ${SHIELD_AS_LIST})
     list(APPEND list_modules_args --shield ${shield})
   endforeach()
+endif()
+if(DEFINED APPLICATION_SOURCE_DIR)
+  list(APPEND list_modules_args --app ${APPLICATION_SOURCE_DIR})
 endif()
 
 execute_process(
@@ -97,9 +100,12 @@ if(missing_modules)
       string(APPEND fetch_hint " --shield ${shield}")
     endforeach()
   endif()
+  if(DEFINED APPLICATION_SOURCE_DIR)
+    string(APPEND fetch_hint " --app ${APPLICATION_SOURCE_DIR}")
+  endif()
   list(JOIN missing_modules ", " missing_modules_txt)
   set(module_deps_message
-    "Required west project(s) not found: ${missing_modules_txt}\nThese dependencies are declared in soc.yml / board.yml / shield.yml.\nFetch only the projects needed for this build:\n  ${fetch_hint}\nOr fetch the full default workspace:\n  west update\nTo skip this check, configure -DZEPHYR_SKIP_MODULE_DEPS=ON."
+    "Required west project(s) not found: ${missing_modules_txt}\nThese come from SoC metadata, driver Kconfig (ZEPHYR_*_MODULE), bindings, and the application.\nFetch only the projects needed for this build:\n  ${fetch_hint}\nOr fetch the full default workspace:\n  west update\nTo skip this check, configure -DZEPHYR_SKIP_MODULE_DEPS=ON."
   )
   if(ZEPHYR_REQUIRE_MODULE_DEPS)
     message(FATAL_ERROR ${module_deps_message})

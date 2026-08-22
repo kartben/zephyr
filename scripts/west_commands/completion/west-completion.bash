@@ -1022,6 +1022,7 @@ __comp_west_modules()
 	local other_opts="
 		--board -b
 		--shield
+		--app
 		--board-root
 		--soc-root
 		--format -f
