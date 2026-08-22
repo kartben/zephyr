@@ -437,7 +437,7 @@ def _declarations(text: str):
 
         in_menu = line.startswith(("menu ", "menu	", 'menu"'))
 
-        if line.startswith("if "):
+        if line.startswith(("if ", "if\t")):
             enclosing.append(_required_symbols(line))
         elif line.startswith(("endif", "endmenu", "endchoice")):
             if enclosing:

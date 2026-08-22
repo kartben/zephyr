@@ -185,6 +185,23 @@ def test_reacting_to_an_absent_module_is_not_a_dependency(modules):
     assert modules["hal_vendor"].declared == []
 
 
+def test_a_tab_after_if_still_gates(tmp_path):
+    """Kconfig accepts 'if\\tSYMBOL'; the gating analysis must too."""
+    write_tree(tmp_path, {
+        "zephyr/west.yml": "manifest:\n  projects:\n    - name: hal_tab\n"
+                           "      path: modules/hal/tab\n",
+        "zephyr/modules/hal_tab/Kconfig": (
+            "config ZEPHYR_HAL_TAB_MODULE\n\tbool\n\n"
+            "config HAS_TAB_HAL\n\tbool\n\tdepends on ZEPHYR_HAL_TAB_MODULE\n\n"
+            "if\tHAS_TAB_HAL\n\nconfig TAB_UART\n\tbool\n\nendif\n"),
+    })
+
+    modules = audit_tool.audit(tmp_path / "zephyr", tmp_path / "zephyr" / "west.yml",
+                               sources=False)
+
+    assert "TAB_UART" in modules["hal_tab"].conditional_symbols
+
+
 def test_glue_that_names_no_module_is_reported(workspace, modules):
     """Glue has to declare its module's presence symbol to be attributable."""
     unattributed = audit_tool.unattributed_glue(audit_tool.read_tree(workspace), modules)
