@@ -2,17 +2,25 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+config ZEPHYR_HAL_MICROCHIP_MODULE
+	bool
+
 config HAS_MEC_HAL
 	bool "Microchip MEC HAL drivers support"
+	depends on ZEPHYR_HAL_MICROCHIP_MODULE
 
 config HAS_MPFS_HAL
 	bool "Microchip MPFS HAL drivers support"
+	depends on ZEPHYR_HAL_MICROCHIP_MODULE
 
 config HAS_MEC5_HAL
 	bool "Microchip MEC5 HAL drivers support"
+	depends on ZEPHYR_HAL_MICROCHIP_MODULE
 
 config MICROCHIP_PIC32C
 	bool
+	depends on ZEPHYR_HAL_MICROCHIP_MODULE
 
 config MICROCHIP_SAM
 	bool
+	depends on ZEPHYR_HAL_MICROCHIP_MODULE
