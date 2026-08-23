@@ -20,19 +20,23 @@ every feature in the tree whether or not this build has any use for it. The
 question is narrower: would this symbol be enabled if the module were there?
 For the symbol above, that is only true on a board that has the sensor.
 
-This answers it from Kconfig's own model, by evaluating each symbol with
-every module presence symbol held at y, and asking two things:
+This answers it from Kconfig's own model, by asking two things of a
+configuration that has every module:
 
-  * would the symbol be enabled anyway, whether because the configuration
-    asked for it, because a default applies, or because something selects
-    or implies it;
-  * and is a given module necessary for that, meaning the symbol cannot be
-    enabled without it.
+  * is the symbol enabled, which is what the configured value already says,
+    whether it got there from the configuration, from a default, or from
+    something selecting or implying it;
+  * and is a given module necessary for that, meaning the symbol's
+    dependencies cannot be satisfied without it.
 
 The second question is what keeps 'depends on ZEPHYR_A_MODULE ||
 ZEPHYR_B_MODULE' from demanding both modules: neither is necessary on its
 own, so neither is reported, and the build is left to say which one it
 wants.
+
+Only the second question needs Kconfig expressions evaluated by hand,
+because a configuration records which symbols are on but not what they
+depend on. The first is Symbol.tri_value.
 
 Module names come from the module list this is given, so a module's identity
 stays what its module.yml says it is; nothing is reverse engineered from a
@@ -42,10 +46,6 @@ The output is the requirements file that scripts/zephyr_module.py reads::
 
     {"schema_version": 1,
      "required": [{"name": "hal_tdk", "required_by": ["ICM42X70"]}]}
-
-Known limits of this prototype: a symbol inside a choice is only considered
-enabled if the configuration selects it, since which member a choice settles
-on depends on values this analysis is deliberately not committing to.
 """
 
 from __future__ import annotations
@@ -126,28 +126,6 @@ def symbols_in(expr) -> set[str]:
     return set()
 
 
-def wanted_value(sym: Symbol, overrides: dict[str, int]) -> int:
-    """The value a symbol would take if the modules it needs were present.
-
-    A symbol is enabled because the configuration says so, because one of its
-    defaults applies, or because another symbol selects or implies it. Its
-    dependencies then decide whether that can happen at all.
-    """
-    value = sym.user_value if isinstance(sym.user_value, int) else 0
-
-    for entry in sym.defaults:
-        # Zephyr's kconfiglib records where a default came from, so take the
-        # value and the condition rather than unpacking the whole entry.
-        default, condition = entry[0], entry[1]
-        # Kconfig takes the first default whose condition holds.
-        if evaluate(condition, overrides):
-            value = max(value, evaluate(default, overrides))
-            break
-
-    value = max(value, evaluate(sym.rev_dep, overrides), evaluate(sym.weak_rev_dep, overrides))
-    return min(value, evaluate(sym.direct_dep, overrides))
-
-
 def necessary_modules(sym: Symbol, modules: dict[str, str], overrides: dict[str, int]) -> list[str]:
     """The modules the symbol cannot be enabled without.
 
@@ -165,22 +143,24 @@ def necessary_modules(sym: Symbol, modules: dict[str, str], overrides: dict[str,
 
 
 def required_modules(kconf: Kconfig, module_names: list[str]) -> dict[str, list[str]]:
-    """Map each module this configuration needs to the symbols that need it."""
+    """Map each module this configuration needs to the symbols that need it.
+
+    'kconf' has to be a configured tree with every module present, which is
+    what a default-activation build parses: a symbol's value is then the value
+    it really takes when nothing is missing.
+    """
     modules = presence_symbols(module_names)
-    # Ask what the configuration would look like if every module were there.
+    # The modules are there, so the presence symbols answer y while asking
+    # what a symbol would lose by taking one of them away.
     overrides = dict.fromkeys(modules, 2)
 
     required: dict[str, set[str]] = {}
     for sym in kconf.unique_defined_syms:
         if sym.orig_type not in (BOOL, TRISTATE):
             continue
-        # Which member a choice settles on depends on values this analysis
-        # does not commit to, so only an explicit choice counts.
-        if sym.choice is not None and not isinstance(sym.user_value, int):
-            continue
         if not symbols_in(sym.direct_dep) & modules.keys():
             continue
-        if not wanted_value(sym, overrides):
+        if not sym.tri_value:
             continue
 
         for name in necessary_modules(sym, modules, overrides):
@@ -221,6 +201,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=Path,
         action="append",
         default=[],
+        required=True,
         help="configuration to analyze; may be given more than once",
     )
     parser.add_argument(
