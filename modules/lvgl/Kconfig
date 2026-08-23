@@ -7,6 +7,7 @@ config ZEPHYR_LVGL_MODULE
 
 config LVGL
 	bool "LVGL support"
+	depends on ZEPHYR_LVGL_MODULE
 	help
 	  This option enables the LVGL graphics library.
 
