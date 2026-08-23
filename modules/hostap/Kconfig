@@ -5,8 +5,12 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+config ZEPHYR_HOSTAP_MODULE
+	bool
+
 config WIFI_NM_WPA_SUPPLICANT
 	bool "WPA Supplicant from hostap project [EXPERIMENTAL]"
+	depends on ZEPHYR_HOSTAP_MODULE
 	select POSIX_TIMERS
 	select POSIX_SIGNALS
 	select POSIX_API
