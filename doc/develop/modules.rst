@@ -532,6 +532,23 @@ which is the requirements file a strict build reads through
 The target is not offered by a strict build, which is missing modules by
 construction and cannot say what a complete one would need.
 
+Auditing module dependencies
+============================
+
+:zephyr_file:`scripts/module_dependency_audit.py` reports how the tree uses
+each module in the manifest, and which of those uses the build model knows
+about:
+
+.. code-block:: console
+
+   python3 scripts/module_dependency_audit.py
+   python3 scripts/module_dependency_audit.py --module hal_tdk
+
+Anything it lists as an undeclared use is a place where the build only works
+because the module happens to be in the workspace. Declaring those, at the
+highest node that is semantically correct rather than at the file where a
+header happened to be missing, is what lets a module be left out of a build.
+
 .. _module-yml:
 
 Module yaml file description
