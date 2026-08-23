@@ -1,0 +1,200 @@
+#!/usr/bin/env python3
+#
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+#
+# SPDX-License-Identifier: Apache-2.0
+
+"""Work out which external modules a configuration needs.
+
+A Zephyr module is needed when something in the build depends on it, and
+Kconfig already says so: a feature that needs a module depends on that
+module's presence symbol.
+
+    config ICM42X70
+            default y
+            depends on DT_HAS_INVENSENSE_ICM42670P_ENABLED
+            depends on ZEPHYR_HAL_TDK_MODULE
+
+Reading that as "ICM42X70 needs hal_tdk" is not enough, because it holds for
+every feature in the tree whether or not this build has any use for it. The
+question is narrower: would this symbol be enabled if the module were there?
+For the symbol above, that is only true on a board that has the sensor.
+
+So a configuration that has every module is asked two things per symbol: is
+it enabled, which is Symbol.tri_value; and is a given module necessary for
+that, meaning the symbol's dependencies cannot be satisfied without it. The
+second is what keeps 'depends on ZEPHYR_A_MODULE || ZEPHYR_B_MODULE' from
+demanding both: neither is necessary on its own, so neither is reported.
+
+This runs as the 'module_requirements' build target, alongside menuconfig,
+because it needs the environment and the devicetree a Kconfig run is given.
+
+Module names come from the module list, so a module's identity stays what its
+module.yml says it is; nothing is reversed out of a sanitized symbol name.
+
+The output is the requirements file that scripts/zephyr_module.py reads::
+
+    {"schema_version": 1,
+     "required": [{"name": "hal_tdk", "required_by": ["ICM42X70"]}]}
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sys
+from pathlib import Path
+
+from kconfiglib import (
+    AND,
+    BOOL,
+    NOT,
+    OR,
+    TRISTATE,
+    Choice,
+    Kconfig,
+    Symbol,
+    expr_value,
+)
+
+
+def sanitize(name: str) -> str:
+    """Return the Kconfig spelling of a module name."""
+    return re.sub(r"[^a-zA-Z0-9]", "_", name).upper()
+
+
+def presence_symbols(module_names: list[str]) -> dict[str, str]:
+    """Map each module's presence symbol to the module's canonical name."""
+    return {f"ZEPHYR_{sanitize(name)}_MODULE": name for name in module_names}
+
+
+def module_names_from_file(path: Path) -> list[str]:
+    """Read module names from the module list zephyr_module.py writes."""
+    with path.open(encoding="utf-8") as f:
+        content = json.load(f)
+
+    if content.get("schema_version") != 1:
+        sys.exit(
+            f"ERROR: {path} has unsupported schema version "
+            f"{content.get('schema_version')}, expected 1"
+        )
+
+    return [entry["name"] for entry in content.get("modules", [])]
+
+
+def evaluate(expr, overrides: dict[str, int]) -> int:
+    """Evaluate a Kconfig expression with some symbols held at a value.
+
+    This is kconfiglib's own expression evaluation, with the overridden
+    symbols answering what they are told to answer instead of what the
+    configuration says.
+    """
+    if expr.__class__ is tuple:
+        if expr[0] is AND:
+            return min(evaluate(expr[1], overrides), evaluate(expr[2], overrides))
+        if expr[0] is OR:
+            return max(evaluate(expr[1], overrides), evaluate(expr[2], overrides))
+        if expr[0] is NOT:
+            return 2 - evaluate(expr[1], overrides)
+        # Comparisons cannot be affected by a presence symbol, which is
+        # always a bool, so kconfiglib can answer those itself.
+        return expr_value(expr)
+
+    if isinstance(expr, Symbol) and expr.name in overrides:
+        return overrides[expr.name]
+    return expr.tri_value
+
+
+def symbols_in(expr) -> set[str]:
+    """The named symbols an expression mentions."""
+    if expr.__class__ is tuple:
+        return set().union(*(symbols_in(operand) for operand in expr[1:]))
+    if isinstance(expr, Symbol | Choice) and expr.name:
+        return {expr.name}
+    return set()
+
+
+def necessary_modules(sym: Symbol, modules: dict[str, str], overrides: dict[str, int]) -> list[str]:
+    """The modules the symbol cannot be enabled without.
+
+    A module is necessary when taking it away makes the symbol's dependencies
+    unsatisfiable. Modules that merely appear in the dependency expression are
+    not necessary: either of 'depends on ZEPHYR_A_MODULE || ZEPHYR_B_MODULE'
+    would do, so neither is reported.
+    """
+    necessary = []
+    for symbol_name in sorted(symbols_in(sym.direct_dep) & modules.keys()):
+        without = dict(overrides, **{symbol_name: 0})
+        if not evaluate(sym.direct_dep, without):
+            necessary.append(modules[symbol_name])
+    return necessary
+
+
+def required_modules(kconf: Kconfig, module_names: list[str]) -> dict[str, list[str]]:
+    """Map each module this configuration needs to the symbols that need it.
+
+    'kconf' has to be a configured tree with every module present, which is
+    what a default-activation build parses.
+    """
+    modules = presence_symbols(module_names)
+    # Hold the presence symbols at y while asking what a symbol would lose by
+    # taking one module away.
+    overrides = dict.fromkeys(modules, 2)
+
+    required: dict[str, set[str]] = {}
+    for sym in kconf.unique_defined_syms:
+        if sym.orig_type not in (BOOL, TRISTATE):
+            continue
+        if not symbols_in(sym.direct_dep) & modules.keys():
+            continue
+        if not sym.tri_value:
+            continue
+
+        for name in necessary_modules(sym, modules, overrides):
+            required.setdefault(name, set()).add(sym.name)
+
+    return {name: sorted(symbols) for name, symbols in sorted(required.items())}
+
+
+def requirements_report(required: dict[str, list[str]]) -> dict:
+    """The requirements file scripts/zephyr_module.py reads."""
+    return {
+        "schema_version": 1,
+        "required": [
+            {"name": name, "required_by": symbols} for name, symbols in sorted(required.items())
+        ],
+    }
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        allow_abbrev=False,
+    )
+    parser.add_argument(
+        "--modules-file",
+        type=Path,
+        required=True,
+        help="module list written by zephyr_module.py --modules-out",
+    )
+    parser.add_argument("--config", type=Path, required=True, help="the merged .config to analyze")
+    parser.add_argument("--out", type=Path, required=True, help="file to write the requirements to")
+    parser.add_argument("kconfig_file", help="Top-level Kconfig file", nargs="?", default="Kconfig")
+
+    args = parser.parse_args(argv)
+
+    kconf = Kconfig(args.kconfig_file, warn_to_stderr=False, suppress_traceback=True)
+    kconf.load_config(os.fspath(args.config))
+
+    report = requirements_report(required_modules(kconf, module_names_from_file(args.modules_file)))
+    args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    print(f"Module requirements written to: {args.out}")
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
