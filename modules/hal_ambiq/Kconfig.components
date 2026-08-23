@@ -6,5 +6,6 @@
 config AMBIQ_COMPONENT_USE_BT
 	bool
 	depends on SOC_AMBIQ_BT_SUPPORTED
+	depends on ZEPHYR_HAL_AMBIQ_MODULE
 	help
 	  Use Bluetooth component from Ambiq
