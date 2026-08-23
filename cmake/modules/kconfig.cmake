@@ -214,10 +214,24 @@ set(EXTRA_KCONFIG_TARGET_COMMAND_FOR_traceconfig
   ${PROJECT_BINARY_DIR}/kconfig-trace.md
   )
 
+# Only a build that has every module can say what a build needs, which rules
+# out a strict build and the sysbuild pass.
+if(DEFINED ZEPHYR_MODULES_JSON AND "${KCONFIG_NAMESPACE}" STREQUAL "CONFIG")
+  set(EXTRA_KCONFIG_TARGET_COMMAND_FOR_module_requirements
+    ${ZEPHYR_BASE}/scripts/kconfig/module_requirements.py
+    --modules-file ${ZEPHYR_MODULES_JSON}
+    --config ${DOTCONFIG}
+    --out ${ZEPHYR_MODULE_REQUIREMENTS_JSON}
+    )
+endif()
+
 zephyr_get(KCONFIG_TARGETS SYSBUILD LOCAL)
 
 if(NOT DEFINED KCONFIG_TARGETS)
   set(KCONFIG_TARGETS menuconfig guiconfig hardenconfig traceconfig)
+  if(DEFINED EXTRA_KCONFIG_TARGET_COMMAND_FOR_module_requirements)
+    list(APPEND KCONFIG_TARGETS module_requirements)
+  endif()
 endif()
 
 # Create the Kconfig targets. Skipped if KCONFIG_VARIANT_SOURCE is set, because
