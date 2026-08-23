@@ -13,19 +13,23 @@ config HAS_SILABS_GECKO
 	bool
 	select HAS_CMSIS_CORE
 	depends on SOC_FAMILY_SILABS_S0 || SOC_FAMILY_SILABS_S1
+	depends on ZEPHYR_HAL_SILABS_MODULE
 
 config HAS_SILABS_SISDK
 	bool
 	select HAS_CMSIS_CORE
 	depends on SOC_FAMILY_SILABS_S2
+	depends on ZEPHYR_HAL_SILABS_MODULE
 
 config HAS_SILABS_WISECONNECT
 	bool
 	select HAS_CMSIS_CORE
 	depends on SOC_FAMILY_SILABS_SIWX91X
+	depends on ZEPHYR_HAL_SILABS_MODULE
 
 config HAS_SILABS_SI32
 	bool
 	select HAS_CMSIS_CORE
+	depends on ZEPHYR_HAL_SILABS_MODULE
 
 rsource "*/Kconfig"
