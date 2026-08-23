@@ -30,6 +30,7 @@ rsource "Kconfig.psa.logic"
 menuconfig MBEDTLS
 	bool "mbed TLS Support" if !MBEDTLS_PROMPTLESS
 	depends on PSA_CRYPTO
+	depends on ZEPHYR_MBEDTLS_MODULE
 	help
 	  This option enables the Mbed TLS cryptography library.
 
