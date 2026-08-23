@@ -27,6 +27,24 @@ include(python)
 # - `ZEPHYR_<MODULE_NAME>_CMAKE_DIR` is used for inclusion of the CMakeLists.txt
 # - `ZEPHYR_<MODULE_NAME>_KCONFIG` is used for inclusion of the Kconfig
 # files into the build system.
+#
+# Which of the modules found in the workspace take part in the build is
+# decided by:
+#   -DZEPHYR_MODULE_ACTIVATION=all|strict
+# 'all', the default, activates every module found, which is how Zephyr has
+# always worked. 'strict' activates only the modules the build depends on, so
+# that a module being in the workspace is not the same as the build using it.
+#
+# A strict build learns what it depends on from:
+#   -DZEPHYR_REQUIRED_MODULES=<module-name>[;<additional-module-name(s)>]
+#   -DZEPHYR_MODULE_REQUIREMENTS_FILE=<file>
+# the latter being the requirements file that
+# scripts/kconfig/module_requirements.py writes, plus the modules given
+# directly through ZEPHYR_MODULES and EXTRA_ZEPHYR_MODULES, which count as
+# deliberate activation.
+#
+# Every build writes what it decided to `zephyr_modules.json` in the build
+# directory: which modules are required, available, active and missing.
 
 # Settings used by Zephyr module but where systems may define an alternative value.
 set_ifndef(KCONFIG_BINARY_DIR ${CMAKE_BINARY_DIR}/Kconfig)
@@ -41,12 +59,28 @@ if(EXTRA_ZEPHYR_MODULES)
   set(EXTRA_ZEPHYR_MODULES_ARG "--extra-modules" ${EXTRA_ZEPHYR_MODULES})
 endif()
 
+zephyr_get(ZEPHYR_MODULE_ACTIVATION)
+if(ZEPHYR_MODULE_ACTIVATION)
+  set(ZEPHYR_MODULE_ACTIVATION_ARG "--activation" ${ZEPHYR_MODULE_ACTIVATION})
+endif()
+
+zephyr_get(ZEPHYR_REQUIRED_MODULES MERGE)
+foreach(required_module ${ZEPHYR_REQUIRED_MODULES})
+  list(APPEND ZEPHYR_REQUIRED_MODULES_ARG "--required" ${required_module})
+endforeach()
+
+zephyr_get(ZEPHYR_MODULE_REQUIREMENTS_FILE)
+if(ZEPHYR_MODULE_REQUIREMENTS_FILE)
+  set(ZEPHYR_MODULE_REQUIREMENTS_ARG "--required-file" ${ZEPHYR_MODULE_REQUIREMENTS_FILE})
+endif()
+
 file(MAKE_DIRECTORY ${KCONFIG_BINARY_DIR})
 set(kconfig_modules_file ${KCONFIG_BINARY_DIR}/Kconfig.modules)
 set(kconfig_sysbuild_file ${KCONFIG_BINARY_DIR}/Kconfig.sysbuild.modules)
 set(cmake_modules_file ${CMAKE_BINARY_DIR}/zephyr_modules.txt)
 set(cmake_sysbuild_file ${CMAKE_BINARY_DIR}/sysbuild_modules.txt)
 set(zephyr_settings_file ${CMAKE_BINARY_DIR}/zephyr_settings.txt)
+set(zephyr_modules_json_file ${CMAKE_BINARY_DIR}/zephyr_modules.json)
 
 if(WEST OR ZEPHYR_MODULES)
   # Zephyr module uses west, so only call it if west is installed or
@@ -57,6 +91,10 @@ if(WEST OR ZEPHYR_MODULES)
     --zephyr-base=${ZEPHYR_BASE}
     ${ZEPHYR_MODULES_ARG}
     ${EXTRA_ZEPHYR_MODULES_ARG}
+    ${ZEPHYR_MODULE_ACTIVATION_ARG}
+    ${ZEPHYR_REQUIRED_MODULES_ARG}
+    ${ZEPHYR_MODULE_REQUIREMENTS_ARG}
+    --modules-out ${zephyr_modules_json_file}
     --kconfig-out ${kconfig_modules_file}
     --cmake-out ${cmake_modules_file}
     --sysbuild-kconfig-out ${kconfig_sysbuild_file}
@@ -178,6 +216,15 @@ else()
 
   file(WRITE ${kconfig_sysbuild_file}
     "# No west and no Zephyr modules\n"
+    )
+
+  file(WRITE ${zephyr_modules_json_file}
+    "{\n"
+    "  \"schema_version\": 1,\n"
+    "  \"activation\": \"all\",\n"
+    "  \"modules\": [],\n"
+    "  \"missing\": []\n"
+    "}\n"
     )
 
 endif()
