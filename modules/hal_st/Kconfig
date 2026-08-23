@@ -6,9 +6,11 @@ config ZEPHYR_HAL_ST_MODULE
 
 config HAS_STLIB
 	bool
+	depends on ZEPHYR_HAL_ST_MODULE
 
 config HAS_STMEMSC
 	bool
+	depends on ZEPHYR_HAL_ST_MODULE
 
 if HAS_STMEMSC
 
