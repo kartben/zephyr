@@ -3,13 +3,18 @@
 # Copyright (c) 2024-2026 Renesas Electronics Corporation
 # SPDX-License-Identifier: Apache-2.0
 
+config ZEPHYR_HAL_RENESAS_MODULE
+	bool
+
 config HAS_RENESAS_RA_FSP
 	bool
+	depends on ZEPHYR_HAL_RENESAS_MODULE
 	help
 	  Enable Renesas RA FSP support
 
 config HAS_RENESAS_RZ_FSP
 	bool
+	depends on ZEPHYR_HAL_RENESAS_MODULE
 	help
 	  Enable Renesas RZ FSP support
 
@@ -458,6 +463,7 @@ endif
 
 config HAS_RENESAS_RX_RDP
 	bool
+	depends on ZEPHYR_HAL_RENESAS_MODULE
 	help
 	  Enable Renesas RX RDP support
 
