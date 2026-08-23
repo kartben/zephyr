@@ -3,6 +3,10 @@
 # Copyright (c) 2020 Antmicro Ltd <www.antmicro.com>
 # SPDX-License-Identifier: Apache-2.0
 
+config ZEPHYR_HAL_QUICKLOGIC_MODULE
+	bool
+
 config EOS_S3_HAL
 	bool
 	depends on SOC_EOS_S3
+	depends on ZEPHYR_HAL_QUICKLOGIC_MODULE
