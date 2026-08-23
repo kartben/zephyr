@@ -20,14 +20,20 @@ every feature in the tree whether or not this build has any use for it. The
 question is narrower: would this symbol be enabled if the module were there?
 For the symbol above, that is only true on a board that has the sensor.
 
-This answers it from Kconfig's own model, by evaluating each symbol with
-every module presence symbol held at y, and asking two things:
+This answers it from Kconfig's own model, by evaluating the configuration
+as if every module presence symbol were y — including defaults, selects and
+implies that depend on those symbols — and asking two things:
 
   * would the symbol be enabled anyway, whether because the configuration
     asked for it, because a default applies, or because something selects
     or implies it;
   * and is a given module necessary for that, meaning the symbol cannot be
     enabled without it.
+
+Presence is not read from the current assignment. A SoC family that depends
+on its HAL is n when the module is missing; using that n would hide every
+capability the family selects. Other symbols are therefore evaluated in the
+same all-modules-present world, not from ``tri_value``.
 
 The second question is what keeps 'depends on ZEPHYR_A_MODULE ||
 ZEPHYR_B_MODULE' from demanding both modules: neither is necessary on its
@@ -94,26 +100,41 @@ def module_names_from_file(path: Path) -> list[str]:
     return [entry["name"] for entry in content.get("modules", [])]
 
 
-def evaluate(expr, overrides: dict[str, int]) -> int:
+def evaluate(expr, overrides: dict[str, int], memo: dict[str, int] | None = None) -> int:
     """Evaluate a Kconfig expression with some symbols held at a value.
 
-    This is kconfiglib's own expression evaluation, with the overridden
-    symbols answering what they are told to answer instead of what the
-    configuration says.
+    Overridden symbols (the module presence symbols) answer what they are
+    told. Every other named symbol is evaluated in that same world, so a
+    default or select that depends on a currently-unset family still sees
+    the value it would have if the modules were present.
     """
+    if memo is None:
+        memo = {}
+
     if expr.__class__ is tuple:
         if expr[0] is AND:
-            return min(evaluate(expr[1], overrides), evaluate(expr[2], overrides))
+            return min(
+                evaluate(expr[1], overrides, memo),
+                evaluate(expr[2], overrides, memo),
+            )
         if expr[0] is OR:
-            return max(evaluate(expr[1], overrides), evaluate(expr[2], overrides))
+            return max(
+                evaluate(expr[1], overrides, memo),
+                evaluate(expr[2], overrides, memo),
+            )
         if expr[0] is NOT:
-            return 2 - evaluate(expr[1], overrides)
+            return 2 - evaluate(expr[1], overrides, memo)
         # Comparisons cannot be affected by a presence symbol, which is
         # always a bool, so kconfiglib can answer those itself.
         return expr_value(expr)
 
-    if isinstance(expr, Symbol) and expr.name in overrides:
-        return overrides[expr.name]
+    if isinstance(expr, Symbol):
+        if expr.name in overrides:
+            return overrides[expr.name]
+        if expr.name and not expr.is_constant:
+            return wanted_value(expr, overrides, memo)
+        return expr.tri_value
+
     return expr.tri_value
 
 
@@ -126,13 +147,25 @@ def symbols_in(expr) -> set[str]:
     return set()
 
 
-def wanted_value(sym: Symbol, overrides: dict[str, int]) -> int:
+def wanted_value(
+    sym: Symbol, overrides: dict[str, int], memo: dict[str, int] | None = None
+) -> int:
     """The value a symbol would take if the modules it needs were present.
 
     A symbol is enabled because the configuration says so, because one of its
     defaults applies, or because another symbol selects or implies it. Its
     dependencies then decide whether that can happen at all.
     """
+    if memo is None:
+        memo = {}
+    if sym.name in overrides:
+        return overrides[sym.name]
+    if sym.name in memo:
+        return memo[sym.name]
+
+    # Assume n while this symbol is being computed, so a select cycle ends.
+    memo[sym.name] = 0
+
     value = sym.user_value if isinstance(sym.user_value, int) else 0
 
     for entry in sym.defaults:
@@ -140,12 +173,18 @@ def wanted_value(sym: Symbol, overrides: dict[str, int]) -> int:
         # value and the condition rather than unpacking the whole entry.
         default, condition = entry[0], entry[1]
         # Kconfig takes the first default whose condition holds.
-        if evaluate(condition, overrides):
-            value = max(value, evaluate(default, overrides))
+        if evaluate(condition, overrides, memo):
+            value = max(value, evaluate(default, overrides, memo))
             break
 
-    value = max(value, evaluate(sym.rev_dep, overrides), evaluate(sym.weak_rev_dep, overrides))
-    return min(value, evaluate(sym.direct_dep, overrides))
+    value = max(
+        value,
+        evaluate(sym.rev_dep, overrides, memo),
+        evaluate(sym.weak_rev_dep, overrides, memo),
+    )
+    value = min(value, evaluate(sym.direct_dep, overrides, memo))
+    memo[sym.name] = value
+    return value
 
 
 def necessary_modules(sym: Symbol, modules: dict[str, str], overrides: dict[str, int]) -> list[str]:
@@ -159,7 +198,9 @@ def necessary_modules(sym: Symbol, modules: dict[str, str], overrides: dict[str,
     necessary = []
     for symbol_name in sorted(symbols_in(sym.direct_dep) & modules.keys()):
         without = dict(overrides, **{symbol_name: 0})
-        if not evaluate(sym.direct_dep, without):
+        # Fresh memo: values computed with every module present must not
+        # leak into the "this module is absent" world.
+        if not evaluate(sym.direct_dep, without, {}):
             necessary.append(modules[symbol_name])
     return necessary
 
@@ -169,6 +210,7 @@ def required_modules(kconf: Kconfig, module_names: list[str]) -> dict[str, list[
     modules = presence_symbols(module_names)
     # Ask what the configuration would look like if every module were there.
     overrides = dict.fromkeys(modules, 2)
+    memo: dict[str, int] = {}
 
     required: dict[str, set[str]] = {}
     for sym in kconf.unique_defined_syms:
@@ -180,7 +222,7 @@ def required_modules(kconf: Kconfig, module_names: list[str]) -> dict[str, list[
             continue
         if not symbols_in(sym.direct_dep) & modules.keys():
             continue
-        if not wanted_value(sym, overrides):
+        if not wanted_value(sym, overrides, memo):
             continue
 
         for name in necessary_modules(sym, modules, overrides):

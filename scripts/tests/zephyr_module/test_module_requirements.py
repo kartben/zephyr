@@ -131,6 +131,36 @@ def test_a_selected_symbol_requires_its_module(analyze):
     assert required == {"hal_tdk": ["TDK_DRIVER"]}
 
 
+def test_a_select_through_a_module_gated_family_still_requires_the_module(analyze):
+    """A family that depends on the HAL is n when the module is missing.
+
+    That is the STM32 shape: SOC_FAMILY_STM32 depends on
+    ZEPHYR_HAL_STM32_MODULE and selects HAS_STM32CUBE. Reading the family's
+    current tri_value would hide HAS_STM32CUBE, and a driver enabled only
+    through that family would hide the module entirely.
+    """
+    required = analyze("""\
+        config SOC_FAMILY
+        \tbool
+        \tdefault y
+        \tselect HAS_VENDOR_HAL
+        \tdepends on ZEPHYR_HAL_TDK_MODULE
+
+        config HAS_VENDOR_HAL
+        \tbool
+        \tdepends on ZEPHYR_HAL_TDK_MODULE
+
+        config DRIVER
+        \tbool
+        \tdefault y if HAS_VENDOR_HAL
+        \tdepends on ZEPHYR_HAL_TDK_MODULE
+        """)
+
+    assert required == {
+        "hal_tdk": ["DRIVER", "HAS_VENDOR_HAL", "SOC_FAMILY"],
+    }
+
+
 def test_an_implied_symbol_requires_its_module(analyze):
     required = analyze(
         """\

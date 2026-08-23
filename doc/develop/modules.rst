@@ -506,9 +506,15 @@ Finding out what a build requires
 =================================
 
 :zephyr_file:`scripts/kconfig/module_requirements.py` works out which modules a
-configuration needs from Kconfig itself. It holds every module presence symbol
-at ``y``, keeps the symbols that would then be enabled, and reports the modules
-those symbols cannot be enabled without:
+configuration needs from Kconfig itself. It evaluates the tree as if every
+module presence symbol were ``y`` — including defaults and selects that
+depend on those symbols — keeps the symbols that would then be enabled, and
+reports the modules those symbols cannot be enabled without.
+
+The tool is not run during a normal configure. Default activation stays
+``all``, and a missing module that a ``depends on`` gate names fails Kconfig
+with the presence symbol. Use the tool when you want the requirements file a
+strict build reads, including on a tree that does not have the module yet.
 
 .. code-block:: console
 
@@ -518,6 +524,11 @@ those symbols cannot be enabled without:
 
 The result is the requirements file a strict build reads through
 :makevar:`ZEPHYR_MODULE_REQUIREMENTS_FILE`.
+
+Default ``west.yml`` group policy is unchanged. A vendor HAL can move to an
+inactive group only after its uses are declared, CI can still cover those
+platforms, and west can materialize a single imported-manifest project.
+Until then, ``west update`` still fetches today's workspace.
 
 Auditing module dependencies
 ============================

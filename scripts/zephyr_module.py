@@ -986,6 +986,7 @@ def missing_module_error(missing):
     lines.append('')
     lines.append('Add the module to the workspace, or supply it directly with')
     lines.append('ZEPHYR_MODULES or EXTRA_ZEPHYR_MODULES.')
+    lines.append('A west project that is cloned but inactive is not a module.')
     return '\n'.join(lines)
 
 
