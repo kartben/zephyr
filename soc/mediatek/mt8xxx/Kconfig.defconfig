@@ -84,7 +84,7 @@ config COMMON_LIBC_MALLOC_ARENA_SIZE
 config XTENSA_HAL
 	# Kconfig ORs a symbol's dependencies across its definition sites,
 	# so the dependency has to be repeated at each one to hold.
-	depends on ZEPHYR_HAL_XTENSA_MODULE
+	depends on ZEPHYR_XTENSA_MODULE
 	default n if "$(ZEPHYR_TOOLCHAIN_VARIANT)" = "xcc"
 	default n if "$(ZEPHYR_TOOLCHAIN_VARIANT)" = "xt-clang"
 	default y

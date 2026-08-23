@@ -1,12 +1,12 @@
 # Declared once here for both hal_ti glue files; Kconfig.mspm0 is the other.
-config ZEPHYR_HAL_TI_MODULE
+config ZEPHYR_TI_MODULE
 	bool
 
 # CC3220/CC32XX SDK HAL configuration
 
 config HAS_CC3220SDK
 	bool
-	depends on ZEPHYR_HAL_TI_MODULE
+	depends on ZEPHYR_TI_MODULE
 
 # Notes:
 # Selecting ERRNO lets host driver use Zephyr's __errno
@@ -29,20 +29,20 @@ config SIMPLELINK_HOST_DRIVER
 config HAS_MSP432P4XXSDK
 	bool
 	select HAS_CMSIS_CORE
-	depends on ZEPHYR_HAL_TI_MODULE
+	depends on ZEPHYR_TI_MODULE
 
 # CC13X2 / CC26X2 SDK HAL configuration
 
 config HAS_CC13X2_CC26X2_SDK
 	bool
-	depends on ZEPHYR_HAL_TI_MODULE
+	depends on ZEPHYR_TI_MODULE
 
 config HAS_CC13X2X7_CC26X2X7_SDK
 	bool
-	depends on ZEPHYR_HAL_TI_MODULE
+	depends on ZEPHYR_TI_MODULE
 
 # CC23X0 SDK HAL configuration
 
 config HAS_CC23X0_SDK
 	bool
-	depends on ZEPHYR_HAL_TI_MODULE
+	depends on ZEPHYR_TI_MODULE
