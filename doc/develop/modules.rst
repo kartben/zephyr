@@ -448,6 +448,95 @@ See :ref:`west-basics` for more on west workspaces.
 Finally, you can also specify the list of modules yourself in various ways, or
 not use modules at all if your application doesn't need them.
 
+.. _module-activation:
+
+Module activation
+*****************
+
+Being in the workspace and being part of the build are two different things.
+A module is *available* when it is checked out, and *active* when this build
+uses it: its Kconfig options exist, its :file:`CMakeLists.txt` is added to the
+build, and ``ZEPHYR_<MODULE_NAME>_MODULE_DIR`` points at it.
+
+By default every available module is active, which is how Zephyr has always
+worked. It also means that a workspace holding every module hides every
+dependency nobody declared: code can use a module without saying that it does,
+and the build only breaks for whoever has a workspace without it.
+
+Strict activation
+=================
+
+Set :makevar:`ZEPHYR_MODULE_ACTIVATION` to ``strict`` to activate only the
+modules the build depends on:
+
+.. code-block:: console
+
+   west build -b <board> <app> -- -DZEPHYR_MODULE_ACTIVATION=strict \
+       -DZEPHYR_REQUIRED_MODULES="hal_tdk"
+
+A module is then active if, and only if, one of the following holds:
+
+* the build requires it, through :makevar:`ZEPHYR_REQUIRED_MODULES` or a
+  requirements file (see below);
+* you supplied it yourself through :makevar:`ZEPHYR_MODULES` or
+  :makevar:`EXTRA_ZEPHYR_MODULES`, which counts as deliberate activation;
+* it contributes build metadata, such as a board, SoC, DTS or snippet root, or
+  sysbuild integration, which the build needs before it can know what it
+  depends on;
+* an active module names it in the ``depends`` key of its
+  :ref:`module.yml <module-yml>`.
+
+Everything else stays available but inactive. Its ``ZEPHYR_<MODULE>_MODULE``
+symbol is still declared, so Kconfig dependency checking keeps working, but it
+is ``n``: the module's Kconfig is not sourced, its :file:`CMakeLists.txt` is
+not added, and no ``ZEPHYR_<MODULE_NAME>_MODULE_DIR`` is defined for it.
+Code that uses an inactive module without declaring that it does fails to
+build, in a workspace where the module is right there. That is the point.
+
+A module the build requires but the workspace does not have fails the build
+during module resolution, naming the module and what asked for it, rather than
+surfacing later as a missing header. Nothing is ever downloaded: supplying the
+module is up to you or to west.
+
+Every build writes :file:`zephyr_modules.json` in the build directory, saying
+which modules are required, available, active and missing, why each active one
+is active, and what asked for it.
+
+Finding out what a build requires
+=================================
+
+:zephyr_file:`scripts/kconfig/module_requirements.py` works out which modules a
+configuration needs from Kconfig itself. It holds every module presence symbol
+at ``y``, keeps the symbols that would then be enabled, and reports the modules
+those symbols cannot be enabled without:
+
+.. code-block:: console
+
+   python3 scripts/kconfig/module_requirements.py \
+       --kconfig-file Kconfig --modules-file build/zephyr_modules.json \
+       --config build/zephyr/.config --out requirements.json
+
+The result is the requirements file a strict build reads through
+:makevar:`ZEPHYR_MODULE_REQUIREMENTS_FILE`.
+
+Auditing module dependencies
+============================
+
+:zephyr_file:`scripts/module_dependency_audit.py` reports how the tree uses
+each module in the manifest, and which of those uses the build model knows
+about:
+
+.. code-block:: console
+
+   python3 scripts/module_dependency_audit.py
+   python3 scripts/module_dependency_audit.py --module hal_tdk
+
+Anything it lists as an undeclared use is a place where the build only works
+because the module happens to be in the workspace. Declaring those, at the
+highest node that is semantically correct rather than at the file where a
+header happened to be missing, is what makes a module a candidate for strict
+activation.
+
 .. _module-yml:
 
 Module yaml file description
