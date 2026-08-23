@@ -6,6 +6,7 @@ config ZEPHYR_SEGGER_MODULE
 
 config HAS_SEGGER_RTT
 	bool
+	depends on ZEPHYR_SEGGER_MODULE
 	help
 	  Indicates that the platform supports SEGGER J-Link RTT.
 
