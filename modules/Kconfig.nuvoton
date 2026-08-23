@@ -3,10 +3,14 @@
 # Copyright (c) 2020 Linumiz
 # Author: Saravanan Sekar <saravanan@linumiz.com>
 
+config ZEPHYR_NUVOTON_MODULE
+	bool
+
 config HAS_NUMICRO_HAL
 	bool
 	select HAS_CMSIS_CORE
 	depends on SOC_FAMILY_NUMICRO
+	depends on ZEPHYR_NUVOTON_MODULE
 
 menu "Nuvoton drivers"
 	depends on HAS_NUMICRO_HAL
@@ -23,6 +27,7 @@ config HAS_NUMAKER_HAL
 	bool
 	select HAS_CMSIS_CORE
 	depends on SOC_FAMILY_NUMAKER
+	depends on ZEPHYR_NUVOTON_MODULE
 
 menu "Nuvoton NuMaker drivers"
 	depends on HAS_NUMAKER_HAL
