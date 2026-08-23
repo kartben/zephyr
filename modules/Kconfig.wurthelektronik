@@ -4,3 +4,4 @@
 
 config HAS_WESENSORS
 	bool
+	depends on ZEPHYR_HAL_WURTHELEKTRONIK_MODULE
