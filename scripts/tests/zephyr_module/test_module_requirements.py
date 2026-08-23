@@ -361,6 +361,7 @@ def test_the_analysis_feeds_the_build(tmp_path, monkeypatch):
             "zephyr/.config",
             "--out",
             "requirements.json",
+            "Kconfig",
         ]
     )
 

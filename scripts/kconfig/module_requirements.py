@@ -34,9 +34,16 @@ ZEPHYR_B_MODULE' from demanding both modules: neither is necessary on its
 own, so neither is reported, and the build is left to say which one it
 wants.
 
-Only the second question needs Kconfig expressions evaluated by hand,
-because a configuration records which symbols are on but not what they
-depend on. The first is Symbol.tri_value.
+Only the second question needs Kconfig expressions evaluated by hand, because
+a configuration records which symbols are on but not what they depend on. The
+first is Symbol.tri_value, read from the configuration the build has already
+settled on.
+
+That configuration is the whole input, so this has to run against a build:
+the tree only parses with the environment CMake gives a Kconfig run, and
+without a devicetree most of the symbols the answer is about do not exist.
+The build system runs it as the 'module_requirements' target, the same way it
+runs menuconfig and the other Kconfig tools.
 
 Module names come from the module list this is given, so a module's identity
 stays what its module.yml says it is; nothing is reverse engineered from a
@@ -179,16 +186,11 @@ def requirements_report(required: dict[str, list[str]]) -> dict:
     }
 
 
-def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         allow_abbrev=False,
-    )
-    parser.add_argument(
-        "--kconfig-file",
-        default="Kconfig",
-        help="top level Kconfig file to analyze (default: Kconfig)",
     )
     parser.add_argument(
         "--modules-file",
@@ -196,34 +198,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         required=True,
         help="module list written by zephyr_module.py --modules-out",
     )
-    parser.add_argument(
-        "--config",
-        type=Path,
-        action="append",
-        default=[],
-        required=True,
-        help="configuration to analyze; may be given more than once",
-    )
-    parser.add_argument(
-        "--out", type=Path, help="file to write the requirements to (default: stdout)"
-    )
-    return parser.parse_args(argv)
+    parser.add_argument("--config", type=Path, required=True, help="the merged .config to analyze")
+    parser.add_argument("--out", type=Path, required=True, help="file to write the requirements to")
+    parser.add_argument("kconfig_file", help="Top-level Kconfig file", nargs="?", default="Kconfig")
 
-
-def main(argv: list[str] | None = None) -> int:
-    args = parse_args(argv)
+    args = parser.parse_args(argv)
 
     kconf = Kconfig(args.kconfig_file, warn_to_stderr=False, suppress_traceback=True)
-    for config in args.config:
-        kconf.load_config(os.fspath(config), replace=False)
+    kconf.load_config(os.fspath(args.config))
 
     report = requirements_report(required_modules(kconf, module_names_from_file(args.modules_file)))
-    content = json.dumps(report, indent=2) + "\n"
-
-    if args.out:
-        args.out.write_text(content, encoding="utf-8")
-    else:
-        sys.stdout.write(content)
+    args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    print(f"Module requirements written to: {args.out}")
 
     return 0
 

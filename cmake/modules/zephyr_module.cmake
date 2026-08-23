@@ -111,6 +111,15 @@ if(WEST OR ZEPHYR_MODULES)
       message(FATAL_ERROR "${zephyr_module_error_text}")
   endif()
 
+  # Only a build that has every module can say which of them a configuration
+  # needs; a strict build is missing modules by construction. This is what the
+  # 'module_requirements' Kconfig target works from.
+  if(NOT "${ZEPHYR_MODULE_ACTIVATION}" STREQUAL "strict")
+    set(ZEPHYR_MODULES_JSON ${zephyr_modules_json_file})
+    set(ZEPHYR_MODULE_REQUIREMENTS_JSON
+        ${CMAKE_BINARY_DIR}/zephyr_module_requirements.json)
+  endif()
+
   if(EXISTS ${zephyr_settings_file})
     file(STRINGS ${zephyr_settings_file} zephyr_settings_txt ENCODING UTF-8 REGEX "^[^#]")
     foreach(setting ${zephyr_settings_txt})

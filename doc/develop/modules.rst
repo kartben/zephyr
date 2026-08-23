@@ -506,18 +506,31 @@ Finding out what a build requires
 =================================
 
 :zephyr_file:`scripts/kconfig/module_requirements.py` works out which modules a
-configuration needs from Kconfig itself. It holds every module presence symbol
-at ``y``, keeps the symbols that would then be enabled, and reports the modules
-those symbols cannot be enabled without:
+configuration needs from Kconfig itself. It keeps the symbols the configuration
+has enabled, and reports the modules those symbols cannot be enabled without.
+
+It answers that about a configured build and nothing else: outside a build
+there is no devicetree, no board and no toolchain, so most of the symbols the
+answer is about are not even defined. Run it the way you run
+:ref:`menuconfig <menuconfig>`, as a target of a build that has every module:
 
 .. code-block:: console
 
-   python3 scripts/kconfig/module_requirements.py \
-       --kconfig-file Kconfig --modules-file build/zephyr_modules.json \
-       --config build/zephyr/.config --out requirements.json
+   west build -b <board> <app>
+   west build -t module_requirements
 
-The result is the requirements file a strict build reads through
-:makevar:`ZEPHYR_MODULE_REQUIREMENTS_FILE`.
+That writes :file:`zephyr_module_requirements.json` in the build directory,
+which is the requirements file a strict build reads through
+:makevar:`ZEPHYR_MODULE_REQUIREMENTS_FILE`:
+
+.. code-block:: console
+
+   west build -b <board> <app> -d build-strict -- \
+       -DZEPHYR_MODULE_ACTIVATION=strict \
+       -DZEPHYR_MODULE_REQUIREMENTS_FILE=$PWD/build/zephyr_module_requirements.json
+
+The target is not offered by a strict build, which is missing modules by
+construction and cannot say what a complete one would need.
 
 Auditing module dependencies
 ============================
