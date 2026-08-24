@@ -4927,8 +4927,53 @@ function(zephyr_dt_preprocess)
 
   execute_process(COMMAND ${preprocess_cmd} RESULT_VARIABLE ret)
   if(NOT "${ret}" STREQUAL "0")
-    message(FATAL_ERROR "failed to preprocess devicetree files (error code ${ret}): ${DT_PREPROCESS_SOURCE_FILES}")
+    zephyr_missing_module_hint(hint)
+    message(FATAL_ERROR "failed to preprocess devicetree files (error code ${ret}): ${DT_PREPROCESS_SOURCE_FILES}${hint}")
   endif()
+endfunction()
+
+# Usage:
+#   zephyr_missing_module_hint(<out_var> [CONF_FILES <file...>])
+#
+# Set <out_var> to a message naming the modules this build is made of that the
+# workspace does not have, or to the empty string when that is not the reason
+# it failed. A module can go missing in two places: devicetree is resolved
+# before Kconfig, so a devicetree root disappears as an include nothing can
+# explain, and Kconfig itself reports a capability it cannot satisfy rather
+# than the module behind it. Either way the dependency is written down in the
+# Kconfig sources, where it can be read without configuring anything.
+function(zephyr_missing_module_hint out_var)
+  cmake_parse_arguments(HINT "" "" "CONF_FILES" ${ARGN})
+
+  set(hint "")
+  if(ZEPHYR_MODULES_INACTIVE)
+    set(conf_opts)
+    if(HINT_CONF_FILES)
+      set(conf_opts --seed-conf ${HINT_CONF_FILES})
+    endif()
+    execute_process(
+      COMMAND ${PYTHON_EXECUTABLE} ${ZEPHYR_BASE}/scripts/build/module_hint.py
+      --zephyr-base ${ZEPHYR_BASE}
+      --seed-dir ${BOARD_DIRECTORIES}
+      ${conf_opts}
+      --inactive ${ZEPHYR_MODULES_INACTIVE}
+      OUTPUT_VARIABLE needed
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    if(needed)
+      string(REPLACE "\n" ";" needed "${needed}")
+      string(JOIN " " needed_args ${needed})
+      string(JOIN ",+" needed_filter ${needed})
+      string(CONCAT hint
+        "\n"
+        "This build is made of modules the workspace does not have: ${needed_args}\n"
+        "Fetch them and make them part of the build with:\n"
+        "  west update ${needed_args}\n"
+        "  west config manifest.project-filter -- +${needed_filter}"
+      )
+    endif()
+  endif()
+  set(${out_var} "${hint}" PARENT_SCOPE)
 endfunction()
 
 # Usage:

@@ -750,13 +750,19 @@ def west_projects(manifest=None):
     try:
         if not manifest:
             manifest = Manifest.from_file()
+        inactive = []
         if version.parse(WestVersion) >= version.parse('0.9.0'):
-            projects = [p for p in manifest.get_projects([])
-                        if manifest.is_active(p)]
+            all_projects = manifest.get_projects([])
+            projects = [p for p in all_projects if manifest.is_active(p)]
+            # A project the manifest knows about but this workspace does not
+            # build. Keeping the names lets the build say what is missing
+            # instead of failing on a file it cannot explain.
+            inactive = [p.name for p in all_projects if not manifest.is_active(p)]
         else:
             projects = manifest.get_projects([])
         manifest_path = manifest.abspath
-        return {'manifest_path': manifest_path, 'projects': projects}
+        return {'manifest_path': manifest_path, 'projects': projects,
+                'inactive': inactive}
     except (ManifestImportFailed, MalformedManifest,
             ManifestVersionError, MalformedConfig) as e:
         sys.exit(f'ERROR: {e}')
@@ -938,6 +944,9 @@ def main():
         sysbuild_cmake += process_sysbuildcmake(module.project, module.meta)
         settings += process_settings(module.project, module.meta)
         twister += process_twister(module.project, module.meta)
+
+    for name in (west_projs or {}).get('inactive', []):
+        settings += f'"ZEPHYR_MODULES_INACTIVE":"{name}"\n'
 
     if args.kconfig_out or args.sysbuild_kconfig_out:
         if args.kconfig_out:

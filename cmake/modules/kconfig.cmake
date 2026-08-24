@@ -429,7 +429,8 @@ execute_process(
   RESULT_VARIABLE ret
   )
 if(NOT "${ret}" STREQUAL "0")
-  message(FATAL_ERROR "command failed with return code: ${ret}")
+  zephyr_missing_module_hint(hint CONF_FILES ${input_configs})
+  message(FATAL_ERROR "command failed with return code: ${ret}${hint}")
 endif()
 
 # Read out the list of 'Kconfig' sources that were used by the engine.
