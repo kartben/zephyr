@@ -52,6 +52,15 @@ FILE_USED_MODULE_C = "./src/answer.c"
 FILE_UNUSED_MODULE_C = "unused.c"
 FILE_REUSE_TOML_C = "./src/no_header.c"
 
+# The "used" module declares ext/vendored as a bundled component in its
+# zephyr/module.yml; these are the values it declares there. The file name is
+# relative to the bundled component's own path, not to the module's.
+PKG_VENDORED_SOURCES = "sbom_used_module-vendored-sources"
+FILE_VENDORED_C = "./vendored.c"
+VENDORED_VERSION = "1.2.3"
+VENDORED_SUPPLIER = "example-vendor"
+VENDORED_PURL = "pkg:github/example-vendor/vendored-lib@v1.2.3"
+
 # Common license and copyright strings as they appear in the SBOM.
 LICENSE_APACHE = "Apache-2.0"
 COPYRIGHT_ZEPHYR = "Copyright The Zephyr Project Contributors"
@@ -147,12 +156,18 @@ def first_module_deps_package(modules_doc):
 
 
 def first_module_sources_package(zephyr_doc):
-    """Return the first module *-sources package, excluding zephyr-sources."""
+    """Return the first module *-sources package, excluding zephyr-sources.
+
+    Bundled components also get a "-sources" package, but they are not modules,
+    so they are skipped here.
+    """
     return next(
         (
             pkg
             for pkg in zephyr_doc.packages
-            if pkg.name.endswith("-sources") and pkg.name != "zephyr-sources"
+            if pkg.name.endswith("-sources")
+            and pkg.name != "zephyr-sources"
+            and pkg.name != PKG_VENDORED_SOURCES
         ),
         None,
     )
@@ -1067,3 +1082,136 @@ class TestExtraModules:
             modules_doc, pkg.spdx_id, RelationshipType.DEPENDENCY_OF
         )
         assert len(dep_rels) > 0, f"modules-deps.spdx: {pkg_name} has no DEPENDENCY_OF relationship"
+
+
+class TestBundledComponents:
+    """Tests for third-party code vendored inside a Zephyr module.
+
+    ``sbom_used_module`` carries a local copy of an imaginary upstream project under
+    ``ext/vendored`` and declares it in the ``bundled-components`` section of its
+    :file:`zephyr/module.yml`, the same way MCUboot carries TinyCrypt under
+    ``ext/tinycrypt``. Such code must not be reported as part of the module that
+    happens to host it: it gets a package of its own, carrying the identity needed to
+    match it against license and vulnerability databases, and the hosting module
+    CONTAINS it.
+    """
+
+    def test_bundled_package_exists(self, zephyr_doc):
+        """A declared bundled component must surface as its own package."""
+        pkg = find_package_by_name(zephyr_doc, PKG_VENDORED_SOURCES)
+        pkg_names = [p.name for p in zephyr_doc.packages]
+        assert pkg is not None, (
+            f"zephyr.spdx: expected '{PKG_VENDORED_SOURCES}' package, got {pkg_names}"
+        )
+
+    def test_bundled_package_spdx_id(self, zephyr_doc):
+        """The bundled component package must have a valid, normalized SPDX ID."""
+        pkg = find_package_by_name(zephyr_doc, PKG_VENDORED_SOURCES)
+        assert pkg is not None, f"zephyr.spdx: '{PKG_VENDORED_SOURCES}' package not found"
+        expected_id = "SPDXRef-" + PKG_VENDORED_SOURCES.replace("_", "-")
+        assert pkg.spdx_id == expected_id, (
+            f"zephyr.spdx: {PKG_VENDORED_SOURCES} spdx_id is '{pkg.spdx_id}', "
+            f"expected '{expected_id}'"
+        )
+
+    def test_bundled_package_version_and_supplier(self, zephyr_doc):
+        """Version comes from the declaration, supplier from the upstream URL."""
+        pkg = find_package_by_name(zephyr_doc, PKG_VENDORED_SOURCES)
+        assert pkg is not None, f"zephyr.spdx: '{PKG_VENDORED_SOURCES}' package not found"
+        assert pkg.version == VENDORED_VERSION, (
+            f"zephyr.spdx: {PKG_VENDORED_SOURCES} version is '{pkg.version}', "
+            f"expected '{VENDORED_VERSION}'"
+        )
+        assert get_supplier_name(pkg) == f"Organization: {VENDORED_SUPPLIER}", (
+            f"zephyr.spdx: {PKG_VENDORED_SOURCES} supplier is '{get_supplier_name(pkg)}', "
+            f"expected 'Organization: {VENDORED_SUPPLIER}'"
+        )
+
+    def test_bundled_package_declared_license(self, zephyr_doc):
+        """The license declared in module.yml must reach the package."""
+        pkg = find_package_by_name(zephyr_doc, PKG_VENDORED_SOURCES)
+        assert pkg is not None, f"zephyr.spdx: '{PKG_VENDORED_SOURCES}' package not found"
+        assert str(pkg.license_declared) == LICENSE_APACHE, (
+            f"zephyr.spdx: {PKG_VENDORED_SOURCES} declared license is "
+            f"'{pkg.license_declared}', expected '{LICENSE_APACHE}'"
+        )
+
+    def test_bundled_package_purl(self, zephyr_doc):
+        """The purl declared in module.yml is what identifies the upstream project.
+
+        A declared purl is authoritative: it must not be joined by a second one
+        derived from the URL, or scanners would see two identities for one package.
+        """
+        pkg = find_package_by_name(zephyr_doc, PKG_VENDORED_SOURCES)
+        assert pkg is not None, f"zephyr.spdx: '{PKG_VENDORED_SOURCES}' package not found"
+        purls = get_purl_refs(pkg)
+        assert purls == [VENDORED_PURL], (
+            f"zephyr.spdx: {PKG_VENDORED_SOURCES} purls are {purls}, expected [{VENDORED_PURL}]"
+        )
+
+    @pytest.mark.min_spdx_version("2.3")
+    def test_bundled_package_purpose(self, zephyr_doc):
+        """The bundled component package must be a SOURCE package."""
+        pkg = find_package_by_name(zephyr_doc, PKG_VENDORED_SOURCES)
+        assert pkg is not None, f"zephyr.spdx: '{PKG_VENDORED_SOURCES}' package not found"
+        assert pkg.primary_package_purpose == PackagePurpose.SOURCE, (
+            f"zephyr.spdx: {PKG_VENDORED_SOURCES} purpose is '{pkg.primary_package_purpose}', "
+            f"expected SOURCE"
+        )
+
+    def test_bundled_package_comment(self, zephyr_doc):
+        """The package comment must explain that this is vendored code."""
+        pkg = find_package_by_name(zephyr_doc, PKG_VENDORED_SOURCES)
+        assert pkg is not None, f"zephyr.spdx: '{PKG_VENDORED_SOURCES}' package not found"
+        assert pkg.comment and "Bundled component package" in str(pkg.comment), (
+            f"zephyr.spdx: {PKG_VENDORED_SOURCES} comment should mention "
+            f"'Bundled component package', got '{pkg.comment}'"
+        )
+
+    def test_module_contains_bundled_package(self, zephyr_doc):
+        """The hosting module package must CONTAIN the bundled component package."""
+        module_pkg = find_package_by_name(zephyr_doc, PKG_USED_MODULE_SOURCES)
+        assert module_pkg is not None, f"zephyr.spdx: '{PKG_USED_MODULE_SOURCES}' package not found"
+        bundled_pkg = find_package_by_name(zephyr_doc, PKG_VENDORED_SOURCES)
+        assert bundled_pkg is not None, f"zephyr.spdx: '{PKG_VENDORED_SOURCES}' package not found"
+        assert has_relationship(zephyr_doc, module_pkg.spdx_id, "CONTAINS", bundled_pkg.spdx_id), (
+            f"zephyr.spdx: {PKG_USED_MODULE_SOURCES} does not CONTAIN {PKG_VENDORED_SOURCES}"
+        )
+
+    def test_vendored_source_attributed_to_bundled_package(self, zephyr_doc):
+        """The vendored source must belong to the bundled package, not to the module."""
+        bundled_pkg = find_package_by_name(zephyr_doc, PKG_VENDORED_SOURCES)
+        assert bundled_pkg is not None, f"zephyr.spdx: '{PKG_VENDORED_SOURCES}' package not found"
+        f = find_file_by_name(zephyr_doc, FILE_VENDORED_C)
+        assert f is not None, f"zephyr.spdx: {FILE_VENDORED_C} not found"
+
+        contained = {
+            str(r.related_spdx_element_id)
+            for r in get_relationships_for_element(
+                zephyr_doc, bundled_pkg.spdx_id, RelationshipType.CONTAINS
+            )
+        }
+        assert f.spdx_id in contained, (
+            f"zephyr.spdx: {PKG_VENDORED_SOURCES} does not CONTAIN {FILE_VENDORED_C}"
+        )
+
+        module_pkg = find_package_by_name(zephyr_doc, PKG_USED_MODULE_SOURCES)
+        assert module_pkg is not None, f"zephyr.spdx: '{PKG_USED_MODULE_SOURCES}' package not found"
+        module_contained = {
+            str(r.related_spdx_element_id)
+            for r in get_relationships_for_element(
+                zephyr_doc, module_pkg.spdx_id, RelationshipType.CONTAINS
+            )
+        }
+        assert f.spdx_id not in module_contained, (
+            f"zephyr.spdx: {FILE_VENDORED_C} is attributed to {PKG_USED_MODULE_SOURCES} "
+            f"instead of {PKG_VENDORED_SOURCES}"
+        )
+
+    def test_bundled_package_files_analyzed(self, zephyr_doc):
+        """The bundled component compiles code, so its files must be analyzed."""
+        pkg = find_package_by_name(zephyr_doc, PKG_VENDORED_SOURCES)
+        assert pkg is not None, f"zephyr.spdx: '{PKG_VENDORED_SOURCES}' package not found"
+        assert pkg.files_analyzed, (
+            f"zephyr.spdx: {PKG_VENDORED_SOURCES} should have files_analyzed=True"
+        )
