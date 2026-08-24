@@ -1,8 +1,9 @@
 # Copyright (c) 2021 ATL-Electronics
 # SPDX-License-Identifier: Apache-2.0
 
-config ZEPHYR_HAL_GIGADEVICE_MODULE
-	bool
+zephyr-module = HAL_GIGADEVICE
+zephyr-module-str = hal_gigadevice
+source "modules/Kconfig.template.module"
 
 config GD32_HAS_AF_PINMUX
 	bool
@@ -17,6 +18,7 @@ config GD32_HAS_AFIO_PINMUX
 config HAS_GD32_HAL
 	bool
 	select HAS_CMSIS_CORE if ARM
+	select ZEPHYR_HAL_GIGADEVICE_MODULE_ACTIVE
 
 if HAS_GD32_HAL
 

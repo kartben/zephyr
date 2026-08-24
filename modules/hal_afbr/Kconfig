@@ -2,8 +2,10 @@
 # Copyright (c) 2025 CogniPilot Foundation
 # SPDX-License-Identifier: Apache-2.0
 
-config ZEPHYR_HAL_AFBR_MODULE
-	bool
+zephyr-module = HAL_AFBR
+zephyr-module-str = hal_afbr
+source "modules/Kconfig.template.module"
 
 config AFBR_LIB
 	bool
+	select ZEPHYR_HAL_AFBR_MODULE_ACTIVE

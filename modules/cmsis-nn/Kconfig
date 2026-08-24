@@ -1,12 +1,14 @@
 # Copyright (c) 2023 Meta Platforms
 # SPDX-License-Identifier: Apache-2.0
 
-config ZEPHYR_CMSIS_NN_MODULE
-	bool
+zephyr-module = CMSIS_NN
+zephyr-module-str = cmsis-nn
+source "modules/Kconfig.template.module"
 
 menuconfig CMSIS_NN
 	bool "CMSIS-NN Library Support"
 	depends on CPU_CORTEX_M
+	select ZEPHYR_CMSIS_NN_MODULE_ACTIVE
 	select CMSIS_DSP
 	help
 	  This option enables the CMSIS-NN library.

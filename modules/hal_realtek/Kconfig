@@ -1,14 +1,17 @@
 # Copyright (c) 2026 Realtek Semiconductor Corp.
 # SPDX-License-Identifier: Apache-2.0
 
-config ZEPHYR_HAL_REALTEK_MODULE
-	bool
+zephyr-module = HAL_REALTEK
+zephyr-module-str = hal_realtek
+source "modules/Kconfig.template.module"
 
 config HAS_REALTEK_BEE
 	bool
+	select ZEPHYR_HAL_REALTEK_MODULE_ACTIVE
 
 config HAS_REALTEK_AMEBA
 	bool
+	select ZEPHYR_HAL_REALTEK_MODULE_ACTIVE
 
 config ZEPHYR_HAL_REALTEK_MODULE_BLOBS
 	bool

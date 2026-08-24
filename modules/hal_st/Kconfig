@@ -1,14 +1,17 @@
 # Copyright (c) 2024 STMicroelectronics
 # SPDX-License-Identifier: Apache-2.0
 
-config ZEPHYR_HAL_ST_MODULE
-	bool
+zephyr-module = HAL_ST
+zephyr-module-str = hal_st
+source "modules/Kconfig.template.module"
 
 config HAS_STLIB
 	bool
+	select ZEPHYR_HAL_ST_MODULE_ACTIVE
 
 config HAS_STMEMSC
 	bool
+	select ZEPHYR_HAL_ST_MODULE_ACTIVE
 
 if HAS_STMEMSC
 

@@ -3,10 +3,15 @@
 # Copyright (c) 2020 Linumiz
 # Author: Saravanan Sekar <saravanan@linumiz.com>
 
+zephyr-module = NUVOTON
+zephyr-module-str = nuvoton
+source "modules/Kconfig.template.module"
+
 config HAS_NUMICRO_HAL
 	bool
 	select HAS_CMSIS_CORE
 	depends on SOC_FAMILY_NUMICRO
+	select ZEPHYR_NUVOTON_MODULE_ACTIVE
 
 menu "Nuvoton drivers"
 	depends on HAS_NUMICRO_HAL
@@ -23,6 +28,7 @@ config HAS_NUMAKER_HAL
 	bool
 	select HAS_CMSIS_CORE
 	depends on SOC_FAMILY_NUMAKER
+	select ZEPHYR_NUVOTON_MODULE_ACTIVE
 
 menu "Nuvoton NuMaker drivers"
 	depends on HAS_NUMAKER_HAL

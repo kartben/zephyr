@@ -1,9 +1,14 @@
 # Copyright (c) 2018 Foundries.io
 # SPDX-License-Identifier: Apache-2.0
 
+zephyr-module = OPENISA
+zephyr-module-str = openisa
+source "modules/Kconfig.template.module"
+
 config VEGA_SDK_HAL
 	bool "RV32M1 VEGA SDK support"
 	depends on SOC_OPENISA_RV32M1
+	select ZEPHYR_OPENISA_MODULE_ACTIVE
 
 config HAS_RV32M1_LPUART
 	bool

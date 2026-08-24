@@ -1,8 +1,9 @@
 # Copyright (c) 2022 Espressif Systems (Shanghai) Co., Ltd.
 # SPDX-License-Identifier: Apache-2.0
 
-config ZEPHYR_HAL_ESPRESSIF_MODULE
-	bool
+zephyr-module = HAL_ESPRESSIF
+zephyr-module-str = hal_espressif
+source "modules/Kconfig.template.module"
 
 config ZEPHYR_HAL_ESPRESSIF_MODULE_BLOBS
 	bool
@@ -10,6 +11,7 @@ config ZEPHYR_HAL_ESPRESSIF_MODULE_BLOBS
 config HAS_ESPRESSIF_HAL
 	bool
 	depends on SOC_FAMILY_ESPRESSIF_ESP32
+	select ZEPHYR_HAL_ESPRESSIF_MODULE_ACTIVE
 
 if SOC_FAMILY_ESPRESSIF_ESP32
 

@@ -4,24 +4,29 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-config ZEPHYR_LORAMAC_NODE_MODULE
-	bool
+zephyr-module = LORAMAC_NODE
+zephyr-module-str = loramac-node
+source "modules/Kconfig.template.module"
 
 config HAS_SEMTECH_RADIO_DRIVERS
 	bool "Semtech LoRa Radio Drivers"
+	select ZEPHYR_LORAMAC_NODE_MODULE_ACTIVE
 	help
 	  This option enables the use of Semtech's Radio drivers
 
 config HAS_SEMTECH_SX1272
 	bool
+	select ZEPHYR_LORAMAC_NODE_MODULE_ACTIVE
 	select HAS_SEMTECH_RADIO_DRIVERS if LORA_MODULE_BACKEND_LORAMAC_NODE
 
 config HAS_SEMTECH_SX1276
 	bool
+	select ZEPHYR_LORAMAC_NODE_MODULE_ACTIVE
 	select HAS_SEMTECH_RADIO_DRIVERS if LORA_MODULE_BACKEND_LORAMAC_NODE
 
 config HAS_SEMTECH_SX126X
 	bool
+	select ZEPHYR_LORAMAC_NODE_MODULE_ACTIVE
 	select HAS_SEMTECH_RADIO_DRIVERS if LORA_MODULE_BACKEND_LORAMAC_NODE
 
 config HAS_SEMTECH_LORAMAC

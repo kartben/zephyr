@@ -1,7 +1,12 @@
 # Copyright (c) 2021 Telink Semiconductor
 # SPDX-License-Identifier: Apache-2.0
 
+zephyr-module = HAL_TELINK
+zephyr-module-str = hal_telink
+source "modules/Kconfig.template.module"
+
 config HAS_TELINK_DRIVERS
 	bool "Telink Drivers"
+	select ZEPHYR_HAL_TELINK_MODULE_ACTIVE
 	help
 	  This option enables Telink Drivers APIs.
