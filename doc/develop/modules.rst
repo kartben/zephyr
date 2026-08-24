@@ -662,6 +662,14 @@ bundled component's package rather than to the module's own source package. The
 one is derived from ``url`` and ``version``. ``license`` must be a valid SPDX license
 expression, otherwise it is dropped with a warning.
 
+``license`` states the license of the component as a whole. The license and copyright
+of each individual file keep coming from the file itself, or from the ``REUSE.toml``
+of the module hosting the component. A vendored copy often carries no SPDX headers,
+in which case annotating its path in the module's ``REUSE.toml`` is what gives its
+files a license at all, and a ``bundled-components`` entry does not replace that:
+the two are complementary, since REUSE describes files while this section identifies
+the component those files belong to.
+
 
 Build system integration
 ========================
