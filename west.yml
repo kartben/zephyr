@@ -24,7 +24,21 @@ manifest:
     - name: babblesim
       url-base: https://github.com/BabbleSim
 
-  group-filter: [-babblesim, -optional, -testing]
+  group-filter:
+    - -audio
+    - -babblesim
+    - -bootloader
+    - -connectivity
+    - -crypto
+    - -debug
+    - -fs
+    - -graphics
+    - -hal
+    - -lib
+    - -optional
+    - -tee
+    - -testing
+    - -tools
 
   #
   # Please add items below based on alphabetical order
@@ -33,6 +47,8 @@ manifest:
     - name: acpica
       revision: 8d24867bc9c9d81c81eeac59391cda59333affd4
       path: modules/lib/acpica
+      groups:
+        - lib
     - name: babblesim_base
       remote: babblesim
       repo-path: base
@@ -124,9 +140,13 @@ manifest:
     - name: cmsis-dsp
       revision: 97512610ec92058f0119450b9e743eeb7e95b5c8
       path: modules/lib/cmsis-dsp
+      groups:
+        - lib
     - name: cmsis-nn
       revision: d20117c9e88cf9018d6fa06744dddac700c3e3a1
       path: modules/lib/cmsis-nn
+      groups:
+        - lib
     - name: cmsis_6
       repo-path: CMSIS_6
       revision: b2dfbe1a20bbd49c2d2c605073799671074bbb30
@@ -136,6 +156,8 @@ manifest:
     - name: dhara
       revision: 6f163ca05e174b168b4d148160b50eeaeeb561fc
       path: modules/lib/dhara
+      groups:
+        - lib
     - name: edtt
       revision: c282625e694f0b53ea53e13231ea6d2f49411768
       path: tools/edtt
@@ -296,12 +318,18 @@ manifest:
     - name: hostap
       path: modules/lib/hostap
       revision: d467a115b8fc20b8b7120937cb1d445dacebc6a1
+      groups:
+        - connectivity
     - name: liblc3
       revision: 48bbd3eacd36e99a57317a0a4867002e0b09e183
       path: modules/lib/liblc3
+      groups:
+        - audio
     - name: libmctp
       revision: b6be45dfc5c67c43c3a5e12589ae3845ea00ab5e
       path: modules/lib/libmctp
+      groups:
+        - lib
     - name: libmetal
       revision: c41f476ba425663cadf7e456b6432e4b21591278
       path: modules/hal/libmetal
@@ -310,6 +338,8 @@ manifest:
     - name: libsbc
       revision: 8e1beda02acb8972e29e6edbb423f7cafe16e445
       path: modules/lib/libsbc
+      groups:
+        - audio
     - name: littlefs
       path: modules/fs/littlefs
       groups:
@@ -318,12 +348,18 @@ manifest:
     - name: lora-basics-modem
       revision: a8ddc544043e72807cf7db532478e1dda734ae7c
       path: modules/lib/lora-basics-modem
+      groups:
+        - connectivity
     - name: loramac-node
       revision: fb00b383072518c918e2258b0916c996f2d4eebe
       path: modules/lib/loramac-node
+      groups:
+        - connectivity
     - name: lvgl
       revision: d1fe35d350a1503db2ec7fd4dfff8e0cc26eea7e
       path: modules/lib/gui/lvgl
+      groups:
+        - graphics
     - name: mbedtls
       revision: c43f34b93797e81fd0257c30004dcd0ae332ae51
       path: modules/crypto/mbedtls
@@ -347,6 +383,8 @@ manifest:
     - name: nanopb
       revision: 5499fd4c9a478f8139eeb07a82c3b4468d6067f7
       path: modules/lib/nanopb
+      groups:
+        - lib
     - name: net-tools
       revision: 2104d8a33fe104559ff5c22793247926a714985e
       path: tools/net-tools
@@ -360,12 +398,18 @@ manifest:
     - name: nrf_wifi
       revision: 0aaa9aa812877cb6bc020df8260d0607a3f0ec1a
       path: modules/lib/nrf_wifi
+      groups:
+        - connectivity
     - name: open-amp
       revision: 01032a8a7bdfdd541686f5dfa3671e602b9fcbff
       path: modules/lib/open-amp
+      groups:
+        - lib
     - name: openthread
       revision: e4d97681c53ec1cc34af1404ad2960adda4ba691
       path: modules/lib/openthread
+      groups:
+        - connectivity
     - name: percepio
       path: modules/debug/percepio
       revision: 022c06f76d3e141aad98252fa9211665bf8ca027
@@ -374,6 +418,8 @@ manifest:
     - name: picolibc
       path: modules/lib/picolibc
       revision: 01254932e8e81085817ed61fd858648584ffe37c
+      groups:
+        - lib
     - name: psa-arch-tests
       revision: 588572c0ebd835c7e0929eaf3007d4fbadb47b5b
       path: modules/tee/tf-m/psa-arch-tests
@@ -383,6 +429,8 @@ manifest:
     - name: reqmgmt
       path: doc/reqmgmt
       revision: c6803e9b4e9bf9ae7fad3c7cd85dbf35d0d09ede
+      groups:
+        - tools
     - name: segger
       revision: 50892fdbcf2f570e67baa72b8894a66b16946f72
       path: modules/debug/segger
@@ -412,12 +460,18 @@ manifest:
     - name: uoscore-uedhoc
       revision: dc0ab6345450668de3f9597320a48c5a2d409bb6
       path: modules/lib/uoscore-uedhoc
+      groups:
+        - lib
     - name: zcbor
       revision: 9164bd18dcd88ff9d9ef98279501fc1093571017
       path: modules/lib/zcbor
+      groups:
+        - lib
     - name: zephyr-xenlib
       revision: 7f0884563f865a2a223f26dd0d847fb0faad397d
       path: modules/lib/zephyr-xenlib
+      groups:
+        - lib
   # zephyr-keep-sorted-stop
 
   self:
