@@ -1,0 +1,8 @@
+# libmctp configuration
+
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+zephyr-module = LIBMCTP
+zephyr-module-str = libmctp
+source "modules/Kconfig.template.module"
