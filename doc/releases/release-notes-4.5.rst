@@ -627,6 +627,13 @@ Other notable changes
     Ubuntu 24.04 LTS package repositories. See the :ref:`migration guide <migration_4.5>` for
     options if your distribution ships an older version.
 
+  * Modules can now declare third-party code they carry a local copy of, rather than track as a
+    west manifest project of its own, in the new ``bundled-components`` section of their
+    :file:`zephyr/module.yml`. :ref:`west spdx <west-spdx>` reports each declared component as a
+    package of its own, carrying its version, license and PURL/CPE references, so that vendored
+    code is no longer invisible to license and vulnerability tooling. See :ref:`bundled components
+    <modules-bundled-components>`.
+
 * Kernel
 
   * :kconfig:option:`CONFIG_SCHED_CPU_MASK` no longer depends on
