@@ -616,7 +616,9 @@ Bundled components
 
 A module may carry a local copy of another project instead of tracking it as a west
 manifest project of its own. MCUboot, for example, keeps a copy of TinyCrypt under
-:file:`ext/tinycrypt` so that it can build outside of a Zephyr workspace.
+:file:`ext/tinycrypt` so that it can build outside of a Zephyr workspace, and LVGL
+carries copies of ThorVG, LodePNG, TJpgDec and a dozen other libraries under
+:file:`src/libs`.
 
 Such code is part of the firmware but has no manifest entry, so nothing identifies it
 in a generated :ref:`SBOM <west-spdx>`: its license obligations are attributed to the
