@@ -3,8 +3,9 @@
 # Copyright (c) 2016 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
-config ZEPHYR_MBEDTLS_MODULE
-	bool
+zephyr-module = MBEDTLS
+zephyr-module-str = mbedtls
+source "modules/Kconfig.template.module"
 
 config MBEDTLS_PROMPTLESS
 	bool

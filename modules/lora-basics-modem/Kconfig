@@ -4,8 +4,9 @@
 # Top-level configuration file for LoRa Basics Modem containing LoRa
 # transceiver drivers and LBM LoRaWAN stack
 
-config ZEPHYR_LORA_BASICS_MODEM_MODULE
-	bool
+zephyr-module = LORA_BASICS_MODEM
+zephyr-module-str = lora-basics-modem
+source "modules/Kconfig.template.module"
 
 config USE_LORA_BASICS_MODEM_DRIVERS
 	bool

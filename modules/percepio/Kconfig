@@ -6,5 +6,6 @@
 # Copyright (c) 2021 Nordic Semiconductor ASA
 # SPDX-License-Identifier: Apache-2.0
 
-config ZEPHYR_PERCEPIO_MODULE
-	bool
+zephyr-module = PERCEPIO
+zephyr-module-str = percepio
+source "modules/Kconfig.template.module"

@@ -1,8 +1,9 @@
 # Copyright (c) 2024 Nordic Semiconductor ASA
 # SPDX-License-Identifier: Apache-2.0
 
-config ZEPHYR_NRF_WIFI_MODULE
-	bool
+zephyr-module = NRF_WIFI
+zephyr-module-str = nrf_wifi
+source "modules/Kconfig.template.module"
 
 config ZVFS_OPEN_ADD_SIZE_NRF70_ENABLE_DUAL_VIF
 	int "Number of socket descriptors needed by nrf wifi driver"
