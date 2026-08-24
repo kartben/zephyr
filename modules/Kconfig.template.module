@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+# The pair of symbols every Zephyr module has. Set the two variables, then
+# source this file:
+#
+#   zephyr-module = HAL_STM32
+#   zephyr-module-str = hal_stm32
+#   source "modules/Kconfig.template.module"
+#
+# ZEPHYR_<name>_MODULE says the module is in the workspace. A feature that
+# needs the module selects ZEPHYR_<name>_MODULE_ACTIVE, and the dependency
+# between the two is what turns a module that is not there into an error
+# naming it rather than a missing header later on.
+
+config ZEPHYR_$(zephyr-module)_MODULE
+	bool
+	help
+	  The $(zephyr-module-str) module is available in the workspace.
+
+config ZEPHYR_$(zephyr-module)_MODULE_ACTIVE
+	bool
+	depends on ZEPHYR_$(zephyr-module)_MODULE
+	help
+	  This build uses the $(zephyr-module-str) module.
