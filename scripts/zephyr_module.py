@@ -145,6 +145,28 @@ properties:
         type: array
         items:
           type: string
+  bundled-components:
+    type: array
+    items:
+      type: object
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        version:
+          type: string
+        license:
+          type: string
+        url:
+          type: string
+        external-references:
+          type: array
+          items:
+            type: string
+      required:
+        - name
+        - path
   package-managers:
     type: object
     properties:
@@ -674,6 +696,10 @@ def process_meta(zephyr_base, west_projs, modules, extra_modules=None,
 
         if module.meta.get('security'):
             meta_module['security'] = module.meta.get('security')
+
+        if module.meta.get('bundled-components'):
+            meta_module['bundled-components'] = module.meta.get('bundled-components')
+
         meta_modules.append(meta_module)
 
     meta['modules'] = meta_modules
