@@ -4,3 +4,11 @@ version = 1
 path = "src/*"
 SPDX-License-Identifier = "Apache-2.0"
 SPDX-FileCopyrightText = "Copyright The Zephyr Project Contributors"
+
+# The vendored copy under ext/vendored has no license headers of its own. Its
+# license and copyright are declared here, by the module hosting it, which is a
+# common way for a module to record the licensing of code it carries a copy of.
+[[annotations]]
+path = "ext/vendored/*"
+SPDX-License-Identifier = "Apache-2.0"
+SPDX-FileCopyrightText = "Copyright (c) 2026 Example Vendor"

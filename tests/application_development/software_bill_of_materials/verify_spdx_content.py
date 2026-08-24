@@ -57,9 +57,13 @@ FILE_REUSE_TOML_C = "./src/no_header.c"
 # relative to the bundled component's own path, not to the module's.
 PKG_VENDORED_SOURCES = "sbom_used_module-vendored-sources"
 FILE_VENDORED_C = "./vendored.c"
+FILE_VENDORED_REUSE_C = "./vendored_no_header.c"
 VENDORED_VERSION = "1.2.3"
 VENDORED_SUPPLIER = "example-vendor"
 VENDORED_PURL = "pkg:github/example-vendor/vendored-lib@v1.2.3"
+# Declared for ext/vendored/* by the hosting module's REUSE.toml, not by any
+# header inside the vendored copy itself.
+COPYRIGHT_VENDORED = "Copyright (c) 2026 Example Vendor"
 
 # Common license and copyright strings as they appear in the SBOM.
 LICENSE_APACHE = "Apache-2.0"
@@ -1206,6 +1210,43 @@ class TestBundledComponents:
         assert f.spdx_id not in module_contained, (
             f"zephyr.spdx: {FILE_VENDORED_C} is attributed to {PKG_USED_MODULE_SOURCES} "
             f"instead of {PKG_VENDORED_SOURCES}"
+        )
+
+    def test_vendored_license_comes_from_module_reuse_toml(self, zephyr_doc):
+        """A vendored file with no SPDX header keeps the module's REUSE.toml license.
+
+        REUSE metadata is resolved from a project root, and a bundled component's
+        files live below the module that declares them. Rooting the lookup at the
+        component itself would lose every annotation the module makes on its behalf
+        -- which is how a vendored copy that carries no headers of its own gets
+        licensed in the first place.
+        """
+        f = find_file_by_name(zephyr_doc, FILE_VENDORED_REUSE_C)
+        assert f is not None, f"zephyr.spdx: {FILE_VENDORED_REUSE_C} not found"
+        licenses = file_license_ids(f)
+        assert any(LICENSE_APACHE in lic for lic in licenses), (
+            f"zephyr.spdx: {FILE_VENDORED_REUSE_C} license should be {LICENSE_APACHE} "
+            f"(from the module's REUSE.toml), got {licenses}"
+        )
+        assert COPYRIGHT_VENDORED in str(f.copyright_text), (
+            f"zephyr.spdx: {FILE_VENDORED_REUSE_C} copyright should come from the "
+            f"module's REUSE.toml ('{COPYRIGHT_VENDORED}'), got '{f.copyright_text}'"
+        )
+
+    def test_vendored_reuse_file_in_bundled_package(self, zephyr_doc):
+        """That file must still belong to the bundled package, not to the module."""
+        pkg = find_package_by_name(zephyr_doc, PKG_VENDORED_SOURCES)
+        assert pkg is not None, f"zephyr.spdx: '{PKG_VENDORED_SOURCES}' package not found"
+        f = find_file_by_name(zephyr_doc, FILE_VENDORED_REUSE_C)
+        assert f is not None, f"zephyr.spdx: {FILE_VENDORED_REUSE_C} not found"
+        contained = {
+            str(r.related_spdx_element_id)
+            for r in get_relationships_for_element(
+                zephyr_doc, pkg.spdx_id, RelationshipType.CONTAINS
+            )
+        }
+        assert f.spdx_id in contained, (
+            f"zephyr.spdx: {PKG_VENDORED_SOURCES} does not CONTAIN {FILE_VENDORED_REUSE_C}"
         )
 
     def test_bundled_package_files_analyzed(self, zephyr_doc):

@@ -147,6 +147,10 @@ class SBOMComponent:
         revision: Source revision, such as a git commit hash.
         url: Source repository or download URL.
         base_dir: Base directory used to calculate relative paths for owned files.
+        reuse_root: Directory to root the REUSE project at when scanning this component's files.
+            Defaults to ``base_dir``. A component nested inside another one (a bundled component
+            inside the module hosting it) points at the enclosing tree, so that REUSE.toml files
+            declared there still cover its files.
         files: Files owned by this component, keyed by absolute path.
         relationships: Relationships where this component is the source element.
         concluded_license: Concluded license expression for the component.
@@ -166,6 +170,7 @@ class SBOMComponent:
     revision: str = ""
     url: str = ""
     base_dir: str = ""
+    reuse_root: str = ""
     files: dict[str, SBOMFile] = field(default_factory=dict)
     relationships: list[SBOMRelationship] = field(default_factory=list)
     concluded_license: str = NOASSERTION

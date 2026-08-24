@@ -19,4 +19,13 @@
  */
 int sbom_vendored_value(void);
 
+/**
+ * @brief A vendored helper whose source file carries no license header.
+ *
+ * Its license and copyright come from the hosting module's REUSE.toml.
+ *
+ * @return An arbitrary value.
+ */
+int sbom_vendored_from_reuse_toml(void);
+
 #endif /* SBOM_VENDORED_H_ */

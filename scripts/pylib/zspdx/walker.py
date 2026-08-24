@@ -711,6 +711,10 @@ class Walker:
                 name=component_name,
                 purpose=ComponentPurpose.SOURCE,
                 base_dir=base_dir,
+                # a vendored copy rarely carries SPDX headers of its own, so the
+                # hosting module is often where its license is declared: keep
+                # scanning REUSE metadata from the module root
+                reuse_root=module_path,
                 comment=BUNDLED_COMMENT,
                 version=bundled.get("version", ""),
                 url=bundled.get("url", ""),

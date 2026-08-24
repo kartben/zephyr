@@ -9,5 +9,5 @@
 int sbom_used_module_answer(void)
 {
 	/* Pull the vendored library's code into the build as well. */
-	return 29 + sbom_vendored_value();
+	return 12 + sbom_vendored_value() + sbom_vendored_from_reuse_toml();
 }

@@ -11,4 +11,7 @@ zephyr_library_sources(src/no_header.c)
 # 'bundled-components' in zephyr/module.yml, so the SBOM tests can verify that
 # its source is attributed to a package of its own instead of to the module.
 zephyr_library_sources(ext/vendored/vendored.c)
+# vendored_no_header.c has no SPDX tags of its own; they come from the module's
+# REUSE.toml, which must keep applying once the file moves to the bundled package.
+zephyr_library_sources(ext/vendored/vendored_no_header.c)
 zephyr_include_directories(include ext/vendored)
