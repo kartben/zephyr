@@ -145,6 +145,53 @@ DTS_MACROS_ALL_DISABLED = DTS_MACROS.replace('status = "okay"', 'status = "disab
 SERIAL0_PATH_ID = "DT_N_S_soc_S_serial_40002000"
 
 
+# The three specifier spaces the cell diagnoses cover, on one node: a phandle-array whose
+# entries are named and whose cells come from a controller's binding, an interrupt whose
+# entries are *not* named, and a single register. The controllers carry the cell names, so
+# 'pin'/'flags' and 'irq'/'priority' are what a diagnosis has to be able to find.
+#
+# 'pwms' is a second phandle-array, with a different specifier space and cell count, so the
+# diagnoses stay pinned as working on any phandle-array rather than just on 'gpios'.
+DTS_SPECIFIERS = """
+/dts-v1/;
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	gpio0: gpio@40001000 {
+		compatible = "vnd,gpio-ctrl";
+		gpio-controller;
+		#gpio-cells = <2>;
+	};
+
+	pwm0: pwm@40003000 {
+		compatible = "vnd,pwm-ctrl";
+		#pwm-cells = <2>;
+	};
+
+	irq0: interrupt-controller@e000e100 {
+		compatible = "vnd,irq-ctrl";
+		interrupt-controller;
+		#interrupt-cells = <2>;
+	};
+
+	consumer: consumer@40002000 {
+		compatible = "vnd,specifier-consumer";
+		reg = <0x40002000 0x1000>;
+		gpios = <&gpio0 13 1>, <&gpio0 14 0>;
+		gpio-names = "red", "green";
+		pwms = <&pwm0 3 5000>;
+		interrupt-parent = <&irq0>;
+		interrupts = <5 2>;
+	};
+};
+"""
+
+# The path identifier of the node 'consumer' in DTS_SPECIFIERS
+CONSUMER_PATH_ID = "DT_N_S_consumer_40002000"
+
+
 def ord_symbol(edt: edtlib.EDT, label: str) -> str:
     """Return the __device_dts_ord_N symbol for the node with the given label."""
     return f"__device_dts_ord_{edt.label2node[label].dep_ordinal}"

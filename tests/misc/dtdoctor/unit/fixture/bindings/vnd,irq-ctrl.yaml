@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: Test interrupt controller, for the specifier cell diagnoses
+
+compatible: "vnd,irq-ctrl"
+
+interrupt-cells:
+  - irq
+  - priority
+
+properties:
+  interrupt-controller:
+    type: boolean
+    required: true
+  "#interrupt-cells":
+    type: int
+    required: true

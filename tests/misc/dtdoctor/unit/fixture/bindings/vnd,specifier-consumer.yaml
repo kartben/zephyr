@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: Test node consuming every specifier space the diagnoses cover
+
+compatible: "vnd,specifier-consumer"
+
+properties:
+  reg:
+    type: array
+  gpios:
+    type: phandle-array
+  gpio-names:
+    type: string-array
+  pwms:
+    type: phandle-array
+  interrupts:
+    type: array
+  interrupt-names:
+    type: string-array
