@@ -22,6 +22,12 @@ import re
 import subprocess
 import sys
 
+# Devicetree symbols dtdoctor_analyzer.py knows how to reverse-engineer: a device symbol,
+# either fully expanded (__device_dts_ord_<ordinal>) or with an unexpanded node identifier
+# pasted onto it, and a bare devicetree macro that leaked into the diagnostic because its
+# node identifier resolved to nothing.
+DT_SYMBOL = r"(?:__device_dts_ord_|DT_N_|DT_CHOSEN_)\w+"
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -44,14 +50,14 @@ def main() -> int:
     sys.stdout.write(proc.stdout)
     sys.stderr.write(proc.stderr)
 
-    # Extract __device_dts_ord_xxx symbols from errors and run diagnostics
+    # Extract Devicetree symbols from errors and run diagnostics
     if proc.returncode != 0 and args.edt_pickle:
         patterns = [
-            r"(__device_dts_ord_\d+).* undeclared",  # gcc (quote style depends on locale)
-            r"(__device_dts_ord_\d+).* was not declared",  # g++
-            r"undefined reference to.*(__device_dts_ord_\d+)",  # ld
-            r"use of undeclared identifier '(__device_dts_ord_\d+)'",  # LLVM/clang (ATfE)
-            r"undefined symbol: (__device_dts_ord_\d+)",  # LLVM/lld (ATfE)
+            rf"({DT_SYMBOL}).* undeclared",  # gcc (quote style depends on locale)
+            rf"({DT_SYMBOL}).* was not declared",  # g++
+            rf"undefined reference to.*?({DT_SYMBOL})",  # ld
+            rf"use of undeclared identifier '({DT_SYMBOL})'",  # LLVM/clang (ATfE)
+            rf"undefined symbol: ({DT_SYMBOL})",  # LLVM/lld (ATfE)
         ]
         symbols = {m for p in patterns for m in re.findall(p, proc.stderr)}
 
