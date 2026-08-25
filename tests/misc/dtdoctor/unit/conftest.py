@@ -101,10 +101,61 @@ DTS_ENABLED_NO_COMPAT = """
 };
 """
 
+# Everything the macro-reverse-engineering diagnoses need something real to compare against:
+# node labels, an alias, a /chosen entry, two instances of one compatible (only the first
+# enabled, so DT_INST() indexes are interesting), a node nested deep enough for its path
+# identifier to have more than one component, and properties that are set, declared but
+# unset, and of a type that gets no plain value macro ('friend').
+DTS_MACROS = """
+/dts-v1/;
+
+/ {
+	chosen {
+		vnd,console = &serial0;
+	};
+
+	aliases {
+		my-serial = &serial0;
+	};
+
+	soc {
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		serial0: serial@40002000 {
+			compatible = "vnd,rich-device";
+			current-speed = <115200>;
+			pin-names = "tx", "rx";
+			friend = <&serial1>;
+			status = "okay";
+		};
+
+		serial1: serial@40003000 {
+			compatible = "vnd,rich-device";
+			status = "disabled";
+		};
+	};
+};
+"""
+
+# Both instances of the compatible disabled, for the "none of them is enabled" note
+DTS_MACROS_ALL_DISABLED = DTS_MACROS.replace('status = "okay"', 'status = "disabled"')
+
+# The path identifier of the node 'serial0' in DTS_MACROS
+SERIAL0_PATH_ID = "DT_N_S_soc_S_serial_40002000"
+
 
 def ord_symbol(edt: edtlib.EDT, label: str) -> str:
     """Return the __device_dts_ord_N symbol for the node with the given label."""
     return f"__device_dts_ord_{edt.label2node[label].dep_ordinal}"
+
+
+def device_symbol(node_id: str) -> str:
+    """
+    Return the symbol DEVICE_DT_GET() pastes together for a node identifier that never
+    expanded, i.e. what a build error shows for DEVICE_DT_GET(DT_NODELABEL(nope)).
+    """
+    return f"__device_dts_ord_{node_id}_ORD"
 
 
 def dts_line_of(dts_path: Path, needle: str) -> int:

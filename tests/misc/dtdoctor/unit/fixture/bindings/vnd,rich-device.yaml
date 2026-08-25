@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: Test device with properties, used by the DT Doctor test suite
+
+compatible: "vnd,rich-device"
+
+properties:
+  current-speed:
+    type: int
+  pin-names:
+    type: string-array
+  friend:
+    type: phandle
+  optional-thing:
+    type: int
+    description: declared here but never set by the fixture, and with no default
