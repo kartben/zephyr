@@ -174,7 +174,7 @@ footer { margin-top: 72px; border-top: 1px solid var(--line); padding-top: 16px;
 pthread_cond_signal:         177 &rarr; 118   (-33%)
 pthread_getspecific:         378 &rarr; 319   (-16%)</div></dd>
 <dt>Correctness</dt><dd>Bit reads are single aligned word accesses (atomic on all supported architectures). Racing a destroy is UB per POSIX either way; the locked test could not detect a destroyed-and-reused slot either. Two IRQ-lock windows removed per mutex pair.</dd>
-<dt>Testing</dt><dd>twister: threads_base, semaphores, rwlocks, spinlocks, barriers on qemu_x86_64 (16/16 configs, 138/138 cases) + tests/kernel/common bitarray suite.</dd>
+<dt>Testing</dt><dd>twister: threads_base, semaphores, rwlocks, spinlocks, barriers on qemu_x86_64 (16/16 configs, 138/138 cases) + tests/kernel/common incl. the new bitarray API test (12/12 configs, 944/944 cases, native_sim + qemu_x86_64).</dd>
 <dt>Trade-offs</dt><dd>+1 small function of flash when used; API surface grows by one documented accessor.</dd>
 </dl>
 </div>
@@ -261,7 +261,7 @@ kernel mutex work per UDP send+recv round:  -11.6% (two pairs fewer)</div></dd>
 <dl class="kv">
 <dt>F8</dt><dd><code>acquire_mutex()</code> called <code>k_current_get()</code> (a syscall in userspace builds without TLS current) and loaded the mutex type before checking whether the mutex is even owned. Reordered: 241 &rarr; 229 instructions (-5%) on native; one syscall saved per uncontended lock in userspace builds.</dd>
 <dt>F9</dt><dd><code>write_lock_acquire()</code> read <code>k_uptime_get()</code> unconditionally to prorate a timeout that untimed <code>wrlock</code> and <code>trywrlock</code> never use; trylock paid a second read to compute an always-zero remainder. Both reads now happen only for finite non-zero timeouts. Validated: rwlocks suite on qemu_x86_64 (3/3 configs, 9/9 cases).</dd>
-<dt>F10</dt><dd><code>sys_clock_nanosleep()</code> re-read the clock after every completed sleep just to conclude no time remains. Using <code>k_sleep_ticks()</code>'s return removes one spinlocked 64-bit tick read per completed sleep (the common case); early-wakeup re-sleep behavior unchanged. The zero-length path measures -3%; the saved read on real sleeps is the actual win. Validated: timers + clock_selection suites on qemu_x86_64.</dd>
+<dt>F10</dt><dd><code>sys_clock_nanosleep()</code> re-read the clock after every completed sleep just to conclude no time remains. Using <code>k_sleep_ticks()</code>'s return removes one spinlocked 64-bit tick read per completed sleep (the common case); early-wakeup re-sleep behavior unchanged. The zero-length path measures -3%; the saved read on real sleeps is the actual win. Validated: timers + clock_selection suites on qemu_x86_64 (6/6 configs, 60/60 cases).</dd>
 </dl>
 </div>
 
