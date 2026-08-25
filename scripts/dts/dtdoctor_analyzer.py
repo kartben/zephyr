@@ -96,6 +96,23 @@ def format_node(node: edtlib.Node) -> str:
     return f"{node.labels[0]}: {node.path}" if node.labels else node.path
 
 
+def status_location(node: edtlib.Node) -> str:
+    prop = node._node.props.get('status')
+    return f"{prop.filename}:{prop.lineno}"
+
+
+def disabled_ancestor_lines(node: edtlib.Node) -> list[str]:
+    """One line per disabled ancestor of the node, nearest first."""
+    lines = []
+    anc = node.parent
+    while anc is not None:
+        if anc.status != "okay":
+            rel = "parent" if anc is node.parent else "ancestor"
+            lines.append(f"Its {rel} '{format_node(anc)}' is disabled in {status_location(anc)}.")
+        anc = anc.parent
+    return lines
+
+
 def as_c_token(name: str) -> str:
     """
     Spell out how a DTS name has to be written in C, when the two differ.
@@ -258,6 +275,12 @@ def handle_enabled_node(node: edtlib.Node) -> list[str]:
     """
     lines = [f"'{format_node(node)}' is enabled but no driver appears to be available for it.\n"]
 
+    # A driver alone will not help if the node sits below a disabled parent
+    ancestors = disabled_ancestor_lines(node)
+    if ancestors:
+        lines.extend(ancestors)
+        lines.append("The device cannot be used until every node above it is enabled.\n")
+
     compats = list(getattr(node, "compats", []))
     kconf = setup_kconfig() if compats else None
     if not compats:
@@ -282,8 +305,7 @@ def handle_disabled_node(node: edtlib.Node) -> list[str]:
     Handle diagnosis for a disabled DT node.
     """
     edt = node.edt
-    status_prop = node._node.props.get('status')
-    lines = [f"'{format_node(node)}' is disabled in {status_prop.filename}:{status_prop.lineno}"]
+    lines = [f"'{format_node(node)}' is disabled in {status_location(node)}"]
 
     # Show dependency
     users = getattr(node, "required_by", [])
@@ -309,7 +331,14 @@ def handle_disabled_node(node: edtlib.Node) -> list[str]:
             f"""{', '.join([f"'{ref}'" for ref in sorted(alias_refs)])}"""
         )
 
+    ancestors = disabled_ancestor_lines(node)
+    if ancestors:
+        lines.append("")
+        lines.extend(ancestors)
+
     lines.append("\nTry enabling the node by setting its 'status' property to 'okay'.")
+    if ancestors:
+        lines.append("Its disabled ancestors need to be enabled the same way.")
 
     return lines
 

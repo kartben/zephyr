@@ -27,7 +27,9 @@ What dtdoctor can diagnose
 A device that is not there
    Names the node, then reports either that it is disabled (with the file and line where
    that happens, and anything that refers to it) or that no driver is available for it,
-   along with the Kconfig options that would enable one.
+   along with the Kconfig options that would enable one. Either way, if the node sits
+   below a disabled parent, that is reported too: enabling the node or its driver alone
+   would not be enough.
 
 A node label, alias, ``chosen`` entry or path that does not exist
    Reports which one is missing, and suggests the closest ones in the Devicetree.
