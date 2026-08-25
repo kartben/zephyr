@@ -104,6 +104,17 @@ Removed APIs and options
       buffers unconditionally. Applications still setting these options can
       simply drop them.
 
+    * ``CONFIG_BT_AUTO_PHY_UPDATE``, replaced by the ``BT_AUTO_PHY_CENTRAL`` and
+      ``BT_AUTO_PHY_PERIPHERAL`` choices
+
+* Build system
+
+    * ``CONFIG_BUILD_NO_GAP_FILL``
+    * ``cmake/app/boilerplate.cmake``
+    * Board revision Kconfig fragments named ``<board>_<revision>.conf``, replaced by
+      ``<board>_<revision>_defconfig``
+    * Pattern expansion in ``zephyr_code_relocate(FILES ...)``, replaced by ``file(GLOB ...)``
+
 * Comparator
 
     * ``nxp,enable-output-pin``, ``nxp,use-unfiltered-output``, ``nxp,high-speed-mode``,
@@ -118,6 +129,17 @@ Removed APIs and options
 * LLEXT
 
     * ``llext_get_fn_table``, replaced by ``llext_get_fn_table_entry``
+
+* Mbed TLS
+
+    * ``CONFIG_MBEDTLS_MD``
+    * ``CONFIG_MBEDTLS_LMS``
+    * ``CONFIG_MBEDTLS_TLS_VERSION_1_2``
+    * ``CONFIG_MBEDTLS_DTLS``
+    * ``CONFIG_MBEDTLS_TLS_VERSION_1_3``
+    * ``CONFIG_MBEDTLS_TLS_SESSION_TICKETS``
+    * ``CONFIG_MBEDTLS_CTR_DRBG_ENABLED``
+    * ``CONFIG_MBEDTLS_HMAC_DRBG_ENABLED``
 
 * MCUboot
 
@@ -254,6 +276,13 @@ Deprecated APIs and options
 
   * All functions in the video driver API (``<zephyr/drivers/video.h>``) have moved to the video
     subsystem (``<zephyr/video/video.h>``). Application only need to rename the ``#include``.
+
+* West
+
+  * ``west spdx --init`` is deprecated. A build with
+    :kconfig:option:`CONFIG_BUILD_OUTPUT_META` now asks CMake for the file-based API that
+    ``west spdx`` reads, so the build directory no longer has to be prepared before it is
+    configured. See :ref:`west-spdx`.
 
 * Work queue
 
