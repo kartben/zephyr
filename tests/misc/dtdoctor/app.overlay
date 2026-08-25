@@ -7,7 +7,11 @@
  * dtdoctor_disabled is the target of the deliberately-failing builds in
  * e2e/test_dtdoctor.py; the chosen entry and alias below must show up in its
  * diagnosis. dtdoctor_enabled exercises the "enabled but no driver" path
- * (vnd,dtdoctor-device deliberately has no driver).
+ * (vnd,dtdoctor-device deliberately has no driver), and carries the property
+ * the "no such property" diagnosis compares against.
+ *
+ * The two nodes also give the compatible two DT_INST() instances, which is
+ * what the DT_INST()/DT_DRV_COMPAT diagnosis reports on.
  */
 / {
 	chosen {
@@ -25,6 +29,7 @@
 
 	dtdoctor_enabled: dtdoctor-enabled-device {
 		compatible = "vnd,dtdoctor-device";
+		dtdoctor-speed = <115200>;
 		status = "okay";
 	};
 };
