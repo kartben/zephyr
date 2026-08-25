@@ -12,3 +12,8 @@ properties:
   dtdoctor-optional:
     type: int
     description: declared here but never set, and with no default
+  dtdoctor-gpios:
+    type: phandle-array
+    description: specifier space for the cell diagnoses
+  gpio-names:
+    type: string-array

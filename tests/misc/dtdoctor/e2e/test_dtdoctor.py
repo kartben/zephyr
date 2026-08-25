@@ -123,19 +123,62 @@ TESTDATA_MACROS = [
         device_symbol("DT_N_INST_0_vnd_no_such_compat"),
         "No node with compatible 'vnd_no_such_compat' exists",
     ),
+    (
+        "DT_N_NODELABEL_dtdoctor_enabled_P_dtdoctor_gpios_IDX_0_VAL_pn",
+        "has no 'pn' cell in entry 0 of the 'dtdoctor-gpios' property",
+    ),
+    (
+        "DT_N_NODELABEL_dtdoctor_enabled_P_dtdoctor_gpios_IDX_4_VAL_pin",
+        "has no entry 4 in the 'dtdoctor-gpios' property: there is only 1",
+    ),
+    (
+        "DT_N_NODELABEL_dtdoctor_enabled_P_dtdoctor_gpios_NAME_blue_VAL_pin",
+        "has no entry named 'blue' in the 'dtdoctor-gpios' property",
+    ),
 ]
 
 
 @pytest.mark.parametrize(
     'symbol, expected',
     TESTDATA_MACROS,
-    ids=['nodelabel', 'alias', 'chosen', 'property', 'unset-property', 'instance', 'compatible'],
+    ids=[
+        'nodelabel',
+        'alias',
+        'chosen',
+        'property',
+        'unset-property',
+        'instance',
+        'compatible',
+        'cell',
+        'cell-index',
+        'cell-name',
+    ],
 )
 def test_analyzer_reverse_engineers_macro(edt_pickle, symbol, expected):
     proc = run_analyzer(edt_pickle, symbol)
     assert proc.returncode == 0
     assert "DT Doctor" in proc.stdout
     assert expected in proc.stdout
+
+
+def test_analyzer_names_the_cell_controller(edt_pickle):
+    # The cells come from the controller's binding, not from the node the macro names,
+    # which is the indirection the diagnosis exists to spare the user
+    proc = run_analyzer(edt_pickle, "DT_N_NODELABEL_dtdoctor_enabled_P_dtdoctor_gpios_IDX_0_VAL_pn")
+    assert proc.returncode == 0
+    assert "dtdoctor_gpio: /dtdoctor-gpio-controller" in proc.stdout
+    assert " - pin" in proc.stdout
+    assert "vnd,dtdoctor-gpio.yaml" in proc.stdout
+
+
+def test_analyzer_uses_the_specifier_space_for_names(edt_pickle):
+    # 'dtdoctor-gpios' entries are named through 'gpio-names', not 'dtdoctor-gpio-names'
+    proc = run_analyzer(
+        edt_pickle, "DT_N_NODELABEL_dtdoctor_enabled_P_dtdoctor_gpios_NAME_blue_VAL_pin"
+    )
+    assert proc.returncode == 0
+    assert "Entry names come from its 'gpio-names' property:" in proc.stdout
+    assert " - red" in proc.stdout
 
 
 def test_analyzer_suggests_a_real_nodelabel(edt_pickle):
@@ -190,13 +233,17 @@ TESTDATA_UNEXPANDED = [
         "const struct device *bad = DEVICE_DT_GET(DT_INST(5, vnd_dtdoctor_device));\n",
         "so instance 5 does not exist",
     ),
+    (
+        "int bad = DT_PHA_BY_IDX(DT_NODELABEL(dtdoctor_enabled), dtdoctor_gpios, 0, pn);\n",
+        "has no 'pn' cell in entry 0",
+    ),
 ]
 
 
 @pytest.mark.parametrize(
     'snippet, expected',
     TESTDATA_UNEXPANDED,
-    ids=['nodelabel', 'property', 'instance'],
+    ids=['nodelabel', 'property', 'instance', 'cell'],
 )
 def test_wrapper_diagnoses_unexpanded_macro(compile_cmd, edt_pickle, tmp_path, snippet, expected):
     argv, cwd, source = compile_cmd('src/main.c')
