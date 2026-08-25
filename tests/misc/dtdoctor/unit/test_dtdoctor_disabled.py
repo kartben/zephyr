@@ -6,7 +6,13 @@
 """Tests for the disabled-node diagnosis."""
 
 import dtdoctor_analyzer
-from conftest import DTS_DISABLED_FULL, DTS_DISABLED_UNREFERENCED, dts_line_of, ord_symbol
+from conftest import (
+    DTS_DISABLED_FULL,
+    DTS_DISABLED_NESTED,
+    DTS_DISABLED_UNREFERENCED,
+    dts_line_of,
+    ord_symbol,
+)
 
 
 def diagnose(edt):
@@ -44,6 +50,23 @@ def test_alias_reference_reported(make_edt):
 def test_remediation_hint(make_edt):
     edt, _ = make_edt(DTS_DISABLED_FULL)
     assert any("setting its 'status' property to 'okay'" in line for line in diagnose(edt))
+
+
+def test_disabled_parent_also_reported(make_edt):
+    edt, dts_path = make_edt(DTS_DISABLED_NESTED)
+    lines = diagnose(edt)
+    # The parent's status line is the first 'disabled' occurrence in the snippet
+    lineno = dts_line_of(dts_path, 'status = "disabled"')
+    assert (
+        f"Its parent 'disabled_parent: /parent-device' is disabled in {dts_path}:{lineno}." in lines
+    )
+    assert "Its disabled ancestors need to be enabled the same way." in lines
+
+
+def test_no_ancestor_note_when_parent_okay(make_edt):
+    edt, _ = make_edt(DTS_DISABLED_FULL)
+    lines = diagnose(edt)
+    assert not any(line.startswith(("Its parent", "Its ancestor")) for line in lines)
 
 
 def test_main_end_to_end_disabled(make_edt, make_pickle, run_analyzer):

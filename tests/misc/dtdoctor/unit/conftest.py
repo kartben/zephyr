@@ -101,6 +101,59 @@ DTS_ENABLED_NO_COMPAT = """
 };
 """
 
+# Enabled node below a disabled parent: the diagnosis must point at the parent too,
+# since edtlib only ever considers a node's own status
+DTS_ENABLED_NESTED = """
+/dts-v1/;
+
+/ {
+	disabled_parent: parent-device {
+		status = "disabled";
+
+		foo_dev: foo-device {
+			compatible = "vnd,foo-device";
+			status = "okay";
+		};
+	};
+};
+"""
+
+# Deeper nesting: only the disabled grandparent must be reported, as an "ancestor"
+DTS_ENABLED_NESTED_DEEP = """
+/dts-v1/;
+
+/ {
+	disabled_grandparent: grandparent-device {
+		status = "disabled";
+
+		okay_parent: parent-device {
+			status = "okay";
+
+			foo_dev: foo-device {
+				compatible = "vnd,foo-device";
+				status = "okay";
+			};
+		};
+	};
+};
+"""
+
+# Disabled node below a disabled parent: enabling the node alone is not enough
+DTS_DISABLED_NESTED = """
+/dts-v1/;
+
+/ {
+	disabled_parent: parent-device {
+		status = "disabled";
+
+		foo_dev: foo-device {
+			compatible = "vnd,foo-device";
+			status = "disabled";
+		};
+	};
+};
+"""
+
 # Everything the macro-reverse-engineering diagnoses need something real to compare against:
 # node labels, an alias, a /chosen entry, two instances of one compatible (only the first
 # enabled, so DT_INST() indexes are interesting), a node nested deep enough for its path

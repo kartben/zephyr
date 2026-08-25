@@ -92,6 +92,13 @@ def test_analyzer_reports_enabled_node_without_driver(edt, edt_pickle):
     assert "is enabled but no driver" in proc.stdout
 
 
+def test_analyzer_reports_disabled_parent(edt, edt_pickle):
+    proc = run_analyzer(edt_pickle, ord_symbol(edt, "dtdoctor_nested"))
+    assert proc.returncode == 0
+    assert "is enabled but no driver" in proc.stdout
+    assert "Its parent 'dtdoctor_bus: /dtdoctor-disabled-bus' is disabled in" in proc.stdout
+
+
 # Every macro shape below is one the compiler emits verbatim when its node identifier does
 # not resolve, checked here against the build's real devicetree rather than a fixture.
 TESTDATA_MACROS = [

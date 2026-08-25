@@ -17,6 +17,10 @@
  * diagnosis has to find, which live in the controller's binding rather than
  * in the consumer's. Note that 'dtdoctor-gpios' entries are named through
  * 'gpio-names': names are keyed by the specifier space, not by the property.
+ *
+ * dtdoctor_nested is enabled but sits below a disabled parent, which the
+ * diagnosis must call out. Its compatible is separate so it does not disturb
+ * the DT_INST() instance counts above.
  */
 / {
 	chosen {
@@ -44,5 +48,14 @@
 		dtdoctor-gpios = <&dtdoctor_gpio 13 1>;
 		gpio-names = "red";
 		status = "okay";
+	};
+
+	dtdoctor_bus: dtdoctor-disabled-bus {
+		status = "disabled";
+
+		dtdoctor_nested: dtdoctor-nested-device {
+			compatible = "vnd,dtdoctor-nested-device";
+			status = "okay";
+		};
 	};
 };
