@@ -101,10 +101,161 @@ DTS_ENABLED_NO_COMPAT = """
 };
 """
 
+# Enabled node below a disabled parent: the diagnosis must point at the parent too,
+# since edtlib only ever considers a node's own status
+DTS_ENABLED_NESTED = """
+/dts-v1/;
+
+/ {
+	disabled_parent: parent-device {
+		status = "disabled";
+
+		foo_dev: foo-device {
+			compatible = "vnd,foo-device";
+			status = "okay";
+		};
+	};
+};
+"""
+
+# Deeper nesting: only the disabled grandparent must be reported, as an "ancestor"
+DTS_ENABLED_NESTED_DEEP = """
+/dts-v1/;
+
+/ {
+	disabled_grandparent: grandparent-device {
+		status = "disabled";
+
+		okay_parent: parent-device {
+			status = "okay";
+
+			foo_dev: foo-device {
+				compatible = "vnd,foo-device";
+				status = "okay";
+			};
+		};
+	};
+};
+"""
+
+# Disabled node below a disabled parent: enabling the node alone is not enough
+DTS_DISABLED_NESTED = """
+/dts-v1/;
+
+/ {
+	disabled_parent: parent-device {
+		status = "disabled";
+
+		foo_dev: foo-device {
+			compatible = "vnd,foo-device";
+			status = "disabled";
+		};
+	};
+};
+"""
+
+# Everything the macro-reverse-engineering diagnoses need something real to compare against:
+# node labels, an alias, a /chosen entry, two instances of one compatible (only the first
+# enabled, so DT_INST() indexes are interesting), a node nested deep enough for its path
+# identifier to have more than one component, and properties that are set, declared but
+# unset, and of a type that gets no plain value macro ('friend').
+DTS_MACROS = """
+/dts-v1/;
+
+/ {
+	chosen {
+		vnd,console = &serial0;
+	};
+
+	aliases {
+		my-serial = &serial0;
+	};
+
+	soc {
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		serial0: serial@40002000 {
+			compatible = "vnd,rich-device";
+			current-speed = <115200>;
+			pin-names = "tx", "rx";
+			friend = <&serial1>;
+			status = "okay";
+		};
+
+		serial1: serial@40003000 {
+			compatible = "vnd,rich-device";
+			status = "disabled";
+		};
+	};
+};
+"""
+
+# Both instances of the compatible disabled, for the "none of them is enabled" note
+DTS_MACROS_ALL_DISABLED = DTS_MACROS.replace('status = "okay"', 'status = "disabled"')
+
+# The path identifier of the node 'serial0' in DTS_MACROS
+SERIAL0_PATH_ID = "DT_N_S_soc_S_serial_40002000"
+
+
+# The three specifier spaces the cell diagnoses cover, on one node: a phandle-array whose
+# entries are named and whose cells come from a controller's binding, an interrupt whose
+# entries are *not* named, and a single register. The controllers carry the cell names, so
+# 'pin'/'flags' and 'irq'/'priority' are what a diagnosis has to be able to find.
+#
+# 'pwms' is a second phandle-array, with a different specifier space and cell count, so the
+# diagnoses stay pinned as working on any phandle-array rather than just on 'gpios'.
+DTS_SPECIFIERS = """
+/dts-v1/;
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	gpio0: gpio@40001000 {
+		compatible = "vnd,gpio-ctrl";
+		gpio-controller;
+		#gpio-cells = <2>;
+	};
+
+	pwm0: pwm@40003000 {
+		compatible = "vnd,pwm-ctrl";
+		#pwm-cells = <2>;
+	};
+
+	irq0: interrupt-controller@e000e100 {
+		compatible = "vnd,irq-ctrl";
+		interrupt-controller;
+		#interrupt-cells = <2>;
+	};
+
+	consumer: consumer@40002000 {
+		compatible = "vnd,specifier-consumer";
+		reg = <0x40002000 0x1000>;
+		gpios = <&gpio0 13 1>, <&gpio0 14 0>;
+		gpio-names = "red", "green";
+		pwms = <&pwm0 3 5000>;
+		interrupt-parent = <&irq0>;
+		interrupts = <5 2>;
+	};
+};
+"""
+
+# The path identifier of the node 'consumer' in DTS_SPECIFIERS
+CONSUMER_PATH_ID = "DT_N_S_consumer_40002000"
+
 
 def ord_symbol(edt: edtlib.EDT, label: str) -> str:
     """Return the __device_dts_ord_N symbol for the node with the given label."""
     return f"__device_dts_ord_{edt.label2node[label].dep_ordinal}"
+
+
+def device_symbol(node_id: str) -> str:
+    """
+    Return the symbol DEVICE_DT_GET() pastes together for a node identifier that never
+    expanded, i.e. what a build error shows for DEVICE_DT_GET(DT_NODELABEL(nope)).
+    """
+    return f"__device_dts_ord_{node_id}_ORD"
 
 
 def dts_line_of(dts_path: Path, needle: str) -> int:

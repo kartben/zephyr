@@ -7,7 +7,20 @@
  * dtdoctor_disabled is the target of the deliberately-failing builds in
  * e2e/test_dtdoctor.py; the chosen entry and alias below must show up in its
  * diagnosis. dtdoctor_enabled exercises the "enabled but no driver" path
- * (vnd,dtdoctor-device deliberately has no driver).
+ * (vnd,dtdoctor-device deliberately has no driver), and carries the property
+ * the "no such property" diagnosis compares against.
+ *
+ * The two nodes also give the compatible two DT_INST() instances, which is
+ * what the DT_INST()/DT_DRV_COMPAT diagnosis reports on.
+ *
+ * dtdoctor_gpio carries the cells ('pin' and 'flags') that the specifier
+ * diagnosis has to find, which live in the controller's binding rather than
+ * in the consumer's. Note that 'dtdoctor-gpios' entries are named through
+ * 'gpio-names': names are keyed by the specifier space, not by the property.
+ *
+ * dtdoctor_nested is enabled but sits below a disabled parent, which the
+ * diagnosis must call out. Its compatible is separate so it does not disturb
+ * the DT_INST() instance counts above.
  */
 / {
 	chosen {
@@ -23,8 +36,26 @@
 		status = "disabled";
 	};
 
+	dtdoctor_gpio: dtdoctor-gpio-controller {
+		compatible = "vnd,dtdoctor-gpio";
+		gpio-controller;
+		#gpio-cells = <2>;
+	};
+
 	dtdoctor_enabled: dtdoctor-enabled-device {
 		compatible = "vnd,dtdoctor-device";
+		dtdoctor-speed = <115200>;
+		dtdoctor-gpios = <&dtdoctor_gpio 13 1>;
+		gpio-names = "red";
 		status = "okay";
+	};
+
+	dtdoctor_bus: dtdoctor-disabled-bus {
+		status = "disabled";
+
+		dtdoctor_nested: dtdoctor-nested-device {
+			compatible = "vnd,dtdoctor-nested-device";
+			status = "okay";
+		};
 	};
 };

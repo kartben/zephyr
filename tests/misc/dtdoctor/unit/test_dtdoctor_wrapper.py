@@ -66,6 +66,40 @@ TESTDATA_TOOLCHAIN_ERRORS = [
         "ld.lld: error: undefined symbol: __device_dts_ord_7",
         "__device_dts_ord_7",
     ),
+    # DEVICE_DT_GET() on a node identifier that never expanded pastes the whole macro onto
+    # the device symbol, so there is no ordinal to match on
+    (
+        "main.c:10:23: error: '__device_dts_ord_DT_N_NODELABEL_nope_ORD' undeclared here "
+        "(not in a function)",
+        "__device_dts_ord_DT_N_NODELABEL_nope_ORD",
+    ),
+    (
+        "main.c:(.text+0x12): undefined reference to `__device_dts_ord_DT_N_ALIAS_nope_ORD'",
+        "__device_dts_ord_DT_N_ALIAS_nope_ORD",
+    ),
+    (
+        "main.c:10:23: error: use of undeclared identifier "
+        "'__device_dts_ord_DT_N_INST_0_vnd_nope_ORD'",
+        "__device_dts_ord_DT_N_INST_0_vnd_nope_ORD",
+    ),
+    (
+        "ld.lld: error: undefined symbol: __device_dts_ord_DT_CHOSEN_vnd_nope_ORD",
+        "__device_dts_ord_DT_CHOSEN_vnd_nope_ORD",
+    ),
+    # Everything else reaches the compiler as a bare devicetree macro
+    (
+        "main.c:12:9: error: 'DT_N_S_soc_S_uart_40002000_P_nope' undeclared "
+        "(first use in this function)",
+        "DT_N_S_soc_S_uart_40002000_P_nope",
+    ),
+    (
+        "main.c:10:23: error: use of undeclared identifier 'DT_N_NODELABEL_nope_P_nope'",
+        "DT_N_NODELABEL_nope_P_nope",
+    ),
+    (
+        "main.c:10:23: error: \u2018DT_CHOSEN_vnd_nope\u2019 undeclared here (not in a function)",
+        "DT_CHOSEN_vnd_nope",
+    ),
 ]
 
 
@@ -80,6 +114,13 @@ TESTDATA_TOOLCHAIN_ERRORS = [
         'gnu-ld',
         'clang',
         'lld',
+        'gcc-unexpanded-nodelabel',
+        'gnu-ld-unexpanded-alias',
+        'clang-unexpanded-inst',
+        'lld-unexpanded-chosen',
+        'gcc-bare-property-macro',
+        'clang-bare-nodelabel-macro',
+        'gcc-bare-chosen-macro',
     ],
 )
 def test_toolchain_regex_detection(monkeypatch, stderr_line, expected_symbol):
@@ -94,6 +135,27 @@ def test_toolchain_regex_detection(monkeypatch, stderr_line, expected_symbol):
     assert cmd[0] == sys.executable
     assert cmd[1].endswith("dtdoctor_analyzer.py")
     assert cmd[2:] == ["--edt-pickle", "edt.pickle", "--symbol", expected_symbol]
+
+
+def test_device_symbol_captured_whole(monkeypatch):
+    # The linker pattern has to reach past '__device_dts_ord_' to the DT_N_ inside it, and
+    # still report the symbol the way the linker printed it
+    stderr = "main.c: undefined reference to `__device_dts_ord_DT_N_NODELABEL_nope_ORD'"
+    fake_run, calls = make_fake_run(rc=1, stderr=stderr)
+    run_wrapper(monkeypatch, ["--edt-pickle", "edt.pickle", "--", "cc"], fake_run)
+    assert [cmd[-1] for cmd in calls["analyzer"]] == ["__device_dts_ord_DT_N_NODELABEL_nope_ORD"]
+
+
+def test_unrelated_symbols_are_ignored(monkeypatch):
+    stderr = "\n".join(
+        [
+            "main.c:10:23: error: 'CONFIG_SOMETHING' undeclared here (not in a function)",
+            "main.c:11:5: error: use of undeclared identifier 'my_own_dt_helper'",
+        ]
+    )
+    fake_run, calls = make_fake_run(rc=1, stderr=stderr)
+    run_wrapper(monkeypatch, ["--edt-pickle", "edt.pickle", "--", "cc"], fake_run)
+    assert calls["analyzer"] == []
 
 
 def test_deduplication(monkeypatch):

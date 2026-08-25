@@ -4,3 +4,16 @@
 description: Fake device without a driver, used by the DT Doctor integration test
 
 compatible: "vnd,dtdoctor-device"
+
+properties:
+  dtdoctor-speed:
+    type: int
+    description: set by the fixture, for the "no such property" diagnosis
+  dtdoctor-optional:
+    type: int
+    description: declared here but never set, and with no default
+  dtdoctor-gpios:
+    type: phandle-array
+    description: specifier space for the cell diagnoses
+  gpio-names:
+    type: string-array

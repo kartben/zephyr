@@ -6,7 +6,15 @@
 """Tests for the enabled-node (no driver available) diagnosis."""
 
 import dtdoctor_analyzer
-from conftest import DTS_ENABLED, DTS_ENABLED_MULTI, DTS_ENABLED_NO_COMPAT, ord_symbol
+from conftest import (
+    DTS_ENABLED,
+    DTS_ENABLED_MULTI,
+    DTS_ENABLED_NESTED,
+    DTS_ENABLED_NESTED_DEEP,
+    DTS_ENABLED_NO_COMPAT,
+    dts_line_of,
+    ord_symbol,
+)
 
 
 def diagnose(edt, label="foo_dev"):
@@ -50,6 +58,37 @@ def test_missing_zephyr_base_handled(make_edt, monkeypatch):
     edt, _ = make_edt(DTS_ENABLED)
     lines = diagnose(edt)
     assert any("check driver Kconfig manually" in line for line in lines)
+
+
+def test_disabled_parent_reported(make_edt, kconfig_env):
+    kconfig_env("kconfig_basic")
+    edt, dts_path = make_edt(DTS_ENABLED_NESTED)
+    lines = diagnose(edt)
+    lineno = dts_line_of(dts_path, 'status = "disabled"')
+    assert (
+        f"Its parent 'disabled_parent: /parent-device' is disabled in {dts_path}:{lineno}." in lines
+    )
+    assert "The device cannot be used until every node above it is enabled.\n" in lines
+    # The Kconfig analysis still runs
+    assert " - CONFIG_DTD_SERIAL=y" in lines
+
+
+def test_disabled_grandparent_reported_as_ancestor(make_edt, kconfig_env):
+    kconfig_env("kconfig_basic")
+    edt, _ = make_edt(DTS_ENABLED_NESTED_DEEP)
+    lines = diagnose(edt)
+    assert any(
+        line.startswith("Its ancestor 'disabled_grandparent: /grandparent-device' is disabled in")
+        for line in lines
+    )
+    # The okay parent in between is not reported
+    assert not any("okay_parent" in line for line in lines)
+
+
+def test_no_ancestor_note_when_chain_okay(make_edt, kconfig_env):
+    kconfig_env("kconfig_basic")
+    edt, _ = make_edt(DTS_ENABLED)
+    assert not any("is disabled in" in line for line in diagnose(edt))
 
 
 def test_main_end_to_end_enabled(make_edt, make_pickle, run_analyzer, kconfig_env):
