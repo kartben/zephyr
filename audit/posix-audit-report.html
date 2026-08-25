@@ -1,0 +1,314 @@
+<title>Zephyr POSIX Performance Audit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root {
+  --paper: #FAFAFC;
+  --ink: #1B1C26;
+  --ink-soft: #4E5064;
+  --line: #E2E3EE;
+  --panel: #F1F1F7;
+  --violet: #5B2FBF;
+  --violet-soft: #EDE7FB;
+  --moss: #1E7A4B;
+  --moss-soft: #E4F3EA;
+  --amber: #A05A0A;
+  --amber-soft: #F8EDD9;
+  --red: #B3382F;
+  --code-bg: #EEEEF5;
+}
+:root:not([data-theme="light"]) { }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #16171E;
+    --ink: #E8E8F0;
+    --ink-soft: #A2A4BA;
+    --line: #2C2D3A;
+    --panel: #1D1E28;
+    --violet: #A585EA;
+    --violet-soft: #2A2140;
+    --moss: #5CC98F;
+    --moss-soft: #172E22;
+    --amber: #E0A45C;
+    --amber-soft: #33270F;
+    --red: #E0776E;
+    --code-bg: #22232F;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #16171E;
+  --ink: #E8E8F0;
+  --ink-soft: #A2A4BA;
+  --line: #2C2D3A;
+  --panel: #1D1E28;
+  --violet: #A585EA;
+  --violet-soft: #2A2140;
+  --moss: #5CC98F;
+  --moss-soft: #172E22;
+  --amber: #E0A45C;
+  --amber-soft: #33270F;
+  --red: #E0776E;
+  --code-bg: #22232F;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+}
+main { max-width: 900px; margin: 0 auto; padding: 48px 24px 96px; }
+header.masthead { border-bottom: 3px solid var(--violet); padding-bottom: 28px; margin-bottom: 40px; }
+.eyebrow {
+  font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--violet); margin: 0 0 10px;
+}
+h1 { font-size: 40px; line-height: 1.12; font-weight: 700; margin: 0 0 14px; text-wrap: balance; letter-spacing: -0.015em; }
+.standfirst { font-size: 18px; color: var(--ink-soft); max-width: 62ch; margin: 0 0 18px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 24px; font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--ink-soft); }
+.meta b { color: var(--ink); font-weight: 600; }
+h2 { font-size: 25px; margin: 56px 0 8px; letter-spacing: -0.01em; text-wrap: balance; }
+h2 .secno { color: var(--violet); font-family: "IBM Plex Mono", monospace; font-size: 19px; margin-right: 10px; }
+h3 { font-size: 18px; margin: 34px 0 6px; }
+p { max-width: 72ch; }
+.lead { color: var(--ink-soft); margin-top: 0; }
+code, .mono { font-family: "IBM Plex Mono", monospace; font-size: .875em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+pre { background: var(--code-bg); padding: 14px 16px; border-radius: 6px; overflow-x: auto; font-size: 13px; line-height: 1.55; }
+pre code { background: none; padding: 0; }
+.tablewrap { overflow-x: auto; margin: 18px 0 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th {
+  text-align: left; font-family: "IBM Plex Mono", monospace; font-size: 11.5px;
+  text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft);
+  border-bottom: 2px solid var(--line); padding: 8px 12px 6px; white-space: nowrap;
+}
+td { border-bottom: 1px solid var(--line); padding: 8px 12px; vertical-align: top; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: "IBM Plex Mono", monospace; font-size: 13px; white-space: nowrap; }
+.delta-good { color: var(--moss); font-weight: 600; }
+.delta-bad { color: var(--red); font-weight: 600; }
+.chip {
+  display: inline-block; font-family: "IBM Plex Mono", monospace; font-size: 11.5px;
+  padding: 1px 8px; border-radius: 999px; white-space: nowrap;
+}
+.chip.landed { background: var(--moss-soft); color: var(--moss); }
+.chip.deferred { background: var(--amber-soft); color: var(--amber); }
+.chip.bug { background: var(--violet-soft); color: var(--violet); }
+.finding {
+  border: 1px solid var(--line); border-radius: 8px; padding: 22px 24px 10px;
+  margin: 26px 0; background: var(--panel);
+}
+.finding h3 { margin: 0 0 4px; font-size: 17px; }
+.finding .branch { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--violet); margin-bottom: 12px; }
+.kv { display: grid; grid-template-columns: 130px 1fr; gap: 4px 16px; font-size: 14.5px; margin: 10px 0; }
+.kv dt { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-soft); padding-top: 3px; }
+.kv dd { margin: 0; max-width: 68ch; }
+.kv dd p { margin: 0 0 8px; }
+.measure {
+  font-family: "IBM Plex Mono", monospace; font-size: 13px; background: var(--code-bg);
+  border-radius: 6px; padding: 10px 14px; margin: 8px 0; overflow-x: auto; white-space: pre;
+  line-height: 1.6;
+}
+.note {
+  border-left: 3px solid var(--violet); background: var(--violet-soft);
+  padding: 12px 16px; border-radius: 0 6px 6px 0; margin: 20px 0; font-size: 14.5px; max-width: 74ch;
+}
+.note.warn { border-left-color: var(--amber); background: var(--amber-soft); }
+ul { padding-left: 22px; max-width: 74ch; }
+li { margin: 4px 0; }
+a { color: var(--violet); }
+footer { margin-top: 72px; border-top: 1px solid var(--line); padding-top: 16px; font-size: 13px; color: var(--ink-soft); font-family: "IBM Plex Mono", monospace; }
+@media (max-width: 640px) { .kv { grid-template-columns: 1fr; } h1 { font-size: 31px; } }
+</style>
+
+<main>
+<header class="masthead">
+  <p class="eyebrow">Performance audit &middot; upstream Zephyr</p>
+  <h1>Zephyr POSIX Performance Audit</h1>
+  <p class="standfirst">A measured pass over the POSIX compatibility layer — pthread primitives, the fd table, eventfd, poll/select, and the BSD socket hot paths — with ten fixes implemented, benchmarked, validated, and staged one per branch.</p>
+  <div class="meta">
+    <span>base <b>8dafb9a89</b> (main)</span>
+    <span>date <b>2026-08-25</b></span>
+    <span>method <b>callgrind instruction counts, native_sim/native/64</b></span>
+    <span>validation <b>twister: native_sim + qemu_x86_64</b></span>
+  </div>
+</header>
+
+<h2><span class="secno">01</span>Method</h2>
+<p class="lead">Deterministic instruction counts instead of noisy wall-clock timing.</p>
+<p>A dedicated benchmark application exercises 32 hot paths (mutex/sem/cond ops, clock reads, eventfd, fd read/write dispatch, <code>poll()</code> at 1/4/16/32 descriptors, UDP/TCP loopback send+receive, mqueue, nanosleep) through Zephyr's own POSIX implementation — built with minimal libc so the host glibc is not accidentally measured, with fd/socket paths entering through the <code>zvfs_*</code>/<code>zsock_*</code> symbols that the POSIX wrappers alias. Each phase brackets a 500–2000-iteration loop with callgrind client requests, giving exact per-phase dumps; per-function <em>inclusive instruction counts divided by iteration count</em> are the reported metric. Callgrind counts are deterministic, so deltas of a few instructions are real, not noise; they model CPU cost, not memory-hierarchy or wall-clock effects.</p>
+<p>Reference points from the baseline: <code>k_mutex</code> lock+unlock costs 194 instructions, POSIX <code>sem_wait</code>+<code>sem_post</code> only 15 more than raw <code>k_sem</code> (a wrapper done right), while <code>pthread_mutex</code> lock+unlock cost 455 — 261 instructions of compatibility-layer overhead. That gap is what this audit attacks.</p>
+
+<h2><span class="secno">02</span>Landed fixes</h2>
+<p class="lead">Ten branches, each one fix, each benchmarked before/after on identical builds and validated with the relevant twister suites on native_sim/native/64 and qemu_x86_64.</p>
+<div class="tablewrap"><table>
+<thead><tr><th>#</th><th>Branch</th><th>Hot path</th><th class="num">Before</th><th class="num">After</th><th class="num">&Delta;</th></tr></thead>
+<tbody>
+<tr><td>1</td><td class="mono">posix-lockfree-obj-validation</td><td>pthread_mutex lock+unlock, uncontended</td><td class="num">455</td><td class="num">337</td><td class="num delta-good">-26%</td></tr>
+<tr><td></td><td></td><td>pthread_cond_signal, no waiter</td><td class="num">177</td><td class="num">118</td><td class="num delta-good">-33%</td></tr>
+<tr><td>2</td><td class="mono">posix-once-fast-path</td><td>pthread_once, already initialized</td><td class="num">244</td><td class="num">21</td><td class="num delta-good">-91%</td></tr>
+<tr><td>3</td><td class="mono">zvfs-eventfd-drop-fd-scans</td><td>zvfs_eventfd_read / _write</td><td class="num">496&thinsp;/&thinsp;494</td><td class="num">430&thinsp;/&thinsp;430</td><td class="num delta-good">-13%</td></tr>
+<tr><td>4</td><td class="mono">zvfs-eventfd-skip-redundant-raise</td><td>read() dispatch on eventfd</td><td class="num">452</td><td class="num">392</td><td class="num delta-good">-13%</td></tr>
+<tr><td>5</td><td class="mono">net-sockets-skip-recv-rereg</td><td>zsock_sendto_ctx, UDP 32&nbsp;B</td><td class="num">9955</td><td class="num">9523</td><td class="num delta-good">-4.3%</td></tr>
+<tr><td>6</td><td class="mono">net-sockets-lockfree-timeo</td><td>zsock_sendto_ctx, UDP 32&nbsp;B</td><td class="num">9955</td><td class="num">9559</td><td class="num delta-good">-4.0%</td></tr>
+<tr><td>7</td><td class="mono">net-context-o1-conn-context</td><td>RX path, per delivered datagram</td><td class="num">864</td><td class="num">854</td><td class="num delta-good">-1.2%</td></tr>
+<tr><td>8</td><td class="mono">posix-mutex-fast-path</td><td>pthread_mutex_lock, uncontended</td><td class="num">241</td><td class="num">229</td><td class="num delta-good">-5%</td></tr>
+<tr><td>9</td><td class="mono">posix-rwlock-lazy-uptime</td><td>pthread_rwlock_wrlock / trywrlock</td><td class="num" colspan="2">1–2 clock reads removed</td><td class="num delta-good">&nbsp;</td></tr>
+<tr><td>10</td><td class="mono">clock-nanosleep-fewer-reads</td><td>nanosleep, zero-length</td><td class="num">454</td><td class="num">440</td><td class="num delta-good">-3%</td></tr>
+</tbody>
+</table></div>
+<p>All ten stack cleanly: an integration build carrying every branch measures <b>325</b> instructions for the pthread_mutex pair (was 455, <span class="delta-good">-29%</span>), <b>370</b> for a blocking-capable eventfd read (was 496, <span class="delta-good">-25%</span>), and <b>-6.8%</b> on the UDP send path — while <code>poll()</code>, TCP, and mqueue paths are bit-identical to baseline, confirming no cross-talk.</p>
+
+<h2><span class="secno">03</span>Findings in detail</h2>
+
+<div class="finding">
+<h3>F1 — Every pthread object operation took a spinlock just to validate a handle</h3>
+<p class="branch">posix-lockfree-obj-validation &middot; lib/utils/bitarray.c, subsys/portability/posix/options/{mutex,cond,rwlock,spinlock,barrier,key}.c</p>
+<dl class="kv">
+<dt>Path</dt><dd><code>pthread_mutex_lock() &rarr; to_posix_mutex() &rarr; get_posix_mutex() &rarr; sys_bitarray_test_bit()</code> — and the same shape for cond, rwlock, spinlock, barrier and key objects, on <em>every</em> operation.</dd>
+<dt>Why slow</dt><dd>Handles are pool indices; each op re-validates the allocation bit through <code>sys_bitarray_test_bit()</code>, which takes and releases the bitarray spinlock (IRQ mask/restore on UP, atomic RMW + barriers on SMP) plus a divide/modulo — around 50 instructions to read one bit of one aligned word. The lock adds no safety: the result is stale on return, and the only misuse it detects is undefined behavior per POSIX anyway. Measured at 103 of the 455-instruction mutex pair.</dd>
+<dt>Fix</dt><dd>New <code>sys_bitarray_test_bit_nolock()</code> — same bounds checks, single aligned word read, documented staleness contract — used by the six POSIX validation sites. Allocation/free/mutation keep full locking. Unit test extended to cover the new API (in-range, out-of-range).</dd>
+<dt>Measured</dt><dd><div class="measure">pthread_mutex lock+unlock:   455 &rarr; 337   (-26%; wrapper overhead 261 &rarr; 143, -45%)
+pthread_cond_signal:         177 &rarr; 118   (-33%)
+pthread_getspecific:         378 &rarr; 319   (-16%)</div></dd>
+<dt>Correctness</dt><dd>Bit reads are single aligned word accesses (atomic on all supported architectures). Racing a destroy is UB per POSIX either way; the locked test could not detect a destroyed-and-reused slot either. Two IRQ-lock windows removed per mutex pair.</dd>
+<dt>Testing</dt><dd>twister: threads_base, semaphores, rwlocks, spinlocks, barriers on qemu_x86_64 (16/16 configs, 138/138 cases) + tests/kernel/common bitarray suite.</dd>
+<dt>Trade-offs</dt><dd>+1 small function of flash when used; API surface grows by one documented accessor.</dd>
+</dl>
+</div>
+
+<div class="finding">
+<h3>F2 — pthread_once serialized on the global pool lock forever</h3>
+<p class="branch">posix-once-fast-path &middot; subsys/portability/posix/options/pthread.c</p>
+<dl class="kv">
+<dt>Why slow</dt><dd>Every call — for the life of the program — took <code>pthread_pool_lock</code> to read one boolean that can never return to false. Lazy-init guards in library code pay this per call, and contend with unrelated pthread operations.</dd>
+<dt>Fix</dt><dd>Return immediately when the flag is already observed set; the slow path is unchanged.</dd>
+<dt>Measured</dt><dd><div class="measure">pthread_once (hot):   244 &rarr; 21   (-91%)</div></dd>
+<dt>Correctness</dt><dd>Identical to the locked path, including its pre-existing quirk: the flag is set <em>before</em> <code>init_func()</code> runs, so a concurrent caller could already return before init completes (see bug B1 below). The fast path neither fixes nor worsens that.</dd>
+<dt>Testing</dt><dd>twister threads_base on qemu_x86_64 (3/3 configs, 108/108 cases).</dd>
+</dl>
+</div>
+
+<div class="finding">
+<h3>F3 — eventfd rebuilt its fd from the object with O(open fds) scans, once under a spinlock</h3>
+<p class="branch">zvfs-eventfd-drop-fd-scans &middot; lib/os/zvfs/zvfs_eventfd.c</p>
+<dl class="kv">
+<dt>Path</dt><dd><code>zvfs_eventfd_read(fd) &rarr; zvfs_get_fd_obj() &rarr; zvfs_get_obj_lock_and_cond(obj) &rarr; linear fdtable scan</code>; blocking ops repeated the scan inside <code>k_spin_lock(&amp;efd-&gt;lock)</code> — an O(N) walk with interrupts masked.</dd>
+<dt>Why slow</dt><dd>The reverse obj&rarr;fd scan recovered the per-fd lock/condvar the caller effectively already had. Cost scales with fd number and table size (<code>ZVFS_OPEN_SIZE</code> is 40+ in Wi-Fi builds, and wpa_supplicant's event loop is eventfd-based).</dd>
+<dt>Fix</dt><dd>Implement the existing <code>ZFD_IOCTL_SET_LOCK</code> ioctl (the socket layer's mechanism) to cache the fd-entry mutex at creation, and embed the blocking-wait condvar in <code>struct zvfs_eventfd</code>. All three scans gone; the #99234 hold-the-mutex-exactly-once protocol is preserved.</dd>
+<dt>Measured</dt><dd><div class="measure">zvfs_eventfd_read:    496 &rarr; 430   (-13% at fd 4; scan was O(fd))
+zvfs_eventfd_write:   494 &rarr; 430   (-13%)</div></dd>
+<dt>Testing</dt><dd>twister eventfd + socket poll/select suites, native_sim + qemu_x86_64 (6/6 configs, 54/54 cases).</dd>
+<dt>Trade-offs</dt><dd>+1 pointer and one <code>k_condvar</code> (~12–24 B) per eventfd instance.</dd>
+</dl>
+</div>
+
+<div class="finding">
+<h3>F4 — eventfd re-raised already-signaled poll signals on every operation</h3>
+<p class="branch">zvfs-eventfd-skip-redundant-raise &middot; lib/os/zvfs/zvfs_eventfd.c</p>
+<dl class="kv">
+<dt>Why slow</dt><dd>Each read raised <code>write_sig</code> and each write raised <code>read_sig</code> unconditionally. The signal is usually already set, so <code>k_poll_signal_raise()</code> took the kernel-global poll spinlock to store a value that was already there and walk an empty list.</dd>
+<dt>Fix</dt><dd>Skip the raise when the signal is signaled <em>and</em> its wait queue is empty. Safe because signals are only mutated under <code>efd-&gt;lock</code> and k_poll never registers a waiter on an already-met condition — while signaled, the queue can only shrink. The list-non-empty case still raises (k_poll_signal_raise wakes exactly one waiter per call, so serial wakes for multiple pollers are preserved).</dd>
+<dt>Measured</dt><dd><div class="measure">read() on eventfd:      452 &rarr; 392   (-13%)
+zvfs_eventfd_read:      496 &rarr; 436   (-12%)
+needed-raise side:      +3 instructions for the check</div></dd>
+<dt>Testing</dt><dd>twister eventfd + socket poll/select suites, native_sim + qemu_x86_64 (6/6 configs, 54/54 cases).</dd>
+</dl>
+</div>
+
+<div class="finding">
+<h3>F5 — Every UDP/TCP send re-registered the receive callback</h3>
+<p class="branch">net-sockets-skip-recv-rereg &middot; subsys/net/lib/sockets/sockets_inet.c</p>
+<dl class="kv">
+<dt>Path</dt><dd><code>zsock_sendto_ctx() &rarr; net_context_recv() &rarr; recv_dgram() &rarr; bind_default() + net_conn_update()</code>, per datagram: a context mutex pair, a zeroed sockaddr_storage on stack, callback rewrite, and two sockaddr memcpys into the connection table.</dd>
+<dt>Why slow</dt><dd>Registration only matters for the first send on an unbound socket; bind()/connect()/accept() re-register themselves. Every subsequent send repeated a ~500-instruction no-op. (<code>zsock_sendmsg_ctx()</code> never did this — evidence it is not fundamental.)</dd>
+<dt>Fix</dt><dd>Skip when <code>zsock_received_cb</code> is registered and a connection handler exists. Offloaded contexts never set <code>conn_handler</code>, keeping their per-send behavior. Does not reintroduce the #70020 unregister/re-register race — the update is skipped only when it would write identical values.</dd>
+<dt>Measured</dt><dd><div class="measure">zsock_sendto_ctx (UDP 32 B):   9955 &rarr; 9523   (-4.3%)
+net_context_recv per send:      431 &rarr; 0
+k_mutex ops per send+recv round: one pair fewer</div></dd>
+<dt>Testing</dt><dd>twister tests/net/socket/udp + tcp on native_sim (14/14 configs, 624/624 cases).</dd>
+</dl>
+</div>
+
+<div class="finding">
+<h3>F6 — Send/receive timeouts fetched through a mutex-guarded 25-case switch</h3>
+<p class="branch">net-sockets-lockfree-timeo &middot; subsys/net/lib/sockets/sockets_inet.c</p>
+<dl class="kv">
+<dt>Why slow</dt><dd>Every blocking send and recv called <code>net_context_get_option()</code> — context mutex lock/unlock plus an option switch — to load one <code>k_timeout_t</code>. The per-socket fd mutex already serializes these paths against <code>setsockopt()</code>, so the inner lock protected nothing for socket users.</dd>
+<dt>Fix</dt><dd>Small static helpers read <code>ctx-&gt;options.sndtimeo/rcvtimeo</code> directly (K_FOREVER when the option is compiled out). getsockopt/setsockopt and external net_context users keep the locked accessor.</dd>
+<dt>Measured</dt><dd><div class="measure">zsock_sendto_ctx (UDP 32 B):   9955 &rarr; 9559   (-4.0%)
+kernel mutex work per UDP send+recv round:  -11.6% (two pairs fewer)</div></dd>
+<dt>Testing</dt><dd>twister tests/net/socket/udp + tcp + misc on native_sim (18/18 configs, 672/672 cases).</dd>
+</dl>
+</div>
+
+<div class="finding">
+<h3>F7 — Every received datagram scanned the whole context table</h3>
+<p class="branch">net-context-o1-conn-context &middot; subsys/net/ip/net_context.c</p>
+<dl class="kv">
+<dt>Why slow</dt><dd><code>net_context_packet_received()</code> resolved conn&rarr;context with <code>find_context()</code>, a linear scan of <code>contexts[]</code> comparing handler pointers, per delivered UDP/RAW packet — although <code>conn-&gt;context</code> has stored the answer since registration.</dd>
+<dt>Fix</dt><dd>Use <code>conn-&gt;context</code> with the same validity checks the scan performed (in-use, still the current handler).</dd>
+<dt>Measured</dt><dd><div class="measure">per delivered datagram: 864 &rarr; 854 (-1.2% at default NET_MAX_CONTEXTS=6)</div>Honest framing: small at the default table size; the point is the RX fast path no longer scales with <code>CONFIG_NET_MAX_CONTEXTS</code>.</dd>
+<dt>Testing</dt><dd>twister tests/net/context + socket/udp + socket/tcp on native_sim (15/15 configs, 639/639 cases).</dd>
+</dl>
+</div>
+
+<div class="finding">
+<h3>F8–F10 — Small provable wins: mutex fast path, rwlock clock read, nanosleep clock read</h3>
+<p class="branch">posix-mutex-fast-path &middot; posix-rwlock-lazy-uptime &middot; clock-nanosleep-fewer-reads</p>
+<dl class="kv">
+<dt>F8</dt><dd><code>acquire_mutex()</code> called <code>k_current_get()</code> (a syscall in userspace builds without TLS current) and loaded the mutex type before checking whether the mutex is even owned. Reordered: 241 &rarr; 229 instructions (-5%) on native; one syscall saved per uncontended lock in userspace builds.</dd>
+<dt>F9</dt><dd><code>write_lock_acquire()</code> read <code>k_uptime_get()</code> unconditionally to prorate a timeout that untimed <code>wrlock</code> and <code>trywrlock</code> never use; trylock paid a second read to compute an always-zero remainder. Both reads now happen only for finite non-zero timeouts. Validated: rwlocks suite on qemu_x86_64 (3/3 configs, 9/9 cases).</dd>
+<dt>F10</dt><dd><code>sys_clock_nanosleep()</code> re-read the clock after every completed sleep just to conclude no time remains. Using <code>k_sleep_ticks()</code>'s return removes one spinlocked 64-bit tick read per completed sleep (the common case); early-wakeup re-sleep behavior unchanged. The zero-length path measures -3%; the saved read on real sleeps is the actual win. Validated: timers + clock_selection suites on qemu_x86_64.</dd>
+</dl>
+</div>
+
+<h2><span class="secno">04</span>Bugs found along the way</h2>
+<p class="lead">Not performance issues — correctness problems the audit surfaced. Reported here rather than silently patched, since each needs a maintainer conversation.</p>
+<ul>
+<li><span class="chip bug">B1</span>&nbsp; <b>pthread_once can return before init completes.</b> The flag is set <em>before</em> <code>init_func()</code> runs (outside the lock), so a second thread calling <code>pthread_once()</code> concurrently returns immediately while the initializer is still executing — POSIX requires init to have completed. A proper fix needs a wait mechanism (tri-state flag), not just locking.</li>
+<li><span class="chip bug">B2</span>&nbsp; <b>pthread_key_delete leaves dangling nodes in other threads' key lists.</b> It frees each <code>pthread_key_data</code> (linked into both the key's dlist and the owning thread's slist) without unlinking from the thread lists — the next <code>pthread_getspecific()</code> on any key by an affected thread walks freed memory. Fix requires storing the owning thread in the entry so delete can unlink, and it constrains any future lock-free getspecific design.</li>
+<li><span class="chip bug">B3</span>&nbsp; <b>poll() on a drained, at-EOF TCP socket blocks the full timeout.</b> EOF/error state is only reported by the POLL_UPDATE pass; no k_poll event captures it. A socket that hit EOF before <code>poll()</code> was called (recv queue drained, cancellation already consumed) waits the entire timeout before update reports <code>POLLIN|POLLHUP</code>. Prepare should return <code>-EALREADY</code> when <code>sock_is_eof()/sock_is_error()</code> — which would also unlock the poll timeout fast-path below.</li>
+</ul>
+
+<h2><span class="secno">05</span>Investigated and not patched</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Candidate</th><th>Verdict</th><th>Why</th></tr></thead>
+<tbody>
+<tr><td>Skip poll()'s per-fd update pass on pure timeout (would halve <code>poll(fds,&nbsp;n,&nbsp;0)</code> with nothing ready: 1040&rarr;~500 for 1 fd, 13&thinsp;745&rarr;~7&thinsp;000 for 16)</td><td><span class="chip deferred">deferred</span></td><td>Unsound today: sockets report EOF/error state in UPDATE that no k_poll event captures (see B3); skipping would hide POLLHUP. Requires backends to guarantee EALREADY-at-prepare for update-only state first.</td></tr>
+<tr><td>Cache (obj, vtable, lock) between poll prepare/update passes</td><td><span class="chip deferred">rejected</span></td><td>POLLNVAL semantics require revalidation each pass, which costs the same as the lookup being cached (~40 instr); the real per-fd cost is the two mutex pairs (388 instr), which guard the close-vs-poll protocol and cannot be dropped.</td></tr>
+<tr><td>TCP small-send double copy (payload copied to send queue, then re-copied per segment)</td><td><span class="chip deferred">deferred</span></td><td>Deliberate design for RFC-correct retransmission (tcp.c comments); a shared/refcounted net_buf scheme is a substantial, risky refactor — the largest remaining TX win (~2 allocations + 2 copies per segment).</td></tr>
+<tr><td>UDP recvfrom re-parses IP+transport headers to rebuild the source sockaddr</td><td><span class="chip deferred">deferred</span></td><td>Fix needs a per-packet sockaddr stash (~28 B RAM per net_pkt, today conditional on offload) — a real footprint trade-off to take to maintainers.</td></tr>
+<tr><td>pthread_getspecific O(1) redesign (global sem pair is 210 of 378 instr)</td><td><span class="chip deferred">deferred</span></td><td>Lock-free reads conflict with fixing B2 properly (delete must unlink from thread lists, making them multi-writer). Needs a per-thread array or generation scheme; RAM trade-off scales with THREADS_MAX &times; KEYS_MAX.</td></tr>
+<tr><td>Timed waits triple-convert timeouts (abs ns &rarr; rel ms &rarr; ticks) with ~1 ms early-fire truncation</td><td><span class="chip deferred">deferred</span></td><td>Worth doing — also a conformance issue ("shall not return before abstime") — but touches five wait paths and rounding semantics; needs its own careful series.</td></tr>
+<tr><td>mq_send/mq_receive copy the full mq_msgsize slot regardless of message length</td><td><span class="chip deferred">not verified</span></td><td>Fix requires storing per-message lengths (message format change); measured mq path (1085 instr/round trip) is not an outlier. Survey also flagged a possible caller-buffer over-read worth an upstream look.</td></tr>
+<tr><td>CONFIG_NET_SOCKETS_OBJ_CORE: global mutex + O(sockets) scan per send/recv</td><td><span class="chip deferred">deferred</span></td><td>Off by default; fix (cache stats pointer at creation, atomic add) is straightforward but benefits only that opt-in config.</td></tr>
+<tr><td>clock_gettime(CLOCK_REALTIME) pays two spinlocked reads (188 vs 115 for MONOTONIC)</td><td><span class="chip deferred">deferred</span></td><td>Needs a seqlock-style offset read or combined accessor; modest win, kernel-clock surgery.</td></tr>
+<tr><td>pthread_rwlock rdlock costs 3 kernel sem ops + validation (vs 1 CAS in typical designs)</td><td><span class="chip deferred">deferred</span></td><td>Full acquisition-algorithm redesign; must preserve fairness and timed paths.</td></tr>
+<tr><td>Userspace poll/select verifiers heap-allocate up to 4&times; per call</td><td><span class="chip deferred">deferred</span></td><td>Real win for userspace builds (heap lock + fragmentation per call); needs bounded stack buffers with careful caps on caller-controlled sizes.</td></tr>
+<tr><td>inet_pton/inet_ntop, htons family, barrier signal chain, sigmask lock, getaddrinfo duplicate port-set</td><td><span class="chip deferred">rejected</span></td><td>Measured or inspected as cheap, cold, or already macro-level; not worth patches.</td></tr>
+</tbody>
+</table></div>
+
+<h2><span class="secno">06</span>Highest-value remaining opportunities</h2>
+<ul>
+<li><b>poll() timeout fast path enabled by an EOF/error-aware prepare</b> (fixes B3, then legally skips the N&times;(lookup + mutex pair + 2 ioctls) update pass on quiet timeouts — the single biggest multiplexing win; busy-poll loops would roughly halve in cost).</li>
+<li><b>TCP send single-copy scheme</b> — refcount-share the send-queue net_bufs into wire segments for the no-retransmit case; eliminates one allocation and one full payload copy per segment.</li>
+<li><b>Direct (non-variadic) poll prepare/update vtable ops</b> — the two <code>va_list</code> ioctl dispatches cost ~250 instr of the 1069-instruction single-fd poll; optional typed function pointers in <code>fd_op_vtable</code> would remove them compatibly.</li>
+<li><b>Absolute-timeout direct-to-ticks conversion</b> across pthread/sem/mq timed waits — one conversion instead of three, and removes the sub-millisecond early-wake conformance defect.</li>
+<li><b>pthread_getspecific redesign</b> paired with the B2 fix — the two must be designed together.</li>
+</ul>
+
+<h2><span class="secno">07</span>Reproduction</h2>
+<pre><code># benchmark app: scratchpad/posixbench (out-of-tree Zephyr app)
+cmake -B build -GNinja -DBOARD=native_sim/native/64 posixbench   # host toolchain, minimal libc
+ninja -C build
+valgrind --tool=callgrind --callgrind-out-file=cg.out build/zephyr/zephyr.exe > bench.log
+# per-phase dumps cg.out.N are tagged by callgrind client requests;
+# metric = inclusive Ir of the target function / iterations (extract_cg.py)</code></pre>
+<p>Each fix branch contains exactly one commit with its measurements in the message. Branches are based on <code>main</code> @ <code>8dafb9a89</code> and merge cleanly together (verified in an integration build that reproduces all per-fix numbers simultaneously).</p>
+
+<footer>Zephyr POSIX performance audit &middot; callgrind/native_sim methodology &middot; ten fixes, one per branch</footer>
+</main>
