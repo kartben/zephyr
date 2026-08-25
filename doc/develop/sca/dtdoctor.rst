@@ -40,6 +40,13 @@ An instance that does not exist
    Reports how many instances of the compatible the build has and which of them are
    enabled, or, when nothing declares that compatible at all, suggests the closest ones.
 
+A bad index, name or cell in a specifier
+   Covers any ``phandle-array`` property (``gpios``, ``pwms``, ``clocks``, ``dmas`` and
+   the rest), as well as ``interrupts`` and ``reg``. Names the controller the entry points
+   at and lists the cells it defines together with this node's values, or lists the entries
+   that do exist. Cell names come from the controller's binding rather than from the node
+   using it, which is what makes these awkward to track down by hand.
+
 Devicetree names are written differently in C than in DTS: lowercased, with ``-``, ``,``,
 ``.``, ``@``, ``/`` and ``+`` all becoming ``_``. ``dtdoctor`` spells out both forms
 whenever the two differ. See :ref:`dt-use-the-right-names`.

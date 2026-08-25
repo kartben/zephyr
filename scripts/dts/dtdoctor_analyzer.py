@@ -53,6 +53,15 @@ ALT_ID_PREFIXES = ("DT_N_NODELABEL_", "DT_N_ALIAS_", "DT_N_INST_", "DT_CHOSEN_")
 # which is how a name gets recovered from a macro that has no generated counterpart.
 NODE_ID_SUFFIX_RE = re.compile(r"_[A-Z].*$")
 
+# A specifier accessor: an entry of a phandle-array, 'interrupts' or 'reg' picked by index
+# or by name, and optionally a cell within it. Relies on the same upper/lower case split as
+# NODE_ID_SUFFIX_RE, which is what keeps '_VAL_' from being read as part of a name.
+SPECIFIER_RE = re.compile(
+    r"^_(?:IDX_(?P<idx>\d+)|NAME_(?P<name>[a-z0-9_]+))"
+    r"(?:_VAL_(?P<cell>[a-z0-9_]+))?"
+    r"(?:_(?P<extra>[A-Z][A-Z0-9_]*))?$"
+)
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -497,6 +506,144 @@ def handle_unresolved_node_id(edt: edtlib.EDT, macro: str) -> list[str]:
     return []
 
 
+def cell_lines(entry) -> list[str]:
+    """
+    List the cells a specifier entry defines, with the values it gives them.
+    """
+    cells = getattr(entry, "data", None) or {}
+    width = max((len(cell) for cell in cells), default=0)
+    return [f" - {cell.ljust(width)}   (currently {value})" for cell, value in cells.items()]
+
+
+def entry_lines(entries: list) -> list[str]:
+    """
+    List the entries of a specifier, saying whatever identifies each one.
+    """
+    lines = []
+    for i, entry in enumerate(entries):
+        controller = getattr(entry, "controller", None)
+        name = getattr(entry, "name", None)
+        described = [format_node(controller) if controller else ""]
+        # Registers have no controller, so their address is what tells them apart
+        if getattr(entry, "addr", None) is not None:
+            described.append(f"at {hex(entry.addr)}")
+        if name:
+            described.append(f"named '{name}'")
+        lines.append("   ".join([f" - index {i}", *filter(None, described)]))
+
+    return lines
+
+
+def handle_bad_cell(subject: str, space: str, entry, index: int, cell: str) -> list[str]:
+    """
+    Handle diagnosis for a cell the specifier entry's controller does not define.
+    """
+    controller = getattr(entry, "controller", None)
+    controlled_by = (
+        f"Entry {index} is controlled by '{format_node(controller)}', which defines"
+        if controller
+        else f"Entry {index} defines"
+    )
+    lines = [
+        f"'{subject}' has no '{cell}' cell in entry {index} of {space}.\n",
+        f"{controlled_by} these cells:\n",
+        *cell_lines(entry),
+        "",
+        *suggestion_lines(close_matches(cell, getattr(entry, "data", None) or {})),
+    ]
+
+    if controller and controller.binding_path:
+        lines.append(
+            "Cell names come from the controller's binding, not this node's. See its\n"
+            "'*-cells:' list in\n"
+            f"{controller.binding_path}"
+        )
+
+    return lines
+
+
+def handle_bad_entry_index(subject: str, space: str, entries: list, index: int) -> list[str]:
+    """
+    Handle diagnosis for a specifier index past the end of the property.
+    """
+    count = len(entries)
+    return [
+        f"'{subject}' has no entry {index} in {space}: "
+        + (f"there is only {count}.\n" if count == 1 else f"there are only {count}.\n"),
+        *entry_lines(entries),
+    ]
+
+
+def handle_bad_entry_name(
+    subject: str, space: str, entries: list, name: str, names_prop: str
+) -> list[str]:
+    """
+    Handle diagnosis for a specifier name the property does not have.
+    """
+    names = [entry.name for entry in entries if getattr(entry, "name", None)]
+
+    if not names:
+        return [
+            f"'{subject}' does not name the entries of {space}, so '{name}' cannot be\n"
+            "looked up.\n",
+            f"Entry names come from {'an' if names_prop[0] in 'aeiou' else 'a'} "
+            f"'{names_prop}' property on this node. Add one, or\n"
+            "select the entry by index instead.\n",
+            *entry_lines(entries),
+        ]
+
+    return [
+        f"'{subject}' has no entry named '{name}' in {space}.\n",
+        *suggestion_lines(close_matches(name, names)),
+        f"Entry names come from its '{names_prop}' property:\n",
+        *(f" - {n}" for n in names),
+    ]
+
+
+def handle_specifier(
+    subject: str, space: str, entries: list, suffix: str, names_prop: str
+) -> list[str] | None:
+    """
+    Handle diagnosis for a specifier accessor: DT_PHA_BY_IDX(), DT_IRQ_BY_NAME(),
+    DT_REG_ADDR_BY_IDX() and everything built on them.
+
+    All three specifier spaces reduce to a list of entries selected by index or by name,
+    each defining a set of cells, so one handler explains all of them. Returns None when
+    the suffix is not a specifier accessor, leaving the caller's own diagnosis in place.
+    """
+    m = SPECIFIER_RE.match(suffix)
+    if not m or not entries:
+        return None
+
+    if m["idx"] is not None:
+        index = int(m["idx"])
+        if index >= len(entries):
+            return handle_bad_entry_index(subject, space, entries, index)
+    else:
+        index = next(
+            (i for i, e in enumerate(entries) if getattr(e, "name", None) == m["name"]), None
+        )
+        if index is None:
+            return handle_bad_entry_name(subject, space, entries, m["name"], names_prop)
+
+    entry = entries[index]
+
+    # A phandle-array can hold null specifiers, written '<0>', which have no controller
+    if entry is None:
+        return [
+            f"Entry {index} of {space} on '{subject}' is a null specifier, written\n"
+            "'<0>' in the devicetree, so it has no controller and no cells.\n",
+            "Point the entry at a real controller, or guard the access with\n"
+            "DT_PHA_HAS_CELL_AT_IDX().",
+        ]
+
+    if m["cell"]:
+        return handle_bad_cell(subject, space, entry, index, m["cell"])
+
+    # The entry is there and no cell was asked for, so nothing here explains the failure
+    return None
+
+
 def handle_property_macro(node: edtlib.Node, prop_name: str, suffix: str) -> list[str]:
     """
     Handle diagnosis for a property that is there, but not in the shape the devicetree API
@@ -516,6 +663,18 @@ def handle_property_macro(node: edtlib.Node, prop_name: str, suffix: str) -> lis
             "Read it with the API meant for its type instead, e.g. DT_PROP_BY_IDX(),\n"
             "DT_PROP_LEN(), DT_PHANDLE_BY_IDX() or DT_PHA_BY_IDX().",
         ]
+
+    # A phandle-array is a specifier space, so the suffix may be selecting an entry or a
+    # cell within one rather than asking for something the property simply does not have
+    if prop.spec.type == "phandle-array":
+        # Names are keyed by the specifier space rather than by the property name, so
+        # 'cs-gpios' entries are named through 'gpio-names', not 'cs-gpio-names'
+        base = next((e.basename for e in prop.val if e is not None), prop_name.removesuffix("s"))
+        lines = handle_specifier(
+            format_node(node), f"the '{prop_name}' property", prop.val, suffix, f"{base}-names"
+        )
+        if lines:
+            return lines
 
     prop_macro = f"DT_{gen_defines.node_z_path_id(node)}_P_{gen_defines.str2ident(prop_name)}"
 
@@ -581,11 +740,37 @@ def handle_missing_property(node: edtlib.Node, prop_id: str) -> list[str]:
     return lines
 
 
+# The specifier spaces that hang off a node rather than off one of its properties
+NODE_SPECIFIERS = {
+    "_IRQ": ("interrupts", "its interrupts", "interrupts", "interrupt-names"),
+    "_REG": ("regs", "its registers", "reg", "reg-names"),
+}
+
+
 def handle_unknown_node_macro(node: edtlib.Node, macro: str, suffix: str) -> list[str]:
     """
     Handle diagnosis for a node that exists but for which the requested macro was not
     generated, e.g. an out-of-range index into a property, register or interrupt.
     """
+    for prefix, (attr, space, prop_name, names_prop) in NODE_SPECIFIERS.items():
+        if not suffix.startswith(prefix):
+            continue
+
+        entries = getattr(node, attr)
+        if not entries:
+            return [
+                f"'{format_node(node)}' has no '{prop_name}' property, so '{macro}' was\n"
+                "not generated for it.\n",
+                f"Give the node a '{prop_name}' property in a devicetree overlay, or guard\n"
+                "the access with DT_NODE_HAS_PROP().",
+            ]
+
+        lines = handle_specifier(
+            format_node(node), space, entries, suffix[len(prefix) :], names_prop
+        )
+        if lines:
+            return lines
+
     return [
         f"'{format_node(node)}' exists, but '{macro}' was not generated for it.\n",
         f"The devicetree API asked for '{suffix.lstrip('_')}' on this node, and nothing in the",
