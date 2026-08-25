@@ -327,7 +327,10 @@ looks like this:
 
    int baud_rate = DT_PROP(DT_NODELABEL(my_serial), current_speed);
 
-Try checking the node by adding this to the file and recompiling:
+Building with :ref:`DT Doctor <dtdoctor>` enabled will name the node identifier or property
+that is missing, and suggest the closest ones in your devicetree.
+
+Otherwise, try checking the node by adding this to the file and recompiling:
 
 .. code-block:: c
 
@@ -369,3 +372,7 @@ Errors with DT_INST_() APIs
 If you're using an API like :c:func:`DT_INST_PROP`, you must define
 ``DT_DRV_COMPAT`` to the lowercase-and-underscores version of the compatible
 you are interested in. See :ref:`dt-create-devices-inst`.
+
+Building with :ref:`DT Doctor <dtdoctor>` enabled will report how many instances of the
+compatible your build has and which of them are enabled, or tell you that nothing in the
+devicetree declares that compatible at all.
