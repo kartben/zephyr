@@ -1497,6 +1497,11 @@ static size_t zsock_recv_stream_immediate(struct net_context *ctx, uint8_t **buf
 				pkt = k_fifo_get(&ctx->recv_q, K_NO_WAIT);
 				if (net_pkt_eof(pkt)) {
 					sock_set_eof(ctx);
+					/* Wake any concurrent poller so EOF is
+					 * reported without waiting out its
+					 * timeout.
+					 */
+					k_fifo_cancel_wait(&ctx->recv_q);
 				}
 
 				if (IS_ENABLED(CONFIG_NET_PKT_RXTIME_STATS) ||
@@ -1815,7 +1820,14 @@ static int zsock_poll_prepare_ctx(struct net_context *ctx,
 		return -EALREADY;
 	}
 
-	return 0;
+	/* The update pass is optional for this backend: it has no side
+	 * effects, and everything it reports either existed at prepare time
+	 * (reported via -EALREADY above) or wakes one of the k_poll objects
+	 * registered above when it appears (data arrival and accept via
+	 * recv_q, EOF/error via recv_q cancellation, TCP writability and
+	 * teardown via the tx/connect semaphores).
+	 */
+	return ZFD_POLL_PREPARE_UPDATE_OPTIONAL;
 }
 
 static int zsock_poll_update_ctx(struct net_context *ctx,
