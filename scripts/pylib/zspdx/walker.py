@@ -15,6 +15,7 @@ from zspdx.cmakecache import parse_cmake_cache_file
 from zspdx.cmakefileapi import TargetType
 from zspdx.cmakefileapijson import parse_reply, parse_toolchains_and_info
 from zspdx.getincludes import get_c_includes
+from zspdx.licenses import LICENSES
 from zspdx.model import (
     BuildInfo,
     ComponentPurpose,
@@ -26,6 +27,7 @@ from zspdx.model import (
     SBOMFile,
     SBOMGraph,
 )
+from zspdx.scanner import split_expression
 
 _logger = logging.getLogger(__name__)
 
@@ -56,6 +58,13 @@ DEPS_COMMENT = (
 ZEPHYR_DEPS_COMMENT = (
     "Reference-only package for the Zephyr RTOS itself, the common dependency "
     "shared by every module dependency package; it carries no files."
+)
+BUNDLED_COMMENT = (
+    "Bundled component package: third-party code vendored inside a Zephyr "
+    "module rather than tracked as its own west manifest project, declared by "
+    "the module in the 'bundled-components' section of its zephyr/module.yml. "
+    "Files under its path are attributed here instead of to the enclosing "
+    "module's source package."
 )
 
 # Matches a git repository URL of the form '<protocol><host>/<namespace>/<package>',
@@ -140,6 +149,7 @@ class Walker:
         self.component_sdk = None
         self.component_build_targets = {}  # target_name -> SBOMComponent
         self.component_zephyr_modules = {}  # module_name -> SBOMComponent
+        self.component_bundled = {}  # component_name -> SBOMComponent
         self.component_modules_deps = {}  # module_name -> SBOMComponent
 
         # Document references for easy access
@@ -530,7 +540,7 @@ class Walker:
         self.component_app = component
 
     def setup_zephyr_component(self, zephyr, modules):
-        """Set up zephyr sources component and module components."""
+        """Set up zephyr sources component, module components and bundled components."""
         # relativeBaseDir is Zephyr sources topdir
         try:
             relative_base_dir = west_topdir(self.cm.paths_source)
@@ -619,7 +629,119 @@ class Walker:
             self.doc_zephyr.add_described_component(module_component)
             self.component_zephyr_modules[module_name] = module_component
 
+            self.setup_bundled_components(module, module_component)
+
         return True
+
+    def _bundled_declared_license(self, expression, component_name):
+        """Validate a declared license expression from module metadata.
+
+        Only expressions built exclusively from known SPDX license identifiers are
+        emitted; anything else would produce an SPDX document referring to an
+        undeclared license, so it is dropped with a warning and the package is left
+        unasserted.
+        """
+        unknown = [lic for lic in split_expression(expression) if lic not in LICENSES]
+        if unknown:
+            _logger.warning(
+                f"bundled component {component_name} declares license expression "
+                f"'{expression}' with unknown SPDX license identifier(s) "
+                f"{', '.join(unknown)}; leaving the declared license unasserted"
+            )
+            return None
+        return expression
+
+    def setup_bundled_components(self, module, module_component):
+        """Set up source components for third-party code vendored inside a module.
+
+        Modules may carry a local copy of an upstream project that is not tracked as
+        a west manifest project of its own (for instance MCUboot's copy of TinyCrypt
+        under 'ext/tinycrypt'). Without a package of its own such code is
+        indistinguishable from the module's own sources, so its license obligations
+        and its identity for vulnerability matching are lost. Modules declare these
+        components in the 'bundled-components' section of their zephyr/module.yml;
+        each declaration becomes a package that owns the files under its path (the
+        deepest base_dir wins in find_owning_component) and that the enclosing
+        module CONTAINS.
+        """
+        bundled_components = module.get("bundled-components") or []
+        if not bundled_components:
+            return
+
+        module_name = module.get("name")
+        module_path = module.get("path")
+        if not module_path:
+            _logger.error(
+                f"module {module_name} declares bundled components but has no path; skipping them"
+            )
+            return
+
+        module_path = os.path.normpath(module_path)
+
+        for bundled in bundled_components:
+            name = bundled.get("name")
+            path = bundled.get("path")
+            if not name or not path:
+                _logger.error(
+                    f"module {module_name} declares a bundled component without a "
+                    "name or a path; skipping it"
+                )
+                continue
+
+            component_name = f"{module_name}-{name}-sources"
+            if component_name in self.component_bundled:
+                _logger.error(
+                    f"module {module_name} declares bundled component {name} more "
+                    "than once; skipping the duplicate"
+                )
+                continue
+
+            base_dir = os.path.normpath(os.path.join(module_path, path))
+            if base_dir == module_path or not self._is_within(base_dir, module_path):
+                _logger.error(
+                    f"bundled component {name} of module {module_name} has path "
+                    f"'{path}', which is not a subdirectory of the module; skipping it"
+                )
+                continue
+            if not os.path.isdir(base_dir):
+                _logger.warning(
+                    f"bundled component {name} of module {module_name} has path "
+                    f"'{path}', which does not exist; skipping it"
+                )
+                continue
+
+            component = SBOMComponent(
+                name=component_name,
+                purpose=ComponentPurpose.SOURCE,
+                base_dir=base_dir,
+                # a vendored copy rarely carries SPDX headers of its own, so the
+                # hosting module is often where its license is declared: keep
+                # scanning REUSE metadata from the module root
+                reuse_root=module_path,
+                comment=BUNDLED_COMMENT,
+                version=bundled.get("version", ""),
+                url=bundled.get("url", ""),
+            )
+
+            declared_license = bundled.get("license")
+            if declared_license:
+                validated = self._bundled_declared_license(declared_license, component_name)
+                if validated:
+                    component.declared_license = validated
+
+            # curated references (CPE/purl) take precedence; the upstream URL then
+            # fills in a supplier and a version-pinned purl when none was provided
+            for ref in bundled.get("external-references", []):
+                component.add_external_reference(ref)
+            self._apply_scm_identity(component, component.url, component.version)
+
+            self.sbom_graph.add_component(component, "zephyr")
+            self.component_bundled[component_name] = component
+
+            # the module's checked-out sources contain this vendored copy
+            self.pending_relationships.append(
+                ("component", module_component.name, "component", component_name, "CONTAINS")
+            )
 
     def setup_sdk_component(self):
         """Set up SDK sources component."""
@@ -1053,14 +1175,16 @@ class Walker:
         ):
             return self.component_sdk
 
-        # Check app sources, zephyr sources and module sources together,
-        # preferring the deepest (most specific) matching base_dir. A module can
-        # be nested under the application's source directory or under the zephyr
-        # west topdir, so an ordered check that returned the app (or the
-        # top-level zephyr) component first would misattribute a module's files.
-        # Selecting the deepest base_dir instead assigns each file to its true
-        # owner.
+        # Check app sources, zephyr sources, module sources and the components
+        # modules bundle together, preferring the deepest (most specific) matching
+        # base_dir. A module can be nested under the application's source directory
+        # or under the zephyr west topdir, and a bundled component always lives
+        # inside its module, so an ordered check that returned the app (or the
+        # top-level zephyr, or the enclosing module) component first would
+        # misattribute files. Selecting the deepest base_dir instead assigns each
+        # file to its true owner.
         candidates = list(self.component_zephyr_modules.values())
+        candidates.extend(self.component_bundled.values())
         if self.component_zephyr:
             candidates.append(self.component_zephyr)
         if self.component_app:

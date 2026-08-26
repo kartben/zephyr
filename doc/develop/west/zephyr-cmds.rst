@@ -147,6 +147,12 @@ JSON-LD format:
 - ``modules-deps``: BOM for modules dependencies. Check :ref:`modules
   <modules-vulnerability-monitoring>` for more details.
 
+The ``zephyr`` document holds one source package per module. A module that carries a
+local copy of another project, rather than tracking it as a west manifest project of
+its own, can declare it as a :ref:`bundled component <modules-bundled-components>`; each
+declared component then gets a source package of its own, related to the hosting module
+by a ``CONTAINS`` relationship, and owns the files that live under its path.
+
 For SPDX 3.0, every document declares conformance to the Core, Software and Simple Licensing
 profiles, and :file:`build.jsonld` additionally declares the :ref:`Build profile
 <west-spdx-build-profile>` that captures how the artifacts were produced.

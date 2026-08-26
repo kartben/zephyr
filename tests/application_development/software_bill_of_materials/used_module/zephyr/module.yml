@@ -2,3 +2,12 @@ name: sbom_used_module
 
 build:
   cmake: ./
+
+bundled-components:
+  - name: vendored
+    path: ext/vendored
+    version: "1.2.3"
+    url: https://github.com/example-vendor/vendored-lib
+    license: Apache-2.0
+    external-references:
+      - pkg:github/example-vendor/vendored-lib@v1.2.3

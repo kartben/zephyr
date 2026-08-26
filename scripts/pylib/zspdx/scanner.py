@@ -167,17 +167,19 @@ def scan_sbom_graph(cfg, sbom_graph):
     for component in sbom_graph.components.values():
         _logger.info("scanning files in component %s", component.name)
 
-        # build the REUSE project once per component, rooted at the
-        # component's own base_dir so that REUSE.toml files are found, and
-        # reuse it for all of its files. Skip components that own no files.
+        # build the REUSE project once per component and reuse it for all of its
+        # files. REUSE.toml files are looked up from the project root downwards, so
+        # a component nested inside another one roots the project at the enclosing
+        # tree (reuse_root) instead of its own base_dir: otherwise a REUSE.toml the
+        # hosting module declares for the nested path would go unseen. Skip
+        # components that own no files.
         reuse_project = None
-        if component.files and component.base_dir:
+        reuse_root = component.reuse_root or component.base_dir
+        if component.files and reuse_root:
             try:
-                reuse_project = Project.from_directory(str(component.base_dir))
+                reuse_project = Project.from_directory(str(reuse_root))
             except Exception:
-                _logger.warning(
-                    "Error building REUSE project for %s", component.base_dir, exc_info=True
-                )
+                _logger.warning("Error building REUSE project for %s", reuse_root, exc_info=True)
 
         # first, gather File data for this component
         for f in component.files.values():

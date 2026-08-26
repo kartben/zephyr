@@ -609,6 +609,67 @@ A real life example for Mbed TLS module could look like this:
    PURL field must follow the PURL specification provided by `Github
    <https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst>`_.
 
+.. _modules-bundled-components:
+
+Bundled components
+==================
+
+A module may carry a local copy of another project instead of tracking it as a west
+manifest project of its own. MCUboot, for example, keeps a copy of TinyCrypt under
+:file:`ext/tinycrypt` so that it can build outside of a Zephyr workspace, and LVGL
+carries copies of ThorVG, LodePNG, TJpgDec and a dozen other libraries under
+:file:`src/libs`.
+
+Such code is part of the firmware but has no manifest entry, so nothing identifies it
+in a generated :ref:`SBOM <west-spdx>`: its license obligations are attributed to the
+hosting module, and vulnerability scanners have no package to match against the NVD,
+OSV, or GitHub Advisory databases.
+
+Declare these copies in the ``bundled-components`` section of the module description
+file so that :ref:`west spdx <west-spdx>` reports each of them as a package of its own,
+which the hosting module ``CONTAINS``:
+
+.. code-block:: yaml
+
+   bundled-components:
+     - name: <component-name>
+       path: <path-relative-to-the-module-root>
+       version: <upstream-version>
+       license: <SPDX-license-expression>
+       url: <upstream-repository-url>
+       external-references:
+         - <component-related-cpe>
+         - <component-related-purl>
+
+Only ``name`` and ``path`` are required; ``path`` must point to a directory inside the
+module. A real life example for MCUboot's copy of TinyCrypt could look like this:
+
+.. code-block:: yaml
+
+   bundled-components:
+     - name: tinycrypt
+       path: ext/tinycrypt
+       version: "0.2.8"
+       license: BSD-3-Clause
+       url: https://github.com/intel/tinycrypt
+       external-references:
+         - pkg:github/intel/tinycrypt@v0.2.8
+
+Every source file under ``path`` that takes part in the build is attributed to the
+bundled component's package rather than to the module's own source package. The
+``external-references`` field follows the same rules as in the
+:ref:`security <modules-vulnerability-monitoring>` section; when it declares no PURL,
+one is derived from ``url`` and ``version``. ``license`` must be a valid SPDX license
+expression, otherwise it is dropped with a warning.
+
+``license`` states the license of the component as a whole. The license and copyright
+of each individual file keep coming from the file itself, or from the ``REUSE.toml``
+of the module hosting the component. A vendored copy often carries no SPDX headers,
+in which case annotating its path in the module's ``REUSE.toml`` is what gives its
+files a license at all, and a ``bundled-components`` entry does not replace that:
+the two are complementary, since REUSE describes files while this section identifies
+the component those files belong to.
+
 
 Build system integration
 ========================
