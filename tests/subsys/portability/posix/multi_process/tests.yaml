@@ -13,6 +13,9 @@ common:
   min_ram: 32
 tests:
   portability.posix.muti_process: {}
+  portability.posix.muti_process.no_runtime_stats:
+    extra_configs:
+      - CONFIG_THREAD_RUNTIME_STATS=n
   portability.posix.muti_process.minimal:
     extra_configs:
       - CONFIG_MINIMAL_LIBC=y

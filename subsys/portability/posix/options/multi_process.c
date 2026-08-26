@@ -41,9 +41,18 @@ FUNC_ALIAS(getpid, _getpid, pid_t);
 
 clock_t times(struct tms *buffer)
 {
-	int ret;
 	clock_t rtime;
-	clock_t utime; /* user time */
+	clock_t utime = 0; /* user time */
+
+	/*
+	 * The runtime statistics behind tms_utime are only collected when
+	 * CONFIG_SCHED_THREAD_USAGE is enabled, which adds accounting to every context switch.
+	 * Applications that do not need them turn CONFIG_THREAD_RUNTIME_STATS off and get a
+	 * tms_utime of zero, alongside the tms_stime, tms_cutime and tms_cstime that Zephyr
+	 * already reports as zero. The return value, elapsed real time, is unaffected.
+	 */
+#ifdef CONFIG_SCHED_THREAD_USAGE
+	int ret;
 	k_thread_runtime_stats_t stats;
 
 	ret = k_thread_runtime_stats_all_get(&stats);
@@ -56,6 +65,7 @@ clock_t times(struct tms *buffer)
 				 IS_ENABLED(CONFIG_TIMER_READS_ITS_FREQUENCY_AT_RUNTIME) ? false
 											 : true,
 				 sizeof(clock_t) == sizeof(uint32_t), false, false);
+#endif /* CONFIG_SCHED_THREAD_USAGE */
 
 	/*
 	 * POSIX requires the return value to be the elapsed real time since an arbitrary,

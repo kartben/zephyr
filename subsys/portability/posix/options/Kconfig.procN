@@ -4,13 +4,18 @@
 
 menuconfig POSIX_MULTI_PROCESS
 	bool "POSIX multi-process support"
-	select SCHED_THREAD_USAGE # times()
-	select THREAD_RUNTIME_STATS
+	imply THREAD_RUNTIME_STATS # times()
 	help
 	  Support for multi-processing.
 
 	  Note: Currently Zephyr does not support multiple processes and therefore much of this option
 	  group is not implemented and is considered undefined behaviour.
+
+	  times() reports consumed CPU time in tms_utime, which requires THREAD_RUNTIME_STATS (and
+	  the SCHED_THREAD_USAGE it enables by default) to account for every context switch.
+	  Applications that do not read that field may turn THREAD_RUNTIME_STATS off and avoid that
+	  cost; times() then reports tms_utime as zero, like the other struct tms fields, and its
+	  return value, the elapsed real time, is unaffected.
 
 	  For more information, please see
 	  https://pubs.opengroup.org/onlinepubs/9699919799/xrat/V4_subprofiles.html
