@@ -1458,16 +1458,12 @@ class ZephyrDomain(Domain):
         return tree
 
 
-class CustomDoxygenGroupDirective(DoxygenGroupDirective):
-    """Monkey patch for Breathe's DoxygenGroupDirective."""
+class ZephyrDoxygenGroupDirective(DoxygenGroupDirective):
+    """zephyr.doxybridge's doxygengroup, extended with a related code samples listing."""
 
-    def run(self) -> list[Node]:
-        nodes = super().run()
-
-        if self.config.zephyr_breathe_insert_related_samples:
-            return [*nodes, RelatedCodeSamplesNode(id=self.arguments[0])]
-        else:
-            return nodes
+    def run(self) -> list[nodes.Node]:
+        group_nodes = super().run()
+        return [*group_nodes, RelatedCodeSamplesNode(id=self.arguments[0])]
 
 
 def compute_sample_categories_hierarchy(app: Sphinx, env: BuildEnvironment) -> None:
@@ -1532,7 +1528,6 @@ def load_board_catalog_into_domain(app: Sphinx) -> None:
 
 
 def setup(app):
-    app.add_config_value("zephyr_breathe_insert_related_samples", False, "env")
     app.add_config_value("zephyr_generate_hw_features", False, "env")
     app.add_config_value("zephyr_hw_features_vendor_filter", [], "env", types=[list[str]])
     app.add_config_value("zephyr_hw_features_twister_extra_flags", [], "env", types=[list[str]])
@@ -1556,8 +1551,7 @@ def setup(app):
     app.connect("html-page-context", install_static_assets_as_needed)
     app.connect("env-updated", compute_sample_categories_hierarchy)
 
-    # monkey-patching of the DoxygenGroupDirective
-    app.add_directive("doxygengroup", CustomDoxygenGroupDirective, override=True)
+    app.add_directive("doxygengroup", ZephyrDoxygenGroupDirective, override=True)
 
     return {
         "version": __version__,
