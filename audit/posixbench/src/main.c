@@ -124,6 +124,17 @@ static void bench_sync(void)
 	});
 	sem_destroy(&psem);
 
+	check(sem_init(&psem, 0, 1) == 0, "sem_init2");
+	BENCH("sem_timedwait_available", ITERS, {
+		struct timespec abst;
+
+		clock_gettime(CLOCK_REALTIME, &abst);
+		abst.tv_sec += 1;
+		check(sem_timedwait(&psem, &abst) == 0, "sem_timedwait");
+		sem_post(&psem);
+	});
+	sem_destroy(&psem);
+
 	k_sem_init(&ksem, 1, 1);
 	BENCH("k_sem_take_give", ITERS, {
 		k_sem_take(&ksem, K_FOREVER);
@@ -310,9 +321,14 @@ static void bench_tcp(void)
 	memset(buf, 0x5a, sizeof(buf));
 
 	BENCH("tcp_send_recv_128B", NET_ITERS, {
-		check(zsock_send(cli, buf, 128, 0) == 128, "tcpsend128");
-		int got = 0;
+		int sent = 0, got = 0;
 
+		while (sent < 128) {
+			int r = zsock_send(cli, buf + sent, 128 - sent, 0);
+
+			check(r > 0, "tcpsend128");
+			sent += r;
+		}
 		while (got < 128) {
 			int r = zsock_recv(acc, buf, sizeof(buf), 0);
 
@@ -322,9 +338,14 @@ static void bench_tcp(void)
 	});
 
 	BENCH("tcp_send_recv_1024B", NET_ITERS, {
-		check(zsock_send(cli, buf, 1024, 0) == 1024, "tcpsend1k");
-		int got = 0;
+		int sent = 0, got = 0;
 
+		while (sent < 1024) {
+			int r = zsock_send(cli, buf + sent, 1024 - sent, 0);
+
+			check(r > 0, "tcpsend1k");
+			sent += r;
+		}
 		while (got < 1024) {
 			int r = zsock_recv(acc, buf, sizeof(buf), 0);
 

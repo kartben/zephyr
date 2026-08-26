@@ -270,19 +270,19 @@ kernel mutex work per UDP send+recv round:  -11.6% (two pairs fewer)</div></dd>
 <ul>
 <li><span class="chip bug">B1</span>&nbsp; <b>pthread_once can return before init completes.</b> The flag is set <em>before</em> <code>init_func()</code> runs (outside the lock), so a second thread calling <code>pthread_once()</code> concurrently returns immediately while the initializer is still executing — POSIX requires init to have completed. A proper fix needs a wait mechanism (tri-state flag), not just locking.</li>
 <li><span class="chip bug">B2</span>&nbsp; <b>pthread_key_delete leaves dangling nodes in other threads' key lists.</b> It frees each <code>pthread_key_data</code> (linked into both the key's dlist and the owning thread's slist) without unlinking from the thread lists — the next <code>pthread_getspecific()</code> on any key by an affected thread walks freed memory. Fix requires storing the owning thread in the entry so delete can unlink, and it constrains any future lock-free getspecific design.</li>
-<li><span class="chip bug">B3</span>&nbsp; <b>poll() on a drained, at-EOF TCP socket blocks the full timeout.</b> EOF/error state is only reported by the POLL_UPDATE pass; no k_poll event captures it. A socket that hit EOF before <code>poll()</code> was called (recv queue drained, cancellation already consumed) waits the entire timeout before update reports <code>POLLIN|POLLHUP</code>. Prepare should return <code>-EALREADY</code> when <code>sock_is_eof()/sock_is_error()</code> — which would also unlock the poll timeout fast-path below.</li>
+<li><span class="chip bug">B3</span>&nbsp; <b>Withdrawn.</b> An earlier revision of this report claimed poll() on a drained at-EOF TCP socket blocks the full timeout. That was wrong — <code>zsock_poll_prepare_ctx()</code> already returns <code>-EALREADY</code> for EOF/error sockets (the claim came from a truncated read of the function). The behaviour now has explicit regression coverage (<code>test_poll_eof_no_wait</code>, branch <code>zvfs-poll-timeout-fastpath</code>), and native sockets being "prepare-complete" is what makes the poll timeout fast path viable.</li>
 </ul>
 
 <h2><span class="secno">05</span>Investigated and not patched</h2>
 <div class="tablewrap"><table>
 <thead><tr><th>Candidate</th><th>Verdict</th><th>Why</th></tr></thead>
 <tbody>
-<tr><td>Skip poll()'s per-fd update pass on pure timeout (would halve <code>poll(fds,&nbsp;n,&nbsp;0)</code> with nothing ready: 1040&rarr;~500 for 1 fd, 13&thinsp;745&rarr;~7&thinsp;000 for 16)</td><td><span class="chip deferred">deferred</span></td><td>Unsound today: sockets report EOF/error state in UPDATE that no k_poll event captures (see B3); skipping would hide POLLHUP. Requires backends to guarantee EALREADY-at-prepare for update-only state first.</td></tr>
+<tr><td>Skip poll()'s per-fd update pass on pure timeout</td><td><span class="chip landed">landed (round 2)</span></td><td>Implemented via per-backend opt-in (<code>ZFD_POLL_PREPARE_UPDATE_OPTIONAL</code>) after a full audit of every POLL_UPDATE backend showed a blanket skip is unsound (nsos deregisters in UPDATE; TLS/QUIC/modem report update-only state). See finding R2-1 below.</td></tr>
 <tr><td>Cache (obj, vtable, lock) between poll prepare/update passes</td><td><span class="chip deferred">rejected</span></td><td>POLLNVAL semantics require revalidation each pass, which costs the same as the lookup being cached (~40 instr); the real per-fd cost is the two mutex pairs (388 instr), which guard the close-vs-poll protocol and cannot be dropped.</td></tr>
-<tr><td>TCP small-send double copy (payload copied to send queue, then re-copied per segment)</td><td><span class="chip deferred">deferred</span></td><td>Deliberate design for RFC-correct retransmission (tcp.c comments); a shared/refcounted net_buf scheme is a substantial, risky refactor — the largest remaining TX win (~2 allocations + 2 copies per segment).</td></tr>
+<tr><td>TCP small-send double copy</td><td><span class="chip deferred">implemented, draft only</span></td><td>Implemented as reference clones gated on variable-size pools (round 2, finding R2-3): -29% send-path instructions for MSS-sized writes, but the end-to-end icount zperf harness (PR #114388) shows a net -0.7..-0.9% on loopback because segments now always span two fragments. Posted as a draft for discussion; likely wins only where the receiver is not the same CPU.</td></tr>
 <tr><td>UDP recvfrom re-parses IP+transport headers to rebuild the source sockaddr</td><td><span class="chip deferred">deferred</span></td><td>Fix needs a per-packet sockaddr stash (~28 B RAM per net_pkt, today conditional on offload) — a real footprint trade-off to take to maintainers.</td></tr>
 <tr><td>pthread_getspecific O(1) redesign (global sem pair is 210 of 378 instr)</td><td><span class="chip deferred">deferred</span></td><td>Lock-free reads conflict with fixing B2 properly (delete must unlink from thread lists, making them multi-writer). Needs a per-thread array or generation scheme; RAM trade-off scales with THREADS_MAX &times; KEYS_MAX.</td></tr>
-<tr><td>Timed waits triple-convert timeouts (abs ns &rarr; rel ms &rarr; ticks) with ~1 ms early-fire truncation</td><td><span class="chip deferred">deferred</span></td><td>Worth doing — also a conformance issue ("shall not return before abstime") — but touches five wait paths and rounding semantics; needs its own careful series.</td></tr>
+<tr><td>Timed waits triple-convert timeouts (abs ns &rarr; rel ms &rarr; ticks) with ~1 ms early-fire truncation</td><td><span class="chip landed">landed (round 2)</span></td><td>Fixed by converting absolute timespecs directly to ticks with ceiling rounding (finding R2-2): -18% per timed wait, plus a conformance ztest that fails on the old code (it really did return ETIMEDOUT before abstime). rwlock's ms-based internals left for a follow-up.</td></tr>
 <tr><td>mq_send/mq_receive copy the full mq_msgsize slot regardless of message length</td><td><span class="chip deferred">not verified</span></td><td>Fix requires storing per-message lengths (message format change); measured mq path (1085 instr/round trip) is not an outlier. Survey also flagged a possible caller-buffer over-read worth an upstream look.</td></tr>
 <tr><td>CONFIG_NET_SOCKETS_OBJ_CORE: global mutex + O(sockets) scan per send/recv</td><td><span class="chip deferred">deferred</span></td><td>Off by default; fix (cache stats pointer at creation, atomic add) is straightforward but benefits only that opt-in config.</td></tr>
 <tr><td>clock_gettime(CLOCK_REALTIME) pays two spinlocked reads (188 vs 115 for MONOTONIC)</td><td><span class="chip deferred">deferred</span></td><td>Needs a seqlock-style offset read or combined accessor; modest win, kernel-clock surgery.</td></tr>
@@ -292,16 +292,58 @@ kernel mutex work per UDP send+recv round:  -11.6% (two pairs fewer)</div></dd>
 </tbody>
 </table></div>
 
-<h2><span class="secno">06</span>Highest-value remaining opportunities</h2>
+<h2><span class="secno">06</span>Round 2 — deep fixes</h2>
+<p class="lead">Three follow-up items worked to completion after the initial audit, on branches rebased onto the synced fork.</p>
+
+<div class="finding">
+<h3>R2-1 — poll() timeout fast path with per-backend opt-in</h3>
+<p class="branch">zvfs-poll-timeout-fastpath &middot; two commits: EOF-reporting regression ztest + the fast path</p>
+<dl class="kv">
+<dt>What</dt><dd>When a poll() wait times out with no registered event signaled, the per-descriptor update pass (fd lookup + fd mutex pair + two variadic ioctls each) computed all-zero revents. A backend audit showed a blanket skip is unsound — nsos uses UPDATE as its deregistration hook, TLS/QUIC/modem backends report update-only state — so backends now opt in explicitly by returning <code>ZFD_POLL_PREPARE_UPDATE_OPTIONAL</code> from PREPARE. Native inet sockets (shared by CAN/packet) and eventfd opt in; the TLS wrapper explicitly squashes the flag. Guards: no -EALREADY, all fds resolved, first pass only, no event state change in the timeout window, POLLNVAL still checked; the one silent EOF path (reader draining the final EOF packet) now cancels the recv queue so concurrent pollers wake.</dd>
+<dt>Measured</dt><dd><div class="measure">poll(timeout=0, nothing ready) - callgrind, native_sim/native/64 (x86-64):
+ 1 fd:   1040 &rarr;  723 instr/call   (-30%)
+ 4 fds:  3581 &rarr; 2304              (-36%)
+16 fds: 13745 &rarr; 8628              (-37%)
+ready paths: +0.7..0.8% (opt-in bookkeeping)</div></dd>
+<dt>Testing</dt><dd>New ztest <code>test_poll_eof_no_wait</code> (proven to bite: fails with the -EALREADY check disabled); poll/select/service/eventfd suites on native_sim + qemu_x86_64. An earlier claim in this report (withdrawn B3) said EOF sockets block the full timeout — upstream already short-circuits them; the new test pins that contract down since nothing else did.</dd>
+</dl>
+</div>
+
+<div class="finding">
+<h3>R2-2 — absolute timeouts converted directly to ticks (conformance + speed)</h3>
+<p class="branch">posix-timedwait-tick-resolution</p>
+<dl class="kv">
+<dt>What</dt><dd>pthread_mutex_timedlock, pthread_cond_timedwait, sem_timedwait, mq_timedsend/receive and pthread_timedjoin_np converted abs timespec &rarr; ms (truncating!) &rarr; ticks. Sub-millisecond truncation meant waits could return ETIMEDOUT up to 1&nbsp;ms before abstime — a real POSIX violation, demonstrated by a new conformance ztest that fails on the old code (10&nbsp;kHz tick suite variant makes it observable). New <code>timespec_abs_to_timeout()</code> does one conversion, ceiling-rounded, saturating; the ms clamp at ~49.7 days is gone too.</dd>
+<dt>Measured</dt><dd><div class="measure">sem_timedwait(available) - callgrind, native_sim/native/64 (x86-64):
+before: 499 instr/call (conversion 406)
+after:  409 instr/call (conversion 331)   (-18%)</div></dd>
+<dt>Testing</dt><dd>semaphores (incl. new conformance case + 10 kHz variant), threads_base, xsi_realtime attempted (blocked by missing FATFS module in this checkout, unrelated); 7/7 configs, 120/120 cases pass post-fix.</dd>
+</dl>
+</div>
+
+<div class="finding">
+<h3>R2-3 — TCP single-copy transmit: real TX win, honest end-to-end loss on loopback</h3>
+<p class="branch">net-tcp-single-copy-tx &middot; draft, for discussion</p>
+<dl class="kv">
+<dt>What</dt><dd>Wire segments now reference the send-queue buffers (private data/len windows over refcounted blocks via <code>net_buf_clone()</code>) instead of copying, gated at runtime on pools that support data references (<code>CONFIG_NET_BUF_VARIABLE_DATA_SIZE</code>); fixed-size pools keep the copy path bit-for-bit. Retransmission and partial-ACK invariants preserved (clones have private bookkeeping; the send queue's pulls never touch shared bytes).</dd>
+<dt>Measured</dt><dd><div class="measure">callgrind, native_sim/native/64 (x86-64), variable pools, per send+recv round:
+1024-byte writes: net_context_send 19477 &rarr; 13814 (-29%), tcp_send_data -50%
+ 128-byte writes: net_context_send  8224 &rarr;  7934 (-3.5%)
+
+zperf loopback icount selftest (PR #114388 harness, qemu_x86_64, virtual-time):
+fixed pools:    parity (&lt;0.1%)
+variable pools: TCP -0.7..-0.9%  &larr; net loss end-to-end</div></dd>
+<dt>Verdict</dt><dd>The copy savings are real but the always-two-fragment segment costs more in the checksum walk and loopback receive path than the copy saved, when the receiver is the same CPU. Posted as a <em>draft</em> with both numbers: the design is the right shape for scatter-gather NIC targets, but should not merge on loopback evidence alone.</dd>
+</dl>
+</div>
+
+<h2><span class="secno">07</span>Highest-value remaining opportunities</h2>
 <ul>
-<li><b>poll() timeout fast path enabled by an EOF/error-aware prepare</b> (fixes B3, then legally skips the N&times;(lookup + mutex pair + 2 ioctls) update pass on quiet timeouts — the single biggest multiplexing win; busy-poll loops would roughly halve in cost).</li>
-<li><b>TCP send single-copy scheme</b> — refcount-share the send-queue net_bufs into wire segments for the no-retransmit case; eliminates one allocation and one full payload copy per segment.</li>
 <li><b>Direct (non-variadic) poll prepare/update vtable ops</b> — the two <code>va_list</code> ioctl dispatches cost ~250 instr of the 1069-instruction single-fd poll; optional typed function pointers in <code>fd_op_vtable</code> would remove them compatibly.</li>
-<li><b>Absolute-timeout direct-to-ticks conversion</b> across pthread/sem/mq timed waits — one conversion instead of three, and removes the sub-millisecond early-wake conformance defect.</li>
 <li><b>pthread_getspecific redesign</b> paired with the B2 fix — the two must be designed together.</li>
 </ul>
 
-<h2><span class="secno">07</span>Reproduction</h2>
+<h2><span class="secno">08</span>Reproduction</h2>
 <pre><code># benchmark app: scratchpad/posixbench (out-of-tree Zephyr app)
 cmake -B build -GNinja -DBOARD=native_sim/native/64 posixbench   # host toolchain, minimal libc
 ninja -C build
