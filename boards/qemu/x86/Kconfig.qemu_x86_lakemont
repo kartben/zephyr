@@ -4,3 +4,4 @@
 
 config BOARD_QEMU_X86_LAKEMONT
 	select SOC_LAKEMONT
+	select CPU_HAS_FPU

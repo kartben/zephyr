@@ -4,3 +4,5 @@
 
 config BOARD_QEMU_X86_64_KVM
 	select SOC_ATOM
+	select X86_64
+	select X86_CPU_HAS_CET

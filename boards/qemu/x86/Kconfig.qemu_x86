@@ -4,3 +4,4 @@
 
 config BOARD_QEMU_X86
 	select SOC_ATOM
+	select CPU_HAS_FPU
