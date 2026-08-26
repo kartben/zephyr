@@ -10,7 +10,6 @@ from typing import Any
 
 import doxmlparser
 from docutils import nodes
-from docutils.parsers.rst import directives
 from doxmlparser.compound import DoxCompoundKind, DoxMemberKind
 from sphinx import addnodes
 from sphinx.application import Sphinx
@@ -35,9 +34,6 @@ class DoxygenGroupDirective(SphinxDirective):
     has_content = False
     required_arguments = 1
     optional_arguments = 0
-    option_spec = {
-        "project": directives.unchanged,
-    }
 
     def run(self):
         desc_node = addnodes.desc()
@@ -51,7 +47,6 @@ class DoxygenGroupDirective(SphinxDirective):
             reftype="group",
             reftarget=self.arguments[0],
             refwarn=True,
-            project=self.options.get("project"),
         )
         group_xref += nodes.Text(self.arguments[0])
         title_signode += group_xref
@@ -62,7 +57,7 @@ class DoxygenGroupDirective(SphinxDirective):
 
 
 class DoxygenReferencer(SphinxPostTransform):
-    """Mapping between Doxygen memberdef kind and Sphinx kinds"""
+    """Resolve C-domain references into links to the Doxygen-generated HTML."""
 
     default_priority = 5
 
@@ -79,31 +74,33 @@ class DoxygenReferencer(SphinxPostTransform):
 
             found_name = None
             found_id = None
+            found_target = None
             for name in self.app.config.doxybridge_projects:
                 entry = self.app.env.doxybridge_cache[name].get(reftype)
                 if not entry:
                     continue
 
                 reftarget = node.get("reftarget").replace(".", "::").rstrip("()")
-                id = entry.get(reftarget)
-                if not id:
+                obj_id = entry.get(reftarget)
+                if not obj_id:
                     if reftype == "func":
                         # macros are sometimes referenced as functions, so try that
-                        id = self.app.env.doxybridge_cache[name].get("macro").get(reftarget)
-                        if not id:
+                        obj_id = self.app.env.doxybridge_cache[name].get("macro").get(reftarget)
+                        if not obj_id:
                             continue
                     else:
                         continue
 
                 found_name = name
-                found_id = id
+                found_id = obj_id
+                found_target = reftarget
                 break
 
             if not found_name or not found_id:
                 continue
 
             if reftype in ("struct", "union", "group"):
-                doxygen_target = f"{id}.html"
+                doxygen_target = f"{found_id}.html"
             else:
                 split = found_id.split("_")
                 doxygen_target = f"{'_'.join(split[:-1])}.html#{split[-1][1:]}"
@@ -125,7 +122,7 @@ class DoxygenReferencer(SphinxPostTransform):
 
             if reftype == "group":
                 refnode["classes"].append("doxygroup")
-                title = self.app.env.doxybridge_group_titles[found_name].get(reftarget, "group")
+                title = self.app.env.doxybridge_group_titles[found_name].get(found_target, "group")
                 refnode[0] = nodes.Text(title)
 
             node.replace_self([refnode])
@@ -219,7 +216,7 @@ def doxygen_parse(app: Sphinx) -> None:
 
     for project, path in app.config.doxybridge_projects.items():
         if project in app.env.doxygen_input_changed and not app.env.doxygen_input_changed[project]:
-            return
+            continue
 
         app.env.doxybridge_cache[project] = {
             "macro": {},
