@@ -340,6 +340,9 @@ def doxyxref_resolve(app, exception) -> None:
 
 
 def setup(app):
+    # for doxyrunner_projects/doxyrunner_skip, and for the Doxygen HTML rewritten below
+    app.setup_extension("zephyr.doxyrunner")
+
     app.connect("build-finished", doxyxref_resolve)
 
     return {
