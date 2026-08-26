@@ -1,7 +1,6 @@
 # Copyright (c) 2023 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
-import os
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +9,7 @@ from docutils import nodes
 from doxmlparser.compound import DoxCompoundKind
 from sphinx.util.docutils import SphinxDirective
 
+from zephyr._paths import outdir_relative_uri
 from zephyr.doxyrunner import doxygen_outputs
 
 
@@ -118,13 +118,11 @@ class ApiOverview(SphinxDirective):
         else:
             since_url = nodes.Text("")
 
-        abs_url = self.doxygen_output.html / f"{cdef.get_id()}.html"
-        doc_dir = os.path.dirname(self.get_source_info()[0])
-        doc_dest = os.path.join(
-            self.env.app.outdir,
-            os.path.relpath(doc_dir, self.env.app.srcdir),
+        url = outdir_relative_uri(
+            self.env.app,
+            self.doxygen_output.html / f"{cdef.get_id()}.html",
+            self.get_source_info()[0],
         )
-        url = os.path.relpath(abs_url, doc_dest)
 
         title = cdef.get_title()
 
