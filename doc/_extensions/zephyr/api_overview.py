@@ -154,6 +154,9 @@ class ApiOverview(SphinxDirective):
 
 
 def setup(app) -> dict[str, Any]:
+    # for doxyrunner_projects/doxyrunner_skip, and for the Doxygen XML read below
+    app.setup_extension("zephyr.doxyrunner")
+
     app.add_config_value("api_overview_base_url", "", "env")
 
     app.add_directive("api-overview-table", ApiOverview)

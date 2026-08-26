@@ -69,11 +69,12 @@ class _PlainTextCReferences(SphinxPostTransform):
 
     Doxygen group names are not parseable C expressions, so these references
     must be replaced before Sphinx's ReferencesResolver (priority 10) lets the
-    C domain parse them and warn; priority 6 also keeps this transform after
-    zephyr.doxybridge's DoxygenReferencer (priority 5).
+    C domain parse them and warn; priority 9 also keeps this transform after
+    zephyr.doxybridge's DoxygenReferencer (5) and zephyr.domain's post
+    transforms (6 to 8).
     """
 
-    default_priority = 6
+    default_priority = 9
 
     def run(self, **kwargs) -> None:
         if not self.app.tags.has("skip_doxygen"):
@@ -145,6 +146,12 @@ def _configure(app: Sphinx, config: Config) -> None:
 
 
 def setup(app: Sphinx) -> dict:
+    # _configure() looks the directives it stubs out up in the registry, so the
+    # extensions owning them must have been set up first
+    app.setup_extension("zephyr.api_overview")
+    app.setup_extension("zephyr.domain")
+    app.setup_extension("zephyr.kconfig")
+
     app.connect("config-inited", _configure)
     app.add_post_transform(_PlainTextCReferences)
 
