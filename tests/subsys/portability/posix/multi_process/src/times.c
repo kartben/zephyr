@@ -43,6 +43,13 @@ ZTEST(posix_multi_process, test_times)
 	zexpect_not_equal(rtime[0], -1);
 	zexpect_not_equal(rtime[1], -1);
 
+	/*
+	 * times() returns elapsed real time, so it must advance across the sleep above even
+	 * though no CPU time was consumed there.
+	 */
+	zexpect_true(rtime[1] > rtime[0], "real time did not advance: t0: %ld t1: %ld", rtime[0],
+		     rtime[1]);
+
 	printk("t0: rtime: %ld utime: %ld stime: %ld cutime: %ld cstime: %ld\n", rtime[0],
 	       test_tms[0].tms_utime, test_tms[0].tms_stime, test_tms[0].tms_cutime,
 	       test_tms[0].tms_cstime);

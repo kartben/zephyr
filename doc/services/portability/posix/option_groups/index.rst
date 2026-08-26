@@ -349,7 +349,7 @@ Enable this option group with :kconfig:option:`CONFIG_POSIX_MULTI_PROCESS`.
     getsid(),:ref:`†<posix_undefined_behaviour>`
     setsid(),:ref:`†<posix_undefined_behaviour>`
     sleep(),yes
-    times(),
+    times(),yes
     wait(),:ref:`†<posix_undefined_behaviour>`
     waitid(),:ref:`†<posix_undefined_behaviour>`
     waitpid(),:ref:`†<posix_undefined_behaviour>`

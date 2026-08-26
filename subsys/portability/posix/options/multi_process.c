@@ -14,6 +14,12 @@
 #include <zephyr/sys/time_units.h>
 #include <zephyr/sys/util.h>
 
+/*
+ * POSIX reports every value of times(), including its return value, in clock ticks, i.e. in
+ * units of 1 / sysconf(_SC_CLK_TCK) seconds.
+ */
+#define POSIX_CLK_TCK ((uint32_t)__z_posix_sysconf_SC_CLK_TCK)
+
 pid_t getpid(void)
 {
 	/*
@@ -36,6 +42,7 @@ FUNC_ALIAS(getpid, _getpid, pid_t);
 clock_t times(struct tms *buffer)
 {
 	int ret;
+	clock_t rtime;
 	clock_t utime; /* user time */
 	k_thread_runtime_stats_t stats;
 
@@ -45,9 +52,17 @@ clock_t times(struct tms *buffer)
 		return (clock_t)-1;
 	}
 
-	utime = z_tmcvt(stats.total_cycles, sys_clock_hw_cycles_per_sec(), USEC_PER_SEC,
-			IS_ENABLED(CONFIG_TIMER_READS_ITS_FREQUENCY_AT_RUNTIME) ? false : true,
-			sizeof(clock_t) == sizeof(uint32_t), false, false);
+	utime = (clock_t)z_tmcvt(stats.total_cycles, sys_clock_hw_cycles_per_sec(), POSIX_CLK_TCK,
+				 IS_ENABLED(CONFIG_TIMER_READS_ITS_FREQUENCY_AT_RUNTIME) ? false
+											 : true,
+				 sizeof(clock_t) == sizeof(uint32_t), false, false);
+
+	/*
+	 * POSIX requires the return value to be the elapsed real time since an arbitrary,
+	 * fixed point in the past, and not the CPU time consumed so far.
+	 */
+	rtime = (clock_t)z_tmcvt(k_uptime_ticks(), CONFIG_SYS_CLOCK_TICKS_PER_SEC, POSIX_CLK_TCK,
+				 true, sizeof(clock_t) == sizeof(uint32_t), false, false);
 
 	*buffer = (struct tms){
 		.tms_utime = utime,
@@ -56,5 +71,5 @@ clock_t times(struct tms *buffer)
 		.tms_cstime = 0,
 	};
 
-	return utime;
+	return rtime;
 }
