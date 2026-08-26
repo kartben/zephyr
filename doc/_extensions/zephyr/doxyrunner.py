@@ -177,7 +177,7 @@ def process_doxyfile(
 
     content = re.sub(
         r"^\s*QUIET\s*=.*$",
-        "QUIET=" + "YES" if silent else "NO",
+        "QUIET=" + ("YES" if silent else "NO"),
         content,
         flags=re.MULTILINE,
     )
@@ -357,7 +357,7 @@ def doxygen_build(app: Sphinx) -> None:
         else:
             outdir = Path(app.outdir) / "_doxygen" / name
 
-        outdir.mkdir(exist_ok=True)
+        outdir.mkdir(parents=True, exist_ok=True)
         tmp_outdir = outdir / "tmp"
 
         logger.info("Preparing Doxyfile...")
@@ -378,19 +378,20 @@ def doxygen_build(app: Sphinx) -> None:
         app.env.doxygen_input_changed[name] = doxygen_input_has_changed(app.env, name, doxyfile)
         if not app.env.doxygen_input_changed[name]:
             logger.info(f"Doxygen build for {name} will be skipped (no changes)!")
-            return
+            continue
 
-        logger.info(f"Running Doxygen for {name}...")
-        run_doxygen(
-            app.config.doxyrunner_doxygen,
-            doxyfile,
-            app.config.doxyrunner_silent,
-        )
+        try:
+            logger.info(f"Running Doxygen for {name}...")
+            run_doxygen(
+                app.config.doxyrunner_doxygen,
+                doxyfile,
+                app.config.doxyrunner_silent,
+            )
 
-        logger.info(f"Syncing Doxygen output for {name}...")
-        sync_doxygen(doxyfile, tmp_outdir, outdir)
-
-        shutil.rmtree(tmp_outdir)
+            logger.info(f"Syncing Doxygen output for {name}...")
+            sync_doxygen(doxyfile, tmp_outdir, outdir)
+        finally:
+            shutil.rmtree(tmp_outdir, ignore_errors=True)
 
 
 def setup(app: Sphinx) -> dict[str, Any]:
