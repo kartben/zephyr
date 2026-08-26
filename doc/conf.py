@@ -319,6 +319,11 @@ doxyrunner_projects = {
             "DOXY_REQ_INPUT": os.environ.get(
                 "DOXY_REQ_INPUT", str(ZEPHYR_BUILD / "requirements" / "dox")
             ),
+            # @INCLUDE line for the Doxyfile fragment holding the customization
+            # requested through ZEPHYR_DOXYGEN_OVERLAY and
+            # DOXYGEN_FORCE_SINGLE_THREAD (see doc/CMakeLists.txt), empty when
+            # neither is set.
+            "INCLUDE_CUSTOM_FILE": os.environ.get("DOXY_CUSTOM_INCLUDE", ""),
         },
         "outdir_var": "DOXY_OUT",
     },
