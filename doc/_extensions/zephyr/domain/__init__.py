@@ -399,7 +399,7 @@ class ConvertBoardNode(SphinxTransform):
 
 
 class CodeSampleCategoriesTocPatching(SphinxPostTransform):
-    default_priority = 5  # needs to run *before* ReferencesResolver
+    default_priority = 7  # after ProcessCodeSampleListingNode, before ReferencesResolver (10)
 
     def output_sample_categories_list_items(self, tree, container: nodes.Node):
         list_item = nodes.list_item()
@@ -478,7 +478,7 @@ class CodeSampleCategoriesTocPatching(SphinxPostTransform):
 
 
 class ProcessCodeSampleListingNode(SphinxPostTransform):
-    default_priority = 5  # needs to run *before* ReferencesResolver
+    default_priority = 6  # after doxybridge's DoxygenReferencer (5)
 
     def output_sample_categories_sections(self, tree, container: nodes.Node, show_titles=False):
         if show_titles:
@@ -590,7 +590,7 @@ def create_code_sample_list(code_samples):
 
 
 class ProcessRelatedCodeSamplesNode(SphinxPostTransform):
-    default_priority = 5  # before ReferencesResolver
+    default_priority = 8  # after CodeSampleCategoriesTocPatching, before ReferencesResolver (10)
 
     def run(self, **kwargs: Any) -> None:
         matcher = NodeMatcher(RelatedCodeSamplesNode)
@@ -1525,6 +1525,13 @@ def load_board_catalog_into_domain(app: Sphinx) -> None:
 
 
 def setup(app):
+    # DoxygenGroupDirective, which ZephyrDoxygenGroupDirective overrides below
+    app.setup_extension("zephyr.doxybridge")
+    # gh_link_get_url(), and the gh_link_* config values it reads
+    app.setup_extension("zephyr.gh_utils")
+    # the zephyr_file role, resolved at render time by BoardSupportedHardwareDirective
+    app.setup_extension("zephyr.link_roles")
+
     app.add_config_value("zephyr_generate_hw_features", False, "env")
     app.add_config_value("zephyr_hw_features_vendor_filter", [], "env", types=[list[str]])
     app.add_config_value("zephyr_hw_features_twister_extra_flags", [], "env", types=[list[str]])
