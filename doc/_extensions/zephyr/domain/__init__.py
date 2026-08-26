@@ -32,7 +32,6 @@ Roles
 """
 
 import json
-import sys
 from collections.abc import Iterable, Iterator
 from os import path
 from pathlib import Path
@@ -56,22 +55,20 @@ from sphinx.util.nodes import NodeMatcher, make_refnode
 from sphinx.util.parsing import nested_parse_to_nodes
 from sphinx.util.template import SphinxRenderer
 
+from zephyr._paths import add_script_paths, resources_dir
 from zephyr.doxybridge import DoxygenGroupDirective
 from zephyr.gh_utils import gh_link_get_url
 
 __version__ = "0.2.0"
 
 
-sys.path.insert(0, str(Path(__file__).parents[4] / "scripts/dts/python-devicetree/src"))
-sys.path.insert(0, str(Path(__file__).parents[4] / "scripts/west_commands"))
-sys.path.insert(0, str(Path(__file__).parents[3] / "_scripts"))
+add_script_paths("devicetree", "west_commands", "doc_scripts")
 
-import dts_binding_types
-from gen_boards_catalog import get_catalog
+import dts_binding_types  # noqa: E402
+from gen_boards_catalog import get_catalog  # noqa: E402
 
-ZEPHYR_BASE = Path(__file__).parents[4]
 TEMPLATES_DIR = Path(__file__).parent / "templates"
-RESOURCES_DIR = Path(__file__).parent / "static"
+RESOURCES_DIR = resources_dir(__file__)
 
 
 # Load and parse binding types from text file
