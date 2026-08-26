@@ -47,12 +47,6 @@ endif()
 #-------------------------------------------------------------------------------
 # Environment & Paths
 
-set(SPHINX_ENV
-  DOXYGEN_EXECUTABLE=${DOXYGEN_EXECUTABLE}
-  DOT_EXECUTABLE=${DOXYGEN_DOT_EXECUTABLE}
-  DOXY_REQ_INPUT=${CMAKE_CURRENT_BINARY_DIR}/requirements/dox
-)
-
 set(DOXYGEN_CUSTOM_LINES)
 
 if(DEFINED ENV{ZEPHYR_DOXYGEN_OVERLAY})
@@ -67,7 +61,26 @@ if(DOXYGEN_FORCE_SINGLE_THREAD)
   list(APPEND DOXYGEN_CUSTOM_LINES "NUM_PROC_THREADS = 1")
 endif()
 
-list(JOIN DOXYGEN_CUSTOM_LINES "\n" INCLUDE_CUSTOM_FILE)
+# Collect the customization into a Doxyfile fragment pulled in with a single
+# @INCLUDE line, so that the standalone 'doxygen' target (which expands
+# @INCLUDE_CUSTOM_FILE@ via configure_file) and the Sphinx build (where
+# zephyr.doxyrunner does its own substitution from conf.py) apply the exact
+# same customization.
+if(DOXYGEN_CUSTOM_LINES)
+  set(DOXYGEN_CUSTOM_DOXYFILE ${CMAKE_CURRENT_BINARY_DIR}/doxygen_custom.doxyfile)
+  list(JOIN DOXYGEN_CUSTOM_LINES "\n" DOXYGEN_CUSTOM_CONTENT)
+  file(WRITE ${DOXYGEN_CUSTOM_DOXYFILE} "${DOXYGEN_CUSTOM_CONTENT}\n")
+  set(INCLUDE_CUSTOM_FILE "@INCLUDE = ${DOXYGEN_CUSTOM_DOXYFILE}")
+else()
+  set(INCLUDE_CUSTOM_FILE "")
+endif()
+
+set(SPHINX_ENV
+  DOXYGEN_EXECUTABLE=${DOXYGEN_EXECUTABLE}
+  DOT_EXECUTABLE=${DOXYGEN_DOT_EXECUTABLE}
+  DOXY_REQ_INPUT=${CMAKE_CURRENT_BINARY_DIR}/requirements/dox
+  DOXY_CUSTOM_INCLUDE=${INCLUDE_CUSTOM_FILE}
+)
 
 set(DOCS_CFG_DIR ${CMAKE_CURRENT_LIST_DIR})
 set(DOCS_DOCTREE_DIR ${CMAKE_CURRENT_BINARY_DIR}/doctrees)
