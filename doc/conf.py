@@ -102,8 +102,8 @@ extensions = [
     "zephyr.application",
     "zephyr.html_redirects",
     "zephyr.kconfig",
-    "zephyr.dtcompatible-role",
-    "zephyr.link-roles",
+    "zephyr.dtcompatible_role",
+    "zephyr.link_roles",
     "sphinx_tabs.tabs",
     "sphinx_sitemap",
     "zephyr.doxyrunner",
@@ -355,7 +355,7 @@ if SKIP_EXTERNAL_CONTENT:
         if not new.startswith(("boards/", "samples/", "snippets/"))
     )
 
-# -- Options for zephyr.link-roles ----------------------------------------
+# -- Options for zephyr.link_roles ----------------------------------------
 
 link_roles_manifest_project = "zephyr"
 link_roles_manifest_project_broken_links_ignore_globs = [
