@@ -248,4 +248,70 @@ ZTEST(net_socket_poll, test_pollout_tcp)
 	zassert_equal(res, 0, "close failed");
 }
 
+/* A socket that is already at EOF (or in error) when poll() is called has
+ * nothing left that can wake a k_poll() wait: its readiness only exists as
+ * socket state that ZFD_IOCTL_POLL_UPDATE reports.  zsock_poll_prepare_ctx()
+ * therefore returns -EALREADY for such sockets so that poll() collects the
+ * events immediately instead of sleeping for the full timeout.  Guard that
+ * behaviour: poll() on a drained, peer-closed socket must report
+ * POLLIN | POLLHUP without waiting.
+ */
+ZTEST(net_socket_poll, test_poll_eof_no_wait)
+{
+	int res;
+	int c_sock;
+	int s_sock;
+	int new_sock;
+	struct net_sockaddr_in6 c_addr;
+	struct net_sockaddr_in6 s_addr;
+	struct zsock_pollfd pollfds[1];
+	uint32_t tstamp;
+	char buf[16];
+
+	prepare_sock_tcp_v6(MY_IPV6_ADDR, CLIENT_PORT, &c_sock, &c_addr);
+	prepare_sock_tcp_v6(MY_IPV6_ADDR, SERVER_PORT, &s_sock, &s_addr);
+
+	res = zsock_bind(s_sock, (struct net_sockaddr *)&s_addr, sizeof(s_addr));
+	zassert_equal(res, 0, "");
+	res = zsock_listen(s_sock, 0);
+	zassert_equal(res, 0, "");
+	res = zsock_connect(c_sock, (const struct net_sockaddr *)&s_addr,
+			    sizeof(s_addr));
+	zassert_equal(res, 0, "");
+	new_sock = zsock_accept(s_sock, NULL, NULL);
+	zassert_true(new_sock >= 0, "");
+
+	res = zsock_send(c_sock, BUF_AND_SIZE(TEST_STR_SMALL), 0);
+	zassert_equal(res, STRLEN(TEST_STR_SMALL), "");
+
+	res = zsock_close(c_sock);
+	zassert_equal(res, 0, "close failed");
+
+	/* Drain the queued data, then observe EOF */
+	res = zsock_recv(new_sock, buf, sizeof(buf), 0);
+	zassert_equal(res, STRLEN(TEST_STR_SMALL), "");
+	res = zsock_recv(new_sock, buf, sizeof(buf), 0);
+	zassert_equal(res, 0, "expected EOF");
+
+	/* poll() on the at-EOF socket must not wait out the timeout */
+	memset(pollfds, 0, sizeof(pollfds));
+	pollfds[0].fd = new_sock;
+	pollfds[0].events = ZSOCK_POLLIN;
+
+	tstamp = k_uptime_get_32();
+	res = zsock_poll(pollfds, ARRAY_SIZE(pollfds), 1000);
+	zassert_true(k_uptime_get_32() - tstamp < 100,
+		     "poll() on EOF socket waited out the timeout");
+	zassert_equal(res, 1, "");
+	zassert_true(pollfds[0].revents & ZSOCK_POLLIN, "no POLLIN on EOF");
+	zassert_true(pollfds[0].revents & ZSOCK_POLLHUP, "no POLLHUP on EOF");
+
+	k_msleep(10);
+
+	res = zsock_close(new_sock);
+	zassert_equal(res, 0, "close failed");
+	res = zsock_close(s_sock);
+	zassert_equal(res, 0, "close failed");
+}
+
 ZTEST_SUITE(net_socket_poll, NULL, NULL, NULL, NULL, NULL);
