@@ -24,11 +24,9 @@ Placeholders that cannot be resolved are left untouched (they degrade to plain, 
 and a Sphinx warning is emitted for each of them, except for Kconfig options that exist but are
 not part of the Kconfig reference.
 
-Configuration options
-=====================
-
-- ``doxyxref_projects``: Dictionary of Doxygen projects, mapping project name to the Doxygen output
-  directory (same format as ``doxybridge_projects``).
+The Doxygen projects to process, and the location of their output, come from
+``zephyr.doxyrunner``'s ``doxyrunner_projects``; this extension declares no configuration of
+its own.
 """
 
 from __future__ import annotations
@@ -42,6 +40,8 @@ from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import quote
+
+from zephyr.doxyrunner import doxygen_outputs
 
 if TYPE_CHECKING:
     from sphinx.util.typing import Inventory
@@ -323,8 +323,8 @@ def doxyxref_resolve(app, exception) -> None:
 
     kconfig_names = getattr(app.env, "kconfig_all_names", None)
 
-    for project, project_outdir in (app.config.doxyxref_projects or {}).items():
-        html_dir = Path(project_outdir) / "html"
+    for project, output in doxygen_outputs(app.config).items():
+        html_dir = output.html
         if not html_dir.is_dir():
             logger.warning(f"doxyxref: no Doxygen HTML output found for project '{project}'")
             continue
@@ -340,8 +340,6 @@ def doxyxref_resolve(app, exception) -> None:
 
 
 def setup(app):
-    app.add_config_value("doxyxref_projects", {}, "env")
-
     app.connect("build-finished", doxyxref_resolve)
 
     return {

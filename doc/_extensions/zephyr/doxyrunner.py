@@ -46,11 +46,14 @@ import re
 import shlex
 import shutil
 import tempfile
+from dataclasses import dataclass
+from functools import cache
 from pathlib import Path
 from subprocess import PIPE, STDOUT, Popen
 from typing import Any
 
 from sphinx.application import Sphinx
+from sphinx.config import Config
 from sphinx.environment import BuildEnvironment
 from sphinx.errors import ExtensionError
 from sphinx.util import logging
@@ -126,6 +129,68 @@ def get_doxygen_option(doxyfile: str, option: str) -> list[str]:
             break
 
     return values
+
+
+@dataclass(frozen=True)
+class DoxygenOutput:
+    """Resolved output directories of a single Doxygen project."""
+
+    root: Path
+    html: Path
+    xml: Path
+
+
+@cache
+def _output_subdirs(doxyfile: Path) -> tuple[str, str]:
+    """HTML_OUTPUT and XML_OUTPUT of a Doxyfile, falling back to Doxygen's defaults."""
+
+    content = doxyfile.read_text()
+    html = get_doxygen_option(content, "HTML_OUTPUT")
+    xml = get_doxygen_option(content, "XML_OUTPUT")
+
+    return html[0] if html else "html", xml[0] if xml else "xml"
+
+
+def doxygen_outputs(config: Config) -> dict[str, DoxygenOutput]:
+    """Resolved Doxygen output directories, keyed by project name.
+
+    Derived from ``doxyrunner_projects`` alone, with no dependency on build
+    state, so any extension may call this in any build phase. Empty when
+    ``doxyrunner_skip`` is set: nothing is generated, so there is nothing to
+    consume.
+
+    Args:
+        config: Sphinx configuration.
+    """
+
+    if config.doxyrunner_skip:
+        return {}
+
+    outputs = {}
+    for name, project in config.doxyrunner_projects.items():
+        if not project.get("outdir"):
+            raise ExtensionError(f"doxyrunner_projects['{name}'] has no 'outdir'")
+
+        root = Path(project["outdir"])
+        html_subdir, xml_subdir = _output_subdirs(Path(project["doxyfile"]))
+        outputs[name] = DoxygenOutput(root=root, html=root / html_subdir, xml=root / xml_subdir)
+
+    return outputs
+
+
+def doxygen_input_changed(env: BuildEnvironment, project: str) -> bool:
+    """Whether Doxygen input changed for *project* during this build.
+
+    Unknown projects report ``True``, so a consumer that runs without
+    :func:`doxygen_build` having populated the environment re-reads rather than
+    trusting a cache that was never filled.
+
+    Args:
+        env: Sphinx build environment.
+        project: Doxygen project name.
+    """
+
+    return getattr(env, "doxygen_input_changed", {}).get(project, True)
 
 
 def process_doxyfile(
@@ -349,11 +414,10 @@ def doxygen_build(app: Sphinx) -> None:
         logger.info("Doxygen build skipped (doxyrunner_skip is set).")
         return
 
-    for name, config in app.config.doxyrunner_projects.items():
-        if not config.get("outdir"):
-            raise ExtensionError(f"doxyrunner_projects['{name}'] has no 'outdir'")
+    outputs = doxygen_outputs(app.config)
 
-        outdir = Path(config["outdir"])
+    for name, config in app.config.doxyrunner_projects.items():
+        outdir = outputs[name].root
         outdir.mkdir(parents=True, exist_ok=True)
         tmp_outdir = outdir / "tmp"
 

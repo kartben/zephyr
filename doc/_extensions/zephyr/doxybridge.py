@@ -18,6 +18,8 @@ from sphinx.transforms.post_transforms import SphinxPostTransform
 from sphinx.util import logging
 from sphinx.util.docutils import SphinxDirective
 
+from zephyr.doxyrunner import doxygen_input_changed, doxygen_outputs
+
 logger = logging.getLogger(__name__)
 
 
@@ -62,6 +64,8 @@ class DoxygenReferencer(SphinxPostTransform):
     default_priority = 5
 
     def run(self, **kwargs: Any) -> None:
+        outputs = doxygen_outputs(self.app.config)
+
         for node in self.document.traverse(addnodes.pending_xref):
             if node.get("refdomain") != "c":
                 continue
@@ -75,7 +79,7 @@ class DoxygenReferencer(SphinxPostTransform):
             found_name = None
             found_id = None
             found_target = None
-            for name in self.app.config.doxybridge_projects:
+            for name in outputs:
                 entry = self.app.env.doxybridge_cache[name].get(reftype)
                 if not entry:
                     continue
@@ -105,9 +109,7 @@ class DoxygenReferencer(SphinxPostTransform):
                 split = found_id.split("_")
                 doxygen_target = f"{'_'.join(split[:-1])}.html#{split[-1][1:]}"
 
-            doxygen_target = (
-                str(self.app.config.doxybridge_projects[found_name]) + "/html/" + doxygen_target
-            )
+            doxygen_target = str(outputs[found_name].html / doxygen_target)
 
             doc_dir = os.path.dirname(self.document.get("source"))
             doc_dest = os.path.join(
@@ -214,8 +216,8 @@ def doxygen_parse(app: Sphinx) -> None:
     if not hasattr(app.env, "doxybridge_group_titles"):
         app.env.doxybridge_group_titles = dict()
 
-    for project, path in app.config.doxybridge_projects.items():
-        if project in app.env.doxygen_input_changed and not app.env.doxygen_input_changed[project]:
+    for project, output in doxygen_outputs(app.config).items():
+        if not doxygen_input_changed(app.env, project):
             continue
 
         app.env.doxybridge_cache[project] = {
@@ -232,12 +234,10 @@ def doxygen_parse(app: Sphinx) -> None:
 
         app.env.doxybridge_group_titles[project] = dict()
 
-        parse_index(app, project, str(path / "xml"))
+        parse_index(app, project, str(output.xml))
 
 
 def setup(app: Sphinx) -> dict[str, Any]:
-    app.add_config_value("doxybridge_projects", None, "env")
-
     app.add_directive("doxygengroup", DoxygenGroupDirective)
 
     app.add_role_to_domain("c", "group", CXRefRole())
@@ -247,6 +247,7 @@ def setup(app: Sphinx) -> dict[str, Any]:
 
     return {
         "version": "0.1",
+        "env_version": 1,
         "parallel_read_safe": True,
         "parallel_write_safe": True,
     }
