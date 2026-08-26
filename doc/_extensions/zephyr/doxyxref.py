@@ -32,7 +32,6 @@ its own.
 from __future__ import annotations
 
 import html
-import os
 import re
 import zlib
 from dataclasses import dataclass
@@ -41,6 +40,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import quote
 
+from zephyr._paths import relative_uri
 from zephyr.doxyrunner import doxygen_outputs
 
 if TYPE_CHECKING:
@@ -281,7 +281,7 @@ def process_html_dir(
         if "class='doxyxref'" not in content:
             continue
 
-        rel = os.path.relpath(docs_root, file.parent).replace(os.sep, "/")
+        rel = relative_uri(file.parent, docs_root)
         base = "" if rel == "." else f"{rel}/"
 
         new_content, missing = process_html_content(content, inventory, base)
