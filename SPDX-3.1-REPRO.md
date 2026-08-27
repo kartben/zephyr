@@ -25,6 +25,11 @@ and the `Requirement` / FunctionalSafety elements built from them. See
 [`doc/develop/west/zephyr-cmds.rst`](doc/develop/west/zephyr-cmds.rst) for the user-facing
 description of `--requirements-dir` and `--twister-out`.
 
+**Driver linkage** (1 commit on top): `scripts: zspdx: link drivers to the devicetree nodes
+they instantiate` parses the linker map for the `__device_dts_ord_<N>` symbols
+`DEVICE_DT_DEFINE()` emits and links each devicetree node to the driver source that
+instantiates it.
+
 Both are no-ops for `--spdx-version 2.3` / `3.0`: the Hardware profile and the `Requirement`
 class did not exist before SPDX 3.1.
 
@@ -112,8 +117,8 @@ Both paths are relative to `west topdir`. Without this, `west spdx` rejects
 ## What you get
 
 `$OUT` holds six JSON-LD documents, all `specVersion` `3.1.0` against the
-`https://spdx.org/rdf/3.1/` context. Reference run (2026-08-27, Zephyr
-`v4.4.0-13301-g7a76a5d8d1f`), 4.2 MB and 8022 elements total:
+`https://spdx.org/rdf/3.1/` context. Reference run (2026-08-27), 4.2 MB and 8033 elements
+total:
 
 | Document | Size | Elements | Imports | Profiles |
 | --- | ---: | ---: | ---: | --- |
@@ -122,7 +127,7 @@ Both paths are relative to `west topdir`. Without this, `west spdx` rejects
 | `modules-deps.jsonld` | 143 KB | 273 | 0 | core, software, simpleLicensing |
 | `requirements.jsonld` | 47 KB | 83 | 0 | core, software, simpleLicensing |
 | `sdk.jsonld` | 74 KB | 158 | 0 | core, software, simpleLicensing |
-| `zephyr.jsonld` | 3.1 MB | 6882 | 67 | core, software, simpleLicensing |
+| `zephyr.jsonld` | 3.1 MB | 6893 | 78 | core, software, simpleLicensing |
 
 They cross-reference each other through `ExternalMap`/`locationHint` (`build` alone imports
 1959 ids from the other documents), so load them **together** — drop all six onto the
@@ -139,6 +144,22 @@ visualizer at once, or use its file picker.
 * 33 of the 41 components resolve a vendor, drawn from six `Organization` elements referenced
   as `hardware_productAgent` — E Ink, Espressif, M5Stack, Seiko Epson, Sensirion, Worldsemi;
 * 28 `build_Build` elements, `build_buildType` `urn:zephyrproject.org:build-type:cmake`.
+
+### `zephyr.jsonld` — driver-to-hardware linkage
+
+11 `configures` relationships, each from a driver source to the `hardware_PhysicalHardware`
+for the devicetree node it instantiates — `i2c_esp32.c` to `/soc/i2c@60013000`,
+`display_ed2208_gca.c` to `/mipi_dbi/ed2208_doa@0`, and so on. Both `espressif,esp32-spi`
+instances resolve to `spi_esp32_spim.c` separately, because the link is keyed on the node's
+dependency ordinal rather than on its compatible.
+
+They live in `zephyr.jsonld` (which owns the driver sources) and point into `build.jsonld`
+(which owns the hardware), so they arrive as ExternalMap imports — this is what takes
+`zephyr.jsonld` from 67 imports to 78.
+
+Of the 15 devices the build instantiates, 11 link: the remaining four are nodes
+`_is_hardware()` does not emit a component for — `/mipi_dbi` (a `zephyr,*` abstraction) and
+the three `pmic@6e/regulators/*` child-binding nodes, which have no `matching_compat`.
 
 ### `zephyr.jsonld` — `@satisfies` traceability
 
