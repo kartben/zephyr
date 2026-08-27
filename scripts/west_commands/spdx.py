@@ -2,9 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 import logging
 import os
+import subprocess
 import sys
+import tempfile
 import uuid
 
 from west.commands import WestCommand
@@ -27,7 +30,11 @@ of a Zephyr build.
 
 Enable CONFIG_BUILD_OUTPUT_META in the application and build it as usual.
 The build then asks CMake for the file-based API this command reads, so the
-build directory needs no preparation."""
+build directory needs no preparation.
+
+Pass --modules-only to instead describe just the dependencies the west
+manifest pulls in. That document is derived from module metadata rather than
+from build output, so it needs no build directory and no build."""
 
 
 class ZephyrSpdx(WestCommand):
@@ -61,6 +68,17 @@ class ZephyrSpdx(WestCommand):
         parser.add_argument(
             '--include-sdk', action="store_true", help="also generate SPDX document for SDK"
         )
+        parser.add_argument(
+            '--modules-only',
+            action="store_true",
+            help="describe only the dependencies pulled in by the west manifest, "
+            "without requiring a build",
+        )
+        parser.add_argument(
+            '--meta',
+            help="module meta file to read with --modules-only; when omitted, one is "
+            "generated from the current west workspace",
+        )
 
         return parser
 
@@ -79,6 +97,8 @@ class ZephyrSpdx(WestCommand):
         self.dbg("  --spdx-version is", args.spdx_version)
         self.dbg("  --analyze-includes is", args.analyze_includes)
         self.dbg("  --include-sdk is", args.include_sdk)
+        self.dbg("  --modules-only is", args.modules_only)
+        self.dbg("  --meta is", args.meta)
 
         if args.init:
             self.do_run_init(args)
@@ -107,13 +127,41 @@ class ZephyrSpdx(WestCommand):
                 "$BUILDDIR/.cmake/api/v1/query/codemodel-v2"
             )
 
+    def generate_module_meta(self, meta_path):
+        """Write a module meta file for the current west workspace.
+
+        This is the same generator a build runs as a post-build step, invoked
+        directly so that --modules-only does not need one.
+        """
+        zephyr_base = os.path.dirname(script_dir)
+        cmd = [
+            sys.executable,
+            os.path.join(script_dir, "zephyr_module.py"),
+            f"--zephyr-base={zephyr_base}",
+            "--meta-out",
+            meta_path,
+        ]
+        self.dbg("generating module meta file:", " ".join(cmd))
+        try:
+            subprocess.run(cmd, check=True)
+        except subprocess.CalledProcessError as e:
+            self.die(
+                f"Failed to collect module metadata (exit {e.returncode}).\n"
+                "`west spdx --modules-only` must run inside a west workspace; "
+                "pass --meta=FILE to use an already generated meta file instead."
+            )
+
     def do_run_spdx(self, args):
-        if not args.build_dir:
+        if not args.modules_only and not args.build_dir:
             self.die("Build directory not specified; call `west spdx --build-dir=BUILD_DIR`")
+
+        if args.meta and not args.modules_only:
+            self.wrn("--meta only applies to --modules-only; ignoring it")
 
         # create the SPDX files
         cfg = SBOMConfig()
-        cfg.build_dir = args.build_dir
+        cfg.build_dir = args.build_dir or ""
+        cfg.modules_only = args.modules_only
         try:
             version_obj = parse(args.spdx_version)
         except Exception:
@@ -130,12 +178,26 @@ class ZephyrSpdx(WestCommand):
             cfg.namespace_prefix = f"http://spdx.org/spdxdocs/zephyr-{str(uuid.uuid4())}"
         if args.spdx_dir:
             cfg.spdx_dir = args.spdx_dir
+        elif args.modules_only:
+            cfg.spdx_dir = os.path.join(os.getcwd(), "spdx")
         else:
             cfg.spdx_dir = os.path.join(args.build_dir, "spdx")
         if args.analyze_includes:
             cfg.analyze_includes = True
         if args.include_sdk:
             cfg.include_sdk = True
+
+        # Both of these describe what a build compiled, so neither has anything
+        # to report when no build was walked.
+        if args.modules_only:
+            for enabled, name in (
+                (args.analyze_includes, "--analyze-includes"),
+                (args.include_sdk, "--include-sdk"),
+            ):
+                if enabled:
+                    self.wrn(f"{name} has no effect with --modules-only; ignoring it")
+            cfg.analyze_includes = False
+            cfg.include_sdk = False
 
         # make sure SPDX directory exists, or create it if it doesn't
         if os.path.exists(cfg.spdx_dir):
@@ -147,5 +209,14 @@ class ZephyrSpdx(WestCommand):
             # create the directory
             os.makedirs(cfg.spdx_dir, exist_ok=False)
 
-        if not make_spdx(cfg):
-            self.die("Failed to create SPDX output")
+        with contextlib.ExitStack() as stack:
+            if args.modules_only:
+                if args.meta:
+                    cfg.meta_file = args.meta
+                else:
+                    tmpdir = stack.enter_context(tempfile.TemporaryDirectory())
+                    cfg.meta_file = os.path.join(tmpdir, "zephyr.meta")
+                    self.generate_module_meta(cfg.meta_file)
+
+            if not make_spdx(cfg):
+                self.die("Failed to create SPDX output")

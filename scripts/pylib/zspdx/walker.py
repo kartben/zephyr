@@ -9,7 +9,6 @@ import subprocess
 from dataclasses import dataclass
 
 import yaml
-from west.util import WestNotFound, west_topdir
 
 from zspdx.cmakecache import parse_cmake_cache_file
 from zspdx.cmakefileapi import TargetType
@@ -119,6 +118,14 @@ class WalkerConfig:
     # should also add an SPDX document for the SDK?
     include_sdk: bool = False
 
+    # generate only the modules-deps document, straight from the module meta
+    # file, without requiring a build
+    modules_only: bool = False
+
+    # path to a pre-generated module meta file; required when modules_only is
+    # set, ignored otherwise (a build supplies its own via CMakeCache)
+    meta_file: str = ""
+
 
 # Walker is the main analysis class: it walks through the CMake codemodel,
 # build files, and corresponding source and SDK files, and gathers the
@@ -132,7 +139,11 @@ class Walker:
         self.cfg = cfg
 
         # SBOM graph container
-        self.sbom_graph = SBOMGraph(namespace_prefix=cfg.namespace_prefix, build_dir=cfg.build_dir)
+        self.sbom_graph = SBOMGraph(
+            namespace_prefix=cfg.namespace_prefix,
+            build_dir=cfg.build_dir,
+            modules_only=cfg.modules_only,
+        )
 
         # Component references for easy access
         self.component_app = None
@@ -287,12 +298,47 @@ class Walker:
             (zephyr or {}).get("path", "")
         )
 
+    def collect_modules_deps_graph(self):
+        """
+        Collect just the module dependency graph, from the module meta file alone.
+
+        The dependency packages describe what the manifest pulls in rather than
+        what a build consumed, so they need none of the CMake state the full walk
+        depends on. That makes this reachable without building anything.
+        Returns SBOMGraph object, or None on failure.
+        """
+        self.meta_file = self.cfg.meta_file
+        if not self.meta_file:
+            _logger.error("no module meta file supplied; bailing")
+            return None
+
+        _logger.info("reading module meta file %s", self.meta_file)
+        content = self._read_meta()
+        if content is None:
+            return None
+
+        self.setup_documents()
+        self._set_creation_metadata(content.get("zephyr"))
+        if not self.setup_modules_deps_component(content["modules"], content.get("zephyr")):
+            return None
+
+        # The relationships to the "-sources" packages a build would have created
+        # are dropped here: walk_relationships() skips any whose endpoints are
+        # absent from the graph.
+        _logger.info("walking through pending relationships")
+        self.walk_relationships()
+
+        return self.sbom_graph
+
     # primary entry point
     def collect_sbom_graph(self):
         """
         Collect the SBOM graph from CMake codemodel and build artifacts.
         Returns SBOMGraph object containing all collected information.
         """
+        if self.cfg.modules_only:
+            return self.collect_modules_deps_graph()
+
         # parse CMake cache file and get compiler path
         _logger.info("parsing CMake Cache file")
         self.get_cache_file()
@@ -475,9 +521,34 @@ class Walker:
         self.sbom_graph.add_document(doc)
         return doc
 
+    def _read_meta(self):
+        """Load and validate the module meta file.
+
+        Returns the parsed mapping, or ``None`` when it is missing, unparseable
+        or does not carry the module list the SBOM is built from.
+        """
+        try:
+            with open(self.meta_file) as file:
+                content = yaml.load(file.read(), yaml.SafeLoader)
+        except (FileNotFoundError, yaml.YAMLError):
+            _logger.error("cannot find a valid zephyr.meta required for SPDX generation; bailing")
+            return None
+
+        if not isinstance(content, dict) or "modules" not in content:
+            _logger.error(f"{self.meta_file} is not a valid zephyr.meta file; bailing")
+            return None
+
+        return content
+
     def setup_documents(self):
         """Set up all SBOM documents."""
         _logger.debug("setting up SBOM documents")
+
+        # Without a build there are no sources, targets or SDK to describe, so
+        # the dependency document is the only one with anything to say.
+        if self.cfg.modules_only:
+            self.doc_modules_deps = self._create_document("modules-deps")
+            return
 
         # Create core documents. The app and zephyr documents historically carry a
         # "-sources" suffix in their DocumentName while keeping the unsuffixed
@@ -498,14 +569,12 @@ class Walker:
         # First set up documents
         self.setup_documents()
 
-        try:
-            with open(self.meta_file) as file:
-                content = yaml.load(file.read(), yaml.SafeLoader)
-                self._set_creation_metadata(content.get("zephyr"))
-                if not self.setup_zephyr_component(content["zephyr"], content["modules"]):
-                    return False
-        except (FileNotFoundError, yaml.YAMLError):
-            _logger.error("cannot find a valid zephyr.meta required for SPDX generation; bailing")
+        content = self._read_meta()
+        if content is None:
+            return False
+
+        self._set_creation_metadata(content.get("zephyr"))
+        if not self.setup_zephyr_component(content["zephyr"], content["modules"]):
             return False
 
         self.setup_app_component()
@@ -531,6 +600,10 @@ class Walker:
 
     def setup_zephyr_component(self, zephyr, modules):
         """Set up zephyr sources component and module components."""
+        # Imported here rather than at module scope: this is the only code that
+        # needs west, and --modules-only never reaches it.
+        from west.util import WestNotFound, west_topdir
+
         # relativeBaseDir is Zephyr sources topdir
         try:
             relative_base_dir = west_topdir(self.cm.paths_source)

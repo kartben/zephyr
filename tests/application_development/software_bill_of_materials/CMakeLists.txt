@@ -107,4 +107,53 @@ foreach(spdx_version ${SPDX_VERSIONS_TO_TEST})
   else()
     add_spdx3_validation_tests(${version_suffix})
   endif()
+
+  # The build-free mode, fed the same meta file the build produced so its output
+  # is directly comparable with the document generated above.
+  add_test(
+    NAME spdx_gen_modules_only_${version_suffix}
+    COMMAND west spdx --modules-only
+            --meta ${CMAKE_BINARY_DIR}/zephyr/zephyr.meta
+            -s ${CMAKE_BINARY_DIR}/spdx-modules-only-${version_suffix}
+            --spdx-version ${spdx_version}
+  )
+  set_tests_properties(
+    spdx_gen_modules_only_${version_suffix}
+    PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  )
+
+  if(spdx_version VERSION_LESS "3.0")
+    add_test(
+      NAME spdx_validate_modules_only_${version_suffix}
+      COMMAND pyspdxtools
+              -i ${CMAKE_BINARY_DIR}/spdx-modules-only-${version_suffix}/modules-deps.spdx
+    )
+
+    # Guards against the build-free path drifting into a second implementation:
+    # every dependency package a real build describes must be described
+    # identically here.
+    add_test(
+      NAME spdx_modules_only_matches_build_${version_suffix}
+      COMMAND ${PYTHON_EXECUTABLE}
+              ${CMAKE_CURRENT_SOURCE_DIR}/verify_modules_only.py
+              --built ${CMAKE_BINARY_DIR}/spdx/modules-deps.spdx
+              --modules-only
+                ${CMAKE_BINARY_DIR}/spdx-modules-only-${version_suffix}/modules-deps.spdx
+    )
+    set_tests_properties(
+      spdx_modules_only_matches_build_${version_suffix}
+      PROPERTIES DEPENDS "spdx_gen_${version_suffix};spdx_gen_modules_only_${version_suffix}"
+    )
+  else()
+    add_test(
+      NAME spdx_validate_modules_only_${version_suffix}
+      COMMAND spdx3-validate --quiet --spdx-version auto
+              --json ${CMAKE_BINARY_DIR}/spdx-modules-only-${version_suffix}/modules-deps.jsonld
+    )
+  endif()
+
+  set_tests_properties(
+    spdx_validate_modules_only_${version_suffix}
+    PROPERTIES DEPENDS spdx_gen_modules_only_${version_suffix}
+  )
 endforeach()

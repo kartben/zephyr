@@ -370,6 +370,8 @@ class SBOMGraph:
     Attributes:
         namespace_prefix: Prefix used by serializers when a document has no explicit namespace.
         build_dir: Build directory used to collect the SBOM graph.
+        modules_only: Whether the graph describes only manifest dependencies, in which
+            case it carries no files by design.
         documents: Documents in the graph, keyed by document name.
         components: Components in the graph, keyed by component name.
         files: Files in the graph, keyed by absolute path.
@@ -381,6 +383,7 @@ class SBOMGraph:
 
     namespace_prefix: str = ""
     build_dir: str = ""
+    modules_only: bool = False
     documents: dict[str, SBOMDocument] = field(default_factory=dict)
     components: dict[str, SBOMComponent] = field(default_factory=dict)
     files: dict[str, SBOMFile] = field(default_factory=dict)

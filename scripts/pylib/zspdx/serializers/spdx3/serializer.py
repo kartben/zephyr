@@ -1151,7 +1151,10 @@ class SPDX3Serializer:
     def _create_files(self):
         """Create software_File elements from all valid files."""
         if not self.sbom_data.files:
-            _logger.warning("No files found in SBOM data")
+            # A dependency-only document describes manifest entries rather than
+            # anything on disk, so having no files is expected there.
+            if not self.sbom_data.modules_only:
+                _logger.warning("No files found in SBOM data")
             return
         for file_obj in self.sbom_data.files.values():
             if not file_obj.path:

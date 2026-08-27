@@ -133,10 +133,41 @@ Generating SPDX documents
      west build --sysbuild -d BUILD_DIR
      west spdx -d BUILD_DIR/hello_world
 
+.. _west-spdx-modules-only:
+
+Generating a dependency SBOM without building
+---------------------------------------------
+
+The ``modules-deps`` document describes what the west manifest pulls in rather
+than what a build consumed, so it can be produced from module metadata alone:
+
+.. code-block:: bash
+
+   west spdx --modules-only -s SPDX_DIR
+
+This needs only a west workspace: no build directory, no toolchain, and no
+:kconfig:option:`CONFIG_BUILD_OUTPUT_META`. It writes a single ``modules-deps``
+document and skips the ``app``, ``zephyr``, ``build`` and ``sdk`` documents,
+which have nothing to describe without a build.
+
+The module metadata is collected from the workspace automatically. Pass
+``--meta`` to use a file that has already been generated, for example by an
+earlier build:
+
+.. code-block:: bash
+
+   west spdx --modules-only --meta BUILD_DIR/zephyr/zephyr.meta -s SPDX_DIR
+
+This is the form used by Zephyr's weekly CVE scan, which checks the CPEs the
+manifest's modules declare against the NVD; see :ref:`modules
+<modules-vulnerability-monitoring>`.
+
 Output documents
 ----------------
 
-The documents are written to :file:`BUILD_DIR/spdx/` (override with ``-s``). The same set of
+The documents are written to :file:`BUILD_DIR/spdx/` (override with ``-s``; with
+``--modules-only``, which has no build directory, the default is :file:`spdx/` in the current
+directory). The same set of
 bill-of-materials (BOM) documents is produced regardless of the SPDX version; only the file
 extension differs: ``.spdx`` for the SPDX 2.x tag-value format and ``.jsonld`` for the SPDX 3.0
 JSON-LD format:
@@ -230,6 +261,14 @@ Command-line options
 - ``--include-sdk``: with ``--analyze-includes``, also create a fourth SPDX
   document, :file:`sdk.spdx` (or :file:`sdk.jsonld`), which lists header files
   included from the SDK.
+
+- ``--modules-only``: describe only the dependencies the west manifest pulls in,
+  producing just the ``modules-deps`` document. No build directory is required;
+  see :ref:`west-spdx-modules-only`. ``--analyze-includes`` and ``--include-sdk``
+  describe build output, so they have no effect here and are ignored.
+
+- ``--meta META``: with ``--modules-only``, read module metadata from this file
+  instead of collecting it from the workspace.
 
 .. warning::
 

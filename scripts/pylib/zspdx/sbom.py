@@ -37,6 +37,12 @@ class SBOMConfig:
     # should also add an SPDX document for the SDK?
     include_sdk: bool = False
 
+    # should only generate the modules-deps document, without a build?
+    modules_only: bool = False
+
+    # path to a pre-generated module meta file, used when modules_only is set
+    meta_file: str = ""
+
 
 # create Cmake file-based API directories and query file
 # Arguments:
@@ -91,6 +97,8 @@ def make_spdx(cfg):
     walker_cfg.build_dir = cfg.build_dir
     walker_cfg.analyze_includes = cfg.analyze_includes
     walker_cfg.include_sdk = cfg.include_sdk
+    walker_cfg.modules_only = cfg.modules_only
+    walker_cfg.meta_file = cfg.meta_file
 
     # make and run the walker
     w = Walker(walker_cfg)
