@@ -613,6 +613,52 @@ class SPDX3Serializer:
                 continue
             parent = self.dt_hardware.get(entry.get("parent"), self.hardware)
             self._new_relationship(spdx.RelationshipType.contains, parent._id, [component._id])
+            self._create_driver_relationship(entry, component)
+
+    def _create_driver_relationship(self, entry: dict, component):
+        """Link the driver source that instantiates a devicetree node to its hardware.
+
+        ``entry["driver"]`` names the CMake target and source file whose
+        ``DEVICE_DT_DEFINE()`` produced the node's device object, recovered from the
+        linker map. Resolve that to the file already in the graph and record it as
+        ``configures``: this software is what drives that piece of hardware.
+        """
+        driver = entry.get("driver")
+        if not driver:
+            return
+        driver_file = self._find_driver_file(driver)
+        if driver_file is None:
+            _logger.debug(
+                "no SBOM file for driver %s in target %s", driver["source"], driver["target"]
+            )
+            return
+        self._new_relationship(spdx.RelationshipType.configures, driver_file._id, [component._id])
+
+    def _find_driver_file(self, driver: dict):
+        """Find the graph's file element for a driver object recovered from the map.
+
+        Driver sources belong to the zephyr (or a module) component rather than to
+        the build target that compiled them, so the search is graph-wide. Match on
+        the file name, then, when several files share it, on the source location the
+        map gave us.
+        """
+        candidates = [
+            path for path in self.sbom_data.files if os.path.basename(path) == driver["source"]
+        ]
+        if not candidates:
+            return None
+        if len(candidates) > 1:
+            location = driver.get("location")
+            narrowed = [p for p in candidates if location and p.endswith(location)]
+            if len(narrowed) != 1:
+                _logger.debug(
+                    "driver %s is ambiguous (%d candidates); not linked",
+                    driver["source"],
+                    len(candidates),
+                )
+                return None
+            candidates = narrowed
+        return self.file_elements.get(candidates[0])
 
     def _create_build_output_relationships(self):
         """Emit ``hasOutput`` for the final image(s) and a sub-build for every other target."""
@@ -1022,11 +1068,17 @@ class SPDX3Serializer:
                     yield file_element
 
     def _build_owned_elements(self):
-        """Yield the Build-profile elements, all defined in the build document."""
+        """Yield the Build- and Hardware-profile elements, all defined in the build document."""
         if self.build:
             yield self.build
         yield from self.target_builds.values()
         yield from self.build_tools.values()
+        # Hardware profile: the board and its devicetree components are seeded into the
+        # build document, so a reference from another document (a driver's `configures`)
+        # has to resolve to an ExternalMap import rather than a dangling id.
+        if self.hardware:
+            yield self.hardware
+        yield from self.dt_hardware.values()
 
     def _element_home_index(self) -> dict:
         """Map each package/file element id to the document that defines it.
