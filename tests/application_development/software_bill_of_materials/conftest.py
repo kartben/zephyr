@@ -21,6 +21,13 @@ GIT_URL_REGEX = (
     r"(?P<namespace>[\w\-_/]+)/(?P<package>[\w\-_]+)(?:\.git)?/?"
 )
 
+# Repository 'west spdx' identifies the Zephyr sources with when the checkout
+# records no single remote.
+ZEPHYR_UPSTREAM_PURL_PREFIX = "pkg:github/zephyrproject-rtos/zephyr@"
+
+# Matches a Zephyr release tag, e.g. "v4.3.0" or "v4.4.0-rc3".
+RELEASE_TAG_REGEX = r"v\d+\.\d+\.\d+(?:-[a-z0-9.\-]+)?"
+
 
 def pytest_addoption(parser):
     """Add command-line options for pytest."""
@@ -112,7 +119,8 @@ def modules_doc(spdx_dir):
 
 @pytest.fixture(scope="session")
 def zephyr_version():
-    """Fixture providing the Zephyr version from the VERSION file."""
+    """Fixture providing the Zephyr version from the VERSION file, EXTRAVERSION
+    included."""
     zephyr_base = os.environ.get("ZEPHYR_BASE")
     if not zephyr_base:
         pytest.skip("ZEPHYR_BASE not set")
@@ -129,13 +137,16 @@ def zephyr_version():
         pytest.skip(f"Cannot read {version_file}")
 
     try:
-        return (
+        base_version = (
             f"{int(values['VERSION_MAJOR'])}"
             f".{int(values['VERSION_MINOR'])}"
             f".{int(values['PATCHLEVEL'])}"
         )
     except (KeyError, ValueError):
         pytest.skip(f"Cannot parse version from {version_file}")
+
+    extra = values.get("EXTRAVERSION", "")
+    return f"{base_version}-{extra}" if extra else base_version
 
 
 @pytest.fixture(scope="session")
@@ -158,19 +169,15 @@ def zephyr_purl_prefix(zephyr_meta):
     Derived from the SCM URL recorded in zephyr.meta so that the tests hold in
     forks and downstream mirrors, not just in zephyrproject-rtos/zephyr.
 
-    Returns None when no purl can be derived, which is the common case in a
-    development workspace: zephyr.meta only records a remote for a checkout that
-    has exactly one, so anything with an extra fork or upstream remote lands here
-    (and gets its revision flagged '-off'). 'west spdx' emits no package URL at
-    all in that case, which the tests assert instead.
+    zephyr.meta only records a remote for a checkout that has exactly one, so a
+    development workspace with an extra fork or upstream remote records none
+    (and gets its revision flagged '-off'). 'west spdx' falls back to the
+    upstream repository there, and so does the expected prefix.
     """
     url = zephyr_meta.get("remote") or zephyr_meta.get("url")
-    if not url:
-        return None
-
-    match = re.fullmatch(GIT_URL_REGEX, url)
+    match = re.fullmatch(GIT_URL_REGEX, url) if url else None
     if not match:
-        return None
+        return ZEPHYR_UPSTREAM_PURL_PREFIX
 
     return f"pkg:{match.group('host')}/{match.group('namespace')}/{match.group('package')}@"
 
@@ -180,11 +187,17 @@ def zephyr_purl_versions(zephyr_meta):
     """Fixture providing the revisions a Zephyr purl may be pinned to.
 
     'west spdx' pins to the release tags pointing at the checked-out commit when
-    there are any, and to the commit itself otherwise.
+    there are any, and to the commit itself otherwise. A revision west could not
+    confirm is suffixed '-dirty' or '-off'; only the commit it names can be
+    fetched, so that is what the purl carries.
     """
-    tags = zephyr_meta.get("tags")
+    tags = [tag for tag in zephyr_meta.get("tags") or [] if re.fullmatch(RELEASE_TAG_REGEX, tag)]
     if tags:
         return set(tags)
 
     revision = zephyr_meta.get("revision")
-    return {revision} if revision else set()
+    if not revision:
+        return set()
+
+    commit = re.sub(r"[+\-](?:dirty|off).*$", "", revision)
+    return {commit if re.fullmatch(r"[a-f0-9]{40}", commit) else revision}
