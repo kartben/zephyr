@@ -121,6 +121,28 @@ and what makes it slow (a few minutes, dominated by that per-file pass and the l
 Any board works; `m5stack_paper_color/esp32s3/procpu` is what the hosted sample uses. Pick one
 with a `zephyr,display` chosen node, since the LVGL sample requires it.
 
+### Generate from a checkout at `<topdir>/zephyr`
+
+File names in the zephyr component are relative to the **west topdir**, so the checkout has to
+sit at `<topdir>/zephyr` for them to read `zephyr/drivers/display/display_ed2208_gca.c`. Build
+from a git worktree and they carry its path instead —
+`zephyr/.claude/worktrees/<name>/drivers/display/display_ed2208_gca.c` — for every zephyr
+source, plus a second variant on the coverage snippets in `safety.jsonld`. Module and SDK
+files are unaffected: they are relative to their own component's base directory.
+
+If a plain checkout is not available, a throwaway workspace works, as long as the module trees
+are **real directories**. Symlinking them makes the compiler report realpaths that no longer
+sit under the module component's base directory, and `--analyze-includes` then silently drops
+every module header — 493 of them for this build. `cp -al` gives real paths for no disk:
+
+```bash
+WS=/tmp/zws
+mkdir -p "$WS/.west" && printf '[manifest]\npath = zephyr\nfile = west.yml\n' > "$WS/.west/config"
+git -C "$(west topdir)/zephyr" worktree add "$WS/zephyr" <branch>
+cp -al "$(west topdir)/modules" "$WS/modules"        # hard links, not a symlink
+ln -s "$(west topdir)/bootloader" "$WS/bootloader"   # not compiled here, symlink is fine
+```
+
 ### Running from a git worktree
 
 `west` resolves extension commands through the manifest, so `west spdx` runs the copy of
