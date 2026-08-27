@@ -72,8 +72,8 @@ def load_coverage(
 
     def split_key(key: str) -> str | None:
         for slug, fns in slugs:
-            if key.startswith(slug + "_") and key[len(slug) + 1:].startswith("test_"):
-                bare = key[len(slug) + 1:]
+            if key.startswith(slug + "_") and key[len(slug) + 1 :].startswith("test_"):
+                bare = key[len(slug) + 1 :]
                 return fns.get(bare) or unique.get(bare) or bare
         m = re.search(r"(test_[A-Za-z0-9_]+)$", key)
         return (unique.get(m.group(1)) or m.group(1)) if m else None
@@ -95,6 +95,8 @@ def load_coverage(
 
     _logger.info(
         "coverage: indexed %d test(s) and %d file(s) of run coverage from %s",
-        len(cov_by_test), len(all_covered), matrix_path,
+        len(cov_by_test),
+        len(all_covered),
+        matrix_path,
     )
     return cov_by_test, all_covered

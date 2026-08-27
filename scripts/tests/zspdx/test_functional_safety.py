@@ -122,13 +122,21 @@ def test_verdict_from_rollup():
 
 
 def _write_twister(path, testcases, platform="native_sim"):
-    path.write_text(json.dumps({
-        "environment": {"zephyr_version": "v4.4.0-1-gdeadbeef"},
-        "testsuites": [{
-            "name": "kernel.threads", "platform": platform, "path": "tests/kernel/threads",
-            "testcases": testcases,
-        }],
-    }))
+    path.write_text(
+        json.dumps(
+            {
+                "environment": {"zephyr_version": "v4.4.0-1-gdeadbeef"},
+                "testsuites": [
+                    {
+                        "name": "kernel.threads",
+                        "platform": platform,
+                        "path": "tests/kernel/threads",
+                        "testcases": testcases,
+                    }
+                ],
+            }
+        )
+    )
 
 
 def test_load_results_qualifies_and_rolls_up(tmp_path):
@@ -148,12 +156,25 @@ def test_load_results_qualifies_and_rolls_up(tmp_path):
 
 def test_load_results_rollup_precedence(tmp_path):
     report = tmp_path / "twister.json"
-    report.write_text(json.dumps({"environment": {}, "testsuites": [
-        {"name": "s", "platform": "p1",
-         "testcases": [{"identifier": "s.suite.f", "status": "passed"}]},
-        {"name": "s", "platform": "p2",
-         "testcases": [{"identifier": "s.suite.f", "status": "failed"}]},
-    ]}))
+    report.write_text(
+        json.dumps(
+            {
+                "environment": {},
+                "testsuites": [
+                    {
+                        "name": "s",
+                        "platform": "p1",
+                        "testcases": [{"identifier": "s.suite.f", "status": "passed"}],
+                    },
+                    {
+                        "name": "s",
+                        "platform": "p2",
+                        "testcases": [{"identifier": "s.suite.f", "status": "failed"}],
+                    },
+                ],
+            }
+        )
+    )
     _env, results, _q = load_results(str(report))
     # any failure dominates the rollup
     assert results["suite__test_f"]["rollup"] == "failing"
@@ -165,14 +186,22 @@ def test_load_results_rollup_precedence(tmp_path):
 def test_load_coverage_joins_and_unions(tmp_path):
     matrix = tmp_path / "test_matrix.json"
     # matrix keys are <scenario slug>_<test fn>, no ztest suite name
-    matrix.write_text(json.dumps({
-        "by_test": {
-            "kernel_threads_test_thread_start":
-                {"kernel/thread.c": [800, 805], "../modules/x.c": [1]},
-        },
-        "by_line": {"kernel/thread.c": {"800": ["a"], "805": ["a"], "812": ["b"]},
-                    "../modules/x.c": {"1": ["a"]}},
-    }))
+    matrix.write_text(
+        json.dumps(
+            {
+                "by_test": {
+                    "kernel_threads_test_thread_start": {
+                        "kernel/thread.c": [800, 805],
+                        "../modules/x.c": [1],
+                    },
+                },
+                "by_line": {
+                    "kernel/thread.c": {"800": ["a"], "805": ["a"], "812": ["b"]},
+                    "../modules/x.c": {"1": ["a"]},
+                },
+            }
+        )
+    )
     qual_map = {"kernel.threads": {"test_thread_start": "threads__test_thread_start"}}
     cov, all_covered = load_coverage(
         str(matrix), qual_map, wanted_tests={"threads__test_thread_start"}
@@ -190,6 +219,7 @@ def test_load_coverage_joins_and_unions(tmp_path):
 
 def test_requirement_adequacy_verdicts():
     from zspdx.sources import ImplBody
+
     bodies = {"k_foo": [ImplBody("kernel/foo.c", 10, 20, "impl")]}
     body_lines = {"kernel/foo.c": {12, 15}}
 
@@ -300,15 +330,20 @@ def _fs_metadata(tmp_path, *, covered=True):
     )
     return {
         "traceability": traceability,
-        "requirements_catalog": {"ZEP-SRS-1-1": RequirementInfo(uid="ZEP-SRS-1-1",
-                                                                statement="The system shall foo.")},
+        "requirements_catalog": {
+            "ZEP-SRS-1-1": RequirementInfo(uid="ZEP-SRS-1-1", statement="The system shall foo.")
+        },
         "impl_bodies": {"k_foo": [ImplBody("kernel/foo.c", 2, 5, "impl")]},
-        "test_results": {"suite__test_foo": {
-            "rollup": "passing",
-            "instances": [{"platform": "native_sim", "status": "passed"}],
-        }},
-        "test_environment": {"zephyr_version": "v4.4.0-1-gdeadbeef",
-                             "options": {"platform": ["native_sim"], "coverage_tool": "lcov"}},
+        "test_results": {
+            "suite__test_foo": {
+                "rollup": "passing",
+                "instances": [{"platform": "native_sim", "status": "passed"}],
+            }
+        },
+        "test_environment": {
+            "zephyr_version": "v4.4.0-1-gdeadbeef",
+            "options": {"platform": ["native_sim"], "coverage_tool": "lcov"},
+        },
         # covered: the verifying test executes lines 2 and 4 of the body (2..5) —
         # two non-contiguous paths. Some test always reaches it (all_covered), so
         # uncovered -> broken, not unattributed.
@@ -350,6 +385,7 @@ def _by_type(graph, spdx_type):
 
 def test_contiguous_ranges():
     from zspdx.serializers.spdx3.serializer import SPDX3Serializer
+
     assert SPDX3Serializer._contiguous_ranges([]) == []
     assert SPDX3Serializer._contiguous_ranges([5]) == [(5, 5)]
     assert SPDX3Serializer._contiguous_ranges([1, 2, 4, 5, 7]) == [(1, 2), (4, 5), (7, 7)]
@@ -364,8 +400,11 @@ def test_fs_implemented_by_is_the_full_body(tmp_path):
     graph = _safety_graph(tmp_path)
     byid = {e["spdxId"]: e for e in graph if "spdxId" in e}
     req = next(e for e in _by_type(graph, "Requirement") if e["name"].startswith("ZEP-SRS-1-1"))
-    impl = [e for e in _by_type(graph, "LifecycleScopedRelationship")
-            if e["relationshipType"] == "implementedBy" and e["from"] == req["spdxId"]]
+    impl = [
+        e
+        for e in _by_type(graph, "LifecycleScopedRelationship")
+        if e["relationshipType"] == "implementedBy" and e["from"] == req["spdxId"]
+    ]
     assert len(impl) == 1
     assert impl[0]["scope"].endswith("development")
     snippet = byid[impl[0]["to"][0]]
@@ -438,8 +477,10 @@ def test_fs_twister_tool_provenance_and_uses_tool(tmp_path):
     # the evaluation result records the tool that produced it
     result = _by_type(graph, "functionalsafety_EvaluationResult")[0]
     assert any(
-        e["relationshipType"] == "usesTool" and e["from"] == result["spdxId"]
-        and tool["spdxId"] in e["to"] and e["scope"].endswith("test")
+        e["relationshipType"] == "usesTool"
+        and e["from"] == result["spdxId"]
+        and tool["spdxId"] in e["to"]
+        and e["scope"].endswith("test")
         for e in _by_type(graph, "LifecycleScopedRelationship")
     )
 

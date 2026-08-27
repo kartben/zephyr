@@ -28,11 +28,11 @@ NO_IMPL = "no-impl"
 
 VERDICT_HELP = {
     TRUE: "every resolved implementing symbol is exercised by the requirement's "
-          "own verifying tests",
+    "own verifying tests",
     PARTIAL: "some implementing symbols are exercised by the verifying tests, others not",
     BROKEN: "the verifying tests never execute the implementing code — other tests do",
     UNATTRIBUTED: "no test in the run covered the implementation lines (boot-time, "
-                  "inlined away, or config'd out)",
+    "inlined away, or config'd out)",
     NO_COV: "the verifying tests have no coverage data in this run",
     UNRESOLVED: "implementation links exist but map to macros/inlines, not bodies",
     NO_IMPL: "the requirement has no implemented_by link",
@@ -71,9 +71,7 @@ def requirement_adequacy(symbols, tests, impl_bodies, cov_by_test, all_covered) 
         if any(_body_covered(body, all_covered) for body in bodies):
             adjudicable += 1
         if any(
-            _body_covered(body, cov_by_test[test])
-            for test in tests_with_cov
-            for body in bodies
+            _body_covered(body, cov_by_test[test]) for test in tests_with_cov for body in bodies
         ):
             own_hits += 1
 
