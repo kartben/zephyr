@@ -425,7 +425,8 @@ def setup(app: Sphinx) -> dict[str, Any]:
     app.add_config_value("doxyrunner_projects", {}, "")
     app.add_config_value("doxyrunner_skip", False, "env")
 
-    app.connect("builder-inited", doxygen_build)
+    # produces the Doxygen output zephyr.doxybridge parses at priority 400
+    app.connect("builder-inited", doxygen_build, priority=300)
 
     return {
         "version": __version__,

@@ -233,12 +233,17 @@ def doxygen_parse(app: Sphinx) -> None:
 
 
 def setup(app: Sphinx) -> dict[str, Any]:
+    # for doxyrunner_projects/doxyrunner_skip, and for the Doxygen XML its
+    # builder-inited handler produces
+    app.setup_extension("zephyr.doxyrunner")
+
     app.add_directive("doxygengroup", DoxygenGroupDirective)
 
     app.add_role_to_domain("c", "group", CXRefRole())
 
     app.add_post_transform(DoxygenReferencer)
-    app.connect("builder-inited", doxygen_parse)
+    # consumes what zephyr.doxyrunner produces at priority 300
+    app.connect("builder-inited", doxygen_parse, priority=400)
 
     return {
         "version": "0.1",
