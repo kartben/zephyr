@@ -8,10 +8,10 @@ SPDX-License-Identifier: Apache-2.0
 Introduction
 ============
 
-This Sphinx plugin can be used to run Doxygen build as part of the Sphinx build
-process. It is meant to be used with other plugins such as ``breathe`` in order
-to improve the user experience. The principal features offered by this plugin
-are:
+This Sphinx plugin runs the Doxygen build as part of the Sphinx build process,
+so that extensions consuming Doxygen output (``zephyr.doxybridge``,
+``zephyr.doxyxref``, ``zephyr.api_overview``) find it in place. The principal
+features offered by this plugin are:
 
 - Doxygen build is run before Sphinx reads input files
 - Doxyfile can be optionally pre-processed so that variables can be inserted
@@ -19,10 +19,6 @@ are:
   run if necessary.
 - Synchronizes Doxygen XML output so that even if Doxygen is run only changed,
   deleted or added files are modified.
-
-References:
-
--  https://github.com/michaeljones/breathe/issues/420
 
 Configuration options
 =====================
@@ -34,7 +30,8 @@ Configuration options
   name and values a dictionary with the following keys:
 
   - ``doxyfile``: Path to Doxyfile.
-  - ``outdir``: Doxygen build output directory (inserted to ``OUTPUT_DIRECTORY``)
+  - ``outdir``: Doxygen build output directory (inserted to ``OUTPUT_DIRECTORY``),
+    required.
   - ``outdir_var``: Variable representing the Doxygen build output directory,
     as used by ``OUTPUT_DIRECTORY``. This can be useful if other Doxygen
     variables reference to the output directory.
@@ -55,6 +52,7 @@ from typing import Any
 
 from sphinx.application import Sphinx
 from sphinx.environment import BuildEnvironment
+from sphinx.errors import ExtensionError
 from sphinx.util import logging
 
 __version__ = "0.1.0"
@@ -352,11 +350,10 @@ def doxygen_build(app: Sphinx) -> None:
         return
 
     for name, config in app.config.doxyrunner_projects.items():
-        if config.get("outdir"):
-            outdir = Path(config["outdir"])
-        else:
-            outdir = Path(app.outdir) / "_doxygen" / name
+        if not config.get("outdir"):
+            raise ExtensionError(f"doxyrunner_projects['{name}'] has no 'outdir'")
 
+        outdir = Path(config["outdir"])
         outdir.mkdir(parents=True, exist_ok=True)
         tmp_outdir = outdir / "tmp"
 

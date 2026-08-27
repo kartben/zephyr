@@ -168,6 +168,7 @@ intersphinx_mapping = {
     "cmake": ("https://cmake.org/cmake/help/latest", None),
 }
 
+# Only consulted when nitpicky mode is on, i.e. when sphinx-build is passed -n.
 nitpick_ignore = [
     # ignore C standard identifiers (they are not defined in Zephyr docs)
     ("c:identifier", "FILE"),
@@ -380,7 +381,6 @@ gh_link_prefixes = {
     ".*": "doc",
 }
 gh_link_exclude = [
-    "reference/kconfig.*",
     "build/dts/api/bindings.*",
     "build/dts/api/compatibles.*",
 ]
@@ -409,8 +409,12 @@ if not SKIP_EXTERNAL_CONTENT:
         (ZEPHYR_BASE, "snippets/**/*.rst"),
         (ZEPHYR_BASE, "snippets/**/doc"),
     ]
+# Anything under the Sphinx source directory that is not produced by
+# external_content itself is deleted unless it is kept here. The build/dts and
+# build/requirements entries below cover the trees written by the 'devicetree'
+# and 'requirements' CMake targets before Sphinx starts; keep them in sync with
+# doc/CMakeLists.txt.
 external_content_keep = [
-    "reference/kconfig/*",
     "develop/manifest/index.rst",
     "build/dts/api/bindings.rst",
     "build/dts/api/bindings/**/*",
@@ -421,7 +425,6 @@ external_content_keep = [
 
 # -- Options for zephyr.domain --------------------------------------------
 
-zephyr_breathe_insert_related_samples = True
 zephyr_generate_hw_features = not tags.has("hw_features_turbo")  # pylint: disable=undefined-variable  # noqa: F821
 zephyr_hw_features_vendor_filter = []
 zephyr_hw_features_twister_extra_flags = []

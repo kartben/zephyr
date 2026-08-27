@@ -11,14 +11,11 @@ var Scorer = {
   // each result The function takes a result array [filename, title,
   // anchor, descr, score] and returns the new score.
 
-  // For Zephyr search results, push display down for kconfig, boards,
-  // and samples so "regular" docs will show up before them
+  // For Zephyr search results, push display down for boards and samples so
+  // "regular" docs will show up before them
 
   score: function(result) {
-    if (result[0].search("reference/kconfig/")>=0) {
-       return -5;
-    }
-    else if (result[0].search("boards/")>=0) {
+    if (result[0].search("boards/")>=0) {
        return -5;
     }
     else if (result[0].search("samples/")>=0) {
