@@ -22,6 +22,7 @@
 #include <semaphore.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <unistd.h>
 
 #define TM_TEST_NUM_THREADS        5
@@ -147,7 +148,12 @@ void tm_thread_relinquish(void)
 
 void tm_thread_sleep(int seconds)
 {
-	(void)sleep(seconds);
+	struct timespec ts = {.tv_sec = seconds, .tv_nsec = 0};
+
+	/* nanosleep() rather than sleep(), so the suite does not need
+	 * POSIX_MULTI_PROCESS. See posix.conf.
+	 */
+	(void)nanosleep(&ts, NULL);
 }
 
 int tm_queue_create(int queue_id)
@@ -170,10 +176,6 @@ int tm_queue_create(int queue_id)
 
 int tm_queue_send(int queue_id, unsigned long *message_ptr)
 {
-	if ((queue_id < 0) || (queue_id >= TM_TEST_NUM_MESSAGE_QUEUES)) {
-		return TM_ERROR;
-	}
-
 	return (mq_send(test_queue[queue_id], (const char *)message_ptr, TM_TEST_MESSAGE_SIZE, 0) ==
 		0)
 		       ? TM_SUCCESS
@@ -183,10 +185,6 @@ int tm_queue_send(int queue_id, unsigned long *message_ptr)
 int tm_queue_receive(int queue_id, unsigned long *message_ptr)
 {
 	ssize_t received;
-
-	if ((queue_id < 0) || (queue_id >= TM_TEST_NUM_MESSAGE_QUEUES)) {
-		return TM_ERROR;
-	}
 
 	received =
 		mq_receive(test_queue[queue_id], (char *)message_ptr, TM_TEST_MESSAGE_SIZE, NULL);
@@ -205,19 +203,11 @@ int tm_semaphore_create(int semaphore_id)
 
 int tm_semaphore_get(int semaphore_id)
 {
-	if ((semaphore_id < 0) || (semaphore_id >= TM_TEST_NUM_SEMAPHORES)) {
-		return TM_ERROR;
-	}
-
-	return tm_sem_wait(&test_sem[semaphore_id]);
+	return (sem_trywait(&test_sem[semaphore_id]) == 0) ? TM_SUCCESS : TM_ERROR;
 }
 
 int tm_semaphore_put(int semaphore_id)
 {
-	if ((semaphore_id < 0) || (semaphore_id >= TM_TEST_NUM_SEMAPHORES)) {
-		return TM_ERROR;
-	}
-
 	return (sem_post(&test_sem[semaphore_id]) == 0) ? TM_SUCCESS : TM_ERROR;
 }
 
@@ -228,9 +218,7 @@ int tm_memory_pool_create(int pool_id)
 
 int tm_memory_pool_allocate(int pool_id, unsigned char **memory_ptr)
 {
-	if ((pool_id < 0) || (pool_id >= TM_TEST_NUM_MEMORY_POOLS) || (memory_ptr == NULL)) {
-		return TM_ERROR;
-	}
+	(void)pool_id;
 
 	*memory_ptr = malloc(TM_TEST_MEMORY_SIZE);
 
@@ -239,9 +227,7 @@ int tm_memory_pool_allocate(int pool_id, unsigned char **memory_ptr)
 
 int tm_memory_pool_deallocate(int pool_id, unsigned char *memory_ptr)
 {
-	if ((pool_id < 0) || (pool_id >= TM_TEST_NUM_MEMORY_POOLS) || (memory_ptr == NULL)) {
-		return TM_ERROR;
-	}
+	(void)pool_id;
 
 	free(memory_ptr);
 
