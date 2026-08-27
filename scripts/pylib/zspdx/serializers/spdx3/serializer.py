@@ -1691,9 +1691,7 @@ class SPDX3Serializer:
         in_body = sorted(ln for ln in covered_lines if body.start <= ln <= body.end)
         snippets = []
         for start, end in self._contiguous_ranges(in_body):
-            snippet = self._fs_make_snippet(
-                rel, start, end, f"cov-{rel}", f"{rel}:{start}-{end}"
-            )
+            snippet = self._fs_make_snippet(rel, start, end, f"cov-{rel}", f"{rel}:{start}-{end}")
             if snippet is not None:
                 snippets.append(snippet)
         return snippets

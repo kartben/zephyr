@@ -83,9 +83,13 @@ def load_results(twister_json: str) -> tuple[dict, dict, dict]:
         record["nfail"] = sum(s in _FAIL for s in statuses)
         record["nskip"] = sum(s in _SKIP for s in statuses)
         record["rollup"] = (
-            "failing" if record["nfail"] else
-            "passing" if record["npass"] else
-            "skipped" if record["nskip"] else "no-run"
+            "failing"
+            if record["nfail"]
+            else "passing"
+            if record["npass"]
+            else "skipped"
+            if record["nskip"]
+            else "no-run"
         )
 
     _logger.info("twister: %d qualified test result(s) from %s", len(results), twister_json)

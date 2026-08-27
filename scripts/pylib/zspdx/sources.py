@@ -94,9 +94,7 @@ class Source:
                 text=True,
             )
             self._ls = result.stdout.split("\n")
-        return sorted(
-            {f for f in self._ls for pattern in patterns if fnmatch.fnmatch(f, pattern)}
-        )
+        return sorted({f for f in self._ls for pattern in patterns if fnmatch.fnmatch(f, pattern)})
 
     def read(self, rel: str) -> str | None:
         """File content at the build ref (or working tree), or ``None``."""
@@ -184,8 +182,11 @@ def resolve_impl_symbols(source: Source, symbols) -> dict[str, list[ImplBody]]:
             bodies.sort(key=lambda b: (_VARIANT_ORDER[b.variant], b.file, b.start))
             resolved[sym] = bodies
 
-    _logger.info("sources: resolved %d of %d implementation symbol(s) to bodies",
-                 len(resolved), len(list(symbols)))
+    _logger.info(
+        "sources: resolved %d of %d implementation symbol(s) to bodies",
+        len(resolved),
+        len(list(symbols)),
+    )
     return resolved
 
 

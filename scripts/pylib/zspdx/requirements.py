@@ -179,9 +179,7 @@ def load_requirements_catalog(
     """
     req_dir = find_requirements_dir(build_dir, explicit)
     if not req_dir:
-        _logger.info(
-            "requirements: reqmgmt module not found; requirement statements unavailable"
-        )
+        _logger.info("requirements: reqmgmt module not found; requirement statements unavailable")
         return {}
 
     catalog: dict[str, RequirementInfo] = {}
