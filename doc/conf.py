@@ -7,23 +7,18 @@ import sys
 import textwrap
 from pathlib import Path
 
-ZEPHYR_BASE = Path(__file__).resolve().parents[1]
 ZEPHYR_BUILD = Path(os.environ.get("OUTPUT_DIR")).resolve()
 
 # Add the '_extensions' directory to sys.path, to enable finding Sphinx
 # extensions within.
-sys.path.insert(0, str(ZEPHYR_BASE / "doc" / "_extensions"))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_extensions"))
 
-# Add the '_scripts' directory to sys.path, to enable finding utility
-# modules.
-sys.path.insert(0, str(ZEPHYR_BASE / "doc" / "_scripts"))
+from zephyr._paths import ZEPHYR_BASE, add_script_paths  # noqa: E402
 
-# Add the directory which contains the runners package as well,
-# for autodoc directives on runners.xyz.
-sys.path.insert(0, str(ZEPHYR_BASE / "scripts" / "west_commands"))
-
-# Add the directory which contains the pytest-twister-pytest
-sys.path.insert(0, str(ZEPHYR_BASE / "scripts" / "pylib" / "pytest-twister-harness" / "src"))
+# '_scripts' holds utility modules imported below and by the extensions;
+# west_commands is needed for autodoc directives on runners.xyz, and
+# twister_harness for the pytest plugin autodoc imports.
+add_script_paths("doc_scripts", "west_commands", "twister_harness")
 
 import redirects  # noqa: E402
 
@@ -102,8 +97,8 @@ extensions = [
     "zephyr.application",
     "zephyr.html_redirects",
     "zephyr.kconfig",
-    "zephyr.dtcompatible-role",
-    "zephyr.link-roles",
+    "zephyr.dtcompatible_role",
+    "zephyr.link_roles",
     "sphinx_tabs.tabs",
     "sphinx_sitemap",
     "zephyr.doxyrunner",
@@ -355,7 +350,7 @@ if SKIP_EXTERNAL_CONTENT:
         if not new.startswith(("boards/", "samples/", "snippets/"))
     )
 
-# -- Options for zephyr.link-roles ----------------------------------------
+# -- Options for zephyr.link_roles ----------------------------------------
 
 link_roles_manifest_project = "zephyr"
 link_roles_manifest_project_broken_links_ignore_globs = [

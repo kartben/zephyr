@@ -5,7 +5,6 @@ SPDX-License-Identifier: Apache-2.0
 """
 
 import concurrent.futures
-import os
 from typing import Any
 
 import doxmlparser
@@ -18,6 +17,7 @@ from sphinx.transforms.post_transforms import SphinxPostTransform
 from sphinx.util import logging
 from sphinx.util.docutils import SphinxDirective
 
+from zephyr._paths import outdir_relative_uri
 from zephyr.doxyrunner import doxygen_input_changed, doxygen_outputs
 
 logger = logging.getLogger(__name__)
@@ -109,14 +109,9 @@ class DoxygenReferencer(SphinxPostTransform):
                 split = found_id.split("_")
                 doxygen_target = f"{'_'.join(split[:-1])}.html#{split[-1][1:]}"
 
-            doxygen_target = str(outputs[found_name].html / doxygen_target)
-
-            doc_dir = os.path.dirname(self.document.get("source"))
-            doc_dest = os.path.join(
-                self.app.outdir,
-                os.path.relpath(doc_dir, self.app.srcdir),
+            rel_uri = outdir_relative_uri(
+                self.app, outputs[found_name].html / doxygen_target, self.document.get("source")
             )
-            rel_uri = os.path.relpath(doxygen_target, doc_dest)
 
             refnode = nodes.reference("", "", internal=True, refuri=rel_uri, reftitle="")
 
