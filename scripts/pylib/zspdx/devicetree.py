@@ -87,6 +87,95 @@ def _binding_type(binding_path: str, bindings_root: str) -> str:
     return parts[0]
 
 
+# A linker map line introducing an input object, e.g.
+#   " .rodata 0x3c0ff310  0x20 zephyr/drivers/i2c/libdrivers__i2c.a(i2c_esp32.c.obj)"
+# and, indented under it, the symbols it defines:
+#   "            0x3c0ff310                __device_dts_ord_9"
+_MAP_OBJECT_RE = re.compile(r"^\s+0x[0-9a-f]+\s+0x[0-9a-f]+\s+(\S+)$")
+_MAP_DEVICE_RE = re.compile(r"^\s+0x[0-9a-f]+\s+__device_dts_ord_(\d+)$")
+# "zephyr/drivers/i2c/libdrivers__i2c.a(i2c_esp32.c.obj)" -> ("drivers__i2c", "i2c_esp32.c")
+_MAP_ARCHIVE_RE = re.compile(r"lib([^/]+)\.a\((.+?)\.obj\)$")
+# "zephyr/CMakeFiles/zephyr.dir/drivers/mipi_dbi/mipi_dbi_spi.c.obj" -> ("zephyr", "mipi_dbi_spi.c")
+_MAP_OBJECT_DIR_RE = re.compile(r"CMakeFiles/([^/]+)\.dir/(.+?)\.obj$")
+
+
+def _find_linker_map(build_dir: str) -> str | None:
+    """Locate the final image's linker map, including a sysbuild domain."""
+    for candidate in (
+        os.path.join(build_dir, "zephyr", "zephyr.map"),
+        *sorted(glob.glob(os.path.join(build_dir, "*", "zephyr", "zephyr.map"))),
+    ):
+        if os.path.isfile(candidate):
+            return candidate
+    return None
+
+
+def _driver_objects(build_dir: str) -> dict:
+    """Map each instantiated device's dependency ordinal to the object that defines it.
+
+    ``DEVICE_DT_DEFINE()`` emits one ``__device_dts_ord_<N>`` symbol per devicetree
+    node it instantiates, where ``N`` is the node's ``dep_ordinal``. The linker map
+    records which input object defines each symbol, so it names the driver
+    translation unit that actually drives the node -- exactly, and without needing
+    a toolchain binary or a source-level heuristic.
+
+    Returns ``{ordinal: {"target": str, "source": str, "location": str}}``; see
+    :func:`_parse_object_path` for the fields.
+    """
+    map_path = _find_linker_map(build_dir)
+    if not map_path:
+        _logger.debug("no linker map under %s; skipping driver linkage", build_dir)
+        return {}
+
+    drivers = {}
+    current = None
+    try:
+        with open(map_path, encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                device = _MAP_DEVICE_RE.match(line)
+                if device and current:
+                    drivers[int(device.group(1))] = current
+                    continue
+                obj = _MAP_OBJECT_RE.match(line)
+                if obj:
+                    current = _parse_object_path(obj.group(1))
+    except OSError as exc:
+        _logger.warning("could not read linker map %s: %s", map_path, exc)
+        return {}
+
+    _logger.debug("linked %d device(s) to a driver object via %s", len(drivers), map_path)
+    return drivers
+
+
+def _parse_object_path(path: str) -> dict | None:
+    """Split a linker-map object path into the driver's target, file name and location.
+
+    Two forms appear: an archive member
+    ``zephyr/drivers/i2c/libdrivers__i2c.a(i2c_esp32.c.obj)``, whose directory
+    mirrors the source tree, and a loose object
+    ``zephyr/CMakeFiles/zephyr.dir/drivers/mipi_dbi/mipi_dbi_spi.c.obj``, which
+    carries the source path outright. ``location`` is that path relative to the
+    source tree when it can be recovered, and is only ever a hint: it
+    disambiguates a basename shared by several files.
+    """
+    archive = _MAP_ARCHIVE_RE.search(path)
+    if archive:
+        source = os.path.basename(archive.group(2))
+        # "zephyr/drivers/i2c/libdrivers__i2c.a" -> "drivers/i2c"
+        parts = os.path.dirname(path).split("/")
+        location = "/".join(parts[1:] + [source]) if len(parts) > 1 else ""
+        return {"target": archive.group(1), "source": source, "location": location}
+    obj = _MAP_OBJECT_DIR_RE.search(path)
+    if obj:
+        rel = obj.group(2)
+        return {
+            "target": obj.group(1),
+            "source": os.path.basename(rel),
+            "location": rel,
+        }
+    return None
+
+
 def _is_hardware(node) -> bool:
     """Whether an EDT node is an enabled, binding-backed hardware component.
 
@@ -107,7 +196,9 @@ def extract_hardware(build_dir: str) -> list[dict]:
     Each entry has ``compatible``, ``name``, ``path``, ``description``,
     ``vendor`` (resolved manufacturer name, or "") and ``parent`` (the path of
     the nearest ancestor that is itself a hardware component, or ``None`` when it
-    hangs directly off the board).
+    hangs directly off the board). ``driver`` names the CMake target and source
+    file of the driver that instantiates the node, or is ``None`` for a node no
+    driver claims (see :func:`_driver_objects`).
     """
     edt_path = _find_edt_pickle(build_dir)
     if not edt_path:
@@ -128,6 +219,7 @@ def extract_hardware(build_dir: str) -> list[dict]:
 
     vendors = _load_vendor_prefixes(zephyr_base)
     bindings_root = os.path.join(zephyr_base, "dts", "bindings")
+    drivers = _driver_objects(build_dir)
     hardware = []
     for node in edt.nodes:
         if not _is_hardware(node):
@@ -149,6 +241,7 @@ def extract_hardware(build_dir: str) -> list[dict]:
                 "description": _first_sentence(node.description),
                 "vendor": vendors.get(prefix, ""),
                 "binding_type": _binding_type(node.binding_path, bindings_root),
+                "driver": drivers.get(node.dep_ordinal),
             }
         )
 
