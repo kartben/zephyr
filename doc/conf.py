@@ -319,25 +319,22 @@ doxyrunner_projects = {
             "DOXY_REQ_INPUT": os.environ.get(
                 "DOXY_REQ_INPUT", str(ZEPHYR_BUILD / "requirements" / "dox")
             ),
+            # @INCLUDE line for the Doxyfile fragment holding the customization
+            # requested through ZEPHYR_DOXYGEN_OVERLAY and
+            # DOXYGEN_FORCE_SINGLE_THREAD (see doc/CMakeLists.txt), empty when
+            # neither is set.
+            "INCLUDE_CUSTOM_FILE": os.environ.get("DOXY_CUSTOM_INCLUDE", ""),
         },
         "outdir_var": "DOXY_OUT",
     },
 }
 os.environ["DOXYGEN_SITEMAP_URL"] = f"{html_baseurl}doxygen/html"
 
-# -- Options for zephyr.doxybridge plugin ---------------------------------
-
-doxybridge_projects = {"zephyr": doxyrunner_projects["zephyr"]["outdir"]}
-
+# zephyr.doxybridge, zephyr.doxyxref and zephyr.api_overview locate the Doxygen
+# output through doxyrunner_projects, and produce nothing when the build is
+# skipped. C-domain references are then replaced with plain text by
+# zephyr.partial_build before resolution.
 doxyrunner_skip = SKIP_DOXYGEN
-if SKIP_DOXYGEN:
-    # No Doxygen XML to bridge; C-domain references are replaced with plain
-    # text by zephyr.partial_build before resolution.
-    doxybridge_projects = {}
-
-# -- Options for zephyr.doxyxref plugin ------------------------------------
-
-doxyxref_projects = doxybridge_projects
 
 # -- Options for html_redirect plugin -------------------------------------
 
@@ -479,7 +476,6 @@ linkcheck_anchors = False
 
 # -- Options for zephyr.api_overview --------------------------------------
 
-api_overview_doxygen_out_dir = str(doxyrunner_projects["zephyr"]["outdir"])
 api_overview_base_url = "https://github.com/zephyrproject-rtos/zephyr"
 
 
