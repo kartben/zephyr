@@ -1,0 +1,65 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Declared CVE-scan coverage states for modules that carry no curated CPE.
+#
+# scripts/ci/cve_scan.py can only match a module that declares a versioned CPE
+# 2.3 identifier under "security: external-references:" in its
+# zephyr/module.yml.  Most modules do not, and the reasons differ: some are
+# simply missing metadata that could be added today, while others have no
+# identity in the NVD to add.  Recording that difference here is what keeps the
+# weekly scan's coverage report honest -- a module absent from this file and
+# without a CPE is reported as an actionable gap, so silence always means
+# "nobody has looked yet" rather than "there is nothing to find".
+#
+# Adding an entry is therefore a triage decision and should be reviewed as one.
+# Removing one is how a module rejoins the scan once an identity exists.
+#
+# Anything not listed here and without a curated CPE raises a note-level
+# "module-missing-cpe" alert in the code scanning dashboard.
+
+# Vendor SDK forks.
+#
+# An NVD product exists for the upstream SDK, but these forks carry no upstream
+# version tags (hal_nxp and hal_stm32 have none at all; hal_espressif has three),
+# so no version can be derived from the revision west pins.  A CPE without a
+# version matches every CVE the vendor ever recorded -- for espressif:esp-idf
+# that is 31 rather than the 5 that apply to a given release -- and none of those
+# alerts would ever close when the pin moves.  They are reported, not matched.
+#
+# "cpe-product" is recorded only where the product was confirmed present in the
+# NVD CPE dictionary; it is the starting point should version resolution ever
+# become possible, not a claim that matching works today.
+vendor-sdk:
+  hal_espressif:
+    cpe-product: a:espressif:esp-idf
+    note: 173 versions in the NVD dictionary; fork carries only 3 tags
+  hal_nxp:
+    cpe-product: a:nxp:mcuxpresso_software_development_kit
+    note: 26 versions in the NVD dictionary; fork carries no tags
+  hal_stm32:
+    cpe-product: a:st:stm32cube*_firmware
+    note: >-
+      NVD models STM32Cube per MCU family (stm32cubel4_firmware,
+      stm32cubef0_firmware, ...), which one module spanning every family cannot
+      represent; fork carries no tags
+  hal_ti:
+    cpe-product: a:ti:simplelink_*_software_development_kit
+    note: >-
+      NVD models SimpleLink per chip (simplelink_cc32xx_..., simplelink_cc13x0_...),
+      which one module spanning every device cannot represent
+
+# Upstreams with no NVD identity at all.
+#
+# Each was checked against the NVD CPE dictionary and returned no product, so
+# there is no CPE to curate.  These are not metadata gaps; NVD simply does not
+# track the project.  Recheck if an upstream is ever assigned a CPE.
+no-nvd-identity:
+  - acpica
+  - libmetal
+  - littlefs
+  - lvgl
+  - mcuboot
+  - open-amp
+  - picolibc
+  - zcbor

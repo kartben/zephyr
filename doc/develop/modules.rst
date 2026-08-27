@@ -609,6 +609,48 @@ A real life example for Mbed TLS module could look like this:
    PURL field must follow the PURL specification provided by `Github
    <https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst>`_.
 
+How these references are used
+-----------------------------
+
+Zephyr runs a weekly CI job that builds a dependency SBOM for every module in
+the manifest (see :ref:`west-spdx-modules-only`) and checks it against the
+`NVD <https://nvd.nist.gov/>`_, reporting matches to the repository's code
+scanning dashboard. Two things follow from how that matching works.
+
+**The CPE is what does the work.** Vulnerabilities are matched by CPE only. A
+PURL is worth declaring as provenance -- it records what the module is a copy
+of -- but it is not used to look up vulnerabilities, because the databases that
+index PURLs do not carry the projects Zephyr vendors: OSV does not index
+``pkg:github`` at all, and Zephyr's pinned revisions are commits on Zephyr's
+*forks*, which are absent from the upstream history OSV's commit ranges are
+built from.
+
+**The CPE must carry a version.** A CPE whose version field is ``*`` or ``-``
+cannot be matched against a vulnerability's affected-version range, so it is
+skipped. The version should reflect what the module actually vendors at the
+revision the manifest pins, which is not necessarily the latest upstream
+release.
+
+A module that declares no versioned CPE is never checked, and the scan reports
+it as a coverage gap so that a clean run is not mistaken for a module with no
+known vulnerabilities. If an upstream has no entry in the NVD at all, or is a
+vendor SDK fork with no derivable version, record it in
+:zephyr_file:`scripts/ci/cve_scan_coverage.yml` so the gap reads as triaged
+rather than overlooked.
+
+.. tip::
+   Before adding a CPE, check that it names something the NVD knows. A CPE that
+   matches no product returns no vulnerabilities, which is indistinguishable
+   from a module that has none:
+
+   .. code-block:: bash
+
+      curl -sS -G "https://services.nvd.nist.gov/rest/json/cpes/2.0" \
+        --data-urlencode "cpeMatchString=cpe:2.3:a:<vendor>:<product>"
+
+   The scan reports such a CPE as an error rather than silently treating the
+   module as clean, but catching it before it is committed is better.
+
 
 Build system integration
 ========================
