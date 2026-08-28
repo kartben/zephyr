@@ -320,11 +320,15 @@ to the image it was found in. Two relationships describe how the routines sit in
      - SPDX 2.3
      - SPDX 3.0
    * - The header prototype that declares a routine, and the file that implements it
-     - ``SPECIFICATION_FOR``
-     - ``hasSpecification``
+     - ``SPECIFICATION_FOR`` [#decl]_
+     - ``hasSpecification`` [#decl]_
    * - The line ranges a routine is made of, with ``--analyze-elf=snippet-lines``
      - ``CONTAINS``
      - ``contains``
+
+.. [#decl] Only emitted when the declaring header is itself in the bill-of-materials, which means
+   running with ``--analyze-includes``. ``west spdx`` reports how many routines were affected when
+   it is missing.
 
 ``--analyze-elf=snippet-lines`` adds the finer level: every contiguous line range each routine is
 made of, related to it by containment. It implies ``snippets``, and makes the document several times

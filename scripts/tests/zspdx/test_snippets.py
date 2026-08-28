@@ -173,10 +173,20 @@ class TestDeclarationSnippets:
         assert len(declarations) == 1
         assert all(r.declaration is declarations[0] for r in by_kind(graph, SnippetKind.ROUTINE))
 
-    def test_untracked_header_yields_no_declaration(self, graph, sources):
+    def test_untracked_header_yields_no_declaration(self, graph, sources, caplog):
+        # Without --analyze-includes the SBOM holds no headers, so there is
+        # nothing to relate the routine to; say so rather than going quiet.
         main, _ = sources
         routine = make_routine(main, None, declared_in="/nowhere/other.h", declared_line=4)
-        _extract_snippets(graph, "image.elf", [routine], with_lines=False)
+        with caplog.at_level("WARNING", logger="zspdx.sbom"):
+            _extract_snippets(graph, "image.elf", [routine], with_lines=False)
 
         assert by_kind(graph, SnippetKind.DECLARATION) == []
         assert by_kind(graph, SnippetKind.ROUTINE)[0].declaration is None
+        assert "--analyze-includes" in caplog.text
+
+    def test_no_warning_when_nothing_was_declared_elsewhere(self, graph, sources, caplog):
+        main, _ = sources
+        with caplog.at_level("WARNING", logger="zspdx.sbom"):
+            _extract_snippets(graph, "image.elf", [make_routine(main, None)], with_lines=False)
+        assert caplog.text == ""

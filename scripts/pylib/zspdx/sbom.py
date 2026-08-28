@@ -339,6 +339,7 @@ def _extract_snippets(sbom_graph, elf_path: str, routines, with_lines: bool) -> 
 
     declarations: dict[tuple[str, int], SBOMSnippet] = {}
     untracked = 0
+    untracked_headers = 0
 
     for routine in routines:
         spdx_file = sbom_graph.get_file(routine.decl_file)
@@ -363,6 +364,8 @@ def _extract_snippets(sbom_graph, elf_path: str, routines, with_lines: bool) -> 
             inlined_only=routine.inlined_only,
         )
         snippet.declaration = _declaration_snippet(sbom_graph, routine, declarations)
+        if snippet.declaration is None and routine.declared_in:
+            untracked_headers += 1
         sbom_graph.snippets.append(snippet)
 
         if with_lines:
@@ -370,6 +373,15 @@ def _extract_snippets(sbom_graph, elf_path: str, routines, with_lines: bool) -> 
 
     if untracked:
         _logger.debug("Skipped %d routine(s) defined outside the tracked files", untracked)
+    if untracked_headers:
+        # Without --analyze-includes the SBOM holds no headers, so there is
+        # nothing for the declares/implements relationship to point at.
+        _logger.warning(
+            "%d routine(s) are declared in a header the SBOM does not track, so the "
+            "relationship to their declaration was dropped; pass --analyze-includes "
+            "to record it",
+            untracked_headers,
+        )
     _logger.info(
         "Extracted %d snippet(s) covering %d routine(s)",
         len(sbom_graph.snippets),
