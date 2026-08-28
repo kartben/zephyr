@@ -15,6 +15,7 @@ from zspdx.model import (
     SBOMElement,
     SBOMFile,
     SBOMSnippet,
+    SnippetKind,
 )
 from zspdx.serializers.helpers import (
     generate_download_url,
@@ -496,25 +497,31 @@ Created: {created}
                 # ExternalDocumentRef for every referenced source document
                 for doc_name, doc in sorted(used_docs.items()):
                     doc_hash = self.document_hashes[doc_name]
-                    doc_ns = doc.namespace or (
-                        f"{self.sbom_graph.namespace_prefix}/{doc_name}"
-                    )
+                    doc_ns = doc.namespace or (f"{self.sbom_graph.namespace_prefix}/{doc_name}")
                     doc_ref = self.document_refs.get(doc_name, f"DocumentRef-{doc_name}")
-                    f.write(
-                        f"ExternalDocumentRef: {doc_ref} {doc_ns} SHA1: {doc_hash}\n"
-                    )
+                    f.write(f"ExternalDocumentRef: {doc_ref} {doc_ns} SHA1: {doc_hash}\n")
                 if used_docs:
                     f.write("\n")
 
                 count = 0
-                written_indices = []
+                written = {}
                 for index, snippet in enumerate(snippets):
                     if self._write_snippet(f, snippet, index):
-                        written_indices.append(index)
+                        written[id(snippet)] = index
                         count += 1
 
-                self._write_snippets_describes(f, binary_ref, written_indices)
-                self._write_snippet_provenance(f, binary_ref, written_indices)
+                # Routines are what the image is made of; ranges and
+                # declarations are reached through them.
+                routines = [
+                    index
+                    for snippet, index in (
+                        (snippet, written.get(id(snippet))) for snippet in snippets
+                    )
+                    if index is not None and snippet.kind is SnippetKind.ROUTINE
+                ]
+                self._write_snippets_describes(f, binary_ref, routines or list(written.values()))
+                self._write_snippet_hierarchy(f, snippets, written)
+                self._write_snippet_provenance(f, binary_ref, routines or list(written.values()))
 
         except OSError:
             _logger.exception("Error: unable to write snippets document to %s", output_path)
@@ -533,9 +540,7 @@ Created: {created}
             f.write(f"Relationship: SPDXRef-DOCUMENT DESCRIBES {binary_ref}\n")
         else:
             for index in indices:
-                f.write(
-                    f"Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-Snippet-{index}\n"
-                )
+                f.write(f"Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-Snippet-{index}\n")
         if indices:
             f.write("\n")
 
@@ -573,14 +578,48 @@ Created: {created}
         for index in indices:
             f.write(f"Relationship: {binary_ref} GENERATED_FROM SPDXRef-Snippet-{index}\n")
 
+    def _write_snippet_hierarchy(self, f, snippets: list, written: dict) -> None:
+        """Relate each routine to its line ranges and to the header declaring it.
+
+        ``CONTAINS`` carries the routine → range nesting.  ``SPECIFICATION_FOR``
+        carries the declares/implements split, and only exists from SPDX 2.3 on;
+        for 2.2 the declaration snippets are still written, just unrelated.
+        """
+        ranges_of: dict[int, list[int]] = {}
+        for snippet in snippets:
+            index = written.get(id(snippet))
+            if index is None or snippet.kind is not SnippetKind.RANGE:
+                continue
+            if snippet.parent is not None and id(snippet.parent) in written:
+                ranges_of.setdefault(id(snippet.parent), []).append(index)
+
+        declares = self.spdx_version >= SPDX_VERSION_2_3
+        lines = []
+        for snippet in snippets:
+            index = written.get(id(snippet))
+            if index is None or snippet.kind is not SnippetKind.ROUTINE:
+                continue
+            for contained in ranges_of.get(id(snippet), ()):
+                lines.append(
+                    f"Relationship: SPDXRef-Snippet-{index} CONTAINS SPDXRef-Snippet-{contained}\n"
+                )
+            declaration = written.get(id(snippet.declaration))
+            if declares and declaration is not None:
+                lines.append(
+                    f"Relationship: SPDXRef-Snippet-{declaration} SPECIFICATION_FOR "
+                    f"SPDXRef-Snippet-{index}\n"
+                )
+
+        if lines:
+            f.write("\n")
+            f.writelines(lines)
+
     def _write_snippet(self, f, snippet: SBOMSnippet, index: int) -> bool:
         """Write a single SPDX 2.x Snippet block.  Returns True on success."""
         file_obj = snippet.spdx_file
         file_spdx_id = self.file_ids.get(file_obj.path)
         if not file_spdx_id:
-            _logger.warning(
-                "Snippet references unresolved file %s; skipping", file_obj.path
-            )
+            _logger.warning("Snippet references unresolved file %s; skipping", file_obj.path)
             return False
 
         doc = self.sbom_graph.get_document_for_file(file_obj)
@@ -595,21 +634,23 @@ Created: {created}
 
         f.write(f"SnippetSPDXID: {snippet_id}\n")
         f.write(f"SnippetFromFileSPDXID: {from_file_ref}\n")
-        f.write(
-            f"SnippetByteRange: {snippet.byte_range[0]}:{snippet.byte_range[1]}\n"
-        )
+        f.write(f"SnippetByteRange: {snippet.byte_range[0]}:{snippet.byte_range[1]}\n")
         if snippet.line_range:
-            f.write(
-                f"SnippetLineRange: {snippet.line_range[0]}:{snippet.line_range[1]}\n"
-            )
+            f.write(f"SnippetLineRange: {snippet.line_range[0]}:{snippet.line_range[1]}\n")
         f.write(f"SnippetLicenseConcluded: {snippet.concluded_license}\n")
         f.write(f"LicenseInfoInSnippet: {snippet.concluded_license}\n")
         f.write(f"SnippetCopyrightText: {snippet.copyright_text}\n")
-        if snippet.line_range:
-            f.write(
-                f"SnippetName: {rel_path}:{snippet.line_range[0]}-{snippet.line_range[1]}\n"
-            )
+        if snippet.name:
+            name = snippet.name
+        elif snippet.line_range:
+            name = f"{rel_path}:{snippet.line_range[0]}-{snippet.line_range[1]}"
         else:
-            f.write(f"SnippetName: {rel_path}@{snippet.byte_range[0]}\n")
+            name = f"{rel_path}@{snippet.byte_range[0]}"
+        f.write(f"SnippetName: {name}\n")
+        if snippet.inlined_only:
+            f.write(
+                "SnippetComment: <text>Every use of this routine was inlined; "
+                "the image holds no out-of-line copy of it.</text>\n"
+            )
         f.write("\n")
         return True
