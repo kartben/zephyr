@@ -83,12 +83,24 @@ def collect_used_lines(
             if not elf.has_dwarf_info():
                 _logger.warning("ELF file has no DWARF debug info: %s", elf_path)
                 return {}
-            _collect_lines(elf.get_dwarf_info(), file_lines, known_paths)
+            if elf.header.e_type == "ET_REL":
+                _logger.warning(
+                    "%s is a relocatable object, not a linked image; its debug info "
+                    "describes the inputs to the final link rather than what shipped. "
+                    "Pass --elf-file with the linked image (zephyr.exe on native_sim).",
+                    elf_path,
+                )
+            # Debug sections are read as-is: we only need line programs and DIE
+            # attributes, and applying relocations fails outright on the
+            # relocation types some Zephyr targets emit.
+            _collect_lines(
+                elf.get_dwarf_info(relocate_dwarf_sections=False), file_lines, known_paths
+            )
     except OSError as exc:
         _logger.error("Cannot open ELF file %s: %s", elf_path, exc)
         return {}
     except ELFError as exc:
-        _logger.error("Not a valid ELF file %s: %s", elf_path, exc)
+        _logger.error("Cannot read debug info from %s: %s", elf_path, exc)
         return {}
 
     _logger.debug(
