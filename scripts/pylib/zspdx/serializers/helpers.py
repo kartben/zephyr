@@ -18,15 +18,31 @@ def normalize_spdx_name(name: str) -> str:
     return name.replace("_", "-")
 
 
+# west suffixes a revision it could not confirm: "-dirty" for a modified tree,
+# "-off" for a checkout that is not on the manifest revision.
+_REVISION_SUFFIX_RE = re.compile(r'[+\-](dirty|off).*$')
+_COMMIT_RE = re.compile(r'^[a-f0-9]{40}$')
+
+
+def resolvable_revision(revision: str) -> str:
+    """Return the part of *revision* a tool can actually fetch.
+
+    A suffixed revision still names the commit it was taken from, but is not a
+    git object name and not a package version: anything meant to be resolved
+    needs the commit alone. The suffix is worth keeping where it is read rather
+    than followed, so packageVersion holds the original string.
+    """
+    if not revision:
+        return revision
+    clean = _REVISION_SUFFIX_RE.sub('', revision).strip()
+    return clean if _COMMIT_RE.match(clean) else revision
+
+
 def generate_download_url(url: str, revision: str) -> str:
     """Generate download URL with revision if available."""
     if not revision:
         return url
-    # Strip git-describe suffixes (-dirty, -off, …) so the ref is a valid git
-    # object name. packageVersion retains the original string for dirty tracking.
-    clean = re.sub(r'[+\-](dirty|off).*$', '', revision).strip()
-    ref = clean if re.match(r'^[a-f0-9]{40}$', clean) else revision
-    return f'git+{url}@{ref}'
+    return f'git+{url}@{resolvable_revision(revision)}'
 
 
 def get_standard_licenses() -> set:

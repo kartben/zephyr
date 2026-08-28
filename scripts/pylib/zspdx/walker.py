@@ -27,6 +27,7 @@ from zspdx.model import (
     SBOMFile,
     SBOMGraph,
 )
+from zspdx.serializers.helpers import resolvable_revision
 
 _logger = logging.getLogger(__name__)
 
@@ -210,7 +211,9 @@ class Walker:
         host_type, namespace, package = parsed
         purl = f'pkg:{host_type}/{namespace}/{package}'
         if version:
-            purl += f'@{version}'
+            # A purl version is meant to be resolved, so it carries the commit
+            # rather than west's "this is not the manifest revision" suffix.
+            purl += f'@{resolvable_revision(version)}'
 
         return purl
 
@@ -335,7 +338,9 @@ class Walker:
         if not purls:
             purls = [self._build_purl(url, component.revision)]
         if not any(purls):
-            pin = next(iter(tags), "") or component.revision or component.version
+            pin = (
+                next(iter(tags), "") or resolvable_revision(component.revision) or component.version
+            )
             purls = [f"{ZEPHYR_UPSTREAM_PURL}@{pin}" if pin else ZEPHYR_UPSTREAM_PURL]
 
         for purl in purls:
