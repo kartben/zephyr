@@ -198,6 +198,59 @@ Each intermediate target, such as a static library, also gets its own sub-build 
 sources, tools and compile flags that produced its artifact, so any output can be traced back to how
 it was built.
 
+.. _west-spdx-minimum-elements:
+
+SBOM minimum elements
+---------------------
+
+Regulations and procurement policies increasingly require an SBOM to carry a minimum set of
+data fields, originally published by NTIA and now maintained by CISA. ``west spdx`` fills
+these in automatically wherever the build and the west manifest have the answer:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - Minimum element
+     - Where it comes from
+   * - Component name
+     - The west manifest, the CMake target name, or the application.
+   * - Component version
+     - A release tag or the upstream version a module declares; otherwise the git revision
+       the module is checked out at. The application's version comes from its
+       :file:`VERSION` file, and the build outputs inherit it.
+   * - Supplier name
+     - The Zephyr Project for Zephyr and for modules mirrored under its GitHub
+       organization; ``--supplier`` for the application and the build outputs.
+   * - Other unique identifiers
+     - Package URLs built from each component's repository and revision, plus any CPE or
+       purl a module declares for vulnerability monitoring.
+   * - Dependency relationships
+     - Relationships between the modules, Zephyr, the compiled sources and the build
+       outputs, as described in `Relationships`_ above.
+   * - Author of the SBOM data
+     - The Zephyr Project, alongside the versioned generator as a ``Tool``.
+   * - Timestamp
+     - The time the documents were generated.
+   * - Component hash
+     - A checksum for every file, and a package-level checksum for each build output.
+   * - License
+     - Licenses detected in the scanned source files, and the license a module declares
+       for itself.
+   * - Generation context
+     - SPDX 3 only: each document is an ``Sbom`` of type ``build``. SPDX 2.x has no field
+       for this.
+
+Two of them cannot be derived from a build, and are worth supplying explicitly:
+
+- The **application's supplier** is only known to whoever runs the build. Pass it with
+  ``--supplier``, otherwise the documents report it as ``NOASSERTION``.
+
+- A **module's upstream identity**: every module in the Zephyr manifest is fetched from a
+  mirror in the ``zephyrproject-rtos`` GitHub organization, so nothing in the manifest
+  says who actually produces the code or under what license. A module states that in its
+  own :file:`zephyr/module.yml`; see :ref:`modules-sbom-metadata`.
+
 Command-line options
 --------------------
 
@@ -220,9 +273,10 @@ Command-line options
   the versions.
 
 - ``--supplier SUPPLIER``: the organization supplying the application and the files the
-  build produced, for example ``--supplier "Example Corp"``. If omitted, the supplier is
-  derived from the application's git remote, and left as ``NOASSERTION`` if the
-  application is not in a git repository with a remote.
+  build produced, for example ``--supplier "Example Corp"``. See
+  :ref:`west-spdx-minimum-elements`. If omitted, the supplier is derived from the
+  application's git remote, and left as ``NOASSERTION`` if the application is not in a
+  git repository with a remote.
 
 - ``--analyze-includes``: in addition to recording the compiled source code
   files (e.g. ``.c``, ``.S``) in the bills-of-materials, also attempt to
