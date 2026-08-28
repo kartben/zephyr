@@ -8,6 +8,7 @@ import os
 from datetime import UTC, datetime
 
 from zspdx.model import (
+    NOASSERTION,
     ComponentPurpose,
     ExternalReferenceType,
     SBOMComponent,
@@ -20,7 +21,7 @@ from zspdx.serializers.helpers import (
     get_standard_licenses,
     normalize_spdx_name,
 )
-from zspdx.util import get_hashes
+from zspdx.util import get_hashes, split_expression
 from zspdx.version import SPDX_VERSION_2_3
 
 _logger = logging.getLogger(__name__)
@@ -401,15 +402,30 @@ FileChecksum: SHA1: {file_obj.hashes.get('SHA1', '')}
         return ""
 
     def _write_custom_licenses(self, f, doc: SBOMDocument):
-        """Write custom license declarations."""
+        """Write custom license declarations.
+
+        Every license identifier used anywhere in the document that is not on the SPDX
+        license list has to be declared here, or the document does not validate. That
+        includes package-level licenses, which a module can declare in its
+        :file:`zephyr/module.yml`, not just the ones detected inside files.
+        """
         # Get custom licenses from components in this document
         custom_licenses = set()
         standard_licenses = get_standard_licenses()
-        for component in doc.components.values():
-            for file_obj in component.files.values():
-                for lic in file_obj.license_info_in_file:
-                    if lic not in standard_licenses:
+
+        def collect(*expressions):
+            for expression in expressions:
+                if not expression or expression in (NOASSERTION, "NONE"):
+                    continue
+                for lic in split_expression(expression):
+                    if lic and lic not in standard_licenses:
                         custom_licenses.add(lic)
+
+        for component in doc.components.values():
+            collect(component.concluded_license, component.declared_license)
+            for file_obj in component.files.values():
+                collect(file_obj.concluded_license)
+                collect(*file_obj.license_info_in_file)
 
         # Also include any custom licenses stored in the document
         custom_licenses.update(doc.custom_license_ids)
@@ -420,7 +436,7 @@ FileChecksum: SHA1: {file_obj.hashes.get('SHA1', '')}
                 f.write(f"""LicenseID: {lic}
 ExtractedText: {lic}
 LicenseName: {lic}
-LicenseComment: Corresponds to the license ID `{lic}` detected in an SPDX-License-Identifier: tag.
+LicenseComment: Corresponds to the license ID `{lic}`, which is not on the SPDX license list.
 """)
                 # REUSE-IgnoreEnd
 
