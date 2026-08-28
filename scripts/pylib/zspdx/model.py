@@ -348,14 +348,32 @@ class BuildInfo(TypedDict, total=False):
     environment: dict[str, str]
 
 
+class SnippetKind(StrEnum):
+    """What part of the source-file/routine/range hierarchy a snippet is.
+
+    Snippets nest one level: a ``ROUTINE`` covers everything one function
+    contributed, and the ``RANGE`` snippets it contains are the contiguous
+    blocks of that. A ``DECLARATION`` is the prototype in a header, which the
+    routine implements.
+    """
+
+    ROUTINE = "ROUTINE"
+    RANGE = "RANGE"
+    DECLARATION = "DECLARATION"
+
+
 @dataclass
 class SBOMSnippet:
-    """A contiguous range of used source lines within a tracked SBOM file.
+    """A range of used source lines within a tracked SBOM file.
 
     Instances are produced by the DWARF extractor and consumed by serializers to
     emit SPDX ``Snippet`` elements (2.x tag-value) or ``software_Snippet``
     elements (SPDX 3.0).  ``byte_range`` and ``line_range`` are offsets/line
     numbers within the *source* file, not the binary.
+
+    A ``RANGE`` snippet need not sit in the same file as the routine that
+    contains it: code a routine picks up from a macro belongs, as text, to the
+    header the macro is written in.
 
     Attributes:
         spdx_file: The :class:`SBOMFile` whose source lines this snippet covers.
@@ -365,6 +383,13 @@ class SBOMSnippet:
         name: Optional human-readable label for this snippet.
         concluded_license: Concluded license expression (defaults to parent's).
         copyright_text: Copyright text (defaults to parent's).
+        kind: Where this snippet sits in the hierarchy.
+        routine: Name of the routine this snippet is, or belongs to.
+        parent: The ``ROUTINE`` snippet containing this ``RANGE``, if any.
+        declaration: The ``DECLARATION`` snippet a ``ROUTINE`` implements, if
+            the image's debug info records a prototype elsewhere.
+        inlined_only: For a ``ROUTINE``, true when the image kept no
+            out-of-line copy because every use was inlined.
     """
 
     spdx_file: SBOMFile
@@ -373,6 +398,11 @@ class SBOMSnippet:
     name: str = ""
     concluded_license: str = NOASSERTION
     copyright_text: str = NOASSERTION
+    kind: SnippetKind = SnippetKind.RANGE
+    routine: str = ""
+    parent: SBOMSnippet | None = None
+    declaration: SBOMSnippet | None = None
+    inlined_only: bool = False
 
 
 @dataclass
