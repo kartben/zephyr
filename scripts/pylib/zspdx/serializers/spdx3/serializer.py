@@ -22,6 +22,7 @@ from zspdx.model import (
     SBOMGraph,
     SBOMRelationship,
     SBOMSnippet,
+    SnippetKind,
 )
 from zspdx.serializers.helpers import (
     CPE23TYPE_REGEX,
@@ -2070,12 +2071,17 @@ class SPDX3Serializer:
         snip.creationInfo = self.creation_info._id
 
         rel_path = snippet.spdx_file.relative_path or os.path.basename(snippet.spdx_file.path)
-        if snippet.line_range:
-            snip.name = (
-                f"{rel_path}:{snippet.line_range[0]}-{snippet.line_range[1]}"
-            )
+        if snippet.name:
+            snip.name = snippet.name
+        elif snippet.line_range:
+            snip.name = f"{rel_path}:{snippet.line_range[0]}-{snippet.line_range[1]}"
         else:
             snip.name = f"{rel_path}@{snippet.byte_range[0]}-{snippet.byte_range[1]}"
+
+        if snippet.inlined_only:
+            snip.comment = (
+                "Every use of this routine was inlined; the image holds no out-of-line copy of it."
+            )
 
         snip.software_snippetFromFile = parent_file._id
         snip.software_copyrightText = snippet.copyright_text or NOASSERTION
@@ -2115,6 +2121,62 @@ class SPDX3Serializer:
         rel.creationInfo = self.creation_info._id
         return rel
 
+    def _create_hierarchy_relationships(self, namespace: str, elements: dict) -> list:
+        """Relate each routine snippet to what it contains and what declares it.
+
+        A routine ``contains`` the line ranges it is made of, and the prototype
+        that announces it in a header is its specification. Both are plain Core
+        relationships, so a consumer that only understands SPDX 3 Core can still
+        walk file → routine → range.
+        """
+        ranges_of: dict[int, list] = {}
+        for snippet in self.sbom_data.snippets:
+            if snippet.kind is SnippetKind.RANGE and snippet.parent is not None:
+                ranges_of.setdefault(id(snippet.parent), []).append(snippet)
+
+        relationships = []
+        for index, snippet in enumerate(self.sbom_data.snippets):
+            if snippet.kind is not SnippetKind.ROUTINE:
+                continue
+            routine = elements.get(id(snippet))
+            if routine is None:
+                continue
+
+            contained = [
+                elements[id(r)] for r in ranges_of.get(id(snippet), ()) if id(r) in elements
+            ]
+            if contained:
+                relationships.append(
+                    self._create_snippet_relationship(
+                        f"{namespace}/snippets/relationships/contains-{index}",
+                        spdx.RelationshipType.contains,
+                        routine,
+                        contained,
+                    )
+                )
+
+            declaration = elements.get(id(snippet.declaration))
+            if declaration is not None:
+                relationships.append(
+                    self._create_snippet_relationship(
+                        f"{namespace}/snippets/relationships/declared-{index}",
+                        spdx.RelationshipType.hasSpecification,
+                        routine,
+                        [declaration],
+                    )
+                )
+        return relationships
+
+    def _create_snippet_relationship(self, uri, relationship_type, from_element, to_elements):
+        """Build one Core ``Relationship`` between snippet elements."""
+        rel = spdx.Relationship()
+        rel._id = self._shorten_id(uri)
+        rel.relationshipType = relationship_type
+        rel.from_ = from_element._id
+        rel.to = [element._id for element in to_elements]
+        rel.creationInfo = self.creation_info._id
+        return rel
+
     def _write_snippets_document(self, output_dir: str) -> None:
         """Write a standalone ``snippets.jsonld`` add-on document.
 
@@ -2143,22 +2205,35 @@ class SPDX3Serializer:
         doc.profileConformance.append(spdx.ProfileIdentifierType.simpleLicensing)
 
         snippet_elements = []
+        elements: dict[int, spdx.software_Snippet] = {}
+        roots = []
         for index, sbom_snippet in enumerate(self.sbom_data.snippets):
             snip = self._create_software_snippet(sbom_snippet, index)
-            if snip is not None:
-                snippet_elements.append(snip)
-                doc.element.append(snip)
-                doc.rootElement.append(snip)
+            if snip is None:
+                continue
+            snippet_elements.append(snip)
+            elements[id(sbom_snippet)] = snip
+            doc.element.append(snip)
+            if sbom_snippet.kind is SnippetKind.ROUTINE:
+                roots.append(snip)
 
         if not snippet_elements:
             _logger.warning("No valid snippets to serialize; skipping snippets.jsonld")
             return
 
-        # Source-to-binary provenance: the extracted ranges are the exact source
-        # lines that ended up in the image the Build ``hasOutput``. Record them as
-        # a build ``hasInput``, at the same (file) granularity the Build profile
-        # already uses for compiled sources, refining it down to used line ranges.
-        build_input_rel = self._create_snippet_build_input(namespace, snippet_elements)
+        # Routines are the top of the hierarchy; ranges and declarations are
+        # reached from them, so only routines are roots of this document.
+        doc.rootElement.extend(roots or snippet_elements)
+
+        relationships = self._create_hierarchy_relationships(namespace, elements)
+
+        # Source-to-binary provenance: the extracted routines are what ended up
+        # in the image the Build ``hasOutput``. Record them as a build
+        # ``hasInput``, refining the file granularity the Build profile already
+        # uses for compiled sources down to the routines that actually shipped.
+        build_input_rel = self._create_snippet_build_input(namespace, roots or snippet_elements)
+        if build_input_rel is not None:
+            relationships.append(build_input_rel)
 
         object_set = spdx.SHACLObjectSet()
         object_set.add(doc)
@@ -2170,9 +2245,9 @@ class SPDX3Serializer:
             object_set.add(self.creator_agent)
         for snip in snippet_elements:
             object_set.add(snip)
-        if build_input_rel is not None:
-            doc.element.append(build_input_rel)
-            object_set.add(build_input_rel)
+        for rel in relationships:
+            doc.element.append(rel)
+            object_set.add(rel)
 
         output_path = os.path.join(output_dir, "snippets.jsonld")
         with open(output_path, "wb") as f:
