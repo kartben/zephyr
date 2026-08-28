@@ -679,9 +679,14 @@ def _build_line_offsets(path: str) -> dict[int, tuple[int, int]]:
     except OSError:
         return {}
 
+    chunks = content.split(b"\n")
+    # A trailing newline terminates the last line rather than starting another.
+    if len(chunks) > 1 and not chunks[-1]:
+        chunks.pop()
+
     offsets: dict[int, tuple[int, int]] = {}
     pos = 0
-    for lineno, chunk in enumerate(content.split(b"\n"), start=1):
+    for lineno, chunk in enumerate(chunks, start=1):
         offsets[lineno] = (pos, pos + len(chunk))
         pos += len(chunk) + 1  # +1 for the '\n' separator
     return offsets

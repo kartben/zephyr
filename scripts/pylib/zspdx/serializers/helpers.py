@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import re
+
 # Regex patterns for external reference validation
 CPE23TYPE_REGEX = (
     r'^cpe:2\.3:[aho\*\-](:(((\?*|\*?)([a-zA-Z0-9\-\._]|(\\[\\\*\?!"#$$%&\'\(\)\+,\/:;<=>@\[\]\^'
@@ -22,7 +24,6 @@ def generate_download_url(url: str, revision: str) -> str:
         return url
     # Strip git-describe suffixes (-dirty, -off, …) so the ref is a valid git
     # object name. packageVersion retains the original string for dirty tracking.
-    import re
     clean = re.sub(r'[+\-](dirty|off).*$', '', revision).strip()
     ref = clean if re.match(r'^[a-f0-9]{40}$', clean) else revision
     return f'git+{url}@{ref}'
