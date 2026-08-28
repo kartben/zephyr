@@ -2,3 +2,13 @@ name: sbom_used_module
 
 build:
   cmake: ./
+
+# Exercises the SBOM metadata a module can declare for itself. A real module uses this
+# to name the organization that produces it upstream and the license it ships under,
+# neither of which can be derived from the Zephyr mirror it is fetched from.
+sbom:
+  license: Apache-2.0
+  upstream:
+    organization: SBOM Test Upstream Organization
+    url: https://github.com/sbom-test-upstream/sbom_used_module
+    version: 1.2.3

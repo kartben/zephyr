@@ -48,6 +48,17 @@ PKG_UNUSED_MODULE_SOURCES = "sbom_unused_module-sources"
 PKG_USED_MODULE_DEPS = "sbom_used_module-deps"
 PKG_UNUSED_MODULE_DEPS = "sbom_unused_module-deps"
 
+# Application identity: the supplier passed to 'west spdx --supplier' by CMakeLists.txt,
+# and the version read from this test application's own VERSION file.
+APP_SUPPLIER = "SBOM Test Application Supplier"
+APP_VERSION = "1.2.3"
+
+# Values declared in the "sbom:" section of used_module/zephyr/module.yml.
+USED_MODULE_SBOM_LICENSE = "Apache-2.0"
+USED_MODULE_SBOM_ORGANIZATION = "SBOM Test Upstream Organization"
+USED_MODULE_SBOM_VERSION = "1.2.3"
+USED_MODULE_SBOM_PURL = "pkg:github/sbom-test-upstream/sbom_used_module"
+
 FILE_USED_MODULE_C = "./src/answer.c"
 FILE_UNUSED_MODULE_C = "unused.c"
 FILE_REUSE_TOML_C = "./src/no_header.c"
@@ -531,6 +542,203 @@ class TestPackageProvenance:
         assert purls, f"modules-deps.spdx: {pkg.name} has no purl references"
         assert any("@" in p for p in purls), (
             f"modules-deps.spdx: {pkg.name} purl should include revision suffix, got {purls}"
+        )
+
+
+class TestNTIAMinimumElements:
+    """Assert the NTIA/CISA minimum SBOM elements are present in every document.
+
+    These mirror the checks in the SPDX project's ntia-conformance-checker so a
+    regression that would make a generated document non-conformant fails here, in a
+    build that already produces the documents, rather than in downstream tooling.
+    """
+
+    @pytest.fixture(params=["app_doc", "zephyr_doc", "build_doc", "modules_doc"])
+    def doc_with_name(self, request):
+        """Parametrized fixture providing each document with its name."""
+        doc = request.getfixturevalue(request.param)
+        name_map = {
+            "app_doc": "app.spdx",
+            "zephyr_doc": "zephyr.spdx",
+            "build_doc": "build.spdx",
+            "modules_doc": "modules-deps.spdx",
+        }
+        return doc, name_map[request.param]
+
+    def test_author_of_sbom_data(self, doc_with_name):
+        """Minimum element: author of the SBOM data."""
+        doc, doc_name = doc_with_name
+        assert doc.creation_info.creators, f"{doc_name}: no SBOM author (Creator) recorded"
+
+    def test_timestamp(self, doc_with_name):
+        """Minimum element: timestamp."""
+        doc, doc_name = doc_with_name
+        assert doc.creation_info.created, f"{doc_name}: no creation timestamp recorded"
+
+    def test_component_names(self, doc_with_name):
+        """Minimum element: component name."""
+        doc, doc_name = doc_with_name
+        unnamed = [p.spdx_id for p in doc.packages if not p.name]
+        assert not unnamed, f"{doc_name}: packages without a name: {unnamed}"
+
+    def test_component_identifiers(self, doc_with_name):
+        """Minimum element: other unique identifiers (the SPDX ID at minimum)."""
+        doc, doc_name = doc_with_name
+        unidentified = [p.name for p in doc.packages if not p.spdx_id]
+        assert not unidentified, f"{doc_name}: packages without an SPDX ID: {unidentified}"
+
+    def test_component_versions(self, doc_with_name):
+        """Minimum element: version of the component."""
+        doc, doc_name = doc_with_name
+        unversioned = [p.name for p in doc.packages if not p.version]
+        assert not unversioned, f"{doc_name}: packages without a version: {unversioned}"
+
+    def test_component_suppliers(self, doc_with_name):
+        """Minimum element: supplier name.
+
+        A supplier of NOASSERTION counts as missing: the element has to name an entity.
+        """
+        doc, doc_name = doc_with_name
+        unsupplied = [
+            p.name for p in doc.packages if get_supplier_name(p) in (None, "NOASSERTION", "")
+        ]
+        assert not unsupplied, f"{doc_name}: packages without a supplier: {unsupplied}"
+
+    def test_dependency_relationships(self, doc_with_name):
+        """Minimum element: dependency relationships.
+
+        The document has to describe at least one of the packages it defines, which is
+        what an SBOM consumer follows to find the subject of the document.
+        """
+        doc, doc_name = doc_with_name
+        package_ids = {p.spdx_id for p in doc.packages}
+        describes = [
+            r
+            for r in doc.relationships
+            if r.relationship_type == RelationshipType.DESCRIBES
+            and r.related_spdx_element_id in package_ids
+        ]
+        assert describes, f"{doc_name}: no DESCRIBES relationship pointing at a package"
+
+    def test_module_sources_depend_on_zephyr_sources(self, zephyr_doc):
+        """Every module source package states its relationship to Zephyr itself.
+
+        Without this the module packages sit in the document with no edge to anything,
+        which reads as "no dependency information" to an SBOM consumer.
+        """
+        zephyr_pkg = find_package_by_name(zephyr_doc, "zephyr-sources")
+        assert zephyr_pkg is not None, "zephyr.spdx: zephyr-sources package not found"
+
+        module_pkgs = [
+            p
+            for p in zephyr_doc.packages
+            if p.name.endswith("-sources") and p.name != "zephyr-sources"
+        ]
+        assert module_pkgs, "zephyr.spdx: no module source packages found"
+
+        unlinked = [
+            p.name
+            for p in module_pkgs
+            if not has_relationship(zephyr_doc, p.spdx_id, "DEPENDENCY_OF", zephyr_pkg.spdx_id)
+        ]
+        assert not unlinked, (
+            f"zephyr.spdx: module source packages with no DEPENDENCY_OF edge to "
+            f"zephyr-sources: {unlinked}"
+        )
+
+
+class TestApplicationIdentity:
+    """Tests for the application's own supplier and version.
+
+    These are the two minimum elements 'west spdx' cannot derive from the west manifest:
+    the version comes from the application's VERSION file and the supplier from
+    ``--supplier``. The build packages inherit both, since the build produced them.
+    """
+
+    def test_app_sources_supplier(self, app_doc):
+        """--supplier reaches the application package."""
+        pkg = find_package_by_name(app_doc, "app-sources")
+        assert pkg is not None, "app.spdx: app-sources package not found"
+        assert get_supplier_name(pkg) == f"Organization: {APP_SUPPLIER}", (
+            f"app.spdx: app-sources supplier is '{get_supplier_name(pkg)}'"
+        )
+
+    def test_app_sources_version(self, app_doc):
+        """The application's VERSION file supplies its package version."""
+        pkg = find_package_by_name(app_doc, "app-sources")
+        assert pkg is not None, "app.spdx: app-sources package not found"
+        assert pkg.version == APP_VERSION, (
+            f"app.spdx: app-sources version is '{pkg.version}', expected '{APP_VERSION}'"
+        )
+
+    def test_build_packages_inherit_app_identity(self, build_doc):
+        """Build outputs carry the same supplier and version as the application."""
+        assert build_doc.packages, "build.spdx: no packages"
+        for pkg in build_doc.packages:
+            assert get_supplier_name(pkg) == f"Organization: {APP_SUPPLIER}", (
+                f"build.spdx: {pkg.name} supplier is '{get_supplier_name(pkg)}'"
+            )
+            assert pkg.version == APP_VERSION, (
+                f"build.spdx: {pkg.name} version is '{pkg.version}', expected '{APP_VERSION}'"
+            )
+
+    def test_final_image_has_package_checksum(self, build_doc):
+        """The final image's package carries a checksum of its artifact."""
+        pkg = find_package_by_name(build_doc, "zephyr_final")
+        assert pkg is not None, "build.spdx: zephyr_final package not found"
+        algorithms = {c.algorithm for c in pkg.checksums}
+        assert ChecksumAlgorithm.SHA256 in algorithms, (
+            f"build.spdx: zephyr_final has no SHA256 PackageChecksum, got {algorithms}"
+        )
+
+
+class TestModuleSbomMetadata:
+    """Tests for the ``sbom:`` section a module declares in :file:`zephyr/module.yml`."""
+
+    @pytest.fixture(params=[PKG_USED_MODULE_SOURCES, PKG_USED_MODULE_DEPS])
+    def used_module_package(self, request, zephyr_doc, modules_doc):
+        """The used module's source and dependency packages, which share the metadata."""
+        doc = zephyr_doc if request.param.endswith("-sources") else modules_doc
+        pkg = find_package_by_name(doc, request.param)
+        assert pkg is not None, f"package '{request.param}' not found"
+        return pkg
+
+    def test_declared_license_from_module_yml(self, used_module_package):
+        """``sbom: license:`` becomes the package's declared license."""
+        declared = str(used_module_package.license_declared)
+        assert declared == USED_MODULE_SBOM_LICENSE, (
+            f"{used_module_package.name}: license_declared is '{declared}', "
+            f"expected '{USED_MODULE_SBOM_LICENSE}'"
+        )
+
+    def test_originator_from_module_yml(self, used_module_package):
+        """``sbom: upstream: organization:`` becomes the package originator."""
+        originator = used_module_package.originator
+        originator = str(originator) if originator else None
+        assert originator == f"Organization: {USED_MODULE_SBOM_ORGANIZATION}", (
+            f"{used_module_package.name}: originator is '{originator}'"
+        )
+
+    def test_supplier_is_still_zephyr(self, used_module_package):
+        """The supplier stays the Zephyr Project: that is where the code is fetched from."""
+        supplier = get_supplier_name(used_module_package)
+        assert supplier == f"Organization: {ZEPHYR_ORGANIZATION}", (
+            f"{used_module_package.name}: supplier is '{supplier}'"
+        )
+
+    def test_upstream_version_from_module_yml(self, used_module_package):
+        """``sbom: upstream: version:`` is preferred over the mirror's commit hash."""
+        assert used_module_package.version == USED_MODULE_SBOM_VERSION, (
+            f"{used_module_package.name}: version is '{used_module_package.version}', "
+            f"expected '{USED_MODULE_SBOM_VERSION}'"
+        )
+
+    def test_upstream_purl_present(self, used_module_package):
+        """``sbom: upstream: url:`` adds a purl pointing at the upstream project."""
+        purls = get_purl_refs(used_module_package)
+        expected = f"{USED_MODULE_SBOM_PURL}@{USED_MODULE_SBOM_VERSION}"
+        assert expected in purls, (
+            f"{used_module_package.name}: expected upstream purl '{expected}', got {purls}"
         )
 
 
