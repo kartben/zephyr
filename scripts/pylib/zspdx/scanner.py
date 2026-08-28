@@ -4,13 +4,12 @@
 
 import logging
 import os
-import re
 from dataclasses import dataclass
 
 from reuse.project import Project
 
 from .licenses import LICENSES
-from .util import get_hashes
+from .util import get_hashes, split_expression
 
 _logger = logging.getLogger(__name__)
 
@@ -38,26 +37,6 @@ class ScannerConfig:
 
     # should we calculate MD5 hashes for each Component's Files?
     do_md5: bool = False
-
-
-def split_expression(expression):
-    """
-    Parse a license expression into its constituent identifiers.
-
-    Arguments:
-        - expression: SPDX license expression
-    Returns: array of split identifiers
-    """
-    # remove parens and plus sign
-    e2 = re.sub(r'\(|\)|\+', "", expression, flags=re.IGNORECASE)
-
-    # remove word operators, ignoring case, leaving a blank space
-    e3 = re.sub(r' AND | OR | WITH ', " ", e2, flags=re.IGNORECASE)
-
-    # and split on space
-    e4 = e3.split(" ")
-
-    return sorted(e4)
 
 
 def check_license_valid(lic, sbom_graph):

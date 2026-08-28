@@ -4,6 +4,7 @@
 
 import hashlib
 import logging
+import re
 
 _logger = logging.getLogger(__name__)
 
@@ -33,3 +34,23 @@ def get_hashes(file_path):
         return None
 
     return (h_sha1.hexdigest(), h_sha256.hexdigest(), h_md5.hexdigest())
+
+
+def split_expression(expression):
+    """
+    Parse a license expression into its constituent identifiers.
+
+    Arguments:
+        - expression: SPDX license expression
+    Returns: array of split identifiers
+    """
+    # remove parens and plus sign
+    e2 = re.sub(r'\(|\)|\+', "", expression, flags=re.IGNORECASE)
+
+    # remove word operators, ignoring case, leaving a blank space
+    e3 = re.sub(r' AND | OR | WITH ', " ", e2, flags=re.IGNORECASE)
+
+    # and split on space
+    e4 = e3.split(" ")
+
+    return sorted(e4)
