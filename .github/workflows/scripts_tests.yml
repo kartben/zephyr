@@ -12,6 +12,9 @@ on:
       - 'scripts/build/**'
       - 'scripts/cmake/**'
       - 'scripts/kconfig/**'
+      - 'scripts/module_dependency_audit.py'
+      - 'scripts/tests/zephyr_module/**'
+      - 'scripts/zephyr_module.py'
       - '.github/workflows/scripts_tests.yml'
   pull_request:
     branches:
@@ -21,6 +24,9 @@ on:
       - 'scripts/build/**'
       - 'scripts/cmake/**'
       - 'scripts/kconfig/**'
+      - 'scripts/module_dependency_audit.py'
+      - 'scripts/tests/zephyr_module/**'
+      - 'scripts/zephyr_module.py'
       - '.github/workflows/scripts_tests.yml'
 
 permissions:
@@ -77,4 +83,5 @@ jobs:
           ZEPHYR_BASE: ./
         run: |
           echo "Run script tests"
-          pytest ./scripts/build ./scripts/cmake ./scripts/kconfig
+          pytest ./scripts/build ./scripts/cmake ./scripts/kconfig \
+                 ./scripts/tests/zephyr_module

@@ -816,6 +816,15 @@ class DevicetreeLintingCheck(ComplianceTest):
             os.remove(patch)
 
 
+# A SoC or board requires a Zephyr module by depending on the module's presence
+# symbol. Every full Kconfig parse defines those symbols whether or not the
+# module is in the workspace, because the in-tree module glue declares them
+# unconditionally. Trees that source the hardware model without the glue, such
+# as the standalone board / SoC v2 tree and the sysbuild tree, may name them
+# without defining them.
+MODULE_PRESENCE_SYMBOL_RE = re.compile(r"ZEPHYR_[A-Z0-9_]+_MODULE(_BLOBS)?")
+
+
 class KconfigCheck(ComplianceTest):
     """
     Checks is we are introducing any new warnings/errors with Kconfig,
@@ -1502,9 +1511,15 @@ https://docs.zephyrproject.org/latest/build/kconfig/tips.html#menuconfig-symbols
             logging.info(f"Loading allowed undefined symbols from {path}")
             undef_kconfig_allowlist_extra = get_set_from_file(path)
 
+        allowlist_re = getattr(self, "UNDEF_KCONFIG_INSIDE_ALLOWLIST_RE", None)
+
         def is_allowed(warning):
             m = _sym_re.search(warning)
-            return m is not None and m.group(1) in undef_kconfig_allowlist_extra
+            if m is None:
+                return False
+            if allowlist_re is not None and allowlist_re.fullmatch(m.group(1)):
+                return True
+            return m.group(1) in undef_kconfig_allowlist_extra
 
         undef_ref_warnings = "\n\n\n".join(
             warning
@@ -1724,6 +1739,8 @@ class KconfigHWMv2Check(KconfigBasicCheck):
     # This file sources only v2 scheme tree.
     FILENAME = os.path.join(os.path.dirname(__file__), "Kconfig.board.v2")
 
+    UNDEF_KCONFIG_INSIDE_ALLOWLIST_RE = MODULE_PRESENCE_SYMBOL_RE
+
 
 class SysbuildKconfigCheck(KconfigCheck):
     """
@@ -1735,6 +1752,8 @@ class SysbuildKconfigCheck(KconfigCheck):
 
     FILENAME = "share/sysbuild/Kconfig"
     CONFIG_ = "SB_CONFIG_"
+
+    UNDEF_KCONFIG_INSIDE_ALLOWLIST_RE = MODULE_PRESENCE_SYMBOL_RE
 
     # A different allowlist is used for symbols prefixed with SB_CONFIG_ (omitted here).
     UNDEF_KCONFIG_ALLOWLIST = {

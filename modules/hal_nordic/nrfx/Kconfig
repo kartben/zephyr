@@ -3,6 +3,7 @@
 
 config HAS_NRFX
 	bool
+	depends on ZEPHYR_HAL_NORDIC_MODULE
 
 menu "nrfx drivers"
 	depends on HAS_NRFX

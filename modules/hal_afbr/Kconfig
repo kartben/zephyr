@@ -7,3 +7,4 @@ config ZEPHYR_HAL_AFBR_MODULE
 
 config AFBR_LIB
 	bool
+	depends on ZEPHYR_HAL_AFBR_MODULE
