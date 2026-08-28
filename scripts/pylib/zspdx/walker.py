@@ -527,6 +527,7 @@ class Walker:
 
         self.sbom_graph.add_component(component, "app")
         self.doc_app.add_described_component(component)
+        self.doc_app.root_component = component.name
         self.component_app = component
 
     def setup_zephyr_component(self, zephyr, modules):
@@ -587,6 +588,7 @@ class Walker:
 
         self.sbom_graph.add_component(component, "zephyr")
         self.doc_zephyr.add_described_component(component)
+        self.doc_zephyr.root_component = component.name
         self.component_zephyr = component
 
         # set up a source component for each module, living in the zephyr document
@@ -631,6 +633,7 @@ class Walker:
 
         self.sbom_graph.add_component(component, "sdk")
         self.doc_sdk.add_described_component(component)
+        self.doc_sdk.root_component = component.name
         self.component_sdk = component
 
     def _setup_zephyr_deps_component(self, zephyr):
@@ -677,6 +680,7 @@ class Walker:
 
         self.sbom_graph.add_component(component, "modules-deps")
         self.doc_modules_deps.add_described_component(component)
+        self.doc_modules_deps.root_component = component.name
 
         # link this dependency package to the Zephyr source package (same relation
         # the module dependency packages have with their -sources counterparts)
@@ -770,6 +774,7 @@ class Walker:
                     component.purpose = ComponentPurpose.APPLICATION
                     # the build document's primary subject is the final image
                     self.doc_build.add_described_component(component)
+                    self.doc_build.root_component = component.name
                 else:
                     component.purpose = ComponentPurpose.LIBRARY
 
