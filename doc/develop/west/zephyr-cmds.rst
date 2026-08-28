@@ -162,8 +162,8 @@ For SPDX 3.0, every document declares conformance to the Core, Software and Simp
 profiles, and :file:`build.jsonld` additionally declares the :ref:`Build profile
 <west-spdx-build-profile>` that captures how the artifacts were produced.
 
-With ``--analyze-elf=snippets``, an additional ``snippets`` document records the source line-ranges
-that ended up in the final image. See :ref:`west-spdx-analyze-elf`.
+With ``--analyze-elf=snippets``, an additional ``snippets`` document records what each routine
+contributed to the final image. See :ref:`west-spdx-analyze-elf`.
 
 Each file in the bill-of-materials is scanned, so that its hashes (SHA256, SHA1, and MD5)
 can be recorded, along with any detected licenses if an
@@ -227,19 +227,51 @@ analyses.
 absent from the image, so the BOM lists the sources the firmware is actually built from rather than
 everything that was compiled. Headers, generated data and build artifacts are left untouched.
 
-``--analyze-elf=snippets`` records the opposite view: the source line-ranges that *did* contribute
-code, as SPDX Snippets in an additional :file:`snippets.spdx` (or :file:`snippets.jsonld`) document.
-Each snippet carries the line and byte range within its source file, inherits that file's license
-and copyright, and is tied back to the image it was found in. This narrows license and provenance
-questions from "which files were compiled" down to "which lines shipped".
+``--analyze-elf=snippets`` records the opposite view: the code that *did* ship, as SPDX Snippets in
+an additional :file:`snippets.spdx` (or :file:`snippets.jsonld`) document. This narrows license and
+provenance questions from "which files were compiled" down to "which routines shipped".
+
+One snippet is emitted per routine, spanning what that routine contributed. Each carries the line
+and byte range within its source file, inherits that file's license and copyright, and is tied back
+to the image it was found in. Two relationships describe how the routines sit in the sources:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 35 35
+
+   * - Meaning
+     - SPDX 2.3
+     - SPDX 3.0
+   * - The header prototype that declares a routine, and the file that implements it
+     - ``SPECIFICATION_FOR``
+     - ``hasSpecification``
+   * - The line ranges a routine is made of, with ``--analyze-elf=snippet-lines``
+     - ``CONTAINS``
+     - ``contains``
+
+``--analyze-elf=snippet-lines`` adds the finer level: every contiguous line range each routine is
+made of, related to it by containment. It implies ``snippets``, and makes the document several times
+larger, so reach for it when you need line-exact answers rather than routine-exact ones.
+
+A range does not have to sit in the routine's own file. Code a routine picks up from a macro belongs,
+as text, to the header the macro is written in, and the snippet records the file its bytes are
+actually in.
+
+Routines that were fully inlined are reported like any other, and say so in their comment: they have
+no out-of-line copy in the image, and so appear in no symbol table or map file.
 
 The image analyzed defaults to :file:`BUILD_DIR/zephyr/zephyr.elf`; point ``--elf-file`` at another
-one to analyze it instead.
+one to analyze it instead. It must be the linked image: the debug information of a relocatable
+object describes the inputs to the final link rather than what shipped, and ``west spdx`` says so
+rather than reporting on it.
 
 .. note::
    Both analyses need an image built with debug symbols, which is the default for most Zephyr
    configurations. If the image carries no DWARF information, ``west spdx`` reports it and leaves
    the bill-of-materials untouched rather than silently emitting an empty result.
+
+   Hand-written assembly carries line information but no routine information, so its lines are
+   attributed to no routine and appear only under ``prune-sources``.
 
 Command-line options
 --------------------
@@ -274,15 +306,20 @@ Command-line options
   document, :file:`sdk.spdx` (or :file:`sdk.jsonld`), which lists header files
   included from the SDK.
 
-- ``--analyze-elf {snippets,prune-sources}``: inspect the final image's DWARF
-  debug information to refine the bill-of-materials down to what actually ended
-  up in the firmware. Requires a build with debug symbols (the default for most
-  Zephyr configurations). May be given more than once to combine analyses:
+- ``--analyze-elf {snippets,snippet-lines,prune-sources}``: inspect the final
+  image's DWARF debug information to refine the bill-of-materials down to what
+  actually ended up in the firmware. Requires a build with debug symbols (the
+  default for most Zephyr configurations). May be given more than once to
+  combine analyses:
 
-  - ``snippets``: record the specific source line-ranges that contributed code
-    to the image as an additional :file:`snippets.spdx` (or
-    :file:`snippets.jsonld`) document, using SPDX Snippets. Each snippet points
-    back at its source file and carries that file's license and copyright.
+  - ``snippets``: record what each routine contributed to the image as an
+    additional :file:`snippets.spdx` (or :file:`snippets.jsonld`) document,
+    using SPDX Snippets. Each snippet points back at its source file and
+    carries that file's license and copyright.
+
+  - ``snippet-lines``: break those routines down into the individual line
+    ranges they are made of. Implies ``snippets``, and makes the document
+    several times larger.
 
   - ``prune-sources``: drop source files (``.c``, ``.S``, ...) that contributed
     no code to the image, for example because the linker garbage-collected
