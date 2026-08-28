@@ -249,7 +249,8 @@ implementation is reached only by *other* tests, so the requirement looks verifi
 ``unattributed`` (no test reaches it), ``unresolved`` (the implementation is a macro/inline),
 ``no-cov`` or ``no-impl``. The twister run's
 provenance (Zephyr version/commit, run date, platform, toolchain and coverage tool) is recorded on
-the twister ``Tool``, and each requirement carries its component, status and type.
+the twister ``Tool``, and each requirement carries its level (software or system),
+component, status and type.
 
 Because coverage line numbers are only meaningful against the sources of the build that produced
 them, implementation bodies are resolved against the commit recorded in the twister run's

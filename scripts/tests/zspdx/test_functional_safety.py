@@ -468,6 +468,14 @@ def _ext_ids(element):
     return [x["identifier"] for x in element.get("externalIdentifier", [])]
 
 
+def test_fs_requirement_level_separates_system_from_software(tmp_path):
+    graph = _safety_graph(tmp_path, covered=True)
+    srs = next(e for e in _by_type(graph, "Requirement") if e["name"].startswith("ZEP-SRS-1-1"))
+    syrs = next(e for e in _by_type(graph, "Requirement") if e["name"].startswith("ZEP-SYRS-1"))
+    assert "requirement-level:software" in _ext_ids(srs)
+    assert "requirement-level:system" in _ext_ids(syrs)
+
+
 def test_fs_evidence_verdict_is_recorded(tmp_path):
     graph = _safety_graph(tmp_path, covered=True)
     req = next(e for e in _by_type(graph, "Requirement") if e["name"].startswith("ZEP-SRS-1-1"))

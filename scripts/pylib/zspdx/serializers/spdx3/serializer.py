@@ -1599,6 +1599,15 @@ class SPDX3Serializer:
         requirement.externalIdentifier.append(
             self._fs_other_identifier(uid, "StrictDoc requirement UID")
         )
+        # System requirements are refined into software ones rather than verified
+        # directly, so consumers counting or adjudicating requirements need the two
+        # levels apart.
+        requirement.externalIdentifier.append(
+            self._fs_other_identifier(
+                "requirement-level:system" if node.is_system else "requirement-level:software",
+                "Requirement level",
+            )
+        )
         if node.component:
             requirement.externalIdentifier.append(
                 self._fs_other_identifier(f"component:{node.component}", "Requirement component")
