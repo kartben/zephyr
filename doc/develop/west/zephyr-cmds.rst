@@ -239,12 +239,15 @@ The resulting elements are collected into a standalone :file:`safety.jsonld` doc
   snippet per contiguous run) — not the whole function — so different tests reference the
   different paths they exercise.
 
-Each software requirement is also annotated with a **true-traceability adequacy** verdict — do its
-*own* verifying tests actually execute its implementation? ``true`` (all resolved implementations
-exercised), ``partial``, ``broken`` (the implementation is reached only by *other* tests, so the
-requirement looks verified but is not), ``unattributed`` (no test reaches it), ``unresolved`` (the
-implementation is a macro/inline), ``no-cov`` or ``no-impl``. The verdict is recorded as an
-``adequacy:<verdict>`` external identifier and a comment on the ``Requirement``. The twister run's
+Each software requirement is also annotated with two verdicts, recorded as ``evidence:<verdict>``
+and ``adequacy:<verdict>`` external identifiers and spelled out in a comment on the
+``Requirement``. **Evidence** asks whether the verifying tests ran and passed: ``passing``,
+``failing``, ``skipped``, ``no-run`` (tests are linked but none ran here) or ``untested`` (nothing
+claims to verify it). **True-traceability adequacy** asks whether those tests actually execute the
+implementation: ``true`` (all resolved implementations exercised), ``partial``, ``broken`` (the
+implementation is reached only by *other* tests, so the requirement looks verified but is not),
+``unattributed`` (no test reaches it), ``unresolved`` (the implementation is a macro/inline),
+``no-cov`` or ``no-impl``. The twister run's
 provenance (Zephyr version/commit, run date, platform, toolchain and coverage tool) is recorded on
 the twister ``Tool``, and each requirement carries its component, status and type.
 

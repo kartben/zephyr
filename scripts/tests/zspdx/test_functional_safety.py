@@ -22,7 +22,7 @@ import pytest
 ZEPHYR_BASE = os.environ.get("ZEPHYR_BASE", str(Path(__file__).parents[3]))
 sys.path.insert(0, os.path.join(ZEPHYR_BASE, "scripts", "pylib"))
 
-from zspdx.adequacy import requirement_adequacy  # noqa: E402
+from zspdx.adequacy import requirement_adequacy, requirement_evidence  # noqa: E402
 from zspdx.coverage import load_coverage  # noqa: E402
 from zspdx.requirements import _parse_sdoc  # noqa: E402
 from zspdx.sources import Source, content_byte_range, resolve_impl_symbols  # noqa: E402
@@ -214,7 +214,23 @@ def test_load_coverage_joins_and_unions(tmp_path):
     assert all_covered["kernel/thread.c"] == {800, 805, 812}
 
 
-# ---- adequacy --------------------------------------------------------------
+# ---- evidence and adequacy -------------------------------------------------
+
+
+def test_requirement_evidence_verdicts():
+    results = {
+        "pass": {"rollup": "passing"},
+        "fail": {"rollup": "failing"},
+        "skip": {"rollup": "skipped"},
+    }
+
+    assert requirement_evidence([], results) == "untested"
+    # the requirement names tests, but none of them ran here
+    assert requirement_evidence(["absent"], results) == "no-run"
+    assert requirement_evidence(["skip"], results) == "skipped"
+    assert requirement_evidence(["pass", "skip"], results) == "passing"
+    # one failure outweighs any number of passes
+    assert requirement_evidence(["pass", "fail"], results) == "failing"
 
 
 def test_requirement_adequacy_verdicts():
@@ -450,6 +466,13 @@ def test_fs_snippet_imports_source_file_via_external_map(tmp_path):
 
 def _ext_ids(element):
     return [x["identifier"] for x in element.get("externalIdentifier", [])]
+
+
+def test_fs_evidence_verdict_is_recorded(tmp_path):
+    graph = _safety_graph(tmp_path, covered=True)
+    req = next(e for e in _by_type(graph, "Requirement") if e["name"].startswith("ZEP-SRS-1-1"))
+    assert "evidence:passing" in _ext_ids(req)
+    assert "Test evidence" in req.get("comment", "")
 
 
 def test_fs_adequacy_true_and_broken(tmp_path):

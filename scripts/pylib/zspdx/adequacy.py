@@ -2,12 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Compute the "true traceability" adequacy of a requirement.
+"""Adjudicate how well a requirement is verified.
 
-A requirement is only genuinely verified when the tests that verify it actually
-execute the code that implements it. This adjudicates that from the resolved
-implementation bodies (:mod:`zspdx.sources`) and the coverage matrix
-(:mod:`zspdx.coverage`), mirroring ``doc/_scripts/traceability_app.py``.
+Two verdicts, both mirroring ``doc/_scripts/traceability_app.py``:
+
+* :func:`requirement_evidence` -- did the verifying tests *run*, and did they
+  pass? This only reads the twister results.
+* :func:`requirement_adequacy` -- the "true traceability" question: did those
+  tests actually execute the code that implements the requirement? This
+  intersects the resolved implementation bodies (:mod:`zspdx.sources`) with the
+  coverage matrix (:mod:`zspdx.coverage`).
 
 A syscall-capable API has several bodies (``z_impl_``/``z_vrfy_``/inline); a
 symbol counts as exercised when *any* of its bodies is. A body that no test in
@@ -17,7 +21,22 @@ away, config'd out) and must not count against the requirement.
 
 from __future__ import annotations
 
-# Verdicts, worst-first for reporting.
+# Evidence verdicts, worst-first.
+FAILING = "failing"
+UNTESTED = "untested"
+NO_RUN = "no-run"
+SKIPPED = "skipped"
+PASSING = "passing"
+
+EVIDENCE_HELP = {
+    PASSING: "every verifying test that ran passed",
+    SKIPPED: "the verifying tests were all skipped in this run",
+    NO_RUN: "the requirement has verifying tests, but none ran in this run",
+    UNTESTED: "no test declares that it verifies this requirement",
+    FAILING: "at least one verifying test failed",
+}
+
+# Adequacy verdicts, worst-first for reporting.
 BROKEN = "broken"
 PARTIAL = "partial"
 TRUE = "true"
@@ -37,6 +56,23 @@ VERDICT_HELP = {
     UNRESOLVED: "implementation links exist but map to macros/inlines, not bodies",
     NO_IMPL: "the requirement has no implemented_by link",
 }
+
+
+def requirement_evidence(tests, results) -> str:
+    """Return the evidence verdict for one requirement.
+
+    Args:
+        tests: the requirement's verifying test ids.
+        results: ``{test_id: {"rollup": ...}}`` from :func:`zspdx.twister.load_results`.
+    """
+    if not tests:
+        return UNTESTED
+    rollups = {results[t]["rollup"] for t in tests if t in results}
+    if not rollups:
+        return NO_RUN
+    if FAILING in rollups:
+        return FAILING
+    return PASSING if PASSING in rollups else SKIPPED
 
 
 def _body_covered(body, covered) -> bool:

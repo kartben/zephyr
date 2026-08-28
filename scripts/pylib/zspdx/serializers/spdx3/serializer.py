@@ -10,7 +10,12 @@ from datetime import UTC, datetime
 
 from spdx_python_model import v3_0_1 as spdx
 
-from zspdx.adequacy import VERDICT_HELP, requirement_adequacy
+from zspdx.adequacy import (
+    EVIDENCE_HELP,
+    VERDICT_HELP,
+    requirement_adequacy,
+    requirement_evidence,
+)
 from zspdx.model import (
     NOASSERTION,
     ComponentPurpose,
@@ -1433,12 +1438,11 @@ class SPDX3Serializer:
                         snippets.append((body, snippet))
             if snippets:
                 req_impl_snippets[req.uid] = snippets
-            # "True traceability" adequacy: do the verifying tests actually exercise
-            # the implementing code? Only meaningful for software requirements (a
-            # system requirement is realized through the SRS that refine it), and
-            # only when coverage was supplied.
-            if self._fs_coverage and not req.is_system:
-                self._fs_set_adequacy(req, requirement)
+            # Verdicts on how well the requirement is verified. Only meaningful
+            # for software requirements: a system requirement is realized through
+            # the SRS that refine it, not verified directly.
+            if not req.is_system:
+                self._fs_set_verdicts(req, requirement)
 
         # 4) Verification: each test measured by twister becomes a
         #    RequirementVerification + pass/fail EvaluationResult, with the
@@ -1537,19 +1541,34 @@ class SPDX3Serializer:
                 tool.externalIdentifier.append(self._fs_other_identifier(f"{id_type}:{value}"))
         return self._fs_register(tool)
 
-    def _fs_set_adequacy(self, req, requirement):
-        """Annotate a requirement with its "true traceability" adequacy verdict."""
-        verdict = requirement_adequacy(
-            req.implemented_by,
-            req.validated_by,
-            self._fs_impl_bodies,
-            self._fs_coverage,
-            self._fs_all_covered,
-        )
-        requirement.comment = f"True-traceability adequacy: {verdict} — {VERDICT_HELP[verdict]}"
-        requirement.externalIdentifier.append(
-            self._fs_other_identifier(f"adequacy:{verdict}", "True-traceability verdict")
-        )
+    def _fs_set_verdicts(self, req, requirement):
+        """Annotate a requirement with its evidence and adequacy verdicts.
+
+        Evidence answers "did the verifying tests run, and pass?" and needs only
+        the twister results; adequacy is the coverage-backed "true traceability"
+        question and is skipped when no coverage matrix was supplied.
+        """
+        notes = []
+        if self._fs_results:
+            evidence = requirement_evidence(req.validated_by, self._fs_results)
+            notes.append(f"Test evidence: {evidence} — {EVIDENCE_HELP[evidence]}")
+            requirement.externalIdentifier.append(
+                self._fs_other_identifier(f"evidence:{evidence}", "Test evidence verdict")
+            )
+        if self._fs_coverage:
+            verdict = requirement_adequacy(
+                req.implemented_by,
+                req.validated_by,
+                self._fs_impl_bodies,
+                self._fs_coverage,
+                self._fs_all_covered,
+            )
+            notes.append(f"True-traceability adequacy: {verdict} — {VERDICT_HELP[verdict]}")
+            requirement.externalIdentifier.append(
+                self._fs_other_identifier(f"adequacy:{verdict}", "True-traceability verdict")
+            )
+        if notes:
+            requirement.comment = "\n".join(notes)
 
     def _fs_get_requirement(self, uid: str):
         """Return the ``Requirement`` for ``uid``, creating it on first use.
