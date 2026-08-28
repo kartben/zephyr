@@ -609,6 +609,64 @@ A real life example for Mbed TLS module could look like this:
    PURL field must follow the PURL specification provided by `Github
    <https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst>`_.
 
+.. _modules-sbom-metadata:
+
+Software bill of materials metadata
+===================================
+
+:ref:`west spdx <west-spdx>` records every module in the SBOM it generates for a build. It
+derives what it can from the west manifest, but the manifest only says where Zephyr fetches
+a module from, and every module is fetched from a mirror in the ``zephyrproject-rtos``
+GitHub organization. On its own, that makes the SBOM report the Zephyr Project as the
+origin of code it did not write, and pin package URLs to the mirror rather than to the
+project a vulnerability feed indexes.
+
+The optional ``sbom`` section of :file:`zephyr/module.yml` lets a module state the facts
+only it knows:
+
+.. code-block:: yaml
+
+   sbom:
+     license: <SPDX license expression for the module as a whole>
+     upstream:
+       organization: <organization that produces the module upstream>
+       url: <upstream repository URL, not the Zephyr mirror>
+       version: <upstream version this revision corresponds to>
+
+A real life example for the Mbed TLS module could look like this:
+
+.. code-block:: yaml
+
+   sbom:
+     license: Apache-2.0 OR GPL-2.0-or-later
+     upstream:
+       organization: Arm Limited
+       url: https://github.com/Mbed-TLS/mbedtls
+       version: 3.6.2
+
+Each field is optional, and maps onto the SBOM as follows:
+
+``license``
+   Becomes the package's declared license (``PackageLicenseDeclared`` in SPDX 2.x). This is
+   what the module declares for itself as a whole, and is distinct from the concluded
+   license, which ``west spdx`` derives by scanning the files that went into the build.
+
+``upstream.organization``
+   Becomes the package originator (``PackageOriginator`` in SPDX 2.x, ``originatedBy`` in
+   SPDX 3). The supplier stays the Zephyr Project, because that is where the code is
+   fetched from; the originator is who produced it.
+
+``upstream.url`` and ``upstream.version``
+   Add a package URL pointing at the upstream project, and use the upstream version as the
+   package version in place of the mirror's commit hash. Both make the SBOM far easier to
+   match against upstream advisories.
+
+.. note::
+   The license must be a valid `SPDX license expression
+   <https://spdx.github.io/spdx-spec/v2.3/SPDX-license-expressions/>`_. An identifier that
+   is not on the SPDX license list is emitted as a custom license and should use the
+   ``LicenseRef-`` prefix.
+
 
 Build system integration
 ========================

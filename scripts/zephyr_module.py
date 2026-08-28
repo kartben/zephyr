@@ -145,6 +145,20 @@ properties:
         type: array
         items:
           type: string
+  sbom:
+    type: object
+    properties:
+      license:
+        type: string
+      upstream:
+        type: object
+        properties:
+          organization:
+            type: string
+          url:
+            type: string
+          version:
+            type: string
   package-managers:
     type: object
     properties:
@@ -674,6 +688,8 @@ def process_meta(zephyr_base, west_projs, modules, extra_modules=None,
 
         if module.meta.get('security'):
             meta_module['security'] = module.meta.get('security')
+        if module.meta.get('sbom'):
+            meta_module['sbom'] = module.meta.get('sbom')
         meta_modules.append(meta_module)
 
     meta['modules'] = meta_modules
