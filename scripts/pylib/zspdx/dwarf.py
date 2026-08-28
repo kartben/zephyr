@@ -25,6 +25,7 @@ import logging
 import os
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from functools import lru_cache
 
 _logger = logging.getLogger(__name__)
 
@@ -124,7 +125,7 @@ def analyze_image(
 
         # (name, decl_file, decl_line) -> {source path: {used line}}
         routine_lines: dict[_Identity, dict[str, set[int]]] = {}
-        declarations: dict[str, tuple[str, int | None]] = {}
+        declarations: dict[str, set[tuple[str, int | None]]] = {}
         out_of_line: set[_Identity] = set()
         scopes_by_cu: dict[int, list] = {}
         sites: dict[str, dict[int, _Identity]] = {}
@@ -206,6 +207,27 @@ def extract_routines(
         info or cannot be read.
     """
     return analyze_image(elf_path, known_paths, with_routines=True).routines
+
+
+def line_byte_range(path: str, start_line: int, end_line: int) -> tuple[int, int] | None:
+    """Return the ``(start_byte, end_byte)`` span of a line range within a file.
+
+    Args:
+        path: Source file to measure.
+        start_line: First 1-based line of the span.
+        end_line: Last 1-based line of the span, clamped to the file's length.
+
+    Returns:
+        Byte offsets within the file, or ``None`` when it cannot be read or the
+        span falls outside it.
+    """
+    offsets = _build_line_offsets(path)
+    if not offsets:
+        return None
+    end_line = min(end_line, max(offsets))
+    if start_line not in offsets or end_line not in offsets:
+        return None
+    return (offsets[start_line][0], offsets[end_line][1])
 
 
 def ranges_from_line_map(file_lines: dict[str, set[int]]) -> dict[str, list[SourceRange]]:
@@ -420,8 +442,8 @@ def _cu_scopes(cu, dwarf, resolve, declarations, out_of_line, sites):
     """Return one CU's routine PC ranges, sorted by start address.
 
     Each scope is ``(low, high, depth, identity)``.  The caller's collections
-    accumulate what the whole image contributes: ``declarations`` maps a name to
-    the header that declares it, ``out_of_line`` holds the identities the image
+    accumulate what the whole image contributes: ``declarations`` gathers every
+    site a name is declared at, ``out_of_line`` holds the identities the image
     keeps a standalone copy of, and ``sites`` indexes every definition by the
     file and line it was written at.
     """
@@ -433,7 +455,7 @@ def _cu_scopes(cu, dwarf, resolve, declarations, out_of_line, sites):
             if "DW_AT_declaration" in die.attributes:
                 identity = _routine_identity(die, cu_dies, resolve)
                 if identity is not None:
-                    declarations[identity[0]] = (identity[1], identity[2])
+                    declarations.setdefault(identity[0], set()).add((identity[1], identity[2]))
                 continue
             depth = 0
         elif die.tag == "DW_TAG_inlined_subroutine":
@@ -578,14 +600,34 @@ def _build_routines(routine_lines, declarations, out_of_line) -> list[Routine]:
             ranges=sorted(ranges, key=lambda r: (r.path, r.start_line)),
             inlined_only=identity not in out_of_line,
         )
-        # A declaration is only worth recording when it lives somewhere other
-        # than the definition: a static inline in a header declares itself.
-        declared = declarations.get(name)
-        if declared is not None and declared[0] != decl_file:
+        declared = _pick_declaration(declarations.get(name), decl_file)
+        if declared is not None:
             routine.declared_in, routine.declared_line = declared
         routines.append(routine)
 
     return sorted(routines, key=lambda r: (r.decl_file, r.decl_line or 0, r.name))
+
+
+_HEADER_EXTS = frozenset({".h", ".hh", ".hpp", ".hxx", ".h++", ".inc"})
+
+
+def _pick_declaration(sites, decl_file):
+    """Choose the declaration site that best explains where a routine is announced.
+
+    A name can be declared in several places -- the header that publishes it,
+    but also a forward declaration inside some ``.c``.  Only a header says
+    something the definition does not, so that is the only kind kept; a static
+    inline declares itself in the file it is defined in, and is filtered out by
+    the same rule.
+    """
+    headers = [
+        site
+        for site in sites or ()
+        if site[0] != decl_file
+        and site[1] is not None
+        and os.path.splitext(site[0])[1].lower() in _HEADER_EXTS
+    ]
+    return min(headers) if headers else None
 
 
 def _resolve_file(
@@ -622,6 +664,9 @@ def _resolve_file(
     return os.path.realpath(full)
 
 
+# Sources are measured repeatedly -- once per routine that contributed lines
+# to them -- so keep the most recent line tables around.
+@lru_cache(maxsize=128)
 def _build_line_offsets(path: str) -> dict[int, tuple[int, int]]:
     """Return ``{line_number: (start_byte, end_byte)}`` for every line in *path*.
 

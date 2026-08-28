@@ -71,12 +71,15 @@ class ZephyrSpdx(WestCommand):
             '--analyze-elf',
             metavar='ANALYSIS',
             action='append',
-            choices=['snippets', 'prune-sources'],
+            choices=['snippets', 'snippet-lines', 'prune-sources'],
             help=(
                 "analyze the final image's DWARF debug info (requires a build "
                 "with debug symbols). May be given more than once. "
-                "'snippets': emit the used source line-ranges as an SPDX Snippets "
-                "add-on document. "
+                "'snippets': emit what each routine contributed to the image as "
+                "an SPDX Snippets add-on document. "
+                "'snippet-lines': break those routines down further into the "
+                "individual source line-ranges they are made of; implies "
+                "'snippets' and makes the document considerably larger. "
                 "'prune-sources': drop source files that contributed no code to "
                 "the final image."
             ),
@@ -84,8 +87,7 @@ class ZephyrSpdx(WestCommand):
         parser.add_argument(
             '--elf-file',
             metavar='ELF',
-            help="ELF file to analyze for --analyze-elf (default: "
-            "<build-dir>/zephyr/zephyr.elf)",
+            help="ELF file to analyze for --analyze-elf (default: <build-dir>/zephyr/zephyr.elf)",
         )
 
         return parser
@@ -165,7 +167,8 @@ class ZephyrSpdx(WestCommand):
         if args.include_sdk:
             cfg.include_sdk = True
         analyses = set(args.analyze_elf or [])
-        cfg.generate_snippets = 'snippets' in analyses
+        cfg.snippet_lines = 'snippet-lines' in analyses
+        cfg.generate_snippets = 'snippets' in analyses or cfg.snippet_lines
         cfg.prune_sources = 'prune-sources' in analyses
         if args.elf_file:
             if not analyses:

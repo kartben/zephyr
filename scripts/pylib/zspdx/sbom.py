@@ -41,6 +41,10 @@ class SBOMConfig:
     # final image's DWARF debug info?
     generate_snippets: bool = False
 
+    # --analyze-elf=snippet-lines: also break each routine down into the
+    # contiguous line ranges it is made of?
+    snippet_lines: bool = False
+
     # --analyze-elf=prune-sources: drop source files that contributed no code
     # to the final image, per its DWARF debug info?
     prune_sources: bool = False
@@ -151,27 +155,26 @@ def _analyze_elf(cfg: SBOMConfig, sbom_graph) -> None:
 
     Performs a single DWARF pass and dispatches to the requested analyses:
     ``prune-sources`` drops sources absent from the image, ``snippets`` records
-    the used source ranges as SPDX Snippets.
+    what each routine contributed as SPDX Snippets.
     """
-    from zspdx.dwarf import collect_used_lines
+    from zspdx.dwarf import analyze_image
 
     elf_path = cfg.elf_file or os.path.join(cfg.build_dir, "zephyr", "zephyr.elf")
     if not os.path.isfile(elf_path):
         _logger.error(
-            "ELF file not found for --analyze-elf: %s "
-            "(build first, or pass --elf-file=<path>)",
+            "ELF file not found for --analyze-elf: %s (build first, or pass --elf-file=<path>)",
             elf_path,
         )
         return
 
     # Single DWARF pass, shared by both analyses.
-    file_lines = collect_used_lines(elf_path)
+    analysis = analyze_image(elf_path, with_routines=cfg.generate_snippets)
 
     if cfg.prune_sources:
-        _prune_unused_sources(sbom_graph, set(file_lines))
+        _prune_unused_sources(sbom_graph, set(analysis.file_lines))
 
     if cfg.generate_snippets:
-        _extract_snippets(sbom_graph, elf_path, file_lines)
+        _extract_snippets(sbom_graph, elf_path, analysis.routines, cfg.snippet_lines)
 
 
 def _prune_unused_sources(sbom_graph, used_paths: set[str]) -> None:
@@ -230,17 +233,15 @@ def _remove_file_from_graph(sbom_graph, spdx_file) -> None:
     sbom_graph.relationships = surviving
 
 
-def _extract_snippets(sbom_graph, elf_path: str, file_lines: dict[str, set[int]]) -> None:
-    """Populate ``sbom_graph.snippets`` from the collected DWARF line map."""
-    from zspdx.dwarf import ranges_from_line_map
-    from zspdx.model import SBOMSnippet
+def _extract_snippets(sbom_graph, elf_path: str, routines, with_lines: bool) -> None:
+    """Populate ``sbom_graph.snippets`` from the routines found in the image.
 
-    # Restrict to tracked files before folding into ranges so we only read the
-    # sources we actually emit snippets for.
-    known_paths = set(sbom_graph.files.keys())
-    ranges_by_file = ranges_from_line_map(
-        {path: lines for path, lines in file_lines.items() if path in known_paths}
-    )
+    One snippet per routine covers everything it contributed. ``with_lines``
+    additionally emits the contiguous line ranges making each routine up, which
+    is the finer view the routines are otherwise a summary of.
+    """
+    from zspdx.dwarf import line_byte_range
+    from zspdx.model import SBOMSnippet, SnippetKind
 
     # Record the image the snippets came from so serializers can emit the
     # source-to-binary provenance relationship. The graph may key the file by a
@@ -253,22 +254,109 @@ def _extract_snippets(sbom_graph, elf_path: str, file_lines: dict[str, set[int]]
                 sbom_graph.snippet_binary = spdx_file
                 break
 
-    for path, ranges in ranges_by_file.items():
-        spdx_file = sbom_graph.get_file(path)
+    declarations: dict[tuple[str, int], SBOMSnippet] = {}
+    untracked = 0
+
+    for routine in routines:
+        spdx_file = sbom_graph.get_file(routine.decl_file)
+        extent = routine.line_extent
+        if spdx_file is None or extent is None:
+            untracked += 1
+            continue
+        byte_extent = line_byte_range(routine.decl_file, *extent)
+        if byte_extent is None:
+            untracked += 1
+            continue
+
+        snippet = SBOMSnippet(
+            spdx_file=spdx_file,
+            byte_range=byte_extent,
+            line_range=extent,
+            name=_routine_label(spdx_file, routine),
+            concluded_license=spdx_file.concluded_license,
+            copyright_text=spdx_file.copyright_text,
+            kind=SnippetKind.ROUTINE,
+            routine=routine.name,
+            inlined_only=routine.inlined_only,
+        )
+        snippet.declaration = _declaration_snippet(sbom_graph, routine, declarations)
+        sbom_graph.snippets.append(snippet)
+
+        if with_lines:
+            sbom_graph.snippets.extend(_range_snippets(sbom_graph, routine, snippet))
+
+    if untracked:
+        _logger.debug("Skipped %d routine(s) defined outside the tracked files", untracked)
+    _logger.info(
+        "Extracted %d snippet(s) covering %d routine(s)",
+        len(sbom_graph.snippets),
+        sum(1 for s in sbom_graph.snippets if s.kind is SnippetKind.ROUTINE),
+    )
+
+
+def _routine_label(spdx_file, routine) -> str:
+    """Human-readable name for a routine snippet, e.g. ``uart_poll_in@drivers/x.c``."""
+    where = spdx_file.relative_path or os.path.basename(spdx_file.path)
+    return f"{routine.name}@{where}"
+
+
+def _declaration_snippet(sbom_graph, routine, declarations):
+    """Return the snippet for a routine's prototype, creating it on first use.
+
+    Several routines can be declared in the same header, and a header is only
+    interesting here as the place a prototype was written, so snippets are
+    keyed by the exact declaration site and shared.
+    """
+    from zspdx.dwarf import line_byte_range
+    from zspdx.model import SBOMSnippet, SnippetKind
+
+    if not routine.declared_in or routine.declared_line is None:
+        return None
+    header = sbom_graph.get_file(routine.declared_in)
+    if header is None:
+        return None
+
+    key = (routine.declared_in, routine.declared_line)
+    snippet = declarations.get(key)
+    if snippet is None:
+        byte_range = line_byte_range(
+            routine.declared_in, routine.declared_line, routine.declared_line
+        )
+        if byte_range is None:
+            return None
+        where = header.relative_path or os.path.basename(header.path)
+        snippet = SBOMSnippet(
+            spdx_file=header,
+            byte_range=byte_range,
+            line_range=(routine.declared_line, routine.declared_line),
+            name=f"{routine.name}@{where}",
+            concluded_license=header.concluded_license,
+            copyright_text=header.copyright_text,
+            kind=SnippetKind.DECLARATION,
+            routine=routine.name,
+        )
+        declarations[key] = snippet
+        sbom_graph.snippets.append(snippet)
+    return snippet
+
+
+def _range_snippets(sbom_graph, routine, parent):
+    """Build the contiguous line-range snippets making up one routine."""
+    from zspdx.model import SBOMSnippet, SnippetKind
+
+    for source_range in routine.ranges:
+        spdx_file = sbom_graph.get_file(source_range.path)
         if spdx_file is None:
             continue
-        for r in ranges:
-            snippet = SBOMSnippet(
-                spdx_file=spdx_file,
-                byte_range=(r.start_byte, r.end_byte),
-                line_range=(r.start_line, r.end_line),
-                concluded_license=spdx_file.concluded_license,
-                copyright_text=spdx_file.copyright_text,
-            )
-            sbom_graph.snippets.append(snippet)
-
-    _logger.info(
-        "Extracted %d snippet(s) from %d source file(s)",
-        len(sbom_graph.snippets),
-        len(ranges_by_file),
-    )
+        where = spdx_file.relative_path or os.path.basename(spdx_file.path)
+        yield SBOMSnippet(
+            spdx_file=spdx_file,
+            byte_range=(source_range.start_byte, source_range.end_byte),
+            line_range=(source_range.start_line, source_range.end_line),
+            name=f"{where}:{source_range.start_line}-{source_range.end_line}",
+            concluded_license=spdx_file.concluded_license,
+            copyright_text=spdx_file.copyright_text,
+            kind=SnippetKind.RANGE,
+            routine=routine.name,
+            parent=parent,
+        )
