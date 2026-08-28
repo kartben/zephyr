@@ -303,6 +303,11 @@ Command-line options
   Defaults to ``2.3``. See :ref:`west-spdx-versions` for the differences between
   the versions.
 
+- ``--supplier SUPPLIER``: the organization supplying the application and the files the
+  build produced, for example ``--supplier "Example Corp"``. If omitted, the supplier is
+  derived from the application's git remote, and left as ``NOASSERTION`` if the
+  application is not in a git repository with a remote.
+
 - ``--analyze-includes``: in addition to recording the compiled source code
   files (e.g. ``.c``, ``.S``) in the bills-of-materials, also attempt to
   determine the specific header files that are included for each ``.c`` file.

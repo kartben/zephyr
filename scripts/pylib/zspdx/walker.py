@@ -129,6 +129,10 @@ class WalkerConfig:
     # should also add an SPDX document for the SDK?
     include_sdk: bool = False
 
+    # organization supplying the application and the build outputs; when empty it is
+    # derived from the application's git remote, and left unasserted if that fails
+    supplier: str = ""
+
 
 # Walker is the main analysis class: it walks through the CMake codemodel,
 # build files, and corresponding source and SDK files, and gathers the
@@ -252,14 +256,53 @@ class Walker:
                 component.add_external_reference(purl)
 
     @staticmethod
-    def _read_zephyr_version(zephyr_path):
-        """Read the Zephyr version (e.g. "4.4.99") from the repo VERSION file.
+    def _git_output(path, *args):
+        """Run a git command in ``path`` and return its stripped stdout, or "" on failure."""
+        if not path or not os.path.isdir(path):
+            return ""
+        try:
+            result = subprocess.run(
+                ["git", *args],
+                capture_output=True,
+                text=True,
+                timeout=5,  # avoid hanging on a slow or wedged repository
+                cwd=path,
+            )
+        except (subprocess.SubprocessError, OSError) as e:
+            _logger.debug(f"git {' '.join(args)} in {path} failed: {e}")
+            return ""
+        if result.returncode != 0:
+            return ""
+        return result.stdout.strip()
+
+    def _scm_identity_of_tree(self, path):
+        """Get the (url, revision) of the git checkout containing ``path``.
+
+        The application is not necessarily a west project, so its provenance has to come
+        from git directly. Returns ("", "") when ``path`` is not in a git repository or
+        the repository has no remote.
+        """
+        url = self._git_output(path, "remote", "get-url", "origin")
+        if not url:
+            # no "origin": fall back to whichever remote is configured first
+            remotes = self._git_output(path, "remote")
+            first = remotes.split("\n")[0].strip() if remotes else ""
+            url = self._git_output(path, "remote", "get-url", first) if first else ""
+        revision = self._git_output(path, "rev-parse", "HEAD")
+        return url, revision
+
+    @staticmethod
+    def _read_version_file(path):
+        """Read a version (e.g. "4.4.99") from the VERSION file in ``path``.
+
+        Zephyr and Zephyr applications both describe their version with a VERSION file
+        in this format, so the same reader serves the Zephyr repo and the application.
 
         Returns "" when the path is missing or the file cannot be parsed.
         """
-        if not zephyr_path:
+        if not path:
             return ""
-        version_file = os.path.join(zephyr_path, "VERSION")
+        version_file = os.path.join(path, "VERSION")
         values = {}
         try:
             with open(version_file) as f:
@@ -310,7 +353,7 @@ class Walker:
             if match:
                 return match.group("version")
 
-        return self._read_zephyr_version(zephyr.get("path", ""))
+        return self._read_version_file(zephyr.get("path", ""))
 
     def _apply_zephyr_identity(self, component, zephyr):
         """Attach the version, package URLs and CPE identifying Zephyr itself.
@@ -355,7 +398,7 @@ class Walker:
         """
         self.sbom_graph.metadata["creator_organization"] = ZEPHYR_ORGANIZATION
         self.sbom_graph.metadata["tool_name"] = SPDX_TOOL_NAME
-        self.sbom_graph.metadata["tool_version"] = self._read_zephyr_version(
+        self.sbom_graph.metadata["tool_version"] = self._read_version_file(
             (zephyr or {}).get("path", "")
         )
 
@@ -593,12 +636,40 @@ class Walker:
         return True
 
     def setup_app_component(self):
-        """Set up app sources component."""
+        """Set up app sources component.
+
+        The application is the one component ``west spdx`` cannot look up in the west
+        manifest, yet a name, version and supplier for it are exactly what an SBOM
+        consumer needs. Its version comes from the application's own VERSION file (the
+        file Zephyr's application versioning already reads) or, failing that, from its
+        git revision; its supplier comes from ``--supplier`` or from the git remote.
+        """
+        app_dir = self.cm.paths_source
         component = SBOMComponent(
             name="app-sources",
             purpose=ComponentPurpose.SOURCE,
-            base_dir=self.cm.paths_source,
+            base_dir=app_dir,
         )
+
+        app_url, app_revision = self._scm_identity_of_tree(app_dir)
+        component.version = self._read_version_file(app_dir)
+        if app_revision:
+            component.revision = app_revision
+        if app_url:
+            component.url = app_url
+
+        # An explicit --supplier always wins: only whoever runs the build knows which
+        # organization is shipping the resulting firmware.
+        if self.cfg.supplier:
+            component.supplier = self.cfg.supplier
+        elif app_url:
+            self._apply_scm_identity(component, app_url, app_revision)
+
+        if not component.supplier:
+            _logger.info(
+                "no supplier for the application; pass --supplier to record one. "
+                "The SBOM will report the application supplier as NOASSERTION."
+            )
 
         self.sbom_graph.add_component(component, "app")
         self.doc_app.add_described_component(component)
@@ -859,6 +930,13 @@ class Walker:
             name=cfg_target.name,
             base_dir=self.cm.paths_build,
         )
+
+        # Build outputs did not exist before this build: they are supplied and versioned
+        # by whoever ran it, which is what the application component already records.
+        if self.component_app:
+            component.supplier = self.component_app.supplier
+            component.version = self.component_app.version
+            component.revision = self.component_app.revision
 
         # add Component to SBOM data and build document
         self.sbom_graph.add_component(component, "build")
