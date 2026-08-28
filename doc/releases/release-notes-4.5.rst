@@ -1888,9 +1888,10 @@ Other notable changes
 
   * The new ``--analyze-elf`` option inspects the final image's DWARF debug
     information to refine the bill-of-materials to what actually shipped:
-    ``snippets`` records the source line-ranges that contributed code as SPDX
-    Snippets, and ``prune-sources`` drops source files the linker left out.
-    Use ``--elf-file`` to analyze a non-default image.
+    ``snippets`` records what each routine contributed as SPDX Snippets, with
+    the header prototype that declares it and, under ``snippet-lines``, the
+    individual line ranges it is made of; ``prune-sources`` drops source files
+    the linker left out. Use ``--elf-file`` to analyze a non-default image.
 
 ..
   Any more descriptive subsystem or driver changes. Do you really want to write
