@@ -249,21 +249,83 @@ static int mpu_configure_static_mpu_regions(const struct z_arm_mpu_partition
 static int mpu_configure_dynamic_mpu_regions(const struct z_arm_mpu_partition
 	dynamic_regions[], uint8_t regions_num)
 {
+	/* One past the highest dynamic MPU region index programmed by the
+	 * previous invocation. Region indices at and above it are known to
+	 * be already disabled, so they do not need to be cleared again by
+	 * the next invocation. This function runs as part of every context
+	 * switch, so redundantly re-clearing the (typically unchanged)
+	 * trailing regions is a significant cost. The initial UINT8_MAX
+	 * value makes the first invocation clear all the trailing regions,
+	 * like before.
+	 */
+	static uint8_t dyn_regions_prev_end = UINT8_MAX;
+
+	uint8_t prev_end = dyn_regions_prev_end;
 	int mpu_reg_index = static_regions_num;
 
 	/* In ARMv7-M architecture the dynamic regions are
 	 * programmed on top of existing SRAM region configuration.
+	 *
+	 * Program the regions with a flat loop instead of the generic
+	 * mpu_configure_regions() helper chain: the per-region function
+	 * call layers and their repeated region count re-reads add a
+	 * large fixed cost on every context switch, for checks that
+	 * cannot fail for the kernel-supplied dynamic regions.
 	 */
+	if (mpu_reg_index + regions_num > get_num_regions()) {
+		mpu_reg_index = -EINVAL;
+	} else {
+		for (uint8_t i = 0U; i < regions_num; i++) {
+			const struct z_arm_mpu_partition *part =
+				&dynamic_regions[i];
 
-	mpu_reg_index = mpu_configure_regions(dynamic_regions,
-		regions_num, mpu_reg_index, false);
+			if (part->size == 0U) {
+				continue;
+			}
+
+#if defined(CONFIG_CPU_AARCH32_CORTEX_R)
+			set_region_number(mpu_reg_index);
+
+			/* Clear the size register first, disabling the
+			 * entry while it is re-configured.
+			 */
+			set_region_size(0);
+
+			set_region_base_address(
+				(uint32_t)part->start & MPU_RBAR_ADDR_Msk);
+			set_region_attributes(part->attr.rasr_attr);
+			set_region_size(size_to_mpu_rasr_size(part->size)
+				| MPU_RASR_ENABLE_Msk);
+#else
+			/* Writing RBAR with VALID set also updates RNR, so
+			 * the RASR write addresses the same region.
+			 */
+			MPU->RBAR = ((uint32_t)part->start & MPU_RBAR_ADDR_Msk)
+				| MPU_RBAR_VALID_Msk | (uint32_t)mpu_reg_index;
+			MPU->RASR = part->attr.rasr_attr
+				| size_to_mpu_rasr_size(part->size)
+				| MPU_RASR_ENABLE_Msk;
+#endif
+
+			mpu_reg_index++;
+		}
+	}
 
 	if (mpu_reg_index != -EINVAL) {
 
-		/* Disable the non-programmed MPU regions. */
-		for (int i = mpu_reg_index; i < get_num_regions(); i++) {
+		if (prev_end == UINT8_MAX) {
+			prev_end = get_num_regions();
+		}
+
+		/* Disable the MPU regions programmed by the previous
+		 * invocation that were not re-programmed now. Regions
+		 * at and above that range are already disabled.
+		 */
+		for (int i = mpu_reg_index; i < prev_end; i++) {
 			ARM_MPU_ClrRegion(i);
 		}
+
+		dyn_regions_prev_end = (uint8_t)mpu_reg_index;
 	}
 
 	return mpu_reg_index;
