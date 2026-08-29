@@ -1,9 +1,15 @@
 # Copyright 2024 NXP
 # SPDX-License-Identifier: Apache-2.0
 
+title: Arm SCMI transport
+
 description: |
-        SCMI (System Control and Management Interface) with doorbell
-        and SHMEM (shared memory) transport.
+  Top-level node representing an Arm SCMI (System Control and Management Interface)
+  transport using mailbox-based doorbell signaling and shared memory (SHMEM) for
+  message exchange between the SCMI agent and platform.
+
+  SCMI protocol nodes, such as clock management or power domain management, are
+  represented as child nodes of this node.
 
 compatible: "arm,scmi"
 

@@ -1,7 +1,13 @@
 # Copyright 2024 NXP
 # SPDX-License-Identifier: Apache-2.0
 
-description: SCMI (System Control and Management Interface) power domain protocol
+title: Arm SCMI power domain management
+
+description: |
+  Arm SCMI (System Control and Management Interface) power domain management protocol
+  node (protocol ID: 0x11). This is a child node of the SCMI transport node and provides
+  power domain control capabilities through the SCMI interface. It acts as a provider of
+  power domains, with each domain identified by a vendor-specific identifier.
 
 compatible: "arm,scmi-power"
 
