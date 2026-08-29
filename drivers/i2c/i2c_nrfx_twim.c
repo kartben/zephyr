@@ -186,7 +186,7 @@ static int i2c_nrfx_twim_transfer(const struct device *dev,
 		if ((msgs[i].flags & I2C_MSG_READ) && (buf == msg_buf)) {
 			int j = i;
 
-			while (msg_buf_used >= msgs[j].len) {
+			while (j >= 0 && msg_buf_used >= msgs[j].len) {
 				msg_buf_used -= msgs[j].len;
 				memcpy(msgs[j].buf,
 				       msg_buf + msg_buf_used,

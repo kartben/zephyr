@@ -7,6 +7,7 @@
 /* I2C controller functions for 'FIFO' mode */
 
 #include <zephyr/drivers/i2c.h>
+#include <zephyr/sys/util.h>
 
 #include <soc.h>
 
@@ -262,9 +263,14 @@ void i2c_ctrl_handle_read_int_event(const struct device *dev)
 			i2c_ctrl_fifo_hold_bus(dev, 1);
 		}
 
-		/* Read data bytes from FIFO */
-		for (int i = 0; i < rx_occupied; i++) {
+		/* Read data bytes from FIFO, never more than the current message. */
+		size_t to_copy = MIN(rx_occupied, rx_remain);
+
+		for (int i = 0; i < to_copy; i++) {
 			*(data->ptr_msg++) = i2c_ctrl_data_read(dev);
+		}
+		for (int i = to_copy; i < rx_occupied; i++) {
+			(void)i2c_ctrl_data_read(dev);
 		}
 		rx_remain = i2c_ctrl_calculate_msg_remains(dev);
 

@@ -15,6 +15,7 @@ LOG_MODULE_REGISTER(spi_it51xxx, CONFIG_SPI_LOG_LEVEL);
 #include <zephyr/drivers/pinctrl.h>
 #include <zephyr/dt-bindings/interrupt-controller/ite-it51xxx-intc.h>
 #include <zephyr/pm/policy.h>
+#include <zephyr/sys/util.h>
 #include <soc.h>
 
 #include "spi_context.h"
@@ -336,14 +337,15 @@ static inline bool tx_fifo_mode_is_enabled(const struct device *dev)
 	return data->ctrl_mode.tx != PIO_MODE;
 }
 
-static inline void spi_it51xxx_set_fifo_len(const struct device *dev, const uint8_t mode,
-					    const size_t length)
+static int spi_it51xxx_set_fifo_len(const struct device *dev, const uint8_t mode,
+				    const size_t length)
 {
 	const struct spi_it51xxx_config *cfg = dev->config;
 
 	if (mode == GROUP_FIFO_MODE) {
 		if (!IS_GROUP_FIFO_MODE(length)) {
-			LOG_WRN("length (%d) is incompatible with group fifo mode", length);
+			LOG_ERR("length (%d) is incompatible with group fifo mode", length);
+			return -EINVAL;
 		}
 		sys_write8(PAGE_CONTEXT_SIZE_LSB_EN, cfg->base + SPI83_GROUP_PAGE_SIZE_2);
 		sys_write8(PAGE_SIZE_LB(length - 1), cfg->base + SPI82_GROUP_PAGE_SIZE_1);
@@ -352,13 +354,16 @@ static inline void spi_it51xxx_set_fifo_len(const struct device *dev, const uint
 			   cfg->base + SPI83_GROUP_PAGE_SIZE_2);
 	} else {
 		if (!IS_SHARED_FIFO_MODE(length)) {
-			LOG_WRN("length (%d) is incompatible with shared fifo mode", length);
+			LOG_ERR("length (%d) is incompatible with shared fifo mode", length);
+			return -EINVAL;
 		}
 		sys_write8(sys_read8(cfg->base + SPI83_GROUP_PAGE_SIZE_2) &
 				   ~PAGE_CONTEXT_SIZE_LSB_EN,
 			   cfg->base + SPI83_GROUP_PAGE_SIZE_2);
 		sys_write8(length / 8 - 1, cfg->base + SPI06_PAGE_SIZE);
 	}
+
+	return 0;
 }
 
 static inline bool direction_turnaround_check_workaround(const struct device *dev)
@@ -373,17 +378,18 @@ static inline bool direction_turnaround_check_workaround(const struct device *de
 	return data->xfer_mode == XFER_TX_RX && data->ctrl_mode.tx != PIO_MODE;
 }
 
-static inline void spi_it51xxx_fifo_rx(const struct device *dev)
+static int spi_it51xxx_fifo_rx(const struct device *dev)
 {
 	const struct spi_it51xxx_config *cfg = dev->config;
 	struct spi_it51xxx_data *data = dev->data;
 	struct spi_context *ctx = &data->ctx;
+	int ret;
 
 	if (direction_turnaround_check_workaround(dev) && !data->direction_turnaround) {
 		data->direction_turnaround = true;
 		sys_write8(sys_read8(cfg->base + SPI02_CTRL2) | READ_CYCLE,
 			   cfg->base + SPI02_CTRL2);
-		return;
+		return 0;
 	}
 
 	sys_write8(sys_read8(cfg->base + SPI02_CTRL2) | READ_CYCLE, cfg->base + SPI02_CTRL2);
@@ -395,38 +401,63 @@ static inline void spi_it51xxx_fifo_rx(const struct device *dev)
 	} else {
 		data->receive_len = ctx->rx_len;
 	}
-	spi_it51xxx_set_fifo_len(dev, data->ctrl_mode.rx, data->receive_len);
+	ret = spi_it51xxx_set_fifo_len(dev, data->ctrl_mode.rx, data->receive_len);
+	if (ret) {
+		return ret;
+	}
 
 	sys_write8(sys_read8(cfg->base + SPI0B_FIFO_CTRL) | FIFO_TX_RX_START,
 		   cfg->base + SPI0B_FIFO_CTRL);
+	return 0;
 }
 
-static inline void spi_it51xxx_fifo_tx(const struct device *dev)
+static int spi_it51xxx_fifo_tx(const struct device *dev)
 {
 	const struct spi_it51xxx_config *cfg = dev->config;
 	struct spi_it51xxx_data *data = dev->data;
 	struct spi_context *ctx = &data->ctx;
+	int ret;
 
 	sys_write8(sys_read8(cfg->base + SPI02_CTRL2) & ~READ_CYCLE, cfg->base + SPI02_CTRL2);
 	sys_write8(sys_read8(cfg->base + SPI09_FIFO_BASE_ADDR_1) | BIG_ENDIAN_EN,
 		   cfg->base + SPI09_FIFO_BASE_ADDR_1);
 
+	data->transfer_len = 0;
 	if (data->xfer_mode == XFER_TX_ONLY) {
 		for (int i = 0; i < ctx->tx_count; i++) {
 			const struct spi_buf spi_buf = ctx->current_tx[i];
 
-			memcpy(data->fifo_data + data->transfer_len, spi_buf.buf, spi_buf.len);
+			if (data->transfer_len + spi_buf.len > sizeof(data->fifo_data)) {
+				return -ENOMEM;
+			}
+			if (spi_buf.buf != NULL) {
+				memcpy(data->fifo_data + data->transfer_len, spi_buf.buf,
+				       spi_buf.len);
+			} else {
+				memset(data->fifo_data + data->transfer_len, 0, spi_buf.len);
+			}
 			data->transfer_len += spi_buf.len;
 		}
 	} else {
-		memcpy(data->fifo_data, ctx->tx_buf, ctx->tx_len);
+		if (ctx->tx_len > sizeof(data->fifo_data)) {
+			return -ENOMEM;
+		}
+		if (ctx->tx_buf != NULL) {
+			memcpy(data->fifo_data, ctx->tx_buf, ctx->tx_len);
+		} else {
+			memset(data->fifo_data, 0, ctx->tx_len);
+		}
 		data->transfer_len = ctx->tx_len;
 	}
-	spi_it51xxx_set_fifo_len(dev, data->ctrl_mode.tx, data->transfer_len);
+	ret = spi_it51xxx_set_fifo_len(dev, data->ctrl_mode.tx, data->transfer_len);
+	if (ret) {
+		return ret;
+	}
 
 	LOG_HEXDUMP_DBG(data->fifo_data, data->transfer_len, "fifo: tx:");
 	sys_write8(sys_read8(cfg->base + SPI0B_FIFO_CTRL) | FIFO_TX_RX_START,
 		   cfg->base + SPI0B_FIFO_CTRL);
+	return 0;
 }
 #endif /* CONFIG_SPI_ITE_IT51XXX_FIFO_MODE */
 
@@ -476,7 +507,11 @@ static void spi_it51xxx_next_xfer(const struct device *dev)
 	if (!spi_context_tx_on(ctx)) {
 #ifdef CONFIG_SPI_ITE_IT51XXX_FIFO_MODE
 		if (rx_fifo_mode_is_enabled(dev)) {
-			spi_it51xxx_fifo_rx(dev);
+			int ret = spi_it51xxx_fifo_rx(dev);
+
+			if (ret) {
+				spi_context_complete(ctx, dev, ret);
+			}
 		} else {
 #endif /* CONFIG_SPI_ITE_IT51XXX_FIFO_MODE */
 			spi_it51xxx_rx(dev);
@@ -486,7 +521,11 @@ static void spi_it51xxx_next_xfer(const struct device *dev)
 	} else {
 #ifdef CONFIG_SPI_ITE_IT51XXX_FIFO_MODE
 		if (tx_fifo_mode_is_enabled(dev)) {
-			spi_it51xxx_fifo_tx(dev);
+			int ret = spi_it51xxx_fifo_tx(dev);
+
+			if (ret) {
+				spi_context_complete(ctx, dev, ret);
+			}
 		} else {
 #endif /* CONFIG_SPI_ITE_IT51XXX_FIFO_MODE */
 			spi_it51xxx_tx(dev);
@@ -595,19 +634,29 @@ static void it51xxx_spi_fifo_done_handle(const struct device *dev, const bool is
 		do {
 			size_t curr_tx_len = ctx->tx_len;
 
+			if (curr_tx_len == 0 || curr_tx_len > data->transfer_len) {
+				break;
+			}
 			spi_context_update_tx(ctx, 1, curr_tx_len);
 			data->transfer_len -= curr_tx_len;
 		} while (data->transfer_len > 0);
 	} else {
 		if (!data->direction_turnaround) {
-			memcpy(ctx->rx_buf, data->fifo_data, data->receive_len);
-			LOG_HEXDUMP_DBG(ctx->rx_buf, data->receive_len, "fifo: rx:");
-			do {
-				size_t curr_rx_len = ctx->rx_len;
+			const uint8_t *src = data->fifo_data;
+			size_t remaining = data->receive_len;
 
-				spi_context_update_rx(ctx, 1, curr_rx_len);
-				data->receive_len -= curr_rx_len;
-			} while (data->receive_len > 0);
+			while (remaining > 0 && spi_context_rx_on(ctx)) {
+				size_t chunk = MIN(remaining, ctx->rx_len);
+
+				if (ctx->rx_buf != NULL && chunk > 0) {
+					memcpy(ctx->rx_buf, src, chunk);
+				}
+				src += chunk;
+				remaining -= chunk;
+				spi_context_update_rx(ctx, 1, chunk);
+			}
+			data->receive_len = remaining;
+			LOG_HEXDUMP_DBG(data->fifo_data, src - data->fifo_data, "fifo: rx:");
 		}
 	}
 
