@@ -32,6 +32,26 @@ extern "C" {
  * @ingroup io_interfaces
  * @{
  *
+ * The ADC API provides functions to configure ADC channels and perform analog
+ * readings. Each channel must be configured with adc_channel_setup() (or
+ * adc_channel_setup_dt()) before it can be sampled. Readings are performed by
+ * populating an adc_sequence structure and calling adc_read() (or adc_read_dt()).
+ *
+ * The recommended approach is to use Devicetree to describe ADC channel
+ * configuration, then obtain an adc_dt_spec with ADC_DT_SPEC_GET() or related
+ * macros. This spec can then be passed to the ``_dt`` variants of API functions.
+ *
+ * Raw ADC samples can be converted to millivolts or microvolts using
+ * adc_raw_to_millivolts_dt() / adc_raw_to_microvolts_dt(), or the lower-level
+ * adc_raw_to_millivolts() / adc_raw_to_microvolts() functions.
+ *
+ * Three modes of operation are available:
+ * - **Synchronous (polling):** adc_read() blocks until sampling completes.
+ * - **Asynchronous:** adc_read_async() returns immediately and signals
+ *   completion via a k_poll_signal (requires @kconfig{CONFIG_ADC_ASYNC}).
+ * - **Streaming:** Continuous acquisition using the RTIO subsystem
+ *   (requires @kconfig{CONFIG_ADC_STREAM}).
+ *
  * @defgroup adc_interface_ext Device-specific ADC API extensions
  *
  * @{
@@ -112,6 +132,14 @@ enum adc_reference {
 
 /**
  * @brief Structure for specifying the configuration of an ADC channel.
+ *
+ * Each ADC channel must be configured before it can be included in a sampling
+ * sequence. The configuration includes gain, voltage reference, and acquisition
+ * time settings. For hardware with configurable inputs, the positive (and
+ * optionally negative, for differential channels) input pins are also specified.
+ *
+ * When using Devicetree, use the ADC_CHANNEL_CFG_DT() macro to populate this
+ * structure from a channel child node of an ADC controller.
  */
 struct adc_channel_cfg {
 	/** Gain selection. */
@@ -722,6 +750,21 @@ struct adc_sequence_options {
 
 /**
  * @brief Structure defining an ADC sampling sequence.
+ *
+ * A sequence describes which channels to sample, where to store the results,
+ * and how the conversion should be performed (resolution, oversampling).
+ *
+ * The @a channels field is a bitmask where each set bit selects a channel
+ * (by its channel_id) to include in the sampling. All selected channels must
+ * have been previously configured with adc_channel_setup().
+ *
+ * The @a buffer must be large enough to hold one sample per selected channel
+ * per sampling round. Sample size depends on the resolution: up to 8-bit
+ * resolutions use 1 byte, up to 16-bit use 2 bytes, and above 16-bit use
+ * 4 bytes per sample.
+ *
+ * When using Devicetree, adc_sequence_init_dt() can initialize the channels,
+ * resolution, and oversampling fields from an adc_dt_spec.
  */
 struct adc_sequence {
 	/**
