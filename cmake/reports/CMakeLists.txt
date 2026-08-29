@@ -4,6 +4,7 @@ set(flag_for_ram_report ram)
 set(flag_for_rom_report rom)
 set(flag_for_footprint all)
 set(report_depth 99)
+set(FOOTPRINT_COMPARE_BUILD_DIR "" CACHE PATH "Previous build directory containing ram.json/rom.json for diff reports")
 
 if(DEFINED ZEPHYR_WORKSPACE)
   set(workspace_arg "--workspace=${ZEPHYR_WORKSPACE}")
@@ -37,6 +38,30 @@ foreach(report ram rom)
     USES_TERMINAL
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
+
+  if(FOOTPRINT_COMPARE_BUILD_DIR)
+    add_custom_target(
+      ${report}_report_diff
+      ${PYTHON_EXECUTABLE}
+      ${ZEPHYR_BASE}/scripts/footprint/fpdiff.py
+      ${FOOTPRINT_COMPARE_BUILD_DIR}/${report}.json
+      ${CMAKE_BINARY_DIR}/${report}.json
+      DEPENDS ${report}_report
+      USES_TERMINAL
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      )
+    add_custom_target(
+      ${report}_plot_diff
+      ${PYTHON_EXECUTABLE}
+      ${ZEPHYR_BASE}/scripts/footprint/plot.py
+      ${report}.json
+      --reference ${FOOTPRINT_COMPARE_BUILD_DIR}/${report}.json
+      --html ${report}_diff.html
+      DEPENDS ${report}_report
+      USES_TERMINAL
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      )
+  endif()
 endforeach()
 
 add_custom_target(
