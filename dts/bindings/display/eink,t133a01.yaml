@@ -1,0 +1,46 @@
+# Copyright (c) 2026 The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+title: E-Ink T133A01 Display Controller
+
+description: |
+  Controller of the E-Ink T133A01 Spectra 6 e-ink display, as found on the
+  Seeed Studio reTerminal E1004 (13.3", 1200x1600, 6 colors).
+
+  The T133A01 belongs to the same controller family as the ED2208-GCA but is
+  a dual-controller panel: two controller dies share the SPI clock, data and
+  data/command lines but each has its own chip-select and drives one half of
+  the panel. The "master" chip-select is provided through the parent MIPI DBI
+  SPI controller (via the device 'reg' and the SPI controller 'cs-gpios'),
+  while the "slave" chip-select is driven directly by the driver through
+  'slave-cs-gpios'.
+
+compatible: "eink,t133a01"
+
+include:
+  - display-controller.yaml
+  - name: mipi-dbi-spi-device.yaml
+    property-blocklist:
+      - te-delay
+
+properties:
+  busy-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      BUSY_N status GPIO.
+
+      The BUSY_N pin is active low. If connected directly the MCU pin
+      should be configured as active low.
+
+  slave-cs-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      Chip-select GPIO of the second ("slave") controller die. Active low.
+
+  enable-gpios:
+    type: phandle-array
+    description: |
+      Panel power-enable GPIO. Driven to its active level during
+      initialization to power the panel logic. Active high.
