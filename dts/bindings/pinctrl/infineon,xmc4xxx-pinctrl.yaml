@@ -78,7 +78,7 @@ child-binding:
         Encodes port/pin and alternate function. See helper macro XMC4XX_PINMUX_SET().
         Alternate function is only set for output pins; It selects  ALT1-ALT4
         output line in the GPIO element. The alternate function for input pins is
-        handled separately by the peripheral. It is upto the peripheral to configure which
+        handled separately by the peripheral. It is up to the peripheral to configure which
         input pin to use (For example see parameter input-src in infineon,xmc4xxx-uart.yaml).
       required: true
       type: int
