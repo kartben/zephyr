@@ -26,6 +26,9 @@ from zspdx.model import (
     SBOMFile,
     SBOMGraph,
     SBOMRelationship,
+    VexJustification,
+    VulnerabilityAssessment,
+    VulnerabilityStatus,
 )
 from zspdx.serializers.helpers import (
     CPE23TYPE_REGEX,
@@ -67,6 +70,37 @@ class SPDX3Serializer:
     # SBOMBuild does not provide an absolute URI of its own.
     _BUILD_TYPE_PREFIX = "urn:zephyrproject.org:build-type"
     _DEFAULT_BUILD_TYPE = f"{_BUILD_TYPE_PREFIX}:cmake"
+
+    # Held by name, not resolved here: the bindings module is only chosen in __init__, so a
+    # class-body lookup would pin these to whichever SPDX 3.x version imported first.
+    _VEX_RELATIONSHIPS = {
+        VulnerabilityStatus.NOT_AFFECTED: (
+            "security_VexNotAffectedVulnAssessmentRelationship",
+            "doesNotAffect",
+        ),
+        VulnerabilityStatus.AFFECTED: (
+            "security_VexAffectedVulnAssessmentRelationship",
+            "affects",
+        ),
+        VulnerabilityStatus.FIXED: (
+            "security_VexFixedVulnAssessmentRelationship",
+            "fixedIn",
+        ),
+        VulnerabilityStatus.UNDER_INVESTIGATION: (
+            "security_VexUnderInvestigationVulnAssessmentRelationship",
+            "underInvestigationFor",
+        ),
+    }
+
+    _VEX_JUSTIFICATIONS = {
+        VexJustification.COMPONENT_NOT_PRESENT: "componentNotPresent",
+        VexJustification.VULNERABLE_CODE_NOT_PRESENT: "vulnerableCodeNotPresent",
+        VexJustification.VULNERABLE_CODE_NOT_IN_EXECUTE_PATH: "vulnerableCodeNotInExecutePath",
+        VexJustification.VULNERABLE_CODE_CANNOT_BE_CONTROLLED_BY_ADVERSARY: (
+            "vulnerableCodeCannotBeControlledByAdversary"
+        ),
+        VexJustification.INLINE_MITIGATIONS_ALREADY_EXIST: "inlineMitigationsAlreadyExist",
+    }
 
     def __init__(self, sbom_graph: SBOMGraph, spdx_version=SPDX_VERSION_3_0):
         self.sbom_data = sbom_graph
@@ -120,6 +154,10 @@ class SPDX3Serializer:
         self.dt_hardware = {}  # devicetree node path -> hardware_PhysicalHardware
         self.vendor_orgs = {}  # vendor name -> Organization
 
+        # SPDX 3.0 Security profile state
+        self.vulnerability_elements = {}  # vulnerability id -> security_Vulnerability element
+        self.vulnerability_home = {}  # vulnerability element id -> owning document name
+
         # Track file IDs for uniqueness
         self.filename_counts = {}
 
@@ -169,6 +207,12 @@ class SPDX3Serializer:
         namespace = self.sbom_data.namespace_prefix.rstrip("/")
         full_uri = f"{namespace}/files/{normalized_id}"
         return self._shorten_id(full_uri)
+
+    def _generate_vulnerability_id(self, vulnerability: str) -> str:
+        """Generate URI-based ID for a vulnerability."""
+        normalized = normalize_spdx_name(vulnerability)
+        namespace = self.sbom_data.namespace_prefix.rstrip("/")
+        return self._shorten_id(f"{namespace}/vulnerabilities/{normalized}")
 
     def _generate_relationship_id(self, index: int) -> str:
         """Generate URI-based ID for a relationship."""
@@ -936,6 +980,93 @@ class SPDX3Serializer:
         self.file_elements[file_obj.path] = file_element
         return file_element
 
+    def _create_vulnerability_assessments(self):
+        """Create the Security profile elements for every component that carries VEX statements.
+
+        Each distinct vulnerability becomes one ``security_Vulnerability`` element, homed in the
+        document of the first component that assesses it, plus one VEX relationship per
+        assessment.
+        """
+        for doc_name, sbom_doc in self.sbom_data.documents.items():
+            for component in sbom_doc.components.values():
+                package = self.component_elements.get(component.name)
+                if package is None:
+                    continue
+                for assessment in component.vulnerability_assessments:
+                    vulnerability = self._get_or_create_vulnerability(
+                        assessment.vulnerability, doc_name
+                    )
+                    self._create_vex_relationship(assessment, vulnerability, package)
+
+    def _get_or_create_vulnerability(
+        self, vulnerability_id: str, doc_name: str
+    ) -> spdx.security_Vulnerability:
+        """Return the ``security_Vulnerability`` for an identifier, creating it on first use."""
+        vulnerability = self.vulnerability_elements.get(vulnerability_id)
+        if vulnerability is not None:
+            return vulnerability
+
+        vulnerability = spdx.security_Vulnerability()
+        vulnerability._id = self._generate_vulnerability_id(vulnerability_id)
+        vulnerability.name = vulnerability_id
+        vulnerability.creationInfo = self.creation_info._id
+
+        ext_id = spdx.ExternalIdentifier()
+        ext_id.externalIdentifierType = (
+            spdx.ExternalIdentifierType.cve
+            if vulnerability_id.upper().startswith("CVE-")
+            else spdx.ExternalIdentifierType.securityOther
+        )
+        ext_id.identifier = vulnerability_id
+        vulnerability.externalIdentifier.append(ext_id)
+
+        self.elements.append(vulnerability)
+        self.vulnerability_elements[vulnerability_id] = vulnerability
+        self.vulnerability_home[vulnerability._id] = doc_name
+        return vulnerability
+
+    def _create_vex_relationship(
+        self,
+        assessment: VulnerabilityAssessment,
+        vulnerability: spdx.security_Vulnerability,
+        package: spdx.software_Package,
+    ) -> spdx.security_VexVulnAssessmentRelationship | None:
+        """Create the VEX relationship stating a vulnerability's status for one package."""
+        relationship_class, relationship_type = self._VEX_RELATIONSHIPS[assessment.status]
+
+        relationship = getattr(spdx, relationship_class)()
+        relationship._id = self._generate_relationship_id(len(self.relationship_elements))
+        relationship.creationInfo = self.creation_info._id
+        relationship.relationshipType = getattr(spdx.RelationshipType, relationship_type)
+        relationship.from_ = vulnerability._id
+        relationship.to = [package._id]
+        relationship.security_assessedElement = package._id
+
+        # The model rejects mismatched statements, so each lands on a class that defines it.
+        if assessment.justification:
+            relationship.security_justificationType = getattr(
+                spdx.security_VexJustificationType,
+                self._VEX_JUSTIFICATIONS[assessment.justification],
+            )
+        if assessment.impact_statement:
+            relationship.security_impactStatement = assessment.impact_statement
+        if assessment.action_statement:
+            relationship.security_actionStatement = assessment.action_statement
+        if assessment.status_notes:
+            relationship.security_statusNotes = assessment.status_notes
+
+        for reference in assessment.references:
+            ext_ref = spdx.ExternalRef()
+            ext_ref.externalRefType = spdx.ExternalRefType.securityAdvisory
+            ext_ref.locator.append(reference)
+            relationship.externalRef.append(ext_ref)
+
+        self.elements.append(relationship)
+        self.relationship_elements.append(relationship)
+        # The statement belongs to the assessed component's document, not the vulnerability's.
+        self.relationship_original_from[relationship._id] = package._id
+        return relationship
+
     def _map_relationship_type(self, rel_type: str) -> tuple[spdx.RelationshipType, bool]:
         """Map relationship type string to SPDX 3.0 RelationshipType enum.
         Returns a tuple of (RelationshipType, reversed).
@@ -1140,6 +1271,7 @@ class SPDX3Serializer:
                     home[element._id] = doc_name
             for element in self._build_owned_elements():
                 home[element._id] = self._BUILD_DOCUMENT
+            home.update(self.vulnerability_home)
             self._element_home = home
         return self._element_home
 
@@ -2007,6 +2139,7 @@ class SPDX3Serializer:
             self._create_packages()
             self._create_files()
             self._create_relationships()
+            self._create_vulnerability_assessments()
             self._create_contains_relationships()
             self._create_build_relationships()
             self._create_hardware_relationships()

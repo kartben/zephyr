@@ -103,6 +103,111 @@ class ExternalReference:
         return cls(locator, ExternalReferenceType.OTHER)
 
 
+class VulnerabilityStatus(StrEnum):
+    """VEX status of a vulnerability with respect to a component."""
+
+    NOT_AFFECTED = "not_affected"
+    AFFECTED = "affected"
+    FIXED = "fixed"
+    UNDER_INVESTIGATION = "under_investigation"
+
+
+class VexJustification(StrEnum):
+    """Reason a component is not affected by a vulnerability.
+
+    Only meaningful for ``VulnerabilityStatus.NOT_AFFECTED``.
+    """
+
+    COMPONENT_NOT_PRESENT = "component_not_present"
+    VULNERABLE_CODE_NOT_PRESENT = "vulnerable_code_not_present"
+    VULNERABLE_CODE_NOT_IN_EXECUTE_PATH = "vulnerable_code_not_in_execute_path"
+    VULNERABLE_CODE_CANNOT_BE_CONTROLLED_BY_ADVERSARY = (
+        "vulnerable_code_cannot_be_controlled_by_adversary"
+    )
+    INLINE_MITIGATIONS_ALREADY_EXIST = "inline_mitigations_already_exist"
+
+
+@dataclass
+class VulnerabilityAssessment:
+    """VEX statement about one vulnerability in the context of one component.
+
+    Attributes:
+        vulnerability: Vulnerability identifier, such as a CVE or GHSA ID.
+        status: Status of the vulnerability for the assessed component.
+        justification: Why the component is not affected. Only for ``NOT_AFFECTED``.
+        impact_statement: Free-form explanation of why the vulnerability has no impact.
+            Only for ``NOT_AFFECTED``.
+        action_statement: Action recommended to remediate or mitigate. Only for ``AFFECTED``.
+        status_notes: Free-form notes about how the status was determined.
+        references: URLs backing the assessment, such as advisories or fixing commits.
+    """
+
+    vulnerability: str
+    status: VulnerabilityStatus
+    justification: VexJustification | None = None
+    impact_statement: str = ""
+    action_statement: str = ""
+    status_notes: str = ""
+    references: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        if not self.vulnerability:
+            raise ValueError("vulnerability identifier is required")
+        self.status = VulnerabilityStatus(self.status)
+        if self.justification is not None:
+            self.justification = VexJustification(self.justification)
+
+        # VEX defines each statement against one status, so a mismatch is rejected rather
+        # than emitted as a statement no consumer will read.
+        for name, value, required_status in (
+            ("justification", self.justification, VulnerabilityStatus.NOT_AFFECTED),
+            ("impact statement", self.impact_statement, VulnerabilityStatus.NOT_AFFECTED),
+            ("action statement", self.action_statement, VulnerabilityStatus.AFFECTED),
+        ):
+            if value and self.status != required_status:
+                raise ValueError(
+                    f"{self.vulnerability}: {name} is only valid for status "
+                    f"'{required_status}', not '{self.status}'"
+                )
+
+        if self.status == VulnerabilityStatus.NOT_AFFECTED and not (
+            self.justification or self.impact_statement
+        ):
+            raise ValueError(
+                f"{self.vulnerability}: status 'not_affected' needs a justification "
+                "or an impact statement"
+            )
+        if self.status == VulnerabilityStatus.AFFECTED and not self.action_statement:
+            raise ValueError(f"{self.vulnerability}: status 'affected' needs an action statement")
+
+    @classmethod
+    def from_metadata(cls, entry: dict[str, Any]) -> VulnerabilityAssessment:
+        """Build an assessment from a ``module.yml`` ``vulnerability-assessments`` entry.
+
+        Args:
+            entry: Mapping using the hyphenated key names of the module metadata schema.
+
+        Returns:
+            The structured assessment.
+
+        Raises:
+            ValueError: If the entry is missing a required key or uses an unknown status
+                        or justification.
+        """
+        for key in ("vulnerability", "status"):
+            if not entry.get(key):
+                raise ValueError(f"vulnerability assessment is missing '{key}'")
+        return cls(
+            vulnerability=entry["vulnerability"],
+            status=entry["status"],
+            justification=entry.get("justification"),
+            impact_statement=entry.get("impact-statement", ""),
+            action_statement=entry.get("action-statement", ""),
+            status_notes=entry.get("status-notes", ""),
+            references=list(entry.get("references", [])),
+        )
+
+
 @dataclass
 class SBOMFile:
     """Format-agnostic representation of a file in the SBOM graph.
@@ -154,6 +259,7 @@ class SBOMComponent:
         license_info_from_files: License identifiers detected in the component's files.
         copyright_text: Copyright text for the component.
         external_references: Structured external references such as CPEs and package URLs.
+        vulnerability_assessments: VEX statements about vulnerabilities affecting this component.
         supplier: Name of the organization the component was obtained from.
         originator: Name of the organization that produced the component upstream, when it
             differs from the supplier (e.g. a module mirrored into the Zephyr organization).
@@ -175,6 +281,7 @@ class SBOMComponent:
     license_info_from_files: list[str] = field(default_factory=list)
     copyright_text: str = NOASSERTION
     external_references: list[ExternalReference] = field(default_factory=list)
+    vulnerability_assessments: list[VulnerabilityAssessment] = field(default_factory=list)
     supplier: str = ""
     originator: str = ""
     comment: str = ""
@@ -205,6 +312,29 @@ class SBOMComponent:
             raise TypeError("external reference must be a string or ExternalReference")
         self.external_references.append(reference)
         return reference
+
+    def add_vulnerability_assessment(
+        self, assessment: VulnerabilityAssessment | dict[str, Any]
+    ) -> VulnerabilityAssessment:
+        """Add a VEX statement about a vulnerability affecting this component.
+
+        Args:
+            assessment: Structured assessment, or a raw ``module.yml`` entry converted with
+                        ``VulnerabilityAssessment.from_metadata()``.
+
+        Returns:
+            The structured assessment added to this component.
+
+        Raises:
+            TypeError: If ``assessment`` is neither a mapping nor a ``VulnerabilityAssessment``.
+            ValueError: If a raw entry is missing required keys or uses an unknown vocabulary.
+        """
+        if isinstance(assessment, dict):
+            assessment = VulnerabilityAssessment.from_metadata(assessment)
+        if not isinstance(assessment, VulnerabilityAssessment):
+            raise TypeError("assessment must be a mapping or a VulnerabilityAssessment")
+        self.vulnerability_assessments.append(assessment)
+        return assessment
 
 
 type SBOMElement = SBOMComponent | SBOMFile

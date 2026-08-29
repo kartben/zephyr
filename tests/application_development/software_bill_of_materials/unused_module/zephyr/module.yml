@@ -3,3 +3,17 @@ name: sbom_unused_module
 build:
   cmake: ./
   kconfig: ./Kconfig
+
+# Exercises the VEX statements 'west spdx' copies into modules-deps. The identifiers are
+# made up; none of this is a real advisory.
+security:
+  vulnerability-assessments:
+    - vulnerability: CVE-1970-00001
+      status: not_affected
+      justification: vulnerable_code_not_in_execute_path
+      impact-statement: The reported entry point is never called from this module.
+    - vulnerability: CVE-1970-00002
+      status: fixed
+      status-notes: Fixed by the revision this module pins.
+      references:
+        - https://example.com/advisories/CVE-1970-00002
