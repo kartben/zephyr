@@ -1,0 +1,57 @@
+# Copyright (c) 2026 The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "Fingerprint Wi-Fi Direct demo"
+
+config FINGERPRINT_WIFI_DIRECT_PEER_MAC
+	string "Wi-Fi Direct peer MAC address"
+	default "02:00:00:00:00:01"
+	help
+	  MAC address of the Wi-Fi Direct peer the demo should connect to after
+	  a successful biometric identification.
+
+config FINGERPRINT_WIFI_DIRECT_SCAN_TIMEOUT_SEC
+	int "Biometric identification timeout in seconds"
+	default 5
+	range 1 60
+	help
+	  Timeout used for each biometric identification attempt.
+
+config FINGERPRINT_WIFI_DIRECT_DISCOVERY_TIMEOUT_SEC
+	int "Wi-Fi Direct peer discovery timeout in seconds"
+	default 15
+	range 1 120
+	help
+	  Maximum time spent discovering the configured Wi-Fi Direct peer before
+	  the demo gives up.
+
+config FINGERPRINT_WIFI_DIRECT_CONNECT_TIMEOUT_SEC
+	int "Wi-Fi Direct connection timeout in seconds"
+	default 30
+	range 1 300
+	help
+	  Maximum time to wait for the Wi-Fi Direct connection result once the
+	  peer has been discovered.
+
+config FINGERPRINT_WIFI_DIRECT_GO_INTENT
+	int "Wi-Fi Direct GO intent"
+	default 0
+	range 0 15
+	help
+	  GO intent used when initiating the Wi-Fi Direct connection.
+
+config FINGERPRINT_WIFI_DIRECT_FREQUENCY
+	int "Wi-Fi Direct operating frequency"
+	default 2462
+	range 0 6000
+	help
+	  Preferred Wi-Fi Direct operating frequency in MHz. Set to 0 to let the
+	  driver choose.
+
+config FINGERPRINT_WIFI_DIRECT_JOIN
+	bool "Join an existing Wi-Fi Direct group"
+	help
+	  Request client-only join mode instead of GO negotiation when supported
+	  by the Wi-Fi implementation.
+
+source "Kconfig.zephyr"
