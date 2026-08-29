@@ -86,6 +86,8 @@ static bool is_destination_local(struct net_pkt *pkt);
 static void tcp_out(struct tcp *conn, uint8_t flags);
 static const char *tcp_state_to_str(enum tcp_state state, bool prefix);
 static int tcp_pkt_peek(struct net_pkt *to, struct net_pkt *from, size_t pos, size_t len);
+static bool tcp_pkt_data_ref_ok(struct net_pkt *pkt);
+static int tcp_pkt_payload_ref(struct net_pkt *to, struct net_pkt *from, size_t pos, size_t len);
 
 int (*tcp_send_cb)(struct net_pkt *pkt) = NULL;
 size_t (*tcp_recv_cb)(struct tcp *conn, struct net_pkt *pkt) = NULL;
@@ -1612,15 +1614,19 @@ err:
 static int tcp_out_ext(struct tcp *conn, uint8_t flags, size_t data_len, uint32_t seq)
 {
 	struct net_pkt *pkt;
+	bool payload_by_ref;
 	int ret = 0;
 
-	/* The allocation adds the IP and TCP header estimate on top of the
-	 * requested length, so the headers written below and the copied
-	 * payload share the same buffer. The whole segment ends up in a
-	 * single net_buf when it fits in one buffer, larger segments span
-	 * multiple fragments.
+	/* When the buffer pool supports data references, the payload is not
+	 * copied out of the send queue: the segment gets reference clones of
+	 * the queued buffers and only the headers are allocated here.
+	 * Otherwise the allocation adds the IP and TCP header estimate on
+	 * top of the requested length, so the headers written below and the
+	 * copied payload share the same buffer.
 	 */
-	pkt = tcp_pkt_alloc(conn, data_len);
+	payload_by_ref = (data_len > 0) && tcp_pkt_data_ref_ok(&conn->send_data);
+
+	pkt = tcp_pkt_alloc(conn, payload_by_ref ? 0 : data_len);
 	if (pkt == NULL) {
 		ret = -ENOBUFS;
 		goto out;
@@ -1647,11 +1653,16 @@ static int tcp_out_ext(struct tcp *conn, uint8_t flags, size_t data_len, uint32_
 	}
 
 	if (data_len > 0) {
-		/* Copy the payload right after the headers, without
-		 * consuming the send queue: the queued data is dropped
-		 * only when the peer acknowledges it.
+		/* Attach the payload without consuming the send queue: the
+		 * queued data is dropped only when the peer acknowledges it.
 		 */
-		ret = tcp_pkt_peek(pkt, &conn->send_data, conn->unacked_len, data_len);
+		if (payload_by_ref) {
+			ret = tcp_pkt_payload_ref(pkt, &conn->send_data,
+						  conn->unacked_len, data_len);
+		} else {
+			ret = tcp_pkt_peek(pkt, &conn->send_data,
+					   conn->unacked_len, data_len);
+		}
 		if (ret < 0) {
 			tcp_pkt_unref(pkt);
 			ret = -ENOBUFS;
@@ -1785,6 +1796,78 @@ static int tcp_pkt_peek(struct net_pkt *to, struct net_pkt *from, size_t pos,
 	}
 
 	return net_pkt_copy(to, from, len);
+}
+
+/* True if the payload buffers of @a pkt can be shared by reference into a
+ * wire segment: the buffer pool must support data references (variable-size
+ * data pools).  Fixed-size data pools deep-copy inside net_buf_clone(),
+ * which would be slower than tcp_pkt_peek()'s single copy.
+ */
+static bool tcp_pkt_data_ref_ok(struct net_pkt *pkt)
+{
+	struct net_buf *buf = pkt->buffer;
+
+	if (!IS_ENABLED(CONFIG_NET_TCP_TX_PAYLOAD_BY_REF)) {
+		return false;
+	}
+
+	if (buf == NULL) {
+		return false;
+	}
+
+	return (net_buf_pool_get(buf->pool_id)->alloc->cb->ref != NULL) &&
+	       ((buf->flags & NET_BUF_EXTERNAL_DATA) == 0U);
+}
+
+/* Reference len bytes of data from the "from" packet at offset pos into the
+ * "to" packet, without copying the bytes: each overlapping fragment is
+ * cloned by data reference (a private data/len window over the refcounted
+ * data block) and appended to "to".
+ *
+ * The shared bytes are safe against the ACK path: tcp_pkt_pull() on
+ * send_data only adjusts send_data's own net_buf data/len bookkeeping (the
+ * cursor is always rewound first, so net_pkt_pull() never takes its
+ * memmove branch), and tcp_pkt_append() only writes into tailroom beyond
+ * the shared window.
+ */
+static int tcp_pkt_payload_ref(struct net_pkt *to, struct net_pkt *from,
+			       size_t pos, size_t len)
+{
+	struct net_buf *buf = from->buffer;
+
+	while (buf != NULL && pos >= buf->len) {
+		pos -= buf->len;
+		buf = buf->frags;
+	}
+
+	while (len > 0) {
+		struct net_buf *clone;
+		size_t take;
+
+		if (buf == NULL) {
+			return -EINVAL;
+		}
+
+		clone = net_buf_clone(buf, TCP_PKT_ALLOC_TIMEOUT);
+		if (clone == NULL) {
+			return -ENOBUFS;
+		}
+
+		if (pos > 0) {
+			net_buf_pull(clone, pos);
+			pos = 0;
+		}
+
+		take = MIN(len, clone->len);
+		clone->len = take;
+
+		net_pkt_append_buffer(to, clone);
+
+		len -= take;
+		buf = buf->frags;
+	}
+
+	return 0;
 }
 
 static int tcp_pkt_append(struct net_pkt *pkt, const uint8_t *data, size_t len)

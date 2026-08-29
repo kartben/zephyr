@@ -3331,6 +3331,15 @@ ZTEST(net_tcp, test_server_fin_ack_after_data)
 ZTEST(net_tcp, test_contiguous_tx)
 {
 	struct net_context *ctx;
+
+	if (IS_ENABLED(CONFIG_NET_TCP_TX_PAYLOAD_BY_REF)) {
+		/* Payload-by-reference deliberately produces a separate
+		 * payload fragment, relaxing the contiguity contract this
+		 * test guards.
+		 */
+		ztest_test_skip();
+	}
+
 	uint8_t data = 0x41;
 	int data_frags;
 	size_t data_payload_len;

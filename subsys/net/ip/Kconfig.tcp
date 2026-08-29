@@ -79,6 +79,22 @@ config NET_TCP_RANDOMIZED_RTO
 	  a second collision is reduced and it reduces further the more
 	  retransmissions occur.
 
+config NET_TCP_TX_PAYLOAD_BY_REF
+	bool "Reference send-queue buffers in transmitted segments [EXPERIMENTAL]"
+	select EXPERIMENTAL
+	help
+	  Attach segment payload as reference clones of the send-queue
+	  buffers instead of copying it, when the network buffer pools
+	  support data references (CONFIG_NET_BUF_VARIABLE_DATA_SIZE;
+	  fixed-size pools always use the copy path).  This removes one
+	  payload copy and one buffer allocation per transmitted segment,
+	  at the cost of segments spanning two or more fragments (headers
+	  plus referenced payload) instead of one contiguous buffer.
+	  Fragmented segments make the software checksum walk and
+	  same-CPU receive paths (e.g. loopback) slightly more expensive,
+	  so this is only expected to pay off with drivers that can
+	  scatter-gather transmit and offload checksums.
+
 config NET_TCP_RETRY_COUNT
 	int "Maximum number of TCP segment retransmissions"
 	default 9
