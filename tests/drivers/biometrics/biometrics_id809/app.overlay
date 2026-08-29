@@ -1,0 +1,9 @@
+&i2c0 {
+	fingerprint0: fingerprint@1f {
+		compatible = "dfrobot,id809";
+		reg = <0x1f>;
+		status = "okay";
+		max-templates = <80>;
+		template-size = <1008>;
+	};
+};
