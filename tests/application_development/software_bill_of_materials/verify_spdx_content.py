@@ -11,6 +11,11 @@ Usage: pytest verify_spdx_content.py --build-dir <build_dir>
 
 Validates that generated SPDX documents contain expected packages, files, relationships, checksums,
 and license information for a minimal Zephyr application.
+
+This suite covers what only a real build can show: what the walker discovers from the CMake
+file-API, the source tree and the module metadata. How the resulting graph is rendered as SPDX
+is covered by scripts/tests/zspdx, which needs no build -- prefer adding a test there when the
+assertion does not depend on a real build artifact.
 """
 
 import hashlib
@@ -24,7 +29,6 @@ from spdx_tools.spdx.model.relationship import RelationshipType
 
 ZEPHYR_ORGANIZATION = "The Zephyr Project"
 SPDX_TOOL_PREFIX = "Zephyr SPDX builder"
-PURL_ZEPHYR_PREFIX = "pkg:github/zephyrproject-rtos/zephyr@"
 CPE_ZEPHYR_PREFIX = "cpe:2.3:o:zephyrproject:zephyr:"
 UTILITY_TARGETS = {
     "run",
@@ -162,18 +166,6 @@ def has_relationship(doc, spdx_element_id, rel_type, related_id):
     return False
 
 
-def first_module_deps_package(modules_doc):
-    """Return the first module *-deps package, excluding zephyr-deps."""
-    return next(
-        (
-            pkg
-            for pkg in modules_doc.packages
-            if pkg.name.endswith("-deps") and pkg.name != "zephyr-deps"
-        ),
-        None,
-    )
-
-
 def first_module_sources_package(zephyr_doc):
     """Return the first module *-sources package, excluding zephyr-sources."""
     return next(
@@ -186,75 +178,19 @@ def first_module_sources_package(zephyr_doc):
     )
 
 
-class TestCommonValidation:
-    """Tests for common SPDX document validation."""
+class TestCreators:
+    """Tests that creator information reflects the tree the SBOM was generated from."""
 
-    @pytest.fixture(params=["app_doc", "zephyr_doc", "build_doc", "modules_doc"])
-    def doc_with_name(self, request):
-        """Parametrized fixture providing each document with its name."""
-        doc = request.getfixturevalue(request.param)
-        name_map = {
-            "app_doc": "app.spdx",
-            "zephyr_doc": "zephyr.spdx",
-            "build_doc": "build.spdx",
-            "modules_doc": "modules-deps.spdx",
-        }
-        return doc, name_map[request.param]
-
-    def test_spdx_version(self, doc_with_name, spdx_version):
-        """Test that SPDX version matches expected value."""
-        doc, doc_name = doc_with_name
-        expected_ver = f"SPDX-{spdx_version}"
-        assert doc.creation_info.spdx_version == expected_ver, (
-            f"{doc_name}: spdx_version is '{doc.creation_info.spdx_version}', "
-            f"expected '{expected_ver}'"
+    def test_creators_reflect_the_tree(self, modules_doc, zephyr_version):
+        """The organization is fixed, but the tool version is read from the tree."""
+        creators = [str(c) for c in modules_doc.creation_info.creators]
+        assert f"Organization: {ZEPHYR_ORGANIZATION}" in creators, (
+            f"modules-deps.spdx: expected Organization creator, got {creators}"
         )
-
-    def test_data_license(self, doc_with_name):
-        """Test that data license is CC0-1.0."""
-        doc, doc_name = doc_with_name
-        assert doc.creation_info.data_license == "CC0-1.0", (
-            f"{doc_name}: data_license is '{doc.creation_info.data_license}', expected 'CC0-1.0'"
+        expected_tool = f"Tool: {SPDX_TOOL_PREFIX}-{zephyr_version}"
+        assert expected_tool in creators, (
+            f"modules-deps.spdx: expected '{expected_tool}', got {creators}"
         )
-
-    def test_document_namespace(self, doc_with_name):
-        """Test that document namespace is not empty."""
-        doc, doc_name = doc_with_name
-        assert doc.creation_info.document_namespace, f"{doc_name}: document_namespace is empty"
-
-    def test_creators(self, doc_with_name, zephyr_version):
-        """Test that creators include the Zephyr organization and versioned tool."""
-        doc, doc_name = doc_with_name
-        creators = [str(c) for c in doc.creation_info.creators]
-
-        org_creators = [c for c in creators if c.startswith("Organization:")]
-        assert any(ZEPHYR_ORGANIZATION in c for c in org_creators), (
-            f"{doc_name}: expected Organization creator '{ZEPHYR_ORGANIZATION}', got {creators}"
-        )
-
-        expected_tool = f"{SPDX_TOOL_PREFIX}-{zephyr_version}"
-        tool_creators = [c for c in creators if c.startswith("Tool:")]
-        assert tool_creators, f"{doc_name}: no Tool creator found in {creators}"
-        tool_names = [c.removeprefix("Tool: ") for c in tool_creators]
-        assert any(name.startswith(SPDX_TOOL_PREFIX) for name in tool_names), (
-            f"{doc_name}: Tool creator should start with '{SPDX_TOOL_PREFIX}', got {tool_creators}"
-        )
-        assert expected_tool in tool_names, (
-            f"{doc_name}: expected Tool creator '{expected_tool}', got {tool_creators}"
-        )
-
-    def test_document_name(self, doc_with_name):
-        """Test that document name is not empty."""
-        doc, doc_name = doc_with_name
-        assert doc.creation_info.name, f"{doc_name}: document name is empty"
-
-    def test_describes_relationship(self, doc_with_name):
-        """Test that DESCRIBES relationship exists."""
-        doc, doc_name = doc_with_name
-        describes_rels = [
-            r for r in doc.relationships if r.relationship_type == RelationshipType.DESCRIBES
-        ]
-        assert len(describes_rels) > 0, f"{doc_name}: no DESCRIBES relationship found"
 
 
 class TestAppDocument:
@@ -491,61 +427,8 @@ class TestBuildDocument:
         assert not found, f"build.spdx: UTILITY targets should be excluded, found {sorted(found)}"
 
 
-class TestModulesDocument:
-    """Tests for modules-deps.spdx document validation."""
-
-    def test_describes_relationship_if_packages(self, modules_doc):
-        """Test that DESCRIBES relationship exists if packages are present."""
-        if len(modules_doc.packages) == 0:
-            pytest.skip("No packages in modules-deps.spdx")
-        describes = [
-            r
-            for r in modules_doc.relationships
-            if r.relationship_type == RelationshipType.DESCRIBES
-        ]
-        assert len(describes) > 0, "modules-deps.spdx: has packages but no DESCRIBES relationship"
-
-    def test_packages_have_valid_spdx_ids(self, modules_doc):
-        """Test that all packages have valid SPDX IDs."""
-        for pkg in modules_doc.packages:
-            assert pkg.spdx_id.startswith("SPDXRef-"), (
-                f"modules-deps.spdx: package '{pkg.name}' has invalid spdx_id '{pkg.spdx_id}'"
-            )
-
-
 class TestPackageProvenance:
     """Tests for package supplier and purl metadata."""
-
-    def test_zephyr_sources_supplier_and_purl(self, zephyr_doc, zephyr_meta_remote):
-        """Test zephyr-sources supplier and purl reference."""
-        pkg = find_package_by_name(zephyr_doc, "zephyr-sources")
-        assert pkg is not None, "zephyr.spdx: zephyr-sources package not found"
-        assert get_supplier_name(pkg) == f"Organization: {ZEPHYR_ORGANIZATION}", (
-            f"zephyr.spdx: zephyr-sources supplier is '{get_supplier_name(pkg)}'"
-        )
-        if not zephyr_meta_remote:
-            pytest.skip("zephyr.meta has no remote URL for zephyr")
-        purls = get_purl_refs(pkg)
-        assert any(p.startswith(PURL_ZEPHYR_PREFIX) for p in purls), (
-            f"zephyr.spdx: zephyr-sources missing purl prefix '{PURL_ZEPHYR_PREFIX}', got {purls}"
-        )
-
-    def test_zephyr_deps_supplier_and_purl(self, modules_doc, zephyr_meta_remote):
-        """Test zephyr-deps supplier and purl reference."""
-        if len(modules_doc.packages) == 0:
-            pytest.skip("No packages in modules-deps.spdx")
-        pkg = find_package_by_name(modules_doc, "zephyr-deps")
-        assert pkg is not None, "modules-deps.spdx: zephyr-deps package not found"
-        assert get_supplier_name(pkg) == f"Organization: {ZEPHYR_ORGANIZATION}", (
-            f"modules-deps.spdx: zephyr-deps supplier is '{get_supplier_name(pkg)}'"
-        )
-        if not zephyr_meta_remote:
-            pytest.skip("zephyr.meta has no remote URL for zephyr")
-        purls = get_purl_refs(pkg)
-        assert any(p.startswith(PURL_ZEPHYR_PREFIX) for p in purls), (
-            f"modules-deps.spdx: zephyr-deps missing purl prefix '{PURL_ZEPHYR_PREFIX}', "
-            f"got {purls}"
-        )
 
     def test_zephyr_sources_version(self, zephyr_doc, zephyr_version):
         """Test zephyr-sources reports the version from the Zephyr VERSION file."""
@@ -586,20 +469,6 @@ class TestPackageProvenance:
         assert expected_zephyr_cpe(zephyr_version) in cpes, (
             f"modules-deps.spdx: zephyr-deps missing CPE "
             f"'{expected_zephyr_cpe(zephyr_version)}', got {cpes}"
-        )
-
-    def test_module_deps_supplier_and_purl(self, modules_doc):
-        """Test first module-deps supplier and purl reference."""
-        pkg = first_module_deps_package(modules_doc)
-        if pkg is None:
-            pytest.skip("No module-deps packages in modules-deps.spdx")
-        assert get_supplier_name(pkg) == f"Organization: {ZEPHYR_ORGANIZATION}", (
-            f"modules-deps.spdx: {pkg.name} supplier is '{get_supplier_name(pkg)}'"
-        )
-        purls = get_purl_refs(pkg)
-        assert purls, f"modules-deps.spdx: {pkg.name} has no purl references"
-        assert any("@" in p for p in purls), (
-            f"modules-deps.spdx: {pkg.name} purl should include revision suffix, got {purls}"
         )
 
 
@@ -812,17 +681,6 @@ class TestPackageComments:
             f"got '{pkg.comment}'"
         )
 
-    def test_zephyr_deps_comment(self, modules_doc):
-        """Test zephyr-deps comment describes a reference-only package."""
-        if len(modules_doc.packages) == 0:
-            pytest.skip("No packages in modules-deps.spdx")
-        pkg = find_package_by_name(modules_doc, "zephyr-deps")
-        assert pkg is not None, "modules-deps.spdx: zephyr-deps package not found"
-        assert pkg.comment and "Reference-only" in str(pkg.comment), (
-            f"modules-deps.spdx: zephyr-deps comment should mention 'Reference-only', "
-            f"got '{pkg.comment}'"
-        )
-
     def test_module_sources_comment(self, zephyr_doc):
         """Test first module-sources comment describes a source package."""
         pkg = first_module_sources_package(zephyr_doc)
@@ -830,16 +688,6 @@ class TestPackageComments:
             pytest.skip("No module-sources packages in zephyr.spdx")
         assert pkg.comment and "Source package" in str(pkg.comment), (
             f"zephyr.spdx: {pkg.name} comment should mention 'Source package', got '{pkg.comment}'"
-        )
-
-    def test_module_deps_comment(self, modules_doc):
-        """Test first module-deps comment describes a reference-only package."""
-        pkg = first_module_deps_package(modules_doc)
-        if pkg is None:
-            pytest.skip("No module-deps packages in modules-deps.spdx")
-        assert pkg.comment and "Reference-only" in str(pkg.comment), (
-            f"modules-deps.spdx: {pkg.name} comment should mention 'Reference-only', "
-            f"got '{pkg.comment}'"
         )
 
     def test_no_utility_target_comments(self, app_doc, zephyr_doc, build_doc, modules_doc):
@@ -853,52 +701,6 @@ class TestPackageComments:
             for pkg in doc.packages:
                 if pkg.comment and str(pkg.comment) == "Utility target; no files":
                     pytest.fail(f"{doc_name}: package '{pkg.name}' has UTILITY target comment")
-
-
-class TestModuleRelationships:
-    """Tests for VARIANT_OF and DEPENDENCY_OF module relationships."""
-
-    def test_zephyr_sources_variant_of_zephyr_deps(self, zephyr_doc, modules_doc):
-        """Test zephyr-sources VARIANT_OF zephyr-deps across documents."""
-        if len(modules_doc.packages) == 0:
-            pytest.skip("No packages in modules-deps.spdx")
-        zephyr_sources = find_package_by_name(zephyr_doc, "zephyr-sources")
-        assert zephyr_sources is not None, "zephyr.spdx: zephyr-sources package not found"
-
-        modules_ref = find_doc_ref_id(zephyr_doc, modules_doc.creation_info.document_namespace)
-        assert modules_ref is not None, "zephyr.spdx: no external reference to modules-deps.spdx"
-        target = f"{modules_ref}:SPDXRef-zephyr-deps"
-        assert has_relationship(zephyr_doc, zephyr_sources.spdx_id, "VARIANT_OF", target), (
-            f"zephyr.spdx: expected {zephyr_sources.spdx_id} VARIANT_OF {target}"
-        )
-
-    def test_module_sources_variant_of_module_deps(self, zephyr_doc, modules_doc):
-        """Test module-sources VARIANT_OF module-deps across documents."""
-        module_deps = first_module_deps_package(modules_doc)
-        if module_deps is None:
-            pytest.skip("No module-deps packages in modules-deps.spdx")
-        module_name = module_deps.name.removesuffix("-deps")
-        module_sources = find_package_by_name(zephyr_doc, f"{module_name}-sources")
-        if module_sources is None:
-            pytest.skip(f"No {module_name}-sources package in zephyr.spdx")
-
-        modules_ref = find_doc_ref_id(zephyr_doc, modules_doc.creation_info.document_namespace)
-        assert modules_ref is not None, "zephyr.spdx: no external reference to modules-deps.spdx"
-        target = f"{modules_ref}:{module_deps.spdx_id}"
-        assert has_relationship(zephyr_doc, module_sources.spdx_id, "VARIANT_OF", target), (
-            f"zephyr.spdx: expected {module_sources.spdx_id} VARIANT_OF {target}"
-        )
-
-    def test_module_deps_dependency_of_zephyr_deps(self, modules_doc):
-        """Test module-deps DEPENDENCY_OF zephyr-deps in modules-deps.spdx."""
-        module_deps = first_module_deps_package(modules_doc)
-        if module_deps is None:
-            pytest.skip("No module-deps packages in modules-deps.spdx")
-        zephyr_deps = find_package_by_name(modules_doc, "zephyr-deps")
-        assert zephyr_deps is not None, "modules-deps.spdx: zephyr-deps package not found"
-        assert has_relationship(
-            modules_doc, module_deps.spdx_id, "DEPENDENCY_OF", zephyr_deps.spdx_id
-        ), f"modules-deps.spdx: expected {module_deps.spdx_id} DEPENDENCY_OF {zephyr_deps.spdx_id}"
 
 
 class TestCrossReferences:

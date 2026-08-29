@@ -1354,6 +1354,11 @@ class SPDX3Serializer:
         # Sbom, and its own rootElement names the packages the SBOM is about.
         document.rootElement.append(sbom)
 
+        # Declare Hardware profile conformance on whichever document ended up
+        # carrying the target-board element (SPDX 3.1 only).
+        if self.hardware and self.hardware in document.element:
+            document.profileConformance.append(spdx.ProfileIdentifierType.hardware)
+
     def _create_sbom(self, sbom_doc: SBOMDocument, owned_elements):
         """Build the ``software_Sbom`` that collects a document's content.
 
@@ -1393,11 +1398,6 @@ class SPDX3Serializer:
             _logger.warning(f"document {sbom_doc.name} has no root component")
 
         return sbom
-
-        # Declare Hardware profile conformance on whichever document ended up
-        # carrying the target-board element (SPDX 3.1 only).
-        if self.hardware and self.hardware in document.element:
-            document.profileConformance.append(spdx.ProfileIdentifierType.hardware)
 
     def _add_external_maps(self, document: spdx.SpdxDocument, import_ids: set):
         """Declare elements used by, but defined outside, this document.
