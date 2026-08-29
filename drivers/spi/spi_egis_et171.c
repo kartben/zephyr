@@ -166,9 +166,18 @@ static int spi_transfer(const struct device *dev)
 	const struct spi_et171_cfg *const cfg = dev->config;
 	struct spi_context *ctx = &data->ctx;
 	uint32_t data_len, tctrl, int_msk;
+	int dfs = SPI_WORD_SIZE_GET(ctx->config->operation) >> 3;
+
+	if (dfs == 0) {
+		return -EINVAL;
+	}
 
 	if (data->chunk_len != 0) {
-		data_len = data->chunk_len - 1;
+		data_len = data->chunk_len / dfs;
+		if (data_len == 0) {
+			return -EINVAL;
+		}
+		data_len = data_len - 1;
 	} else {
 		data_len = 0;
 	}
@@ -421,7 +430,7 @@ static int spi_dma_tx_load(const struct device *dev)
 	configure_tx_dma_block_source(blk_cfg, current_tx, data, current_tx->len);
 
 	remain_len = data->chunk_len - ctx->current_tx->len;
-	spi_context_update_tx(ctx, dfs, ctx->current_tx->len);
+	spi_context_update_tx(ctx, dfs, ctx->current_tx->len / dfs);
 	configure_tx_dma_block_dest(blk_cfg, data, cfg);
 
 	/* direction is given by the DT */
@@ -454,7 +463,7 @@ static int spi_dma_tx_load(const struct device *dev)
 			blk_cfg = next_blk_cfg;
 			next_blk_cfg->next_block = NULL;
 			remain_len -= ctx->current_tx->len;
-			spi_context_update_tx(ctx, dfs, ctx->current_tx->len);
+			spi_context_update_tx(ctx, dfs, ctx->current_tx->len / dfs);
 		}
 
 	} else {
@@ -531,7 +540,7 @@ static int spi_dma_rx_load(const struct device *dev)
 	configure_rx_dma_block_dest(blk_cfg, current_rx, data, current_rx->len);
 
 	remain_len = data->chunk_len - ctx->current_rx->len;
-	spi_context_update_rx(ctx, dfs, ctx->current_rx->len);
+	spi_context_update_rx(ctx, dfs, ctx->current_rx->len / dfs);
 	configure_rx_dma_block_source(blk_cfg, data, cfg);
 
 	data->dma_rx.dma_cfg.head_block = blk_cfg;
@@ -562,7 +571,7 @@ static int spi_dma_rx_load(const struct device *dev)
 			blk_cfg = next_blk_cfg;
 			next_blk_cfg->next_block = NULL;
 			remain_len -= ctx->current_rx->len;
-			spi_context_update_rx(ctx, dfs, ctx->current_rx->len);
+			spi_context_update_rx(ctx, dfs, ctx->current_rx->len / dfs);
 		}
 	} else {
 		data->dma_rx.dma_blk_cfg.next_block = NULL;
@@ -590,8 +599,17 @@ static int spi_transfer_dma(const struct device *dev)
 	struct spi_context *ctx = &data->ctx;
 	uint32_t data_len, tctrl, dma_rx_enable, dma_tx_enable;
 	int error = 0;
+	int dfs = SPI_WORD_SIZE_GET(ctx->config->operation) >> 3;
 
-	data_len = data->chunk_len - 1;
+	if (dfs == 0) {
+		return -EINVAL;
+	}
+
+	data_len = data->chunk_len / dfs;
+	if (data_len == 0) {
+		return -EINVAL;
+	}
+	data_len = data_len - 1;
 
 	if (data_len > MAX_TRANSFER_CNT) {
 		return -EINVAL;
@@ -1191,7 +1209,7 @@ static void spi_et171_irq_handler(void *arg)
 
 		for (i = tx_num; i > 0; i--) {
 
-			if (data->tx_cnt >= data->chunk_len) {
+			if (data->tx_cnt >= (data->chunk_len / dfs)) {
 				/* Have already sent a chunk of data, so stop
 				 * sending data!
 				 */

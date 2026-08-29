@@ -73,7 +73,7 @@ static int spi_config(const struct device *dev, uint32_t frequency,
 
 	/* Get the frame length */
 	fmt_len = SPI_WORD_SIZE_GET(operation);
-	if (fmt_len > SF_FMT_LEN_MASK) {
+	if (fmt_len > (SF_FMT_LEN_MASK >> SF_FMT_LEN)) {
 		return -ENOTSUP;
 	}
 
