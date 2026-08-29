@@ -7,6 +7,7 @@ config ZEPHYR_HAL_SIFLI_MODULE
 config HAS_SIFLI_HAL
 	bool
 	select HAS_CMSIS_CORE
+	depends on ZEPHYR_HAL_SIFLI_MODULE
 
 if HAS_SIFLI_HAL
 

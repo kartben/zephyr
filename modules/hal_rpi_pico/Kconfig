@@ -1,66 +1,82 @@
 # Copyright (c) 2021 Yonatan Schachter
 # SPDX-License-Identifier: Apache-2.0
 
+config ZEPHYR_HAL_RPI_PICO_MODULE
+	bool
+
 config HAS_RPI_PICO
 	bool
+	depends on ZEPHYR_HAL_RPI_PICO_MODULE
 
 config PICOSDK_USE_UART
 	bool
+	depends on ZEPHYR_HAL_RPI_PICO_MODULE
 	help
 	  Use the UART driver from pico-sdk
 
 config PICOSDK_USE_GPIO
 	bool
+	depends on ZEPHYR_HAL_RPI_PICO_MODULE
 	help
 	  Use the GPIO driver from pico-sdk
 
 config PICOSDK_USE_FLASH
 	bool
+	depends on ZEPHYR_HAL_RPI_PICO_MODULE
 	help
 	  Use the flash driver from pico-sdk
 
 config PICOSDK_USE_PWM
 	bool
+	depends on ZEPHYR_HAL_RPI_PICO_MODULE
 	help
 	  Use the PWM driver from pico-sdk
 
 config PICOSDK_USE_ADC
 	bool
+	depends on ZEPHYR_HAL_RPI_PICO_MODULE
 	help
 	  Use the ADC driver from pico-sdk
 
 config PICOSDK_USE_DMA
 	bool
+	depends on ZEPHYR_HAL_RPI_PICO_MODULE
 	help
 	  Use the DMA driver from pico-sdk
 
 config PICOSDK_USE_PIO
 	bool
 	select PICOSDK_USE_CLAIM
+	depends on ZEPHYR_HAL_RPI_PICO_MODULE
 	help
 	  Use the PIO driver from pico-sdk
 
 config PICOSDK_USE_CLAIM
 	bool
+	depends on ZEPHYR_HAL_RPI_PICO_MODULE
 	help
 	  Use the "claim" driver from pico-sdk
 
 config PICOSDK_USE_TIMER
 	bool
+	depends on ZEPHYR_HAL_RPI_PICO_MODULE
 	help
 	  Use the TIMER driver from pico-sdk
 
 config PICOSDK_USE_RTC
 	bool
+	depends on ZEPHYR_HAL_RPI_PICO_MODULE
 	help
 	  Use the RTC driver from pico-sdk
 
 config PICOSDK_USE_SHA256
 	bool
+	depends on ZEPHYR_HAL_RPI_PICO_MODULE
 	help
 	  Use the SHA-256 driver and utilities from pico-sdk
 
 config PICOSDK_USE_RAND
 	bool
+	depends on ZEPHYR_HAL_RPI_PICO_MODULE
 	help
 	  Use the "rand" driver from pico-sdk

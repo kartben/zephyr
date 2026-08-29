@@ -17,6 +17,7 @@ config GD32_HAS_AFIO_PINMUX
 config HAS_GD32_HAL
 	bool
 	select HAS_CMSIS_CORE if ARM
+	depends on ZEPHYR_HAL_GIGADEVICE_MODULE
 
 if HAS_GD32_HAL
 

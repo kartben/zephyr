@@ -6,5 +6,6 @@ config ZEPHYR_LIBSBC_MODULE
 
 config LIBSBC
 	bool "libsbc Support"
+	depends on ZEPHYR_LIBSBC_MODULE
 	help
 	  This option enables Low Complexity Subband Codec (SBC)

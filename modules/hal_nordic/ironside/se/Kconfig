@@ -3,9 +3,11 @@
 
 config HAS_IRONSIDE_SE
 	bool
+	depends on ZEPHYR_HAL_NORDIC_MODULE
 
 config HAS_IRONSIDE_SE_CALL
 	bool
+	depends on ZEPHYR_HAL_NORDIC_MODULE
 
 menu "IronSide SE"
 	depends on HAS_IRONSIDE_SE

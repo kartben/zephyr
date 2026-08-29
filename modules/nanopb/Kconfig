@@ -6,6 +6,7 @@ config ZEPHYR_NANOPB_MODULE
 
 menuconfig NANOPB
 	bool "Nanopb Support"
+	depends on ZEPHYR_NANOPB_MODULE
 	help
 	  This option enables the Nanopb library and generator.
 

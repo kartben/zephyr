@@ -4,3 +4,4 @@
 config HAS_CYPRESS_DRIVERS
 	bool
 	select HAS_CMSIS_CORE
+	depends on ZEPHYR_HAL_INFINEON_MODULE

@@ -1,8 +1,12 @@
 # Copyright (c) 2019 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
+config ZEPHYR_XTENSA_MODULE
+	bool
+
 config XTENSA_HAL
 	bool
+	depends on ZEPHYR_XTENSA_MODULE
 	help
 	  Build the Xtensa HAL module during build process.
 	  This is selected by the Xtensa ARCH kconfig automatically.

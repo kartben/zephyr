@@ -8,6 +8,7 @@ config ZEPHYR_HAL_BOUFFALOLAB_MODULE
 
 config BFLB_FREERTOS_SHIM
 	bool
+	depends on ZEPHYR_HAL_BOUFFALOLAB_MODULE
 	help
 	  FreeRTOS-to-Zephyr shim for Bouffalo Lab BLE controller blobs.
 	  Selected by SoC-specific BLE drivers that need it.
@@ -22,6 +23,7 @@ config BFLB_BTBLE_TASK_PRIO
 
 config BFLB_BTBLE_PORT_OS_SHIM
 	bool
+	depends on ZEPHYR_HAL_BOUFFALOLAB_MODULE
 	help
 	  Zephyr RTOS port for the btblecontroller binary blob.
 	  Implements the btblecontroller_* OS abstraction for BL702L/BL616.
@@ -29,6 +31,7 @@ config BFLB_BTBLE_PORT_OS_SHIM
 
 config BFLB_WL80211_SHIM
 	bool
+	depends on ZEPHYR_HAL_BOUFFALOLAB_MODULE
 	help
 	  WL80211 supplicant bridge and RTOS port shim for the WiFi blob.
 	  Provides the wl80211_supplicant_* entry points and OS abstractions

@@ -6,6 +6,7 @@
 
 menuconfig NRF70_BUSLIB
 	bool "NRF70 Bus Library"
+	depends on ZEPHYR_NRF_WIFI_MODULE
 	help
 	  Enable the NRF70 Bus Library for the nRF7002 Wi-Fi shield.
 
