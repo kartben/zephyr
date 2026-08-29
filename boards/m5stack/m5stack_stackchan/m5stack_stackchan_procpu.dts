@@ -1,0 +1,62 @@
+/*
+ * Copyright (c) 2024 M5Stack
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+
+#include "m5stack_stackchan_procpu_common.dtsi"
+
+/ {
+	model = "M5Stack StackChan PROCPU";
+	compatible = "m5stack,stackchan";
+
+	aliases {
+		pwm-0 = &ledc0;
+	};
+};
+
+/* Servo control via PWM */
+&ledc0 {
+	pinctrl-0 = <&ledc0_default>;
+	pinctrl-names = "default";
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	channel0@0 {
+		reg = <0x0>;
+		timer = <0>;
+	};
+
+	channel0@1 {
+		reg = <0x1>;
+		timer = <0>;
+	};
+};
+
+&pinctrl {
+	ledc0_default: ledc0_default {
+		group1 {
+			pinmux = <LEDC_CH0_GPIO13>,
+				 <LEDC_CH1_GPIO14>;
+			output-enable;
+		};
+	};
+};
+
+&regulator {
+	vddcam_3v3: ALDO3 {
+		regulator-min-microvolt = <3000000>;
+		regulator-max-microvolt = <3500000>;
+		regulator-boot-on;
+		status = "okay";
+	};
+
+	avdd: BLDO1 {
+		regulator-min-microvolt = <2700000>;
+		regulator-max-microvolt = <3300000>;
+		status = "okay";
+	};
+};
