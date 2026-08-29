@@ -1,0 +1,136 @@
+/*
+ * Copyright (c) 2025 Xteink
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+
+#include <espressif/esp32c3/esp32c3_common.dtsi>
+#include "xteink_x4-pinctrl.dtsi"
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <espressif/partitions_0x0_default_16M.dtsi>
+
+/ {
+	model = "Xteink X4";
+	compatible = "xteink,xteink-x4";
+
+	chosen {
+		zephyr,sram = &sram1;
+		zephyr,console = &usb_serial;
+		zephyr,shell-uart = &usb_serial;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &slot0_partition;
+		zephyr,bt-hci = &esp32_bt_hci;
+	};
+
+	aliases {
+		sw0 = &power_button;
+		watchdog0 = &wdt0;
+	};
+
+	gpio_keys {
+		compatible = "gpio-keys";
+
+		power_button: power_button {
+			label = "Power";
+			gpios = <&gpio0 3 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			zephyr,code = <INPUT_KEY_POWER>;
+		};
+	};
+
+	/* ADC channel 1 (GPIO1): Back, Confirm, Left, Right buttons */
+	adc_keys_1: adc-keys-1 {
+		compatible = "adc-keys";
+		io-channels = <&adc0 1>;
+		keyup-threshold-mv = <3800>;
+		sample-period-ms = <50>;
+
+		back_key {
+			press-thresholds-mv = <3512>;
+			zephyr,code = <INPUT_KEY_BACK>;
+		};
+
+		confirm_key {
+			press-thresholds-mv = <2694>;
+			zephyr,code = <INPUT_KEY_ENTER>;
+		};
+
+		left_key {
+			press-thresholds-mv = <1493>;
+			zephyr,code = <INPUT_KEY_LEFT>;
+		};
+
+		right_key {
+			press-thresholds-mv = <5>;
+			zephyr,code = <INPUT_KEY_RIGHT>;
+		};
+	};
+
+	/* ADC channel 2 (GPIO2): Up, Down buttons */
+	adc_keys_2: adc-keys-2 {
+		compatible = "adc-keys";
+		io-channels = <&adc0 2>;
+		keyup-threshold-mv = <3300>;
+		sample-period-ms = <50>;
+
+		up_key {
+			press-thresholds-mv = <2242>;
+			zephyr,code = <INPUT_KEY_UP>;
+		};
+
+		down_key {
+			press-thresholds-mv = <5>;
+			zephyr,code = <INPUT_KEY_DOWN>;
+		};
+	};
+};
+
+/* 16MB flash */
+&flash0 {
+	reg = <0x0 DT_SIZE_M(16)>;
+};
+
+&usb_serial {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&adc0 {
+	status = "okay";
+};
+
+&spi2 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+	pinctrl-0 = <&spim2_default>;
+	pinctrl-names = "default";
+};
+
+&trng0 {
+	status = "okay";
+};
+
+&wdt0 {
+	status = "okay";
+};
+
+&timer0 {
+	status = "disabled";
+};
+
+&timer1 {
+	status = "disabled";
+};
+
+&esp32_bt_hci {
+	status = "okay";
+};
+
+&wifi {
+	status = "okay";
+};
