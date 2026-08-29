@@ -1,0 +1,22 @@
+sample:
+  name: Smart Sensor Hub — Zephyr 4.4 Feature Showcase
+  description: |
+    Industrial environment monitoring demo showcasing Zephyr 4.4 highlights:
+    scope-based cleanup helpers, zbus pub/sub messaging, and the ztest
+    benchmark framework.
+tests:
+  sample.demo.smart_sensor_hub:
+    tags:
+      - zbus
+      - cleanup
+      - demo
+    platform_allow:
+      - native_sim
+      - native_sim/native/64
+    harness: console
+    harness_config:
+      type: multi_line
+      ordered: true
+      regex:
+        - "Smart Sensor Hub.*started"
+        - "ALERT"
