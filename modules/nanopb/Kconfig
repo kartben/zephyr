@@ -1,11 +1,13 @@
 # Copyright (c) 2021 Basalte bv
 # SPDX-License-Identifier: Apache-2.0
 
-config ZEPHYR_NANOPB_MODULE
-	bool
+zephyr-module = NANOPB
+zephyr-module-str = nanopb
+source "modules/Kconfig.template.module"
 
 menuconfig NANOPB
 	bool "Nanopb Support"
+	select ZEPHYR_NANOPB_MODULE_ACTIVE
 	help
 	  This option enables the Nanopb library and generator.
 

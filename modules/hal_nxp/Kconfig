@@ -5,8 +5,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-config ZEPHYR_HAL_NXP_MODULE
-	bool
+zephyr-module = HAL_NXP
+zephyr-module-str = hal_nxp
+source "modules/Kconfig.template.module"
 
 rsource "imx/Kconfig.imx"
 rsource "s32/Kconfig.nxp_s32"

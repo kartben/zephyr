@@ -1,8 +1,13 @@
 # Copyright (c) 2019 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
+zephyr-module = MIPI_SYS_T
+zephyr-module-str = mipi-sys-t
+source "modules/Kconfig.template.module"
+
 config MIPI_SYST_LIB
 	bool "MIPI SyS-T Library Support"
+	select ZEPHYR_MIPI_SYS_T_MODULE_ACTIVE
 	help
 	  This option enables the MIPI SyS-T Library
 

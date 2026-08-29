@@ -1,11 +1,13 @@
 # Copyright (c) 2022 Arm Limited (or its affiliates). All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-config ZEPHYR_TRUSTED_FIRMWARE_A_MODULE
-	bool
+zephyr-module = TRUSTED_FIRMWARE_A
+zephyr-module-str = trusted-firmware-a
+source "modules/Kconfig.template.module"
 
 menuconfig BUILD_WITH_TFA
 	bool "Build with TF-A as the Secure Execution Environment"
+	select ZEPHYR_TRUSTED_FIRMWARE_A_MODULE_ACTIVE
 	help
 	  When enabled, this option instructs the Zephyr build process to
 	  additionally generate a TF-A image for the Secure Execution

@@ -1,8 +1,13 @@
 # Copyright (c) 2022 Nordic Semiconductor ASA
 # SPDX-License-Identifier: Apache-2.0
 
+zephyr-module = UOSCORE_UEDHOC
+zephyr-module-str = uoscore-uedhoc
+source "modules/Kconfig.template.module"
+
 menuconfig UOSCORE
 	bool "UOSCORE library"
+	select ZEPHYR_UOSCORE_UEDHOC_MODULE_ACTIVE
 	depends on ZCBOR
 	depends on ZCBOR_CANONICAL
 	select UOSCORE_UEDHOC_CRYPTO_COMMON

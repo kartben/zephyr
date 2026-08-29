@@ -1,11 +1,13 @@
 # Copyright (c) 2016-2021 Nordic Semiconductor ASA
 # SPDX-License-Identifier: Apache-2.0
 
-config ZEPHYR_HAL_NORDIC_MODULE
-	bool
+zephyr-module = HAL_NORDIC
+zephyr-module-str = hal_nordic
+source "modules/Kconfig.template.module"
 
 config HAS_NORDIC_DRIVERS
 	bool
+	select ZEPHYR_HAL_NORDIC_MODULE_ACTIVE
 
 menu "Nordic drivers"
 	depends on HAS_NORDIC_DRIVERS

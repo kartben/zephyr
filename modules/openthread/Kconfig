@@ -2,8 +2,13 @@
 # Copyright 2025 NXP
 # SPDX-License-Identifier: Apache-2.0
 
+zephyr-module = OPENTHREAD
+zephyr-module-str = openthread
+source "modules/Kconfig.template.module"
+
 config OPENTHREAD
 	bool "OpenThread Support"
+	select ZEPHYR_OPENTHREAD_MODULE_ACTIVE
 	imply FLASH
 	imply FLASH_MAP
 	imply MPU_ALLOW_FLASH_WRITE

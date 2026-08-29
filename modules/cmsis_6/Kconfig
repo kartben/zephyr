@@ -2,12 +2,14 @@
 # Copyright 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
 # SPDX-License-Identifier: Apache-2.0
 
-config ZEPHYR_CMSIS_6_MODULE
-	bool
+zephyr-module = CMSIS_6
+zephyr-module-str = cmsis_6
+source "modules/Kconfig.template.module"
 
 config HAS_CMSIS_CORE
 	bool
 	select HAS_CMSIS_CORE_M if CPU_CORTEX_M
+	select ZEPHYR_CMSIS_6_MODULE_ACTIVE if CPU_CORTEX_M
 
 if HAS_CMSIS_CORE
 

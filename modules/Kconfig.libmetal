@@ -1,12 +1,13 @@
 # Copyright (c) 2018 Linaro Limited
 # SPDX-License-Identifier: Apache-2.0
 
-config ZEPHYR_LIBMETAL_MODULE
-	bool
+zephyr-module = LIBMETAL
+zephyr-module-str = libmetal
+source "modules/Kconfig.template.module"
 
 menuconfig LIBMETAL
 	bool "libmetal Support"
-	depends on ZEPHYR_LIBMETAL_MODULE
+	select ZEPHYR_LIBMETAL_MODULE_ACTIVE
 	help
 	  This option enables the libmetal HAL abstraction layer
 

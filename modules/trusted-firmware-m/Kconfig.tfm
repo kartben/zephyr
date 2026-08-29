@@ -6,8 +6,9 @@
 # Copyright 2025-2026 NXP
 # SPDX-License-Identifier: Apache-2.0
 
-config ZEPHYR_TRUSTED_FIRMWARE_M_MODULE
-	bool
+zephyr-module = TRUSTED_FIRMWARE_M
+zephyr-module-str = trusted-firmware-m
+source "modules/Kconfig.template.module"
 
 config TFM_BOARD
 	string
@@ -51,6 +52,7 @@ menuconfig BUILD_WITH_TFM
 	depends on TRUSTED_EXECUTION_NONSECURE
 	depends on TFM_BOARD != ""
 	depends on ARM_TRUSTZONE_M
+	select ZEPHYR_TRUSTED_FIRMWARE_M_MODULE_ACTIVE
 	select BUILD_OUTPUT_HEX
 	imply INIT_ARCH_HW_AT_BOOT
 	imply ARM_NONSECURE_PREEMPTIBLE_SECURE_CALLS

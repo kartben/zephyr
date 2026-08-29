@@ -2,11 +2,13 @@
 # Copyright 2023 NXP
 # SPDX-License-Identifier: Apache-2.0
 
-config ZEPHYR_LVGL_MODULE
-	bool
+zephyr-module = LVGL
+zephyr-module-str = lvgl
+source "modules/Kconfig.template.module"
 
 config LVGL
 	bool "LVGL support"
+	select ZEPHYR_LVGL_MODULE_ACTIVE
 	help
 	  This option enables the LVGL graphics library.
 

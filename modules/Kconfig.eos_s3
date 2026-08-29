@@ -3,6 +3,11 @@
 # Copyright (c) 2020 Antmicro Ltd <www.antmicro.com>
 # SPDX-License-Identifier: Apache-2.0
 
+zephyr-module = QUICKLOGIC
+zephyr-module-str = quicklogic
+source "modules/Kconfig.template.module"
+
 config EOS_S3_HAL
 	bool
 	depends on SOC_EOS_S3
+	select ZEPHYR_QUICKLOGIC_MODULE_ACTIVE

@@ -3,8 +3,9 @@
 # Copyright (c) 2017, Christian Taedcke
 # SPDX-License-Identifier: Apache-2.0
 
-config ZEPHYR_HAL_SILABS_MODULE
-	bool
+zephyr-module = HAL_SILABS
+zephyr-module-str = hal_silabs
+source "modules/Kconfig.template.module"
 
 config ZEPHYR_HAL_SILABS_MODULE_BLOBS
 	bool
@@ -13,19 +14,23 @@ config HAS_SILABS_GECKO
 	bool
 	select HAS_CMSIS_CORE
 	depends on SOC_FAMILY_SILABS_S0 || SOC_FAMILY_SILABS_S1
+	select ZEPHYR_HAL_SILABS_MODULE_ACTIVE
 
 config HAS_SILABS_SISDK
 	bool
 	select HAS_CMSIS_CORE
 	depends on SOC_FAMILY_SILABS_S2
+	select ZEPHYR_HAL_SILABS_MODULE_ACTIVE
 
 config HAS_SILABS_WISECONNECT
 	bool
 	select HAS_CMSIS_CORE
 	depends on SOC_FAMILY_SILABS_SIWX91X
+	select ZEPHYR_HAL_SILABS_MODULE_ACTIVE
 
 config HAS_SILABS_SI32
 	bool
 	select HAS_CMSIS_CORE
+	select ZEPHYR_HAL_SILABS_MODULE_ACTIVE
 
 rsource "*/Kconfig"

@@ -1,10 +1,15 @@
 # Copyright (c) 2023 Intel Corporation.
 # SPDX-License-Identifier: Apache-2.0
 
+zephyr-module = ACPICA
+zephyr-module-str = acpica
+source "modules/Kconfig.template.module"
+
 menu "ACPI driver support"
 
 config ACPI
 	bool
+	select ZEPHYR_ACPICA_MODULE_ACTIVE
 
 if ACPI
 
