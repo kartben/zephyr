@@ -670,6 +670,9 @@ The remaining fields depend on the status, and are rejected when they do not mat
 - ``status-notes`` records how the status was reached, for any status.
 - ``references`` lists URLs backing the assessment, such as advisories or fixing commits.
 
+:ref:`west spdx <west-spdx>` emits these statements into the generated SBOM, so a consumer can
+filter a scanner's findings against them automatically. See :ref:`west-spdx-vex`.
+
 .. _VEX: https://www.cisa.gov/sites/default/files/2023-04/minimum-requirements-for-vex_508c.pdf
 
 

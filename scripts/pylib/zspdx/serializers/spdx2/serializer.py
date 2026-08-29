@@ -14,6 +14,7 @@ from zspdx.model import (
     SBOMDocument,
     SBOMElement,
     SBOMFile,
+    VulnerabilityAssessment,
 )
 from zspdx.serializers.helpers import (
     generate_download_url,
@@ -106,6 +107,7 @@ class SPDX2Serializer:
                 # Skip external document refs in first pass
                 self._write_document_relationships(f, doc)
                 self._write_packages(f, doc)
+                self._write_vulnerability_assessments(f, doc)
                 self._write_custom_licenses(f, doc)
 
             # Calculate document hash and store it locally for external document refs
@@ -133,6 +135,7 @@ class SPDX2Serializer:
                 # Write the rest (relationships, packages, licenses)
                 self._write_document_relationships(f, doc)
                 self._write_packages(f, doc)
+                self._write_vulnerability_assessments(f, doc)
                 self._write_custom_licenses(f, doc)
 
             # Recalculate hash after adding external refs
@@ -343,6 +346,45 @@ PackageCopyrightText: {component.copyright_text}
             files_list = sorted(component.files.values(), key=lambda x: x.relative_path)
             for file_obj in files_list:
                 self._write_file(f, file_obj, doc)
+
+    def _write_vulnerability_assessments(self, f, doc: SBOMDocument):
+        """Write the document's VEX statements as SPDX annotations.
+
+        SPDX 2.x has no VEX vocabulary, so each assessment is recorded as an annotation on the
+        package it assesses. Use SPDX 3.0 to get the same statements as native Security profile
+        elements. Annotations are their own tag-value element, so they are written after every
+        package rather than inside one.
+        """
+        annotation_date = self.document_created_timestamps.get(doc.name)
+        for component in doc.components.values():
+            if not component.vulnerability_assessments:
+                continue
+            spdx_id = self._resolve_package_id(component)
+            for assessment in component.vulnerability_assessments:
+                f.write(
+                    f"Annotator: Tool: Zephyr SPDX builder\n"
+                    f"AnnotationDate: {annotation_date}\n"
+                    f"AnnotationType: REVIEW\n"
+                    f"SPDXREF: {spdx_id}\n"
+                    f"AnnotationComment: <text>{self._vex_annotation_text(assessment)}</text>\n\n"
+                )
+
+    @staticmethod
+    def _vex_annotation_text(assessment: VulnerabilityAssessment) -> str:
+        """Render one VEX statement as the body of an SPDX annotation."""
+        lines = [f"VEX: {assessment.vulnerability} {assessment.status}"]
+        if assessment.justification:
+            lines.append(f"Justification: {assessment.justification}")
+        for label, value in (
+            ("Impact", assessment.impact_statement),
+            ("Action", assessment.action_statement),
+            ("Notes", assessment.status_notes),
+        ):
+            if value:
+                lines.append(f"{label}: {value}")
+        for reference in assessment.references:
+            lines.append(f"Reference: {reference}")
+        return "\n".join(lines)
 
     def _write_file(self, f, file_obj, doc: SBOMDocument):
         """Write a single file."""

@@ -178,6 +178,27 @@ The two specification families express build provenance differently:
   instead, using ``hasInput``/``hasOutput``/``usesTool`` relationships scoped to the ``build``
   lifecycle.
 
+.. _west-spdx-vex:
+
+Vulnerability assessments (VEX)
+-------------------------------
+
+A module can record :ref:`VEX statements <modules-vulnerability-assessments>` in its
+:file:`zephyr/module.yml`, stating whether a published vulnerability actually applies to the
+revision Zephyr pins. ``west spdx`` copies those statements into :file:`modules-deps`, next to the
+CPE or PURL that a scanner matches against, so the SBOM carries both the finding and its answer.
+
+How they are expressed depends on the SPDX version:
+
+- In **SPDX 3.0**, each assessment becomes a native `SPDX 3.0 Security profile`_ element: one
+  ``security_Vulnerability`` per vulnerability, and one
+  ``security_Vex{NotAffected,Affected,Fixed,UnderInvestigation}VulnAssessmentRelationship``
+  linking it to the assessed package, carrying the justification, impact, action and notes.
+
+- In **SPDX 2.x**, which has no VEX vocabulary, each assessment is recorded as an ``Annotation``
+  on the package instead. The annotation text is readable but not part of any standard schema, so
+  prefer SPDX 3.0 when the SBOM is meant to be consumed by a vulnerability-management tool.
+
 .. _west-spdx-build-profile:
 
 Build profile (SPDX 3.0)
@@ -234,6 +255,9 @@ Command-line options
 .. warning::
 
    The generation of SBOM documents for the ``native_sim`` platform is currently not supported.
+
+.. _SPDX 3.0 Security profile:
+   https://spdx.github.io/spdx-spec/v3.0.1/model/Security/Security/
 
 .. _SPDX: https://spdx.dev/
 

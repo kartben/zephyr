@@ -835,3 +835,52 @@ class TestExtraModules:
             modules_doc, pkg.spdx_id, RelationshipType.DEPENDENCY_OF
         )
         assert len(dep_rels) > 0, f"modules-deps.spdx: {pkg_name} has no DEPENDENCY_OF relationship"
+
+
+class TestVulnerabilityAssessments:
+    """Tests that VEX statements declared in a module reach the SBOM.
+
+    How an assessment is rendered is covered by the zspdx unit suite; what only a real
+    build can show is that the statements travel from a module's zephyr/module.yml,
+    through the build metadata, onto that module's package and no other.
+    """
+
+    def test_assessments_are_attributed_to_the_declaring_module(self, modules_doc):
+        """Only the module that declares assessments carries them, one annotation each."""
+        declared = find_package_by_name(modules_doc, PKG_UNUSED_MODULE_DEPS)
+        assert declared is not None, f"modules-deps.spdx: '{PKG_UNUSED_MODULE_DEPS}' not found"
+        silent = find_package_by_name(modules_doc, PKG_USED_MODULE_DEPS)
+        assert silent is not None, f"modules-deps.spdx: '{PKG_USED_MODULE_DEPS}' not found"
+
+        per_package = {declared.spdx_id: [], silent.spdx_id: []}
+        for annotation in modules_doc.annotations:
+            if annotation.spdx_id in per_package:
+                per_package[annotation.spdx_id].append(annotation)
+
+        assert len(per_package[declared.spdx_id]) == 2, (
+            f"modules-deps.spdx: expected 2 VEX annotations on {PKG_UNUSED_MODULE_DEPS}, "
+            f"got {len(per_package[declared.spdx_id])}"
+        )
+        assert per_package[silent.spdx_id] == [], (
+            f"modules-deps.spdx: {PKG_USED_MODULE_DEPS} declares no assessments but has "
+            f"{len(per_package[silent.spdx_id])} annotation(s)"
+        )
+
+    def test_declared_statements_survive_the_build_metadata(self, modules_doc):
+        """The text written in module.yml reaches the document unchanged."""
+        pkg = find_package_by_name(modules_doc, PKG_UNUSED_MODULE_DEPS)
+        assert pkg is not None, f"modules-deps.spdx: '{PKG_UNUSED_MODULE_DEPS}' not found"
+        comments = "\n".join(
+            a.annotation_comment for a in modules_doc.annotations if a.spdx_id == pkg.spdx_id
+        )
+        for expected in (
+            "VEX: CVE-1970-00001 not_affected",
+            "Justification: vulnerable_code_not_in_execute_path",
+            "Impact: The reported entry point is never called from this module.",
+            "VEX: CVE-1970-00002 fixed",
+            "Notes: Fixed by the revision this module pins.",
+            "Reference: https://example.com/advisories/CVE-1970-00002",
+        ):
+            assert expected in comments, (
+                f"modules-deps.spdx: '{expected}' missing from {comments!r}"
+            )

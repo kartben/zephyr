@@ -701,8 +701,10 @@ class Walker:
                 return False
 
             module_ext_ref = []
+            module_vex = []
             if module_security:
                 module_ext_ref = module_security.get("external-references", [])
+                module_vex = module_security.get("vulnerability-assessments", [])
 
             # set up module deps component (reference-only, no files; no purpose)
             component = SBOMComponent(name=module_name + "-deps", comment=DEPS_COMMENT)
@@ -718,6 +720,12 @@ class Walker:
                 component.add_external_reference(ref)
             if module_url:
                 self._apply_scm_identity(component, module_url, module_revision)
+
+            for assessment in module_vex:
+                try:
+                    component.add_vulnerability_assessment(assessment)
+                except (TypeError, ValueError) as e:
+                    _logger.error(f"module {module_name}: skipping vulnerability assessment: {e}")
 
             self.sbom_graph.add_component(component, "modules-deps")
             self.component_modules_deps[module_name] = component
