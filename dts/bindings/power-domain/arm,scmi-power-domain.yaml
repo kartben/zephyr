@@ -1,7 +1,9 @@
 # Copyright 2026 NXP
 # SPDX-License-Identifier: Apache-2.0
 
-description: SCMI (System Control and Management Interface) power domain
+title: Arm SCMI power domain provider
+
+description: Arm System Control and Management Interface (SCMI) power domain provider
 
 compatible: "arm,scmi-power-domain"
 
