@@ -502,10 +502,20 @@ static int i2c_ctrl_proc_read_msg(const struct device *dev, struct i2c_msg *msg)
 
 /* I2C controller isr function */
 #ifdef CONFIG_I2C_TARGET
+static struct i2c_target_config *i2c_ctrl_current_target(struct i2c_ctrl_data *data)
+{
+	if (data->target_idx >= NPCX_I2C_FLAG_COUNT) {
+		return NULL;
+	}
+
+	return data->target_cfg[data->target_idx];
+}
+
 static void i2c_ctrl_target_isr(const struct device *dev, uint8_t status)
 {
 	struct smb_reg *const inst = HAL_I2C_INSTANCE(dev);
 	struct i2c_ctrl_data *const data = dev->data;
+	struct i2c_target_config *target_cfg;
 	const struct i2c_target_callbacks *target_cb = NULL;
 	uint8_t val = 0;
 
@@ -514,11 +524,12 @@ static void i2c_ctrl_target_isr(const struct device *dev, uint8_t status)
 		/* Clear BER Bit */
 		inst->SMBST = BIT(NPCX_SMBST_BER);
 
-		target_cb = data->target_cfg[data->target_idx]->callbacks;
+		target_cfg = i2c_ctrl_current_target(data);
+		target_cb = (target_cfg != NULL) ? target_cfg->callbacks : NULL;
 
 		/* Notify upper layer the end of transaction */
 		if ((target_cb != NULL) && target_cb->stop) {
-			target_cb->stop(data->target_cfg[data->target_idx]);
+			target_cb->stop(target_cfg);
 		}
 
 		/* Reset i2c module in target mode */
@@ -548,9 +559,10 @@ static void i2c_ctrl_target_isr(const struct device *dev, uint8_t status)
 		/* End of transaction */
 		data->oper_state = NPCX_I2C_IDLE;
 		/* Notify upper layer a STOP condition received */
-		target_cb = data->target_cfg[data->target_idx]->callbacks;
+		target_cfg = i2c_ctrl_current_target(data);
+		target_cb = (target_cfg != NULL) ? target_cfg->callbacks : NULL;
 		if ((target_cb != NULL) && target_cb->stop) {
-			target_cb->stop(data->target_cfg[data->target_idx]);
+			target_cb->stop(target_cfg);
 		}
 
 #ifdef CONFIG_PM
@@ -569,6 +581,8 @@ static void i2c_ctrl_target_isr(const struct device *dev, uint8_t status)
 
 	/* A 'Target Address Match' has been identified */
 	if (IS_BIT_SET(status, NPCX_SMBST_NMATCH)) {
+		bool matched = false;
+
 		/* Clear NMATCH Bit */
 		inst->SMBST = BIT(NPCX_SMBST_NMATCH);
 
@@ -578,14 +592,22 @@ static void i2c_ctrl_target_isr(const struct device *dev, uint8_t status)
 			     addr_idx <= NPCX_I2C_FLAG_TARGET7; addr_idx++) {
 				if (inst->SMBCST2 & BIT(addr_idx)) {
 					data->target_idx = addr_idx;
+					matched = true;
 					break;
 				}
 			}
 		} else if (inst->SMBCST3 & BIT(NPCX_SMBCST3_MATCHA8F)) {
 			data->target_idx = NPCX_I2C_FLAG_TARGET8;
+			matched = true;
 		}
 
-		target_cb = data->target_cfg[data->target_idx]->callbacks;
+		target_cfg = matched ? i2c_ctrl_current_target(data) : NULL;
+		if (target_cfg == NULL) {
+			LOG_ERR("TGT: address match with no registered target on %s:%02x",
+				dev->name, data->port);
+			return;
+		}
+		target_cb = target_cfg->callbacks;
 
 		/* Distinguish the direction of i2c target mode by reading XMIT bit */
 		if (IS_BIT_SET(inst->SMBST, NPCX_SMBST_XMIT)) {
@@ -593,7 +615,7 @@ static void i2c_ctrl_target_isr(const struct device *dev, uint8_t status)
 			data->oper_state = NPCX_I2C_WRITE_DATA;
 			/* Write first requested byte after repeated start */
 			if ((target_cb != NULL) && target_cb->read_requested) {
-				target_cb->read_requested(data->target_cfg[data->target_idx], &val);
+				target_cb->read_requested(target_cfg, &val);
 			}
 			inst->SMBSDA = val;
 		} else {
@@ -601,7 +623,7 @@ static void i2c_ctrl_target_isr(const struct device *dev, uint8_t status)
 			data->oper_state = NPCX_I2C_READ_DATA;
 
 			if ((target_cb != NULL) && target_cb->write_requested) {
-				target_cb->write_requested(data->target_cfg[data->target_idx]);
+				target_cb->write_requested(target_cfg);
 			}
 		}
 		return;
@@ -609,19 +631,20 @@ static void i2c_ctrl_target_isr(const struct device *dev, uint8_t status)
 
 	/* Tx byte empty or Rx byte full has occurred */
 	if (IS_BIT_SET(status, NPCX_SMBST_SDAST)) {
-		target_cb = data->target_cfg[data->target_idx]->callbacks;
+		target_cfg = i2c_ctrl_current_target(data);
+		target_cb = (target_cfg != NULL) ? target_cfg->callbacks : NULL;
 
 		if (data->oper_state == NPCX_I2C_WRITE_DATA) {
 			/* Notify upper layer one byte will be transmitted */
 			if ((target_cb != NULL) && target_cb->read_processed) {
-				target_cb->read_processed(data->target_cfg[data->target_idx], &val);
+				target_cb->read_processed(target_cfg, &val);
 			}
 			inst->SMBSDA = val;
 		} else if (data->oper_state == NPCX_I2C_READ_DATA) {
 			if ((target_cb != NULL) && target_cb->write_received) {
 				val = inst->SMBSDA;
 				/* Notify upper layer one byte received */
-				target_cb->write_received(data->target_cfg[data->target_idx], val);
+				target_cb->write_received(target_cfg, val);
 			}
 		} else {
 			LOG_ERR("Unexpected oper state %d on i2c target port%02x!",

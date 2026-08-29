@@ -148,20 +148,19 @@ static int renesas_ra_sci_i2c_transfer(const struct device *dev, struct i2c_msg 
 	int ret;
 	uint8_t *merge_buf = data->merge_buf;
 	struct i2c_msg tmp_msg;
-	uint16_t tmp_len;
+	uint32_t tmp_len;
 
 	/* Handle i2c burst write, restructure message to be compatible with HAL*/
 	if (num_msgs == 2) {
 		if (msgs[0].len == 1U && !(msgs[0].flags & I2C_MSG_READ) &&
 		    !(msgs[1].flags & I2C_MSG_READ)) {
-			tmp_len = msgs[0].len + msgs[1].len;
-
-			if (tmp_len <= I2C_MAX_MSG_LEN) {
+			if (msgs[1].len <= (I2C_MAX_MSG_LEN - msgs[0].len)) {
+				tmp_len = msgs[0].len + msgs[1].len;
 				memcpy(&merge_buf[0], msgs[0].buf, msgs[0].len);
 				memcpy(&merge_buf[msgs[0].len], msgs[1].buf, msgs[1].len);
 				tmp_msg.buf = &merge_buf[0];
 				tmp_msg.flags = I2C_MSG_WRITE | I2C_MSG_STOP;
-				tmp_msg.len = (uint8_t)tmp_len;
+				tmp_msg.len = tmp_len;
 				/* Merge 2 msgs into 1 msg */
 				msgs[0] = tmp_msg;
 				num_msgs = 1;

@@ -452,6 +452,17 @@ static void target_i2c_reset_fifo(const struct device *dev)
 	sys_write8(sdfpctl | SMB_SADFE, config->target_base + SMB_SnDFPCTL);
 }
 
+static void target_i2c_fifo_write_byte(const struct device *dev, uint8_t val)
+{
+	const struct i2c_it51xxx_config *config = dev->config;
+
+#ifdef CONFIG_SOC_IT51526AW
+	sys_write8(val, config->i2cbase_mapping + SMB_SLDA(config->port));
+#else
+	sys_write8(val, config->target_base + SMB_SLDn);
+#endif
+}
+
 static bool target_i2c_fifo_read_to_buf(const struct device *dev, uint32_t count)
 {
 	const struct i2c_it51xxx_config *config = dev->config;
@@ -485,7 +496,7 @@ static void target_i2c_isr_fifo(const struct device *dev)
 	struct i2c_it51xxx_data *data = dev->data;
 	struct i2c_target_config *target_cfg;
 	const struct i2c_target_callbacks *target_cb;
-	uint32_t count, len;
+	uint32_t count, len = 0;
 	uint8_t target_status, fifo_status, target_idx;
 
 #ifdef CONFIG_SOC_IT51526AW
@@ -510,12 +521,19 @@ static void target_i2c_isr_fifo(const struct device *dev)
 	/* Which target address to match. */
 	target_idx = (target_status & SMB_MSLA2) ? SMB_SADR2 : SMB_SADR;
 	target_cfg = data->target_cfg[target_idx];
+	if (target_cfg == NULL || target_cfg->callbacks == NULL) {
+		LOG_ERR("I2CS ch%d: unmatched target address", config->port);
+		target_i2c_reset_fifo(dev);
+		goto done;
+	}
 	target_cb = target_cfg->callbacks;
 
 	/* Target data status, the register is waiting for read or write. */
 	if (target_status & SMB_SDS) {
 		if (target_status & SMB_RCS) {
 			uint8_t *rdata = NULL;
+			size_t remaining;
+			size_t n = 0;
 
 			if (data->r_index == 0) {
 				/* Read data callback function */
@@ -523,26 +541,33 @@ static void target_i2c_isr_fifo(const struct device *dev)
 					target_cb->buf_read_requested(target_cfg, &rdata, &len);
 				}
 
-				if (len > sizeof(data->target_out_buffer)) {
-					LOG_ERR("I2CS ch%d: The length exceeds out_buffer size=%d",
-						config->port, sizeof(data->target_out_buffer));
-				} else {
-					memcpy(data->target_out_buffer, rdata, len);
+				if (rdata != NULL && len > 0) {
+					size_t copy_len = MIN(len, sizeof(data->target_out_buffer));
+
+					if (len > sizeof(data->target_out_buffer)) {
+						LOG_ERR("I2CS ch%d: The length exceeds "
+							"out_buffer size=%d",
+							config->port,
+							sizeof(data->target_out_buffer));
+					}
+					memcpy(data->target_out_buffer, rdata, copy_len);
 				}
 			}
 
-			for (int i = 0; i < SMB_TARGET_IT51XXX_MAX_FIFO_SIZE; i++) {
-				/* Host receiving, target transmitting */
-#ifdef CONFIG_SOC_IT51526AW
-				sys_write8(data->target_out_buffer[i + data->r_index],
-					   config->i2cbase_mapping + SMB_SLDA(config->port));
-#else
-				sys_write8(data->target_out_buffer[i + data->r_index],
-					   config->target_base + SMB_SLDn);
-#endif
+			remaining = sizeof(data->target_out_buffer);
+			if (data->r_index < remaining) {
+				n = MIN(SMB_TARGET_IT51XXX_MAX_FIFO_SIZE,
+					remaining - data->r_index);
 			}
-			/* Index to next 16 bytes of read buffer */
-			data->r_index += SMB_TARGET_IT51XXX_MAX_FIFO_SIZE;
+			for (size_t i = 0; i < n; i++) {
+				uint8_t val = data->target_out_buffer[i + data->r_index];
+
+				target_i2c_fifo_write_byte(dev, val);
+			}
+			for (size_t i = n; i < SMB_TARGET_IT51XXX_MAX_FIFO_SIZE; i++) {
+				target_i2c_fifo_write_byte(dev, 0xff);
+			}
+			data->r_index += n;
 		} else {
 			target_i2c_fifo_read_to_buf(dev, count);
 		}
@@ -600,6 +625,12 @@ static void target_i2c_isr_pio(const struct device *dev)
 	/* Which target address to match. */
 	target_idx = (target_status & SMB_MSLA2) ? SMB_SADR2 : SMB_SADR;
 	target_cfg = data->target_cfg[target_idx];
+	if (target_cfg == NULL || target_cfg->callbacks == NULL) {
+		LOG_ERR("I2CS ch%d: unmatched target address", config->port);
+		data->w_index = 0;
+		data->r_index = 0;
+		return;
+	}
 	target_cb = target_cfg->callbacks;
 
 	/* Stop condition, indicate stop condition detected. */
@@ -627,7 +658,7 @@ static void target_i2c_isr_pio(const struct device *dev)
 #ifdef CONFIG_I2C_TARGET_BUFFER_MODE
 			/* Target shared FIFO mode */
 			if (config->target_shared_fifo_mode) {
-				uint32_t len;
+				uint32_t len = 0;
 				uint8_t *rdata = NULL;
 				uint8_t sndfpctl;
 
@@ -636,11 +667,17 @@ static void target_i2c_isr_pio(const struct device *dev)
 					target_cb->buf_read_requested(target_cfg, &rdata, &len);
 				}
 
-				if (len > sizeof(data->target_shared_fifo)) {
-					LOG_ERR("I2CS ch%d: The length exceeds shared fifo size=%d",
-						config->port, sizeof(data->target_shared_fifo));
-				} else {
-					memcpy(data->target_shared_fifo, rdata, len);
+				if (rdata != NULL && len > 0) {
+					size_t copy_len =
+						MIN(len, sizeof(data->target_shared_fifo));
+
+					if (len > sizeof(data->target_shared_fifo)) {
+						LOG_ERR("I2CS ch%d: The length exceeds "
+							"shared fifo size=%d",
+							config->port,
+							sizeof(data->target_shared_fifo));
+					}
+					memcpy(data->target_shared_fifo, rdata, copy_len);
 				}
 				/* Target n FIFO enable */
 				sndfpctl = sys_read8(config->target_base + SMB_SnDFPCTL);

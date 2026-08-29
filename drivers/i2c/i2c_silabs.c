@@ -207,7 +207,7 @@ static void i2c_silabs_scatter_message(const struct device *dev, struct i2c_msg 
 	if ((msgs[idx].flags & I2C_MSG_READ) && data->concat_buf_used) {
 		int j = idx;
 
-		while (data->concat_buf_used >= msgs[j].len) {
+		while (j >= 0 && data->concat_buf_used >= msgs[j].len) {
 			data->concat_buf_used -= msgs[j].len;
 			memcpy(msgs[j].buf, config->concat_buf + data->concat_buf_used,
 			       msgs[j].len);

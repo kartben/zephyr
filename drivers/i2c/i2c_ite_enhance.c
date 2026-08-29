@@ -1074,10 +1074,18 @@ static void target_i2c_isr_dma(const struct device *dev,
 		data->buffer_size =
 			((IT8XXX2_I2C_SLV_NUM_H(base) << 8) |
 			 IT8XXX2_I2C_SLV_NUM_L(base)) + 1;
+		if (data->buffer_size > CONFIG_I2C_TARGET_IT8XXX2_MAX_BUF_SIZE) {
+			LOG_ERR("The number of received bytes %u exceeds "
+				"I2C_TARGET_IT8XXX2_MAX_BUF_SIZE",
+				data->buffer_size);
+			data->buffer_size = CONFIG_I2C_TARGET_IT8XXX2_MAX_BUF_SIZE;
+		}
 
 		/* Write data done callback function */
-		target_cb->buf_write_received(data->target_cfg,
-			target_buffer->in_buffer, data->buffer_size);
+		if (target_cb->buf_write_received) {
+			target_cb->buf_write_received(data->target_cfg,
+				target_buffer->in_buffer, data->buffer_size);
+		}
 	}
 	/* Peripheral finish */
 	if (interrupt_status & IT8XXX2_I2C_P_CLR) {
@@ -1086,7 +1094,7 @@ static void target_i2c_isr_dma(const struct device *dev,
 	}
 	/* Controller to read data */
 	if (interrupt_status & IT8XXX2_I2C_IDR_CLR) {
-		uint32_t len;
+		uint32_t len = 0;
 		uint8_t *rdata = NULL;
 
 		/* Clear byte counter setting */
@@ -1094,14 +1102,20 @@ static void target_i2c_isr_dma(const struct device *dev,
 			~(IT8XXX2_I2C_DMA_ADDR_RELOAD |
 			  IT8XXX2_I2C_BYTE_CNT_ENABLE);
 		/* Read data callback function */
-		target_cb->buf_read_requested(data->target_cfg,
-			&rdata, &len);
+		if (target_cb->buf_read_requested) {
+			target_cb->buf_read_requested(data->target_cfg,
+				&rdata, &len);
+		}
 
-		if (len > CONFIG_I2C_TARGET_IT8XXX2_MAX_BUF_SIZE) {
+		if (rdata == NULL) {
+			len = 0;
+		} else if (len > CONFIG_I2C_TARGET_IT8XXX2_MAX_BUF_SIZE) {
 			LOG_ERR("The buffer size exceeds "
 				"I2C_TARGET_IT8XXX2_MAX_BUF_SIZE: len=%d",
 				len);
-		} else {
+			len = CONFIG_I2C_TARGET_IT8XXX2_MAX_BUF_SIZE;
+		}
+		if (len > 0) {
 			memcpy(target_buffer->out_buffer, rdata, len);
 		}
 	}
