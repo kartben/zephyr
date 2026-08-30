@@ -43,6 +43,11 @@ ZEPHYR_GITHUB_NAMESPACE = "zephyrproject-rtos"
 # their own with the "sbom: license:" key in zephyr/module.yml.
 ZEPHYR_DECLARED_LICENSE = "Apache-2.0"
 
+# The Zephyr SDK is released from its own repository rather than the west manifest, and
+# an installed SDK names its version in a single-line file at the top of the install.
+ZEPHYR_SDK_REPO_URL = f"https://github.com/{ZEPHYR_GITHUB_NAMESPACE}/sdk-ng"
+ZEPHYR_SDK_VERSION_FILE = "sdk_version"
+
 # Free-form notes emitted as package comments to clarify each package's role. The
 # "-sources" and "-deps" packages are systematically emitted for every module, so
 # the distinction (and why unused modules still appear) is spelled out here.
@@ -751,13 +756,44 @@ class Walker:
 
         return True
 
+    def _read_sdk_version(self):
+        """Read the installed Zephyr SDK's version, e.g. "1.0.1".
+
+        Unlike Zephyr's VERSION file this is a single bare version line. Returns "" when
+        the SDK path is unknown or the file is not there, which is also what tells us the
+        installation is not a Zephyr SDK and so has no identity we can assert.
+        """
+        if not self.sdk_path:
+            return ""
+        try:
+            with open(os.path.join(self.sdk_path, ZEPHYR_SDK_VERSION_FILE)) as f:
+                return f.readline().strip()
+        except OSError:
+            return ""
+
     def setup_sdk_component(self):
-        """Set up SDK sources component."""
+        """Set up SDK sources component.
+
+        The toolchain headers in this document come from an installed Zephyr SDK, which
+        is a Zephyr Project release rather than a west project: nothing in the manifest
+        describes it, so its identity is read from the installation itself.
+        """
         component = SBOMComponent(
             name="sdk-sources",
             purpose=ComponentPurpose.SOURCE,
             base_dir=self.sdk_path,
         )
+
+        version = self._read_sdk_version()
+        if version:
+            component.supplier = ZEPHYR_ORGANIZATION
+            component.version = version
+            component.url = ZEPHYR_SDK_REPO_URL
+            # SDK releases are tagged "v<version>" in sdk-ng.
+            component.revision = f"v{version}"
+            purl = self._build_purl(component.url, component.revision)
+            if purl:
+                component.add_external_reference(purl)
 
         self.sbom_graph.add_component(component, "sdk")
         self.doc_sdk.add_described_component(component)
