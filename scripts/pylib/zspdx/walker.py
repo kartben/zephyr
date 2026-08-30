@@ -39,6 +39,10 @@ SPDX_TOOL_NAME = "Zephyr SPDX builder"
 # GitHub namespace under which Zephyr mirrors its modules.
 ZEPHYR_GITHUB_NAMESPACE = "zephyrproject-rtos"
 
+# License the Zephyr project declares for the Zephyr repository itself. Modules declare
+# their own with the "sbom: license:" key in zephyr/module.yml.
+ZEPHYR_DECLARED_LICENSE = "Apache-2.0"
+
 # Free-form notes emitted as package comments to clarify each package's role. The
 # "-sources" and "-deps" packages are systematically emitted for every module, so
 # the distinction (and why unused modules still appear) is spelled out here.
@@ -238,6 +242,41 @@ class Walker:
         )
         if not has_purl:
             purl = self._build_purl(url, revision)
+            if purl:
+                component.add_external_reference(purl)
+
+    def _apply_module_sbom_metadata(self, component, module):
+        """Apply a module's ``sbom:`` metadata from ``zephyr/module.yml``.
+
+        Every module in the Zephyr manifest is fetched from a mirror in the
+        ``zephyrproject-rtos`` GitHub organization, so SCM-derived identity alone reports
+        the Zephyr Project as the origin of code it did not write, and pins package URLs
+        to the mirror rather than the project a vulnerability feed knows. The optional
+        ``sbom:`` section lets a module state the facts only it knows: who produces it
+        upstream, under what license, and at which upstream version.
+        """
+        sbom_meta = module.get("sbom") or {}
+        if not sbom_meta:
+            return
+
+        license_expr = sbom_meta.get("license")
+        if license_expr:
+            component.declared_license = license_expr
+
+        upstream = sbom_meta.get("upstream") or {}
+        organization = upstream.get("organization")
+        if organization:
+            component.originator = organization
+
+        # An upstream version is a far better answer to "which version is this?" than the
+        # mirror's commit hash, and an upstream purl matches what advisories are indexed by.
+        upstream_version = upstream.get("version")
+        if upstream_version:
+            component.version = upstream_version
+
+        upstream_url = upstream.get("url")
+        if upstream_url:
+            purl = self._build_purl(upstream_url, upstream_version)
             if purl:
                 component.add_external_reference(purl)
 
@@ -550,6 +589,7 @@ class Walker:
 
         # Zephyr itself is always supplied by the Zephyr Project.
         component.supplier = ZEPHYR_ORGANIZATION
+        component.declared_license = ZEPHYR_DECLARED_LICENSE
         component.comment = SOURCES_COMMENT
 
         zephyr_url = zephyr.get("remote") or zephyr.get("url", "")
@@ -611,6 +651,9 @@ class Walker:
             if module_revision:
                 module_component.revision = module_revision
 
+            # Module-declared metadata takes precedence, then the SCM identity fills in
+            # whatever it did not answer.
+            self._apply_module_sbom_metadata(module_component, module)
             if module_url:
                 module_component.url = module_url
                 self._apply_scm_identity(module_component, module_url, module_revision)
@@ -645,6 +688,7 @@ class Walker:
         # no PrimaryPackagePurpose: this is a reference-only dependency package with no files
         component = SBOMComponent(name="zephyr-deps", comment=ZEPHYR_DEPS_COMMENT)
         component.supplier = ZEPHYR_ORGANIZATION
+        component.declared_license = ZEPHYR_DECLARED_LICENSE
         component.url = zephyr.get("remote") or zephyr.get("url", "")
         component.revision = zephyr.get("revision", "")
 
@@ -712,10 +756,12 @@ class Walker:
             if module_revision:
                 component.revision = module_revision
 
-            # curated security references (CPE/purl) take precedence; the SCM
-            # identity then fills in a supplier and a purl when none was provided.
+            # curated security references (CPE/purl) and the module's own sbom metadata
+            # take precedence; the SCM identity then fills in a supplier and a purl when
+            # none was provided.
             for ref in module_ext_ref:
                 component.add_external_reference(ref)
+            self._apply_module_sbom_metadata(component, module)
             if module_url:
                 self._apply_scm_identity(component, module_url, module_revision)
 
