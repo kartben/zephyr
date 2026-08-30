@@ -17,9 +17,12 @@ them and every input describes **the same tree**:
 | 4, from `spdx_3.1_hw_profile` | The SPDX 3.1 **Hardware** profile: a `hardware_PhysicalHardware` for the board, one per enabled binding-backed devicetree node, `contains` edges mirroring the devicetree hierarchy, vendors resolved from `vendor-prefixes.txt`, and a Zephyr-controlled namespace for custom identifiers. |
 | 1 | **Driver linkage**: the `__device_dts_ord_<N>` symbols `DEVICE_DT_DEFINE()` emits, read out of the linker map, become `configures` edges from each driver source to the node it instantiates. |
 | 19 | The **FunctionalSafety** engine: coverage-backed requirement traceability emitted into a standalone `safety.jsonld`. |
+| 10, from `west-spdx-ntia-compliance` | The **SBOM minimum elements**: a `software_Sbom` root per document, package checksums, suppliers and originators, declared licenses, and an optional `sbom:` section in `zephyr/module.yml`. |
+| 5, from `spdx-module-vex` | **VEX statements** a module declares in `zephyr/module.yml`, plus the `scripts/tests/zspdx` unit suite. |
 
-All of it is a no-op for `--spdx-version 2.3` / `3.0`: neither the Hardware profile nor the
-`Requirement` class existed before SPDX 3.1.
+The Hardware profile and the `Requirement` class are a no-op for `--spdx-version 2.3` / `3.0`:
+neither existed before SPDX 3.1. The minimum elements and the VEX statements are emitted for
+every version.
 
 ## The three generated inputs
 
@@ -102,6 +105,7 @@ west build -p always -b m5stack_paper_color/esp32s3/procpu \
 
 # 4. The SBOM.
 west spdx -d "$APPBUILD" --spdx-version 3.1 --analyze-includes --include-sdk \
+  --supplier "The Zephyr Project" \
   --requirements-dir "$REQDIR" \
   --traceability "$DOCBUILD/html/needs.json" \
   --twister-json "$TWOUT/twister.json" \
@@ -198,16 +202,16 @@ sources: resolved 193 of 259 implementation symbol(s) to bodies
 coverage: indexed 749 test(s) and 128 file(s) of run coverage from .../test_matrix.json
 ```
 
-Reference run (2026-08-29), 9.3 MB and 15,479 elements over six documents:
+Reference run (2026-08-30), 9.7 MB and 15,550 elements over six documents:
 
 | Document | Size | Elements | Imports | Profiles |
 | --- | ---: | ---: | ---: | --- |
-| `app.jsonld` | 5 KB | 14 | 0 | core, software, simpleLicensing |
-| `build.jsonld` | 910 KB | 612 | 1959 | core, software, simpleLicensing, **build**, **hardware** |
-| `modules-deps.jsonld` | 144 KB | 273 | 0 | core, software, simpleLicensing |
-| `safety.jsonld` | 5.2 MB | 7555 | 26 | core, software |
-| `sdk.jsonld` | 74 KB | 158 | 0 | core, software, simpleLicensing |
-| `zephyr.jsonld` | 3.0 MB | 6867 | 78 | core, software, simpleLicensing |
+| `app.jsonld` | 6 KB | 15 | 0 | core, software, simpleLicensing |
+| `build.jsonld` | 946 KB | 613 | 1959 | core, software, simpleLicensing, **build**, **hardware** |
+| `modules-deps.jsonld` | 160 KB | 275 | 0 | core, software, simpleLicensing |
+| `safety.jsonld` | 5.2 MB | 7554 | 26 | core, software |
+| `sdk.jsonld` | 80 KB | 159 | 0 | core, software, simpleLicensing |
+| `zephyr.jsonld` | 3.3 MB | 6934 | 78 | core, software, simpleLicensing |
 
 They cross-reference each other through `ExternalMap`/`locationHint`, so load them
 **together**: drop all six onto the visualizer at once, or use its file picker.
@@ -239,6 +243,23 @@ Seeing 0 `configures` and a `zephyr-sources` package with a few dozen files is t
 the build's paths did not agree with `ZEPHYR_BASE` — see [Keep the paths
 consistent](#keep-the-paths-consistent).
 
+### Every document — the SBOM minimum elements
+
+Five of the six documents (all but `safety.jsonld`, which the FunctionalSafety serializer
+writes on its own path) are rooted in a `software_Sbom` of `software_sbomType` "build", whose
+single `rootElement` is the package that document is about. 66 `dependsOn` relationships
+relate each module's `-sources` package to `zephyr-sources`, 134 packages carry a
+`software_packageUrl`, and the 29 build outputs carry a package-level checksum. 164 of the 165
+packages have a supplier and a version, the build outputs inheriting the application's.
+
+`--supplier` is what gives the application and the build outputs theirs. Without it they fall
+back to the application's git remote, and then to `NOASSERTION`.
+
+**No module declares VEX statements yet.** The serialization is in (see
+`scripts/tests/zspdx/test_vulnerability_assessments.py`), but no `zephyr/module.yml` in the
+manifest carries a `security: vulnerability-assessments:` block, so a real run emits none and
+the sample shows no `security_*` elements.
+
 ### `safety.jsonld` — coverage-backed traceability
 
 619 `Requirement` (580 software plus 39 system, told apart by their
@@ -269,6 +290,9 @@ both verdicts agree for every single one.
 * **`safety.jsonld` declares only `core, software`.** SPDX 3.1 ships the `functionalsafety_*`
   classes but its `ProfileIdentifierType` enumeration has no `functionalSafety` member, so a
   document cannot claim conformance to the profile whose elements it carries.
+* **`safety.jsonld` has no `software_Sbom` root.** It is written by the FunctionalSafety
+  serializer rather than the path that roots the other five documents, so it still lists its
+  39 packages as `SpdxDocument` roots directly and states no SBOM generation context.
 * **The board element carries no external identifiers.** `_create_hardware_object()` reads
   `ARCH` and `CMAKE_SYSTEM_PROCESSOR` from `CMakeCache.txt`, but Zephyr sets neither as a
   cache entry, so `target-arch` / `target-processor` are silently dropped. The devicetree
