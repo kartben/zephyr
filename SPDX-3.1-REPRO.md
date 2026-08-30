@@ -167,6 +167,28 @@ git -C "$(west topdir)/doc/reqmgmt" worktree add "$WS/doc/reqmgmt" origin/kernel
 The `reqmgmt` worktree is not optional there: `CONFIG_BUILD_OUTPUT_META` walks every project
 in the manifest to record its revision, and a missing one fails the build.
 
+`cp -al` leaves two marks on the SBOM that are worth clearing before a run that will be
+published:
+
+* **Every module reads as dirty.** Hard-linking bumps each file's inode ctime, which
+  invalidates git's stat cache, and `_create_meta_project()` in `scripts/zephyr_module.py`
+  tests dirtiness with `git diff-index --quiet HEAD --`, which does not refresh the index
+  first. Nothing is actually modified, but 128 of the 164 package versions come out as
+  `<sha>-dirty`, purls included. Refresh each index once:
+
+  ```bash
+  for g in $(find "$WS/modules" -maxdepth 4 -name .git | sed 's|/\.git$||'); do
+    git -C "$g" update-index --refresh >/dev/null
+  done
+  ```
+
+* **Submodule trees are missing.** `cp -al` does not descend into nested checkouts, so eight
+  modules come out with genuinely deleted paths (openthread's `third_party/mbedtls/repo`,
+  rpi_pico's `lib/*`, and so on) and stay dirty after the refresh. Hard-link each reported
+  deletion in from the real workspace, then refresh again.
+
+Check with `grep -c -- -dirty "$APPBUILD/zephyr/zephyr.meta"`, which should print 0.
+
 ### Running from a git worktree
 
 `west` resolves extension commands through the manifest, so `west spdx` runs the copy of
@@ -202,16 +224,16 @@ sources: resolved 193 of 259 implementation symbol(s) to bodies
 coverage: indexed 749 test(s) and 128 file(s) of run coverage from .../test_matrix.json
 ```
 
-Reference run (2026-08-30), 9.7 MB and 15,550 elements over six documents:
+Reference run (2026-08-30), 9.7 MB and 15,566 elements over six documents:
 
 | Document | Size | Elements | Imports | Profiles |
 | --- | ---: | ---: | ---: | --- |
 | `app.jsonld` | 6 KB | 15 | 0 | core, software, simpleLicensing |
 | `build.jsonld` | 946 KB | 613 | 1959 | core, software, simpleLicensing, **build**, **hardware** |
-| `modules-deps.jsonld` | 160 KB | 275 | 0 | core, software, simpleLicensing |
+| `modules-deps.jsonld` | 171 KB | 290 | 0 | core, software, simpleLicensing |
 | `safety.jsonld` | 5.2 MB | 7554 | 26 | core, software |
 | `sdk.jsonld` | 80 KB | 159 | 0 | core, software, simpleLicensing |
-| `zephyr.jsonld` | 3.3 MB | 6934 | 78 | core, software, simpleLicensing |
+| `zephyr.jsonld` | 3.3 MB | 6935 | 78 | core, software, simpleLicensing |
 
 They cross-reference each other through `ExternalMap`/`locationHint`, so load them
 **together**: drop all six onto the visualizer at once, or use its file picker.
@@ -255,10 +277,19 @@ packages have a supplier and a version, the build outputs inheriting the applica
 `--supplier` is what gives the application and the build outputs theirs. Without it they fall
 back to the application's git remote, and then to `NOASSERTION`.
 
-**No module declares VEX statements yet.** The serialization is in (see
-`scripts/tests/zspdx/test_vulnerability_assessments.py`), but no `zephyr/module.yml` in the
-manifest carries a `security: vulnerability-assessments:` block, so a real run emits none and
-the sample shows no `security_*` elements.
+**VEX comes from `fatfs`.** `west.yml` on this branch points `fatfs` at
+`kartben/fatfs module-security-vex`, the one tree in the manifest whose
+`zephyr/module.yml` carries a `security: vulnerability-assessments:` block. It declares the
+FatFs R0.16 CPE plus a statement for each of the seven runZero FatFs CVEs a scanner matches
+against that CPE, which `modules-deps.jsonld` renders as 7 `security_Vulnerability` elements,
+4 `security_VexFixedVulnAssessmentRelationship` and 3
+`security_VexNotAffectedVulnAssessmentRelationship`, each carrying its status notes or its
+justification and impact statement. Point `fatfs` back at the upstream mirror and the sample
+has no VEX at all: no other module in the manifest declares any.
+
+Because that tree is outside the `zephyrproject-rtos` namespace, `fatfs-sources` and
+`fatfs-deps` report `kartben` as their supplier rather than the Zephyr Project. That is the
+module supplier rule working as intended, not a defect.
 
 ### `safety.jsonld` — coverage-backed traceability
 
