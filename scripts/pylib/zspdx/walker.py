@@ -619,6 +619,20 @@ class Walker:
             self.doc_zephyr.add_described_component(module_component)
             self.component_zephyr_modules[module_name] = module_component
 
+            # Record how the module source package relates to Zephyr itself. Without
+            # this the module packages sit in the document with no edge to anything,
+            # which reads as "no dependency information" to an SBOM consumer. It mirrors
+            # the DEPENDENCY_OF edge the -deps packages already have towards zephyr-deps.
+            self.pending_relationships.append(
+                (
+                    "component",
+                    module_component.name,
+                    "component",
+                    component.name,
+                    "DEPENDENCY_OF",
+                )
+            )
+
         return True
 
     def setup_sdk_component(self):
