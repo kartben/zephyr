@@ -154,7 +154,9 @@ class SBOMComponent:
         license_info_from_files: License identifiers detected in the component's files.
         copyright_text: Copyright text for the component.
         external_references: Structured external references such as CPEs and package URLs.
-        supplier: Supplier or vendor name.
+        supplier: Name of the organization the component was obtained from.
+        originator: Name of the organization that produced the component upstream, when it
+            differs from the supplier (e.g. a module mirrored into the Zephyr organization).
         comment: Free-form note describing the component's role in the SBOM.
         target_build_file: Main build artifact when the component represents a build target.
         metadata: Additional data not represented by the common model fields.
@@ -174,6 +176,7 @@ class SBOMComponent:
     copyright_text: str = NOASSERTION
     external_references: list[ExternalReference] = field(default_factory=list)
     supplier: str = ""
+    originator: str = ""
     comment: str = ""
     target_build_file: SBOMFile | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
