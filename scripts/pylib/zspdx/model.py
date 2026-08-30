@@ -242,6 +242,9 @@ class SBOMDocument:
         described_components: Names of the components that are the primary subject(s) of this
             document, emitted as SPDX ``DESCRIBES`` relationships. When empty, the document
             describes none of its components explicitly.
+        root_component: Name of the single top-level component this document is about. Formats
+            that expect a bill of materials to have one root (SPDX 3's ``Sbom.rootElement``)
+            use it; when empty it falls back to the first described component.
         relationships: Document-level relationships.
         external_documents: Documents referenced by cross-document relationships, keyed by name.
         custom_license_ids: Custom license IDs that need to be declared in this document.
@@ -253,6 +256,7 @@ class SBOMDocument:
     namespace: str = ""
     components: dict[str, SBOMComponent] = field(default_factory=dict)
     described_components: list[str] = field(default_factory=list)
+    root_component: str = ""
     relationships: list[SBOMRelationship] = field(default_factory=list)
     external_documents: dict[str, SBOMDocument] = field(default_factory=dict)
     custom_license_ids: set[str] = field(default_factory=set)
@@ -284,6 +288,20 @@ class SBOMDocument:
         name = component if isinstance(component, str) else component.name
         if name not in self.described_components:
             self.described_components.append(name)
+
+    def get_root_component(self) -> str:
+        """Get the name of this document's single top-level component.
+
+        Returns:
+            ``root_component`` when it names a component of this document, otherwise the
+            first described component, otherwise "".
+        """
+        if self.root_component and self.root_component in self.components:
+            return self.root_component
+        for name in self.described_components:
+            if name in self.components:
+                return name
+        return ""
 
     def get_component(self, name: str) -> SBOMComponent | None:
         """Get a component by name from this document.
