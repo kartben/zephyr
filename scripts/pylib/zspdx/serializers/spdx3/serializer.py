@@ -596,6 +596,12 @@ class SPDX3Serializer:
         if supplier_agent:
             package.suppliedBy = supplier_agent._id
 
+        # The organization that produces the component upstream, where it differs from
+        # the one it was obtained from.
+        originator_agent = self._get_organization(component.originator)
+        if originator_agent:
+            package.originatedBy.append(originator_agent._id)
+
         # Download location
         if component.url:
             package.software_downloadLocation = generate_download_url(
@@ -955,9 +961,12 @@ class SPDX3Serializer:
         if self.author_agent:
             element_ids.add(self.author_agent._id)
         for component in components:
-            supplier_agent = self.organizations.get(component.supplier)
-            if supplier_agent:
-                element_ids.add(supplier_agent._id)
+            # Both agents a package points at have to be serialized here, or the document
+            # carries a reference that resolves to nothing.
+            for organization in (component.supplier, component.originator):
+                agent = self.organizations.get(organization)
+                if agent:
+                    element_ids.add(agent._id)
         data_license = self._create_license_expression("CC0-1.0")
         if data_license:
             element_ids.add(data_license._id)

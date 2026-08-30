@@ -320,6 +320,10 @@ PackageCopyrightText: {component.copyright_text}
         if supplier:
             f.write(f"PackageSupplier: Organization: {supplier}\n")
 
+        # Originator: who produced the component upstream, when that is not the supplier.
+        if component.originator:
+            f.write(f"PackageOriginator: Organization: {component.originator}\n")
+
         # External references
         for ref in component.external_references:
             if ref.reference_type == ExternalReferenceType.CPE23:
