@@ -23,6 +23,9 @@ manifest:
       url-base: https://github.com/zephyrproject-rtos
     - name: babblesim
       url-base: https://github.com/BabbleSim
+    # Branch-local: carries the fatfs VEX statements the SPDX 3.1 demo SBOM shows.
+    - name: kartben
+      url-base: https://github.com/kartben
 
   group-filter: [-babblesim, -optional, -testing]
 
@@ -142,7 +145,8 @@ manifest:
       groups:
         - tools
     - name: fatfs
-      revision: f4ead3bf4a6dab3a07d7b5f5315795c073db568d
+      remote: kartben
+      revision: 935fc0a93953fde90537cd837cc2465cb6c6325c
       path: modules/fs/fatfs
       groups:
         - fs
