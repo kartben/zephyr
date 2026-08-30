@@ -534,6 +534,36 @@ class TestPackageProvenance:
         )
 
 
+class TestModuleDependencyRelationships:
+    """Tests for how module source packages relate to the Zephyr sources."""
+
+    def test_module_sources_depend_on_zephyr_sources(self, zephyr_doc):
+        """Every module source package states its relationship to Zephyr itself.
+
+        Without this the module packages sit in the document with no edge to anything,
+        which reads as "no dependency information" to an SBOM consumer.
+        """
+        zephyr_pkg = find_package_by_name(zephyr_doc, "zephyr-sources")
+        assert zephyr_pkg is not None, "zephyr.spdx: zephyr-sources package not found"
+
+        module_pkgs = [
+            p
+            for p in zephyr_doc.packages
+            if p.name.endswith("-sources") and p.name != "zephyr-sources"
+        ]
+        assert module_pkgs, "zephyr.spdx: no module source packages found"
+
+        unlinked = [
+            p.name
+            for p in module_pkgs
+            if not has_relationship(zephyr_doc, p.spdx_id, "DEPENDENCY_OF", zephyr_pkg.spdx_id)
+        ]
+        assert not unlinked, (
+            f"zephyr.spdx: module source packages with no DEPENDENCY_OF edge to "
+            f"zephyr-sources: {unlinked}"
+        )
+
+
 class TestPackageComments:
     """Tests for package role comments."""
 
