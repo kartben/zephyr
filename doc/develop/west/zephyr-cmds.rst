@@ -323,10 +323,12 @@ these in automatically wherever the build and the west manifest have the answer:
    * - Component version
      - A release tag or the upstream version a module declares; otherwise the git revision
        the module is checked out at. The application's version comes from its
-       :file:`VERSION` file, and the build outputs inherit it.
+       :file:`VERSION` file, and the build outputs inherit it. The SDK reports the
+       version in its own :file:`sdk_version` file.
    * - Supplier name
-     - The Zephyr Project for Zephyr and for modules mirrored under its GitHub
-       organization; ``--supplier`` for the application and the build outputs.
+     - The Zephyr Project for Zephyr, for modules mirrored under its GitHub
+       organization, and for the SDK; ``--supplier`` for the application and the build
+       outputs.
    * - Other unique identifiers
      - Package URLs built from each component's repository and revision, plus any CPE or
        purl a module declares for vulnerability monitoring.
