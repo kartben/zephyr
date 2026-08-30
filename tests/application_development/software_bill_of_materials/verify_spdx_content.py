@@ -48,6 +48,12 @@ PKG_UNUSED_MODULE_SOURCES = "sbom_unused_module-sources"
 PKG_USED_MODULE_DEPS = "sbom_used_module-deps"
 PKG_UNUSED_MODULE_DEPS = "sbom_unused_module-deps"
 
+# Values declared in the "sbom:" section of used_module/zephyr/module.yml.
+USED_MODULE_SBOM_LICENSE = "Apache-2.0"
+USED_MODULE_SBOM_ORGANIZATION = "SBOM Test Upstream Organization"
+USED_MODULE_SBOM_VERSION = "1.2.3"
+USED_MODULE_SBOM_PURL = "pkg:github/sbom-test-upstream/sbom_used_module"
+
 FILE_USED_MODULE_C = "./src/answer.c"
 FILE_UNUSED_MODULE_C = "unused.c"
 FILE_REUSE_TOML_C = "./src/no_header.c"
@@ -531,6 +537,56 @@ class TestPackageProvenance:
         assert purls, f"modules-deps.spdx: {pkg.name} has no purl references"
         assert any("@" in p for p in purls), (
             f"modules-deps.spdx: {pkg.name} purl should include revision suffix, got {purls}"
+        )
+
+
+class TestModuleSbomMetadata:
+    """Tests for the ``sbom:`` section a module declares in :file:`zephyr/module.yml`."""
+
+    @pytest.fixture(params=[PKG_USED_MODULE_SOURCES, PKG_USED_MODULE_DEPS])
+    def used_module_package(self, request, zephyr_doc, modules_doc):
+        """The used module's source and dependency packages, which share the metadata."""
+        doc = zephyr_doc if request.param.endswith("-sources") else modules_doc
+        pkg = find_package_by_name(doc, request.param)
+        assert pkg is not None, f"package '{request.param}' not found"
+        return pkg
+
+    def test_declared_license_from_module_yml(self, used_module_package):
+        """``sbom: license:`` becomes the package's declared license."""
+        declared = str(used_module_package.license_declared)
+        assert declared == USED_MODULE_SBOM_LICENSE, (
+            f"{used_module_package.name}: license_declared is '{declared}', "
+            f"expected '{USED_MODULE_SBOM_LICENSE}'"
+        )
+
+    def test_originator_from_module_yml(self, used_module_package):
+        """``sbom: upstream: organization:`` becomes the package originator."""
+        originator = used_module_package.originator
+        originator = str(originator) if originator else None
+        assert originator == f"Organization: {USED_MODULE_SBOM_ORGANIZATION}", (
+            f"{used_module_package.name}: originator is '{originator}'"
+        )
+
+    def test_supplier_is_still_zephyr(self, used_module_package):
+        """The supplier stays the Zephyr Project: that is where the code is fetched from."""
+        supplier = get_supplier_name(used_module_package)
+        assert supplier == f"Organization: {ZEPHYR_ORGANIZATION}", (
+            f"{used_module_package.name}: supplier is '{supplier}'"
+        )
+
+    def test_upstream_version_from_module_yml(self, used_module_package):
+        """``sbom: upstream: version:`` is preferred over the mirror's commit hash."""
+        assert used_module_package.version == USED_MODULE_SBOM_VERSION, (
+            f"{used_module_package.name}: version is '{used_module_package.version}', "
+            f"expected '{USED_MODULE_SBOM_VERSION}'"
+        )
+
+    def test_upstream_purl_present(self, used_module_package):
+        """``sbom: upstream: url:`` adds a purl pointing at the upstream project."""
+        purls = get_purl_refs(used_module_package)
+        expected = f"{USED_MODULE_SBOM_PURL}@{USED_MODULE_SBOM_VERSION}"
+        assert expected in purls, (
+            f"{used_module_package.name}: expected upstream purl '{expected}', got {purls}"
         )
 
 
