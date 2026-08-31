@@ -93,9 +93,11 @@ endfunction()
 foreach(spdx_version ${SPDX_VERSIONS_TO_TEST})
   string(REPLACE "." "_" version_suffix ${spdx_version})
 
+  # --maintainer-areas groups the Zephyr sources into one package per MAINTAINERS.yml
+  # area; it is exercised here so the area packages are validated along the rest.
   add_test(
     NAME spdx_gen_${version_suffix}
-    COMMAND west spdx -d ${CMAKE_BINARY_DIR} --spdx-version ${spdx_version}
+    COMMAND west spdx -d ${CMAKE_BINARY_DIR} --spdx-version ${spdx_version} --maintainer-areas
   )
   set_tests_properties(
     spdx_gen_${version_suffix}

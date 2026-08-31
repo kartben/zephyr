@@ -15,6 +15,7 @@ and license information for a minimal Zephyr application.
 
 import hashlib
 import os
+import re
 
 import pytest
 from spdx_tools.spdx.model import ExternalPackageRefCategory
@@ -60,6 +61,25 @@ COPYRIGHT_LINUX_FOUNDATION = "Copyright (C) 2026 The Linux Foundation"
 # answer.c declares its copyright with the SPDX tag, and the scanner stores each
 # notice canonically between newlines, so this is the exact value in the SBOM.
 EXPECTED_USED_MODULE_COPYRIGHT = f"\nSPDX-FileCopyrightText: {COPYRIGHT_ZEPHYR}\n"
+
+# Maintainer area packages, as emitted by 'west spdx --maintainer-areas'. Their name is
+# the MAINTAINERS.yml area name, so they are recognized by their SPDX ID instead.
+AREA_SPDX_ID_PREFIX = "SPDXRef-area-"
+AREA_COMMENT_MARKER = "Maintainer area package"
+AREA_SPDX_ID_RE = re.compile(r"^SPDXRef-area-[A-Za-z0-9.-]+$")
+
+
+def area_packages(doc):
+    """Return the maintainer area packages of a document."""
+    return [pkg for pkg in doc.packages if str(pkg.spdx_id).startswith(AREA_SPDX_ID_PREFIX)]
+
+
+def contained_ids(doc, spdx_id):
+    """Return the SPDX IDs the given element CONTAINS."""
+    return {
+        str(rel.related_spdx_element_id)
+        for rel in get_relationships_for_element(doc, spdx_id, RelationshipType.CONTAINS)
+    }
 
 
 def find_file_by_name(doc, name):
@@ -1067,3 +1087,112 @@ class TestExtraModules:
             modules_doc, pkg.spdx_id, RelationshipType.DEPENDENCY_OF
         )
         assert len(dep_rels) > 0, f"modules-deps.spdx: {pkg_name} has no DEPENDENCY_OF relationship"
+
+
+class TestMaintainerAreas:
+    """Tests for the MAINTAINERS.yml area packages ('west spdx --maintainer-areas')."""
+
+    def test_area_packages_exist(self, zephyr_doc):
+        """The Zephyr sources of any build are covered by at least one area."""
+        assert area_packages(zephyr_doc), "zephyr.spdx: no maintainer area package found"
+
+    def test_area_package_identity(self, zephyr_doc):
+        """Area packages must be identifiable and self-describing."""
+        for pkg in area_packages(zephyr_doc):
+            assert AREA_SPDX_ID_RE.match(str(pkg.spdx_id)), (
+                f"zephyr.spdx: '{pkg.name}' has a non SPDX-ID-safe id '{pkg.spdx_id}'"
+            )
+            assert pkg.comment and AREA_COMMENT_MARKER in str(pkg.comment), (
+                f"zephyr.spdx: {pkg.name} comment should mention '{AREA_COMMENT_MARKER}', "
+                f"got '{pkg.comment}'"
+            )
+            assert get_supplier_name(pkg) == f"Organization: {ZEPHYR_ORGANIZATION}", (
+                f"zephyr.spdx: {pkg.name} supplier is '{get_supplier_name(pkg)}'"
+            )
+
+    @pytest.mark.min_spdx_version("2.3")
+    def test_area_package_purpose(self, zephyr_doc):
+        """Area packages hold source files, so they carry the SOURCE purpose."""
+        for pkg in area_packages(zephyr_doc):
+            assert pkg.primary_package_purpose == PackagePurpose.SOURCE, (
+                f"zephyr.spdx: {pkg.name} purpose is '{pkg.primary_package_purpose}'"
+            )
+
+    def test_area_packages_hold_zephyr_source_files(self, zephyr_doc):
+        """An area package holds files, and only files that zephyr-sources owns."""
+        zephyr_sources = find_package_by_name(zephyr_doc, "zephyr-sources")
+        assert zephyr_sources is not None, "zephyr.spdx: zephyr-sources package not found"
+        owned = {str(f.spdx_id) for f in zephyr_doc.files} & contained_ids(
+            zephyr_doc, zephyr_sources.spdx_id
+        )
+
+        for pkg in area_packages(zephyr_doc):
+            files = contained_ids(zephyr_doc, pkg.spdx_id)
+            assert files, f"zephyr.spdx: {pkg.name} contains no file"
+            assert files <= owned, (
+                f"zephyr.spdx: {pkg.name} contains files zephyr-sources does not own: "
+                f"{sorted(files - owned)}"
+            )
+            assert pkg.files_analyzed, f"zephyr.spdx: {pkg.name} should have files_analyzed=True"
+
+    def test_zephyr_sources_contains_area_packages(self, zephyr_doc):
+        """Every area package is itself part of the Zephyr sources package."""
+        zephyr_sources = find_package_by_name(zephyr_doc, "zephyr-sources")
+        assert zephyr_sources is not None, "zephyr.spdx: zephyr-sources package not found"
+        contained = contained_ids(zephyr_doc, zephyr_sources.spdx_id)
+
+        for pkg in area_packages(zephyr_doc):
+            assert str(pkg.spdx_id) in contained, (
+                f"zephyr.spdx: zephyr-sources does not CONTAIN {pkg.name}"
+            )
+
+    def test_area_packages_are_named_after_maintainer_areas(self, zephyr_doc, maintainers):
+        """An area package is named after the MAINTAINERS.yml area it stands for.
+
+        The sanitized name only lives on in the SPDX ID, so a package keeps the exact
+        area name of the maintainers file, punctuation included.
+        """
+        for pkg in area_packages(zephyr_doc):
+            assert pkg.name in maintainers.areas, (
+                f"zephyr.spdx: '{pkg.name}' ({pkg.spdx_id}) is no MAINTAINERS.yml area"
+            )
+
+    def test_area_assignment_matches_maintainers(
+        self, zephyr_doc, maintainers, zephyr_base, sources_topdir
+    ):
+        """Each Zephyr source file lands in exactly the areas that own it.
+
+        Areas may overlap, so a file can be held by several packages. An area that
+        only matches through a 'defer-to-other-areas' file group is dropped as soon
+        as another area covers the file outright, and kept when none does.
+        """
+        files_by_id = {str(f.spdx_id): f for f in zephyr_doc.files}
+        areas_by_file = {}
+        for pkg in area_packages(zephyr_doc):
+            for spdx_id in contained_ids(zephyr_doc, pkg.spdx_id):
+                areas_by_file.setdefault(spdx_id, set()).add(pkg.name)
+
+        zephyr_sources = find_package_by_name(zephyr_doc, "zephyr-sources")
+        assert zephyr_sources is not None, "zephyr.spdx: zephyr-sources package not found"
+
+        checked = 0
+        for spdx_id in contained_ids(zephyr_doc, zephyr_sources.spdx_id):
+            spdx_file = files_by_id.get(spdx_id)
+            if spdx_file is None:
+                continue
+            abs_path = os.path.join(sources_topdir, str(spdx_file.name).removeprefix("./"))
+            rel_path = os.path.relpath(abs_path, zephyr_base)
+            if rel_path.startswith(".."):
+                # Not a file of the Zephyr repository, so no area covers it.
+                continue
+
+            areas = maintainers.relpath2areas(rel_path)
+            owning = [a for a in areas if not a.is_deferred_for_path(rel_path)] or areas
+            expected = {area.name for area in owning}
+            assert areas_by_file.get(spdx_id, set()) == expected, (
+                f"zephyr.spdx: {spdx_file.name} is in areas "
+                f"{sorted(areas_by_file.get(spdx_id, set()))}, expected {sorted(expected)}"
+            )
+            checked += 1
+
+        assert checked, "zephyr.spdx: no Zephyr repository source file to check"

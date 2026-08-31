@@ -151,6 +151,28 @@ For SPDX 3.0, every document declares conformance to the Core, Software and Simp
 profiles, and :file:`build.jsonld` additionally declares the :ref:`Build profile
 <west-spdx-build-profile>` that captures how the artifacts were produced.
 
+.. _west-spdx-maintainer-areas:
+
+Maintainer area packages
+------------------------
+
+With ``--maintainer-areas``, the ``zephyr`` document additionally groups the Zephyr sources that
+went into the build into one package per area of :zephyr_file:`MAINTAINERS.yml`. A package is
+named after its area, exactly as the maintainers file spells it (``Drivers: I2C``), and its SPDX
+ID is that name sanitized (``SPDXRef-area-Drivers-I2C``). Each area package is contained by the
+``zephyr-sources`` package and in turn contains the files of that area, so a consumer of the SBOM
+can tell which part of the project a given file belongs to, and who looks after it: the package
+comment records the area status and its maintainers.
+
+Areas may overlap, and a file covered by several of them is contained by each of their packages.
+The exception is a MAINTAINERS.yml file group flagged ``defer-to-other-areas``, which marks files
+an area only covers on another area's behalf: such an area is dropped from a file as soon as
+another area covers that file outright, and kept when none does.
+
+Areas covering no file of the build get no package, and files no area covers end up in no area
+package. Either way the files remain part of ``zephyr-sources``, so the option only ever adds
+packages to the bill of materials.
+
 Each file in the bill-of-materials is scanned, so that its hashes (SHA256, SHA1, and MD5)
 can be recorded, along with any detected licenses if an
 ``SPDX-License-Identifier`` comment appears in the file.
@@ -230,6 +252,10 @@ Command-line options
 - ``--include-sdk``: with ``--analyze-includes``, also create a fourth SPDX
   document, :file:`sdk.spdx` (or :file:`sdk.jsonld`), which lists header files
   included from the SDK.
+
+- ``--maintainer-areas``: also group the Zephyr source files into one package per
+  :file:`MAINTAINERS.yml` area, as described in :ref:`west-spdx-maintainer-areas`.
+  Reading and matching against the maintainers file adds a few seconds to the run.
 
 .. warning::
 

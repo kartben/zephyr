@@ -1878,6 +1878,13 @@ Other notable changes
     :zephyr:board:`Arm Musca-S1 <v2m_musca_s1>` (``v2m_musca_s1``) has been deprecated.
     This is to avoid a confusing state of partial support.
 
+* West
+
+  * ``west spdx --maintainer-areas`` groups the Zephyr sources of a build into one SPDX
+    package per :file:`MAINTAINERS.yml` area, so an SBOM records which part of the project
+    each source file belongs to and who maintains it. See
+    :ref:`west-spdx-maintainer-areas`.
+
 ..
   Any more descriptive subsystem or driver changes. Do you really want to write
   a paragraph or is it enough to link to the api/driver/Kconfig/board page above?

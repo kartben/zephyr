@@ -11,6 +11,7 @@ from dataclasses import dataclass
 import yaml
 from west.util import WestNotFound, west_topdir
 
+from zspdx.areas import MaintainerAreas, area_comment, area_component_name
 from zspdx.cmakecache import parse_cmake_cache_file
 from zspdx.cmakefileapi import TargetType
 from zspdx.cmakefileapijson import parse_reply, parse_toolchains_and_info
@@ -119,6 +120,9 @@ class WalkerConfig:
     # should also add an SPDX document for the SDK?
     include_sdk: bool = False
 
+    # should also group the Zephyr sources into MAINTAINERS.yml area packages?
+    maintainer_areas: bool = False
+
 
 # Walker is the main analysis class: it walks through the CMake codemodel,
 # build files, and corresponding source and SDK files, and gathers the
@@ -177,6 +181,9 @@ class Walker:
 
         # Meta file path
         self.meta_file = ""
+
+        # Zephyr source tree path, read from the meta file
+        self.zephyr_base = ""
 
     @staticmethod
     def _parse_git_url(url):
@@ -329,6 +336,11 @@ class Walker:
         # walk through pending sources and create corresponding files
         _logger.info("walking through pending sources files")
         self.walk_pending_sources()
+
+        # group the collected Zephyr sources into maintainer area components
+        if self.cfg.maintainer_areas:
+            _logger.info("setting up maintainer area components")
+            self.setup_maintainer_area_components()
 
         # walk through pending relationship data and create relationships
         _logger.info("walking through pending relationships")
@@ -540,6 +552,10 @@ class Walker:
                 f"{self.cm.paths_source}; bailing"
             )
             return False
+
+        # MAINTAINERS.yml paths are relative to the Zephyr repository, not to the
+        # west topdir the zephyr-sources component is based on.
+        self.zephyr_base = zephyr.get("path", "")
 
         # set up zephyr sources component
         component = SBOMComponent(
@@ -1074,6 +1090,68 @@ class Walker:
                 best_match = component
 
         return best_match
+
+    def setup_maintainer_area_components(self):
+        """Group the collected Zephyr sources into one component per MAINTAINERS.yml area.
+
+        Area components own no files of their own: the files stay owned by
+        zephyr-sources and each area component CONTAINS the ones it maintains, which
+        is what lets overlapping areas share a file.
+        """
+        if not self.component_zephyr:
+            return
+
+        areas = MaintainerAreas.load(self.zephyr_base)
+        if areas is None:
+            return
+
+        files_by_rel_path = {}
+        for src_abspath, file_obj in self.component_zephyr.files.items():
+            if not self._is_within(src_abspath, self.zephyr_base):
+                continue
+            rel_path = os.path.relpath(src_abspath, self.zephyr_base).replace(os.sep, "/")
+            files_by_rel_path[rel_path] = file_obj
+
+        grouped, unassigned = areas.group(files_by_rel_path)
+
+        area_count = 0
+        for area, files in grouped:
+            name = area_component_name(area.name)
+            if not name:
+                _logger.warning(f"  - area {area.name} has no usable component name; skipping")
+                continue
+
+            unique_name = name
+            suffix = 1
+            while self.sbom_graph.get_component(unique_name):
+                suffix += 1
+                unique_name = f"{name}-{suffix}"
+            if unique_name != name:
+                _logger.warning(f"  - component name {name} taken; using {unique_name}")
+
+            component = SBOMComponent(
+                name=unique_name,
+                title=area.name,
+                purpose=ComponentPurpose.SOURCE,
+                supplier=ZEPHYR_ORGANIZATION,
+                url=self.component_zephyr.url,
+                revision=self.component_zephyr.revision,
+                version=self.component_zephyr.version,
+                comment=area_comment(area),
+            )
+            self.sbom_graph.add_component(component, "zephyr")
+            self.sbom_graph.add_relationship(
+                self.component_zephyr, component, RelationshipType.CONTAINS
+            )
+            self.sbom_graph.add_relationship(component, files, RelationshipType.CONTAINS)
+            area_count += 1
+
+        _logger.info(
+            f"grouped {len(files_by_rel_path)} Zephyr source file(s) into {area_count} "
+            f"maintainer area package(s); {len(unassigned)} file(s) covered by no area"
+        )
+        for rel_path in unassigned:
+            _logger.debug(f"  - {rel_path}: covered by no maintainer area")
 
     # walk through pending relationship data and create relationships
     def walk_relationships(self):

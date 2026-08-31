@@ -4,6 +4,7 @@
 """Pytest configuration for SPDX content validation tests."""
 
 import os
+import sys
 
 import pytest
 import yaml
@@ -97,6 +98,44 @@ def build_doc(spdx_dir):
 def modules_doc(spdx_dir):
     """Fixture providing the parsed modules-deps.spdx document."""
     return parse_file(os.path.join(spdx_dir, "modules-deps.spdx"))
+
+
+@pytest.fixture(scope="session")
+def zephyr_base():
+    """Fixture providing the Zephyr source tree path."""
+    base = os.environ.get("ZEPHYR_BASE")
+    if not base:
+        pytest.skip("ZEPHYR_BASE not set")
+    return os.path.abspath(base)
+
+
+@pytest.fixture(scope="session")
+def sources_topdir(zephyr_base, zephyr_doc):
+    """Fixture providing the directory zephyr.spdx file names are relative to.
+
+    That is the west topdir, which the test has no direct handle on; look for the
+    ancestor of ZEPHYR_BASE that the recorded file names resolve against.
+    """
+    names = [str(spdx_file.name).removeprefix("./") for spdx_file in zephyr_doc.files]
+    candidate = zephyr_base
+    while True:
+        if any(os.path.isfile(os.path.join(candidate, name)) for name in names):
+            return candidate
+        parent = os.path.dirname(candidate)
+        if parent == candidate:
+            pytest.skip("cannot locate the directory zephyr.spdx file names are relative to")
+        candidate = parent
+
+
+@pytest.fixture(scope="session")
+def maintainers(zephyr_base):
+    """Fixture providing the parsed MAINTAINERS.yml of the Zephyr tree."""
+    sys.path.insert(0, os.path.join(zephyr_base, "scripts"))
+    try:
+        from get_maintainer import Maintainers
+    except ImportError as e:
+        pytest.skip(f"cannot import get_maintainer: {e}")
+    return Maintainers(os.path.join(zephyr_base, "MAINTAINERS.yml"))
 
 
 @pytest.fixture(scope="session")

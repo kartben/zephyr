@@ -61,6 +61,11 @@ class ZephyrSpdx(WestCommand):
         parser.add_argument(
             '--include-sdk', action="store_true", help="also generate SPDX document for SDK"
         )
+        parser.add_argument(
+            '--maintainer-areas',
+            action="store_true",
+            help="also group the Zephyr sources into one package per MAINTAINERS.yml area",
+        )
 
         return parser
 
@@ -79,6 +84,7 @@ class ZephyrSpdx(WestCommand):
         self.dbg("  --spdx-version is", args.spdx_version)
         self.dbg("  --analyze-includes is", args.analyze_includes)
         self.dbg("  --include-sdk is", args.include_sdk)
+        self.dbg("  --maintainer-areas is", args.maintainer_areas)
 
         if args.init:
             self.do_run_init(args)
@@ -136,6 +142,8 @@ class ZephyrSpdx(WestCommand):
             cfg.analyze_includes = True
         if args.include_sdk:
             cfg.include_sdk = True
+        if args.maintainer_areas:
+            cfg.maintainer_areas = True
 
         # make sure SPDX directory exists, or create it if it doesn't
         if os.path.exists(cfg.spdx_dir):

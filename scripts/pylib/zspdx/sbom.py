@@ -37,6 +37,9 @@ class SBOMConfig:
     # should also add an SPDX document for the SDK?
     include_sdk: bool = False
 
+    # should also group the Zephyr sources into MAINTAINERS.yml area packages?
+    maintainer_areas: bool = False
+
 
 # create Cmake file-based API directories and query file
 # Arguments:
@@ -91,6 +94,7 @@ def make_spdx(cfg):
     walker_cfg.build_dir = cfg.build_dir
     walker_cfg.analyze_includes = cfg.analyze_includes
     walker_cfg.include_sdk = cfg.include_sdk
+    walker_cfg.maintainer_areas = cfg.maintainer_areas
 
     # make and run the walker
     w = Walker(walker_cfg)
