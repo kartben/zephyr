@@ -31,8 +31,13 @@ endif()
 # cmake/emu/qemu/virtio_blk.cmake.
 set(QEMU_VIRTIO_BLK_TRANSPORT bus=virtio-mmio-bus.4)
 
+# The QEMU default for this machine, spelled out because a vhost-user backend
+# needs the guest memory size to size its shared mapping.
+set(QEMU_MEMORY_SIZE_MB 128)
+
 set(QEMU_BOARD_FLAGS
   -cpu ${QEMU_CPU_TYPE}
+  -m ${QEMU_MEMORY_SIZE_MB}
   ${QEMU_VIRTIO_ENTROPY_FLAGS}
   ${QEMU_VIRTIO_INPUT_FLAGS}
   -machine ${QEMU_MACH}

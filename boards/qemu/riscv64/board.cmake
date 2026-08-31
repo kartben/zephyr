@@ -29,6 +29,8 @@ endif()
 # cmake/emu/qemu/virtio_blk.cmake.
 set(QEMU_VIRTIO_BLK_TRANSPORT bus=virtio-mmio-bus.4)
 
+set(QEMU_MEMORY_SIZE_MB 256)
+
 if(CONFIG_RISCV_S_MODE_EXTERNAL_SBI)
   set(qemu_bios default)
 else()
@@ -38,7 +40,7 @@ endif()
 set(QEMU_BOARD_FLAGS
   -machine virt
   -bios ${qemu_bios}
-  -m 256
+  -m ${QEMU_MEMORY_SIZE_MB}
   -cpu ${qemu_riscv_cpu}
   ${QEMU_VIRTIO_INPUT_FLAGS}
   )
