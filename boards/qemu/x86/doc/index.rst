@@ -53,6 +53,15 @@ The following platform features are unsupported:
 * Ethernet
 * Supervisor Mode Execution Protection (SMEP)
 
+VIRTIO Devices
+**************
+
+On top of the virtio-input device it enables by default, the board describes a
+virtio-blk disk, a virtio-gpio controller carrying an ``led0`` and an ``sw0``,
+and a virtio-i2c adapter that doubles as ``zephyr_i2c``. All three are off by
+default: the q35 machine has only two PCI interrupt lines to go around, so an
+application enables the ones it needs. See :ref:`virtio_qemu`.
+
 Programming and Debugging
 *************************
 

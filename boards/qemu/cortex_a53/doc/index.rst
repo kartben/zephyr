@@ -41,6 +41,16 @@ The following platform features are unsupported:
 * Writing to the hardware's flash memory
 
 
+VIRTIO Devices
+**************
+
+On top of the virtio-input device it enables by default, the board describes a
+virtio-blk disk, a virtio-gpio controller and a virtio-i2c adapter. The disk is
+enabled too and needs nothing else. The GPIO controller, which carries an
+``led0`` and an ``sw0``, and the I2C adapter, which doubles as ``zephyr_i2c``,
+are off until an application enables them and runs a vhost-user backend on the
+host. See :ref:`virtio_qemu`.
+
 Programming and Debugging
 *************************
 
