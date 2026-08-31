@@ -153,6 +153,26 @@ config QEMU_VIRTIO_BLK_DISK_SIZE
 	  Size passed to qemu-img when creating the raw virtio-blk backing image.
 	  The value uses qemu-img size syntax, for example "1M" or "64M".
 
+config QEMU_VHOST_USER_GPIO_SOCKET
+	string "QEMU vhost-user GPIO backend socket"
+	depends on QEMU_TARGET && GPIO_VIRTIO
+	default "/tmp/vhost-gpio.sock0"
+	help
+	  Path of the socket QEMU connects to for the VIRTIO GPIO device. A
+	  backend such as vhost-device-gpio must already be listening on it when
+	  QEMU starts. Those backends append the guest index to their
+	  --socket-path, hence the trailing 0 in the default.
+
+config QEMU_VHOST_USER_I2C_SOCKET
+	string "QEMU vhost-user I2C backend socket"
+	depends on QEMU_TARGET && I2C_VIRTIO
+	default "/tmp/vhost-i2c.sock0"
+	help
+	  Path of the socket QEMU connects to for the VIRTIO I2C device. A
+	  backend such as vhost-device-i2c must already be listening on it when
+	  QEMU starts. Those backends append the guest index to their
+	  --socket-path, hence the trailing 0 in the default.
+
 config BOARD_REQUIRES_SERIAL_BACKEND_CDC_ACM
 	bool
 	help
