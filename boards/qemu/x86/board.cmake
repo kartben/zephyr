@@ -75,6 +75,12 @@ if(CONFIG_INPUT_VIRTIO)
   endif()
 endif()
 
+# PCI slot the block device is pinned to. The slot decides which INTx line
+# SeaBIOS routes the device to, so this has to stay in step with the interrupts
+# of the virtio,pci node in the board devicetree. The device itself is added by
+# cmake/emu/qemu/virtio_blk.cmake.
+set(QEMU_VIRTIO_BLK_TRANSPORT addr=06.0)
+
 set(QEMU_BOARD_FLAGS
   -m ${QEMU_MEMORY_SIZE_MB}
   -cpu ${QEMU_CPU_TYPE}${QEMU_CPU_FLAGS}

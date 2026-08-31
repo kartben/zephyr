@@ -8,6 +8,7 @@
 
 #include <qemu/virt-riscv-virtio-net.dtsi>
 
+
 / {
 	chosen {
 		zephyr,console = &uart0;
@@ -54,6 +55,20 @@
 	virtio_input0: virtio-input {
 		compatible = "virtio,input";
 		display = <&ramfb0>;
+		status = "okay";
+	};
+};
+
+/*
+ * QEMU is given a virtio-blk device backed by a build-time disk image whenever
+ * the disk driver is enabled, so nothing else is needed to use this one.
+ */
+&virtio_mmio4 {
+	status = "okay";
+
+	virtio_blk0: virtio-blk {
+		compatible = "virtio,blk";
+		disk-name = "VIRTIOBLK0";
 		status = "okay";
 	};
 };

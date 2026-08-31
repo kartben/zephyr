@@ -24,6 +24,11 @@ if(CONFIG_INPUT_VIRTIO)
   endif()
 endif()
 
+# MMIO transport the block device is attached to, matching the virtio_mmio node
+# it hangs off in the board devicetree. The device itself is added by
+# cmake/emu/qemu/virtio_blk.cmake.
+set(QEMU_VIRTIO_BLK_TRANSPORT bus=virtio-mmio-bus.4)
+
 if(CONFIG_RISCV_S_MODE_EXTERNAL_SBI)
   set(qemu_bios default)
 else()

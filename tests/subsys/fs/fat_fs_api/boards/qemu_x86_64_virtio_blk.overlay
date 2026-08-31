@@ -3,32 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/*
- * The virtio-blk PCI setup is identical to qemu_x86.
- * Keep in sync with qemu_x86_virtio_blk.overlay.
- */
-
-#include <zephyr/dt-bindings/pcie/pcie.h>
-
-/ {
-	pcie0 {
-		virtio-blk-pci {
-			compatible = "virtio,pci";
-			vendor-id = <0x1af4>;
-			device-id = <0x1001>;
-			interrupts = <0xb 0x0 0x0>;
-			interrupt-parent = <&intc>;
-			status = "okay";
-
-			virtio_blk: virtio-blk {
-				compatible = "virtio,blk";
-				disk-name = "VIRTIOBLK0";
-				status = "okay";
-			};
-		};
-	};
+&virtio_blk_pci {
+	status = "okay";
 };
 
+&virtio_blk0 {
+	status = "okay";
+};
+
+/* QEMU is given no virtio-input device here, so its transport would not probe. */
 &virtio_input_pci {
 	status = "disabled";
 };

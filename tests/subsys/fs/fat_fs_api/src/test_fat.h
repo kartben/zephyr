@@ -20,7 +20,7 @@
 #elif defined(CONFIG_DISK_DRIVER_MMC)
 #define DISK_NAME "SD2"
 #elif defined(CONFIG_DISK_DRIVER_VIRTIO_BLK)
-#define DISK_NAME DT_PROP(DT_NODELABEL(virtio_blk), disk_name)
+#define DISK_NAME DT_PROP(DT_NODELABEL(virtio_blk0), disk_name)
 #else
 #error "Failed to select DISK access type"
 #endif

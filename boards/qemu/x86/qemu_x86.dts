@@ -98,6 +98,32 @@
 				status = "okay";
 			};
 		};
+
+		/*
+		 * The disk is disabled by default, unlike on the MMIO QEMU
+		 * boards: q35 routes every PCI slot to one of two INTx lines,
+		 * and a line carries a single ISR, so the input device above is
+		 * all this board can afford to keep on unconditionally. The
+		 * interrupt matches the slot board.cmake pins the QEMU device
+		 * to.
+		 */
+		virtio_blk_pci: virtio-blk-pci {
+			compatible = "virtio,pci";
+
+			vendor-id = <0x1af4>;
+			device-id = <0x1001>;
+
+			interrupts = <11 IRQ_TYPE_LOWEST_EDGE_RISING 3>;
+			interrupt-parent = <&intc>;
+
+			status = "disabled";
+
+			virtio_blk0: virtio-blk {
+				compatible = "virtio,blk";
+				disk-name = "VIRTIOBLK0";
+				status = "disabled";
+			};
+		};
 	};
 
 	sim_flash: sim_flash {
