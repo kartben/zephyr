@@ -127,8 +127,9 @@ will be invoked once the device returns the given descriptor chain. After that, 
 
 Guest-side Virtio drivers
 *************************
-Currently Zephyr provides drivers for Virtio over PCI and Virtio over MMIO and drivers for three devices using virtio - virtiofs, used
-to access the filesystem of the host, virtio-entropy, used as an entropy source, and virtio-blk, used to access a block device.
+Zephyr provides two transport drivers, for Virtio over PCI (``virtio,pci``) and Virtio over MMIO (``virtio,mmio``), and the
+device drivers described below. A device is a devicetree child of the transport node it is reached through, and each one is
+matched by its own compatible. For how the QEMU board targets pair the two up, see :ref:`virtio_qemu`.
 
 Virtiofs
 =========
@@ -138,17 +139,53 @@ opening and reading files. Every time the guest wants to perform some filesystem
 starting with the device readable part, containing the FUSE input header and input data, and ending it with the device writeable part, with place
 for the FUSE output header and output data.
 
+Unlike the devices below, virtiofs has no compatible of its own: the filesystem is mounted on the transport node directly.
+
 Virtio-entropy
 ==============
-This driver allows using virtio-entropy as an entropy source in Zephyr. The operation of this device is simple - the driver places a
-buffer in the virtqueue and receives it back, filled with random data.
+This driver, bound to ``virtio,device4``, allows using virtio-entropy as an entropy source in Zephyr. The operation of this device
+is simple - the driver places a buffer in the virtqueue and receives it back, filled with random data.
 
 Virtio-blk
 ==========
-This driver exposes a virtio-blk block device to Zephyr's disk access layer, so it can be used through the
+This driver, bound to ``virtio,blk``, exposes a virtio-blk block device to Zephyr's disk access layer, so it can be used through the
 :ref:`Disk Access API <disk_access_api>` and, on top of it, a filesystem. It keeps a single request in flight, submitting a descriptor
 chain made of a request header, the caller's data buffer as one or more scatter-gather segments, and a status byte. See
 :ref:`disk_virtio_blk` for details.
+
+Virtio-gpio
+===========
+This driver, bound to ``virtio,gpio``, exposes the lines of a virtio-gpio device through the :ref:`GPIO API <gpio_api>`. The number
+of lines is read from the device-specific configuration space during initialization, and line interrupts are reported over a second
+virtqueue when the device offers ``VIRTIO_GPIO_F_IRQ``. Pull-ups, pull-downs and single-ended drive are not part of the device
+specification, so those flags are rejected.
+
+Virtio-i2c
+==========
+This driver, bound to ``virtio,i2c``, drives an I2C bus exposed by a virtio-i2c adapter through the :ref:`I2C API <i2c_api>`. Each
+message of a transfer becomes one descriptor chain, and the whole batch is queued before the device is notified, so a multi-message
+transfer costs a single round trip rather than one per message. 10-bit addressing is not supported, and the bus speed is accepted
+and ignored.
+
+Both of these complete every operation with a round trip to the device, so unlike most GPIO and I2C controllers they can only be
+used from a thread.
+
+Virtio-net
+==========
+This driver, bound to ``virtio,net``, exposes a virtio-net device as an Ethernet interface, using one virtqueue pair for receive
+and transmit.
+
+Virtio-console
+==============
+This driver, bound to ``virtio,console``, exposes a virtio-console port as a Zephyr :ref:`UART <uart_api>`, so it can serve as a
+console or shell backend. The device may carry several ports, which the driver picks up when
+:kconfig:option:`CONFIG_UART_VIRTIO_CONSOLE_F_MULTIPORT` is enabled.
+
+Virtio-input
+============
+This driver, bound to ``virtio,input``, forwards the events of a virtio-input device - a keyboard, a mouse or a tablet, as the host
+decides - to the :ref:`input subsystem <input>`. Absolute coordinates are reported in the range the device advertises, or scaled to
+the resolution of the display the node points at through its ``display`` property.
 
 Virtio samples
 **************
