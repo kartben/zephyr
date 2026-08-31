@@ -33,6 +33,7 @@ endif()
 
 include(${CMAKE_CURRENT_LIST_DIR}/qemu/binary.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/qemu/flags.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/qemu/vhost_user.cmake)
 
 # Boards contribute to the command line before this file runs, by appending to
 # QEMU_EXTRA_FLAGS. Seed the EXTRA slot with what they left behind.
