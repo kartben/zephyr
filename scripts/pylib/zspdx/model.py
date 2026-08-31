@@ -141,7 +141,10 @@ class SBOMComponent:
     """Format-agnostic representation of a component in the SBOM graph.
 
     Attributes:
-        name: Component name and graph-wide component identifier.
+        name: Component name and graph-wide component identifier. Serializers derive the
+              component's SPDX ID from it, so it must stay ID-safe.
+        title: Human-readable component name emitted as the SPDX package name. Falls back to
+               ``name`` when empty, allowing the displayed name to differ from the identifier.
         purpose: Component purpose, or ``None`` when no purpose applies.
         version: Component version, if known.
         revision: Source revision, such as a git commit hash.
@@ -161,6 +164,7 @@ class SBOMComponent:
     """
 
     name: str
+    title: str = ""
     purpose: ComponentPurpose | None = None
     version: str = ""
     revision: str = ""

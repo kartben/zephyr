@@ -252,7 +252,7 @@ DocumentNamespace: {namespace}
 
         Returns local copies so component.name is left untouched (it drives ID lookup).
         """
-        package_name = component.name
+        package_name = component.title or component.name
         supplier = component.supplier
         package_version = component.version
         for ref in component.external_references:

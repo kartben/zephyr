@@ -580,7 +580,7 @@ class SPDX3Serializer:
         """Convert SBOMComponent to SPDX 3.0 software_Package."""
         package = spdx.software_Package()
         package._id = self._generate_package_id(component.name)
-        package.name = component.name
+        package.name = component.title or component.name
         package.creationInfo = self.creation_info._id
         package.software_primaryPurpose = self._purpose_to_spdx3(component.purpose)
         if component.comment:
