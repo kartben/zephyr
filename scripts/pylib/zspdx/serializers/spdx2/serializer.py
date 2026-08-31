@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from zspdx.model import (
     ComponentPurpose,
     ExternalReferenceType,
+    RelationshipType,
     SBOMComponent,
     SBOMDocument,
     SBOMElement,
@@ -265,20 +266,40 @@ DocumentNamespace: {namespace}
                 package_version = package_version or metadata[5]
         return package_name, supplier, package_version
 
-    def _write_files_analyzed(self, f, component):
+    @staticmethod
+    def _contained_files(component):
+        """Return the files that make up a package.
+
+        Packages normally own their files, but a package can instead declare files
+        owned by another one through CONTAINS relationships (maintainer areas do
+        this, as several of them may cover the same file).
+        """
+        if component.files:
+            return list(component.files.values())
+        return [
+            element
+            for rel in component.relationships
+            if rel.relationship_type == RelationshipType.CONTAINS
+            for element in rel.to_elements
+            if isinstance(element, SBOMFile)
+        ]
+
+    def _write_files_analyzed(self, f, component, files):
         """Write the FilesAnalyzed section and verification code for a component."""
-        if not component.files:
+        if not files:
             f.write("FilesAnalyzed: false\n\n")
             return
 
-        if component.license_info_from_files:
-            for lic in component.license_info_from_files:
+        license_info = component.license_info_from_files or sorted(
+            {lic for file_obj in files for lic in file_obj.license_info_in_file}
+        )
+        if license_info:
+            for lic in license_info:
                 f.write(f"PackageLicenseInfoFromFiles: {lic}\n")
         else:
             f.write("PackageLicenseInfoFromFiles: NOASSERTION\n")
         f.write(
-            f"FilesAnalyzed: true\n"
-            f"PackageVerificationCode: {self._verification_code(component)}\n\n"
+            f"FilesAnalyzed: true\nPackageVerificationCode: {self._verification_code(files)}\n\n"
         )
 
     def _write_package(self, f, component, doc: SBOMDocument):
@@ -333,7 +354,7 @@ PackageCopyrightText: {component.copyright_text}
             f.write(f"PackageComment: <text>{component.comment}</text>\n")
 
         # Files analyzed and verification code
-        self._write_files_analyzed(f, component)
+        self._write_files_analyzed(f, component, self._contained_files(component))
 
         # Package relationships
         for rel in component.relationships:
@@ -430,13 +451,9 @@ LicenseComment: Corresponds to the license ID `{lic}` detected in an SPDX-Licens
             return purpose
         return ""
 
-    def _verification_code(self, component):
-        """Calculate an SPDX package verification code for a component."""
-        hashes = []
-        for file_obj in component.files.values():
-            if "SHA1" in file_obj.hashes:
-                hashes.append(file_obj.hashes["SHA1"])
-        hashes.sort()
+    def _verification_code(self, files):
+        """Calculate an SPDX package verification code over a package's files."""
+        hashes = sorted(file_obj.hashes["SHA1"] for file_obj in files if "SHA1" in file_obj.hashes)
         file_list = "".join(hashes)
 
         sha1 = hashlib.sha1(usedforsecurity=False)
