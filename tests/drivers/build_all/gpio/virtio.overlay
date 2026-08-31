@@ -6,13 +6,26 @@
  * Application overlay for testing the VIRTIO GPIO driver build
  */
 
-&virtio_mmio1 {
+&virtio_mmio5 {
 	status = "okay";
+};
 
-	test_gpio_virtio: virtio-gpio {
-		compatible = "virtio,gpio";
-		gpio-controller;
-		#gpio-cells = <2>;
-		status = "okay";
-	};
+&virtio_gpio0 {
+	status = "okay";
+};
+
+&leds {
+	status = "okay";
+};
+
+&led0 {
+	status = "okay";
+};
+
+&buttons {
+	status = "okay";
+};
+
+&button0 {
+	status = "okay";
 };

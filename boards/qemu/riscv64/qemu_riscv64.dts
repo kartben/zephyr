@@ -8,6 +8,8 @@
 
 #include <qemu/virt-riscv-virtio-net.dtsi>
 
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
 
 / {
 	chosen {
@@ -43,6 +45,38 @@
 		height = <768>;
 		status = "okay";
 	};
+
+	/*
+	 * LED and button lines on the VIRTIO GPIO controller, disabled along
+	 * with it.
+	 */
+	leds: leds {
+		compatible = "gpio-leds";
+		status = "disabled";
+
+		led0: led_0 {
+			gpios = <&virtio_gpio0 0 GPIO_ACTIVE_HIGH>;
+			label = "LED 0";
+			status = "disabled";
+		};
+	};
+
+	buttons: buttons {
+		compatible = "gpio-keys";
+		status = "disabled";
+
+		button0: button_0 {
+			gpios = <&virtio_gpio0 1 GPIO_ACTIVE_LOW>;
+			label = "Button 0";
+			zephyr,code = <INPUT_KEY_0>;
+			status = "disabled";
+		};
+	};
+
+	aliases {
+		led0 = &led0;
+		sw0 = &button0;
+	};
 };
 
 &uart0 {
@@ -72,3 +106,28 @@
 		status = "okay";
 	};
 };
+
+/*
+ * The GPIO and I2C devices are vhost-user devices, and QEMU refuses to start
+ * unless a backend is listening on their socket, so they are left disabled
+ * until an application asks for them. See the board documentation.
+ */
+&virtio_mmio5 {
+	virtio_gpio0: virtio-gpio {
+		compatible = "virtio,gpio";
+		gpio-controller;
+		#gpio-cells = <2>;
+		status = "disabled";
+	};
+};
+
+&virtio_mmio6 {
+	virtio_i2c0: virtio-i2c {
+		compatible = "virtio,i2c";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+	};
+};
+
+zephyr_i2c: &virtio_i2c0 {};

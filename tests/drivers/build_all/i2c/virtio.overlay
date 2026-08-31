@@ -6,13 +6,10 @@
  * Application overlay for testing the VIRTIO I2C driver build
  */
 
-&virtio_mmio1 {
+&virtio_mmio6 {
 	status = "okay";
+};
 
-	test_i2c_virtio: virtio-i2c {
-		compatible = "virtio,i2c";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		status = "okay";
-	};
+&virtio_i2c0 {
+	status = "okay";
 };
