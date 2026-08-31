@@ -30,7 +30,6 @@ import re
 import shlex
 import subprocess
 import sys
-from tabulate import tabulate
 
 from yaml import load, YAMLError
 try:
@@ -264,27 +263,41 @@ class Maintainers:
         """
         return [area for area in self.areas.values() if area.name == name]
 
-    def path2areas(self, path):
-        """
-        Returns a list of Area instances for the areas that contain 'path',
-        taken as relative to the current directory
-        """
+    def _toplevel_relpath(self, path):
+        # Returns 'path', taken as relative to the current directory, rewritten
+        # relative to the directory holding the maintainers file.
+
         # Make directory paths end in '/' so that foo/bar matches foo/bar/.
         # Skip this check in _contains() itself, because the isdir() makes it
         # twice as slow in cases where it's not needed.
         is_dir = os.path.isdir(path)
 
-        # Make 'path' relative to the repository root and normalize it.
         # normpath() would remove a trailing '/', so we add it afterwards.
         path = os.path.normpath(os.path.join(
             os.path.relpath(os.getcwd(), self._toplevel),
             path))
 
-        if is_dir:
-            path += "/"
+        return path + "/" if is_dir else path
 
+    def relpath2areas(self, path):
+        """
+        Returns a list of Area instances for the areas that contain 'path',
+        taken as relative to the directory holding the maintainers file.
+        Directory paths must end in '/'.
+
+        Unlike path2areas(), this does not depend on the current directory,
+        which makes it usable by tooling that works on repository-relative
+        paths (e.g. the SPDX generator).
+        """
         return [area for area in self.areas.values()
                 if area._contains(path)]
+
+    def path2areas(self, path):
+        """
+        Returns a list of Area instances for the areas that contain 'path',
+        taken as relative to the current directory
+        """
+        return self.relpath2areas(self._toplevel_relpath(path))
 
     def path2area_info(self, path):
         """
@@ -292,25 +305,10 @@ class Maintainers:
         FileGroup will be None if the path matches the area's general files rather
         than a specific file group.
         """
-        areas = self.path2areas(path)
-        result = []
+        path = self._toplevel_relpath(path)
 
-        # Make directory paths end in '/' so that foo/bar matches foo/bar/.
-        is_dir = os.path.isdir(path)
-
-        # Make 'path' relative to the repository root and normalize it.
-        path = os.path.normpath(os.path.join(
-            os.path.relpath(os.getcwd(), self._toplevel),
-            path))
-
-        if is_dir:
-            path += "/"
-
-        for area in areas:
-            file_group = area.get_file_group_for_path(path)
-            result.append((area, file_group))
-
-        return result
+        return [(area, area.get_file_group_for_path(path))
+                for area in self.relpath2areas(path)]
 
     def commits2areas(self, commits):
         """
@@ -370,6 +368,9 @@ class Maintainers:
 
     def _areas_cmd(self, args):
         # 'areas' subcommand implementation
+        # Imported here so that library users need not install tabulate
+        from tabulate import tabulate
+
         def multiline(items):
             # Each item on its own line, empty string if none
             return "\n".join(items) if items else ""
