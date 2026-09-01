@@ -392,4 +392,4 @@ Use commands such as ``ptp_clock get <device>`` to read the PHC time,
 ``ptp_clock set <device> <seconds>`` or ``ptp_clock adj <device> <seconds>`` to
 change it, ``ptp_clock freq <device> <ppb>`` to apply a frequency adjustment,
 and ``ptp_clock selftest <device> <time> <freq> <delay> <adj>`` for a quick
-driver-level sanity check.
+driver-level check.
