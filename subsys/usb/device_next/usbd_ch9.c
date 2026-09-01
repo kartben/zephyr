@@ -1254,7 +1254,7 @@ ctrl_xfer_stall:
 	 * data or status stage. This facilitates the work of the drivers.
 	 *
 	 * If data OUT should not be received, either due to SETUP data not
-	 * passing handler sanity checks or due to -ENOMEM, halt control OUT
+	 * passing handler validation or due to -ENOMEM, halt control OUT
 	 * endpoint.
 	 */
 	if (reqtype_is_to_host(setup)) {
