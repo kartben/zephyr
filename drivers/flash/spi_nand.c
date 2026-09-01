@@ -907,7 +907,7 @@ static int onfi_parameters_load(const struct device *dev)
 		return -EIO;
 	}
 
-	/* Sanity check the on-chip ECC configuration */
+	/* Check the on-chip ECC configuration */
 	if (!(cfg & SPI_NAND_FEATURE_CONFIG_ECC_EN)) {
 		LOG_WRN("On-chip ECC not enabled");
 	}
