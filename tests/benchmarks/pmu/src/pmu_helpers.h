@@ -22,7 +22,7 @@ extern "C" {
 #endif
 
 /**
- * @brief Validate @a pmu_init() result and sanity-check counters.
+ * @brief Validate @a pmu_init() result and verify counters advance.
  *
  * On success, runs a short workload and requires the cycle counter and event
  * counter 0 (@c PMU_EVT_INST_RETIRED) to advance. If either stays zero (common
