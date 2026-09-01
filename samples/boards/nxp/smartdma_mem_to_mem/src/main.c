@@ -157,7 +157,7 @@ int main(void)
 			out_buf[i * 3U + 2U]);
 	}
 
-	/* Quick sanity check on the transformed data. Recompute the firmware's
+	/* Verify the transformed data. Recompute the firmware's
 	 * byte transformation on the CPU for each source word and compare it
 	 * against what the SmartDMA firmware wrote, so the sample fails loudly
 	 * if the transfer did not produce the expected result.
