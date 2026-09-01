@@ -77,12 +77,12 @@ def test_ctf_trace(dut):
 
     assert "queue_get_blocking" not in names, "K_NO_WAIT queue get emitted a blocking event"
 
-    # Field sanity: queue_get_exit must carry the object id, timeout and return value.
+    # queue_get_exit must carry the object id, timeout and return value.
     get_exit = next(e for e in tr.events if e.name == "queue_get_exit")
     for field in ("id", "timeout", "ret"):
         assert field in get_exit.fields, f"queue_get_exit missing field {field}: {get_exit.fields}"
 
-    # Ordering sanity: the queue is initialised before it is read from.
+    # Verify the queue is initialised before it is read from.
     idx = {n: names.index(n) for n in ("queue_init", "queue_get_exit")}
     assert idx["queue_init"] < idx["queue_get_exit"], "queue_init must precede queue_get_exit"
 
