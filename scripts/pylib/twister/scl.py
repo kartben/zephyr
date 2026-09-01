@@ -5,7 +5,7 @@
 # Zephyr's Twister library
 #
 # Set of code that other projects can also import to do things on
-# Zephyr's sanity check testcases.
+# Zephyr's test cases.
 
 import logging
 import yaml

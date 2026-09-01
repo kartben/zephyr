@@ -229,7 +229,7 @@ class Build(Forceable):
             self.args.source_dir = source_dir
         self.dbg(f'source_dir: {self.args.source_dir} cmake_opts: {self.args.cmake_opts}',
                 level=Verbosity.DBG_EXTREME)
-        self._sanity_precheck()
+        self._source_precheck()
         self._setup_build_dir()
 
         if args.pristine is not None:
@@ -260,7 +260,7 @@ class Build(Forceable):
             self.run_cmake = True
 
         self.source_dir = self._find_source_dir()
-        self._sanity_check()
+        self._check_build_config()
 
         build_info_path = self.build_dir
         build_info_file = os.path.join(build_info_path, BUILD_INFO_LOG)
@@ -287,7 +287,7 @@ class Build(Forceable):
         if args.cmake_only:
             return
 
-        self._sanity_check()
+        self._check_build_config()
         self._update_cache()
         self.domains = load_domains(self.build_dir)
 
@@ -476,7 +476,7 @@ class Build(Forceable):
 
         return found_test_metadata
 
-    def _sanity_precheck(self):
+    def _source_precheck(self):
         app = self.args.source_dir
         if app:
             self.check_force(
@@ -561,7 +561,7 @@ class Build(Forceable):
             source_dir = os.getcwd()
         return os.path.abspath(source_dir)
 
-    def _sanity_check_source_dir(self):
+    def _check_source_dir(self):
         if self.source_dir == self.build_dir:
             # There's no forcing this.
             self.die(f'source and build directory {self.source_dir} cannot be the same; '
@@ -582,11 +582,11 @@ class Build(Forceable):
             'want to build? (Use -s SOURCE_DIR to specify '
             'the application source directory)')
 
-    def _sanity_check(self):
-        # Sanity check the build configuration.
+    def _check_build_config(self):
+        # Validate the build configuration.
         # Side effect: may update cmake_cache attribute.
-        self.dbg('sanity checking the build', level=Verbosity.DBG_EXTREME)
-        self._sanity_check_source_dir()
+        self.dbg('validating the build', level=Verbosity.DBG_EXTREME)
+        self._check_source_dir()
 
         if not self.cmake_cache:
             return          # That's all we can check without a cache.
@@ -663,7 +663,7 @@ class Build(Forceable):
             if ((boards_mismatched and not apps_mismatched) and
                     (not source_abs and cached_abs)):
                 self.source_dir = self._find_source_dir()
-                self._sanity_check_source_dir()
+                self._check_source_dir()
 
     def _run_cmake(self, board, origin):
         if board is None and self.config.getboolean('build.board_warn', default=True):
