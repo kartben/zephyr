@@ -319,7 +319,7 @@ int z_impl_k_msgq_get(struct k_msgq *msgq, void *data, k_timeout_t timeout)
 		}
 		msgq->used_msgs--;
 
-		/* sanity-check write_ptr in case we hand the slot to a sender */
+		/* verify write_ptr in case we hand the slot to a sender */
 		__ASSERT_NO_MSG((msgq->write_ptr >= msgq->buffer_start) &&
 				(msgq->write_ptr <= (msgq->buffer_end - 1)) &&
 				((size_t)(uintptr_t)(msgq->buffer_end - msgq->write_ptr) >=

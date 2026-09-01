@@ -57,7 +57,7 @@ extern "C" {
  * - Any kernel object or device pointers are validated with _SYSCALL_IS_OBJ()
  * - Any memory buffers passed in are checked to ensure that the calling thread
  *   actually has access to them
- * - Many kernel calls do no sanity checking of parameters other than
+ * - Many kernel calls do no validation of parameters other than
  *   assertions. The handler must check all of these conditions using
  *   _SYSCALL_ASSERT()
  * - If the system call has more than 6 arguments, then arg6 will be a pointer
