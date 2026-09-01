@@ -16,7 +16,7 @@ The regression test suite can be run via the
 :zephyr_file:`tests/modules/tf-m/regression` test.
 
 It tests various services and communication mechanisms across the
-NS/S boundary via the PSA APIs. They provide a useful sanity check for proper
+NS/S boundary via the PSA APIs. They provide a useful way to verify proper
 integration between the NS RTOS (Zephyr in this case) and the secure
 application (TF-M).
 

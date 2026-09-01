@@ -201,7 +201,7 @@ inference, and CPU-only inference for devices without an NPU.
                   Docker must be installed and running before executing the
                   wrapper build and FVP commands on macOS.
 
-               **Step 3:** Sanity check the build:
+               **Step 3:** Verify the build:
 
                .. code-block:: console
 

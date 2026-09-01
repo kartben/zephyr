@@ -2428,7 +2428,7 @@ evaluate false, so the packet was never dropped and all of the other checks were
 silently skipped. The bypassed checks include the mandatory Hop Limit == 255
 verification (which proves an ND packet originated on-link and was not forwarded) and,
 for Router Advertisements, the requirement that the source be a link-local address, as
-well as multicast-target sanity checks. As a result, an adjacent on-link attacker — and,
+well as multicast-target validation. As a result, an adjacent on-link attacker — and,
 because the Hop-Limit-255 guard is bypassed, potentially a remote/off-link attacker
 whose packets would otherwise be rejected — can have forged Router Advertisement,
 Neighbor Solicitation, and Neighbor Advertisement messages accepted. A forged RA lets
