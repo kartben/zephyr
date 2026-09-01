@@ -249,7 +249,7 @@ void z_riscv_imsic_secondary_init(void)
 	LOG_DBG("CPU %u IMSIC initialized: EIDELIVERY=0x%08lx EITHRESH=0x%08lx", arch_proc_id(),
 		eidelivery_readback, (unsigned long)micsr_read(ICSR_EITHRESH));
 
-	/* Sanity check: verify EIDELIVERY enable bit is set */
+	/* Verify EIDELIVERY enable bit is set */
 	if (!(eidelivery_readback & EIDELIVERY_ENABLE)) {
 		LOG_ERR("CPU %u IMSIC EIDELIVERY enable bit not set! Got 0x%08lx", arch_proc_id(),
 			eidelivery_readback);
