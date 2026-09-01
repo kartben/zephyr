@@ -3334,7 +3334,7 @@ static ssize_t offload_sendto(void *obj, const void *buf, size_t len, int flags,
 		LOG_ERR("Modem not registered, cannot send data %d", errno);
 		return -1;
 	}
-	/* Do some sanity checks. */
+	/* Validate the arguments. */
 	if (!buf || len == 0) {
 		errno = EINVAL;
 		return -1;
@@ -3413,7 +3413,7 @@ static int offload_ioctl(void *obj, unsigned int request, va_list args)
 	}
 
 	socket_data = hl78xx_socket_data_from_sock(sock);
-	/* sanity check: does parent == parent->offload_dev->data ? */
+	/* verify parent == parent->offload_dev->data */
 	if (!socket_data || !socket_data->devices.offload ||
 	    socket_data->devices.offload->data != socket_data) {
 		LOG_WRN("ioctl: socket_data lookup failed or parent mismatch (%p)", socket_data);

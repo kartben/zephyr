@@ -1184,7 +1184,7 @@ static ssize_t offload_sendto(void *obj, const void *buf, size_t len, int flags,
 	char ip_str[NET_IPV6_ADDR_LEN];
 	uint16_t dst_port = 0;
 
-	/* Do some sanity checks. */
+	/* Validate the arguments. */
 	if (!buf || len == 0) {
 		errno = EINVAL;
 		return -1;
