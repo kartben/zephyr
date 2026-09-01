@@ -422,7 +422,7 @@ static struct k_thread stress_helper_thread;
 static atomic_t stress_main_cb_count[STRESS_ITER];
 static atomic_t stress_helper_cb_count[STRESS_ITER];
 
-/* Aggregate counts kept for a quick sanity check and diagnostic output. */
+/* Aggregate counts kept for a quick check and diagnostic output. */
 static atomic_t stress_scheduled;
 static atomic_t stress_cb_count;
 
