@@ -3426,7 +3426,7 @@ int supplicant_p2p_oper(const struct device *dev __unused, struct net_if *iface,
 		if (params->group_add.persistent_set == true) {
 			len += snprintk(cmd_buf + len, sizeof(cmd_buf) - len, " persistent");
 		} else if (params->group_add.persistent >= 0) {
-			/* Sanity check: verify the network exists before proceeding. */
+			/* Verify the network exists before proceeding. */
 			char check_cmd[64];
 
 			snprintk(check_cmd, sizeof(check_cmd), "GET_NETWORK %d ssid",
@@ -3620,7 +3620,7 @@ int supplicant_p2p_oper(const struct device *dev __unused, struct net_if *iface,
 			}
 		} else if (params->persistent_remove.id >= 0) {
 			/*
-			 * Sanity check: use GET_NETWORK <id> ssid to verify
+			 * Use GET_NETWORK <id> ssid to verify
 			 * the network exists before attempting removal.
 			 * wpa_supplicant returns "FAIL" if the ID is unknown.
 			 */
