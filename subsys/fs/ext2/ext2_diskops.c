@@ -130,7 +130,7 @@ struct ext2_direntry *ext2_fetch_direntry(struct ext2_disk_direntry *disk_de)
 	uint16_t rec_len = sys_le16_to_cpu(disk_de->de_rec_len);
 
 	/*
-	 * Structural sanity on the on-disk record before copying any name
+	 * Validate the on-disk record structure before copying any name
 	 * bytes.
 	 *
 	 *  - the fixed entry header must fit in the remaining block,
