@@ -197,7 +197,7 @@ uint32_t arm_m_switch_control;
  * instruction must have it set.  The PC pushed from an exception has
  * is unset.  The linker puts functions at even addresses, obviously,
  * but the symbol address exposed at runtime has it set.  Exception
- * return ignores it.  Use this to avoid insanity.
+ * return ignores it.  Use this to avoid the confusion.
  */
 static bool pc_match(uint32_t pc, void *addr)
 {
