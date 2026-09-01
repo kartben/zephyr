@@ -561,7 +561,7 @@ ZTEST(context, test_irq_lock_nested)
 	unsigned int key_outer;
 	unsigned int key_inner;
 
-	/* Sanity: start from thread context with interrupts enabled. */
+	/* Precondition: start from thread context with interrupts enabled. */
 	zassert_true(arch_cpu_irqs_are_enabled(),
 		     "IRQs not enabled at test entry");
 
