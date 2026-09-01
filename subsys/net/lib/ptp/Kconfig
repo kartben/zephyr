@@ -320,7 +320,7 @@ config PTP_PEER_DELAY_MAX_NS
 	help
 	  Maximum peer propagation delay accepted as a valid Pdelay measurement.
 	  Samples above this value are treated as invalid timestamp data and do not
-	  update meanLinkDelay. Adjust this sanity threshold to the expected network
+	  update meanLinkDelay. Adjust this threshold to the expected network
 	  topology and PTP profile; it is not a clock-accuracy requirement.
 
 config PTP_DISABLED_PRESENT
