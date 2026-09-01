@@ -82,7 +82,7 @@ static int nxp_micfil_configure(const struct device *dev, struct dmic_cfg *cfg_i
 		return -EINVAL;
 	}
 
-	/* Basic channel count sanity and support limit */
+	/* Validate the channel count against the supported limit */
 	if ((chan->req_num_chan == 0U) || (chan->req_num_chan > ARRAY_SIZE(data->hw_chan))) {
 		LOG_ERR("Unsupported number of channels: %u", chan->req_num_chan);
 		return -ENOTSUP;
