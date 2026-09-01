@@ -1424,7 +1424,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	sub_pcie_mask_cmds,
 	SHELL_CMD_ARG(ignore, NULL, "Register a coordinate slot to be ignored by bus scans",
 		      cmd_pcie_mask_ignore, 2, 0),
-	SHELL_CMD_ARG(show, NULL, "Display all blacklisted BDF slots currently active",
+	SHELL_CMD_ARG(show, NULL, "Display all masked BDF slots currently active",
 		      cmd_pcie_mask_show, 1, 0),
 	SHELL_CMD_ARG(clear, NULL, "Flush the mask configuration tracking registers",
 		      cmd_pcie_mask_clear, 1, 0),
