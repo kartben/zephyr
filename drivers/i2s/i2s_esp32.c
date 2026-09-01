@@ -1644,7 +1644,7 @@ static DEVICE_API(i2s, i2s_esp32_driver_api) = {
 
 #if SOC_GDMA_SUPPORTED
 
-#define I2S_ESP32_DT_INST_SANITY_CHECK(index)                                                      \
+#define I2S_ESP32_DT_INST_CHECK(index)                                                             \
 	BUILD_ASSERT(DT_INST_NODE_HAS_PROP(index, dmas), "Missing property: dmas");                \
 	BUILD_ASSERT(DT_INST_NODE_HAS_PROP(index, dma_names), "Missing property: dma-names");
 
@@ -1660,7 +1660,7 @@ static DEVICE_API(i2s, i2s_esp32_driver_api) = {
 
 #else
 
-#define I2S_ESP32_DT_INST_SANITY_CHECK(index)                                                      \
+#define I2S_ESP32_DT_INST_CHECK(index)                                                             \
 	BUILD_ASSERT(!DT_INST_NODE_HAS_PROP(index, dmas), "Unexpected property: dmas");            \
 	BUILD_ASSERT(!DT_INST_NODE_HAS_PROP(index, dma_names), "Unexpected property: dma-names");  \
 	BUILD_ASSERT(DT_INST_NODE_HAS_PROP(index, interrupt_names),                                \
@@ -1710,7 +1710,7 @@ static DEVICE_API(i2s, i2s_esp32_driver_api) = {
 		    (.dir = {.conf = NULL, .data = NULL}))
 
 #define I2S_ESP32_INIT(index)                                                                      \
-	I2S_ESP32_DT_INST_SANITY_CHECK(index);                                                     \
+	I2S_ESP32_DT_INST_CHECK(index);                                                            \
                                                                                                    \
 	PINCTRL_DT_INST_DEFINE(index);                                                             \
                                                                                                    \
