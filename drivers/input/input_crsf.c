@@ -112,7 +112,7 @@ struct input_crsf_data {
 };
 
 /* The list of packet types we accept as RX */
-static const uint8_t crsf_whitelist[] = {
+static const uint8_t crsf_allowlist[] = {
 	CRSF_TYPE_RC_CHANNELS,
 	CRSF_TYPE_LINK_STATS,
 };
@@ -122,12 +122,12 @@ static inline uint8_t crsf_payload_data_len(uint8_t payload_len)
 	return payload_len - CRSF_LEN_TYPE_CRC_OVERHEAD;
 }
 
-static inline bool is_crsf_whitelisted(uint8_t type)
+static inline bool is_crsf_allowlisted(uint8_t type)
 {
-	const int list_size = ARRAY_SIZE(crsf_whitelist);
+	const int list_size = ARRAY_SIZE(crsf_allowlist);
 
 	for (int i = 0; i < list_size; i++) {
-		if (crsf_whitelist[i] == type) {
+		if (crsf_allowlist[i] == type) {
 			return true;
 		}
 	}
@@ -363,7 +363,7 @@ static void crsf_process_bytes(const struct device *dev, uint8_t *bytes, size_t 
 				/* Once we have 2 bytes (SYNC, LEN), we know the payload length */
 				data->payload_remaining = bytes[offset];
 
-				/* Sanity check length to prevent overflow */
+				/* Validate length to prevent overflow */
 				if (data->payload_remaining > CRSF_MAX_PAYLOAD_LEN ||
 				    data->payload_remaining < 2) {
 					LOG_DBG("Invalid CRSF len: %d", data->payload_remaining);
@@ -380,7 +380,7 @@ static void crsf_process_bytes(const struct device *dev, uint8_t *bytes, size_t 
 				crsf_reset_parser(data);
 				break;
 			}
-			if (is_crsf_whitelisted(bytes[offset])) {
+			if (is_crsf_allowlisted(bytes[offset])) {
 				if (data->xfer_bytes >= sizeof(data->rd_data)) {
 					crsf_reset_parser(data);
 					break;
