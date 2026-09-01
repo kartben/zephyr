@@ -263,7 +263,7 @@ static int adc_max2253x_channel_setup(const struct device *dev,
 		return -EINVAL;
 	}
 
-	/* Channels can't be configured on MAX2253x. Perform a sanity check so the user won't be
+	/* Channels can't be configured on MAX2253x. Validate the request so the user won't be
 	 * confused if the ADC does not behave as expected.
 	 */
 
