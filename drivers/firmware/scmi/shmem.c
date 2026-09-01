@@ -77,7 +77,7 @@ int scmi_shmem_read_hdr(const struct device *shmem, uint32_t *hdr)
 	data = shmem->data;
 	layout = (struct scmi_shmem_layout *)data->regmap;
 
-	/* some sanity checks first */
+	/* validate arguments first */
 	if (!hdr) {
 		return -EINVAL;
 	}

@@ -166,7 +166,7 @@ static int tisci_get_response(const struct device *dev, struct tisci_xfer *xfer)
 	}
 	hdr = (struct tisci_msg_hdr *)xfer->rx_message.buf;
 
-	/* Sanity check for message response */
+	/* Verify the response matches the request */
 	if (hdr->seq != data->seq) {
 		LOG_ERR("HDR seq != data seq [%d != %d]\n", hdr->seq, data->seq);
 		k_sem_give(&data->data_sem);
