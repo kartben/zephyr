@@ -206,7 +206,7 @@ void rf2xx_iface_frame_write(const struct device *dev,
 	uint8_t status;
 	uint8_t phr;
 
-	/* Sanity check */
+	/* Clamp the frame length */
 	if (length > 125) {
 		length = 125;
 	}
