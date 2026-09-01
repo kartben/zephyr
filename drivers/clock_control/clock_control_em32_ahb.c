@@ -684,7 +684,7 @@ static bool dwt_try_enable(void)
 	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
 	/*
-	 * Sanity-check that CYCCNT increments.
+	 * Verify that CYCCNT increments.
 	 */
 	uint32_t c0 = DWT->CYCCNT;
 
