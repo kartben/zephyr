@@ -147,7 +147,7 @@ config ESPI_TAF_PR_NUM
 	int "Sets of protection region settings"
 	default 16
 	help
-	  This size is display how many group of slave attached flash protection
+	  This size is display how many group of target attached flash protection
 	  region.
 
 config ESPI_TAF_NPCX_RPMC_SUPPORT

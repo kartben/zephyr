@@ -979,7 +979,7 @@ static void espi_flash_isr(const struct device *dev)
 
 		if (status & MCHP_ESPI_FC_STS_CHAN_EN) {
 			espi_init_flash(dev);
-			/* Indicate flash channel is ready to eSPI master */
+			/* Indicate flash channel is ready to eSPI controller */
 			capregs->FCRDY = MCHP_ESPI_FC_READY;
 			evt.evt_data = 1;
 		}

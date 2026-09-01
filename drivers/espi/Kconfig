@@ -73,7 +73,7 @@ config ESPI_AUTOMATIC_BOOT_DONE_ACKNOWLEDGE
 	depends on ESPI_TARGET
 	help
 	  Enable automatic acknowledgment from target basic configuration been
-	  completed by sending a virtual wire message to the eSPI master.
+	  completed by sending a virtual wire message to the eSPI controller.
 	  This depends on SPI boot configuration. It could be either very
 	  early in the flow after the VW channel is configured. Or it could be
 	  until flash channel is configured.

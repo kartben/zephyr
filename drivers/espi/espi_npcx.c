@@ -141,7 +141,7 @@ struct espi_bus_isr {
 	.wake_en_bit = NPCX_ESPIWE_##event##WE,  \
 	.bus_isr = isr }
 
-/* eSPI Virtual Wire Input (Master-to-Slave) signals configuration structure */
+/* eSPI Virtual Wire Input (Controller-to-Target) signals configuration structure */
 struct npcx_vw_in_config {
 	enum espi_vwire_signal sig; /* Virtual Wire signal */
 	uint8_t  reg_idx; /* register index for VW signal */
@@ -149,7 +149,7 @@ struct npcx_vw_in_config {
 	struct npcx_wui vw_wui; /* WUI mapping in MIWU modules for VW signal */
 };
 
-/* eSPI Virtual Wire Output (Slave-to-Master) signals configuration structure */
+/* eSPI Virtual Wire Output (Target-to-Controller) signals configuration structure */
 struct npcx_vw_out_config {
 	enum espi_vwire_signal sig; /* Virtual Wire signal */
 	uint8_t  reg_idx; /* register index for VW signal */
@@ -306,7 +306,7 @@ static void espi_bus_cfg_update_isr(const struct device *dev)
 	struct espi_event evt = { .evt_type = ESPI_BUS_EVENT_CHANNEL_READY,
 				  .evt_details = 0,
 				  .evt_data = 0 };
-	/* If host enable bits are not sync with ready bits on slave side. */
+	/* If host enable bits are not sync with ready bits on target side. */
 	uint8_t chg_mask = GET_FIELD(inst->ESPICFG, NPCX_ESPICFG_HCHANS_FIELD)
 			 ^ GET_FIELD(inst->ESPICFG, NPCX_ESPICFG_CHANS_FIELD);
 	chg_mask &= (ESPI_CHANNEL_VWIRE | ESPI_CHANNEL_OOB |
@@ -681,7 +681,7 @@ static void espi_vw_send_bootload_done(const struct device *dev)
 			ESPI_VWIRE_SIGNAL_TARGET_BOOT_DONE, &boot_done);
 	LOG_DBG("%s: %d", __func__, boot_done);
 	if (!ret && !boot_done) {
-		/* Send slave boot status bit with done bit at the same time. */
+		/* Send target boot status bit with done bit at the same time. */
 		espi_npcx_send_vwire(dev, ESPI_VWIRE_SIGNAL_TARGET_BOOT_STS, 1);
 	}
 }

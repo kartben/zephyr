@@ -1192,7 +1192,7 @@ int npcx_host_init_subs_core_domain(const struct device *host_bus_dev,
 
 	/*
 	 * Set HOSTWAIT bit and avoid the other settings, then host can freely
-	 * communicate with slave (EC).
+	 * communicate with target (EC).
 	 */
 	inst_shm->SMC_CTL &= BIT(NPCX_SMC_CTL_HOSTWAIT);
 	/* Clear shared memory status */

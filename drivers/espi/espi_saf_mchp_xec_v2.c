@@ -804,7 +804,7 @@ static bool espi_taf_xec_v2_channel_ready(const struct device *dev)
  * Configure SAF and QMSPI for SAF operation based upon the
  * number and characteristics of local SPI flash devices.
  * NOTE: SAF is configured but not activated. SAF should be
- * activated only when eSPI master sends Flash Channel enable
+ * activated only when eSPI controller sends Flash Channel enable
  * message with MAF/SAF select flag.
  */
 static int espi_taf_xec_v2_config(const struct device *dev, const struct espi_saf_cfg *cfg)
