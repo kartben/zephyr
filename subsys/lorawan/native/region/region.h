@@ -114,7 +114,7 @@ struct lwan_region_ops {
 	/**
 	 * @brief Validate a datarate index for this region.
 	 *
-	 * Used to sanity-check a DR received from the network (e.g. in a
+	 * Used to validate a DR received from the network (e.g. in a
 	 * LinkADRReq) before the stack commits to it.
 	 *
 	 * @param dr Datarate index (0..15 from the wire).
@@ -126,7 +126,7 @@ struct lwan_region_ops {
 	 * @brief Validate a TX power index for this region.
 	 *
 	 * The index is region-specific; each region maps it to a dBm value.
-	 * Used to sanity-check a LinkADRReq TXPower field.
+	 * Used to validate a LinkADRReq TXPower field.
 	 *
 	 * @param tx_power_idx TX power index (0..15 from the wire).
 	 * @return 0 if the index is defined, -EINVAL otherwise.
