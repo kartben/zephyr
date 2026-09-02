@@ -700,6 +700,10 @@ __comp_west_boards()
 
 __comp_west_shields()
 {
+	local bool_opts="
+		--json
+	"
+
 	local other_opts="
 		--format -f
 		--name -n
@@ -709,7 +713,7 @@ __comp_west_shields()
 		--board-root
 	"
 
-	all_opts="$dir_opts $other_opts"
+	all_opts="$bool_opts $dir_opts $other_opts"
 
 	case "$prev" in
 		$(__west_to_extglob "$other_opts") )

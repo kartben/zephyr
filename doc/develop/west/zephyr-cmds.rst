@@ -592,3 +592,7 @@ the following fields, taken from its :file:`board.yml`:
 
 With ``--all-targets``, ``--json`` prints a flat, sorted array of target
 strings instead.
+
+``west shields --json`` prints an array of shields sorted by name, each with
+``name``, ``full_name``, ``vendor``, ``dir`` and ``supported_features`` from
+its :file:`shield.yml`.

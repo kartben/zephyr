@@ -476,6 +476,7 @@ complete -c west -n "__zephyr_west_seen_subcommand_from boards" -l board-dir -xa
 complete -c west -n "__zephyr_west_use_subcommand; and __zephyr_west_check_if_in_workspace" -ra shields -d "display list of supported shields"
 complete -c west -n "__zephyr_west_seen_subcommand_from shields" -o f -l format -d "format string"
 complete -c west -n "__zephyr_west_seen_subcommand_from shields" -o n -l name -d "name regex"
+complete -c west -n "__zephyr_west_seen_subcommand_from shields" -l json -d "print the result as JSON"
 complete -c west -n "__zephyr_west_seen_subcommand_from shields" -l board-root -xa "(__zephyr_west_complete_directories)" -d "add a board root"
 
 # build

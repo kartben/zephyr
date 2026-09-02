@@ -312,6 +312,7 @@ _west_shields() {
   local -a opts=(
   {-f,--format}'[format string]:format string:'
   {-n,--name}'[name regex]:regex:'
+  '--json[print the result as JSON]'
   '*--board-root[Add a board root]:board root:_directories'
   )
 
