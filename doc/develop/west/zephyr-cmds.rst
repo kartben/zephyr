@@ -265,6 +265,9 @@ You can list binary blobs while specifying the format of the output::
 For the full set of variables available in ``-f/--format`` run
 ``west blobs -h``.
 
+For machine-readable output, use ``west blobs list --json`` instead of a format
+string; see :ref:`west-json-output`.
+
 Fetching blobs works in a similar manner::
 
   west blobs fetch
@@ -601,3 +604,10 @@ its :file:`shield.yml`.
 ``name``, ``description``, ``dirs`` (the directories that define or extend the
 snippet) and ``boards`` (the board patterns it has board-specific settings
 for).
+
+``west blobs list --json`` prints an array of blobs in module order. Each entry
+has the keys declared for the blob in :file:`module.yml` (``path``, ``sha256``,
+``type``, ``version``, ``license-path``, ``url``, ``description``, ``doc-url``,
+``click-through``, ...) plus the computed ``module``, ``abspath``,
+``license-abspath`` and ``status`` (``A`` present, ``M`` hash mismatch, ``D``
+not present) fields, i.e. the same values available to ``--format``.

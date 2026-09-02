@@ -667,6 +667,7 @@ complete -c west -n "__zephyr_west_use_subcommand; and __zephyr_west_check_if_in
 complete -c west -n "__zephyr_west_seen_subcommand_from blobs; and not __fish_seen_subcommand_from list fetch clean" -ra "list\t'list binary blobs' fetch\t'fetch binary blobs' clean\t'clean working tree of binary blobs'"
 complete -c west -n "__zephyr_west_seen_subcommand_from blobs; and __fish_seen_subcommand_from list fetch clean" -ra "(__zephyr_west_complete_projects)"
 complete -c west -n "__zephyr_west_seen_subcommand_from blobs; and not __fish_seen_subcommand_from fetch clean" -o f -l format -r -d "format string"
+complete -c west -n "__zephyr_west_seen_subcommand_from blobs; and not __fish_seen_subcommand_from fetch clean" -l json -d "print the result as JSON"
 
 # sdk
 complete -c west -n "__zephyr_west_use_subcommand; and __zephyr_west_check_if_in_workspace" -ra sdk -d "manage SDKs"

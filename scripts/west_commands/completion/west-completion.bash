@@ -1001,6 +1001,10 @@ __comp_west_spdx()
 
 __comp_west_blobs()
 {
+	local bool_opts="
+		--json
+	"
+
 	local other_opts="
 		--format -f
 	"
@@ -1018,7 +1022,7 @@ __comp_west_blobs()
 
 	case "$cur" in
 		-*)
-			__set_comp $other_opts
+			__set_comp $bool_opts $other_opts
 			;;
 		*)
 			__set_comp_west_projs

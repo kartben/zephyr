@@ -449,6 +449,7 @@ _west_blobs() {
 _west_blob_list () {
   local -a opts=(
   {-f,--format}'[format string]:format string:'
+  '--json[print the result as JSON]'
   )
 
   _arguments -S $opts \
