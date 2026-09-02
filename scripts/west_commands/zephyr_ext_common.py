@@ -8,6 +8,9 @@ Note that common helpers used by the flash and debug extension
 commands are in run_common -- that's for common code used by
 commands which specifically execute runners.'''
 
+import dataclasses
+import enum
+import json
 import os
 import shlex
 from pathlib import Path
@@ -58,3 +61,35 @@ class Forceable(WestCommand):
         if len(words) != 1:
             self.die(f'Single word expected for: {section_key}={words}. Use quotes?')
         return words[0]
+
+
+class ZephyrJSONEncoder(json.JSONEncoder):
+    '''JSON encoder for the object types found in Zephyr metadata.
+
+    Paths become native path strings, sets become sorted lists, enums
+    their values, and dataclasses dictionaries.'''
+
+    def default(self, o):
+        if isinstance(o, os.PathLike):
+            return os.fspath(o)
+        if isinstance(o, set | frozenset):
+            return sorted(o)
+        if isinstance(o, enum.Enum):
+            return o.value
+        if dataclasses.is_dataclass(o) and not isinstance(o, type):
+            return dataclasses.asdict(o)
+        return super().default(o)
+
+
+def add_json_arg(parser, help='print the result as JSON instead of text'):
+    '''Add the common --json option to an extension command parser.'''
+    parser.add_argument('--json', action='store_true', help=help)
+
+
+def emit_json(obj):
+    '''Print obj to stdout as a single, deterministic JSON document.
+
+    This deliberately bypasses WestCommand.inf() so that the output is
+    still produced under "west -q".'''
+    print(json.dumps(obj, cls=ZephyrJSONEncoder, indent=2, sort_keys=True))
+
