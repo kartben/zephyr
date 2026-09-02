@@ -641,9 +641,12 @@ is_user_syscall:
 	lr a5, __struct_arch_esf_a5_OFFSET(sp)
 	lr t0, __struct_arch_esf_t0_OFFSET(sp)
 #if defined(CONFIG_RISCV_ISA_RV32E)
-	/* Stack alignment for RV32E is 4 bytes */
-	addi sp, sp, -4
+	/* Stack alignment for RV32E is 4 bytes. The 7th argument (the
+	 * pointer to the exception frame) is passed on the stack, take it
+	 * before making room for it.
+	 */
 	mv t1, sp
+	addi sp, sp, -4
 	sw t1, 0(sp)
 #else
 	mv a6, sp
