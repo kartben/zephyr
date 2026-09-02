@@ -350,17 +350,99 @@ void z_impl_z_log_msg_static_create(const void *source,
 }
 
 #ifdef CONFIG_USERSPACE
+/* Check that a user supplied string pointer is a readable, NUL terminated
+ * string of at most @p maxlen bytes: the log core copies such strings with
+ * strlen()/memcpy() in supervisor mode.
+ */
+static void log_msg_vrfy_user_string(const char *str, size_t maxlen)
+{
+	int err = 0;
+	size_t len;
+
+	K_OOPS(K_SYSCALL_VERIFY_MSG(str != NULL, "NULL log string"));
+	len = k_usermode_string_nlen(str, maxlen, &err);
+	K_OOPS(K_SYSCALL_VERIFY_MSG((err == 0) && (len < maxlen),
+				    "Log string %p not accessible", (const void *)str));
+}
+
+/* Check the self-describing parts of a cbprintf package that the log core
+ * trusts when it copies the package: the argument area length, the string
+ * location tables and the read-write string pointers they refer to. Without
+ * this a user thread could make the kernel read past the package or copy a
+ * string from an arbitrary address.
+ */
+static void log_msg_vrfy_package(const uint8_t *package, size_t package_len)
+{
+	struct cbprintf_package_hdr_ext hdr;
+	size_t args_size;
+	size_t ro_cnt;
+	size_t loc_cnt;
+
+	K_OOPS(K_SYSCALL_VERIFY_MSG(package_len >= sizeof(hdr), "Log package too short"));
+	K_OOPS(k_usermode_from_copy(&hdr, package, sizeof(hdr)));
+
+	args_size = (size_t)hdr.hdr.desc.len * sizeof(int);
+	ro_cnt = hdr.hdr.desc.ro_str_cnt;
+	loc_cnt = ro_cnt + (2U * (size_t)hdr.hdr.desc.rw_str_cnt);
+
+	K_OOPS(K_SYSCALL_VERIFY_MSG((args_size >= sizeof(hdr)) &&
+				    ((args_size + loc_cnt) <= package_len) &&
+				    (loc_cnt <= 32U),
+				    "Invalid log package header"));
+
+	if (!IS_ENABLED(CONFIG_LOG_FMT_SECTION_STRIP)) {
+		log_msg_vrfy_user_string(hdr.fmt, Z_LOG_MSG_MAX_PACKAGE);
+	}
+
+	for (size_t i = 0; i < loc_cnt; i++) {
+		const char *str;
+		uint8_t loc;
+
+		K_OOPS(k_usermode_from_copy(&loc, &package[args_size + i], sizeof(loc)));
+
+		/* Read-write entries come in (argument index, location) pairs,
+		 * the argument index is not used to address the package.
+		 */
+		if ((i >= ro_cnt) && (((i - ro_cnt) % 2U) == 0U)) {
+			continue;
+		}
+
+		K_OOPS(K_SYSCALL_VERIFY_MSG((((size_t)loc * sizeof(uint32_t)) + sizeof(str)) <=
+					    args_size,
+					    "Invalid log package string location"));
+
+		if (i < ro_cnt) {
+			/* Read-only strings are referenced, not copied. */
+			continue;
+		}
+
+		K_OOPS(k_usermode_from_copy(&str, &package[(size_t)loc * sizeof(uint32_t)],
+					    sizeof(str)));
+		log_msg_vrfy_user_string(str, Z_LOG_MSG_MAX_PACKAGE);
+	}
+}
+
 static inline void z_vrfy_z_log_msg_static_create(const void *source,
 			      const struct log_msg_desc desc,
 			      uint8_t *package, const void *data)
 {
 	K_OOPS(K_SYSCALL_VERIFY(desc.package_len <= Z_LOG_MSG_MAX_PACKAGE));
 
+	/* Kernel code only ever creates messages for the local domain and
+	 * with a level the LOG_* macros allow; the log core indexes tables
+	 * with both values.
+	 */
+	K_OOPS(K_SYSCALL_VERIFY_MSG(desc.domain == Z_LOG_LOCAL_DOMAIN_ID,
+				    "Invalid log domain %u", (unsigned int)desc.domain));
+	K_OOPS(K_SYSCALL_VERIFY_MSG(desc.level <= LOG_LEVEL_DBG,
+				    "Invalid log level %u", (unsigned int)desc.level));
+
 	K_OOPS(K_SYSCALL_VERIFY((desc.package_len == 0) || (package != NULL)));
 	K_OOPS(K_SYSCALL_VERIFY((desc.data_len == 0) || (data != NULL)));
 
 	if (desc.package_len > 0) {
 		K_OOPS(K_SYSCALL_MEMORY_READ(package, desc.package_len));
+		log_msg_vrfy_package(package, desc.package_len);
 	}
 
 	if (desc.data_len > 0) {
@@ -370,10 +452,31 @@ static inline void z_vrfy_z_log_msg_static_create(const void *source,
 	if (IS_ENABLED(CONFIG_LOG_RUNTIME_FILTERING) &&
 	    IS_ENABLED(CONFIG_LOG_FRONTEND) &&
 	    (desc.level != LOG_LEVEL_NONE)) {
-		size_t source_size = sizeof(struct log_source_dynamic_data);
-
 		K_OOPS(K_SYSCALL_VERIFY(source != NULL));
-		K_OOPS(K_SYSCALL_MEMORY_READ(source, source_size));
+	}
+
+	/* The source pointer is turned into an index into the log source
+	 * tables, so it must point at one of the registered sources.
+	 */
+	if (source != NULL) {
+		const uint8_t *start;
+		const uint8_t *end;
+		size_t elem_size;
+
+		if (IS_ENABLED(CONFIG_LOG_RUNTIME_FILTERING)) {
+			start = (const uint8_t *)TYPE_SECTION_START(log_dynamic);
+			end = (const uint8_t *)TYPE_SECTION_END(log_dynamic);
+			elem_size = sizeof(struct log_source_dynamic_data);
+		} else {
+			start = (const uint8_t *)TYPE_SECTION_START(log_const);
+			end = (const uint8_t *)TYPE_SECTION_END(log_const);
+			elem_size = sizeof(struct log_source_const_data);
+		}
+
+		K_OOPS(K_SYSCALL_VERIFY_MSG(((const uint8_t *)source >= start) &&
+					    ((const uint8_t *)source < end) &&
+					    ((((const uint8_t *)source - start) % elem_size) == 0U),
+					    "Invalid log source %p", source));
 	}
 
 	z_impl_z_log_msg_static_create(source, desc, package, data);
