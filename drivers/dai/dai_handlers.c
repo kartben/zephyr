@@ -117,11 +117,21 @@ static inline int z_vrfy_dai_trigger(const struct device *dev,
 static inline int z_vrfy_dai_ts_config(const struct device *dev, struct dai_ts_cfg *cfg)
 {
 	struct dai_ts_cfg cfg_kernel;
+	int ret;
 
 	K_OOPS(K_SYSCALL_DRIVER_DAI(dev, ts_config));
 	K_OOPS(k_usermode_from_copy(&cfg_kernel, cfg, sizeof(cfg_kernel)));
 
-	return z_impl_dai_ts_config(dev, &cfg_kernel);
+	ret = z_impl_dai_ts_config(dev, &cfg_kernel);
+
+	/* The driver fills in fields (e.g. walclk_rate) that dai_ts_get()
+	 * reads back from the caller's structure later on.
+	 */
+	if (ret == 0) {
+		K_OOPS(k_usermode_to_copy(cfg, &cfg_kernel, sizeof(cfg_kernel)));
+	}
+
+	return ret;
 }
 #include <zephyr/syscalls/dai_ts_config_mrsh.c>
 
