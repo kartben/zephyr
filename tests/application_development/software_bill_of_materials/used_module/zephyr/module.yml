@@ -25,3 +25,17 @@ blobs:
     license-path: zephyr/blobs/license.txt
     url: https://example.com/blobs/sbom_blob_literal.a
     description: Fake vendor blob linked with an -l:FILENAME linker flag
+  - path: sbom_blob_firmware.bin
+    sha256: ed12f290674b7afdcba509464525eccc33bd41847202ba0dc8b97f445c425e00
+    type: img
+    version: "1.2.3"
+    license-path: zephyr/blobs/license.txt
+    url: https://example.com/blobs/sbom_blob_firmware.bin
+    description: Fake vendor firmware embedded with generate_inc_file_for_target()
+  - path: sbom_blob_incbin.bin
+    sha256: c6bd2b07f08d9ecaf888cb0cd017573862d9513a55612a60f5146e55a76db4a5
+    type: img
+    version: "1.2.3"
+    license-path: zephyr/blobs/license.txt
+    url: https://example.com/blobs/sbom_blob_incbin.bin
+    description: Fake vendor firmware embedded with an .incbin directive
