@@ -137,7 +137,7 @@ def get_reuse_info(project, file_path):
     _logger.debug("  - getting REUSE info for %s", file_path)
 
     try:
-        infos = project.reuse_info_of(file_path)
+        infos = project.reuse_info_of(os.path.realpath(file_path))
         licenses = []
         copyrights = []
 
@@ -171,9 +171,10 @@ def scan_sbom_graph(cfg, sbom_graph):
         # component's own base_dir so that REUSE.toml files are found, and
         # reuse it for all of its files. Skip components that own no files.
         reuse_project = None
-        if component.files and component.base_dir:
+        component_root = os.path.realpath(str(component.base_dir)) if component.base_dir else None
+        if component.files and component_root:
             try:
-                reuse_project = Project.from_directory(str(component.base_dir))
+                reuse_project = Project.from_directory(component_root)
             except Exception:
                 _logger.warning(
                     "Error building REUSE project for %s", component.base_dir, exc_info=True
@@ -182,7 +183,12 @@ def scan_sbom_graph(cfg, sbom_graph):
         # first, gather File data for this component
         for f in component.files.values():
             # set relpath based on component's base_dir
-            f.relative_path = os.path.relpath(f.path, component.base_dir)
+            file_realpath = os.path.realpath(f.path)
+            f.relative_path = (
+                os.path.relpath(file_realpath, component_root)
+                if component_root
+                else os.path.relpath(f.path, component.base_dir)
+            )
 
             # get hashes for file
             hashes = get_hashes(f.path)

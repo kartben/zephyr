@@ -644,8 +644,10 @@ class Walker:
             return
 
         for blob in (meta or {}).get("blobs", []):
-            blob_abspath = os.path.normpath(
-                os.path.join(module_path, "zephyr", "blobs", blob.get("path", ""))
+            blob_abspath = os.path.realpath(
+                os.path.normpath(
+                    os.path.join(module_path, "zephyr", "blobs", blob.get("path", ""))
+                )
             )
             self.module_blobs[blob_abspath] = blob
 
@@ -1116,7 +1118,7 @@ class Walker:
 
             # if this file is a blob declared by its module, carry the blob's
             # provenance metadata along
-            blob = self.module_blobs.get(src_abspath)
+            blob = self.module_blobs.get(os.path.realpath(src_abspath))
             if blob:
                 sbom_file.metadata["blob"] = blob
 
@@ -1124,11 +1126,18 @@ class Walker:
 
     # figure out which Component should own the given file based on path
     def _is_within(self, src_abspath, base_dir):
-        """True if src_abspath lives under base_dir (same common ancestor)."""
+        """True if src_abspath lives under base_dir (same common ancestor).
+
+        Compare after resolving symlinks so a file CMake recorded via its real
+        path still matches a west module checked out through a workspace
+        symlink (or vice versa).
+        """
         if not base_dir:
             return False
         try:
-            return os.path.commonpath([src_abspath, base_dir]) == base_dir
+            src = os.path.realpath(src_abspath)
+            base = os.path.realpath(base_dir)
+            return os.path.commonpath([src, base]) == base
         except ValueError:
             # Paths don't share a common ancestor (e.g. different drives)
             return False
