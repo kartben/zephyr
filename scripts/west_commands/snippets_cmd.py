@@ -13,10 +13,20 @@ from pathlib import Path
 from west.commands import WestCommand
 
 from zcmake import run_cmake
-from zephyr_ext_common import ZEPHYR_BASE
+from zephyr_ext_common import ZEPHYR_BASE, add_json_arg, emit_json
 
 sys.path.append(os.fspath(Path(__file__).parent.parent))
 from snippets import Snippet, find_snippets_in_roots, load_snippet_yml
+
+
+def snippet_to_dict(snippet):
+    '''Return the JSON-serializable representation of a snippets.Snippet.'''
+    return {
+        'name': snippet.name,
+        'description': snippet.description,
+        'dirs': list(snippet.dirs),
+        'boards': sorted(snippet.board2appends.keys()),
+    }
 
 
 class Snippets(WestCommand):
@@ -69,6 +79,7 @@ class Snippets(WestCommand):
             help='''a regular expression; only snippets whose
                     names match NAME_RE will be listed''',
         )
+        add_json_arg(parser, help='print snippets as JSON')
         parser.add_argument(
             '--snippet-root',
             dest='snippet_roots',
@@ -81,6 +92,9 @@ class Snippets(WestCommand):
         return parser
 
     def do_run(self, args, _):
+        if args.json and args.format is not None:
+            self.die('--json and --format are mutually exclusive')
+
         if args.name_re is not None:
             name_re = re.compile(args.name_re)
         else:
@@ -126,7 +140,9 @@ class Snippets(WestCommand):
         ]
         filtered.sort(key=lambda snippet: snippet.name)
 
-        if args.format is not None:
+        if args.json:
+            emit_json([snippet_to_dict(snippet) for snippet in filtered])
+        elif args.format is not None:
             for snippet in filtered:
                 self.inf(
                     args.format.format(

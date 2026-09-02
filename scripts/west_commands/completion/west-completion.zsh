@@ -323,6 +323,7 @@ _west_snippets() {
   local -a opts=(
   {-f,--format}'[format string]:format string:'
   {-n,--name}'[name regex]:regex:'
+  '--json[print the result as JSON]'
   '*--snippet-root[Add a snippet root]:snippet root:_directories'
   )
 

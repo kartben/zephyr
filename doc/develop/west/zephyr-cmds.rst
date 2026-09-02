@@ -596,3 +596,8 @@ strings instead.
 ``west shields --json`` prints an array of shields sorted by name, each with
 ``name``, ``full_name``, ``vendor``, ``dir`` and ``supported_features`` from
 its :file:`shield.yml`.
+
+``west snippets --json`` prints an array of snippets sorted by name, each with
+``name``, ``description``, ``dirs`` (the directories that define or extend the
+snippet) and ``boards`` (the board patterns it has board-specific settings
+for).
