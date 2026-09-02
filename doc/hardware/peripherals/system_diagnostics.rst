@@ -17,3 +17,6 @@ System information, synchronization, DMA, and diagnostics.
    peci.rst
    dma.rst
    mux.rst
+   fpga.rst
+   syscon.rst
+   tee.rst
