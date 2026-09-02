@@ -114,9 +114,12 @@ int flash_stm32_ex_op_sector_wp(const struct device *dev, const uintptr_t in,
 #ifdef CONFIG_USERSPACE
 		struct flash_stm32_ex_op_sector_wp_in in_copy;
 
+		/* The driver lock is held, do not oops with it taken. */
 		if (syscall_trap) {
-			K_OOPS(k_usermode_from_copy(&in_copy, request,
-						sizeof(in_copy)));
+			if (k_usermode_from_copy(&in_copy, request,
+						 sizeof(in_copy)) != 0) {
+				return -EFAULT;
+			}
 			request = &in_copy;
 		}
 #endif
@@ -153,8 +156,9 @@ int flash_stm32_ex_op_sector_wp(const struct device *dev, const uintptr_t in,
 		}
 
 #ifdef CONFIG_USERSPACE
-		if (syscall_trap) {
-			K_OOPS(k_usermode_to_copy(out, result, sizeof(out_copy)));
+		if (syscall_trap &&
+		    (k_usermode_to_copy(out, result, sizeof(out_copy)) != 0)) {
+			rc = -EFAULT;
 		}
 #endif
 	}
@@ -246,8 +250,11 @@ int flash_stm32_ex_op_rdp(const struct device *dev, const uintptr_t in,
 
 	if (request != NULL) {
 #ifdef CONFIG_USERSPACE
+		/* The driver lock is held, do not oops with it taken. */
 		if (syscall_trap) {
-			K_OOPS(k_usermode_from_copy(&copy, request, sizeof(copy)));
+			if (k_usermode_from_copy(&copy, request, sizeof(copy)) != 0) {
+				return -EFAULT;
+			}
 			request = &copy;
 		}
 #endif
@@ -292,8 +299,9 @@ int flash_stm32_ex_op_rdp(const struct device *dev, const uintptr_t in,
 		}
 
 #ifdef CONFIG_USERSPACE
-		if (syscall_trap) {
-			K_OOPS(k_usermode_to_copy(out, result, sizeof(copy)));
+		if (syscall_trap &&
+		    (k_usermode_to_copy(out, result, sizeof(copy)) != 0)) {
+			rc = -EFAULT;
 		}
 #endif
 	}
@@ -340,16 +348,27 @@ int flash_stm32_ex_op(const struct device *dev, uint16_t code,
 		(defined(CONFIG_DT_HAS_ST_STM32L5_FLASH_CONTROLLER_ENABLED) && \
 		 (defined(CONFIG_SOC_SERIES_STM32L5X) || \
 		  defined(CONFIG_SOC_SERIES_STM32U5X))))
-	case FLASH_STM32_EX_OP_OPTB_READ:
+	case FLASH_STM32_EX_OP_OPTB_READ: {
+		uint32_t optb;
+
 		if (out == NULL) {
 			rv = -EINVAL;
 			break;
 		}
 
-		*(uint32_t *)out = flash_stm32_option_bytes_read(dev);
+		optb = flash_stm32_option_bytes_read(dev);
+#ifdef CONFIG_USERSPACE
+		if (k_is_in_user_syscall()) {
+			rv = (k_usermode_to_copy(out, &optb, sizeof(optb)) == 0) ?
+			     0 : -EFAULT;
+			break;
+		}
+#endif
+		*(uint32_t *)out = optb;
 		rv = 0;
 
 		break;
+	}
 	case FLASH_STM32_EX_OP_OPTB_WRITE: {
 		int rv2;
 
