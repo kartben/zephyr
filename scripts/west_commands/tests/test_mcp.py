@@ -386,6 +386,39 @@ def test_workspace_info_and_projects(cfg):
     assert workspace.list_projects(cfg, cloned_only=True)['projects'][0]['name'] == 'manifest'
 
 
+def test_environment_check(cfg, tmp_path, monkeypatch):
+    monkeypatch.setenv('HOME', str(tmp_path))
+    monkeypatch.delenv('ZEPHYR_TOOLCHAIN_VARIANT', raising=False)
+    monkeypatch.delenv('ZEPHYR_SDK_INSTALL_DIR', raising=False)
+    with patch('shutil.which', side_effect=lambda n: None if n == 'ninja' else f'/usr/bin/{n}'):
+        env = workspace.environment_check(cfg)
+    assert env['tools']['cmake'] == '/usr/bin/cmake' and env['missing_tools'] == ['ninja']
+    assert env['sdk_registry'] == []
+    assert [h.split(' ')[0] for h in env['hints']] == ['ninja', 'no']
+
+    registry = tmp_path / '.cmake' / 'packages' / 'Zephyr-sdk'
+    registry.mkdir(parents=True)
+    (registry / 'abc').write_text(f'{tmp_path}/zephyr-sdk-1.0.1/cmake\n')
+    with patch('shutil.which', return_value='/usr/bin/tool'):
+        env = workspace.environment_check(cfg)
+    assert env['sdk_registry'] == [f'{tmp_path}/zephyr-sdk-1.0.1'] and env['hints'] == []
+    assert workspace.workspace_info(cfg)['environment']['python'] == sys.executable
+
+
+def test_mcp_cmd_check(capsys):
+    import argparse
+
+    cmd = Mcp()
+    cmd.config = _FakeConfig({'color.ui': False})
+    cmd.topdir = '/ws'
+    cmd.manifest = FakeManifest()
+    parser = argparse.ArgumentParser(allow_abbrev=False)
+    cmd.parser = cmd.do_add_parser(parser.add_subparsers())
+    cmd.do_run(parser.parse_args(['mcp', '--check']), [])
+    out = capsys.readouterr().out
+    assert out.startswith('workspace: /ws\n') and 'cmake: ' in out and 'hardware: not' in out
+
+
 Module = namedtuple('Module', ['project', 'meta', 'depends'])
 
 

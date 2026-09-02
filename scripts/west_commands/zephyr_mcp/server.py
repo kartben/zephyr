@@ -62,6 +62,10 @@ than one.
 
 Long operations (build, twister_run, flash) report progress, can be cancelled, and run one at a
 time. Every path must lie under: {roots}.
+
+Before the first build, check the "environment" section of workspace_info: it lists the host
+tools found on PATH and the SDK the server can see. Relay any "hints" it contains to the user
+instead of attempting a build that cannot succeed.
 '''
 
 

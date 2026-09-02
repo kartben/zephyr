@@ -5,6 +5,7 @@
 
 import os
 import re
+import shutil
 import sys
 from argparse import Namespace
 from pathlib import Path
@@ -17,6 +18,8 @@ from zephyr_ext_common import module_roots
 sys.path.append(os.fspath(Path(__file__).parent.parent.parent))
 import list_boards as list_boards_lib
 import zephyr_module
+
+HOST_TOOLS = ('cmake', 'ninja', 'dtc', 'gperf', 'git')
 
 CONFIG_KEYS = (
     'build.board',
@@ -42,6 +45,51 @@ def zephyr_version(zephyr_base) -> str | None:
     return version
 
 
+def sdk_registry() -> list[str]:
+    # SDK installations registered with CMake, the usual way builds find one.
+    registry = Path.home() / '.cmake' / 'packages' / 'Zephyr-sdk'
+    sdks = []
+    if registry.is_dir():
+        for entry in sorted(registry.iterdir()):
+            try:
+                sdks.append(str(Path(entry.read_text().strip()).parent))
+            except OSError:
+                continue
+    return sdks
+
+
+def environment_check(cfg) -> dict:
+    '''Report whether the environment the server inherited can build.'''
+    tools = {name: shutil.which(name) for name in HOST_TOOLS}
+    missing = [name for name, path in tools.items() if path is None]
+    variant = os.environ.get('ZEPHYR_TOOLCHAIN_VARIANT')
+    sdk_dir = os.environ.get('ZEPHYR_SDK_INSTALL_DIR')
+    sdks = sdk_registry()
+    hints = []
+    if missing:
+        hints.append(
+            f'{", ".join(missing)} not found on PATH; builds will fail. Add the '
+            'directories to the PATH in the MCP client configuration, or start '
+            'the server from a launcher script that sets up the environment.'
+        )
+    if not (sdks or sdk_dir or variant):
+        hints.append(
+            'no Zephyr SDK is registered with CMake and no toolchain variables are '
+            'set; run "west sdk install", or pass ZEPHYR_TOOLCHAIN_VARIANT and '
+            'friends in the MCP client configuration.'
+        )
+    return {
+        'python': sys.executable,
+        'path': os.environ.get('PATH', ''),
+        'tools': tools,
+        'missing_tools': missing,
+        'toolchain_variant': variant,
+        'sdk_install_dir': sdk_dir,
+        'sdk_registry': sdks,
+        'hints': hints,
+    }
+
+
 def workspace_info(cfg) -> dict:
     projects = cfg.manifest.projects
     return {
@@ -56,6 +104,7 @@ def workspace_info(cfg) -> dict:
         'allowed_roots': cfg.roots,
         'allow_hardware': cfg.allow_hardware,
         'log_dir': cfg.log_dir,
+        'environment': environment_check(cfg),
     }
 
 

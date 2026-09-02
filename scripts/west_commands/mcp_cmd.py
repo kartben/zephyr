@@ -67,14 +67,47 @@ class Mcp(WestCommand):
             help='''where to keep the full logs of builds and test runs
                             (default: a temporary directory)''',
         )
+        parser.add_argument(
+            '--check',
+            action='store_true',
+            help='''do not serve; print what the server would report about
+                            the workspace and its environment, then exit''',
+        )
 
         return parser
 
     def do_run(self, args, _):
+        cfg = ServerConfig.from_command(self, args)
+        if args.check:
+            self.check(cfg)
+            return
+
         try:
             from zephyr_mcp import server
         except ImportError as e:
             self.dbg(f'import failed: {e}')
             self.die(MISSING_MCP)
 
-        server.run_stdio(ServerConfig.from_command(self, args))
+        server.run_stdio(cfg)
+
+    def check(self, cfg):
+        from zephyr_mcp.workspace import workspace_info
+
+        info = workspace_info(cfg)
+        env = info['environment']
+        self.inf(f'workspace: {info["topdir"]}')
+        self.inf(f'zephyr: {info["zephyr_version"]} at {info["zephyr_base"]}')
+        self.inf(f'projects: {info["projects_cloned"]}/{info["projects_total"]} cloned')
+        self.inf(f'python: {env["python"]}')
+        for name, path in env['tools'].items():
+            self.inf(f'{name}: {path or "NOT FOUND"}')
+        self.inf(f'sdk: {", ".join(env["sdk_registry"]) or env["sdk_install_dir"] or "none"}')
+        self.inf(f'toolchain variant: {env["toolchain_variant"] or "(default)"}')
+        self.inf(f'allowed roots: {", ".join(str(r) for r in cfg.roots)}')
+        self.inf(f'hardware: {"allowed" if cfg.allow_hardware else "not allowed"}')
+        try:
+            import mcp  # noqa: F401
+        except ImportError:
+            self.wrn('the mcp package is not installed; "west mcp" cannot serve')
+        for hint in env['hints']:
+            self.wrn(hint)
