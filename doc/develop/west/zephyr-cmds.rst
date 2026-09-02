@@ -27,6 +27,9 @@ Additional help about the formatting options can be found by running::
 
   west boards -h
 
+For machine-readable output, use ``--json`` instead of a format string; see
+:ref:`west-json-output`.
+
 .. _west-completion:
 
 Shell completion scripts: ``west completion``
@@ -555,3 +558,37 @@ To install specific toolchains only, use the ``--toolchains`` option:
 If you are unsure which toolchains you need, run ``west sdk list`` first
 to see the available options and avoid downloading unnecessary
 toolchains, which can save gigabytes of disk space and download time.
+
+.. _west-json-output:
+
+Machine-readable output: ``--json``
+***********************************
+
+Several of the listing commands above accept a ``--json`` option, which
+replaces their text output with a single JSON document printed to standard
+output. This is meant for scripts, CI jobs and AI coding agents that need to
+query a workspace without parsing human-oriented text. Diagnostics still go to
+standard error, and the JSON output is produced even under ``west -q``.
+
+``--json`` cannot be combined with a ``-f/--format`` string. The output is
+deterministic: object keys are sorted, and filesystem paths use the native
+separator of the host. Fields are only ever added to these documents; renaming
+or removing a field is treated as a breaking change and announced in the
+migration guide.
+
+``west boards --json`` prints an array of boards sorted by name. Each board has
+the following fields, taken from its :file:`board.yml`:
+
+- ``name``, ``full_name``, ``vendor``, ``hwm``
+- ``dir``: the main board directory, and ``dirs``: all directories that
+  contribute to the board definition (extensions included)
+- ``revision_format``, ``revision_default``, ``revision_exact`` and
+  ``revisions``, a list of ``{"name": ..., "variants": [...]}`` objects
+- ``socs``: SoCs with their ``cpuclusters`` and ``variants``, and
+  ``variants``: board-level variants
+- ``qualifiers``: the valid qualifier strings (``soc[/cluster][/variant]``)
+- ``targets``: every ``name[@revision]/qualifiers`` string accepted by
+  ``west build -b``
+
+With ``--all-targets``, ``--json`` prints a flat, sorted array of target
+strings instead.

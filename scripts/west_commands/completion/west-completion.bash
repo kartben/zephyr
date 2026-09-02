@@ -664,6 +664,7 @@ __comp_west_boards()
 {
 	local bool_opts="
 		--all-targets -a
+		--json
 	"
 
 	local other_opts="
