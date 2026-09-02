@@ -28,6 +28,7 @@ import snippets
 
 try:
     from anytree import Node, RenderTree, find
+    from anytree.exporter import DictExporter
 except ImportError:
     print("Install the anytree module to use the --test-tree option")
 
@@ -426,7 +427,11 @@ class TestPlan:
         for _, tc in self.testsuites.items():
             tags = tags.union(tc.tags)
 
-        for t in tags:
+        if self.options.json:
+            print(json.dumps(sorted(tags), indent=2))
+            return
+
+        for t in sorted(tags):
             print(f"- {t}")
 
     def report_test_tree(self):
@@ -465,10 +470,18 @@ class TestPlan:
                         subarea = Node(sec[1], parent=area)
                     Node(test, parent=subarea)
 
+        if self.options.json:
+            print(json.dumps(DictExporter().export(testsuite), indent=2))
+            return
+
         for pre, _, node in RenderTree(testsuite):
             print(f"{pre}{node.name}")
 
     def report_test_list(self):
+        if self.options.json:
+            print(json.dumps(self.get_tests_info(), indent=2))
+            return
+
         tests_list = self.get_tests_list()
 
         cnt = 0
@@ -534,25 +547,33 @@ class TestPlan:
 
         return testcases
 
-    def get_tests_list(self):
-        testcases = []
-        if tag_filter := self.options.tag:
-            for _, ts in self.testsuites.items():
-                if ts.tags.intersection(tag_filter):
-                    for case in ts.testcases:
-                        testcases.append(case.name)
-        else:
-            for _, ts in self.testsuites.items():
-                for case in ts.testcases:
-                    testcases.append(case.name)
+    def _iter_selected_tests(self):
+        """Yield (test case name, testsuite) pairs honouring --tag and --exclude-tag."""
+        tag_filter = self.options.tag
+        exclude_tag = self.options.exclude_tag
+        for ts in self.testsuites.values():
+            if tag_filter and not ts.tags.intersection(tag_filter):
+                continue
+            if exclude_tag and ts.tags.intersection(exclude_tag):
+                continue
+            for case in ts.testcases:
+                yield case.name, ts
 
-        if exclude_tag := self.options.exclude_tag:
-            for _, ts in self.testsuites.items():
-                if ts.tags.intersection(exclude_tag):
-                    for case in ts.testcases:
-                        if case.name in testcases:
-                            testcases.remove(case.name)
-        return testcases
+    def get_tests_list(self):
+        return [name for name, _ in self._iter_selected_tests()]
+
+    def get_tests_info(self) -> list[dict]:
+        """Return the selected test cases with their suite, path and tags, sorted by name."""
+        tests = [
+            {
+                "name": name,
+                "testsuite": ts.id,
+                "path": Path(ts.source_dir_rel).as_posix(),
+                "tags": sorted(ts.tags),
+            }
+            for name, ts in self._iter_selected_tests()
+        ]
+        return sorted(tests, key=lambda t: t["name"])
 
     def _register_testsuite(self, suite: TestSuite) -> None:
         """Add a suite to testsuites, raising on duplicate from a different file."""

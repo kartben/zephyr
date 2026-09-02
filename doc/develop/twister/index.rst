@@ -979,6 +979,14 @@ running with ``-v`` or examining the :ref:`test plan <twister_output>`
 (:file:`testplan.json`) can help show why particular test scenarios were
 filtered out.
 
+``--list-tests``, ``--list-tags`` and ``--test-tree`` print the discovered test
+cases, their tags, or the test cases arranged as a tree, then exit without
+building anything. Add ``--json`` to get the same information as JSON on
+standard output for consumption by scripts and tooling. These listings only
+cover test discovery; the machine-readable form of the expanded test plan
+(test scenarios times platforms, with filtering results) is the
+:file:`testplan.json` file written by ``--dry-run``.
+
 To load arguments from a file, add ``+`` before the file name, e.g.,
 ``+file_name``. File content must be one or more valid arguments separated by
 line break instead of white spaces.
@@ -1914,6 +1922,13 @@ The following files are written at the root of the output directory:
 
 :file:`twister_footprint.json`
     ROM/RAM footprint report. Only generated when ``--footprint-report`` is used.
+
+The structure of :file:`twister.json`, :file:`testplan.json`, the per-platform
+:file:`<platform>.json` reports and their :file:`*_footprint.json` variants is
+described by the JSON schema in
+:zephyr_file:`scripts/schemas/twister/twister-report-schema.yaml`. Fields are
+only ever added to these reports; renaming a field or changing its type is a
+breaking change that requires a migration-guide entry.
 
 The report base name (``twister``) can be changed with ``--report-name``, and
 ``--report-suffix`` appends a suffix (for example a version or commit ID) to all

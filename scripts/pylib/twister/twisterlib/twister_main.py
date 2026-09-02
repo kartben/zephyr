@@ -92,7 +92,7 @@ class Twister:
             or self.options.test_tree
             or self.options.report_summary is not None
         ):
-            if os.path.exists(self.options.outdir):
+            if os.path.exists(self.options.outdir) and not getattr(self.options, 'json', False):
                 print("Keeping artifacts untouched")
         elif self.options.last_metrics:
             ls = os.path.join(self.options.outdir, "twister.json")

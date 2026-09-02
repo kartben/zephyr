@@ -89,6 +89,13 @@ TESTDATA_1 = [
         None,
         None,
         None,
+        ['--json'],
+        '--json requires --list-tests, --test-tree or --list-tags'
+    ),
+    (
+        None,
+        None,
+        None,
         ['/dummy/unrecognised/arg'],
         'Unrecognized arguments found: \'/dummy/unrecognised/arg\'.' \
         ' Use -- to delineate extra arguments for test binary' \
@@ -118,6 +125,7 @@ TESTDATA_1 = [
         'device serial with multiple platforms',
         'device flash with test without device testing',
         'shuffle-tests-seed without shuffle-tests',
+        'json without a listing option',
         'unrecognised argument',
         'pytest-twister-harness installed'
     ]
