@@ -41,6 +41,8 @@ static inline int z_vrfy_bbram_read(const struct device *dev, size_t offset,
 {
 	K_OOPS(K_SYSCALL_OBJ(dev, K_OBJ_DRIVER_BBRAM));
 	K_OOPS(K_SYSCALL_MEMORY_WRITE(data, size));
+	/* The drivers range check with offset + size, which must not wrap. */
+	K_OOPS(K_SYSCALL_VERIFY_MSG(offset <= (SIZE_MAX - size), "offset + size overflows"));
 	return z_impl_bbram_read(dev, offset, size, data);
 }
 #include <zephyr/syscalls/bbram_read_mrsh.c>
@@ -50,6 +52,7 @@ static inline int z_vrfy_bbram_write(const struct device *dev, size_t offset,
 {
 	K_OOPS(K_SYSCALL_OBJ(dev, K_OBJ_DRIVER_BBRAM));
 	K_OOPS(K_SYSCALL_MEMORY_READ(data, size));
+	K_OOPS(K_SYSCALL_VERIFY_MSG(offset <= (SIZE_MAX - size), "offset + size overflows"));
 	return z_impl_bbram_write(dev, offset, size, data);
 }
 #include <zephyr/syscalls/bbram_write_mrsh.c>
