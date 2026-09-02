@@ -191,6 +191,7 @@ function __zephyr_west_complete_help
                     "robot" "run RobotFramework test suites" \
                     "simulate" "simulate board" \
                     "runners" "list runners and their configuration for a build directory" \
+                    "mcp" "run a Model Context Protocol server for AI coding agents" \
                     "sdk" "manage SDKs" \
                     "packages" "manage packages for Zephyr" \
                     "patch" "manage patches for Zephyr modules" \
@@ -676,6 +677,12 @@ complete -c west -n "__zephyr_west_seen_subcommand_from runners" -o d -l build-d
 complete -c west -n "__zephyr_west_seen_subcommand_from runners" -o r -l runner -r -d "only describe this runner"
 complete -c west -n "__zephyr_west_seen_subcommand_from runners" -l domain -r -d "only describe this sysbuild domain"
 complete -c west -n "__zephyr_west_seen_subcommand_from runners" -l json -d "print the result as JSON"
+
+# mcp
+complete -c west -n "__zephyr_west_use_subcommand; and __zephyr_west_check_if_in_workspace" -ra mcp -d "run a Model Context Protocol server for AI coding agents"
+complete -c west -n "__zephyr_west_seen_subcommand_from mcp" -l allow-hardware -d "offer the flash tool"
+complete -c west -n "__zephyr_west_seen_subcommand_from mcp" -l root -xa "(__zephyr_west_complete_directories)" -d "directory the agent may use"
+complete -c west -n "__zephyr_west_seen_subcommand_from mcp" -l log-dir -xa "(__zephyr_west_complete_directories)" -d "directory for build and test logs"
 
 # sdk
 complete -c west -n "__zephyr_west_use_subcommand; and __zephyr_west_check_if_in_workspace" -ra sdk -d "manage SDKs"

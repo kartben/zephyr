@@ -1241,6 +1241,33 @@ __comp_west_runners()
 	esac
 }
 
+__comp_west_mcp()
+{
+	local bool_opts="
+		--allow-hardware
+	"
+
+	local dir_opts="
+		--root
+		--log-dir
+	"
+
+	all_opts="$bool_opts $dir_opts"
+
+	case "$prev" in
+		$(__west_to_extglob "$dir_opts") )
+			__set_comp_dirs
+			return
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			__set_comp $all_opts
+			;;
+	esac
+}
+
 __comp_west_sdk()
 {
 	local bool_opts="
@@ -1331,6 +1358,7 @@ __comp_west()
 		robot
 		simulate
 		runners
+		mcp
 		sdk
 		packages
 		patch
