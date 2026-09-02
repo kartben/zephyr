@@ -469,6 +469,20 @@ static void *z_object_alloc(enum k_objects otype, size_t size)
 		return NULL;
 	}
 
+	/* Device objects are always statically defined and initialized by the
+	 * kernel at boot. A heap-allocated one would be uninitialized garbage
+	 * that nonetheless passes k_object_validate() for K_OBJ_DRIVER_ANY (or
+	 * its subsystem type), so a user thread could hand it to any device
+	 * syscall and have the kernel dereference dev->state or call
+	 * dev->ops.init from it.
+	 */
+	if ((otype == K_OBJ_DRIVER_ANY) ||
+	    ((otype >= K_OBJ_DRIVER_FIRST) && (otype <= K_OBJ_DRIVER_LAST))) {
+		LOG_ERR("forbidden object type '%s' requested",
+			otype_to_str(otype));
+		return NULL;
+	}
+
 	switch (otype) {
 	case K_OBJ_THREAD:
 		if (!thread_idx_alloc(&tidx)) {
