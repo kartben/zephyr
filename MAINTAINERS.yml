@@ -6680,6 +6680,7 @@ West:
     - scripts/west-commands.yml
     - scripts/west_commands/
     - doc/develop/west/
+    - doc/develop/tools/ai_coding_agents.rst
     - scripts/pylib/build_helpers/domains.py
   labels:
     - "area: West"
