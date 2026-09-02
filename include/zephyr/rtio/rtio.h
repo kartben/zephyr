@@ -979,7 +979,14 @@ static inline int z_impl_rtio_cqe_copy_out(struct rtio *r,
 {
 	size_t copied = 0;
 	struct rtio_cqe *cqe;
-	k_timepoint_t end = sys_timepoint_calc(timeout);
+	k_timepoint_t end;
+
+	/* The loop below always copies at least one completion. */
+	if (cqe_count == 0) {
+		return 0;
+	}
+
+	end = sys_timepoint_calc(timeout);
 
 	do {
 		cqe = K_TIMEOUT_EQ(timeout, K_FOREVER) ? rtio_cqe_consume_block(r)
