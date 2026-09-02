@@ -34,7 +34,14 @@ static inline bool rtio_vrfy_sqe(struct rtio_sqe *sqe)
 		valid_sqe &= !K_SYSCALL_MEMORY(sqe->tx.buf, sqe->tx.buf_len, false);
 		break;
 	case RTIO_OP_RX:
-		if ((sqe->flags & RTIO_SQE_MEMPOOL_BUFFER) == 0) {
+		if ((sqe->flags & RTIO_SQE_MEMPOOL_BUFFER) != 0) {
+			/* The buffer is allocated by the executor from the
+			 * context's block pool, but rtio_sqe_rx_buf() uses a
+			 * caller provided buffer first, so the fields must be
+			 * empty or an arbitrary pointer would be written to.
+			 */
+			valid_sqe &= (sqe->rx.buf == NULL) && (sqe->rx.buf_len == 0U);
+		} else {
 			valid_sqe &= !K_SYSCALL_MEMORY(sqe->rx.buf, sqe->rx.buf_len, true);
 		}
 		break;
