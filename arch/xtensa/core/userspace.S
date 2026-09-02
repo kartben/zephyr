@@ -224,6 +224,10 @@ _syscall_returned:
 	rfi ZSR_RFI_LEVEL
 
 _bad_syscall:
+	/* Pass the offending id to handler_bad_syscall() as its first
+	 * argument, like the other architectures do.
+	 */
+	mov a6, a2
 	movi a2, K_SYSCALL_BAD
 	j _id_ok
 
