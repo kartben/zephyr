@@ -154,6 +154,45 @@ test run or flash runs at a time. The complete output of every operation is
 kept in a log file whose path is part of the result; the log directory is a
 temporary directory unless ``--log-dir`` is given.
 
+Environment
+***********
+
+The server is bound to one workspace and inherits the environment of the
+client that starts it, so it is worth knowing how each piece is found:
+
+- **The workspace** is located from the server's current directory, like every
+  west command. Clients start the server in the project folder, so opening the
+  IDE anywhere inside the workspace is enough. For an application that lives
+  outside the workspace, point the client's working directory (or a launcher
+  script) at the workspace and pass the application directory with ``--root``.
+- **west and its Python dependencies** come from the interpreter that runs the
+  server; the builds and test runs it starts use the same interpreter. Use the
+  virtual environment's Python as the client's ``command`` rather than relying
+  on ``west`` being on the client's ``PATH``.
+- **ZEPHYR_BASE** is derived from the workspace; no variable is needed.
+- **The toolchain** is found through the CMake package registry that
+  ``west sdk install`` writes, so it needs no variable either. Setups that rely
+  on exported variables such as ``ZEPHYR_TOOLCHAIN_VARIANT`` must pass them in
+  the client configuration (``env`` in most clients, ``envFile`` in VS Code).
+- **Host tools** such as ``cmake``, ``ninja`` and ``dtc`` must be on the
+  ``PATH`` of the client process. An IDE launched from a desktop icon, rather
+  than from a shell, typically has a minimal ``PATH`` and does not see them.
+
+``west mcp --check`` prints what the server sees, including the tools it can
+find and the SDK it detects, and the ``workspace_info`` tool reports the same
+to the agent with hints about what to fix.
+
+When the client cannot be configured precisely enough, a small launcher script
+pins everything and is used as the ``command``:
+
+.. code-block:: sh
+
+   #!/bin/sh
+   cd ~/zephyrproject || exit 1
+   . ~/zephyrproject/.venv/bin/activate
+   export PATH="/opt/homebrew/bin:$PATH"
+   exec west mcp --root ~/my-app "$@"
+
 Safety
 ******
 
