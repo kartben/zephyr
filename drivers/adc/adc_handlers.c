@@ -84,7 +84,10 @@ static inline int z_vrfy_adc_read_async(const struct device *dev,
 		K_OOPS(K_SYSCALL_VERIFY_MSG(sequence.options->callback == NULL,
 			    "ADC sequence callbacks forbidden from user mode"));
 	}
-	K_OOPS(K_SYSCALL_OBJ(async, K_OBJ_POLL_SIGNAL));
+	/* The signal is optional, drivers only raise it when it is set. */
+	if (async != NULL) {
+		K_OOPS(K_SYSCALL_OBJ(async, K_OBJ_POLL_SIGNAL));
+	}
 
 	return z_impl_adc_read_async(dev, &sequence,
 				     async);
