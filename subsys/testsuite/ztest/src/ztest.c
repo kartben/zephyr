@@ -320,6 +320,12 @@ void z_vrfy_z_test_1cpu_start(void)
 }
 #include <zephyr/syscalls/z_test_1cpu_start_mrsh.c>
 
+void z_vrfy_sys_clock_tick_set(uint64_t tick)
+{
+	z_impl_sys_clock_tick_set(tick);
+}
+#include <zephyr/syscalls/sys_clock_tick_set_mrsh.c>
+
 void z_vrfy_z_test_1cpu_stop(void)
 {
 	z_impl_z_test_1cpu_stop();
