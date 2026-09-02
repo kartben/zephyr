@@ -104,7 +104,26 @@ k_thread_stack_t *z_impl_k_thread_stack_alloc(size_t size, int flags)
 #ifdef CONFIG_USERSPACE
 static inline k_thread_stack_t *z_vrfy_k_thread_stack_alloc(size_t size, int flags)
 {
-	return z_impl_k_thread_stack_alloc(size, flags);
+	k_thread_stack_t *stack;
+
+	/* A user thread can only ever create user threads, and a kernel
+	 * stack allocated from here would not be a kernel object, so the
+	 * caller could neither use nor free it.
+	 */
+	K_OOPS(K_SYSCALL_VERIFY_MSG((flags & K_USER) != 0,
+				    "user threads may only allocate user stacks"));
+
+	stack = z_impl_k_thread_stack_alloc(size, flags);
+
+	/* Stacks from the static pool are kernel objects that nobody has
+	 * been granted access to yet, unlike the dynamically allocated ones
+	 * which k_object_alloc_size() grants to the caller.
+	 */
+	if (stack != NULL) {
+		k_object_access_grant(stack, _current);
+	}
+
+	return stack;
 }
 #include <zephyr/syscalls/k_thread_stack_alloc_mrsh.c>
 #endif /* CONFIG_USERSPACE */
@@ -175,7 +194,19 @@ static inline int z_vrfy_k_thread_stack_free(k_thread_stack_t *stack)
 	 */
 	K_OOPS(K_SYSCALL_OBJ_NEVER_INIT(stack, K_OBJ_THREAD_STACK_ELEMENT));
 
-	return z_impl_k_thread_stack_free(stack);
+	int ret = z_impl_k_thread_stack_free(stack);
+
+	/* A stack returned to the static pool keeps existing as a kernel
+	 * object, so drop the permissions granted at allocation time before
+	 * it is handed out again.
+	 */
+	if ((ret == 0) && (CONFIG_DYNAMIC_THREAD_POOL_SIZE > 0) &&
+	    IS_ARRAY_ELEMENT(dynamic_stack, stack)) {
+		k_object_access_revoke_others(stack);
+		k_object_access_revoke(stack, _current);
+	}
+
+	return ret;
 }
 #include <zephyr/syscalls/k_thread_stack_free_mrsh.c>
 #endif /* CONFIG_USERSPACE */

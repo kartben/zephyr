@@ -95,10 +95,10 @@ static inline void z_vrfy_k_thread_deadline_set(k_tid_t tid, int deadline)
 	struct k_thread *thread = tid;
 
 	K_OOPS(K_SYSCALL_OBJ(thread, K_OBJ_THREAD));
-	K_OOPS(K_SYSCALL_VERIFY_MSG(deadline > 0,
-				    "invalid thread deadline %d",
-				    (int)deadline));
 
+	/* The implementation clamps the deadline to [0, INT32_MAX / 2], as
+	 * documented, so there is nothing to validate here.
+	 */
 	z_impl_k_thread_deadline_set((k_tid_t)thread, deadline);
 }
 #include <zephyr/syscalls/k_thread_deadline_set_mrsh.c>

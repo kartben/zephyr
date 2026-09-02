@@ -504,8 +504,4 @@ void z_impl_sys_clock_tick_set(uint64_t tick)
 	curr_tick = tick;
 }
 
-void z_vrfy_sys_clock_tick_set(uint64_t tick)
-{
-	z_impl_sys_clock_tick_set(tick);
-}
 #endif /* CONFIG_ZTEST */
