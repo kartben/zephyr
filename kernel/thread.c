@@ -185,10 +185,23 @@ static inline int z_vrfy_k_thread_name_set(k_tid_t thread, const char *str)
 	/* In theory we could copy directly into thread->name, but
 	 * the current z_vrfy / z_impl split does not provide a
 	 * means of doing so.
+	 *
+	 * A longer name is silently truncated, as documented, rather than
+	 * rejected like k_usermode_string_copy() would do.
 	 */
-	if (k_usermode_string_copy(name, str, sizeof(name)) != 0) {
+	size_t len;
+	int err = 0;
+
+	len = k_usermode_string_nlen(str, sizeof(name), &err);
+	if (err != 0) {
 		return -EFAULT;
 	}
+
+	len = MIN(len, sizeof(name) - 1);
+	if (k_usermode_from_copy(name, str, len) != 0) {
+		return -EFAULT;
+	}
+	name[len] = '\0';
 
 	return z_impl_k_thread_name_set(thread, name);
 #else
@@ -1304,19 +1317,16 @@ int z_vrfy_k_thread_stack_space_get(const struct k_thread *thread,
 	size_t unused;
 	int ret;
 
-	ret = K_SYSCALL_OBJ(thread, K_OBJ_THREAD);
-	CHECKIF(ret != 0) {
-		return ret;
-	}
+	K_OOPS(K_SYSCALL_OBJ(thread, K_OBJ_THREAD));
 
 	ret = z_impl_k_thread_stack_space_get(thread, &unused);
 	CHECKIF(ret != 0) {
 		return ret;
 	}
 
-	ret = k_usermode_to_copy(unused_ptr, &unused, sizeof(size_t));
-	CHECKIF(ret != 0) {
-		return ret;
+	/* k_usermode_to_copy() reports a positive errno */
+	if (k_usermode_to_copy(unused_ptr, &unused, sizeof(size_t)) != 0) {
+		return -EFAULT;
 	}
 
 	return 0;
