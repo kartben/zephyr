@@ -92,6 +92,11 @@ west-commands:
       - name: runners
         class: Runners
         help: list runners and their configuration for a build directory
+  - file: scripts/west_commands/mcp_cmd.py
+    commands:
+      - name: mcp
+        class: Mcp
+        help: run a Model Context Protocol server for AI coding agents
   - file: scripts/west_commands/sdk.py
     commands:
       - name: sdk

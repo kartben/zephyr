@@ -44,6 +44,7 @@ _west_cmds() {
   'robot[run RobotFramework test suites]'
   'simulate[simulate a Zephyr application]'
   'runners[list runners and their configuration for a build directory]'
+  'mcp[run a Model Context Protocol server for AI coding agents]'
   'sdk[manage SDKs]'
   'packages[manage packages for Zephyr]'
   'patch[manage patches for Zephyr modules]'
@@ -615,6 +616,16 @@ _west_simulate() {
 
 _west_reset() {
   __comp_west_runner_cmd
+}
+
+_west_mcp() {
+  local -a opts=(
+  '--allow-hardware[offer the flash tool]'
+  '*--root[directory the agent may use]:root:_directories'
+  '--log-dir[directory for build and test logs]:log dir:_directories'
+  )
+
+  _arguments -S $opts
 }
 
 _west_runners() {
