@@ -40,7 +40,12 @@ static struct spi_buf_set *copy_and_check(struct spi_buf_set *bufs,
 		 */
 		const struct spi_buf *buf = &bufs->buffers[i];
 
-		K_OOPS(K_SYSCALL_MEMORY(buf->buf, buf->len, writable));
+		/* A NULL buffer with a length is a NOP indication (send
+		 * zeros / discard), nothing is accessed for it.
+		 */
+		if (buf->buf != NULL) {
+			K_OOPS(K_SYSCALL_MEMORY(buf->buf, buf->len, writable));
+		}
 	}
 
 	return bufs;
