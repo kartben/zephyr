@@ -296,7 +296,7 @@ int flash_ra_ex_op_write_protect(const struct device *dev, const uintptr_t in, v
 
 	int rc = 0, rc2 = 0;
 #ifdef CONFIG_USERSPACE
-	bool syscall_trap = z_syscall_trap();
+	bool syscall_trap = k_is_in_user_syscall();
 #endif
 
 	if (request != NULL) {

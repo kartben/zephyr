@@ -107,7 +107,7 @@ int flash_stm32_ex_op_sector_wp(const struct device *dev, const uintptr_t in,
 	uint64_t change_mask;
 	int rc = 0, rc2 = 0;
 #ifdef CONFIG_USERSPACE
-	bool syscall_trap = z_syscall_trap();
+	bool syscall_trap = k_is_in_user_syscall();
 #endif
 
 	if (request != NULL) {
@@ -240,7 +240,7 @@ int flash_stm32_ex_op_rdp(const struct device *dev, const uintptr_t in,
 
 #ifdef CONFIG_USERSPACE
 	struct flash_stm32_ex_op_rdp copy;
-	bool syscall_trap = z_syscall_trap();
+	bool syscall_trap = k_is_in_user_syscall();
 #endif
 	int rc = 0, rc2 = 0;
 
