@@ -11,6 +11,7 @@ LOG_MODULE_REGISTER(net_sock_svc, CONFIG_NET_SOCKETS_LOG_LEVEL);
 #include <zephyr/init.h>
 #include <zephyr/net/net_log.h>
 #include <zephyr/net/socket_service.h>
+#include <zephyr/internal/syscall_handler.h>
 #include <zephyr/zvfs/eventfd.h>
 
 static int init_socket_service(void);
@@ -112,6 +113,50 @@ out:
 
 	return ret;
 }
+
+#ifdef CONFIG_USERSPACE
+static inline int z_vrfy_net_socket_service_register(const struct net_socket_service_desc *svc,
+						     struct zsock_pollfd *fds, int len,
+						     void *user_data)
+{
+	struct zsock_pollfd *fds_copy = NULL;
+	struct zsock_pollfd none;
+	size_t fds_size = 0;
+	int ret;
+
+	/* The descriptor itself is checked against the service section by
+	 * the implementation. The pollfd array is copied so that the
+	 * implementation never touches user memory.
+	 */
+	if (fds != NULL) {
+		K_OOPS(K_SYSCALL_VERIFY_MSG(len >= 0, "invalid fd count %d", len));
+		K_OOPS(K_SYSCALL_VERIFY_MSG(!size_mul_overflow((size_t)len, sizeof(*fds),
+							       &fds_size),
+					    "fd count %d too large", len));
+
+		if (fds_size > 0) {
+			fds_copy = k_usermode_alloc_from_copy(fds, fds_size);
+			if (fds_copy == NULL) {
+				return -ENOMEM;
+			}
+		} else {
+			/* A non-NULL, empty array still means "clear the
+			 * registered sockets" to the implementation.
+			 */
+			fds_copy = &none;
+		}
+	}
+
+	ret = z_impl_net_socket_service_register(svc, fds_copy, len, user_data);
+
+	if (fds_size > 0) {
+		k_free(fds_copy);
+	}
+
+	return ret;
+}
+#include <zephyr/syscalls/net_socket_service_register_mrsh.c>
+#endif /* CONFIG_USERSPACE */
 
 static struct net_socket_service_desc *find_svc_and_event(
 	struct zsock_pollfd *pev,
