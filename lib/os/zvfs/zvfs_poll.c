@@ -189,6 +189,13 @@ static inline int z_vrfy_zvfs_poll(struct zvfs_pollfd *fds, int nfds, int timeou
 	size_t fds_size;
 	int ret;
 
+	/* poll(NULL, 0, timeout) is a valid way to sleep. There is nothing
+	 * to copy, and validating a NULL buffer fails on MPU targets.
+	 */
+	if (nfds == 0) {
+		return z_impl_zvfs_poll(NULL, 0, timeout);
+	}
+
 	/* Copy fds array from user mode */
 	if (size_mul_overflow(nfds, sizeof(struct zvfs_pollfd), &fds_size)) {
 		errno = EFAULT;
@@ -203,7 +210,10 @@ static inline int z_vrfy_zvfs_poll(struct zvfs_pollfd *fds, int nfds, int timeou
 	ret = z_impl_zvfs_poll(fds_copy, nfds, timeout);
 
 	if (ret >= 0) {
-		k_usermode_to_copy((void *)fds, fds_copy, fds_size);
+		if (k_usermode_to_copy((void *)fds, fds_copy, fds_size) != 0) {
+			errno = EFAULT;
+			ret = -1;
+		}
 	}
 	k_free(fds_copy);
 
