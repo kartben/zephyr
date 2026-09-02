@@ -962,11 +962,15 @@ int arch_buffer_validate(const void *addr, size_t size, int write)
 	aligned_addr = ROUND_DOWN((uintptr_t)addr, XCHAL_MPU_ALIGN);
 	addr_offset = (uintptr_t)addr - aligned_addr;
 
-	if (size_add_overflow(size, addr_offset, &aligned_size)) {
+	/* The rounding must not wrap either, or the probe loop below would
+	 * not run at all and the whole range would be accepted.
+	 */
+	if (size_add_overflow(size, addr_offset, &aligned_size) ||
+	    size_add_overflow(aligned_size, XCHAL_MPU_ALIGN - 1, &aligned_size)) {
 		goto out;
 	}
 
-	aligned_size = ROUND_UP(size + addr_offset, XCHAL_MPU_ALIGN);
+	aligned_size = ROUND_DOWN(aligned_size, XCHAL_MPU_ALIGN);
 
 	for (size_t offset = 0; offset < aligned_size;
 	     offset += XCHAL_MPU_ALIGN) {
@@ -1040,11 +1044,15 @@ bool xtensa_buffer_is_kernel_readable(const void *addr, size_t size)
 	aligned_addr = ROUND_DOWN((uintptr_t)addr, XCHAL_MPU_ALIGN);
 	addr_offset = (uintptr_t)addr - aligned_addr;
 
-	if (size_add_overflow(size, addr_offset, &aligned_size)) {
+	/* The rounding must not wrap either, or the probe loop below would
+	 * not run at all and the whole range would be accepted.
+	 */
+	if (size_add_overflow(size, addr_offset, &aligned_size) ||
+	    size_add_overflow(aligned_size, XCHAL_MPU_ALIGN - 1, &aligned_size)) {
 		goto out;
 	}
 
-	aligned_size = ROUND_UP(size + addr_offset, XCHAL_MPU_ALIGN);
+	aligned_size = ROUND_DOWN(aligned_size, XCHAL_MPU_ALIGN);
 
 	for (size_t offset = 0; offset < aligned_size; offset += XCHAL_MPU_ALIGN) {
 		uint32_t probed = xtensa_pptlb_probe(aligned_addr + offset);
