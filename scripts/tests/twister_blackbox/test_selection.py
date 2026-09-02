@@ -208,6 +208,53 @@ class TestListCommands:
         assert 'dummy' in out
         assert 'agnostic' in out
 
+    @pytest.mark.fast
+    def test_list_tests_json(self, out_path, capsys):
+        """--list-tests --json prints a JSON array of test case records."""
+        args = ['--outdir', out_path, '-T', AGNOSTIC, '--list-tests', '--json']
+        result = twister_main(args)
+
+        out, _ = capsys.readouterr()
+        assert result == 0
+        tests = json.loads(out)
+        assert tests, 'Expected at least one test in --list-tests --json output'
+        assert all(set(t) == {'name', 'testsuite', 'path', 'tags'} for t in tests)
+        assert [t['name'] for t in tests] == sorted(t['name'] for t in tests)
+        assert any('agnostic' in t['tags'] for t in tests)
+
+    @pytest.mark.fast
+    def test_list_tags_json(self, out_path, capsys):
+        """--list-tags --json prints a sorted JSON array of tags."""
+        args = ['--outdir', out_path, '-T', AGNOSTIC, '--list-tags', '--json']
+        result = twister_main(args)
+
+        out, _ = capsys.readouterr()
+        assert result == 0
+        tags = json.loads(out)
+        assert tags == sorted(tags)
+        for tag in ['agnostic', 'subgrouped', 'even', 'odd']:
+            assert tag in tags, f'Expected tag {tag!r} in --list-tags --json output'
+
+    @pytest.mark.fast
+    def test_test_tree_json(self, out_path, capsys):
+        """--test-tree --json prints the tree as nested JSON objects."""
+        args = ['--outdir', out_path, '-T', AGNOSTIC, '--test-tree', '--json']
+        result = twister_main(args)
+
+        out, _ = capsys.readouterr()
+        assert result == 0
+        tree = json.loads(out)
+        assert tree['name'] == 'Testsuite'
+        assert [child['name'] for child in tree['children']] == ['Samples', 'Tests']
+
+    @pytest.mark.fast
+    def test_json_requires_list_option(self, out_path):
+        """--json without a listing option is rejected."""
+        args = ['--outdir', out_path, '-T', AGNOSTIC, '--json']
+        with pytest.raises(SystemExit) as exc_info:
+            twister_main(args)
+        assert exc_info.value.code == 1
+
 
 @mock.patch.object(TestPlan, 'TEST_DEFINITION_FILENAME', TEST_FILENAME_MOCK)
 class TestSaveLoadTests:

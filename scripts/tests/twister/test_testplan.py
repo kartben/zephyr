@@ -6,6 +6,7 @@
 '''
 This test file contains testsuites for testsuite.py module of twister
 '''
+import json
 import os
 import sys
 import textwrap
@@ -1197,6 +1198,7 @@ def test_testplan_report_duplicates(
 
 def test_testplan_report_tag_list(capfd):
     testplan = TestPlan(env=mock_twister_env())
+    testplan.options = mock.Mock(json=False)
     testplan.testsuites = {
         'testsuite0': mock.Mock(tags=set(['tag1', 'tag2'])),
         'testsuite1': mock.Mock(tags=set(['tag1', 'tag2', 'tag3'])),
@@ -1210,14 +1212,12 @@ def test_testplan_report_tag_list(capfd):
     sys.stdout.write(out)
     sys.stderr.write(err)
 
-    assert '- tag' in out
-    assert '- tag1' in out
-    assert '- tag2' in out
-    assert '- tag3' in out
+    assert out == '- tag\n- tag1\n- tag2\n- tag3\n'
 
 
 def test_testplan_report_test_tree(capfd):
     testplan = TestPlan(env=mock_twister_env())
+    testplan.options = mock.Mock(json=False)
     testplan.get_tests_list = mock.Mock(
         return_value=['1.dummy.case.1', '1.dummy.case.2',
                       '2.dummy.case.1', '2.dummy.case.2',
@@ -1276,6 +1276,7 @@ Testsuite
 
 def test_testplan_report_test_list(capfd):
     testplan = TestPlan(env=mock_twister_env())
+    testplan.options = mock.Mock(json=False)
     testplan.get_tests_list = mock.Mock(
         return_value=['4.dummy.case.1', '4.dummy.case.2',
                       '3.dummy.case.2', '2.dummy.case.2',
@@ -1397,6 +1398,137 @@ def test_testplan_get_all_tests():
     res = testplan.get_all_tests()
 
     assert sorted(res) == ['tc1', 'tc2', 'tc3', 'tc4', 'tc5']
+
+
+def _testplan_with_tagged_suites(tag, exclude_tag):
+    testplan = TestPlan(env=mock_twister_env())
+    testplan.options = mock.Mock(tag=tag, exclude_tag=exclude_tag, json=False)
+
+    def make_case(name):
+        tc = mock.Mock()
+        tc.name = name
+        return tc
+
+    testplan.testsuites = {
+        'ts1': mock.Mock(
+            id='ts1', source_dir_rel='tests/one', tags={'a', 'b'},
+            testcases=[make_case('one.b'), make_case('one.a')]
+        ),
+        'ts2': mock.Mock(
+            id='ts2', source_dir_rel='tests/two', tags={'b', 'c'},
+            testcases=[make_case('two.a')]
+        ),
+        'ts3': mock.Mock(
+            id='ts3', source_dir_rel='samples/three', tags={'c'},
+            testcases=[make_case('sample.three')]
+        ),
+    }
+    return testplan
+
+
+TESTDATA_TESTS_INFO = [
+    (None, None, ['one.a', 'one.b', 'sample.three', 'two.a']),
+    (['b'], None, ['one.a', 'one.b', 'two.a']),
+    (None, ['c'], ['one.a', 'one.b']),
+    (['b'], ['a'], ['two.a']),
+]
+
+
+@pytest.mark.parametrize(
+    'tag, exclude_tag, expected_names',
+    TESTDATA_TESTS_INFO,
+    ids=['no filter', 'tag', 'exclude-tag', 'tag and exclude-tag']
+)
+def test_testplan_get_tests_info(tag, exclude_tag, expected_names):
+    testplan = _testplan_with_tagged_suites(tag, exclude_tag)
+
+    res = testplan.get_tests_info()
+
+    assert [t['name'] for t in res] == expected_names
+    assert sorted(testplan.get_tests_list()) == expected_names
+    by_name = {t['name']: t for t in res}
+    if 'one.a' in by_name:
+        assert by_name['one.a'] == {
+            'name': 'one.a',
+            'testsuite': 'ts1',
+            'path': 'tests/one',
+            'tags': ['a', 'b'],
+        }
+
+
+def test_testplan_report_test_list_json(capfd):
+    testplan = _testplan_with_tagged_suites(None, None)
+    testplan.options.json = True
+
+    testplan.report_test_list()
+
+    out, err = capfd.readouterr()
+    sys.stdout.write(out)
+    sys.stderr.write(err)
+
+    assert json.loads(out) == testplan.get_tests_info()
+
+
+def test_testplan_report_tag_list_json(capfd):
+    testplan = TestPlan(env=mock_twister_env())
+    testplan.options = mock.Mock(json=True)
+    testplan.testsuites = {
+        'testsuite0': mock.Mock(tags=set(['tag2', 'tag1'])),
+        'testsuite1': mock.Mock(tags=set(['tag3', 'tag']))
+    }
+
+    testplan.report_tag_list()
+
+    out, err = capfd.readouterr()
+    sys.stdout.write(out)
+    sys.stderr.write(err)
+
+    assert json.loads(out) == ['tag', 'tag1', 'tag2', 'tag3']
+
+
+def test_testplan_report_test_tree_json(capfd):
+    testplan = TestPlan(env=mock_twister_env())
+    testplan.options = mock.Mock(json=True)
+    testplan.get_tests_list = mock.Mock(
+        return_value=['1.dummy.case.1', '1.dummy.case.2',
+                      'sample.group1.case1', 'sample.group2.case']
+    )
+
+    testplan.report_test_tree()
+
+    out, err = capfd.readouterr()
+    sys.stdout.write(out)
+    sys.stderr.write(err)
+
+    assert json.loads(out) == {
+        'name': 'Testsuite',
+        'children': [
+            {
+                'name': 'Samples',
+                'children': [
+                    {'name': 'group1', 'children': [{'name': 'sample.group1.case1'}]},
+                    {'name': 'group2', 'children': [{'name': 'sample.group2.case'}]},
+                ],
+            },
+            {
+                'name': 'Tests',
+                'children': [
+                    {
+                        'name': '1',
+                        'children': [
+                            {
+                                'name': 'dummy',
+                                'children': [
+                                    {'name': '1.dummy.case.1'},
+                                    {'name': '1.dummy.case.2'},
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            },
+        ],
+    }
 
 
 TESTDATA_9 = [

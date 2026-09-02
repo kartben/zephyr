@@ -28,6 +28,7 @@ def options(outdir) -> SimpleNamespace:
         list_tests=False,
         list_tags=False,
         test_tree=False,
+        json=False,
         report_summary=None,
         outdir=str(outdir),
         clobber_output=False,
@@ -79,6 +80,18 @@ def test_twister_clean_previous_results_no_clean_keeps_artifacts(outdir, options
     assert result is None
     out, _ = capsys.readouterr()
     assert "Keeping artifacts untouched" in out
+
+
+def test_twister_clean_previous_results_json_keeps_stdout_clean(outdir, options, capsys):
+    """With --json, the 'Keeping artifacts untouched' notice must not pollute stdout."""
+    options.list_tests = True
+    options.json = True
+    outdir.mkdir()
+    t = Twister(options, options)
+    assert t.clean_previous_results() is None
+    assert outdir.exists()
+    out, _ = capsys.readouterr()
+    assert out == ""
 
 
 def test_twister_clean_previous_results_outdir_missing(tmp_path, options, capsys):

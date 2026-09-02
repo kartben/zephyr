@@ -170,6 +170,12 @@ Artificially long but functional example:
     test_plan_report_xor.add_argument("--test-tree", action="store_true",
                              help="""Output the test plan in a tree form.""")
 
+    test_plan_report.add_argument(
+        "--json",
+        action="store_true",
+        help="With --list-tests, --test-tree or --list-tags, print the result as JSON "
+             "instead of text.")
+
     platform_group_option.add_argument(
         "-G",
         "--integration",
@@ -1033,6 +1039,10 @@ def parse_arguments(
 
     if options.shuffle_tests_seed and options.shuffle_tests is None:
         logger.error("--shuffle-tests-seed requires --shuffle-tests")
+        sys.exit(1)
+
+    if options.json and not (options.list_tests or options.test_tree or options.list_tags):
+        logger.error("--json requires --list-tests, --test-tree or --list-tags")
         sys.exit(1)
 
     if options.size:

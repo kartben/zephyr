@@ -979,6 +979,14 @@ running with ``-v`` or examining the :ref:`test plan <twister_output>`
 (:file:`testplan.json`) can help show why particular test scenarios were
 filtered out.
 
+``--list-tests``, ``--list-tags`` and ``--test-tree`` print the discovered test
+cases, their tags, or the test cases arranged as a tree, then exit without
+building anything. Add ``--json`` to get the same information as JSON on
+standard output for consumption by scripts and tooling. These listings only
+cover test discovery; the machine-readable form of the expanded test plan
+(test scenarios times platforms, with filtering results) is the
+:file:`testplan.json` file written by ``--dry-run``.
+
 To load arguments from a file, add ``+`` before the file name, e.g.,
 ``+file_name``. File content must be one or more valid arguments separated by
 line break instead of white spaces.
