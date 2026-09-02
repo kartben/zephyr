@@ -11,11 +11,10 @@ from pathlib import Path
 
 from west.commands import WestCommand
 
-from zephyr_ext_common import ZEPHYR_BASE
+from zephyr_ext_common import module_roots
 
 sys.path.append(os.fspath(Path(__file__).parent.parent))
 import list_boards
-import zephyr_module
 
 
 class Boards(WestCommand):
@@ -77,21 +76,10 @@ class Boards(WestCommand):
         else:
             name_re = None
 
-        module_settings = {
-            'arch_root': [ZEPHYR_BASE],
-            'board_root': [ZEPHYR_BASE],
-            'soc_root': [ZEPHYR_BASE],
-        }
-
-        for module in zephyr_module.parse_modules(ZEPHYR_BASE, self.manifest):
-            for key in module_settings:
-                root = module.meta.get('build', {}).get('settings', {}).get(key)
-                if root is not None:
-                    module_settings[key].append(Path(module.project) / root)
-
-        args.arch_roots += module_settings['arch_root']
-        args.board_roots += module_settings['board_root']
-        args.soc_roots += module_settings['soc_root']
+        roots = module_roots(self.manifest, ['arch_root', 'board_root', 'soc_root'])
+        args.arch_roots += roots['arch_root']
+        args.board_roots += roots['board_root']
+        args.soc_roots += roots['soc_root']
 
         all_targets: list[str] = []
         for board in list_boards.find_v2_boards(args).values():

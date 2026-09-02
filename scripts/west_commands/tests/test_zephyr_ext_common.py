@@ -5,12 +5,14 @@ import argparse
 import enum
 import json
 import os
+from collections import namedtuple
 from dataclasses import dataclass, field
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
-from zephyr_ext_common import ZephyrJSONEncoder, add_json_arg, emit_json
+from zephyr_ext_common import ZephyrJSONEncoder, add_json_arg, emit_json, module_roots
 
 
 class Color(enum.Enum):
@@ -58,3 +60,22 @@ def test_add_json_arg():
     add_json_arg(parser)
     assert parser.parse_args([]).json is False
     assert parser.parse_args(['--json']).json is True
+
+
+Module = namedtuple('Module', ['project', 'meta', 'depends'])
+
+
+def test_module_roots():
+    modules = [
+        Module('/mod/a', {'build': {'settings': {'board_root': 'brd', 'soc_root': 'soc'}}}, []),
+        Module('/mod/b', {'build': {}}, []),
+        Module('/mod/c', {'build': {'settings': {'board_root': '.'}}}, []),
+    ]
+    with patch('zephyr_module.parse_modules', return_value=modules):
+        roots = module_roots(None, ['board_root', 'soc_root', 'arch_root'])
+
+    from zephyr_ext_common import ZEPHYR_BASE
+
+    assert roots['board_root'] == [ZEPHYR_BASE, Path('/mod/a/brd'), Path('/mod/c')]
+    assert roots['soc_root'] == [ZEPHYR_BASE, Path('/mod/a/soc')]
+    assert roots['arch_root'] == [ZEPHYR_BASE]

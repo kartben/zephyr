@@ -13,6 +13,7 @@ import enum
 import json
 import os
 import shlex
+import sys
 from pathlib import Path
 
 from west.commands import WestCommand
@@ -93,3 +94,22 @@ def emit_json(obj):
     still produced under "west -q".'''
     print(json.dumps(obj, cls=ZephyrJSONEncoder, indent=2, sort_keys=True))
 
+
+def module_roots(manifest, keys):
+    '''Collect hardware model root directories from Zephyr and its modules.
+
+    Returns a dict mapping each key in keys (e.g. 'board_root',
+    'soc_root', 'arch_root') to the list of directories declared for it,
+    starting with ZEPHYR_BASE and followed by each module's
+    build.settings.<key> entry, in module order.'''
+    sys.path.append(os.fspath(Path(__file__).parent.parent))
+    import zephyr_module
+
+    roots = {key: [ZEPHYR_BASE] for key in keys}
+    for module in zephyr_module.parse_modules(ZEPHYR_BASE, manifest):
+        settings = module.meta.get('build', {}).get('settings', {})
+        for key in keys:
+            root = settings.get(key)
+            if root is not None:
+                roots[key].append(Path(module.project) / root)
+    return roots

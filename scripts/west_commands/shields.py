@@ -12,11 +12,10 @@ from pathlib import Path
 
 from west.commands import WestCommand
 
-from zephyr_ext_common import ZEPHYR_BASE
+from zephyr_ext_common import module_roots
 
 sys.path.append(os.fspath(Path(__file__).parent.parent))
 import list_shields
-import zephyr_module
 
 
 class Shields(WestCommand):
@@ -71,14 +70,7 @@ class Shields(WestCommand):
         else:
             name_re = None
 
-        modules_board_roots = [ZEPHYR_BASE]
-
-        for module in zephyr_module.parse_modules(ZEPHYR_BASE, self.manifest):
-            board_root = module.meta.get('build', {}).get('settings', {}).get('board_root')
-            if board_root is not None:
-                modules_board_roots.append(Path(module.project) / board_root)
-
-        args.board_roots += modules_board_roots
+        args.board_roots += module_roots(self.manifest, ['board_root'])['board_root']
 
         for shield in list_shields.find_shields(args):
             if name_re is not None and not name_re.search(shield.name):
