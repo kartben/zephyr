@@ -570,6 +570,7 @@ ssize_t z_vrfy_zsock_recvmsg(int sock, struct net_msghdr *msg, int flags)
 	void *user_control;
 	size_t msg_iov_size;
 	size_t iovlen;
+	size_t name_len;
 	size_t control_len;
 	size_t i;
 	int ret;
@@ -596,6 +597,7 @@ ssize_t z_vrfy_zsock_recvmsg(int sock, struct net_msghdr *msg, int flags)
 	user_name = msg_copy.msg_name;
 	user_control = msg_copy.msg_control;
 	iovlen = msg_copy.msg_iovlen;
+	name_len = msg_copy.msg_namelen;
 	control_len = msg_copy.msg_controllen;
 
 	msg_copy.msg_name = NULL;
@@ -670,9 +672,13 @@ ssize_t z_vrfy_zsock_recvmsg(int sock, struct net_msghdr *msg, int flags)
 	 */
 	if (ret > 0) {
 		if (msg_copy.msg_name != NULL) {
+			/* The address may be reported longer than the buffer
+			 * that was allocated for it (e.g. for stream sockets),
+			 * copy back at most what was allocated.
+			 */
 			K_OOPS(k_usermode_to_copy(user_name,
 						  msg_copy.msg_name,
-						  msg_copy.msg_namelen));
+						  MIN(msg_copy.msg_namelen, name_len)));
 			K_OOPS(k_usermode_to_copy(&msg->msg_namelen,
 						  &msg_copy.msg_namelen,
 						  sizeof(msg->msg_namelen)));
@@ -804,6 +810,20 @@ int z_impl_zsock_fcntl_impl(int sock, int cmd, int flags)
 #ifdef CONFIG_USERSPACE
 static inline int z_vrfy_zsock_fcntl_impl(int sock, int cmd, int flags)
 {
+	/* The command goes to the same ioctl dispatcher as zsock_ioctl(),
+	 * with flags as its first variadic argument, so anything but the
+	 * two fcntl commands would let user mode pass an arbitrary pointer
+	 * to e.g. the FIONREAD handler.
+	 */
+	switch (cmd) {
+	case ZVFS_F_GETFL:
+	case ZVFS_F_SETFL:
+		break;
+	default:
+		errno = EOPNOTSUPP;
+		return -1;
+	}
+
 	return z_impl_zsock_fcntl_impl(sock, cmd, flags);
 }
 #include <zephyr/syscalls/zsock_fcntl_impl_mrsh.c>
@@ -840,28 +860,56 @@ int z_impl_zsock_ioctl_impl(int sock, unsigned long request, va_list args)
 }
 
 #ifdef CONFIG_USERSPACE
+/* Re-issue the request with kernel side arguments, so that the ioctl
+ * handlers never consume anything from the user supplied va_list.
+ */
+static int zsock_ioctl_kernel(int sock, unsigned long request, ...)
+{
+	va_list args;
+	int ret;
+
+	va_start(args, request);
+	ret = z_impl_zsock_ioctl_impl(sock, request, args);
+	va_end(args);
+
+	return ret;
+}
+
 static inline int z_vrfy_zsock_ioctl_impl(int sock, unsigned long request, va_list args)
 {
 	switch (request) {
 	case ZFD_IOCTL_FIONBIO:
-		break;
+		return zsock_ioctl_kernel(sock, request);
 
 	case ZFD_IOCTL_FIONREAD:
 	case ZFD_IOCTL_FIONWRITE: {
-		int *avail;
+		va_list args_copy;
+		int *user_avail;
+		int avail = 0;
+		int ret;
 
-		avail = va_arg(args, int *);
-		K_OOPS(K_SYSCALL_MEMORY_WRITE(avail, sizeof(*avail)));
+		/* Peek at the pointer without advancing the caller's list:
+		 * va_arg() modifies args, and the handler would otherwise
+		 * read (and write through) the next, unchecked, slot.
+		 */
+		va_copy(args_copy, args);
+		user_avail = va_arg(args_copy, int *);
+		va_end(args_copy);
 
-		break;
+		K_OOPS(K_SYSCALL_MEMORY_WRITE(user_avail, sizeof(*user_avail)));
+
+		ret = zsock_ioctl_kernel(sock, request, &avail);
+		if (ret == 0) {
+			K_OOPS(k_usermode_to_copy(user_avail, &avail, sizeof(avail)));
+		}
+
+		return ret;
 	}
 
 	default:
 		errno = EOPNOTSUPP;
 		return -1;
 	}
-
-	return z_impl_zsock_ioctl_impl(sock, request, args);
 }
 #include <zephyr/syscalls/zsock_ioctl_impl_mrsh.c>
 #endif
@@ -881,7 +929,7 @@ static inline int z_vrfy_zsock_inet_pton(net_sa_family_t family,
 {
 	int dst_size;
 	char src_copy[NET_IPV6_ADDR_LEN];
-	char dst_copy[sizeof(struct net_in6_addr)];
+	char dst_copy[sizeof(struct net_in6_addr)] = { 0 };
 	int ret;
 
 	switch (family) {
@@ -930,7 +978,7 @@ int z_vrfy_zsock_getsockopt(int sock, int level, int optname,
 	K_OOPS(k_usermode_from_copy(&kernel_optlen, optlen, sizeof(net_socklen_t)));
 
 	if (K_SYSCALL_MEMORY_WRITE(optval, kernel_optlen)) {
-		errno = -EPERM;
+		errno = EFAULT;
 		return -1;
 	}
 
