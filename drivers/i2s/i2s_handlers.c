@@ -59,6 +59,8 @@ static inline int z_vrfy_i2s_buf_read(const struct device *dev,
 	int ret;
 
 	K_OOPS(K_SYSCALL_DRIVER_I2S(dev, read));
+	/* The configuration is needed to free the block */
+	K_OOPS(K_SYSCALL_DRIVER_I2S(dev, config_get));
 
 	ret = i2s_read(dev, &mem_block, &data_size);
 
@@ -91,6 +93,7 @@ static inline int z_vrfy_i2s_buf_write(const struct device *dev,
 	void *mem_block;
 
 	K_OOPS(K_SYSCALL_DRIVER_I2S(dev, write));
+	K_OOPS(K_SYSCALL_DRIVER_I2S(dev, config_get));
 	tx_cfg = i2s_config_get(dev, I2S_DIR_TX);
 	if (!tx_cfg) {
 		return -EIO;
