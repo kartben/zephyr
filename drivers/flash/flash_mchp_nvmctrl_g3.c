@@ -14,6 +14,7 @@
 #include <zephyr/sys/clock.h>
 #include <zephyr/drivers/clock_control/mchp_clock_control.h>
 #include <zephyr/drivers/flash/mchp_flash.h>
+#include <zephyr/internal/syscall_handler.h>
 
 LOG_MODULE_REGISTER(flash_mchp_nvmctrl_g3);
 
@@ -440,7 +441,7 @@ static int flash_mchp_erase(const struct device *dev, off_t offset, size_t no_of
 }
 
 #if CONFIG_FLASH_EX_OP_ENABLED
-static int flash_mchp_ex_op(const struct device *dev, uint16_t opr_code, const uintptr_t exop_info,
+static int flash_mchp_ex_op(const struct device *dev, uint16_t opr_code, uintptr_t exop_info,
 			    void *out)
 {
 	ARG_UNUSED(out);
@@ -451,6 +452,35 @@ static int flash_mchp_ex_op(const struct device *dev, uint16_t opr_code, const u
 	struct bfm_exop *bfm_exop_data;
 	uint8_t region;
 	int nvm_err = -EINVAL;
+#ifdef CONFIG_USERSPACE
+	struct pfm_exop pfm_copy;
+	struct bfm_exop bfm_copy;
+
+	/* The generic flash_ex_op() verifier leaves vendor specific
+	 * arguments to the driver: copy them to the kernel stack when called
+	 * from user mode, before taking the lock.
+	 */
+	if (k_is_in_user_syscall()) {
+		switch (opr_code) {
+		case FLASH_EX_OP_PFM_REGION_WRITE_PROTECT_ENABLE:
+		case FLASH_EX_OP_PFM_REGION_WRITE_PROTECT_DISABLE:
+		case FLASH_EX_OP_PFM_REGION_WRITE_PROTECT_LOCK:
+			K_OOPS(k_usermode_from_copy(&pfm_copy, (const void *)exop_info,
+						    sizeof(pfm_copy)));
+			exop_info = (uintptr_t)&pfm_copy;
+			break;
+		case FLASH_EX_OP_BFM_WRITE_PROTECT_ENABLE:
+		case FLASH_EX_OP_BFM_WRITE_PROTECT_DISABLE:
+		case FLASH_EX_OP_BFM_WRITE_PROTECT_LOCK:
+			K_OOPS(k_usermode_from_copy(&bfm_copy, (const void *)exop_info,
+						    sizeof(bfm_copy)));
+			exop_info = (uintptr_t)&bfm_copy;
+			break;
+		default:
+			break;
+		}
+	}
+#endif
 
 	k_sem_take(&data->fcw_sem_lock, K_FOREVER);
 	switch (opr_code) {
@@ -458,6 +488,10 @@ static int flash_mchp_ex_op(const struct device *dev, uint16_t opr_code, const u
 		pfm_exop_data = (struct pfm_exop *)exop_info;
 		fcw_ready_wait(regs);
 		regs->FCW_KEY = FCW_UNLOCK_CFGKEY;
+		if (pfm_exop_data->region > PFM_WP_REGION_7) {
+			nvm_err = -EINVAL;
+			break;
+		}
 		region = (uint8_t)(pfm_exop_data->region);
 		regs->FCW_PWP[region] = (FCW_PWP_PWPBASE(pfm_exop_data->base_addr) |
 					 FCW_PWP_PWPSIZE(pfm_exop_data->region_size) |
@@ -469,6 +503,10 @@ static int flash_mchp_ex_op(const struct device *dev, uint16_t opr_code, const u
 		pfm_exop_data = (struct pfm_exop *)(exop_info);
 		fcw_ready_wait(regs);
 		regs->FCW_KEY = FCW_UNLOCK_CFGKEY;
+		if (pfm_exop_data->region > PFM_WP_REGION_7) {
+			nvm_err = -EINVAL;
+			break;
+		}
 		region = (uint8_t)(pfm_exop_data->region);
 		regs->FCW_PWP[region] = (FCW_PWP_PWPBASE(pfm_exop_data->base_addr) |
 					 FCW_PWP_PWPSIZE(pfm_exop_data->region_size) |
@@ -480,6 +518,10 @@ static int flash_mchp_ex_op(const struct device *dev, uint16_t opr_code, const u
 		pfm_exop_data = (struct pfm_exop *)(exop_info);
 		fcw_ready_wait(regs);
 		regs->FCW_KEY = FCW_UNLOCK_CFGKEY;
+		if (pfm_exop_data->region > PFM_WP_REGION_7) {
+			nvm_err = -EINVAL;
+			break;
+		}
 		region = (uint8_t)(pfm_exop_data->region);
 		regs->FCW_PWP[region] = (FCW_PWP_PWPBASE(pfm_exop_data->base_addr) |
 					 FCW_PWP_PWPSIZE(pfm_exop_data->region_size) |

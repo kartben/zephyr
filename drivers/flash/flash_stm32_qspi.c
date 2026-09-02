@@ -1073,7 +1073,7 @@ static int flash_stm32_qspi_generic_read(const struct device *dev, QSPI_CommandT
 #ifdef CONFIG_USERSPACE
 	QSPI_CommandTypeDef cmd_copy;
 
-	bool syscall_trap = z_syscall_trap();
+	bool syscall_trap = k_is_in_user_syscall();
 
 	if (syscall_trap) {
 		K_OOPS(k_usermode_from_copy(&cmd_copy, cmd, sizeof(cmd_copy)));
@@ -1101,7 +1101,7 @@ static int flash_stm32_qspi_generic_write(const struct device *dev, QSPI_Command
 #ifdef CONFIG_USERSPACE
 	QSPI_CommandTypeDef cmd_copy;
 
-	bool syscall_trap = z_syscall_trap();
+	bool syscall_trap = k_is_in_user_syscall();
 
 	if (syscall_trap) {
 		K_OOPS(k_usermode_from_copy(&cmd_copy, cmd, sizeof(cmd_copy)));

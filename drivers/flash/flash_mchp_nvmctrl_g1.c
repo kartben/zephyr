@@ -19,6 +19,7 @@
 #include <zephyr/drivers/flash.h>
 #include <zephyr/drivers/clock_control/mchp_clock_control.h>
 #include <zephyr/drivers/flash/mchp_flash.h>
+#include <zephyr/internal/syscall_handler.h>
 
 /*******************************************
  * @brief Devicetree definitions
@@ -1030,6 +1031,19 @@ static int flash_ex_op_user_row_write(const struct device *dev, const uintptr_t 
 
 	const flash_mchp_ex_op_userrow_data_t *userrow_data =
 		(const flash_mchp_ex_op_userrow_data_t *)in;
+#ifdef CONFIG_USERSPACE
+	flash_mchp_ex_op_userrow_data_t userrow_copy;
+
+	/* The generic flash_ex_op() verifier leaves vendor specific
+	 * arguments to the driver: copy the descriptor and check the data
+	 * buffer it points to when called from user mode.
+	 */
+	if (k_is_in_user_syscall()) {
+		K_OOPS(k_usermode_from_copy(&userrow_copy, userrow_data, sizeof(userrow_copy)));
+		K_OOPS(K_SYSCALL_MEMORY_READ(userrow_copy.data, userrow_copy.data_len));
+		userrow_data = &userrow_copy;
+	}
+#endif
 
 	const uint8_t *buffer = (const uint8_t *)userrow_data->data;
 	uint32_t address = userrow_data->offset + SOC_NV_USERROW_BASE_ADDR;

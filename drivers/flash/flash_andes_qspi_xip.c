@@ -687,7 +687,7 @@ static int flash_andes_qspi_xip_ex_op(const struct device *dev, uint16_t code, c
 				      void *out)
 {
 #ifdef CONFIG_USERSPACE
-	bool syscall_trap = z_syscall_trap();
+	bool syscall_trap = k_is_in_user_syscall();
 #endif
 	int key, ret;
 
