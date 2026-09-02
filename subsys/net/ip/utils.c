@@ -317,6 +317,11 @@ char *z_vrfy_net_addr_ntop(net_sa_family_t family, const void *src,
 
 	K_OOPS(K_SYSCALL_MEMORY_WRITE(dst, size));
 
+	/* Apply the caller's buffer size to the implementation's checks,
+	 * they must not be satisfied by the kernel scratch buffer.
+	 */
+	size = MIN(size, sizeof(str));
+
 	if (family == NET_AF_INET) {
 		K_OOPS(k_usermode_from_copy(&addr4, (const void *)src,
 					sizeof(addr4)));
@@ -329,12 +334,15 @@ char *z_vrfy_net_addr_ntop(net_sa_family_t family, const void *src,
 		return 0;
 	}
 
-	out = z_impl_net_addr_ntop(family, addr, str, sizeof(str));
+	out = z_impl_net_addr_ntop(family, addr, str, size);
 	if (!out) {
 		return 0;
 	}
 
-	K_OOPS(k_usermode_to_copy((void *)dst, str, MIN(size, sizeof(str))));
+	/* Only copy what was formatted, the rest of the scratch buffer is
+	 * uninitialized kernel stack.
+	 */
+	K_OOPS(k_usermode_to_copy((void *)dst, str, strlen(str) + 1));
 
 	return dst;
 }
