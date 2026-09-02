@@ -13,6 +13,7 @@
 #include <zephyr/sys/clock.h>
 #include <zephyr/drivers/clock_control/mchp_clock_control.h>
 #include <zephyr/drivers/flash/mchp_flash.h>
+#include <zephyr/internal/syscall_handler.h>
 
 LOG_MODULE_REGISTER(flash_mchp_nvmctrl_g2);
 
@@ -419,18 +420,35 @@ static int flash_mchp_ex_op(const struct device *dev, uint16_t opr_code, const u
 	struct nvmctrl_mchp_g2_data *data = dev->data;
 	int ret;
 	uint32_t address;
+	uint32_t region_offset = 0;
+
+	/* Fetch the region offset before taking the lock so that a bad user
+	 * buffer does not leave the driver locked.
+	 */
+	if ((opr_code == FLASH_EX_OP_REGION_LOCK) || (opr_code == FLASH_EX_OP_REGION_UNLOCK)) {
+#ifdef CONFIG_USERSPACE
+		if (k_is_in_user_syscall()) {
+			K_OOPS(k_usermode_from_copy(&region_offset, (const void *)offset,
+						    sizeof(region_offset)));
+		} else {
+			region_offset = *(const uint32_t *)offset;
+		}
+#else
+		region_offset = *(const uint32_t *)offset;
+#endif
+	}
 
 	k_sem_take(&data->sem_lock, K_FOREVER);
 
 	switch (opr_code) {
 	/* Lock a specific region of flash memory */
 	case FLASH_EX_OP_REGION_LOCK:
-		address = config->base_addr + *(uint32_t *)offset;
+		address = config->base_addr + region_offset;
 		ret = set_addr_execute_cmd(dev, address, NVMCTRL_CTRLA_CMD_LR);
 		break;
 	/* Unlock a specific region of flash memory */
 	case FLASH_EX_OP_REGION_UNLOCK:
-		address = config->base_addr + *(uint32_t *)offset;
+		address = config->base_addr + region_offset;
 		ret = set_addr_execute_cmd(dev, address, NVMCTRL_CTRLA_CMD_UR);
 		break;
 	/* Sets the Power Reduction mode of flash memory */
