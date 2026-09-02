@@ -1831,6 +1831,19 @@ Other notable changes
     failure.  Use :c:func:`k_thread_cpu_pin` to reassign a thread to a
     different CPU.
 
+* West
+
+  * ``west boards``, ``west shields``, ``west snippets``, ``west blobs list`` and
+    ``west sdk list`` accept ``--json`` for machine-readable output. See
+    :ref:`west-json-output`.
+
+  * The new ``west runners`` command lists the available runners and the runner configuration
+    of a build directory without rebuilding it. See :ref:`west-runners`.
+
+  * ``west flash --context`` and its siblings now include the runners provided by modules, and
+    fail with an explicit message instead of prompting when a sysbuild has several domains and
+    standard input is not a terminal.
+
 * Timer
 
   * With :kconfig:option:`CONFIG_SYSTEM_CLOCK_SLOPPY_IDLE` enabled, a driver may no
