@@ -17,10 +17,11 @@ if(DEFINED CONFIG_I3C_I2C_NUM_OF_DESC_MEM_SLABS AND CONFIG_I3C_I2C_NUM_OF_DESC_M
   zephyr_library_sources(i3c_i2c_mem_slab.c)
 endif()
 
-zephyr_library_sources_ifdef(
-  CONFIG_USERSPACE
-  i3c_handlers.c
-)
+# The verifiers only cover the controller side of the API, whose ops and
+# implementations do not exist in target-only builds.
+if(CONFIG_USERSPACE AND CONFIG_I3C_CONTROLLER)
+  zephyr_library_sources(i3c_handlers.c)
+endif()
 
 zephyr_library_sources_ifdef(
   CONFIG_I3C_SHELL
