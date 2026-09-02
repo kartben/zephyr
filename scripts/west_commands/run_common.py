@@ -722,24 +722,7 @@ def dump_context(command, args, unknown_args):
         rebuild(command, build_dir, args)
 
     domains = get_domains_to_process(build_dir, args, None, get_all_domain)
-
-    if len(domains) > 1 and not getattr(args, "domain", None):
-        command.inf("Multiple domains available:")
-        for i, domain in enumerate(domains, 1):
-            command.inf(f"{INDENT}{i}. {domain.name} (build_dir: {domain.build_dir})")
-
-        while True:
-            try:
-                choice = input(f"Select domain (1-{len(domains)}): ")
-                choice = int(choice)
-                if 1 <= choice <= len(domains):
-                    domains = [domains[choice-1]]
-                    break
-                command.wrn(f"Please enter a number between 1 and {len(domains)}")
-            except ValueError:
-                command.wrn("Please enter a valid number")
-            except EOFError:
-                command.die("Input cancelled, exiting")
+    domains = select_context_domain(command, args, domains)
 
     selected_build_dir = domains[0].build_dir
 
@@ -772,6 +755,31 @@ def dump_context(command, args, unknown_args):
             command.die(f"Invalid runner name {args.runner}; choices: {available_runners}")
     else:
         dump_all_runner_context(command, runners_yaml, board, selected_build_dir)
+
+def select_context_domain(command, args, domains):
+    # Narrow a multi-domain build down to the one domain --context
+    # should describe, asking the user when there is a terminal to ask.
+    if len(domains) <= 1 or getattr(args, "domain", None):
+        return domains
+
+    if not sys.stdin.isatty():
+        names = ', '.join(domain.name for domain in domains)
+        command.die(f'multiple domains available ({names}); use --domain to select one')
+
+    command.inf("Multiple domains available:")
+    for i, domain in enumerate(domains, 1):
+        command.inf(f"{INDENT}{i}. {domain.name} (build_dir: {domain.build_dir})")
+
+    while True:
+        try:
+            choice = int(input(f"Select domain (1-{len(domains)}): "))
+            if 1 <= choice <= len(domains):
+                return [domains[choice - 1]]
+            command.wrn(f"Please enter a number between 1 and {len(domains)}")
+        except ValueError:
+            command.wrn("Please enter a valid number")
+        except EOFError:
+            command.die("Input cancelled, exiting")
 
 def dump_context_no_config(command, cls):
     if not cls:
