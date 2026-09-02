@@ -196,19 +196,11 @@ def do_run_common(command, user_args, user_runner_args, domain_file=None):
     highest_entry = None
     check_files = []
 
+    import_module_runners(command)
+
     if user_args.context:
         dump_context(command, user_args, user_runner_args)
         return
-
-    # Import external module runners
-    for module in zephyr_module.parse_modules(ZEPHYR_BASE, command.manifest):
-        runners_ext = module.meta.get("runners", [])
-        for runner in runners_ext:
-            module_name = module.meta.get("name", "runners_ext") + "." + Path(runner["file"]).stem
-
-            import_from_path(
-                module_name, Path(module.project) / runner["file"]
-            )
 
     build_dir = get_build_dir(user_args, config=command.config)
     rebuild(command, build_dir, user_args)
@@ -498,6 +490,14 @@ def do_run_common_image(command, user_args, user_runner_args, used_cmds,
             command.err('verbose mode enabled, dumping stack:', fatal=True)
             raise
     return runner
+
+def import_module_runners(command):
+    # Import the runners that modules contribute through module.yml so
+    # that ZephyrBinaryRunner.get_runners() and get_runner_cls() see them.
+    for module in zephyr_module.parse_modules(ZEPHYR_BASE, command.manifest):
+        for runner in module.meta.get("runners", []):
+            module_name = module.meta.get("name", "runners_ext") + "." + Path(runner["file"]).stem
+            import_from_path(module_name, Path(module.project) / runner["file"])
 
 def get_build_dir(args, die_if_none=True, *, config=None):
     # Get the build directory for the given argument list and environment.
