@@ -125,13 +125,16 @@ static inline int z_vrfy_flash_read_jedec_id(const struct device *dev,
 
 #endif /* CONFIG_FLASH_JESD216_API */
 
-#ifdef CONFIG_FLASH_EX_OP_ENABLED
-
 static inline int z_vrfy_flash_ex_op(const struct device *dev, uint16_t code,
 				     const uintptr_t in, void *out)
 {
-	K_OOPS(K_SYSCALL_DRIVER_FLASH(dev, ex_op));
+	/* The implementation returns -ENOTSUP for drivers without the op and
+	 * -ENOSYS when extended operations are disabled, so only the object
+	 * needs to be checked here.
+	 */
+	K_OOPS(K_SYSCALL_OBJ(dev, K_OBJ_DRIVER_FLASH));
 
+#ifdef CONFIG_FLASH_EX_OP_ENABLED
 	switch (code) {
 	case FLASH_EX_OP_RESET:
 		/* No input or output for this code, so no verification needed. */
@@ -150,9 +153,12 @@ static inline int z_vrfy_flash_ex_op(const struct device *dev, uint16_t code,
 		 */
 		break;
 	}
+#else
+	ARG_UNUSED(code);
+	ARG_UNUSED(in);
+	ARG_UNUSED(out);
+#endif /* CONFIG_FLASH_EX_OP_ENABLED */
 
 	return z_impl_flash_ex_op(dev, code, in, out);
 }
 #include <zephyr/syscalls/flash_ex_op_mrsh.c>
-
-#endif /* CONFIG_FLASH_EX_OP_ENABLED */
