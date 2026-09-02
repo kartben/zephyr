@@ -6,7 +6,12 @@
 
 #include "picolibc-hooks.h"
 
-static LIBC_DATA int (*_stdout_hook)(int);
+/* The hook is only ever called from the zephyr_fputc()/zephyr_write_stdout()
+ * syscall implementations, i.e. in supervisor mode. It must not live in the
+ * user-writable libc partition, or a user thread could point it anywhere
+ * and have the kernel call it.
+ */
+static int (*_stdout_hook)(int);
 
 int z_impl_zephyr_fputc(int a, FILE *out)
 {
