@@ -1831,6 +1831,13 @@ Other notable changes
     failure.  Use :c:func:`k_thread_cpu_pin` to reassign a thread to a
     different CPU.
 
+* Twister
+
+  * ``--list-tests``, ``--list-tags`` and ``--test-tree`` accept ``--json`` to print their
+    result as JSON, and the structure of :file:`twister.json` and :file:`testplan.json` is now
+    described by the JSON schema in
+    :zephyr_file:`scripts/schemas/twister/twister-report-schema.yaml`.
+
 * West
 
   * ``west boards``, ``west shields``, ``west snippets``, ``west blobs list`` and
