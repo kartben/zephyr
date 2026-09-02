@@ -46,12 +46,19 @@ static inline int z_vrfy_peci_transfer(const struct device *dev,
 	 * pointers it carries are still caller supplied and the driver
 	 * dereferences them in supervisor mode, so they must be checked here.
 	 */
-	if ((msg_copy.tx_buffer.buf != NULL) && (msg_copy.tx_buffer.len > 1U)) {
+	if (msg_copy.tx_buffer.len > 1U) {
+		/* Most drivers read len - 1 payload bytes, the eSPI PECI
+		 * driver reads len, so check for the larger of the two.
+		 */
 		K_OOPS(K_SYSCALL_MEMORY_READ(msg_copy.tx_buffer.buf,
-					     msg_copy.tx_buffer.len - 1U));
+					     msg_copy.tx_buffer.len));
 	}
 
-	if (msg_copy.rx_buffer.buf != NULL) {
+	/* The drivers write rx_buffer.len payload bytes plus the FCS byte
+	 * regardless of the buffer pointer, so a NULL buffer is only fine
+	 * when there is nothing to receive and the length is zero.
+	 */
+	if ((msg_copy.rx_buffer.buf != NULL) || (msg_copy.rx_buffer.len != 0U)) {
 		size_t rx_len;
 
 		K_OOPS(K_SYSCALL_VERIFY_MSG(!size_add_overflow(msg_copy.rx_buffer.len,
