@@ -601,17 +601,24 @@ static int flash_npcx_nor_ex_op(const struct device *dev, uint16_t code,
 		if (syscall_trap) {
 			K_OOPS(k_usermode_from_copy(&in_copy, op_in, sizeof(in_copy)));
 			op_in = &in_copy;
-			op_out = &out_copy;
+
+			/* The nested buffers are accessed by the QSPI driver. */
+			if (in_copy.tx_count != 0) {
+				K_OOPS(K_SYSCALL_MEMORY_READ(in_copy.tx_buf, in_copy.tx_count));
+			}
+
+			if (op_out != NULL) {
+				K_OOPS(k_usermode_from_copy(&out_copy, op_out, sizeof(out_copy)));
+				if (in_copy.rx_count != 0) {
+					K_OOPS(K_SYSCALL_MEMORY_WRITE(out_copy.rx_buf,
+								      in_copy.rx_count));
+				}
+				op_out = &out_copy;
+			}
 		}
 #endif
 
 		ret = flash_npcx_nor_ex_exec_uma(dev, op_in, op_out);
-
-#ifdef CONFIG_USERSPACE
-		if (ret == 0 && syscall_trap) {
-			K_OOPS(k_usermode_to_copy(out, op_out, sizeof(out_copy)));
-		}
-#endif
 		break;
 	}
 	case FLASH_NPCX_EX_OP_SET_QSPI_OPER:
@@ -658,6 +665,10 @@ static int flash_npcx_nor_ex_op(const struct device *dev, uint16_t code,
 		if (syscall_trap) {
 			K_OOPS(k_usermode_from_copy(&op_in_copy, op_in, sizeof(op_in_copy)));
 			op_in = &op_in_copy;
+
+			/* The DMA engine writes to the destination address. */
+			K_OOPS(K_SYSCALL_MEMORY_WRITE((void *)(uintptr_t)op_in_copy.dst,
+						      op_in_copy.length));
 		}
 #endif
 		ret = flash_npcx_nor_ex_exec_gdma(dev, op_in);
