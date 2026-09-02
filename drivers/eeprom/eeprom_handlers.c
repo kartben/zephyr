@@ -12,6 +12,12 @@ static inline int z_vrfy_eeprom_read(const struct device *dev, off_t offset,
 {
 	K_OOPS(K_SYSCALL_DRIVER_EEPROM(dev, read));
 	K_OOPS(K_SYSCALL_MEMORY_WRITE(data, len));
+	/* The drivers range check with offset + len, which a negative or
+	 * wrapping offset would pass.
+	 */
+	K_OOPS(K_SYSCALL_VERIFY_MSG(offset >= 0, "negative offset"));
+	K_OOPS(K_SYSCALL_VERIFY_MSG((size_t)offset <= (SIZE_MAX - len),
+				    "offset + len overflows"));
 	return z_impl_eeprom_read(dev, offset, data, len);
 }
 #include <zephyr/syscalls/eeprom_read_mrsh.c>
@@ -21,6 +27,9 @@ static inline int z_vrfy_eeprom_write(const struct device *dev, off_t offset,
 {
 	K_OOPS(K_SYSCALL_DRIVER_EEPROM(dev, write));
 	K_OOPS(K_SYSCALL_MEMORY_READ(data, len));
+	K_OOPS(K_SYSCALL_VERIFY_MSG(offset >= 0, "negative offset"));
+	K_OOPS(K_SYSCALL_VERIFY_MSG((size_t)offset <= (SIZE_MAX - len),
+				    "offset + len overflows"));
 	return z_impl_eeprom_write(dev, offset, data, len);
 }
 #include <zephyr/syscalls/eeprom_write_mrsh.c>
