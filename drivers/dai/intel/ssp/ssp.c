@@ -5,6 +5,7 @@
  */
 
 #include <errno.h>
+#include <stddef.h>
 #include <zephyr/sys/util_macro.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -2027,6 +2028,13 @@ static int dai_ssp_parse_aux_data(struct dai_intel_ssp *dp, const void *spec_con
 	uint8_t *aux_ptr;
 
 	if (blob15->version == SSP_BLOB_VER_1_5) {
+		/* The length inside the blob must not exceed what the caller
+		 * actually handed over.
+		 */
+		if (blob15->size > size) {
+			LOG_ERR("blob size %u exceeds buffer size %zu", blob15->size, size);
+			return -EINVAL;
+		}
 		cfg_len = blob15->size;
 		pre_aux_len = sizeof(*blob15) +
 			      blob15->i2s_mclk_control.mdivrcnt * sizeof(uint32_t);
@@ -2204,7 +2212,17 @@ static int dai_ssp_set_config_blob(struct dai_intel_ssp *dp, const struct dai_co
 		return 0;
 	}
 
+	/* The blob comes from the caller (possibly copied from user mode
+	 * with exactly size bytes), so never read past it.
+	 */
+	if (size < offsetof(struct dai_intel_ipc4_ssp_configuration_blob_ver_1_5, tdm_ts_group)) {
+		return -EINVAL;
+	}
+
 	if (blob15->version == SSP_BLOB_VER_1_5) {
+		if (size < sizeof(*blob15)) {
+			return -EINVAL;
+		}
 		err = dai_ssp_parse_aux_data(dp, spec_config, size);
 		if (err) {
 			return err;
@@ -2215,6 +2233,9 @@ static int dai_ssp_set_config_blob(struct dai_intel_ssp *dp, const struct dai_co
 			return err;
 		}
 	} else if (blob30->version == SSP_BLOB_VER_3_0) {
+		if (size < sizeof(*blob30)) {
+			return -EINVAL;
+		}
 		err = dai_ssp_parse_aux_data(dp, spec_config, size);
 		if (err) {
 			return err;
@@ -2225,6 +2246,9 @@ static int dai_ssp_set_config_blob(struct dai_intel_ssp *dp, const struct dai_co
 			return err;
 		}
 	} else {
+		if (size < sizeof(*blob)) {
+			return -EINVAL;
+		}
 		dai_ssp_set_reg_config(dp, cfg, (void *)&blob->i2s_driver_config.i2s_config);
 		dai_ssp_set_clock_control_ver_1(dp, &blob->i2s_driver_config.mclk_config);
 	}
