@@ -1,0 +1,176 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Schema to validate the JSON reports written by Twister: twister.json,
+# testplan.json, the per-platform <platform>.json reports and their
+# *_footprint.json variants. They are all produced by the same generator
+# (JsonReport.create() in twisterlib/reports.py) and only differ in which
+# test suites and which suite properties are kept (Reporting.json_filters).
+#
+# Compatibility rule: fields are only ever added to these reports. Renaming
+# a field or changing its type is a breaking change that requires a
+# migration-guide entry.
+#
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$defs:
+  status:
+    description: >-
+      Twister status, as the string value of twisterlib.statuses.TwisterStatus.
+      "None" is the status of an instance or test case that was never processed.
+    type: string
+    enum:
+      - blocked
+      - started
+      - filtered
+      - not run
+      - "None"
+      - error
+      - failed
+      - passed
+      - skipped
+  duration:
+    description: >-
+      Duration in seconds, formatted as a string with two decimals (e.g. "1.25").
+    type: string
+    pattern: '^[0-9]+\.[0-9]{2}$'
+  testcase:
+    type: object
+    additionalProperties: false
+    required:
+      - identifier
+      - status
+    properties:
+      identifier:
+        description: Test case name.
+        type: string
+      status:
+        $ref: "#/$defs/status"
+      execution_time:
+        description: >-
+          Test case duration; absent when the whole instance has status "None".
+        $ref: "#/$defs/duration"
+      log:
+        description: Console output captured for this test case, when any.
+        type: string
+      reason:
+        description: Why the test case was skipped, filtered or failed.
+        type:
+          - string
+          - "null"
+  testsuite:
+    description: >-
+      One test instance, i.e. a test scenario built for one platform. The
+      *_footprint.json variant drops runnable, retries, execution_time,
+      testcases and recording and adds footprint.
+    type: object
+    additionalProperties: false
+    required:
+      - name
+      - arch
+      - platform
+      - path
+      - status
+      - build_time
+    properties:
+      name:
+        description: Test scenario identifier.
+        type: string
+      arch:
+        type: string
+      platform:
+        description: Platform (board target) the scenario was built for.
+        type: string
+      path:
+        description: Test suite source directory, relative to its test root.
+        type: string
+      run_id:
+        description: Unique identifier of this build, matched against the console output.
+        type: string
+      runnable:
+        description: Whether the instance can be executed (false for build-only and filtered).
+        type: boolean
+      used_ram:
+        type: integer
+      used_rom:
+        type: integer
+      available_ram:
+        type: integer
+      available_rom:
+        type: integer
+      retries:
+        description: Number of times the instance was retried.
+        type: integer
+      toolchain:
+        description: Toolchain variant used for this instance.
+        type: string
+      dut:
+        description: Identifier of the hardware device the test ran on.
+        type: string
+      status:
+        $ref: "#/$defs/status"
+      reason:
+        description: Why the instance was filtered, skipped, not run or failed.
+        type:
+          - string
+          - "null"
+      log:
+        description: Relevant log excerpt; only present for failed and error instances.
+        type: string
+      execution_time:
+        description: >-
+          Time spent running the instance; absent when the status is "None".
+        $ref: "#/$defs/duration"
+      build_time:
+        description: Time spent building the instance.
+        $ref: "#/$defs/duration"
+      testcases:
+        type: array
+        items:
+          $ref: "#/$defs/testcase"
+      recording:
+        description: Records extracted from the console output by the harness.
+        type: array
+      footprint:
+        description: ROM/RAM footprint data, keyed by memory region name.
+        type: object
+type: object
+additionalProperties: false
+required:
+  - environment
+  - testsuites
+properties:
+  environment:
+    type: object
+    additionalProperties: false
+    required:
+      - os
+      - zephyr_version
+      - toolchain
+      - commit_date
+      - run_date
+      - options
+    properties:
+      os:
+        type: string
+      zephyr_version:
+        type: string
+      toolchain:
+        type:
+          - string
+          - "null"
+      commit_date:
+        type: string
+      run_date:
+        type:
+          - string
+          - "null"
+      options:
+        description: >-
+          Command line options of the run; only the non-default ones unless
+          --report-all-options was given.
+        type: object
+        additionalProperties: true
+  testsuites:
+    type: array
+    items:
+      $ref: "#/$defs/testsuite"

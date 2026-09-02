@@ -17,16 +17,30 @@ Covered options:
   --aggressive-no-clean    Keep every artifact from a previous run
 """
 
+import json
 import os
 from unittest import mock
 
+import jsonschema
 import pytest
+import scl
 from conftest import TEST_DATA, TEST_FILENAME_MOCK, read_testplan
 from twisterlib.testplan import TestPlan
 from twisterlib.twister_main import main as twister_main
 
 AGNOSTIC = os.path.join(TEST_DATA, 'tests', 'dummy', 'agnostic')
 PLATFORMS = ['native_sim/native', 'native_sim/native/64']
+REPORT_SCHEMA = os.path.join(
+    os.environ['ZEPHYR_BASE'], 'scripts', 'schemas', 'twister', 'twister-report-schema.yaml'
+)
+
+
+def validate_report(path):
+    """Validate a JSON report file against the twister report schema."""
+    with open(path) as fh:
+        report = json.load(fh)
+    jsonschema.validate(report, scl.yaml_load(REPORT_SCHEMA))
+    return report
 
 
 @mock.patch.object(TestPlan, 'TEST_DEFINITION_FILENAME', TEST_FILENAME_MOCK)
@@ -252,6 +266,33 @@ class TestClobberOutput:
         args = ['-i', '--outdir', out_path, '-T', AGNOSTIC, '-y'] + ['-p', 'native_sim']
         assert twister_main(args) == 0
         assert not os.path.isfile(straggler), 'straggler should have been removed'
+
+
+@mock.patch.object(TestPlan, 'TEST_DEFINITION_FILENAME', TEST_FILENAME_MOCK)
+class TestReportSchema:
+    """The JSON reports must match scripts/schemas/twister/twister-report-schema.yaml."""
+
+    @pytest.mark.fast
+    def test_testplan_json_matches_schema(self, out_path):
+        """testplan.json from a dry run validates against the report schema."""
+        args = ['-i', '--outdir', out_path, '-T', AGNOSTIC, '-y', '--report-filtered'] + [
+            v for p in PLATFORMS for v in ('-p', p)
+        ]
+        assert twister_main(args) == 0
+
+        plan = validate_report(os.path.join(out_path, 'testplan.json'))
+        assert plan['testsuites']
+
+    @pytest.mark.build
+    def test_twister_json_matches_schema(self, out_path):
+        """twister.json from a build-only run validates against the report schema."""
+        args = ['-i', '--outdir', out_path, '-T', AGNOSTIC, '--build-only'] + [
+            v for p in PLATFORMS for v in ('-p', p)
+        ]
+        twister_main(args)
+
+        report = validate_report(os.path.join(out_path, 'twister.json'))
+        assert report['testsuites']
 
 
 @mock.patch.object(TestPlan, 'TEST_DEFINITION_FILENAME', TEST_FILENAME_MOCK)

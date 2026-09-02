@@ -1923,6 +1923,13 @@ The following files are written at the root of the output directory:
 :file:`twister_footprint.json`
     ROM/RAM footprint report. Only generated when ``--footprint-report`` is used.
 
+The structure of :file:`twister.json`, :file:`testplan.json`, the per-platform
+:file:`<platform>.json` reports and their :file:`*_footprint.json` variants is
+described by the JSON schema in
+:zephyr_file:`scripts/schemas/twister/twister-report-schema.yaml`. Fields are
+only ever added to these reports; renaming a field or changing its type is a
+breaking change that requires a migration-guide entry.
+
 The report base name (``twister``) can be changed with ``--report-name``, and
 ``--report-suffix`` appends a suffix (for example a version or commit ID) to all
 generated file names. Use ``-o``/``--report-dir`` to write the reports to a
