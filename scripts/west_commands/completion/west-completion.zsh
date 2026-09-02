@@ -475,6 +475,7 @@ _west_sdk() {
   '--toolchains[toolchains]:toolchains:'
   '--personal-access-token[Github personal access token (PAT)]:token:'
   '--api-url[Github API URL]:url:'
+  '--json[print the result as JSON]'
   )
 
   _arguments -S $opts \

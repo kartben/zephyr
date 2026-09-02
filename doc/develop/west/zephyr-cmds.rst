@@ -538,6 +538,9 @@ This command shows:
 - Available SDK releases
 - Toolchains included in each SDK
 
+Add ``--json`` to get the same information as a JSON array; see
+:ref:`west-json-output`.
+
 Installing the Zephyr SDK
 -------------------------
 
@@ -611,3 +614,8 @@ has the keys declared for the blob in :file:`module.yml` (``path``, ``sha256``,
 ``click-through``, ...) plus the computed ``module``, ``abspath``,
 ``license-abspath`` and ``status`` (``A`` present, ``M`` hash mismatch, ``D``
 not present) fields, i.e. the same values available to ``--format``.
+
+``west sdk list --json`` prints an array of installed SDKs, each with
+``version``, ``path``, ``hosttools`` and ``llvm`` (booleans), ``gnu_toolchains``
+(installed) and ``gnu_available_toolchains`` (provided by that SDK release but
+not installed). The array is empty when no SDK is installed.

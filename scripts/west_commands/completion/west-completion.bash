@@ -1234,6 +1234,7 @@ __comp_west_sdk()
 			return
 			;;
 		list)
+			__set_comp "--json"
 			return
 			;;
 		$(__west_to_extglob "$dir_opts") )
