@@ -222,6 +222,8 @@ def typename_split(item):
 
 
 def need_split(argtype):
+    # cv-qualifiers do not change the size of the type
+    argtype = " ".join(re.sub(r"\b(const|volatile)\b", "", argtype).split())
     return (not args.long_registers) and (argtype in types64)
 
 
