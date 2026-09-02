@@ -304,7 +304,7 @@ int flash_ra_ex_op_write_protect(const struct device *dev, const uintptr_t in, v
 		struct flash_ra_ex_write_protect_in copy_in;
 
 		if (syscall_trap) {
-			K_OOPS(k_user_from_copy(&copy_in, request, sizeof(copy_in)));
+			K_OOPS(k_usermode_from_copy(&copy_in, request, sizeof(copy_in)));
 			request = &copy_in;
 		}
 #endif
@@ -321,7 +321,7 @@ int flash_ra_ex_op_write_protect(const struct device *dev, const uintptr_t in, v
 
 	if (result != NULL) {
 #ifdef CONFIG_USERSPACE
-		struct flash_ra_ex_write_protect_out copy_out;
+		struct flash_ra_ex_write_protect_out copy_out = { 0 };
 
 		if (syscall_trap) {
 			result = &copy_out;
@@ -334,7 +334,7 @@ int flash_ra_ex_op_write_protect(const struct device *dev, const uintptr_t in, v
 
 #ifdef CONFIG_USERSPACE
 		if (syscall_trap) {
-			K_OOPS(k_user_to_copy(out, result, sizeof(copy_out)));
+			K_OOPS(k_usermode_to_copy(out, result, sizeof(copy_out)));
 		}
 #endif
 	}
