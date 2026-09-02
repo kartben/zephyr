@@ -6,6 +6,7 @@ Tools and IDEs
 .. toctree::
    :maxdepth: 1
 
+   ai_coding_agents.rst
    clion.rst
    coccinelle.rst
    ide_for_zephyr_vscode_ext.rst

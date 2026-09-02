@@ -326,6 +326,23 @@ this is reported per domain; use ``--domain`` to restrict the output.
 Unlike ``west flash --context``, ``west runners`` never rebuilds the
 application, never prompts, and can print JSON (see :ref:`west-json-output`).
 
+.. _west-mcp:
+
+MCP server for AI coding agents: ``west mcp``
+*********************************************
+
+The ``mcp`` command runs a `Model Context Protocol`_ server over standard
+input and output so that an AI coding assistant or agent-enabled IDE can
+inspect and drive the workspace: list boards, modules and tests, build
+applications, read build directories, and run twister. It is launched by the
+MCP client rather than interactively, needs the optional ``mcp`` Python
+package, and exposes hardware flashing only with ``--allow-hardware``.
+
+See :ref:`ai_coding_agents` for how to connect an agent and what the server
+offers.
+
+.. _Model Context Protocol: https://modelcontextprotocol.io/
+
 .. _west-twister:
 
 Twister wrapper: ``west twister``

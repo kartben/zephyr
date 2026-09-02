@@ -1851,6 +1851,10 @@ Other notable changes
     fail with an explicit message instead of prompting when a sysbuild has several domains and
     standard input is not a terminal.
 
+  * The new ``west mcp`` command runs a Model Context Protocol server that lets AI coding agents
+    inspect and drive the workspace: boards, modules, builds, build directories and twister. It
+    needs the optional ``mcp`` Python package. See :ref:`ai_coding_agents`.
+
 * Timer
 
   * With :kconfig:option:`CONFIG_SYSTEM_CLOCK_SLOPPY_IDLE` enabled, a driver may no
