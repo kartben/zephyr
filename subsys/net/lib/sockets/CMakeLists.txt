@@ -4,6 +4,11 @@ zephyr_syscall_header(
   ${ZEPHYR_BASE}/include/zephyr/net/socket.h
 )
 
+zephyr_syscall_header_ifdef(
+  CONFIG_NET_SOCKETS_SERVICE
+  ${ZEPHYR_BASE}/include/zephyr/net/socket_service.h
+)
+
 zephyr_library_include_directories(.)
 
 zephyr_library_sources(
