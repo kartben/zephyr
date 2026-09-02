@@ -87,6 +87,11 @@ west-commands:
       - name: simulate
         class: Simulate
         help: simulate board
+  - file: scripts/west_commands/runners_cmd.py
+    commands:
+      - name: runners
+        class: Runners
+        help: list runners and their configuration for a build directory
   - file: scripts/west_commands/sdk.py
     commands:
       - name: sdk

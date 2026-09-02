@@ -190,6 +190,7 @@ function __zephyr_west_complete_help
                     "bindesc" "work with Binary Descriptors" \
                     "robot" "run RobotFramework test suites" \
                     "simulate" "simulate board" \
+                    "runners" "list runners and their configuration for a build directory" \
                     "sdk" "manage SDKs" \
                     "packages" "manage packages for Zephyr" \
                     "patch" "manage patches for Zephyr modules" \
@@ -668,6 +669,13 @@ complete -c west -n "__zephyr_west_seen_subcommand_from blobs; and not __fish_se
 complete -c west -n "__zephyr_west_seen_subcommand_from blobs; and __fish_seen_subcommand_from list fetch clean" -ra "(__zephyr_west_complete_projects)"
 complete -c west -n "__zephyr_west_seen_subcommand_from blobs; and not __fish_seen_subcommand_from fetch clean" -o f -l format -r -d "format string"
 complete -c west -n "__zephyr_west_seen_subcommand_from blobs; and not __fish_seen_subcommand_from fetch clean" -l json -d "print the result as JSON"
+
+# runners
+complete -c west -n "__zephyr_west_use_subcommand; and __zephyr_west_check_if_in_workspace" -ra runners -d "list runners and their configuration for a build directory"
+complete -c west -n "__zephyr_west_seen_subcommand_from runners" -o d -l build-dir -xa "(__zephyr_west_complete_directories)" -d "build directory"
+complete -c west -n "__zephyr_west_seen_subcommand_from runners" -o r -l runner -r -d "only describe this runner"
+complete -c west -n "__zephyr_west_seen_subcommand_from runners" -l domain -r -d "only describe this sysbuild domain"
+complete -c west -n "__zephyr_west_seen_subcommand_from runners" -l json -d "print the result as JSON"
 
 # sdk
 complete -c west -n "__zephyr_west_use_subcommand; and __zephyr_west_check_if_in_workspace" -ra sdk -d "manage SDKs"

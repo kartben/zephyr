@@ -303,6 +303,29 @@ under their original filename or with a SHA-256 suffix (``<filename>.<sha>``).
 If found, the blob is copied from the cache to the blob path; otherwise
 it is downloaded from its URL(s) to the blob path.
 
+.. _west-runners:
+
+Listing runners: ``west runners``
+*********************************
+
+The ``runners`` command lists the :ref:`runners <west-runner>` that ``west
+flash``, ``west debug`` and related commands can use, with the commands each one
+supports, its capabilities and its command-line options. When run inside a
+build directory, or with ``-d/--build-dir``, it also reports what that build
+configures: the runners enabled by the board, the default runner for each
+command, and the common configuration (ELF, HEX and binary files, GDB, OpenOCD,
+...) found in its :file:`runners.yaml`. For :ref:`sysbuild <sysbuild>` builds
+this is reported per domain; use ``--domain`` to restrict the output.
+
+.. code-block:: console
+
+   west runners -d build
+   west runners -r openocd
+   west runners -d build --json
+
+Unlike ``west flash --context``, ``west runners`` never rebuilds the
+application, never prompts, and can print JSON (see :ref:`west-json-output`).
+
 .. _west-twister:
 
 Twister wrapper: ``west twister``
@@ -619,3 +642,11 @@ not present) fields, i.e. the same values available to ``--format``.
 ``version``, ``path``, ``hosttools`` and ``llvm`` (booleans), ``gnu_toolchains``
 (installed) and ``gnu_available_toolchains`` (provided by that SDK release but
 not installed). The array is empty when no SDK is installed.
+
+``west runners --json`` prints an object with ``runners``, an array describing
+every runner class (``name``, ``commands``, ``capabilities`` and ``options``,
+the latter introspected from the runner's argument parser on a best-effort
+basis), and, when a build directory is known, ``build_dir``, ``sysbuild`` and
+``domains``: one entry per (domain) build directory with its ``board``,
+``runners_yaml`` path, ``available`` runners, ``default`` runner per command,
+common ``config`` and runner-specific ``args``.

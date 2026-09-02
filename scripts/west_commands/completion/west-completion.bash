@@ -1206,6 +1206,41 @@ __comp_west_twister()
 	esac
 }
 
+__comp_west_runners()
+{
+	local bool_opts="
+		--json
+	"
+
+	local dir_opts="
+		--build-dir -d
+	"
+
+	local other_opts="
+		--runner -r
+		--domain
+	"
+
+	all_opts="$bool_opts $dir_opts $other_opts"
+
+	case "$prev" in
+		$(__west_to_extglob "$dir_opts") )
+			__set_comp_dirs
+			return
+			;;
+		# We don't know how to autocomplete those
+		$(__west_to_extglob "$other_opts") )
+			return
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			__set_comp $all_opts
+			;;
+	esac
+}
+
 __comp_west_sdk()
 {
 	local bool_opts="
@@ -1295,6 +1330,7 @@ __comp_west()
 		bindesc
 		robot
 		simulate
+		runners
 		sdk
 		packages
 		patch

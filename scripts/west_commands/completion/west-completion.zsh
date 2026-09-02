@@ -43,6 +43,7 @@ _west_cmds() {
   'bindesc[work with Binary Descriptors]'
   'robot[run RobotFramework test suites]'
   'simulate[simulate a Zephyr application]'
+  'runners[list runners and their configuration for a build directory]'
   'sdk[manage SDKs]'
   'packages[manage packages for Zephyr]'
   'patch[manage patches for Zephyr modules]'
@@ -614,6 +615,17 @@ _west_simulate() {
 
 _west_reset() {
   __comp_west_runner_cmd
+}
+
+_west_runners() {
+  local -a opts=(
+  '(-d --build-dir)'{-d,--build-dir}'[build directory]:build dir:_directories'
+  '(-r --runner)'{-r,--runner}'[only describe this runner]:runner:'
+  '*--domain[only describe this sysbuild domain]:domain:'
+  '--json[print the result as JSON]'
+  )
+
+  _arguments -S $opts
 }
 
 _west_rtt() {

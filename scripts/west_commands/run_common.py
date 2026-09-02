@@ -20,7 +20,7 @@ import tempfile
 import textwrap
 import traceback
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from build_helpers import BUILD_HELPERS_LOGGER, find_build_dir, is_zephyr_build, \
     load_domains, forward_logging_to_west, FIND_BUILD_DIR_DESCRIPTION
 from west.commands import CommandError, Verbosity
@@ -880,6 +880,82 @@ def dump_all_runner_context(command, runners_yaml, board, build_dir):
     if len(available) > 1:
         command.inf()
         command.inf('Note: use -r RUNNER to limit information to one runner.')
+
+#
+# west runners
+#
+
+def runner_class_info(cls):
+    # Describe a runner class: its name, commands, capabilities and options.
+    caps = cls.capabilities()
+    return {
+        'name': cls.name(),
+        'commands': sorted(caps.commands),
+        'capabilities': asdict(caps),
+        'options': runner_options_info(cls),
+    }
+
+def runner_options_info(cls):
+    # Best-effort introspection of the argparse options a runner registers.
+    dummy_parser = argparse.ArgumentParser(prog='', add_help=False, allow_abbrev=False)
+    cls.add_parser(dummy_parser)
+    options = []
+    for action in dummy_parser._actions:
+        if not action.option_strings:
+            continue
+        default = action.default
+        if default is argparse.SUPPRESS:
+            default = None
+        elif not isinstance(default, str | int | float | bool | list | tuple | type(None)):
+            default = str(default)
+        options.append({
+            'flags': list(action.option_strings),
+            'dest': action.dest,
+            'help': None if action.help == argparse.SUPPRESS else action.help,
+            'default': default,
+            'choices': list(action.choices) if action.choices is not None else None,
+            'nargs': action.nargs,
+            'required': action.required,
+        })
+    return options
+
+def domain_runner_context(build_dir):
+    # Describe what runners.yaml configures for one (domain) build directory.
+    build_dir = Path(build_dir)
+    yaml_path = build_dir / 'zephyr' / 'runners.yaml'
+    ctx = {
+        'build_dir': fspath(build_dir),
+        'board': BuildConfiguration(build_dir).get('CONFIG_BOARD_TARGET'),
+        'runners_yaml': fspath(yaml_path) if yaml_path.is_file() else None,
+        'available': [],
+        'default': {},
+        'config': None,
+        'args': {},
+    }
+    if not yaml_path.is_file():
+        return ctx
+
+    runners_yaml = load_runners_yaml(yaml_path)
+    ctx['available'] = list(runners_yaml.get('runners') or [])
+    ctx['default'] = {key.removesuffix('-runner'): value
+                      for key, value in runners_yaml.items() if key.endswith('-runner')}
+    config = get_runner_config(build_dir, yaml_path, runners_yaml)._asdict()
+    config['file_type'] = config['file_type'].name if config['file_type'] else None
+    ctx['config'] = config
+    ctx['args'] = runners_yaml.get('args') or {}
+    return ctx
+
+def build_runner_context(build_dir, domain_names=None):
+    # Describe the runner configuration of a build directory, per domain
+    # for sysbuild. domain_names limits the sysbuild domains described.
+    build_dir = fspath(build_dir)
+    sysbuild = is_sysbuild(build_dir)
+    if sysbuild:
+        domains = load_domains(build_dir).get_domains(domain_names)
+        entries = [{'name': d.name, **domain_runner_context(d.build_dir)} for d in domains]
+    else:
+        entries = [{'name': None, **domain_runner_context(build_dir)}]
+    return {'build_dir': build_dir, 'sysbuild': sysbuild, 'domains': entries}
 
 def dump_wrapped_lines(command, text, indent):
     for line in textwrap.wrap(text, initial_indent=indent,
