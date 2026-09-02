@@ -48,7 +48,10 @@ static inline int z_vrfy_ivshmem_register_handler(const struct device *dev,
 						  uint16_t vector)
 {
 	K_OOPS(K_SYSCALL_DRIVER_IVSHMEM(dev, register_handler));
-	K_OOPS(K_SYSCALL_OBJ(signal, K_OBJ_POLL_SIGNAL));
+	/* A NULL signal unregisters the handler for the vector. */
+	if (signal != NULL) {
+		K_OOPS(K_SYSCALL_OBJ(signal, K_OBJ_POLL_SIGNAL));
+	}
 
 	return z_impl_ivshmem_register_handler(dev, signal, vector);
 }
