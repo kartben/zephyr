@@ -48,8 +48,21 @@ static inline int z_vrfy_sensor_channel_get(const struct device *dev,
 					    enum sensor_channel chan,
 					    struct sensor_value *val)
 {
+	size_t num_values = 1;
+
 	K_OOPS(K_SYSCALL_DRIVER_SENSOR(dev, channel_get));
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(val, sizeof(struct sensor_value)));
+
+	/* Drivers return three values (X, Y and Z) for the vector channels. */
+	if (SENSOR_CHANNEL_3_AXIS(chan) || (chan == SENSOR_CHAN_GBIAS_XYZ)) {
+		num_values = 3;
+	}
+
+	/* How much a driver writes for SENSOR_CHAN_ALL is driver specific
+	 * and cannot be validated here.
+	 */
+	K_OOPS(K_SYSCALL_VERIFY_MSG(chan != SENSOR_CHAN_ALL,
+				    "SENSOR_CHAN_ALL is not supported from user mode"));
+	K_OOPS(K_SYSCALL_MEMORY_ARRAY_WRITE(val, num_values, sizeof(struct sensor_value)));
 	return z_impl_sensor_channel_get(dev, chan, val);
 }
 #include <zephyr/syscalls/sensor_channel_get_mrsh.c>
@@ -70,8 +83,15 @@ static inline int z_vrfy_sensor_reconfigure_read_iodev(const struct rtio_iodev *
 						       size_t num_channels)
 {
 	K_OOPS(K_SYSCALL_OBJ(iodev, K_OBJ_RTIO_IODEV));
+	/* Any RTIO iodev is a K_OBJ_RTIO_IODEV, but the implementation
+	 * treats iodev->data as a struct sensor_read_config and writes to
+	 * it, so only accept iodevs created by SENSOR_DT_READ_IODEV().
+	 */
+	K_OOPS(K_SYSCALL_VERIFY_MSG(iodev->api == &__sensor_iodev_api,
+				    "not a sensor read iodev"));
 	K_OOPS(K_SYSCALL_OBJ(sensor, K_OBJ_DRIVER_SENSOR));
-	K_OOPS(K_SYSCALL_MEMORY_READ(channels, sizeof(struct sensor_chan_spec) * num_channels));
+	K_OOPS(K_SYSCALL_MEMORY_ARRAY_READ(channels, num_channels,
+					   sizeof(struct sensor_chan_spec)));
 	return z_impl_sensor_reconfigure_read_iodev(iodev, sensor, channels, num_channels);
 }
 #include <zephyr/syscalls/sensor_reconfigure_read_iodev_mrsh.c>
