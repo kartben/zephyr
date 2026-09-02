@@ -116,7 +116,8 @@ static inline int z_vrfy_can_set_timing_data(const struct device *dev,
 {
 	struct can_timing timing_data_copy;
 
-	K_OOPS(K_SYSCALL_DRIVER_CAN(dev, set_timing_data));
+	/* Optional API function */
+	K_OOPS(K_SYSCALL_OBJ(dev, K_OBJ_DRIVER_CAN));
 	K_OOPS(k_usermode_from_copy(&timing_data_copy, timing_data, sizeof(timing_data_copy)));
 
 	return z_impl_can_set_timing_data(dev, &timing_data_copy);
@@ -126,7 +127,8 @@ static inline int z_vrfy_can_set_timing_data(const struct device *dev,
 static inline int z_vrfy_can_set_bitrate_data(const struct device *dev,
 					      uint32_t bitrate_data)
 {
-	K_OOPS(K_SYSCALL_DRIVER_CAN(dev, set_timing_data));
+	/* Optional API function */
+	K_OOPS(K_SYSCALL_OBJ(dev, K_OBJ_DRIVER_CAN));
 
 	return z_impl_can_set_bitrate_data(dev, bitrate_data);
 }
