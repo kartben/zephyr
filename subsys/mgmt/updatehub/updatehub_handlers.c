@@ -37,3 +37,9 @@ static inline int z_vrfy_updatehub_reboot(void)
 	return z_impl_updatehub_reboot();
 }
 #include <zephyr/syscalls/updatehub_reboot_mrsh.c>
+
+static inline int z_vrfy_updatehub_report_error(void)
+{
+	return z_impl_updatehub_report_error();
+}
+#include <zephyr/syscalls/updatehub_report_error_mrsh.c>
