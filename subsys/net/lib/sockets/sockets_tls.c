@@ -4113,6 +4113,10 @@ static int ztls_poll_prepare_ctx(struct tls_context *ctx,
 	if ((pfd->events & ZSOCK_POLLIN) && (ctx->type == NET_SOCK_DGRAM) &&
 	    (ctx->options.role == MBEDTLS_SSL_IS_CLIENT) &&
 	    !is_handshake_complete(ctx->active_session)) {
+		if (*pev == pev_end) {
+			return -ENOMEM;
+		}
+
 		(*pev)->obj = &ctx->active_session->tls_established;
 		(*pev)->type = K_POLL_TYPE_SEM_AVAILABLE;
 		(*pev)->mode = K_POLL_MODE_NOTIFY_ONLY;
