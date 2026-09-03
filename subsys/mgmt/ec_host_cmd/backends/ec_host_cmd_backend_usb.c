@@ -104,7 +104,7 @@ struct ec_host_cmd_desc {
 struct ec_host_cmd_usb_ctx {
 	struct usbd_class_data *c_data;
 	struct ec_host_cmd_desc *const desc;
-	const struct usb_desc_header **const fs_desc;
+	const struct usb_desc_header *const *const fs_desc;
 	struct ec_host_cmd_rx_ctx *rx_ctx;
 	struct ec_host_cmd_tx_buf *tx_buf;
 	uint8_t *bulk_out_buf;
@@ -357,7 +357,7 @@ static void *ec_host_cmd_get_desc(struct usbd_class_data *const c_data, const en
 		return NULL;
 	}
 
-	return ctx->fs_desc;
+	return (void *)ctx->fs_desc;
 }
 
 static void ec_host_cmd_enable(struct usbd_class_data *const c_data)
@@ -616,7 +616,7 @@ static struct ec_host_cmd_desc ec_host_cmd_desc = {
 		},
 };
 
-static const struct usb_desc_header *ec_host_cmd_fs_desc[] = {
+static const struct usb_desc_header *const ec_host_cmd_fs_desc[] = {
 	(struct usb_desc_header *)&ec_host_cmd_desc.if0,
 	(struct usb_desc_header *)&ec_host_cmd_desc.out_ep,
 	(struct usb_desc_header *)&ec_host_cmd_desc.in_bulk_ep,
