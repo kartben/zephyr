@@ -10,6 +10,17 @@ config USBD_MIDI2_CLASS
 
 if USBD_MIDI2_CLASS
 
+config USBD_MIDI2_RX_BUF_COUNT
+	int "Number of receive buffers per USB MIDI 2.0 instance"
+	range 1 16
+	default 2
+	help
+	  Number of buffers queued on the bulk OUT endpoint of a USB MIDI 2.0
+	  instance. The host is NAKed whenever the endpoint runs out of
+	  buffers, which with a single buffer happens on every received packet
+	  because the endpoint stays empty until the re-arm has travelled
+	  through the system workqueue. Each buffer costs 512 bytes of RAM.
+
 module = USBD_MIDI2
 module-str = usbd midi2
 source "subsys/logging/Kconfig.template.log_config"

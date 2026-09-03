@@ -20,7 +20,21 @@ LOG_MODULE_REGISTER(usbd_midi2, CONFIG_USBD_MIDI2_LOG_LEVEL);
 #define MIDI1_ALTERNATE 0x00
 #define MIDI2_ALTERNATE 0x01
 
-UDC_BUF_POOL_DEFINE(usbd_midi_buf_pool, DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) * 2, 512U,
+/*
+ * The RX pool depth is what the bulk OUT endpoint can hold: while one packet
+ * is dispatched to the application the remaining buffers keep the endpoint
+ * armed, so the host is not NAKed while the re-arm makes its way through the
+ * system workqueue.
+ *
+ * The TX path prepares one packet at a time, hence a single buffer per
+ * instance. Keeping the pools separate makes sure that filling the OUT
+ * endpoint can never starve usbd_midi_tx_work().
+ */
+UDC_BUF_POOL_DEFINE(usbd_midi_rx_pool,
+		    DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) * CONFIG_USBD_MIDI2_RX_BUF_COUNT,
+		    512U, sizeof(struct udc_buf_info), NULL);
+
+UDC_BUF_POOL_DEFINE(usbd_midi_tx_pool, DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT), 512U,
 		    sizeof(struct udc_buf_info), NULL);
 
 #define MIDI_QUEUE_SIZE 64
@@ -197,8 +211,13 @@ static int usbd_midi_class_request(struct usbd_class_data *const class_data,
 		LOG_ERR("Transfer error %d", err);
 	}
 	if (USB_EP_DIR_IS_OUT(info->ep)) {
-		usbd_midi2_recv(dev, buf);
-		k_work_submit(&data->rx_work);
+		/* Endpoint teardown returns every queued buffer at once, and
+		 * those carry no data to dispatch and must not re-arm.
+		 */
+		if (err == 0) {
+			usbd_midi2_recv(dev, buf);
+			k_work_submit(&data->rx_work);
+		}
 	} else {
 		LOG_HEXDUMP_DBG(buf->data, buf->len, "Tx DATA complete");
 		if (ring_buf_size_get(&data->tx_queue)) {
@@ -369,12 +388,12 @@ static struct usbd_class_api usbd_midi_class_api = {
 	.get_desc = usbd_midi_class_get_desc,
 };
 
-static struct net_buf *usbd_midi_buf_alloc(uint8_t ep)
+static struct net_buf *usbd_midi_buf_alloc(struct net_buf_pool *const pool, uint8_t ep)
 {
 	struct udc_buf_info *info;
 	struct net_buf *buf;
 
-	buf = net_buf_alloc(&usbd_midi_buf_pool, K_NO_WAIT);
+	buf = net_buf_alloc(pool, K_NO_WAIT);
 	if (!buf) {
 		return NULL;
 	}
@@ -413,23 +432,22 @@ static uint8_t usbd_midi_get_bulk_out(struct usbd_class_data *const class_data)
 	return cfg->desc->if1_1_out_ep_fs.bEndpointAddress;
 }
 
+/* Enqueue OUT transfers until the RX pool is exhausted */
 static void usbd_midi_rx_work(struct k_work *work)
 {
 	struct usbd_midi_data *data = CONTAINER_OF(work, struct usbd_midi_data, rx_work);
+	const uint8_t ep = usbd_midi_get_bulk_out(data->class_data);
 	struct net_buf *buf;
 	int ret;
 
-	buf = usbd_midi_buf_alloc(usbd_midi_get_bulk_out(data->class_data));
-	if (buf == NULL) {
-		LOG_WRN("Unable to allocate Rx net_buf");
-		return;
-	}
-
-	LOG_DBG("Enqueue Rx...");
-	ret = usbd_ep_enqueue(data->class_data, buf);
-	if (ret) {
-		LOG_ERR("Failed to enqueue Rx net_buf -> %d", ret);
-		net_buf_unref(buf);
+	while ((buf = usbd_midi_buf_alloc(&usbd_midi_rx_pool, ep)) != NULL) {
+		LOG_DBG("Enqueue Rx...");
+		ret = usbd_ep_enqueue(data->class_data, buf);
+		if (ret) {
+			LOG_ERR("Failed to enqueue Rx net_buf -> %d", ret);
+			net_buf_unref(buf);
+			break;
+		}
 	}
 }
 
@@ -439,7 +457,7 @@ static void usbd_midi_tx_work(struct k_work *work)
 	struct net_buf *buf;
 	int ret;
 
-	buf = usbd_midi_buf_alloc(usbd_midi_get_bulk_in(data->class_data));
+	buf = usbd_midi_buf_alloc(&usbd_midi_tx_pool, usbd_midi_get_bulk_in(data->class_data));
 	if (buf == NULL) {
 		LOG_ERR("Unable to allocate Tx net_buf");
 		return;

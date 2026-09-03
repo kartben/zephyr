@@ -12,6 +12,18 @@ config USBD_CDC_ECM_CLASS
 
 if USBD_CDC_ECM_CLASS
 
+config USBD_CDC_ECM_RX_BUF_COUNT
+	int "Number of receive buffers per CDC ECM instance"
+	range 1 16
+	default 2
+	help
+	  Number of buffers queued on the bulk OUT endpoint of a CDC ECM
+	  instance. The host is NAKed whenever the endpoint runs out of
+	  buffers, which with a single buffer happens on every received frame
+	  because the endpoint stays empty until the class has passed the
+	  frame to the network stack. Each buffer costs NET_ETH_MAX_FRAME_SIZE
+	  bytes of RAM.
+
 module = USBD_CDC_ECM
 module-str = usbd cdc_ecm
 default-count = 1

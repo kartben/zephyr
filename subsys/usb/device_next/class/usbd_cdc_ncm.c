@@ -35,7 +35,6 @@ enum {
 	CDC_NCM_IFACE_UP,
 	CDC_NCM_DATA_IFACE_ENABLED,
 	CDC_NCM_CLASS_SUSPENDED,
-	CDC_NCM_OUT_ENGAGED,
 };
 
 /* Chapter 6.2.7 table 6-4 */
@@ -171,12 +170,24 @@ union recv_ntb {
 } __packed;
 
 /*
- * Transfers through two endpoints proceed in a synchronous manner,
- * with maximum block of CDC_NCM_SEND_NTB_MAX_SIZE.
+ * The RX pool depth is what the bulk OUT endpoint can hold: while one NTB is
+ * unpacked and handed to the network stack the remaining buffers keep the
+ * endpoint armed, so the host is not NAKed for the duration of a completion
+ * callback.
+ *
+ * The TX path is synchronous, one NTB at a time, hence a single buffer per
+ * instance. Keeping the pools separate makes sure that filling the OUT
+ * endpoint can never starve cdc_ncm_send().
  */
-UDC_BUF_POOL_DEFINE(cdc_ncm_ep_pool,
-		    DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) * 2,
-		    MAX(CDC_NCM_SEND_NTB_MAX_SIZE, CDC_NCM_RECV_NTB_MAX_SIZE),
+UDC_BUF_POOL_DEFINE(cdc_ncm_rx_pool,
+		    DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) *
+		    CONFIG_USBD_CDC_NCM_RX_BUF_COUNT,
+		    CDC_NCM_RECV_NTB_MAX_SIZE,
+		    sizeof(struct udc_buf_info), NULL);
+
+UDC_BUF_POOL_DEFINE(cdc_ncm_tx_pool,
+		    DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT),
+		    CDC_NCM_SEND_NTB_MAX_SIZE,
 		    sizeof(struct udc_buf_info), NULL);
 
 /*
@@ -299,12 +310,13 @@ static uint8_t cdc_ncm_get_bulk_out(struct usbd_class_data *const c_data)
 	return desc->if1_1_out_ep.bEndpointAddress;
 }
 
-static struct net_buf *cdc_ncm_buf_alloc(const uint8_t ep)
+static struct net_buf *cdc_ncm_buf_alloc(struct net_buf_pool *const pool,
+					 const uint8_t ep)
 {
 	struct net_buf *buf = NULL;
 	struct udc_buf_info *bi;
 
-	buf = net_buf_alloc(&cdc_ncm_ep_pool, K_NO_WAIT);
+	buf = net_buf_alloc(pool, K_NO_WAIT);
 	if (!buf) {
 		return NULL;
 	}
@@ -315,33 +327,21 @@ static struct net_buf *cdc_ncm_buf_alloc(const uint8_t ep)
 	return buf;
 }
 
-static int cdc_ncm_out_start(struct usbd_class_data *const c_data)
+/* Enqueue OUT transfers until the RX pool is exhausted */
+static void cdc_ncm_out_start(struct usbd_class_data *const c_data)
 {
-	const struct device *dev = usbd_class_get_private(c_data);
-	struct cdc_ncm_eth_data *data = dev->data;
+	const uint8_t ep = cdc_ncm_get_bulk_out(c_data);
 	struct net_buf *buf;
-	uint8_t ep;
-	int ret;
 
-	if (atomic_test_and_set_bit(&data->state, CDC_NCM_OUT_ENGAGED)) {
-		return -EBUSY;
-	}
-
-	ep = cdc_ncm_get_bulk_out(c_data);
-	buf = cdc_ncm_buf_alloc(ep);
-	if (buf == NULL) {
-		return -ENOMEM;
-	}
-
-	ret = usbd_ep_enqueue(c_data, buf);
-	if (ret) {
-		LOG_ERR("Failed to enqueue net_buf for 0x%02x", ep);
-		net_buf_unref(buf);
-	} else {
+	while ((buf = cdc_ncm_buf_alloc(&cdc_ncm_rx_pool, ep)) != NULL) {
 		LOG_DBG("enqueue out %u", buf->size);
-	}
 
-	return  ret;
+		if (usbd_ep_enqueue(c_data, buf)) {
+			LOG_ERR("Failed to enqueue net_buf for 0x%02x", ep);
+			net_buf_unref(buf);
+			break;
+		}
+	}
 }
 
 static int verify_nth16(struct cdc_ncm_eth_data *const data,
@@ -608,9 +608,8 @@ unref_packet:
 restart_out_transfer:
 	net_buf_unref(buf);
 
-	atomic_clear_bit(&data->state, CDC_NCM_OUT_ENGAGED);
 	if (atomic_test_bit(&data->state, CDC_NCM_DATA_IFACE_ENABLED)) {
-		return cdc_ncm_out_start(c_data);
+		cdc_ncm_out_start(c_data);
 	}
 
 	return 0;
@@ -833,7 +832,6 @@ static void usbd_cdc_ncm_update(struct usbd_class_data *const c_data,
 	struct cdc_ncm_eth_data *data = dev->data;
 	struct usbd_cdc_ncm_desc *desc = data->desc;
 	uint8_t data_iface = desc->if1_1.bInterfaceNumber;
-	int ret;
 
 	LOG_INF("New configuration, interface %u alternate %u",
 		iface, alternate);
@@ -848,10 +846,7 @@ static void usbd_cdc_ncm_update(struct usbd_class_data *const c_data,
 		atomic_set_bit(&data->state, CDC_NCM_DATA_IFACE_ENABLED);
 		data->if_state = IF_STATE_INIT;
 		(void)k_work_reschedule(&data->notif_work, K_MSEC(100));
-		ret = cdc_ncm_out_start(c_data);
-		if (ret < 0) {
-			LOG_ERR("Failed to start OUT transfer (%d)", ret);
-		}
+		cdc_ncm_out_start(c_data);
 	}
 }
 
@@ -1065,7 +1060,7 @@ static int cdc_ncm_send(const struct device *dev, struct net_pkt *const pkt)
 		return -EACCES;
 	}
 
-	buf = cdc_ncm_buf_alloc(cdc_ncm_get_bulk_in(c_data));
+	buf = cdc_ncm_buf_alloc(&cdc_ncm_tx_pool, cdc_ncm_get_bulk_in(c_data));
 	if (buf == NULL) {
 		LOG_ERR("Failed to allocate buffer");
 		return -ENOMEM;
