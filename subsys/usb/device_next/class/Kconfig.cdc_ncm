@@ -31,6 +31,17 @@ config USBD_CDC_NCM_RX_BUF_COUNT
 	  NTB and passed its datagrams to the network stack. Each buffer costs
 	  CDC_NCM_RECV_NTB_MAX_SIZE bytes of RAM.
 
+config USBD_CDC_NCM_TX_BUF_COUNT
+	int "Number of transmit buffers per CDC NCM instance"
+	range 1 16
+	default 2
+	help
+	  Number of NTBs that can be in flight towards the host at once. With a
+	  single buffer the network stack has to wait for an NTB to reach the
+	  host before it can prepare the next one, which puts a full interrupt
+	  to thread round trip between two NTBs. Each buffer costs
+	  CDC_NCM_SEND_NTB_MAX_SIZE bytes of RAM.
+
 config USBD_CDC_NCM_SUPPORT_NTB32
 	bool "Support NTB32 format"
 	help

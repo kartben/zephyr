@@ -36,9 +36,9 @@ enum {
  * handed to the network stack the remaining buffers keep the endpoint armed,
  * so the host is not NAKed for the duration of a completion callback.
  *
- * The TX path is synchronous, one frame at a time, hence a single buffer per
- * instance. Keeping the pools separate makes sure that filling the OUT
- * endpoint can never starve cdc_ecm_send().
+ * The TX pool depth is how many frames can be in flight towards the host at
+ * once. Keeping the pools separate makes sure that filling the OUT endpoint
+ * can never starve cdc_ecm_send().
  */
 UDC_BUF_POOL_DEFINE(cdc_ecm_rx_pool,
 		    DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) *
@@ -47,7 +47,8 @@ UDC_BUF_POOL_DEFINE(cdc_ecm_rx_pool,
 		    sizeof(struct udc_buf_info), NULL);
 
 UDC_BUF_POOL_DEFINE(cdc_ecm_tx_pool,
-		    DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT),
+		    DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) *
+		    CONFIG_USBD_CDC_ECM_TX_BUF_COUNT,
 		    NET_ETH_MAX_FRAME_SIZE,
 		    sizeof(struct udc_buf_info), NULL);
 
@@ -98,7 +99,10 @@ struct cdc_ecm_eth_data {
 	struct net_if *iface;
 	uint8_t mac_addr[6];
 
-	struct k_sem sync_sem;
+	/* Counts the free transmit buffers, taken before a frame is prepared
+	 * and given back once its transfer has completed.
+	 */
+	struct k_sem tx_sem;
 	atomic_t state;
 };
 
@@ -299,7 +303,8 @@ static int usbd_cdc_ecm_request(struct usbd_class_data *const c_data,
 	}
 
 	if (bi->ep == cdc_ecm_get_bulk_in(c_data)) {
-		k_sem_give(&data->sync_sem);
+		net_buf_unref(buf);
+		k_sem_give(&data->tx_sem);
 
 		return 0;
 	}
@@ -509,18 +514,25 @@ static int cdc_ecm_send(const struct device *dev, struct net_pkt *const pkt)
 		return -EACCES;
 	}
 
+	/* Wait for a free transmit slot, so that a burst is throttled instead
+	 * of dropped, as it was when the frames were sent one at a time.
+	 */
+	k_sem_take(&data->tx_sem, K_FOREVER);
+
 	ep = cdc_ecm_get_bulk_in(c_data);
 	buf = cdc_ecm_buf_alloc(&cdc_ecm_tx_pool, ep);
 	if (buf == NULL) {
 		LOG_ERR("Failed to allocate buffer");
+		k_sem_give(&data->tx_sem);
+
 		return -ENOMEM;
 	}
 
 	if (net_pkt_read(pkt, buf->data, len)) {
 		LOG_ERR("Failed copy net_pkt");
-		net_buf_unref(buf);
+		ret = -ENOBUFS;
 
-		return -ENOBUFS;
+		goto release_buf;
 	}
 
 	net_buf_add(buf, len);
@@ -532,14 +544,19 @@ static int cdc_ecm_send(const struct device *dev, struct net_pkt *const pkt)
 	ret = usbd_ep_enqueue(c_data, buf);
 	if (ret) {
 		LOG_ERR("Failed to enqueue net_buf for 0x%02x", ep);
-		net_buf_unref(buf);
-		return ret;
+		goto release_buf;
 	}
 
-	k_sem_take(&data->sync_sem, K_FOREVER);
-	net_buf_unref(buf);
-
+	/* The transfer owns the buffer now, cdc_ecm_send() does not wait for
+	 * it and the next frame can be prepared while this one is on the bus.
+	 */
 	return 0;
+
+release_buf:
+	net_buf_unref(buf);
+	k_sem_give(&data->tx_sem);
+
+	return ret;
 }
 
 static int cdc_ecm_set_config(const struct device *dev,
@@ -830,7 +847,9 @@ static struct usbd_cdc_ecm_desc cdc_ecm_desc_##n = {				\
 	static struct cdc_ecm_eth_data eth_data_##n = {				\
 		.c_data = &cdc_ecm_##n,						\
 		.mac_addr = DT_INST_PROP_OR(n, local_mac_address, {0}),		\
-		.sync_sem = Z_SEM_INITIALIZER(eth_data_##n.sync_sem, 0, 1),	\
+		.tx_sem = Z_SEM_INITIALIZER(eth_data_##n.tx_sem,		\
+					    CONFIG_USBD_CDC_ECM_TX_BUF_COUNT,	\
+					    CONFIG_USBD_CDC_ECM_TX_BUF_COUNT),	\
 		.mac_desc_data = &mac_desc_data_##n,				\
 		.desc = &cdc_ecm_desc_##n,					\
 		.fs_desc = cdc_ecm_fs_desc_##n,					\

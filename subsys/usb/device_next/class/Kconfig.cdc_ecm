@@ -24,6 +24,17 @@ config USBD_CDC_ECM_RX_BUF_COUNT
 	  frame to the network stack. Each buffer costs NET_ETH_MAX_FRAME_SIZE
 	  bytes of RAM.
 
+config USBD_CDC_ECM_TX_BUF_COUNT
+	int "Number of transmit buffers per CDC ECM instance"
+	range 1 16
+	default 2
+	help
+	  Number of frames that can be in flight towards the host at once. With
+	  a single buffer the network stack has to wait for a frame to reach
+	  the host before it can prepare the next one, which puts a full
+	  interrupt to thread round trip between two frames. Each buffer costs
+	  NET_ETH_MAX_FRAME_SIZE bytes of RAM.
+
 module = USBD_CDC_ECM
 module-str = usbd cdc_ecm
 default-count = 1

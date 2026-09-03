@@ -175,9 +175,9 @@ union recv_ntb {
  * endpoint armed, so the host is not NAKed for the duration of a completion
  * callback.
  *
- * The TX path is synchronous, one NTB at a time, hence a single buffer per
- * instance. Keeping the pools separate makes sure that filling the OUT
- * endpoint can never starve cdc_ncm_send().
+ * The TX pool depth is how many NTBs can be in flight towards the host at
+ * once. Keeping the pools separate makes sure that filling the OUT endpoint
+ * can never starve cdc_ncm_send().
  */
 UDC_BUF_POOL_DEFINE(cdc_ncm_rx_pool,
 		    DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) *
@@ -186,7 +186,8 @@ UDC_BUF_POOL_DEFINE(cdc_ncm_rx_pool,
 		    sizeof(struct udc_buf_info), NULL);
 
 UDC_BUF_POOL_DEFINE(cdc_ncm_tx_pool,
-		    DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT),
+		    DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) *
+		    CONFIG_USBD_CDC_NCM_TX_BUF_COUNT,
 		    CDC_NCM_SEND_NTB_MAX_SIZE,
 		    sizeof(struct udc_buf_info), NULL);
 
@@ -238,10 +239,16 @@ struct cdc_ncm_eth_data {
 
 	atomic_t state;
 	enum iface_state if_state;
-	uint16_t tx_seq;
+	/* NTB sequence number, several senders can be preparing an NTB at the
+	 * same time now that cdc_ncm_send() does not wait for the transfer.
+	 */
+	atomic_t tx_seq;
 	uint16_t rx_seq;
 
-	struct k_sem sync_sem;
+	/* Counts the free transmit buffers, taken before an NTB is prepared
+	 * and given back once its transfer has completed.
+	 */
+	struct k_sem tx_sem;
 
 	struct k_work_delayable notif_work;
 };
@@ -653,7 +660,9 @@ static int usbd_cdc_ncm_request(struct usbd_class_data *const c_data,
 	}
 
 	if (bi->ep == cdc_ncm_get_bulk_in(c_data)) {
-		k_sem_give(&data->sync_sem);
+		net_buf_unref(buf);
+		k_sem_give(&data->tx_sem);
+
 		return 0;
 	}
 
@@ -838,7 +847,7 @@ static void usbd_cdc_ncm_update(struct usbd_class_data *const c_data,
 
 	if (data_iface == iface && alternate == 0) {
 		atomic_clear_bit(&data->state, CDC_NCM_DATA_IFACE_ENABLED);
-		data->tx_seq = 0;
+		atomic_set(&data->tx_seq, 0);
 		data->rx_seq = 0;
 	}
 
@@ -1060,9 +1069,16 @@ static int cdc_ncm_send(const struct device *dev, struct net_pkt *const pkt)
 		return -EACCES;
 	}
 
+	/* Wait for a free transmit slot, so that a burst is throttled instead
+	 * of dropped, as it was when the NTBs were sent one at a time.
+	 */
+	k_sem_take(&data->tx_sem, K_FOREVER);
+
 	buf = cdc_ncm_buf_alloc(&cdc_ncm_tx_pool, cdc_ncm_get_bulk_in(c_data));
 	if (buf == NULL) {
 		LOG_ERR("Failed to allocate buffer");
+		k_sem_give(&data->tx_sem);
+
 		return -ENOMEM;
 	}
 
@@ -1070,7 +1086,7 @@ static int cdc_ncm_send(const struct device *dev, struct net_pkt *const pkt)
 
 	ntb->nth.dwSignature = sys_cpu_to_le32(NTH16_SIGNATURE);
 	ntb->nth.wHeaderLength = sys_cpu_to_le16(sizeof(struct nth16));
-	ntb->nth.wSequence = sys_cpu_to_le16(++data->tx_seq);
+	ntb->nth.wSequence = sys_cpu_to_le16((uint16_t)(atomic_inc(&data->tx_seq) + 1));
 	ntb->nth.wNdpIndex = sys_cpu_to_le16(sizeof(struct nth16));
 	ntb->ndp.dwSignature = sys_cpu_to_le32(NDP16_SIGNATURE_NCM0);
 	ntb->ndp.wLength = sys_cpu_to_le16(sizeof(struct ndp16) +
@@ -1090,9 +1106,9 @@ static int cdc_ncm_send(const struct device *dev, struct net_pkt *const pkt)
 
 	if (net_pkt_read(pkt, buf->data + buf->len, len)) {
 		LOG_ERR("Failed copy net_pkt");
-		net_buf_unref(buf);
+		ret = -ENOBUFS;
 
-		return -ENOBUFS;
+		goto release_buf;
 	}
 
 	net_buf_add(buf, len);
@@ -1105,15 +1121,19 @@ static int cdc_ncm_send(const struct device *dev, struct net_pkt *const pkt)
 	if (ret) {
 		LOG_ERR("Failed to enqueue net_buf for 0x%02x",
 			cdc_ncm_get_bulk_in(c_data));
-		net_buf_unref(buf);
-		return ret;
+		goto release_buf;
 	}
 
-	k_sem_take(&data->sync_sem, K_FOREVER);
-
-	net_buf_unref(buf);
-
+	/* The transfer owns the buffer now, cdc_ncm_send() does not wait for
+	 * it and the next NTB can be prepared while this one is on the bus.
+	 */
 	return 0;
+
+release_buf:
+	net_buf_unref(buf);
+	k_sem_give(&data->tx_sem);
+
+	return ret;
 }
 
 static int cdc_ncm_set_config(const struct device *dev,
@@ -1415,7 +1435,9 @@ const static struct usb_desc_header *cdc_ncm_hs_desc_##n[] = {			\
 	static struct cdc_ncm_eth_data eth_data_##n = {				\
 		.c_data = &cdc_ncm_##n,						\
 		.mac_addr = DT_INST_PROP_OR(n, local_mac_address, {0}),		\
-		.sync_sem = Z_SEM_INITIALIZER(eth_data_##n.sync_sem, 0, 1),	\
+		.tx_sem = Z_SEM_INITIALIZER(eth_data_##n.tx_sem,		\
+					    CONFIG_USBD_CDC_NCM_TX_BUF_COUNT,	\
+					    CONFIG_USBD_CDC_NCM_TX_BUF_COUNT),	\
 		.mac_desc_data = &mac_desc_data_##n,				\
 		.desc = &cdc_ncm_desc_##n,					\
 		.fs_desc = cdc_ncm_fs_desc_##n,					\
