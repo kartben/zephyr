@@ -52,6 +52,30 @@ get_device_descriptor(struct usbd_context *const uds_ctx,
 	}
 }
 
+/* Write a 16-bit value at offset in the device descriptors of all speeds */
+static int set_device_desc_u16(struct usbd_context *const uds_ctx,
+			       const uint16_t value, const size_t offset)
+{
+	int ret = 0;
+
+	usbd_device_lock(uds_ctx);
+
+	if (usbd_is_enabled(uds_ctx)) {
+		ret = -EBUSY;
+		goto set_device_desc_u16_exit;
+	}
+
+	sys_put_le16(value, (uint8_t *)uds_ctx->fs_desc + offset);
+
+	if (USBD_SUPPORTS_HIGH_SPEED) {
+		sys_put_le16(value, (uint8_t *)usbd_get_hs_desc(uds_ctx) + offset);
+	}
+
+set_device_desc_u16_exit:
+	usbd_device_unlock(uds_ctx);
+	return ret;
+}
+
 int usbd_device_set_bcd_usb(struct usbd_context *const uds_ctx,
 			    const enum usbd_speed speed, const uint16_t bcd)
 {
@@ -81,79 +105,22 @@ set_bcd_exit:
 int usbd_device_set_vid(struct usbd_context *const uds_ctx,
 			 const uint16_t vid)
 {
-	struct usb_device_descriptor *fs_desc, *hs_desc;
-	int ret = 0;
-
-	usbd_device_lock(uds_ctx);
-
-	if (usbd_is_enabled(uds_ctx)) {
-		ret = -EBUSY;
-		goto set_vid_exit;
-	}
-
-	fs_desc = get_device_descriptor(uds_ctx, USBD_SPEED_FS);
-	fs_desc->idVendor = sys_cpu_to_le16(vid);
-
-	if (USBD_SUPPORTS_HIGH_SPEED) {
-		hs_desc = get_device_descriptor(uds_ctx, USBD_SPEED_HS);
-		hs_desc->idVendor = sys_cpu_to_le16(vid);
-	}
-
-set_vid_exit:
-	usbd_device_unlock(uds_ctx);
-	return ret;
+	return set_device_desc_u16(uds_ctx, vid,
+				   offsetof(struct usb_device_descriptor, idVendor));
 }
 
 int usbd_device_set_pid(struct usbd_context *const uds_ctx,
 			 const uint16_t pid)
 {
-	struct usb_device_descriptor *fs_desc, *hs_desc;
-	int ret = 0;
-
-	usbd_device_lock(uds_ctx);
-
-	if (usbd_is_enabled(uds_ctx)) {
-		ret = -EBUSY;
-		goto set_pid_exit;
-	}
-
-	fs_desc = get_device_descriptor(uds_ctx, USBD_SPEED_FS);
-	fs_desc->idProduct = sys_cpu_to_le16(pid);
-
-	if (USBD_SUPPORTS_HIGH_SPEED) {
-		hs_desc = get_device_descriptor(uds_ctx, USBD_SPEED_HS);
-		hs_desc->idProduct = sys_cpu_to_le16(pid);
-	}
-
-set_pid_exit:
-	usbd_device_unlock(uds_ctx);
-	return ret;
+	return set_device_desc_u16(uds_ctx, pid,
+				   offsetof(struct usb_device_descriptor, idProduct));
 }
 
 int usbd_device_set_bcd_device(struct usbd_context *const uds_ctx,
 			       const uint16_t bcd)
 {
-	struct usb_device_descriptor *fs_desc, *hs_desc;
-	int ret = 0;
-
-	usbd_device_lock(uds_ctx);
-
-	if (usbd_is_enabled(uds_ctx)) {
-		ret = -EBUSY;
-		goto set_bcd_device_exit;
-	}
-
-	fs_desc = get_device_descriptor(uds_ctx, USBD_SPEED_FS);
-	fs_desc->bcdDevice = sys_cpu_to_le16(bcd);
-
-	if (USBD_SUPPORTS_HIGH_SPEED) {
-		hs_desc = get_device_descriptor(uds_ctx, USBD_SPEED_HS);
-		hs_desc->bcdDevice = sys_cpu_to_le16(bcd);
-	}
-
-set_bcd_device_exit:
-	usbd_device_unlock(uds_ctx);
-	return ret;
+	return set_device_desc_u16(uds_ctx, bcd,
+				   offsetof(struct usb_device_descriptor, bcdDevice));
 }
 
 int usbd_device_set_code_triple(struct usbd_context *const uds_ctx,

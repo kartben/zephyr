@@ -244,20 +244,11 @@ static void usbd_init_update_fs_mps0(struct usbd_context *const uds_ctx)
 	struct udc_device_caps caps = udc_caps(uds_ctx->dev);
 	struct usb_device_descriptor *desc = uds_ctx->fs_desc;
 
-	switch (caps.mps0) {
-	case UDC_MPS0_8:
-		desc->bMaxPacketSize0 = 8;
-		break;
-	case UDC_MPS0_16:
-		desc->bMaxPacketSize0 = 16;
-		break;
-	case UDC_MPS0_32:
-		desc->bMaxPacketSize0 = 32;
-		break;
-	case UDC_MPS0_64:
-		desc->bMaxPacketSize0 = 64;
-		break;
-	}
+	BUILD_ASSERT(UDC_MPS0_8 == 0 && UDC_MPS0_16 == 1 &&
+		     UDC_MPS0_32 == 2 && UDC_MPS0_64 == 3,
+		     "enum udc_mps0 is not an ascending power of two sequence");
+
+	desc->bMaxPacketSize0 = 8U << caps.mps0;
 }
 
 int usbd_init_configurations(struct usbd_context *const uds_ctx)
