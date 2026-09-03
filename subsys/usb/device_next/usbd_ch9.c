@@ -517,7 +517,7 @@ static struct net_buf *string_ascii7_to_utf16le(struct usbd_context *const uds_c
 	size_t i;
 
 	if (IS_ENABLED(CONFIG_HWINFO) &&
-	    dn->str.utype == USBD_DUT_STRING_SERIAL_NUMBER && dn->str.use_hwinfo) {
+	    dn->utype == USBD_DUT_STRING_SERIAL_NUMBER && dn->str.use_hwinfo) {
 		ssize_t sn_ascii7_str_len = get_sn_from_hwid(sn_ascii7_str);
 
 		if (sn_ascii7_str_len < 0) {

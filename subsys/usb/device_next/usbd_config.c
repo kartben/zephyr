@@ -89,7 +89,7 @@ static int usbd_config_reset(struct usbd_context *const uds_ctx)
 	ret = usbd_interface_shutdown(uds_ctx, cfg_nd);
 
 	memset(&uds_ctx->ch9_data.alternate, 0,
-	       USBD_NUMOF_INTERFACES_MAX);
+	       sizeof(uds_ctx->ch9_data.alternate));
 
 	usbd_set_config_value(uds_ctx, 0);
 	usbd_config_classes_enable(cfg_nd, false);
