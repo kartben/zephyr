@@ -18,7 +18,29 @@ if(DEFINED SUB_COMPONENTS AND NOT "kconfig" IN_LIST SUB_COMPONENTS)
   set(DTS_ONLY_RUN TRUE)
 endif()
 
-find_package(HostTools)
+# The only thing this module needs from the host tools is a C preprocessor
+# for the devicetree sources, in 'CMAKE_C_COMPILER'. A devicetree-only run
+# needs nothing else from them, so any C preprocessor on the PATH will do and
+# no toolchain has to be installed at all. The devicetree sources are
+# preprocessed with -nostdinc, -undef and -D__DTS__ only, which is what makes
+# the result independent of the preprocessor used.
+if(DTS_ONLY_RUN AND NOT DEFINED CMAKE_DTS_PREPROCESSOR)
+  find_program(dts_host_preprocessor NAMES gcc clang cpp)
+  if(dts_host_preprocessor)
+    set(CMAKE_DTS_PREPROCESSOR ${dts_host_preprocessor})
+  endif()
+endif()
+
+if(DTS_ONLY_RUN AND DEFINED CMAKE_DTS_PREPROCESSOR)
+  # Take over the one preprocessor flag the toolchain files would have set;
+  # note that NOSYSDEF_CFLAG may be an empty string, and set_ifndef() does
+  # not work with empty string.
+  if(NOT DEFINED NOSYSDEF_CFLAG)
+    set(NOSYSDEF_CFLAG -undef)
+  endif()
+else()
+  find_package(HostTools)
+endif()
 find_package(Dtc 1.4.6)
 
 # This module makes information from the devicetree available to
