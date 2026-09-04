@@ -58,6 +58,14 @@ properties:
             type: array
             items:
               type: string
+          include-files:
+            type: array
+            items:
+              type: string
+          extra-dtc-flags:
+            type: array
+            items:
+              type: string
         additionalProperties: false
       images:
         type: array
