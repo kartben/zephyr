@@ -2346,7 +2346,6 @@ struct k_queue {
 #define Z_QUEUE_INITIALIZER(obj) \
 	{ \
 	.data_q = SYS_SFLIST_STATIC_INIT(&obj.data_q), \
-	.lock = { }, \
 	.wait_q = Z_WAIT_Q_INIT(&obj.wait_q),	\
 	Z_POLL_EVENT_OBJ_INIT(obj)		\
 	}
@@ -2750,7 +2749,6 @@ struct k_event {
 	{ \
 	.wait_q = Z_WAIT_Q_INIT(&obj.wait_q), \
 	.events = 0, \
-	.lock = {}, \
 	}
 /**
  * INTERNAL_HIDDEN @endcond
@@ -5318,7 +5316,6 @@ struct k_msgq {
 #define Z_MSGQ_INITIALIZER(obj, q_buffer, q_msg_size, q_max_msgs) \
 	{ \
 	.wait_q = Z_WAIT_Q_INIT(&obj.wait_q), \
-	.lock = {}, \
 	.msg_size = q_msg_size, \
 	.max_msgs = q_max_msgs, \
 	.buffer_start = q_buffer, \
@@ -5996,7 +5993,6 @@ struct k_mem_slab {
 			       _slab_num_blocks)                      \
 	{                                                             \
 	.wait_q = Z_WAIT_Q_INIT(&(_slab).wait_q),                     \
-	.lock = {},                                                   \
 	.buffer = _slab_buffer,                                       \
 	.free_list = NULL,                                            \
 	.info = {_slab_num_blocks, _slab_block_size, 0}               \
