@@ -384,11 +384,11 @@ config CURRENT_THREAD_USE_TLS
 	  syscall if userspace is enabled.
 
 config NONZERO_SPINLOCK_SIZE
-	bool "Force spinlock to have non-zero size"
+	bool "Force spinlock to have non-zero size [DEPRECATED]"
+	select DEPRECATED
 	help
-	  This option indicates that the spinlock structure must have a
-	  non-zero size (such as if used in an array). It is automatically
-	  selected when using C++.
+	  This option no longer has any effect: struct k_spinlock always
+	  has a non-zero size.
 
 endmenu
 

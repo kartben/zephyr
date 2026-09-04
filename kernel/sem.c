@@ -35,9 +35,6 @@
  * implementation would spin on atomic access to the count variable,
  * and not a spinlock per se. Useful optimization for the future...
  */
-/* A k_spinlock can be zero-sized on uniprocessor configurations. Keep the
- * default lock scalar because arrays of empty structures are not portable.
- */
 #if defined(CONFIG_SMP) && (CONFIG_SEM_LOCK_STRIPES > 1)
 static struct k_spinlock sem_locks[CONFIG_SEM_LOCK_STRIPES];
 #else

@@ -78,16 +78,12 @@ struct k_spinlock {
 #endif /* CONFIG_SPIN_LOCK_TIME_LIMIT */
 #endif /* CONFIG_SPIN_VALIDATE */
 
-#if defined(CONFIG_NONZERO_SPINLOCK_SIZE) && !defined(CONFIG_SMP) && !defined(CONFIG_SPIN_VALIDATE)
-	/* Add a dummy field to guarantee the spinlock has a non-zero
-	 * size. If neither CONFIG_SMP nor CONFIG_SPIN_VALIDATE are
-	 * defined then the k_spinlock struct would otherwise have no
-	 * members and sizeof(k_spinlock) would be 0 in C and 1 in C++.
-	 *
-	 * That size difference causes problems when the k_spinlock
-	 * is embedded into another struct like k_msgq, because C and
-	 * C++ will have different ideas on the offsets of the members
-	 * that come after the k_spinlock member.
+#if !defined(CONFIG_SMP) && !defined(CONFIG_SPIN_VALIDATE)
+	/* Without SMP or lock validation the struct would have no members
+	 * at all. That is not valid ISO C, and it makes sizeof() disagree
+	 * between C and C++ (0 versus 1), which shifts the offsets of every
+	 * member following a k_spinlock embedded in another struct such as
+	 * k_msgq. Carry a dummy field so the size is always non-zero.
 	 */
 	char dummy;
 #endif

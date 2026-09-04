@@ -81,7 +81,7 @@ void z_impl_k_pipe_init(struct k_pipe *pipe, uint8_t *buffer, size_t buffer_size
 	pipe->flags = PIPE_FLAG_OPEN;
 	pipe->waiting = 0;
 
-	pipe->lock = (struct k_spinlock){};
+	pipe->lock = (struct k_spinlock){0};
 	z_waitq_init(&pipe->data);
 	z_waitq_init(&pipe->space);
 	k_object_init(pipe);
