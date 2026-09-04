@@ -174,7 +174,7 @@ class Boards(WestCommand):
 
         targets = args.targets or describer.all_targets(selected_boards)
         failures = board_description.describe_all(
-            describer, targets, args.output_dir, out=sys.stdout, err=self.err
+            describer, targets, args.output_dir, jobs=args.jobs, out=sys.stdout, err=self.err
         )
         if failures:
             raise CommandError(1)

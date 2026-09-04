@@ -27,11 +27,13 @@ standalone use (python3 scripts/board_description.py --target <target>).
 
 import argparse
 import json
+import os
 import pickle
 import shutil
 import subprocess
 import sys
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import yaml
@@ -289,30 +291,54 @@ def file_stem(description: dict) -> str:
     return '_'.join(p for p in (board['normalized_target'], revision) if p)
 
 
-def describe_all(describer: BoardDescriber, targets, output_dir, out=sys.stdout, err=print):
+def _describe_one(describer: BoardDescriber, target: str, output_dir: Path | None):
+    """Describe one target.
+
+    Returns (resolved target, description or output file, error message).
+    With 'output_dir' the description is written right away and the file is
+    returned instead, so that the writing is spread over the workers as well.
+    """
+    try:
+        description = describer.describe(target, output_dir)
+    except BoardDescriptionError as e:
+        return target, None, str(e)
+
+    resolved = description['board']['target']
+    if output_dir is None:
+        return resolved, description, None
+    return resolved, _write_json(description, output_dir), None
+
+
+def describe_all(describer: BoardDescriber, targets, output_dir, jobs=1, out=sys.stdout, err=print):
     """Describe 'targets'; returns the number of failures.
 
     Descriptions go to one file per target in 'output_dir' when given, and
     are otherwise printed to 'out' as one JSON object keyed by target.
+    Targets are described by up to 'jobs' workers; the output order is the
+    order of 'targets' either way.
     """
     if output_dir is not None:
         output_dir.mkdir(parents=True, exist_ok=True)
 
+    targets = list(targets)
+    if jobs > 1 and len(targets) > 1:
+        # Most of the time per target is spent waiting for the CMake
+        # process, so threads are enough to keep the machine busy.
+        with ThreadPoolExecutor(max_workers=min(jobs, len(targets))) as pool:
+            results = list(pool.map(lambda t: _describe_one(describer, t, output_dir), targets))
+    else:
+        results = [_describe_one(describer, target, output_dir) for target in targets]
+
     descriptions = {}
     failures = 0
-    for target in targets:
-        try:
-            description = describer.describe(target, output_dir)
-        except BoardDescriptionError as e:
-            err(f'{target}: {e}')
+    for target, result, error in results:
+        if error is not None:
+            err(f'{target}: {error}')
             failures += 1
-            continue
-
-        resolved = description['board']['target']
-        if output_dir is None:
-            descriptions[resolved] = description
+        elif output_dir is None:
+            descriptions[target] = result
         else:
-            out.write(f'{resolved}: {_write_json(description, output_dir)}\n')
+            out.write(f'{target}: {result}\n')
 
     if output_dir is None:
         json.dump(descriptions, out, indent=2)
@@ -353,6 +379,13 @@ def add_args(parser):
         '--preprocessor',
         help='''C preprocessor to run on the devicetree files (default: the
                 first C compiler CMake finds)''',
+    )
+    parser.add_argument(
+        '-j',
+        '--jobs',
+        type=int,
+        default=os.cpu_count() or 1,
+        help='number of board targets to describe in parallel (default: %(default)s)',
     )
 
 
@@ -399,7 +432,11 @@ def main():
     )
     targets = args.targets or describer.all_targets()
     failures = describe_all(
-        describer, targets, args.output_dir, err=lambda m: print(f'ERROR: {m}', file=sys.stderr)
+        describer,
+        targets,
+        args.output_dir,
+        jobs=args.jobs,
+        err=lambda m: print(f'ERROR: {m}', file=sys.stderr),
     )
     sys.exit(1 if failures else 0)
 
