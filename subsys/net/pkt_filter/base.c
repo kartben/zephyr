@@ -18,32 +18,27 @@ LOG_MODULE_REGISTER(npf_base, CONFIG_NET_PKT_FILTER_LOG_LEVEL);
 
 struct npf_rule_list npf_send_rules = {
 	.rule_head = SYS_SLIST_STATIC_INIT(&send_rules.rule_head),
-	.lock = { },
 };
 
 struct npf_rule_list npf_recv_rules = {
 	.rule_head = SYS_SLIST_STATIC_INIT(&recv_rules.rule_head),
-	.lock = { },
 };
 
 #ifdef CONFIG_NET_PKT_FILTER_LOCAL_IN_HOOK
 struct npf_rule_list npf_local_in_recv_rules = {
 	.rule_head = SYS_SLIST_STATIC_INIT(&local_in_recv_rules.rule_head),
-	.lock = { },
 };
 #endif /* CONFIG_NET_PKT_FILTER_LOCAL_IN_HOOK */
 
 #ifdef CONFIG_NET_PKT_FILTER_IPV4_HOOK
 struct npf_rule_list npf_ipv4_recv_rules = {
 	.rule_head = SYS_SLIST_STATIC_INIT(&ipv4_recv_rules.rule_head),
-	.lock = { },
 };
 #endif /* CONFIG_NET_PKT_FILTER_IPV4_HOOK */
 
 #ifdef CONFIG_NET_PKT_FILTER_IPV6_HOOK
 struct npf_rule_list npf_ipv6_recv_rules = {
 	.rule_head = SYS_SLIST_STATIC_INIT(&ipv6_recv_rules.rule_head),
-	.lock = { },
 };
 #endif /* CONFIG_NET_PKT_FILTER_IPV6_HOOK */
 
