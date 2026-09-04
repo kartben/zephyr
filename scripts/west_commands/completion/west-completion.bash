@@ -669,6 +669,7 @@ __comp_west_boards()
 
 	local other_opts="
 		--format -f
+		--jobs -j
 		--name -n
 		--preprocessor
 		--target -t
@@ -1131,6 +1132,7 @@ __comp_west_twister()
 		--extra-args -x
 		--fixture -X
 		--footprint-threshold -H
+		--jobs -j
 		--level
 		--pytest-args
 		--report-name

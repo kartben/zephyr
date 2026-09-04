@@ -55,6 +55,12 @@ default revision, so the ``--name`` filter selects the boards::
 
   west boards --describe -n '^nrf52840dk$'
 
+Targets are described in parallel, one worker per CPU unless ``--jobs``
+(``-j``) says otherwise, so an inventory of every board in the workspace
+takes minutes rather than hours::
+
+  west boards --describe -o descriptions -j 8
+
 The description is printed to standard output as one JSON object keyed by
 board target. With ``--output-dir`` (``-o``), one ``<board target>.json``
 file and the merged ``<board target>.dts`` are written per target into that
