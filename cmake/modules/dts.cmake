@@ -6,6 +6,18 @@ include(extensions)
 include(python)
 include(boards)
 include(pre_dt)
+
+# Internal: true when the caller loaded this module without Kconfig, as
+#
+#   cmake -DMODULES=dts -P <ZEPHYR_BASE>/cmake/package_helper.cmake
+#
+# does. Such a run returns once the devicetree is available and never reaches
+# Kconfig or compilation. 'SUB_COMPONENTS' holds the requested modules and is
+# undefined for a normal build, which always continues into both.
+if(DEFINED SUB_COMPONENTS AND NOT "kconfig" IN_LIST SUB_COMPONENTS)
+  set(DTS_ONLY_RUN TRUE)
+endif()
+
 find_package(HostTools)
 find_package(Dtc 1.4.6)
 
@@ -442,12 +454,19 @@ function(dts_build_info_output)
   build_info(devicetree bindings-dirs PATH ${CACHED_DTS_ROOT_BINDINGS})
 endfunction()
 
+# Three of the outputs of this module exist only for the stages that follow
+# it: 'Kconfig.dts' for Kconfig, 'devicetree_generated.h' for compilation and
+# the imported devicetree target for the CMake dt_* API. A devicetree-only run
+# reaches none of them, so they are not generated there; 'zephyr.dts' and
+# 'edt.pickle', which such a run is after, always are.
 macro(dts_init)
   dts_configuration_files()
   dts_edt_pickle()
-  dts_gen_defines()
-  dts_gen_driver_kconfig()
-  dts_import()
+  if(NOT DTS_ONLY_RUN)
+    dts_gen_defines()
+    dts_gen_driver_kconfig()
+    dts_import()
+  endif()
   dts_dtc()
   dts_build_info_output()
 endmacro()
