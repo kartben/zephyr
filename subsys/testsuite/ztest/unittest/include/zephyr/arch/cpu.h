@@ -1,4 +1,6 @@
 /*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ *
  * SPDX-License-Identifier: Apache-2.0
  */
 #ifndef ZEPHYR_SUBSYS_TESTSUITE_ZTEST_INCLUDE_ARCH_CPU_H
