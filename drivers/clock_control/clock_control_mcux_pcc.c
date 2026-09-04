@@ -126,20 +126,23 @@ static uint32_t clocks[] = {
 	/* clocks managed through PCC4 */
 	kCLOCK_Lpuart7,
 };
+#define MCUX_PCC_CLOCKS		clocks
+#define MCUX_PCC_CLOCK_NUM	ARRAY_SIZE(clocks)
 #else
-/* this is empty for SOCs which don't need a translation from
- * the clock ID passed through the DTS and the clock ID encoding
- * from the HAL. For these SOCs, the clock ID will be built based
- * on the value passed from the DTS and the PCC base.
+/* SOCs which don't need a translation from the clock ID passed through
+ * the DTS and the clock ID encoding from the HAL have no table at all.
+ * For these SOCs, the clock ID will be built based on the value passed
+ * from the DTS and the PCC base.
  */
-static uint32_t clocks[] = {};
+#define MCUX_PCC_CLOCKS		NULL
+#define MCUX_PCC_CLOCK_NUM	0
 #endif /* CONFIG_SOC_MIMX8UD7 */
 
 #define MCUX_PCC_INIT(inst)						\
 	static const struct mcux_pcc_config mcux_pcc##inst##_config = {	\
 		.base_address = DT_INST_REG_ADDR(inst),			\
-		.clocks = clocks,					\
-		.clock_num = ARRAY_SIZE(clocks),			\
+		.clocks = MCUX_PCC_CLOCKS,				\
+		.clock_num = MCUX_PCC_CLOCK_NUM,			\
 	};								\
 									\
 	DEVICE_DT_INST_DEFINE(inst,					\
