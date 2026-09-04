@@ -44,30 +44,34 @@ LOG_MODULE_REGISTER(iocell, CONFIG_SOC_LOG_LEVEL);
 	"if the corresponding power supply is above certain threshold. "                           \
 	"Enabling it while the voltage is higher can damage the device"
 
-struct stm32_iocell_config {
 #if defined(STM32_IOCELL_USE_NVMEM)
+struct stm32_iocell_config {
 	struct nvmem_cell cell;
-#endif
-};
-
-struct stm32_iocell_data {
-#if defined(CONFIG_SOC_SERIES_STM32N6X)
-	uint32_t otp_hconf1_value;
-	int otp_correct;
-#endif
 };
 
 static const struct stm32_iocell_config iocell_config = {
-#if defined(STM32_IOCELL_USE_NVMEM)
 	.cell = NVMEM_CELL_GET_BY_NAME_OR(STM32_IOCELL_NODE, safeguard, {0}),
-#endif
+};
+
+#define STM32_IOCELL_CONFIG (&iocell_config)
+#else
+#define STM32_IOCELL_CONFIG NULL
+#endif /* STM32_IOCELL_USE_NVMEM */
+
+#if defined(CONFIG_SOC_SERIES_STM32N6X)
+struct stm32_iocell_data {
+	uint32_t otp_hconf1_value;
+	int otp_correct;
 };
 
 static struct stm32_iocell_data iocell_data = {
-#if defined(CONFIG_SOC_SERIES_STM32N6X)
 	.otp_hconf1_value = STM32_IOCELL_OTP_HCONF1_DEFAULT,
-#endif
 };
+
+#define STM32_IOCELL_DATA (&iocell_data)
+#else
+#define STM32_IOCELL_DATA NULL
+#endif /* CONFIG_SOC_SERIES_STM32N6X */
 
 /* Returns 1 if HSLV can be configured
  * Returns 0 if HSLV can't be configured
@@ -326,5 +330,5 @@ static int iocell_init(const struct device *dev)
 	return ret;
 }
 
-DEVICE_DT_DEFINE(STM32_IOCELL_NODE, iocell_init, NULL, &iocell_data, &iocell_config, PRE_KERNEL_1,
-		 CONFIG_STM32_IOCELL_PRIORITY, NULL);
+DEVICE_DT_DEFINE(STM32_IOCELL_NODE, iocell_init, NULL, STM32_IOCELL_DATA, STM32_IOCELL_CONFIG,
+		 PRE_KERNEL_1, CONFIG_STM32_IOCELL_PRIORITY, NULL);
