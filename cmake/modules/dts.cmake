@@ -481,6 +481,22 @@ function(dts_build_info_output)
   build_info(devicetree files PATH ${dts_files})
   build_info(devicetree include-dirs PATH ${DTS_ROOT_SYSTEM_INCLUDE_DIRS})
   build_info(devicetree bindings-dirs PATH ${CACHED_DTS_ROOT_BINDINGS})
+
+  # Everything the preprocessor read, so that a consumer of the devicetree
+  # can tell when it has gone stale. 'empty_file.c' only exists to give the
+  # preprocessor an input file and is not part of the devicetree.
+  set(include_files ${DTS_INCLUDE_FILES})
+  list(REMOVE_ITEM include_files ${ZEPHYR_BASE}/misc/empty_file.c)
+  if(include_files)
+    build_info(devicetree include-files PATH ${include_files})
+  endif()
+
+  # The dtc flags the board asked for in its pre_dt_board.cmake, which decide
+  # among other things whether the register/unit-address mismatch warning is
+  # enabled.
+  if(EXTRA_DTC_FLAGS)
+    build_info(devicetree extra-dtc-flags VALUE ${EXTRA_DTC_FLAGS})
+  endif()
 endfunction()
 
 # Three of the outputs of this module exist only for the stages that follow
