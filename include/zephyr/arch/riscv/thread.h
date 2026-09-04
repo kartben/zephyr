@@ -84,7 +84,7 @@ struct _thread_arch {
 	unsigned long m_mode_pmpcfg_regs[CONFIG_PMP_SLOTS / (__riscv_xlen / 8)];
 #endif
 #if defined(CONFIG_CPP) && !defined(CONFIG_FPU_SHARING) && !defined(CONFIG_USERSPACE) &&           \
-	!defined(CONFIG_PMP_STACK_GUARD)
+	!defined(CONFIG_PMP_KERNEL_MODE_DYNAMIC)
 	/* Empty struct has size 0 in C, size 1 in C++. Force them to be the same. */
 	uint8_t unused_cpp_size_compatibility;
 #endif
