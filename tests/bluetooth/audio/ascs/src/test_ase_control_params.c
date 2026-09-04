@@ -102,7 +102,7 @@ ZTEST_SUITE(test_ase_control_params, NULL, test_ase_control_params_setup,
 
 ZTEST_F(test_ase_control_params, test_sink_ase_control_operation_zero_length_write)
 {
-	uint8_t buf[] = {};
+	uint8_t buf[1];
 	ssize_t ret;
 
 	ret = fixture->ase_cp->write(&fixture->conn, fixture->ase_cp, (void *)buf, 0, 0, 0);

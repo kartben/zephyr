@@ -11,7 +11,8 @@
 #define TLS_PEER_HOSTNAME "localhost"
 
 #ifdef USE_DUMMY_CREDS
-static const unsigned char ca_certificate[] = { };
+/* Build-only placeholder so the sample compiles without real credentials. */
+static const unsigned char ca_certificate[] = { '\0' };
 #else
 static const unsigned char ca_certificate[] = {
 /* Include your PEM/DER certificates */

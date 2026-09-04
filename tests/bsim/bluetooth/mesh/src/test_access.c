@@ -248,11 +248,9 @@ static const struct bt_mesh_model vnd_models[] = {
 			     &vnd_model_cb)
 };
 
-static const struct bt_mesh_model vnd_models_ne[] = {};
-
 static const struct bt_mesh_elem elems[] = {
 	BT_MESH_ELEM(0, models, vnd_models),
-	BT_MESH_ELEM(1, models_ne, vnd_models_ne),
+	BT_MESH_ELEM(1, models_ne, BT_MESH_MODEL_NONE),
 };
 
 const struct bt_mesh_comp local_comp = {

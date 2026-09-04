@@ -50,7 +50,8 @@
 
 /* Following tests are part of Mbed TLS */
 
-uint8_t test1[] = {};
+/* Empty message; the array only exists to give inputs[] a valid pointer. */
+uint8_t test1[1];
 uint8_t test2[] = {0xbd};
 uint8_t test3[] = {0x5f, 0xd4};
 uint8_t test4[] = {0xb0, 0xbd, 0x69};
@@ -314,7 +315,7 @@ PTRS_FROM_2D(sha512_results);
 
 /* Inputs & sizes */
 static const uint8_t *inputs[] = {test1, test2, test3, test4, test5, test6, test7};
-static const size_t in_lens[] = {sizeof(test1), sizeof(test2), sizeof(test3), sizeof(test4),
+static const size_t in_lens[] = {0, sizeof(test2), sizeof(test3), sizeof(test4),
 				 sizeof(test5), sizeof(test6), sizeof(test7)};
 
 ZTEST(crypto_hash, test_sha224)
