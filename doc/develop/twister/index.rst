@@ -789,8 +789,13 @@ filter: <expression>
     for detailed description of the different DT expressions available.
 
     Existence of "CONFIG*" entries indicates kconfig is needed.
-    If there are no other types of entries in the expression a filtration can be done without creating a complete build system.
     If there are entries of other types a full cmake is required.
+
+    An expression that needs devicetree, alone or with kconfig, is evaluated without creating a
+    complete build system, before the build is configured. So is any such expression of a sysbuild
+    test. A kconfig-only expression is evaluated against the configured build instead, since
+    running kconfig alone costs nearly as much as configuring. If configuring fails, kconfig is run
+    alone to evaluate the expression, so a configuration it excludes is still filtered out.
 
     The grammar for the expression language is as follows:
 

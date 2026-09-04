@@ -976,7 +976,7 @@ TESTDATA_6 = [
         mock.ANY,
         mock.ANY,
         mock.ANY,
-        mock.ANY,
+        {'filter': {}},
         mock.ANY,
         mock.ANY,
         mock.ANY,
@@ -998,7 +998,7 @@ TESTDATA_6 = [
         mock.ANY,
         mock.ANY,
         mock.ANY,
-        mock.ANY,
+        {'filter': {}},
         mock.ANY,
         mock.ANY,
         mock.ANY,
@@ -1009,6 +1009,28 @@ TESTDATA_6 = [
         mock.ANY,
         0,
         None
+    ),
+    (
+        {'op': 'cmake'},
+        TwisterStatus.NONE,
+        mock.ANY,
+        mock.ANY,
+        mock.ANY,
+        True,
+        mock.ANY,
+        mock.ANY,
+        mock.ANY,
+        {'filter': {'dummy instance name': True}},
+        mock.ANY,
+        mock.ANY,
+        mock.ANY,
+        mock.ANY,
+        ['filtering dummy instance name'],
+        {'op': 'report', 'test': mock.ANY},
+        TwisterStatus.FILTER,
+        'runtime filter',
+        1,
+        (TwisterStatus.FILTER,)
     ),
     (
         {'op': 'cmake'},
@@ -1471,6 +1493,7 @@ TESTDATA_6 = [
     ids=[
         'filter, failed', 'filter, cmake res', 'filter, no cmake res',
         'cmake, failed', 'cmake, cmake_only, no status', 'cmake, cmake_only',
+        'cmake, cmake_only, cmake res',
         'cmake, no cmake_only, cmake res', 'cmake, no cmake_only, no cmake res',
         'build, no build res', 'build, skipped', 'build, blocked',
         'build, determine testcases', 'build, determine testcases Error',
@@ -1529,6 +1552,7 @@ def test_projectbuilder_process(
     instance_mock.testsuite.harness = 'test'
     instance_mock.testsuite.harness_config = HarnessConfig()
     instance_mock.required_applications = []
+    instance_mock.filter_stages = []
     env_mock = mock.Mock()
 
     pb = ProjectBuilder(instance_mock, env_mock, mocked_jobserver)
@@ -1574,6 +1598,85 @@ def test_projectbuilder_process(
 
     if expected_missing:
         pb.instance.add_missing_case_status.assert_called_with(*expected_missing)
+
+
+TESTDATA_6_1 = [
+    (['kconfig'], False, {'filter': {'dummy instance name': True}}, True,
+     TwisterStatus.FILTER, 'runtime filter'),
+    (['kconfig'], False, {'filter': {'dummy instance name': False}}, True,
+     TwisterStatus.ERROR, 'CMake build failure'),
+    (['kconfig'], False, {'returncode': 1}, True,
+     TwisterStatus.ERROR, 'CMake build failure'),
+    (['kconfig'], True, mock.ANY, False,
+     TwisterStatus.ERROR, 'CMake build failure'),
+    (['dts', 'kconfig'], False, mock.ANY, False,
+     TwisterStatus.ERROR, 'CMake build failure'),
+    (['full'], False, mock.ANY, False,
+     TwisterStatus.ERROR, 'CMake build failure'),
+    ([], False, mock.ANY, False,
+     TwisterStatus.ERROR, 'CMake build failure'),
+]
+
+@pytest.mark.parametrize(
+    'filter_stages, sysbuild, filter_res, expect_filter_stages_run,'
+    ' expected_status, expected_reason',
+    TESTDATA_6_1,
+    ids=['deferred, excluded', 'deferred, kept', 'deferred, stages failed',
+         'kconfig sysbuild', 'resolved up front', 'full', 'no filter']
+)
+def test_projectbuilder_process_cmake_failure_filter(
+    mocked_jobserver,
+    tmp_path,
+    filter_stages,
+    sysbuild,
+    filter_res,
+    expect_filter_stages_run,
+    expected_status,
+    expected_reason
+):
+    instance_mock = mock.Mock()
+    instance_mock.name = 'dummy instance name'
+    instance_mock.status = TwisterStatus.NONE
+    instance_mock.filter_stages = filter_stages
+    instance_mock.sysbuild = sysbuild
+    instance_mock.testcases = [mock.Mock(), mock.Mock()]
+
+    def mock_cmake(filter_stages=None):
+        if filter_stages:
+            return filter_res
+        # A failed configuration, as run_cmake() reports it.
+        instance_mock.status = TwisterStatus.ERROR
+        instance_mock.reason = 'CMake build failure'
+        for tc in instance_mock.testcases:
+            tc.status = TwisterStatus.ERROR
+        return {'returncode': 1}
+
+    pb = ProjectBuilder(instance_mock, mock.Mock(), mocked_jobserver)
+    pb.options = mock.Mock(cmake_only=False, outdir=tmp_path, log_file=None,
+                           log_level='DEBUG')
+    pb.cmake = mock.Mock(side_effect=mock_cmake)
+
+    processing_queue_mock = mock.Mock()
+    results_mock = mock.Mock()
+
+    pb.process(processing_queue_mock, mock.Mock(), {'op': 'cmake'}, mock.Mock(),
+               results_mock)
+
+    expected_calls = [mock.call()]
+    if expect_filter_stages_run:
+        expected_calls.append(mock.call(filter_stages=filter_stages))
+    assert pb.cmake.call_args_list == expected_calls
+
+    processing_queue_mock.append.assert_called_with({'op': 'report', 'test': mock.ANY})
+    assert pb.instance.status == expected_status
+    assert pb.instance.reason == expected_reason
+    if expected_status == TwisterStatus.FILTER:
+        results_mock.filtered_runtime_increment.assert_called_once_with()
+        assert all(tc.status == TwisterStatus.NONE for tc in instance_mock.testcases)
+        instance_mock.add_missing_case_status.assert_called_once_with(TwisterStatus.FILTER)
+    else:
+        results_mock.filtered_runtime_increment.assert_not_called()
+        assert all(tc.status == TwisterStatus.ERROR for tc in instance_mock.testcases)
 
 
 @pytest.mark.parametrize(
@@ -3434,3 +3537,31 @@ def test_twisterrunner_get_cmake_filter_stages(filter, expected_result):
     result = TwisterRunner.get_cmake_filter_stages(filter)
 
     assert sorted(result) == sorted(expected_result)
+
+
+TESTDATA_21 = [
+    ([], False, False, False),
+    (['full'], False, False, False),
+    (['dts'], False, True, False),
+    (['kconfig'], False, False, True),
+    (['dts', 'kconfig'], False, True, False),
+    (['kconfig'], True, True, False),
+    (['full'], True, False, False),
+]
+
+@pytest.mark.parametrize(
+    'filter_stages, sysbuild, expected_before, expected_deferred',
+    TESTDATA_21,
+    ids=['none', 'full', 'dts', 'kconfig', 'dts+kconfig',
+         'kconfig sysbuild', 'full sysbuild']
+)
+def test_twisterrunner_filter_before_configuring(
+    filter_stages,
+    sysbuild,
+    expected_before,
+    expected_deferred
+):
+    instance = mock.Mock(filter_stages=filter_stages, sysbuild=sysbuild)
+
+    assert TwisterRunner.filter_before_configuring(instance) == expected_before
+    assert TwisterRunner.filter_deferred(instance) == expected_deferred

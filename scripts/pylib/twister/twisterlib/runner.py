@@ -526,7 +526,9 @@ class CMake:
             for tc in self.instance.testcases:
                 tc.status = self.instance.status
 
-            logger.error(f"CMake build failure: {self.source_dir} for {self.platform.name}")
+            # Not final: a filter may still exclude the instance, and
+            # report_out() reports the status the instance ends up with.
+            logger.debug(f"CMake build failure: {self.source_dir} for {self.platform.name}")
             ret = {"returncode": p.returncode}
 
         if out:
@@ -807,11 +809,7 @@ class ProjectBuilder(FilterBuilder):
             else:
                 # Here we check the dt/kconfig filter results coming from running cmake
                 if self.instance.name in ret['filter'] and ret['filter'][self.instance.name]:
-                    logger.debug(f"filtering {self.instance.name}")
-                    self.instance.status = TwisterStatus.FILTER
-                    self.instance.reason = RUNTIME_FILTER_REASON
-                    results.filtered_runtime_increment()
-                    self.instance.add_missing_case_status(TwisterStatus.FILTER)
+                    self._filter_at_runtime(results)
                     next_op = 'report'
                 else:
                     next_op = 'cmake'
@@ -827,6 +825,15 @@ class ProjectBuilder(FilterBuilder):
         try:
             ret = self.cmake()
             if self.instance.status in [TwisterStatus.FAIL, TwisterStatus.ERROR]:
+                if self._excluded_by_deferred_filter():
+                    # run_cmake() marked every case with the failure.
+                    for tc in self.instance.testcases:
+                        tc.status = TwisterStatus.NONE
+                    self._filter_at_runtime(results)
+                next_op = 'report'
+            elif self.instance.name in ret['filter'] and ret['filter'][self.instance.name]:
+                # Before cmake_only: its configuration resolves a filter too.
+                self._filter_at_runtime(results)
                 next_op = 'report'
             elif self.options.cmake_only:
                 if self.instance.status == TwisterStatus.NONE:
@@ -835,21 +842,33 @@ class ProjectBuilder(FilterBuilder):
                     self.instance.add_missing_case_status(TwisterStatus.NOTRUN, 'CMake only')
                 next_op = 'report'
             else:
-                # Here we check the runtime filter results coming from running cmake
-                if self.instance.name in ret['filter'] and ret['filter'][self.instance.name]:
-                    logger.debug(f"filtering {self.instance.name}")
-                    self.instance.status = TwisterStatus.FILTER
-                    self.instance.reason = RUNTIME_FILTER_REASON
-                    results.filtered_runtime_increment()
-                    self.instance.add_missing_case_status(TwisterStatus.FILTER)
-                    next_op = 'report'
-                else:
-                    next_op = 'build'
+                next_op = 'build'
         except StatusAttributeError as sae:
             self._mark_status_error(sae)
             next_op = 'report'
         finally:
             self._add_to_processing_queue(processing_queue, next_op)
+
+    def _filter_at_runtime(self, results):
+        logger.debug(f"filtering {self.instance.name}")
+        self.instance.status = TwisterStatus.FILTER
+        self.instance.reason = RUNTIME_FILTER_REASON
+        results.filtered_runtime_increment()
+        self.instance.add_missing_case_status(TwisterStatus.FILTER)
+
+    def _excluded_by_deferred_filter(self):
+        """Whether a filter left for after configuring excludes this instance.
+
+        Only called once configuring has failed. A filter often keeps an
+        instance away from a configuration its CMake code rejects, so the
+        filter has to be resolved before the failure counts. Run the filter
+        stages that were skipped up front, as they would have run there.
+        """
+        if not TwisterRunner.filter_deferred(self.instance):
+            return False
+
+        ret = self.cmake(filter_stages=self.instance.filter_stages)
+        return ret.get('filter', {}).get(self.instance.name, False)
 
     def _op_build(self, processing_queue, processing_ready, message, lock, results):
         next_op = None
@@ -2186,7 +2205,7 @@ class TwisterRunner:
                         processing_queue.append({"op": "report", "test": instance})
                 elif test_only and instance.run:
                     processing_queue.append({"op": "run", "test": instance})
-                elif instance.filter_stages and "full" not in instance.filter_stages:
+                elif self.filter_before_configuring(instance):
                     processing_queue.append({"op": "filter", "test": instance})
                 else:
                     cache_file = os.path.join(instance.build_dir, "CMakeCache.txt")
@@ -2271,6 +2290,36 @@ class TwisterRunner:
                 p.terminate()
             return True
         return False
+
+    @staticmethod
+    def filter_before_configuring(instance):
+        """Whether resolving a filter up front is worth what it costs.
+
+        It skips configuring the instances the filter excludes, and costs
+        the filter stages on every instance. Kconfig costs nearly as much
+        as a configuration, so it only wins on a filter that excludes four
+        instances in five. Real ones exclude far fewer. Sysbuild is the
+        exception: its filter stages cover one application, the
+        configuration they save covers every image.
+        """
+        stages = instance.filter_stages
+        if not stages or "full" in stages:
+            return False
+
+        return stages != ["kconfig"] or instance.sysbuild
+
+    @staticmethod
+    def filter_deferred(instance):
+        """Whether the filter stages can resolve a filter but are left for later.
+
+        The configuration resolves such a filter. If configuring fails, the
+        filter stages still have to, see ProjectBuilder._op_cmake().
+        """
+        stages = instance.filter_stages
+        if not stages or "full" in stages:
+            return False
+
+        return not TwisterRunner.filter_before_configuring(instance)
 
     @staticmethod
     def get_cmake_filter_stages(filt):
