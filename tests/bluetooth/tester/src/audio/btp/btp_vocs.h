@@ -24,7 +24,7 @@ struct btp_vocs_audio_loc_cmd {
 #define BTP_VOCS_UPDATE_DESC			0x03U
 struct btp_vocs_audio_desc_cmd {
 	uint8_t desc_len;
-	uint8_t desc[0];
+	uint8_t desc[];
 } __packed;
 
 #define BTP_VOCS_STATE_GET			0x04U

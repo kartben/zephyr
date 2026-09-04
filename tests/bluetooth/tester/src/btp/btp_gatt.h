@@ -191,7 +191,7 @@ struct btp_gatt_read_rp {
 struct btp_gatt_char_value {
 	uint16_t handle;
 	uint8_t data_len;
-	uint8_t data[0];
+	uint8_t data[];
 } __packed;
 
 #define BTP_GATT_READ_UUID			0x12
@@ -205,7 +205,7 @@ struct btp_gatt_read_uuid_cmd {
 struct btp_gatt_read_uuid_rp {
 	uint8_t att_response;
 	uint8_t values_count;
-	struct btp_gatt_char_value values[0];
+	struct btp_gatt_char_value values[];
 } __packed;
 
 #define BTP_GATT_READ_LONG			0x13

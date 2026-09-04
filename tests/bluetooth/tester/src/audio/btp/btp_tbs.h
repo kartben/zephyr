@@ -23,7 +23,7 @@ struct btp_tbs_remote_incoming_cmd {
 	uint8_t caller_len;
 	uint8_t fn_len;
 	uint8_t data_len;
-	uint8_t data[0];
+	uint8_t data[];
 } __packed;
 
 #define BTP_TBS_HOLD				0x03U
@@ -35,7 +35,7 @@ struct btp_tbs_hold_cmd {
 struct btp_tbs_set_bearer_name_cmd {
 	uint8_t index;
 	uint8_t name_len;
-	uint8_t name[0];
+	uint8_t name[];
 } __packed;
 
 #define BTP_TBS_SET_TECHNOLOGY			0x05U
@@ -49,7 +49,7 @@ struct btp_tbs_set_uri_schemes_list_cmd {
 	uint8_t index;
 	uint8_t uri_len;
 	uint8_t uri_count;
-	uint8_t uri_list[0];
+	uint8_t uri_list[];
 } __packed;
 
 #define BTP_TBS_SET_STATUS_FLAGS		0x07U
@@ -67,7 +67,7 @@ struct btp_tbs_remote_hold_cmd {
 struct btp_tbs_originate_cmd {
 	uint8_t index;
 	uint8_t uri_len;
-	uint8_t uri[0];
+	uint8_t uri[];
 } __packed;
 
 #define BTP_TBS_SET_SIGNAL_STRENGTH		0x0AU

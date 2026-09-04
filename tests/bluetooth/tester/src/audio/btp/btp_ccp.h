@@ -42,7 +42,7 @@ struct btp_ccp_originate_call_cmd {
 	bt_addr_le_t address;
 	uint8_t inst_index;
 	uint8_t uri_len;
-	char    uri[0];
+	char    uri[];
 } __packed;
 
 #define BTP_CCP_READ_CALL_STATE		0x06U
@@ -171,7 +171,7 @@ struct btp_ccp_call_states_ev {
 	int     status;
 	uint8_t inst_index;
 	uint8_t call_count;
-	struct bt_tbs_client_call_state call_states[0];
+	struct bt_tbs_client_call_state call_states[];
 } __packed;
 
 #define BTP_CCP_EV_CHRC_HANDLES		0x82U
@@ -208,7 +208,7 @@ struct btp_ccp_chrc_str_ev {
 	uint8_t status;
 	uint8_t inst_index;
 	uint8_t data_len;
-	char data[0];
+	char data[];
 } __packed;
 
 #define BTP_CCP_EV_CP			0x85U

@@ -23,7 +23,7 @@ struct btp_ascs_configure_codec_cmd {
 	uint16_t vid;
 	uint16_t cid;
 	uint8_t cc_ltvs_len;
-	uint8_t cc_ltvs[0];
+	uint8_t cc_ltvs[];
 } __packed;
 
 #define BTP_ASCS_CONFIGURE_QOS	0x03U

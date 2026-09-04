@@ -71,7 +71,7 @@ struct btp_aics_auto_gain_cmd {
 #define BTP_AICS_AUDIO_DESCRIPTION_SET		0x09U
 struct btp_aics_audio_desc_cmd {
 	uint8_t desc_len;
-	uint8_t desc[0];
+	uint8_t desc[];
 } __packed;
 
 #define BTP_AICS_MUTE_DISABLE			0x0AU
@@ -138,7 +138,7 @@ struct btp_aics_description_ev {
 	bt_addr_le_t address;
 	uint8_t att_status;
 	uint8_t data_len;
-	char data[0];
+	char data[];
 } __packed;
 
 #define BTP_AICS_PROCEDURE_EV			0x85U

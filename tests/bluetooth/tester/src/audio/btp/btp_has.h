@@ -27,7 +27,7 @@ struct btp_has_set_preset_name_cmd {
 	bt_addr_le_t address;
 	uint8_t index;
 	uint8_t length;
-	char    name[0];
+	char    name[];
 } __packed;
 
 #define BTP_HAS_REMOVE_PRESET		0x04U
@@ -42,7 +42,7 @@ struct btp_has_add_preset_cmd {
 	uint8_t index;
 	uint8_t props;
 	uint8_t length;
-	char    name[0];
+	char    name[];
 } __packed;
 
 #define BTP_HAS_SET_PROPERTIES		0x06U
