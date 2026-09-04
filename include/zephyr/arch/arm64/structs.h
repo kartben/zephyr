@@ -18,13 +18,14 @@ struct _cpu_arch {
 	/* Saved the corrupted stack pointer when stack overflow, else 0 */
 	uint64_t corrupted_sp;
 #endif
-#if !defined(CONFIG_FPU_SHARING) && !defined(CONFIG_ARM64_SAFE_EXCEPTION_STACK) &&                 \
-	defined(__cplusplus)
-	/* This struct will have a size 0 in C which is not allowed in C++ (it'll have a size 1). To
-	 * prevent this, we add a 1 byte dummy variable.
+#if !defined(CONFIG_FPU_SHARING) && !defined(CONFIG_ARM64_SAFE_EXCEPTION_STACK)
+	/* An empty struct is not valid ISO C, and it has size 0 in C but 1
+	 * in C++. Carry a dummy so the struct is never empty.
 	 */
 	uint8_t dummy;
 #endif
 };
+
+BUILD_ASSERT(sizeof(struct _cpu_arch) >= 1);
 
 #endif /* ZEPHYR_INCLUDE_ARCH_ARM64_STRUCTS_H_ */

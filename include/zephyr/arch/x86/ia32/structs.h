@@ -30,11 +30,14 @@ struct _cpu_arch {
 	long *shstk_base; /* Base of shadow stack */
 	size_t shstk_size;
 #endif
-#if defined(__cplusplus) && !defined(CONFIG_FPU_SHARING) && \
-		!defined(CONFIG_HW_SHADOW_STACK)
-	/* Ensure this struct does not have a size of 0 which is not allowed in C++. */
+#if !defined(CONFIG_FPU_SHARING) && !defined(CONFIG_HW_SHADOW_STACK)
+	/* An empty struct is not valid ISO C, and it has size 0 in C but 1
+	 * in C++. Carry a dummy so the struct is never empty.
+	 */
 	uint8_t dummy;
 #endif
 };
+
+BUILD_ASSERT(sizeof(struct _cpu_arch) >= 1);
 
 #endif /* ZEPHYR_INCLUDE_ARCH_X86_IA32_STRUCTS_H_ */
