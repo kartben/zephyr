@@ -27,6 +27,44 @@ Additional help about the formatting options can be found by running::
 
   west boards -h
 
+.. _west-boards-describe:
+
+Describing board targets
+========================
+
+The ``--describe`` flag inspects board targets instead of listing them. For
+each selected target, the board's base devicetree is generated and described
+as JSON: the board target, the resolved revision and qualifiers, the
+devicetree input files, the ``chosen`` and ``aliases`` entries, the node
+labels, the enabled compatibles and every node with its properties.
+
+The devicetree is produced by the Zephyr CMake package, which stops as soon
+as it is available: no Kconfig is run, no toolchain is needed and nothing is
+compiled, which makes this considerably lighter than a ``west build
+--cmake-only`` configuration. Application overlays, shields and snippets are
+not applied, so the result is the board's own devicetree.
+
+Targets are given with ``--target`` (``-t``), which accepts the same
+``<board>[@<revision>][/<qualifiers>]`` syntax as ``west build -b`` and can
+be repeated::
+
+  west boards --describe -t nrf9160dk@0.14.0/nrf9160/ns
+
+Without ``--target``, every target of every listed board is described at its
+default revision, so the ``--name`` filter selects the boards::
+
+  west boards --describe -n '^nrf52840dk$'
+
+The description is printed to standard output as one JSON object keyed by
+board target. With ``--output-dir`` (``-o``), one ``<board target>.json``
+file and the merged ``<board target>.dts`` are written per target into that
+directory instead::
+
+  west boards --describe -o descriptions -t nrf52840dk/nrf52840
+
+The devicetree files are run through a C preprocessor, which CMake looks for
+the same way a build does unless ``--preprocessor`` names one.
+
 .. _west-completion:
 
 Shell completion scripts: ``west completion``
