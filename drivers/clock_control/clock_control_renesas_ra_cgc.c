@@ -19,8 +19,23 @@
 
 static volatile uint32_t *mstp_regs[] = {
 	DT_FOREACH_PROP_ELEM(DT_NODELABEL(pclkblock), reg_names, MSTP_REGS_ELEM)};
+
+static inline int mstp_stop_bit_set(uint32_t mstp, uint32_t stop_bit, bool val)
+{
+	WRITE_BIT(*mstp_regs[mstp], stop_bit, val);
+
+	return 0;
+}
 #else
-static volatile uint32_t *mstp_regs[] = {};
+/* Without a pclkblock node there are no module stop registers to drive. */
+static inline int mstp_stop_bit_set(uint32_t mstp, uint32_t stop_bit, bool val)
+{
+	ARG_UNUSED(mstp);
+	ARG_UNUSED(stop_bit);
+	ARG_UNUSED(val);
+
+	return -ENOTSUP;
+}
 #endif
 
 #if defined(CONFIG_CORTEX_M_SYSTICK)
@@ -54,8 +69,7 @@ static int clock_control_renesas_ra_on(const struct device *dev, clock_control_s
 	if (!subsys_clk) {
 		return -EINVAL;
 	}
-	WRITE_BIT(*mstp_regs[subsys_clk->mstp], subsys_clk->stop_bit, false);
-	return 0;
+	return mstp_stop_bit_set(subsys_clk->mstp, subsys_clk->stop_bit, false);
 }
 
 static int clock_control_renesas_ra_off(const struct device *dev, clock_control_subsys_t sys)
@@ -68,8 +82,7 @@ static int clock_control_renesas_ra_off(const struct device *dev, clock_control_
 		return -EINVAL;
 	}
 
-	WRITE_BIT(*mstp_regs[subsys_clk->mstp], subsys_clk->stop_bit, true);
-	return 0;
+	return mstp_stop_bit_set(subsys_clk->mstp, subsys_clk->stop_bit, true);
 }
 
 static int clock_control_renesas_ra_get_rate(const struct device *dev, clock_control_subsys_t sys,

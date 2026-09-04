@@ -19,8 +19,25 @@
 
 static volatile uint32_t *mstp_regs[] = {
 	DT_FOREACH_PROP_ELEM(DT_NODELABEL(pclkblock), reg_names, MSTP_REGS_ELEM)};
+
+static inline int mstp_stop_bit_set(uint32_t mstp, uint32_t stop_bit, bool val)
+{
+	renesas_rx_register_protect_disable(RENESAS_RX_REG_PROTECT_LPC_CGC_SWR);
+	WRITE_BIT(*mstp_regs[mstp], stop_bit, val);
+	renesas_rx_register_protect_enable(RENESAS_RX_REG_PROTECT_LPC_CGC_SWR);
+
+	return 0;
+}
 #else
-static volatile uint32_t *mstp_regs[] = {};
+/* Without a pclkblock node there are no module stop registers to drive. */
+static inline int mstp_stop_bit_set(uint32_t mstp, uint32_t stop_bit, bool val)
+{
+	ARG_UNUSED(mstp);
+	ARG_UNUSED(stop_bit);
+	ARG_UNUSED(val);
+
+	return -ENOTSUP;
+}
 #endif
 
 static int clock_control_renesas_rx_on(const struct device *dev, clock_control_subsys_t sys)
@@ -31,11 +48,7 @@ static int clock_control_renesas_rx_on(const struct device *dev, clock_control_s
 		return -EINVAL;
 	}
 
-	renesas_rx_register_protect_disable(RENESAS_RX_REG_PROTECT_LPC_CGC_SWR);
-	WRITE_BIT(*mstp_regs[subsys_clk->mstp], subsys_clk->stop_bit, false);
-	renesas_rx_register_protect_enable(RENESAS_RX_REG_PROTECT_LPC_CGC_SWR);
-
-	return 0;
+	return mstp_stop_bit_set(subsys_clk->mstp, subsys_clk->stop_bit, false);
 }
 
 static int clock_control_renesas_rx_off(const struct device *dev, clock_control_subsys_t sys)
@@ -46,11 +59,7 @@ static int clock_control_renesas_rx_off(const struct device *dev, clock_control_
 		return -EINVAL;
 	}
 
-	renesas_rx_register_protect_disable(RENESAS_RX_REG_PROTECT_LPC_CGC_SWR);
-	WRITE_BIT(*mstp_regs[subsys_clk->mstp], subsys_clk->stop_bit, true);
-	renesas_rx_register_protect_enable(RENESAS_RX_REG_PROTECT_LPC_CGC_SWR);
-
-	return 0;
+	return mstp_stop_bit_set(subsys_clk->mstp, subsys_clk->stop_bit, true);
 }
 
 static int clock_control_renesas_rx_get_rate(const struct device *dev, clock_control_subsys_t sys,
