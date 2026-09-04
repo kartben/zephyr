@@ -1889,7 +1889,7 @@ struct k_timer_observer {
 	.wait_q = Z_WAIT_Q_INIT(&obj.wait_q), \
 	.expiry_fn = expiry, \
 	.stop_fn = stop, \
-	.period = {}, \
+	.period = Z_TIMEOUT_NO_WAIT_INIT, \
 	.status = 0, \
 	.user_data = 0, \
 	}
