@@ -1097,52 +1097,30 @@ static void espi_vw_idx42_isr(const struct device *dev)
 	}
 }
 
-static const struct espi_vw_signal_t vw_idx43_signals[] = {};
-
 static void espi_vw_idx43_isr(const struct device *dev)
 {
 	const struct espi_rts5912_config *const espi_config = dev->config;
 	volatile struct espi_reg *const espi_reg = espi_config->espi_reg;
 	uint8_t cur_idx_data = espi_reg->EVIDX43;
-	uint8_t updated_bit = cur_idx_data ^ espi_vw_ch_cached_data.idx43;
 
 	if (espi_reg->EVSTS & ESPI_EVSTS_IDX43CHG) {
 		espi_vw_ch_cached_data.idx43 = cur_idx_data;
 
-		for (int i = 0; i < ARRAY_SIZE(vw_idx43_signals); i++) {
-			enum espi_vwire_signal vw_signal = vw_idx43_signals[i].signal;
-
-			if (updated_bit & vw_channel_list[vw_signal].level_mask &&
-			    vw_idx43_signals[i].vw_signal_callback != NULL) {
-				vw_idx43_signals[i].vw_signal_callback(dev);
-			}
-		}
 		if (espi_vw_ch_cached_data.idx43 == espi_reg->EVIDX43) {
 			espi_reg->EVSTS = ESPI_EVSTS_IDX43CHG;
 		}
 	}
 }
 
-static const struct espi_vw_signal_t vw_idx44_signals[] = {};
-
 static void espi_vw_idx44_isr(const struct device *dev)
 {
 	const struct espi_rts5912_config *const espi_config = dev->config;
 	volatile struct espi_reg *const espi_reg = espi_config->espi_reg;
 	uint8_t cur_idx_data = espi_reg->EVIDX44;
-	uint8_t updated_bit = cur_idx_data ^ espi_vw_ch_cached_data.idx44;
 
 	if (espi_reg->EVSTS & ESPI_EVSTS_IDX44CHG) {
 		espi_vw_ch_cached_data.idx44 = cur_idx_data;
 
-		for (int i = 0; i < ARRAY_SIZE(vw_idx44_signals); i++) {
-			enum espi_vwire_signal vw_signal = vw_idx44_signals[i].signal;
-
-			if (updated_bit & vw_channel_list[vw_signal].level_mask &&
-			    vw_idx44_signals[i].vw_signal_callback != NULL) {
-				vw_idx44_signals[i].vw_signal_callback(dev);
-			}
-		}
 		if (espi_vw_ch_cached_data.idx44 == espi_reg->EVIDX44) {
 			espi_reg->EVSTS = ESPI_EVSTS_IDX44CHG;
 		}
