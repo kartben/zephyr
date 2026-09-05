@@ -247,6 +247,12 @@ class Json_report:
                 if not x:
                     continue
 
+                if not covered_file['lines']:
+                    # gcovr 8 reports files that have no instrumented lines at
+                    # all, which gcovr 6 left out. They carry no coverage
+                    # either way, and counting them divides by zero.
+                    continue
+
                 file_name = covered_file['file'][covered_file['file'].rfind('/') + 1 :]
                 file_path = covered_file['file']
                 file_coverage, file_lines, file_hit = self._calculate_coverage_of_file(covered_file)
