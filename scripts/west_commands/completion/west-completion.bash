@@ -664,22 +664,31 @@ __comp_west_boards()
 {
 	local bool_opts="
 		--all-targets -a
+		--describe
 	"
 
 	local other_opts="
 		--format -f
+		--jobs -j
 		--name -n
+		--preprocessor
+		--target -t
 	"
 
 	local dir_opts="
 		--arch-root
 		--board-root
+		--output-dir -o
 		--soc-root
 	"
 
 	all_opts="$bool_opts $dir_opts $other_opts"
 
 	case "$prev" in
+		--target|-t)
+			__set_comp_west_boards
+			return
+			;;
 		$(__west_to_extglob "$other_opts") )
 			# We don't know how to autocomplete these.
 			return
