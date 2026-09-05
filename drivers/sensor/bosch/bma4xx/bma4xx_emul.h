@@ -16,6 +16,21 @@ extern "C" {
 /** Set the sensor's current acceleration reading. */
 void bma4xx_emul_set_accel_data(const struct emul *target, q31_t value, int8_t shift, int8_t reg);
 
+/** Overwrite @p count registers starting at @p reg_addr. */
+void bma4xx_emul_set_reg(const struct emul *target, uint8_t reg_addr, const uint8_t *val,
+			 size_t count);
+
+/** Read back @p count registers starting at @p reg_addr. */
+void bma4xx_emul_get_reg(const struct emul *target, uint8_t reg_addr, uint8_t *val, size_t count);
+
+/**
+ * Return the last value written to the CMD register.
+ *
+ * CMD is write-only, so its value is not available through
+ * bma4xx_emul_get_reg().
+ */
+uint8_t bma4xx_emul_get_last_cmd(const struct emul *target);
+
 /**
  * Return the current interrupt configuration.
  *

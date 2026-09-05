@@ -27,6 +27,8 @@ LOG_MODULE_DECLARE(bma4xx, CONFIG_SENSOR_LOG_LEVEL);
 struct bma4xx_emul_data {
 	/* Holds register data. */
 	uint8_t regs[BMA4XX_NUM_REGS];
+	/* Last value written to CMD, which is write-only and outside of regs. */
+	uint8_t last_cmd;
 };
 
 struct bma4xx_emul_cfg {
@@ -44,7 +46,6 @@ void bma4xx_emul_set_reg(const struct emul *target, uint8_t reg_addr, const uint
 void bma4xx_emul_get_reg(const struct emul *target, uint8_t reg_addr, uint8_t *val, size_t count)
 {
 	struct bma4xx_emul_data *data = target->data;
-	LOG_INF("*** bma4xx_emul_get_reg: %x, %d", reg_addr, count);
 
 	__ASSERT_NO_MSG(reg_addr + count <= BMA4XX_NUM_REGS);
 	memcpy(val, data->regs + reg_addr, count);
@@ -60,6 +61,13 @@ uint8_t bma4xx_emul_get_interrupt_config(const struct emul *target, uint8_t *int
 	return data->regs[BMA4XX_REG_INT_MAP_DATA];
 }
 
+uint8_t bma4xx_emul_get_last_cmd(const struct emul *target)
+{
+	struct bma4xx_emul_data *data = target->data;
+
+	return data->last_cmd;
+}
+
 static int bma4xx_emul_read_byte(const struct emul *target, int reg, uint8_t *val, int bytes)
 {
 	bma4xx_emul_get_reg(target, reg, val, bytes);
@@ -67,92 +75,130 @@ static int bma4xx_emul_read_byte(const struct emul *target, int reg, uint8_t *va
 	return 0;
 }
 
-static int bma4xx_emul_write_byte(const struct emul *target, int reg, uint8_t val, int bytes)
+static void bma4xx_emul_reset(const struct emul *target)
 {
 	struct bma4xx_emul_data *data = target->data;
 
-	if (bytes != 1) {
-		LOG_ERR("multi-byte writes are not supported");
-		return -ENOTSUP;
-	}
+	memset(data->regs, 0, sizeof(data->regs));
+	data->regs[BMA4XX_REG_CHIP_ID] = BMA4XX_CHIP_ID_BMA422;
+	data->regs[BMA4XX_REG_ACCEL_RANGE] = BMA4XX_RANGE_4G;
+	data->regs[BMA4XX_REG_EVENT] = BMA4XX_BIT_EVENT_POR_DETECTED;
+}
+
+static int bma4xx_emul_write_byte(const struct emul *target, uint8_t reg, uint8_t val)
+{
+	struct bma4xx_emul_data *data = target->data;
 
 	switch (reg) {
 	case BMA4XX_REG_ACCEL_CONFIG:
-		if ((val & 0xF0) != 0xA0) {
-			LOG_ERR("unsupported acc_bwp/acc_perf_mode: %#x", val);
-			return -EINVAL;
-		}
-		data->regs[reg] = val & GENMASK(1, 0);
+		/* Every combination of ODR, bandwidth parameter and performance
+		 * power mode is accepted by the chip.
+		 */
+		data->regs[reg] = val;
 		return 0;
 	case BMA4XX_REG_ACCEL_RANGE:
-		if ((val & GENMASK(1, 0)) != val) {
+		if ((val & BMA4XX_MASK_ACC_RANGE) != val) {
 			LOG_ERR("reserved bits set in ACC_RANGE write: %#x", val);
 			return -EINVAL;
 		}
 		data->regs[reg] = val;
 		return 0;
 	case BMA4XX_REG_FIFO_CONFIG_1:
-		if (val & ~BMA4XX_FIFO_ACC_EN) {
-			LOG_ERR("unsupported bits set in FIFO_CONFIG_1"
-				" write: %#x",
-				val);
+		if ((val & ~(BMA4XX_FIFO_ACC_EN | BMA4XX_FIFO_AUX_EN | BMA4XX_FIFO_HEADER_EN)) !=
+		    0) {
+			LOG_ERR("unsupported bits set in FIFO_CONFIG_1 write: %#x", val);
+			return -ENOTSUP;
+		}
+		data->regs[reg] = val;
+		return 0;
+	case BMA4XX_REG_FIFO_WTM_0:
+		data->regs[reg] = val;
+		return 0;
+	case BMA4XX_REG_FIFO_WTM_1:
+		if ((val & GENMASK(3, 0)) != val) {
+			LOG_ERR("reserved bits set in FIFO_WTM_1 write: %#x", val);
 			return -EINVAL;
 		}
-		data->regs[reg] = (val & BMA4XX_FIFO_ACC_EN) != 0;
+		data->regs[reg] = val;
 		return 0;
 	case BMA4XX_REG_INT1_IO_CTRL:
-		data->regs[reg] = val;
-		return 0;
-	case BMA4XX_REG_INT_LATCH:
-		if ((val & ~1) != 0) {
-			LOG_ERR("reserved bits set in INT_LATCH: %#x", val);
-			return -EINVAL;
-		}
-		data->regs[reg] = (val & 1) == 1;
-		return 0;
 	case BMA4XX_REG_INT_MAP_DATA:
-		data->regs[reg] = val;
-		return 0;
-	case BMA4XX_REG_NV_CONFIG:
-		if (val & GENMASK(7, 4)) {
-			LOG_ERR("reserved bits set in NV_CONF write: %#x", val);
-			return -EINVAL;
-		}
-		data->regs[reg] = val;
-		return 0;
 	case BMA4XX_REG_OFFSET_0:
 	case BMA4XX_REG_OFFSET_1:
 	case BMA4XX_REG_OFFSET_2:
 		data->regs[reg] = val;
 		return 0;
+	case BMA4XX_REG_INT_LATCH:
+		if ((val & BIT(0)) != val) {
+			LOG_ERR("reserved bits set in INT_LATCH: %#x", val);
+			return -EINVAL;
+		}
+		data->regs[reg] = val;
+		return 0;
+	case BMA4XX_REG_NV_CONFIG:
+		if ((val & GENMASK(7, 4)) != 0) {
+			LOG_ERR("reserved bits set in NV_CONF write: %#x", val);
+			return -EINVAL;
+		}
+		data->regs[reg] = val;
+		return 0;
 	case BMA4XX_REG_POWER_CTRL:
-		if ((val & ~BMA4XX_BIT_POWER_CTRL_ACC_EN) != 0) {
+		if ((val & ~(BMA4XX_BIT_POWER_CTRL_ACC_EN | BMA4XX_BIT_POWER_CTRL_AUX_EN)) != 0) {
 			LOG_ERR("unhandled bits in POWER_CTRL write: %#x", val);
 			return -ENOTSUP;
 		}
-		data->regs[reg] = (val & BMA4XX_BIT_POWER_CTRL_ACC_EN) != 0;
+		data->regs[reg] = val;
+		return 0;
+	case BMA4XX_REG_POWER_CONF:
+		if ((val & BMA4XX_BIT_POWER_CONF_ADV_PWR_SAVE) != val) {
+			LOG_ERR("unhandled bits in POWER_CONF write: %#x", val);
+			return -ENOTSUP;
+		}
+		data->regs[reg] = val;
 		return 0;
 	case BMA4XX_REG_CMD:
-		if (val == BMA4XX_CMD_FIFO_FLUSH) { /* fifo_flush */
+		data->last_cmd = val;
+
+		switch (val) {
+		case BMA4XX_CMD_FIFO_FLUSH:
 			data->regs[BMA4XX_REG_FIFO_DATA] = 0;
 			data->regs[BMA4XX_REG_FIFO_LENGTH_0] = 0;
 			data->regs[BMA4XX_REG_FIFO_LENGTH_1] = 0;
-			return 0;
+			break;
+		case BMA4XX_CMD_SOFT_RESET:
+			bma4xx_emul_reset(target);
+			break;
+		default:
+			/* The chip ignores command values it does not implement. */
+			LOG_WRN("unknown CMD value %#x", val);
+			break;
 		}
-		break;
+		return 0;
 	}
 
 	LOG_WRN("unhandled I2C write to register %#x", reg);
 	return -ENOTSUP;
 }
 
+static int bma4xx_emul_write_bytes(const struct emul *target, uint8_t reg, const uint8_t *val,
+				   size_t count)
+{
+	for (size_t i = 0; i < count; i++) {
+		int res = bma4xx_emul_write_byte(target, reg + i, val[i]);
+
+		if (res != 0) {
+			return res;
+		}
+	}
+
+	return 0;
+}
+
 static int bma4xx_emul_init(const struct emul *target, const struct device *parent)
 {
-	struct bma4xx_emul_data *data = target->data;
+	ARG_UNUSED(parent);
 
-	data->regs[BMA4XX_REG_CHIP_ID] = BMA4XX_CHIP_ID_BMA422;
-	data->regs[BMA4XX_REG_ACCEL_RANGE] = BMA4XX_RANGE_4G;
-	data->regs[BMA4XX_REG_EVENT] = 0x01;
+	bma4xx_emul_reset(target);
 
 	return 0;
 }
@@ -160,35 +206,50 @@ static int bma4xx_emul_init(const struct emul *target, const struct device *pare
 static int bma4xx_emul_transfer_i2c(const struct emul *target, struct i2c_msg *msgs, int num_msgs,
 				    int addr)
 {
+	uint8_t reg;
+
 	__ASSERT_NO_MSG(msgs && num_msgs);
-	if (num_msgs != 2) {
-		return 0;
-	}
 
 	i2c_dump_msgs_rw(target->dev, msgs, num_msgs, addr, false);
 
-	if (msgs->flags & I2C_MSG_READ) {
+	if ((msgs->flags & I2C_MSG_READ) != 0) {
 		LOG_ERR("Unexpected read");
 		return -EIO;
 	}
+
+	if (num_msgs == 1) {
+		/* Register address followed by the data to write, the shape
+		 * i2c_reg_write_byte() produces.
+		 */
+		if (msgs->len < 2) {
+			LOG_ERR("Unexpected write length %d", msgs->len);
+			return -EIO;
+		}
+
+		return bma4xx_emul_write_bytes(target, msgs->buf[0], &msgs->buf[1], msgs->len - 1);
+	}
+
+	if (num_msgs != 2) {
+		LOG_ERR("Unexpected number of messages %d", num_msgs);
+		return -EIO;
+	}
+
 	if (msgs->len != 1) {
 		LOG_ERR("Unexpected msg0 length %d", msgs->len);
 		return -EIO;
 	}
 
-	uint32_t reg = msgs->buf[0];
-
+	reg = msgs->buf[0];
 	msgs++;
-	if (msgs->flags & I2C_MSG_READ) {
+
+	if ((msgs->flags & I2C_MSG_READ) != 0) {
 		/* Reads from regs in target->data to msgs->buf */
-		bma4xx_emul_read_byte(target, reg, msgs->buf, msgs->len);
-	} else {
-		/* Writes msgs->buf[0] to regs in target->data */
-		bma4xx_emul_write_byte(target, reg, msgs->buf[0], msgs->len);
+		return bma4xx_emul_read_byte(target, reg, msgs->buf, msgs->len);
 	}
 
-	return 0;
-};
+	/* Writes msgs->buf to regs in target->data */
+	return bma4xx_emul_write_bytes(target, reg, msgs->buf, msgs->len);
+}
 
 void bma4xx_emul_set_accel_data(const struct emul *target, q31_t value, int8_t shift, int8_t reg)
 {
