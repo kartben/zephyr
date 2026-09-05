@@ -28,3 +28,15 @@ tests:
       - qemu_cortex_m3
     extra_configs:
       - CONFIG_MULTITHREADING=n
+  libraries.multi_heap.tracing:
+    tags:
+      - multi_heap
+    platform_allow:
+      - native_sim
+    extra_configs:
+      - CONFIG_IRQ_OFFLOAD=y
+      - CONFIG_TRACING=y
+      - CONFIG_TRACING_CTF=y
+      - CONFIG_TRACING_BACKEND_POSIX=y
+      - CONFIG_TRACING_PACKET_MAX_SIZE=256
+      - CONFIG_TRACING_SYNC=y
