@@ -39,3 +39,13 @@ tests:
     filter: CONFIG_PICOLIBC_SUPPORTED
     integration_platforms:
       - qemu_x86
+  libraries.libc.minimal.sprintf_new:
+    extra_args: CONF_FILE=prj_new.conf
+    platform_allow: qemu_x86
+    filter: CONFIG_MINIMAL_LIBC_SUPPORTED
+    tags:
+      - minimal_libc
+    extra_configs:
+      - CONFIG_MINIMAL_LIBC=y
+    integration_platforms:
+      - qemu_x86
