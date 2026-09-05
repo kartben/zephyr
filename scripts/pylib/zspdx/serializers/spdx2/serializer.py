@@ -266,6 +266,22 @@ DocumentNamespace: {namespace}
                 package_version = package_version or metadata[5]
         return package_name, supplier, package_version
 
+    @staticmethod
+    def _write_package_checksums(f, component):
+        """Write ``PackageChecksum`` lines for a component that builds a single artifact.
+
+        A package-level hash lets a consumer verify the delivered binary against the SBOM;
+        source packages have no single artifact to hash and rely on the package
+        verification code computed over their files instead.
+        """
+        build_file = component.target_build_file
+        if not build_file:
+            return
+        for algorithm in ("SHA256", "SHA1"):
+            value = build_file.hashes.get(algorithm)
+            if value:
+                f.write(f"PackageChecksum: {algorithm}: {value}\n")
+
     def _write_files_analyzed(self, f, component):
         """Write the FilesAnalyzed section and verification code for a component."""
         if not component.files:
@@ -319,6 +335,9 @@ PackageCopyrightText: {component.copyright_text}
         # Supplier
         if supplier:
             f.write(f"PackageSupplier: Organization: {supplier}\n")
+
+        # Checksum of the package's build artifact, where the package has one.
+        self._write_package_checksums(f, component)
 
         # External references
         for ref in component.external_references:

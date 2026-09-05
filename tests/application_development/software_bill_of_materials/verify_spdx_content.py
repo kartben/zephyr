@@ -565,6 +565,19 @@ class TestPackageProvenance:
         )
 
 
+class TestPackageChecksums:
+    """Tests for the package-level checksum of a build artifact."""
+
+    def test_final_image_has_package_checksum(self, build_doc):
+        """The final image's package carries a checksum of its artifact."""
+        pkg = find_package_by_name(build_doc, "zephyr_final")
+        assert pkg is not None, "build.spdx: zephyr_final package not found"
+        algorithms = {c.algorithm for c in pkg.checksums}
+        assert ChecksumAlgorithm.SHA256 in algorithms, (
+            f"build.spdx: zephyr_final has no SHA256 PackageChecksum, got {algorithms}"
+        )
+
+
 class TestPackageComments:
     """Tests for package role comments."""
 
