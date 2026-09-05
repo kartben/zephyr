@@ -1311,6 +1311,22 @@ USB
   property on :samp:`usbphyc{N}` instead of :samp:`usbotg_hs{N}`. (:github:`107813`)
 * Indicating protocol error via ``errno`` in control transfer handlers is deprecated.
   Handlers should return error code directly. (:github:`108118`)
+* The descriptor usage type of :c:struct:`usbd_desc_node` moved out of the
+  ``str`` and ``bos`` union members into a ``utype`` member of the node itself,
+  so that the union no longer forces the node to 24 bytes. Code that builds
+  descriptor nodes with ``USBD_DESC_STRING_DEFINE()``,
+  ``USBD_DESC_SERIAL_NUMBER_DEFINE()``, ``USBD_DESC_BOS_DEFINE()`` or
+  ``USBD_DESC_BOS_VREQ_DEFINE()`` needs no change; code that reads
+  ``desc_nd->str.utype`` or ``desc_nd->bos.utype`` directly must read
+  ``desc_nd->utype`` instead.
+* :c:struct:`usbd_context` no longer has the ``hs_configs`` and ``hs_desc``
+  members in a Full-Speed-only build, that is when :kconfig:option:`CONFIG_USBD_MAX_SPEED_FULL`
+  is selected. Code outside the device stack should not touch them; use
+  :c:func:`usbd_caps_speed` to decide whether a device can run at High-Speed.
+* The number of interfaces for which the device stack tracks an alternate
+  setting is now configurable with
+  :kconfig:option:`CONFIG_USBD_NUMOF_INTERFACES_MAX`. The default of 16 is the
+  value the stack used before, so no existing device changes behaviour.
 * When host issues control transfer with data stage from host to device, the USB control transfer
   callbacks ``control_to_dev`` in :c:struct:`usbd_class_api` and ``to_dev`` in
   :c:struct:`usbd_vreq_node` are now called with NULL ``buf`` before data stage is received.

@@ -62,34 +62,19 @@ static int assign_ep_addr(const struct device *dev,
 }
 
 /* Unassign all endpoint of a class instance based on class_ep_bm */
-static int unassign_eps(struct usbd_context *const uds_ctx,
-			uint32_t *const config_ep_bm,
+static int unassign_eps(uint32_t *const config_ep_bm,
 			uint32_t *const class_ep_bm)
 {
-	for (unsigned int idx = 1; idx < 16U && *class_ep_bm; idx++) {
-		uint8_t ep_in = USB_EP_DIR_IN | idx;
-		uint8_t ep_out = idx;
+	const uint32_t not_assigned = *class_ep_bm & ~*config_ep_bm;
 
-		if (usbd_ep_bm_is_set(class_ep_bm, ep_in)) {
-			if (!usbd_ep_bm_is_set(config_ep_bm, ep_in)) {
-				LOG_ERR("Endpoing 0x%02x not assigned", ep_in);
-				return -EINVAL;
-			}
-
-			usbd_ep_bm_clear(config_ep_bm, ep_in);
-			usbd_ep_bm_clear(class_ep_bm, ep_in);
-		}
-
-		if (usbd_ep_bm_is_set(class_ep_bm, ep_out)) {
-			if (!usbd_ep_bm_is_set(config_ep_bm, ep_out)) {
-				LOG_ERR("Endpoing 0x%02x not assigned", ep_out);
-				return -EINVAL;
-			}
-
-			usbd_ep_bm_clear(config_ep_bm, ep_out);
-			usbd_ep_bm_clear(class_ep_bm, ep_out);
-		}
+	if (not_assigned != 0U) {
+		LOG_ERR("Endpoing 0x%02x not assigned",
+			usbd_ep_bm_get_first(not_assigned));
+		return -EINVAL;
 	}
+
+	*config_ep_bm &= ~*class_ep_bm;
+	*class_ep_bm = 0U;
 
 	return 0;
 }
@@ -159,7 +144,7 @@ static int init_configuration_inst(struct usbd_context *const uds_ctx,
 				 * characteristics of endpoints in alternate
 				 * interfaces are ascending.
 				 */
-				unassign_eps(uds_ctx, config_ep_bm, &class_ep_bm);
+				unassign_eps(config_ep_bm, &class_ep_bm);
 			}
 
 			class_ep_bm = 0;
@@ -245,7 +230,7 @@ static int init_configuration(struct usbd_context *const uds_ctx,
 	/* Finally reset configuration's endpoint assignment */
 	SYS_SLIST_FOR_EACH_CONTAINER(&cfg_nd->class_list, c_nd, node) {
 		c_nd->ep_assigned = c_nd->ep_active;
-		ret = unassign_eps(uds_ctx, &config_ep_bm, &c_nd->ep_active);
+		ret = unassign_eps(&config_ep_bm, &c_nd->ep_active);
 		if (ret != 0) {
 			return ret;
 		}
@@ -259,20 +244,11 @@ static void usbd_init_update_fs_mps0(struct usbd_context *const uds_ctx)
 	struct udc_device_caps caps = udc_caps(uds_ctx->dev);
 	struct usb_device_descriptor *desc = uds_ctx->fs_desc;
 
-	switch (caps.mps0) {
-	case UDC_MPS0_8:
-		desc->bMaxPacketSize0 = 8;
-		break;
-	case UDC_MPS0_16:
-		desc->bMaxPacketSize0 = 16;
-		break;
-	case UDC_MPS0_32:
-		desc->bMaxPacketSize0 = 32;
-		break;
-	case UDC_MPS0_64:
-		desc->bMaxPacketSize0 = 64;
-		break;
-	}
+	BUILD_ASSERT(UDC_MPS0_8 == 0 && UDC_MPS0_16 == 1 &&
+		     UDC_MPS0_32 == 2 && UDC_MPS0_64 == 3,
+		     "enum udc_mps0 is not an ascending power of two sequence");
+
+	desc->bMaxPacketSize0 = 8U << caps.mps0;
 }
 
 int usbd_init_configurations(struct usbd_context *const uds_ctx)
@@ -282,7 +258,7 @@ int usbd_init_configurations(struct usbd_context *const uds_ctx)
 	usbd_init_update_fs_mps0(uds_ctx);
 
 	if (USBD_SUPPORTS_HIGH_SPEED) {
-		SYS_SLIST_FOR_EACH_CONTAINER(&uds_ctx->hs_configs, cfg_nd, node) {
+		SYS_SLIST_FOR_EACH_CONTAINER(usbd_get_hs_configs(uds_ctx), cfg_nd, node) {
 			int ret;
 
 			ret = init_configuration(uds_ctx, USBD_SPEED_HS, cfg_nd);
