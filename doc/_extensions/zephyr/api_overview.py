@@ -1,7 +1,6 @@
 # Copyright (c) 2023 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
-import os
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +8,9 @@ import doxmlparser
 from docutils import nodes
 from doxmlparser.compound import DoxCompoundKind
 from sphinx.util.docutils import SphinxDirective
+
+from zephyr._paths import outdir_relative_uri
+from zephyr.doxyrunner import doxygen_outputs
 
 
 def get_group(innergroup, all_groups):
@@ -22,12 +24,12 @@ def get_group(innergroup, all_groups):
         raise Exception(f"Unexpected group {innergroup.get_refid()}") from e
 
 
-def parse_xml_dir(dir_name):
+def parse_xml_dir(xml_dir: Path):
     groups = []
-    root = doxmlparser.index.parse(Path(dir_name) / "index.xml", True)
+    root = doxmlparser.index.parse(xml_dir / "index.xml", True)
     for compound in root.get_compound():
         if compound.get_kind() == DoxCompoundKind.GROUP:
-            file_name = Path(dir_name) / f"{compound.get_refid()}.xml"
+            file_name = xml_dir / f"{compound.get_refid()}.xml"
             groups.append(doxmlparser.compound.parse(file_name, True))
 
     return groups
@@ -41,13 +43,22 @@ class ApiOverview(SphinxDirective):
 
     It is exclusively used by the doc/develop/api/overview.rst page.
 
-    Configuration options:
-
-    api_overview_doxygen_out_dir: Doxygen output directory
+    The Doxygen output it reads is located through zephyr.doxyrunner's
+    doxyrunner_projects; api_overview_base_url points at the repository used for the
+    "since" release links.
     """
 
     def run(self):
-        groups = parse_xml_dir(self.config.api_overview_doxygen_out_dir + "/xml")
+        outputs = doxygen_outputs(self.config)
+        if not outputs:
+            return []
+        if len(outputs) != 1:
+            raise self.error("api-overview-table requires exactly one Doxygen project")
+
+        self.doxygen_output = next(iter(outputs.values()))
+
+        self.env.note_dependency(str(self.doxygen_output.xml / "index.xml"))
+        groups = parse_xml_dir(self.doxygen_output.xml)
 
         inners = [group.get_compounddef()[0].get_innergroup() for group in groups]
         inner_ids = [i.get_refid() for inner in inners for i in inner]
@@ -107,14 +118,11 @@ class ApiOverview(SphinxDirective):
         else:
             since_url = nodes.Text("")
 
-        url_base = Path(self.config.api_overview_doxygen_out_dir + "/html")
-        abs_url = url_base / f"{cdef.get_id()}.html"
-        doc_dir = os.path.dirname(self.get_source_info()[0])
-        doc_dest = os.path.join(
-            self.env.app.outdir,
-            os.path.relpath(doc_dir, self.env.app.srcdir),
+        url = outdir_relative_uri(
+            self.env.app,
+            self.doxygen_output.html / f"{cdef.get_id()}.html",
+            self.get_source_info()[0],
         )
-        url = os.path.relpath(abs_url, doc_dest)
 
         title = cdef.get_title()
 
@@ -146,7 +154,9 @@ class ApiOverview(SphinxDirective):
 
 
 def setup(app) -> dict[str, Any]:
-    app.add_config_value("api_overview_doxygen_out_dir", "", "env")
+    # for doxyrunner_projects/doxyrunner_skip, and for the Doxygen XML read below
+    app.setup_extension("zephyr.doxyrunner")
+
     app.add_config_value("api_overview_base_url", "", "env")
 
     app.add_directive("api-overview-table", ApiOverview)

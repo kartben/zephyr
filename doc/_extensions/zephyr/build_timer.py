@@ -146,9 +146,9 @@ def _on_build_finished(app: Sphinx, exception) -> None:
 
 
 def setup(app: Sphinx) -> dict[str, Any]:
-    # Run first at builder-inited (low priority value) so the timer starts
-    # before the Doxygen/Kconfig/board-catalog generators, and last at
-    # build-finished (high priority value) so it captures the whole build.
+    # Sphinx's default listener priority is 500, so 100 runs before every other
+    # builder-inited listener (the Doxygen/Kconfig/board-catalog generators) and
+    # 900 after every other build-finished one, bracketing the whole build.
     app.connect("builder-inited", _on_builder_inited, priority=100)
     app.connect("env-before-read-docs", _on_before_read_docs)
     app.connect("build-finished", _on_build_finished, priority=900)
