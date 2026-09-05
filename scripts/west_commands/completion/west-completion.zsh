@@ -43,6 +43,7 @@ _west_cmds() {
   'bindesc[work with Binary Descriptors]'
   'robot[run RobotFramework test suites]'
   'simulate[simulate a Zephyr application]'
+  'runners[list runners and their configuration for a build directory]'
   'sdk[manage SDKs]'
   'packages[manage packages for Zephyr]'
   'patch[manage patches for Zephyr modules]'
@@ -299,6 +300,7 @@ _west_boards() {
   {-f,--format}'[format string]:format string:'
   {-n,--name}'[name regex]:regex:'
   '(-a --all-targets)'{-a,--all-targets}'[output all board target combinations]'
+  '--json[print the result as JSON]'
   '*--arch-root[Add an arch root]:arch root:_directories'
   '*--board-root[Add a board root]:board root:_directories'
   '*--soc-root[Add a soc root]:soc root:_directories'
@@ -311,6 +313,7 @@ _west_shields() {
   local -a opts=(
   {-f,--format}'[format string]:format string:'
   {-n,--name}'[name regex]:regex:'
+  '--json[print the result as JSON]'
   '*--board-root[Add a board root]:board root:_directories'
   )
 
@@ -321,6 +324,7 @@ _west_snippets() {
   local -a opts=(
   {-f,--format}'[format string]:format string:'
   {-n,--name}'[name regex]:regex:'
+  '--json[print the result as JSON]'
   '*--snippet-root[Add a snippet root]:snippet root:_directories'
   )
 
@@ -446,6 +450,7 @@ _west_blobs() {
 _west_blob_list () {
   local -a opts=(
   {-f,--format}'[format string]:format string:'
+  '--json[print the result as JSON]'
   )
 
   _arguments -S $opts \
@@ -471,6 +476,7 @@ _west_sdk() {
   '--toolchains[toolchains]:toolchains:'
   '--personal-access-token[Github personal access token (PAT)]:token:'
   '--api-url[Github API URL]:url:'
+  '--json[print the result as JSON]'
   )
 
   _arguments -S $opts \
@@ -609,6 +615,17 @@ _west_simulate() {
 
 _west_reset() {
   __comp_west_runner_cmd
+}
+
+_west_runners() {
+  local -a opts=(
+  '(-d --build-dir)'{-d,--build-dir}'[build directory]:build dir:_directories'
+  '(-r --runner)'{-r,--runner}'[only describe this runner]:runner:'
+  '*--domain[only describe this sysbuild domain]:domain:'
+  '--json[print the result as JSON]'
+  )
+
+  _arguments -S $opts
 }
 
 _west_rtt() {

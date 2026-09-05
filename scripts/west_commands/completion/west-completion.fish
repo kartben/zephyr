@@ -190,6 +190,7 @@ function __zephyr_west_complete_help
                     "bindesc" "work with Binary Descriptors" \
                     "robot" "run RobotFramework test suites" \
                     "simulate" "simulate board" \
+                    "runners" "list runners and their configuration for a build directory" \
                     "sdk" "manage SDKs" \
                     "packages" "manage packages for Zephyr" \
                     "patch" "manage patches for Zephyr modules" \
@@ -465,6 +466,7 @@ complete -c west -n "__zephyr_west_use_subcommand; and __zephyr_west_check_if_in
 complete -c west -n "__zephyr_west_seen_subcommand_from boards" -o f -l format -d "format string"
 complete -c west -n "__zephyr_west_seen_subcommand_from boards" -o n -l name -d "name regex"
 complete -c west -n "__zephyr_west_seen_subcommand_from boards" -o a -l all-targets -d "output all board target combinations"
+complete -c west -n "__zephyr_west_seen_subcommand_from boards" -l json -d "print the result as JSON"
 complete -c west -n "__zephyr_west_seen_subcommand_from boards" -l arch-root -xa "(__zephyr_west_complete_directories)" -d "add an arch root"
 complete -c west -n "__zephyr_west_seen_subcommand_from boards" -l board-root -xa "(__zephyr_west_complete_directories)" -d "add a board root"
 complete -c west -n "__zephyr_west_seen_subcommand_from boards" -l soc-root -xa "(__zephyr_west_complete_directories)" -d "add a soc root"
@@ -475,6 +477,7 @@ complete -c west -n "__zephyr_west_seen_subcommand_from boards" -l board-dir -xa
 complete -c west -n "__zephyr_west_use_subcommand; and __zephyr_west_check_if_in_workspace" -ra shields -d "display list of supported shields"
 complete -c west -n "__zephyr_west_seen_subcommand_from shields" -o f -l format -d "format string"
 complete -c west -n "__zephyr_west_seen_subcommand_from shields" -o n -l name -d "name regex"
+complete -c west -n "__zephyr_west_seen_subcommand_from shields" -l json -d "print the result as JSON"
 complete -c west -n "__zephyr_west_seen_subcommand_from shields" -l board-root -xa "(__zephyr_west_complete_directories)" -d "add a board root"
 
 # build
@@ -665,10 +668,19 @@ complete -c west -n "__zephyr_west_use_subcommand; and __zephyr_west_check_if_in
 complete -c west -n "__zephyr_west_seen_subcommand_from blobs; and not __fish_seen_subcommand_from list fetch clean" -ra "list\t'list binary blobs' fetch\t'fetch binary blobs' clean\t'clean working tree of binary blobs'"
 complete -c west -n "__zephyr_west_seen_subcommand_from blobs; and __fish_seen_subcommand_from list fetch clean" -ra "(__zephyr_west_complete_projects)"
 complete -c west -n "__zephyr_west_seen_subcommand_from blobs; and not __fish_seen_subcommand_from fetch clean" -o f -l format -r -d "format string"
+complete -c west -n "__zephyr_west_seen_subcommand_from blobs; and not __fish_seen_subcommand_from fetch clean" -l json -d "print the result as JSON"
+
+# runners
+complete -c west -n "__zephyr_west_use_subcommand; and __zephyr_west_check_if_in_workspace" -ra runners -d "list runners and their configuration for a build directory"
+complete -c west -n "__zephyr_west_seen_subcommand_from runners" -o d -l build-dir -xa "(__zephyr_west_complete_directories)" -d "build directory"
+complete -c west -n "__zephyr_west_seen_subcommand_from runners" -o r -l runner -r -d "only describe this runner"
+complete -c west -n "__zephyr_west_seen_subcommand_from runners" -l domain -r -d "only describe this sysbuild domain"
+complete -c west -n "__zephyr_west_seen_subcommand_from runners" -l json -d "print the result as JSON"
 
 # sdk
 complete -c west -n "__zephyr_west_use_subcommand; and __zephyr_west_check_if_in_workspace" -ra sdk -d "manage SDKs"
 complete -c west -n "__zephyr_west_seen_subcommand_from sdk; and not __fish_seen_subcommand_from list install" -ra "list\t'list installed SDKs' install\t'install SDK'"
+complete -c west -n "__zephyr_west_seen_subcommand_from sdk; and __fish_seen_subcommand_from list" -l json -d "print the result as JSON"
 complete -c west -n "__zephyr_west_seen_subcommand_from sdk; and __fish_seen_subcommand_from install" -l version -d "version of the Zephyr SDK to install"
 complete -c west -n "__zephyr_west_seen_subcommand_from sdk; and __fish_seen_subcommand_from install" -o b -l install-base -d "SDK isntall base directory"
 complete -c west -n "__zephyr_west_seen_subcommand_from sdk; and __fish_seen_subcommand_from install" -o d -l install-dir -d "SDK isntall destination directory"

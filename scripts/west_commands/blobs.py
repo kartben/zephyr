@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 from west.commands import WestCommand
 
 from fetchers.core import ZephyrBlobException
-from zephyr_ext_common import ZEPHYR_BASE
+from zephyr_ext_common import ZEPHYR_BASE, add_json_arg, emit_json
 
 sys.path.append(os.fspath(Path(__file__).parent.parent))
 import zephyr_module
@@ -88,6 +88,7 @@ class Blobs(WestCommand):
             help='''format string to use to list each blob;
                     see FORMAT STRINGS below''',
         )
+        add_json_arg(group, help='print blobs as JSON')
 
         group = parser.add_argument_group('west blobs fetch options')
         group.add_argument(
@@ -140,7 +141,12 @@ class Blobs(WestCommand):
         return blobs
 
     def list(self, args):
+        if args.json and args.format is not None:
+            self.die('--json and --format are mutually exclusive')
         blobs = self.get_blobs(args)
+        if args.json:
+            emit_json(blobs)
+            return
         fmt = args.format or self.DEFAULT_LIST_FMT
         for blob in blobs:
             self.inf(fmt.format(**blob))
@@ -383,7 +389,9 @@ class Blobs(WestCommand):
 
         subcmd = getattr(self, args.subcmd[0])
 
-        if args.subcmd[0] != 'list' and args.format is not None:
-            self.die('unexpected --format argument; this is a "west blobs list" option')
+        if args.subcmd[0] != 'list':
+            for opt in ('format', 'json'):
+                if getattr(args, opt):
+                    self.die(f'unexpected --{opt} argument; this is a "west blobs list" option')
 
         subcmd(args)

@@ -21,6 +21,46 @@ from pathlib import Path
 
 from build_helpers import forward_logging_to_west
 from west.commands import WestCommand
+from zephyr_ext_common import add_json_arg, emit_json
+
+
+def sdk_entry_from_path(sdk_path):
+    '''Describe the Zephyr SDK installed at sdk_path, or return None.'''
+    sdk_path = Path(sdk_path)
+    sdk_version_path = sdk_path / "sdk_version"
+    if not sdk_version_path.exists():
+        return None
+    with open(sdk_version_path) as f:
+        version = f.readline().strip()
+    if not version:
+        return None
+
+    # Identify GNU toolchain directory by the existence of <toolchain>/bin/<toolchain>-gcc
+    gcc_postfix = "-gcc.exe" if platform.system() == "Windows" else "-gcc"
+    # SDK 1.0.0 and above place GNU toolchains under the 'gnu' directory
+    tc_base = sdk_path / "gnu" if (sdk_path / "gnu").exists() else sdk_path
+    gnu_toolchains = sorted(
+        tc.name for tc in tc_base.iterdir() if (tc / "bin" / (tc.name + gcc_postfix)).exists()
+    )
+
+    # Since version 0.15.2, the sdk_toolchains file lists the toolchains the
+    # SDK can provide. From SDK 1.0.0, this file is named 'sdk_gnu_toolchains'.
+    available = []
+    for name in ("sdk_gnu_toolchains", "sdk_toolchains"):
+        if (sdk_path / name).exists():
+            with open(sdk_path / name) as f:
+                available = [line.strip() for line in f if line.strip()]
+            break
+
+    return {
+        "version": version,
+        "path": sdk_path,
+        # SDK 1.0.0 and above place host tools under the 'hosttools' directory.
+        "hosttools": (sdk_path / "hosttools").exists() or (sdk_path / "sysroots").exists(),
+        "llvm": (sdk_path / "llvm").exists(),
+        "gnu_toolchains": gnu_toolchains,
+        "gnu_available_toolchains": [tc for tc in available if tc not in gnu_toolchains],
+    }
 
 
 class Sdk(WestCommand):
@@ -58,7 +98,7 @@ class Sdk(WestCommand):
             help="select a subcommand. If omitted, treat it as the 'list' selected.",
         )
 
-        subparsers_gen.add_parser(
+        list_args_parser = subparsers_gen.add_parser(
             "list",
             help="list installed Zephyr SDKs",
             formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -70,6 +110,7 @@ class Sdk(WestCommand):
             """
             ),
         )
+        add_json_arg(list_args_parser, help="print installed SDKs as JSON")
 
         install_args_parser = subparsers_gen.add_parser(
             "install",
@@ -593,88 +634,41 @@ class Sdk(WestCommand):
 
         sdk_info = {}
         for sdk_ent in [parse_sdk_entry(l) for l in reversed(sdk_lines)]:
-            entry = {}
-
-            ver = None
-            sdk_path = Path(sdk_ent.path)
-            sdk_version_path = sdk_path / "sdk_version"
-            if sdk_version_path.exists():
-                with open(str(sdk_version_path)) as f:
-                    ver = f.readline().strip()
-            else:
-                continue
-
-            entry["path"] = sdk_path
-
-            # SDK 1.0.0 and above place host tools under the 'hosttools' directory.
-            if (sdk_path / "hosttools").exists() or (sdk_path / "sysroots").exists():
-                entry["hosttools"] = "installed"
-
-            # Identify GNU toolchain directory by the existence of <toolchain>/bin/<toolchain>-gcc
-            if "Windows" == platform.system():
-                gcc_postfix = "-gcc.exe"
-            else:
-                gcc_postfix = "-gcc"
-
-            # SDK 1.0.0 and above place GNU toolchains under the 'gnu' directory
-            if (sdk_path / "gnu").exists():
-                tc_base = sdk_path / "gnu"
-            else:
-                tc_base = sdk_path
-
-            gnu_toolchains = [
-                tc.name
-                for tc in tc_base.iterdir()
-                if (tc_base / tc / "bin" / (tc.name + gcc_postfix)).exists()
-            ]
-
-            if (sdk_path / "llvm").exists():
-                entry["llvm"] = "installed"
-
-            if len(gnu_toolchains) > 0:
-                entry["gnu_toolchains"] = gnu_toolchains
-
-            if ver:
-                sdk_info[ver] = entry
+            entry = sdk_entry_from_path(sdk_ent.path)
+            if entry:
+                sdk_info[entry["version"]] = entry
 
         return sdk_info
 
-    def list_sdk(self):
-        sdk_info = self.fetch_sdk_info()
+    def list_sdk(self, args):
+        entries = list(self.fetch_sdk_info().values())
 
-        if len(sdk_info) == 0:
+        if getattr(args, "json", False):
+            emit_json(entries)
+            return
+
+        if len(entries) == 0:
             self.die("No Zephyr SDK installed.")
 
-        for k, v in sdk_info.items():
-            self.inf(f"{k}:")
+        self.print_sdk_entries(entries)
+
+    def print_sdk_entries(self, entries):
+        for v in entries:
+            self.inf(f"{v['version']}:")
             self.inf(f"  path: {v['path']}")
-            if "hosttools" in v:
-                self.inf(f"  hosttools: {v['hosttools']}")
-            if "llvm" in v:
-                self.inf(f"  llvm: {v['llvm']}")
-            if "gnu_toolchains" in v:
+            if v["hosttools"]:
+                self.inf("  hosttools: installed")
+            if v["llvm"]:
+                self.inf("  llvm: installed")
+            if v["gnu_toolchains"]:
                 self.inf("  gnu-installed-toolchains:")
                 for tc in v["gnu_toolchains"]:
                     self.inf(f"    - {tc}")
 
-                # Since version 0.15.2, the sdk_toolchains file is included,
-                # so we can get information about available toolchains from there.
-                # From SDK 1.0.0, this file is named 'sdk_gnu_toolchains'.
-                if (Path(v["path"]) / "sdk_gnu_toolchains").exists():
-                    sdk_tc_file = Path(v["path"]) / "sdk_gnu_toolchains"
-                elif (Path(v["path"]) / "sdk_toolchains").exists():
-                    sdk_tc_file = Path(v["path"]) / "sdk_toolchains"
-                else:
-                    sdk_tc_file = None
-
-                if sdk_tc_file:
-                    with open(sdk_tc_file) as f:
-                        all_tcs = [l.strip() for l in f.readlines()]
-
+                if v["gnu_available_toolchains"]:
                     self.inf("  gnu-available-toolchains:")
-                    for tc in all_tcs:
-                        if tc not in v["gnu_toolchains"]:
-                            self.inf(f"    - {tc}")
+                    for tc in v["gnu_available_toolchains"]:
+                        self.inf(f"    - {tc}")
 
             self.inf()
 
@@ -686,4 +680,4 @@ class Sdk(WestCommand):
         if args.subcommand == "install":
             self.install_sdk(args, user_args)
         elif args.subcommand == "list" or not args.subcommand:
-            self.list_sdk()
+            self.list_sdk(args)
