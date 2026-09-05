@@ -642,6 +642,11 @@ non-green) build.
 Running CI Tests Locally
 ========================
 
+.. note::
+
+   The CI jobs run inside the Zephyr Project's Docker images. To run the
+   checks described below in the same environment as CI, see :ref:`docker_ci`.
+
 .. _check_compliance_py:
 
 check_compliance.py
