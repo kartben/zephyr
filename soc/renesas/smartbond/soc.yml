@@ -1,3 +1,8 @@
+modules:
+- cmsis
+- cmsis_6
+- hal_renesas
+
 family:
   - name: renesas_smartbond
     series:

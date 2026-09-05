@@ -198,6 +198,7 @@ Zephyr Extensions
 See the following pages for information on Zephyr's extension commands:
 
 - :ref:`west-build-flash-debug`
+- :ref:`west-modules-opt-in`
 - :ref:`west-sign`
 - :ref:`west-zephyr-ext-cmds`
 - :ref:`west-shell-completion`

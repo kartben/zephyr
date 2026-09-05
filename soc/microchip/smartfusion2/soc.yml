@@ -1,6 +1,11 @@
 ## SPDX-FileCopyrightText: Copyright Bavariamatic GmbH
 ## SPDX-License-Identifier: Apache-2.0
 
+modules:
+- cmsis
+- cmsis_6
+- hal_microchip
+
 family:
 - name: microchip
   series:
