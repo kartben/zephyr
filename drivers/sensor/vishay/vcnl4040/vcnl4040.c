@@ -105,8 +105,7 @@ static int vcnl4040_channel_get(const struct device *dev,
 
 #ifdef CONFIG_VCNL4040_ENABLE_ALS
 	case SENSOR_CHAN_LIGHT:
-		val->val1 = data->light * data->sensitivity;
-		val->val2 = 0;
+		sensor_value_from_float(val, data->light * data->sensitivity);
 		break;
 #endif
 
