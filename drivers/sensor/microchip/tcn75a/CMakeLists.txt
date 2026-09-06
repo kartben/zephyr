@@ -4,3 +4,4 @@
 zephyr_library()
 zephyr_library_sources(tcn75a.c)
 zephyr_library_sources_ifdef(CONFIG_TCN75A_TRIGGER tcn75a_trigger.c)
+zephyr_library_sources_ifdef(CONFIG_EMUL_SENSOR_REGMAP tcn75a_emul.c)
