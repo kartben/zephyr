@@ -18,6 +18,57 @@
 
 LOG_MODULE_DECLARE(MLX90394, CONFIG_SENSOR_LOG_LEVEL);
 
+/*
+ * Fold the requested channels into the single selection the measurement setup understands: the
+ * device measures any combination of X, Y, Z and T in one go (CTRL1 X/Y/Z_EN, CTRL4 T_EN).
+ */
+static enum sensor_channel mlx90394_read_channel(const struct sensor_read_config *cfg)
+{
+	uint8_t magn_axes = 0;
+	bool temp = false;
+
+	for (size_t i = 0; i < cfg->count; i++) {
+		switch (cfg->channels[i].chan_type) {
+		case SENSOR_CHAN_MAGN_X:
+			magn_axes |= BIT(0);
+			break;
+		case SENSOR_CHAN_MAGN_Y:
+			magn_axes |= BIT(1);
+			break;
+		case SENSOR_CHAN_MAGN_Z:
+			magn_axes |= BIT(2);
+			break;
+		case SENSOR_CHAN_MAGN_XYZ:
+			magn_axes |= BIT(0) | BIT(1) | BIT(2);
+			break;
+		case SENSOR_CHAN_AMBIENT_TEMP:
+			temp = true;
+			break;
+		case SENSOR_CHAN_ALL:
+			return SENSOR_CHAN_ALL;
+		default:
+			break;
+		}
+	}
+
+	if (temp) {
+		return (magn_axes != 0) ? SENSOR_CHAN_ALL : SENSOR_CHAN_AMBIENT_TEMP;
+	}
+
+	switch (magn_axes) {
+	case BIT(0):
+		return SENSOR_CHAN_MAGN_X;
+	case BIT(1):
+		return SENSOR_CHAN_MAGN_Y;
+	case BIT(2):
+		return SENSOR_CHAN_MAGN_Z;
+	case 0:
+		return cfg->channels->chan_type;
+	default:
+		return SENSOR_CHAN_MAGN_XYZ;
+	}
+}
+
 void mlx90394_async_fetch(struct k_work *work)
 {
 	int rc;
@@ -26,11 +77,12 @@ void mlx90394_async_fetch(struct k_work *work)
 	const struct device *dev = data->dev;
 	const struct sensor_read_config *cfg =
 		data->work_ctx.iodev_sqe->sqe.iodev->data;
+	enum sensor_channel chan = mlx90394_read_channel(cfg);
 	struct mlx90394_encoded_data *edata;
 	uint32_t buf_len = sizeof(struct mlx90394_encoded_data);
 	uint8_t *buf;
 
-	rc = mlx90394_sample_fetch_internal(dev, cfg->channels->chan_type);
+	rc = mlx90394_sample_fetch_internal(dev, chan);
 	if (rc != 0) {
 		LOG_ERR("Failed to fetch samples");
 		rtio_iodev_sqe_err(data->work_ctx.iodev_sqe, rc);
@@ -50,7 +102,7 @@ void mlx90394_async_fetch(struct k_work *work)
 	edata->header.timestamp = data->work_ctx.timestamp;
 	edata->header.config_val = data->work_ctx.config_val;
 
-	switch (cfg->channels->chan_type) {
+	switch (chan) {
 	case SENSOR_CHAN_MAGN_X: {
 		edata->readings[0] =
 			(int16_t)((uint16_t)data->sample.x_l | (uint16_t)(data->sample.x_h << 8));
@@ -86,7 +138,7 @@ void mlx90394_async_fetch(struct k_work *work)
 					       (uint16_t)(data->sample.temp_h << 8));
 	} break;
 	default: {
-		LOG_DBG("Invalid channel %d", cfg->channels->chan_type);
+		LOG_DBG("Invalid channel %d", chan);
 		rtio_iodev_sqe_err(data->work_ctx.iodev_sqe, -ENOTSUP);
 		return;
 	}
@@ -101,7 +153,7 @@ void mlx90394_submit(const struct device *dev, struct rtio_iodev_sqe *iodev_sqe)
 	struct mlx90394_data *data = dev->data;
 	uint64_t cycles;
 
-	rc = mlx90394_trigger_measurement_internal(dev, cfg->channels->chan_type);
+	rc = mlx90394_trigger_measurement_internal(dev, mlx90394_read_channel(cfg));
 	if (rc != 0) {
 		LOG_ERR("Failed to trigger measurement");
 		rtio_iodev_sqe_err(iodev_sqe, rc);
