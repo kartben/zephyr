@@ -180,13 +180,14 @@ static int bma4xx_attr_set_range(const struct sensor_value *val,
 }
 
 /**
- * Set the sensor's bandwidth parameter (one of BMA4XX_BWP_*)
+ * Set the sensor's bandwidth parameter (one of BMA4XX_BWP_*). The driver always selects
+ * performance mode, in which values above BMA4XX_BWP_NORM_AVG4 are reserved.
  */
 static int bma4xx_attr_set_bwp(const struct sensor_value *val,
 			       struct bma4xx_runtime_config *new_config)
 {
 	/* Require that `val2` is unused, and that `val1` is in range of a valid BWP */
-	if (val->val2 || val->val1 < BMA4XX_BWP_OSR4_AVG1 || val->val1 > BMA4XX_BWP_RES_AVG128) {
+	if (val->val2 || val->val1 < BMA4XX_BWP_OSR4_AVG1 || val->val1 > BMA4XX_BWP_NORM_AVG4) {
 		return -EINVAL;
 	}
 
