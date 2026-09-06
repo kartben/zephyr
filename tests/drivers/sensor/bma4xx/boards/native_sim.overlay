@@ -1,0 +1,18 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&i2c0 {
+	bma4xx_ah: bma4xx@18 {
+		compatible = "bosch,bma4xx";
+		reg = <0x18>;
+		int1-gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
+	};
+
+	bma4xx_al: bma4xx@19 {
+		compatible = "bosch,bma4xx";
+		reg = <0x19>;
+		int1-gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
+	};
+};
