@@ -124,6 +124,14 @@ static int bma4xx_emul_write_reg(const struct emul *target, int reg, uint8_t val
 			LOG_ERR("reserved acc_bwp in performance mode, ACC_CONF write: %#x", val);
 			return -EINVAL;
 		}
+		if ((val & BMA4XX_BIT_ACC_PERF_MODE) == 0 && odr > BMA4XX_ODR_400) {
+			LOG_ERR("reserved acc_odr in low power mode, ACC_CONF write: %#x", val);
+			return -EINVAL;
+		}
+		if ((val & BMA4XX_BIT_ACC_PERF_MODE) == 0 && odr + bwp >= BMA4XX_ODR_1600) {
+			LOG_ERR("averaging window longer than the ODR period: %#x", val);
+			return -EINVAL;
+		}
 		data->regs[reg] = val;
 		return 0;
 	}
