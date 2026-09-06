@@ -1,0 +1,474 @@
+[DOCUMENT]
+TITLE: BMA4xx Accelerometer Driver
+UID: ZEP-SRS-39
+VERSION: 0.1
+
+[GRAMMAR]
+ELEMENTS:
+- TAG: REQUIREMENT
+  FIELDS:
+  - TITLE: UID
+    TYPE: String
+    REQUIRED: True
+  - TITLE: TITLE
+    TYPE: String
+    REQUIRED: True
+  - TITLE: STATEMENT
+    TYPE: String
+    REQUIRED: True
+  - TITLE: RATIONALE
+    TYPE: String
+    REQUIRED: False
+  - TITLE: TYPE
+    TYPE: String
+    REQUIRED: False
+  - TITLE: COMPONENT
+    TYPE: String
+    REQUIRED: False
+  - TITLE: STATUS
+    TYPE: String
+    REQUIRED: False
+  RELATIONS:
+  - TYPE: Parent
+
+[SECTION]
+TITLE: Device identification and reset
+
+[REQUIREMENT]
+UID: ZEP-SRS-39-1
+TITLE: Device identification
+STATEMENT: >>>
+The BMA4xx driver shall read the CHIP_ID register during device initialization and shall
+fail initialization with -ENODEV when the value read does not identify a device the driver
+supports.
+<<<
+RATIONALE: >>>
+The BMA423 datasheet (BST-BMA423-DS006-00, chapter 3, "Testing communication with the
+BMA423") makes reading CHIP_ID the first step of every application setup, as the check that
+the host is talking to the expected part over a working bus. The register reads 0x13 on a
+BMA423, 0x12 on a BMA422 and 0x90 on a BMA400; the driver has to reject anything else rather
+than publish readings from an unidentified device.
+<<<
+TYPE: Functional
+COMPONENT: BMA4xx Accelerometer Driver
+STATUS: Draft
+RELATIONS:
+- TYPE: Parent
+  VALUE: ZEP-SYRS-4
+
+[REQUIREMENT]
+UID: ZEP-SRS-39-2
+TITLE: Soft reset during initialization
+STATEMENT: >>>
+The BMA4xx driver shall issue the soft-reset command to the CMD register during device
+initialization, before applying its own configuration.
+<<<
+RATIONALE: >>>
+Datasheet chapter 4.12: a soft reset "performs a fundamental reset to the device which is
+largely equivalent to a power cycle" and restores every user configuration setting to its
+default. Issuing it makes the driver's starting point independent of whatever a bootloader,
+a previous application or a warm reset left in the device's registers.
+<<<
+TYPE: Functional
+COMPONENT: BMA4xx Accelerometer Driver
+STATUS: Draft
+RELATIONS:
+- TYPE: Parent
+  VALUE: ZEP-SYRS-4
+
+[REQUIREMENT]
+UID: ZEP-SRS-39-3
+TITLE: Reporting the device identifier to the application
+STATEMENT: >>>
+The BMA4xx driver shall report the chip identifier read during initialization when the
+application queries the SENSOR_ATTR_CHIP_ID attribute.
+<<<
+RATIONALE: >>>
+The BMA4xx family shares one register map across parts whose measurement behaviour differs.
+An application that has to tell a BMA422 from a BMA423 at run time (datasheet chapter 5,
+register 0x00) needs the identifier the driver already holds, without repeating the bus
+transaction.
+<<<
+TYPE: Functional
+COMPONENT: BMA4xx Accelerometer Driver
+STATUS: Draft
+RELATIONS:
+- TYPE: Parent
+  VALUE: ZEP-SYRS-4
+
+[/SECTION]
+
+[SECTION]
+TITLE: Measurement configuration
+
+[REQUIREMENT]
+UID: ZEP-SRS-39-4
+TITLE: Default measurement configuration
+STATEMENT: >>>
+On completion of initialization the BMA4xx driver shall have configured the device for a
+full-scale range of +/-4 g, an output data rate of 100 Hz and the norm_avg4 bandwidth
+parameter.
+<<<
+RATIONALE: >>>
+The device's own reset value for ACC_CONF is 0xA8 (performance mode, norm_avg4, 100 Hz) and
+for ACC_RANGE is +/-4 g, which the datasheet quotes as the reference condition for its
+zero-g offset, noise density and nonlinearity figures (chapter 1). Starting from that state
+gives an application that never touches the attributes the behaviour the datasheet
+characterizes.
+<<<
+TYPE: Functional
+COMPONENT: BMA4xx Accelerometer Driver
+STATUS: Draft
+RELATIONS:
+- TYPE: Parent
+  VALUE: ZEP-SYRS-4
+
+[REQUIREMENT]
+UID: ZEP-SRS-39-5
+TITLE: Enabling the accelerometer
+STATEMENT: >>>
+The BMA4xx driver shall enable the accelerometer through PWR_CTRL.acc_en and shall disable
+advanced power save through PWR_CONF.adv_power_save whenever it applies a configuration with
+a non-zero output data rate.
+<<<
+RATIONALE: >>>
+Datasheet chapter 4.4: all sensors are disabled by default and "acceleration sensor must be
+enabled by setting PWR_CTRL.acc_en=0b1". The same chapter's power-configuration table gives
+adv_power_save=0 with acc_en=1 as the performance-mode combination, in which the fast clock
+stays enabled and register writes need no inter-write delay.
+<<<
+TYPE: Functional
+COMPONENT: BMA4xx Accelerometer Driver
+STATUS: Draft
+RELATIONS:
+- TYPE: Parent
+  VALUE: ZEP-SYRS-4
+
+[REQUIREMENT]
+UID: ZEP-SRS-39-6
+TITLE: Output data rate selection
+STATEMENT: >>>
+The BMA4xx driver shall translate a requested sampling frequency into the lowest output data
+rate the device supports that is greater than or equal to the request, and shall reject a
+request above the highest supported rate, or a request of zero, with -ERANGE.
+<<<
+RATIONALE: >>>
+Datasheet chapter 5, register 0x40: acc_odr encodes 0.78125 Hz (0x01) through 1600 Hz (0x0c);
+0x00 and 0x0d to 0x0f are reserved. Rounding up rather than down keeps the delivered rate at
+or above what the application asked for, and refusing reserved encodings keeps the driver
+from programming a setting the datasheet leaves undefined.
+<<<
+TYPE: Functional
+COMPONENT: BMA4xx Accelerometer Driver
+STATUS: Draft
+RELATIONS:
+- TYPE: Parent
+  VALUE: ZEP-SYRS-4
+
+[REQUIREMENT]
+UID: ZEP-SRS-39-7
+TITLE: Full-scale range selection
+STATEMENT: >>>
+The BMA4xx driver shall translate a requested full-scale range into the smallest of the
++/-2 g, +/-4 g, +/-8 g and +/-16 g ranges that covers the request, and shall reject a request
+above +/-16 g with -ERANGE.
+<<<
+RATIONALE: >>>
+Datasheet chapter 1 lists exactly four selectable ranges, with sensitivity halving from
+1024 LSB/g at +/-2 g to 128 LSB/g at +/-16 g. Choosing the smallest covering range preserves
+resolution, and there is no encoding for anything wider than +/-16 g in register 0x41.
+<<<
+TYPE: Functional
+COMPONENT: BMA4xx Accelerometer Driver
+STATUS: Draft
+RELATIONS:
+- TYPE: Parent
+  VALUE: ZEP-SYRS-4
+
+[REQUIREMENT]
+UID: ZEP-SRS-39-8
+TITLE: Bandwidth parameter selection
+STATEMENT: >>>
+The BMA4xx driver shall accept a bandwidth parameter in the range osr4_avg1 to res_avg128
+inclusive and shall reject any other value with -EINVAL.
+<<<
+RATIONALE: >>>
+Datasheet chapter 5, register 0x40: acc_bwp takes the eight values 0x00 to 0x07, selecting
+the oversampling mode in performance mode and the number of averaged samples in low-power
+mode. The field is three bits wide, so a value outside that range would silently corrupt the
+neighbouring acc_perf_mode and acc_odr fields of the same register.
+<<<
+TYPE: Functional
+COMPONENT: BMA4xx Accelerometer Driver
+STATUS: Draft
+RELATIONS:
+- TYPE: Parent
+  VALUE: ZEP-SYRS-4
+
+[REQUIREMENT]
+UID: ZEP-SRS-39-9
+TITLE: Offset compensation range
+STATEMENT: >>>
+The BMA4xx driver shall convert a per-axis offset expressed in m/s^2 into the corresponding
+OFFSET register value at 3.9 mg per bit, and shall reject an offset outside the range the
+registers can express with -ERANGE.
+<<<
+RATIONALE: >>>
+Datasheet chapter 4.10: the offset registers are 8 bit two's complement, "the offset
+resolution (LSB) is 3.9 mg and the offset range is +- 0.5 g", both independent of the
+selected full-scale range. Clamping instead of rejecting would leave the application
+believing a compensation it never got.
+<<<
+TYPE: Functional
+COMPONENT: BMA4xx Accelerometer Driver
+STATUS: Draft
+RELATIONS:
+- TYPE: Parent
+  VALUE: ZEP-SYRS-4
+
+[REQUIREMENT]
+UID: ZEP-SRS-39-10
+TITLE: Configuration rollback on failure
+STATEMENT: >>>
+When the BMA4xx driver fails to apply a new configuration to the device, it shall restore the
+configuration that was last applied successfully.
+<<<
+RATIONALE: >>>
+The driver programs a configuration over several register writes (ACC_CONF, ACC_RANGE,
+PWR_CTRL, PWR_CONF, and the FIFO registers when streaming). A failure part way through leaves
+the device in a mixture of the old and new settings that matches neither what the application
+requested nor what it previously had. Restoring the previous configuration keeps the driver's
+cached state and the device's registers in agreement.
+<<<
+TYPE: Functional
+COMPONENT: BMA4xx Accelerometer Driver
+STATUS: Draft
+RELATIONS:
+- TYPE: Parent
+  VALUE: ZEP-SYRS-4
+
+[REQUIREMENT]
+UID: ZEP-SRS-39-11
+TITLE: Rejecting unsupported attributes and channels
+STATEMENT: >>>
+The BMA4xx driver shall reject an attribute it does not implement with -ENOTSUP and a channel
+it does not support with -EINVAL, without altering the device configuration.
+<<<
+RATIONALE: >>>
+The sensor API is generic over every driver, so an application built against a different
+accelerometer will reach this driver with attributes it has no register for. Distinguishing
+"this driver does not implement that attribute" from "that channel does not exist on this
+device" lets portable application code tell an optional feature apart from a programming
+error.
+<<<
+TYPE: Functional
+COMPONENT: BMA4xx Accelerometer Driver
+STATUS: Draft
+RELATIONS:
+- TYPE: Parent
+  VALUE: ZEP-SYRS-4
+
+[/SECTION]
+
+[SECTION]
+TITLE: Measurement data
+
+[REQUIREMENT]
+UID: ZEP-SRS-39-12
+TITLE: Acceleration data decoding
+STATEMENT: >>>
+The BMA4xx driver shall decode each acceleration sample as a 12-bit two's complement value
+held in the upper bits of a little-endian register pair, and shall report it as a Q31 value in
+m/s^2 scaled by the shift that corresponds to the configured full-scale range.
+<<<
+RATIONALE: >>>
+Datasheet chapter 4.5: "The width of acceleration data is 12 bits given in two's complement
+representation in the registers DATA_8 to DATA_13", split into an MSB upper part and an LSB
+lower part. Decoding the pair without sign-extending from bit 11 turns every negative
+acceleration into a large positive one, which no consumer of the sensor API can detect.
+<<<
+TYPE: Functional
+COMPONENT: BMA4xx Accelerometer Driver
+STATUS: Draft
+RELATIONS:
+- TYPE: Parent
+  VALUE: ZEP-SYRS-4
+
+[REQUIREMENT]
+UID: ZEP-SRS-39-13
+TITLE: Acceleration data integrity
+STATEMENT: >>>
+The BMA4xx driver shall read the acceleration registers of one sample set in a single bus
+transaction beginning at the least significant byte.
+<<<
+RATIONALE: >>>
+Datasheet chapter 4.5: "Reading the acceleration data registers shall always start with the
+LSB part. In order to ensure the integrity of the acceleration data, the content of an MSB
+register is locked by reading the corresponding LSB register (shadowing procedure)." Reading
+the bytes out of order, or in separate transactions, allows a sample update between reads and
+yields a value that mixes two samples.
+<<<
+TYPE: Functional
+COMPONENT: BMA4xx Accelerometer Driver
+STATUS: Draft
+RELATIONS:
+- TYPE: Parent
+  VALUE: ZEP-SYRS-4
+
+[REQUIREMENT]
+UID: ZEP-SRS-39-14
+TITLE: Die temperature decoding
+STATEMENT: >>>
+Where die temperature reporting is enabled, the BMA4xx driver shall decode the TEMPERATURE
+register as a signed offset from 23 degrees Celsius at 1 Kelvin per bit.
+<<<
+RATIONALE: >>>
+Datasheet chapter 4.5, "Temperature Sensor": the register is 8 bit with 0x00 representing
+23 degrees Celsius and a slope of 1 K/LSB, covering -104 to +150 degrees Celsius. The sensor
+is updated every 1.28 s and is always on while the accelerometer is active.
+<<<
+TYPE: Functional
+COMPONENT: BMA4xx Accelerometer Driver
+STATUS: Draft
+RELATIONS:
+- TYPE: Parent
+  VALUE: ZEP-SYRS-4
+
+[REQUIREMENT]
+UID: ZEP-SRS-39-15
+TITLE: Invalid die temperature
+STATEMENT: >>>
+Where die temperature reporting is enabled, the BMA4xx driver shall not report a temperature
+reading when the TEMPERATURE register holds the value the device uses to signal that no valid
+measurement is available.
+<<<
+RATIONALE: >>>
+Datasheet chapter 4.5, "Temperature Sensor": "When there is no valid temperature information
+available (i.e. last measurement before the time defined above), the temperature indicates an
+invalid value: 0x80." Decoded as an ordinary signed offset from 23 degrees Celsius that value
+reads as -105 degrees Celsius, which is both inside the plausible output range of the sensor
+and outside its specified measurement range, so an application cannot tell it apart from a
+real reading.
+<<<
+TYPE: Functional
+COMPONENT: BMA4xx Accelerometer Driver
+STATUS: Draft
+RELATIONS:
+- TYPE: Parent
+  VALUE: ZEP-SYRS-4
+
+[/SECTION]
+
+[SECTION]
+TITLE: Streaming and interrupts
+
+[REQUIREMENT]
+UID: ZEP-SRS-39-16
+TITLE: FIFO frame parsing
+STATEMENT: >>>
+Where streaming is enabled, the BMA4xx driver shall parse the FIFO in header mode, deriving
+the length of each frame from its header, and shall stop parsing at a frame header that
+indicates uninitialized FIFO content.
+<<<
+RATIONALE: >>>
+Datasheet chapter 4.6, "Frames": in header mode each frame carries a one-byte header whose
+fh_mode and fh_parm fields say whether the frame is regular or a control frame and which
+sensors contribute to its payload, and therefore how long it is. The same chapter notes that
+"fh_parm=0b0000 is invalid for regular mode, a header of 0x80 indicates an uninitialized
+frame", which marks the end of valid content in a partially filled FIFO.
+<<<
+TYPE: Functional
+COMPONENT: BMA4xx Accelerometer Driver
+STATUS: Draft
+RELATIONS:
+- TYPE: Parent
+  VALUE: ZEP-SYRS-4
+
+[REQUIREMENT]
+UID: ZEP-SRS-39-17
+TITLE: FIFO watermark configuration
+STATEMENT: >>>
+Where streaming is enabled, the BMA4xx driver shall derive the FIFO watermark level from the
+requested batch duration and the configured output data rate, and shall limit it to the
+watermark the device can express.
+<<<
+RATIONALE: >>>
+Datasheet chapter 4.6: the FIFO is 1024 bytes deep and the watermark is held in the 10 bits
+of FIFO_WTM_0 and FIFO_WTM_1. A watermark computed from a batch duration and an output data
+rate can exceed that; writing the excess would wrap into the reserved bits of FIFO_WTM_1 and
+program a much smaller watermark than intended.
+<<<
+TYPE: Functional
+COMPONENT: BMA4xx Accelerometer Driver
+STATUS: Draft
+RELATIONS:
+- TYPE: Parent
+  VALUE: ZEP-SYRS-4
+
+[REQUIREMENT]
+UID: ZEP-SRS-39-18
+TITLE: Non-latched interrupt mode
+STATEMENT: >>>
+The BMA4xx driver shall configure the device's interrupt engine in non-latched mode.
+<<<
+RATIONALE: >>>
+Datasheet chapter 4.5, "Data Ready Interrupt": in non-latched mode the interrupt and its flag
+in INT_STATUS_1 clear automatically after 1/3200 s, so a missed acknowledgment cannot leave
+the line permanently asserted. Bosch Sensortec additionally report that latched mode on this
+part can produce repeated FIFO interrupts.
+<<<
+TYPE: Functional
+COMPONENT: BMA4xx Accelerometer Driver
+STATUS: Draft
+RELATIONS:
+- TYPE: Parent
+  VALUE: ZEP-SYRS-4
+
+[REQUIREMENT]
+UID: ZEP-SRS-39-19
+TITLE: Interrupt source selection
+STATEMENT: >>>
+The BMA4xx driver shall map the data-ready interrupt to the INT1 pin when streaming is
+disabled, and the FIFO watermark and FIFO full interrupts when streaming is enabled.
+<<<
+RATIONALE: >>>
+Datasheet chapter 5, register 0x58 (INT_MAP_DATA), maps the data-ready, FIFO watermark and
+FIFO full sources onto the two interrupt pins independently. The two acquisition modes need
+different sources: one-shot reads are paced by data-ready, while streaming is paced by the
+FIFO filling to the watermark. Leaving data-ready mapped while streaming would interrupt the
+host at the full output data rate.
+<<<
+TYPE: Functional
+COMPONENT: BMA4xx Accelerometer Driver
+STATUS: Draft
+RELATIONS:
+- TYPE: Parent
+  VALUE: ZEP-SYRS-4
+
+[/SECTION]
+
+[SECTION]
+TITLE: Bus interface
+
+[REQUIREMENT]
+UID: ZEP-SRS-39-20
+TITLE: Primary interface support
+STATEMENT: >>>
+The BMA4xx driver shall support both the I2C and the SPI primary interface of the device
+through a single register-access abstraction, selected from the devicetree bus the device
+instance is attached to.
+<<<
+RATIONALE: >>>
+Datasheet chapter 6: the part exposes one primary interface that operates as either I2C or
+4-wire/3-wire SPI, with an identical register map behind it. Confining the difference to the
+read and write primitives keeps every configuration and decoding requirement in this document
+independent of the bus a board happens to use.
+<<<
+TYPE: Functional
+COMPONENT: BMA4xx Accelerometer Driver
+STATUS: Draft
+RELATIONS:
+- TYPE: Parent
+  VALUE: ZEP-SYRS-4
+
+[/SECTION]
