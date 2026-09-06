@@ -615,6 +615,11 @@ New APIs and options
 
   * :c:struct:`sys_ringq` (see :ref:`fixed_size_ringq_api`)
 
+* Sensors
+
+  * :c:macro:`EMUL_SENSOR_REGMAP_DEFINE` builds a sensor emulator implementing the sensor emulator
+    backend API from a datasheet register table (:ref:`sensor-emulators`).
+
 * USB Type-C
 
   * :kconfig:option:`CONFIG_USBC_LOG_PD_MSG_NAMES`

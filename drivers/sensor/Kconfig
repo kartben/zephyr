@@ -30,6 +30,14 @@ config SENSOR_ASYNC_API
 	help
 	  Enables the asynchronous sensor API by leveraging the RTIO subsystem.
 
+config EMUL_SENSOR_REGMAP
+	bool "Register map based sensor emulators"
+	default y
+	depends on EMUL && I2C
+	help
+	  Emulators for I2C register based sensors described by their datasheet
+	  register table, see include/zephyr/drivers/emul_sensor_regmap.h.
+
 config SENSOR_SHELL
 	bool "Sensor shell"
 	depends on SHELL
