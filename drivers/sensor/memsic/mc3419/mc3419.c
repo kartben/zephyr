@@ -15,7 +15,8 @@
 
 LOG_MODULE_REGISTER(MC3419, CONFIG_SENSOR_LOG_LEVEL);
 
-static const uint16_t mc3419_accel_sense_map[] = {1, 2, 4, 8, 6};
+/* LSB/g for each RANGE[2:0] code, datasheet table 5 */
+static const uint16_t mc3419_accel_sense_map[] = {16384, 8192, 4096, 2048, 2730};
 static const struct mc3419_odr_map odr_map_table[] = {
 	{25}, {50}, {62, 500}, {100},
 	{125}, {250}, {500}, {1000}
@@ -114,8 +115,8 @@ static int mc3419_set_accel_range(const struct device *dev, uint8_t range)
 		return ret;
 	}
 
-	data->sensitivity = (double)(mc3419_accel_sense_map[range] *
-				     SENSOR_GRAIN_VALUE);
+	/* mg/LSB */
+	data->sensitivity = 1000.0 / mc3419_accel_sense_map[range];
 
 	return 0;
 }
@@ -274,6 +275,11 @@ static int mc3419_init(const struct device *dev)
 				     cfg->lpf_fc_sel);
 	if (ret < 0) {
 		LOG_ERR("Failed to configure LPF (%d)", ret);
+		return ret;
+	}
+
+	ret = mc3419_set_accel_range(dev, MC3419_ACCl_RANGE_2G);
+	if (ret < 0) {
 		return ret;
 	}
 	/* Leave the sensor in default power on state, will be

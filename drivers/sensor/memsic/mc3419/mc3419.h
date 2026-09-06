@@ -39,7 +39,6 @@
 #define MC3419_SAMPLE_SIZE		3
 #define MC3419_SAMPLE_READ_SIZE		(MC3419_SAMPLE_SIZE * (sizeof(int16_t)))
 
-#define SENSOR_GRAIN_VALUE             (61LL / 1000.0)
 #define SENSOR_GRAVITY_DOUBLE          (SENSOR_G / 1000000.0)
 #define MC3419_BASE_ODR_VAL		0x10
 
