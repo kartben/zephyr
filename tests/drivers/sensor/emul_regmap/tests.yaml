@@ -1,0 +1,10 @@
+tests:
+  drivers.sensor.emul_regmap:
+    tags:
+      - drivers
+      - sensor
+      - emul
+    platform_allow:
+      - native_sim
+    integration_platforms:
+      - native_sim

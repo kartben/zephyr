@@ -1,0 +1,13 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&i2c0 {
+	status = "okay";
+
+	regmap_test: regmap-test@10 {
+		compatible = "vnd,i2c-device";
+		reg = <0x10>;
+	};
+};
