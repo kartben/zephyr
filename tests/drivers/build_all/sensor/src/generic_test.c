@@ -38,7 +38,7 @@ static struct sensor_read_config iodev_read_config = {
 RTIO_IODEV_DEFINE(iodev_read, &__sensor_iodev_api, &iodev_read_config);
 
 /* Create the RTIO context to service the reading */
-RTIO_DEFINE_WITH_MEMPOOL(sensor_read_rtio_ctx, 1, 1, 1, 64, 4);
+RTIO_DEFINE_WITH_MEMPOOL(sensor_read_rtio_ctx, 1, 1, 4, 64, 4);
 
 /**
  * @brief Prepare the RTIO context for next test
@@ -178,19 +178,18 @@ static void run_generic_test(const struct device *dev)
 
 		/* Wait for a CQE */
 		struct rtio_cqe *cqe = rtio_cqe_consume_block(&sensor_read_rtio_ctx);
-
-		zassert_ok(cqe->result, "CQE has failed status (error %d, iteration %d/%d)",
-			   cqe->result, iteration + 1,
-			   CONFIG_GENERIC_SENSOR_TEST_NUM_EXPECTED_VALS);
-
+		int result = cqe->result;
 		uint8_t *buf = NULL;
 		uint32_t buf_len = 0;
 
 		/* Cache the data from the CQE */
 		rtio_cqe_get_mempool_buffer(&sensor_read_rtio_ctx, cqe, &buf, &buf_len);
 
-		/* Release the CQE */
+		/* Release the CQE before asserting so a failure does not leak it */
 		rtio_cqe_release(&sensor_read_rtio_ctx, cqe);
+
+		zassert_ok(result, "CQE has failed status (error %d, iteration %d/%d)", result,
+			   iteration + 1, CONFIG_GENERIC_SENSOR_TEST_NUM_EXPECTED_VALS);
 
 		const struct sensor_decoder_api *decoder;
 		union sensor_data_union decoded_data;
