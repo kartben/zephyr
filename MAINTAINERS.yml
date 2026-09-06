@@ -3217,12 +3217,14 @@ Emulation:
     - asemjonovs
     - tristan-google
   files:
+    - drivers/sensor/emul/
     - subsys/emul/
     - include/zephyr/drivers/emul_*
     - include/zephyr/drivers/emul.h
     - include/zephyr/drivers/espi_emul.h
     - include/zephyr/drivers/i2c_emul.h
     - include/zephyr/drivers/spi_emul.h
+    - tests/drivers/sensor/regmap/
     - tests/subsys/emul/
     - doc/hardware/emulator/
   labels:

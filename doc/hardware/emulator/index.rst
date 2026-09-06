@@ -98,3 +98,8 @@ Available Emulators
   * Emulated UART bus. See :ref:`bus emulators <bus_emul>`.
   * Main Kconfig option: :kconfig:option:`CONFIG_UART_EMUL`
   * DT binding: :dtcompatible:`zephyr,uart-emul`
+
+.. toctree::
+   :maxdepth: 1
+
+   sensor_regmap

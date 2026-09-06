@@ -11,6 +11,8 @@ menuconfig SENSOR
 
 if SENSOR
 
+source "drivers/sensor/emul/Kconfig"
+
 module = SENSOR
 module-str = sensor
 source "subsys/logging/Kconfig.template.log_config"

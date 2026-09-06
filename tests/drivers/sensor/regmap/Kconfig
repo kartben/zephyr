@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+source "Kconfig.zephyr"
+
+config TEST_SENSOR_REGMAP_BASELINE
+	bool "Only exercise driver initialization for coverage comparison"
+	default n

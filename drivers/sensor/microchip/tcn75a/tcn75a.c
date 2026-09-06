@@ -26,7 +26,7 @@ int tcn75a_sample_fetch(const struct device *dev, enum sensor_channel chan)
 
 	if (config->oneshot_mode) {
 		/* Oneshot mode, requires one shot bit to be set in config register */
-		adc_conf[1] = TCN75A_CONFIG_ONEDOWN;
+		adc_conf[1] = TCN75A_CONFIG_ONEDOWN | TCN75A_CONFIG_SHUTDOWN;
 		ret = i2c_write_dt(&config->i2c_spec, adc_conf, 2);
 		if (ret < 0) {
 			return ret;
@@ -50,16 +50,15 @@ static int tcn75a_channel_get(const struct device *dev, enum sensor_channel chan
 			      struct sensor_value *val)
 {
 	struct tcn75a_data *data = dev->data;
-	uint32_t temp_lsb;
+	int32_t sample = (int16_t)data->temp_sample;
 
 	if (chan != SENSOR_CHAN_AMBIENT_TEMP) {
 		return -ENOTSUP;
 	}
 
 	/* Convert fixed point to sensor value  */
-	val->val1 = data->temp_sample >> TCN75A_TEMP_MSB_POS;
-	temp_lsb = (data->temp_sample & TCN75A_TEMP_LSB_MASK);
-	val->val2 = TCN75A_FIXED_PT_TO_SENSOR(temp_lsb);
+	val->val1 = sample / 256;
+	val->val2 = (sample % 256) * 1000000 / 256;
 	return 0;
 }
 

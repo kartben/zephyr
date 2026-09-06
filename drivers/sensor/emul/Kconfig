@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig SENSOR_EMUL_REGMAP
+	bool "Register table sensor emulators"
+	depends on EMUL && I2C
+	help
+	  Enable deterministic I2C register models for LPS22HB, MPU6050,
+	  P3T1755, TCN75A and TMP11X sensors on emulated I2C buses.
+
+if SENSOR_EMUL_REGMAP
+
+config SENSOR_EMUL_TMP116
+	bool "Emulate TMP116 instead of TMP117"
+	depends on DT_HAS_TI_TMP11X_ENABLED
+	help
+	  Select TMP116 register behavior for ti,tmp11x nodes. The default
+	  model is TMP117.
+
+endif

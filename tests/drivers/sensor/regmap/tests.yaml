@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+common:
+  tags:
+    - drivers
+    - sensor
+    - emul
+  platform_allow:
+    - native_sim
+    - mps2/an385
+  integration_platforms:
+    - native_sim
+    - mps2/an385
+  harness: ztest
+  timeout: 120
+
+tests:
+  drivers.sensor.regmap: {}
+  drivers.sensor.regmap.tmp116:
+    extra_configs:
+      - CONFIG_SENSOR_EMUL_TMP116=y

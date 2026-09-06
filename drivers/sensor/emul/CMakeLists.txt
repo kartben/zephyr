@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+zephyr_library()
+zephyr_library_sources(regmap.c)
+zephyr_library_sources_ifdef(CONFIG_DT_HAS_ST_LPS22HB_PRESS_ENABLED lps22hb.c)
+zephyr_library_sources_ifdef(CONFIG_DT_HAS_INVENSENSE_MPU6050_ENABLED mpu6050.c)
+zephyr_library_sources_ifdef(CONFIG_DT_HAS_NXP_P3T1755_ENABLED p3t1755.c)
+zephyr_library_sources_ifdef(CONFIG_DT_HAS_MICROCHIP_TCN75A_ENABLED tcn75a.c)
+zephyr_library_sources_ifdef(CONFIG_DT_HAS_TI_TMP11X_ENABLED tmp11x.c)
