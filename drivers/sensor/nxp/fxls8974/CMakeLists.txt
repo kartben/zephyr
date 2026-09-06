@@ -8,3 +8,4 @@ zephyr_library()
 
 zephyr_library_sources(fxls8974.c)
 zephyr_library_sources_ifdef(CONFIG_FXLS8974_TRIGGER fxls8974_trigger.c)
+zephyr_library_sources_ifdef(CONFIG_EMUL_SENSOR_REGMAP fxls8974_emul.c)
