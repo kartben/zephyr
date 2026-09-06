@@ -6,12 +6,22 @@
 #ifndef ZEPHYR_DRIVERS_SENSOR_BMA4XX_BMA4XX_EMUL_H_
 #define ZEPHYR_DRIVERS_SENSOR_BMA4XX_BMA4XX_EMUL_H_
 
+#include <stddef.h>
+#include <stdint.h>
+
 #include <zephyr/drivers/emul.h>
 #include <zephyr/dsp/types.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/** Write raw register values into the emulated register map. */
+void bma4xx_emul_set_reg(const struct emul *target, uint8_t reg_addr, const uint8_t *val,
+			 size_t count);
+
+/** Read raw register values from the emulated register map. */
+void bma4xx_emul_get_reg(const struct emul *target, uint8_t reg_addr, uint8_t *val, size_t count);
 
 /** Set the sensor's current acceleration reading. */
 void bma4xx_emul_set_accel_data(const struct emul *target, q31_t value, int8_t shift, int8_t reg);
