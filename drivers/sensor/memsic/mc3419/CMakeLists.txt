@@ -6,3 +6,4 @@ zephyr_library()
 
 zephyr_library_sources(mc3419.c)
 zephyr_library_sources_ifdef(CONFIG_MC3419_TRIGGER mc3419_trigger.c)
+zephyr_library_sources_ifdef(CONFIG_EMUL_SENSOR_REGMAP mc3419_emul.c)
