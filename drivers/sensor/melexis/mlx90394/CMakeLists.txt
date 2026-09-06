@@ -5,3 +5,4 @@ zephyr_library()
 
 zephyr_library_sources(mlx90394.c)
 zephyr_library_sources_ifdef(CONFIG_SENSOR_ASYNC_API mlx90394_async.c mlx90394_decoder.c)
+zephyr_library_sources_ifdef(CONFIG_EMUL_SENSOR_REGMAP mlx90394_emul.c)
