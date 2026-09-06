@@ -18,6 +18,11 @@ LOG_MODULE_DECLARE(bma4xx, CONFIG_SENSOR_LOG_LEVEL);
 
 #ifdef CONFIG_BMA4XX_STREAM
 
+/**
+ * @brief Compute the FIFO watermark, in bytes, for a batch duration
+ *
+ * @satisfies ZEP-SRS-39-17
+ */
 static uint16_t bma4xx_compute_fifo_wm(const struct bma4xx_runtime_config *new_cfg)
 {
 	int64_t odr;
@@ -56,6 +61,11 @@ static uint16_t bma4xx_compute_fifo_wm(const struct bma4xx_runtime_config *new_c
 
 #endif /* CONFIG_BMA4XX_STREAM */
 
+/**
+ * @satisfies ZEP-SRS-39-5
+ * @satisfies ZEP-SRS-39-18
+ * @satisfies ZEP-SRS-39-19
+ */
 int bma4xx_configure(const struct device *dev, struct bma4xx_runtime_config *cfg)
 {
 	struct bma4xx_data *dev_data = dev->data;
@@ -183,6 +193,9 @@ int bma4xx_configure(const struct device *dev, struct bma4xx_runtime_config *cfg
 	return res;
 }
 
+/**
+ * @satisfies ZEP-SRS-39-10
+ */
 int bma4xx_safely_configure(const struct device *dev, struct bma4xx_runtime_config *cfg)
 {
 	struct bma4xx_data *drv_data = dev->data;

@@ -118,6 +118,8 @@ static inline int bma4xx_accel_reg_to_hz(uint8_t odr, struct sensor_value *out)
  *
  * @retval 0 success
  * @retval -errdev Error
+ *
+ * @satisfies ZEP-SRS-39-20
  */
 int bma4xx_spi_init(const struct device *dev);
 
@@ -128,6 +130,8 @@ int bma4xx_spi_init(const struct device *dev);
  *
  * @retval 0 success
  * @retval -errdev Error
+ *
+ * @satisfies ZEP-SRS-39-20
  */
 int bma4xx_i2c_init(const struct device *dev);
 

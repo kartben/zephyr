@@ -45,6 +45,11 @@ static const uint64_t accel_period_ns[] = {
  * RTIO decoder
  */
 
+/**
+ * @brief Count the frames a FIFO read holds, walking the frame headers
+ *
+ * @satisfies ZEP-SRS-39-16
+ */
 static int bma4xx_decoder_get_frame_count(const uint8_t *buffer, struct sensor_chan_spec ch,
 					  uint16_t *frame_count)
 {
@@ -130,6 +135,11 @@ static int bma4xx_decoder_get_size_info(struct sensor_chan_spec ch, size_t *base
 	}
 }
 
+/**
+ * @brief Q31 shift that matches a channel and the configured full-scale range
+ *
+ * @satisfies ZEP-SRS-39-12
+ */
 static int bma4xx_get_shift(struct sensor_chan_spec ch, uint8_t accel_fs, int8_t *shift)
 {
 	switch (ch.chan_type) {
@@ -162,6 +172,11 @@ static int bma4xx_get_shift(struct sensor_chan_spec ch, uint8_t accel_fs, int8_t
 	}
 }
 
+/**
+ * @brief Convert a raw 12-bit acceleration sample into a Q31 m/s^2 value
+ *
+ * @satisfies ZEP-SRS-39-12
+ */
 static void bma4xx_convert_raw_accel_to_q31(int16_t raw_val, q31_t *out)
 {
 	/* The full calculation is (assuming floating math):
@@ -214,6 +229,8 @@ static void bma4xx_unpack_accel_data(const uint8_t *pkt, uint8_t data_start_inde
 #ifdef CONFIG_BMA4XX_TEMPERATURE
 /**
  * @brief Convert the 8-bit temp register value into a Q31 celsius value
+ *
+ * @satisfies ZEP-SRS-39-14
  */
 static void bma4xx_convert_raw_temp_to_q31(int8_t raw_val, q31_t *out)
 {
@@ -298,6 +315,11 @@ static int bma4xx_one_shot_decode(const uint8_t *buffer, struct sensor_chan_spec
 
 #ifdef CONFIG_BMA4XX_STREAM
 
+/**
+ * @brief Decode the regular frames of a FIFO read into three-axis samples
+ *
+ * @satisfies ZEP-SRS-39-16
+ */
 static int bma4xx_fifo_decode(const uint8_t *buffer, struct sensor_chan_spec ch, uint32_t *fit,
 			      uint16_t max_count, void *data_out)
 {

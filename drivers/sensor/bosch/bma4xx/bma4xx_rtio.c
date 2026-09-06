@@ -47,6 +47,11 @@ static void bma4xx_complete_result(struct rtio *ctx, const struct rtio_sqe *sqe,
  * RTIO submit and encoding
  */
 
+/**
+ * @brief Read one sample set in a single chained transaction, LSB first
+ *
+ * @satisfies ZEP-SRS-39-13
+ */
 static void bma4xx_submit_one_shot(const struct device *dev, struct rtio_iodev_sqe *iodev_sqe)
 {
 	const struct bma4xx_data *bma4xx = dev->data;

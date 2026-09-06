@@ -25,6 +25,8 @@ LOG_MODULE_REGISTER(bma4xx, CONFIG_SENSOR_LOG_LEVEL);
 
 /**
  * @brief Helper for converting m/s^2 offset values into register values
+ *
+ * @satisfies ZEP-SRS-39-9
  */
 static int bma4xx_offset_to_reg_val(const struct sensor_value *val, uint8_t *reg_val)
 {
@@ -40,6 +42,8 @@ static int bma4xx_offset_to_reg_val(const struct sensor_value *val, uint8_t *reg
 
 /**
  * @brief Set the X, Y, or Z axis offsets.
+ *
+ * @satisfies ZEP-SRS-39-9
  */
 static int bma4xx_attr_set_offset(const struct device *dev, enum sensor_channel chan,
 				  const struct sensor_value *val)
@@ -93,6 +97,8 @@ static const uint32_t odr_to_reg_map[] = {
 
 /**
  * @brief Convert an ODR rate in Hz to a register value
+ *
+ * @satisfies ZEP-SRS-39-6
  */
 static int bma4xx_odr_to_reg(uint32_t microhertz, uint8_t *reg_val)
 {
@@ -113,7 +119,9 @@ static int bma4xx_odr_to_reg(uint32_t microhertz, uint8_t *reg_val)
 }
 
 /**
- * Set the sensor's acceleration offset (per axis).
+ * Set the sensor's output data rate.
+ *
+ * @satisfies ZEP-SRS-39-6
  */
 static int bma4xx_attr_set_odr(const struct sensor_value *val,
 			       struct bma4xx_runtime_config *new_config)
@@ -139,6 +147,11 @@ static const uint32_t fs_to_reg_map[] = {
 	16000000, /* +/-16G => 0x3 */
 };
 
+/**
+ * @brief Convert a full-scale range in micro-G's to a register value
+ *
+ * @satisfies ZEP-SRS-39-7
+ */
 static int bma4xx_fs_to_reg(int32_t range_ug, uint8_t *reg_val)
 {
 	if (range_ug == 0) {
@@ -161,6 +174,8 @@ static int bma4xx_fs_to_reg(int32_t range_ug, uint8_t *reg_val)
 
 /**
  * Set the sensor's full-scale range
+ *
+ * @satisfies ZEP-SRS-39-7
  */
 static int bma4xx_attr_set_range(const struct sensor_value *val,
 				 struct bma4xx_runtime_config *new_config)
@@ -181,6 +196,8 @@ static int bma4xx_attr_set_range(const struct sensor_value *val,
 
 /**
  * Set the sensor's bandwidth parameter (one of BMA4XX_BWP_*)
+ *
+ * @satisfies ZEP-SRS-39-8
  */
 static int bma4xx_attr_set_bwp(const struct sensor_value *val,
 			       struct bma4xx_runtime_config *new_config)
@@ -197,6 +214,8 @@ static int bma4xx_attr_set_bwp(const struct sensor_value *val,
 
 /**
  * @brief Implement the sensor API attribute set method.
+ *
+ * @satisfies ZEP-SRS-39-11
  */
 static int bma4xx_attr_set(const struct device *dev, enum sensor_channel chan,
 			   enum sensor_attribute attr, const struct sensor_value *val)
@@ -253,6 +272,10 @@ static int bma4xx_attr_set(const struct device *dev, enum sensor_channel chan,
 
 /**
  * Internal device initialization function for both bus types.
+ *
+ * @satisfies ZEP-SRS-39-1
+ * @satisfies ZEP-SRS-39-2
+ * @satisfies ZEP-SRS-39-4
  */
 static int bma4xx_chip_init(const struct device *dev)
 {
@@ -319,6 +342,12 @@ static int bma4xx_chip_init(const struct device *dev)
 	return 0;
 }
 
+/**
+ * @brief Implement the sensor API attribute get method.
+ *
+ * @satisfies ZEP-SRS-39-3
+ * @satisfies ZEP-SRS-39-11
+ */
 static int bma4xx_attr_get(const struct device *dev, enum sensor_channel chan,
 			   enum sensor_attribute attr, struct sensor_value *val)
 {
