@@ -112,12 +112,23 @@ static int bma4xx_odr_to_reg(uint32_t microhertz, uint8_t *reg_val)
 	return -ERANGE;
 }
 
-/**
- * Set the sensor's acceleration offset (per axis).
+/*
+ * In low power mode the sensor averages 2^BWP of its 1600 Hz internal samples per output
+ * and skips the rest, so the averaging window must be shorter than the output period:
+ * 2^bwp * ODR < 1600 Hz, which in register terms is bwp + odr < BMA4XX_ODR_1600.
  */
-static int bma4xx_attr_set_odr(const struct sensor_value *val,
+static bool bma4xx_low_power_config_valid(const struct bma4xx_runtime_config *cfg)
+{
+	return cfg->accel_bwp + cfg->accel_odr < BMA4XX_ODR_1600;
+}
+
+/**
+ * Set the sensor's output data rate.
+ */
+static int bma4xx_attr_set_odr(const struct device *dev, const struct sensor_value *val,
 			       struct bma4xx_runtime_config *new_config)
 {
+	const struct bma4xx_config *cfg = dev->config;
 	int status;
 	uint8_t reg_val;
 
@@ -127,7 +138,21 @@ static int bma4xx_attr_set_odr(const struct sensor_value *val,
 		return status;
 	}
 
+	/* Performance mode supports 12.5 Hz to 1600 Hz, low power mode 0.78 Hz to 400 Hz */
+	if (cfg->power_mode == BMA4XX_POWER_MODE_PERFORMANCE) {
+		if (reg_val < BMA4XX_ODR_12_5) {
+			return -ERANGE;
+		}
+	} else if (reg_val > BMA4XX_ODR_400) {
+		return -ERANGE;
+	}
+
 	new_config->accel_odr = reg_val;
+
+	if (cfg->power_mode == BMA4XX_POWER_MODE_LOW_POWER &&
+	    !bma4xx_low_power_config_valid(new_config)) {
+		return -EINVAL;
+	}
 
 	return 0;
 }
@@ -180,18 +205,28 @@ static int bma4xx_attr_set_range(const struct sensor_value *val,
 }
 
 /**
- * Set the sensor's bandwidth parameter (one of BMA4XX_BWP_*). The driver always selects
- * performance mode, in which values above BMA4XX_BWP_NORM_AVG4 are reserved.
+ * Set the sensor's bandwidth parameter (one of BMA4XX_BWP_*). Values above
+ * BMA4XX_BWP_NORM_AVG4 select an averaging count and are only valid in low power mode.
  */
-static int bma4xx_attr_set_bwp(const struct sensor_value *val,
+static int bma4xx_attr_set_bwp(const struct device *dev, const struct sensor_value *val,
 			       struct bma4xx_runtime_config *new_config)
 {
+	const struct bma4xx_config *cfg = dev->config;
+	const int max_bwp = (cfg->power_mode == BMA4XX_POWER_MODE_PERFORMANCE)
+				    ? BMA4XX_BWP_NORM_AVG4
+				    : BMA4XX_BWP_RES_AVG128;
+
 	/* Require that `val2` is unused, and that `val1` is in range of a valid BWP */
-	if (val->val2 || val->val1 < BMA4XX_BWP_OSR4_AVG1 || val->val1 > BMA4XX_BWP_NORM_AVG4) {
+	if (val->val2 || val->val1 < BMA4XX_BWP_OSR4_AVG1 || val->val1 > max_bwp) {
 		return -EINVAL;
 	}
 
 	new_config->accel_bwp = (uint8_t)val->val1;
+
+	if (cfg->power_mode == BMA4XX_POWER_MODE_LOW_POWER &&
+	    !bma4xx_low_power_config_valid(new_config)) {
+		return -EINVAL;
+	}
 
 	return 0;
 }
@@ -214,14 +249,14 @@ static int bma4xx_attr_set(const struct device *dev, enum sensor_channel chan,
 	case SENSOR_CHAN_ACCEL_Z:
 	case SENSOR_CHAN_ACCEL_XYZ:
 		if (attr == SENSOR_ATTR_SAMPLING_FREQUENCY) {
-			res = bma4xx_attr_set_odr(val, &new_config);
+			res = bma4xx_attr_set_odr(dev, val, &new_config);
 		} else if (attr == SENSOR_ATTR_FULL_SCALE) {
 			res = bma4xx_attr_set_range(val, &new_config);
 		} else if (attr == SENSOR_ATTR_OFFSET) {
 			res = bma4xx_attr_set_offset(dev, chan, val);
 		} else if (attr == SENSOR_ATTR_CONFIGURATION) {
 			/* Use for setting the bandwidth parameter (BWP) */
-			res = bma4xx_attr_set_bwp(val, &new_config);
+			res = bma4xx_attr_set_bwp(dev, val, &new_config);
 		} else {
 			LOG_ERR("Unsupported attribute");
 			res = -ENOTSUP;
@@ -404,6 +439,7 @@ static DEVICE_API(sensor, bma4xx_driver_api) = {
                                                                                                    \
 	static const struct bma4xx_config bma4xx_config_##inst = {                                 \
 		BMA4XX_DEFINE_BUS(inst)                                                            \
+		.power_mode = DT_INST_ENUM_IDX(inst, power_mode),                                  \
 			IF_ENABLED(CONFIG_BMA4XX_STREAM, ( \
 		.gpio_interrupt = GPIO_DT_SPEC_INST_GET_OR(inst, int1_gpios, {0}),))};         \
                                                                                                    \

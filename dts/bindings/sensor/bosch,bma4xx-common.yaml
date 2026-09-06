@@ -2,6 +2,20 @@
 # SPDX-License-Identifier: Apache-2.0
 
 properties:
+  power-mode:
+    type: string
+    default: "performance"
+    enum:
+      - "performance"
+      - "low-power"
+    description: |
+      Accelerometer power mode. "performance" samples continuously with the
+      filter selected by the bandwidth parameter and supports 12.5 Hz to
+      1600 Hz. "low-power" duty-cycles the sensor, averages 2^BWP samples
+      taken at 1600 Hz per output and supports 0.78 Hz to 400 Hz at a
+      fraction of the supply current; the averaging window must fit in the
+      output period. The default is the reset configuration of the chip.
+
   int1-gpios:
     type: phandle-array
     description: |

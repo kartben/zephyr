@@ -59,6 +59,8 @@ static uint16_t bma4xx_compute_fifo_wm(const struct bma4xx_runtime_config *new_c
 int bma4xx_configure(const struct device *dev, struct bma4xx_runtime_config *cfg)
 {
 	struct bma4xx_data *dev_data = dev->data;
+	const struct bma4xx_config *drv_cfg = dev->config;
+	const bool perf_mode = drv_cfg->power_mode == BMA4XX_POWER_MODE_PERFORMANCE;
 	int res;
 	uint8_t value;
 
@@ -108,8 +110,8 @@ int bma4xx_configure(const struct device *dev, struct bma4xx_runtime_config *cfg
 					   FIELD_PREP(BMA4XX_MASK_ACC_RANGE, cfg->accel_fs_range));
 	__ASSERT(res == 0, "%s could not write acceleration range", __func__);
 
-	/* Write data rate, bandwidth and performance power mode */
-	uint8_t odr_bw_value = FIELD_PREP(BMA4XX_BIT_ACC_PERF_MODE, 1) |
+	/* Write data rate, bandwidth and filter mode */
+	uint8_t odr_bw_value = FIELD_PREP(BMA4XX_BIT_ACC_PERF_MODE, perf_mode ? 1 : 0) |
 			       FIELD_PREP(BMA4XX_MASK_ACC_CONF_ODR, cfg->accel_odr) |
 			       FIELD_PREP(BMA4XX_MASK_ACC_CONF_BWP, cfg->accel_bwp);
 
@@ -177,6 +179,18 @@ int bma4xx_configure(const struct device *dev, struct bma4xx_runtime_config *cfg
 #ifdef CONFIG_BMA4XX_STREAM
 	}
 #endif /* CONFIG_BMA4XX_STREAM */
+
+	if (!perf_mode) {
+		/* Enter low power mode, keeping the FIFO readable after its interrupt */
+		res |= dev_data->hw_ops->write_reg(
+			dev, BMA4XX_REG_POWER_CONF,
+			FIELD_PREP(BMA4XX_BIT_POWER_CONF_ADV_PWR_SAVE, 1) |
+				FIELD_PREP(BMA4XX_BIT_POWER_CONF_FIFO_SELF_WAKEUP, 1));
+		__ASSERT(res == 0, "%s could not enable advance power save mode", __func__);
+		if (res == 0) {
+			dev_data->adv_power_save = true;
+		}
+	}
 
 	return res;
 }

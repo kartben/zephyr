@@ -39,10 +39,17 @@ union bma4xx_bus_cfg {
 #endif /* DT_ANY_INST_ON_BUS_STATUS_OKAY(spi) */
 };
 
+/** Accelerometer power mode, see the power-mode devicetree property */
+enum bma4xx_power_mode {
+	BMA4XX_POWER_MODE_PERFORMANCE,
+	BMA4XX_POWER_MODE_LOW_POWER,
+};
+
 struct bma4xx_config {
 	int (*bus_init)(const struct device *dev);
 	const union bma4xx_bus_cfg bus_cfg;
 	uint8_t bus_type;
+	enum bma4xx_power_mode power_mode;
 
 	const struct gpio_dt_spec gpio_interrupt;
 };
