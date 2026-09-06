@@ -56,13 +56,8 @@ struct tcn75a_data {
 #endif
 };
 
-/* Helpers to convert from TCN75A temperature fixed point format
- * to sensor val2 format. When the LSB of the TCN75A temperature sample
- * is treated as an integer, the format to convert to sensor val2 is
- * FIXED_POINT_VAL * 3906.25
- */
-#define TCN75A_FIXED_PT_TO_SENSOR(x) (((x)*3906) + ((x) >> 2))
-/* This conversion is imprecise, but because the 4 least significant bits
+/* Convert sensor val2 to the TCN75A temperature fixed point LSB. This
+ * conversion is imprecise, but because the 4 least significant bits
  * of the temperature register aren't used, it doesn't matter.
  */
 #define TCN75A_SENSOR_TO_FIXED_PT(x) ((x) / 3906)

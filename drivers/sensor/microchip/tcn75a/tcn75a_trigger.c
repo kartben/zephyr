@@ -81,7 +81,7 @@ int tcn75a_attr_get(const struct device *dev, enum sensor_channel chan, enum sen
 	const struct tcn75a_config *config = dev->config;
 	uint8_t config_reg;
 	uint8_t rx_buf[2];
-	uint16_t limit, temp_lsb;
+	uint16_t limit;
 	int ret;
 
 	if ((chan != SENSOR_CHAN_AMBIENT_TEMP) && (chan != SENSOR_CHAN_ALL)) {
@@ -108,10 +108,8 @@ int tcn75a_attr_get(const struct device *dev, enum sensor_channel chan, enum sen
 
 	LOG_DBG("Read 0x%02X from %s", limit, config_reg == TCN75A_THYST_REG ? "THYST" : "TSET");
 
-	/* Convert fixed point to sensor value  */
-	val->val1 = limit >> TCN75A_TEMP_MSB_POS;
-	temp_lsb = (limit & TCN75A_TEMP_LSB_MASK);
-	val->val2 = TCN75A_FIXED_PT_TO_SENSOR(temp_lsb);
+	/* Two's complement, 1/256 degC per LSB */
+	sensor_value_from_micro(val, (int64_t)(int16_t)limit * 1000000 / 256);
 
 	return ret;
 }

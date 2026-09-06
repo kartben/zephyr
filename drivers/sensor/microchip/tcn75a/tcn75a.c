@@ -50,16 +50,13 @@ static int tcn75a_channel_get(const struct device *dev, enum sensor_channel chan
 			      struct sensor_value *val)
 {
 	struct tcn75a_data *data = dev->data;
-	uint32_t temp_lsb;
 
 	if (chan != SENSOR_CHAN_AMBIENT_TEMP) {
 		return -ENOTSUP;
 	}
 
-	/* Convert fixed point to sensor value  */
-	val->val1 = data->temp_sample >> TCN75A_TEMP_MSB_POS;
-	temp_lsb = (data->temp_sample & TCN75A_TEMP_LSB_MASK);
-	val->val2 = TCN75A_FIXED_PT_TO_SENSOR(temp_lsb);
+	/* Two's complement, 1/256 degC per LSB */
+	sensor_value_from_micro(val, (int64_t)(int16_t)data->temp_sample * 1000000 / 256);
 	return 0;
 }
 
