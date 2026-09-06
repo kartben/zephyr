@@ -287,6 +287,32 @@ static int bma4xx_attr_set(const struct device *dev, enum sensor_channel chan,
 	return bma4xx_safely_configure(dev, &new_config);
 }
 
+static int bma4xx_pm_action(const struct device *dev, enum pm_device_action action)
+{
+	struct bma4xx_data *bma4xx = dev->data;
+	int ret;
+
+	switch (action) {
+	case PM_DEVICE_ACTION_RESUME:
+		return bma4xx_configure(dev, &bma4xx->cfg);
+	case PM_DEVICE_ACTION_SUSPEND:
+		/* Disable the accelerometer and enable advanced power save: suspend mode */
+		ret = bma4xx->hw_ops->write_reg(dev, BMA4XX_REG_POWER_CTRL, 0);
+		if (ret != 0) {
+			return ret;
+		}
+		ret = bma4xx->hw_ops->write_reg(dev, BMA4XX_REG_POWER_CONF,
+						FIELD_PREP(BMA4XX_BIT_POWER_CONF_ADV_PWR_SAVE, 1));
+		if (ret != 0) {
+			return ret;
+		}
+		bma4xx->adv_power_save = true;
+		return 0;
+	default:
+		return -ENOTSUP;
+	}
+}
+
 /**
  * Internal device initialization function for both bus types.
  */
@@ -347,13 +373,7 @@ static int bma4xx_chip_init(const struct device *dev)
 	bma4xx->cfg.accel_bwp = BMA4XX_BWP_NORM_AVG4;
 	bma4xx->cfg.accel_odr = BMA4XX_ODR_100;
 
-	status = bma4xx_configure(dev, &bma4xx->cfg);
-	if (status) {
-		LOG_ERR("Failed to initialize bma4xx trigger");
-		return status;
-	}
-
-	return 0;
+	return pm_device_driver_init(dev, bma4xx_pm_action);
 }
 
 static int bma4xx_attr_get(const struct device *dev, enum sensor_channel chan,
@@ -443,8 +463,10 @@ static DEVICE_API(sensor, bma4xx_driver_api) = {
 			IF_ENABLED(CONFIG_BMA4XX_STREAM, ( \
 		.gpio_interrupt = GPIO_DT_SPEC_INST_GET_OR(inst, int1_gpios, {0}),))};         \
                                                                                                    \
-	SENSOR_DEVICE_DT_INST_DEFINE(inst, bma4xx_chip_init, NULL, &bma4xx_driver_##inst,          \
-				     &bma4xx_config_##inst, POST_KERNEL,                           \
+	PM_DEVICE_DT_INST_DEFINE(inst, bma4xx_pm_action);                                          \
+                                                                                                   \
+	SENSOR_DEVICE_DT_INST_DEFINE(inst, bma4xx_chip_init, PM_DEVICE_DT_INST_GET(inst),          \
+				     &bma4xx_driver_##inst, &bma4xx_config_##inst, POST_KERNEL,   \
 				     CONFIG_SENSOR_INIT_PRIORITY, &bma4xx_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(BMA4XX_INIT);
