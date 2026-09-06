@@ -291,12 +291,13 @@ static int bma4xx_chip_init(const struct device *dev)
 		LOG_WRN("Driver tested for BMA422. Check for unintended operation.");
 	}
 
-	/* Issue soft reset command */
+	/* Issue soft reset command, which re-enables advanced power save */
 	status = bma4xx->hw_ops->write_reg(dev, BMA4XX_REG_CMD, BMA4XX_CMD_SOFT_RESET);
 	if (status) {
 		LOG_ERR("Could not soft-reset chip: %d", status);
 		return status;
 	}
+	bma4xx->adv_power_save = true;
 
 	if (IS_ENABLED(CONFIG_BMA4XX_STREAM)) {
 		status = bma4xx_init_interrupt(dev);
@@ -389,6 +390,7 @@ static DEVICE_API(sensor, bma4xx_driver_api) = {
 	BMA4XX_DEFINE_RTIO(inst);                                                                  \
 	static struct bma4xx_data bma4xx_driver_##inst = {                                         \
 		.cfg = BMA4XX_DT_CONFIG_INIT(inst),                                                \
+		.adv_power_save = true,                                                            \
 		.r = &bma4xx_rtio_##inst,                                                          \
 		.iodev = &bma4xx_iodev_##inst,                                                     \
 	};

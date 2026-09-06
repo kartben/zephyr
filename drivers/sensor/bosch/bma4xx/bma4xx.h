@@ -82,6 +82,8 @@ struct bma4xx_data {
 	const struct bma4xx_hw_operations *hw_ops;
 	/** Chip ID value stored in BMA4XX_REG_CHIP_ID */
 	uint8_t chip_id;
+	/** Advanced power save is enabled, register writes need a longer idle time */
+	bool adv_power_save;
 	struct rtio *r;
 	struct rtio_iodev *iodev;
 #ifdef CONFIG_BMA4XX_STREAM

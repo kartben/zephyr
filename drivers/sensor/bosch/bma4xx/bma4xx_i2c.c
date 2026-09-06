@@ -38,14 +38,13 @@ static int bma4xx_i2c_write_data(const struct device *dev, uint8_t reg_addr,
 		return -ENOTSUP;
 	}
 
-	/* A 1.3us delay is required after write operation when device operates in
-	 * power performance mode whereas 1000us is required when the device operates
-	 * in low power mode.
+	/* Register writes need an idle time of 1000 us while advanced power save is
+	 * enabled (after reset, in low power and in suspend mode) and 1.3 us otherwise.
 	 */
-	if (bma4xx->cfg.accel_pwr_mode) {
-		k_sleep(K_NSEC(1300));
-	} else {
+	if (bma4xx->adv_power_save) {
 		k_sleep(K_USEC(1000));
+	} else {
+		k_sleep(K_NSEC(1300));
 	}
 
 	return 0;
@@ -72,14 +71,13 @@ static int bma4xx_i2c_write_reg(const struct device *dev, uint8_t reg_addr,
 		return -ENOTSUP;
 	}
 
-	/* A 1.3us delay is required after write operation when device operates in
-	 * power performance mode whereas 1000us is required when the device operates
-	 * in low power mode.
+	/* Register writes need an idle time of 1000 us while advanced power save is
+	 * enabled (after reset, in low power and in suspend mode) and 1.3 us otherwise.
 	 */
-	if (bma4xx->cfg.accel_pwr_mode) {
-		k_sleep(K_NSEC(1300));
-	} else {
+	if (bma4xx->adv_power_save) {
 		k_sleep(K_USEC(1000));
+	} else {
+		k_sleep(K_NSEC(1300));
 	}
 
 	return 0;
@@ -98,14 +96,13 @@ static int bma4xx_i2c_update_reg(const struct device *dev, uint8_t reg_addr,
 		return -ENOTSUP;
 	}
 
-	/* A 1.3us delay is required after write operation when device operates in
-	 * power performance mode whereas 1000us is required when the device operates
-	 * in low power mode.
+	/* Register writes need an idle time of 1000 us while advanced power save is
+	 * enabled (after reset, in low power and in suspend mode) and 1.3 us otherwise.
 	 */
-	if (bma4xx->cfg.accel_pwr_mode) {
-		k_sleep(K_NSEC(1300));
-	} else {
+	if (bma4xx->adv_power_save) {
 		k_sleep(K_USEC(1000));
+	} else {
+		k_sleep(K_NSEC(1300));
 	}
 	return 0;
 }

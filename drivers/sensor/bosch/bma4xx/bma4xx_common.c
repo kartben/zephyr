@@ -62,8 +62,16 @@ int bma4xx_configure(const struct device *dev, struct bma4xx_runtime_config *cfg
 	int res;
 	uint8_t value;
 
+	/* Leave advanced power save mode first so that the writes below are fast */
+	res = dev_data->hw_ops->write_reg(dev, BMA4XX_REG_POWER_CONF,
+					  FIELD_PREP(BMA4XX_BIT_POWER_CONF_ADV_PWR_SAVE, 0));
+	__ASSERT(res == 0, "%s could not disable advance power save mode", __func__);
+	if (res == 0) {
+		dev_data->adv_power_save = false;
+	}
+
 	/* Disable interrupts, reconfigured at end */
-	res = dev_data->hw_ops->write_reg(dev, BMA4XX_REG_INT_MAP_DATA, 0);
+	res |= dev_data->hw_ops->write_reg(dev, BMA4XX_REG_INT_MAP_DATA, 0);
 	__ASSERT(res == 0, "%s could not disable interrupts", __func__);
 
 	/* If FIFO is enabled now, disable and flush */
@@ -94,11 +102,6 @@ int bma4xx_configure(const struct device *dev, struct bma4xx_runtime_config *cfg
 	} else {
 		LOG_DBG("Sample rate is 0, accelerometer not enabled");
 	}
-
-	/* Disable advance power save mode */
-	res |= dev_data->hw_ops->write_reg(dev, BMA4XX_REG_POWER_CONF,
-					   FIELD_PREP(BMA4XX_BIT_POWER_CONF_ADV_PWR_SAVE, 0));
-	__ASSERT(res == 0, "%s could not disable advance power save mode", __func__);
 
 	/* Write acceleration range */
 	res |= dev_data->hw_ops->write_reg(dev, BMA4XX_REG_ACCEL_RANGE,
