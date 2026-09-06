@@ -167,6 +167,10 @@
 #define BMA4XX_ODR_6400     (0x0e)
 #define BMA4XX_ODR_12800    (0x0f)
 
+/* Register reset values (datasheet chapter 5) */
+#define BMA4XX_ACCEL_CONFIG_RESET_VALUE (0xA8)
+#define BMA4XX_POWER_CONF_RESET_VALUE   (0x03)
+
 /* BMA4xx soft-reset commands */
 #define BMA4XX_CMD_SOFT_RESET (0xB6)
 

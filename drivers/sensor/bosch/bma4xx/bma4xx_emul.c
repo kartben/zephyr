@@ -60,6 +60,22 @@ uint8_t bma4xx_emul_get_interrupt_config(const struct emul *target, uint8_t *int
 	return data->regs[BMA4XX_REG_INT_MAP_DATA];
 }
 
+/**
+ * Restore the register file to the state the device holds after a power-on or a
+ * soft reset, as listed in the datasheet's register map.
+ */
+static void bma4xx_emul_reset_regs(const struct emul *target)
+{
+	struct bma4xx_emul_data *data = target->data;
+
+	memset(data->regs, 0, sizeof(data->regs));
+	data->regs[BMA4XX_REG_CHIP_ID] = BMA4XX_CHIP_ID_BMA422;
+	data->regs[BMA4XX_REG_ACCEL_CONFIG] = BMA4XX_ACCEL_CONFIG_RESET_VALUE;
+	data->regs[BMA4XX_REG_ACCEL_RANGE] = BMA4XX_RANGE_4G;
+	data->regs[BMA4XX_REG_POWER_CONF] = BMA4XX_POWER_CONF_RESET_VALUE;
+	data->regs[BMA4XX_REG_EVENT] = BMA4XX_BIT_EVENT_POR_DETECTED;
+}
+
 static int bma4xx_emul_read_byte(const struct emul *target, int reg, uint8_t *val, int bytes)
 {
 	bma4xx_emul_get_reg(target, reg, val, bytes);
@@ -78,11 +94,11 @@ static int bma4xx_emul_write_byte(const struct emul *target, int reg, uint8_t va
 
 	switch (reg) {
 	case BMA4XX_REG_ACCEL_CONFIG:
-		if ((val & 0xF0) != 0xA0) {
-			LOG_ERR("unsupported acc_bwp/acc_perf_mode: %#x", val);
+		if (FIELD_GET(BMA4XX_MASK_ACC_CONF_ODR, val) > BMA4XX_ODR_1600) {
+			LOG_ERR("reserved acc_odr in ACC_CONF write: %#x", val);
 			return -EINVAL;
 		}
-		data->regs[reg] = val & GENMASK(1, 0);
+		data->regs[reg] = val;
 		return 0;
 	case BMA4XX_REG_ACCEL_RANGE:
 		if ((val & GENMASK(1, 0)) != val) {
@@ -132,11 +148,22 @@ static int bma4xx_emul_write_byte(const struct emul *target, int reg, uint8_t va
 		}
 		data->regs[reg] = (val & BMA4XX_BIT_POWER_CTRL_ACC_EN) != 0;
 		return 0;
+	case BMA4XX_REG_POWER_CONF:
+		if ((val & ~GENMASK(1, 0)) != 0) {
+			LOG_ERR("reserved bits set in PWR_CONF write: %#x", val);
+			return -EINVAL;
+		}
+		data->regs[reg] = val;
+		return 0;
 	case BMA4XX_REG_CMD:
 		if (val == BMA4XX_CMD_FIFO_FLUSH) { /* fifo_flush */
 			data->regs[BMA4XX_REG_FIFO_DATA] = 0;
 			data->regs[BMA4XX_REG_FIFO_LENGTH_0] = 0;
 			data->regs[BMA4XX_REG_FIFO_LENGTH_1] = 0;
+			return 0;
+		}
+		if (val == BMA4XX_CMD_SOFT_RESET) {
+			bma4xx_emul_reset_regs(target);
 			return 0;
 		}
 		break;
@@ -148,11 +175,9 @@ static int bma4xx_emul_write_byte(const struct emul *target, int reg, uint8_t va
 
 static int bma4xx_emul_init(const struct emul *target, const struct device *parent)
 {
-	struct bma4xx_emul_data *data = target->data;
+	ARG_UNUSED(parent);
 
-	data->regs[BMA4XX_REG_CHIP_ID] = BMA4XX_CHIP_ID_BMA422;
-	data->regs[BMA4XX_REG_ACCEL_RANGE] = BMA4XX_RANGE_4G;
-	data->regs[BMA4XX_REG_EVENT] = 0x01;
+	bma4xx_emul_reset_regs(target);
 
 	return 0;
 }

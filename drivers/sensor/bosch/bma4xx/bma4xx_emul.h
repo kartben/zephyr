@@ -16,6 +16,13 @@ extern "C" {
 /** Set the sensor's current acceleration reading. */
 void bma4xx_emul_set_accel_data(const struct emul *target, q31_t value, int8_t shift, int8_t reg);
 
+/** Write @p count bytes into the emulated register file, starting at @p reg_addr. */
+void bma4xx_emul_set_reg(const struct emul *target, uint8_t reg_addr, const uint8_t *val,
+			 size_t count);
+
+/** Read @p count bytes from the emulated register file, starting at @p reg_addr. */
+void bma4xx_emul_get_reg(const struct emul *target, uint8_t reg_addr, uint8_t *val, size_t count);
+
 /**
  * Return the current interrupt configuration.
  *
