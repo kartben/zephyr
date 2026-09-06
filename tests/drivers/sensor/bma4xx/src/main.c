@@ -7,6 +7,7 @@
 #include <zephyr/drivers/emul.h>
 #include <zephyr/drivers/emul_sensor.h>
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/pm/device.h>
 #include <zephyr/rtio/rtio.h>
 #include <zephyr/ztest.h>
 
@@ -15,11 +16,14 @@
 
 #define NODE_AH DT_NODELABEL(bma4xx_ah)
 #define NODE_AL DT_NODELABEL(bma4xx_al)
+#define NODE_LP DT_NODELABEL(bma4xx_lp)
 
 static const struct device *const dev_ah = DEVICE_DT_GET(NODE_AH);
 static const struct device *const dev_al = DEVICE_DT_GET(NODE_AL);
 static const struct emul *const emul_ah = EMUL_DT_GET(NODE_AH);
 static const struct emul *const emul_al = EMUL_DT_GET(NODE_AL);
+static const struct device *const dev_lp = DEVICE_DT_GET(NODE_LP);
+static const struct emul *const emul_lp = EMUL_DT_GET(NODE_LP);
 
 SENSOR_DT_READ_IODEV(iodev_ah, NODE_AH, {SENSOR_CHAN_ACCEL_XYZ, 0});
 RTIO_DEFINE_WITH_MEMPOOL(rtio_ctx, 4, 4, 8, 64, sizeof(void *));
@@ -150,6 +154,80 @@ ZTEST(bma4xx, test_one_shot_read)
 
 	z = (double)data.readings[0].z * BIT(data.shift) / INT32_MAX;
 	zassert_within(z, 9.80665, 0.05, "z = %f", z);
+}
+
+ZTEST(bma4xx, test_low_power_mode_config)
+{
+	uint8_t acc_conf;
+
+	zassert_true(device_is_ready(dev_lp));
+
+	acc_conf = reg_read(emul_lp, BMA4XX_REG_ACCEL_CONFIG);
+	zassert_equal(FIELD_GET(BMA4XX_BIT_ACC_PERF_MODE, acc_conf), 0, "ACC_CONF %#x", acc_conf);
+	zassert_equal(FIELD_GET(BMA4XX_MASK_ACC_CONF_BWP, acc_conf), BMA4XX_BWP_NORM_AVG4);
+	zassert_equal(FIELD_GET(BMA4XX_MASK_ACC_CONF_ODR, acc_conf), BMA4XX_ODR_100);
+	zassert_equal(reg_read(emul_lp, BMA4XX_REG_POWER_CTRL) & BMA4XX_BIT_POWER_CTRL_ACC_EN,
+		      BMA4XX_BIT_POWER_CTRL_ACC_EN);
+	zassert_equal(reg_read(emul_lp, BMA4XX_REG_POWER_CONF),
+		      BMA4XX_BIT_POWER_CONF_ADV_PWR_SAVE | BMA4XX_BIT_POWER_CONF_FIFO_SELF_WAKEUP);
+}
+
+ZTEST(bma4xx, test_attr_ranges_follow_power_mode)
+{
+	uint8_t acc_conf;
+
+	/* Performance mode: 12.5 Hz to 1600 Hz, filter settings only */
+	zassert_equal(-ERANGE,
+		      attr_set(dev_ah, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, 6));
+	zassert_ok(attr_set(dev_ah, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, 1600));
+	zassert_ok(attr_set(dev_ah, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, 100));
+
+	/* Low power mode: 0.78 Hz to 400 Hz, 2^BWP averaged samples must fit in the ODR period */
+	zassert_equal(-ERANGE,
+		      attr_set(dev_lp, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, 800));
+	zassert_ok(attr_set(dev_lp, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_CONFIGURATION,
+			    BMA4XX_BWP_CIC_AVG8));
+	zassert_equal(-EINVAL, attr_set(dev_lp, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_CONFIGURATION,
+					BMA4XX_BWP_RES_AVG16));
+	zassert_ok(attr_set(dev_lp, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, 1));
+	zassert_ok(attr_set(dev_lp, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_CONFIGURATION,
+			    BMA4XX_BWP_RES_AVG128));
+	acc_conf = reg_read(emul_lp, BMA4XX_REG_ACCEL_CONFIG);
+	zassert_equal(FIELD_GET(BMA4XX_BIT_ACC_PERF_MODE, acc_conf), 0, "ACC_CONF %#x", acc_conf);
+	zassert_equal(FIELD_GET(BMA4XX_MASK_ACC_CONF_BWP, acc_conf), BMA4XX_BWP_RES_AVG128);
+	zassert_equal(FIELD_GET(BMA4XX_MASK_ACC_CONF_ODR, acc_conf), BMA4XX_ODR_1_5625);
+	zassert_equal(-EINVAL, attr_set(dev_lp, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_CONFIGURATION,
+					BMA4XX_BWP_RES_AVG128 + 1));
+	zassert_equal(-EINVAL,
+		      attr_set(dev_lp, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, 100));
+
+	zassert_ok(attr_set(dev_lp, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_CONFIGURATION,
+			    BMA4XX_BWP_NORM_AVG4));
+	zassert_ok(attr_set(dev_lp, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, 100));
+}
+
+ZTEST(bma4xx, test_pm_suspend_resume)
+{
+	const uint8_t acc_conf = reg_read(emul_ah, BMA4XX_REG_ACCEL_CONFIG);
+
+	zassert_ok(pm_device_action_run(dev_ah, PM_DEVICE_ACTION_SUSPEND));
+	zassert_equal(reg_read(emul_ah, BMA4XX_REG_POWER_CTRL) & BMA4XX_BIT_POWER_CTRL_ACC_EN, 0);
+	zassert_equal(reg_read(emul_ah, BMA4XX_REG_POWER_CONF) & BMA4XX_BIT_POWER_CONF_ADV_PWR_SAVE,
+		      BMA4XX_BIT_POWER_CONF_ADV_PWR_SAVE);
+
+	zassert_ok(pm_device_action_run(dev_ah, PM_DEVICE_ACTION_RESUME));
+	zassert_equal(reg_read(emul_ah, BMA4XX_REG_POWER_CTRL) & BMA4XX_BIT_POWER_CTRL_ACC_EN,
+		      BMA4XX_BIT_POWER_CTRL_ACC_EN);
+	zassert_equal(reg_read(emul_ah, BMA4XX_REG_POWER_CONF) & BMA4XX_BIT_POWER_CONF_ADV_PWR_SAVE,
+		      0);
+	zassert_equal(reg_read(emul_ah, BMA4XX_REG_ACCEL_CONFIG), acc_conf);
+
+	/* Low power mode re-enters advanced power save on resume */
+	zassert_ok(pm_device_action_run(dev_lp, PM_DEVICE_ACTION_SUSPEND));
+	zassert_equal(reg_read(emul_lp, BMA4XX_REG_POWER_CTRL) & BMA4XX_BIT_POWER_CTRL_ACC_EN, 0);
+	zassert_ok(pm_device_action_run(dev_lp, PM_DEVICE_ACTION_RESUME));
+	zassert_equal(reg_read(emul_lp, BMA4XX_REG_POWER_CONF),
+		      BMA4XX_BIT_POWER_CONF_ADV_PWR_SAVE | BMA4XX_BIT_POWER_CONF_FIFO_SELF_WAKEUP);
 }
 
 ZTEST_SUITE(bma4xx, NULL, NULL, NULL, NULL, NULL);

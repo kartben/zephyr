@@ -15,4 +15,11 @@
 		reg = <0x19>;
 		int1-gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
 	};
+
+	bma4xx_lp: bma4xx@1a {
+		compatible = "bosch,bma4xx";
+		reg = <0x1a>;
+		int1-gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
+		power-mode = "low-power";
+	};
 };
