@@ -1,0 +1,346 @@
+# Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "Android Auto accessory sample"
+
+source "samples/subsys/usb/common/Kconfig.sample_usbd"
+
+menu "Android Auto sample"
+
+choice SAMPLE_AA_TRANSPORT
+	prompt "Head unit transport"
+	default SAMPLE_AA_TRANSPORT_USB if USB_DEVICE_STACK_NEXT
+	default SAMPLE_AA_TRANSPORT_TCP
+
+config SAMPLE_AA_TRANSPORT_USB
+	bool "USB accessory"
+	depends on USB_DEVICE_STACK_NEXT
+	help
+	  Enumerate as an Android device in accessory mode and talk to the head
+	  unit over the accessory bulk endpoints.
+
+config SAMPLE_AA_TRANSPORT_TCP
+	bool "TCP"
+	depends on NET_SOCKETS
+	help
+	  Wait for a head unit on a TCP port instead of USB. The Desktop Head
+	  Unit of the Android SDK connects to localhost:5277 by default.
+
+endchoice
+
+config SAMPLE_AA_TCP_PORT
+	int "TCP port"
+	depends on SAMPLE_AA_TRANSPORT_TCP
+	default 5277
+	range 0 65535
+	help
+	  Port the head unit connects to. 0 lets the host pick a free port,
+	  which is logged at startup.
+
+if SAMPLE_AA_TRANSPORT_USB
+
+config SAMPLE_AA_AOA_VID
+	hex "Accessory mode vendor id"
+	default 0x18d1
+	help
+	  Vendor id presented in accessory mode. Head units look for Google's
+	  vendor id and the accessory product ids.
+
+config SAMPLE_AA_AOA_PID
+	hex "Accessory mode product id"
+	default 0x2d00
+	help
+	  0x2d00 is accessory mode alone, 0x2d01 accessory mode with an ADB
+	  interface, which this sample does not provide.
+
+choice SAMPLE_AA_USB_START_MODE
+	prompt "Accessory mode entry"
+	default SAMPLE_AA_USB_ACCESSORY_AT_BOOT
+
+config SAMPLE_AA_USB_ACCESSORY_AT_BOOT
+	bool "Enumerate in accessory mode"
+	help
+	  Present the accessory vendor and product ids from the first
+	  enumeration. A start request from the head unit still triggers a
+	  re-enumeration.
+
+config SAMPLE_AA_USB_ACCESSORY_ON_START
+	bool "Enumerate with the Zephyr ids and switch on request"
+	help
+	  Enumerate with CONFIG_SAMPLE_USBD_VID and CONFIG_SAMPLE_USBD_PID and
+	  only switch to the accessory ids when the head unit sends the
+	  accessory start request, like an Android device does.
+
+endchoice
+
+config SAMPLE_AA_AOA_STRING_SIZE
+	int "Accessory string buffer size"
+	default 64
+	range 8 256
+
+config SAMPLE_AA_AOA_SWITCH_DELAY_MS
+	int "Delay before re-enumerating after a start request (ms)"
+	default 100
+
+config SAMPLE_AA_USB_OUT_XFER_SIZE
+	int "Bulk OUT transfer size"
+	default 512
+	range 64 4096
+
+config SAMPLE_AA_USB_IN_XFER_SIZE
+	int "Bulk IN transfer size"
+	default 2048
+	range 64 8192
+
+config SAMPLE_AA_USB_RX_PIPE_SIZE
+	int "Receive pipe size"
+	default 8192
+
+config SAMPLE_AA_USB_WRITE_TIMEOUT_MS
+	int "Bulk IN buffer wait timeout (ms)"
+	default 2000
+
+config SAMPLE_AA_USB_START_DELAY_MS
+	int "Delay before the USB device is enabled (ms)"
+	default 0
+	help
+	  On SoCs whose USB PHY is shared between a serial or JTAG debug port
+	  and the USB device controller, the debug port disappears once the
+	  device is enabled. A delay keeps it reachable after every reset,
+	  which leaves a window to enter the bootloader for reflashing.
+
+endif # SAMPLE_AA_TRANSPORT_USB
+
+config SAMPLE_AA_TX_CHUNK_SIZE
+	int "Largest message fragment sent (bytes)"
+	default 16384
+	range 1024 16384
+	help
+	  Messages larger than this are fragmented. Must not exceed the Mbed
+	  TLS output content length.
+
+config SAMPLE_AA_RX_FRAME_SIZE
+	int "Receive frame buffer size (bytes)"
+	default 8256
+	help
+	  Must hold the largest TLS record the head unit sends, that is the
+	  Mbed TLS input content length plus the record overhead.
+
+config SAMPLE_AA_RX_MSG_SIZE
+	int "Reassembly buffer for fragmented messages (bytes)"
+	default 4096
+
+config SAMPLE_AA_SESSION_TIMEOUT_MS
+	int "Session setup timeout (ms)"
+	default 20000
+	help
+	  The link is dropped when the session does not reach the running
+	  state within this time.
+
+config SAMPLE_AA_PROTO_MINOR
+	int "Protocol minor version announced to the head unit"
+	default 1
+
+config SAMPLE_AA_DEVICE_NAME
+	string "Device name announced in service discovery"
+	default "Zephyr"
+
+config SAMPLE_AA_DEVICE_BRAND
+	string "Device brand announced in service discovery"
+	default "Zephyr Project"
+
+config SAMPLE_AA_RX_THREAD_PRIORITY
+	int "Receive thread priority"
+	default 5
+
+config SAMPLE_AA_RX_STACK_SIZE
+	int "Receive thread stack size"
+	default 8192 if 64BIT
+	default 6144
+
+config SAMPLE_AA_VIDEO_THREAD_PRIORITY
+	int "Video thread priority"
+	default 7
+
+config SAMPLE_AA_VIDEO_STACK_SIZE
+	int "Video thread stack size"
+	default 8192 if 64BIT
+	default 4096
+
+config SAMPLE_AA_INPUT_KEYS
+	bool "Bind head unit keys and report them as input key events"
+	default y
+
+config SAMPLE_AA_SENSOR_CHANNEL
+	bool "Subscribe to the night mode sensor and switch the theme"
+
+config SAMPLE_AA_CERT_FILE
+	string "Certificate presented to the head unit (PEM)"
+	default "certs/aa_cert.pem"
+	help
+	  Relative paths are resolved from the sample directory. Head units
+	  that verify the phone certificate need a certificate issued by
+	  Google; the bundled one is self-signed.
+
+config SAMPLE_AA_KEY_FILE
+	string "Private key of the certificate (PEM)"
+	default "certs/aa_key.pem"
+
+config SAMPLE_AA_TLS_DEBUG_LEVEL
+	int "Mbed TLS debug threshold"
+	depends on MBEDTLS_DEBUG
+	default 1
+	range 0 5
+
+menu "Video"
+
+choice SAMPLE_AA_VIDEO_RESOLUTION
+	prompt "Stream resolution"
+	default SAMPLE_AA_VIDEO_800X480
+
+config SAMPLE_AA_VIDEO_800X480
+	bool "800x480"
+
+config SAMPLE_AA_VIDEO_1280X720
+	bool "1280x720"
+
+endchoice
+
+config SAMPLE_AA_VIDEO_WIDTH
+	int
+	default 1280 if SAMPLE_AA_VIDEO_1280X720
+	default 800
+
+config SAMPLE_AA_VIDEO_HEIGHT
+	int
+	default 720 if SAMPLE_AA_VIDEO_1280X720
+	default 480
+
+choice SAMPLE_AA_VIDEO_FPS
+	prompt "Frame rate requested from the head unit"
+	default SAMPLE_AA_VIDEO_FPS_30
+
+config SAMPLE_AA_VIDEO_FPS_30
+	bool "30 fps"
+
+config SAMPLE_AA_VIDEO_FPS_60
+	bool "60 fps"
+
+endchoice
+
+config SAMPLE_AA_MAX_FPS
+	int "Maximum number of pictures sent per second"
+	default 30
+	range 1 60
+
+config SAMPLE_AA_MAX_MBS_PER_FRAME
+	int "Maximum coded macroblocks per P picture (0 = unlimited)"
+	default 0
+	help
+	  Large redraws are spread over several pictures instead of one long
+	  transfer when this is set.
+
+config SAMPLE_AA_MAX_KBPS
+	int "Output rate cap in kbit/s (0 = link speed)"
+	default 0
+
+config SAMPLE_AA_VIDEO_MAX_UNACKED_CAP
+	int "Upper bound for unacknowledged media messages"
+	default 4
+	range 1 16
+
+config SAMPLE_AA_VIDEO_ACK_TIMEOUT_MS
+	int "Media acknowledgment timeout (ms)"
+	default 3000
+
+config SAMPLE_AA_VIDEO_CODEC_CONFIG_MSG
+	bool "Send the parameter sets in a separate media message first"
+	help
+	  The parameter sets are always part of every IDR picture; this
+	  additionally sends them once in a media message without timestamp
+	  when streaming starts.
+
+config SAMPLE_AA_H264_LEVEL_IDC
+	int "H.264 level_idc"
+	default 31
+
+config SAMPLE_AA_H264_SLICE_ROWS
+	int "Macroblock rows per slice (0 = one slice per picture)"
+	default 1
+	range 0 68
+
+config SAMPLE_AA_H264_OUT_BUF_SIZE
+	int "Encoder staging buffer (bytes)"
+	default 2048
+	range 256 16384
+
+config SAMPLE_AA_DIRTY_COMPARE
+	bool "Only send macroblocks whose pixels changed"
+	default y
+	help
+	  Compare the rendered pixels with the framebuffer before marking a
+	  macroblock dirty. LVGL redraws whole areas; the comparison keeps
+	  unchanged macroblocks off the link.
+
+choice SAMPLE_AA_PIXEL_FORMAT
+	prompt "Framebuffer pixel format"
+	default SAMPLE_AA_PIXEL_RGB565
+
+config SAMPLE_AA_PIXEL_RGB565
+	bool "RGB565"
+	depends on LV_COLOR_DEPTH_16
+
+config SAMPLE_AA_PIXEL_L8
+	bool "8-bit grayscale"
+	depends on LV_COLOR_DEPTH_8
+	help
+	  Halves the framebuffer size at the cost of colour, for boards
+	  without external RAM.
+
+endchoice
+
+config SAMPLE_AA_FB_IN_EXT_RAM
+	bool "Place the framebuffer in external RAM"
+	depends on ESP_SPIRAM
+	default y
+
+config SAMPLE_AA_FB_SECTION
+	string "Framebuffer linker section"
+	depends on SAMPLE_AA_FB_IN_EXT_RAM
+	default ".ext_ram.bss"
+
+config SAMPLE_AA_H264_DUMP
+	bool "Dump the stream and reference pictures to host files"
+	depends on ARCH_POSIX
+	help
+	  Writes the H.264 stream and, for every picture, the framebuffer as
+	  I420 so that a host decoder can be checked for bit-exact output.
+
+config SAMPLE_AA_H264_DUMP_PATH
+	string "H.264 dump file"
+	depends on SAMPLE_AA_H264_DUMP
+	default "aa_video.h264"
+
+config SAMPLE_AA_H264_SELFTEST
+	bool "Encode and check a few pictures at boot"
+
+config SAMPLE_AA_DEMO_WIDGETS
+	bool "Show the LVGL widgets demo instead of the sample screen"
+	select LV_USE_DEMO_WIDGETS
+	select LV_FONT_MONTSERRAT_12
+	select LV_FONT_MONTSERRAT_14
+	select LV_FONT_MONTSERRAT_16
+	select LV_FONT_MONTSERRAT_18
+	select LV_FONT_MONTSERRAT_20
+	select LV_FONT_MONTSERRAT_22
+	select LV_FONT_MONTSERRAT_24
+
+endmenu # Video
+
+module = SAMPLE_AA
+module-str = Android Auto sample
+source "subsys/logging/Kconfig.template.log_config"
+
+endmenu # Android Auto sample
+
+source "Kconfig.zephyr"

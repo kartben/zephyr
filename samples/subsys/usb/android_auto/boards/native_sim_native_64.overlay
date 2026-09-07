@@ -1,0 +1,15 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <android_auto.dtsi>
+
+/* The SDL display and touch emulation are replaced by the virtual display */
+&sdl_dc {
+	status = "disabled";
+};
+
+&input_sdl_touch {
+	status = "disabled";
+};

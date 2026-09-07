@@ -1,0 +1,10 @@
+# Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Touch screen of the Android Auto accessory sample, fed by the touch events
+  the head unit sends back for the streamed screen.
+
+compatible: "android-auto-touch"
+
+include: base.yaml

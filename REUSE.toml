@@ -17,6 +17,7 @@ path = [
     "**/Kconfig*",
     "doc/requirements.in",
     "doc/requirements.txt",
+    "samples/subsys/usb/android_auto/certs/*.pem",
     "scripts/requirements-*.in",
     "scripts/requirements-*.txt",
     # zephyr-keep-sorted-stop

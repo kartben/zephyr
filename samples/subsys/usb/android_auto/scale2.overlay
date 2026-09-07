@@ -1,0 +1,10 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* Render at half the stream resolution, every pixel becomes a 2x2 block */
+&aa_display {
+	width = <400>;
+	height = <240>;
+};

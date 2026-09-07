@@ -1,0 +1,23 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <android_auto.dtsi>
+
+/*
+ * USB OTG takes over the USB PHY from the USB serial console once the device
+ * is enabled; the console stays usable during CONFIG_SAMPLE_AA_USB_START_DELAY_MS.
+ */
+zephyr_udc0: &usb_otg {
+	status = "okay";
+};
+
+/* The watch display and touch controller are not used by the sample */
+&st7789v {
+	status = "disabled";
+};
+
+&ft5336 {
+	status = "disabled";
+};
