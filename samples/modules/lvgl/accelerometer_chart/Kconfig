@@ -14,4 +14,22 @@ config SAMPLE_ACCEL_SAMPLING_RATE
 	default 50
 	range 1 100
 
+config SAMPLE_ACCEL_STREAM
+	bool "Stream batches of samples from the sensor FIFO"
+	depends on SENSOR_ASYNC_API && SENSOR_CLOCK_SYSTEM
+	help
+	  Start a FIFO watermark stream with sensor_stream() instead of reading
+	  one sample per timer tick, so that every sample the sensor produces
+	  ends up in the chart whatever the rendering takes. Falls back to
+	  polling at runtime when the driver does not support streaming.
+
+config SAMPLE_ACCEL_STREAM_BATCH_MS
+	int "Streaming batch duration (ms)"
+	depends on SAMPLE_ACCEL_STREAM
+	default 50
+	range 10 1000
+	help
+	  Time span covered by one FIFO batch, i.e. how often the chart
+	  receives new points.
+
 source "Kconfig.zephyr"

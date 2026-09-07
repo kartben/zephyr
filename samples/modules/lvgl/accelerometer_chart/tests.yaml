@@ -1,18 +1,23 @@
 sample:
   description: Real-time visualization of acceleration data using LVGL chart widget
   name: LVGL acceleration chart
+common:
+  filter: dt_chosen_enabled("zephyr,display") and dt_alias_exists("accel0")
+  min_flash: 250
+  min_ram: 32
+  harness: none
+  tags:
+    - samples
+    - display
+    - gui
+    - lvgl
+  modules:
+    - lvgl
+  integration_platforms:
+    - native_sim/native/64
 tests:
-  sample.modules.lvgl.accelerometer_chart:
-    filter: dt_chosen_enabled("zephyr,display") and dt_alias_exists("accel0")
-    min_flash: 250
-    min_ram: 32
-    harness: none
-    tags:
-      - samples
-      - display
-      - gui
-      - lvgl
-    modules:
-      - lvgl
-    integration_platforms:
-      - native_sim/native/64
+  sample.modules.lvgl.accelerometer_chart: {}
+  sample.modules.lvgl.accelerometer_chart.stream:
+    extra_configs:
+      - CONFIG_SENSOR_ASYNC_API=y
+      - CONFIG_SAMPLE_ACCEL_STREAM=y

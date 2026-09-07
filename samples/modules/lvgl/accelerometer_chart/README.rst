@@ -15,6 +15,13 @@ timer fetches the latest acceleration data from the sensor every 20 ms (default 
 the chart. The update period is configurable, see
 :ref:`lvgl_accelerometer_chart_building_and_running` below.
 
+With :kconfig:option:`CONFIG_SAMPLE_ACCEL_STREAM`, the sample instead streams batches of samples
+from the sensor's hardware FIFO using :c:func:`sensor_stream`: every sample the sensor produces
+ends up in the chart, however long a frame takes to render, and the bus only carries one
+transfer per batch. The batch duration is set by
+:kconfig:option:`CONFIG_SAMPLE_ACCEL_STREAM_BATCH_MS`. When the driver does not support
+streaming, the sample falls back to polling at runtime.
+
 Requirements
 ************
 
@@ -47,5 +54,16 @@ custom value of 20 Hz):
    :host-os: unix
    :board: native_sim
    :gen-args: -DCONFIG_SAMPLE_ACCEL_SAMPLING_RATE=20
+   :goals: run
+   :compact:
+
+On boards whose accelerometer driver supports FIFO streaming, such as the BMA423 of the
+:zephyr:board:`twatch_s3`, streaming is enabled by default; it can be turned on elsewhere with:
+
+.. zephyr-app-commands::
+   :zephyr-app: samples/modules/lvgl/accelerometer_chart
+   :host-os: unix
+   :board: native_sim
+   :gen-args: -DCONFIG_SENSOR_ASYNC_API=y -DCONFIG_SAMPLE_ACCEL_STREAM=y
    :goals: run
    :compact:
