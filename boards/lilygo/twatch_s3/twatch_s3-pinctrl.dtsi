@@ -49,10 +49,4 @@
 		};
 	};
 
-	ledc0_default: ledc0_default {
-		group1 {
-			pinmux = <LEDC_CH0_GPIO45>;
-			output-enable;
-		};
-	};
 };

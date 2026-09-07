@@ -21,7 +21,6 @@
 		i2c-1 = &i2c1;
 		watchdog0 = &wdt0;
 		rtc = &pfc8563_rtc;
-		pwm-led0 = &backlight_pwm;
 		fuel-gauge0 = &fuel_gauge;
 		lora0 = &lora0;
 		accel0 = &bma423;
@@ -78,26 +77,15 @@
 		};
 	};
 
-	pwmleds {
-		compatible = "pwm-leds";
-
-		backlight_pwm: pwm_0 {
-			label = "LCD backlight PWM";
-			pwms = <&ledc0 0 PWM_HZ(100) PWM_POLARITY_NORMAL>;
-		};
-	};
 };
 
-&ledc0 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	status = "okay";
-	pinctrl-0 = <&ledc0_default>;
-	pinctrl-names = "default";
-
-	channel0@0 {
-		reg = <0x0>;
-		timer = <0>;
+&gpio1 {
+	/* Drive the LCD backlight (GPIO45) on at boot; it is active high */
+	lcd_backlight {
+		gpio-hog;
+		gpios = <13 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "lcd-backlight";
 	};
 };
 
