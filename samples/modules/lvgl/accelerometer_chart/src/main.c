@@ -17,14 +17,81 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(app, CONFIG_LOG_DEFAULT_LEVEL);
 
+#define ACCEL_NODE DT_ALIAS(accel0)
+
 static lv_obj_t *chart1;
 static lv_chart_series_t *ser_x;
 static lv_chart_series_t *ser_y;
 static lv_chart_series_t *ser_z;
 static lv_timer_t *sensor_timer;
 
-const struct device *accel_sensor;
+static const struct device *const accel_sensor = DEVICE_DT_GET(ACCEL_NODE);
 
+#ifdef CONFIG_SENSOR_ASYNC_API
+SENSOR_DT_READ_IODEV(accel_read_iodev, ACCEL_NODE, {SENSOR_CHAN_ACCEL_XYZ, 0});
+RTIO_DEFINE_WITH_MEMPOOL(accel_rtio, 4, 4, 16, 64, sizeof(void *));
+#endif
+
+static void chart_add_point(int32_t x, int32_t y, int32_t z)
+{
+	lv_chart_set_next_value(chart1, ser_x, x);
+	lv_chart_set_next_value(chart1, ser_y, y);
+	lv_chart_set_next_value(chart1, ser_z, z);
+}
+
+#ifdef CONFIG_SENSOR_ASYNC_API
+/* Convert a Q31 value with the given shift to an integer number of m/s^2 */
+static int32_t q31_to_int(q31_t value, int8_t shift)
+{
+	return (int32_t)(((int64_t)value << shift) / (INT64_C(1) << 31));
+}
+
+/* Decode every accelerometer frame of a sensor buffer into the chart, return the frame count */
+static int chart_add_buffer(const uint8_t *buf)
+{
+	const struct sensor_decoder_api *decoder;
+	const struct sensor_chan_spec ch = {SENSOR_CHAN_ACCEL_XYZ, 0};
+	struct sensor_three_axis_data data;
+	uint32_t fit = 0;
+	uint16_t count = 0;
+	int rc;
+
+	rc = sensor_get_decoder(accel_sensor, &decoder);
+	if (rc != 0) {
+		return rc;
+	}
+
+	rc = decoder->get_frame_count(buf, ch, &count);
+	if (rc != 0) {
+		return rc;
+	}
+
+	for (uint16_t i = 0; i < count; i++) {
+		if (decoder->decode(buf, ch, &fit, 1, &data) <= 0) {
+			break;
+		}
+		chart_add_point(q31_to_int(data.readings[0].x, data.shift),
+				q31_to_int(data.readings[0].y, data.shift),
+				q31_to_int(data.readings[0].z, data.shift));
+	}
+
+	return count;
+}
+
+/* Timer handler: reads one sample and appends it to the chart */
+static void sensor_timer_cb(lv_timer_t *timer)
+{
+	uint8_t buf[128];
+	int rc = sensor_read(&accel_read_iodev, &accel_rtio, buf, sizeof(buf));
+
+	if (rc == 0) {
+		rc = chart_add_buffer(buf);
+	}
+	if (rc < 0) {
+		LOG_ERR("Update failed: %d", rc);
+	}
+}
+#else
 /* Timer handler: fetches sensor data and appends it to the chart */
 static void sensor_timer_cb(lv_timer_t *timer)
 {
@@ -35,12 +102,32 @@ static void sensor_timer_cb(lv_timer_t *timer)
 		rc = sensor_channel_get(accel_sensor, SENSOR_CHAN_ACCEL_XYZ, accel);
 	}
 	if (rc < 0) {
-		LOG_ERR("ERROR: Update failed: %d\n", rc);
+		LOG_ERR("Update failed: %d", rc);
 		return;
 	}
-	lv_chart_set_next_value(chart1, ser_x, sensor_value_to_double(&accel[0]));
-	lv_chart_set_next_value(chart1, ser_y, sensor_value_to_double(&accel[1]));
-	lv_chart_set_next_value(chart1, ser_z, sensor_value_to_double(&accel[2]));
+	chart_add_point(sensor_value_to_double(&accel[0]), sensor_value_to_double(&accel[1]),
+			sensor_value_to_double(&accel[2]));
+}
+#endif /* CONFIG_SENSOR_ASYNC_API */
+
+static void set_sampling_rate(void)
+{
+	const struct sensor_value rate = {.val1 = CONFIG_SAMPLE_ACCEL_SAMPLING_RATE, .val2 = 0};
+	int rc;
+
+	rc = sensor_attr_set(accel_sensor, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY,
+			     &rate);
+
+	if (rc != 0 && rc != -ENOTSUP) {
+		LOG_WRN("Could not set the sampling rate to %d Hz: %d",
+			CONFIG_SAMPLE_ACCEL_SAMPLING_RATE, rc);
+	}
+}
+
+static void start_polling(void)
+{
+	sensor_timer = lv_timer_create(sensor_timer_cb, 1000 / CONFIG_SAMPLE_ACCEL_SAMPLING_RATE,
+				       NULL);
 }
 
 static void create_accelerometer_chart(lv_obj_t *parent)
@@ -76,16 +163,14 @@ int main(void)
 		return -ENODEV;
 	}
 
-	accel_sensor = DEVICE_DT_GET(DT_ALIAS(accel0));
 	if (!device_is_ready(accel_sensor)) {
 		LOG_ERR("Device %s is not ready\n", accel_sensor->name);
 		return -ENODEV;
 	}
 
 	create_accelerometer_chart(lv_screen_active());
-	sensor_timer = lv_timer_create(sensor_timer_cb,
-					1000 / CONFIG_SAMPLE_ACCEL_SAMPLING_RATE,
-					NULL);
+	set_sampling_rate();
+	start_polling();
 	lv_timer_handler();
 	ret = display_blanking_off(display_dev);
 	if (ret < 0 && ret != -ENOSYS) {
