@@ -1,0 +1,158 @@
+# Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "Android Auto head unit sample"
+
+menu "Android Auto head unit sample"
+
+choice SAMPLE_AA_HU_TRANSPORT
+	prompt "Phone transport"
+	default SAMPLE_AA_HU_TRANSPORT_TCP
+
+config SAMPLE_AA_HU_TRANSPORT_TCP
+	bool "TCP"
+	depends on NET_SOCKETS
+	help
+	  Connect to a phone that exposes the projection protocol on a TCP
+	  port, which is how the companion accessory sample runs on native_sim.
+
+endchoice
+
+config SAMPLE_AA_HU_TCP_HOST
+	string "Phone address"
+	depends on SAMPLE_AA_HU_TRANSPORT_TCP
+	default "127.0.0.1"
+
+config SAMPLE_AA_HU_TCP_PORT
+	int "Phone port"
+	depends on SAMPLE_AA_HU_TRANSPORT_TCP
+	default 5277
+	range 1 65535
+
+config SAMPLE_AA_HU_TX_CHUNK_SIZE
+	int "Largest message fragment sent (bytes)"
+	default 16384
+	range 1024 16384
+
+config SAMPLE_AA_HU_RX_FRAME_SIZE
+	int "Receive frame buffer size (bytes)"
+	default 8256
+
+config SAMPLE_AA_HU_RX_MSG_SIZE
+	int "Reassembly buffer for fragmented messages (bytes)"
+	default 65536
+	help
+	  Media messages carry a whole H.264 access unit, so this must hold the
+	  largest picture the phone sends in one message. A real phone's frames
+	  are compact; the companion accessory sample's I_PCM key frames are
+	  large (about 580 KB at 800x480), so its transport overrides this.
+
+config SAMPLE_AA_HU_NAL_SCRATCH_SIZE
+	int "Decoder NAL scratch buffer (bytes)"
+	default 40960
+	help
+	  Must hold the largest NAL unit; the companion encoder slices a picture
+	  into macroblock rows to keep NAL units small.
+
+config SAMPLE_AA_HU_MAX_UNACKED
+	int "Media messages the phone may send without an acknowledgment"
+	default 1
+	range 1 16
+
+config SAMPLE_AA_HU_PROTO_MINOR
+	int "Protocol minor version announced to the phone"
+	default 1
+
+config SAMPLE_AA_HU_NAME
+	string "Head unit name announced in service discovery"
+	default "Zephyr head unit"
+
+config SAMPLE_AA_HU_RX_THREAD_PRIORITY
+	int "Receive thread priority"
+	default 5
+
+config SAMPLE_AA_HU_RX_STACK_SIZE
+	int "Receive thread stack size"
+	default 8192 if 64BIT
+	default 6144
+
+config SAMPLE_AA_HU_CERT_FILE
+	string "Certificate presented to the phone (PEM)"
+	default "certs/hu_cert.pem"
+	help
+	  A phone verifies this certificate against Google's certificate
+	  authority. The bundled one is self-signed and only works with phones
+	  that skip that check, such as the companion accessory sample.
+
+config SAMPLE_AA_HU_KEY_FILE
+	string "Private key of the certificate (PEM)"
+	default "certs/hu_key.pem"
+
+config SAMPLE_AA_HU_TLS_DEBUG_LEVEL
+	int "Mbed TLS debug threshold"
+	depends on MBEDTLS_DEBUG
+	default 1
+	range 0 5
+
+choice SAMPLE_AA_HU_VIDEO_RESOLUTION
+	prompt "Video resolution offered to the phone"
+	default SAMPLE_AA_HU_VIDEO_800X480
+
+config SAMPLE_AA_HU_VIDEO_800X480
+	bool "800x480"
+
+config SAMPLE_AA_HU_VIDEO_1280X720
+	bool "1280x720"
+
+endchoice
+
+config SAMPLE_AA_HU_VIDEO_WIDTH
+	int
+	default 1280 if SAMPLE_AA_HU_VIDEO_1280X720
+	default 800
+
+config SAMPLE_AA_HU_VIDEO_HEIGHT
+	int
+	default 720 if SAMPLE_AA_HU_VIDEO_1280X720
+	default 480
+
+config SAMPLE_AA_HU_DEMO_TAP
+	bool "Periodically tap the phone screen"
+	help
+	  Forward a synthetic touch at a fixed point every few seconds, to
+	  exercise the input channel without a physical touch screen.
+
+config SAMPLE_AA_HU_DEMO_TAP_X
+	int "Demo tap X"
+	depends on SAMPLE_AA_HU_DEMO_TAP
+	default 400
+
+config SAMPLE_AA_HU_DEMO_TAP_Y
+	int "Demo tap Y"
+	depends on SAMPLE_AA_HU_DEMO_TAP
+	default 147
+
+config SAMPLE_AA_HU_DEMO_TAP_INTERVAL_MS
+	int "Demo tap interval (ms)"
+	depends on SAMPLE_AA_HU_DEMO_TAP
+	default 2000
+
+config SAMPLE_AA_HU_FB_DUMP
+	bool "Dump decoded pictures to a host file"
+	depends on ARCH_POSIX
+	help
+	  Append every decoded RGB565 picture to a host file so that the stream
+	  can be inspected without a display.
+
+config SAMPLE_AA_HU_FB_DUMP_PATH
+	string "Framebuffer dump file"
+	depends on SAMPLE_AA_HU_FB_DUMP
+	default "hu_frames.rgb565"
+
+module = SAMPLE_AA_HU
+module-str = Android Auto head unit sample
+source "subsys/logging/Kconfig.template.log_config"
+
+endmenu
+
+source "Kconfig.zephyr"

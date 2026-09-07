@@ -1,0 +1,208 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include "aa_control.h"
+
+#include <string.h>
+
+#include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
+#include <zephyr/sys/byteorder.h>
+
+#include "src/aa.pb.h"
+#include "aa_frame.h"
+#include "aa_ids.h"
+#include "aa_session.h"
+#include "aa_tls.h"
+#include "aa_video.h"
+
+LOG_MODULE_REGISTER(aa_control, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
+
+/*
+ * Control channel, head unit side: the head unit requests the protocol version,
+ * initiates the TLS handshake, declares authentication complete and answers the
+ * phone's service discovery with the channels it offers.
+ */
+
+#define AA_VIDEO_CHANNEL_ID 1U
+#define AA_INPUT_CHANNEL_ID 2U
+
+#if defined(CONFIG_SAMPLE_AA_HU_VIDEO_1280X720)
+#define AA_OFFERED_RESOLUTION AA_VIDEO_RESOLUTION_1280x720
+#else
+#define AA_OFFERED_RESOLUTION AA_VIDEO_RESOLUTION_800x480
+#endif
+
+int aa_control_send_version_request(void)
+{
+	uint8_t body[4];
+
+	sys_put_be16(AA_PROTO_MAJOR, &body[0]);
+	sys_put_be16(CONFIG_SAMPLE_AA_HU_PROTO_MINOR, &body[2]);
+
+	return aa_msg_send(AA_CHANNEL_CONTROL, false, AA_CTRL_VERSION_REQUEST, body, sizeof(body));
+}
+
+static int send_service_discovery_response(void)
+{
+	ServiceDiscoveryResponse rsp = ServiceDiscoveryResponse_init_zero;
+	struct aa_hu_session *s = aa_hu_session_get();
+	ChannelDescriptor *video = &rsp.channels[0];
+	ChannelDescriptor *input = &rsp.channels[1];
+	VideoConfig *cfg = &video->av_channel.video_configs[0];
+	uint8_t buf[192];
+	int len;
+
+	rsp.channels_count = 2;
+
+	video->has_channel_id = true;
+	video->channel_id = AA_VIDEO_CHANNEL_ID;
+	video->has_av_channel = true;
+	video->av_channel.has_stream_type = true;
+	video->av_channel.stream_type = AA_STREAM_TYPE_VIDEO;
+	video->av_channel.video_configs_count = 1;
+	cfg->has_video_resolution = true;
+	cfg->video_resolution = AA_OFFERED_RESOLUTION;
+	cfg->has_video_fps = true;
+	cfg->video_fps = AA_VIDEO_FPS_30;
+	cfg->has_dpi = true;
+	cfg->dpi = 160;
+
+	input->has_channel_id = true;
+	input->channel_id = AA_INPUT_CHANNEL_ID;
+	input->has_input_channel = true;
+	input->input_channel.has_touch_screen_config = true;
+	input->input_channel.touch_screen_config.has_width = true;
+	input->input_channel.touch_screen_config.width = CONFIG_SAMPLE_AA_HU_VIDEO_WIDTH;
+	input->input_channel.touch_screen_config.has_height = true;
+	input->input_channel.touch_screen_config.height = CONFIG_SAMPLE_AA_HU_VIDEO_HEIGHT;
+
+	strncpy(rsp.head_unit_name, CONFIG_SAMPLE_AA_HU_NAME, sizeof(rsp.head_unit_name) - 1U);
+	rsp.has_head_unit_name = true;
+	strncpy(rsp.car_model, "Zephyr", sizeof(rsp.car_model) - 1U);
+	rsp.has_car_model = true;
+
+	s->video_ch = AA_VIDEO_CHANNEL_ID;
+	s->input_ch = AA_INPUT_CHANNEL_ID;
+
+	len = aa_pb_encode(buf, sizeof(buf), ServiceDiscoveryResponse_fields, &rsp);
+	if (len < 0) {
+		return len;
+	}
+
+	LOG_INF("Offering a video and an input channel");
+
+	return aa_msg_send(AA_CHANNEL_CONTROL, false, AA_CTRL_SERVICE_DISCOVERY_RESPONSE, buf,
+			   (size_t)len);
+}
+
+static void continue_handshake(const uint8_t *body, size_t len)
+{
+	int ret = aa_tls_handshake_input(body, len);
+
+	if (ret == -EAGAIN) {
+		return;
+	}
+	if (ret != 0) {
+		aa_hu_session_abort("TLS handshake failed");
+		return;
+	}
+
+	/* Handshake done: tell the phone authentication is complete */
+	AuthCompleteIndication ind = AuthCompleteIndication_init_zero;
+	uint8_t buf[8];
+	int n;
+
+	ind.has_status = true;
+	ind.status = AA_STATUS_OK;
+	n = aa_pb_encode(buf, sizeof(buf), AuthCompleteIndication_fields, &ind);
+	if (n < 0 || aa_msg_send(AA_CHANNEL_CONTROL, false, AA_CTRL_AUTH_COMPLETE, buf,
+				 (size_t)n) != 0) {
+		aa_hu_session_abort("auth complete failed");
+		return;
+	}
+
+	aa_frame_set_encrypted(true);
+	aa_hu_session_set_state(AA_HU_WAIT_SERVICE_DISCOVERY);
+}
+
+void aa_control_handle(uint16_t msg_id, const uint8_t *body, size_t len)
+{
+	struct aa_hu_session *s = aa_hu_session_get();
+
+	switch (msg_id) {
+	case AA_CTRL_VERSION_RESPONSE:
+		if (len >= 4U) {
+			s->md_major = sys_get_be16(&body[0]);
+			s->md_minor = sys_get_be16(&body[2]);
+		}
+		if (len >= 6U && sys_get_be16(&body[4]) != 0U) {
+			aa_hu_session_abort("phone reported a version mismatch");
+			return;
+		}
+		LOG_INF("Phone protocol version %u.%u", s->md_major, s->md_minor);
+		if (aa_tls_handshake_start() == -EIO) {
+			aa_hu_session_abort("cannot start the TLS handshake");
+			return;
+		}
+		aa_hu_session_set_state(AA_HU_HANDSHAKE);
+		break;
+
+	case AA_CTRL_SSL_HANDSHAKE:
+		continue_handshake(body, len);
+		break;
+
+	case AA_CTRL_SERVICE_DISCOVERY_REQUEST: {
+		ServiceDiscoveryRequest req = ServiceDiscoveryRequest_init_zero;
+
+		if (aa_pb_decode(body, len, ServiceDiscoveryRequest_fields, &req) == 0) {
+			LOG_INF("Phone \"%s\" (%s)", req.has_device_name ? req.device_name : "?",
+				req.has_device_brand ? req.device_brand : "?");
+		}
+		if (send_service_discovery_response() != 0) {
+			aa_hu_session_abort("service discovery response failed");
+			return;
+		}
+		aa_hu_session_set_state(AA_HU_RUNNING);
+		break;
+	}
+
+	case AA_CTRL_PING_REQUEST:
+		(void)aa_msg_send(AA_CHANNEL_CONTROL, false, AA_CTRL_PING_RESPONSE, body, len);
+		break;
+
+	case AA_CTRL_PING_RESPONSE:
+	case AA_CTRL_NAVIGATION_FOCUS_RESPONSE:
+		break;
+
+	case AA_CTRL_SHUTDOWN_REQUEST:
+		LOG_INF("Phone requested shutdown");
+		(void)aa_msg_send(AA_CHANNEL_CONTROL, false, AA_CTRL_SHUTDOWN_RESPONSE, NULL, 0U);
+		aa_hu_session_abort("shutdown");
+		break;
+
+	default:
+		LOG_WRN("Unhandled control message 0x%04x", msg_id);
+		break;
+	}
+}
+
+void aa_control_channel_open(uint8_t channel, const uint8_t *body, size_t len)
+{
+	ChannelOpenRequest req = ChannelOpenRequest_init_zero;
+	ChannelOpenResponse rsp = ChannelOpenResponse_init_zero;
+	uint8_t buf[8];
+	int n;
+
+	(void)aa_pb_decode(body, len, ChannelOpenRequest_fields, &req);
+	LOG_INF("Channel %u open request (priority %d)", channel, req.priority);
+
+	rsp.has_status = true;
+	rsp.status = AA_STATUS_OK;
+	n = aa_pb_encode(buf, sizeof(buf), ChannelOpenResponse_fields, &rsp);
+	if (n >= 0) {
+		(void)aa_msg_send(channel, true, AA_CTRL_CHANNEL_OPEN_RESPONSE, buf, (size_t)n);
+	}
+}

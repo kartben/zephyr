@@ -18,6 +18,7 @@ path = [
     "doc/requirements.in",
     "doc/requirements.txt",
     "samples/subsys/usb/android_auto/certs/*.pem",
+    "samples/subsys/usb/android_auto_headunit/certs/*.pem",
     "scripts/requirements-*.in",
     "scripts/requirements-*.txt",
     # zephyr-keep-sorted-stop

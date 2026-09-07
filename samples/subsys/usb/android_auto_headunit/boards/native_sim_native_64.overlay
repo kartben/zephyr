@@ -1,0 +1,29 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * Headless build: the phone's stream is decoded into a framebuffer and, with
+ * CONFIG_SAMPLE_AA_HU_FB_DUMP, written to a host file. Point zephyr,display at
+ * an SDL display on a Linux desktop to watch it live instead (see the README).
+ */
+/ {
+	chosen {
+		zephyr,display = &dummy_dc;
+	};
+
+	dummy_dc: dummy_dc {
+		compatible = "zephyr,dummy-dc";
+		height = <480>;
+		width = <800>;
+	};
+};
+
+&sdl_dc {
+	status = "disabled";
+};
+
+&input_sdl_touch {
+	status = "disabled";
+};

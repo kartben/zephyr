@@ -1,0 +1,23 @@
+sample:
+  name: Android Auto head unit
+  description: Decode an Android Auto phone's projected screen and show it on a display
+common:
+  modules:
+    - nanopb
+  tags:
+    - usb
+    - display
+    - samples
+tests:
+  sample.usb.android_auto_headunit.tcp:
+    platform_allow:
+      - native_sim
+      - native_sim/native/64
+    integration_platforms:
+      - native_sim
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Android Auto head unit ready"
+    timeout: 30

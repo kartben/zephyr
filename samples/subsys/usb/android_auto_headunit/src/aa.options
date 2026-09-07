@@ -1,0 +1,17 @@
+# Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Static sizing of the nanopb structures generated from aa.proto
+ServiceDiscoveryRequest.device_name   max_size:32
+ServiceDiscoveryRequest.device_brand  max_size:32
+ServiceDiscoveryResponse.channels     max_count:16
+ServiceDiscoveryResponse.head_unit_name max_size:32
+ServiceDiscoveryResponse.car_model    max_size:32
+AVChannel.video_configs               max_count:4
+SensorChannel.sensors                 max_count:8
+AVChannelSetupResponse.configs        max_count:8
+TouchEvent.touch_location             max_count:4
+ButtonEvents.button                   max_count:4
+BindingRequest.scan_codes             max_count:16
+SensorEventIndication.night_mode      max_count:2
+SensorEventIndication.driving_status  max_count:2
