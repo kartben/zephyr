@@ -64,8 +64,8 @@ Requirements
 ************
 
 Building needs ``protoc`` on the path for nanopb. Running the virtual head unit needs Python 3.12
-or newer with ``pyusb`` (USB, plus ``libusb``), ``PyAV`` and ``pygame`` (video window), see
-``scripts/requirements.txt``. ``ffmpeg`` is useful to inspect a dumped stream.
+or newer with ``pyusb`` (USB, plus ``libusb``), ``PyAV``, ``numpy`` and ``pygame`` (video
+window), see ``scripts/requirements.txt``. ``ffmpeg`` is useful to inspect a dumped stream.
 
 The video stream needs a framebuffer at the stream resolution (800x480 by default) or at half of
 it, in which case every framebuffer pixel becomes a 2x2 block. An RGB565 framebuffer takes 768 KiB
@@ -105,10 +105,10 @@ Then start the virtual head unit on the same machine (or on another one, replaci
    pip install -r samples/subsys/usb/android_auto/scripts/requirements.txt
    python3 samples/subsys/usb/android_auto/scripts/aa_headunit.py --tcp localhost:5277
 
-A window shows the LVGL screen; clicking and dragging in it drives the widgets, ``n`` and ``d``
-switch the night mode when the head unit was started with ``--sensors``. ``--no-display`` runs
-without decoding the video and ``--dump FILE`` writes the raw H.264 stream, which ``ffplay -f
-h264 FILE`` plays back.
+A window shows the LVGL screen; clicking and dragging in it drives the widgets, ``s`` saves the
+picture as a PNG file, ``n`` and ``d`` switch the night mode when the head unit was started with
+``--sensors``. ``--no-display`` runs without decoding the video and ``--dump FILE`` writes the raw
+H.264 stream, which ``ffplay -f h264 FILE`` plays back.
 
 The Android SDK Desktop Head Unit (``extras/google/auto/desktop-head-unit`` in the SDK
 directory) connects to ``localhost:5277`` when started without arguments and can be tried the
