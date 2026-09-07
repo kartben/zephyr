@@ -1,0 +1,8 @@
+# Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Python packages used by aa_headunit.py
+pyusb
+av
+numpy
+pygame
