@@ -1,177 +1,108 @@
+.. SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+.. SPDX-License-Identifier: Apache-2.0
+
 .. _sensor-emulators:
 
 Emulators
 #########
 
-A sensor emulator stands in for the sensor on an emulated bus (:kconfig:option:`CONFIG_EMUL`) so
-the driver can be exercised on :ref:`native_sim <native_sim>`. Emulators that implement the
-:ref:`sensor emulator backend API <sensor-api-reference>` are picked up by the generic sensor test
-in :zephyr_file:`tests/drivers/build_all/sensor`, which sets a value on every channel the emulator
-reports and checks that the driver reads it back.
+Sensor emulators implement the sensor backend API on an emulated I2C bus. Tests inject physical
+values, then exercise the real driver through sample fetch or RTIO read and decode.
+:kconfig:option:`CONFIG_EMUL_SENSOR_REGMAP` enables the register table models.
 
-Register map based emulators
-****************************
+Writing a register model
+************************
 
-Most I2C sensors are a register map. :c:macro:`EMUL_SENSOR_REGMAP_DEFINE` builds a complete
-emulator from that map, transcribed from the datasheet. Do not read the driver while writing it:
-the table describes the device, and a mismatch with the driver is a finding, not something to
-paper over.
+Read the datasheet independently of the driver. List the registers, their reset values,
+permissions, and measurement encodings. A mismatch with the driver must be checked against the
+datasheet. P3T1755's complete model is:
 
-From datasheet to table
-=======================
+.. literalinclude:: ../../../../drivers/sensor/nxp/p3t1755/p3t1755_emul.c
+   :language: c
+   :start-at: enum {
 
-The walkthrough uses the NXP P3T1755 temperature sensor. Its complete emulator is
-:zephyr_file:`drivers/sensor/nxp/p3t1755/p3t1755_emul.c`.
+:c:macro:`EMUL_SENSOR_REGMAP_DEFINE` registers every enabled I2C instance of ``DT_DRV_COMPAT``.
+Add the source to the sensor's CMake file under ``CONFIG_EMUL_SENSOR_REGMAP``. There is no generator.
 
-1. **Find the I2C protocol section.** Note the width of a register (one byte, or two as here)
-   and which byte comes first on the bus. "MSByte first" is ``.big_endian = true``; "low byte at
-   the lower address" is the default. If the register address byte carries bits that are not
-   part of the address (an auto-increment bit, unused upper bits), put them in ``.addr_ignore``.
+Register rows contain the address, diagnostic name, permissions, and optional properties:
 
-2. **Find the register map table.** Copy every row: address, name, whether it is read only,
-   the reset value, and the width when it differs from the device default. Reserved addresses
-   can be skipped. For the P3T1755 the table has four rows:
+* ``bytes`` overrides the device's ``reg_bytes`` (default one byte).
+* ``EMUL_SENSOR_REG_RO`` ignores writes. Otherwise, ``write_mask`` limits writable bits;
+  zero means all bits are writable. Unlisted addresses return ``-EIO``.
+* ``clear_on_read`` clears bits after the last byte of a register is read. ``read_clears`` clears
+  bits in another register, such as an output's data-ready flag.
+* ``self_clear`` clears command bits after processing. ``reset_on_write`` restores reset values.
+* ``convert_on_write`` converts retained inputs, including in standby. ``requires_standby``
+  requires the previous configuration to match the device's ``disabled`` condition.
 
-   .. code-block:: c
+Channel rows give the first output register, signedness, bit width, position, SI units per LSB,
+and offset. ``min`` and ``max`` describe the measurement range; both zero use the full encoding.
+Use kPa for pressure, m/s^2 for acceleration, and rad/s for angular velocity.
 
-      static const struct emul_sensor_reg p3t1755_regs[] = {
-              {0x00, "Temp", EMUL_SENSOR_REG_RO},
-              {0x01, "Conf", .bytes = 1, .reset = 0x28},
-              {0x02, "TLOW", .reset = 0x4B00},
-              {0x03, "THIGH", .reset = 0x5000},
-      };
+``select`` chooses an entry of ``variants`` for configurable ranges or resolution. Nonzero variant
+members override the channel defaults. ``whole_word`` clears bits outside the sample field;
+otherwise they are preserved, for example a status bit sharing a data register.
 
-   While reading the register descriptions, note bits with special behavior and add them to
-   the row:
+``ready`` sets status bits after sampling and ``overrun`` marks replaced unread samples. Device
+and channel ``disabled`` conditions suppress sampling while retaining inputs. ``block_update``
+holds unread samples. Conditions compare a masked register value; a zero mask disables the rule.
 
-   * "self-clears", "returns to 0 when the conversion completes", "the bit is automatically
-     cleared": ``.self_clear = BIT(n)``.
-   * "cleared when the register is read", "reading this register clears the interrupt":
-     ``.clear_on_read = BIT(n)``.
-   * "reserved, write 0", or a read-only status bit inside a writable register:
-     ``.write_mask`` listing the writable bits.
+``big_endian`` selects MSB-first transfers. ``byte_addressed`` makes multi-byte register entries
+occupy consecutive byte addresses. ``increment`` optionally controls byte increment with a bit.
+``fixed_pointer`` retains the selected register across STOP, as on the temperature sensors.
+``addr_ignore`` removes non-address bits from the pointer byte. Word writes commit after the last
+byte; split write buffers without a restart belong to the same transaction.
 
-3. **Find the output data format.** For each measurement the datasheet gives the register
-   holding the sample, its width, whether it is two's complement, where it sits in the word
-   (right justified, or left justified with unused low bits), the value of one LSB and the
-   value of a zero code. The P3T1755 stores a 12-bit two's complement value in bits 15:4 at
-   0.0625 degC per LSB:
+Optional read, write, and sample callbacks handle device-specific behavior such as EEPROM
+protection or partial reset. They run under the instance mutex and must not call a driver.
 
-   .. code-block:: c
+Model boundaries
+****************
 
-      static const struct emul_sensor_channel p3t1755_channels[] = {
-              {SENSOR_CHAN_AMBIENT_TEMP, .reg = 0x00, .is_signed = true, .bits = 12, .pos = 4,
-               .lsb = 0.0625, .min = -40.0, .max = 125.0},
-      };
+Injecting an input completes a conversion when enabled. Shutdown retains the input for one-shot
+commands. Conversions and commands complete instantaneously, with rounding to the nearest count
+and halfway values rounded away from zero. These models cannot validate timing, analog accuracy,
+averaging latency, GPIO interrupt delivery, or nonvolatile programming and retention.
 
-   ``lsb`` and ``offset`` are in the unit of the Zephyr channel: degC, m/s^2 (1 g is
-   9.80665), rad/s, gauss, kPa, percent, lux, degrees. A formula such as "T = code / 340 +
-   36.53" is ``.lsb = 1.0 / 340, .offset = 36.53``. ``min`` and ``max`` come from the
-   specifications table; leave both at zero to use the whole field. A sample spread over
-   several registers starts at the first one and takes as many consecutive registers as it
-   needs, in the byte order of the device.
+The original five models additionally implement:
 
-4. **Check whether the format depends on a configuration register.** A full-scale range,
-   gain, integration time or resolution selection changes the LSB, sometimes the field
-   layout and the range. Name the selecting bits in ``select`` and give one variant per value
-   of that field, as the MPU6050 does for its accelerometer range:
+* LPS22HB: power-down, one-shot, increment control, block update, data-ready/overrun and partial
+  software reset. FIFO, differential pressure, offset compensation and filtering are not modeled.
+* MPU6050: seven measurement channels, ranges, sleep/standby, reset commands and data-ready
+  clearing. FIFO, auxiliary I2C, self-test, motion detection and cycle timing are not modeled.
+* P3T1755: signed 12-bit output, shutdown and one-shot. Resolution bits change conversion time,
+  not precision.
+* TCN75A: 9-12-bit quantization, shutdown and one-shot. Reset thresholds follow diagrams 5-4/5-5;
+  the summary table conflicts with them. The binding also records differing hardware observations
+  about resolution; the model follows the datasheet.
+* TMP116/TMP117: modes, data-ready/alert flags, EEPROM unlock, and TMP117 offset/reset.
+  TMP117 is the default; :kconfig:option:`CONFIG_SENSOR_EMUL_TMP116` selects TMP116.
 
-   .. code-block:: c
+The other models cover register storage, sample encoding, configurable fields and declared status
+bits. Storing a configuration bit does not imply its associated feature is simulated. SPI, I3C,
+CRC commands, bank switching, thermostat fault queues and I2C general-call reset are not supported.
+Datasheet revisions and links are recorded beside each model's register table.
 
-      .select = {0x1C, GENMASK(4, 3)},
-      .variants = {{.lsb = G / 16384}, {.lsb = G / 8192}, {.lsb = G / 4096}, {.lsb = G / 2048}},
+Testing
+*******
 
-   A variant member left at zero inherits the channel value, so only what changes is listed.
-   The TCN75A resolution bits change the field width and position as well as the LSB; the
-   MAX31875 data format bit adds a range bit. Both are in
-   :zephyr_file:`drivers/sensor/microchip/tcn75a/tcn75a_emul.c` and
-   :zephyr_file:`drivers/sensor/maxim/max31875/max31875_emul.c`.
-
-5. **Find the data ready flag.** If a status register has a bit meaning "new data available",
-   name it in ``ready`` so it is set whenever a sample is written:
-
-   .. code-block:: c
-
-      .ready = {0x27, BIT(0)},
-
-6. **Instantiate.** ``DT_DRV_COMPAT`` is the devicetree compatible of the driver with commas
-   and dashes replaced by underscores. The trailing arguments are the device wide settings
-   from step 1:
-
-   .. code-block:: c
-
-      #define DT_DRV_COMPAT nxp_p3t1755
-
-      EMUL_SENSOR_REGMAP_DEFINE(p3t1755_regs, p3t1755_channels, .reg_bytes = 2, .big_endian = true);
-
-   Name the file ``<driver>_emul.c`` next to the driver and add it to its ``CMakeLists.txt``:
-
-   .. code-block:: cmake
-
-      zephyr_library_sources_ifdef(CONFIG_EMUL_SENSOR_REGMAP p3t1755_emul.c)
-
-What the emulated sensor reports
-================================
-
-Nothing measured. The emulator has no physics and no clock: it answers every bus access with
-the current content of its registers. After reset a data register holds the reset value from
-the table, so the P3T1755 above reports 0.0 degC on every read, and a sensor whose zero code
-is not zero reports that constant (36.53 degC for the MPU6050). Configuration writes from the
-driver are stored and read back, and a status bit named in ``ready`` is set when a value is
-injected, but no conversion ever takes place on its own.
-
-A value is injected through the sensor emulator backend API, in the channel's SI unit as a
-Q31 fixed-point number with a shift:
-
-.. code-block:: c
-
-   const struct emul *emul = EMUL_DT_GET(DT_NODELABEL(my_sensor));
-   struct sensor_chan_spec ch = {.chan_type = SENSOR_CHAN_AMBIENT_TEMP};
-   int8_t shift = 8;
-   q31_t value = (q31_t)(23.5 * (1LL << 31) / (1 << shift));
-
-   emul_sensor_backend_set_channel(emul, ch, &value, shift);
-
-The emulator converts 23.5 degC to the register code the datasheet specifies and the driver
-then reads 23.5 degC. This is what the generic test does for five values across the range of
-every channel. A test that needs a specific register content can write the code directly with
-:c:func:`emul_sensor_regmap_set_reg`.
-
-Running it
-==========
-
-Every sensor in :zephyr_file:`tests/drivers/build_all/sensor/i2c.dtsi` gets a test case in the
-generic test, which skips sensors without an emulator and fails those whose driver does not
-read back the values the emulator was given:
+``tests/drivers/sensor/regmap`` runs independent register checks for the five models, both TMP11X
+variants, and the existing generic RTIO test against all 16 models. ``tests/drivers/sensor/emul_regmap``
+checks the framework's bus and field semantics. Both suites select ``native_sim`` and ``mps2/an385``
+for Twister integration:
 
 .. code-block:: console
 
-   west twister -p native_sim -T tests/drivers/build_all/sensor -s drivers.sensor.generic_test -i
+   west twister -p native_sim -T tests/drivers/sensor/regmap -T tests/drivers/sensor/emul_regmap -i
 
-If the sensor is not listed there yet, add a node for it. Then read the ``handler.log`` of the
-run for the test named after the node:
+The generic test in ``tests/drivers/build_all/sensor`` also discovers these emulators. When adding a
+model, add a node to the dedicated suite's ``generic.overlay`` so it is exercised there as well.
 
-* **SKIP**: no emulator was registered. The file is not built or ``DT_DRV_COMPAT`` is wrong.
-* ``read of unknown register 0x..`` or ``write of unknown register 0x..``: the driver touches
-  a register that is not in the table. Add the row from the datasheet.
-* ``Expected ... got ...`` on a channel: the emulator wrote a code that the driver decoded to
-  a different value. Compare the trace of register accesses, printed by name at debug level
-  (:kconfig:option:`CONFIG_SENSOR_LOG_LEVEL_DBG`), with the datasheet. Either the table
-  misreads the datasheet, or the driver does: check the sign handling, the LSB and the
-  offset. Fix whichever is wrong; do not adjust the table to match a wrong driver.
-* ``Could not decode``: the driver does not expose the channel, or needs a Kconfig option
-  or devicetree property to expose it.
+Add ``--coverage`` for coverage reports. For initialization-only coverage of the same drivers,
+run ``tests/drivers/sensor/regmap`` again with ``-x CONFIG_TEST_SENSOR_REGMAP_BASELINE=y`` and a
+separate output directory. This is not a repository-wide historical coverage comparison.
 
-What the table cannot say
-=========================
-
-Command based devices that append a CRC to their response, calibration compensated outputs
-(BME280), bank switched register maps and SPI transfers are outside this framework. Behavior
-beyond what the table expresses (an interrupt being asserted, a FIFO, a conversion taking
-time) is not simulated: the emulator answers the bus with the state of its registers, nothing
-more.
-
-API Reference
+API reference
 *************
 
 .. doxygengroup:: emul_sensor_regmap

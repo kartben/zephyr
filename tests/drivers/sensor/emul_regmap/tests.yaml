@@ -6,5 +6,7 @@ tests:
       - emul
     platform_allow:
       - native_sim
+      - mps2/an385
     integration_platforms:
       - native_sim
+      - mps2/an385

@@ -1,0 +1,43 @@
+/* SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+/ {
+	sensor_bus: sensor-i2c@100 {
+		reg = <0x100 0x4>;
+		compatible = "zephyr,i2c-emul-controller";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clock-frequency = <100000>;
+		lps: pressure@5c {
+			compatible = "st,lps22hb-press";
+			reg = <0x5c>;
+		};
+		mpu: imu@68 {
+			compatible = "invensense,mpu6050";
+			reg = <0x68>;
+		};
+		p3t: temperature@48 {
+			compatible = "nxp,p3t1755";
+			reg = <0x48>;
+		};
+		p3t_one: temperature@49 {
+			compatible = "nxp,p3t1755";
+			reg = <0x49>;
+			oneshot-mode;
+		};
+		tcn: temperature@4a {
+			compatible = "microchip,tcn75a";
+			reg = <0x4a>;
+			resolution = "12-bit";
+		};
+		tcn_one: temperature@4b {
+			compatible = "microchip,tcn75a";
+			reg = <0x4b>;
+			oneshot-mode;
+		};
+		tmp: temperature@4c {
+			compatible = "ti,tmp11x";
+			reg = <0x4c>;
+		};
+	};
+};

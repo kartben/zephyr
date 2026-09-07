@@ -26,7 +26,7 @@ int tcn75a_sample_fetch(const struct device *dev, enum sensor_channel chan)
 
 	if (config->oneshot_mode) {
 		/* Oneshot mode, requires one shot bit to be set in config register */
-		adc_conf[1] = TCN75A_CONFIG_ONEDOWN;
+		adc_conf[1] = TCN75A_CONFIG_ONEDOWN | TCN75A_CONFIG_SHUTDOWN;
 		ret = i2c_write_dt(&config->i2c_spec, adc_conf, 2);
 		if (ret < 0) {
 			return ret;

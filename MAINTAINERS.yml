@@ -3224,6 +3224,9 @@ Emulation:
     - include/zephyr/drivers/i2c_emul.h
     - include/zephyr/drivers/spi_emul.h
     - tests/subsys/emul/
+    - tests/drivers/sensor/emul_regmap/
+    - tests/drivers/sensor/regmap/
+    - drivers/sensor/emul_sensor_regmap.c
     - doc/hardware/emulator/
   labels:
     - "area: HW Emulation"

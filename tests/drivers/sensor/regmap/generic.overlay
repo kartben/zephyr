@@ -1,0 +1,101 @@
+/* SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+#include <zephyr/dt-bindings/sensor/tmp11x.h>
+#include <zephyr/dt-bindings/sensor/stts22h.h>
+/ {
+	test_gpio: gpio-emul {
+		compatible = "zephyr,gpio-emul";
+		gpio-controller;
+		#gpio-cells = <2>;
+		ngpios = <16>;
+	};
+	test_i3c: unused-i3c {};
+	test_spi: unused-spi {};
+	test_i2c: sensor-i2c@100 {
+		compatible = "zephyr,i2c-emul-controller";
+		reg = <0x100 0x4>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clock-frequency = <100000>;
+		test_i2c_bma280: bma280@10 {
+			compatible = "bosch,bma280";
+			reg = <0x10>;
+			int1-gpios = <&test_gpio 0 0>;
+		};
+		test_i2c_hmc5883l: hmc5883l@11 {
+			compatible = "honeywell,hmc5883l";
+			reg = <0x11>;
+			int-gpios = <&test_gpio 0 0>;
+		};
+		test_i2c_mpu6050: mpu6050@12 {
+			compatible = "invensense,mpu6050";
+			reg = <0x12>;
+			int-gpios = <&test_gpio 0 0>;
+		};
+		test_i2c_si7055: si7055@13 {
+			compatible = "silabs,si7055";
+			reg = <0x13>;
+		};
+		test_i2c_lps22hb_press: lps22hb-press@14 {
+			compatible = "st,lps22hb-press";
+			reg = <0x14>;
+		};
+		test_i2c_tmp11x: tmp11x@15 {
+			compatible = "ti,tmp11x";
+			reg = <0x15>;
+			odr = <TMP11X_DT_ODR_125_MS>;
+			oversampling = <TMP11X_DT_OVERSAMPLING_32>;
+			alert-gpios = <&test_gpio 0 0>;
+		};
+		test_i2c_vcnl4040: vcnl4040@16 {
+			compatible = "vishay,vcnl4040";
+			reg = <0x16>;
+			int-gpios = <&test_gpio 0 0>;
+		};
+		test_i2c_max31875: max31875@17 {
+			compatible = "maxim,max31875";
+			reg = <0x17>;
+		};
+		test_i2c_as5600: as5600@18 {
+			compatible = "ams,as5600";
+			reg = <0x18>;
+		};
+		test_i2c_mcp9600: mcp9600@19 {
+			compatible = "microchip,mcp9600";
+			reg = <0x19>;
+		};
+		test_i2c_tcn75a: tcn75a@1a {
+			compatible = "microchip,tcn75a";
+			reg = <0x1a>;
+			alert-gpios = <&test_gpio 0 0>;
+		};
+		test_i2c_mc3419: mc3419@1b {
+			compatible = "memsic,mc3419";
+			reg = <0x1b>;
+			int-gpios = <&test_gpio 0 0>;
+		};
+		test_i2c_stts22h: stts22h@1c {
+			compatible = "st,stts22h";
+			reg = <0x1c>;
+			int-gpios = <&test_gpio 0 0>;
+			sampling-rate = <STTS22H_100Hz>;
+		};
+		test_i2c_fxls8974: fxls8974@1d {
+			compatible = "nxp,fxls8974";
+			reg = <0x1d>;
+			reset-gpios = <&test_gpio 0 0>;
+			int1-gpios = <&test_gpio 0 0>;
+			int2-gpios = <&test_gpio 0 0>;
+		};
+		test_i2c_mlx90394: mlx90394@1e {
+			compatible = "melexis,mlx90394";
+			status = "okay";
+			reg = <0x1e>;
+		};
+		test_i2c_p3t1755: p3t1755@1f {
+			compatible = "nxp,p3t1755";
+			reg = <0x1f>;
+		};
+	};
+};

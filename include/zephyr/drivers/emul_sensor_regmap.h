@@ -14,6 +14,7 @@
 #include <zephyr/drivers/emul.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/sys/util.h>
+#include <zephyr/kernel.h>
 
 /**
  * @brief Register map based sensor emulators
@@ -29,6 +30,13 @@
 
 /** Register is read only, writes are ignored. */
 #define EMUL_SENSOR_REG_RO BIT(0)
+
+/** Register field whose masked value controls a behavior. A zero mask disables it. */
+struct emul_sensor_condition {
+	uint8_t reg;
+	uint32_t mask;
+	uint32_t value;
+};
 
 /** One row of the datasheet register table. */
 struct emul_sensor_reg {
@@ -48,6 +56,14 @@ struct emul_sensor_reg {
 	uint32_t write_mask;
 	/** Bits cleared once the register has been read (data ready, interrupt status, ...). */
 	uint32_t clear_on_read;
+	/** Clear another register's bits after the last byte is read. */
+	struct emul_sensor_condition read_clears;
+	/** Restore reset values when any of these bits are written as one. */
+	uint32_t reset_on_write;
+	/** Convert the retained inputs when any of these bits are written as one. */
+	uint32_t convert_on_write;
+	/** Accept the conversion command only if the previous state was disabled. */
+	bool requires_standby;
 };
 
 /** A register bit field: register address and mask. */
@@ -84,6 +100,8 @@ struct emul_sensor_channel {
 	uint8_t reg;
 	/** Two's complement data. */
 	bool is_signed;
+	/** Clear bits outside the sample field when replacing a complete data word. */
+	bool whole_word;
 	/** Number of bits. */
 	uint8_t bits;
 	/** Position of the least significant bit in the data word. */
@@ -101,6 +119,10 @@ struct emul_sensor_channel {
 	struct emul_sensor_field variants[8];
 	/** Status bits set when a new sample is written. */
 	struct emul_sensor_bits ready;
+	/** Suppress samples while this condition matches. */
+	struct emul_sensor_condition disabled;
+	/** Additional bits set in the ready register when unread samples are replaced. */
+	uint32_t overrun;
 };
 
 /** Sensor description. */
@@ -115,11 +137,30 @@ struct emul_sensor_regmap {
 	bool big_endian;
 	/** Bits of the register address byte that are not part of the address. */
 	uint8_t addr_ignore;
+	/** Registers occupy consecutive byte addresses, including multi-byte entries. */
+	bool byte_addressed;
+	/** Keep the selected register across STOP, without advancing to the next word. */
+	bool fixed_pointer;
+	/** Optional bit enabling byte address increment. */
+	struct emul_sensor_bits increment;
+	/** Stop conversions while this condition matches; retain injected inputs. */
+	struct emul_sensor_condition disabled;
+	/** Hold unread samples while this condition matches. */
+	struct emul_sensor_condition block_update;
+	/** Optional callbacks run under the instance mutex, after bus reads/writes. */
+	void (*read)(const struct emul *target, uint8_t addr);
+	void (*write)(const struct emul *target, uint8_t addr, uint32_t old);
+	/** Return false to handle or suppress storing the encoded sample. */
+	bool (*sample)(const struct emul *target, uint8_t addr, uint32_t value);
 };
 
 /** @cond INTERNAL_HIDDEN */
 struct emul_sensor_regmap_data {
+	struct k_mutex lock;
 	uint32_t regs[256];
+	double *inputs;
+	bool *valid;
+	bool force_conversion;
 	uint8_t ptr;
 	uint8_t pos;
 };
@@ -129,14 +170,19 @@ extern const struct emul_sensor_driver_api emul_sensor_regmap_backend_api;
 
 int emul_sensor_regmap_init(const struct emul *target, const struct device *parent);
 
-#define Z_EMUL_SENSOR_REGMAP_DT_INST_DEFINE(inst, desc)                                            \
-	static struct emul_sensor_regmap_data emul_sensor_regmap_data_##inst;                      \
+#define Z_EMUL_SENSOR_REGMAP_DT_INST_DEFINE(inst, desc, chans)                                  \
+	static double inputs_##inst[ARRAY_SIZE(chans)];                                         \
+	static bool valid_##inst[ARRAY_SIZE(chans)];                                            \
+	static struct emul_sensor_regmap_data emul_sensor_regmap_data_##inst = {                \
+		.inputs = inputs_##inst, .valid = valid_##inst,                                 \
+	};                                                                                      \
 	EMUL_DT_INST_DEFINE(inst, emul_sensor_regmap_init, &emul_sensor_regmap_data_##inst, &desc, \
 			    &emul_sensor_regmap_i2c_api, &emul_sensor_regmap_backend_api)
 
 /* Instances on other buses (SPI) are left without an emulator. */
-#define Z_EMUL_SENSOR_REGMAP_DT_INST_I2C(inst, desc)                                               \
-	IF_ENABLED(DT_INST_ON_BUS(inst, i2c), (Z_EMUL_SENSOR_REGMAP_DT_INST_DEFINE(inst, desc);))
+#define Z_EMUL_SENSOR_REGMAP_DT_INST_I2C(inst, desc, chans)                                     \
+	IF_ENABLED(DT_INST_ON_BUS(inst, i2c),                                            \
+		   (Z_EMUL_SENSOR_REGMAP_DT_INST_DEFINE(inst, desc, chans);))
 /** @endcond */
 
 /**
@@ -146,15 +192,15 @@ int emul_sensor_regmap_init(const struct emul *target, const struct device *pare
  * @param _channels Array of @ref emul_sensor_channel
  * @param ... Remaining @ref emul_sensor_regmap initializers, for example `.reg_bytes = 2`
  */
-#define EMUL_SENSOR_REGMAP_DEFINE(_regs, _channels, ...)                                           \
-	static const struct emul_sensor_regmap UTIL_CAT(emul_sensor_regmap_, DT_DRV_COMPAT) = {    \
-		.regs = _regs,                                                                     \
-		.num_regs = ARRAY_SIZE(_regs),                                                     \
-		.channels = _channels,                                                             \
-		.num_channels = ARRAY_SIZE(_channels),                                             \
-		__VA_ARGS__};                                                                      \
-	DT_INST_FOREACH_STATUS_OKAY_VARGS(Z_EMUL_SENSOR_REGMAP_DT_INST_I2C,                        \
-					  UTIL_CAT(emul_sensor_regmap_, DT_DRV_COMPAT))
+#define EMUL_SENSOR_REGMAP_DEFINE(_regs, _channels, ...)                                        \
+	static const struct emul_sensor_regmap UTIL_CAT(emul_sensor_regmap_, DT_DRV_COMPAT) = { \
+		.regs = _regs,                                                                  \
+		.num_regs = ARRAY_SIZE(_regs),                                                  \
+		.channels = _channels,                                                          \
+		.num_channels = ARRAY_SIZE(_channels),                                          \
+		__VA_ARGS__};                                                                   \
+	DT_INST_FOREACH_STATUS_OKAY_VARGS(Z_EMUL_SENSOR_REGMAP_DT_INST_I2C,                     \
+					  UTIL_CAT(emul_sensor_regmap_, DT_DRV_COMPAT), _channels)
 
 /**
  * @brief Read a register of the emulated sensor
@@ -173,6 +219,18 @@ uint32_t emul_sensor_regmap_get_reg(const struct emul *target, uint8_t addr);
  * @param val Value to write
  */
 void emul_sensor_regmap_set_reg(const struct emul *target, uint8_t addr, uint32_t val);
+
+/**
+ * @brief Restore register reset values, retaining injected inputs
+ * @param target Emulator instance
+ */
+void emul_sensor_regmap_reset(const struct emul *target);
+
+/**
+ * @brief Convert retained inputs with the current configuration
+ * @param target Emulator instance; caller holds its mutex
+ */
+void emul_sensor_regmap_convert(const struct emul *target);
 
 /** @} */
 
