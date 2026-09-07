@@ -18,6 +18,31 @@ void emul_regmap_reset(const struct emul *target)
 	k_mutex_unlock(&data->lock);
 }
 
+static bool field_matches(const struct emul_regmap_data *data, struct emul_regmap_field field)
+{
+	return field.mask != 0U && (data->values[field.reg] & field.mask) == field.value;
+}
+
+void emul_regmap_channel_config(const struct emul *target, struct emul_regmap_channel *ch)
+{
+	const struct emul_regmap_config *cfg = target->cfg;
+	struct emul_regmap_data *data = target->data;
+
+	if (ch->ranges != NULL) {
+		uint32_t index = (data->values[ch->range_select.reg] & ch->range_select.mask) >>
+				(find_lsb_set(ch->range_select.mask) - 1U);
+
+		ch->lsb = ch->ranges[index].lsb;
+		ch->shift = ch->ranges[index].shift;
+		if (ch->range_limits) {
+			uint8_t bits = cfg->registers[ch->reg].bytes * 8U - ch->shift;
+
+			ch->min = -(1LL << (bits - 1U)) * ch->lsb;
+			ch->max = ((1LL << (bits - 1U)) - 1) * ch->lsb;
+		}
+	}
+}
+
 static void convert_channel(const struct emul *target, size_t index)
 {
 	const struct emul_regmap_config *cfg = target->cfg;
@@ -29,13 +54,24 @@ static void convert_channel(const struct emul *target, size_t index)
 	if (!data->valid[index]) {
 		return;
 	}
-	if (cfg->channel != NULL) {
-		cfg->channel(target, &ch);
+	emul_regmap_channel_config(target, &ch);
+	if ((!data->force_conversion && field_matches(data, cfg->disabled)) ||
+	    field_matches(data, ch.disabled)) {
+		return;
+	}
+	if (ch.ready.mask != 0U && (data->values[ch.ready.reg] & ch.ready.mask) != 0U) {
+		if (field_matches(data, cfg->block_update)) {
+			return;
+		}
+		data->values[ch.ready.reg] |= ch.overrun;
 	}
 	raw = (int64_t)round((data->inputs[index] - ch.offset) / ch.lsb);
 	raw = CLAMP(raw, -(1LL << (cfg->registers[ch.reg].bytes * 8U - ch.shift - 1U)),
 		    (1LL << (cfg->registers[ch.reg].bytes * 8U - ch.shift - 1U)) - 1);
 	value = (uint32_t)raw << ch.shift;
+	if (ch.ready.mask != 0U) {
+		data->values[ch.ready.reg] |= ch.ready.mask;
+	}
 	if (cfg->sample == NULL || cfg->sample(target, ch.reg, value)) {
 		data->values[ch.reg] = value;
 	}
@@ -71,9 +107,7 @@ static int set_channel(const struct emul *target, struct sensor_chan_spec ch,
 		if (spec.channel != ch.chan_type) {
 			continue;
 		}
-		if (cfg->channel != NULL) {
-			cfg->channel(target, &spec);
-		}
+		emul_regmap_channel_config(target, &spec);
 		if (input < spec.min || input > spec.max) {
 			ret = -ERANGE;
 			break;
@@ -109,9 +143,7 @@ static int get_sample_range(const struct emul *target, struct sensor_chan_spec c
 		if (spec.channel != ch.chan_type) {
 			continue;
 		}
-		if (cfg->channel != NULL) {
-			cfg->channel(target, &spec);
-		}
+		emul_regmap_channel_config(target, &spec);
 		while (ldexp(1.0, exponent) <= MAX(fabs(spec.min), fabs(spec.max))) {
 			exponent++;
 		}
@@ -144,6 +176,34 @@ static int locate(const struct emul_regmap_config *cfg, uint16_t address, uint8_
 		}
 	}
 	return -EIO;
+}
+
+static void register_written(const struct emul *target, uint8_t reg, uint32_t old)
+{
+	const struct emul_regmap_config *cfg = target->cfg;
+	struct emul_regmap_data *data = target->data;
+	const struct emul_regmap_register *desc = &cfg->registers[reg];
+	uint32_t command = data->values[reg];
+
+	if ((command & desc->reset_on_write) != 0U) {
+		emul_regmap_reset(target);
+		return;
+	}
+	if (cfg->write != NULL) {
+		cfg->write(target, reg, old);
+	}
+	if ((data->values[reg] & desc->convert_on_write) != 0U) {
+		bool was_disabled = reg == cfg->disabled.reg ?
+			(old & cfg->disabled.mask) == cfg->disabled.value :
+			field_matches(data, cfg->disabled);
+
+		if (!desc->requires_standby || was_disabled) {
+			data->force_conversion = field_matches(data, cfg->disabled);
+			emul_regmap_convert(target);
+			data->force_conversion = false;
+		}
+	}
+	data->values[reg] &= ~desc->self_clear;
 }
 
 static int transfer(const struct emul *target, struct i2c_msg *msgs, int num_msgs, int addr)
@@ -211,6 +271,12 @@ static int transfer(const struct emul *target, struct i2c_msg *msgs, int num_msg
 			if (read) {
 				msgs[m].buf[b] = old >> shift;
 				data->values[reg] &= ~(desc->clear_on_read & mask);
+				if (byte_offset + 1U == desc->bytes &&
+				    desc->read_clears.mask != 0U) {
+					struct emul_regmap_field clear = desc->read_clears;
+
+					data->values[clear.reg] &= ~clear.mask;
+				}
 				if (cfg->read != NULL) {
 					cfg->read(target, address);
 				}
@@ -221,8 +287,8 @@ static int transfer(const struct emul *target, struct i2c_msg *msgs, int num_msg
 				if (cfg->byte_addressed || byte_offset + 1U == desc->bytes) {
 					data->values[reg] = pending_write;
 				}
-				if (cfg->write != NULL && byte_offset + 1U == desc->bytes) {
-					cfg->write(target, reg, before_write);
+				if (byte_offset + 1U == desc->bytes) {
+					register_written(target, reg, before_write);
 				}
 			}
 			if (cfg->byte_addressed) {
@@ -259,6 +325,18 @@ int emul_regmap_init(const struct emul *target, const struct device *parent)
 	for (size_t i = 0; i < cfg->register_count; i++) {
 		if (cfg->registers[i].bytes > 4U) {
 			return -EINVAL;
+		}
+	}
+	for (size_t i = 0; i < cfg->channel_count; i++) {
+		const struct emul_regmap_channel *ch = &cfg->channels[i];
+
+		if (ch->ranges != NULL) {
+			uint32_t mask = ch->range_select.mask;
+
+			if (mask == 0U || ch->range_select.reg >= cfg->register_count ||
+			    (mask >> (find_lsb_set(mask) - 1U)) >= ch->range_count) {
+				return -EINVAL;
+			}
 		}
 	}
 	k_mutex_init(&data->lock);

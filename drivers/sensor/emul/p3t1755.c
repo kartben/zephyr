@@ -10,7 +10,8 @@ enum { TEMP = 0x00, CONF = 0x01, TLOW = 0x02, THIGH = 0x03 };
 
 static const struct emul_regmap_register registers[] = {
 	[TEMP] = {.bytes = 2},
-	[CONF] = {.bytes = 1, .reset = 0x28, .write_mask = 0xff},
+	[CONF] = {.bytes = 1, .reset = 0x28, .write_mask = 0xff,
+		  .convert_on_write = BIT(7), .self_clear = BIT(7)},
 	[TLOW] = {.bytes = 2, .reset = 0x4b00, .write_mask = 0xfff0},
 	[THIGH] = {.bytes = 2, .reset = 0x5000, .write_mask = 0xfff0},
 };
@@ -20,31 +21,5 @@ static const struct emul_regmap_channel channels[] = {
 	 .min = -40, .max = 125, .shift = 4},
 };
 
-static bool sample(const struct emul *target, uint8_t reg, uint32_t value)
-{
-	struct emul_regmap_data *data = target->data;
-
-	ARG_UNUSED(reg);
-	ARG_UNUSED(value);
-	return (data->values[CONF] & BIT(0)) == 0U || (data->values[CONF] & BIT(7)) != 0U;
-}
-
-static void write(const struct emul *target, uint8_t reg, uint32_t old)
-{
-	struct emul_regmap_data *data = target->data;
-
-	ARG_UNUSED(old);
-	if (reg == CONF) {
-		emul_regmap_convert(target);
-		data->values[CONF] &= ~BIT(7);
-	}
-}
-
-static const struct emul_regmap_config config = {
-	.registers = registers, .register_count = ARRAY_SIZE(registers),
-	.channels = channels, .channel_count = ARRAY_SIZE(channels),
-	.write = write, .sample = sample,
-};
-
-#define DEFINE(inst) EMUL_REGMAP_DT_INST_DEFINE(inst, config, registers, channels);
-DT_INST_FOREACH_STATUS_OKAY(DEFINE)
+EMUL_REGMAP_MODEL(registers, channels,
+	.disabled = {.reg = CONF, .mask = BIT(0), .value = BIT(0)});

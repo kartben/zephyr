@@ -37,10 +37,21 @@ a restart form one write transaction. Word writes commit after their last byte.
 
 Channel entries describe the physical units per signed count, offset, range, and left shift.
 Use the sensor API's units, including kPa for pressure and rad/s for angular velocity. Optional
-callbacks implement conversion gating, status flags, and commands. They run under the instance
-mutex; they must not call a driver. Add a source entry in ``drivers/sensor/emul/CMakeLists.txt``
-and instantiate it with ``EMUL_REGMAP_DT_INST_DEFINE``. No generator or additional language is
-required. The header is internal while the model interface is experimental.
+fields describe common behavior:
+
+* ``disabled`` matches a register field to stop sampling; ``convert_on_write`` starts a conversion,
+  including in standby. ``requires_standby`` requires the previous configuration to be in standby.
+* ``self_clear`` clears command bits after processing; ``reset_on_write`` restores all registers.
+* ``ready`` and ``overrun`` set status bits; ``read_clears`` clears another register's status bits
+  after the last byte is read. ``block_update`` holds unread samples.
+* ``ranges`` lists encodings selected by ``range_select``; ``range_count`` is its array size.
+  ``range_limits`` derives the physical limits from the selected signed encoding.
+
+P3T1755 and TCN75A need no callbacks. Optional callbacks cover device-specific behavior such as
+partial reset and EEPROM protection. They run under the instance mutex; they must not call a
+driver. Add a source entry in ``drivers/sensor/emul/CMakeLists.txt`` and finish the model with
+``EMUL_REGMAP_MODEL(registers, channels, ...)``. No generator or additional language is required.
+The header is internal while the model interface is experimental.
 
 Model boundaries
 ****************

@@ -33,65 +33,47 @@ static const struct emul_regmap_register registers[] = {
 	[GYRO_XOUT] = {.bytes = 2},
 	[GYRO_YOUT] = {.bytes = 2},
 	[GYRO_ZOUT] = {.bytes = 2},
-	[SIGNAL_PATH_RESET] = {.bytes = 1, .write_mask = 0x07},
-	[USER_CTRL] = {.bytes = 1, .write_mask = 0x77},
-	[PWR_MGMT_1] = {.bytes = 1, .reset = 0x40, .write_mask = 0xef},
+	[SIGNAL_PATH_RESET] = {.bytes = 1, .write_mask = 0x07, .self_clear = 0x07},
+	[USER_CTRL] = {.bytes = 1, .write_mask = 0x77, .self_clear = 0x07},
+	[PWR_MGMT_1] = {.bytes = 1, .reset = 0x40, .write_mask = 0xef,
+			.reset_on_write = BIT(7)},
 	[PWR_MGMT_2] = {.bytes = 1, .write_mask = 0xff},
 	[FIFO_COUNT] = {.bytes = 2},
 	[FIFO_R_W] = {.bytes = 1},
 	[WHO_AM_I] = {.bytes = 1, .reset = 0x68},
 };
 
-static const struct emul_regmap_channel channels[] = {
-	{.channel = SENSOR_CHAN_ACCEL_X, .reg = ACCEL_XOUT},
-	{.channel = SENSOR_CHAN_ACCEL_Y, .reg = ACCEL_YOUT},
-	{.channel = SENSOR_CHAN_ACCEL_Z, .reg = ACCEL_ZOUT},
-	{.channel = SENSOR_CHAN_DIE_TEMP, .reg = TEMP_OUT, .lsb = 1.0 / 340,
-	 .offset = 36.53, .min = -40, .max = 85},
-	{.channel = SENSOR_CHAN_GYRO_X, .reg = GYRO_XOUT},
-	{.channel = SENSOR_CHAN_GYRO_Y, .reg = GYRO_YOUT},
-	{.channel = SENSOR_CHAN_GYRO_Z, .reg = GYRO_ZOUT},
+static const struct emul_regmap_range accel_ranges[] = {
+	{.lsb = 9.80665 / 16384}, {.lsb = 9.80665 / 8192},
+	{.lsb = 9.80665 / 4096}, {.lsb = 9.80665 / 2048},
 };
 
-static void channel(const struct emul *target, struct emul_regmap_channel *ch)
-{
-	struct emul_regmap_data *data = target->data;
-	static const double gyro_sensitivity[] = {131, 65.5, 32.8, 16.4};
-	uint8_t fs;
+static const struct emul_regmap_range gyro_ranges[] = {
+	{.lsb = (3.141592653589793 / 180) / 131},
+	{.lsb = (3.141592653589793 / 180) / 65.5},
+	{.lsb = (3.141592653589793 / 180) / 32.8},
+	{.lsb = (3.141592653589793 / 180) / 16.4},
+};
 
-	if (ch->reg < TEMP_OUT) {
-		fs = (data->values[ACCEL_CONFIG] >> 3) & 3U;
-		ch->lsb = 9.80665 / (16384U >> fs);
-	} else if (ch->reg > TEMP_OUT) {
-		fs = (data->values[GYRO_CONFIG] >> 3) & 3U;
-		ch->lsb = (3.141592653589793 / 180) / gyro_sensitivity[fs];
-	} else {
-		return;
-	}
-	ch->min = -32768 * ch->lsb;
-	ch->max = 32767 * ch->lsb;
-}
+#define AXIS(type, axis, output, config_reg, scales, standby)                         \
+	{.channel = SENSOR_CHAN_##type##_##axis, .reg = output,                        \
+	 .range_select = {.reg = config_reg, .mask = 0x18},                           \
+	 .ranges = scales, .range_count = ARRAY_SIZE(scales), .range_limits = true,   \
+	 .disabled = {.reg = PWR_MGMT_2, .mask = BIT(standby), .value = BIT(standby)}, \
+	 .ready = {.reg = INT_STATUS, .mask = BIT(0)}}
 
-static bool sample(const struct emul *target, uint8_t reg, uint32_t value)
-{
-	struct emul_regmap_data *data = target->data;
-
-	ARG_UNUSED(value);
-	if ((data->values[PWR_MGMT_1] & BIT(6)) != 0U ||
-	    (reg == TEMP_OUT && (data->values[PWR_MGMT_1] & BIT(3)) != 0U)) {
-		return false;
-	}
-	if (reg < TEMP_OUT &&
-	    (data->values[PWR_MGMT_2] & BIT(5U - (reg - ACCEL_XOUT) / 2U)) != 0U) {
-		return false;
-	}
-	if (reg > TEMP_OUT &&
-	    (data->values[PWR_MGMT_2] & BIT(2U - (reg - GYRO_XOUT) / 2U)) != 0U) {
-		return false;
-	}
-	data->values[INT_STATUS] |= BIT(0);
-	return true;
-}
+static const struct emul_regmap_channel channels[] = {
+	AXIS(ACCEL, X, ACCEL_XOUT, ACCEL_CONFIG, accel_ranges, 5),
+	AXIS(ACCEL, Y, ACCEL_YOUT, ACCEL_CONFIG, accel_ranges, 4),
+	AXIS(ACCEL, Z, ACCEL_ZOUT, ACCEL_CONFIG, accel_ranges, 3),
+	{.channel = SENSOR_CHAN_DIE_TEMP, .reg = TEMP_OUT, .lsb = 1.0 / 340,
+	 .offset = 36.53, .min = -40, .max = 85,
+	 .disabled = {.reg = PWR_MGMT_1, .mask = BIT(3), .value = BIT(3)},
+	 .ready = {.reg = INT_STATUS, .mask = BIT(0)}},
+	AXIS(GYRO, X, GYRO_XOUT, GYRO_CONFIG, gyro_ranges, 2),
+	AXIS(GYRO, Y, GYRO_YOUT, GYRO_CONFIG, gyro_ranges, 1),
+	AXIS(GYRO, Z, GYRO_ZOUT, GYRO_CONFIG, gyro_ranges, 0),
+};
 
 static void read(const struct emul *target, uint8_t reg)
 {
@@ -108,29 +90,14 @@ static void write(const struct emul *target, uint8_t reg, uint32_t old)
 	struct emul_regmap_data *data = target->data;
 
 	ARG_UNUSED(old);
-	if (reg == PWR_MGMT_1 && (data->values[reg] & BIT(7)) != 0U) {
-		emul_regmap_reset(target);
-		return;
-	}
-	if (reg == SIGNAL_PATH_RESET) {
-		data->values[reg] = 0;
-	}
-	if (reg == USER_CTRL) {
-		if ((data->values[reg] & BIT(0)) != 0U) {
-			for (uint8_t out = ACCEL_XOUT; out <= GYRO_ZOUT; out += 2U) {
-				data->values[out] = 0;
-			}
+	if (reg == USER_CTRL && (data->values[reg] & BIT(0)) != 0U) {
+		for (uint8_t out = ACCEL_XOUT; out <= GYRO_ZOUT; out += 2U) {
+			data->values[out] = 0;
 		}
-		data->values[reg] &= ~0x07U;
 	}
 }
 
-static const struct emul_regmap_config config = {
-	.registers = registers, .register_count = ARRAY_SIZE(registers),
-	.channels = channels, .channel_count = ARRAY_SIZE(channels),
+EMUL_REGMAP_MODEL(registers, channels,
 	.byte_addressed = true,
-	.read = read, .write = write, .channel = channel, .sample = sample,
-};
-
-#define DEFINE(inst) EMUL_REGMAP_DT_INST_DEFINE(inst, config, registers, channels);
-DT_INST_FOREACH_STATUS_OKAY(DEFINE)
+	.disabled = {.reg = PWR_MGMT_1, .mask = BIT(6), .value = BIT(6)},
+	.read = read, .write = write);

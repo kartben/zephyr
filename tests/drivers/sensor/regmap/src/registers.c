@@ -317,6 +317,20 @@ ZTEST(register_model, test_invalid_description)
 	zassert_equal(emul_regmap_init(&model, NULL), -EINVAL);
 	cfg.register_count = 257;
 	zassert_equal(emul_regmap_init(&model, NULL), -EINVAL);
+
+	struct emul_regmap_range ranges[] = {{.lsb = 1}};
+	struct emul_regmap_channel ch = {.ranges = ranges, .range_count = 1};
+
+	regs[0].bytes = 2;
+	cfg.register_count = 1;
+	cfg.channels = &ch;
+	cfg.channel_count = 1;
+	zassert_equal(emul_regmap_init(&model, NULL), -EINVAL);
+	ch.range_select.mask = 3;
+	zassert_equal(emul_regmap_init(&model, NULL), -EINVAL);
+	ch.range_count = 4;
+	ch.range_select.reg = 1;
+	zassert_equal(emul_regmap_init(&model, NULL), -EINVAL);
 }
 
 ZTEST(register_model, test_tmp11x_threshold_flags)

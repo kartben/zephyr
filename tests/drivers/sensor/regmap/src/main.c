@@ -55,9 +55,7 @@ static void check_sensor(size_t i)
 		struct emul_regmap_channel ch = cfg->channels[c];
 		double values[] = {-10.5, -0.5, 0, 0.5, 25.5};
 
-		if (cfg->channel != NULL) {
-			cfg->channel(sensors[i].emul, &ch);
-		}
+		emul_regmap_channel_config(sensors[i].emul, &ch);
 		for (size_t v = 0; v < ARRAY_SIZE(values); v++) {
 			double input = ch.channel == SENSOR_CHAN_PRESS ? 100 + values[v] :
 				       CLAMP(values[v], ch.min / 2, ch.max / 2);
