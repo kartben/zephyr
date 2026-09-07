@@ -1,0 +1,13 @@
+# Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Virtual display of the Android Auto accessory sample. What LVGL renders
+  into it is streamed to the head unit as H.264 video. The width and height
+  properties give the LVGL resolution; the stream resolution is set by
+  CONFIG_SAMPLE_AA_VIDEO_WIDTH and CONFIG_SAMPLE_AA_VIDEO_HEIGHT and must be
+  equal to or twice these values.
+
+compatible: "android-auto-display"
+
+include: display-controller.yaml

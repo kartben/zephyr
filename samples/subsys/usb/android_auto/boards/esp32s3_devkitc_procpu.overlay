@@ -1,0 +1,12 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <android_auto.dtsi>
+
+/* Half-resolution framebuffer, every pixel becomes a 2x2 block in the stream */
+&aa_display {
+	width = <400>;
+	height = <240>;
+};

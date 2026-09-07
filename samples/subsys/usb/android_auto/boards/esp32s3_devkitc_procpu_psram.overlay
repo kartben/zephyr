@@ -1,0 +1,11 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <android_auto.dtsi>
+
+/* Modules with 8 MB of PSRAM (N8R8) hold the full-resolution framebuffer */
+&psram0 {
+	size = <DT_SIZE_M(8)>;
+};

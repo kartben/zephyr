@@ -1,0 +1,26 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	chosen {
+		zephyr,display = &aa_display;
+		zephyr,touch = &aa_touch;
+	};
+
+	aa_display: android-auto-display {
+		compatible = "android-auto-display";
+		width = <800>;
+		height = <480>;
+	};
+
+	aa_touch: android-auto-touch {
+		compatible = "android-auto-touch";
+	};
+
+	lvgl_pointer {
+		compatible = "zephyr,lvgl-pointer-input";
+		input = <&aa_touch>;
+	};
+};

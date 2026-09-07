@@ -1,0 +1,28 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <android_auto.dtsi>
+
+/* USB OTG takes over the USB PHY from the serial console, which moves to UART0 */
+/ {
+	chosen {
+		zephyr,console = &uart0;
+		zephyr,shell-uart = &uart0;
+	};
+};
+
+&usb_serial {
+	status = "disabled";
+};
+
+zephyr_udc0: &usb_otg {
+	status = "okay";
+};
+
+/* Half-resolution framebuffer, every pixel becomes a 2x2 block in the stream */
+&aa_display {
+	width = <400>;
+	height = <240>;
+};
