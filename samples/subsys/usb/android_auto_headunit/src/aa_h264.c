@@ -98,38 +98,6 @@ static uint8_t yuv_shown[2][YUV_PICTURE_SIZE]
 	Z_GENERIC_SECTION(CONFIG_SAMPLE_AA_HU_YUV_BUFFERS_SECTION) __aligned(32);
 static uint8_t yuv_next;
 
-K_SEM_DEFINE(yuv_idle, 1, 1);
-K_MSGQ_DEFINE(yuv_queue, sizeof(uint8_t *), 1, sizeof(uint8_t *));
-
-static void yuv_worker(void *arg1, void *arg2, void *arg3)
-{
-	const struct device *display = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
-	uint8_t *buf;
-	int ret;
-
-	ARG_UNUSED(arg1);
-	ARG_UNUSED(arg2);
-	ARG_UNUSED(arg3);
-
-	while (true) {
-		ret = k_msgq_get(&yuv_queue, &buf, K_FOREVER);
-		if (ret != 0) {
-			continue;
-		}
-
-		ret = stm32_ltdc_set_yuyv_frame(display, buf, YUV_PICTURE_SIZE);
-		if (ret == 0) {
-			yuv_next ^= 1U;
-		} else {
-			LOG_WRN_ONCE("Display cannot show YUV (%d)", ret);
-		}
-		k_sem_give(&yuv_idle);
-	}
-}
-
-/* Run promptly when a frame is queued, then block while the decoder continues. */
-K_THREAD_DEFINE(yuv_thread, 2048, yuv_worker, NULL, NULL, NULL,
-		MAX(0, CONFIG_SAMPLE_AA_HU_RX_THREAD_PRIORITY - 1), 0, 0);
 #endif
 
 static void show_yuv(const uint8_t *pic, uint32_t width, uint32_t height)
@@ -147,12 +115,8 @@ static void show_yuv(const uint8_t *pic, uint32_t width, uint32_t height)
 		return;
 	}
 
-	/* The previous swap must finish before its old front buffer is reused. */
-	ret = k_sem_take(&yuv_idle, K_FOREVER);
-	if (ret != 0) {
-		return;
-	}
 	dst = yuv_shown[yuv_next];
+	yuv_next ^= 1U;
 
 	/* Interleave I420 as YUYV; the LTDC performs the color conversion. */
 	for (uint32_t y = 0U; y < height; y++) {
@@ -170,10 +134,10 @@ static void show_yuv(const uint8_t *pic, uint32_t width, uint32_t height)
 		}
 	}
 
-	ret = k_msgq_put(&yuv_queue, &dst, K_NO_WAIT);
+	ret = stm32_ltdc_set_yuyv_frame(DEVICE_DT_GET(DT_CHOSEN(zephyr_display)), dst,
+					YUV_PICTURE_SIZE);
 	if (ret != 0) {
-		k_sem_give(&yuv_idle);
-		LOG_WRN_ONCE("Could not queue YUV picture (%d)", ret);
+		LOG_WRN_ONCE("Display cannot show YUV (%d)", ret);
 	}
 #else
 	ARG_UNUSED(pic);
