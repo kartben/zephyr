@@ -36,6 +36,14 @@ LOG_MODULE_REGISTER(aa_session, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
 
 #define RX_POLL_MS 500
 
+/*
+ * A phone that has just been plugged in enumerates before its projection
+ * service has opened the accessory endpoint, and anything sent in between is
+ * lost, so the opening request is repeated, once per poll, until it is
+ * answered.
+ */
+#define VERSION_RETRY_LIMIT 20
+
 static struct aa_hu_session session;
 static bool session_failed;
 
@@ -201,16 +209,34 @@ static void link_up(void)
 static void rx_loop(void)
 {
 	struct aa_frame_rx frame;
+	uint32_t version_tries = 1;
 
 	while (!session_failed) {
 		int ret = aa_frame_recv(&frame, K_MSEC(RX_POLL_MS));
 
 		if (ret == 0) {
 			handle_frame(&frame);
-		} else if (ret == -ETIMEDOUT) {
 			continue;
-		} else {
+		}
+
+		if (ret != -ETIMEDOUT) {
 			LOG_INF("Link closed (%d)", ret);
+			break;
+		}
+
+		if (session.state != AA_HU_WAIT_VERSION) {
+			continue;
+		}
+
+		if (version_tries >= VERSION_RETRY_LIMIT) {
+			aa_hu_session_abort("phone never answered the version request");
+			break;
+		}
+
+		version_tries++;
+		LOG_DBG("Version request unanswered, retry %u", version_tries);
+		if (aa_control_send_version_request() != 0) {
+			aa_hu_session_abort("version request failed");
 			break;
 		}
 	}
