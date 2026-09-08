@@ -78,8 +78,8 @@ static int mic_start(void)
 	};
 	struct dmic_cfg cfg = {
 		.io = {
-			.min_pdm_clk_freq = 1000000,
-			.max_pdm_clk_freq = 3500000,
+			.min_pdm_clk_freq = CONFIG_SAMPLE_AA_HU_MIC_CLK_MIN_HZ,
+			.max_pdm_clk_freq = CONFIG_SAMPLE_AA_HU_MIC_CLK_MAX_HZ,
 			.min_pdm_clk_dc = 40,
 			.max_pdm_clk_dc = 60,
 		},
