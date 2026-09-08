@@ -575,7 +575,7 @@ class HeadUnit:
 
     def send_night(self, night):
         if self.args.sensors and self.encrypted:
-            self.send(CHANNEL_SENSOR, SENSOR_EVENT_INDICATION, pb_encode([(9, [(1, night)])]))
+            self.send(CHANNEL_SENSOR, SENSOR_EVENT_INDICATION, pb_encode([(10, [(1, night)])]))
 
     def send_touch(self, x, y, action):
         if not self.encrypted:

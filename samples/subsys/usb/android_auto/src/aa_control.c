@@ -62,8 +62,8 @@ static int send_service_discovery_request(void)
 
 	req.has_device_name = true;
 	strncpy(req.device_name, CONFIG_SAMPLE_AA_DEVICE_NAME, sizeof(req.device_name) - 1U);
-	req.has_device_brand = true;
-	strncpy(req.device_brand, CONFIG_SAMPLE_AA_DEVICE_BRAND, sizeof(req.device_brand) - 1U);
+	req.has_label_text = true;
+	strncpy(req.label_text, CONFIG_SAMPLE_AA_DEVICE_BRAND, sizeof(req.label_text) - 1U);
 
 	len = aa_pb_encode(buf, sizeof(buf), ServiceDiscoveryRequest_fields, &req);
 	if (len < 0) {
