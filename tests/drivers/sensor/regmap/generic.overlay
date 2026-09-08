@@ -119,5 +119,9 @@
 			compatible = "ti,opt3001";
 			reg = <0x21>;
 		};
+		test_i2c_qmi8658a: qmi8658a@2f {
+			compatible = "qst,qmi8658a";
+			reg = <0x2f>;
+		};
 	};
 };
