@@ -131,5 +131,10 @@
 			compatible = "vishay,vcnl36825t";
 			reg = <0x26>;
 		};
+		test_i2c_wsen_tids: wsen_tids@30 {
+			compatible = "we,wsen-tids-2521020222501";
+			reg = <0x30>;
+			odr = <25>;
+		};
 	};
 };
