@@ -1465,6 +1465,31 @@ static inline void submit_new_device(const struct device *dev)
 	priv->has_device = true;
 }
 
+/*
+ * The host stack frees a device that is gone together with the transfers still
+ * queued for it, and the core is reset right after, so the channels those
+ * transfers were holding are simply given back here. The transfers are not
+ * returned: they are no longer this driver's to touch.
+ */
+static void ch_release_all(const struct device *dev)
+{
+	struct uhc_dwc2_data *const priv = uhc_get_private(dev);
+
+	for (uint8_t idx = 0; idx < priv->numhstchnl; idx++) {
+		struct uhc_dwc2_channel *const ch = &priv->ch[idx];
+
+		if (ch->xfer == NULL) {
+			continue;
+		}
+
+		LOG_DBG("Channel%u still held by the removed device", ch->index);
+		(void)atomic_set(&ch->events, 0);
+		ch->hcint_cplt_pending = 0U;
+		ch->error_count = 0;
+		ch_release(dev, ch);
+	}
+}
+
 static inline void submit_dev_gone(const struct device *dev)
 {
 	struct uhc_dwc2_data *const priv = uhc_get_private(dev);
@@ -1734,6 +1759,7 @@ static void port_handle_events(const struct device *dev, uint32_t event_mask)
 		/* Debounce port disconnection */
 		if (port_debounce(dev, UHC_DWC2_EVENT_PORT_DISCONNECTION)) {
 			LOG_DBG("Port disconnected");
+			ch_release_all(dev);
 			/* Notify upper layer */
 			submit_dev_gone(dev);
 			/* Reset the controller to handle new connection */
@@ -1748,6 +1774,7 @@ static void port_handle_events(const struct device *dev, uint32_t event_mask)
 
 	if (event_mask & BIT(UHC_DWC2_EVENT_PORT_ERROR)) {
 		LOG_DBG("Port error");
+		ch_release_all(dev);
 		/* Notify upper layer */
 		submit_dev_gone(dev);
 		/* TODO: recover from the error */
