@@ -1228,6 +1228,15 @@ static int ch_claim(const struct device *const dev,
 	LOG_DBG("Claimed channel%d for ep 0x%02x, xfer=%p, channel=%p",
 		ch->index, xfer->ep, (void *)xfer, (void *)ch);
 
+	/*
+	 * The error bookkeeping belongs to the transfer, not to the hardware
+	 * channel it happens to run on, so start the new transfer with a full
+	 * retry budget and without completion bits left over from the previous
+	 * one.
+	 */
+	ch->error_count = 0;
+	ch->hcint_cplt_pending = 0U;
+
 	/* Save channel characteristics of the underlying channel */
 	ch->xfer = xfer;
 	ch->data = ch_data_get(priv, xfer->udev, xfer->ep);
