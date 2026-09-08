@@ -115,5 +115,9 @@
 			compatible = "adi,max30210";
 			reg = <0x50>;
 		};
+		test_i2c_opt3001: opt3001@21 {
+			compatible = "ti,opt3001";
+			reg = <0x21>;
+		};
 	};
 };
