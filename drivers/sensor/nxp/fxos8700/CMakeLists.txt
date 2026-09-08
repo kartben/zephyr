@@ -8,3 +8,4 @@ zephyr_library()
 
 zephyr_library_sources(fxos8700.c)
 zephyr_library_sources_ifdef(CONFIG_FXOS8700_TRIGGER fxos8700_trigger.c)
+zephyr_library_sources_ifdef(CONFIG_EMUL_SENSOR_REGMAP fxos8700_emul.c)

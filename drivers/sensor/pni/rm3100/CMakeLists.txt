@@ -10,3 +10,4 @@ zephyr_library_sources(
 zephyr_library_sources_ifdef(CONFIG_RM3100_STREAM
   rm3100_stream.c
 )
+zephyr_library_sources_ifdef(CONFIG_EMUL_SENSOR_REGMAP rm3100_emul.c)

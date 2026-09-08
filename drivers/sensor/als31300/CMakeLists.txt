@@ -5,3 +5,4 @@ zephyr_library()
 
 zephyr_library_sources(als31300.c)
 zephyr_library_sources_ifdef(CONFIG_SENSOR_ASYNC_API als31300_async.c als31300_decoder.c)
+zephyr_library_sources_ifdef(CONFIG_EMUL_SENSOR_REGMAP als31300_emul.c)

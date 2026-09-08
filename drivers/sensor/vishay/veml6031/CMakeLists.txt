@@ -3,3 +3,4 @@
 
 zephyr_library()
 zephyr_library_sources(veml6031.c)
+zephyr_library_sources_ifdef(CONFIG_EMUL_SENSOR_REGMAP veml6031_emul.c)

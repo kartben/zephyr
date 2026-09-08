@@ -4,3 +4,4 @@
 zephyr_library()
 
 zephyr_library_sources(s11059.c)
+zephyr_library_sources_ifdef(CONFIG_EMUL_SENSOR_REGMAP s11059_emul.c)

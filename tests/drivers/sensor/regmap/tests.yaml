@@ -21,6 +21,7 @@ tests:
     extra_configs:
       - CONFIG_SENSOR_EMUL_TMP116=y
   drivers.sensor.regmap.generic:
+    timeout: 600
     extra_args: DTC_OVERLAY_FILE=generic.overlay
     extra_configs:
       - CONFIG_GENERIC_SENSOR_TEST=y
