@@ -18,6 +18,7 @@
 #include "aa_ids.h"
 #include "aa_mem.h"
 #include "aa_session.h"
+#include "aa_h264.h"
 #include "h264_ipcm_decode.h"
 #include "hu_fb_dump.h"
 
@@ -62,8 +63,12 @@ int aa_video_init(void)
 		LOG_WRN("Display is not RGB565, the picture may look wrong");
 	}
 
-	ret = h264_ipcm_decode_init(&decoder, VIDEO_WIDTH, VIDEO_HEIGHT, framebuffer, nal_scratch,
-				    sizeof(nal_scratch));
+	if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_H264)) {
+		ret = aa_h264_init(framebuffer, VIDEO_WIDTH, VIDEO_HEIGHT);
+	} else {
+		ret = h264_ipcm_decode_init(&decoder, VIDEO_WIDTH, VIDEO_HEIGHT, framebuffer,
+					    nal_scratch, sizeof(nal_scratch));
+	}
 	if (ret != 0) {
 		return ret;
 	}
@@ -141,6 +146,38 @@ static void on_setup_request(const uint8_t *body, size_t len)
 	(void)send_focus_indication();
 }
 
+/*
+ * Report what the phone is sending. The bundled decoder only understands the
+ * companion sample's I_PCM stream, so log the sequence parameter set once to
+ * show which profile a real decoder would have to handle.
+ */
+static void log_stream_profile(const uint8_t *au, size_t len)
+{
+	static bool logged;
+
+	if (logged) {
+		return;
+	}
+
+	for (size_t i = 0; i + 5U < len; i++) {
+		uint8_t nal_type;
+
+		if (au[i] != 0U || au[i + 1U] != 0U || au[i + 2U] != 1U) {
+			continue;
+		}
+
+		nal_type = au[i + 3U] & 0x1FU;
+		if (nal_type != 7U) {
+			continue;
+		}
+
+		LOG_INF("Phone stream: H.264 profile_idc %u constraints 0x%02x level_idc %u",
+			au[i + 4U], au[i + 5U], au[i + 6U]);
+		logged = true;
+		return;
+	}
+}
+
 static void blit(void)
 {
 	struct display_buffer_descriptor desc = {
@@ -189,7 +226,13 @@ static void on_media(const uint8_t *body, size_t len, bool has_timestamp)
 		au_len -= MEDIA_TIMESTAMP_LEN;
 	}
 
-	n = h264_ipcm_decode_au(&decoder, au, au_len);
+	log_stream_profile(au, au_len);
+
+	if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_H264)) {
+		n = aa_h264_decode_au(au, au_len);
+	} else {
+		n = h264_ipcm_decode_au(&decoder, au, au_len);
+	}
 	if (n >= 0) {
 		show_frame();
 	} else if (n == -ENOTSUP) {
