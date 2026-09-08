@@ -398,7 +398,19 @@ int stm32_ltdc_set_yuyv_frame(const struct device *dev, const uint8_t *buf, size
 		data->pend_buf = buf;
 		__HAL_LTDC_ENABLE(&data->hltdc);
 	} else if (buf != data->front_buf) {
-		stm32_ltdc_sync_frame(data, buf);
+		/*
+		 * Point the layer at the new frame and let the controller take
+		 * it at the next vertical blanking. There is nothing to wait
+		 * for: the hardware performs the swap on its own and clears the
+		 * request, and the frame being replaced stays on screen until
+		 * it does, so the caller's other buffer is free either way.
+		 * Waiting would only add most of a frame to how long a picture
+		 * takes to appear.
+		 */
+		WRITE_REG(LTDC_LAYER(&data->hltdc, LTDC_LAYER_1)->CFBAR, (uint32_t)buf);
+		WRITE_REG(LTDC_LAYER(&data->hltdc, LTDC_LAYER_1)->RCR, LTDC_LxRCR_VBR);
+		data->front_buf = buf;
+		data->pend_buf = buf;
 	}
 
 	return 0;
