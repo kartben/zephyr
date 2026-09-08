@@ -103,11 +103,15 @@ static int send_service_discovery_response(void)
 	sensor->has_channel_id = true;
 	sensor->channel_id = AA_SENSOR_CHANNEL_ID;
 	sensor->has_sensor_channel = true;
-	sensor->sensor_channel.sensors_count = 2;
+	sensor->sensor_channel.sensors_count = 4;
 	sensor->sensor_channel.sensors[0].has_type = true;
 	sensor->sensor_channel.sensors[0].type = AA_SENSOR_TYPE_DRIVING_STATUS;
 	sensor->sensor_channel.sensors[1].has_type = true;
 	sensor->sensor_channel.sensors[1].type = AA_SENSOR_TYPE_NIGHT_DATA;
+	sensor->sensor_channel.sensors[2].has_type = true;
+	sensor->sensor_channel.sensors[2].type = AA_SENSOR_TYPE_PARKING_BRAKE;
+	sensor->sensor_channel.sensors[3].has_type = true;
+	sensor->sensor_channel.sensors[3].type = AA_SENSOR_TYPE_GEAR;
 
 	strncpy(rsp.head_unit_name, CONFIG_SAMPLE_AA_HU_NAME, sizeof(rsp.head_unit_name) - 1U);
 	rsp.has_head_unit_name = true;

@@ -214,7 +214,17 @@ message DrivingStatus {
   optional int32 status = 1;
 }
 
+message ParkingBrake {
+  optional bool is_engaged = 1;
+}
+
+message GearSelection {
+  optional int32 gear = 1;
+}
+
 message SensorEventIndication {
+  repeated ParkingBrake parking_brake = 7;
+  repeated GearSelection gear = 8;
   repeated NightMode night_mode = 10;
   repeated DrivingStatus driving_status = 13;
 }
