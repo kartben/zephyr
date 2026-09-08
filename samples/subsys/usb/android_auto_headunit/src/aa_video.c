@@ -272,6 +272,24 @@ static void on_media(const uint8_t *body, size_t len, bool has_timestamp)
 	}
 
 	log_stream_profile(au, au_len);
+	/*
+	 * Acknowledge before decoding rather than after. The phone sends one
+	 * picture at a time and waits for this, so acknowledging at the end of
+	 * the pipeline left it idle for as long as a picture took to decode and
+	 * reach the panel, and every picture arrived that much later than it
+	 * could have. The picture has already been taken out of the receive
+	 * buffer by now, and the next one cannot overtake it: they are read and
+	 * decoded in turn on this thread.
+	 */
+	ack.has_session = true;
+	ack.session = s->video_session;
+	ack.has_value = true;
+	ack.value = 1;
+	n = aa_pb_encode(buf, sizeof(buf), AVMediaAckIndication_fields, &ack);
+	if (n >= 0) {
+		(void)aa_msg_send(s->video_ch, false, AA_AV_MEDIA_ACK_INDICATION, buf, (size_t)n);
+	}
+
 
 	if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_H264)) {
 		/* Only a positive result means a picture reached the buffer */
@@ -292,15 +310,6 @@ static void on_media(const uint8_t *body, size_t len, bool has_timestamp)
 		LOG_WRN("Decode error %d", n);
 	}
 
-	/* Acknowledge so the phone releases the next media message */
-	ack.has_session = true;
-	ack.session = s->video_session;
-	ack.has_value = true;
-	ack.value = 1;
-	n = aa_pb_encode(buf, sizeof(buf), AVMediaAckIndication_fields, &ack);
-	if (n >= 0) {
-		(void)aa_msg_send(s->video_ch, false, AA_AV_MEDIA_ACK_INDICATION, buf, (size_t)n);
-	}
 }
 
 void aa_video_handle(uint16_t msg_id, const uint8_t *body, size_t len)
