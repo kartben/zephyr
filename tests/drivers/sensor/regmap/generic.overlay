@@ -111,5 +111,9 @@
 			compatible = "liteon,ltrf216a";
 			reg = <0x2b>;
 		};
+		test_i2c_max30210: max30210@50 {
+			compatible = "adi,max30210";
+			reg = <0x50>;
+		};
 	};
 };
