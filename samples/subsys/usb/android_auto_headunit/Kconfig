@@ -256,6 +256,19 @@ config SAMPLE_AA_HU_DEMO_TAP_INTERVAL_MS
 	depends on SAMPLE_AA_HU_DEMO_TAP
 	default 2000
 
+config SAMPLE_AA_HU_MIC_CLK_MIN_HZ
+	int "Lowest microphone clock frequency (Hz)"
+	default 1000000
+
+config SAMPLE_AA_HU_MIC_CLK_MAX_HZ
+	int "Highest microphone clock frequency (Hz)"
+	default 3500000
+	help
+	  The driver clocks the microphone as fast as this window allows. A PDM
+	  microphone with several operating modes selects one by clock
+	  frequency and its sensitivity differs between them, so narrow the
+	  window to the mode the part should be run in.
+
 config SAMPLE_AA_HU_MIC_LEVEL_LOG
 	bool "Report the level of the captured audio"
 	help
