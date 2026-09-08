@@ -21,5 +21,7 @@ AVChannelSetupResponse.configs        max_count:8
 TouchEvent.touch_location             max_count:4
 ButtonEvents.button                   max_count:4
 BindingRequest.scan_codes             max_count:16
+SensorEventIndication.parking_brake   max_count:2
+SensorEventIndication.gear            max_count:2
 SensorEventIndication.night_mode      max_count:2
 SensorEventIndication.driving_status  max_count:2

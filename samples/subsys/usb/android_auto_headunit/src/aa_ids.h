@@ -119,11 +119,18 @@ enum aa_sensor_msg {
 #define AA_TOUCH_ACTION_POINTER_DOWN 5
 #define AA_TOUCH_ACTION_POINTER_UP   6
 
+#define AA_SENSOR_TYPE_PARKING_BRAKE  7
+#define AA_SENSOR_TYPE_GEAR           8
 #define AA_SENSOR_TYPE_NIGHT_DATA     10
 #define AA_SENSOR_TYPE_DRIVING_STATUS 13
 
 /* Driving status values */
 #define AA_DRIVING_STATUS_UNRESTRICTED 0
+
+/* Gear selection, as the sensor channel reports it */
+#define AA_GEAR_NEUTRAL 0
+#define AA_GEAR_DRIVE   100
+#define AA_GEAR_PARK    101
 
 /* Android key codes the sample binds to */
 #define AA_KEYCODE_HOME           3

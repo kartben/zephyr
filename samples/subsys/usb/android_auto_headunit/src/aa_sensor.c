@@ -16,7 +16,8 @@ LOG_MODULE_REGISTER(aa_sensor, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
 
 /*
  * Sensor channel. A phone refuses to project without a driving status source,
- * so the head unit reports a stationary, daytime vehicle once and leaves it at
+ * and restricts what it will show unless the vehicle is standing still, so the
+ * head unit reports a parked, braked, daytime vehicle once and leaves it at
  * that; a real one would follow the vehicle bus.
  */
 
@@ -36,6 +37,16 @@ static int send_event(int32_t sensor_type)
 		ind.night_mode_count = 1;
 		ind.night_mode[0].has_is_night = true;
 		ind.night_mode[0].is_night = false;
+		break;
+	case AA_SENSOR_TYPE_PARKING_BRAKE:
+		ind.parking_brake_count = 1;
+		ind.parking_brake[0].has_is_engaged = true;
+		ind.parking_brake[0].is_engaged = true;
+		break;
+	case AA_SENSOR_TYPE_GEAR:
+		ind.gear_count = 1;
+		ind.gear[0].has_gear = true;
+		ind.gear[0].gear = AA_GEAR_PARK;
 		break;
 	default:
 		return 0;
