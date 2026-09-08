@@ -857,8 +857,14 @@ static uint32_t ch_handle_in_bulk_control(struct uhc_dwc2_channel *ch, uint32_t 
 				ch_events |= BIT(UHC_DWC2_CHANNEL_DO_REINIT);
 			}
 		} else {
-			/* TODO: Add handling for other cases */
-			LOG_WRN("IN halted, unhandled HCINT 0x%08x", hcint);
+			/*
+			 * The channel is halted and will not restart on its
+			 * own, so fail the transfer instead of leaving the
+			 * channel claimed forever.
+			 */
+			LOG_ERR("IN halted, unhandled HCINT 0x%08x", hcint);
+			ch_events |= BIT(UHC_DWC2_CHANNEL_DO_RELEASE);
+			ch_events |= BIT(UHC_DWC2_CHANNEL_EVENT_ERROR);
 		}
 	} else if (hcint & (USB_DWC2_HCINT_ACK | USB_DWC2_HCINT_NAK | USB_DWC2_HCINT_DTGERR)) {
 		ch->error_count = 0;
@@ -912,8 +918,14 @@ static inline uint32_t ch_handle_out_bulk_control(struct uhc_dwc2_channel *ch, u
 				}
 			}
 		} else {
-			/* TODO: Add handling for other cases */
-			LOG_WRN("OUT halted, unhandled HCINT 0x%08x", hcint);
+			/*
+			 * The channel is halted and will not restart on its
+			 * own, so fail the transfer instead of leaving the
+			 * channel claimed forever.
+			 */
+			LOG_ERR("OUT halted, unhandled HCINT 0x%08x", hcint);
+			ch_events |= BIT(UHC_DWC2_CHANNEL_DO_RELEASE);
+			ch_events |= BIT(UHC_DWC2_CHANNEL_EVENT_ERROR);
 		}
 	} else if (hcint & USB_DWC2_HCINT_ACK) {
 		ch->error_count = 1;
