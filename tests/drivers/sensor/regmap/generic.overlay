@@ -123,5 +123,9 @@
 			compatible = "qst,qmi8658a";
 			reg = <0x2f>;
 		};
+		test_i2c_tmp1075: tmp1075@20 {
+			compatible = "ti,tmp1075";
+			reg = <0x20>;
+		};
 	};
 };
