@@ -103,6 +103,10 @@ int aa_video_init(void)
 
 void aa_video_link_up(void)
 {
+	if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_LTDC_YUV)) {
+		(void)display_blanking_off(display);
+	}
+
 	frames = 0;
 	stats_frames = 0;
 	stats_ms = k_uptime_get();
@@ -115,8 +119,16 @@ void aa_video_link_down(void)
 	 * the panel, and drop the decoder state with it: whatever comes back
 	 * starts a stream of its own.
 	 */
-	memset(framebuffer, 0, sizeof(framebuffer));
-	blit();
+	if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_LTDC_YUV)) {
+		/*
+		 * The layer is showing the decoder's picture, not a buffer of
+		 * ours, so blank the panel instead of overwriting one.
+		 */
+		(void)display_blanking_on(display);
+	} else {
+		memset(framebuffer, 0, sizeof(framebuffer));
+		blit();
+	}
 
 	if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_H264)) {
 		(void)aa_h264_reset();
@@ -221,8 +233,14 @@ static void show_frame(void)
 {
 	int64_t now;
 
-	blit();
-	(void)hu_fb_dump_write(framebuffer, VIDEO_WIDTH * VIDEO_HEIGHT);
+	/*
+	 * With the controller converting, the decoder has already handed it the
+	 * picture and there is no framebuffer of ours to push.
+	 */
+	if (!IS_ENABLED(CONFIG_SAMPLE_AA_HU_LTDC_YUV)) {
+		blit();
+		(void)hu_fb_dump_write(framebuffer, VIDEO_WIDTH * VIDEO_HEIGHT);
+	}
 
 	frames++;
 	stats_frames++;

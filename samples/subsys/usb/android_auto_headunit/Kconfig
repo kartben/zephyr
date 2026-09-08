@@ -138,6 +138,27 @@ config SAMPLE_AA_HU_H264BSD_PATH
 	help
 	  Directory holding the decoder's src/ directory.
 
+config SAMPLE_AA_HU_LTDC_YUV
+	bool "Let the display controller convert the decoded pictures"
+	depends on SAMPLE_AA_HU_H264 && STM32_LTDC_YUV
+	default y if STM32_LTDC_YUV
+	help
+	  Interleave the decoder's planar YUV420 pictures into packed YUYV
+	  buffers. The display controller converts them to RGB during scanout,
+	  avoiding software color conversion. Packed YUV422 avoids the STM32N6
+	  planar YUV420 silicon limitation (ES0620, section 2.7.1).
+
+config SAMPLE_AA_HU_YUV_BUFFERS_SECTION
+	string "Memory section for YUV display buffers"
+	depends on SAMPLE_AA_HU_LTDC_YUV
+	default "AXISRAM1" if BOARD_STM32N6570_DK
+	default SAMPLE_AA_HU_BUFFERS_SECTION if SAMPLE_AA_HU_BUFFERS_IN_EXT_RAM
+	default ".bss"
+	help
+	  Linker section for the two packed display buffers. Internal SRAM
+	  avoids external-memory traffic for packing and display scanout.
+	  The section must hold four bytes per pixel at the video resolution.
+
 config SAMPLE_AA_HU_H264_HEAP_SIZE
 	int "Decoder heap (bytes)"
 	depends on SAMPLE_AA_HU_H264

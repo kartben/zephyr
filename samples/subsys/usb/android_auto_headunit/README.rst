@@ -106,6 +106,31 @@ Power the board from an external 5 V supply rather than from the ST-LINK connect
 host connector is drawn from the same rail as the rest of the board, and the ST-LINK port cannot
 supply the panel, the external RAM and an attached phone at once.
 
+Hardware YUV scanout on STM32N6
+******************************
+
+With the full H.264 decoder enabled, set :kconfig:option:`CONFIG_STM32_LTDC_YUV` to use
+hardware color conversion. :kconfig:option:`CONFIG_SAMPLE_AA_HU_LTDC_YUV` then defaults to
+enabled. The decoder checkout is supplied with
+:kconfig:option:`CONFIG_SAMPLE_AA_HU_H264BSD_PATH`.
+
+The sample interleaves the decoder's I420 planes into packed YUYV 4:2:2, repeating each
+chroma row for two luminance rows. The LTDC converts BT.601 limited-range samples to RGB
+during scanout. There is no software YUV-to-RGB conversion. Two packed framebuffers use
+1,536,000 bytes at 800x480, placed in AXISRAM1 on the STM32N6570-DK. A display worker waits
+for VSync while the receive thread decodes the next picture. The old front buffer is reused
+only after the swap completes. :kconfig:option:`CONFIG_SAMPLE_AA_HU_YUV_BUFFERS_SECTION`
+selects the memory section on other targets.
+
+The STM32N6570-DK configurations optimize for execution speed. Software H.264 decoding
+still limits the frame rate for complex scenes; hardware color conversion alone does not
+guarantee 30 frames per second.
+
+Direct planar or semiplanar YUV420 scanout is not functional on STM32N6 silicon, as described
+in `ES0620, section 2.7.1
+<https://www.st.com/resource/en/errata_sheet/es0620-stm32n6xxxx-device-errata-stmicroelectronics.pdf>`_.
+The packed format avoids this limitation.
+
 References
 **********
 
