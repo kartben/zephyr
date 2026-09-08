@@ -26,9 +26,16 @@ message VideoConfig {
   optional uint32 dpi = 5;
 }
 
+message AudioConfig {
+  optional uint32 sample_rate = 1;
+  optional uint32 bit_depth = 2;
+  optional uint32 channel_count = 3;
+}
+
 message AVChannel {
   optional int32 stream_type = 1;
   optional int32 audio_type = 2;
+  repeated AudioConfig audio_configs = 3;
   repeated VideoConfig video_configs = 4;
   optional bool available_while_in_call = 5;
 }
@@ -51,17 +58,33 @@ message SensorChannel {
   repeated Sensor sensors = 1;
 }
 
+message AVInputChannel {
+  optional int32 stream_type = 1;
+  optional AudioConfig audio_config = 2;
+  optional bool available_while_in_call = 3;
+}
+
 message ChannelDescriptor {
   optional uint32 channel_id = 1;
   optional SensorChannel sensor_channel = 2;
   optional AVChannel av_channel = 3;
   optional InputChannel input_channel = 4;
+  optional AVInputChannel av_input_channel = 5;
 }
 
 message ServiceDiscoveryResponse {
   repeated ChannelDescriptor channels = 1;
   optional string head_unit_name = 2;
   optional string car_model = 3;
+  optional string car_year = 4;
+  optional string car_serial = 5;
+  optional bool left_hand_drive_vehicle = 6;
+  optional string headunit_manufacturer = 7;
+  optional string headunit_model = 8;
+  optional string sw_build = 9;
+  optional string sw_version = 10;
+  optional bool can_play_native_media_during_vr = 11;
+  optional bool hide_clock = 12;
 }
 
 message ChannelOpenRequest {
@@ -79,6 +102,15 @@ message PingRequest {
 
 message PingResponse {
   optional int64 timestamp = 1;
+}
+
+message AudioFocusRequest {
+  optional int32 audio_focus_type = 1;
+}
+
+message AudioFocusResponse {
+  optional int32 focus_state = 1;
+  optional bool unsolicited = 2;
 }
 
 message NavigationFocusRequest {

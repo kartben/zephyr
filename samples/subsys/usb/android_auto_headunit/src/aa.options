@@ -7,7 +7,14 @@ ServiceDiscoveryRequest.device_brand  max_size:32
 ServiceDiscoveryResponse.channels     max_count:16
 ServiceDiscoveryResponse.head_unit_name max_size:32
 ServiceDiscoveryResponse.car_model    max_size:32
+ServiceDiscoveryResponse.car_year     max_size:8
+ServiceDiscoveryResponse.car_serial   max_size:20
+ServiceDiscoveryResponse.headunit_manufacturer max_size:32
+ServiceDiscoveryResponse.headunit_model max_size:32
+ServiceDiscoveryResponse.sw_build     max_size:16
+ServiceDiscoveryResponse.sw_version   max_size:16
 AVChannel.video_configs               max_count:4
+AVChannel.audio_configs               max_count:1
 SensorChannel.sensors                 max_count:8
 AVChannelSetupResponse.configs        max_count:8
 TouchEvent.touch_location             max_count:4
