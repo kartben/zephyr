@@ -80,7 +80,20 @@ int aa_video_init(void)
 	 * happened to hold.
 	 */
 	memset(framebuffer, 0, sizeof(framebuffer));
+#ifdef CONFIG_SAMPLE_AA_HU_TEST_PATTERN
+	/* Colour bars, to check the panel and the pixel format */
+	for (uint32_t y = 0; y < VIDEO_HEIGHT; y++) {
+		for (uint32_t x = 0; x < VIDEO_WIDTH; x++) {
+			static const uint16_t bars[] = {0xFFFFU, 0xFFE0U, 0x07FFU, 0x07E0U,
+							0xF81FU, 0xF800U, 0x001FU, 0x0000U};
+
+			framebuffer[y * VIDEO_WIDTH + x] =
+				bars[(x * ARRAY_SIZE(bars)) / VIDEO_WIDTH];
+		}
+	}
+#endif
 	blit();
+	LOG_INF("Framebuffer %p pushed to the display", (void *)framebuffer);
 
 	(void)display_blanking_off(display);
 	(void)hu_fb_dump_open();
@@ -229,15 +242,21 @@ static void on_media(const uint8_t *body, size_t len, bool has_timestamp)
 	log_stream_profile(au, au_len);
 
 	if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_H264)) {
+		/* Only a positive result means a picture reached the buffer */
 		n = aa_h264_decode_au(au, au_len);
+		if (n > 0) {
+			show_frame();
+		}
 	} else {
 		n = h264_ipcm_decode_au(&decoder, au, au_len);
+		if (n >= 0) {
+			show_frame();
+		}
 	}
-	if (n >= 0) {
-		show_frame();
-	} else if (n == -ENOTSUP) {
+
+	if (n == -ENOTSUP) {
 		LOG_WRN_ONCE("Stream needs a full H.264 decoder (not I_PCM only)");
-	} else if (n != -ENODATA) {
+	} else if (n < 0 && n != -ENODATA) {
 		LOG_WRN("Decode error %d", n);
 	}
 
