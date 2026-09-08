@@ -6,6 +6,7 @@
 #include "aa_video.h"
 
 #include <errno.h>
+#include <string.h>
 
 #include <zephyr/device.h>
 #include <zephyr/drivers/display.h>
@@ -36,6 +37,7 @@ static const struct device *display;
 static struct h264_ipcm_dec decoder;
 static uint16_t framebuffer[VIDEO_WIDTH * VIDEO_HEIGHT] AA_HU_BIG_BUF;
 static uint8_t nal_scratch[CONFIG_SAMPLE_AA_HU_NAL_SCRATCH_SIZE];
+static void blit(void);
 static uint32_t frames;
 static int64_t stats_ms;
 static uint32_t stats_frames;
@@ -65,6 +67,15 @@ int aa_video_init(void)
 	if (ret != 0) {
 		return ret;
 	}
+
+	/*
+	 * External RAM is not cleared on startup the way ordinary .bss is, so
+	 * blank the picture before the panel is switched on. Until the phone
+	 * sends a frame the display would otherwise show whatever the memory
+	 * happened to hold.
+	 */
+	memset(framebuffer, 0, sizeof(framebuffer));
+	blit();
 
 	(void)display_blanking_off(display);
 	(void)hu_fb_dump_open();
@@ -130,7 +141,7 @@ static void on_setup_request(const uint8_t *body, size_t len)
 	(void)send_focus_indication();
 }
 
-static void show_frame(void)
+static void blit(void)
 {
 	struct display_buffer_descriptor desc = {
 		.buf_size = sizeof(framebuffer),
@@ -138,9 +149,15 @@ static void show_frame(void)
 		.height = VIDEO_HEIGHT,
 		.pitch = VIDEO_WIDTH,
 	};
-	int64_t now;
 
 	(void)display_write(display, 0, 0, &desc, framebuffer);
+}
+
+static void show_frame(void)
+{
+	int64_t now;
+
+	blit();
 	(void)hu_fb_dump_write(framebuffer, VIDEO_WIDTH * VIDEO_HEIGHT);
 
 	frames++;
