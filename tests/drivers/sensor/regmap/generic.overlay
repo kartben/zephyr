@@ -97,5 +97,11 @@
 			compatible = "nxp,p3t1755";
 			reg = <0x1f>;
 		};
+		test_i2c_ina226: ina226@22 {
+			compatible = "ti,ina226";
+			reg = <0x22>;
+			current-lsb-microamps = <100>;
+			rshunt-micro-ohms = <100000>;
+		};
 	};
 };
