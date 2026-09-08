@@ -90,6 +90,22 @@ This target has no display and decodes into a dummy one. It exists to bring up t
 bundled decoder only understands the companion accessory sample's I_PCM stream, so a real phone
 gets as far as a running session but its pictures are not decoded.
 
+The :zephyr:board:`stm32n6570_dk` is a complete head unit: its 800x480 panel is exactly the
+resolution the sample offers the phone, its touch screen drives the input channel, and its USB
+Type-A connector (CN17) is a host port that supplies VBUS on its own. The image is loaded over the
+board's serial boot interface:
+
+.. code-block:: console
+
+   west build -b stm32n6570_dk/stm32n657xx/sb samples/subsys/usb/android_auto_headunit && west flash
+
+The framebuffer and the reassembly buffer are placed in the external PSRAM, since together they
+are larger than the internal RAM available to a serial-boot image.
+
+Power the board from an external 5 V supply rather than from the ST-LINK connector. VBUS for the
+host connector is drawn from the same rail as the rest of the board, and the ST-LINK port cannot
+supply the panel, the external RAM and an attached phone at once.
+
 References
 **********
 
