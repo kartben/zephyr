@@ -49,6 +49,7 @@ LOG_MODULE_REGISTER(aa_usbh, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
 	 USB_REQTYPE_RECIPIENT_DEVICE)
 
 #define IN_XFER_SIZE  CONFIG_SAMPLE_AA_HU_USBH_IN_XFER_SIZE
+#define IN_ERROR_LIMIT 16U
 #define OUT_XFER_SIZE CONFIG_SAMPLE_AA_HU_USBH_OUT_XFER_SIZE
 
 /*
@@ -76,6 +77,9 @@ static struct {
 	uint16_t mps_in;
 	struct uhc_transfer *in_xfer;
 } acc;
+
+/* Consecutive failed IN transfers, reset by a good one */
+static uint8_t in_errors;
 
 /* IN data that did not fit the pipe, resumed by the reader */
 static struct net_buf *pending_in;
@@ -116,12 +120,33 @@ static int bulk_in_cb(struct usb_device *const udev, struct uhc_transfer *const 
 
 	xfer->buf = NULL;
 
-	if (xfer->err != 0 || !atomic_get(&link_up)) {
-		if (buf != NULL) {
-			usbh_xfer_buf_free(udev, buf);
+	if (buf != NULL && (xfer->err != 0 || !atomic_get(&link_up))) {
+		usbh_xfer_buf_free(udev, buf);
+		buf = NULL;
+	}
+
+	if (xfer->err != 0) {
+		/*
+		 * The controller reports the occasional transaction error on
+		 * an idle endpoint. Poll again instead of dropping the link,
+		 * but give up if they keep coming.
+		 */
+		if (!atomic_get(&link_up)) {
+			return 0;
 		}
+
+		if (++in_errors == IN_ERROR_LIMIT) {
+			LOG_WRN("Bulk IN keeps failing (%d), still polling", xfer->err);
+		}
+
+		return arm_in_xfer();
+	}
+
+	if (buf == NULL) {
 		return 0;
 	}
+
+	in_errors = 0;
 
 	if (push_rx(buf)) {
 		usbh_xfer_buf_free(udev, buf);
@@ -417,6 +442,7 @@ static int accessory_probe(struct usbh_class_data *const c_data, struct usb_devi
 
 	acc.udev = udev;
 	acc.in_xfer = NULL;
+	in_errors = 0;
 
 	LOG_INF("Accessory interface %u, bulk in 0x%02x out 0x%02x, %u byte packets", iface,
 		acc.ep_in, acc.ep_out, acc.mps_in);

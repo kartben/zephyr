@@ -13,6 +13,7 @@
 #include <zephyr/sys/util.h>
 
 #include "aa_ids.h"
+#include "aa_mem.h"
 #include "aa_tls.h"
 #include "aa_transport.h"
 
@@ -32,7 +33,7 @@ static K_MUTEX_DEFINE(tx_lock);
 
 static uint8_t tx_plain[TX_CHUNK_SIZE];
 static uint8_t tx_frame[AA_FRAME_MAX_HDR + 2U + TX_CHUNK_SIZE + TLS_RECORD_OVERHEAD];
-static uint8_t rx_frame[CONFIG_SAMPLE_AA_HU_RX_FRAME_SIZE];
+static uint8_t rx_frame[CONFIG_SAMPLE_AA_HU_RX_FRAME_SIZE] AA_HU_BIG_BUF;
 
 static bool encrypted;
 static size_t tx_chunk = TX_CHUNK_SIZE;
