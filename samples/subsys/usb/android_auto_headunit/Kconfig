@@ -16,7 +16,75 @@ config SAMPLE_AA_HU_TRANSPORT_TCP
 	  Connect to a phone that exposes the projection protocol on a TCP
 	  port, which is how the companion accessory sample runs on native_sim.
 
+config SAMPLE_AA_HU_TRANSPORT_USB_HOST
+	bool "USB host"
+	depends on USB_HOST_STACK
+	help
+	  Act as the USB host, switch an attached phone into Android Open
+	  Accessory mode and carry the protocol over its bulk endpoints. The
+	  board must be able to supply VBUS to the phone.
+
 endchoice
+
+if SAMPLE_AA_HU_TRANSPORT_USB_HOST
+
+config SAMPLE_AA_HU_USBH_IN_XFER_SIZE
+	int "Bulk IN transfer size (bytes)"
+	default 4096
+	help
+	  Size of the buffer kept queued on the accessory's bulk IN endpoint.
+	  Must be a multiple of the endpoint's maximum packet size and fit in
+	  the host controller buffer pool.
+
+config SAMPLE_AA_HU_USBH_OUT_XFER_SIZE
+	int "Largest bulk OUT transfer (bytes)"
+	default 4096
+	help
+	  Messages larger than this are written in several transfers.
+
+config SAMPLE_AA_HU_USBH_RX_PIPE_SIZE
+	int "Receive pipe size (bytes)"
+	default 16384
+	help
+	  Buffers received data until the protocol thread consumes it. When it
+	  fills up the transfer is parked and the phone is held off, so this
+	  only has to absorb scheduling jitter.
+
+config SAMPLE_AA_HU_USBH_WRITE_TIMEOUT_MS
+	int "Bulk OUT timeout (ms)"
+	default 2000
+	help
+	  A queued bulk transfer cannot be cancelled, so a write that times out
+	  abandons its transfer instead of retrying it.
+
+config SAMPLE_AA_HU_AOA_MANUFACTURER
+	string "Accessory manufacturer string"
+	default "Android"
+
+config SAMPLE_AA_HU_AOA_MODEL
+	string "Accessory model string"
+	default "Android Auto"
+	help
+	  A phone only starts projection when the manufacturer and model are
+	  the exact strings Android Auto looks for.
+
+config SAMPLE_AA_HU_AOA_DESCRIPTION
+	string "Accessory description string"
+	default "Android Auto"
+
+config SAMPLE_AA_HU_AOA_VERSION
+	string "Accessory version string"
+	default "1.0"
+
+config SAMPLE_AA_HU_AOA_URI
+	string "Accessory URI string"
+	default "https://www.zephyrproject.org"
+
+config SAMPLE_AA_HU_AOA_SERIAL
+	string "Accessory serial string"
+	default "0000000000000001"
+
+endif # SAMPLE_AA_HU_TRANSPORT_USB_HOST
 
 config SAMPLE_AA_HU_TCP_HOST
 	string "Phone address"
@@ -136,6 +204,19 @@ config SAMPLE_AA_HU_DEMO_TAP_INTERVAL_MS
 	int "Demo tap interval (ms)"
 	depends on SAMPLE_AA_HU_DEMO_TAP
 	default 2000
+
+config SAMPLE_AA_HU_BUFFERS_IN_EXT_RAM
+	bool "Place the large buffers in external RAM"
+	depends on ESP_SPIRAM
+	default y
+	help
+	  The framebuffer and the message reassembly buffer are far larger than
+	  the internal RAM of most boards.
+
+config SAMPLE_AA_HU_BUFFERS_SECTION
+	string "Linker section for the large buffers"
+	depends on SAMPLE_AA_HU_BUFFERS_IN_EXT_RAM
+	default ".ext_ram.bss"
 
 config SAMPLE_AA_HU_FB_DUMP
 	bool "Dump decoded pictures to a host file"

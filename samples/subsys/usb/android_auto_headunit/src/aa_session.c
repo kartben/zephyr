@@ -21,6 +21,7 @@
 #include "aa_frame.h"
 #include "aa_ids.h"
 #include "aa_input.h"
+#include "aa_mem.h"
 #include "aa_transport.h"
 #include "aa_video.h"
 
@@ -36,7 +37,7 @@ LOG_MODULE_REGISTER(aa_session, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
 static struct aa_hu_session session;
 static bool session_failed;
 
-static uint8_t rx_msg[CONFIG_SAMPLE_AA_HU_RX_MSG_SIZE];
+static uint8_t rx_msg[CONFIG_SAMPLE_AA_HU_RX_MSG_SIZE] AA_HU_BIG_BUF;
 static struct {
 	bool active;
 	uint8_t channel;

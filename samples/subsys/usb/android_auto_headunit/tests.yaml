@@ -21,3 +21,9 @@ tests:
       regex:
         - "Android Auto head unit ready"
     timeout: 30
+  sample.usb.android_auto_headunit.usb_host:
+    build_only: true
+    platform_allow:
+      - esp32s3_devkitc/esp32s3/procpu
+    integration_platforms:
+      - esp32s3_devkitc/esp32s3/procpu

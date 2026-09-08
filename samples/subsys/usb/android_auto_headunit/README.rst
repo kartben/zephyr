@@ -65,6 +65,31 @@ board overlay to watch the stream live and drive the phone with the mouse.
    [00:00:00.210] <inf> aa_video: Video stream started, session 0
    [00:00:02.040] <inf> aa_video: Video: 5 frames, 2.4 fps
 
+USB host
+********
+
+With :kconfig:option:`CONFIG_SAMPLE_AA_HU_TRANSPORT_USB_HOST` the board is the USB host and the
+phone is the device, which is how a real head unit is wired. A phone enumerates with its own
+identity, so the sample first switches it into Android Open Accessory mode: it reads the accessory
+protocol version, sends the six identity strings and requests accessory mode. The phone detaches
+and comes back as ``18d1:2d00`` with a vendor interface whose bulk endpoints carry the protocol.
+
+The identity strings decide what the phone does. Projection only starts when the manufacturer and
+model are the exact strings Android Auto looks for, which is why
+:kconfig:option:`CONFIG_SAMPLE_AA_HU_AOA_MODEL` defaults to ``Android Auto``.
+
+.. code-block:: console
+
+   west build -b esp32s3_devkitc/esp32s3/procpu samples/subsys/usb/android_auto_headunit
+
+The board has to supply VBUS to the phone, which the ESP32-S3 development boards do not do on
+their USB connector, so power the port externally. The controller is shared between the device and
+the host role, so the board configuration turns the device stack off.
+
+This target has no display and decodes into a dummy one. It exists to bring up the host side: the
+bundled decoder only understands the companion accessory sample's I_PCM stream, so a real phone
+gets as far as a running session but its pictures are not decoded.
+
 References
 **********
 
