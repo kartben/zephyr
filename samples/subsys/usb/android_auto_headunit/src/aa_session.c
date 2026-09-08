@@ -21,7 +21,9 @@
 #include "aa_frame.h"
 #include "aa_ids.h"
 #include "aa_input.h"
+#include "aa_audio.h"
 #include "aa_mem.h"
+#include "aa_sensor.h"
 #include "aa_transport.h"
 #include "aa_video.h"
 
@@ -122,6 +124,10 @@ static void deliver(uint8_t channel, bool control, const uint8_t *payload, size_
 		aa_video_handle(msg_id, payload + 2U, len - 2U);
 	} else if (channel == session.input_ch) {
 		aa_input_handle(msg_id, payload + 2U, len - 2U);
+	} else if (channel == session.sensor_ch) {
+		aa_sensor_handle(msg_id, payload + 2U, len - 2U);
+	} else if (aa_audio_is_audio_channel(channel)) {
+		aa_audio_handle(channel, msg_id, payload + 2U, len - 2U);
 	} else {
 		LOG_WRN("Message 0x%04x on unexpected channel %u", msg_id, channel);
 	}

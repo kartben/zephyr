@@ -84,6 +84,16 @@ enum aa_sensor_msg {
 #define AA_STREAM_TYPE_AUDIO 1
 #define AA_STREAM_TYPE_VIDEO 3
 
+/* Audio stream kinds a head unit provides */
+#define AA_AUDIO_TYPE_GUIDANCE 1
+#define AA_AUDIO_TYPE_SYSTEM   2
+#define AA_AUDIO_TYPE_MEDIA    3
+
+/* Audio focus the phone asks for, and the state the head unit reports back */
+#define AA_AUDIO_FOCUS_RELEASE     4
+#define AA_AUDIO_FOCUS_STATE_GAIN  1
+#define AA_AUDIO_FOCUS_STATE_LOSS  3
+
 #define AA_VIDEO_RESOLUTION_800x480   1
 #define AA_VIDEO_RESOLUTION_1280x720  2
 #define AA_VIDEO_RESOLUTION_1920x1080 3
@@ -106,6 +116,9 @@ enum aa_sensor_msg {
 
 #define AA_SENSOR_TYPE_NIGHT_DATA     10
 #define AA_SENSOR_TYPE_DRIVING_STATUS 13
+
+/* Driving status values */
+#define AA_DRIVING_STATUS_UNRESTRICTED 0
 
 /* Android key codes the sample binds to */
 #define AA_KEYCODE_HOME           3
