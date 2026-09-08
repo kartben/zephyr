@@ -106,6 +106,7 @@ int aa_h264_decode_au(const uint8_t *au, size_t len)
 {
 	uint8_t *p = (uint8_t *)au;
 	uint32_t left = (uint32_t)len;
+	bool stalled = false;
 	int ready = 0;
 
 	if (decoder == NULL) {
@@ -116,13 +117,24 @@ int aa_h264_decode_au(const uint8_t *au, size_t len)
 		uint32_t read = 0;
 		uint32_t ret = h264bsdDecode(decoder, p, left, 0U, &read);
 
+		/*
+		 * The decoder reports the parameter sets without consuming
+		 * anything and expects the same buffer again, so a call that
+		 * makes no progress is only given up on the second time.
+		 */
 		if (read == 0U) {
-			/* No progress, drop the rest rather than spin */
-			break;
+			if (stalled) {
+				break;
+			}
+			stalled = true;
+		} else {
+			stalled = false;
 		}
 
+		/* The count can exceed what was offered, never walk past the end */
+		read = MIN(read, left);
 		p += read;
-		left -= MIN(read, left);
+		left -= read;
 
 		switch (ret) {
 		case H264BSD_PIC_RDY: {

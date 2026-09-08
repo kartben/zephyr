@@ -119,6 +119,12 @@ config SAMPLE_AA_HU_RX_MSG_SIZE
 	  are compact; the companion accessory sample's I_PCM key frames are
 	  large (about 580 KB at 800x480), so its transport overrides this.
 
+config SAMPLE_AA_HU_TEST_PATTERN
+	bool "Show colour bars at startup"
+	help
+	  Fill the framebuffer with colour bars before the phone connects, to
+	  check the panel and the pixel format.
+
 config SAMPLE_AA_HU_H264
 	bool "Decode the phone's H.264 stream"
 	help
