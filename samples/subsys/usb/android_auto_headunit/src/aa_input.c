@@ -29,13 +29,54 @@ LOG_MODULE_REGISTER(aa_input, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
 /* Forwarding is enabled once the phone has bound the input channel */
 static atomic_t forwarding;
 
-static int __maybe_unused send_touch(uint32_t x, uint32_t y, int action)
+/* Pointers the message can carry, so also the slots that are tracked */
+#define TOUCH_MAX_POINTS ARRAY_SIZE(((TouchEvent *)0)->touch_location)
+
+struct touch_point {
+	uint32_t x;
+	uint32_t y;
+	/* Track id the screen gave this pointer, -1 while the slot is free */
+	int32_t id;
+	bool down;
+};
+
+/*
+ * Report every pointer of the gesture, with action_index naming the one the
+ * action applies to. A pointer being lifted is still part of the report, which
+ * is what the phone's input stack expects.
+ */
+static int __maybe_unused send_touch(const struct touch_point *pts, uint8_t slot, int action)
 {
 	InputEventIndication ind = InputEventIndication_init_zero;
-	uint8_t buf[64];
+	bool lifting = (action == AA_TOUCH_ACTION_RELEASE || action == AA_TOUCH_ACTION_POINTER_UP);
+	uint8_t buf[128];
+	uint32_t count = 0;
 	int n;
 
 	if (atomic_get(&forwarding) == 0) {
+		return 0;
+	}
+
+	for (uint8_t i = 0; i < TOUCH_MAX_POINTS; i++) {
+		if (!pts[i].down && !(lifting && i == slot)) {
+			continue;
+		}
+
+		if (i == slot) {
+			ind.touch_event.has_action_index = true;
+			ind.touch_event.action_index = count;
+		}
+
+		ind.touch_event.touch_location[count].has_x = true;
+		ind.touch_event.touch_location[count].x = pts[i].x;
+		ind.touch_event.touch_location[count].has_y = true;
+		ind.touch_event.touch_location[count].y = pts[i].y;
+		ind.touch_event.touch_location[count].has_pointer_id = true;
+		ind.touch_event.touch_location[count].pointer_id = i;
+		count++;
+	}
+
+	if (count == 0U) {
 		return 0;
 	}
 
@@ -44,13 +85,7 @@ static int __maybe_unused send_touch(uint32_t x, uint32_t y, int action)
 	ind.has_disp_channel = true;
 	ind.disp_channel = 0;
 	ind.has_touch_event = true;
-	ind.touch_event.touch_location_count = 1;
-	ind.touch_event.touch_location[0].has_x = true;
-	ind.touch_event.touch_location[0].x = x;
-	ind.touch_event.touch_location[0].has_y = true;
-	ind.touch_event.touch_location[0].y = y;
-	ind.touch_event.touch_location[0].has_pointer_id = true;
-	ind.touch_event.touch_location[0].pointer_id = 0;
+	ind.touch_event.touch_location_count = count;
 	ind.touch_event.has_touch_action = true;
 	ind.touch_event.touch_action = action;
 
@@ -68,53 +103,134 @@ static int __maybe_unused send_touch(uint32_t x, uint32_t y, int action)
 /* The screen reports a held finger far faster than the phone needs it */
 #define TOUCH_DRAG_MIN_MS 20
 
-static uint32_t cur_x;
-static uint32_t cur_y;
-static bool cur_pressed;
-static bool was_pressed;
+static struct touch_point points[TOUCH_MAX_POINTS];
+static uint8_t cur_slot;
 static int64_t last_drag;
+
+/*
+ * The screen numbers its pointers with track ids of its own choosing, which do
+ * not have to be small or contiguous, so give each one a slot of ours. The slot
+ * is what the phone sees as the pointer id, and it lasts until the finger is
+ * lifted.
+ */
+static uint8_t slot_of(int32_t id)
+{
+	uint8_t free_slot = UINT8_MAX;
+
+	for (uint8_t i = 0; i < TOUCH_MAX_POINTS; i++) {
+		if (points[i].id == id) {
+			return i;
+		}
+
+		if (points[i].id < 0 && free_slot == UINT8_MAX) {
+			free_slot = i;
+		}
+	}
+
+	if (free_slot != UINT8_MAX) {
+		points[free_slot].id = id;
+	}
+
+	return free_slot;
+}
+
+static void slots_init(void)
+{
+	for (uint8_t i = 0; i < TOUCH_MAX_POINTS; i++) {
+		points[i].id = -1;
+		points[i].down = false;
+	}
+}
+
+static uint8_t points_down(void)
+{
+	uint8_t n = 0;
+
+	for (uint8_t i = 0; i < TOUCH_MAX_POINTS; i++) {
+		if (points[i].down) {
+			n++;
+		}
+	}
+
+	return n;
+}
+
+/* Which Android action a change to one pointer amounts to for the gesture */
+static void report_slot(uint8_t slot, bool changed)
+{
+	int action;
+
+	if (!changed) {
+		int64_t now = k_uptime_get();
+
+		if (!points[slot].down) {
+			/* A pointer that never pressed; give its slot back */
+			points[slot].id = -1;
+			return;
+		}
+
+		if ((now - last_drag) < TOUCH_DRAG_MIN_MS) {
+			return;
+		}
+		last_drag = now;
+		action = AA_TOUCH_ACTION_DRAG;
+	} else if (points[slot].down) {
+		action = (points_down() == 1U) ? AA_TOUCH_ACTION_PRESS
+					       : AA_TOUCH_ACTION_POINTER_DOWN;
+		last_drag = k_uptime_get();
+		LOG_INF("Touch press at %u,%u, pointer %u of %u", points[slot].x, points[slot].y,
+			slot, points_down());
+	} else {
+		action = (points_down() == 0U) ? AA_TOUCH_ACTION_RELEASE
+					       : AA_TOUCH_ACTION_POINTER_UP;
+		LOG_INF("Touch release at %u,%u, pointer %u, %u left", points[slot].x,
+			points[slot].y, slot, points_down());
+	}
+
+	(void)send_touch(points, slot, action);
+
+	if (!points[slot].down) {
+		points[slot].id = -1;
+	}
+}
 
 static void touch_cb(struct input_event *evt, void *user_data)
 {
+	bool changed = false;
+
 	ARG_UNUSED(user_data);
 
 	switch (evt->code) {
+	case INPUT_ABS_MT_SLOT:
+		/* Carries sync, but arrives ahead of this pointer's position */
+		cur_slot = slot_of(evt->value);
+		return;
 	case INPUT_ABS_X:
-		cur_x = (uint32_t)evt->value;
-		break;
 	case INPUT_ABS_Y:
-		cur_y = (uint32_t)evt->value;
-		break;
 	case INPUT_BTN_TOUCH:
-		cur_pressed = evt->value != 0;
 		break;
 	default:
 		return;
+	}
+
+	if (cur_slot >= TOUCH_MAX_POINTS) {
+		return;
+	}
+
+	if (evt->code == INPUT_ABS_X) {
+		points[cur_slot].x = (uint32_t)evt->value;
+	} else if (evt->code == INPUT_ABS_Y) {
+		points[cur_slot].y = (uint32_t)evt->value;
+	} else {
+		changed = points[cur_slot].down != (evt->value != 0);
+		points[cur_slot].down = evt->value != 0;
 	}
 
 	if (!evt->sync) {
 		return;
 	}
 
-	if (cur_pressed && !was_pressed) {
-		LOG_INF("Touch press at %u,%u%s", cur_x, cur_y,
-			(atomic_get(&forwarding) != 0) ? "" : " (not forwarded)");
-		last_drag = k_uptime_get();
-		(void)send_touch(cur_x, cur_y, AA_TOUCH_ACTION_PRESS);
-	} else if (cur_pressed && was_pressed) {
-		int64_t now = k_uptime_get();
-
-		if ((now - last_drag) < TOUCH_DRAG_MIN_MS) {
-			return;
-		}
-		last_drag = now;
-		LOG_DBG("Touch drag to %u,%u", cur_x, cur_y);
-		(void)send_touch(cur_x, cur_y, AA_TOUCH_ACTION_DRAG);
-	} else if (!cur_pressed && was_pressed) {
-		LOG_INF("Touch release at %u,%u", cur_x, cur_y);
-		(void)send_touch(cur_x, cur_y, AA_TOUCH_ACTION_RELEASE);
-	}
-	was_pressed = cur_pressed;
+	report_slot(cur_slot, changed);
 }
 
 INPUT_CALLBACK_DEFINE(DEVICE_DT_GET(DT_CHOSEN(zephyr_touch)), touch_cb, NULL);
@@ -128,6 +244,10 @@ static struct k_thread demo_thread_data;
 
 static void demo_thread(void *p1, void *p2, void *p3)
 {
+	struct touch_point tap[TOUCH_MAX_POINTS] = {
+		{ .x = CONFIG_SAMPLE_AA_HU_DEMO_TAP_X, .y = CONFIG_SAMPLE_AA_HU_DEMO_TAP_Y },
+	};
+
 	ARG_UNUSED(p1);
 	ARG_UNUSED(p2);
 	ARG_UNUSED(p3);
@@ -139,11 +259,11 @@ static void demo_thread(void *p1, void *p2, void *p3)
 		}
 		LOG_INF("Demo tap at %u,%u", (uint32_t)CONFIG_SAMPLE_AA_HU_DEMO_TAP_X,
 			(uint32_t)CONFIG_SAMPLE_AA_HU_DEMO_TAP_Y);
-		(void)send_touch(CONFIG_SAMPLE_AA_HU_DEMO_TAP_X, CONFIG_SAMPLE_AA_HU_DEMO_TAP_Y,
-				 AA_TOUCH_ACTION_PRESS);
+		tap[0].down = true;
+		(void)send_touch(tap, 0U, AA_TOUCH_ACTION_PRESS);
 		k_sleep(K_MSEC(120));
-		(void)send_touch(CONFIG_SAMPLE_AA_HU_DEMO_TAP_X, CONFIG_SAMPLE_AA_HU_DEMO_TAP_Y,
-				 AA_TOUCH_ACTION_RELEASE);
+		tap[0].down = false;
+		(void)send_touch(tap, 0U, AA_TOUCH_ACTION_RELEASE);
 	}
 }
 
@@ -163,6 +283,9 @@ static void demo_start(void)
 
 int aa_input_init(void)
 {
+#if DT_HAS_CHOSEN(zephyr_touch) && DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_touch), okay)
+	slots_init();
+#endif
 	demo_start();
 
 	return 0;
@@ -176,6 +299,9 @@ void aa_input_link_up(void)
 void aa_input_link_down(void)
 {
 	atomic_set(&forwarding, 0);
+#if DT_HAS_CHOSEN(zephyr_touch) && DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_touch), okay)
+	slots_init();
+#endif
 }
 
 void aa_input_handle(uint16_t msg_id, const uint8_t *body, size_t len)
