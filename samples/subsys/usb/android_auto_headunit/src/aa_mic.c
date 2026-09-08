@@ -5,6 +5,8 @@
 
 #include "aa_mic.h"
 
+#include <stdlib.h>
+
 #include <zephyr/audio/dmic.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
@@ -113,6 +115,71 @@ static void mic_stop(void)
 	}
 }
 
+#if defined(CONFIG_SAMPLE_AA_HU_MIC_LEVEL_LOG)
+
+/*
+ * Level of a squared amplitude in dBFS, to about a decibel: 10 * log10(power)
+ * relative to a full scale sample squared. Feeding it a square lets the same
+ * helper report a peak and a mean, and keeps the arithmetic integer.
+ */
+static int mic_dbfs(uint32_t power)
+{
+	/* 10 * log10(1 + n / 8) */
+	static const uint8_t frac[8] = {0, 1, 1, 1, 2, 2, 2, 3};
+	unsigned int msb;
+
+	if (power == 0U) {
+		return -99;
+	}
+
+	msb = find_msb_set(power) - 1U;
+	power = (msb >= 3U) ? (power >> (msb - 3U)) : (power << (3U - msb));
+
+	return (int)(3U * msb + frac[power & 7U]) - 90;
+}
+
+static void mic_level(const int16_t *samples, size_t count)
+{
+	static uint64_t energy;
+	static uint32_t peak;
+	static uint32_t clipped;
+	static size_t taken;
+	size_t i;
+
+	for (i = 0; i < count; i++) {
+		uint32_t mag = (uint32_t)abs(samples[i]);
+
+		energy += (uint64_t)mag * mag;
+		peak = MAX(peak, mag);
+		if (mag >= INT16_MAX) {
+			clipped++;
+		}
+	}
+
+	taken += count;
+	if (taken < MIC_RATE) {
+		return;
+	}
+
+	LOG_INF("Microphone level: peak %d dBFS, mean %d dBFS, %u clipped", mic_dbfs(peak * peak),
+		mic_dbfs((uint32_t)(energy / taken)), clipped);
+
+	energy = 0;
+	peak = 0;
+	clipped = 0;
+	taken = 0;
+}
+
+#else
+
+static inline void mic_level(const int16_t *samples, size_t count)
+{
+	ARG_UNUSED(samples);
+	ARG_UNUSED(count);
+}
+
+#endif /* CONFIG_SAMPLE_AA_HU_MIC_LEVEL_LOG */
+
 /* A media message is a timestamp followed by the samples, as video is */
 static uint8_t mic_msg[MIC_BLOCK_SIZE + sizeof(uint64_t)];
 
@@ -166,6 +233,7 @@ static void mic_thread(void *p1, void *p2, void *p3)
 		size = MIN(size, (size_t)MIC_BLOCK_SIZE);
 		sys_put_be64((uint64_t)k_ticks_to_us_floor64(k_uptime_ticks()), mic_msg);
 		memcpy(&mic_msg[sizeof(uint64_t)], block, size);
+		mic_level(block, size / sizeof(int16_t));
 		k_mem_slab_free(&mic_slab, block);
 
 		if (atomic_get(&capturing) != 0 && send_block(size) != 0) {

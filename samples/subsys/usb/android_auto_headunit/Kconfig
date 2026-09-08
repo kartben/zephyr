@@ -256,6 +256,12 @@ config SAMPLE_AA_HU_DEMO_TAP_INTERVAL_MS
 	depends on SAMPLE_AA_HU_DEMO_TAP
 	default 2000
 
+config SAMPLE_AA_HU_MIC_LEVEL_LOG
+	bool "Report the level of the captured audio"
+	help
+	  Log the peak and RMS level of the captured samples once a second, to
+	  tell a microphone that is too quiet from one that clips.
+
 config SAMPLE_AA_HU_BUFFERS_IN_EXT_RAM
 	bool "Place the large buffers in external RAM"
 	default y if ESP_SPIRAM
