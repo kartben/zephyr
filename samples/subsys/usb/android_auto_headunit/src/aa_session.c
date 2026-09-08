@@ -21,6 +21,7 @@
 #include "aa_frame.h"
 #include "aa_ids.h"
 #include "aa_input.h"
+#include "aa_mic.h"
 #include "aa_audio.h"
 #include "aa_mem.h"
 #include "aa_sensor.h"
@@ -134,6 +135,8 @@ static void deliver(uint8_t channel, bool control, const uint8_t *payload, size_
 		aa_input_handle(msg_id, payload + 2U, len - 2U);
 	} else if (channel == session.sensor_ch) {
 		aa_sensor_handle(msg_id, payload + 2U, len - 2U);
+	} else if (channel == session.mic_ch) {
+		aa_mic_handle(msg_id, payload + 2U, len - 2U);
 	} else if (aa_audio_is_audio_channel(channel)) {
 		aa_audio_handle(channel, msg_id, payload + 2U, len - 2U);
 	} else {
@@ -267,6 +270,7 @@ static void rx_thread(void *p1, void *p2, void *p3)
 		rx_loop();
 		aa_video_link_down();
 		aa_input_link_down();
+		aa_mic_link_down();
 		aa_frame_reset();
 		aa_hu_session_set_state(AA_HU_LINK_DOWN);
 		t->close();
@@ -294,6 +298,11 @@ int aa_hu_session_start(void)
 	}
 
 	ret = aa_input_init();
+	if (ret != 0) {
+		return ret;
+	}
+
+	ret = aa_mic_init();
 	if (ret != 0) {
 		return ret;
 	}
