@@ -105,6 +105,10 @@ config SAMPLE_AA_HU_TX_CHUNK_SIZE
 config SAMPLE_AA_HU_RX_FRAME_SIZE
 	int "Receive frame buffer size (bytes)"
 	default 8256
+	help
+	  Must hold one frame's payload. A phone packs several TLS records of
+	  video into a single frame, so a real one needs far more than the
+	  companion accessory sample.
 
 config SAMPLE_AA_HU_RX_MSG_SIZE
 	int "Reassembly buffer for fragmented messages (bytes)"
