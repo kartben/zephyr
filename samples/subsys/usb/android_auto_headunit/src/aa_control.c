@@ -178,6 +178,7 @@ static int send_service_discovery_response(void)
 
 	s->video_ch = AA_VIDEO_CHANNEL_ID;
 	s->input_ch = AA_INPUT_CHANNEL_ID;
+	s->mic_ch = AA_MIC_CHANNEL_ID;
 	s->sensor_ch = AA_SENSOR_CHANNEL_ID;
 
 	len = aa_pb_encode(buf, sizeof(buf), ServiceDiscoveryResponse_fields, &rsp);
