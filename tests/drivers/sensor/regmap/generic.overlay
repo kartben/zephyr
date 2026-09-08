@@ -103,5 +103,9 @@
 			current-lsb-microamps = <100>;
 			rshunt-micro-ohms = <100000>;
 		};
+		test_i2c_isl29035: isl29035@28 {
+			compatible = "isil,isl29035";
+			reg = <0x28>;
+		};
 	};
 };

@@ -4,3 +4,4 @@ zephyr_library()
 
 zephyr_library_sources(isl29035.c)
 zephyr_library_sources_ifdef(CONFIG_ISL29035_TRIGGER isl29035_trigger.c)
+zephyr_library_sources_ifdef(CONFIG_EMUL_SENSOR_REGMAP isl29035_emul.c)
