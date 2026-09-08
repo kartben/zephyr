@@ -207,16 +207,16 @@ config SAMPLE_AA_HU_DEMO_TAP_INTERVAL_MS
 
 config SAMPLE_AA_HU_BUFFERS_IN_EXT_RAM
 	bool "Place the large buffers in external RAM"
-	depends on ESP_SPIRAM
-	default y
+	default y if ESP_SPIRAM
 	help
 	  The framebuffer and the message reassembly buffer are far larger than
-	  the internal RAM of most boards.
+	  the internal RAM of most boards that can act as a host.
 
 config SAMPLE_AA_HU_BUFFERS_SECTION
 	string "Linker section for the large buffers"
 	depends on SAMPLE_AA_HU_BUFFERS_IN_EXT_RAM
-	default ".ext_ram.bss"
+	default ".ext_ram.bss" if ESP_SPIRAM
+	default "PSRAM"
 
 config SAMPLE_AA_HU_FB_DUMP
 	bool "Dump decoded pictures to a host file"

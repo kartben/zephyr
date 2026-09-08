@@ -25,5 +25,6 @@ tests:
     build_only: true
     platform_allow:
       - esp32s3_devkitc/esp32s3/procpu
+      - stm32n6570_dk/stm32n657xx/sb
     integration_platforms:
       - esp32s3_devkitc/esp32s3/procpu
