@@ -65,10 +65,14 @@ static int __maybe_unused send_touch(uint32_t x, uint32_t y, int action)
 
 #if DT_HAS_CHOSEN(zephyr_touch) && DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_touch), okay)
 
+/* The screen reports a held finger far faster than the phone needs it */
+#define TOUCH_DRAG_MIN_MS 20
+
 static uint32_t cur_x;
 static uint32_t cur_y;
 static bool cur_pressed;
 static bool was_pressed;
+static int64_t last_drag;
 
 static void touch_cb(struct input_event *evt, void *user_data)
 {
@@ -93,10 +97,21 @@ static void touch_cb(struct input_event *evt, void *user_data)
 	}
 
 	if (cur_pressed && !was_pressed) {
+		LOG_INF("Touch press at %u,%u%s", cur_x, cur_y,
+			(atomic_get(&forwarding) != 0) ? "" : " (not forwarded)");
+		last_drag = k_uptime_get();
 		(void)send_touch(cur_x, cur_y, AA_TOUCH_ACTION_PRESS);
 	} else if (cur_pressed && was_pressed) {
+		int64_t now = k_uptime_get();
+
+		if ((now - last_drag) < TOUCH_DRAG_MIN_MS) {
+			return;
+		}
+		last_drag = now;
+		LOG_DBG("Touch drag to %u,%u", cur_x, cur_y);
 		(void)send_touch(cur_x, cur_y, AA_TOUCH_ACTION_DRAG);
 	} else if (!cur_pressed && was_pressed) {
+		LOG_INF("Touch release at %u,%u", cur_x, cur_y);
 		(void)send_touch(cur_x, cur_y, AA_TOUCH_ACTION_RELEASE);
 	}
 	was_pressed = cur_pressed;
