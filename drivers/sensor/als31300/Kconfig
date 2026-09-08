@@ -8,6 +8,8 @@ config ALS31300
 	default y
 	depends on DT_HAS_ALLEGRO_ALS31300_ENABLED
 	select I2C
+	select RTIO
+	select I2C_RTIO
 	help
 	  Enable driver for ALS31300 3D Linear Hall-Effect Sensor.
 	  This sensor provides 12-bit magnetic field measurements
