@@ -63,6 +63,7 @@ enum uhc_dwc2_channel_event {
 };
 
 #define EPSIZE_BULK_FS			64U
+#define EPSIZE_BULK_HS			512U
 
 /* Mask to clear HPRT register */
 #define USB_DWC2_HPRT_W1C_MSK		(USB_DWC2_HPRT_PRTENA |			\
@@ -486,8 +487,13 @@ static int dwc2_set_fifo_sizes(struct usb_dwc2_reg *const base)
 {
 	const uint32_t ghwcfg2 = sys_read32((mem_addr_t)&base->ghwcfg2);
 	const uint32_t ghwcfg3 = sys_read32((mem_addr_t)&base->ghwcfg3);
-	/* TODO: Check the FIFO setting on hardware, that supports HS */
-	const uint32_t nptx_largest = EPSIZE_BULK_FS / 4;
+	/*
+	 * The non-periodic TX FIFO has to hold a whole bulk packet, which is
+	 * eight times larger once the controller has a high-speed PHY.
+	 */
+	const bool hs_phy = usb_dwc2_get_ghwcfg2_hsphytype(ghwcfg2) !=
+			    USB_DWC2_GHWCFG2_HSPHYTYPE_NO_HS;
+	const uint32_t nptx_largest = (hs_phy ? EPSIZE_BULK_HS : EPSIZE_BULK_FS) / 4;
 	const uint32_t ptx_largest = 256 / 4;
 	const uint32_t dfifodepth = FIELD_GET(USB_DWC2_GHWCFG3_DFIFODEPTH_MASK, ghwcfg3);
 	const uint32_t numhstchnl = FIELD_GET(USB_DWC2_GHWCFG2_NUMHSTCHNL_MASK, ghwcfg2);
