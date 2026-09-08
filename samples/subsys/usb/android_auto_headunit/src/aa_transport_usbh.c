@@ -625,11 +625,21 @@ static int usbh_write(const uint8_t *buf, size_t len)
 				write_abandoned = !taken;
 			}
 
-			if (taken) {
+			if (taken && acc.udev != NULL) {
 				usbh_xfer_free(acc.udev, xfer);
 			}
 
 			ret = atomic_get(&link_up) ? -ETIMEDOUT : -ENOTCONN;
+			break;
+		}
+
+		/*
+		 * Detaching wakes this up as well, and takes the device and
+		 * everything allocated from it with it, so the transfer must
+		 * only be given back while the phone is still there.
+		 */
+		if (!atomic_get(&link_up) || acc.udev == NULL) {
+			ret = -ENOTCONN;
 			break;
 		}
 
