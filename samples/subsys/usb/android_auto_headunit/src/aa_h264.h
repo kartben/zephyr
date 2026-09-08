@@ -22,6 +22,14 @@
 int aa_h264_init(uint16_t *fb, uint16_t width, uint16_t height);
 
 /**
+ * @brief Discard the decoder's state and start a new stream.
+ *
+ * @retval 0 Success.
+ * @retval -ENOMEM The decoder could not be allocated.
+ */
+int aa_h264_reset(void);
+
+/**
  * @brief Decode one access unit.
  *
  * @retval 1 A picture was written to the framebuffer.
