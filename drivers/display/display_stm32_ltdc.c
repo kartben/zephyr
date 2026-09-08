@@ -13,6 +13,7 @@
 #include <zephyr/devicetree.h>
 #include <stm32_ll_rcc.h>
 #include <zephyr/drivers/display.h>
+#include <zephyr/drivers/display/stm32_ltdc.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/pinctrl.h>
 #include <zephyr/drivers/clock_control/stm32_clock_control.h>
@@ -351,6 +352,58 @@ static int stm32_ltdc_write(const struct device *dev, const uint16_t x,
 
 	return 0;
 }
+
+#ifdef CONFIG_STM32_LTDC_YUV
+int stm32_ltdc_set_yuyv_frame(const struct device *dev, const uint8_t *buf, size_t len)
+{
+	const struct display_stm32_ltdc_config *config = dev->config;
+	struct display_stm32_ltdc_data *data = dev->data;
+	LTDC_LayerFlexYUVCoPlanarTypeDef cfg = {0};
+	size_t frame_len = (size_t)config->width * config->height * 2U;
+
+	if (buf == NULL || len < frame_len || (config->width % 2U) != 0U) {
+		return -EINVAL;
+	}
+
+	sys_cache_data_flush_range((void *)buf, frame_len);
+
+	if ((LTDC_LAYER(&data->hltdc, LTDC_LAYER_1)->PCR & LTDC_LxPCR_YCEN) == 0U) {
+		cfg.Layer.WindowX0 = data->hltdc.LayerCfg[0].WindowX0;
+		cfg.Layer.WindowX1 = data->hltdc.LayerCfg[0].WindowX1;
+		cfg.Layer.WindowY0 = data->hltdc.LayerCfg[0].WindowY0;
+		cfg.Layer.WindowY1 = data->hltdc.LayerCfg[0].WindowY1;
+		cfg.Layer.Alpha = data->hltdc.LayerCfg[0].Alpha;
+		cfg.Layer.Alpha0 = data->hltdc.LayerCfg[0].Alpha0;
+		cfg.Layer.BlendingFactor1 = data->hltdc.LayerCfg[0].BlendingFactor1;
+		cfg.Layer.BlendingFactor2 = data->hltdc.LayerCfg[0].BlendingFactor2;
+		cfg.Layer.ImageWidth = config->width;
+		cfg.Layer.ImageHeight = config->height;
+
+		/* ES0620, section 2.7.1: YUV420 planar modes are not functional. */
+		cfg.FlexYUV.YUVOrder = LTDC_YUV_ORDER_LUMINANCE_FIRST;
+		cfg.FlexYUV.LuminanceOrder = LTDC_YUV_LUMINANCE_ORDER_EVEN_FIRST;
+		cfg.FlexYUV.ChrominanceOrder = LTDC_YUV_CHROMIANCE_ORDER_U_FIRST;
+		cfg.FlexYUV.LuminanceRescale = LTDC_YUV_LUMINANCE_RESCALE_ENABLE;
+		cfg.YUVAddress = (uint32_t)buf;
+		cfg.ColorConverter = LTDC_YUV2RGBCONVERTOR_BT601_REDUCED_RANGE;
+
+		/* Configure once while stopped; subsequent frames swap at VSync. */
+		__HAL_LTDC_DISABLE(&data->hltdc);
+		if (HAL_LTDC_ConfigLayerFlexYUVCoPlanar(&data->hltdc, &cfg,
+						      LTDC_LAYER_1) != HAL_OK) {
+			__HAL_LTDC_ENABLE(&data->hltdc);
+			return -EIO;
+		}
+		data->front_buf = buf;
+		data->pend_buf = buf;
+		__HAL_LTDC_ENABLE(&data->hltdc);
+	} else if (buf != data->front_buf) {
+		stm32_ltdc_sync_frame(data, buf);
+	}
+
+	return 0;
+}
+#endif /* CONFIG_STM32_LTDC_YUV */
 
 static int stm32_ltdc_read(const struct device *dev, const uint16_t x,
 				const uint16_t y,

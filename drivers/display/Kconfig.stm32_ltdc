@@ -18,6 +18,14 @@ menuconfig STM32_LTDC
 
 if STM32_LTDC
 
+config STM32_LTDC_YUV
+	bool "Packed YUV pictures"
+	depends on SOC_SERIES_STM32N6X
+	help
+	  Scan out packed YUYV 4:2:2 pictures with hardware color conversion.
+	  Planar YUV420 is unavailable on STM32N6 (erratum ES0620, 2.7.1).
+	  See stm32_ltdc_set_yuyv_frame().
+
 choice STM32_LTDC_PIXEL_FORMAT
 	prompt "Color pixel format"
 	default STM32_LTDC_RGB565
