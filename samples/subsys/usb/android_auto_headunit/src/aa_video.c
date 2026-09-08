@@ -110,6 +110,20 @@ void aa_video_link_up(void)
 
 void aa_video_link_down(void)
 {
+	/*
+	 * The phone is gone, so do not leave the last picture of the session on
+	 * the panel, and drop the decoder state with it: whatever comes back
+	 * starts a stream of its own.
+	 */
+	memset(framebuffer, 0, sizeof(framebuffer));
+	blit();
+
+	if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_H264)) {
+		(void)aa_h264_reset();
+	} else {
+		(void)h264_ipcm_decode_init(&decoder, VIDEO_WIDTH, VIDEO_HEIGHT, framebuffer,
+					    nal_scratch, sizeof(nal_scratch));
+	}
 }
 
 static int send_focus_indication(void)

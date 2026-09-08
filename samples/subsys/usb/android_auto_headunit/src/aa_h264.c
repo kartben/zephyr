@@ -67,6 +67,21 @@ int aa_h264_init(uint16_t *fb, uint16_t width, uint16_t height)
 }
 
 /*
+ * A new phone brings a new stream, and the reference pictures of the old one
+ * mean nothing to it. The heap is reinitialised wholesale, which is what frees
+ * everything the decoder had taken from it.
+ */
+int aa_h264_reset(void)
+{
+	if (decoder != NULL) {
+		h264bsdShutdown(decoder);
+		decoder = NULL;
+	}
+
+	return aa_h264_init(framebuffer, fb_width, fb_height);
+}
+
+/*
  * Convert a decoded picture into the framebuffer. The stream carries BT.601
  * limited range, so the luma is scaled up before the chroma is mixed in.
  */
