@@ -494,7 +494,11 @@ static int dwc2_set_fifo_sizes(struct usb_dwc2_reg *const base)
 	const bool hs_phy = usb_dwc2_get_ghwcfg2_hsphytype(ghwcfg2) !=
 			    USB_DWC2_GHWCFG2_HSPHYTYPE_NO_HS;
 	const uint32_t nptx_largest = (hs_phy ? EPSIZE_BULK_HS : EPSIZE_BULK_FS) / 4;
-	const uint32_t ptx_largest = 256 / 4;
+	/*
+	 * The receive FIFO is shared by every endpoint, so it has to absorb the
+	 * largest packet the port can receive back to back.
+	 */
+	const uint32_t ptx_largest = (hs_phy ? EPSIZE_BULK_HS : 256U) / 4;
 	const uint32_t dfifodepth = FIELD_GET(USB_DWC2_GHWCFG3_DFIFODEPTH_MASK, ghwcfg3);
 	const uint32_t numhstchnl = FIELD_GET(USB_DWC2_GHWCFG2_NUMHSTCHNL_MASK, ghwcfg2);
 	uint32_t fifo_available = dfifodepth - (numhstchnl + 1);
