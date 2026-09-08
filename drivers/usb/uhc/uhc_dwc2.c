@@ -200,18 +200,6 @@ static inline uint32_t calc_packet_count(const uint32_t size, const uint16_t mps
 	}
 }
 
-static inline uint8_t calc_next_pid(const uint8_t pid, const uint32_t pkt_cnt)
-{
-	/* If amount of packets are even - do not toggle */
-	if ((pkt_cnt & BIT(0)) == 0) {
-		return pid;
-	}
-
-	return (pid == USB_DWC2_HCTSIZ_PID_DATA0) ?
-		USB_DWC2_HCTSIZ_PID_DATA1 :
-		USB_DWC2_HCTSIZ_PID_DATA0;
-}
-
 static inline bool periodic_frame_overrun(uint16_t current_frame, uint16_t scheduled_frame)
 {
 	uint16_t delta;
@@ -1311,34 +1299,6 @@ static int ch_configure(const struct device *const dev, struct uhc_dwc2_channel 
 	return 0;
 }
 
-static void ch_complete_data(const struct device *dev, struct uhc_dwc2_channel *const ch)
-{
-	struct uhc_transfer *const xfer = ch->xfer;
-	uint32_t actual_len = ch->length;
-	uint32_t pkt_cnt;
-	uint32_t hctsiz;
-	uint32_t remaining;
-
-	/* Add net buffer after IN stage */
-	if (USB_EP_DIR_IS_IN(xfer->ep)) {
-		hctsiz = sys_read32((mem_addr_t)&ch->regs->hctsiz);
-		remaining = usb_dwc2_get_hctsiz_xfersize(hctsiz);
-
-		/* Device may send a short packet, use the actual length */
-		actual_len = ch->length - remaining;
-		sys_cache_data_invd_range(net_buf_tail(xfer->buf), actual_len);
-		net_buf_add(xfer->buf, actual_len);
-	}
-
-	/* Precalculate next pid based on the packets actually transferred */
-	pkt_cnt = calc_packet_count(actual_len, xfer->mps);
-	ch->data->next_pid = calc_next_pid(ch->data->next_pid, pkt_cnt);
-
-	LOG_DBG("Data on channel%u, prog=%u, act=%u, len=%u, mps=%u, next_pid=%u",
-		ch->index, ch->length, actual_len, xfer->buf->len,
-		xfer->mps, ch->data->next_pid);
-}
-
 /*
  * The core writes the PID of the next packet back to HCTSIZ when a channel
  * halts, so the data toggle of an interrupted transfer can be read out of the
@@ -1354,6 +1314,31 @@ static void ch_save_toggle(struct uhc_dwc2_channel *const ch)
 
 	hctsiz = sys_read32((mem_addr_t)&ch->regs->hctsiz);
 	ch->data->next_pid = usb_dwc2_get_hctsiz_pid(hctsiz);
+}
+
+static void ch_complete_data(const struct device *dev, struct uhc_dwc2_channel *const ch)
+{
+	struct uhc_transfer *const xfer = ch->xfer;
+	uint32_t actual_len = ch->length;
+	uint32_t hctsiz;
+	uint32_t remaining;
+
+	/* Add net buffer after IN stage */
+	if (USB_EP_DIR_IS_IN(xfer->ep)) {
+		hctsiz = sys_read32((mem_addr_t)&ch->regs->hctsiz);
+		remaining = usb_dwc2_get_hctsiz_xfersize(hctsiz);
+
+		/* Device may send a short packet, use the actual length */
+		actual_len = ch->length - remaining;
+		sys_cache_data_invd_range(net_buf_tail(xfer->buf), actual_len);
+		net_buf_add(xfer->buf, actual_len);
+	}
+
+	ch_save_toggle(ch);
+
+	LOG_DBG("Data on channel%u, prog=%u, act=%u, len=%u, mps=%u, next_pid=%u",
+		ch->index, ch->length, actual_len, xfer->buf->len,
+		xfer->mps, ch->data->next_pid);
 }
 
 /*
