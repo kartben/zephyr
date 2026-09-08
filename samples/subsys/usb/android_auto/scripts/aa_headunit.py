@@ -580,7 +580,7 @@ class HeadUnit:
     def send_touch(self, x, y, action):
         if not self.encrypted:
             return
-        touch = [(1, [(1, int(x)), (2, int(y)), (3, 0)]), (2, action), (3, 0)]
+        touch = [(1, [(1, int(x)), (2, int(y)), (3, 0)]), (2, 0), (3, action)]
         body = pb_encode([(1, int(time.monotonic() * 1e9)), (2, 0), (3, touch)])
         self.send(CHANNEL_INPUT, INPUT_EVENT_INDICATION, body)
 
