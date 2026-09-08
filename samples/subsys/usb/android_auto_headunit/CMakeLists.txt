@@ -23,6 +23,12 @@ target_sources(app PRIVATE
 
 target_sources_ifdef(CONFIG_SAMPLE_AA_HU_TRANSPORT_TCP app PRIVATE src/aa_transport_tcp.c)
 
+if(CONFIG_SAMPLE_AA_HU_TRANSPORT_USB_HOST)
+  target_sources(app PRIVATE src/aa_transport_usbh.c)
+  # The host stack keeps its request and descriptor helpers private
+  target_include_directories(app PRIVATE ${ZEPHYR_BASE}/subsys/usb/host)
+endif()
+
 if(CONFIG_SAMPLE_AA_HU_FB_DUMP)
   target_sources(app PRIVATE src/hu_fb_dump.c)
   target_sources(native_simulator INTERFACE src/hu_fb_dump_bottom.c)

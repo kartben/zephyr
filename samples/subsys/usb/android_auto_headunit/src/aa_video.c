@@ -15,6 +15,7 @@
 #include "src/aa.pb.h"
 #include "aa_frame.h"
 #include "aa_ids.h"
+#include "aa_mem.h"
 #include "aa_session.h"
 #include "h264_ipcm_decode.h"
 #include "hu_fb_dump.h"
@@ -33,7 +34,7 @@ LOG_MODULE_REGISTER(aa_video, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
 
 static const struct device *display;
 static struct h264_ipcm_dec decoder;
-static uint16_t framebuffer[VIDEO_WIDTH * VIDEO_HEIGHT];
+static uint16_t framebuffer[VIDEO_WIDTH * VIDEO_HEIGHT] AA_HU_BIG_BUF;
 static uint8_t nal_scratch[CONFIG_SAMPLE_AA_HU_NAL_SCRATCH_SIZE];
 static uint32_t frames;
 static int64_t stats_ms;

@@ -1,0 +1,27 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <mem.h>
+
+/*
+ * The board has no display, so the decoded pictures go to a dummy one. This
+ * target exists to bring up the USB host side against a real phone.
+ */
+/ {
+	chosen {
+		zephyr,display = &dummy_dc;
+	};
+
+	dummy_dc: dummy_dc {
+		compatible = "zephyr,dummy-dc";
+		height = <480>;
+		width = <800>;
+	};
+};
+
+/* Modules with 8 MB of PSRAM (N8R8) hold the framebuffer */
+&psram0 {
+	size = <DT_SIZE_M(8)>;
+};
