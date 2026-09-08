@@ -1,0 +1,84 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include "aa_sensor.h"
+
+#include <zephyr/logging/log.h>
+
+#include "src/aa.pb.h"
+#include "aa_frame.h"
+#include "aa_ids.h"
+#include "aa_session.h"
+
+LOG_MODULE_REGISTER(aa_sensor, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
+
+/*
+ * Sensor channel. A phone refuses to project without a driving status source,
+ * so the head unit reports a stationary, daytime vehicle once and leaves it at
+ * that; a real one would follow the vehicle bus.
+ */
+
+static int send_event(int32_t sensor_type)
+{
+	SensorEventIndication ind = SensorEventIndication_init_zero;
+	uint8_t buf[32];
+	int len;
+
+	switch (sensor_type) {
+	case AA_SENSOR_TYPE_DRIVING_STATUS:
+		ind.driving_status_count = 1;
+		ind.driving_status[0].has_status = true;
+		ind.driving_status[0].status = AA_DRIVING_STATUS_UNRESTRICTED;
+		break;
+	case AA_SENSOR_TYPE_NIGHT_DATA:
+		ind.night_mode_count = 1;
+		ind.night_mode[0].has_is_night = true;
+		ind.night_mode[0].is_night = false;
+		break;
+	default:
+		return 0;
+	}
+
+	len = aa_pb_encode(buf, sizeof(buf), SensorEventIndication_fields, &ind);
+	if (len < 0) {
+		return len;
+	}
+
+	return aa_msg_send(aa_hu_session_get()->sensor_ch, false, AA_SENSOR_EVENT_INDICATION, buf,
+			   (size_t)len);
+}
+
+void aa_sensor_handle(uint16_t msg_id, const uint8_t *body, size_t len)
+{
+	SensorStartRequest req = SensorStartRequest_init_zero;
+	SensorStartResponse rsp = SensorStartResponse_init_zero;
+	uint8_t buf[16];
+	int n;
+
+	if (msg_id != AA_SENSOR_START_REQUEST) {
+		LOG_DBG("Unhandled sensor message 0x%04x", msg_id);
+		return;
+	}
+
+	if (aa_pb_decode(body, len, SensorStartRequest_fields, &req) != 0) {
+		return;
+	}
+
+	LOG_INF("Sensor %d started", req.sensor_type);
+
+	rsp.has_status = true;
+	rsp.status = 0;
+	n = aa_pb_encode(buf, sizeof(buf), SensorStartResponse_fields, &rsp);
+	if (n < 0) {
+		return;
+	}
+
+	if (aa_msg_send(aa_hu_session_get()->sensor_ch, false, AA_SENSOR_START_RESPONSE, buf,
+			(size_t)n) != 0) {
+		return;
+	}
+
+	(void)send_event(req.sensor_type);
+}
