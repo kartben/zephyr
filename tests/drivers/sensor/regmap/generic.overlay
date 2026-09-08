@@ -107,5 +107,9 @@
 			compatible = "isil,isl29035";
 			reg = <0x28>;
 		};
+		test_i2c_ltrf216a: ltrf216a@2b {
+			compatible = "liteon,ltrf216a";
+			reg = <0x2b>;
+		};
 	};
 };
