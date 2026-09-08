@@ -50,8 +50,9 @@ static int stts751_sample_fetch(const struct device *dev,
 static inline void stts751_temp_convert(struct sensor_value *val,
 					int16_t raw_val)
 {
+	/* The low byte weighs 1/256 degC, so a micro-degree fraction scales by 1000000 / 256. */
 	val->val1 = raw_val / 256;
-	val->val2 = ((int32_t)raw_val % 256) * 10000;
+	val->val2 = ((int32_t)raw_val % 256) * 1000000 / 256;
 }
 
 static int stts751_channel_get(const struct device *dev,
