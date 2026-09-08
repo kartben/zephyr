@@ -119,6 +119,26 @@ config SAMPLE_AA_HU_RX_MSG_SIZE
 	  are compact; the companion accessory sample's I_PCM key frames are
 	  large (about 580 KB at 800x480), so its transport overrides this.
 
+config SAMPLE_AA_HU_H264
+	bool "Decode the phone's H.264 stream"
+	help
+	  Decode the baseline H.264 a phone streams, rather than only the
+	  companion accessory sample's I_PCM pictures. Needs a checkout of the
+	  h264bsd decoder, which is not part of Zephyr.
+
+config SAMPLE_AA_HU_H264BSD_PATH
+	string "Path to an h264bsd checkout"
+	depends on SAMPLE_AA_HU_H264
+	help
+	  Directory holding the decoder's src/ directory.
+
+config SAMPLE_AA_HU_H264_HEAP_SIZE
+	int "Decoder heap (bytes)"
+	depends on SAMPLE_AA_HU_H264
+	default 8388608
+	help
+	  Holds the decoder's reference pictures, several times the frame size.
+
 config SAMPLE_AA_HU_NAL_SCRATCH_SIZE
 	int "Decoder NAL scratch buffer (bytes)"
 	default 40960
