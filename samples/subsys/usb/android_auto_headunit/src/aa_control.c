@@ -118,8 +118,8 @@ static int send_service_discovery_response(void)
 	strncpy(rsp.car_serial, "0000000000000001", sizeof(rsp.car_serial));
 	rsp.car_serial[sizeof(rsp.car_serial) - 1U] = '\0';
 	rsp.has_car_serial = true;
-	rsp.has_left_hand_drive_vehicle = true;
-	rsp.left_hand_drive_vehicle = true;
+	rsp.has_driver_position = true;
+	rsp.driver_position = AA_DRIVER_POSITION_LEFT;
 	strncpy(rsp.headunit_manufacturer, "Zephyr Project",
 		sizeof(rsp.headunit_manufacturer) - 1U);
 	rsp.has_headunit_manufacturer = true;
@@ -131,8 +131,6 @@ static int send_service_discovery_response(void)
 	rsp.has_sw_version = true;
 	rsp.has_can_play_native_media_during_vr = true;
 	rsp.can_play_native_media_during_vr = false;
-	rsp.has_hide_clock = true;
-	rsp.hide_clock = false;
 
 	/*
 	 * A phone expects somewhere to play media, navigation prompts and
@@ -250,7 +248,7 @@ void aa_control_handle(uint16_t msg_id, const uint8_t *body, size_t len)
 
 		if (aa_pb_decode(body, len, ServiceDiscoveryRequest_fields, &req) == 0) {
 			LOG_INF("Phone \"%s\" (%s)", req.has_device_name ? req.device_name : "?",
-				req.has_device_brand ? req.device_brand : "?");
+				req.has_label_text ? req.label_text : "?");
 		}
 		if (send_service_discovery_response() != 0) {
 			aa_hu_session_abort("service discovery response failed");

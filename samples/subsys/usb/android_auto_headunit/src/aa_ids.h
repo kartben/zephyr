@@ -84,6 +84,11 @@ enum aa_sensor_msg {
 #define AA_STREAM_TYPE_AUDIO 1
 #define AA_STREAM_TYPE_VIDEO 3
 
+/* Where the driver sits, as the service discovery response reports it */
+#define AA_DRIVER_POSITION_LEFT   0
+#define AA_DRIVER_POSITION_RIGHT  1
+#define AA_DRIVER_POSITION_CENTER 2
+
 /* Audio stream kinds a head unit provides */
 #define AA_AUDIO_TYPE_GUIDANCE 1
 #define AA_AUDIO_TYPE_SYSTEM   2

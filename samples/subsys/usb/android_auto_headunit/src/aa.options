@@ -2,9 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # Static sizing of the nanopb structures generated from aa.proto
+ServiceDiscoveryRequest.label_text    max_size:32
 ServiceDiscoveryRequest.device_name   max_size:32
-ServiceDiscoveryRequest.device_brand  max_size:32
 ServiceDiscoveryResponse.channels     max_count:16
+ServiceDiscoveryResponse.car_make     max_size:32
 ServiceDiscoveryResponse.head_unit_name max_size:32
 ServiceDiscoveryResponse.car_model    max_size:32
 ServiceDiscoveryResponse.car_year     max_size:8

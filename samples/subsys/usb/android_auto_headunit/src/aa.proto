@@ -14,8 +14,8 @@ message AuthCompleteIndication {
 }
 
 message ServiceDiscoveryRequest {
-  optional string device_name = 4;
-  optional string device_brand = 5;
+  optional string label_text = 4;
+  optional string device_name = 5;
 }
 
 message VideoConfig {
@@ -74,17 +74,17 @@ message ChannelDescriptor {
 
 message ServiceDiscoveryResponse {
   repeated ChannelDescriptor channels = 1;
-  optional string head_unit_name = 2;
+  optional string car_make = 2;
   optional string car_model = 3;
   optional string car_year = 4;
   optional string car_serial = 5;
-  optional bool left_hand_drive_vehicle = 6;
+  optional int32 driver_position = 6;
   optional string headunit_manufacturer = 7;
   optional string headunit_model = 8;
   optional string sw_build = 9;
   optional string sw_version = 10;
   optional bool can_play_native_media_during_vr = 11;
-  optional bool hide_clock = 12;
+  optional string head_unit_name = 14;
 }
 
 message ChannelOpenRequest {
@@ -129,7 +129,7 @@ message ShutdownResponse {
 }
 
 message AVChannelSetupRequest {
-  optional uint32 config_index = 1;
+  optional int32 codec_type = 1;
 }
 
 message AVChannelSetupResponse {
@@ -215,6 +215,6 @@ message DrivingStatus {
 }
 
 message SensorEventIndication {
-  repeated NightMode night_mode = 9;
-  repeated DrivingStatus driving_status = 12;
+  repeated NightMode night_mode = 10;
+  repeated DrivingStatus driving_status = 13;
 }

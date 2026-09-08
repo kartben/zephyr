@@ -140,7 +140,7 @@ static void on_setup_request(const uint8_t *body, size_t len)
 	int n;
 
 	(void)aa_pb_decode(body, len, AVChannelSetupRequest_fields, &req);
-	LOG_INF("Video setup request, config %u", req.config_index);
+	LOG_INF("Video setup request, codec type %d", req.codec_type);
 
 	rsp.has_media_status = true;
 	rsp.media_status = AA_MEDIA_STATUS_OK;
