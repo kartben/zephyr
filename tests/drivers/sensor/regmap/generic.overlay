@@ -127,5 +127,9 @@
 			compatible = "ti,tmp1075";
 			reg = <0x20>;
 		};
+		test_i2c_vcnl36825t: vcnl36825t@26 {
+			compatible = "vishay,vcnl36825t";
+			reg = <0x26>;
+		};
 	};
 };
