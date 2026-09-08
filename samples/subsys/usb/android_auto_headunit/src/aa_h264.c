@@ -5,9 +5,17 @@
 
 #include "aa_h264.h"
 
+#define SAMPLE_AA_HU_YUV_W CONFIG_SAMPLE_AA_HU_VIDEO_WIDTH
+#define SAMPLE_AA_HU_YUV_H CONFIG_SAMPLE_AA_HU_VIDEO_HEIGHT
+
 #include <errno.h>
+#include <string.h>
 
 #include <zephyr/kernel.h>
+#include <zephyr/sys/byteorder.h>
+#ifdef CONFIG_SAMPLE_AA_HU_LTDC_YUV
+#include <zephyr/drivers/display/stm32_ltdc.h>
+#endif
 #include <zephyr/logging/log.h>
 
 #include <h264bsd_decoder.h>
@@ -81,10 +89,100 @@ int aa_h264_reset(void)
 	return aa_h264_init(framebuffer, fb_width, fb_height);
 }
 
-/*
- * Convert a decoded picture into the framebuffer. The stream carries BT.601
- * limited range, so the luma is scaled up before the chroma is mixed in.
- */
+#ifdef CONFIG_SAMPLE_AA_HU_LTDC_YUV
+#define YUV_PICTURE_SIZE \
+	((size_t)CONFIG_SAMPLE_AA_HU_VIDEO_WIDTH * CONFIG_SAMPLE_AA_HU_VIDEO_HEIGHT * 2U)
+
+/* Keep the scanned frame separate from both the decoder and the next frame. */
+static uint8_t yuv_shown[2][YUV_PICTURE_SIZE]
+	Z_GENERIC_SECTION(CONFIG_SAMPLE_AA_HU_YUV_BUFFERS_SECTION) __aligned(32);
+static uint8_t yuv_next;
+
+K_SEM_DEFINE(yuv_idle, 1, 1);
+K_MSGQ_DEFINE(yuv_queue, sizeof(uint8_t *), 1, sizeof(uint8_t *));
+
+static void yuv_worker(void *arg1, void *arg2, void *arg3)
+{
+	const struct device *display = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
+	uint8_t *buf;
+	int ret;
+
+	ARG_UNUSED(arg1);
+	ARG_UNUSED(arg2);
+	ARG_UNUSED(arg3);
+
+	while (true) {
+		ret = k_msgq_get(&yuv_queue, &buf, K_FOREVER);
+		if (ret != 0) {
+			continue;
+		}
+
+		ret = stm32_ltdc_set_yuyv_frame(display, buf, YUV_PICTURE_SIZE);
+		if (ret == 0) {
+			yuv_next ^= 1U;
+		} else {
+			LOG_WRN_ONCE("Display cannot show YUV (%d)", ret);
+		}
+		k_sem_give(&yuv_idle);
+	}
+}
+
+/* Run promptly when a frame is queued, then block while the decoder continues. */
+K_THREAD_DEFINE(yuv_thread, 2048, yuv_worker, NULL, NULL, NULL,
+		MAX(0, CONFIG_SAMPLE_AA_HU_RX_THREAD_PRIORITY - 1), 0, 0);
+#endif
+
+static void show_yuv(const uint8_t *pic, uint32_t width, uint32_t height)
+{
+#ifdef CONFIG_SAMPLE_AA_HU_LTDC_YUV
+	const uint8_t *u = pic + (size_t)width * height;
+	const uint8_t *v = u + (size_t)width * height / 4U;
+	uint8_t *dst;
+	int ret;
+
+	if (width != CONFIG_SAMPLE_AA_HU_VIDEO_WIDTH ||
+	    height != CONFIG_SAMPLE_AA_HU_VIDEO_HEIGHT ||
+	    (width % 2U) != 0U || (height % 2U) != 0U) {
+		LOG_WRN_ONCE("YUV picture dimensions do not match the display");
+		return;
+	}
+
+	/* The previous swap must finish before its old front buffer is reused. */
+	ret = k_sem_take(&yuv_idle, K_FOREVER);
+	if (ret != 0) {
+		return;
+	}
+	dst = yuv_shown[yuv_next];
+
+	/* Interleave I420 as YUYV; the LTDC performs the color conversion. */
+	for (uint32_t y = 0U; y < height; y++) {
+		const uint8_t *luma = pic + (size_t)y * width;
+		const uint8_t *cb = u + (size_t)(y / 2U) * (width / 2U);
+		const uint8_t *cr = v + (size_t)(y / 2U) * (width / 2U);
+		uint32_t *row = (uint32_t *)(dst + (size_t)y * width * 2U);
+
+		for (uint32_t x = 0U; x < width; x += 2U) {
+			uint32_t pair = (uint32_t)luma[x] | ((uint32_t)cb[x / 2U] << 8U) |
+					((uint32_t)luma[x + 1U] << 16U) |
+					((uint32_t)cr[x / 2U] << 24U);
+
+			row[x / 2U] = sys_cpu_to_le32(pair);
+		}
+	}
+
+	ret = k_msgq_put(&yuv_queue, &dst, K_NO_WAIT);
+	if (ret != 0) {
+		k_sem_give(&yuv_idle);
+		LOG_WRN_ONCE("Could not queue YUV picture (%d)", ret);
+	}
+#else
+	ARG_UNUSED(pic);
+	ARG_UNUSED(width);
+	ARG_UNUSED(height);
+#endif
+}
+
+/* Convert BT.601 limited-range samples for displays without YUV scanout. */
 static void picture_to_rgb565(const uint8_t *pic, uint32_t width, uint32_t height)
 {
 	const uint8_t *luma = pic;
@@ -160,8 +258,14 @@ int aa_h264_decode_au(const uint8_t *au, size_t len)
 							       &err_mbs);
 
 			if (pic != NULL) {
-				picture_to_rgb565(pic, h264bsdPicWidth(decoder) * 16U,
-						  h264bsdPicHeight(decoder) * 16U);
+				uint32_t w = h264bsdPicWidth(decoder) * 16U;
+				uint32_t h = h264bsdPicHeight(decoder) * 16U;
+
+				if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_LTDC_YUV)) {
+					show_yuv(pic, w, h);
+				} else {
+					picture_to_rgb565(pic, w, h);
+				}
 				ready = 1;
 			}
 			break;
