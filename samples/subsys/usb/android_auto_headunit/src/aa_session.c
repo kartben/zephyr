@@ -21,6 +21,7 @@
 #include "aa_frame.h"
 #include "aa_ids.h"
 #include "aa_input.h"
+#include "aa_play.h"
 #include "aa_mic.h"
 #include "aa_audio.h"
 #include "aa_mem.h"
@@ -271,6 +272,7 @@ static void rx_thread(void *p1, void *p2, void *p3)
 		aa_video_link_down();
 		aa_input_link_down();
 		aa_mic_link_down();
+		aa_play_link_down();
 		aa_frame_reset();
 		aa_hu_session_set_state(AA_HU_LINK_DOWN);
 		t->close();
@@ -298,6 +300,11 @@ int aa_hu_session_start(void)
 	}
 
 	ret = aa_input_init();
+	if (ret != 0) {
+		return ret;
+	}
+
+	ret = aa_play_init();
 	if (ret != 0) {
 		return ret;
 	}

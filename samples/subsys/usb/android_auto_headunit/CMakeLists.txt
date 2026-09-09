@@ -16,6 +16,7 @@ target_sources(app PRIVATE
   src/aa_frame.c
   src/aa_input.c
   src/aa_mic.c
+  src/aa_play.c
   src/aa_sensor.c
   src/aa_session.c
   src/aa_tls.c

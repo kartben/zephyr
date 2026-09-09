@@ -288,6 +288,15 @@ config SAMPLE_AA_HU_MIC_BUFFERS_SECTION
 	  second of them does not fit the internal RAM of a board that is also
 	  decoding video into it.
 
+config SAMPLE_AA_HU_PLAY_BUFFERS_SECTION
+	string "Memory section for the audio queues"
+	default "PSRAM" if BOARD_STM32N6570_DK
+	default ".bss"
+	help
+	  Linker section for the half second of samples queued per audio
+	  channel. Only the blocks handed to the output itself have to be
+	  reachable by the controller, so these can sit in external memory.
+
 config SAMPLE_AA_HU_TX_BUFFERS_SECTION
 	string "Memory section for the transmit buffers"
 	default "PSRAM" if BOARD_STM32N6570_DK

@@ -10,6 +10,7 @@
 #include "src/aa.pb.h"
 #include "aa_frame.h"
 #include "aa_ids.h"
+#include "aa_play.h"
 #include "aa_session.h"
 
 LOG_MODULE_REGISTER(aa_audio, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
@@ -22,6 +23,15 @@ LOG_MODULE_REGISTER(aa_audio, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
  */
 
 static int32_t sessions[ARRAY_SIZE(((struct aa_hu_session *)0)->audio_ch)];
+
+/* The order service discovery offers the sinks in */
+static const int32_t audio_types[] = {
+	AA_AUDIO_TYPE_GUIDANCE,
+	AA_AUDIO_TYPE_SYSTEM,
+	AA_AUDIO_TYPE_MEDIA,
+};
+BUILD_ASSERT(ARRAY_SIZE(audio_types) == ARRAY_SIZE(sessions),
+	     "one audio type per advertised channel");
 
 static int channel_index(uint8_t channel)
 {
@@ -101,12 +111,25 @@ void aa_audio_handle(uint8_t channel, uint16_t msg_id, const uint8_t *body, size
 	}
 
 	case AA_AV_STOP_INDICATION:
+		aa_play_flush(audio_types[idx]);
 		break;
 
 	case AA_AV_MEDIA_WITH_TIMESTAMP_INDICATION:
-	case AA_AV_MEDIA_INDICATION:
+	case AA_AV_MEDIA_INDICATION: {
+		/* A timestamped message puts the time before the samples */
+		size_t skip = (msg_id == AA_AV_MEDIA_WITH_TIMESTAMP_INDICATION) ? sizeof(uint64_t)
+									       : 0U;
+
+		/*
+		 * Acknowledged first: the phone holds off until it is, and the
+		 * samples are of no use late.
+		 */
 		send_media_ack(channel, idx);
+		if (len > skip) {
+			aa_play_submit(audio_types[idx], &body[skip], len - skip);
+		}
 		break;
+	}
 
 	default:
 		LOG_DBG("Unhandled audio message 0x%04x on channel %u", msg_id, channel);

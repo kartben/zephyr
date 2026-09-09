@@ -28,3 +28,10 @@ zephyr_uhc0: &usbotg_hs2 {
 &usbotg_hs1 {
 	status = "disabled";
 };
+
+/ {
+	aliases {
+		aa-i2s-out = &sai1_a;
+		aa-audio-codec = &wm8904;
+	};
+};
