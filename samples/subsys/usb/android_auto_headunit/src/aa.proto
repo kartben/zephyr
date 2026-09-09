@@ -64,12 +64,48 @@ message AVInputChannel {
   optional bool available_while_in_call = 3;
 }
 
+message NavigationStatusService {
+  optional int32 minimum_interval_ms = 1;
+  optional int32 type = 2;
+}
+
 message ChannelDescriptor {
   optional uint32 channel_id = 1;
   optional SensorChannel sensor_channel = 2;
   optional AVChannel av_channel = 3;
   optional InputChannel input_channel = 4;
   optional AVInputChannel av_input_channel = 5;
+  optional NavigationStatusService navigation_status_service = 8;
+}
+
+message NavigationNextTurnEvent {
+  optional string road = 1;
+  optional int32 turn_side = 2;
+  optional int32 event = 3;
+  optional bytes image = 4;
+  optional int32 turn_number = 5;
+  optional int32 turn_angle = 6;
+}
+
+message NavigationNextTurnDistanceEvent {
+  optional int32 distance_meters = 1;
+  optional int32 time_to_turn_seconds = 2;
+  optional int32 display_distance_e3 = 3;
+  optional int32 display_distance_unit = 4;
+}
+
+message NavigationManeuver {
+  optional int32 type = 1;
+  optional int32 roundabout_exit_number = 2;
+}
+
+message NavigationStep {
+  optional string road = 1;
+  optional NavigationManeuver maneuver = 2;
+}
+
+message NavigationState {
+  repeated NavigationStep steps = 1;
 }
 
 message ServiceDiscoveryResponse {

@@ -33,6 +33,7 @@ LOG_MODULE_REGISTER(aa_control, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
 #define AA_SYSTEM_AUDIO_CHANNEL_ID   5U
 #define AA_MEDIA_AUDIO_CHANNEL_ID    6U
 #define AA_MIC_CHANNEL_ID            7U
+#define AA_NAV_CHANNEL_ID            8U
 
 #if defined(CONFIG_SAMPLE_AA_HU_VIDEO_1280X720)
 #define AA_OFFERED_RESOLUTION AA_VIDEO_RESOLUTION_1280x720
@@ -58,6 +59,7 @@ static int send_service_discovery_response(void)
 	ChannelDescriptor *input = &rsp.channels[1];
 	ChannelDescriptor *sensor = &rsp.channels[2];
 	ChannelDescriptor *mic = &rsp.channels[3];
+	ChannelDescriptor *nav = &rsp.channels[4];
 	VideoConfig *cfg = &video->av_channel.video_configs[0];
 	static const struct {
 		uint8_t channel_id;
@@ -72,7 +74,7 @@ static int send_service_discovery_response(void)
 	uint8_t buf[512];
 	int len;
 
-	rsp.channels_count = 4U + ARRAY_SIZE(audio);
+	rsp.channels_count = 5U + ARRAY_SIZE(audio);
 
 	video->has_channel_id = true;
 	video->channel_id = AA_VIDEO_CHANNEL_ID;
@@ -141,7 +143,7 @@ static int send_service_discovery_response(void)
 	 * system sounds, and treats a head unit without them as incompatible.
 	 */
 	for (size_t i = 0; i < ARRAY_SIZE(audio); i++) {
-		ChannelDescriptor *ch = &rsp.channels[4U + i];
+		ChannelDescriptor *ch = &rsp.channels[5U + i];
 		AudioConfig *acfg = &ch->av_channel.audio_configs[0];
 
 		ch->has_channel_id = true;
@@ -176,6 +178,19 @@ static int send_service_discovery_response(void)
 	mic->av_input_channel.audio_config.has_channel_count = true;
 	mic->av_input_channel.audio_config.channel_count = 1U;
 
+	/*
+	 * A navigation status sink. The turn is asked for as an enumeration
+	 * rather than a picture: what it drives is a few lines of text.
+	 */
+	nav->has_channel_id = true;
+	nav->channel_id = AA_NAV_CHANNEL_ID;
+	nav->has_navigation_status_service = true;
+	nav->navigation_status_service.has_minimum_interval_ms = true;
+	nav->navigation_status_service.minimum_interval_ms = 1000;
+	nav->navigation_status_service.has_type = true;
+	nav->navigation_status_service.type = AA_NAV_CLUSTER_ENUM;
+
+	s->nav_ch = AA_NAV_CHANNEL_ID;
 	s->video_ch = AA_VIDEO_CHANNEL_ID;
 	s->input_ch = AA_INPUT_CHANNEL_ID;
 	s->mic_ch = AA_MIC_CHANNEL_ID;
@@ -186,7 +201,7 @@ static int send_service_discovery_response(void)
 		return len;
 	}
 
-	LOG_INF("Offering video, input, sensor, audio and microphone channels");
+	LOG_INF("Offering video, input, sensor, audio, microphone and navigation channels");
 
 	return aa_msg_send(AA_CHANNEL_CONTROL, false, AA_CTRL_SERVICE_DISCOVERY_RESPONSE, buf,
 			   (size_t)len);
