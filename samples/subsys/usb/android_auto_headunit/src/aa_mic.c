@@ -39,10 +39,18 @@ LOG_MODULE_REGISTER(aa_mic, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
  */
 #define MIC_BLOCK_SAMPLES (MIC_RATE / 50U)
 #define MIC_BLOCK_SIZE    (MIC_BLOCK_SAMPLES * (MIC_WIDTH / 8U) * MIC_CHANNELS)
-#define MIC_BLOCK_COUNT   8
+/*
+ * Half a second of blocks. The driver fills one every twenty milliseconds and
+ * gives up for good once it has none left, so this has to outlast the longest
+ * the sending thread can be held off by the phone.
+ */
+#define MIC_BLOCK_COUNT   24
 
-/* Consecutive failed reads after which the capture is abandoned */
+/* Consecutive failed reads after which the capture is restarted */
 #define MIC_ERROR_LIMIT   10
+
+/* Restarts after which the microphone is left alone */
+#define MIC_RESTART_LIMIT 5
 
 K_MEM_SLAB_DEFINE_STATIC(mic_slab, MIC_BLOCK_SIZE, MIC_BLOCK_COUNT, 4);
 
@@ -180,6 +188,27 @@ static inline void mic_level(const int16_t *samples, size_t count)
 
 #endif /* CONFIG_SAMPLE_AA_HU_MIC_LEVEL_LOG */
 
+/*
+ * The driver stops for good when it runs out of buffers, which a phone that
+ * holds off the link for long enough will cause. Put it back rather than
+ * leaving the assistant listening to silence for the rest of the session.
+ */
+static int mic_restart(void)
+{
+	int ret;
+
+	(void)dmic_trigger(mic_dev, DMIC_TRIGGER_STOP);
+
+	ret = mic_start();
+	if (ret != 0) {
+		return ret;
+	}
+
+	LOG_WRN("Microphone restarted");
+
+	return 0;
+}
+
 /* A media message is a timestamp followed by the samples, as video is */
 static uint8_t mic_msg[MIC_BLOCK_SIZE + sizeof(uint64_t)];
 
@@ -193,6 +222,7 @@ static int send_block(size_t size)
 static void mic_thread(void *p1, void *p2, void *p3)
 {
 	uint32_t errors = 0;
+	uint32_t restarts = 0;
 
 	ARG_UNUSED(p1);
 	ARG_UNUSED(p2);
@@ -205,6 +235,7 @@ static void mic_thread(void *p1, void *p2, void *p3)
 
 		if (atomic_get(&capturing) == 0) {
 			errors = 0;
+			restarts = 0;
 			k_sleep(K_MSEC(20));
 			continue;
 		}
@@ -213,17 +244,23 @@ static void mic_thread(void *p1, void *p2, void *p3)
 		if (ret != 0) {
 			/*
 			 * Reading again straight away would spin against a
-			 * controller that has stopped, so give up on the
-			 * capture rather than hold the processor.
+			 * controller that has stopped, so wait between
+			 * attempts rather than hold the processor.
 			 */
 			if (++errors >= MIC_ERROR_LIMIT) {
-				LOG_WRN("Microphone read keeps failing (%d), stopping", ret);
-				mic_stop();
+				errors = 0;
+				if (++restarts > MIC_RESTART_LIMIT) {
+					LOG_WRN("Microphone keeps failing (%d), stopping", ret);
+					mic_stop();
+				} else if (mic_restart() != 0) {
+					mic_stop();
+				}
 			}
 			k_sleep(K_MSEC(20));
 			continue;
 		}
 		errors = 0;
+		restarts = 0;
 
 		/*
 		 * Copy the samples out and give the buffer straight back: the
