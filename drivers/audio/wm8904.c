@@ -6,6 +6,7 @@
 #include <errno.h>
 
 #include <zephyr/device.h>
+#include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/clock_control.h>
 #include <zephyr/audio/codec.h>
@@ -29,6 +30,7 @@ enum mic_bias_select {
 
 struct wm8904_driver_config {
 	struct i2c_dt_spec i2c;
+	struct gpio_dt_spec reset_gpio;
 	int clock_source;
 	const struct device *mclk_dev;
 	clock_control_subsys_t mclk_name;
@@ -769,11 +771,49 @@ static DEVICE_API(audio_codec, wm8904_driver_api) = {
 	.route_input = wm8904_route_input
 };
 
+/*
+ * A board that wires the reset line holds the codec in reset out of power on,
+ * where it answers nothing on its control bus. Release it before anything
+ * tries to talk to it.
+ */
+static int wm8904_initialize(const struct device *dev)
+{
+	const struct wm8904_driver_config *const dev_cfg = DEV_CFG(dev);
+	int ret;
+
+	if (dev_cfg->reset_gpio.port == NULL) {
+		return 0;
+	}
+
+	if (!gpio_is_ready_dt(&dev_cfg->reset_gpio)) {
+		LOG_ERR("Reset line is not ready");
+		return -ENODEV;
+	}
+
+	ret = gpio_pin_configure_dt(&dev_cfg->reset_gpio, GPIO_OUTPUT_ACTIVE);
+	if (ret != 0) {
+		return ret;
+	}
+
+	k_msleep(1);
+
+	ret = gpio_pin_set_dt(&dev_cfg->reset_gpio, 0);
+	if (ret != 0) {
+		return ret;
+	}
+
+	/* The codec needs a moment before it answers */
+	k_msleep(5);
+
+	return 0;
+}
+
 #define WM8904_INIT(n)                                                                             \
 	struct wm8904_driver_data wm8904_device_data_##n = {                                       \
 		.eq_enabled = false};                                                              \
 	static const struct wm8904_driver_config wm8904_device_config_##n = {                      \
 		.i2c = I2C_DT_SPEC_INST_GET(n),                                                    \
+		.reset_gpio = GPIO_DT_SPEC_INST_GET_OR(n, reset_gpios, {0}),                       \
 		.clock_source = DT_INST_ENUM_IDX(n, clock_source),                                 \
 		.mclk_dev = COND_CODE_1(DT_INST_CLOCKS_HAS_NAME(n, mclk),                          \
 			(DEVICE_DT_GET(DT_INST_CLOCKS_CTLR_BY_NAME(n, mclk))), (NULL)),            \
@@ -785,7 +825,8 @@ static DEVICE_API(audio_codec, wm8904_driver_api) = {
 		.mic_bias_sel = CONCAT(MIC_BIAS_,                                                  \
 			DT_INST_STRING_UPPER_TOKEN_OR(n, wolfson_mic_bias_voltage, DISABLED))};    \
                                                                                                    \
-	DEVICE_DT_INST_DEFINE(n, NULL, NULL, &wm8904_device_data_##n, &wm8904_device_config_##n,   \
+	DEVICE_DT_INST_DEFINE(n, &wm8904_initialize, NULL, &wm8904_device_data_##n,                \
+			      &wm8904_device_config_##n,                                           \
 			      POST_KERNEL, CONFIG_AUDIO_CODEC_INIT_PRIORITY, &wm8904_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(WM8904_INIT)

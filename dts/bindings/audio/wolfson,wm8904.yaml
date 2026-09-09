@@ -10,6 +10,12 @@ compatible: "wolfson,wm8904"
 properties:
   reg:
     required: true
+  reset-gpios:
+    type: phandle-array
+    description: |
+      Codec reset line. The codec ignores its control bus while this is
+      asserted, so a board that wires it must describe it here or the codec
+      cannot be reached.
   clock-source:
     type: string
     default: "MCLK"
