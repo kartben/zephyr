@@ -75,7 +75,14 @@ BUILD_ASSERT(CONFIG_SAMPLE_AA_HU_MIC_GAIN_DB % 6 == 0,
  */
 #define MIC_SETTLE_BLOCKS 5
 
-K_MEM_SLAB_DEFINE_STATIC(mic_slab, MIC_BLOCK_SIZE, MIC_BLOCK_COUNT, 4);
+/*
+ * Defined by hand rather than with K_MEM_SLAB_DEFINE_STATIC() so that the
+ * blocks themselves can be placed away from the internal RAM the decoder
+ * fills.
+ */
+static char mic_slab_buffer[MIC_BLOCK_COUNT * MIC_BLOCK_SIZE]
+	Z_GENERIC_SECTION(CONFIG_SAMPLE_AA_HU_MIC_BUFFERS_SECTION) __aligned(4);
+static struct k_mem_slab mic_slab;
 
 static const struct device *mic_dev = DEVICE_DT_GET(DT_ALIAS(dmic0));
 static atomic_t capturing;
@@ -354,9 +361,17 @@ K_THREAD_DEFINE(aa_mic_tid, 3072, mic_thread, NULL, NULL, NULL,
 
 int aa_mic_init(void)
 {
+	int ret;
+
 	if (!device_is_ready(mic_dev)) {
 		LOG_WRN("Microphone not ready, voice input will not work");
 		return 0;
+	}
+
+	ret = k_mem_slab_init(&mic_slab, mic_slab_buffer, MIC_BLOCK_SIZE, MIC_BLOCK_COUNT);
+	if (ret != 0) {
+		LOG_ERR("Could not set the microphone blocks up (%d)", ret);
+		return ret;
 	}
 
 	LOG_INF("Microphone ready (%s)", mic_dev->name);
