@@ -26,7 +26,7 @@ LOG_MODULE_REGISTER(aa_play, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
  * while the assistant or a prompt is speaking, as a car does.
  */
 
-#if DT_HAS_ALIAS(aa_i2s_out)
+#if defined(CONFIG_SAMPLE_AA_HU_PLAYBACK)
 
 /*
  * A phone sends media at the output rate and speech at a third of it, so the
@@ -58,6 +58,9 @@ LOG_MODULE_REGISTER(aa_play, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
 /* Half a second of each channel, enough to ride out the phone's bursts */
 #define MEDIA_RING_SIZE  (MEDIA_RATE * OUT_CHANNELS * sizeof(int16_t) / 2U)
 #define SPEECH_RING_SIZE (SPEECH_RATE * sizeof(int16_t) / 2U)
+
+BUILD_ASSERT(MEDIA_RING_SIZE <= RING_BUFFER_MAX_SIZE, RING_BUFFER_SIZE_ASSERT_MSG);
+BUILD_ASSERT(SPEECH_RING_SIZE <= RING_BUFFER_MAX_SIZE, RING_BUFFER_SIZE_ASSERT_MSG);
 
 static const struct device *const i2s_dev = DEVICE_DT_GET(DT_ALIAS(aa_i2s_out));
 static const struct device *const codec_dev = DEVICE_DT_GET(DT_ALIAS(aa_audio_codec));
