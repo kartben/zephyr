@@ -28,7 +28,7 @@ struct stm32n6_usbphyc_config {
 	struct stm32_pclken clocks[];
 };
 
-static const struct device *rcc = DEVICE_DT_GET(STM32_CLOCK_CONTROL_NODE);
+static __maybe_unused const struct device *rcc = DEVICE_DT_GET(STM32_CLOCK_CONTROL_NODE);
 
 /*
  * NOTE: the USBPHYC MMIO interface is clock gated by
@@ -36,7 +36,7 @@ static const struct device *rcc = DEVICE_DT_GET(STM32_CLOCK_CONTROL_NODE);
  * function MUST be called after clock_control_on()
  * in the main USB driver or the SoC will deadlock.
  */
-static int stm32n6_usbphyc_enable(const struct stm32_usb_phy *phy)
+static __maybe_unused int stm32n6_usbphyc_enable(const struct stm32_usb_phy *phy)
 {
 	const struct stm32n6_usbphyc_config *cfg = phy->pcfg;
 	int res;
@@ -58,7 +58,7 @@ static int stm32n6_usbphyc_enable(const struct stm32_usb_phy *phy)
 	return clock_control_on(rcc, (clock_control_subsys_t)&cfg->clocks[0]);
 }
 
-static int stm32n6_usbphyc_disable(const struct stm32_usb_phy *phy)
+static __maybe_unused int stm32n6_usbphyc_disable(const struct stm32_usb_phy *phy)
 {
 	const struct stm32n6_usbphyc_config *cfg = phy->pcfg;
 
