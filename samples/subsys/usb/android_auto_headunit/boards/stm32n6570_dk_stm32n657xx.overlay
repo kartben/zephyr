@@ -62,7 +62,15 @@ nav_bus_probe: &i2c1 {
 / {
 	aliases {
 		aa-i2s-out = &sai1_a;
-		aa-audio-codec = &wm8904;
+		aa-audio-codec = &audio_codec;
 		aa-nav-display = &nav_display;
 	};
+};
+
+/*
+ * The phone's media channel is at 48 kHz, so take the divider that hits it
+ * exactly rather than the board's default, which favours 44.1 kHz.
+ */
+&ic7 {
+	ic-div = <125>;
 };
