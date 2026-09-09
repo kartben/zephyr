@@ -60,7 +60,13 @@ static void send_setup_response(uint8_t channel)
 	rsp.has_media_status = true;
 	rsp.media_status = AA_MEDIA_STATUS_OK;
 	rsp.has_max_unacked = true;
-	rsp.max_unacked = 1;
+	/*
+	 * A phone holds a media message until the one before it is answered,
+	 * so allowing only one in flight caps the stream at whatever the round
+	 * trip allows and the phone drops the rest. Audio cannot be late, so
+	 * let it keep the link full.
+	 */
+	rsp.max_unacked = CONFIG_SAMPLE_AA_HU_AUDIO_MAX_UNACKED;
 	rsp.configs_count = 1;
 	rsp.configs[0] = 0;
 

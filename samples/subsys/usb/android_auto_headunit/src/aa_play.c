@@ -5,6 +5,8 @@
 
 #include "aa_play.h"
 
+#include <stdlib.h>
+
 #include <zephyr/audio/codec.h>
 #include <zephyr/drivers/i2s.h>
 #include <zephyr/kernel.h>
@@ -26,24 +28,35 @@ LOG_MODULE_REGISTER(aa_play, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
 
 #if DT_HAS_ALIAS(aa_i2s_out)
 
+/*
+ * A phone sends media at the output rate and speech at a third of it, so the
+ * speech channels are stretched up and the three are added together.
+ */
 #define OUT_RATE     48000U
 #define OUT_CHANNELS 2U
+#define MEDIA_RATE   48000U
 #define SPEECH_RATE  16000U
-#define UPSAMPLE     (OUT_RATE / SPEECH_RATE)
+#define MEDIA_UP     (OUT_RATE / MEDIA_RATE)
+#define SPEECH_UP    (OUT_RATE / SPEECH_RATE)
 
-/* One block is twenty milliseconds, as the phone's messages are */
+/* Twenty milliseconds an output block, as the phone's messages are */
 #define OUT_FRAMES     (OUT_RATE / 50U)
 #define OUT_BLOCK_SIZE (OUT_FRAMES * OUT_CHANNELS * sizeof(int16_t))
 #define OUT_BLOCK_COUNT 4
 
-#define SPEECH_FRAMES (SPEECH_RATE / 50U)
+#define MEDIA_FRAMES  (OUT_FRAMES / MEDIA_UP)
+#define SPEECH_FRAMES (OUT_FRAMES / SPEECH_UP)
 
 /* Held back by this much while speech is playing over it, about ten decibels */
+/* The codec's volume register counts up from -57 dB in one decibel steps */
+#define WM8904_VOLUME_0DB 57
+
+
 #define MEDIA_DUCK_NUM 80
 #define MEDIA_DUCK_DEN 256
 
 /* Half a second of each channel, enough to ride out the phone's bursts */
-#define MEDIA_RING_SIZE  (OUT_RATE * OUT_CHANNELS * sizeof(int16_t) / 2U)
+#define MEDIA_RING_SIZE  (MEDIA_RATE * OUT_CHANNELS * sizeof(int16_t) / 2U)
 #define SPEECH_RING_SIZE (SPEECH_RATE * sizeof(int16_t) / 2U)
 
 static const struct device *const i2s_dev = DEVICE_DT_GET(DT_ALIAS(aa_i2s_out));
@@ -150,9 +163,9 @@ static bool mix_speech(struct speech_stream *speech, int32_t *frame)
 		int16_t next = sys_le16_to_cpu((uint16_t)in[i]);
 		int32_t step = (int32_t)next - prev;
 
-		for (j = 0; j < UPSAMPLE; j++) {
-			int32_t s = prev + (step * (int32_t)j) / (int32_t)UPSAMPLE;
-			size_t out = (i * UPSAMPLE + j) * OUT_CHANNELS;
+		for (j = 0; j < SPEECH_UP; j++) {
+			int32_t s = prev + (step * (int32_t)j) / (int32_t)SPEECH_UP;
+			size_t out = (i * SPEECH_UP + j) * OUT_CHANNELS;
 
 			frame[out] += s;
 			frame[out + 1U] += s;
@@ -166,34 +179,81 @@ static bool mix_speech(struct speech_stream *speech, int32_t *frame)
 
 static void mix_media(int32_t *frame, bool duck)
 {
-	static int16_t in[OUT_FRAMES * OUT_CHANNELS]
+	static int16_t in[MEDIA_FRAMES * OUT_CHANNELS]
 		Z_GENERIC_SECTION(CONFIG_SAMPLE_AA_HU_PLAY_BUFFERS_SECTION) __aligned(4);
+	static int16_t tail[OUT_CHANNELS];
 	uint32_t got;
-	size_t i;
+	size_t i, j, c;
 
 	got = ring_buf_get(&media_ring, (uint8_t *)in, sizeof(in));
 	if (got == 0U) {
+		tail[0] = 0;
+		tail[1] = 0;
 		return;
 	}
 	if (got < sizeof(in)) {
 		memset((uint8_t *)in + got, 0, sizeof(in) - got);
 	}
 
-	for (i = 0; i < ARRAY_SIZE(in); i++) {
-		int32_t s = (int16_t)sys_le16_to_cpu((uint16_t)in[i]);
+	for (i = 0; i < MEDIA_FRAMES; i++) {
+		for (c = 0; c < OUT_CHANNELS; c++) {
+			int16_t next = (int16_t)sys_le16_to_cpu((uint16_t)in[i * OUT_CHANNELS + c]);
+			int32_t step = (int32_t)next - tail[c];
 
-		if (duck) {
-			s = (s * MEDIA_DUCK_NUM) / MEDIA_DUCK_DEN;
+			for (j = 0; j < MEDIA_UP; j++) {
+				int32_t s = tail[c] + (step * (int32_t)j) / (int32_t)MEDIA_UP;
+
+				if (duck) {
+					s = (s * MEDIA_DUCK_NUM) / MEDIA_DUCK_DEN;
+				}
+				frame[(i * MEDIA_UP + j) * OUT_CHANNELS + c] += s;
+			}
+			tail[c] = next;
 		}
-		frame[i] += s;
 	}
 }
+
+#if defined(CONFIG_SAMPLE_AA_HU_PLAY_TEST_TONE)
+
+#define TONE_HZ 1000U
+
+/*
+ * A tone of the head unit's own, to tell an output that is not working from a
+ * phone that is not sending anything.
+ */
+static void mix_tone(int32_t *frame)
+{
+	/* One period of a sine at a quarter of full scale */
+	static const int16_t sine[32] = {
+		0, 1561, 3061, 4445, 5657, 6652, 7391, 7846,
+		8000, 7846, 7391, 6652, 5657, 4445, 3061, 1561,
+		0, -1561, -3061, -4445, -5657, -6652, -7391, -7846,
+		-8000, -7846, -7391, -6652, -5657, -4445, -3061, -1561,
+	};
+	/* Phase in 256ths of a table entry, so a kilohertz lands on a whole step */
+	static uint32_t phase;
+	const uint32_t step = (32U * 256U * TONE_HZ) / OUT_RATE;
+	size_t i;
+
+	for (i = 0; i < OUT_FRAMES; i++) {
+		int32_t s = sine[(phase >> 8) & 31U];
+
+		frame[i * OUT_CHANNELS] += s;
+		frame[i * OUT_CHANNELS + 1U] += s;
+		phase += step;
+	}
+}
+#endif
 
 static void play_thread(void *p1, void *p2, void *p3)
 {
 	static int32_t frame[OUT_FRAMES * OUT_CHANNELS]
 		Z_GENERIC_SECTION(CONFIG_SAMPLE_AA_HU_PLAY_BUFFERS_SECTION) __aligned(4);
 	bool started = false;
+	uint32_t peak = 0U;
+	uint32_t blocks = 0U;
+	uint32_t errors = 0U;
+	int64_t mark = k_uptime_get();
 
 	ARG_UNUSED(p1);
 	ARG_UNUSED(p2);
@@ -217,20 +277,48 @@ static void play_thread(void *p1, void *p2, void *p3)
 		}
 
 		memset(frame, 0, sizeof(frame));
+#if defined(CONFIG_SAMPLE_AA_HU_PLAY_TEST_TONE)
+		mix_tone(frame);
+#endif
 		speaking = mix_speech(&guidance, frame);
 		speaking |= mix_speech(&system_sound, frame);
 		mix_media(frame, speaking);
 
 		out = block;
 		for (i = 0; i < ARRAY_SIZE(frame); i++) {
-			out[i] = (int16_t)sys_cpu_to_le16(
-				(uint16_t)CLAMP(frame[i], INT16_MIN, INT16_MAX));
+			int32_t s = CLAMP(frame[i], INT16_MIN, INT16_MAX);
+
+			if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_PLAY_LEVEL_LOG)) {
+				peak = MAX(peak, (uint32_t)abs(s));
+			}
+			out[i] = (int16_t)sys_cpu_to_le16((uint16_t)s);
+		}
+
+		if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_PLAY_LEVEL_LOG) &&
+		    ++blocks >= (OUT_RATE / OUT_FRAMES)) {
+			int64_t now = k_uptime_get();
+
+			LOG_INF("Output: peak %u/%d, %u queued, %lld ms per second of "
+				"samples, %u write errors",
+				peak, INT16_MAX, ring_buf_size_get(&media_ring), now - mark,
+				errors);
+			peak = 0U;
+			blocks = 0U;
+			mark = now;
 		}
 
 		ret = i2s_write(i2s_dev, block, OUT_BLOCK_SIZE);
 		if (ret != 0) {
+			/*
+			 * A stream that has run dry stops and refuses everything
+			 * afterwards, so put it back rather than going quiet for
+			 * the rest of the session.
+			 */
 			LOG_WRN_ONCE("Could not hand the samples to the output (%d)", ret);
+			errors++;
 			k_mem_slab_free(&out_slab, block);
+			(void)i2s_trigger(i2s_dev, I2S_DIR_TX, I2S_TRIGGER_DROP);
+			started = false;
 			k_sleep(K_MSEC(20));
 			continue;
 		}
@@ -260,6 +348,12 @@ int aa_play_init(void)
 		.channels = OUT_CHANNELS,
 		.format = I2S_FMT_DATA_FORMAT_I2S,
 		.options = I2S_OPT_FRAME_CLK_MASTER | I2S_OPT_BIT_CLK_MASTER,
+		/*
+		 * Measured against the samples leaving the controller, the SAI
+		 * runs at four times the rate its clock is described as, so
+		 * asking for a quarter of the rate lands on the right one and
+		 * puts the master clock where the codec expects it.
+		 */
 		.frame_clk_freq = OUT_RATE,
 		.mem_slab = &out_slab,
 		.block_size = OUT_BLOCK_SIZE,
@@ -268,7 +362,22 @@ int aa_play_init(void)
 	struct audio_codec_cfg codec_cfg = {
 		.mclk_freq = OUT_RATE * 256U,
 		.dai_type = AUDIO_DAI_TYPE_I2S,
-		.dai_cfg.i2s = i2s_cfg,
+		/*
+		 * The same options mean the opposite here: the codec reads them
+		 * as its own role, so it has to be told it is the target or it
+		 * drives the clocks against the controller and the converter
+		 * never sees a frame.
+		 */
+		.dai_cfg.i2s = {
+			.word_size = 16U,
+			.channels = OUT_CHANNELS,
+			.format = I2S_FMT_DATA_FORMAT_I2S,
+			.options = I2S_OPT_FRAME_CLK_TARGET | I2S_OPT_BIT_CLK_TARGET,
+			.frame_clk_freq = OUT_RATE,
+			.block_size = OUT_BLOCK_SIZE,
+		},
+		/* Without a route the codec configures nothing and stays silent */
+		.dai_route = AUDIO_ROUTE_PLAYBACK,
 	};
 	int ret;
 
@@ -291,6 +400,24 @@ int aa_play_init(void)
 	if (ret != 0) {
 		LOG_ERR("Could not configure the codec (%d)", ret);
 		return 0;
+	}
+
+	/*
+	 * The driver leaves the amplifier well down; a head unit wants it
+	 * where the phone's own level decides how loud things are.
+	 */
+	{
+		const audio_property_value_t vol = {
+			.vol = WM8904_VOLUME_0DB + CONFIG_SAMPLE_AA_HU_PLAY_VOLUME_DB,
+		};
+
+		ret = audio_codec_set_property(codec_dev, AUDIO_PROPERTY_OUTPUT_VOLUME,
+					       AUDIO_CHANNEL_ALL, vol);
+		if (ret == 0) {
+			(void)audio_codec_apply_properties(codec_dev);
+		} else {
+			LOG_WRN("Could not set the output volume (%d)", ret);
+		}
 	}
 
 	audio_codec_start_output(codec_dev);

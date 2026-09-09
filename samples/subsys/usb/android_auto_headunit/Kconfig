@@ -279,6 +279,38 @@ config SAMPLE_AA_HU_MIC_GAIN_DB
 	  is, which leaves speech far below full scale on most parts. Raise it
 	  until the level report shows peaks near full scale without clipping.
 
+config SAMPLE_AA_HU_AUDIO_MAX_UNACKED
+	int "Audio messages the phone may send without an acknowledgment"
+	default 16
+	range 1 64
+	help
+	  A phone waits for this many media messages to be answered before it
+	  stops sending, and drops what it cannot send. One message is twenty
+	  milliseconds of sound, so a small number caps the stream at whatever
+	  the round trip to the head unit allows.
+
+config SAMPLE_AA_HU_PLAY_VOLUME_DB
+	int "Output volume (dB)"
+	default 0
+	range -57 6
+	help
+	  Headphone amplifier gain. The codec driver leaves it twelve decibels
+	  down, which is quiet for a head unit driving a headset.
+
+config SAMPLE_AA_HU_PLAY_TEST_TONE
+	bool "Play a tone of the head unit's own"
+	help
+	  Mix a steady tone into the output whatever the phone is doing, to
+	  tell an output that is not working from a phone that is not sending
+	  anything.
+
+config SAMPLE_AA_HU_PLAY_LEVEL_LOG
+	bool "Report the level of the played audio"
+	help
+	  Log the peak level of the mixed output once a second, to tell a
+	  phone that is sending quiet samples from an output that is turned
+	  down.
+
 config SAMPLE_AA_HU_PLAY_BUFFERS_SECTION
 	string "Memory section for the audio queues"
 	default "PSRAM" if BOARD_STM32N6570_DK
