@@ -568,6 +568,12 @@ static int port_reset(const struct device *dev)
 	struct usb_dwc2_reg *const base = uhc_dwc2_get_base(dev);
 	int ret;
 
+	/* A bus reset returns every endpoint behind the port to DATA0 */
+	for (uint32_t idx = 0; idx < MAX_CHANNELS; idx++) {
+		priv->ch_data[0][idx].next_pid = USB_DWC2_HCTSIZ_PID_DATA0;
+		priv->ch_data[1][idx].next_pid = USB_DWC2_HCTSIZ_PID_DATA0;
+	}
+
 	/* Reset the port */
 	dwc2_set_reset(base, true);
 
