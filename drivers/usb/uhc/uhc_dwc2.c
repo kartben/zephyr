@@ -1068,6 +1068,10 @@ static int ch_claim(const struct device *const dev,
 	LOG_DBG("Claimed channel%d for ep 0x%02x, xfer=%p, channel=%p",
 		ch->index, xfer->ep, (void *)xfer, (void *)ch);
 
+	/* These track the transfer, not the channel it happens to run on */
+	ch->error_count = 0;
+	ch->hcint_cplt_pending = 0U;
+
 	/* Save channel characteristics of the underlying channel */
 	ch->xfer = xfer;
 	ch->data = &priv->ch_data[ep_dir_idx][ep_num];
