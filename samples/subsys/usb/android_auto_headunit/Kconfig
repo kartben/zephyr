@@ -289,6 +289,14 @@ config SAMPLE_AA_HU_AUDIO_MAX_UNACKED
 	  milliseconds of sound, so a small number caps the stream at whatever
 	  the round trip to the head unit allows.
 
+config SAMPLE_AA_HU_PLAYBACK
+	def_bool $(dt_alias_enabled,aa-i2s-out)
+	select RING_BUFFER
+	select RING_BUFFER_LARGE
+	help
+	  The half-second stereo media queue holds 96000 bytes and requires
+	  32-bit ring-buffer indices.
+
 config SAMPLE_AA_HU_PLAY_VOLUME_DB
 	int "Output volume (dB)"
 	default 0
