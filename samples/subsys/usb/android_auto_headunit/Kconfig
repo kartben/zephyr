@@ -279,15 +279,6 @@ config SAMPLE_AA_HU_MIC_GAIN_DB
 	  is, which leaves speech far below full scale on most parts. Raise it
 	  until the level report shows peaks near full scale without clipping.
 
-config SAMPLE_AA_HU_MIC_BUFFERS_SECTION
-	string "Memory section for the microphone blocks"
-	default "AXISRAM1" if BOARD_STM32N6570_DK
-	default ".bss"
-	help
-	  Linker section for the blocks the microphone driver fills. Half a
-	  second of them does not fit the internal RAM of a board that is also
-	  decoding video into it.
-
 config SAMPLE_AA_HU_PLAY_BUFFERS_SECTION
 	string "Memory section for the audio queues"
 	default "PSRAM" if BOARD_STM32N6570_DK
@@ -306,6 +297,15 @@ config SAMPLE_AA_HU_TX_BUFFERS_SECTION
 	  in. They are as large as the largest fragment sent twice over, which
 	  is more than a board also decoding video can spare internally. Only
 	  small messages are assembled often, so external memory costs little.
+
+config SAMPLE_AA_HU_MIC_BUFFERS_SECTION
+	string "Memory section for the microphone blocks"
+	default "AXISRAM1" if BOARD_STM32N6570_DK
+	default ".bss"
+	help
+	  Linker section for the blocks the microphone driver fills. Half a
+	  second of them does not fit the internal RAM of a board that is also
+	  decoding video into it.
 
 config SAMPLE_AA_HU_MIC_LEVEL_LOG
 	bool "Report the level of the captured audio"

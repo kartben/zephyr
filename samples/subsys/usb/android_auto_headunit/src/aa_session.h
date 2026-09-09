@@ -30,6 +30,7 @@ struct aa_hu_session {
 	uint8_t sensor_ch;
 	uint8_t audio_ch[3];
 	uint8_t mic_ch;
+	uint8_t nav_ch;
 	int32_t video_session;
 	bool video_focused;
 };

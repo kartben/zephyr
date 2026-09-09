@@ -4,6 +4,7 @@
  */
 
 #include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/clock/stm32n6_clock.h>
 
 /*
  * OTG2 drives the USB Type-A host connector (CN17). Its VBUS comes from an
@@ -29,9 +30,39 @@ zephyr_uhc0: &usbotg_hs2 {
 	status = "disabled";
 };
 
+/*
+ * An M5Stack Unit Mini OLED on the Arduino header shows the next turn: SCL on
+ * D15, SDA on D14, powered from 3V3. The shield of the same name is not used
+ * because it claims zephyr,display, which belongs to the panel the video goes
+ * to.
+ */
+/* Labelled so the two bus lines can be read back when nothing answers */
+nav_bus_probe: &i2c1 {
+	clocks = <&rcc STM32_CLOCK(APB1, 21)>,
+		 <&rcc STM32_SRC_CKPER I2C1_SEL(1)>;
+	pinctrl-0 = <&i2c1_scl_ph9 &i2c1_sda_pc1>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	nav_display: ssd1315@3c {
+		compatible = "solomon,ssd1315";
+		reg = <0x3c>;
+		width = <72>;
+		height = <40>;
+		segment-offset = <28>;
+		page-offset = <0>;
+		display-offset = <0>;
+		multiplex-ratio = <39>;
+		segment-remap;
+		com-invdir;
+		prechargep = <0x22>;
+	};
+};
+
 / {
 	aliases {
 		aa-i2s-out = &sai1_a;
 		aa-audio-codec = &wm8904;
+		aa-nav-display = &nav_display;
 	};
 };

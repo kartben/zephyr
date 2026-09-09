@@ -73,6 +73,23 @@ enum aa_input_msg {
 
 /* Sensor channel messages */
 enum aa_sensor_msg {
+	AA_NAV_STATUS_START = 0x8001,
+	AA_NAV_STATUS_STOP = 0x8002,
+	AA_NAV_STATUS = 0x8003,
+	AA_NAV_TURN_EVENT = 0x8004,
+	AA_NAV_DISTANCE_EVENT = 0x8005,
+	AA_NAV_STATE = 0x8006,
+};
+
+/* Cluster form the head unit asks the phone for */
+#define AA_NAV_CLUSTER_IMAGE 1
+#define AA_NAV_CLUSTER_ENUM  2
+
+/* NavigationNextTurnEvent.turn_side */
+#define AA_NAV_TURN_LEFT  1
+#define AA_NAV_TURN_RIGHT 2
+
+enum {
 	AA_SENSOR_START_REQUEST = 0x8001,
 	AA_SENSOR_START_RESPONSE = 0x8002,
 	AA_SENSOR_EVENT_INDICATION = 0x8003,

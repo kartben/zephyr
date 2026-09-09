@@ -25,3 +25,7 @@ SensorEventIndication.parking_brake   max_count:2
 SensorEventIndication.gear            max_count:2
 SensorEventIndication.night_mode      max_count:2
 SensorEventIndication.driving_status  max_count:2
+NavigationNextTurnEvent.road          max_size:40
+NavigationNextTurnEvent.image         type:FT_IGNORE
+NavigationStep.road                   max_size:40
+NavigationState.steps                 max_count:1
