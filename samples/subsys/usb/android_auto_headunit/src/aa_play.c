@@ -173,6 +173,7 @@ static bool mix_speech(struct speech_stream *speech, int32_t *frame)
 	uint32_t got;
 	size_t i, j;
 	int16_t prev;
+	bool audible = false;
 
 	(void)k_mutex_lock(&queue_lock, K_FOREVER);
 	got = ring_buf_get(&speech->ring, (uint8_t *)in, sizeof(in));
@@ -195,6 +196,7 @@ static bool mix_speech(struct speech_stream *speech, int32_t *frame)
 			int32_t s = prev + (step * (int32_t)j) / (int32_t)SPEECH_UP;
 			size_t out = (i * SPEECH_UP + j) * OUT_CHANNELS;
 
+			audible |= (s != 0);
 			frame[out] += s;
 			frame[out + 1U] += s;
 		}
@@ -202,7 +204,8 @@ static bool mix_speech(struct speech_stream *speech, int32_t *frame)
 	}
 	speech->tail = prev;
 
-	return true;
+	/* A channel carrying silent PCM must not keep media ducked. */
+	return audible;
 }
 
 static void mix_media(int32_t *frame, bool duck)
