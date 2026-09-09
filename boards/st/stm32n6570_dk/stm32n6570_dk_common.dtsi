@@ -113,6 +113,14 @@
 	sda-gpios = <&gpiod 4 GPIO_ACTIVE_HIGH>;
 	clock-frequency = <I2C_BITRATE_FAST>;
 
+	wm8904: wm8904@1a {
+		compatible = "wolfson,wm8904";
+		reg = <0x1a>;
+		clock-source = "MCLK";
+		reset-gpios = <&gpiob 1 GPIO_ACTIVE_LOW>;
+		status = "okay";
+	};
+
 	gt911: gt911@5d {
 		compatible = "goodix,gt911";
 		reg = <0x5d>;
@@ -193,6 +201,12 @@
 &ic6 {
 	pll-src = <3>;
 	ic-div = <2>;
+	status = "okay";
+};
+
+&ic7 {
+	pll-src = <2>;
+	ic-div = <125>;
 	status = "okay";
 };
 
@@ -625,6 +639,28 @@ zephyr_jpegenc: &jpeg {
 };
 
 &gpu2d {
+	status = "okay";
+};
+
+/* The SAI moves its samples with the general purpose DMA */
+&gpdma1 {
+	status = "okay";
+};
+
+&sai1 {
+	clocks = <&rcc STM32_CLOCK(APB2, 21)>,
+		 <&rcc STM32_SRC_IC7 SAI1_SEL(2)>;
+	clock-names = "sai_ck", "sai_ker_ck";
+	status = "okay";
+};
+
+&sai1_a {
+	pinctrl-0 = <&sai1_mclk_a_pg7 &sai1_sck_a_pb6
+		     &sai1_sd_a_pb7 &sai1_fs_a_pb0>;
+	pinctrl-names = "default";
+	dma-names = "tx";
+	mclk-enable;
+	mclk-divider = "div-256";
 	status = "okay";
 };
 
