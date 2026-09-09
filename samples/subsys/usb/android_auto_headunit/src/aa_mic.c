@@ -34,15 +34,30 @@ LOG_MODULE_REGISTER(aa_mic, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
 #define MIC_CHANNELS 1U
 
 /*
+ * Captured at the microphone's own width and scaled down to the sixteen bits
+ * the phone is sent. Speech sits far below full scale at the microphone, so
+ * the samples are amplified on the way; taking the driver's sixteen-bit
+ * output instead would clip everything above a fifth of the range.
+ */
+#define MIC_CAPTURE_WIDTH 24U
+#define MIC_GAIN_SHIFT    (((MIC_CAPTURE_WIDTH - MIC_WIDTH) / 8U * 8U) - \
+			   (CONFIG_SAMPLE_AA_HU_MIC_GAIN_DB / 6))
+
+BUILD_ASSERT(CONFIG_SAMPLE_AA_HU_MIC_GAIN_DB % 6 == 0,
+	     "microphone gain must be a multiple of 6 dB");
+
+/*
  * A block is twenty milliseconds of speech: short enough to keep the assistant
  * responsive and long enough not to send a message per handful of samples.
  */
 #define MIC_BLOCK_SAMPLES (MIC_RATE / 50U)
-#define MIC_BLOCK_SIZE    (MIC_BLOCK_SAMPLES * (MIC_WIDTH / 8U) * MIC_CHANNELS)
+#define MIC_BLOCK_SIZE    (MIC_BLOCK_SAMPLES * (MIC_CAPTURE_WIDTH / 8U) * MIC_CHANNELS)
+#define MIC_MSG_SIZE      (MIC_BLOCK_SAMPLES * (MIC_WIDTH / 8U) * MIC_CHANNELS)
+
 /*
- * Half a second of blocks. The driver fills one every twenty milliseconds and
- * gives up for good once it has none left, so this has to outlast the longest
- * the sending thread can be held off by the phone.
+ * Two thirds of a second of blocks. The driver fills one every twenty
+ * milliseconds and gives up for good once it has none left, so this has to
+ * outlast the longest the sending thread can be held off by the phone.
  */
 #define MIC_BLOCK_COUNT   24
 
@@ -80,7 +95,7 @@ static int mic_start(void)
 {
 	struct pcm_stream_cfg stream = {
 		.pcm_rate = MIC_RATE,
-		.pcm_width = MIC_WIDTH,
+		.pcm_width = MIC_CAPTURE_WIDTH,
 		.block_size = MIC_BLOCK_SIZE,
 		.mem_slab = &mic_slab,
 	};
@@ -130,7 +145,7 @@ static void mic_stop(void)
  * relative to a full scale sample squared. Feeding it a square lets the same
  * helper report a peak and a mean, and keeps the arithmetic integer.
  */
-static int mic_dbfs(uint32_t power)
+static int mic_dbfs(uint64_t power, unsigned int width)
 {
 	/* 10 * log10(1 + n / 8) */
 	static const uint8_t frac[8] = {0, 1, 1, 1, 2, 2, 2, 3};
@@ -140,53 +155,84 @@ static int mic_dbfs(uint32_t power)
 		return -99;
 	}
 
-	msb = find_msb_set(power) - 1U;
+	msb = ((power >> 32) != 0U) ? find_msb_set((uint32_t)(power >> 32)) + 31U
+				   : find_msb_set((uint32_t)power) - 1U;
 	power = (msb >= 3U) ? (power >> (msb - 3U)) : (power << (3U - msb));
 
-	return (int)(3U * msb + frac[power & 7U]) - 90;
+	return (int)(3U * msb + frac[power & 7U]) - (int)(6U * (width - 1U));
 }
 
-static void mic_level(const int16_t *samples, size_t count)
+static void mic_level(uint32_t in_peak, uint32_t out_peak, uint64_t energy, uint32_t clipped,
+		      size_t count)
+{
+	LOG_INF("Microphone level: peak %d dBFS, mean %d dBFS, %u clipped, input peak %d dBFS",
+		mic_dbfs((uint64_t)out_peak * out_peak, MIC_WIDTH),
+		mic_dbfs(energy / count, MIC_WIDTH), clipped,
+		mic_dbfs((uint64_t)in_peak * in_peak, MIC_CAPTURE_WIDTH));
+}
+
+#endif /* CONFIG_SAMPLE_AA_HU_MIC_LEVEL_LOG */
+
+/*
+ * Scale the microphone's own samples into the sixteen bits the phone is sent,
+ * saturating rather than wrapping so that a loud sound stays loud instead of
+ * turning into noise.
+ */
+static void mic_convert(const uint8_t *in, uint8_t *out, size_t count)
 {
 	static uint64_t energy;
-	static uint32_t peak;
+	static uint32_t in_peak;
+	static uint32_t out_peak;
 	static uint32_t clipped;
 	static size_t taken;
 	size_t i;
 
 	for (i = 0; i < count; i++) {
-		uint32_t mag = (uint32_t)abs(samples[i]);
+		int32_t raw = (int32_t)sys_get_le24(&in[i * (MIC_CAPTURE_WIDTH / 8U)]);
+		int32_t scaled;
 
-		energy += (uint64_t)mag * mag;
-		peak = MAX(peak, mag);
-		if (mag >= INT16_MAX) {
+		/* sys_get_le24() reads unsigned; put the sign back */
+		if (raw >= (int32_t)BIT(MIC_CAPTURE_WIDTH - 1U)) {
+			raw -= (int32_t)BIT(MIC_CAPTURE_WIDTH);
+		}
+
+		scaled = raw >> MIC_GAIN_SHIFT;
+		if (scaled > INT16_MAX || scaled < INT16_MIN) {
+			scaled = CLAMP(scaled, INT16_MIN, INT16_MAX);
 			clipped++;
+		}
+
+		sys_put_le16((uint16_t)scaled, &out[i * (MIC_WIDTH / 8U)]);
+
+		if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_MIC_LEVEL_LOG)) {
+			uint32_t mag = (uint32_t)abs(scaled);
+
+			energy += (uint64_t)mag * mag;
+			out_peak = MAX(out_peak, mag);
+			in_peak = MAX(in_peak, (uint32_t)abs(raw));
 		}
 	}
 
-	taken += count;
-	if (taken < MIC_RATE) {
+	if (!IS_ENABLED(CONFIG_SAMPLE_AA_HU_MIC_LEVEL_LOG)) {
+		clipped = 0;
 		return;
 	}
 
-	LOG_INF("Microphone level: peak %d dBFS, mean %d dBFS, %u clipped", mic_dbfs(peak * peak),
-		mic_dbfs((uint32_t)(energy / taken)), clipped);
+	taken += count;
+	if (taken < MIC_RATE / 2U) {
+		return;
+	}
+
+#if defined(CONFIG_SAMPLE_AA_HU_MIC_LEVEL_LOG)
+	mic_level(in_peak, out_peak, energy, clipped, taken);
+#endif
 
 	energy = 0;
-	peak = 0;
+	in_peak = 0;
+	out_peak = 0;
 	clipped = 0;
 	taken = 0;
 }
-
-#else
-
-static inline void mic_level(const int16_t *samples, size_t count)
-{
-	ARG_UNUSED(samples);
-	ARG_UNUSED(count);
-}
-
-#endif /* CONFIG_SAMPLE_AA_HU_MIC_LEVEL_LOG */
 
 /*
  * The driver stops for good when it runs out of buffers, which a phone that
@@ -210,7 +256,7 @@ static int mic_restart(void)
 }
 
 /* A media message is a timestamp followed by the samples, as video is */
-static uint8_t mic_msg[MIC_BLOCK_SIZE + sizeof(uint64_t)];
+static uint8_t mic_msg[MIC_MSG_SIZE + sizeof(uint64_t)];
 
 static int send_block(size_t size)
 {
@@ -244,8 +290,8 @@ static void mic_thread(void *p1, void *p2, void *p3)
 		if (ret != 0) {
 			/*
 			 * Reading again straight away would spin against a
-			 * controller that has stopped, so wait between
-			 * attempts rather than hold the processor.
+			 * controller that has stopped, so give up on the
+			 * capture rather than hold the processor.
 			 */
 			if (++errors >= MIC_ERROR_LIMIT) {
 				errors = 0;
@@ -267,11 +313,11 @@ static void mic_thread(void *p1, void *p2, void *p3)
 		 * driver only has a few of them and fills one every block, so
 		 * holding one across a transfer to the phone would starve it.
 		 */
-		size = MIN(size, (size_t)MIC_BLOCK_SIZE);
+		size = MIN(size, (size_t)MIC_BLOCK_SIZE) / (MIC_CAPTURE_WIDTH / 8U);
 		sys_put_be64((uint64_t)k_ticks_to_us_floor64(k_uptime_ticks()), mic_msg);
-		memcpy(&mic_msg[sizeof(uint64_t)], block, size);
-		mic_level(block, size / sizeof(int16_t));
+		mic_convert(block, &mic_msg[sizeof(uint64_t)], size);
 		k_mem_slab_free(&mic_slab, block);
+		size *= MIC_WIDTH / 8U;
 
 		if (atomic_get(&capturing) != 0 && send_block(size) != 0) {
 			LOG_WRN_ONCE("Could not send the samples");
