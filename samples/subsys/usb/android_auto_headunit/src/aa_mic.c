@@ -67,6 +67,14 @@ BUILD_ASSERT(CONFIG_SAMPLE_AA_HU_MIC_GAIN_DB % 6 == 0,
 /* Restarts after which the microphone is left alone */
 #define MIC_RESTART_LIMIT 5
 
+/*
+ * Blocks dropped after a start. The microphone takes up to ten milliseconds
+ * to produce valid data, and the filter's high pass then has to settle from
+ * the step that follows it; what reaches the phone otherwise is a click far
+ * louder than anything said afterwards.
+ */
+#define MIC_SETTLE_BLOCKS 5
+
 K_MEM_SLAB_DEFINE_STATIC(mic_slab, MIC_BLOCK_SIZE, MIC_BLOCK_COUNT, 4);
 
 static const struct device *mic_dev = DEVICE_DT_GET(DT_ALIAS(dmic0));
@@ -269,6 +277,7 @@ static void mic_thread(void *p1, void *p2, void *p3)
 {
 	uint32_t errors = 0;
 	uint32_t restarts = 0;
+	uint32_t settle = MIC_SETTLE_BLOCKS;
 
 	ARG_UNUSED(p1);
 	ARG_UNUSED(p2);
@@ -282,6 +291,7 @@ static void mic_thread(void *p1, void *p2, void *p3)
 		if (atomic_get(&capturing) == 0) {
 			errors = 0;
 			restarts = 0;
+			settle = MIC_SETTLE_BLOCKS;
 			k_sleep(K_MSEC(20));
 			continue;
 		}
@@ -300,6 +310,8 @@ static void mic_thread(void *p1, void *p2, void *p3)
 					mic_stop();
 				} else if (mic_restart() != 0) {
 					mic_stop();
+				} else {
+					settle = MIC_SETTLE_BLOCKS;
 				}
 			}
 			k_sleep(K_MSEC(20));
@@ -307,6 +319,12 @@ static void mic_thread(void *p1, void *p2, void *p3)
 		}
 		errors = 0;
 		restarts = 0;
+
+		if (settle > 0U) {
+			settle--;
+			k_mem_slab_free(&mic_slab, block);
+			continue;
+		}
 
 		/*
 		 * Copy the samples out and give the buffer straight back: the
