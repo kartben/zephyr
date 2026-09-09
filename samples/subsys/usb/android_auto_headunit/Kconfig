@@ -269,6 +269,16 @@ config SAMPLE_AA_HU_MIC_CLK_MAX_HZ
 	  frequency and its sensitivity differs between them, so narrow the
 	  window to the mode the part should be run in.
 
+config SAMPLE_AA_HU_MIC_GAIN_DB
+	int "Microphone gain (dB)"
+	default 24
+	range 0 48
+	help
+	  Applied to the microphone's samples on the way to the phone, in
+	  steps of six decibels. Zero sends the microphone's own range as it
+	  is, which leaves speech far below full scale on most parts. Raise it
+	  until the level report shows peaks near full scale without clipping.
+
 config SAMPLE_AA_HU_MIC_LEVEL_LOG
 	bool "Report the level of the captured audio"
 	help
