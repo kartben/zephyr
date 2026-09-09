@@ -78,6 +78,13 @@ struct speech_stream {
 	int16_t tail;
 };
 
+/*
+ * The queues are filled from the thread that reads the phone and emptied by
+ * the one that feeds the output, and reset from a third place when a channel
+ * stops, so they are held while they are touched.
+ */
+static struct k_mutex queue_lock;
+
 static struct ring_buf media_ring;
 static struct speech_stream guidance;
 static struct speech_stream system_sound;
@@ -105,7 +112,21 @@ void aa_play_submit(int32_t type, const uint8_t *pcm, size_t len)
 		return;
 	}
 
+	(void)k_mutex_lock(&queue_lock, K_FOREVER);
 	put = ring_buf_put(ring, pcm, (uint32_t)len);
+	(void)k_mutex_unlock(&queue_lock);
+
+	if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_PLAY_LEVEL_LOG)) {
+		static int64_t since;
+
+		if (k_uptime_get() - since >= 1000) {
+			LOG_INF("type %d: asked %u, took %u, ring %u of %u, free %u", type,
+				(uint32_t)len, put, ring_buf_size_get(ring),
+				ring_buf_capacity_get(ring), ring_buf_space_get(ring));
+			since = k_uptime_get();
+		}
+	}
+
 	if (put < len) {
 		/*
 		 * The phone is ahead of the output. Dropping the newest keeps
@@ -119,12 +140,14 @@ void aa_play_flush(int32_t type)
 {
 	struct speech_stream *speech = speech_of(type);
 
+	(void)k_mutex_lock(&queue_lock, K_FOREVER);
 	if (speech != NULL) {
 		ring_buf_reset(&speech->ring);
 		speech->tail = 0;
 	} else {
 		ring_buf_reset(&media_ring);
 	}
+	(void)k_mutex_unlock(&queue_lock);
 }
 
 void aa_play_link_down(void)
@@ -148,7 +171,9 @@ static bool mix_speech(struct speech_stream *speech, int32_t *frame)
 	size_t i, j;
 	int16_t prev;
 
+	(void)k_mutex_lock(&queue_lock, K_FOREVER);
 	got = ring_buf_get(&speech->ring, (uint8_t *)in, sizeof(in));
+	(void)k_mutex_unlock(&queue_lock);
 	if (got < sizeof(in)) {
 		/* Short block: the rest is silence rather than a repeat */
 		memset((uint8_t *)in + got, 0, sizeof(in) - got);
@@ -185,7 +210,9 @@ static void mix_media(int32_t *frame, bool duck)
 	uint32_t got;
 	size_t i, j, c;
 
+	(void)k_mutex_lock(&queue_lock, K_FOREVER);
 	got = ring_buf_get(&media_ring, (uint8_t *)in, sizeof(in));
+	(void)k_mutex_unlock(&queue_lock);
 	if (got == 0U) {
 		tail[0] = 0;
 		tail[1] = 0;
@@ -381,6 +408,7 @@ int aa_play_init(void)
 	};
 	int ret;
 
+	(void)k_mutex_init(&queue_lock);
 	ring_buf_init(&media_ring, sizeof(media_ring_buf), media_ring_buf);
 	ring_buf_init(&guidance.ring, sizeof(guidance_ring_buf), guidance_ring_buf);
 	ring_buf_init(&system_sound.ring, sizeof(system_ring_buf), system_ring_buf);
@@ -419,6 +447,10 @@ int aa_play_init(void)
 			LOG_WRN("Could not set the output volume (%d)", ret);
 		}
 	}
+
+	LOG_INF("Queues: media %u of %u bytes, guidance %u, system %u",
+		ring_buf_capacity_get(&media_ring), (uint32_t)sizeof(media_ring_buf),
+		ring_buf_capacity_get(&guidance.ring), ring_buf_capacity_get(&system_sound.ring));
 
 	audio_codec_start_output(codec_dev);
 	running = true;

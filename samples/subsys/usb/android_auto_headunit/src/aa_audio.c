@@ -79,7 +79,10 @@ static void send_setup_response(uint8_t channel)
 static void send_media_ack(uint8_t channel, int idx)
 {
 	AVMediaAckIndication ack = AVMediaAckIndication_init_zero;
+	static uint32_t acked;
+	static int64_t since;
 	uint8_t buf[16];
+	int ret;
 	int n;
 
 	ack.has_session = true;
@@ -88,8 +91,28 @@ static void send_media_ack(uint8_t channel, int idx)
 	ack.value = 1;
 
 	n = aa_pb_encode(buf, sizeof(buf), AVMediaAckIndication_fields, &ack);
-	if (n >= 0) {
-		(void)aa_msg_send(channel, false, AA_AV_MEDIA_ACK_INDICATION, buf, (size_t)n);
+	if (n < 0) {
+		LOG_ERR("Could not encode the acknowledgment");
+		return;
+	}
+
+	ret = aa_msg_send(channel, false, AA_AV_MEDIA_ACK_INDICATION, buf, (size_t)n);
+	if (ret != 0) {
+		/*
+		 * A phone stops sending until its messages are answered, so an
+		 * acknowledgment that does not go out stops the stream.
+		 */
+		LOG_ERR("Acknowledgment for channel %u did not go out (%d)", channel, ret);
+		return;
+	}
+
+	if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_PLAY_LEVEL_LOG)) {
+		acked++;
+		if (k_uptime_get() - since >= 1000) {
+			LOG_INF("Acknowledged %u media messages on channel %u", acked, channel);
+			acked = 0U;
+			since = k_uptime_get();
+		}
 	}
 }
 
@@ -131,6 +154,17 @@ void aa_audio_handle(uint8_t channel, uint16_t msg_id, const uint8_t *body, size
 		 * samples are of no use late.
 		 */
 		send_media_ack(channel, idx);
+
+		if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_PLAY_LEVEL_LOG)) {
+			static int64_t seen;
+
+			if (k_uptime_get() - seen >= 1000) {
+				LOG_INF("Media 0x%04x on channel %u: %u bytes, skipping %u",
+					msg_id, channel, (uint32_t)len, (uint32_t)skip);
+				seen = k_uptime_get();
+			}
+		}
+
 		if (len > skip) {
 			aa_play_submit(audio_types[idx], &body[skip], len - skip);
 		}
