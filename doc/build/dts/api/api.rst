@@ -587,6 +587,8 @@ device.
      - UART used for :ref:`device_mgmt`
    * - zephyr,uart-pipe
      - Sets UART device used by serial pipe driver
+   * - zephyr,videodec
+     - Video decoder device, typically an H.264 software or hardware decoder.
    * - zephyr,videoenc
      - Video encoder device, typically an H264 or MJPEG video encoder.
 
