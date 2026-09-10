@@ -27,7 +27,7 @@ LOG_MODULE_REGISTER(aa_mic, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
  * is read through the DMIC interface.
  */
 
-#if DT_HAS_ALIAS(dmic0)
+#if DT_HAS_ALIAS(dmic0) && defined(CONFIG_AUDIO_DMIC)
 
 #define MIC_RATE     16000U
 #define MIC_WIDTH    16U
@@ -441,4 +441,4 @@ void aa_mic_link_down(void)
 {
 }
 
-#endif /* DT_HAS_ALIAS(dmic0) */
+#endif /* microphone */
