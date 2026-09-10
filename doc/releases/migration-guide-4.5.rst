@@ -350,6 +350,23 @@ Audio Codec
   in-tree drivers have been updated. Application code using the ``audio_codec_...`` APIs is not
   impacted.
 
+* The in-tree audio codec drivers now use the controller/target roles selected by
+  :ref:`coding_guideline_inclusive_language`. The renamed symbols are private to the drivers, so
+  applications are not impacted; only out-of-tree code carrying patched copies of these files
+  needs updating:
+
+  * ``wm8904_set_controller_clock()`` and ``wm8962_set_controller_clock()`` replace
+    ``wm8904_set_master_clock()`` and ``wm8962_set_master_clock()``.
+  * ``WM8962_IFACE1_CONTROLLER`` and ``WM8962_IFACE1_TARGET`` replace ``WM8962_IFACE1_MASTER``
+    and ``WM8962_IFACE1_SLAVE``.
+  * The AW88298 driver uses :c:macro:`I2S_OPT_BIT_CLK_TARGET` and
+    :c:macro:`I2S_OPT_FRAME_CLK_TARGET` instead of their deprecated aliases.
+  * The TLV320 drivers log ``I2S controller BCLKDIV`` where they logged ``I2S Master BCLKDIV``.
+
+  Register and bitfield names mirroring vendor datasheets, such as ``AIC26_SLVMS``,
+  ``WM8960_IFACE1_MS`` and the ``M98091_REG_MASTER_*`` definitions, are unchanged so that they
+  remain traceable to the vendor documentation.
+
 Clock Control
 =============
 
@@ -427,6 +444,10 @@ Digital Microphone
   instances to ``DEVICE_API(dmic, ...)``. See :github:`107695` for examples of how in-tree drivers
   have been updated. Application code using :c:func:`dmic_configure`, :c:func:`dmic_trigger`, and
   :c:func:`dmic_read` is not impacted.
+
+* The ``comm_master`` member of the MPXXDTYY driver's private configuration struct is now named
+  ``comm_dev``, following :ref:`coding_guideline_inclusive_language`. Applications are not
+  impacted; only out-of-tree code carrying a patched copy of the driver needs updating.
 
 Display
 =======
@@ -711,6 +732,15 @@ I2S
   on the unbounded wait can set ``timeout`` to ``SYS_FOREVER_MS``, but the same field also
   bounds the driver's enqueue wait, so no single value reproduces the old combination of an
   unbounded allocation and a bounded enqueue.
+
+* The clock-role macros deprecated in v4.4 no longer have any in-tree user. Replace
+  ``I2S_OPT_BIT_CLK_MASTER``, ``I2S_OPT_BIT_CLK_SLAVE``, ``I2S_OPT_FRAME_CLK_MASTER`` and
+  ``I2S_OPT_FRAME_CLK_SLAVE`` with :c:macro:`I2S_OPT_BIT_CLK_CONTROLLER`,
+  :c:macro:`I2S_OPT_BIT_CLK_TARGET`, :c:macro:`I2S_OPT_FRAME_CLK_CONTROLLER` and
+  :c:macro:`I2S_OPT_FRAME_CLK_TARGET`, the names selected by
+  :ref:`coding_guideline_inclusive_language`. The values are unchanged, but expanding a
+  deprecated name emits a compiler warning that ``-Wno-deprecated`` does not silence, so it
+  fails a ``-Werror`` build.
 
 Input
 =====
