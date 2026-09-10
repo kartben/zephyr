@@ -100,8 +100,7 @@ static int __maybe_unused send_touch(const struct touch_point *pts, uint8_t slot
 
 #if DT_HAS_CHOSEN(zephyr_touch) && DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_touch), okay)
 
-/* The screen reports a held finger far faster than the phone needs it */
-#define TOUCH_DRAG_MIN_MS 20
+#define TOUCH_DRAG_MIN_MS CONFIG_SAMPLE_AA_HU_TOUCH_DRAG_MIN_MS
 
 static struct touch_point points[TOUCH_MAX_POINTS];
 static uint8_t cur_slot;
