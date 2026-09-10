@@ -219,6 +219,48 @@ config SAMPLE_AA_HU_MAX_UNACKED
 	default 1
 	range 1 16
 
+config SAMPLE_AA_HU_TOF_NIGHT
+	bool "Drive night mode from a time-of-flight ranger"
+	depends on SENSOR && SENSOR_ASYNC_API
+	help
+	  Report the ranger under the "aa-tof" alias as the head unit's light
+	  level, so that covering it switches the phone to its night theme.
+	  The board has no light sensor and this makes the sensor channel do
+	  something visible without a vehicle bus behind it.
+
+config SAMPLE_AA_HU_TOF_NEAR_MM
+	int "Distance below which it counts as dark (mm)"
+	depends on SAMPLE_AA_HU_TOF_NIGHT
+	default 300
+
+config SAMPLE_AA_HU_TOF_FAR_MM
+	int "Distance above which it counts as light again (mm)"
+	depends on SAMPLE_AA_HU_TOF_NIGHT
+	default 500
+	help
+	  Kept above the near threshold so that a hand at the boundary does
+	  not make the phone flash between its themes.
+
+config SAMPLE_AA_HU_TOF_PERIOD_MS
+	int "Time between readings (ms)"
+	depends on SAMPLE_AA_HU_TOF_NIGHT
+	default 500
+
+config SAMPLE_AA_HU_TOF_RATE_HZ
+	int "Ranging frequency asked of the sensor (Hz)"
+	depends on SAMPLE_AA_HU_TOF_NIGHT
+	default 15
+
+config SAMPLE_AA_HU_TOF_STACK_SIZE
+	int "Ranger thread stack size"
+	depends on SAMPLE_AA_HU_TOF_NIGHT
+	default 2048
+
+config SAMPLE_AA_HU_TOF_THREAD_PRIORITY
+	int "Ranger thread priority"
+	depends on SAMPLE_AA_HU_TOF_NIGHT
+	default 10
+
 config SAMPLE_AA_HU_PROTO_MINOR
 	int "Protocol minor version announced to the phone"
 	default 1
