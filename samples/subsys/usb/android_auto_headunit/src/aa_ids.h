@@ -120,8 +120,11 @@ enum {
 #define AA_VIDEO_RESOLUTION_1280x720  2
 #define AA_VIDEO_RESOLUTION_1920x1080 3
 
-#define AA_VIDEO_FPS_30 1
-#define AA_VIDEO_FPS_60 2
+/* The faster rate is the lower value; asking for each in turn and
+ * counting the pictures that came back is what settled the order.
+ */
+#define AA_VIDEO_FPS_60 1
+#define AA_VIDEO_FPS_30 2
 
 #define AA_MEDIA_STATUS_FAIL 1
 #define AA_MEDIA_STATUS_OK   2
