@@ -127,16 +127,20 @@ config SAMPLE_AA_HU_TEST_PATTERN
 
 config SAMPLE_AA_HU_H264
 	bool "Decode the phone's H.264 stream"
+	depends on ZEPHYR_H264BSD_MODULE
+	select H264BSD
 	help
 	  Decode the baseline H.264 a phone streams, rather than only the
-	  companion accessory sample's I_PCM pictures. Needs a checkout of the
-	  h264bsd decoder, which is not part of Zephyr.
+	  companion accessory sample's I_PCM pictures. The decoder is the
+	  h264bsd module, so this needs a west manifest that carries it.
 
-config SAMPLE_AA_HU_H264BSD_PATH
-	string "Path to an h264bsd checkout"
-	depends on SAMPLE_AA_HU_H264
-	help
-	  Directory holding the decoder's src/ directory.
+# The decoder's reference pictures are large and this sample places them
+# itself, in a bank chosen per board.
+configdefault H264BSD_MALLOC
+	default "aa_h264_malloc" if SAMPLE_AA_HU_H264
+
+configdefault H264BSD_FREE
+	default "aa_h264_free" if SAMPLE_AA_HU_H264
 
 config SAMPLE_AA_HU_LTDC_YUV
 	bool "Let the display controller convert the decoded pictures"

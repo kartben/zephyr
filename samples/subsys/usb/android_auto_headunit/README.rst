@@ -111,8 +111,9 @@ Hardware YUV scanout on STM32N6
 
 With the full H.264 decoder enabled, set :kconfig:option:`CONFIG_STM32_LTDC_YUV` to use
 hardware color conversion. :kconfig:option:`CONFIG_SAMPLE_AA_HU_LTDC_YUV` then defaults to
-enabled. The decoder checkout is supplied with
-:kconfig:option:`CONFIG_SAMPLE_AA_HU_H264BSD_PATH`.
+enabled. The decoder itself is the ``h264bsd`` module, so the west manifest has to
+carry it; :kconfig:option:`CONFIG_SAMPLE_AA_HU_H264` selects it and points its
+allocation at the sample's own heap.
 
 The sample interleaves the decoder's I420 planes into packed YUYV 4:2:2, repeating each
 chroma row for two luminance rows. The LTDC converts BT.601 limited-range samples to RGB
