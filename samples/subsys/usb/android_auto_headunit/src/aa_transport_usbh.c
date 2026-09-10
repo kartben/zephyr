@@ -64,7 +64,14 @@ static const char *const aoa_strings[] = {
 
 USBH_CONTROLLER_DEFINE(aa_hu_uhs, DEVICE_DT_GET(DT_NODELABEL(zephyr_uhc0)));
 
-K_PIPE_DEFINE(aa_rx_pipe, CONFIG_SAMPLE_AA_HU_USBH_RX_PIPE_SIZE, 4);
+/*
+ * The bytes the phone sends, on their way from the host stack's callback to the
+ * receive thread. It is only ever touched by the processor, so it can sit in
+ * whatever memory the board has spare rather than in the image's own RAM.
+ */
+static uint8_t aa_rx_pipe_buf[CONFIG_SAMPLE_AA_HU_USBH_RX_PIPE_SIZE]
+	Z_GENERIC_SECTION(CONFIG_SAMPLE_AA_HU_USBH_RX_PIPE_SECTION) __aligned(4);
+static struct k_pipe aa_rx_pipe;
 
 static K_SEM_DEFINE(link_sem, 0, 1);
 static atomic_t link_up;
@@ -508,6 +515,8 @@ USBH_DEFINE_CLASS(aa_accessory, &accessory_api, NULL, accessory_filters);
 static int usbh_open(void)
 {
 	int ret;
+
+	k_pipe_init(&aa_rx_pipe, aa_rx_pipe_buf, sizeof(aa_rx_pipe_buf));
 
 	ret = usbh_init(&aa_hu_uhs);
 	if (ret != 0) {
