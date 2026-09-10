@@ -5,6 +5,12 @@
 
 #include "aa_h264.h"
 
+/* Bit 0 of __ARM_FEATURE_MVE is the integer subset, which is all this needs */
+#if defined(__ARM_FEATURE_MVE) && (((__ARM_FEATURE_MVE) & 1) != 0)
+#define HU_HAS_MVE 1
+#include <arm_mve.h>
+#endif
+
 #define SAMPLE_AA_HU_YUV_W CONFIG_SAMPLE_AA_HU_VIDEO_WIDTH
 #define SAMPLE_AA_HU_YUV_H CONFIG_SAMPLE_AA_HU_VIDEO_HEIGHT
 
@@ -195,14 +201,34 @@ static void show_yuv(const uint8_t *pic, uint32_t width, uint32_t height)
 		const uint8_t *luma = pic + (size_t)y * width;
 		const uint8_t *cb = u + (size_t)(y / 2U) * (width / 2U);
 		const uint8_t *cr = v + (size_t)(y / 2U) * (width / 2U);
-		uint32_t *row = (uint32_t *)(dst + (size_t)y * width * 2U);
+		uint8_t *out = dst + (size_t)y * width * 2U;
+		uint32_t x = 0U;
 
-		for (uint32_t x = 0U; x < width; x += 2U) {
+#ifdef HU_HAS_MVE
+		/*
+		 * The interleave is exactly what Helium's structured accesses
+		 * do: vld2q splits the luma row into the even and odd samples
+		 * the format wants for Y0 and Y1, and vst4q writes Y Cb Y Cr
+		 * back out in one go, thirty-two pixels at a time.
+		 */
+		for (; x + 32U <= width; x += 32U) {
+			uint8x16x2_t l = vld2q_u8(luma + x);
+			uint8x16x4_t o;
+
+			o.val[0] = l.val[0];
+			o.val[1] = vld1q_u8(cb + x / 2U);
+			o.val[2] = l.val[1];
+			o.val[3] = vld1q_u8(cr + x / 2U);
+			vst4q_u8(out + (size_t)x * 2U, o);
+		}
+#endif
+
+		for (; x < width; x += 2U) {
 			uint32_t pair = (uint32_t)luma[x] | ((uint32_t)cb[x / 2U] << 8U) |
 					((uint32_t)luma[x + 1U] << 16U) |
 					((uint32_t)cr[x / 2U] << 24U);
 
-			row[x / 2U] = sys_cpu_to_le32(pair);
+			*(uint32_t *)(out + (size_t)x * 2U) = sys_cpu_to_le32(pair);
 		}
 	}
 
