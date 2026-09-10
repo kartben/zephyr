@@ -684,7 +684,7 @@ static int uhc_renesas_ra_shutdown(const struct device *dev)
 	return 0;
 }
 
-static const struct uhc_api uhc_renesas_ra_api = {
+static const struct uhc_driver_api uhc_renesas_ra_api = {
 	.lock = uhc_renesas_ra_lock,
 	.unlock = uhc_renesas_ra_unlock,
 	.init = uhc_renesas_ra_init,
