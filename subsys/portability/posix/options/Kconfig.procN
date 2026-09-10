@@ -4,8 +4,6 @@
 
 menuconfig POSIX_MULTI_PROCESS
 	bool "POSIX multi-process support"
-	select SCHED_THREAD_USAGE # times()
-	select THREAD_RUNTIME_STATS
 	help
 	  Support for multi-processing.
 
@@ -16,6 +14,17 @@ menuconfig POSIX_MULTI_PROCESS
 	  https://pubs.opengroup.org/onlinepubs/9699919799/xrat/V4_subprofiles.html
 
 if POSIX_MULTI_PROCESS
+
+config POSIX_MULTI_PROCESS_TIMES
+	bool "times()"
+	default y
+	select SCHED_THREAD_USAGE
+	select THREAD_RUNTIME_STATS
+	help
+	  Provide times(). It reports the time a process has run for, which
+	  Zephyr takes from the scheduler's thread usage statistics, and those
+	  are gathered at every context switch whether or not anything asks
+	  for them. Say n in a program that never calls times().
 
 # These options are intended to be used for compatibility with external POSIX
 # implementations such as those in Newlib or Picolibc.

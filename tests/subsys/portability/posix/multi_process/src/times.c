@@ -12,6 +12,10 @@
 
 ZTEST(posix_multi_process, test_times)
 {
+	if (!IS_ENABLED(CONFIG_POSIX_MULTI_PROCESS_TIMES)) {
+		ztest_test_skip();
+	}
+
 	static const struct {
 		const char *name;
 		size_t offset;
