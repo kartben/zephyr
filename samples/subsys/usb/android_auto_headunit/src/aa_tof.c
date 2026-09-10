@@ -129,9 +129,10 @@ int aa_tof_init(void)
 {
 	struct sensor_value val = {0};
 
+	/* Without one the head unit still projects, it just never turns dark */
 	if (!device_is_ready(tof)) {
-		LOG_ERR("Ranger is not ready");
-		return -ENODEV;
+		LOG_WRN("No ranger, the light level stays as it is");
+		return 0;
 	}
 
 	val.val1 = TOF_ZONES;
