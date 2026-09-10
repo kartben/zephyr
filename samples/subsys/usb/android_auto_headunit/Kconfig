@@ -159,12 +159,24 @@ config SAMPLE_AA_HU_YUV_BUFFERS_SECTION
 	  avoids external-memory traffic for packing and display scanout.
 	  The section must hold four bytes per pixel at the video resolution.
 
+config SAMPLE_AA_HU_H264_HEAP_STATS
+	bool "Report how much of the decoder heap is used"
+	depends on SAMPLE_AA_HU_H264
+	select SYS_HEAP_RUNTIME_STATS
+	help
+	  Log the most the decoder has ever held at once, so the heap can be
+	  sized from what a phone actually asks for rather than guessed at.
+
 config SAMPLE_AA_HU_H264_HEAP_SIZE
 	int "Decoder heap (bytes)"
 	depends on SAMPLE_AA_HU_H264
-	default 8388608
+	default 4194304
 	help
 	  Holds the decoder's reference pictures, several times the frame size.
+	  A phone asks for as many as its stream needs, not as many as the
+	  level allows, so this is sized for the level rather than for one
+	  device: 800x480 at level 3.1 tops out near 3.5 MB. Enable
+	  SAMPLE_AA_HU_H264_HEAP_STATS to see what a given phone uses.
 
 config SAMPLE_AA_HU_NAL_SCRATCH_SIZE
 	int "Decoder NAL scratch buffer (bytes)"

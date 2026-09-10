@@ -37,6 +37,31 @@ static uint16_t *framebuffer;
 static uint16_t fb_width;
 static uint16_t fb_height;
 
+#if defined(CONFIG_SAMPLE_AA_HU_H264_HEAP_STATS)
+/* The most the decoder has held at once, against what it was given */
+static void report_heap(void)
+{
+	static int64_t since;
+	struct sys_memory_stats stats;
+
+	if (k_uptime_get() - since < 2000) {
+		return;
+	}
+	since = k_uptime_get();
+
+	if (sys_heap_runtime_stats_get(&decoder_heap.heap, &stats) != 0) {
+		return;
+	}
+
+	LOG_INF("Decoder heap: %zu now, %zu at most, of %zu", stats.allocated_bytes,
+		stats.max_allocated_bytes, (size_t)sizeof(decoder_arena));
+}
+#else
+static inline void report_heap(void)
+{
+}
+#endif
+
 /* The decoder library's allocator, redirected onto the heap above */
 void *aa_h264_malloc(size_t size)
 {
@@ -185,6 +210,8 @@ int aa_h264_decode_au(const uint8_t *au, size_t len)
 	uint32_t left = (uint32_t)len;
 	bool stalled = false;
 	int ready = 0;
+
+	report_heap();
 
 	if (decoder == NULL) {
 		return -EINVAL;
