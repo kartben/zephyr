@@ -12,11 +12,23 @@ from pathlib import Path
 
 from west.commands import WestCommand
 
-from zephyr_ext_common import ZEPHYR_BASE
+from zephyr_ext_common import add_json_arg, emit_json, module_roots
 
 sys.path.append(os.fspath(Path(__file__).parent.parent))
 import list_shields
-import zephyr_module
+
+DEFAULT_FMT = '{name}'
+
+
+def shield_to_dict(shield):
+    '''Return the JSON-serializable representation of a list_shields.Shield.'''
+    return {
+        'name': shield.name,
+        'full_name': shield.full_name,
+        'vendor': shield.vendor,
+        'dir': shield.dir,
+        'supported_features': shield.supported_features,
+    }
 
 
 class Shields(WestCommand):
@@ -29,7 +41,7 @@ class Shields(WestCommand):
             accepts_unknown_args=False)
 
     def do_add_parser(self, parser_adder):
-        default_fmt = '{name}'
+        default_fmt = DEFAULT_FMT
         parser = parser_adder.add_parser(
             self.name,
             formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -55,9 +67,10 @@ class Shields(WestCommand):
 
         # Remember to update west-completion.bash if you add or remove
         # flags
-        parser.add_argument('-f', '--format', default=default_fmt,
+        parser.add_argument('-f', '--format',
                             help='''Format string to use to list each shield;
                                     see FORMAT STRINGS below.''')
+        add_json_arg(parser, help='print shields as JSON')
         parser.add_argument('-n', '--name', dest='name_re',
                             help='''a regular expression; only shields whose
                             names match NAME_RE will be listed''')
@@ -66,24 +79,26 @@ class Shields(WestCommand):
         return parser
 
     def do_run(self, args, _):
+        if args.json and args.format is not None:
+            self.die('--json and --format are mutually exclusive')
+        fmt = args.format or DEFAULT_FMT
+
         if args.name_re is not None:
             name_re = re.compile(args.name_re)
         else:
             name_re = None
 
-        modules_board_roots = [ZEPHYR_BASE]
+        args.board_roots += module_roots(self.manifest, ['board_root'])['board_root']
 
-        for module in zephyr_module.parse_modules(ZEPHYR_BASE, self.manifest):
-            board_root = module.meta.get('build', {}).get('settings', {}).get('board_root')
-            if board_root is not None:
-                modules_board_roots.append(Path(module.project) / board_root)
+        shields = [s for s in list_shields.find_shields(args)
+                   if name_re is None or name_re.search(s.name)]
 
-        args.board_roots += modules_board_roots
+        if args.json:
+            emit_json([shield_to_dict(s) for s in shields])
+            return
 
-        for shield in list_shields.find_shields(args):
-            if name_re is not None and not name_re.search(shield.name):
-                continue
-            self.inf(args.format.format(
+        for shield in shields:
+            self.inf(fmt.format(
                 name=shield.name,
                 dir=shield.dir,
                 vendor=shield.vendor if hasattr(shield, 'vendor') else '',

@@ -27,6 +27,9 @@ Additional help about the formatting options can be found by running::
 
   west boards -h
 
+For machine-readable output, use ``--json`` instead of a format string; see
+:ref:`west-json-output`.
+
 .. _west-completion:
 
 Shell completion scripts: ``west completion``
@@ -262,6 +265,9 @@ You can list binary blobs while specifying the format of the output::
 For the full set of variables available in ``-f/--format`` run
 ``west blobs -h``.
 
+For machine-readable output, use ``west blobs list --json`` instead of a format
+string; see :ref:`west-json-output`.
+
 Fetching blobs works in a similar manner::
 
   west blobs fetch
@@ -296,6 +302,29 @@ auto-cache) for a matching blob filename. Cached files may be stored either
 under their original filename or with a SHA-256 suffix (``<filename>.<sha>``).
 If found, the blob is copied from the cache to the blob path; otherwise
 it is downloaded from its URL(s) to the blob path.
+
+.. _west-runners:
+
+Listing runners: ``west runners``
+*********************************
+
+The ``runners`` command lists the :ref:`runners <west-runner>` that ``west
+flash``, ``west debug`` and related commands can use, with the commands each one
+supports, its capabilities and its command-line options. When run inside a
+build directory, or with ``-d/--build-dir``, it also reports what that build
+configures: the runners enabled by the board, the default runner for each
+command, and the common configuration (ELF, HEX and binary files, GDB, OpenOCD,
+...) found in its :file:`runners.yaml`. For :ref:`sysbuild <sysbuild>` builds
+this is reported per domain; use ``--domain`` to restrict the output.
+
+.. code-block:: console
+
+   west runners -d build
+   west runners -r openocd
+   west runners -d build --json
+
+Unlike ``west flash --context``, ``west runners`` never rebuilds the
+application, never prompts, and can print JSON (see :ref:`west-json-output`).
 
 .. _west-twister:
 
@@ -532,6 +561,9 @@ This command shows:
 - Available SDK releases
 - Toolchains included in each SDK
 
+Add ``--json`` to get the same information as a JSON array; see
+:ref:`west-json-output`.
+
 Installing the Zephyr SDK
 -------------------------
 
@@ -555,3 +587,66 @@ To install specific toolchains only, use the ``--toolchains`` option:
 If you are unsure which toolchains you need, run ``west sdk list`` first
 to see the available options and avoid downloading unnecessary
 toolchains, which can save gigabytes of disk space and download time.
+
+.. _west-json-output:
+
+Machine-readable output: ``--json``
+***********************************
+
+Several of the listing commands above accept a ``--json`` option, which
+replaces their text output with a single JSON document printed to standard
+output. This is meant for scripts, CI jobs and AI coding agents that need to
+query a workspace without parsing human-oriented text. Diagnostics still go to
+standard error, and the JSON output is produced even under ``west -q``.
+
+``--json`` cannot be combined with a ``-f/--format`` string. The output is
+deterministic: object keys are sorted, and filesystem paths use the native
+separator of the host. Fields are only ever added to these documents; renaming
+or removing a field is treated as a breaking change and announced in the
+migration guide.
+
+``west boards --json`` prints an array of boards sorted by name. Each board has
+the following fields, taken from its :file:`board.yml`:
+
+- ``name``, ``full_name``, ``vendor``, ``hwm``
+- ``dir``: the main board directory, and ``dirs``: all directories that
+  contribute to the board definition (extensions included)
+- ``revision_format``, ``revision_default``, ``revision_exact`` and
+  ``revisions``, a list of ``{"name": ..., "variants": [...]}`` objects
+- ``socs``: SoCs with their ``cpuclusters`` and ``variants``, and
+  ``variants``: board-level variants
+- ``qualifiers``: the valid qualifier strings (``soc[/cluster][/variant]``)
+- ``targets``: every ``name[@revision]/qualifiers`` string accepted by
+  ``west build -b``
+
+With ``--all-targets``, ``--json`` prints a flat, sorted array of target
+strings instead.
+
+``west shields --json`` prints an array of shields sorted by name, each with
+``name``, ``full_name``, ``vendor``, ``dir`` and ``supported_features`` from
+its :file:`shield.yml`.
+
+``west snippets --json`` prints an array of snippets sorted by name, each with
+``name``, ``description``, ``dirs`` (the directories that define or extend the
+snippet) and ``boards`` (the board patterns it has board-specific settings
+for).
+
+``west blobs list --json`` prints an array of blobs in module order. Each entry
+has the keys declared for the blob in :file:`module.yml` (``path``, ``sha256``,
+``type``, ``version``, ``license-path``, ``url``, ``description``, ``doc-url``,
+``click-through``, ...) plus the computed ``module``, ``abspath``,
+``license-abspath`` and ``status`` (``A`` present, ``M`` hash mismatch, ``D``
+not present) fields, i.e. the same values available to ``--format``.
+
+``west sdk list --json`` prints an array of installed SDKs, each with
+``version``, ``path``, ``hosttools`` and ``llvm`` (booleans), ``gnu_toolchains``
+(installed) and ``gnu_available_toolchains`` (provided by that SDK release but
+not installed). The array is empty when no SDK is installed.
+
+``west runners --json`` prints an object with ``runners``, an array describing
+every runner class (``name``, ``commands``, ``capabilities`` and ``options``,
+the latter introspected from the runner's argument parser on a best-effort
+basis), and, when a build directory is known, ``build_dir``, ``sysbuild`` and
+``domains``: one entry per (domain) build directory with its ``board``,
+``runners_yaml`` path, ``available`` runners, ``default`` runner per command,
+common ``config`` and runner-specific ``args``.

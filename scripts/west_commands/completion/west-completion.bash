@@ -664,6 +664,7 @@ __comp_west_boards()
 {
 	local bool_opts="
 		--all-targets -a
+		--json
 	"
 
 	local other_opts="
@@ -699,6 +700,10 @@ __comp_west_boards()
 
 __comp_west_shields()
 {
+	local bool_opts="
+		--json
+	"
+
 	local other_opts="
 		--format -f
 		--name -n
@@ -708,7 +713,7 @@ __comp_west_shields()
 		--board-root
 	"
 
-	all_opts="$dir_opts $other_opts"
+	all_opts="$bool_opts $dir_opts $other_opts"
 
 	case "$prev" in
 		$(__west_to_extglob "$other_opts") )
@@ -730,6 +735,10 @@ __comp_west_shields()
 
 __comp_west_snippets()
 {
+	local bool_opts="
+		--json
+	"
+
 	local other_opts="
 		--format -f
 		--name -n
@@ -739,7 +748,7 @@ __comp_west_snippets()
 		--snippet-root
 	"
 
-	all_opts="$dir_opts $other_opts"
+	all_opts="$bool_opts $dir_opts $other_opts"
 
 	case "$prev" in
 		$(__west_to_extglob "$other_opts") )
@@ -992,6 +1001,10 @@ __comp_west_spdx()
 
 __comp_west_blobs()
 {
+	local bool_opts="
+		--json
+	"
+
 	local other_opts="
 		--format -f
 	"
@@ -1009,7 +1022,7 @@ __comp_west_blobs()
 
 	case "$cur" in
 		-*)
-			__set_comp $other_opts
+			__set_comp $bool_opts $other_opts
 			;;
 		*)
 			__set_comp_west_projs
@@ -1193,6 +1206,41 @@ __comp_west_twister()
 	esac
 }
 
+__comp_west_runners()
+{
+	local bool_opts="
+		--json
+	"
+
+	local dir_opts="
+		--build-dir -d
+	"
+
+	local other_opts="
+		--runner -r
+		--domain
+	"
+
+	all_opts="$bool_opts $dir_opts $other_opts"
+
+	case "$prev" in
+		$(__west_to_extglob "$dir_opts") )
+			__set_comp_dirs
+			return
+			;;
+		# We don't know how to autocomplete those
+		$(__west_to_extglob "$other_opts") )
+			return
+			;;
+	esac
+
+	case "$cur" in
+		-*)
+			__set_comp $all_opts
+			;;
+	esac
+}
+
 __comp_west_sdk()
 {
 	local bool_opts="
@@ -1221,6 +1269,7 @@ __comp_west_sdk()
 			return
 			;;
 		list)
+			__set_comp "--json"
 			return
 			;;
 		$(__west_to_extglob "$dir_opts") )
@@ -1281,6 +1330,7 @@ __comp_west()
 		bindesc
 		robot
 		simulate
+		runners
 		sdk
 		packages
 		patch
