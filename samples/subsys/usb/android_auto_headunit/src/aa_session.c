@@ -27,6 +27,7 @@
 #include "aa_audio.h"
 #include "aa_mem.h"
 #include "aa_sensor.h"
+#include "aa_tof.h"
 #include "aa_transport.h"
 #include "aa_video.h"
 
@@ -277,6 +278,7 @@ static void rx_thread(void *p1, void *p2, void *p3)
 		aa_mic_link_down();
 		aa_play_link_down();
 		aa_nav_link_down();
+		aa_sensor_link_down();
 		aa_frame_reset();
 		aa_hu_session_set_state(AA_HU_LINK_DOWN);
 		t->close();
@@ -319,6 +321,11 @@ int aa_hu_session_start(void)
 	}
 
 	ret = aa_mic_init();
+	if (ret != 0) {
+		return ret;
+	}
+
+	ret = aa_tof_init();
 	if (ret != 0) {
 		return ret;
 	}

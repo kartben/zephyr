@@ -21,6 +21,7 @@ target_sources(app PRIVATE
   src/aa_sensor.c
   src/aa_session.c
   src/aa_tls.c
+  src/aa_tof.c
   src/aa_video.c
   src/h264_ipcm_decode.c
   src/main.c

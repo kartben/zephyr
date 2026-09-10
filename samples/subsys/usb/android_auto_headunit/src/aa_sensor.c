@@ -17,9 +17,13 @@ LOG_MODULE_REGISTER(aa_sensor, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
 /*
  * Sensor channel. A phone refuses to project without a driving status source,
  * and restricts what it will show unless the vehicle is standing still, so the
- * head unit reports a parked, braked, daytime vehicle once and leaves it at
- * that; a real one would follow the vehicle bus.
+ * head unit reports a parked, braked vehicle once and leaves it at that; a real
+ * one would follow the vehicle bus. Night mode is the exception: it is sent
+ * again whenever the light level changes.
  */
+
+static bool night_started;
+static bool is_night;
 
 static int send_event(int32_t sensor_type)
 {
@@ -36,7 +40,7 @@ static int send_event(int32_t sensor_type)
 	case AA_SENSOR_TYPE_NIGHT_DATA:
 		ind.night_mode_count = 1;
 		ind.night_mode[0].has_is_night = true;
-		ind.night_mode[0].is_night = false;
+		ind.night_mode[0].is_night = is_night;
 		break;
 	case AA_SENSOR_TYPE_PARKING_BRAKE:
 		ind.parking_brake_count = 1;
@@ -79,6 +83,10 @@ void aa_sensor_handle(uint16_t msg_id, const uint8_t *body, size_t len)
 
 	LOG_INF("Sensor %d started", req.sensor_type);
 
+	if (req.sensor_type == AA_SENSOR_TYPE_NIGHT_DATA) {
+		night_started = true;
+	}
+
 	rsp.has_status = true;
 	rsp.status = 0;
 	n = aa_pb_encode(buf, sizeof(buf), SensorStartResponse_fields, &rsp);
@@ -92,4 +100,28 @@ void aa_sensor_handle(uint16_t msg_id, const uint8_t *body, size_t len)
 	}
 
 	(void)send_event(req.sensor_type);
+}
+
+void aa_sensor_set_night(bool night)
+{
+	if (night == is_night) {
+		return;
+	}
+
+	is_night = night;
+
+	/* Nothing to tell until the phone asks for the readings */
+	if (!night_started) {
+		return;
+	}
+
+	if (send_event(AA_SENSOR_TYPE_NIGHT_DATA) != 0) {
+		LOG_WRN("Cannot report the light level");
+	}
+}
+
+void aa_sensor_link_down(void)
+{
+	night_started = false;
+	is_night = false;
 }
