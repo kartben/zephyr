@@ -144,6 +144,24 @@ extern "C" {
 	}
 
 /**
+ * @brief Declare the placeholder member of an otherwise empty struct.
+ *
+ * A struct with no members is not valid C. C++ does allow one, but gives it a
+ * size of 1 where the compilers that accept it in C give it 0, so a struct
+ * that ends up with no member in some configuration is laid out differently by
+ * the two languages. Declaring this placeholder in it keeps it valid C and
+ * keeps both languages agreeing on its size, at no cost: the member occupies
+ * no space, imposes no alignment and is never read or written.
+ *
+ * The placeholder is a zero length array rather than a flexible array member,
+ * which would be the standard C spelling: a flexible array member may not be
+ * the only member of a struct, and a struct holding one may neither be arrayed
+ * nor embedded anywhere but at the end of another struct, all of which the
+ * structs using this macro do.
+ */
+#define EMPTY_STRUCT_PLACEHOLDER char _empty_struct_placeholder[0]
+
+/**
  * @brief Whether @p ptr is an element of @p array
  *
  * This macro can be seen as a slightly stricter version of @ref PART_OF_ARRAY
