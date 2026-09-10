@@ -20,18 +20,23 @@
 
 #include <h264bsd_decoder.h>
 
-#include "aa_mem.h"
-
 LOG_MODULE_REGISTER(aa_h264, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
 
 /*
  * Baseline H.264 decoder, which is the profile a phone streams. The decoder
- * keeps its reference pictures on a heap of its own so that they land in
- * external RAM, far more than the internal RAM holds.
+ * keeps its reference pictures on a heap of its own, so where they live is a
+ * build choice: internal RAM decodes far faster, external RAM holds more.
  */
 
-static uint8_t decoder_arena[CONFIG_SAMPLE_AA_HU_H264_HEAP_SIZE] AA_HU_BIG_BUF __aligned(8);
+static uint8_t decoder_arena[CONFIG_SAMPLE_AA_HU_H264_HEAP_SIZE]
+	Z_GENERIC_SECTION(CONFIG_SAMPLE_AA_HU_H264_HEAP_SECTION) __aligned(8);
+#ifdef CONFIG_SAMPLE_AA_HU_H264_HEAP_FALLBACK
+static uint8_t decoder_fallback_arena[CONFIG_SAMPLE_AA_HU_H264_HEAP_FALLBACK_SIZE]
+	Z_GENERIC_SECTION(CONFIG_SAMPLE_AA_HU_H264_HEAP_FALLBACK_SECTION) __aligned(8);
+#endif
 static struct k_heap decoder_heap;
+static uint8_t *arena;
+static size_t arena_size;
 static storage_t *decoder;
 static uint16_t *framebuffer;
 static uint16_t fb_width;
@@ -54,7 +59,7 @@ static void report_heap(void)
 	}
 
 	LOG_INF("Decoder heap: %zu now, %zu at most, of %zu", stats.allocated_bytes,
-		stats.max_allocated_bytes, (size_t)sizeof(decoder_arena));
+		stats.max_allocated_bytes, arena_size);
 }
 #else
 static inline void report_heap(void)
@@ -75,13 +80,11 @@ void aa_h264_free(void *ptr)
 	}
 }
 
-int aa_h264_init(uint16_t *fb, uint16_t width, uint16_t height)
+static int decoder_open(uint8_t *buf, size_t size)
 {
-	framebuffer = fb;
-	fb_width = width;
-	fb_height = height;
-
-	k_heap_init(&decoder_heap, decoder_arena, sizeof(decoder_arena));
+	arena = buf;
+	arena_size = size;
+	k_heap_init(&decoder_heap, buf, size);
 
 	decoder = h264bsdAlloc();
 	if (decoder == NULL) {
@@ -97,6 +100,50 @@ int aa_h264_init(uint16_t *fb, uint16_t width, uint16_t height)
 	}
 
 	return 0;
+}
+
+#ifdef CONFIG_SAMPLE_AA_HU_H264_HEAP_FALLBACK
+/*
+ * The stream asks for more reference pictures than the first heap holds. Start
+ * again on the larger one, which decodes more slowly but at least decodes; the
+ * next key frame picks the picture back up.
+ */
+static int decoder_downgrade(void)
+{
+	if (arena == decoder_fallback_arena) {
+		LOG_ERR("Decoder ran out of memory");
+		return -EINVAL;
+	}
+
+	LOG_WRN("Stream does not fit %zu bytes, moving the decoder to %s", arena_size,
+		CONFIG_SAMPLE_AA_HU_H264_HEAP_FALLBACK_SECTION);
+
+	if (decoder != NULL) {
+		h264bsdShutdown(decoder);
+		decoder = NULL;
+	}
+
+	if (decoder_open(decoder_fallback_arena, sizeof(decoder_fallback_arena)) != 0) {
+		return -ENOMEM;
+	}
+
+	return -EAGAIN;
+}
+#else
+static int decoder_downgrade(void)
+{
+	LOG_ERR("Decoder ran out of memory");
+	return -EINVAL;
+}
+#endif
+
+int aa_h264_init(uint16_t *fb, uint16_t width, uint16_t height)
+{
+	framebuffer = fb;
+	fb_width = width;
+	fb_height = height;
+
+	return decoder_open(decoder_arena, sizeof(decoder_arena));
 }
 
 /*
@@ -270,8 +317,7 @@ int aa_h264_decode_au(const uint8_t *au, size_t len)
 			LOG_WRN_ONCE("Decoder reported a stream error");
 			break;
 		case H264BSD_MEMALLOC_ERROR:
-			LOG_ERR("Decoder ran out of memory");
-			return -EINVAL;
+			return decoder_downgrade();
 		default:
 			break;
 		}

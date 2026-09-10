@@ -178,6 +178,35 @@ config SAMPLE_AA_HU_H264_HEAP_SIZE
 	  device: 800x480 at level 3.1 tops out near 3.5 MB. Enable
 	  SAMPLE_AA_HU_H264_HEAP_STATS to see what a given phone uses.
 
+config SAMPLE_AA_HU_H264_HEAP_SECTION
+	string "Linker section for the decoder heap"
+	depends on SAMPLE_AA_HU_H264
+	default SAMPLE_AA_HU_BUFFERS_SECTION if SAMPLE_AA_HU_BUFFERS_IN_EXT_RAM
+	default ".bss"
+	help
+	  Internal RAM spares the decoder the miss latency of external memory
+	  when it reads reference pictures, at the cost of holding the whole
+	  arena there.
+
+config SAMPLE_AA_HU_H264_HEAP_FALLBACK
+	bool "Keep a second decoder heap for streams the first cannot hold"
+	depends on SAMPLE_AA_HU_H264 && SAMPLE_AA_HU_BUFFERS_IN_EXT_RAM
+	help
+	  A heap sized for one resolution and reference count has no room to
+	  spare, and a stream that overruns it stops the video. Enable this
+	  where the first heap is the fast, tight one: the decoder moves to a
+	  larger heap in external RAM and keeps decoding, more slowly.
+
+config SAMPLE_AA_HU_H264_HEAP_FALLBACK_SIZE
+	int "Fallback decoder heap (bytes)"
+	depends on SAMPLE_AA_HU_H264_HEAP_FALLBACK
+	default 4194304
+
+config SAMPLE_AA_HU_H264_HEAP_FALLBACK_SECTION
+	string "Linker section for the fallback decoder heap"
+	depends on SAMPLE_AA_HU_H264_HEAP_FALLBACK
+	default SAMPLE_AA_HU_BUFFERS_SECTION
+
 config SAMPLE_AA_HU_NAL_SCRATCH_SIZE
 	int "Decoder NAL scratch buffer (bytes)"
 	default 40960

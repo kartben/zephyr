@@ -138,14 +138,14 @@ void aa_video_link_down(void)
 	}
 }
 
-static int send_focus_indication(void)
+static int send_focus(int32_t mode)
 {
 	VideoFocusIndication ind = VideoFocusIndication_init_zero;
 	uint8_t buf[8];
 	int n;
 
 	ind.has_focus_mode = true;
-	ind.focus_mode = AA_VIDEO_FOCUS_FOCUSED;
+	ind.focus_mode = mode;
 	ind.has_unrequested = true;
 	ind.unrequested = false;
 
@@ -156,6 +156,22 @@ static int send_focus_indication(void)
 
 	return aa_msg_send(aa_hu_session_get()->video_ch, false, AA_AV_VIDEO_FOCUS_INDICATION, buf,
 			   (size_t)n);
+}
+
+static int send_focus_indication(void)
+{
+	return send_focus(AA_VIDEO_FOCUS_FOCUSED);
+}
+
+/*
+ * A phone sends parameter sets with key frames and nothing in between, so a
+ * decoder that has just started over has nothing to decode against. Giving
+ * focus up and taking it back is what asks for the next one.
+ */
+static void request_key_frame(void)
+{
+	(void)send_focus(AA_VIDEO_FOCUS_UNFOCUSED);
+	(void)send_focus_indication();
 }
 
 static void on_setup_request(const uint8_t *body, size_t len)
@@ -306,6 +322,8 @@ static void on_media(const uint8_t *body, size_t len, bool has_timestamp)
 
 	if (n == -ENOTSUP) {
 		LOG_WRN_ONCE("Stream needs a full H.264 decoder (not I_PCM only)");
+	} else if (n == -EAGAIN) {
+		request_key_frame();
 	} else if (n < 0 && n != -ENODATA) {
 		LOG_WRN("Decode error %d", n);
 	}
