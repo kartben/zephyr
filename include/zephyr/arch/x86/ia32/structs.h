@@ -7,11 +7,13 @@
 #define ZEPHYR_INCLUDE_ARCH_X86_IA32_STRUCTS_H_
 
 #include <stdint.h>
+#include <zephyr/sys/util.h>
 
 struct k_thread;
 
 /* Per CPU architecture specifics (empty) */
 struct _cpu_arch {
+	EMPTY_STRUCT_PLACEHOLDER;
 
 #if defined(CONFIG_FPU_SHARING)
 	/*
@@ -29,11 +31,6 @@ struct _cpu_arch {
 	long *shstk_addr; /* Latest top of shadow stack */
 	long *shstk_base; /* Base of shadow stack */
 	size_t shstk_size;
-#endif
-#if defined(__cplusplus) && !defined(CONFIG_FPU_SHARING) && \
-		!defined(CONFIG_HW_SHADOW_STACK)
-	/* Ensure this struct does not have a size of 0 which is not allowed in C++. */
-	uint8_t dummy;
 #endif
 };
 

@@ -33,18 +33,15 @@
 #include <zephyr/arch/x86/ia32/structs.h>
 #elif defined(CONFIG_XTENSA)
 #include <zephyr/arch/xtensa/structs.h>
+#include <zephyr/sys/util.h>
+
 #else
 
 /* Default definitions when no architecture specific definitions exist. */
 
 /* Per CPU architecture specifics (empty) */
 struct _cpu_arch {
-#ifdef __cplusplus
-	/* This struct will have a size 0 in C which is not allowed in C++ (it'll have a size 1). To
-	 * prevent this, we add a 1 byte dummy variable.
-	 */
-	uint8_t dummy;
-#endif
+	EMPTY_STRUCT_PLACEHOLDER;
 };
 
 #endif

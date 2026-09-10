@@ -50,6 +50,7 @@
 #ifndef _ASMLANGUAGE
 #include <stdint.h>
 #include <zephyr/arch/x86/mmustructs.h>
+#include <zephyr/sys/util.h>
 
 /*
  * The following structure defines the set of 'non-volatile' integer registers.
@@ -164,6 +165,8 @@ typedef struct s_FpRegSetEx /* # of bytes: name of register */
 #else /* CONFIG_X86_SSE == 0 */
 
 typedef struct s_FpRegSetEx {
+	/* No registers to save in this configuration. */
+	EMPTY_STRUCT_PLACEHOLDER;
 } tFpRegSetEx;
 
 #endif /* CONFIG_X86_SSE == 0 */
@@ -173,9 +176,13 @@ typedef struct s_FpRegSetEx {
 /* empty floating point register definition */
 
 typedef struct s_FpRegSet {
+	/* No registers to save in this configuration. */
+	EMPTY_STRUCT_PLACEHOLDER;
 } tFpRegSet;
 
 typedef struct s_FpRegSetEx {
+	/* No registers to save in this configuration. */
+	EMPTY_STRUCT_PLACEHOLDER;
 } tFpRegSetEx;
 
 #endif /* CONFIG_LAZY_FPU_SHARING || CONFIG_EAGER_FPU_SHARING */

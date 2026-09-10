@@ -136,6 +136,30 @@ ZTEST(cxx_tests, test_new_delete)
 	zassert_equal(test_foo->get_foo(), 10);
 	delete test_foo;
 }
+/* Defined by src/layout_c.c, compiled as C. */
+extern "C" {
+extern const size_t cxx_test_sizeof_spinlock;
+extern const size_t cxx_test_sizeof_msgq;
+extern const size_t cxx_test_offsetof_msgq_msg_size;
+extern const size_t cxx_test_sizeof_thread;
+extern const size_t cxx_test_sizeof_cpu;
+}
+
+/*
+ * A struct with no members is not valid C, and C++ gives one a byte that the C
+ * build does not have. Kernel objects hold such structs in some configurations
+ * (k_spinlock, _cpu_arch, _thread_arch), so check that both languages still
+ * agree on how the objects that embed them are laid out.
+ */
+ZTEST(cxx_tests, test_c_layout_agreement)
+{
+	zassert_equal(sizeof(struct k_spinlock), cxx_test_sizeof_spinlock);
+	zassert_equal(sizeof(struct k_msgq), cxx_test_sizeof_msgq);
+	zassert_equal(offsetof(struct k_msgq, msg_size), cxx_test_offsetof_msgq_msg_size);
+	zassert_equal(sizeof(struct k_thread), cxx_test_sizeof_thread);
+	zassert_equal(sizeof(struct _cpu), cxx_test_sizeof_cpu);
+}
+
 ZTEST_SUITE(cxx_tests, NULL, NULL, NULL, NULL, NULL);
 
 /*

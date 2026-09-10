@@ -6,3 +6,6 @@ project(cpp)
 
 FILE(GLOB app_sources src/*.cpp)
 target_sources(app PRIVATE ${app_sources})
+
+# Compiled as C, to be compared against the C++ view of the same headers.
+target_sources(app PRIVATE src/layout_c.c)
