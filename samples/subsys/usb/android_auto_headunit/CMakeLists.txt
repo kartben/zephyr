@@ -10,6 +10,10 @@ include(nanopb)
 
 zephyr_nanopb_sources(app src/aa.proto)
 
+if(CONFIG_SOC_SERIES_STM32N6X)
+  zephyr_linker_sources(SECTIONS axisram1_check.ld)
+endif()
+
 target_sources(app PRIVATE
   src/aa_audio.c
   src/aa_control.c
