@@ -20,6 +20,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/sys/util.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -219,10 +220,9 @@ enum mspi_timing_param {
  * @brief Stub for struct timing_cfg
  */
 struct mspi_timing_cfg {
-#ifdef __cplusplus
-	/* For C++ compatibility. */
-	uint8_t dummy;
-#endif
+	/** @cond INTERNAL_HIDDEN */
+	EMPTY_STRUCT_PLACEHOLDER;
+	/** @endcond */
 };
 
 /**
