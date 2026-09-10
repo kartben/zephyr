@@ -340,29 +340,6 @@ static bool uhc_renesas_ra_chk_edpt_open(const struct device *dev, uint8_t addr,
 	return priv->ep[addr][USB_EP_GET_IDX(ep)][!!USB_EP_GET_DIR(ep)] == 1;
 }
 
-/*
- * Resolve the transaction translator for a device: the nearest high-speed hub on the path
- * to the root port. For a Full-/Low-speed device attached behind a high-speed hub this hub
- * address and port are programmed into DEVADD so the controller issues split transactions.
- * Returns 0 in both outputs when the device is on the root port (no split required).
- */
-static void uhc_renesas_ra_get_tt(struct usb_device *udev, uint8_t *hub_addr, uint8_t *hub_port)
-{
-	struct usb_device *dev = udev;
-
-	*hub_addr = 0;
-	*hub_port = 0;
-
-	while (dev->hub != NULL) {
-		if (dev->hub->speed == USB_SPEED_SPEED_HS) {
-			*hub_addr = dev->hub->addr;
-			*hub_port = dev->hub_port;
-			return;
-		}
-
-		dev = dev->hub;
-	}
-}
 
 static int uhc_renesas_ra_ep_enqueue(const struct device *dev, struct uhc_transfer *const xfer)
 {
@@ -370,8 +347,6 @@ static int uhc_renesas_ra_ep_enqueue(const struct device *dev, struct uhc_transf
 	uint8_t mxps0 = xfer->udev->dev_desc.bMaxPacketSize0 > 0
 				? xfer->udev->dev_desc.bMaxPacketSize0
 				: 64;
-	uint8_t hub_addr;
-	uint8_t hub_port;
 	usb_speed_t speed;
 	fsp_err_t err;
 	int ret;
@@ -391,9 +366,8 @@ static int uhc_renesas_ra_ep_enqueue(const struct device *dev, struct uhc_transf
 		return -ENOTSUP;
 	}
 
-	uhc_renesas_ra_get_tt(xfer->udev, &hub_addr, &hub_port);
-
-	err = R_USBH_PortOpen(&priv->uhc_ctrl, xfer->udev->addr, speed, mxps0, hub_addr, hub_port);
+	/* TODO: Configure split transaction once the host stack knows hubs */
+	err = R_USBH_PortOpen(&priv->uhc_ctrl, xfer->udev->addr, speed, mxps0, 0, 0);
 	if (err != FSP_SUCCESS) {
 		return -EIO;
 	}
