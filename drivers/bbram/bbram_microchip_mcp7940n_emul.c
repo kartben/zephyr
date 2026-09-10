@@ -20,9 +20,6 @@ LOG_MODULE_DECLARE(bbram_microchip_mcp7940n, CONFIG_BBRAM_LOG_LEVEL);
 #define MICROCHIP_MCP7940N_RTCWKDAY_VBATEN_BIT       BIT(3)
 #define MICROCHIP_MCP7940N_RTCWKDAY_PWRFAIL_BIT      BIT(4)
 
-struct mcp7940n_emul_cfg {
-};
-
 struct mcp7940n_emul_data {
 	uint8_t rtcwkday;
 	uint8_t data[MICROCHIP_MCP7940N_SRAM_SIZE];
@@ -141,10 +138,8 @@ static const struct emul_bbram_driver_api mcp7940n_emul_backend_api = {
 };
 
 #define MCP7940N_EMUL(inst)                                                                        \
-	static const struct mcp7940n_emul_cfg mcp7940n_emul_cfg_##inst;                            \
 	static struct mcp7940n_emul_data mcp7940n_emul_data_##inst;                                \
-	EMUL_DT_INST_DEFINE(inst, mcp7940n_emul_init, &mcp7940n_emul_data_##inst,                  \
-			    &mcp7940n_emul_cfg_##inst, &mcp7940n_emul_api_i2c,                     \
-			    &mcp7940n_emul_backend_api)
+	EMUL_DT_INST_DEFINE(inst, mcp7940n_emul_init, &mcp7940n_emul_data_##inst, NULL,            \
+			    &mcp7940n_emul_api_i2c, &mcp7940n_emul_backend_api)
 
 DT_INST_FOREACH_STATUS_OKAY(MCP7940N_EMUL)

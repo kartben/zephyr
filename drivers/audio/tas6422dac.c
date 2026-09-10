@@ -29,9 +29,6 @@ struct codec_driver_config {
 #endif /* TAS6422DAC_MUTE_GPIO_SUPPORT */
 };
 
-struct codec_driver_data {
-};
-
 enum tas6422dac_channel_t {
 	TAS6422DAC_CHANNEL_1,
 	TAS6422DAC_CHANNEL_2,
@@ -369,13 +366,10 @@ static DEVICE_API(audio_codec, codec_driver_api) = {
 #endif /* TAS6422DAC_MUTE_GPIO_SUPPORT */
 
 #define TAS6422DAC_INIT(n)                                                                         \
-	static struct codec_driver_data codec_device_data_##n;                                     \
-                                                                                                   \
 	static struct codec_driver_config codec_device_config_##n = {                              \
 		.bus = I2C_DT_SPEC_INST_GET(n), TAS6422DAC_MUTE_GPIO_INIT(n)};                     \
                                                                                                    \
-	DEVICE_DT_INST_DEFINE(n, codec_initialize, NULL, &codec_device_data_##n,                   \
-			      &codec_device_config_##n, POST_KERNEL,                               \
-			      CONFIG_AUDIO_CODEC_INIT_PRIORITY, &codec_driver_api);
+	DEVICE_DT_INST_DEFINE(n, codec_initialize, NULL, NULL, &codec_device_config_##n,           \
+			      POST_KERNEL, CONFIG_AUDIO_CODEC_INIT_PRIORITY, &codec_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(TAS6422DAC_INIT)

@@ -30,12 +30,7 @@ struct btp_pbp_set_broadcast_name_cmd {
 } __packed;
 
 #define BTP_PBP_BROADCAST_SCAN_START 0x04U
-struct btp_pbp_broadcast_scan_start_cmd {
-} __packed;
-
 #define BTP_PBP_BROADCAST_SCAN_STOP 0x05U
-struct btp_pbp_broadcast_scan_stop_cmd {
-} __packed;
 
 #define BTP_PBP_EV_PUBLIC_BROADCAST_ANNOUNCEMENT_FOUND 0x80U
 struct btp_pbp_ev_public_broadcast_announcement_found_ev {

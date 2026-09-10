@@ -23,6 +23,7 @@
 
 #ifndef _ASMLANGUAGE
 #include <zephyr/types.h>
+#include <zephyr/sys/util.h>
 
 /*
  * The following structure defines the list of registers that need to be
@@ -47,6 +48,8 @@ struct _callee_saved {
 typedef struct _callee_saved _callee_saved_t;
 
 struct _thread_arch {
+	/* This architecture keeps no per-thread state. */
+	EMPTY_STRUCT_PLACEHOLDER;
 };
 
 typedef struct _thread_arch _thread_arch_t;

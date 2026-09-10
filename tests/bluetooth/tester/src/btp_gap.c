@@ -3288,7 +3288,7 @@ static const struct btp_handler handlers[] = {
 	},
 	{
 		.opcode = BTP_GAP_PADV_STOP,
-		.expect_len = sizeof(struct btp_gap_padv_stop_cmd),
+		.expect_len = 0,
 		.func = padv_stop,
 	},
 	{

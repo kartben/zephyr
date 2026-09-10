@@ -8,7 +8,6 @@
 #include <zephyr/net/conn_mgr_connectivity_impl.h>
 #include <zephyr/net/ethernet.h>
 #include "test_ifaces.h"
-
 /* Create test ifaces */
 
 /* Generic iface initializer, shared by all test ifaces */
@@ -138,6 +137,8 @@ static struct conn_mgr_conn_api test_conn_api = {
 
 /* Dummy struct */
 struct test_conn_data {
+	/* No context needed; this member only keeps the struct from being empty. */
+	uint8_t unused;
 };
 
 #define TEST_CONN_IMPL_CTX_TYPE struct test_conn_data

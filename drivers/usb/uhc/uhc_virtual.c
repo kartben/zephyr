@@ -26,9 +26,6 @@ LOG_MODULE_REGISTER(uhc_vrt, CONFIG_UHC_DRIVER_LOG_LEVEL);
 
 #define FRAME_MAX_TRANSFERS 16
 
-struct uhc_vrt_config {
-};
-
 struct uhc_vrt_slot {
 	sys_dnode_t node;
 	struct uhc_transfer *xfer;
@@ -658,9 +655,6 @@ static DEVICE_API(uhc, uhc_vrt_api) = {
 			     DT_NODE_FULL_NAME(DT_DRV_INST(n)),			\
 			     uhc_vrt_uvb_cb);					\
 										\
-	static const struct uhc_vrt_config uhc_vrt_config_##n = {		\
-	};									\
-										\
 	static struct uhc_vrt_data uhc_priv_##n = {				\
 		.host_node = &uhc_bc_##n,					\
 	};									\
@@ -670,7 +664,7 @@ static DEVICE_API(uhc, uhc_vrt_api) = {
 	};									\
 										\
 	DEVICE_DT_INST_DEFINE(n, uhc_vrt_driver_preinit, NULL,			\
-			      &uhc_data_##n, &uhc_vrt_config_##n,		\
+			      &uhc_data_##n, NULL,				\
 			      POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,	\
 			      &uhc_vrt_api);
 

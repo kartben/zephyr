@@ -31,10 +31,6 @@ struct tmcm3216_stepper_config {
 };
 
 /* Stepper driver (enable/disable/microstep) */
-struct tmcm3216_stepper_driver_data {
-	/* currently empty, reserved for future use */
-};
-
 struct tmcm3216_stepper_driver_config {
 	const struct device *controller;
 	uint8_t motor_index;

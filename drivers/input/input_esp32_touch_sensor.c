@@ -98,9 +98,6 @@ struct esp32_touch_sensor_channel_data {
 #endif
 };
 
-struct esp32_touch_sensor_data {
-};
-
 static void esp32_touch_handle_active(const struct device *dev)
 {
 	const struct esp32_touch_sensor_config *dev_cfg = dev->config;
@@ -493,11 +490,9 @@ static int esp32_touch_sensor_init(const struct device *dev)
 		.channel_data = esp32_touch_sensor_channel_data_##inst,                            \
 	};                                                                                         \
                                                                                                    \
-	static struct esp32_touch_sensor_data esp32_touch_sensor_data_##inst;                      \
-                                                                                                   \
-	DEVICE_DT_INST_DEFINE(inst, &esp32_touch_sensor_init, NULL,                                \
-			      &esp32_touch_sensor_data_##inst, &esp32_touch_sensor_config_##inst,  \
-			      POST_KERNEL, CONFIG_INPUT_INIT_PRIORITY, NULL);
+	DEVICE_DT_INST_DEFINE(inst, &esp32_touch_sensor_init, NULL, NULL,                          \
+			      &esp32_touch_sensor_config_##inst, POST_KERNEL,                      \
+			      CONFIG_INPUT_INIT_PRIORITY, NULL);
 
 /* clang-format on */
 

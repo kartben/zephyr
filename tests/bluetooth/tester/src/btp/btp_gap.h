@@ -279,8 +279,6 @@ struct btp_gap_padv_start_rp {
 } __packed;
 
 #define BTP_GAP_PADV_STOP			0x24
-struct btp_gap_padv_stop_cmd {
-} __packed;
 struct btp_gap_padv_stop_rp {
 	uint32_t current_settings;
 } __packed;

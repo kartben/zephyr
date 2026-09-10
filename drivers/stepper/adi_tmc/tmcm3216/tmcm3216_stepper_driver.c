@@ -169,15 +169,13 @@ static DEVICE_API(stepper, tmcm3216_stepper_driver_api) = {
 };
 
 #define TMCM3216_STEPPER_DRIVER_DEFINE(inst)                                                       \
-	static struct tmcm3216_stepper_driver_data tmcm3216_stepper_driver_data_##inst;            \
 	static const struct tmcm3216_stepper_driver_config tmcm3216_stepper_driver_config_##inst = \
 		{                                                                                  \
 			.controller = DEVICE_DT_GET(DT_INST_PARENT(inst)),                         \
 			.motor_index = DT_INST_PROP(inst, idx),                                    \
 			.default_micro_step_res = DT_INST_PROP(inst, micro_step_res),              \
 	};                                                                                         \
-	DEVICE_DT_INST_DEFINE(inst, tmcm3216_stepper_driver_init, NULL,                            \
-			      &tmcm3216_stepper_driver_data_##inst,                                \
+	DEVICE_DT_INST_DEFINE(inst, tmcm3216_stepper_driver_init, NULL, NULL,                      \
 			      &tmcm3216_stepper_driver_config_##inst, POST_KERNEL,                 \
 			      CONFIG_STEPPER_INIT_PRIORITY, &tmcm3216_stepper_driver_api);
 
