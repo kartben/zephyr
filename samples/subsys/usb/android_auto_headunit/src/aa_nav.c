@@ -29,7 +29,7 @@ LOG_MODULE_REGISTER(aa_nav, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
  * goes and how far away it is, and the three are written as text.
  */
 
-#if DT_HAS_ALIAS(aa_nav_display)
+#if DT_HAS_ALIAS(aa_nav_display) && DT_NODE_HAS_STATUS_OKAY(DT_ALIAS(aa_nav_display))
 
 static const struct device *const nav_dev = DEVICE_DT_GET(DT_ALIAS(aa_nav_display));
 static bool ready;
@@ -499,4 +499,4 @@ void aa_nav_link_down(void)
 {
 }
 
-#endif /* DT_HAS_ALIAS(aa_nav_display) */
+#endif /* navigation display */

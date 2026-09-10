@@ -1,0 +1,27 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * Point the sample at the time-of-flight ranger of the B-CAMS-IMX-MB1854, so
+ * that covering it puts the phone into night mode:
+ *
+ *   west build -b stm32n6570_dk/stm32n657xx/sb -- \
+ *     -DSHIELD=st_b_cams_imx_mb1854 -DEXTRA_DTC_OVERLAY_FILE=tof.overlay
+ *
+ * The ranger sits on the camera connector's I2C controller, which is the one
+ * the navigation display of this sample is wired to through the Arduino
+ * header, and the shield drives it at 400 kHz where the display needs 100 kHz.
+ * Only one of the two can be fitted, so the display goes.
+ */
+
+/ {
+	aliases {
+		aa-tof = &vl53l5cx;
+	};
+};
+
+&nav_display {
+	status = "disabled";
+};
