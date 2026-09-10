@@ -5,10 +5,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <zephyr/sys/util.h>
+
 /*
  * PDU fields sizes
  */
-
 #define PDU_PREAMBLE_SIZE(phy) (phy&0x3)
 #define PDU_ACCESS_ADDR_SIZE   4
 #define PDU_HEADER_SIZE        2
@@ -659,11 +660,11 @@ struct pdu_data_llctrl_enc_rsp {
 } __packed;
 
 struct pdu_data_llctrl_start_enc_req {
-	/* no members */
+	EMPTY_STRUCT_PLACEHOLDER;
 } __packed;
 
 struct pdu_data_llctrl_start_enc_rsp {
-	/* no members */
+	EMPTY_STRUCT_PLACEHOLDER;
 } __packed;
 
 struct pdu_data_llctrl_unknown_rsp {
@@ -679,11 +680,11 @@ struct pdu_data_llctrl_feature_rsp {
 } __packed;
 
 struct pdu_data_llctrl_pause_enc_req {
-	/* no members */
+	EMPTY_STRUCT_PLACEHOLDER;
 } __packed;
 
 struct pdu_data_llctrl_pause_enc_rsp {
-	/* no members */
+	EMPTY_STRUCT_PLACEHOLDER;
 } __packed;
 
 struct pdu_data_llctrl_version_ind {
@@ -756,11 +757,11 @@ struct pdu_data_llctrl_reject_ext_ind {
 } __packed;
 
 struct pdu_data_llctrl_ping_req {
-	/* no members */
+	EMPTY_STRUCT_PLACEHOLDER;
 } __packed;
 
 struct pdu_data_llctrl_ping_rsp {
-	/* no members */
+	EMPTY_STRUCT_PLACEHOLDER;
 } __packed;
 
 struct pdu_data_llctrl_length_req {
@@ -823,7 +824,7 @@ struct pdu_data_llctrl_cte_req {
 } __packed;
 
 struct pdu_data_llctrl_cte_rsp {
-	/* no members */
+	EMPTY_STRUCT_PLACEHOLDER;
 } __packed;
 
 struct pdu_data_llctrl_clock_accuracy_req {
