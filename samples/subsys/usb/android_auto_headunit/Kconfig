@@ -273,6 +273,14 @@ config SAMPLE_AA_HU_RX_THREAD_PRIORITY
 	int "Receive thread priority"
 	default 5
 
+config SAMPLE_AA_HU_USBH_RX_PIPE_SECTION
+	string "Memory section for the USB receive pipe"
+	depends on SAMPLE_AA_HU_TRANSPORT_USB_HOST
+	default ".bss"
+	help
+	  The pipe carrying what the phone sends is only touched by the
+	  processor, so a board short of image RAM can put it elsewhere.
+
 config SAMPLE_AA_HU_RX_STACK_SIZE
 	int "Receive thread stack size"
 	default 8192 if 64BIT
@@ -374,6 +382,7 @@ config SAMPLE_AA_HU_AUDIO_MAX_UNACKED
 
 config SAMPLE_AA_HU_PLAYBACK
 	def_bool $(dt_alias_enabled,aa-i2s-out)
+	depends on I2S && AUDIO_CODEC
 	select RING_BUFFER
 	select RING_BUFFER_LARGE
 	help
