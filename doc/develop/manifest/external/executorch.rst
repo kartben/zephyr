@@ -244,6 +244,9 @@ inference, and CPU-only inference for devices without an NPU.
                Corstone-320 FVPs, along with all other Zephyr build
                dependencies — no separate FVP installation required.
 
+               See :ref:`docker_dev_env` for a general introduction to
+               developing with the Zephyr Docker images.
+
                **Step 1:** Pull the image:
 
                .. code-block:: console
