@@ -1,0 +1,37 @@
+# Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config VIDEO_EDGE264
+	bool "edge264 H.264 decoder driver"
+	default y
+	depends on DT_HAS_ZEPHYR_VIDEO_EDGE264_ENABLED
+	select EDGE264
+	select VIDEO_DECODER_H264
+	help
+	  Software H.264 decoder using the edge264 library. Input is Annex-B
+	  H.264 (VIDEO_PIX_FMT_H264). Output is planar YUV 4:2:0 or RGB565.
+
+if VIDEO_EDGE264
+
+config VIDEO_EDGE264_MAX_WIDTH
+	int "Maximum decoded frame width"
+	default 320
+	help
+	  Upper bound advertised by the driver. Streams wider than this are
+	  rejected when setting the output format.
+
+config VIDEO_EDGE264_MAX_HEIGHT
+	int "Maximum decoded frame height"
+	default 240
+	help
+	  Upper bound advertised by the driver. Streams taller than this are
+	  rejected when setting the output format.
+
+config VIDEO_EDGE264_STACK_SIZE
+	int "edge264 decode workqueue stack size"
+	default 32768
+	help
+	  Stack for the dedicated decode workqueue. The decoder places a large
+	  Edge264Context on the worker stack.
+
+endif # VIDEO_EDGE264

@@ -23,6 +23,8 @@ manifest:
       url-base: https://github.com/zephyrproject-rtos
     - name: babblesim
       url-base: https://github.com/BabbleSim
+    - name: tvlabs
+      url-base: https://github.com/tvlabs
 
   group-filter: [-babblesim, -optional, -testing]
 
@@ -136,6 +138,10 @@ manifest:
     - name: dhara
       revision: 6f163ca05e174b168b4d148160b50eeaeeb561fc
       path: modules/lib/dhara
+    - name: edge264
+      remote: tvlabs
+      revision: 2c2ab95d63c1ad89c5687f9e50b57cad772c871b
+      path: modules/lib/edge264
     - name: edtt
       revision: c282625e694f0b53ea53e13231ea6d2f49411768
       path: tools/edtt
