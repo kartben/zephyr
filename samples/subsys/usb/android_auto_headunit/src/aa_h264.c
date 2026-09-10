@@ -9,6 +9,11 @@
 #if defined(__ARM_FEATURE_MVE) && (((__ARM_FEATURE_MVE) & 1) != 0)
 #define HU_HAS_MVE 1
 #include <arm_mve.h>
+
+static inline int16x8_t mve_clip255(int16x8_t v)
+{
+	return vminq_s16(vmaxq_s16(v, vdupq_n_s16(0)), vdupq_n_s16(255));
+}
 #endif
 
 #define SAMPLE_AA_HU_YUV_W CONFIG_SAMPLE_AA_HU_VIDEO_WIDTH
@@ -253,13 +258,55 @@ static void picture_to_rgb565(const uint8_t *pic, uint32_t width, uint32_t heigh
 	uint32_t rows = MIN(height, fb_height);
 	uint32_t cols = MIN(width, fb_width);
 
+#ifdef HU_HAS_MVE
+	/* One chroma sample feeds two pixels: {0,0,1,1,2,2,3,3} */
+	uint16x8_t dup = vshrq_n_u16(vidupq_n_u16(0, 1), 1);
+#endif
+
 	for (uint32_t y = 0; y < rows; y++) {
 		const uint8_t *y_row = &luma[(size_t)y * width];
 		const uint8_t *cb_row = &cb[(size_t)(y / 2U) * (width / 2U)];
 		const uint8_t *cr_row = &cr[(size_t)(y / 2U) * (width / 2U)];
 		uint16_t *out = &framebuffer[(size_t)y * fb_width];
+		uint32_t x = 0U;
 
-		for (uint32_t x = 0; x < cols; x++) {
+#ifdef HU_HAS_MVE
+		/*
+		 * 298, 409, -208 and 516 each sit next to a power of two, and
+		 * (256 * A + B) >> 8 is exactly A + (B >> 8), so every channel
+		 * splits into a whole part and a remainder that stays inside
+		 * int16. That keeps eight pixels to a vector where the plain
+		 * products would need thirty-two bit lanes and only four.
+		 */
+		for (; x + 8U <= cols; x += 8U) {
+			int16x8_t c = vsubq_n_s16((int16x8_t)vldrbq_u16(y_row + x), 16);
+			int16x8_t d = vsubq_n_s16((int16x8_t)vldrbq_gather_offset_u16(
+							  cb_row + x / 2U, dup), 128);
+			int16x8_t e = vsubq_n_s16((int16x8_t)vldrbq_gather_offset_u16(
+							  cr_row + x / 2U, dup), 128);
+			int16x8_t vr, vg, vb, acc;
+
+			acc = vmlaq_n_s16(vmlaq_n_s16(vdupq_n_s16(128), c, 42), e, 153);
+			vr = mve_clip255(vaddq_s16(vaddq_s16(c, e), vshrq_n_s16(acc, 8)));
+
+			acc = vmlaq_n_s16(vmlaq_n_s16(vmlaq_n_s16(vdupq_n_s16(128), c, 42),
+						      d, -100), e, 48);
+			vg = mve_clip255(vaddq_s16(vsubq_s16(c, e), vshrq_n_s16(acc, 8)));
+
+			acc = vmlaq_n_s16(vmlaq_n_s16(vdupq_n_s16(128), c, 42), d, 4);
+			vb = mve_clip255(vaddq_s16(vaddq_s16(c, vshlq_n_s16(d, 1)),
+						   vshrq_n_s16(acc, 8)));
+
+			vstrhq_u16(out + x,
+				   vorrq(vorrq(vshlq_n_u16(vandq_u16((uint16x8_t)vr,
+								     vdupq_n_u16(0xF8)), 8),
+					       vshlq_n_u16(vandq_u16((uint16x8_t)vg,
+								     vdupq_n_u16(0xFC)), 3)),
+					 vshrq_n_u16((uint16x8_t)vb, 3)));
+		}
+#endif
+
+		for (; x < cols; x++) {
 			int32_t c = (int32_t)y_row[x] - 16;
 			int32_t d = (int32_t)cb_row[x / 2U] - 128;
 			int32_t e = (int32_t)cr_row[x / 2U] - 128;
