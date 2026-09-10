@@ -132,6 +132,27 @@ in `ES0620, section 2.7.1
 <https://www.st.com/resource/en/errata_sheet/es0620-stm32n6xxxx-device-errata-stmicroelectronics.pdf>`_.
 The packed format avoids this limitation.
 
+Renesas EK-RA8P1
+****************
+
+The board pairs with the ``rtklcdpar1s00001be`` parallel graphics shield, whose
+panel is 1024x600:
+
+.. code-block:: console
+
+   west build -b ek_ra8p1/r7ka8p1kflcac/cm85 --shield rtklcdpar1s00001be \
+     samples/subsys/usb/android_auto_headunit
+
+Two things differ from a board that can host a phone. Zephyr has a USB device
+driver for this SoC but not a host one, and the head unit is the host, so a
+phone cannot be attached over USB; the configuration selects the TCP transport
+instead and is driven over Ethernet by ``scripts/aa_headunit.py``. And 1024x600
+is not one of the resolutions the projection protocol can ask for, so the
+stream stays at 800x480 and is written to the top left of the panel.
+
+The decoder's reference pictures and the framebuffer are placed in the board's
+64 MB of SDRAM; neither fits the internal RAM.
+
 References
 **********
 
