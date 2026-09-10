@@ -81,8 +81,6 @@ enum usbd_bos_desc_utype {
 struct usbd_str_desc_data {
 	/** Descriptor index, required for string descriptors */
 	uint8_t idx;
-	/** Descriptor usage type (not bDescriptorType) */
-	enum usbd_str_desc_utype utype : 8;
 	/** The string descriptor is in ASCII7 format */
 	unsigned int ascii7 : 1;
 	/** Device stack obtains SerialNumber using the HWINFO API */
@@ -156,8 +154,6 @@ struct usbd_vreq_node {
  * USBD BOS Device Capability descriptor data
  */
 struct usbd_bos_desc_data {
-	/** Descriptor usage type (not bDescriptorType) */
-	enum usbd_bos_desc_utype utype : 8;
 	union {
 		struct usbd_vreq_node *const vreq_nd;
 	};
@@ -182,6 +178,12 @@ struct usbd_desc_node {
 	uint8_t bLength;
 	/** Descriptor type */
 	uint8_t bDescriptorType;
+	/**
+	 * Descriptor usage type (not bDescriptorType), holds a value of
+	 * enum usbd_str_desc_utype or enum usbd_bos_desc_utype depending
+	 * on bDescriptorType.
+	 */
+	uint8_t utype;
 };
 
 /**
@@ -203,8 +205,15 @@ struct usbd_config_node {
 	sys_slist_t class_list;
 };
 
-/* TODO: Kconfig option USBD_NUMOF_INTERFACES_MAX? */
+/** Maximum number of interfaces per configuration supported by the stack.
+ * The fallback value is only used by code that includes this header without
+ * enabling the USB device stack, e.g. descriptor unit tests.
+ */
+#ifdef CONFIG_USBD_NUMOF_INTERFACES_MAX
+#define USBD_NUMOF_INTERFACES_MAX	CONFIG_USBD_NUMOF_INTERFACES_MAX
+#else
 #define USBD_NUMOF_INTERFACES_MAX	16U
+#endif
 
 /**
  * USB device support middle layer runtime state
@@ -225,10 +234,10 @@ enum usbd_ch9_state {
 struct usbd_ch9_data {
 	/** Setup packet, up-to-date for the respective control request */
 	struct usb_setup_packet setup;
-	/** Protocol state of the USB device stack */
-	enum usbd_ch9_state state;
 	/** Halted endpoints bitmap */
 	uint32_t ep_halt;
+	/** Protocol state of the USB device stack */
+	enum usbd_ch9_state state : 8;
 	/** USB device stack selected configuration */
 	uint8_t configuration;
 	/** Post status stage work required, e.g. set new device address */
@@ -310,16 +319,20 @@ struct usbd_context {
 	sys_dlist_t descriptors;
 	/** slist to manage Full-Speed device configurations */
 	sys_slist_t fs_configs;
+#if USBD_SUPPORTS_HIGH_SPEED
 	/** slist to manage High-Speed device configurations */
 	sys_slist_t hs_configs;
+#endif
 	/** dlist to manage vendor requests with recipient device */
 	sys_dlist_t vreqs;
 	/** Status of the USB device support */
 	struct usbd_status status;
 	/** Pointer to Full-Speed device descriptor */
 	void *fs_desc;
+#if USBD_SUPPORTS_HIGH_SPEED
 	/** Pointer to High-Speed device descriptor */
 	void *hs_desc;
+#endif
 	/** Pre-allocated buffer for control transfer SETUP stage */
 	struct net_buf *setup_buf;
 };
@@ -584,11 +597,11 @@ static inline void *usbd_class_get_private(const struct usbd_class_data *const c
 	static struct usbd_desc_node name = {				\
 		.str = {						\
 			.idx = 0,					\
-			.utype = USBD_DUT_STRING_LANG,			\
 		},							\
 		.ptr = &langid_##name,					\
 		.bLength = sizeof(struct usb_string_descriptor),	\
 		.bDescriptorType = USB_DESC_STRING,			\
+		.utype = USBD_DUT_STRING_LANG,				\
 	}
 
 /**
@@ -606,12 +619,12 @@ static inline void *usbd_class_get_private(const struct usbd_class_data *const c
 	static const uint8_t ascii_##d_name[sizeof(d_string)] = d_string;	\
 	static struct usbd_desc_node d_name = {					\
 		.str = {							\
-			.utype = d_utype,					\
 			.ascii7 = true,						\
 		},								\
 		.ptr = &ascii_##d_name,						\
 		.bLength = USB_STRING_DESCRIPTOR_LENGTH(d_string),		\
 		.bDescriptorType = USB_DESC_STRING,				\
+		.utype = d_utype,						\
 	}
 
 /**
@@ -659,11 +672,11 @@ static inline void *usbd_class_get_private(const struct usbd_class_data *const c
 	BUILD_ASSERT(IS_ENABLED(CONFIG_HWINFO), "HWINFO not enabled");		\
 	static struct usbd_desc_node d_name = {					\
 		.str = {							\
-			.utype = USBD_DUT_STRING_SERIAL_NUMBER,			\
 			.ascii7 = true,						\
 			.use_hwinfo = true,					\
 		},								\
 		.bDescriptorType = USB_DESC_STRING,				\
+		.utype = USBD_DUT_STRING_SERIAL_NUMBER,				\
 	}
 
 /**
@@ -694,12 +707,10 @@ static inline void *usbd_class_get_private(const struct usbd_class_data *const c
 	BUILD_ASSERT(IS_ENABLED(CONFIG_USBD_BOS_SUPPORT),			\
 		     "USB device BOS support is disabled");			\
 	static struct usbd_desc_node name = {					\
-		.bos = {							\
-			.utype = USBD_DUT_BOS_NONE,				\
-		},								\
 		.ptr = subset,							\
 		.bLength = len,							\
 		.bDescriptorType = USB_DESC_BOS,				\
+		.utype = USBD_DUT_BOS_NONE,					\
 	}
 
 /**
@@ -746,12 +757,12 @@ static inline void *usbd_class_get_private(const struct usbd_class_data *const c
 	USBD_VREQUEST_DEFINE(vreq_nd_##name, vcode, vto_host, vto_dev);		\
 	static struct usbd_desc_node name = {					\
 		.bos = {							\
-			.utype = USBD_DUT_BOS_VREQ,				\
 			.vreq_nd = &vreq_nd_##name,				\
 		},								\
 		.ptr = subset,							\
 		.bLength = len,							\
 		.bDescriptorType = USB_DESC_BOS,				\
+		.utype = USBD_DUT_BOS_VREQ,					\
 	}
 
 /**
@@ -799,8 +810,8 @@ static inline void *usbd_class_get_private(const struct usbd_class_data *const c
  *  @param _reqs Variable number of vendor requests
  */
 #define USBD_VENDOR_REQ(_reqs...) \
-	VENDOR_REQ_DEFINE(((uint8_t []) { _reqs }), \
-			  sizeof((uint8_t []) { _reqs }))
+	VENDOR_REQ_DEFINE(((const uint8_t []) { _reqs }), \
+			  sizeof((const uint8_t []) { _reqs }))
 
 
 /**

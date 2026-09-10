@@ -35,6 +35,20 @@ config USBD_MAX_SPEED
 	default 0 if USBD_MAX_SPEED_FULL
 	default 1 if USBD_MAX_SPEED_HIGH
 
+config USBD_NUMOF_INTERFACES_MAX
+	int "Number of interfaces tracking an alternate setting"
+	range 1 32
+	default 16
+	help
+	  Number of interfaces for which the device stack keeps the selected
+	  alternate setting, one byte each in the device context. A device may
+	  have more interfaces than this; Get Interface and Set Interface for
+	  an interface at or above this number are answered with a STALL, which
+	  is what an interface that only has alternate setting 0 would do
+	  anyway. Lower this only if the interfaces past the limit have no
+	  alternate settings. The default matches the number the stack used
+	  before this became configurable.
+
 config USBD_BOS_SUPPORT
 	bool "USB device BOS support"
 	default y

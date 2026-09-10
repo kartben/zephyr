@@ -23,7 +23,7 @@ static sys_slist_t *usbd_configs(struct usbd_context *uds_ctx,
 	case USBD_SPEED_FS:
 		return &uds_ctx->fs_configs;
 	case USBD_SPEED_HS:
-		return &uds_ctx->hs_configs;
+		return usbd_get_hs_configs(uds_ctx);
 	default:
 		return NULL;
 	}
@@ -33,9 +33,14 @@ struct usbd_config_node *usbd_config_get(struct usbd_context *const uds_ctx,
 					 const enum usbd_speed speed,
 					 const uint8_t cfg)
 {
+	sys_slist_t *configs = usbd_configs(uds_ctx, speed);
 	struct usbd_config_node *cfg_nd;
 
-	SYS_SLIST_FOR_EACH_CONTAINER(usbd_configs(uds_ctx, speed), cfg_nd, node) {
+	if (configs == NULL) {
+		return NULL;
+	}
+
+	SYS_SLIST_FOR_EACH_CONTAINER(configs, cfg_nd, node) {
 		if (usbd_config_get_value(cfg_nd) == cfg) {
 			return cfg_nd;
 		}
@@ -84,7 +89,7 @@ static int usbd_config_reset(struct usbd_context *const uds_ctx)
 	ret = usbd_interface_shutdown(uds_ctx, cfg_nd);
 
 	memset(&uds_ctx->ch9_data.alternate, 0,
-	       USBD_NUMOF_INTERFACES_MAX);
+	       sizeof(uds_ctx->ch9_data.alternate));
 
 	usbd_set_config_value(uds_ctx, 0);
 	usbd_config_classes_enable(cfg_nd, false);
@@ -143,110 +148,87 @@ int usbd_config_set(struct usbd_context *const uds_ctx,
  * All the functions below are part of public USB device support API.
  */
 
-int usbd_config_attrib_rwup(struct usbd_context *const uds_ctx,
-			    const enum usbd_speed speed,
-			    const uint8_t cfg, const bool enable)
+/*
+ * Update a configuration descriptor. If mask is not zero, the bits it selects
+ * in bmAttributes are replaced by value, otherwise value is assigned to
+ * bMaxPower.
+ */
+/* Passed as the mask to update bMaxPower instead of bmAttributes */
+#define CONFIG_DESC_MAX_POWER	0U
+
+/*
+ * Update one field of a configuration descriptor while the device is not yet
+ * enabled. A non-zero mask selects the bmAttributes bits to replace with
+ * value; CONFIG_DESC_MAX_POWER writes bMaxPower instead. Remote wakeup is the
+ * only attribute the controller has to support, so it is the only mask that
+ * carries a capability check.
+ */
+static int config_desc_update(struct usbd_context *const uds_ctx,
+			      const enum usbd_speed speed, const uint8_t cfg,
+			      const uint8_t mask, const uint8_t value)
 {
 	struct usbd_config_node *cfg_nd;
 	struct usb_cfg_descriptor *desc;
-	struct udc_device_caps caps;
 	int ret = 0;
 
 	usbd_device_lock(uds_ctx);
 
 	if (usbd_is_enabled(uds_ctx)) {
 		ret = -EBUSY;
-		goto attrib_rwup_exit;
+		goto config_desc_update_exit;
 	}
 
-	caps = udc_caps(uds_ctx->dev);
-	if (!caps.rwup) {
-		LOG_ERR("Feature not supported by controller");
-		ret = -ENOTSUP;
-		goto attrib_rwup_exit;
+	/* Remote wakeup is the only attribute that requires controller support */
+	if (mask == USB_SCD_REMOTE_WAKEUP) {
+		struct udc_device_caps caps = udc_caps(uds_ctx->dev);
+
+		if (!caps.rwup) {
+			LOG_ERR("Feature not supported by controller");
+			ret = -ENOTSUP;
+			goto config_desc_update_exit;
+		}
 	}
 
 	cfg_nd = usbd_config_get(uds_ctx, speed, cfg);
 	if (cfg_nd == NULL) {
 		LOG_INF("Configuration %u not found", cfg);
 		ret = -ENODATA;
-		goto attrib_rwup_exit;
+		goto config_desc_update_exit;
 	}
 
 	desc = cfg_nd->desc;
-	if (enable) {
-		desc->bmAttributes |= USB_SCD_REMOTE_WAKEUP;
+	if (mask != CONFIG_DESC_MAX_POWER) {
+		desc->bmAttributes = (desc->bmAttributes & ~mask) | value;
 	} else {
-		desc->bmAttributes &= ~USB_SCD_REMOTE_WAKEUP;
+		desc->bMaxPower = value;
 	}
 
-attrib_rwup_exit:
+config_desc_update_exit:
 	usbd_device_unlock(uds_ctx);
 	return ret;
+}
+
+int usbd_config_attrib_rwup(struct usbd_context *const uds_ctx,
+			    const enum usbd_speed speed,
+			    const uint8_t cfg, const bool enable)
+{
+	return config_desc_update(uds_ctx, speed, cfg, USB_SCD_REMOTE_WAKEUP,
+				  enable ? USB_SCD_REMOTE_WAKEUP : 0U);
 }
 
 int usbd_config_attrib_self(struct usbd_context *const uds_ctx,
 			    const enum usbd_speed speed,
 			    const uint8_t cfg, const bool enable)
 {
-	struct usbd_config_node *cfg_nd;
-	struct usb_cfg_descriptor *desc;
-	int ret = 0;
-
-	usbd_device_lock(uds_ctx);
-
-	if (usbd_is_enabled(uds_ctx)) {
-		ret = -EBUSY;
-		goto attrib_self_exit;
-	}
-
-	cfg_nd = usbd_config_get(uds_ctx, speed, cfg);
-	if (cfg_nd == NULL) {
-		LOG_INF("Configuration %u not found", cfg);
-		ret = -ENODATA;
-		goto attrib_self_exit;
-	}
-
-	desc = cfg_nd->desc;
-	if (enable) {
-		desc->bmAttributes |= USB_SCD_SELF_POWERED;
-	} else {
-		desc->bmAttributes &= ~USB_SCD_SELF_POWERED;
-	}
-
-attrib_self_exit:
-	usbd_device_unlock(uds_ctx);
-	return ret;
+	return config_desc_update(uds_ctx, speed, cfg, USB_SCD_SELF_POWERED,
+				  enable ? USB_SCD_SELF_POWERED : 0U);
 }
 
 int usbd_config_maxpower(struct usbd_context *const uds_ctx,
 			 const enum usbd_speed speed,
 			 const uint8_t cfg, const uint8_t power)
 {
-	struct usbd_config_node *cfg_nd;
-	struct usb_cfg_descriptor *desc;
-	int ret = 0;
-
-	usbd_device_lock(uds_ctx);
-
-	if (usbd_is_enabled(uds_ctx)) {
-		ret = -EBUSY;
-		goto maxpower_exit;
-	}
-
-	cfg_nd = usbd_config_get(uds_ctx, speed, cfg);
-	if (cfg_nd == NULL) {
-		LOG_INF("Configuration %u not found", cfg);
-		ret = -ENODATA;
-		goto maxpower_exit;
-	}
-
-	desc = cfg_nd->desc;
-	desc->bMaxPower = power;
-
-maxpower_exit:
-	usbd_device_unlock(uds_ctx);
-	return ret;
+	return config_desc_update(uds_ctx, speed, cfg, CONFIG_DESC_MAX_POWER, power);
 }
 
 int usbd_add_configuration(struct usbd_context *const uds_ctx,
@@ -290,29 +272,29 @@ int usbd_add_configuration(struct usbd_context *const uds_ctx,
 	}
 
 	configs = usbd_configs(uds_ctx, speed);
-	switch (speed) {
-	case USBD_SPEED_HS:
-		SYS_SLIST_FOR_EACH_NODE(&uds_ctx->fs_configs, node) {
-			if (node == &cfg_nd->node) {
-				LOG_ERR("HS config already on FS list");
-				ret = -EINVAL;
-				goto add_configuration_exit;
-			}
-		}
-		break;
-	case USBD_SPEED_FS:
-		SYS_SLIST_FOR_EACH_NODE(&uds_ctx->hs_configs, node) {
-			if (node == &cfg_nd->node) {
-				LOG_ERR("FS config already on HS list");
-				ret = -EINVAL;
-				goto add_configuration_exit;
-			}
-		}
-		break;
-	default:
+	if (configs == NULL) {
 		LOG_ERR("Unsupported configuration speed");
 		ret = -ENOTSUP;
 		goto add_configuration_exit;
+	}
+
+	if (USBD_SUPPORTS_HIGH_SPEED) {
+		const bool hs = (speed == USBD_SPEED_HS);
+		sys_slist_t *other_configs = hs ? &uds_ctx->fs_configs :
+						  usbd_get_hs_configs(uds_ctx);
+
+		SYS_SLIST_FOR_EACH_NODE(other_configs, node) {
+			if (node == &cfg_nd->node) {
+				if (hs) {
+					LOG_ERR("HS config already on FS list");
+				} else {
+					LOG_ERR("FS config already on HS list");
+				}
+
+				ret = -EINVAL;
+				goto add_configuration_exit;
+			}
+		}
 	}
 
 	if (sys_slist_find_and_remove(configs, &cfg_nd->node)) {
