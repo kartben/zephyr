@@ -261,6 +261,16 @@ config SAMPLE_AA_HU_TOF_THREAD_PRIORITY
 	depends on SAMPLE_AA_HU_TOF_NIGHT
 	default 10
 
+config SAMPLE_AA_HU_TOUCH_DRAG_MIN_MS
+	int "Shortest gap between reports of a finger being dragged (ms)"
+	default 33
+	help
+	  The screen reports a held finger far faster than the phone needs it,
+	  and every report is a USB transfer that the video acknowledgements
+	  queue behind, so a finger dragged across the screen costs frames.
+	  Thirty-three milliseconds matches the thirty frames a second the
+	  video is sent at, beyond which the extra reports buy nothing.
+
 config SAMPLE_AA_HU_PROTO_MINOR
 	int "Protocol minor version announced to the phone"
 	default 1
