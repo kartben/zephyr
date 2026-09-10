@@ -23,7 +23,10 @@ struct dsp_volatile_register_set {
 };
 
 struct dsp_non_volatile_register_set {
-	/* No non-volatile dsp registers */
+	/* No non-volatile dsp registers; this member only keeps the struct from
+	 * being empty and is not counted by the SIZEOF macro.
+	 */
+	uint8_t unused;
 };
 
 #define SIZEOF_DSP_VOLATILE_REGISTER_SET sizeof(struct dsp_volatile_register_set)

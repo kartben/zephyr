@@ -57,7 +57,10 @@ struct fp_volatile_register_set {
 };
 
 struct fp_non_volatile_register_set {
-	/* No non-volatile floating point registers */
+	/* No non-volatile floating point registers; this member only keeps the
+	 * struct from being empty and is not counted by the SIZEOF macro.
+	 */
+	uint8_t unused;
 };
 
 #define SIZEOF_FP_VOLATILE_REGISTER_SET sizeof(struct fp_volatile_register_set)
@@ -99,11 +102,17 @@ struct fp_non_volatile_register_set {
 #else
 
 struct fp_volatile_register_set {
-	/* No volatile floating point registers */
+	/* No volatile floating point registers; this member only keeps the
+	 * struct from being empty and is not counted by the SIZEOF macro.
+	 */
+	uint8_t unused;
 };
 
 struct fp_non_volatile_register_set {
-	/* No non-volatile floating point registers */
+	/* No non-volatile floating point registers; this member only keeps the
+	 * struct from being empty and is not counted by the SIZEOF macro.
+	 */
+	uint8_t unused;
 };
 
 #endif
@@ -131,6 +140,11 @@ struct fp_non_volatile_register_set {
 #elif defined(CONFIG_ISA_ARCV2)
 
 struct fp_volatile_register_set {
+	/* Without CONFIG_FP_FPU_DA this struct has no other member; this one
+	 * only keeps it from being empty and is not counted by the SIZEOF macro.
+	 */
+	uint8_t unused;
+
 #ifdef CONFIG_FP_FPU_DA
 	uint32_t dpfp2h;
 	uint32_t dpfp2l;
@@ -140,7 +154,10 @@ struct fp_volatile_register_set {
 };
 
 struct fp_non_volatile_register_set {
-	/* No non-volatile floating point registers */
+	/* No non-volatile floating point registers; this member only keeps the
+	 * struct from being empty and is not counted by the SIZEOF macro.
+	 */
+	uint8_t unused;
 };
 
 #define SIZEOF_FP_VOLATILE_REGISTER_SET sizeof(struct fp_volatile_register_set)
@@ -157,7 +174,10 @@ struct fp_volatile_register_set {
 };
 
 struct fp_non_volatile_register_set {
-	/* No non-volatile floating point registers */
+	/* No non-volatile floating point registers; this member only keeps the
+	 * struct from being empty and is not counted by the SIZEOF macro.
+	 */
+	uint8_t unused;
 };
 
 #define SIZEOF_FP_VOLATILE_REGISTER_SET sizeof(struct fp_volatile_register_set)
@@ -170,6 +190,10 @@ struct fp_volatile_register_set {
 };
 
 struct fp_non_volatile_register_set {
+	/* No non-volatile floating point registers; this member only keeps the
+	 * struct from being empty and is not counted by the SIZEOF macro.
+	 */
+	uint8_t unused;
 };
 
 #define SIZEOF_FP_VOLATILE_REGISTER_SET sizeof(struct fp_volatile_register_set)
@@ -178,7 +202,10 @@ struct fp_non_volatile_register_set {
 #elif defined(CONFIG_XTENSA)
 
 struct fp_volatile_register_set {
-	/* No volatile floating point registers */
+	/* No volatile floating point registers; this member only keeps the
+	 * struct from being empty and is not counted by the SIZEOF macro.
+	 */
+	uint8_t unused;
 };
 
 struct fp_non_volatile_register_set {

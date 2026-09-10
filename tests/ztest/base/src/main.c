@@ -5,7 +5,6 @@
  */
 
 #include <zephyr/ztest.h>
-
 ZTEST_SUITE(framework_tests, NULL, NULL, NULL, NULL, NULL);
 
 ZTEST(framework_tests, test_empty_test)
@@ -72,6 +71,10 @@ ZTEST(framework_tests, test_skip_no_config)
  **************************************************************************************************/
 
 struct fixture_tests_fixture {
+	/* ZTEST_F() requires the type to exist; this member only keeps the
+	 * struct from being empty.
+	 */
+	uint8_t unused;
 };
 
 static struct fixture_tests_fixture test_fixture;
