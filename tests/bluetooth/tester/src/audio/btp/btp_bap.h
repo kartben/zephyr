@@ -86,20 +86,9 @@ struct btp_bap_broadcast_source_stop_cmd {
 } __packed;
 
 #define BTP_BAP_BROADCAST_SINK_SETUP		0x0AU
-struct btp_bap_broadcast_sink_setup_cmd {
-} __packed;
-
 #define BTP_BAP_BROADCAST_SINK_RELEASE		0x0BU
-struct btp_bap_broadcast_sink_release_cmd {
-} __packed;
-
 #define BTP_BAP_BROADCAST_SCAN_START		0x0CU
-struct btp_bap_broadcast_scan_start_cmd {
-} __packed;
-
 #define BTP_BAP_BROADCAST_SCAN_STOP		0x0DU
-struct btp_bap_broadcast_scan_stop_cmd {
-} __packed;
 
 #define BTP_BAP_BROADCAST_SINK_SYNC		0x0EU
 struct btp_bap_broadcast_sink_sync_cmd {

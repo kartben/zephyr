@@ -1794,7 +1794,6 @@ static inline void bsim_btp_gap_padv_start(void)
 
 static inline void bsim_btp_gap_padv_stop(void)
 {
-	struct btp_gap_padv_stop_cmd *cmd;
 	struct btp_hdr *cmd_hdr;
 
 	NET_BUF_SIMPLE_DEFINE(cmd_buffer, BTP_MTU);
@@ -1803,7 +1802,8 @@ static inline void bsim_btp_gap_padv_stop(void)
 	cmd_hdr->service = BTP_SERVICE_ID_GAP;
 	cmd_hdr->opcode = BTP_GAP_PADV_STOP;
 	cmd_hdr->index = BTP_INDEX;
-	cmd = net_buf_simple_add(&cmd_buffer, sizeof(*cmd));
+
+	/* The command for this is empty */
 
 	cmd_hdr->len = sys_cpu_to_le16(cmd_buffer.len - sizeof(*cmd_hdr));
 

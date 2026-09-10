@@ -326,12 +326,12 @@ static const struct btp_handler pbp_handlers[] = {
 	},
 	{
 		.opcode = BTP_PBP_BROADCAST_SCAN_START,
-		.expect_len = sizeof(struct btp_pbp_broadcast_scan_start_cmd),
+		.expect_len = 0,
 		.func = pbp_broadcast_scan_start
 	},
 	{
 		.opcode = BTP_PBP_BROADCAST_SCAN_STOP,
-		.expect_len = sizeof(struct btp_pbp_broadcast_scan_stop_cmd),
+		.expect_len = 0,
 		.func = pbp_broadcast_scan_stop
 	}
 };

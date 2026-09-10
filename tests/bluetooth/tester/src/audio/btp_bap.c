@@ -436,17 +436,17 @@ static const struct btp_handler bap_handlers[] = {
 	},
 	{
 		.opcode = BTP_BAP_BROADCAST_SINK_RELEASE,
-		.expect_len = sizeof(struct btp_bap_broadcast_sink_release_cmd),
+		.expect_len = 0,
 		.func = btp_bap_broadcast_sink_release,
 	},
 	{
 		.opcode = BTP_BAP_BROADCAST_SCAN_START,
-		.expect_len = sizeof(struct btp_bap_broadcast_scan_start_cmd),
+		.expect_len = 0,
 		.func = btp_bap_broadcast_scan_start,
 	},
 	{
 		.opcode = BTP_BAP_BROADCAST_SCAN_STOP,
-		.expect_len = sizeof(struct btp_bap_broadcast_scan_stop_cmd),
+		.expect_len = 0,
 		.func = btp_bap_broadcast_scan_stop,
 	},
 	{
