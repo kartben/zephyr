@@ -74,3 +74,33 @@ nav_bus_probe: &i2c1 {
 &ic7 {
 	ic-div = <125>;
 };
+
+/*
+ * The decoder keeps its reference pictures in AXISRAM3 to AXISRAM6, four
+ * contiguous banks the board otherwise leaves off. Reading them over the AXI
+ * bus rather than from PSRAM is worth two thirds of the frame rate.
+ *
+ * The span is one region: every node with an ARM memory-attr becomes an MPU
+ * region, and ARMv8-M does not define what overlapping regions do. The other
+ * three banks stay enabled without one so that their RAMCFG instances still
+ * clock them.
+ */
+&axisram3 {
+	reg = <0x34200000 0x1c0000>;
+	status = "okay";
+};
+
+&axisram4 {
+	/delete-property/ compatible;
+	status = "okay";
+};
+
+&axisram5 {
+	/delete-property/ compatible;
+	status = "okay";
+};
+
+&axisram6 {
+	/delete-property/ compatible;
+	status = "okay";
+};
