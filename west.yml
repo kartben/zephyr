@@ -23,6 +23,8 @@ manifest:
       url-base: https://github.com/zephyrproject-rtos
     - name: babblesim
       url-base: https://github.com/BabbleSim
+    - name: kartben
+      url-base: https://github.com/kartben
 
   group-filter: [-babblesim, -optional, -testing]
 
@@ -146,6 +148,10 @@ manifest:
       path: modules/fs/fatfs
       groups:
         - fs
+    - name: h264bsd
+      remote: kartben
+      revision: zephyr-module
+      path: modules/lib/h264bsd
     - name: hal_adi
       revision: 1a5d9748b680adf0669739f37d05cb985f39b7b8
       path: modules/hal/adi
