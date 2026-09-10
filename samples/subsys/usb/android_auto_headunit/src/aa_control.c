@@ -85,7 +85,7 @@ static int send_service_discovery_response(void)
 	cfg->has_video_resolution = true;
 	cfg->video_resolution = AA_OFFERED_RESOLUTION;
 	cfg->has_video_fps = true;
-	cfg->video_fps = AA_VIDEO_FPS_30;
+	cfg->video_fps = AA_VIDEO_FPS_60;
 	cfg->has_dpi = true;
 	cfg->dpi = 160;
 
