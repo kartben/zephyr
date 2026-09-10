@@ -6,7 +6,7 @@
 import argparse
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path, PurePath
 
 import jsonschema
@@ -56,13 +56,18 @@ class Systems:
                         f'{soc_yaml}\n'
                         f'{best_match(errors).message} in {best_match(errors).json_path}')
 
+        file_modules = list(data.get('modules', []))
+
         for f in data.get('family', []):
-            family = Family(f['name'], [folder], [], [])
+            family_modules = _merge_modules(file_modules, f.get('modules', []))
+            family = Family(f['name'], [folder], [], [], family_modules)
             for s in f.get('series', []):
-                series = Series(s['name'], [folder], f['name'], [])
+                series_modules = _merge_modules(family_modules, s.get('modules', []))
+                series = Series(s['name'], [folder], f['name'], [], series_modules)
                 socs = [(Soc(soc['name'],
                              [c['name'] for c in soc.get('cpuclusters', [])],
-                             [folder], s['name'], f['name']))
+                             [folder], s['name'], f['name'],
+                             _merge_modules(series_modules, soc.get('modules', []))))
                         for soc in s.get('socs', [])]
                 series.socs.extend(socs)
                 self._series.append(series)
@@ -71,29 +76,33 @@ class Systems:
                 family.socs.extend(socs)
             socs = [(Soc(soc['name'],
                          [c['name'] for c in soc.get('cpuclusters', [])],
-                         [folder], None, f['name']))
+                         [folder], None, f['name'],
+                         _merge_modules(family_modules, soc.get('modules', []))))
                     for soc in f.get('socs', [])]
             self._socs.extend(socs)
             self._families.append(family)
 
         for s in data.get('series', []):
-            series = Series(s['name'], [folder], '', [])
+            series_modules = _merge_modules(file_modules, s.get('modules', []))
+            series = Series(s['name'], [folder], '', [], series_modules)
             socs = [(Soc(soc['name'],
                          [c['name'] for c in soc.get('cpuclusters', [])],
-                         [folder], s['name'], ''))
+                         [folder], s['name'], '',
+                         _merge_modules(series_modules, soc.get('modules', []))))
                     for soc in s.get('socs', [])]
             series.socs.extend(socs)
             self._series.append(series)
             self._socs.extend(socs)
 
         for soc in data.get('socs', []):
+            soc_modules = _merge_modules(file_modules, soc.get('modules', []))
             if soc.get('name') is not None:
                 self._socs.append(Soc(soc['name'], [c['name'] for c in soc.get('cpuclusters', [])],
-                                  [folder], '', ''))
+                                  [folder], '', '', soc_modules))
             elif soc.get('extend') is not None:
                 self._extended_socs.append(Soc(soc['extend'],
                                            [c['name'] for c in soc.get('cpuclusters', [])],
-                                           [folder], '', ''))
+                                           [folder], '', '', soc_modules))
             else:
                 # This should not happen if schema validation passed
                 sys.exit(f'ERROR: Malformed "socs" section in SoC file: {soc_yaml}\n'
@@ -182,11 +191,13 @@ class Soc:
     folder: list[str]
     series: str = ''
     family: str = ''
+    modules: list[str] = field(default_factory=list)
 
     def extend(self, soc):
         if self.name == soc.name:
             self.cpuclusters.extend(soc.cpuclusters)
             self.folder.extend(soc.folder)
+            self.modules = _merge_modules(self.modules, soc.modules)
 
 
 @dataclass
@@ -195,6 +206,7 @@ class Series:
     folder: list[str]
     family: str
     socs: list[Soc]
+    modules: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -203,6 +215,16 @@ class Family:
     folder: list[str]
     series: list[Series]
     socs: list[Soc]
+    modules: list[str] = field(default_factory=list)
+
+
+def _merge_modules(*groups):
+    merged = []
+    for group in groups:
+        for name in group or []:
+            if name not in merged:
+                merged.append(name)
+    return merged
 
 
 def unique_paths(paths):
