@@ -48,8 +48,6 @@ LOG_MODULE_REGISTER(pwm_sifive, CONFIG_PWM_LOG_LEVEL);
 
 /* Structure Declarations */
 
-struct pwm_sifive_data {};
-
 struct pwm_sifive_cfg {
 	uint32_t base;
 	uint32_t f_sys;
@@ -215,7 +213,6 @@ static DEVICE_API(pwm, pwm_sifive_api) = {
 
 #define PWM_SIFIVE_INIT(n)	\
 	PINCTRL_DT_INST_DEFINE(n);	\
-	static struct pwm_sifive_data pwm_sifive_data_##n;	\
 	static const struct pwm_sifive_cfg pwm_sifive_cfg_##n = {	\
 			.base = DT_INST_REG_ADDR(n),	\
 			.f_sys = SIFIVE_PERIPHERAL_CLOCK_FREQUENCY,  \
@@ -225,7 +222,7 @@ static DEVICE_API(pwm, pwm_sifive_api) = {
 	DEVICE_DT_INST_DEFINE(n,	\
 			    pwm_sifive_init,	\
 			    NULL,	\
-			    &pwm_sifive_data_##n,	\
+			    NULL,	\
 			    &pwm_sifive_cfg_##n,	\
 			    POST_KERNEL,	\
 			    CONFIG_PWM_INIT_PRIORITY,	\

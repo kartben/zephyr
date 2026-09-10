@@ -38,9 +38,6 @@ struct ad56xx_config {
 	size_t channel_count;
 };
 
-struct ad56xx_data {
-};
-
 static int ad56xx_write_command(const struct device *dev, enum ad56xx_command command,
 				uint8_t address, uint16_t value)
 {
@@ -168,7 +165,6 @@ BUILD_ASSERT(CONFIG_DAC_AD56XX_INIT_PRIORITY > CONFIG_SPI_INIT_PRIORITY,
 	     "CONFIG_DAC_AD56XX_INIT_PRIORITY must be higher than CONFIG_SPI_INIT_PRIORITY");
 
 #define DAC_AD56XX_INST_DEFINE(index, name, res, channels, channels_count)                         \
-	static struct ad56xx_data data_##name##_##index;                                           \
 	static const struct ad56xx_config config_##name##_##index = {                              \
 		.bus = SPI_DT_SPEC_INST_GET(                                                       \
 			index, SPI_OP_MODE_CONTROLLER | SPI_MODE_CPHA | SPI_WORD_SET(8)),          \
@@ -177,9 +173,8 @@ BUILD_ASSERT(CONFIG_DAC_AD56XX_INIT_PRIORITY > CONFIG_SPI_INIT_PRIORITY,
 		.channel_addresses = channels,                                                     \
 		.channel_count = channels_count,                                                   \
 	};                                                                                         \
-	DEVICE_DT_INST_DEFINE(index, ad56xx_init, NULL, &data_##name##_##index,                    \
-			      &config_##name##_##index, POST_KERNEL,                               \
-			      CONFIG_DAC_AD56XX_INIT_PRIORITY, &ad56xx_driver_api);
+	DEVICE_DT_INST_DEFINE(index, ad56xx_init, NULL, NULL, &config_##name##_##index,            \
+			      POST_KERNEL, CONFIG_DAC_AD56XX_INIT_PRIORITY, &ad56xx_driver_api);
 
 #define DT_DRV_COMPAT adi_ad5628
 #if DT_HAS_COMPAT_STATUS_OKAY(DT_DRV_COMPAT)

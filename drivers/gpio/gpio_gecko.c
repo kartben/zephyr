@@ -57,9 +57,6 @@
 #define NUMBER_OF_PORTS (SIZEOF_FIELD(GPIO_TypeDef, P) / \
 			 SIZEOF_FIELD(GPIO_TypeDef, P[0]))
 
-struct gpio_gecko_common_config {
-};
-
 struct gpio_gecko_common_data {
 	/* a list of all ports */
 	const struct device *ports[NUMBER_OF_PORTS];
@@ -366,15 +363,12 @@ static DEVICE_API(gpio, gpio_gecko_common_driver_api) = {
 
 static int gpio_gecko_common_init(const struct device *dev);
 
-static const struct gpio_gecko_common_config gpio_gecko_common_config = {
-};
-
 static struct gpio_gecko_common_data gpio_gecko_common_data;
 
 DEVICE_DT_DEFINE(DT_INST(0, silabs_gecko_gpio),
 		    gpio_gecko_common_init,
 		    NULL,
-		    &gpio_gecko_common_data, &gpio_gecko_common_config,
+		    &gpio_gecko_common_data, NULL,
 		    PRE_KERNEL_1, CONFIG_GPIO_GECKO_COMMON_INIT_PRIORITY,
 		    &gpio_gecko_common_driver_api);
 
