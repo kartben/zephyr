@@ -165,29 +165,34 @@ uint32_t arm_m_switch_control;
 /* Emits an in-place copy from a switch_frame to a synth_frame
  * but is generic as to whether the frame has an alignment word so takes
  * a separate parameter for the struct hw_frame_base
+ *
+ * Source and destination overlap. Only apsr and r0-r3 sit at offsets that
+ * the first stores would clobber, so those five are read out up front and
+ * the remaining moves are ordered such that every word is read before it
+ * is overwritten. This holds for all four layouts the callers pass in
+ * (synth_frame and synth_frame_align, each with and without psplim).
+ * Going through a temporary struct instead costs a ~90 byte stack frame
+ * and roughly twice the memory traffic, on the interrupt-exit switch path.
  */
-#define SWITCH_TO_SYNTH_INNER(sw, syntmp, syntmp_hw) do {               \
-	syntmp.r4 = sw.r4, syntmp.r5 = sw.r5, syntmp.r6 = sw.r6,        \
-	syntmp.r7 = sw.r7, syntmp.r8 = sw.r8, syntmp.r9 = sw.r9,        \
-	syntmp.r10 = sw.r10, syntmp.r11 = sw.r11, syntmp_hw.r0 = sw.r0, \
-	syntmp_hw.r1 = sw.r1, syntmp_hw.r2 = sw.r2,                     \
-	syntmp_hw.r3 = sw.r3, syntmp_hw.r12 = sw.r12,                   \
-	syntmp_hw.lr = sw.lr, syntmp_hw.pc = sw.pc,                     \
-	syntmp_hw.apsr = sw.apsr;                                       \
+#define SWITCH_TO_SYNTH_INNER(sw, syn, syn_hw) do {                     \
+	uint32_t apsr = sw.apsr, r0 = sw.r0, r1 = sw.r1;                \
+	uint32_t r2 = sw.r2, r3 = sw.r3;                                \
+									\
+	syn.r7 = sw.r7, syn.r8 = sw.r8, syn.r9 = sw.r9,                 \
+	syn.r10 = sw.r10, syn.r11 = sw.r11,                             \
+	syn.r4 = sw.r4, syn.r5 = sw.r5, syn.r6 = sw.r6,                 \
+	syn_hw.r12 = sw.r12, syn_hw.lr = sw.lr, syn_hw.pc = sw.pc,      \
+	syn_hw.r0 = r0, syn_hw.r1 = r1, syn_hw.r2 = r2,                 \
+	syn_hw.r3 = r3, syn_hw.apsr = apsr;                             \
 } while (false)
 
 /* Emits an in-place copy from a switch_frame to a synth_frame */
-#define SWITCH_TO_SYNTH(sw, hw) do {                                    \
-	struct synth_frame tmp = { 0 };                                 \
-	SWITCH_TO_SYNTH_INNER(sw, tmp, tmp.base);                       \
-	hw = tmp;                                                       \
-} while (false)
+#define SWITCH_TO_SYNTH(sw, hw) SWITCH_TO_SYNTH_INNER(sw, hw, hw.base)
 
 /* Emits an in-place copy from a switch_frame to a synth_frame_align */
 #define SWITCH_TO_SYNTH_ALIGN(sw, hw) do {                              \
-	struct synth_frame_align tmp = { 0 };                           \
-	SWITCH_TO_SYNTH_INNER(sw, tmp, tmp.base.base);                  \
-	hw = tmp;                                                       \
+	SWITCH_TO_SYNTH_INNER(sw, hw, hw.base.base);                    \
+	hw.base.align_pad = 0;                                          \
 } while (false)
 
 /* clang-format on */
