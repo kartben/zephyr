@@ -171,7 +171,10 @@ def setup(app: Sphinx) -> dict[str, Any]:
     app.add_config_value("external_content_directives", DEFAULT_DIRECTIVES, "env")
     app.add_config_value("external_content_keep", [], "")
 
-    app.connect("builder-inited", sync_contents)
+    # sync_contents() deletes everything in the source directory that neither it
+    # nor external_content_keep accounts for, so it runs before any other
+    # builder-inited handler that may write there
+    app.connect("builder-inited", sync_contents, priority=200)
 
     return {
         "version": __version__,

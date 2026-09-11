@@ -4,12 +4,10 @@
 
 '''Sphinx extensions related to managing Zephyr applications.'''
 
-from pathlib import Path
-
 from docutils import nodes
 from docutils.parsers.rst import Directive, directives
 
-ZEPHYR_BASE = Path(__file__).parents[3]
+from zephyr._paths import ZEPHYR_BASE
 
 
 # TODO: extend and modify this for Windows.

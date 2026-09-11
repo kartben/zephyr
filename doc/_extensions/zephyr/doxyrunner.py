@@ -8,21 +8,15 @@ SPDX-License-Identifier: Apache-2.0
 Introduction
 ============
 
-This Sphinx plugin can be used to run Doxygen build as part of the Sphinx build
-process. It is meant to be used with other plugins such as ``breathe`` in order
-to improve the user experience. The principal features offered by this plugin
-are:
+This Sphinx plugin runs the Doxygen build as part of the Sphinx build process,
+so that extensions consuming Doxygen output (``zephyr.doxybridge``,
+``zephyr.doxyxref``, ``zephyr.api_overview``) find it in place. The principal
+features offered by this plugin are:
 
 - Doxygen build is run before Sphinx reads input files
 - Doxyfile can be optionally pre-processed so that variables can be inserted
 - Changes in the Doxygen input files are tracked so that Doxygen build is only
   run if necessary.
-- Synchronizes Doxygen XML output so that even if Doxygen is run only changed,
-  deleted or added files are modified.
-
-References:
-
--  https://github.com/michaeljones/breathe/issues/420
 
 Configuration options
 =====================
@@ -34,7 +28,8 @@ Configuration options
   name and values a dictionary with the following keys:
 
   - ``doxyfile``: Path to Doxyfile.
-  - ``outdir``: Doxygen build output directory (inserted to ``OUTPUT_DIRECTORY``)
+  - ``outdir``: Doxygen build output directory (inserted to ``OUTPUT_DIRECTORY``),
+    required.
   - ``outdir_var``: Variable representing the Doxygen build output directory,
     as used by ``OUTPUT_DIRECTORY``. This can be useful if other Doxygen
     variables reference to the output directory.
@@ -43,18 +38,21 @@ Configuration options
   - ``fmt_pattern``: Format pattern.
 """
 
-import filecmp
 import hashlib
 import re
 import shlex
 import shutil
 import tempfile
+from dataclasses import dataclass
+from functools import cache
 from pathlib import Path
 from subprocess import PIPE, STDOUT, Popen
 from typing import Any
 
 from sphinx.application import Sphinx
+from sphinx.config import Config
 from sphinx.environment import BuildEnvironment
+from sphinx.errors import ExtensionError
 from sphinx.util import logging
 
 __version__ = "0.1.0"
@@ -130,6 +128,68 @@ def get_doxygen_option(doxyfile: str, option: str) -> list[str]:
     return values
 
 
+@dataclass(frozen=True)
+class DoxygenOutput:
+    """Resolved output directories of a single Doxygen project."""
+
+    root: Path
+    html: Path
+    xml: Path
+
+
+@cache
+def _output_subdirs(doxyfile: Path) -> tuple[str, str]:
+    """HTML_OUTPUT and XML_OUTPUT of a Doxyfile, falling back to Doxygen's defaults."""
+
+    content = doxyfile.read_text()
+    html = get_doxygen_option(content, "HTML_OUTPUT")
+    xml = get_doxygen_option(content, "XML_OUTPUT")
+
+    return html[0] if html else "html", xml[0] if xml else "xml"
+
+
+def doxygen_outputs(config: Config) -> dict[str, DoxygenOutput]:
+    """Resolved Doxygen output directories, keyed by project name.
+
+    Derived from ``doxyrunner_projects`` alone, with no dependency on build
+    state, so any extension may call this in any build phase. Empty when
+    ``doxyrunner_skip`` is set: nothing is generated, so there is nothing to
+    consume.
+
+    Args:
+        config: Sphinx configuration.
+    """
+
+    if config.doxyrunner_skip:
+        return {}
+
+    outputs = {}
+    for name, project in config.doxyrunner_projects.items():
+        if not project.get("outdir"):
+            raise ExtensionError(f"doxyrunner_projects['{name}'] has no 'outdir'")
+
+        root = Path(project["outdir"])
+        html_subdir, xml_subdir = _output_subdirs(Path(project["doxyfile"]))
+        outputs[name] = DoxygenOutput(root=root, html=root / html_subdir, xml=root / xml_subdir)
+
+    return outputs
+
+
+def doxygen_input_changed(env: BuildEnvironment, project: str) -> bool:
+    """Whether Doxygen input changed for *project* during this build.
+
+    Unknown projects report ``True``, so a consumer that runs without
+    :func:`doxygen_build` having populated the environment re-reads rather than
+    trusting a cache that was never filled.
+
+    Args:
+        env: Sphinx build environment.
+        project: Doxygen project name.
+    """
+
+    return getattr(env, "doxygen_input_changed", {}).get(project, True)
+
+
 def process_doxyfile(
     doxyfile: str,
     outdir: Path,
@@ -177,7 +237,7 @@ def process_doxyfile(
 
     content = re.sub(
         r"^\s*QUIET\s*=.*$",
-        "QUIET=" + "YES" if silent else "NO",
+        "QUIET=" + ("YES" if silent else "NO"),
         content,
         flags=re.MULTILINE,
     )
@@ -293,51 +353,23 @@ def run_doxygen(doxygen: str, doxyfile: str, silent: bool = False) -> None:
         raise OSError(f"Doxygen process returned non-zero ({p.returncode})")
 
 
-def sync_doxygen(doxyfile: str, new: Path, prev: Path) -> None:
-    """Synchronize Doxygen output with a previous build.
+def clean_outdir(app: Sphinx, outdir: Path) -> None:
+    """Remove a Doxygen output directory before a fresh run.
 
-    This function makes sure that only new, deleted or changed files are
-    actually modified in the Doxygen XML output. Latest HTML content is just
-    moved.
+    Doxygen never prunes output for inputs that have gone away, so the previous
+    run's tree is discarded wholesale.
 
     Args:
-        doxyfile: Contents of the Doxyfile.
-        new: Newest Doxygen build output directory.
-        prev: Previous Doxygen build output directory.
+        app: Sphinx application instance.
+        outdir: Doxygen build output directory.
     """
 
-    generate_html = get_doxygen_option(doxyfile, "GENERATE_HTML")
-    if generate_html[0] == "YES":
-        html_output = get_doxygen_option(doxyfile, "HTML_OUTPUT")
-        if not html_output:
-            raise ValueError("No HTML_OUTPUT set in Doxyfile")
+    outdir = outdir.resolve()
+    for reserved in (Path(app.outdir).resolve(), Path(app.srcdir).resolve()):
+        if outdir == reserved or outdir in reserved.parents:
+            raise ExtensionError(f"Refusing to remove Doxygen outdir {outdir}: it holds {reserved}")
 
-        new_htmldir = new / html_output[0]
-        prev_htmldir = prev / html_output[0]
-
-        if prev_htmldir.exists():
-            shutil.rmtree(prev_htmldir)
-        new_htmldir.rename(prev_htmldir)
-
-    xml_output = get_doxygen_option(doxyfile, "XML_OUTPUT")
-    if not xml_output:
-        raise ValueError("No XML_OUTPUT set in Doxyfile")
-
-    new_xmldir = new / xml_output[0]
-    prev_xmldir = prev / xml_output[0]
-
-    if prev_xmldir.exists():
-        dcmp = filecmp.dircmp(new_xmldir, prev_xmldir)
-
-        for file in dcmp.right_only:
-            (Path(dcmp.right) / file).unlink()
-
-        for file in dcmp.left_only + dcmp.diff_files:
-            shutil.copy(Path(dcmp.left) / file, Path(dcmp.right) / file)
-
-        shutil.rmtree(new_xmldir)
-    else:
-        new_xmldir.rename(prev_xmldir)
+    shutil.rmtree(outdir, ignore_errors=True)
 
 
 def doxygen_build(app: Sphinx) -> None:
@@ -351,19 +383,15 @@ def doxygen_build(app: Sphinx) -> None:
         logger.info("Doxygen build skipped (doxyrunner_skip is set).")
         return
 
-    for name, config in app.config.doxyrunner_projects.items():
-        if config.get("outdir"):
-            outdir = Path(config["outdir"])
-        else:
-            outdir = Path(app.outdir) / "_doxygen" / name
+    outputs = doxygen_outputs(app.config)
 
-        outdir.mkdir(exist_ok=True)
-        tmp_outdir = outdir / "tmp"
+    for name, config in app.config.doxyrunner_projects.items():
+        outdir = outputs[name].root
 
         logger.info("Preparing Doxyfile...")
         doxyfile = process_doxyfile(
             config["doxyfile"],
-            tmp_outdir,
+            outdir,
             app.config.doxyrunner_silent,
             config.get("fmt", False),
             config.get("fmt_pattern", "@{}@"),
@@ -378,7 +406,10 @@ def doxygen_build(app: Sphinx) -> None:
         app.env.doxygen_input_changed[name] = doxygen_input_has_changed(app.env, name, doxyfile)
         if not app.env.doxygen_input_changed[name]:
             logger.info(f"Doxygen build for {name} will be skipped (no changes)!")
-            return
+            continue
+
+        clean_outdir(app, outdir)
+        outdir.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"Running Doxygen for {name}...")
         run_doxygen(
@@ -387,11 +418,6 @@ def doxygen_build(app: Sphinx) -> None:
             app.config.doxyrunner_silent,
         )
 
-        logger.info(f"Syncing Doxygen output for {name}...")
-        sync_doxygen(doxyfile, tmp_outdir, outdir)
-
-        shutil.rmtree(tmp_outdir)
-
 
 def setup(app: Sphinx) -> dict[str, Any]:
     app.add_config_value("doxyrunner_doxygen", "doxygen", "env")
@@ -399,7 +425,8 @@ def setup(app: Sphinx) -> dict[str, Any]:
     app.add_config_value("doxyrunner_projects", {}, "")
     app.add_config_value("doxyrunner_skip", False, "env")
 
-    app.connect("builder-inited", doxygen_build)
+    # produces the Doxygen output zephyr.doxybridge parses at priority 400
+    app.connect("builder-inited", doxygen_build, priority=300)
 
     return {
         "version": __version__,

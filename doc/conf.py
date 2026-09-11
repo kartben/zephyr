@@ -7,23 +7,18 @@ import sys
 import textwrap
 from pathlib import Path
 
-ZEPHYR_BASE = Path(__file__).resolve().parents[1]
 ZEPHYR_BUILD = Path(os.environ.get("OUTPUT_DIR")).resolve()
 
 # Add the '_extensions' directory to sys.path, to enable finding Sphinx
 # extensions within.
-sys.path.insert(0, str(ZEPHYR_BASE / "doc" / "_extensions"))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_extensions"))
 
-# Add the '_scripts' directory to sys.path, to enable finding utility
-# modules.
-sys.path.insert(0, str(ZEPHYR_BASE / "doc" / "_scripts"))
+from zephyr._paths import ZEPHYR_BASE, add_script_paths  # noqa: E402
 
-# Add the directory which contains the runners package as well,
-# for autodoc directives on runners.xyz.
-sys.path.insert(0, str(ZEPHYR_BASE / "scripts" / "west_commands"))
-
-# Add the directory which contains the pytest-twister-pytest
-sys.path.insert(0, str(ZEPHYR_BASE / "scripts" / "pylib" / "pytest-twister-harness" / "src"))
+# '_scripts' holds utility modules imported below and by the extensions;
+# west_commands is needed for autodoc directives on runners.xyz, and
+# twister_harness for the pytest plugin autodoc imports.
+add_script_paths("doc_scripts", "west_commands", "twister_harness")
 
 import redirects  # noqa: E402
 
@@ -102,8 +97,8 @@ extensions = [
     "zephyr.application",
     "zephyr.html_redirects",
     "zephyr.kconfig",
-    "zephyr.dtcompatible-role",
-    "zephyr.link-roles",
+    "zephyr.dtcompatible_role",
+    "zephyr.link_roles",
     "sphinx_tabs.tabs",
     "sphinx_sitemap",
     "zephyr.doxyrunner",
@@ -169,6 +164,7 @@ intersphinx_mapping = {
     "cmake": ("https://cmake.org/cmake/help/latest", None),
 }
 
+# Only consulted when nitpicky mode is on, i.e. when sphinx-build is passed -n.
 nitpick_ignore = [
     # ignore C standard identifiers (they are not defined in Zephyr docs)
     ("c:identifier", "FILE"),
@@ -319,25 +315,22 @@ doxyrunner_projects = {
             "DOXY_REQ_INPUT": os.environ.get(
                 "DOXY_REQ_INPUT", str(ZEPHYR_BUILD / "requirements" / "dox")
             ),
+            # @INCLUDE line for the Doxyfile fragment holding the customization
+            # requested through ZEPHYR_DOXYGEN_OVERLAY and
+            # DOXYGEN_FORCE_SINGLE_THREAD (see doc/CMakeLists.txt), empty when
+            # neither is set.
+            "INCLUDE_CUSTOM_FILE": os.environ.get("DOXY_CUSTOM_INCLUDE", ""),
         },
         "outdir_var": "DOXY_OUT",
     },
 }
 os.environ["DOXYGEN_SITEMAP_URL"] = f"{html_baseurl}doxygen/html"
 
-# -- Options for zephyr.doxybridge plugin ---------------------------------
-
-doxybridge_projects = {"zephyr": doxyrunner_projects["zephyr"]["outdir"]}
-
+# zephyr.doxybridge, zephyr.doxyxref and zephyr.api_overview locate the Doxygen
+# output through doxyrunner_projects, and produce nothing when the build is
+# skipped. C-domain references are then replaced with plain text by
+# zephyr.partial_build before resolution.
 doxyrunner_skip = SKIP_DOXYGEN
-if SKIP_DOXYGEN:
-    # No Doxygen XML to bridge; C-domain references are replaced with plain
-    # text by zephyr.partial_build before resolution.
-    doxybridge_projects = {}
-
-# -- Options for zephyr.doxyxref plugin ------------------------------------
-
-doxyxref_projects = doxybridge_projects
 
 # -- Options for html_redirect plugin -------------------------------------
 
@@ -358,7 +351,7 @@ if SKIP_EXTERNAL_CONTENT:
         if not new.startswith(("boards/", "samples/", "snippets/"))
     )
 
-# -- Options for zephyr.link-roles ----------------------------------------
+# -- Options for zephyr.link_roles ----------------------------------------
 
 link_roles_manifest_project = "zephyr"
 link_roles_manifest_project_broken_links_ignore_globs = [
@@ -381,7 +374,6 @@ gh_link_prefixes = {
     ".*": "doc",
 }
 gh_link_exclude = [
-    "reference/kconfig.*",
     "build/dts/api/bindings.*",
     "build/dts/api/compatibles.*",
 ]
@@ -410,8 +402,12 @@ if not SKIP_EXTERNAL_CONTENT:
         (ZEPHYR_BASE, "snippets/**/*.rst"),
         (ZEPHYR_BASE, "snippets/**/doc"),
     ]
+# Anything under the Sphinx source directory that is not produced by
+# external_content itself is deleted unless it is kept here. The build/dts and
+# build/requirements entries below cover the trees written by the 'devicetree'
+# and 'requirements' CMake targets before Sphinx starts; keep them in sync with
+# doc/CMakeLists.txt.
 external_content_keep = [
-    "reference/kconfig/*",
     "develop/manifest/index.rst",
     "build/dts/api/bindings.rst",
     "build/dts/api/bindings/**/*",
@@ -422,7 +418,6 @@ external_content_keep = [
 
 # -- Options for zephyr.domain --------------------------------------------
 
-zephyr_breathe_insert_related_samples = True
 zephyr_generate_hw_features = not tags.has("hw_features_turbo")  # pylint: disable=undefined-variable  # noqa: F821
 zephyr_hw_features_vendor_filter = []
 zephyr_hw_features_twister_extra_flags = []
@@ -477,7 +472,6 @@ linkcheck_anchors = False
 
 # -- Options for zephyr.api_overview --------------------------------------
 
-api_overview_doxygen_out_dir = str(doxyrunner_projects["zephyr"]["outdir"])
 api_overview_base_url = "https://github.com/zephyrproject-rtos/zephyr"
 
 
