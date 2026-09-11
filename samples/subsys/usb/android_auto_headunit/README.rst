@@ -11,7 +11,9 @@ This sample is the counterpart of the :zephyr:code-sample:`android-auto` accesso
 board acts as the car head unit. It connects to a phone that speaks the Android Auto projection
 protocol, drives the version exchange, the TLS handshake (as the client) and service discovery,
 opens a video and an input channel, decodes the H.264 stream the phone sends and shows it on a
-display. The board's own touch screen is forwarded to the phone as touch events.
+display. The board's own touch screen is forwarded to the phone as touch events, and the
+user button reports a change of light level so that the phone switches between its day and
+night themes.
 
 The protocol, framing, TLS and protobuf code mirror the accessory sample with the roles swapped.
 The video path is new: a small decoder reconstructs the picture from the companion sample's

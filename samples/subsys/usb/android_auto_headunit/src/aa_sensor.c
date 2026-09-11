@@ -5,6 +5,8 @@
 
 #include "aa_sensor.h"
 
+#include <zephyr/device.h>
+#include <zephyr/input/input.h>
 #include <zephyr/logging/log.h>
 
 #include "src/aa.pb.h"
@@ -101,6 +103,25 @@ void aa_sensor_handle(uint16_t msg_id, const uint8_t *body, size_t len)
 
 	(void)send_event(req.sensor_type);
 }
+
+#ifdef CONFIG_SAMPLE_AA_HU_NIGHT_BUTTON
+#define NIGHT_BUTTON DT_ALIAS(sw0)
+
+/* Stand in for a light sensor: each press reports the opposite of the last one */
+static void night_button_cb(struct input_event *evt, void *user_data)
+{
+	ARG_UNUSED(user_data);
+
+	if (evt->code != DT_PROP(NIGHT_BUTTON, zephyr_code) || evt->value == 0) {
+		return;
+	}
+
+	LOG_INF("User button: reporting %s", is_night ? "daylight" : "night");
+	aa_sensor_set_night(!is_night);
+}
+
+INPUT_CALLBACK_DEFINE(DEVICE_DT_GET(DT_PARENT(NIGHT_BUTTON)), night_button_cb, NULL);
+#endif /* CONFIG_SAMPLE_AA_HU_NIGHT_BUTTON */
 
 void aa_sensor_set_night(bool night)
 {
