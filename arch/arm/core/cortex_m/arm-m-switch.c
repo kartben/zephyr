@@ -488,12 +488,28 @@ void *arm_m_new_stack(char *base, uint32_t sz, void *entry, void *arg0, void *ar
 	 * and a few cycles on thread entry.
 	 */
 	sw = (void *)(baddr + sz - sizeof(*sw));
-	*sw = (struct switch_frame){
-		IF_ENABLED(CONFIG_BUILTIN_STACK_GUARD, (.psplim = baddr,)) .r0 = (uint32_t)arg0,
-			   .r1 = (uint32_t)arg1, .r2 = (uint32_t)arg2, .r3 = (uint32_t)arg3,
-			   .pc = ((uint32_t)entry) | 1, /* set thumb bit! */
-			   .apsr = 0x1000000,           /* thumb bit here too! */
-		};
+
+	/* Written field by field on purpose: assigning a compound literal
+	 * makes the compiler emit a memset() call for the whole frame, which
+	 * costs ~200 instructions with a byte-at-a-time libc implementation.
+	 */
+	IF_ENABLED(CONFIG_BUILTIN_STACK_GUARD, (sw->psplim = baddr;))
+	sw->apsr = 0x1000000; /* thumb bit here too! */
+	sw->r0 = (uint32_t)arg0;
+	sw->r1 = (uint32_t)arg1;
+	sw->r2 = (uint32_t)arg2;
+	sw->r3 = (uint32_t)arg3;
+	sw->r4 = 0;
+	sw->r5 = 0;
+	sw->r6 = 0;
+	sw->r7 = 0;
+	sw->r8 = 0;
+	sw->r9 = 0;
+	sw->r10 = 0;
+	sw->r11 = 0;
+	sw->r12 = 0;
+	sw->lr = 0;
+	sw->pc = ((uint32_t)entry) | 1; /* set thumb bit! */
 
 #ifdef CONFIG_FPU
 	struct z_frame *zf = CONTAINER_OF(sw, struct z_frame, u.sw);
