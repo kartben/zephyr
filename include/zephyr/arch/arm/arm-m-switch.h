@@ -47,6 +47,9 @@
 #define ARM_M_SW_REGS_SZ (16 * 4)
 #define ARM_M_FP_ABOVE_SZ (18 * 4)
 
+/* XPSR bit 9: the CPU inserted 4 bytes of stack alignment padding */
+#define XPSR_STACK_ALIGN_BIT 0x200
+
 /* EXC_RETURN values used when resuming a thread from interrupt exit */
 #define EXC_RETURN_INT 0xfffffffd
 #define EXC_RETURN_FPU 0xffffffed
@@ -372,35 +375,52 @@ static ALWAYS_INLINE void arm_m_switch(void *switch_to, void **switched_from)
 			 "pop {r1};"
 			 "msr psplim, r1;"
 #endif
+	/* Four frame shapes reach here: with or without FPU state above the
+	 * integer frame, each with or without the hardware's 4 byte stack
+	 * alignment padding at the very top.  They differ only in how far SP
+	 * has to step at the end, and the flag registers do not survive the
+	 * register reload, so each gets its own short tail.  Leaving the
+	 * padding in place costs these few instructions instead of shifting
+	 * the whole frame over it on every interrupt that switches.
+	 */
 #ifdef CONFIG_FPU
-			 /* r7 still holds the incoming have_fpu flag.  When
-			  * set, reload the caller-saved half from above the
-			  * integer frame and step SP past it at the end; the
-			  * two shapes need different final immediates, so
-			  * they get one epilogue each.
-			  */
 			 "   cbz r7, 5f;"
-			 "   add r6, sp, %[regsz];"
+			 /* Reload the caller-saved half from above the frame */
+			 "   add r6, sp, %[fpoff];"
 			 "   vldm r6!, {s0-s15};"
 			 "   ldr r6, [r6];"
 			 "   vmsr fpscr, r6;"
 			 "   ldmia sp!, {r4-r11};"
 			 "   ldr r2, [sp, #28];"
+			 "   tst r2, %[padbit];"
+			 "   bne 7f;"
 			 ARM_M_MSR_APSR("r2")
 			 "   ldmia sp!, {r0-r3, r12, lr};"
-			 "   ldr pc, [sp], %[fpskip];"
+			 "   ldr pc, [sp], %[skip_fp];"
+			 "7:;"
+			 ARM_M_MSR_APSR("r2")
+			 "   ldmia sp!, {r0-r3, r12, lr};"
+			 "   ldr pc, [sp], %[skip_fp_pad];"
 			 "5:;"
 #endif
 			 "ldmia sp!, {r4-r11};"
 			 "ldr r2, [sp, #28];" /* APSR */
+			 "tst r2, %[padbit];"
+			 "bne 8f;"
 			 ARM_M_MSR_APSR("r2")
 			 "ldmia sp!, {r0-r3, r12, lr};"
-			 "ldr pc, [sp], #8;"
+			 "ldr pc, [sp], %[skip];"
+			 "8:;"
+			 ARM_M_MSR_APSR("r2")
+			 "ldmia sp!, {r0-r3, r12, lr};"
+			 "ldr pc, [sp], %[skip_pad];"
 
 			 "3:" /* Label for restore address */
 			 _R7_CLOBBER_OPT("pop {r7};")::"r"(r4),
-			 "r"(r5), [regsz] "i"(ARM_M_SW_REGS_SZ),
-			 [fpskip] "i"(8 + ARM_M_FP_ABOVE_SZ)
+			 "r"(r5), [fpoff] "i"(ARM_M_SW_REGS_SZ), [padbit] "i"(XPSR_STACK_ALIGN_BIT),
+			 [skip] "i"(8), [skip_pad] "i"(12),
+			 [skip_fp] "i"(8 + ARM_M_FP_ABOVE_SZ),
+			 [skip_fp_pad] "i"(12 + ARM_M_FP_ABOVE_SZ)
 			 : "r6", "r8", "r9", "r10",
 #ifndef CONFIG_ARM_FP_CLOBBER_WORKAROUND
 			   "r7",

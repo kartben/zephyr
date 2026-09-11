@@ -129,25 +129,6 @@ uint32_t arm_m_switch_control;
  * keeps every suspended frame a uniform size, so the cooperative restore
  * needs no runtime test for it.  Returns the new frame address.
  */
-static struct hw_frame_base *unpad_frame(struct hw_frame_base *hw, bool fpu)
-{
-	uint32_t *w = (uint32_t *)hw;
-	int words = (IS_ENABLED(CONFIG_FPU) && fpu)
-			    ? (int)(sizeof(struct hw_frame_fpu) / sizeof(uint32_t))
-			    : (int)(sizeof(struct hw_frame_base) / sizeof(uint32_t));
-
-	if ((hw->apsr & XPSR_STACK_ALIGN) == 0U) {
-		return hw;
-	}
-
-	for (int i = words - 1; i >= 0; i--) {
-		w[i + 1] = w[i];
-	}
-
-	hw = (struct hw_frame_base *)&w[1];
-	hw->apsr &= ~XPSR_STACK_ALIGN;
-	return hw;
-}
 
 /* The arch/cpu/toolchain are horrifyingly inconsistent with how the
  * thumb bit is treated in runtime addresses.  The PC target for a B
@@ -314,12 +295,14 @@ static void *arm_m_cpu_to_switch(struct k_thread *th, void *sp, bool fpu)
 	iciit_fixup(th, base, base->apsr);
 
 	/* The hardware frame already is the top of a switch frame.  All
-	 * that remains is to normalize away the alignment padding and to
-	 * set the thumb bit, which the software restore path branches
-	 * through (the hardware ignores it on exception return).
+	 * that remains is to set the thumb bit, which the software restore
+	 * path branches through (the hardware ignores it on exception
+	 * return).  The hardware's alignment padding is left in place and
+	 * the restore reads XPSR bit 9 to know whether to step over it,
+	 * which is far cheaper than shifting the frame over it here.
 	 */
-	base = unpad_frame(base, fpu);
 	base->pc |= 1;
+	ARG_UNUSED(fpu);
 
 	sw = CONTAINER_OF(base, struct switch_frame, base);
 
@@ -419,7 +402,7 @@ void *arm_m_new_stack(char *base, uint32_t sz, void *entry, void *arg0, void *ar
 #endif
 }
 
-bool arm_m_do_switch(struct k_thread *last_thread, void *next);
+static bool arm_m_do_switch(struct k_thread *last_thread, void *next);
 
 bool arm_m_must_switch(void)
 {
@@ -452,7 +435,7 @@ bool arm_m_must_switch(void)
 	return true;
 }
 
-bool arm_m_do_switch(struct k_thread *last_thread, void *next)
+static bool arm_m_do_switch(struct k_thread *last_thread, void *next)
 {
 	void *last;
 	bool fpu = fpu_state_pushed((uint32_t)arm_m_cs_ptrs.lr_save);
