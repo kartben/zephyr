@@ -30,6 +30,10 @@
 #include <kernel_arch_data.h>
 #include <kernel_offsets.h>
 
+#if defined(CONFIG_CPU_CORTEX_M) && defined(CONFIG_USE_SWITCH)
+GEN_OFFSET_SYM(_thread_arch_t, iciit_pc);
+#endif
+
 #if !(defined(CONFIG_CPU_CORTEX_M) && defined(CONFIG_USE_SWITCH))
 GEN_OFFSET_SYM(_thread_arch_t, basepri);
 GEN_OFFSET_SYM(_thread_arch_t, swap_return_value);

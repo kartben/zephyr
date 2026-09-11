@@ -6,6 +6,8 @@
  */
 #include <zephyr/sys/util.h>
 #include <ksched.h>
+#include <offsets_short.h>
+#include <zephyr/arch/arm/cortex_m/exception.h>
 
 /* The basic exception frame, popped by the hardware during return */
 struct hw_frame_base {
@@ -519,10 +521,82 @@ void arm_m_legacy_exit(void)
  * we synthesize a integer-only EXC_RETURN as FPU state switching was
  * handled in software already.
  */
+/* The assembly fast path below handles a plain integer context switch on a
+ * uniprocessor build with nothing else hooked into the switch.  Anything
+ * outside that is left to arm_m_must_switch() and the C code it calls.
+ * FPU builds are excluded outright rather than tested at runtime: there the
+ * switch handle points at the have_fpu word rather than at the frame, so the
+ * layout this code assumes does not hold even for a thread without FP
+ * state.  Thread local storage is cheap enough to carry here rather than
+ * disqualify the path, since picolibc turns it on in almost every build.
+ */
+#if !defined(CONFIG_SMP) && !defined(CONFIG_USERSPACE) && !defined(CONFIG_FPU) &&     \
+	!defined(CONFIG_MPU_STACK_GUARD) && !defined(CONFIG_BUILTIN_STACK_GUARD) &&  \
+	!defined(CONFIG_INSTRUMENT_THREAD_SWITCHING) &&                             \
+	!defined(CONFIG_SCHED_THREAD_USAGE) && !defined(CONFIG_ARM_SECURE_FIRMWARE) \
+	&& !defined(CONFIG_ARM_NONSECURE_FIRMWARE)
+#define ARM_M_EXC_EXIT_FASTPATH
+#endif
+
 #ifdef CONFIG_MULTITHREADING
 __attribute__((naked)) void arm_m_exc_exit(void)
 {
-	__asm__("  bl arm_m_must_switch;"
+	__asm__(
+#ifdef ARM_M_EXC_EXIT_FASTPATH
+		/* Take the lock first, exactly as arm_m_must_switch() does,
+		 * so the decision below cannot race a higher priority ISR.
+		 */
+		"  mov r3, %[pri];"
+		"  msr basepri, r3;"
+		"  ldr r2, =arm_m_cs_ptrs;"
+		"  ldr r1, =_kernel;"
+		"  ldr r0, [r1, %[cur]];"
+		"  ldr r3, [r1, %[cache]];"
+		"  cmp r0, r3;"
+		"  beq 2f;" /* nothing new to run */
+		"  ldr r1, [r3, %[iciit]];" /* incoming ICI/IT fixup pending? */
+		"  cbnz r1, 3f;"
+		"  mrs r12, psp;"
+		"  ldr r1, [r12, #28];" /* outgoing XPSR: did we interrupt an */
+		"  tst r1, #0x06000000;" /* ICI/IT instruction?  The two EPSR */
+		"  bne 3f;"              /* fields cannot be tested together, */
+		"  tst r1, #0x0000fc00;" /* neither mask is a valid immediate */
+		"  bne 3f;"
+
+		/* The hardware frame already is the top of a switch frame, so
+		 * the whole switch is: stash the callee-saved block under it,
+		 * publish the handle, and pick the incoming one back up.
+		 */
+		"  ldr r1, [r12, #24];" /* PC, needs the thumb bit for the */
+		"  orr r1, r1, #1;"     /* software restore path */
+		"  str r1, [r12, #24];"
+		"  sub r12, r12, #32;"
+		"  stm r12, {r4-r11};"
+		"  str r12, [r0, %[handle]];"
+#ifdef CONFIG_THREAD_LOCAL_STORAGE
+		"  ldr r1, [r3, %[tls]];"
+		"  ldr r0, =z_arm_tls_ptr;"
+		"  str r1, [r0];"
+#endif
+		"  ldr r1, =_kernel;"
+		"  str r3, [r1, %[cur]];" /* set_current(next) */
+		"  ldr r12, [r3, %[handle]];"
+		"  ldm r12, {r4-r11};"
+		"  add r12, r12, #32;"
+		"  msr psp, r12;"
+		"  mov r3, #0;"
+		"  msr basepri, r3;"
+		"  mvn lr, #2;" /* 0xfffffffd, integer-only EXC_RETURN */
+		"  bx lr;"
+
+		"2:;" /* no switch: drop the lock and return the way we came */
+		"  mov r3, #0;"
+		"  msr basepri, r3;"
+		"  ldr lr, [r2, #8];"
+		"  bx lr;"
+		"3:;" /* anything the fast path does not cover */
+#endif /* ARM_M_EXC_EXIT_FASTPATH */
+		"  bl arm_m_must_switch;"
 		"  ldr r2, =arm_m_cs_ptrs;"
 		"  mov r3, #0;"
 		"  ldr lr, [r2, #8];" /* lr_save */
@@ -535,11 +609,22 @@ __attribute__((naked)) void arm_m_exc_exit(void)
 #else
 		"  mov lr, #0xfffffffd;" /* integer-only LR */
 #endif
-		"  ldm r2, {r0, r1};"    /* fields: out, in */
-		"  stm r0, {r4-r11};"    /* both are switch frames now, so the */
-		"  ldm r1, {r4-r11};"    /* callee-saved block is contiguous */
+		"  ldm r2, {r0, r1};" /* fields: out, in */
+		"  stm r0, {r4-r11};" /* both are switch frames now, so the */
+		"  ldm r1, {r4-r11};" /* callee-saved block is contiguous */
 		"1:\n"
 		"  msr basepri, r3;" /* release lock taken in must_switch */
-		"  bx lr;");
+		"  bx lr;"
+#ifdef ARM_M_EXC_EXIT_FASTPATH
+		::[pri] "i"(_EXC_IRQ_DEFAULT_PRIO), [cur] "i"(_kernel_offset_to_current),
+		[cache] "i"(_kernel_offset_to_ready_q_cache),
+		[handle] "i"(___thread_t_switch_handle_OFFSET),
+		[iciit] "i"(___thread_t_arch_OFFSET + ___thread_arch_t_iciit_pc_OFFSET)
+#ifdef CONFIG_THREAD_LOCAL_STORAGE
+		, [tls] "i"(___thread_t_tls_OFFSET)
+#endif
+
+#endif
+	);
 }
 #endif
