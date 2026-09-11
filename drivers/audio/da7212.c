@@ -78,6 +78,96 @@ static void da7212_soft_reset(const struct device *dev)
 			(uint8_t)DIALOG7212_CIF_CTRL_CIF_REG_SOFT_RESET_MASK);
 }
 
+/* Indexes into the "clock-source" enum of the binding. */
+#define DA7212_CLOCK_SOURCE_MCLK    0
+#define DA7212_CLOCK_SOURCE_PLL     1
+#define DA7212_CLOCK_SOURCE_PLL_SRM 2
+
+/* System clock each sample rate family is derived from. */
+#define DA7212_SYSCLK_44K1_FAMILY 11289600
+#define DA7212_SYSCLK_48K_FAMILY  12288000
+
+/* The PLL feedback divider is an unsigned 7.13 fixed point number. */
+#define DA7212_PLL_FBDIV_FRAC_BITS 13
+#define DA7212_PLL_FBDIV_MAX       128
+
+/* The VCO runs at eight times the system clock. */
+#define DA7212_PLL_VCO_RATIO 8
+
+static void da7212_pll_bypass(const struct device *dev)
+{
+	da7212_write_reg(dev, DIALOG7212_PLL_FRAC_TOP, 0);
+	da7212_write_reg(dev, DIALOG7212_PLL_FRAC_BOT, 0);
+	da7212_write_reg(dev, DIALOG7212_PLL_INTEGER,
+			DIALOG7212_PLL_FBDIV_INTEGER_RESET_VALUE);
+	da7212_write_reg(dev, DIALOG7212_PLL_CTRL, 0);
+}
+
+static int da7212_clock_config(const struct device *dev, uint32_t mclk_freq,
+				uint32_t sample_rate)
+{
+	const struct da7212_driver_config *const dev_cfg = DEV_CFG(dev);
+	uint32_t sysclk;
+	uint32_t indiv;
+	uint32_t fref;
+	uint64_t fbdiv;
+	uint32_t frac;
+	uint8_t ctrl;
+
+	if (dev_cfg->clock_source == DA7212_CLOCK_SOURCE_MCLK) {
+		/* MCLK is already at a system clock frequency, use it as is. */
+		da7212_pll_bypass(dev);
+		return 0;
+	}
+
+	if (sample_rate == 11025 || sample_rate == 22050 || sample_rate == 44100 ||
+	    sample_rate == 88200) {
+		sysclk = DA7212_SYSCLK_44K1_FAMILY;
+	} else {
+		sysclk = DA7212_SYSCLK_48K_FAMILY;
+	}
+
+	/* Bring MCLK down to the 2 to 5 MHz the PLL reference needs. */
+	if (mclk_freq >= MHZ(40)) {
+		indiv = 3;
+	} else if (mclk_freq >= MHZ(20)) {
+		indiv = 2;
+	} else if (mclk_freq >= MHZ(10)) {
+		indiv = 1;
+	} else if (mclk_freq >= MHZ(2)) {
+		indiv = 0;
+	} else {
+		LOG_ERR("MCLK %u Hz is below the 2 MHz the PLL accepts", mclk_freq);
+		return -EINVAL;
+	}
+
+	fref = mclk_freq >> (indiv + 1);
+
+	fbdiv = (((uint64_t)sysclk * DA7212_PLL_VCO_RATIO) << DA7212_PLL_FBDIV_FRAC_BITS) / fref;
+	if ((fbdiv >> DA7212_PLL_FBDIV_FRAC_BITS) > DA7212_PLL_FBDIV_MAX) {
+		LOG_ERR("MCLK %u Hz needs a PLL feedback divider the codec cannot reach",
+			mclk_freq);
+		return -EINVAL;
+	}
+
+	frac = (uint32_t)fbdiv & BIT_MASK(DA7212_PLL_FBDIV_FRAC_BITS);
+
+	ctrl = DIALOG7212_PLL_EN_MASK | (uint8_t)(indiv << DIALOG7212_PLL_INDIV_SHIFT);
+	if (dev_cfg->clock_source == DA7212_CLOCK_SOURCE_PLL_SRM) {
+		ctrl |= DIALOG7212_PLL_SRM_EN_MASK;
+	}
+
+	da7212_write_reg(dev, DIALOG7212_PLL_FRAC_TOP, (uint8_t)(frac >> 8));
+	da7212_write_reg(dev, DIALOG7212_PLL_FRAC_BOT, (uint8_t)(frac & 0xFF));
+	da7212_write_reg(dev, DIALOG7212_PLL_INTEGER,
+			(uint8_t)(fbdiv >> DA7212_PLL_FBDIV_FRAC_BITS));
+	da7212_write_reg(dev, DIALOG7212_PLL_CTRL, ctrl);
+
+	LOG_DBG("PLL: MCLK %u Hz, SYSCLK %u Hz, ctrl %#x", mclk_freq, sysclk, ctrl);
+
+	return 0;
+}
+
 static int da7212_clock_mode_config(const struct device *dev, audio_dai_cfg_t *cfg)
 {
 	uint8_t val = 0;
@@ -515,6 +605,7 @@ static void da7212_configure_input(const struct device *dev)
 static int da7212_configure(const struct device *dev, struct audio_codec_cfg *cfg)
 {
 	const struct da7212_driver_config *const dev_cfg = DEV_CFG(dev);
+	int ret;
 
 	if (cfg->dai_type >= AUDIO_DAI_TYPE_INVALID) {
 		LOG_ERR("dai_type not supported");
@@ -525,17 +616,14 @@ static int da7212_configure(const struct device *dev, struct audio_codec_cfg *cf
 		return 0;
 	}
 
-	if (dev_cfg->clock_source == 0) {
-		int err = clock_control_on(dev_cfg->mclk_dev, dev_cfg->mclk_name);
+	ret = clock_control_on(dev_cfg->mclk_dev, dev_cfg->mclk_name);
+	if (ret < 0) {
+		LOG_ERR("MCLK clock source enable fail: %d", ret);
+	}
 
-		if (err < 0) {
-			LOG_ERR("MCLK clock source enable fail: %d", err);
-		}
-		err = clock_control_get_rate(dev_cfg->mclk_dev, dev_cfg->mclk_name,
-				&cfg->mclk_freq);
-		if (err < 0) {
-			LOG_ERR("MCLK clock source freq acquire fail: %d", err);
-		}
+	ret = clock_control_get_rate(dev_cfg->mclk_dev, dev_cfg->mclk_name, &cfg->mclk_freq);
+	if (ret < 0) {
+		LOG_ERR("MCLK clock source freq acquire fail: %d", ret);
 	}
 
 	da7212_soft_reset(dev);
@@ -555,12 +643,11 @@ static int da7212_configure(const struct device *dev, struct audio_codec_cfg *cf
 	da7212_write_reg(dev, DIALOG7212_REFERENCES,
 			(uint8_t)DIALOG7212_REFERENCES_BIAS_EN_MASK);
 
-	/* Keep PLL disable, use MCLK as system clock. */
-	da7212_write_reg(dev, DIALOG7212_PLL_FRAC_TOP, 0);
-	da7212_write_reg(dev, DIALOG7212_PLL_FRAC_BOT, 0);
-	da7212_write_reg(dev, DIALOG7212_PLL_INTEGER,
-			DIALOG7212_PLL_FBDIV_INTEGER_RESET_VALUE);
-	da7212_write_reg(dev, DIALOG7212_PLL_CTRL, 0x0);
+	/* Clock the codec, either straight from MCLK or through the PLL. */
+	ret = da7212_clock_config(dev, cfg->mclk_freq, cfg->dai_cfg.i2s.frame_clk_freq);
+	if (ret < 0) {
+		return ret;
+	}
 
 	/* Set default clock mode to slave, BCLK number per WCLK = 64 */
 	da7212_write_reg(dev, DIALOG7212_DAI_CLK_MODE,
@@ -657,8 +744,8 @@ static DEVICE_API(audio_codec, da7212_driver_api) = {
 		.i2c = I2C_DT_SPEC_INST_GET(n),						\
 		.clock_source = DT_INST_ENUM_IDX(n, clock_source),			\
 		.mclk_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR_BY_NAME(n, mclk)),	\
-		.mclk_name = (clock_control_subsys_t)DT_INST_CLOCKS_CELL_BY_NAME(n,	\
-								 mclk, name)};		\
+		.mclk_name = (clock_control_subsys_t)DT_INST_PHA_BY_NAME_OR(n,		\
+								 clocks, mclk, name, 0)};	\
 											\
 	DEVICE_DT_INST_DEFINE(n, NULL, NULL, NULL, &da7212_device_config_##n,		\
 		POST_KERNEL, CONFIG_AUDIO_CODEC_INIT_PRIORITY, &da7212_driver_api);
