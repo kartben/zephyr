@@ -1088,9 +1088,12 @@ config USE_SWITCH
 	  The _arch_switch() API is a lower level context switching
 	  primitive than the original arch_swap mechanism.  It is required
 	  for an SMP-aware scheduler, or if the architecture does not
-	  provide arch_swap.  In uniprocess situations where the
-	  architecture provides both, _arch_switch incurs more somewhat
-	  overhead and may be slower.
+	  provide arch_swap.  Where an architecture provides both, which one
+	  is faster depends on the architecture: _arch_switch is usually the
+	  better choice when arch_swap is implemented on top of an exception,
+	  since it switches in the thread's own context instead.  It normally
+	  costs some code size, as the switch sequence is inlined at every
+	  call site.
 
 config USE_SWITCH_SUPPORTED
 	bool
