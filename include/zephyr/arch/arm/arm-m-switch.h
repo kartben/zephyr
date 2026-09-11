@@ -263,25 +263,24 @@ static ALWAYS_INLINE void arm_m_switch(void *switch_to, void **switched_from)
 	register uint32_t r4 __asm__("r4") = (uint32_t)switch_to;
 	register uint32_t r5 __asm__("r5") = (uint32_t)switched_from;
 	__asm__ volatile(_R7_CLOBBER_OPT("push {r7};")
-			 /* Construct and push a {r12, lr, pc} group at the top
-			  * of the frame, where PC points to the final restore location
-			  * at the end of this sequence.
+			 /* Build a frame whose top eight words are laid out
+			  * exactly as a hardware exception frame, so that the
+			  * interrupt paths never have to convert between the
+			  * two formats.  PC points at the restore location at
+			  * the end of this sequence.
 			  */
-			 "mov r6, r12;"
-			 "mov r7, lr;"
-			 "ldr r8, =3f;"    /* address of restore PC */
-			 "orr r8, r8, #1;" /* set thumb bit */
-			 "push {r6-r8};"
+			 "ldr r6, =3f;"    /* address of restore PC */
+			 "orr r6, r6, #1;" /* set thumb bit */
+			 "mov r8, #0x01000000;" /* APSR (only care about thumb bit) */
+			 "push {r6, r8};"       /* pc, then apsr above it */
+			 "stmdb sp!, {r0-r3, r12, lr};"
 			 "sub sp, sp, #24;" /* skip over space for r6-r11 */
-			 "push {r0-r5};"
-			 "mov r2, #0x01000000;" /* APSR (only care about thumb bit) */
-			 "mov r0, #0;"          /* Leave r0 zero for code blow */
+			 "push {r4, r5};"
+			 "mov r0, #0;"      /* Leave r0 zero for code below */
 #ifdef CONFIG_BUILTIN_STACK_GUARD
 			 "mrs r1, psplim;"
-			 "push {r1-r2};"
+			 "push {r1};"
 			 "msr psplim, r0;" /* zero it so we can move the stack */
-#else
-			 "push {r2};"
 #endif
 
 #ifdef CONFIG_FPU
@@ -323,24 +322,25 @@ static ALWAYS_INLINE void arm_m_switch(void *switch_to, void **switched_from)
 			 "  msr control, r8;" /* Now we can drop privilege */
 #endif
 
-	/* Restore is super simple: pop the flags (and stack limit if
-	 * enabled) then slurp in the whole GPR set in two
-	 * instructions. (The instruction encoding disallows popping
-	 * both LR and PC in a single instruction)
+	/* Restore: the stack limit (if enabled) and the callee-saved
+	 * block come off first, then the flags are read out of the
+	 * hardware-format part of the frame before the registers holding
+	 * it are reloaded.  The final load skips the APSR word that sits
+	 * above PC in hardware layout.
 	 */
 #ifdef CONFIG_BUILTIN_STACK_GUARD
-			 "pop {r1-r2};"
+			 "pop {r1};"
 			 "msr psplim, r1;"
-#else
-			 "pop {r2};"
 #endif
+			 "ldmia sp!, {r4-r11};"
+			 "ldr r2, [sp, #28];" /* APSR */
 #ifdef _ARM_M_SWITCH_HAVE_DSP
 			 "msr apsr_nzcvqg, r2;" /* bonkers syntax */
 #else
 			 "msr apsr_nzcvq, r2;" /* not even source-compatible! */
 #endif
-			 "pop {r0-r12, lr};"
-			 "pop {pc};"
+			 "ldmia sp!, {r0-r3, r12, lr};"
+			 "ldr pc, [sp], #8;"
 
 			 "3:" /* Label for restore address */
 			 _R7_CLOBBER_OPT("pop {r7};")::"r"(r4),
