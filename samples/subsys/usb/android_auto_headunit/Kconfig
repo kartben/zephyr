@@ -223,6 +223,17 @@ config SAMPLE_AA_HU_MAX_UNACKED
 	default 1
 	range 1 16
 
+config SAMPLE_AA_HU_NIGHT_BUTTON
+	bool "Switch night mode with the board's user button"
+	depends on INPUT
+	depends on $(dt_alias_enabled,sw0)
+	default y
+	help
+	  Report the head unit as having gone dark, and light again, each time
+	  the button behind the sw0 alias is pressed, so that the phone can be
+	  made to switch between its day and night themes without a light
+	  sensor to cover.
+
 config SAMPLE_AA_HU_TOF_NIGHT
 	bool "Drive night mode from a time-of-flight ranger"
 	depends on SENSOR && SENSOR_ASYNC_API
