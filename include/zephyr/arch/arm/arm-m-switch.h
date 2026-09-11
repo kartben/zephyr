@@ -32,6 +32,32 @@
  * When absolutely needed, this kconfig unmasks a workaround where we
  * spill/fill R7 around the switch manually.
  */
+/* Size of struct switch_frame, and of the hardware FP sub-frame that sits
+ * directly above it (s0-s15, FPSCR, reserved).  The .c file asserts these
+ * against the actual structs; the inline assembly below needs them as
+ * literals.
+ */
+#ifdef CONFIG_BUILTIN_STACK_GUARD
+#define ARM_M_SW_FRAME_SZ (17 * 4)
+#else
+#define ARM_M_SW_FRAME_SZ (16 * 4)
+#endif
+
+/* Same, but past the psplim slot, which the restore pops separately */
+#define ARM_M_SW_REGS_SZ (16 * 4)
+#define ARM_M_FP_ABOVE_SZ (18 * 4)
+
+/* EXC_RETURN values used when resuming a thread from interrupt exit */
+#define EXC_RETURN_INT 0xfffffffd
+#define EXC_RETURN_FPU 0xffffffed
+
+/* The DSP extension changes the mnemonic for restoring the flags */
+#if defined(CONFIG_CPU_CORTEX_M4) || defined(CONFIG_CPU_CORTEX_M7) || defined(CONFIG_ARMV8_M_DSP)
+#define ARM_M_MSR_APSR(r) "msr apsr_nzcvqg, " r ";"
+#else
+#define ARM_M_MSR_APSR(r) "msr apsr_nzcvq, " r ";"
+#endif
+
 #ifdef CONFIG_ARM_FP_CLOBBER_WORKAROUND
 #define _R7_CLOBBER_OPT(expr) expr
 #else
@@ -138,6 +164,8 @@ extern uint32_t arm_m_switch_stack_buffer;
 struct arm_m_cs_ptrs {
 	/** Pointer to the callee-saved block being written by the outgoing thread */
 	void *out, *in, *lr_save, *lr_fixup;
+	/** EXC_RETURN to resume the incoming thread with, FP state or not */
+	void *exc_lr;
 };
 /** @endcond */
 
@@ -263,6 +291,24 @@ static ALWAYS_INLINE void arm_m_switch(void *switch_to, void **switched_from)
 	register uint32_t r4 __asm__("r4") = (uint32_t)switch_to;
 	register uint32_t r5 __asm__("r5") = (uint32_t)switched_from;
 	__asm__ volatile(_R7_CLOBBER_OPT("push {r7};")
+#ifdef CONFIG_FPU
+			 /* If this thread holds FPU context, lay the caller-
+			  * saved half out above the integer frame in exactly
+			  * the format the hardware pushes, so that a later
+			  * resume from interrupt exit can pop it for free.
+			  * r7 keeps the flag across the integer push.
+			  */
+			 "   mrs r8, control;" /* read CONTROL.FPCA */
+			 "   and r7, r8, #4;" /* r7 == have_fpu, cbz needs a low reg */
+			 "   cbz r7, 4f;"
+			 "   bic r8, r8, #4;" /* clear CONTROL.FPCA */
+			 "   msr control, r8;"
+			 "   sub sp, sp, #4;" /* reserved word */
+			 "   vmrs r6, fpscr;"
+			 "   push {r6};"
+			 "   vpush {s0-s15};"
+			 "4:;"
+#endif
 			 /* Build a frame whose top eight words are laid out
 			  * exactly as a hardware exception frame, so that the
 			  * interrupt paths never have to convert between the
@@ -284,23 +330,17 @@ static ALWAYS_INLINE void arm_m_switch(void *switch_to, void **switched_from)
 #endif
 
 #ifdef CONFIG_FPU
-			 /* Push FPU state (if active) to our outgoing stack */
-			 "   mrs r8, control;" /* read CONTROL.FPCA */
-			 "   and r7, r8, #4;"  /* r7 == have_fpu */
+			 /* Spill the callee-saved half below the frame and
+			  * record whether there is FPU state at all.
+			  */
 			 "   cbz r7, 1f;"
-			 "   bic r8, r8, #4;" /* clear CONTROL.FPCA */
-			 "   msr control, r8;"
-			 "   vmrs r6, fpscr;"
-			 "   push {r6};"
-			 "   vpush {s0-s31};"
+			 "   vpush {s16-s31};"
 			 "1: push {r7};" /* have_fpu word */
 
-			 /* Pop FPU state (if present) from incoming frame in r4 */
-			 "   ldm r4!, {r7};" /* have_fpu word */
+			 /* Incoming handle in r4 points at its have_fpu word */
+			 "   ldm r4!, {r7};"
 			 "   cbz r7, 2f;"
-			 "   vldm r4!, {s0-s31};" /* (note: sets FPCA bit for us) */
-			 "   ldm r4!, {r6};"
-			 "   vmsr fpscr, r6;"
+			 "   vldm r4!, {s16-s31};" /* (note: sets FPCA for us) */
 			 "2:;"
 #endif
 
@@ -332,19 +372,35 @@ static ALWAYS_INLINE void arm_m_switch(void *switch_to, void **switched_from)
 			 "pop {r1};"
 			 "msr psplim, r1;"
 #endif
+#ifdef CONFIG_FPU
+			 /* r7 still holds the incoming have_fpu flag.  When
+			  * set, reload the caller-saved half from above the
+			  * integer frame and step SP past it at the end; the
+			  * two shapes need different final immediates, so
+			  * they get one epilogue each.
+			  */
+			 "   cbz r7, 5f;"
+			 "   add r6, sp, %[regsz];"
+			 "   vldm r6!, {s0-s15};"
+			 "   ldr r6, [r6];"
+			 "   vmsr fpscr, r6;"
+			 "   ldmia sp!, {r4-r11};"
+			 "   ldr r2, [sp, #28];"
+			 ARM_M_MSR_APSR("r2")
+			 "   ldmia sp!, {r0-r3, r12, lr};"
+			 "   ldr pc, [sp], %[fpskip];"
+			 "5:;"
+#endif
 			 "ldmia sp!, {r4-r11};"
 			 "ldr r2, [sp, #28];" /* APSR */
-#ifdef _ARM_M_SWITCH_HAVE_DSP
-			 "msr apsr_nzcvqg, r2;" /* bonkers syntax */
-#else
-			 "msr apsr_nzcvq, r2;" /* not even source-compatible! */
-#endif
+			 ARM_M_MSR_APSR("r2")
 			 "ldmia sp!, {r0-r3, r12, lr};"
 			 "ldr pc, [sp], #8;"
 
 			 "3:" /* Label for restore address */
 			 _R7_CLOBBER_OPT("pop {r7};")::"r"(r4),
-			 "r"(r5)
+			 "r"(r5), [regsz] "i"(ARM_M_SW_REGS_SZ),
+			 [fpskip] "i"(8 + ARM_M_FP_ABOVE_SZ)
 			 : "r6", "r8", "r9", "r10",
 #ifndef CONFIG_ARM_FP_CLOBBER_WORKAROUND
 			   "r7",
