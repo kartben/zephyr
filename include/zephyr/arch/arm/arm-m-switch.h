@@ -32,6 +32,35 @@
  * When absolutely needed, this kconfig unmasks a workaround where we
  * spill/fill R7 around the switch manually.
  */
+/* Size of struct switch_frame, and of the hardware FP sub-frame that sits
+ * directly above it (s0-s15, FPSCR, reserved).  The .c file asserts these
+ * against the actual structs; the inline assembly below needs them as
+ * literals.
+ */
+#ifdef CONFIG_BUILTIN_STACK_GUARD
+#define ARM_M_SW_FRAME_SZ (17 * 4)
+#else
+#define ARM_M_SW_FRAME_SZ (16 * 4)
+#endif
+
+/* Same, but past the psplim slot, which the restore pops separately */
+#define ARM_M_SW_REGS_SZ (16 * 4)
+#define ARM_M_FP_ABOVE_SZ (18 * 4)
+
+/* XPSR bit 9: the CPU inserted 4 bytes of stack alignment padding */
+#define XPSR_STACK_ALIGN_BIT 0x200
+
+/* EXC_RETURN values used when resuming a thread from interrupt exit */
+#define EXC_RETURN_INT 0xfffffffd
+#define EXC_RETURN_FPU 0xffffffed
+
+/* The DSP extension changes the mnemonic for restoring the flags */
+#if defined(CONFIG_CPU_CORTEX_M4) || defined(CONFIG_CPU_CORTEX_M7) || defined(CONFIG_ARMV8_M_DSP)
+#define ARM_M_MSR_APSR(r) "msr apsr_nzcvqg, " r ";"
+#else
+#define ARM_M_MSR_APSR(r) "msr apsr_nzcvq, " r ";"
+#endif
+
 #ifdef CONFIG_ARM_FP_CLOBBER_WORKAROUND
 #define _R7_CLOBBER_OPT(expr) expr
 #else
@@ -138,6 +167,8 @@ extern uint32_t arm_m_switch_stack_buffer;
 struct arm_m_cs_ptrs {
 	/** Pointer to the callee-saved block being written by the outgoing thread */
 	void *out, *in, *lr_save, *lr_fixup;
+	/** EXC_RETURN to resume the incoming thread with, FP state or not */
+	void *exc_lr;
 };
 /** @endcond */
 
@@ -263,45 +294,56 @@ static ALWAYS_INLINE void arm_m_switch(void *switch_to, void **switched_from)
 	register uint32_t r4 __asm__("r4") = (uint32_t)switch_to;
 	register uint32_t r5 __asm__("r5") = (uint32_t)switched_from;
 	__asm__ volatile(_R7_CLOBBER_OPT("push {r7};")
-			 /* Construct and push a {r12, lr, pc} group at the top
-			  * of the frame, where PC points to the final restore location
-			  * at the end of this sequence.
+#ifdef CONFIG_FPU
+			 /* If this thread holds FPU context, lay the caller-
+			  * saved half out above the integer frame in exactly
+			  * the format the hardware pushes, so that a later
+			  * resume from interrupt exit can pop it for free.
+			  * r7 keeps the flag across the integer push.
 			  */
-			 "mov r6, r12;"
-			 "mov r7, lr;"
-			 "ldr r8, =3f;"    /* address of restore PC */
-			 "orr r8, r8, #1;" /* set thumb bit */
-			 "push {r6-r8};"
+			 "   mrs r8, control;" /* read CONTROL.FPCA */
+			 "   and r7, r8, #4;" /* r7 == have_fpu, cbz needs a low reg */
+			 "   cbz r7, 4f;"
+			 "   bic r8, r8, #4;" /* clear CONTROL.FPCA */
+			 "   msr control, r8;"
+			 "   sub sp, sp, #4;" /* reserved word */
+			 "   vmrs r6, fpscr;"
+			 "   push {r6};"
+			 "   vpush {s0-s15};"
+			 "4:;"
+#endif
+			 /* Build a frame whose top eight words are laid out
+			  * exactly as a hardware exception frame, so that the
+			  * interrupt paths never have to convert between the
+			  * two formats.  PC points at the restore location at
+			  * the end of this sequence.
+			  */
+			 "ldr r6, =3f;"    /* address of restore PC */
+			 "orr r6, r6, #1;" /* set thumb bit */
+			 "mov r8, #0x01000000;" /* APSR (only care about thumb bit) */
+			 "push {r6, r8};"       /* pc, then apsr above it */
+			 "stmdb sp!, {r0-r3, r12, lr};"
 			 "sub sp, sp, #24;" /* skip over space for r6-r11 */
-			 "push {r0-r5};"
-			 "mov r2, #0x01000000;" /* APSR (only care about thumb bit) */
-			 "mov r0, #0;"          /* Leave r0 zero for code blow */
+			 "push {r4, r5};"
+			 "mov r0, #0;"      /* Leave r0 zero for code below */
 #ifdef CONFIG_BUILTIN_STACK_GUARD
 			 "mrs r1, psplim;"
-			 "push {r1-r2};"
+			 "push {r1};"
 			 "msr psplim, r0;" /* zero it so we can move the stack */
-#else
-			 "push {r2};"
 #endif
 
 #ifdef CONFIG_FPU
-			 /* Push FPU state (if active) to our outgoing stack */
-			 "   mrs r8, control;" /* read CONTROL.FPCA */
-			 "   and r7, r8, #4;"  /* r7 == have_fpu */
+			 /* Spill the callee-saved half below the frame and
+			  * record whether there is FPU state at all.
+			  */
 			 "   cbz r7, 1f;"
-			 "   bic r8, r8, #4;" /* clear CONTROL.FPCA */
-			 "   msr control, r8;"
-			 "   vmrs r6, fpscr;"
-			 "   push {r6};"
-			 "   vpush {s0-s31};"
+			 "   vpush {s16-s31};"
 			 "1: push {r7};" /* have_fpu word */
 
-			 /* Pop FPU state (if present) from incoming frame in r4 */
-			 "   ldm r4!, {r7};" /* have_fpu word */
+			 /* Incoming handle in r4 points at its have_fpu word */
+			 "   ldm r4!, {r7};"
 			 "   cbz r7, 2f;"
-			 "   vldm r4!, {s0-s31};" /* (note: sets FPCA bit for us) */
-			 "   ldm r4!, {r6};"
-			 "   vmsr fpscr, r6;"
+			 "   vldm r4!, {s16-s31};" /* (note: sets FPCA for us) */
 			 "2:;"
 #endif
 
@@ -323,28 +365,62 @@ static ALWAYS_INLINE void arm_m_switch(void *switch_to, void **switched_from)
 			 "  msr control, r8;" /* Now we can drop privilege */
 #endif
 
-	/* Restore is super simple: pop the flags (and stack limit if
-	 * enabled) then slurp in the whole GPR set in two
-	 * instructions. (The instruction encoding disallows popping
-	 * both LR and PC in a single instruction)
+	/* Restore: the stack limit (if enabled) and the callee-saved
+	 * block come off first, then the flags are read out of the
+	 * hardware-format part of the frame before the registers holding
+	 * it are reloaded.  The final load skips the APSR word that sits
+	 * above PC in hardware layout.
 	 */
 #ifdef CONFIG_BUILTIN_STACK_GUARD
-			 "pop {r1-r2};"
+			 "pop {r1};"
 			 "msr psplim, r1;"
-#else
-			 "pop {r2};"
 #endif
-#ifdef _ARM_M_SWITCH_HAVE_DSP
-			 "msr apsr_nzcvqg, r2;" /* bonkers syntax */
-#else
-			 "msr apsr_nzcvq, r2;" /* not even source-compatible! */
+	/* Four frame shapes reach here: with or without FPU state above the
+	 * integer frame, each with or without the hardware's 4 byte stack
+	 * alignment padding at the very top.  They differ only in how far SP
+	 * has to step at the end, and the flag registers do not survive the
+	 * register reload, so each gets its own short tail.  Leaving the
+	 * padding in place costs these few instructions instead of shifting
+	 * the whole frame over it on every interrupt that switches.
+	 */
+#ifdef CONFIG_FPU
+			 "   cbz r7, 5f;"
+			 /* Reload the caller-saved half from above the frame */
+			 "   add r6, sp, %[fpoff];"
+			 "   vldm r6!, {s0-s15};"
+			 "   ldr r6, [r6];"
+			 "   vmsr fpscr, r6;"
+			 "   ldmia sp!, {r4-r11};"
+			 "   ldr r2, [sp, #28];"
+			 "   tst r2, %[padbit];"
+			 "   bne 7f;"
+			 ARM_M_MSR_APSR("r2")
+			 "   ldmia sp!, {r0-r3, r12, lr};"
+			 "   ldr pc, [sp], %[skip_fp];"
+			 "7:;"
+			 ARM_M_MSR_APSR("r2")
+			 "   ldmia sp!, {r0-r3, r12, lr};"
+			 "   ldr pc, [sp], %[skip_fp_pad];"
+			 "5:;"
 #endif
-			 "pop {r0-r12, lr};"
-			 "pop {pc};"
+			 "ldmia sp!, {r4-r11};"
+			 "ldr r2, [sp, #28];" /* APSR */
+			 "tst r2, %[padbit];"
+			 "bne 8f;"
+			 ARM_M_MSR_APSR("r2")
+			 "ldmia sp!, {r0-r3, r12, lr};"
+			 "ldr pc, [sp], %[skip];"
+			 "8:;"
+			 ARM_M_MSR_APSR("r2")
+			 "ldmia sp!, {r0-r3, r12, lr};"
+			 "ldr pc, [sp], %[skip_pad];"
 
 			 "3:" /* Label for restore address */
 			 _R7_CLOBBER_OPT("pop {r7};")::"r"(r4),
-			 "r"(r5)
+			 "r"(r5), [fpoff] "i"(ARM_M_SW_REGS_SZ), [padbit] "i"(XPSR_STACK_ALIGN_BIT),
+			 [skip] "i"(8), [skip_pad] "i"(12),
+			 [skip_fp] "i"(8 + ARM_M_FP_ABOVE_SZ),
+			 [skip_fp_pad] "i"(12 + ARM_M_FP_ABOVE_SZ)
 			 : "r6", "r8", "r9", "r10",
 #ifndef CONFIG_ARM_FP_CLOBBER_WORKAROUND
 			   "r7",
