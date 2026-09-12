@@ -49,9 +49,13 @@ a NAU88C10 mono codec, which also drives the headphone jack. The codec is contro
 and exchanges PCM audio with the SoC over I2S2, the SoC supplying the master clock, the bit
 clock and the frame clock. See :ref:`audio_codec_api` and :ref:`i2s_api`.
 
-Only playback is usable for now: the codec ADC output reaches the SoC on PB14, which is the
-I2S2ext data line, and the STM32 I2S driver does not support the full-duplex I2S extension
-blocks of the STM32F4 series.
+The codec DAC input hangs off the data line of the I2S2 block, while its ADC output reaches
+the SoC on PB14, the data line of the I2S2ext extension block. Capture therefore runs on the
+extension block, which the main block clocks, so playback and capture can run at the same
+time but always share a single configuration.
+
+The codec is mono and only uses the left slot of the frame: captured frames carry the
+microphone in the left channel, and the DAC plays back the left channel.
 
 Programming and Debugging
 *************************

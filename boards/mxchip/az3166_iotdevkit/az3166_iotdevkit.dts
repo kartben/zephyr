@@ -212,13 +212,25 @@
 	status = "okay";
 };
 
+&pinctrl {
+	/*
+	 * The pin control data generated for the STM32F412 carries no I2S
+	 * extension signal, so describe the one the codec ADC output lands on.
+	 */
+	i2s2ext_sd_pb14: i2s2ext_sd_pb14 {
+		pinmux = <STM32_PINMUX('B', 14, AF6)>;
+	};
+};
+
 &i2s2 {
 	/* I2S1SRC in RCC_DCKCFGR selects the clock of the APB1 I2S block */
 	clocks = <&rcc STM32_CLOCK(APB1, 14)>,
 		 <&rcc STM32_SRC_PLLI2S_R I2S1_SEL(0)>;
-	pinctrl-0 = <&i2s2_ck_pb13 &i2s2_ws_pb12 &i2s2_sd_pb15 &i2s2_mck_pc6>;
+	pinctrl-0 = <&i2s2_ck_pb13 &i2s2_ws_pb12 &i2s2_sd_pb15
+		     &i2s2ext_sd_pb14 &i2s2_mck_pc6>;
 	pinctrl-names = "default";
 	mck-enabled;
+	st,i2s-ext-rx;
 	status = "okay";
 };
 
