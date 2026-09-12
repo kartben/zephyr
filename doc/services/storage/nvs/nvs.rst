@@ -25,6 +25,25 @@ completed. The actual data of the element can be protected by a different (and o
 CRC-32. Use the :kconfig:option:`CONFIG_NVS_DATA_CRC` configuration item to enable
 the data part CRC.
 
+.. mermaid::
+   :caption: NVS allocation table entry
+   :alt: NVS allocation table entry, 8 bytes long: a 2-byte id, a 2-byte data
+         offset within the sector, a 2-byte data length, a 1-byte part field
+         and a 1-byte CRC8 of the entry.
+
+   ---
+   config:
+     packet:
+       showBits: false
+       bitsPerRow: 8
+   ---
+   packet
+   0-1: "id"
+   2-3: "offset"
+   4-5: "len"
+   6: "part"
+   7: "crc8"
+
 .. note:: The data CRC is checked only when the whole data of the element is read.
   The data CRC is not checked for a partial read, as it is stored at the end of the
   element data area.
