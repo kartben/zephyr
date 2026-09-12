@@ -1,0 +1,31 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+#
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Nuvoton NAU88C10 mono audio codec.
+
+  The codec has a single ADC and a single DAC channel and only uses the left
+  slot of the audio interface, whatever the number of channels the controller
+  sends. It must be driven as an audio interface target: MCLK, BCLK and FS are
+  all supplied by the I2S controller.
+
+  Volumes passed to audio_codec_set_property() are expressed in dB:
+  AUDIO_PROPERTY_OUTPUT_VOLUME drives the speaker amplifier over -57 to 6 dB,
+  and AUDIO_PROPERTY_INPUT_VOLUME drives the input PGA over -12 to 35 dB, on
+  top of the 20 dB microphone boost the capture path enables.
+
+compatible: "nuvoton,nau88c10"
+
+include: [i2c-device.yaml]
+
+properties:
+  reg:
+    required: true
+
+  nuvoton,mic-single-ended:
+    type: boolean
+    description: |
+      The microphone is wired to MIC+ only and MIC- is left unconnected. By
+      default the microphone is assumed to be wired differentially across MIC+
+      and MIC-.
