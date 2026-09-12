@@ -136,30 +136,33 @@ static ALWAYS_INLINE void z_priq_simple_yield(sys_dlist_t *pq)
 {
 #ifndef CONFIG_SMP
 	sys_dnode_t *n;
-
-	n = sys_dlist_peek_next_no_check(pq, &_current->base.qnode_dlist);
+	sys_dnode_t *successor = NULL;
+	struct k_thread *t;
 
 	sys_dlist_dequeue(&_current->base.qnode_dlist);
 
-	struct k_thread *t;
-
 	/*
-	 * As it is possible that the current thread was not at the head of
-	 * the run queue, start searching from the present position for where
-	 * to re-insert it.
+	 * Scan back from the tail. A yielding thread goes behind every peer
+	 * that ranks at or above it, so round-robin among equal priorities
+	 * settles on the first node tested instead of walking the whole
+	 * band.
 	 */
+	n = sys_dlist_peek_tail(pq);
 
 	while (n != NULL) {
 		t = CONTAINER_OF(n, struct k_thread, base.qnode_dlist);
-		if (z_sched_prio_cmp(_current, t) > 0) {
-			sys_dlist_insert(&t->base.qnode_dlist,
-					 &_current->base.qnode_dlist);
-			return;
+		if (z_sched_prio_cmp(_current, t) <= 0) {
+			break;
 		}
-		n = sys_dlist_peek_next_no_check(pq, n);
+		successor = n;
+		n = sys_dlist_peek_prev_no_check(pq, n);
 	}
 
-	sys_dlist_append(pq, &_current->base.qnode_dlist);
+	if (successor == NULL) {
+		sys_dlist_append(pq, &_current->base.qnode_dlist);
+	} else {
+		sys_dlist_insert(successor, &_current->base.qnode_dlist);
+	}
 #endif
 }
 
