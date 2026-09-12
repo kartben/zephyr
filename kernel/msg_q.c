@@ -25,6 +25,25 @@
 #include <kernel_internal.h>
 #include <zephyr/sys/check.h>
 
+/*
+ * Messages are a fixed, usually small, word-multiple size, so the libc
+ * memcpy spends more on its length dispatch than on the copy itself. Take
+ * the aligned word-sized case directly.
+ */
+static ALWAYS_INLINE void msgq_copy(void *dst, const void *src, size_t n)
+{
+	if ((((uintptr_t)dst | (uintptr_t)src | n) & (sizeof(uint32_t) - 1U)) == 0U) {
+		uint32_t *d = dst;
+		const uint32_t *s = src;
+
+		for (size_t i = 0; i < n / sizeof(uint32_t); i++) {
+			d[i] = s[i];
+		}
+	} else {
+		(void)memcpy(dst, src, n);
+	}
+}
+
 #ifdef CONFIG_OBJ_CORE_MSGQ
 static struct k_obj_type obj_type_msgq;
 #endif /* CONFIG_OBJ_CORE_MSGQ */
@@ -186,7 +205,7 @@ static inline int put_msg_in_queue(struct k_msgq *msgq, const void *data,
 				 * to write a message to the back of the queue,
 				 * copy the message and increment write_ptr
 				 */
-				(void)memcpy(msgq->write_ptr, (char *)data, msgq->msg_size);
+				msgq_copy(msgq->write_ptr, data, msgq->msg_size);
 				msgq->write_ptr += msgq->msg_size;
 				if (msgq->write_ptr == msgq->buffer_end) {
 					msgq->write_ptr = msgq->buffer_start;
@@ -202,7 +221,7 @@ static inline int put_msg_in_queue(struct k_msgq *msgq, const void *data,
 					msgq->read_ptr = msgq->buffer_end;
 				}
 				msgq->read_ptr -= msgq->msg_size;
-				(void)memcpy(msgq->read_ptr, (char *)data, msgq->msg_size);
+				msgq_copy(msgq->read_ptr, data, msgq->msg_size);
 			}
 			msgq->used_msgs++;
 			resched = msgq_handle_poll_events(msgq);
@@ -312,7 +331,7 @@ int z_impl_k_msgq_get(struct k_msgq *msgq, void *data, k_timeout_t timeout)
 
 	if (msgq->used_msgs > 0U) {
 		/* take first available message from queue */
-		(void)memcpy((char *)data, msgq->read_ptr, msgq->msg_size);
+		msgq_copy(data, msgq->read_ptr, msgq->msg_size);
 		msgq->read_ptr += msgq->msg_size;
 		if (msgq->read_ptr == msgq->buffer_end) {
 			msgq->read_ptr = msgq->buffer_start;
@@ -397,7 +416,7 @@ int z_impl_k_msgq_peek(struct k_msgq *msgq, void *data)
 
 	if (msgq->used_msgs > 0U) {
 		/* take first available message from queue */
-		(void)memcpy((char *)data, msgq->read_ptr, msgq->msg_size);
+		msgq_copy(data, msgq->read_ptr, msgq->msg_size);
 		result = 0;
 	} else {
 		/* don't wait for a message to become available */
