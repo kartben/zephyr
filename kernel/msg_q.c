@@ -177,7 +177,7 @@ static inline int put_msg_in_queue(struct k_msgq *msgq, const void *data,
 		SYS_PORT_TRACING_OBJ_FUNC_ENTER(k_msgq, put_front, msgq, timeout);
 	}
 
-	if (msgq->used_msgs < msgq->max_msgs) {
+	if (likely(msgq->used_msgs < msgq->max_msgs)) {
 		/* message queue isn't full. Try to hand the message
 		 * directly to the longest-waiting receiver, atomically
 		 * under the scheduler's spinlock so a racing in-flight timeout
@@ -329,7 +329,7 @@ int z_impl_k_msgq_get(struct k_msgq *msgq, void *data, k_timeout_t timeout)
 
 	SYS_PORT_TRACING_OBJ_FUNC_ENTER(k_msgq, get, msgq, timeout);
 
-	if (msgq->used_msgs > 0U) {
+	if (likely(msgq->used_msgs > 0U)) {
 		/* take first available message from queue */
 		msgq_copy(data, msgq->read_ptr, msgq->msg_size);
 		msgq->read_ptr += msgq->msg_size;
