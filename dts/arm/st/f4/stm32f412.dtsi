@@ -79,6 +79,19 @@
 			status = "disabled";
 		};
 
+		/*
+		 * I2S2 can run full duplex through the I2S2ext block, which the
+		 * STM32F410 this file builds on does not have.
+		 */
+		i2s2: i2s@40003800 {
+			reg = <0x40003800 0x400>, <0x40003400 0x400>;
+			reg-names = "i2s", "i2s-ext";
+			dmas = <&dma1 4 0 STM32_DMA_MEM_INC STM32_DMA_FIFO_FULL>,
+			       <&dma1 3 0 STM32_DMA_MEM_INC STM32_DMA_FIFO_FULL>,
+			       <&dma1 3 3 STM32_DMA_MEM_INC STM32_DMA_FIFO_FULL>;
+			dma-names = "tx", "rx", "ext-rx";
+		};
+
 		i2s4: i2s@40013400 {
 			compatible = "st,stm32-i2s";
 			#address-cells = <1>;

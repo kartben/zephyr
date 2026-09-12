@@ -6,3 +6,17 @@ description: STM32 I2S controller
 compatible: "st,stm32-i2s"
 
 include: st,stm32-i2s-common.yaml
+
+properties:
+  st,i2s-ext-rx:
+    type: boolean
+    description: |
+      Receive through the I2Sx_ext extension block instead of the data line of
+      the main block, which is what boards routing the receive data line to an
+      I2Sx_ext_SD pin need. The extension block is always a slave of the main
+      one, so the main block runs as a transmitter and keeps generating the
+      clocks even when only the receive direction is used.
+
+      The node must then carry an "i2s-ext" reg range for the extension block
+      and an "ext-rx" entry in dmas, and its pinctrl-0 must list the
+      I2Sx_ext_SD pin the receive data line is routed to.
