@@ -390,7 +390,8 @@ static int eth_xmc4xxx_send(const struct device *dev, struct net_pkt *pkt)
 	}
 
 	/* All available frames buffered inside the driver. Apply back pressure in the driver. */
-	while (tx_frame_slab.info.num_used == CONFIG_ETH_XMC4XXX_TX_FRAME_POOL_SIZE) {
+	while (k_mem_slab_num_used_get(&tx_frame_slab) ==
+	       CONFIG_ETH_XMC4XXX_TX_FRAME_POOL_SIZE) {
 		eth_xmc4xxx_trigger_dma_tx(dev_cfg->regs);
 		k_yield();
 	}

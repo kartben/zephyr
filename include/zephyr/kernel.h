@@ -5956,9 +5956,11 @@ __syscall void k_pipe_close(struct k_pipe *pipe);
 struct k_mem_slab_info {
 	uint32_t num_blocks;
 	size_t   block_size;
+#ifdef CONFIG_MEM_SLAB_TRACK_NUM_USED
 	uint32_t num_used;
 #ifdef CONFIG_MEM_SLAB_TRACE_MAX_UTILIZATION
 	uint32_t max_used;
+#endif
 #endif
 };
 
@@ -5976,6 +5978,11 @@ struct k_mem_slab {
 #endif
 };
 
+/* Derives the number of allocated blocks from the free list. Used by
+ * k_mem_slab_num_used_get() when no counter is kept.
+ */
+uint32_t z_mem_slab_num_used(struct k_mem_slab *slab);
+
 #define Z_MEM_SLAB_INITIALIZER(_slab, _slab_buffer, _slab_block_size, \
 			       _slab_num_blocks)                      \
 	{                                                             \
@@ -5983,7 +5990,8 @@ struct k_mem_slab {
 	.lock = {},                                                   \
 	.buffer = _slab_buffer,                                       \
 	.free_list = NULL,                                            \
-	.info = {_slab_num_blocks, _slab_block_size, 0}               \
+	.info = {.num_blocks = _slab_num_blocks,                      \
+		 .block_size = _slab_block_size}                      \
 	}
 /**
  * INTERNAL_HIDDEN @endcond
@@ -6216,7 +6224,11 @@ void k_mem_slab_free(struct k_mem_slab *slab, void *mem);
  */
 static inline uint32_t k_mem_slab_num_used_get(struct k_mem_slab *slab)
 {
+#ifdef CONFIG_MEM_SLAB_TRACK_NUM_USED
 	return slab->info.num_used;
+#else
+	return z_mem_slab_num_used(slab);
+#endif
 }
 
 /**
@@ -6255,7 +6267,7 @@ static inline uint32_t k_mem_slab_max_used_get(struct k_mem_slab *slab)
  */
 static inline uint32_t k_mem_slab_num_free_get(struct k_mem_slab *slab)
 {
-	return slab->info.num_blocks - slab->info.num_used;
+	return slab->info.num_blocks - k_mem_slab_num_used_get(slab);
 }
 
 /**

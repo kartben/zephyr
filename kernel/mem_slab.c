@@ -20,6 +20,40 @@
 #include <scheduler.h>
 #include <wait_q.h>
 
+#ifdef CONFIG_MEM_SLAB_TRACK_NUM_USED
+static inline uint32_t slab_num_used(struct k_mem_slab *slab)
+{
+	return slab->info.num_used;
+}
+#else
+/* The free list holds exactly the blocks that are not allocated, so the
+ * number of used blocks can be derived from it instead of being counted.
+ * Callers must hold slab->lock.
+ */
+static uint32_t slab_num_used(struct k_mem_slab *slab)
+{
+	char *block = slab->free_list;
+	uint32_t num_free = 0U;
+
+	while (block != NULL) {
+		block = *(char **)block;
+		num_free++;
+	}
+
+	return slab->info.num_blocks - num_free;
+}
+
+uint32_t z_mem_slab_num_used(struct k_mem_slab *slab)
+{
+	k_spinlock_key_t key = k_spin_lock(&slab->lock);
+	uint32_t num_used = slab_num_used(slab);
+
+	k_spin_unlock(&slab->lock, key);
+
+	return num_used;
+}
+#endif /* CONFIG_MEM_SLAB_TRACK_NUM_USED */
+
 #ifdef CONFIG_OBJ_CORE_MEM_SLAB
 static struct k_obj_type obj_type_mem_slab;
 
@@ -47,12 +81,14 @@ static int k_mem_slab_stats_query(struct k_obj_core *obj_core, void *stats)
 	struct k_mem_slab *slab;
 	k_spinlock_key_t   key;
 	struct sys_memory_stats *ptr = stats;
+	uint32_t num_used;
 
 	slab = CONTAINER_OF(obj_core, struct k_mem_slab, obj_core);
 	key = k_spin_lock(&slab->lock);
-	ptr->free_bytes = (slab->info.num_blocks - slab->info.num_used) *
+	num_used = slab_num_used(slab);
+	ptr->free_bytes = (slab->info.num_blocks - num_used) *
 			  slab->info.block_size;
-	ptr->allocated_bytes = slab->info.num_used * slab->info.block_size;
+	ptr->allocated_bytes = num_used * slab->info.block_size;
 #ifdef CONFIG_MEM_SLAB_TRACE_MAX_UTILIZATION
 	ptr->max_allocated_bytes = slab->info.max_used * slab->info.block_size;
 #else
@@ -175,8 +211,11 @@ int k_mem_slab_init(struct k_mem_slab *slab, void *buffer,
 	slab->info.num_blocks = num_blocks;
 	slab->info.block_size = block_size;
 	slab->buffer = buffer;
-	slab->info.num_used = 0U;
 	slab->lock = (struct k_spinlock) {};
+
+#ifdef CONFIG_MEM_SLAB_TRACK_NUM_USED
+	slab->info.num_used = 0U;
+#endif /* CONFIG_MEM_SLAB_TRACK_NUM_USED */
 
 #ifdef CONFIG_MEM_SLAB_TRACE_MAX_UTILIZATION
 	slab->info.max_used = 0U;
@@ -228,6 +267,8 @@ int k_mem_slab_alloc(struct k_mem_slab *slab, void **mem, k_timeout_t timeout)
 		/* take a free block */
 		*mem = slab->free_list;
 		slab->free_list = *(char **)(slab->free_list);
+
+#ifdef CONFIG_MEM_SLAB_TRACK_NUM_USED
 		slab->info.num_used++;
 		__ASSERT((slab->free_list == NULL &&
 			  slab->info.num_used == slab->info.num_blocks) ||
@@ -238,6 +279,11 @@ int k_mem_slab_alloc(struct k_mem_slab *slab, void **mem, k_timeout_t timeout)
 		slab->info.max_used = max(slab->info.num_used,
 					  slab->info.max_used);
 #endif /* CONFIG_MEM_SLAB_TRACE_MAX_UTILIZATION */
+#else
+		__ASSERT((slab->free_list == NULL) ||
+			 slab_ptr_is_good(slab, slab->free_list),
+			 "slab corruption detected");
+#endif /* CONFIG_MEM_SLAB_TRACK_NUM_USED */
 
 		result = 0;
 	} else if (K_TIMEOUT_EQ(timeout, K_NO_WAIT) ||
@@ -286,7 +332,10 @@ void k_mem_slab_free(struct k_mem_slab *slab, void *mem)
 	}
 	*(char **) mem = slab->free_list;
 	slab->free_list = (char *) mem;
+
+#ifdef CONFIG_MEM_SLAB_TRACK_NUM_USED
 	slab->info.num_used--;
+#endif /* CONFIG_MEM_SLAB_TRACK_NUM_USED */
 
 	SYS_PORT_TRACING_OBJ_FUNC_EXIT(k_mem_slab, free, slab);
 
@@ -300,9 +349,10 @@ int k_mem_slab_runtime_stats_get(struct k_mem_slab *slab, struct sys_memory_stat
 	}
 
 	k_spinlock_key_t key = k_spin_lock(&slab->lock);
+	uint32_t num_used = slab_num_used(slab);
 
-	stats->allocated_bytes = slab->info.num_used * slab->info.block_size;
-	stats->free_bytes = (slab->info.num_blocks - slab->info.num_used) *
+	stats->allocated_bytes = num_used * slab->info.block_size;
+	stats->free_bytes = (slab->info.num_blocks - num_used) *
 			    slab->info.block_size;
 #ifdef CONFIG_MEM_SLAB_TRACE_MAX_UTILIZATION
 	stats->max_allocated_bytes = slab->info.max_used *
