@@ -641,8 +641,21 @@ config MEM_SLAB_POINTER_VALIDATE
 	  This enables additional runtime checks to validate the memory slab
 	  pointer during when allocating or freeing a memory slab.
 
+config MEM_SLAB_TRACK_NUM_USED
+	bool "Track the number of allocated memory slab blocks"
+	default y
+	help
+	  This keeps a running count of the blocks allocated from each memory
+	  slab in the k_mem_slab structure.
+
+	  Disabling this drops the counter update from the k_mem_slab_alloc()
+	  and k_mem_slab_free() fast paths and saves one word per slab, at the
+	  cost of making k_mem_slab_num_used_get() and k_mem_slab_num_free_get()
+	  walk the free list with interrupts locked instead of reading a field.
+
 config MEM_SLAB_TRACE_MAX_UTILIZATION
 	bool "Getting maximum slab utilization"
+	depends on MEM_SLAB_TRACK_NUM_USED
 	help
 	  This adds variable to the k_mem_slab structure to hold
 	  maximum utilization of the slab.
