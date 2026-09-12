@@ -122,6 +122,19 @@
 	status = "okay";
 };
 
+&plli2s {
+	/*
+	 * 49.15625 MHz, the closest the 26 MHz HSE gets to the 49.152 MHz that
+	 * divides down to a 256 x Fs master clock: every rate the NAU88C10
+	 * supports, 8 kHz to 48 kHz, lands within 90 ppm of nominal.
+	 */
+	div-m = <16>;
+	mul-n = <121>;
+	div-r = <4>;
+	clocks = <&clk_hse>;
+	status = "okay";
+};
+
 &rcc {
 	clocks = <&pll>;
 	clock-frequency = <DT_FREQ_M(96)>;
@@ -172,6 +185,11 @@
 		reg = <0x5c>;
 	};
 
+	audio_codec: nau88c10@1a {
+		compatible = "nuvoton,nau88c10";
+		reg = <0x1a>;
+	};
+
 	ssd1306: ssd1306@3c {
 		compatible = "solomon,ssd1306";
 		reg = <0x3c>;
@@ -190,9 +208,17 @@
 	};
 };
 
-&spi1 {
-	pinctrl-0 = <&spi2_sck_pb13 &spi2_miso_pb14 &spi2_mosi_pb15>;
+&dma1 {
+	status = "okay";
+};
+
+&i2s2 {
+	/* I2S1SRC in RCC_DCKCFGR selects the clock of the APB1 I2S block */
+	clocks = <&rcc STM32_CLOCK(APB1, 14)>,
+		 <&rcc STM32_SRC_PLLI2S_R I2S1_SEL(0)>;
+	pinctrl-0 = <&i2s2_ck_pb13 &i2s2_ws_pb12 &i2s2_sd_pb15 &i2s2_mck_pc6>;
 	pinctrl-names = "default";
+	mck-enabled;
 	status = "okay";
 };
 

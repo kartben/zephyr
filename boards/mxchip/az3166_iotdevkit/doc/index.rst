@@ -5,7 +5,7 @@ Overview
 
 The AZ3166 IoT DevKit from MXChip is a development board designed for IoT (Internet of Things)
 projects. It's an all-in-one board powered by an Arm Cortex-M4 processor. On-board peripherals
-include an OLED screen, headphone output, stereo microphone and abundant sensors like humidity &
+include an OLED screen, headphone output, microphone and abundant sensors like humidity &
 temperature, pressure, motion (accelerometer & gyroscope) and magnetometer.
 
 More information about the board can be found at the `MXChip AZ3166 website`_.
@@ -28,6 +28,7 @@ The MXChip AZ3166 IoT DevKit has the following physical features:
 * Magnetometer sensor (LIS2MDL)
 * Atmospheric pressure sensor (LPS22HB)
 * Temperature and humidity sensor (HTS221)
+* Mono audio codec (NAU88C10) driving the headphone jack and the onboard microphone
 * EMW3166 Wi-Fi module with 256K SRAM，1M+2M Byte SPI Flash
 
 
@@ -39,6 +40,18 @@ Supported Features
 .. note::
 
    The EMW3166 Wi-Fi module is currently not supported.
+
+Audio
+=====
+
+The onboard microphone is an analog microphone wired differentially to the MIC+/MIC- inputs of
+a NAU88C10 mono codec, which also drives the headphone jack. The codec is controlled over I2C
+and exchanges PCM audio with the SoC over I2S2, the SoC supplying the master clock, the bit
+clock and the frame clock. See :ref:`audio_codec_api` and :ref:`i2s_api`.
+
+Only playback is usable for now: the codec ADC output reaches the SoC on PB14, which is the
+I2S2ext data line, and the STM32 I2S driver does not support the full-duplex I2S extension
+blocks of the STM32F4 series.
 
 Programming and Debugging
 *************************
