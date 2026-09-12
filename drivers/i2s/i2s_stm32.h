@@ -29,12 +29,18 @@ struct queue_item {
 /* Device constant configuration parameters */
 struct i2s_stm32_cfg {
 	SPI_TypeDef *i2s;
+	/*
+	 * Register block the receive direction runs on. Same as i2s, except on
+	 * the STM32F4 series with st,i2s-ext-rx, where it is the I2Sx_ext block.
+	 */
+	SPI_TypeDef *i2s_rx;
 	const struct stm32_pclken *pclken;
 	size_t pclk_len;
 	const struct pinctrl_dev_config *pcfg;
 	void (*irq_config)(const struct device *dev);
 	bool master_clk_sel: 1;
 	bool ioswp: 1;
+	bool ext_rx: 1;
 };
 
 struct stream {
