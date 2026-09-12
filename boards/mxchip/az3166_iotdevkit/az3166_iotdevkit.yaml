@@ -8,5 +8,4 @@ toolchain:
 supported:
   - gpio
   - pwm
-  - spi
   - i2c
