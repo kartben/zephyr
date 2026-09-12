@@ -196,20 +196,28 @@ static inline int put_msg_in_queue(struct k_msgq *msgq, const void *data,
 			}
 		}
 		if (pending_thread == NULL) {
+			size_t msg_size = msgq->msg_size;
+			char *slot;
+
 			__ASSERT_NO_MSG((msgq->write_ptr >= msgq->buffer_start) &&
 					(msgq->write_ptr <= (msgq->buffer_end - 1)) &&
 					((size_t)(uintptr_t)(msgq->buffer_end - msgq->write_ptr) >=
 						msgq->msg_size));
+			/* Update the ring first: the copy may alias it, forcing reloads. */
 			if (put_at_back) {
 				/*
 				 * to write a message to the back of the queue,
-				 * copy the message and increment write_ptr
+				 * take the slot write_ptr points at and
+				 * advance write_ptr past it
 				 */
-				msgq_copy(msgq->write_ptr, data, msgq->msg_size);
-				msgq->write_ptr += msgq->msg_size;
-				if (msgq->write_ptr == msgq->buffer_end) {
-					msgq->write_ptr = msgq->buffer_start;
+				char *next;
+
+				slot = msgq->write_ptr;
+				next = slot + msg_size;
+				if (next == msgq->buffer_end) {
+					next = msgq->buffer_start;
 				}
+				msgq->write_ptr = next;
 			} else {
 				/*
 				 * to write a message to the head of the queue,
@@ -217,13 +225,15 @@ static inline int put_msg_in_queue(struct k_msgq *msgq, const void *data,
 				 * space at the front of the queue) then copy
 				 * the message to the newly created space.
 				 */
-				if (msgq->read_ptr == msgq->buffer_start) {
-					msgq->read_ptr = msgq->buffer_end;
+				slot = msgq->read_ptr;
+				if (slot == msgq->buffer_start) {
+					slot = msgq->buffer_end;
 				}
-				msgq->read_ptr -= msgq->msg_size;
-				msgq_copy(msgq->read_ptr, data, msgq->msg_size);
+				slot -= msg_size;
+				msgq->read_ptr = slot;
 			}
 			msgq->used_msgs++;
+			msgq_copy(slot, data, msg_size);
 			resched = msgq_handle_poll_events(msgq);
 		}
 		result = 0;
@@ -330,13 +340,18 @@ int z_impl_k_msgq_get(struct k_msgq *msgq, void *data, k_timeout_t timeout)
 	SYS_PORT_TRACING_OBJ_FUNC_ENTER(k_msgq, get, msgq, timeout);
 
 	if (msgq->used_msgs > 0U) {
-		/* take first available message from queue */
-		msgq_copy(data, msgq->read_ptr, msgq->msg_size);
-		msgq->read_ptr += msgq->msg_size;
-		if (msgq->read_ptr == msgq->buffer_end) {
-			msgq->read_ptr = msgq->buffer_start;
+		size_t msg_size = msgq->msg_size;
+		char *slot = msgq->read_ptr;
+		char *next = slot + msg_size;
+
+		/* drop the message from the queue, then copy it out */
+		if (next == msgq->buffer_end) {
+			next = msgq->buffer_start;
 		}
+		msgq->read_ptr = next;
 		msgq->used_msgs--;
+
+		msgq_copy(data, slot, msg_size);
 
 		/* sanity-check write_ptr in case we hand the slot to a sender */
 		__ASSERT_NO_MSG((msgq->write_ptr >= msgq->buffer_start) &&
