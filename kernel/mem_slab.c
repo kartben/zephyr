@@ -217,7 +217,8 @@ static bool slab_ptr_is_good(struct k_mem_slab *slab, const void *ptr)
 	       ((offset % slab->info.block_size) == 0);
 }
 
-int k_mem_slab_alloc(struct k_mem_slab *slab, void **mem, k_timeout_t timeout)
+static ALWAYS_INLINE int slab_alloc(struct k_mem_slab *slab, void **mem,
+				    k_timeout_t timeout)
 {
 	k_spinlock_key_t key = k_spin_lock(&slab->lock);
 	int result;
@@ -264,6 +265,17 @@ int k_mem_slab_alloc(struct k_mem_slab *slab, void **mem, k_timeout_t timeout)
 	k_spin_unlock(&slab->lock, key);
 
 	return result;
+}
+
+int z_mem_slab_alloc(struct k_mem_slab *slab, void **mem, k_timeout_t timeout)
+{
+	return slab_alloc(slab, mem, timeout);
+}
+
+/* Specialization for the K_NO_WAIT call sites k_mem_slab_alloc() dispatches to. */
+int z_mem_slab_alloc_nowait(struct k_mem_slab *slab, void **mem)
+{
+	return slab_alloc(slab, mem, K_NO_WAIT);
 }
 
 void k_mem_slab_free(struct k_mem_slab *slab, void *mem)
