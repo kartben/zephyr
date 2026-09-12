@@ -25,7 +25,7 @@ The MXChip AZ3166 IoT DevKit has the following physical features:
 * Security encryption chip
 * Infrared emitter for IR remote control or interaction
 * Motion sensor (LSM6DSL)
-* Magnetometer sensor (LIS3MDL)
+* Magnetometer sensor (LIS2MDL)
 * Atmospheric pressure sensor (LPS22HB)
 * Temperature and humidity sensor (HTS221)
 * EMW3166 Wi-Fi module with 256K SRAM，1M+2M Byte SPI Flash
