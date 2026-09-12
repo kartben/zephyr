@@ -271,7 +271,7 @@ zephyr_code_relocate(FILES
 
 # KERNEL
 zephyr_code_relocate(FILES ${ZEPHYR_BASE}/kernel/mem_slab.c
-                     FILTER ".*\\.k_mem_slab_alloc|.*\\.k_mem_slab_free"
+                     FILTER ".*\\.z_mem_slab_alloc|.*\\.k_mem_slab_free"
                      LOCATION ${QUICK_ACCESS_CODE_AREA} NOKEEP)
 
 string(JOIN "" NXP_MEMPOOL_FILTER

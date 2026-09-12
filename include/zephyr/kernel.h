@@ -6165,6 +6165,11 @@ struct k_mem_slab {
 int k_mem_slab_init(struct k_mem_slab *slab, void *buffer,
 			   size_t block_size, uint32_t num_blocks);
 
+/** @cond INTERNAL_HIDDEN */
+int z_mem_slab_alloc(struct k_mem_slab *slab, void **mem, k_timeout_t timeout);
+int z_mem_slab_alloc_nowait(struct k_mem_slab *slab, void **mem);
+/** @endcond */
+
 /**
  * @brief Allocate memory from a memory slab.
  *
@@ -6186,8 +6191,16 @@ int k_mem_slab_init(struct k_mem_slab *slab, void *buffer,
  * @retval -ENOMEM Returned without waiting.
  * @retval -EAGAIN Waiting period timed out.
  */
-int k_mem_slab_alloc(struct k_mem_slab *slab, void **mem,
-			    k_timeout_t timeout);
+static ALWAYS_INLINE int k_mem_slab_alloc(struct k_mem_slab *slab, void **mem,
+					  k_timeout_t timeout)
+{
+	/* A constant K_NO_WAIT can skip the 8-byte timeout argument entirely. */
+	if (__builtin_constant_p(timeout.ticks) && K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
+		return z_mem_slab_alloc_nowait(slab, mem);
+	}
+
+	return z_mem_slab_alloc(slab, mem, timeout);
+}
 
 /**
  * @brief Free memory allocated from a memory slab.
