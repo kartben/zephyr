@@ -144,6 +144,25 @@ static ALWAYS_INLINE void z_priq_simple_yield(sys_dlist_t *pq)
 	struct k_thread *t;
 
 	/*
+	 * If even the tail ranks at or above us then nothing in the queue
+	 * sorts below us and the yield is a plain append. That is the
+	 * round-robin-among-equals case, and it settles here rather than
+	 * walking the rest of the priority band.
+	 */
+	sys_dnode_t *tail = sys_dlist_peek_tail(pq);
+
+	if (tail == NULL) {
+		sys_dlist_append(pq, &_current->base.qnode_dlist);
+		return;
+	}
+
+	t = CONTAINER_OF(tail, struct k_thread, base.qnode_dlist);
+	if (z_sched_prio_cmp(_current, t) <= 0) {
+		sys_dlist_append(pq, &_current->base.qnode_dlist);
+		return;
+	}
+
+	/*
 	 * As it is possible that the current thread was not at the head of
 	 * the run queue, start searching from the present position for where
 	 * to re-insert it.
