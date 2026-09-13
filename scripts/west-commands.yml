@@ -72,6 +72,11 @@ west-commands:
       - name: blobs
         class: Blobs
         help: work with binary blobs
+  - file: scripts/west_commands/modules.py
+    commands:
+      - name: modules
+        class: Modules
+        help: list or fetch modules required by hardware
   - file: scripts/west_commands/bindesc.py
     commands:
       - name: bindesc
