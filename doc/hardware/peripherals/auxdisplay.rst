@@ -23,6 +23,7 @@ Related configuration options:
 
 * :kconfig:option:`CONFIG_AUXDISPLAY`
 * :kconfig:option:`CONFIG_AUXDISPLAY_INIT_PRIORITY`
+* :kconfig:option:`CONFIG_AUXDISPLAY_SHELL`
 
 API Reference
 *************
