@@ -97,6 +97,26 @@ static int zvfs_eventfd_poll_update(struct zvfs_eventfd *efd,
 	return 0;
 }
 
+/* Raise @a sig unless doing so would be a no-op.
+ *
+ * Both signals are private to the eventfd and are only raised/reset under
+ * efd->lock, so "signaled" cannot change under us here.  k_poll() only
+ * registers a waiter on a signal whose condition is not yet met (both the
+ * check and the registration happen under the kernel poll lock), so while
+ * "signaled" is set the wait queue can only shrink, never grow: observing
+ * it signaled with no registered waiter means another raise could neither
+ * change state nor wake anyone.  A racy "non-empty" observation only leads
+ * to a redundant raise, which is harmless.
+ */
+static void zvfs_eventfd_signal(struct k_poll_signal *sig)
+{
+	if (sig->signaled == 1U && sys_dlist_is_empty(&sig->poll_events)) {
+		return;
+	}
+
+	k_poll_signal_raise(sig, 0);
+}
+
 static int zvfs_eventfd_read_locked(struct zvfs_eventfd *efd, zvfs_eventfd_t *value)
 {
 	if (!zvfs_eventfd_is_in_use(efd)) {
@@ -122,7 +142,7 @@ static int zvfs_eventfd_read_locked(struct zvfs_eventfd *efd, zvfs_eventfd_t *va
 		k_poll_signal_reset(&efd->read_sig);
 	}
 
-	k_poll_signal_raise(&efd->write_sig, 0);
+	zvfs_eventfd_signal(&efd->write_sig);
 
 	return 0;
 }
@@ -153,7 +173,7 @@ static int zvfs_eventfd_write_locked(struct zvfs_eventfd *efd, zvfs_eventfd_t *v
 		k_poll_signal_reset(&efd->write_sig);
 	}
 
-	k_poll_signal_raise(&efd->read_sig, 0);
+	zvfs_eventfd_signal(&efd->read_sig);
 
 	return 0;
 }
