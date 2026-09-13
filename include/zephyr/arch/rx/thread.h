@@ -10,19 +10,22 @@
 
 #ifndef _ASMLANGUAGE
 #include <zephyr/types.h>
+#include <zephyr/sys/util.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 struct _callee_saved {
-	/* General purpose callee-saved registers */
+	/* No general purpose callee-saved registers. */
+	EMPTY_STRUCT_PLACEHOLDER;
 };
 
 typedef struct _callee_saved _callee_saved_t;
 
 struct _thread_arch {
-	/* empty */
+	/* This architecture keeps no per-thread state. */
+	EMPTY_STRUCT_PLACEHOLDER;
 };
 
 typedef struct _thread_arch _thread_arch_t;

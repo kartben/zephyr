@@ -19,6 +19,7 @@
 #include <zephyr/sys/atomic.h>
 #include <zephyr/sys/__assert.h>
 #include <zephyr/sys/time_units.h>
+#include <zephyr/sys/util.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,6 +47,8 @@ struct k_spinlock {
 /**
  * @cond INTERNAL_HIDDEN
  */
+	EMPTY_STRUCT_PLACEHOLDER;
+
 #ifdef CONFIG_SMP
 #ifdef CONFIG_TICKET_SPINLOCKS
 	/*
@@ -79,15 +82,11 @@ struct k_spinlock {
 #endif /* CONFIG_SPIN_VALIDATE */
 
 #if defined(CONFIG_NONZERO_SPINLOCK_SIZE) && !defined(CONFIG_SMP) && !defined(CONFIG_SPIN_VALIDATE)
-	/* Add a dummy field to guarantee the spinlock has a non-zero
-	 * size. If neither CONFIG_SMP nor CONFIG_SPIN_VALIDATE are
-	 * defined then the k_spinlock struct would otherwise have no
-	 * members and sizeof(k_spinlock) would be 0 in C and 1 in C++.
-	 *
-	 * That size difference causes problems when the k_spinlock
-	 * is embedded into another struct like k_msgq, because C and
-	 * C++ will have different ideas on the offsets of the members
-	 * that come after the k_spinlock member.
+	/* Give the spinlock a byte of its own for users that need every
+	 * instance to have a distinct address, such as the pool behind
+	 * CONFIG_POSIX_SPIN_LOCKS. Without this the struct has no member in
+	 * this configuration, and all elements of an array of spinlocks share
+	 * one address.
 	 */
 	char dummy;
 #endif

@@ -13,6 +13,7 @@
 
 #include <zephyr/kernel/stats.h>
 #include <zephyr/arch/arch_interface.h>
+#include <zephyr/sys/util.h>
 
 /**
  * @typedef k_thread_entry_t
@@ -205,6 +206,8 @@ struct _thread_userspace_local_data {
 #endif /* CONFIG_THREAD_USERSPACE_LOCAL_DATA */
 
 typedef struct k_thread_runtime_stats {
+	EMPTY_STRUCT_PLACEHOLDER;
+
 #ifdef CONFIG_SCHED_THREAD_USAGE
 	/*
 	 * For CPU stats, execution_cycles is the sum of non-idle + idle cycles.
@@ -237,14 +240,6 @@ typedef struct k_thread_runtime_stats {
 	uint64_t idle_cycles;
 #endif /* CONFIG_SCHED_THREAD_USAGE_ALL */
 
-#if defined(__cplusplus) && !defined(CONFIG_SCHED_THREAD_USAGE) &&                                 \
-	!defined(CONFIG_SCHED_THREAD_USAGE_ANALYSIS) && !defined(CONFIG_SCHED_THREAD_USAGE_ALL)
-	/* If none of the above Kconfig values are defined, this struct will have a size 0 in C
-	 * which is not allowed in C++ (it'll have a size 1). To prevent this, we add a 1 byte dummy
-	 * variable when the struct would otherwise be empty.
-	 */
-	uint8_t dummy;
-#endif
 }  k_thread_runtime_stats_t;
 
 struct z_poller {

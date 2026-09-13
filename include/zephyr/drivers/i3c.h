@@ -1303,6 +1303,11 @@ struct i3c_dev_list {
  * in the device structure.
  */
 struct i3c_driver_config {
+	/** @cond INTERNAL_HIDDEN */
+	/* Without CONFIG_I3C_CONTROLLER this struct has no member. */
+	EMPTY_STRUCT_PLACEHOLDER;
+	/** @endcond */
+
 #if defined(CONFIG_I3C_CONTROLLER) || defined(__DOXYGEN__)
 	/** I3C/I2C device list struct. */
 	struct i3c_dev_list dev_list;
@@ -1312,15 +1317,8 @@ struct i3c_driver_config {
 
 	/** Driver config flags */
 	uint8_t flags;
-#elif defined(CONFIG_CPP)
-       /* Empty struct has size 0 in C, size 1 in C++. Force them to be the same. */
-	uint8_t unused_cpp_size_compatibility;
 #endif
 };
-
-#if defined(CONFIG_CPP)
-BUILD_ASSERT(sizeof(struct i3c_driver_config) >= 1);
-#endif
 
 /**
  * This structure is common to all I3C drivers and is expected to be the first

@@ -16,15 +16,16 @@
 
 #ifdef CONFIG_XTENSA_LAZY_HIFI_SHARING
 #include <xtensa/config/tie.h>
+#include <zephyr/sys/util.h>
+
 #endif
 
 /* Xtensa doesn't use these structs, but Zephyr core requires they be
- * defined so they can be included in struct _thread_base.  Dummy
- * field exists for sizeof compatibility with C++.
+ * defined so they can be included in struct _thread_base.
  */
 
 struct _callee_saved {
-	char dummy;
+	EMPTY_STRUCT_PLACEHOLDER;
 };
 
 typedef struct _callee_saved _callee_saved_t;

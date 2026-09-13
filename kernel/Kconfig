@@ -387,8 +387,9 @@ config NONZERO_SPINLOCK_SIZE
 	bool "Force spinlock to have non-zero size"
 	help
 	  This option indicates that the spinlock structure must have a
-	  non-zero size (such as if used in an array). It is automatically
-	  selected when using C++.
+	  non-zero size, so that every spinlock has an address of its own.
+	  It is needed when spinlocks are kept in an array whose elements
+	  have to be told apart, as POSIX spin locks are.
 
 endmenu
 
