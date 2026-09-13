@@ -1,0 +1,14 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	chosen {
+		zephyr,videodec = &video_edge264;
+	};
+
+	video_edge264: video-edge264 {
+		compatible = "zephyr,video-edge264";
+	};
+};

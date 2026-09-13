@@ -68,11 +68,15 @@ config VIDEO_I2C_RETRY_NUM
 config VIDEO_ENCODER_H264
 	bool "H264 video encoder support"
 
+config VIDEO_DECODER_H264
+	bool "H264 video decoder support"
+
 config VIDEO_ENCODER_JPEG
 	bool "JPEG video encoder support"
 
 # zephyr-keep-sorted-start
 source "drivers/video/Kconfig.arducam_mega"
+source "drivers/video/Kconfig.edge264"
 source "drivers/video/Kconfig.emul_imager"
 source "drivers/video/Kconfig.emul_rx"
 source "drivers/video/Kconfig.esp32_dvp"
