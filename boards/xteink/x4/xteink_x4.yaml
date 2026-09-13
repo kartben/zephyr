@@ -1,0 +1,16 @@
+identifier: xteink_x4
+name: Xteink X4 eReader
+type: mcu
+arch: riscv
+toolchain:
+  - zephyr
+supported:
+  - adc
+  - bluetooth
+  - display
+  - gpio
+  - spi
+  - uart
+  - watchdog
+  - wifi
+vendor: xteink
