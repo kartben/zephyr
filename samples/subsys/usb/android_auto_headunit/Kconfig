@@ -1,0 +1,465 @@
+# Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "Android Auto head unit sample"
+
+menu "Android Auto head unit sample"
+
+choice SAMPLE_AA_HU_TRANSPORT
+	prompt "Phone transport"
+	default SAMPLE_AA_HU_TRANSPORT_TCP
+
+config SAMPLE_AA_HU_TRANSPORT_TCP
+	bool "TCP"
+	depends on NET_SOCKETS
+	help
+	  Connect to a phone that exposes the projection protocol on a TCP
+	  port, which is what the Android Auto application does when its head
+	  unit server is started and forwarded to the host with adb.
+
+config SAMPLE_AA_HU_TRANSPORT_USB_HOST
+	bool "USB host"
+	depends on USB_HOST_STACK
+	help
+	  Act as the USB host, switch an attached phone into Android Open
+	  Accessory mode and carry the protocol over its bulk endpoints. The
+	  board must be able to supply VBUS to the phone.
+
+endchoice
+
+if SAMPLE_AA_HU_TRANSPORT_USB_HOST
+
+config SAMPLE_AA_HU_USBH_IN_XFER_SIZE
+	int "Bulk IN transfer size (bytes)"
+	default 4096
+	help
+	  Size of the buffer kept queued on the accessory's bulk IN endpoint.
+	  Must be a multiple of the endpoint's maximum packet size and fit in
+	  the host controller buffer pool.
+
+config SAMPLE_AA_HU_USBH_OUT_XFER_SIZE
+	int "Largest bulk OUT transfer (bytes)"
+	default 4096
+	help
+	  Messages larger than this are written in several transfers.
+
+config SAMPLE_AA_HU_USBH_RX_PIPE_SIZE
+	int "Receive pipe size (bytes)"
+	default 16384
+	help
+	  Buffers received data until the protocol thread consumes it. When it
+	  fills up the transfer is parked and the phone is held off, so this
+	  only has to absorb scheduling jitter.
+
+config SAMPLE_AA_HU_USBH_WRITE_TIMEOUT_MS
+	int "Bulk OUT timeout (ms)"
+	default 2000
+	help
+	  A queued bulk transfer cannot be cancelled, so a write that times out
+	  abandons its transfer instead of retrying it.
+
+config SAMPLE_AA_HU_AOA_MANUFACTURER
+	string "Accessory manufacturer string"
+	default "Android"
+
+config SAMPLE_AA_HU_AOA_MODEL
+	string "Accessory model string"
+	default "Android Auto"
+	help
+	  A phone only starts projection when the manufacturer and model are
+	  the exact strings Android Auto looks for.
+
+config SAMPLE_AA_HU_AOA_DESCRIPTION
+	string "Accessory description string"
+	default "Android Auto"
+
+config SAMPLE_AA_HU_AOA_VERSION
+	string "Accessory version string"
+	default "1.0"
+
+config SAMPLE_AA_HU_AOA_URI
+	string "Accessory URI string"
+	default "https://www.zephyrproject.org"
+
+config SAMPLE_AA_HU_AOA_SERIAL
+	string "Accessory serial string"
+	default "0000000000000001"
+
+endif # SAMPLE_AA_HU_TRANSPORT_USB_HOST
+
+config SAMPLE_AA_HU_TCP_HOST
+	string "Phone address"
+	depends on SAMPLE_AA_HU_TRANSPORT_TCP
+	default "127.0.0.1"
+
+config SAMPLE_AA_HU_TCP_PORT
+	int "Phone port"
+	depends on SAMPLE_AA_HU_TRANSPORT_TCP
+	default 5277
+	range 1 65535
+
+config SAMPLE_AA_HU_TX_CHUNK_SIZE
+	int "Largest message fragment sent (bytes)"
+	default 16384
+	range 1024 16384
+
+config SAMPLE_AA_HU_RX_FRAME_SIZE
+	int "Receive frame buffer size (bytes)"
+	default 8256
+	help
+	  Must hold one frame's payload. A phone packs several TLS records of
+	  video into a single frame, so this has to be raised well past the
+	  record size for the video channel to arrive intact.
+
+config SAMPLE_AA_HU_RX_MSG_SIZE
+	int "Reassembly buffer for fragmented messages (bytes)"
+	default 65536
+	help
+	  Media messages carry a whole H.264 access unit, so this must hold the
+	  largest picture the phone sends in one message.
+
+config SAMPLE_AA_HU_TEST_PATTERN
+	bool "Show colour bars at startup"
+	help
+	  Fill the framebuffer with colour bars before the phone connects, to
+	  check the panel and the pixel format.
+
+# The baseline H.264 a phone streams is decoded by the h264bsd module, which
+# the west manifest carries. There is no alternative, so the sample takes it
+# whenever it is there; prj.conf names the allocators it hands the decoder,
+# and a workspace without the module fails there rather than silently
+# building something that cannot show a picture.
+config SAMPLE_AA_HU_H264
+	bool
+	depends on ZEPHYR_H264BSD_MODULE
+	default y
+	select H264BSD
+
+# The head unit's panel is 800x480, which is a small window to drive with a
+# mouse on a desktop screen. A default rather than an assignment, so that a
+# build with no window does not carry a setting for one.
+configdefault SDL_DISPLAY_ZOOM_PCT
+	default 300
+
+config SAMPLE_AA_HU_LTDC_YUV
+	bool "Let the display controller convert the decoded pictures"
+	depends on STM32_LTDC_YUV
+	default y if STM32_LTDC_YUV
+	help
+	  Interleave the decoder's planar YUV420 pictures into packed YUYV
+	  buffers. The display controller converts them to RGB during scanout,
+	  avoiding software color conversion. Packed YUV422 avoids the STM32N6
+	  planar YUV420 silicon limitation (ES0620, section 2.7.1).
+
+config SAMPLE_AA_HU_YUV_BUFFERS_SECTION
+	string "Memory section for YUV display buffers"
+	depends on SAMPLE_AA_HU_LTDC_YUV
+	default "AXISRAM1" if BOARD_STM32N6570_DK
+	default SAMPLE_AA_HU_BUFFERS_SECTION if SAMPLE_AA_HU_BUFFERS_IN_EXT_RAM
+	default ".bss"
+	help
+	  Linker section for the two packed display buffers. Internal SRAM
+	  avoids external-memory traffic for packing and display scanout.
+	  The section must hold four bytes per pixel at the video resolution.
+
+config SAMPLE_AA_HU_H264_HEAP_STATS
+	bool "Report how much of the decoder heap is used"
+	select SYS_HEAP_RUNTIME_STATS
+	help
+	  Log the most the decoder has ever held at once, so the heap can be
+	  sized from what a phone actually asks for rather than guessed at.
+
+config SAMPLE_AA_HU_H264_HEAP_SIZE
+	int "Decoder heap (bytes)"
+	default 4194304
+	help
+	  Holds the decoder's reference pictures, several times the frame size.
+	  A phone asks for as many as its stream needs, not as many as the
+	  level allows, so this is sized for the level rather than for one
+	  device: 800x480 at level 3.1 tops out near 3.5 MB. Enable
+	  SAMPLE_AA_HU_H264_HEAP_STATS to see what a given phone uses.
+
+config SAMPLE_AA_HU_H264_HEAP_SECTION
+	string "Linker section for the decoder heap"
+	default SAMPLE_AA_HU_BUFFERS_SECTION if SAMPLE_AA_HU_BUFFERS_IN_EXT_RAM
+	default ".bss"
+	help
+	  Internal RAM spares the decoder the miss latency of external memory
+	  when it reads reference pictures, at the cost of holding the whole
+	  arena there.
+
+config SAMPLE_AA_HU_H264_HEAP_FALLBACK
+	bool "Keep a second decoder heap for streams the first cannot hold"
+	depends on SAMPLE_AA_HU_BUFFERS_IN_EXT_RAM
+	help
+	  A heap sized for one resolution and reference count has no room to
+	  spare, and a stream that overruns it stops the video. Enable this
+	  where the first heap is the fast, tight one: the decoder moves to a
+	  larger heap in external RAM and keeps decoding, more slowly.
+
+config SAMPLE_AA_HU_H264_HEAP_FALLBACK_SIZE
+	int "Fallback decoder heap (bytes)"
+	depends on SAMPLE_AA_HU_H264_HEAP_FALLBACK
+	default 4194304
+
+config SAMPLE_AA_HU_H264_HEAP_FALLBACK_SECTION
+	string "Linker section for the fallback decoder heap"
+	depends on SAMPLE_AA_HU_H264_HEAP_FALLBACK
+	default SAMPLE_AA_HU_BUFFERS_SECTION
+
+config SAMPLE_AA_HU_MAX_UNACKED
+	int "Media messages the phone may send without an acknowledgment"
+	default 1
+	range 1 16
+
+config SAMPLE_AA_HU_NIGHT_BUTTON
+	bool "Switch night mode with the board's user button"
+	depends on INPUT
+	depends on $(dt_alias_enabled,sw0)
+	default y
+	help
+	  Report the head unit as having gone dark, and light again, each time
+	  the button behind the sw0 alias is pressed, so that the phone can be
+	  made to switch between its day and night themes without a light
+	  sensor to cover.
+
+config SAMPLE_AA_HU_TOUCH_DRAG_MIN_MS
+	int "Shortest gap between reports of a finger being dragged (ms)"
+	default 33
+	help
+	  The screen reports a held finger far faster than the phone needs it,
+	  and every report is a USB transfer that the video acknowledgements
+	  queue behind, so a finger dragged across the screen costs frames.
+	  Thirty-three milliseconds matches the thirty frames a second the
+	  video is sent at, beyond which the extra reports buy nothing.
+
+config SAMPLE_AA_HU_PROTO_MINOR
+	int "Protocol minor version announced to the phone"
+	default 1
+
+config SAMPLE_AA_HU_NAME
+	string "Head unit name announced in service discovery"
+	default "Zephyr head unit"
+
+config SAMPLE_AA_HU_RX_THREAD_PRIORITY
+	int "Receive thread priority"
+	default 5
+
+config SAMPLE_AA_HU_USBH_RX_PIPE_SECTION
+	string "Memory section for the USB receive pipe"
+	depends on SAMPLE_AA_HU_TRANSPORT_USB_HOST
+	default ".bss"
+	help
+	  The pipe carrying what the phone sends is only touched by the
+	  processor, so a board short of image RAM can put it elsewhere.
+
+config SAMPLE_AA_HU_RX_STACK_SIZE
+	int "Receive thread stack size"
+	default 8192 if 64BIT
+	default 6144
+
+config SAMPLE_AA_HU_CERT_FILE
+	string "Certificate presented to the phone (PEM)"
+	default "certs/hu_cert.pem"
+	help
+	  A phone verifies this certificate against Google's certificate
+	  authority, which does not issue to the public. The bundled one is
+	  self-signed and a phone rejects it, so a head unit credential has to
+	  be supplied here for a session to get past the handshake.
+
+config SAMPLE_AA_HU_KEY_FILE
+	string "Private key of the certificate (PEM)"
+	default "certs/hu_key.pem"
+
+config SAMPLE_AA_HU_TLS_DEBUG_LEVEL
+	int "Mbed TLS debug threshold"
+	depends on MBEDTLS_DEBUG
+	default 1
+	range 0 5
+
+choice SAMPLE_AA_HU_VIDEO_RESOLUTION
+	prompt "Video resolution offered to the phone"
+	default SAMPLE_AA_HU_VIDEO_800X480
+
+config SAMPLE_AA_HU_VIDEO_800X480
+	bool "800x480"
+
+config SAMPLE_AA_HU_VIDEO_1280X720
+	bool "1280x720"
+
+endchoice
+
+config SAMPLE_AA_HU_VIDEO_WIDTH
+	int
+	default 1280 if SAMPLE_AA_HU_VIDEO_1280X720
+	default 800
+
+config SAMPLE_AA_HU_VIDEO_HEIGHT
+	int
+	default 720 if SAMPLE_AA_HU_VIDEO_1280X720
+	default 480
+
+config SAMPLE_AA_HU_DEMO_TAP
+	bool "Periodically tap the phone screen"
+	help
+	  Forward a synthetic touch at a fixed point every few seconds, to
+	  exercise the input channel without a physical touch screen.
+
+config SAMPLE_AA_HU_DEMO_TAP_X
+	int "Demo tap X"
+	depends on SAMPLE_AA_HU_DEMO_TAP
+	default 400
+
+config SAMPLE_AA_HU_DEMO_TAP_Y
+	int "Demo tap Y"
+	depends on SAMPLE_AA_HU_DEMO_TAP
+	default 147
+
+config SAMPLE_AA_HU_DEMO_TAP_INTERVAL_MS
+	int "Demo tap interval (ms)"
+	depends on SAMPLE_AA_HU_DEMO_TAP
+	default 2000
+
+config SAMPLE_AA_HU_MIC_CLK_MIN_HZ
+	int "Lowest microphone clock frequency (Hz)"
+	default 1000000
+
+config SAMPLE_AA_HU_MIC_CLK_MAX_HZ
+	int "Highest microphone clock frequency (Hz)"
+	default 3500000
+	help
+	  The driver clocks the microphone as fast as this window allows. A PDM
+	  microphone with several operating modes selects one by clock
+	  frequency and its sensitivity differs between them, so narrow the
+	  window to the mode the part should be run in.
+
+config SAMPLE_AA_HU_MIC_CAPTURE_WIDTH
+	int "Sample width captured from the microphone (bits)"
+	default 16 if AUDIO_DMIC_NATIVE_SIM
+	default 24
+	help
+	  Captured at the microphone's own width and scaled down to the sixteen
+	  bits the phone is sent, which leaves room to amplify speech on the
+	  way. A digital microphone part usually delivers 24; a host recorder
+	  feeding the native_sim driver delivers 16. Only those two are
+	  supported.
+
+config SAMPLE_AA_HU_MIC_GAIN_DB
+	int "Microphone gain (dB)"
+	default 0 if AUDIO_DMIC_NATIVE_SIM
+	default 24
+	range 0 48
+	help
+	  Applied to the microphone's samples on the way to the phone, in
+	  steps of six decibels. Zero sends the microphone's own range as it
+	  is, which leaves speech far below full scale on most parts, but is
+	  right where the host has already levelled the signal. Raise it until
+	  the level report shows peaks near full scale without clipping.
+
+config SAMPLE_AA_HU_AUDIO_MAX_UNACKED
+	int "Audio messages the phone may send without an acknowledgment"
+	default 16
+	range 1 64
+	help
+	  A phone waits for this many media messages to be answered before it
+	  stops sending, and drops what it cannot send. One message is twenty
+	  milliseconds of sound, so a small number caps the stream at whatever
+	  the round trip to the head unit allows.
+
+config SAMPLE_AA_HU_PLAYBACK
+	def_bool $(dt_alias_enabled,aa-i2s-out)
+	depends on I2S && AUDIO_CODEC
+	select RING_BUFFER
+	select RING_BUFFER_LARGE
+	help
+	  The half-second stereo media queue holds 96000 bytes and requires
+	  32-bit ring-buffer indices.
+
+config SAMPLE_AA_HU_PLAY_VOLUME_DB
+	int "Output volume (dB)"
+	default 0
+	range -57 6
+	help
+	  Headphone amplifier gain. The codec driver leaves it twelve decibels
+	  down, which is quiet for a head unit driving a headset.
+
+config SAMPLE_AA_HU_PLAY_TEST_TONE
+	bool "Play a tone of the head unit's own"
+	help
+	  Mix a steady tone into the output whatever the phone is doing, to
+	  tell an output that is not working from a phone that is not sending
+	  anything.
+
+config SAMPLE_AA_HU_PLAY_LEVEL_LOG
+	bool "Report the level of the played audio"
+	help
+	  Log the peak level of the mixed output once a second, to tell a
+	  phone that is sending quiet samples from an output that is turned
+	  down.
+
+config SAMPLE_AA_HU_PLAY_BUFFERS_SECTION
+	string "Memory section for the audio queues"
+	default "PSRAM" if BOARD_STM32N6570_DK
+	default ".bss"
+	help
+	  Linker section for the half second of samples queued per audio
+	  channel. Only the blocks handed to the output itself have to be
+	  reachable by the controller, so these can sit in external memory.
+
+config SAMPLE_AA_HU_TX_BUFFERS_SECTION
+	string "Memory section for the transmit buffers"
+	default "PSRAM" if BOARD_STM32N6570_DK
+	default ".bss"
+	help
+	  Linker section for the buffers a message is assembled and encrypted
+	  in. They are as large as the largest fragment sent twice over, which
+	  is more than a board also decoding video can spare internally. Only
+	  small messages are assembled often, so external memory costs little.
+
+config SAMPLE_AA_HU_MIC_BUFFERS_SECTION
+	string "Memory section for the microphone blocks"
+	default "AXISRAM1" if BOARD_STM32N6570_DK
+	default ".bss"
+	help
+	  Linker section for the blocks the microphone driver fills. Half a
+	  second of them does not fit the internal RAM of a board that is also
+	  decoding video into it.
+
+config SAMPLE_AA_HU_MIC_LEVEL_LOG
+	bool "Report the level of the captured audio"
+	help
+	  Log the peak and RMS level of the captured samples once a second, to
+	  tell a microphone that is too quiet from one that clips.
+
+config SAMPLE_AA_HU_BUFFERS_IN_EXT_RAM
+	bool "Place the large buffers in external RAM"
+	default y if ESP_SPIRAM
+	help
+	  The framebuffer and the message reassembly buffer are far larger than
+	  the internal RAM of most boards that can act as a host.
+
+config SAMPLE_AA_HU_BUFFERS_SECTION
+	string "Linker section for the large buffers"
+	depends on SAMPLE_AA_HU_BUFFERS_IN_EXT_RAM
+	default ".ext_ram.bss" if ESP_SPIRAM
+	default "PSRAM"
+
+config SAMPLE_AA_HU_FB_DUMP
+	bool "Dump decoded pictures to a host file"
+	depends on ARCH_POSIX
+	help
+	  Append every decoded RGB565 picture to a host file so that the stream
+	  can be inspected without a display.
+
+config SAMPLE_AA_HU_FB_DUMP_PATH
+	string "Framebuffer dump file"
+	depends on SAMPLE_AA_HU_FB_DUMP
+	default "hu_frames.rgb565"
+
+module = SAMPLE_AA_HU
+module-str = Android Auto head unit sample
+source "subsys/logging/Kconfig.template.log_config"
+
+endmenu
+
+source "Kconfig.zephyr"

@@ -1,0 +1,31 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/display/panel.h>
+
+/*
+ * The board's SDL window is the head unit's panel: it shows the phone's
+ * projected screen and its mouse drives the input channel as the touch screen.
+ * Size it to the resolution the sample offers the phone, in the format the
+ * decoder writes.
+ */
+&sdl_dc {
+	pixel-format = <PANEL_PIXEL_FORMAT_RGB_565>;
+	height = <480>;
+	width = <800>;
+};
+
+/*
+ * The board's file-backed audio: the phone's audio goes to the I2S TX device,
+ * and the microphone the phone listens to reads from the DMIC device. Point
+ * both at named pipes to hear and speak through the host's own sound system
+ * (see the README); a plain file works for a recording.
+ */
+/ {
+	aliases {
+		aa-i2s-out = &i2s_tx0;
+		aa-audio-codec = &audio_codec;
+	};
+};

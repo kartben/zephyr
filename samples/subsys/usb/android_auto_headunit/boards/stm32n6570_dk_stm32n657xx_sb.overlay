@@ -1,0 +1,7 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* The serial boot variant runs the same hardware as the flashed one */
+#include "stm32n6570_dk_stm32n657xx.overlay"

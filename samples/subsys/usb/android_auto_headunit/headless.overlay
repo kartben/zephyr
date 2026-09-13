@@ -1,0 +1,24 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * Decode without a window, for a machine that has no display to open one on.
+ * CONFIG_SAMPLE_AA_HU_FB_DUMP writes the pictures to a file instead.
+ */
+/ {
+	chosen {
+		zephyr,display = &dummy_dc;
+	};
+
+	dummy_dc: dummy_dc {
+		compatible = "zephyr,dummy-dc";
+		height = <480>;
+		width = <800>;
+	};
+};
+
+&input_sdl_touch {
+	status = "disabled";
+};

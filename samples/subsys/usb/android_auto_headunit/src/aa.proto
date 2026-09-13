@@ -1,0 +1,278 @@
+// Copyright The Zephyr Project Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+// Subset of the Android Auto projection protocol messages used by the
+// sample, written from the wire format. Only the fields the sample reads or
+// writes are declared; unknown fields are skipped by nanopb. Message ids are
+// defined in aa_ids.h, enumerations are carried as int32 so that unknown
+// values do not fail decoding.
+
+syntax = "proto2";
+
+message AuthCompleteIndication {
+  optional int32 status = 1;
+}
+
+message ServiceDiscoveryRequest {
+  optional string label_text = 4;
+  optional string device_name = 5;
+}
+
+message VideoConfig {
+  optional int32 video_resolution = 1;
+  optional int32 video_fps = 2;
+  optional uint32 margin_width = 3;
+  optional uint32 margin_height = 4;
+  optional uint32 dpi = 5;
+}
+
+message AudioConfig {
+  optional uint32 sample_rate = 1;
+  optional uint32 bit_depth = 2;
+  optional uint32 channel_count = 3;
+}
+
+message AVChannel {
+  optional int32 stream_type = 1;
+  optional int32 audio_type = 2;
+  repeated AudioConfig audio_configs = 3;
+  repeated VideoConfig video_configs = 4;
+  optional bool available_while_in_call = 5;
+}
+
+message TouchConfig {
+  optional uint32 width = 1;
+  optional uint32 height = 2;
+}
+
+message InputChannel {
+  optional TouchConfig touch_screen_config = 2;
+  optional TouchConfig touch_pad_config = 3;
+}
+
+message Sensor {
+  optional int32 type = 1;
+}
+
+message SensorChannel {
+  repeated Sensor sensors = 1;
+}
+
+message AVInputChannel {
+  optional int32 stream_type = 1;
+  optional AudioConfig audio_config = 2;
+  optional bool available_while_in_call = 3;
+}
+
+message NavigationStatusService {
+  optional int32 minimum_interval_ms = 1;
+  optional int32 type = 2;
+}
+
+message ChannelDescriptor {
+  optional uint32 channel_id = 1;
+  optional SensorChannel sensor_channel = 2;
+  optional AVChannel av_channel = 3;
+  optional InputChannel input_channel = 4;
+  optional AVInputChannel av_input_channel = 5;
+  optional NavigationStatusService navigation_status_service = 8;
+}
+
+message NavigationNextTurnEvent {
+  optional string road = 1;
+  optional int32 turn_side = 2;
+  optional int32 event = 3;
+  optional bytes image = 4;
+  optional int32 turn_number = 5;
+  optional int32 turn_angle = 6;
+}
+
+message NavigationNextTurnDistanceEvent {
+  optional int32 distance_meters = 1;
+  optional int32 time_to_turn_seconds = 2;
+  optional int32 display_distance_e3 = 3;
+  optional int32 display_distance_unit = 4;
+}
+
+message NavigationManeuver {
+  optional int32 type = 1;
+  optional int32 roundabout_exit_number = 2;
+}
+
+message NavigationStep {
+  optional string road = 1;
+  optional NavigationManeuver maneuver = 2;
+}
+
+message NavigationState {
+  repeated NavigationStep steps = 1;
+}
+
+message ServiceDiscoveryResponse {
+  repeated ChannelDescriptor channels = 1;
+  optional string car_make = 2;
+  optional string car_model = 3;
+  optional string car_year = 4;
+  optional string car_serial = 5;
+  optional int32 driver_position = 6;
+  optional string headunit_manufacturer = 7;
+  optional string headunit_model = 8;
+  optional string sw_build = 9;
+  optional string sw_version = 10;
+  optional bool can_play_native_media_during_vr = 11;
+  optional string head_unit_name = 14;
+}
+
+message ChannelOpenRequest {
+  optional int32 priority = 1;
+  optional int32 channel_id = 2;
+}
+
+message ChannelOpenResponse {
+  optional int32 status = 1;
+}
+
+message PingRequest {
+  optional int64 timestamp = 1;
+}
+
+message PingResponse {
+  optional int64 timestamp = 1;
+}
+
+message AudioFocusRequest {
+  optional int32 audio_focus_type = 1;
+}
+
+message AudioFocusResponse {
+  optional int32 focus_state = 1;
+  optional bool unsolicited = 2;
+}
+
+message NavigationFocusRequest {
+  optional uint32 type = 1;
+}
+
+message NavigationFocusResponse {
+  optional uint32 type = 1;
+}
+
+message ShutdownRequest {
+  optional int32 reason = 1;
+}
+
+message ShutdownResponse {
+}
+
+message AVChannelSetupRequest {
+  optional int32 codec_type = 1;
+}
+
+message AVChannelSetupResponse {
+  optional int32 media_status = 1;
+  optional uint32 max_unacked = 2;
+  repeated uint32 configs = 3;
+}
+
+message AVChannelStartIndication {
+  optional int32 session = 1;
+  optional uint32 config = 2;
+}
+
+message MicrophoneRequest {
+  optional bool open = 1;
+  optional bool anc_enabled = 2;
+  optional bool ec_enabled = 3;
+  optional int32 max_unacked = 4;
+}
+
+message MicrophoneResponse {
+  optional int32 status = 1;
+  optional int32 session_id = 2;
+}
+
+message AVMediaAckIndication {
+  optional int32 session = 1;
+  optional uint32 value = 2;
+}
+
+message VideoFocusRequest {
+  optional int32 disp_index = 1;
+  optional int32 focus_mode = 2;
+  optional int32 focus_reason = 3;
+}
+
+message VideoFocusIndication {
+  optional int32 focus_mode = 1;
+  optional bool unrequested = 2;
+}
+
+message TouchLocation {
+  optional uint32 x = 1;
+  optional uint32 y = 2;
+  optional uint32 pointer_id = 3;
+}
+
+message TouchEvent {
+  repeated TouchLocation touch_location = 1;
+  optional uint32 action_index = 2;
+  optional int32 touch_action = 3;
+}
+
+message ButtonEvent {
+  optional uint32 scan_code = 1;
+  optional bool is_pressed = 2;
+  optional uint32 meta = 3;
+  optional bool long_press = 4;
+}
+
+message ButtonEvents {
+  repeated ButtonEvent button = 1;
+}
+
+message InputEventIndication {
+  optional uint64 timestamp = 1;
+  optional int32 disp_channel = 2;
+  optional TouchEvent touch_event = 3;
+  optional ButtonEvents button_event = 4;
+}
+
+message BindingRequest {
+  repeated int32 scan_codes = 1;
+}
+
+message BindingResponse {
+  optional int32 status = 1;
+}
+
+message SensorStartRequest {
+  optional int32 sensor_type = 1;
+  optional int64 refresh_interval = 2;
+}
+
+message SensorStartResponse {
+  optional int32 status = 1;
+}
+
+message NightMode {
+  optional bool is_night = 1;
+}
+
+message DrivingStatus {
+  optional int32 status = 1;
+}
+
+message ParkingBrake {
+  optional bool is_engaged = 1;
+}
+
+message GearSelection {
+  optional int32 gear = 1;
+}
+
+message SensorEventIndication {
+  repeated ParkingBrake parking_brake = 7;
+  repeated GearSelection gear = 8;
+  repeated NightMode night_mode = 10;
+  repeated DrivingStatus driving_status = 13;
+}
