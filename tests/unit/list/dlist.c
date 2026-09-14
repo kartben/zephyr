@@ -419,6 +419,92 @@ ZTEST(dlist_api, test_dlist2)
 				&test_node[4].node) == &insert_node2.node, " ");
 }
 
+/**
+ * @brief Verify the unchecked variants of the doubly linked list peek accessors
+ *
+ * Each unchecked accessor drops a bounds test its checked sibling performs and
+ * is only defined where the caller has established that bound: a non-empty
+ * list for the head and the tail, a node known not to be the tail for the
+ * next. Compare the two forms everywhere the unchecked one applies.
+ *
+ * @see sys_dlist_peek_head_not_empty(), sys_dlist_peek_tail_not_empty(),
+ * sys_dlist_peek_next_not_tail(), sys_dlist_peek_next_no_check(),
+ * sys_dlist_peek_prev_no_check()
+ */
+ZTEST(dlist_api, test_dlist_peek_unchecked)
+{
+	struct container_node test_node[4];
+	sys_dnode_t *node;
+	sys_dnode_t *tail;
+	size_t count;
+	size_t i;
+
+	memset(test_node, 0, sizeof(test_node));
+	sys_dlist_init(&test_list);
+
+	/* The only node of a one-node list is both its head and its tail */
+	sys_dlist_append(&test_list, &test_node[0].node);
+	zassert_equal(sys_dlist_peek_head_not_empty(&test_list), &test_node[0].node,
+		      "head of a one-node list is wrong");
+	zassert_equal(sys_dlist_peek_tail_not_empty(&test_list), &test_node[0].node,
+		      "tail of a one-node list is wrong");
+
+	/* Appending moves the tail */
+	for (i = 1; i < 3; i++) {
+		sys_dlist_append(&test_list, &test_node[i].node);
+		zassert_equal(sys_dlist_peek_tail_not_empty(&test_list), &test_node[i].node,
+			      "append did not move the tail");
+	}
+
+	/* Prepending moves the head and leaves the tail where it is */
+	sys_dlist_prepend(&test_list, &test_node[3].node);
+	zassert_equal(sys_dlist_peek_head_not_empty(&test_list), &test_node[3].node,
+		      "prepend did not move the head");
+	zassert_equal(sys_dlist_peek_tail_not_empty(&test_list), &test_node[2].node,
+		      "prepend moved the tail");
+
+	zassert_equal(sys_dlist_peek_head_not_empty(&test_list), sys_dlist_peek_head(&test_list),
+		      "head variants disagree on a non-empty list");
+	zassert_equal(sys_dlist_peek_tail_not_empty(&test_list), sys_dlist_peek_tail(&test_list),
+		      "tail variants disagree on a non-empty list");
+
+	tail = sys_dlist_peek_tail_not_empty(&test_list);
+
+	SYS_DLIST_FOR_EACH_NODE(&test_list, node) {
+		zassert_equal(sys_dlist_peek_next_no_check(&test_list, node),
+			      sys_dlist_peek_next(&test_list, node), "next variants disagree");
+		zassert_equal(sys_dlist_peek_prev_no_check(&test_list, node),
+			      sys_dlist_peek_prev(&test_list, node), "prev variants disagree");
+
+		if (node != tail) {
+			zassert_equal(sys_dlist_peek_next_not_tail(node),
+				      sys_dlist_peek_next(&test_list, node),
+				      "next variants disagree away from the tail");
+		}
+	}
+
+	/* Removing the tail hands the role to its predecessor */
+	sys_dlist_remove(tail);
+	zassert_equal(sys_dlist_peek_tail_not_empty(&test_list), &test_node[1].node,
+		      "removing the tail did not move it back");
+
+	/*
+	 * A walk bounded by the tail instead of by NULL, which is what
+	 * sys_dlist_peek_next_not_tail() exists for, visits every node once.
+	 */
+	count = 1;
+	node = sys_dlist_peek_head_not_empty(&test_list);
+
+	while (!sys_dlist_is_tail(&test_list, node)) {
+		node = sys_dlist_peek_next_not_tail(node);
+		count++;
+	}
+
+	zassert_equal(node, sys_dlist_peek_tail_not_empty(&test_list),
+		      "walk did not stop at the tail");
+	zassert_equal(count, sys_dlist_len(&test_list), "walk visited the wrong number of nodes");
+}
+
 static void verify_list_order(sys_dlist_t *list, unsigned int count, ...)
 {
 	unsigned int i;
