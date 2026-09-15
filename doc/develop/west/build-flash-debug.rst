@@ -538,6 +538,9 @@ prints a list of runners. You can use ``west flash -H -r
 <runner-name>`` to print usage information for options supported by
 that runner.
 
+The :ref:`west runners <west-runners>` command reports the same runner
+information without rebuilding and can print it as JSON.
+
 For example, to print usage information about the ``jlink`` runner::
 
   west flash -H -r jlink

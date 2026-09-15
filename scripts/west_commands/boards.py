@@ -11,11 +11,45 @@ from pathlib import Path
 
 from west.commands import WestCommand
 
-from zephyr_ext_common import ZEPHYR_BASE
+from zephyr_ext_common import add_json_arg, emit_json, module_roots
 
 sys.path.append(os.fspath(Path(__file__).parent.parent))
 import list_boards
-import zephyr_module
+
+DEFAULT_FMT = '{name}'
+
+
+def board_targets(board):
+    '''Return every "name[@revision]/qualifiers" target string for board.'''
+    qualifiers = list_boards.board_v2_qualifiers(board)
+    targets = [f'{board.name}/{qualifier}' for qualifier in qualifiers]
+    targets += [f'{board.name}@{revision.name}/{qualifier}'
+                for qualifier in qualifiers
+                for revision in board.revisions]
+    return targets
+
+
+def board_to_dict(board):
+    '''Return the JSON-serializable representation of a list_boards.Board.'''
+    directories = board.directories
+    if not isinstance(directories, list):
+        directories = [directories]
+    return {
+        'name': board.name,
+        'full_name': board.full_name,
+        'vendor': board.vendor,
+        'hwm': board.hwm,
+        'dir': board.dir,
+        'dirs': directories,
+        'revision_format': board.revision_format,
+        'revision_default': board.revision_default,
+        'revision_exact': board.revision_exact,
+        'revisions': board.revisions,
+        'socs': board.socs,
+        'variants': board.variants,
+        'qualifiers': list_boards.board_v2_qualifiers(board),
+        'targets': board_targets(board),
+    }
 
 
 class Boards(WestCommand):
@@ -28,7 +62,7 @@ class Boards(WestCommand):
             accepts_unknown_args=False)
 
     def do_add_parser(self, parser_adder):
-        default_fmt = '{name}'
+        default_fmt = DEFAULT_FMT
         parser = parser_adder.add_parser(
             self.name,
             formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -57,9 +91,11 @@ class Boards(WestCommand):
 
         # Remember to update west-completion.bash if you add or remove
         # flags
-        parser.add_argument('-f', '--format', default=default_fmt,
+        parser.add_argument('-f', '--format',
                             help='''Format string to use to list each board;
                                     see FORMAT STRINGS below.''')
+        add_json_arg(parser, help='''print boards (or, with --all-targets,
+                                     board targets) as JSON''')
         parser.add_argument('-n', '--name', dest='name_re',
                             help='''a regular expression; only boards whose
                             names match NAME_RE will be listed''')
@@ -72,39 +108,37 @@ class Boards(WestCommand):
         return parser
 
     def do_run(self, args, _):
+        if args.json and args.format is not None:
+            self.die('--json and --format are mutually exclusive')
+        fmt = args.format or DEFAULT_FMT
+
         if args.name_re is not None:
             name_re = re.compile(args.name_re)
         else:
             name_re = None
 
-        module_settings = {
-            'arch_root': [ZEPHYR_BASE],
-            'board_root': [ZEPHYR_BASE],
-            'soc_root': [ZEPHYR_BASE],
-        }
+        roots = module_roots(self.manifest, ['arch_root', 'board_root', 'soc_root'])
+        args.arch_roots += roots['arch_root']
+        args.board_roots += roots['board_root']
+        args.soc_roots += roots['soc_root']
 
-        for module in zephyr_module.parse_modules(ZEPHYR_BASE, self.manifest):
-            for key in module_settings:
-                root = module.meta.get('build', {}).get('settings', {}).get(key)
-                if root is not None:
-                    module_settings[key].append(Path(module.project) / root)
+        try:
+            boards = list_boards.find_v2_boards(args).values()
+        except RuntimeError as e:
+            self.die(e)
+        boards = [b for b in boards if name_re is None or name_re.search(b.name)]
 
-        args.arch_roots += module_settings['arch_root']
-        args.board_roots += module_settings['board_root']
-        args.soc_roots += module_settings['soc_root']
+        if args.json:
+            if args.all_targets:
+                emit_json(sorted(t for b in boards for t in board_targets(b)))
+            else:
+                emit_json([board_to_dict(b) for b in sorted(boards, key=lambda b: b.name)])
+            return
 
         all_targets: list[str] = []
-        for board in list_boards.find_v2_boards(args).values():
-            if name_re is not None and not name_re.search(board.name):
-                continue
-
+        for board in boards:
             if args.all_targets:
-                all_targets += [f"{board.name}/{qualifier}"
-                                for qualifier in list_boards.board_v2_qualifiers(board)]
-                if board.revisions:
-                    all_targets += [f"{board.name}@{revision.name}/{qualifier}"
-                                    for qualifier in list_boards.board_v2_qualifiers(board)
-                                    for revision in board.revisions]
+                all_targets += board_targets(board)
             else:
                 if board.revisions:
                     revisions_list = ','.join([rev.name for rev in board.revisions])
@@ -112,7 +146,7 @@ class Boards(WestCommand):
                     revisions_list = 'None'
 
                 self.inf(
-                    args.format.format(
+                    fmt.format(
                         name=board.name,
                         full_name=board.full_name,
                         revision_default=board.revision_default,

@@ -8,8 +8,12 @@ Note that common helpers used by the flash and debug extension
 commands are in run_common -- that's for common code used by
 commands which specifically execute runners.'''
 
+import dataclasses
+import enum
+import json
 import os
 import shlex
+import sys
 from pathlib import Path
 
 from west.commands import WestCommand
@@ -58,3 +62,54 @@ class Forceable(WestCommand):
         if len(words) != 1:
             self.die(f'Single word expected for: {section_key}={words}. Use quotes?')
         return words[0]
+
+
+class ZephyrJSONEncoder(json.JSONEncoder):
+    '''JSON encoder for the object types found in Zephyr metadata.
+
+    Paths become native path strings, sets become sorted lists, enums
+    their values, and dataclasses dictionaries.'''
+
+    def default(self, o):
+        if isinstance(o, os.PathLike):
+            return os.fspath(o)
+        if isinstance(o, set | frozenset):
+            return sorted(o)
+        if isinstance(o, enum.Enum):
+            return o.value
+        if dataclasses.is_dataclass(o) and not isinstance(o, type):
+            return dataclasses.asdict(o)
+        return super().default(o)
+
+
+def add_json_arg(parser, help='print the result as JSON instead of text'):
+    '''Add the common --json option to an extension command parser.'''
+    parser.add_argument('--json', action='store_true', help=help)
+
+
+def emit_json(obj):
+    '''Print obj to stdout as a single, deterministic JSON document.
+
+    This deliberately bypasses WestCommand.inf() so that the output is
+    still produced under "west -q".'''
+    print(json.dumps(obj, cls=ZephyrJSONEncoder, indent=2, sort_keys=True))
+
+
+def module_roots(manifest, keys):
+    '''Collect hardware model root directories from Zephyr and its modules.
+
+    Returns a dict mapping each key in keys (e.g. 'board_root',
+    'soc_root', 'arch_root') to the list of directories declared for it,
+    starting with ZEPHYR_BASE and followed by each module's
+    build.settings.<key> entry, in module order.'''
+    sys.path.append(os.fspath(Path(__file__).parent.parent))
+    import zephyr_module
+
+    roots = {key: [ZEPHYR_BASE] for key in keys}
+    for module in zephyr_module.parse_modules(ZEPHYR_BASE, manifest):
+        settings = module.meta.get('build', {}).get('settings', {})
+        for key in keys:
+            root = settings.get(key)
+            if root is not None:
+                roots[key].append(Path(module.project) / root)
+    return roots

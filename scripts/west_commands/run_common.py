@@ -20,7 +20,7 @@ import tempfile
 import textwrap
 import traceback
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from build_helpers import BUILD_HELPERS_LOGGER, find_build_dir, is_zephyr_build, \
     load_domains, forward_logging_to_west, FIND_BUILD_DIR_DESCRIPTION
 from west.commands import CommandError, Verbosity
@@ -196,19 +196,11 @@ def do_run_common(command, user_args, user_runner_args, domain_file=None):
     highest_entry = None
     check_files = []
 
+    import_module_runners(command)
+
     if user_args.context:
         dump_context(command, user_args, user_runner_args)
         return
-
-    # Import external module runners
-    for module in zephyr_module.parse_modules(ZEPHYR_BASE, command.manifest):
-        runners_ext = module.meta.get("runners", [])
-        for runner in runners_ext:
-            module_name = module.meta.get("name", "runners_ext") + "." + Path(runner["file"]).stem
-
-            import_from_path(
-                module_name, Path(module.project) / runner["file"]
-            )
 
     build_dir = get_build_dir(user_args, config=command.config)
     rebuild(command, build_dir, user_args)
@@ -499,6 +491,14 @@ def do_run_common_image(command, user_args, user_runner_args, used_cmds,
             raise
     return runner
 
+def import_module_runners(command):
+    # Import the runners that modules contribute through module.yml so
+    # that ZephyrBinaryRunner.get_runners() and get_runner_cls() see them.
+    for module in zephyr_module.parse_modules(ZEPHYR_BASE, command.manifest):
+        for runner in module.meta.get("runners", []):
+            module_name = module.meta.get("name", "runners_ext") + "." + Path(runner["file"]).stem
+            import_from_path(module_name, Path(module.project) / runner["file"])
+
 def get_build_dir(args, die_if_none=True, *, config=None):
     # Get the build directory for the given argument list and environment.
     #
@@ -722,24 +722,7 @@ def dump_context(command, args, unknown_args):
         rebuild(command, build_dir, args)
 
     domains = get_domains_to_process(build_dir, args, None, get_all_domain)
-
-    if len(domains) > 1 and not getattr(args, "domain", None):
-        command.inf("Multiple domains available:")
-        for i, domain in enumerate(domains, 1):
-            command.inf(f"{INDENT}{i}. {domain.name} (build_dir: {domain.build_dir})")
-
-        while True:
-            try:
-                choice = input(f"Select domain (1-{len(domains)}): ")
-                choice = int(choice)
-                if 1 <= choice <= len(domains):
-                    domains = [domains[choice-1]]
-                    break
-                command.wrn(f"Please enter a number between 1 and {len(domains)}")
-            except ValueError:
-                command.wrn("Please enter a valid number")
-            except EOFError:
-                command.die("Input cancelled, exiting")
+    domains = select_context_domain(command, args, domains)
 
     selected_build_dir = domains[0].build_dir
 
@@ -772,6 +755,31 @@ def dump_context(command, args, unknown_args):
             command.die(f"Invalid runner name {args.runner}; choices: {available_runners}")
     else:
         dump_all_runner_context(command, runners_yaml, board, selected_build_dir)
+
+def select_context_domain(command, args, domains):
+    # Narrow a multi-domain build down to the one domain --context
+    # should describe, asking the user when there is a terminal to ask.
+    if len(domains) <= 1 or getattr(args, "domain", None):
+        return domains
+
+    if not sys.stdin.isatty():
+        names = ', '.join(domain.name for domain in domains)
+        command.die(f'multiple domains available ({names}); use --domain to select one')
+
+    command.inf("Multiple domains available:")
+    for i, domain in enumerate(domains, 1):
+        command.inf(f"{INDENT}{i}. {domain.name} (build_dir: {domain.build_dir})")
+
+    while True:
+        try:
+            choice = int(input(f"Select domain (1-{len(domains)}): "))
+            if 1 <= choice <= len(domains):
+                return [domains[choice - 1]]
+            command.wrn(f"Please enter a number between 1 and {len(domains)}")
+        except ValueError:
+            command.wrn("Please enter a valid number")
+        except EOFError:
+            command.die("Input cancelled, exiting")
 
 def dump_context_no_config(command, cls):
     if not cls:
@@ -872,6 +880,82 @@ def dump_all_runner_context(command, runners_yaml, board, build_dir):
     if len(available) > 1:
         command.inf()
         command.inf('Note: use -r RUNNER to limit information to one runner.')
+
+#
+# west runners
+#
+
+def runner_class_info(cls):
+    # Describe a runner class: its name, commands, capabilities and options.
+    caps = cls.capabilities()
+    return {
+        'name': cls.name(),
+        'commands': sorted(caps.commands),
+        'capabilities': asdict(caps),
+        'options': runner_options_info(cls),
+    }
+
+def runner_options_info(cls):
+    # Best-effort introspection of the argparse options a runner registers.
+    dummy_parser = argparse.ArgumentParser(prog='', add_help=False, allow_abbrev=False)
+    cls.add_parser(dummy_parser)
+    options = []
+    for action in dummy_parser._actions:
+        if not action.option_strings:
+            continue
+        default = action.default
+        if default is argparse.SUPPRESS:
+            default = None
+        elif not isinstance(default, str | int | float | bool | list | tuple | type(None)):
+            default = str(default)
+        options.append({
+            'flags': list(action.option_strings),
+            'dest': action.dest,
+            'help': None if action.help == argparse.SUPPRESS else action.help,
+            'default': default,
+            'choices': list(action.choices) if action.choices is not None else None,
+            'nargs': action.nargs,
+            'required': action.required,
+        })
+    return options
+
+def domain_runner_context(build_dir):
+    # Describe what runners.yaml configures for one (domain) build directory.
+    build_dir = Path(build_dir)
+    yaml_path = build_dir / 'zephyr' / 'runners.yaml'
+    ctx = {
+        'build_dir': fspath(build_dir),
+        'board': BuildConfiguration(build_dir).get('CONFIG_BOARD_TARGET'),
+        'runners_yaml': fspath(yaml_path) if yaml_path.is_file() else None,
+        'available': [],
+        'default': {},
+        'config': None,
+        'args': {},
+    }
+    if not yaml_path.is_file():
+        return ctx
+
+    runners_yaml = load_runners_yaml(yaml_path)
+    ctx['available'] = list(runners_yaml.get('runners') or [])
+    ctx['default'] = {key.removesuffix('-runner'): value
+                      for key, value in runners_yaml.items() if key.endswith('-runner')}
+    config = get_runner_config(build_dir, yaml_path, runners_yaml)._asdict()
+    config['file_type'] = config['file_type'].name if config['file_type'] else None
+    ctx['config'] = config
+    ctx['args'] = runners_yaml.get('args') or {}
+    return ctx
+
+def build_runner_context(build_dir, domain_names=None):
+    # Describe the runner configuration of a build directory, per domain
+    # for sysbuild. domain_names limits the sysbuild domains described.
+    build_dir = fspath(build_dir)
+    sysbuild = is_sysbuild(build_dir)
+    if sysbuild:
+        domains = load_domains(build_dir).get_domains(domain_names)
+        entries = [{'name': d.name, **domain_runner_context(d.build_dir)} for d in domains]
+    else:
+        entries = [{'name': None, **domain_runner_context(build_dir)}]
+    return {'build_dir': build_dir, 'sysbuild': sysbuild, 'domains': entries}
 
 def dump_wrapped_lines(command, text, indent):
     for line in textwrap.wrap(text, initial_indent=indent,
