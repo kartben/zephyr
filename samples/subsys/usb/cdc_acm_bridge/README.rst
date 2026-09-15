@@ -23,7 +23,7 @@ explicit overlay.
 Building and Running
 ********************
 
-Reel Board
+nRF52840 DK
 ===========
 
 To see the console output of the app, open a serial port emulator and
@@ -31,7 +31,7 @@ attach it to the USB to TTL Serial cable. Build and flash the project:
 
 .. zephyr-app-commands::
    :zephyr-app: samples/subsys/usb/cdc_acm_bridge
-   :board: reel_board
+   :board: nrf52840dk/nrf52840
    :goals: flash
    :compact:
 

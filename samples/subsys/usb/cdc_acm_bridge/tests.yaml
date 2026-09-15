@@ -7,6 +7,10 @@ tests:
     depends_on:
       - usbd
       - arduino_serial
+    platform_allow:
+      - nrf52840dk/nrf52840
+    integration_platforms:
+      - nrf52840dk/nrf52840
   sample.usb.cdc-acm-bridge.two_devices:
     tags: usb
     build_only: true
