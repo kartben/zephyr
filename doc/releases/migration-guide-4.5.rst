@@ -346,6 +346,14 @@ Boards
   On the dual-core ESP32, ``espressif/esp32/esp32_appcpu.dtsi`` no longer sets a flash either, so
   an APPCPU board dts has to declare the same flash as its PROCPU counterpart.
 
+* The external Octo-SPI NOR flash on the :zephyr:board:`stm32h5f5j_dk` board is now driven by the
+  MSPI XSPI driver (:kconfig:option:`CONFIG_MSPI_STM32_XSPI` together with
+  :kconfig:option:`CONFIG_FLASH_MSPI_NOR`) instead of :kconfig:option:`CONFIG_FLASH_STM32_XSPI`.
+  The ``ext_flash_ctrl`` and ``ext_flash`` node labels are unchanged, but overlays that set
+  :dtcompatible:`st,stm32-xspi-nor` properties on ``&ext_flash_ctrl``, such as ``spi-bus-width``
+  and ``data-rate``, have to be rewritten with their :dtcompatible:`st,nor` equivalents
+  ``mspi-io-mode`` and ``mspi-data-rate``.
+
 Device Drivers and Devicetree
 *****************************
 
