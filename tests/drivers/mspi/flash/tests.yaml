@@ -18,6 +18,7 @@ tests:
       - apollo3p_evb
       - apollo510_evb
       - nrf7120dk/nrf7120/cpuapp
+      - stm32h573i_dk
     integration_platforms:
       - native_sim
       - apollo3p_evb
