@@ -1,0 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* The microphone reaches the SoC through the I2S2ext extension block. */
+i2s_rx: &i2s2 {
+	status = "okay";
+};

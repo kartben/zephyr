@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "Audio spectrum analyzer sample"
+
+config SAMPLE_RATE
+	int "Sample rate in Hz"
+	default 16000
+	help
+	  Rate the audio interface is configured for. Half of it is the highest
+	  frequency the spectrum can show.
+
+config SAMPLE_CHANNELS
+	int "Number of channels in a captured frame"
+	default 2
+	help
+	  Channels the audio interface carries. Only the first one is analyzed.
+
+config SAMPLE_FFT_SIZE
+	int "FFT length in samples"
+	default 512
+	help
+	  Number of samples transformed at a time, which must be a power of two
+	  between 32 and 4096. Longer transforms resolve low frequencies better
+	  and refresh the display less often.
+
+config SAMPLE_BANDS
+	int "Number of frequency bands displayed"
+	default 20
+	range 1 64
+
+config SAMPLE_INPUT_GAIN_DB
+	int "Codec input gain in dB"
+	default 10
+	help
+	  Gain applied to the capture path of the audio codec, when the sample
+	  drives one. Codecs clamp it to the range they support.
+
+source "Kconfig.zephyr"

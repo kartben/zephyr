@@ -1,0 +1,16 @@
+sample:
+  name: Audio spectrum analyzer
+  description: Show a live frequency spectrum of captured audio on a display
+tests:
+  sample.drivers.audio.spectrum_analyzer:
+    tags:
+      - audio
+      - i2s
+      - display
+    filter: dt_nodelabel_enabled("i2s_rx") and dt_chosen_enabled("zephyr,display")
+    depends_on:
+      - i2s
+      - display
+    integration_platforms:
+      - az3166_iotdevkit
+    build_only: true
