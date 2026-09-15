@@ -32,6 +32,12 @@ config NET_SAMPLE_MIDI2_PASSWORD
 	string "Password"
 	depends on NET_SAMPLE_MIDI2_AUTH_USER_PASSWORD
 
+config NET_SAMPLE_MIDI2_ACT_LED
+	bool
+	default y
+	depends on DT_HAS_GPIO_LEDS_ENABLED
+	select GPIO
+
 endmenu
 
 source "Kconfig.zephyr"
