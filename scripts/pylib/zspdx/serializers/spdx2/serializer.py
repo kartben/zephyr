@@ -315,9 +315,13 @@ PackageCopyrightText: {component.copyright_text}
         elif component.revision:
             f.write(f"PackageVersion: {component.revision}\n")
 
-        # Supplier
+        # Supplier: the organization the component was obtained from. Emitted even when
+        # unknown, so the document states an unasserted supplier rather than staying
+        # silent about a field an SBOM consumer is required to look for.
         if supplier:
             f.write(f"PackageSupplier: Organization: {supplier}\n")
+        else:
+            f.write("PackageSupplier: NOASSERTION\n")
 
         # External references
         for ref in component.external_references:
