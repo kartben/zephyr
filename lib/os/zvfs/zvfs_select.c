@@ -264,19 +264,17 @@ static int z_vrfy_zvfs_select(int nfds, struct zvfs_fd_set *ZRESTRICT readfds,
 	ret = z_impl_zvfs_select(nfds, readfds_copy, writefds_copy, exceptfds_copy, to, sigmask);
 
 	if (ret >= 0) {
-		if (readfds_copy) {
-			k_usermode_to_copy((void *)readfds, readfds_copy,
-					   sizeof(struct zvfs_fd_set));
-		}
-
-		if (writefds_copy) {
-			k_usermode_to_copy((void *)writefds, writefds_copy,
-					   sizeof(struct zvfs_fd_set));
-		}
-
-		if (exceptfds_copy) {
-			k_usermode_to_copy((void *)exceptfds, exceptfds_copy,
-					   sizeof(struct zvfs_fd_set));
+		if ((readfds_copy != NULL &&
+		     k_usermode_to_copy((void *)readfds, readfds_copy,
+					sizeof(struct zvfs_fd_set)) != 0) ||
+		    (writefds_copy != NULL &&
+		     k_usermode_to_copy((void *)writefds, writefds_copy,
+					sizeof(struct zvfs_fd_set)) != 0) ||
+		    (exceptfds_copy != NULL &&
+		     k_usermode_to_copy((void *)exceptfds, exceptfds_copy,
+					sizeof(struct zvfs_fd_set)) != 0)) {
+			errno = EFAULT;
+			ret = -1;
 		}
 	}
 
