@@ -134,7 +134,7 @@ class ManifestProjectsTable(SphinxDirective):
 def setup(app: Sphinx) -> dict[str, Any]:
     app.add_config_value("manifest_projects_table_manifest", None, "env")
 
-    directives.register_directive("manifest-projects-table", ManifestProjectsTable)
+    app.add_directive("manifest-projects-table", ManifestProjectsTable)
 
     return {
         "version": __version__,
