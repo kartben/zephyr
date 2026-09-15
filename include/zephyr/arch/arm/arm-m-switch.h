@@ -273,9 +273,7 @@ static ALWAYS_INLINE void arm_m_switch(void *switch_to, void **switched_from)
 			  */
 			 "mov r6, r12;"
 			 "mov r7, lr;"
-			 "ldr r8, =3f;"    /* address of restore PC */
-			 "orr r8, r8, #1;" /* set thumb bit */
-			 "push {r6-r8};"
+			 "push {r6-r7};"
 			 "sub sp, sp, #24;" /* skip over space for r6-r11 */
 			 "push {r0-r5};"
 			 "mov r2, #0x01000000;" /* APSR (only care about thumb bit) */
@@ -287,6 +285,10 @@ static ALWAYS_INLINE void arm_m_switch(void *switch_to, void **switched_from)
 #else
 			 "push {r2};"
 #endif
+			 /* PC goes in last, at the base of the frame */
+			 "ldr r8, =3f;"    /* address of restore PC */
+			 "orr r8, r8, #1;" /* set thumb bit */
+			 "push {r8};"
 
 #ifdef CONFIG_FPU
 			 /* Push FPU state (if active) to our outgoing stack */

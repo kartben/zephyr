@@ -56,14 +56,18 @@ struct synth_frame_align {
 };
 
 /* Zephyr's custom frame used for suspended threads, not hw-compatible */
+/* PC sits at the base so the restore can finish with a single
+ * "ldr pc, [sp], #size": that writes PC and SP together, which is what lets
+ * the rest of the restore leave SP alone and stay reusable throughout.
+ */
 struct switch_frame {
+	uint32_t pc;
 #ifdef CONFIG_BUILTIN_STACK_GUARD
 	uint32_t psplim;
 #endif
 	uint32_t apsr;
 	uint32_t r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12;
 	uint32_t lr;
-	uint32_t pc;
 };
 
 /* Union of synth and switch frame, used during context switch */
@@ -378,48 +382,91 @@ static void fpu_cs_copy(struct hw_frame_fpu *src, struct z_frame_fpu *dst)
  * arm_m_cpu_to_switch() needs a single address range to compare an
  * interrupted PC against.
  */
+/* The hand-coded offsets below must track struct switch_frame. */
+#ifdef CONFIG_BUILTIN_STACK_GUARD
+#define SW_PSPLIM 4
+#define SW_APSR   8
+#define SW_R0     12
+#define SW_R4     28
+#define SW_R12    60
+#define SW_LR     64
+#else
+#define SW_APSR   4
+#define SW_R0     8
+#define SW_R4     24
+#define SW_R12    56
+#define SW_LR     60
+#endif
+#ifdef CONFIG_BUILTIN_STACK_GUARD
+#define SW_SIZE 68
+#else
+#define SW_SIZE 64
+#endif
+
+BUILD_ASSERT(sizeof(struct switch_frame) == SW_SIZE);
+BUILD_ASSERT(offsetof(struct switch_frame, pc) == 0);
+BUILD_ASSERT(offsetof(struct switch_frame, apsr) == SW_APSR);
+BUILD_ASSERT(offsetof(struct switch_frame, r0) == SW_R0);
+BUILD_ASSERT(offsetof(struct switch_frame, r4) == SW_R4);
+BUILD_ASSERT(offsetof(struct switch_frame, r12) == SW_R12);
+BUILD_ASSERT(offsetof(struct switch_frame, lr) == SW_LR);
+#ifdef CONFIG_BUILTIN_STACK_GUARD
+BUILD_ASSERT(offsetof(struct switch_frame, psplim) == SW_PSPLIM);
+#endif
+
+#define STR(x) STR2(x)
+#define STR2(x) #x
+
 __used __attribute__((naked)) void arm_m_switch_restore(void)
 {
 	__asm__("  msr basepri, r0;"
 #if defined(CONFIG_USERSPACE) && defined(CONFIG_USE_SWITCH)
 		"  msr control, r8;" /* Now we can drop privilege */
 #endif
-		/* Nothing above this point has consumed the frame. */
-		".global arm_m_switch_restore_pop;"
-		"arm_m_switch_restore_pop:;"
 #ifdef CONFIG_BUILTIN_STACK_GUARD
-		"  pop {r1-r2};"
+		"  ldr r1, [sp, #" STR(SW_PSPLIM) "];"
 		"  msr psplim, r1;"
-#else
-		"  pop {r2};"
 #endif
+		"  ldr r2, [sp, #" STR(SW_APSR) "];"
 #ifdef _ARM_M_SWITCH_HAVE_DSP
 		"  msr apsr_nzcvqg, r2;"
 #else
 		"  msr apsr_nzcvq, r2;"
 #endif
-		"  pop {r0-r12, lr};"
-		"  pop {pc};");
+		/* SP stays at the frame base for everything below, so the frame
+		 * remains a complete description of the thread right up to the
+		 * final instruction. r3 is the ldm base and so cannot be in its
+		 * list; it is reloaded afterwards.
+		 */
+		"  add r3, sp, #" STR(SW_R4) ";"
+		"  ldm r3, {r4-r11};"
+		"  ldrd r0, r1, [sp, #" STR(SW_R0) "];"
+		"  ldrd r2, r3, [sp, #" STR(SW_R0) " + 8];"
+		"  ldrd r12, lr, [sp, #" STR(SW_R12) "];"
+		/* Writes PC and SP together: an exception is taken either side
+		 * of it, never within.
+		 */
+		"  ldr.w pc, [sp], #" STR(SW_SIZE) ";"
+		".global arm_m_switch_restore_end;"
+		"arm_m_switch_restore_end:;");
 }
 
-/* First instruction of arm_m_switch_restore() that consumes the frame. */
-extern char arm_m_switch_restore_pop;
+/* End of the out-of-line restore. */
+extern char arm_m_switch_restore_end;
 
-/* Reports whether an interrupted PC shows the thread suspended inside
- * arm_m_switch_restore() with the frame still whole, that is, before the
- * restore had popped anything from it.
+/* Reports whether the thread was interrupted inside arm_m_switch_restore().
  *
- * The range is inclusive of the first pop, because the stacked PC is the
- * instruction that has not run yet, and that is the common case: the restore
- * unmasks one or two instructions earlier, so an already-pending interrupt is
- * taken with the pop as its return address and SP still at the base.
+ * The whole of that routine qualifies: it leaves SP at the frame base and only
+ * ever reads the frame, so the frame stays a complete description of the
+ * thread throughout. The closing instruction writes PC and SP together, and an
+ * exception is taken either side of it, never within.
  */
 static bool restore_frame_whole(uint32_t pc)
 {
 	uint32_t start = (uint32_t)arm_m_switch_restore & ~1U;
-	uint32_t pop = (uint32_t)&arm_m_switch_restore_pop & ~1U;
+	uint32_t end = (uint32_t)&arm_m_switch_restore_end & ~1U;
 
-	return ((pc & ~1U) - start) <= (pop - start);
+	return ((pc & ~1U) - start) < (end - start);
 }
 
 /* Somewhere harmless for the exit fixup to dump r4-r11 when they do not
