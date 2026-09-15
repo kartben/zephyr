@@ -348,6 +348,12 @@ Deprecated APIs and options
   * The :c:struct:`_dmic_ops` struct has been deprecated. DMIC drivers are now expected to use the
     :c:macro:`DEVICE_API` macro to declare their driver API.
 
+* Flash
+
+  * :kconfig:option:`CONFIG_FLASH_STM32_XSPI` has been deprecated on the STM32H5
+    series in favor of the MSPI driver selected by
+    :kconfig:option:`CONFIG_MSPI_STM32_XSPI`.
+
 * Fuel Gauge
 
   * Deprecated various fuel gauge property enums and union fields in favor of
