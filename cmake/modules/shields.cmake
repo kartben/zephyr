@@ -47,6 +47,13 @@ endif()
 # After processing all shields, only invalid shields will be left in this list.
 set(SHIELD-NOTFOUND ${SHIELD_AS_LIST})
 
+# The shield discovery below serves the 'shields' target and the diagnostic
+# for an invalid SHIELD. Script mode has no targets, so with no SHIELD to
+# report on there is nothing left to discover.
+if(CMAKE_SCRIPT_MODE_FILE AND NOT DEFINED SHIELD)
+  return()
+endif()
+
 # Prepare list shields command.
 # This command is used for locating the shield dir as well as printing all shields
 # in the system in the following cases:

@@ -3200,6 +3200,10 @@ function(toolchain_parse_make_rule input_file include_files)
   # Pop the first item containing "empty_file.o:"
   list(POP_FRONT input_as_list first_input_line)
 
+  # 'result' is inherited from the calling scope, where an unrelated variable
+  # of that name may already hold a value, so start from an empty list.
+  unset(result)
+
   # Remove whitespace before and after filename and convert to CMake path.
   foreach(file ${input_as_list})
     string(STRIP "${file}" file)
