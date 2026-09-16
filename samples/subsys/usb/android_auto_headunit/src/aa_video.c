@@ -6,21 +6,17 @@
 #include "aa_video.h"
 
 #include <errno.h>
-#include <string.h>
 
-#include <zephyr/device.h>
-#include <zephyr/drivers/display.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
 #include "src/aa.pb.h"
 #include "aa_frame.h"
 #include "aa_ids.h"
-#include "aa_mem.h"
+#include "aa_screen.h"
 #include "aa_session.h"
 #include "aa_h264.h"
 #include "h264_ipcm_decode.h"
-#include "hu_fb_dump.h"
 
 LOG_MODULE_REGISTER(aa_video, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
 
@@ -34,78 +30,33 @@ LOG_MODULE_REGISTER(aa_video, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
 #define VIDEO_HEIGHT CONFIG_SAMPLE_AA_HU_VIDEO_HEIGHT
 #define MEDIA_TIMESTAMP_LEN 8U
 
-static const struct device *display;
 static struct h264_ipcm_dec decoder;
-static uint16_t framebuffer[VIDEO_WIDTH * VIDEO_HEIGHT] AA_HU_BIG_BUF;
 static uint8_t nal_scratch[CONFIG_SAMPLE_AA_HU_NAL_SCRATCH_SIZE];
-static void blit(void);
 static uint32_t frames;
 static int64_t stats_ms;
 static uint32_t stats_frames;
 
 int aa_video_init(void)
 {
-	struct display_capabilities caps;
-	int ret;
+	int ret = aa_screen_init();
 
-	display = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
-	if (!device_is_ready(display)) {
-		LOG_ERR("Display not ready");
-		return -ENODEV;
-	}
-
-	display_get_capabilities(display, &caps);
-	if (caps.x_resolution != VIDEO_WIDTH || caps.y_resolution != VIDEO_HEIGHT) {
-		LOG_WRN("Display is %ux%u, stream is %ux%u", caps.x_resolution,
-			caps.y_resolution, VIDEO_WIDTH, VIDEO_HEIGHT);
-	}
-	if (caps.current_pixel_format != PIXEL_FORMAT_RGB_565) {
-		LOG_WRN("Display is not RGB565, the picture may look wrong");
-	}
-
-	if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_H264)) {
-		ret = aa_h264_init(framebuffer, VIDEO_WIDTH, VIDEO_HEIGHT);
-	} else {
-		ret = h264_ipcm_decode_init(&decoder, VIDEO_WIDTH, VIDEO_HEIGHT, framebuffer,
-					    nal_scratch, sizeof(nal_scratch));
-	}
 	if (ret != 0) {
 		return ret;
 	}
 
-	/*
-	 * External RAM is not cleared on startup the way ordinary .bss is, so
-	 * blank the picture before the panel is switched on. Until the phone
-	 * sends a frame the display would otherwise show whatever the memory
-	 * happened to hold.
-	 */
-	memset(framebuffer, 0, sizeof(framebuffer));
-#ifdef CONFIG_SAMPLE_AA_HU_TEST_PATTERN
-	/* Colour bars, to check the panel and the pixel format */
-	for (uint32_t y = 0; y < VIDEO_HEIGHT; y++) {
-		for (uint32_t x = 0; x < VIDEO_WIDTH; x++) {
-			static const uint16_t bars[] = {0xFFFFU, 0xFFE0U, 0x07FFU, 0x07E0U,
-							0xF81FU, 0xF800U, 0x001FU, 0x0000U};
-
-			framebuffer[y * VIDEO_WIDTH + x] =
-				bars[(x * ARRAY_SIZE(bars)) / VIDEO_WIDTH];
-		}
+	if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_H264)) {
+		ret = aa_h264_init();
+	} else {
+		ret = h264_ipcm_decode_init(&decoder, VIDEO_WIDTH, VIDEO_HEIGHT,
+					    aa_screen_framebuffer(), nal_scratch,
+					    sizeof(nal_scratch));
 	}
-#endif
-	blit();
-	LOG_INF("Framebuffer %p pushed to the display", (void *)framebuffer);
-
-	(void)display_blanking_off(display);
-	(void)hu_fb_dump_open();
-
-	return 0;
+	return ret;
 }
 
 void aa_video_link_up(void)
 {
-	if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_LTDC_YUV)) {
-		(void)display_blanking_off(display);
-	}
+	aa_screen_blank(false);
 
 	frames = 0;
 	stats_frames = 0;
@@ -119,22 +70,14 @@ void aa_video_link_down(void)
 	 * the panel, and drop the decoder state with it: whatever comes back
 	 * starts a stream of its own.
 	 */
-	if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_LTDC_YUV)) {
-		/*
-		 * The layer is showing the decoder's picture, not a buffer of
-		 * ours, so blank the panel instead of overwriting one.
-		 */
-		(void)display_blanking_on(display);
-	} else {
-		memset(framebuffer, 0, sizeof(framebuffer));
-		blit();
-	}
+	aa_screen_blank(true);
 
 	if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_H264)) {
 		(void)aa_h264_reset();
 	} else {
-		(void)h264_ipcm_decode_init(&decoder, VIDEO_WIDTH, VIDEO_HEIGHT, framebuffer,
-					    nal_scratch, sizeof(nal_scratch));
+		(void)h264_ipcm_decode_init(&decoder, VIDEO_WIDTH, VIDEO_HEIGHT,
+					    aa_screen_framebuffer(), nal_scratch,
+					    sizeof(nal_scratch));
 	}
 }
 
@@ -233,30 +176,10 @@ static void log_stream_profile(const uint8_t *au, size_t len)
 	}
 }
 
-static void blit(void)
-{
-	struct display_buffer_descriptor desc = {
-		.buf_size = sizeof(framebuffer),
-		.width = VIDEO_WIDTH,
-		.height = VIDEO_HEIGHT,
-		.pitch = VIDEO_WIDTH,
-	};
-
-	(void)display_write(display, 0, 0, &desc, framebuffer);
-}
-
+/* The picture is already on the display; this only counts it */
 static void show_frame(void)
 {
 	int64_t now;
-
-	/*
-	 * With the controller converting, the decoder has already handed it the
-	 * picture and there is no framebuffer of ours to push.
-	 */
-	if (!IS_ENABLED(CONFIG_SAMPLE_AA_HU_LTDC_YUV)) {
-		blit();
-		(void)hu_fb_dump_write(framebuffer, VIDEO_WIDTH * VIDEO_HEIGHT);
-	}
 
 	frames++;
 	stats_frames++;
@@ -316,6 +239,7 @@ static void on_media(const uint8_t *body, size_t len, bool has_timestamp)
 	} else {
 		n = h264_ipcm_decode_au(&decoder, au, au_len);
 		if (n >= 0) {
+			aa_screen_push();
 			show_frame();
 		}
 	}

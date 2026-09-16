@@ -12,14 +12,13 @@
 /**
  * @brief Set up the baseline decoder.
  *
- * @param fb     Framebuffer the pictures are written to, RGB565.
- * @param width  Framebuffer width in pixels.
- * @param height Framebuffer height in pixels.
+ * Decoded pictures are handed to the screen, which composes them with
+ * whatever else the display is showing.
  *
  * @retval 0 Success.
  * @retval -ENOMEM The decoder could not be allocated.
  */
-int aa_h264_init(uint16_t *fb, uint16_t width, uint16_t height);
+int aa_h264_init(void);
 
 /**
  * @brief Discard the decoder's state and start a new stream.
@@ -32,7 +31,7 @@ int aa_h264_reset(void);
 /**
  * @brief Decode one access unit.
  *
- * @retval 1 A picture was written to the framebuffer.
+ * @retval 1 A picture was decoded and shown.
  * @retval 0 The access unit carried no complete picture.
  * @retval -EINVAL The stream could not be decoded.
  */
