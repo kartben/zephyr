@@ -58,6 +58,58 @@ static inline void report_heap(void)
 }
 #endif
 
+/*
+ * Where a picture's time goes, which is the only way to tell the decoder's
+ * share from the colour conversion and the copy to the display.
+ */
+static uint32_t decode_us;
+static uint32_t display_us;
+static uint32_t pictures;
+
+#ifdef CONFIG_SAMPLE_AA_HU_VIDEO_PROFILE
+static uint32_t stamp(void)
+{
+	return k_cycle_get_32();
+}
+
+static void elapsed(uint32_t *acc, uint32_t from)
+{
+	*acc += k_cyc_to_us_floor32(k_cycle_get_32() - from);
+}
+
+static void report_timing(void)
+{
+	static int64_t since;
+	int64_t now = k_uptime_get();
+
+	if (pictures == 0U || (now - since) < 2000) {
+		return;
+	}
+
+	LOG_INF("Per picture: decode %u us, display %u us", decode_us / pictures,
+		display_us / pictures);
+	decode_us = 0U;
+	display_us = 0U;
+	pictures = 0U;
+	since = now;
+}
+#else
+static uint32_t stamp(void)
+{
+	return 0U;
+}
+
+static void elapsed(uint32_t *acc, uint32_t from)
+{
+	ARG_UNUSED(acc);
+	ARG_UNUSED(from);
+}
+
+static void report_timing(void)
+{
+}
+#endif
+
 /* The decoder library's allocator, redirected onto the heap above */
 void *aa_h264_malloc(size_t size)
 {
@@ -156,6 +208,7 @@ int aa_h264_decode_au(const uint8_t *au, size_t len)
 	int ready = 0;
 
 	report_heap();
+	report_timing();
 
 	if (decoder == NULL) {
 		return -EINVAL;
@@ -163,7 +216,10 @@ int aa_h264_decode_au(const uint8_t *au, size_t len)
 
 	while (left > 0U) {
 		uint32_t read = 0;
+		uint32_t at = stamp();
 		uint32_t ret = h264bsdDecode(decoder, p, left, 0U, &read);
+
+		elapsed(&decode_us, at);
 
 		/*
 		 * The decoder reports the parameter sets without consuming
@@ -196,7 +252,10 @@ int aa_h264_decode_au(const uint8_t *au, size_t len)
 				uint32_t w = h264bsdPicWidth(decoder) * 16U;
 				uint32_t h = h264bsdPicHeight(decoder) * 16U;
 
+				at = stamp();
 				aa_screen_show(pic, (uint16_t)w, (uint16_t)h);
+				elapsed(&display_us, at);
+				pictures++;
 				ready = 1;
 			}
 			break;
