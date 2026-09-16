@@ -8,33 +8,67 @@
 
 #include <stdint.h>
 
+#include "aa_layout.h"
+
 /*
- * Writers that put one decoded picture onto the display surface. The surface
- * is either packed YUV 4:2:2, which the display controller converts during
- * scanout, or RGB565 for a display that cannot.
+ * Writers that put one picture into a rectangle of the display surface. The
+ * surface is either packed YUV 4:2:2, which the display controller converts
+ * during scanout, or RGB565 for a display that cannot. Rectangles must start
+ * on an even column and be an even number of pixels wide, because a packed
+ * YUV pixel pair shares its chroma samples.
+ *
+ * Only the two ratios the sample settles at are worth writing quickly: the
+ * whole display, and a quarter of it with every second sample dropped. The
+ * ratios in between are only on screen while the two are being animated
+ * between, and take a general nearest neighbour path.
  */
 
 /**
- * @brief Interleave a planar YUV420 picture as packed YUYV.
+ * @brief Write a planar YUV420 picture into a rectangle of a packed YUYV surface.
  *
- * @param dst  Start of the surface, which is the size of the picture.
- * @param pic  Planar YUV420 picture, luma plane first.
- * @param w,h  Picture size in pixels, both even.
+ * @param dst   Start of the surface.
+ * @param pitch Surface width in pixels.
+ * @param r     Rectangle of the surface to fill.
+ * @param pic   Planar YUV420 picture, luma plane first.
+ * @param w,h   Picture size in pixels, both even.
  */
-void aa_scale_i420_yuyv(uint8_t *dst, const uint8_t *pic, uint16_t w, uint16_t h);
+void aa_scale_i420_yuyv(uint8_t *dst, uint16_t pitch, const struct aa_rect *r, const uint8_t *pic,
+			uint16_t w, uint16_t h);
 
 /**
- * @brief Convert a planar YUV420 picture to RGB565.
+ * @brief Write a planar YUV420 picture into a rectangle of an RGB565 surface.
  *
- * The BT.601 limited range samples the phone sends are converted on the way,
- * and a picture larger than the surface is clipped to it.
+ * The BT.601 limited range samples the phone sends are converted on the way.
+ *
+ * @param dst   Start of the surface.
+ * @param pitch Surface width in pixels.
+ * @param r     Rectangle of the surface to fill.
+ * @param pic   Planar YUV420 picture, luma plane first.
+ * @param w,h   Picture size in pixels, both even.
+ */
+void aa_scale_i420_rgb565(uint16_t *dst, uint16_t pitch, const struct aa_rect *r,
+			  const uint8_t *pic, uint16_t w, uint16_t h);
+
+/** @brief Blacken a rectangle of a packed YUYV surface. */
+void aa_scale_fill_yuyv(uint8_t *dst, uint16_t pitch, const struct aa_rect *r);
+
+/** @brief Blacken a rectangle of an RGB565 surface. */
+void aa_scale_fill_rgb565(uint16_t *dst, uint16_t pitch, const struct aa_rect *r);
+
+/**
+ * @brief Copy RGB565 pixels into a rectangle of a packed YUYV surface.
  *
  * @param dst       Start of the surface.
- * @param dst_w,dst_h Surface size in pixels.
- * @param pic       Planar YUV420 picture, luma plane first.
- * @param w,h       Picture size in pixels, both even.
+ * @param pitch     Surface width in pixels.
+ * @param r         Rectangle of the surface to fill.
+ * @param src       First source pixel, which lands at the corner of @p r.
+ * @param src_pitch Source width in pixels.
  */
-void aa_scale_i420_rgb565(uint16_t *dst, uint16_t dst_w, uint16_t dst_h, const uint8_t *pic,
-			  uint16_t w, uint16_t h);
+void aa_scale_rgb565_yuyv(uint8_t *dst, uint16_t pitch, const struct aa_rect *r,
+			  const uint16_t *src, uint16_t src_pitch);
+
+/** @brief Copy RGB565 pixels into a rectangle of an RGB565 surface. */
+void aa_scale_rgb565_copy(uint16_t *dst, uint16_t pitch, const struct aa_rect *r,
+			  const uint16_t *src, uint16_t src_pitch);
 
 #endif /* SAMPLES_SUBSYS_USB_ANDROID_AUTO_HEADUNIT_SRC_AA_SCALE_H_ */

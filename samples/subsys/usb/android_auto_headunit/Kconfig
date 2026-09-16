@@ -234,6 +234,79 @@ config SAMPLE_AA_HU_NIGHT_BUTTON
 	  made to switch between its day and night themes without a light
 	  sensor to cover.
 
+config SAMPLE_AA_HU_SPLIT_SCREEN
+	bool "Share the display with a GUI of the head unit's own"
+	depends on SAMPLE_AA_HU_H264
+	default y
+	help
+	  Offer the phone the whole display as before, but scale its picture
+	  into the top left quarter and hand the right half to a GUI of the
+	  head unit's own when the layout is switched. The bundled I_PCM
+	  decoder writes its pictures straight to the framebuffer at their own
+	  size, so this needs the H.264 decoder, which hands its pictures over
+	  to be composed.
+
+config SAMPLE_AA_HU_SPLIT_BUTTON
+	bool "Switch the display layout by holding the user button"
+	depends on SAMPLE_AA_HU_SPLIT_SCREEN && INPUT
+	depends on $(dt_alias_enabled,aa-longpress)
+	default y
+	help
+	  Switch between the two layouts on every long press reported by the
+	  input longpress device behind the "aa-longpress" alias, leaving the
+	  short press of the same button to switch night mode.
+
+config SAMPLE_AA_HU_SPLIT_ANIM_MS
+	int "Time the layout takes to change (ms)"
+	depends on SAMPLE_AA_HU_SPLIT_SCREEN
+	default 400
+	range 1 5000
+	help
+	  The picture is scaled to whatever size it has reached while the
+	  layout is moving, which neither of the two fast paths covers, so a
+	  long animation is a long time spent in the general one.
+
+config SAMPLE_AA_HU_GUI_CANVAS_SECTION
+	string "Memory section for the GUI canvas"
+	depends on SAMPLE_AA_HU_SPLIT_SCREEN
+	default SAMPLE_AA_HU_BUFFERS_SECTION if SAMPLE_AA_HU_BUFFERS_IN_EXT_RAM
+	default ".bss"
+	help
+	  Linker section for the RGB565 canvas the GUI is drawn into, which is
+	  half the display wide and all of it tall. Only what has changed is
+	  read out of it per frame, so external memory costs little.
+
+config SAMPLE_AA_HU_GUI_PERIOD_MS
+	int "Time between GUI updates (ms)"
+	depends on SAMPLE_AA_HU_SPLIT_SCREEN
+	default 33
+	range 5 1000
+	help
+	  How often the GUI is redrawn, and so also the fastest it drives the
+	  display when the phone is sending nothing.
+
+config SAMPLE_AA_HU_GUI_IDLE_MS
+	int "Silence from the phone that hands the display to the GUI (ms)"
+	depends on SAMPLE_AA_HU_SPLIT_SCREEN
+	default 1000
+	help
+	  A picture from the phone carries the GUI to the display with it, so
+	  the GUI only has to drive the display itself once the phone has gone
+	  quiet for this long. The video area goes black when it does.
+
+config SAMPLE_AA_HU_GUI_STACK_SIZE
+	int "GUI thread stack size"
+	depends on SAMPLE_AA_HU_SPLIT_SCREEN
+	default 1024
+
+config SAMPLE_AA_HU_GUI_THREAD_PRIORITY
+	int "GUI thread priority"
+	depends on SAMPLE_AA_HU_SPLIT_SCREEN
+	default 7
+	help
+	  Kept below the receive thread so that redrawing the GUI never costs
+	  the video a frame.
+
 config SAMPLE_AA_HU_TOF_NIGHT
 	bool "Drive night mode from a time-of-flight ranger"
 	depends on SENSOR && SENSOR_ASYNC_API

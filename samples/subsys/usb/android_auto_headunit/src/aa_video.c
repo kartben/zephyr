@@ -12,7 +12,9 @@
 
 #include "src/aa.pb.h"
 #include "aa_frame.h"
+#include "aa_gui.h"
 #include "aa_ids.h"
+#include "aa_layout.h"
 #include "aa_screen.h"
 #include "aa_session.h"
 #include "aa_h264.h"
@@ -51,7 +53,11 @@ int aa_video_init(void)
 					    aa_screen_framebuffer(), nal_scratch,
 					    sizeof(nal_scratch));
 	}
-	return ret;
+	if (ret != 0) {
+		return ret;
+	}
+
+	return aa_gui_init();
 }
 
 void aa_video_link_up(void)
@@ -70,7 +76,12 @@ void aa_video_link_down(void)
 	 * the panel, and drop the decoder state with it: whatever comes back
 	 * starts a stream of its own.
 	 */
-	aa_screen_blank(true);
+	if (aa_layout_gui_visible()) {
+		/* The GUI is still worth showing, so only the video goes dark */
+		aa_screen_show(NULL, 0U, 0U);
+	} else {
+		aa_screen_blank(true);
+	}
 
 	if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_H264)) {
 		(void)aa_h264_reset();

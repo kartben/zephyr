@@ -5,6 +5,7 @@
 
 #include <zephyr/dt-bindings/gpio/gpio.h>
 #include <zephyr/dt-bindings/clock/stm32n6_clock.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
 
 /*
  * OTG2 drives the USB Type-A host connector (CN17). Its VBUS comes from an
@@ -63,7 +64,23 @@ nav_bus_probe: &i2c1 {
 	aliases {
 		aa-i2s-out = &sai1_a;
 		aa-audio-codec = &audio_codec;
+		aa-longpress = &user_button_press;
 		aa-nav-display = &nav_display;
+	};
+
+	/*
+	 * The board has one button and the sample has two things to do with
+	 * it: a tap switches the phone between its day and night themes, and
+	 * holding it switches the display between the phone alone and the
+	 * phone beside the head unit's own GUI.
+	 */
+	user_button_press: longpress {
+		compatible = "zephyr,input-longpress";
+		input = <&{/gpio_keys}>;
+		input-codes = <INPUT_KEY_0>;
+		short-codes = <INPUT_KEY_N>;
+		long-codes = <INPUT_KEY_S>;
+		long-delay-ms = <700>;
 	};
 };
 
