@@ -32,11 +32,63 @@ LOG_MODULE_REGISTER(aa_video, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
 #define VIDEO_HEIGHT CONFIG_SAMPLE_AA_HU_VIDEO_HEIGHT
 #define MEDIA_TIMESTAMP_LEN 8U
 
-static struct h264_ipcm_dec decoder;
-static uint8_t nal_scratch[CONFIG_SAMPLE_AA_HU_NAL_SCRATCH_SIZE];
 static uint32_t frames;
 static int64_t stats_ms;
 static uint32_t stats_frames;
+
+/*
+ * One of two decoders, chosen at build time. The bundled I_PCM one keeps a
+ * scratch buffer as large as the largest NAL unit a picture is sliced into,
+ * which is tens of kilobytes that a build using the full decoder would only
+ * be reserving to leave untouched.
+ */
+#ifdef CONFIG_SAMPLE_AA_HU_H264
+
+static int decoder_start(void)
+{
+	return aa_h264_init();
+}
+
+static int decoder_feed(const uint8_t *au, size_t len)
+{
+	return aa_h264_decode_au(au, len);
+}
+
+static int decoder_restart(void)
+{
+	return aa_h264_reset();
+}
+
+#else
+
+static struct h264_ipcm_dec decoder;
+static uint8_t nal_scratch[CONFIG_SAMPLE_AA_HU_NAL_SCRATCH_SIZE];
+
+static int decoder_start(void)
+{
+	return h264_ipcm_decode_init(&decoder, VIDEO_WIDTH, VIDEO_HEIGHT,
+				     aa_screen_framebuffer(), nal_scratch, sizeof(nal_scratch));
+}
+
+static int decoder_feed(const uint8_t *au, size_t len)
+{
+	int ret = h264_ipcm_decode_au(&decoder, au, len);
+
+	/* This one writes the pixels itself, so the surface has to be pushed */
+	if (ret >= 0) {
+		aa_screen_push();
+		ret = 1;
+	}
+
+	return ret;
+}
+
+static int decoder_restart(void)
+{
+	return decoder_start();
+}
+
+#endif
 
 int aa_video_init(void)
 {
@@ -46,13 +98,7 @@ int aa_video_init(void)
 		return ret;
 	}
 
-	if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_H264)) {
-		ret = aa_h264_init();
-	} else {
-		ret = h264_ipcm_decode_init(&decoder, VIDEO_WIDTH, VIDEO_HEIGHT,
-					    aa_screen_framebuffer(), nal_scratch,
-					    sizeof(nal_scratch));
-	}
+	ret = decoder_start();
 	if (ret != 0) {
 		return ret;
 	}
@@ -83,13 +129,7 @@ void aa_video_link_down(void)
 		aa_screen_blank(true);
 	}
 
-	if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_H264)) {
-		(void)aa_h264_reset();
-	} else {
-		(void)h264_ipcm_decode_init(&decoder, VIDEO_WIDTH, VIDEO_HEIGHT,
-					    aa_screen_framebuffer(), nal_scratch,
-					    sizeof(nal_scratch));
-	}
+	(void)decoder_restart();
 }
 
 static int send_focus(int32_t mode)
@@ -241,18 +281,10 @@ static void on_media(const uint8_t *body, size_t len, bool has_timestamp)
 	}
 
 
-	if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_H264)) {
-		/* Only a positive result means a picture reached the buffer */
-		n = aa_h264_decode_au(au, au_len);
-		if (n > 0) {
-			show_frame();
-		}
-	} else {
-		n = h264_ipcm_decode_au(&decoder, au, au_len);
-		if (n >= 0) {
-			aa_screen_push();
-			show_frame();
-		}
+	/* Only a positive result means a picture reached the display */
+	n = decoder_feed(au, au_len);
+	if (n > 0) {
+		show_frame();
 	}
 
 	if (n == -ENOTSUP) {
