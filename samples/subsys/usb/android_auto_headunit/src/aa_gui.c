@@ -5,13 +5,16 @@
 
 #include "aa_gui.h"
 
+#include <stdio.h>
 #include <string.h>
 
+#include <zephyr/display/cfb.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/util.h>
 
 #include "aa_layout.h"
+#include "aa_logo.h"
 #include "aa_scale.h"
 #include "aa_screen.h"
 
@@ -25,8 +28,10 @@ LOG_MODULE_REGISTER(aa_gui, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
  * phone's picture has to be scaled into them either way.
  *
  * The board this runs on has a little over half a megabyte for the whole
- * image, of which the protocol, TLS and the decoder leave a few kilobytes, so
- * the panels are rectangles this file fills rather than a GUI library's.
+ * image, of which the protocol, TLS and the decoder leave a few thousand
+ * bytes, so the panels are drawn here rather than by a GUI library. Text uses
+ * the character framebuffer's own font, which the navigation display already
+ * brings in.
  */
 
 #define GUI_W (CONFIG_SAMPLE_AA_HU_VIDEO_WIDTH / 2)
@@ -41,33 +46,46 @@ LOG_MODULE_REGISTER(aa_gui, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
 #define PANEL_X  MARGIN
 #define PANEL1_Y MARGIN
 #define PANEL2_Y (2 * MARGIN + PANEL_H)
-#define INSET    16
 
 #define RGB565(r, g, b) ((uint16_t)(((r) & 0xF8U) << 8 | ((g) & 0xFCU) << 3 | (b) >> 3))
 
-#define COLOUR_BACKDROP RGB565(16, 20, 24)
-#define COLOUR_PANEL    RGB565(30, 42, 56)
-#define COLOUR_TRACK    RGB565(20, 28, 38)
-#define COLOUR_MARK     RGB565(96, 176, 232)
-#define COLOUR_BAR      RGB565(216, 128, 72)
+/* Black, so that a panel on this display is the light it does not emit */
+#define COLOUR_BACKDROP RGB565(0, 0, 0)
+/* The artwork is flattened onto this, so the two have to stay in step */
+#define COLOUR_PANEL    RGB565(0, 0, 0)
+#define COLOUR_TRACK    RGB565(0, 0, 0)
+#define COLOUR_GRID     RGB565(40, 48, 60)
+#define COLOUR_TEXT     RGB565(200, 214, 230)
 
-/* The sweep is redrawn every update; the bars change slowly and need not be */
-#define BARS         24
-#define BAR_PERIOD_MS 250
+/* The logo has the first panel to itself */
+#define LOGO_X (PANEL_X + (PANEL_W - AA_LOGO_WIDTH) / 2)
+#define LOGO_Y (PANEL1_Y + (PANEL_H - AA_LOGO_HEIGHT) / 2)
 
-/* The sweeping mark, inside the first panel */
-#define SWEEP_X (PANEL_X + INSET)
-#define SWEEP_Y (PANEL1_Y + PANEL_H / 2 - 12)
-#define SWEEP_W (PANEL_W - 2 * INSET)
-#define SWEEP_H 24
-#define MARK_W  64
+/* The second panel names the threads on the left and charts them on the right */
+#define INSET         16
+#define TOP_THREADS   4
+#define SWATCH_W      10
+#define LEGEND_X      (PANEL_X + INSET)
+#define LEGEND_TEXT_X (LEGEND_X + SWATCH_W + 4)
+/* A share and ten characters of a font ten pixels wide, beside the swatch */
+#define LEGEND_W      150
+#define LEGEND_END    (LEGEND_X + LEGEND_W)
+#define LEGEND_ROW    22
+#define LEGEND_Y      (PANEL2_Y + (PANEL_H - TOP_THREADS * LEGEND_ROW) / 2)
 
-/* The bar chart, inside the second panel */
-#define PLOT_X (PANEL_X + INSET)
+#define PLOT_X (LEGEND_END + 12)
 #define PLOT_Y (PANEL2_Y + INSET)
-#define PLOT_W (PANEL_W - 2 * INSET)
+#define PLOT_W (PANEL_X + PANEL_W - INSET - PLOT_X)
 #define PLOT_H (PANEL_H - 2 * INSET)
-#define BAR_W  (PLOT_W / BARS)
+
+/* Threads followed at once, of which the busiest are named and drawn */
+#define TRACKED   12
+#define NAME_MAX  16
+#define SAMPLE_MS 500
+
+static const uint16_t series_colour[TOP_THREADS] = {
+	RGB565(232, 96, 160), RGB565(240, 160, 64), RGB565(96, 200, 232), RGB565(128, 224, 128),
+};
 
 static uint16_t canvas[GUI_W * GUI_H]
 	Z_GENERIC_SECTION(CONFIG_SAMPLE_AA_HU_GUI_CANVAS_SECTION) __aligned(32);
@@ -83,6 +101,21 @@ static bool ready;
 static K_THREAD_STACK_DEFINE(gui_stack, CONFIG_SAMPLE_AA_HU_GUI_STACK_SIZE);
 static struct k_thread gui_thread_data;
 
+/* One thread's share of the processor, a sample per column of the chart */
+struct thread_slot {
+	k_tid_t tid;
+	uint64_t cycles;
+	char name[NAME_MAX];
+	uint8_t percent[PLOT_W];
+};
+
+static struct thread_slot slots[TRACKED];
+static uint64_t prev_all;
+/* Slots the legend names, busiest first, or TRACKED for an empty row */
+static uint8_t legend[TOP_THREADS];
+
+static const struct cfb_font *font;
+
 static void draw_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t colour)
 {
 	for (uint16_t row = 0U; row < h; row++) {
@@ -90,6 +123,47 @@ static void draw_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t c
 
 		for (uint16_t col = 0U; col < w; col++) {
 			out[col] = colour;
+		}
+	}
+}
+
+/*
+ * The character framebuffer registers its fonts in an iterable section, so the
+ * smallest one can be drawn straight into the canvas without a framebuffer of
+ * the kind that subsystem expects to be handed a display.
+ */
+static void font_pick(void)
+{
+	STRUCT_SECTION_FOREACH(cfb_font, candidate) {
+		if ((candidate->caps & CFB_FONT_MONO_VPACKED) == 0) {
+			continue;
+		}
+		if (font == NULL || candidate->height < font->height) {
+			font = candidate;
+		}
+	}
+}
+
+static void draw_text(uint16_t x, uint16_t y, const char *text, uint16_t colour, uint16_t end)
+{
+	uint8_t rows = DIV_ROUND_UP(font->height, 8U);
+
+	for (; *text != '\0' && (x + font->width) <= end; text++, x += font->width) {
+		const uint8_t *glyph;
+
+		if (*text < font->first_char || *text > font->last_char) {
+			continue;
+		}
+
+		glyph = (const uint8_t *)font->data +
+			(size_t)(*text - font->first_char) * font->width * rows;
+
+		for (uint8_t gx = 0U; gx < font->width; gx++) {
+			for (uint8_t gy = 0U; gy < font->height; gy++) {
+				if ((glyph[gx * rows + gy / 8U] & BIT(gy % 8U)) != 0U) {
+					canvas[(size_t)(y + gy) * GUI_W + x + gx] = colour;
+				}
+			}
 		}
 	}
 }
@@ -219,40 +293,214 @@ bool aa_gui_dirty(void)
 	return false;
 }
 
-/*
- * A mark that runs from one end of its track to the other and back. It is the
- * cheapest thing to redraw that still says at a glance that the head unit's
- * own side of the display is alive rather than a still picture.
- */
-static void draw_sweep(uint32_t phase)
+/* The artwork, unpacked a run at a time straight into the canvas */
+static void draw_logo(void)
 {
-	uint32_t span = SWEEP_W - MARK_W;
-	uint32_t at = phase % (2U * span);
+	uint16_t *out = &canvas[(size_t)LOGO_Y * GUI_W + LOGO_X];
+	uint32_t at = 0U;
 
-	draw_rect(SWEEP_X, SWEEP_Y, SWEEP_W, SWEEP_H, COLOUR_TRACK);
-	draw_rect(SWEEP_X + (uint16_t)MIN(at, 2U * span - at), SWEEP_Y, MARK_W, SWEEP_H,
-		  COLOUR_MARK);
-	mark_dirty(SWEEP_X, SWEEP_Y, SWEEP_W, SWEEP_H);
+	for (size_t i = 0U; i < ARRAY_SIZE(aa_logo_runs); i += 2U) {
+		uint16_t colour = aa_logo_palette[aa_logo_runs[i + 1U]];
+
+		for (uint8_t n = aa_logo_runs[i]; n > 0U; n--, at++) {
+			out[(at / AA_LOGO_WIDTH) * GUI_W + (at % AA_LOGO_WIDTH)] = colour;
+		}
+	}
+
+	mark_dirty(LOGO_X, LOGO_Y, AA_LOGO_WIDTH, AA_LOGO_HEIGHT);
 }
 
 /*
- * A bar per sample, oldest to the left, standing for the load the head unit is
- * under. The values are a placeholder; what the chart is made of is not.
+ * A slot per thread, kept for as long as the head unit runs. A thread that
+ * ends leaves its history behind rather than handing its place to another,
+ * which would graft one thread's samples onto another's line.
  */
-static void draw_bars(const uint8_t *values)
+static struct thread_slot *slot_for(k_tid_t tid)
+{
+	struct thread_slot *free_slot = NULL;
+
+	for (unsigned int i = 0U; i < ARRAY_SIZE(slots); i++) {
+		if (slots[i].tid == tid) {
+			return &slots[i];
+		}
+		if (slots[i].tid == NULL && free_slot == NULL) {
+			free_slot = &slots[i];
+		}
+	}
+
+	if (free_slot != NULL) {
+		const char *name = k_thread_name_get(tid);
+
+		free_slot->tid = tid;
+		if (name != NULL && name[0] != '\0') {
+			(void)strncpy(free_slot->name, name, NAME_MAX - 1U);
+		} else {
+			(void)snprintf(free_slot->name, NAME_MAX, "%p", (void *)tid);
+		}
+	}
+
+	return free_slot;
+}
+
+/* An idle thread is the processor doing nothing, which the rest is measured against */
+static bool is_idle(const struct thread_slot *slot)
+{
+	return strncmp(slot->name, "idle", 4) == 0;
+}
+
+static void thread_sample(const struct k_thread *cthread, void *user_data)
+{
+	k_tid_t tid = (k_tid_t)cthread;
+	uint64_t window = *(uint64_t *)user_data;
+	struct thread_slot *slot = slot_for(tid);
+	k_thread_runtime_stats_t stats;
+	uint64_t delta;
+
+	if (slot == NULL || k_thread_runtime_stats_get(tid, &stats) != 0) {
+		return;
+	}
+
+	delta = stats.execution_cycles - slot->cycles;
+	slot->cycles = stats.execution_cycles;
+	slot->percent[PLOT_W - 1U] =
+		(window != 0U) ? (uint8_t)MIN(delta * 100U / window, 100U) : 0U;
+}
+
+/*
+ * The busiest few, which are the ones the legend names and the chart draws.
+ * Ranking on the newest sample alone made a thread that works in bursts drop
+ * out of the four between one sample and the next, so its line came and went;
+ * rank on the most each has taken over the history that is on screen, which
+ * only changes when a thread has been quiet for the whole of it.
+ */
+static void rank_threads(void)
+{
+	uint8_t peak[TRACKED] = {0};
+
+	for (uint8_t i = 0U; i < ARRAY_SIZE(slots); i++) {
+		if (slots[i].tid == NULL || is_idle(&slots[i])) {
+			continue;
+		}
+		for (uint16_t x = 0U; x < PLOT_W; x++) {
+			peak[i] = MAX(peak[i], slots[i].percent[x]);
+		}
+	}
+
+	for (unsigned int row = 0U; row < TOP_THREADS; row++) {
+		uint8_t best = TRACKED;
+
+		for (uint8_t i = 0U; i < ARRAY_SIZE(slots); i++) {
+			bool taken = false;
+
+			if (slots[i].tid == NULL || is_idle(&slots[i])) {
+				continue;
+			}
+			for (unsigned int r = 0U; r < row; r++) {
+				taken = taken || (legend[r] == i);
+			}
+			if (taken) {
+				continue;
+			}
+			if (best == TRACKED || peak[i] > peak[best]) {
+				best = i;
+			}
+		}
+
+		legend[row] = best;
+	}
+}
+
+static void sample_load(void)
+{
+	k_thread_runtime_stats_t all;
+	uint64_t window;
+
+	if (k_thread_runtime_stats_all_get(&all) != 0) {
+		return;
+	}
+
+	/* Everything the processor did, idle included, since the last sample */
+	window = all.execution_cycles - prev_all;
+	prev_all = all.execution_cycles;
+
+	for (unsigned int i = 0U; i < ARRAY_SIZE(slots); i++) {
+		(void)memmove(slots[i].percent, &slots[i].percent[1], PLOT_W - 1U);
+		slots[i].percent[PLOT_W - 1U] = 0U;
+	}
+
+	k_thread_foreach_unlocked(thread_sample, &window);
+	rank_threads();
+}
+
+static uint16_t plot_top(uint8_t percent)
+{
+	return PLOT_Y + PLOT_H - (uint16_t)((uint32_t)percent * PLOT_H / 100U);
+}
+
+/*
+ * One sample per column, with each column drawn from its own value to the
+ * previous one so that a step between two samples is a line rather than two
+ * disconnected marks.
+ */
+static void draw_series(const uint8_t *percent, uint16_t colour)
+{
+	uint16_t prev = plot_top(percent[0]);
+
+	for (uint16_t x = 0U; x < PLOT_W; x++) {
+		uint16_t top = plot_top(percent[x]);
+		uint16_t y0 = MIN(prev, top);
+		uint16_t y1 = MIN((uint16_t)(MAX(prev, top) + 1U),
+				  (uint16_t)(PLOT_Y + PLOT_H - 1U));
+
+		draw_rect(PLOT_X + x, y0, 1U, y1 - y0 + 1U, colour);
+		prev = top;
+	}
+}
+
+/* What the processor is doing, as a line per thread */
+static void draw_chart(void)
 {
 	draw_rect(PLOT_X, PLOT_Y, PLOT_W, PLOT_H, COLOUR_TRACK);
 
-	for (uint16_t i = 0U; i < BARS; i++) {
-		uint16_t h = (uint16_t)((uint32_t)values[i] * PLOT_H / 100U);
+	for (uint8_t at = 25U; at < 100U; at += 25U) {
+		draw_rect(PLOT_X, plot_top(at), PLOT_W, 1U, COLOUR_GRID);
+	}
 
-		if (h == 0U) {
-			continue;
+	for (unsigned int row = 0U; row < TOP_THREADS; row++) {
+		if (legend[row] < TRACKED) {
+			draw_series(slots[legend[row]].percent, series_colour[row]);
 		}
-		draw_rect(PLOT_X + i * BAR_W, PLOT_Y + PLOT_H - h, BAR_W - 2U, h, COLOUR_BAR);
 	}
 
 	mark_dirty(PLOT_X, PLOT_Y, PLOT_W, PLOT_H);
+}
+
+static void legend_row(unsigned int row, uint16_t colour, uint8_t percent, const char *name)
+{
+	uint16_t y = LEGEND_Y + row * LEGEND_ROW;
+	char text[NAME_MAX + 8];
+
+	draw_rect(LEGEND_X, y + 3U, SWATCH_W, SWATCH_W, colour);
+	(void)snprintf(text, sizeof(text), "%2u %s", percent, name);
+	draw_text(LEGEND_TEXT_X, y, text, COLOUR_TEXT, LEGEND_END);
+}
+
+static void draw_legend(void)
+{
+	uint16_t w = LEGEND_END - LEGEND_X;
+
+	draw_rect(LEGEND_X, LEGEND_Y, w, TOP_THREADS * LEGEND_ROW, COLOUR_PANEL);
+
+	for (unsigned int row = 0U; row < TOP_THREADS; row++) {
+		if (legend[row] >= TRACKED) {
+			continue;
+		}
+
+		legend_row(row, series_colour[row], slots[legend[row]].percent[PLOT_W - 1U],
+			   slots[legend[row]].name);
+	}
+
+	mark_dirty(LEGEND_X, LEGEND_Y, w, TOP_THREADS * LEGEND_ROW);
 }
 
 /*
@@ -262,10 +510,8 @@ static void draw_bars(const uint8_t *values)
  */
 static void gui_thread(void *p1, void *p2, void *p3)
 {
-	static uint8_t bars[BARS];
 	int64_t prev = k_uptime_get();
-	int64_t next_bar = prev;
-	uint32_t phase = 0U;
+	int64_t next_sample = prev + SAMPLE_MS;
 
 	ARG_UNUSED(p1);
 	ARG_UNUSED(p2);
@@ -280,23 +526,15 @@ static void gui_thread(void *p1, void *p2, void *p3)
 		/*
 		 * Redrawing while the panel is sliding would race the copy out
 		 * of the canvas that every display buffer is then doing, and
-		 * four hundred milliseconds of still widgets is not something
-		 * anyone sees.
+		 * half a second of a still chart is not something anyone sees.
 		 */
-		if (!moved) {
+		if (!moved && now >= next_sample) {
+			next_sample = now + SAMPLE_MS;
+
 			k_mutex_lock(&canvas_lock, K_FOREVER);
-
-			phase += 6U;
-			draw_sweep(phase);
-
-			if (now >= next_bar) {
-				next_bar = now + BAR_PERIOD_MS;
-				memmove(bars, &bars[1], sizeof(bars) - 1U);
-				bars[BARS - 1U] =
-					(uint8_t)(30U + (phase / 3U) % 60U);
-				draw_bars(bars);
-			}
-
+			sample_load();
+			draw_chart();
+			draw_legend();
 			k_mutex_unlock(&canvas_lock);
 		}
 
@@ -314,17 +552,29 @@ int aa_gui_init(void)
 	for (unsigned int i = 0U; i < ARRAY_SIZE(drawn_x); i++) {
 		drawn_x[i] = UINT16_MAX;
 	}
+	for (unsigned int i = 0U; i < ARRAY_SIZE(legend); i++) {
+		legend[i] = TRACKED;
+	}
+
+	font_pick();
+	if (font == NULL) {
+		LOG_ERR("No font to label the chart with");
+		return -ENOENT;
+	}
 
 	draw_rect(0U, 0U, GUI_W, GUI_H, COLOUR_BACKDROP);
 	draw_rect(PANEL_X, PANEL1_Y, PANEL_W, PANEL_H, COLOUR_PANEL);
 	draw_rect(PANEL_X, PANEL2_Y, PANEL_W, PANEL_H, COLOUR_PANEL);
+	draw_logo();
+	draw_chart();
 	ready = true;
 
 	k_thread_create(&gui_thread_data, gui_stack, K_THREAD_STACK_SIZEOF(gui_stack), gui_thread,
 			NULL, NULL, NULL, CONFIG_SAMPLE_AA_HU_GUI_THREAD_PRIORITY, 0, K_NO_WAIT);
 	k_thread_name_set(&gui_thread_data, "aa_hu_gui");
 
-	LOG_INF("GUI ready, %ux%u canvas at %p", GUI_W, GUI_H, (void *)canvas);
+	LOG_INF("GUI ready, %ux%u canvas at %p, %ux%u font", GUI_W, GUI_H, (void *)canvas,
+		font->width, font->height);
 
 	return 0;
 }
