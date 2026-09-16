@@ -41,6 +41,12 @@ LOG_MODULE_REGISTER(aa_control, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
 #define AA_OFFERED_RESOLUTION AA_VIDEO_RESOLUTION_800x480
 #endif
 
+#if defined(CONFIG_SAMPLE_AA_HU_VIDEO_60FPS)
+#define AA_OFFERED_FPS AA_VIDEO_FPS_60
+#else
+#define AA_OFFERED_FPS AA_VIDEO_FPS_30
+#endif
+
 int aa_control_send_version_request(void)
 {
 	uint8_t body[4];
@@ -85,7 +91,7 @@ static int send_service_discovery_response(void)
 	cfg->has_video_resolution = true;
 	cfg->video_resolution = AA_OFFERED_RESOLUTION;
 	cfg->has_video_fps = true;
-	cfg->video_fps = AA_VIDEO_FPS_60;
+	cfg->video_fps = AA_OFFERED_FPS;
 	cfg->has_dpi = true;
 	cfg->dpi = 160;
 
