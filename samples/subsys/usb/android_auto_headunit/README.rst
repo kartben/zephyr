@@ -129,6 +129,11 @@ The STM32N6570-DK configurations optimize for execution speed. Software H.264 de
 still limits the frame rate for complex scenes; hardware color conversion alone does not
 guarantee 30 frames per second.
 
+The phone sends at whatever rate the head unit offers, and every picture it sends costs a
+decode, a colour conversion and a copy to the display, so the rate offered is the largest
+single call on the processor the sample makes. It offers thirty by default; the
+``SAMPLE_AA_HU_VIDEO_RATE`` choice asks for sixty instead.
+
 Direct planar or semiplanar YUV420 scanout is not functional on STM32N6 silicon, as described
 in `ES0620, section 2.7.1
 <https://www.st.com/resource/en/errata_sheet/es0620-stm32n6xxxx-device-errata-stmicroelectronics.pdf>`_.

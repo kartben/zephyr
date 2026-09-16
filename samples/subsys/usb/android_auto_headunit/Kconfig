@@ -420,6 +420,24 @@ config SAMPLE_AA_HU_VIDEO_1280X720
 
 endchoice
 
+choice SAMPLE_AA_HU_VIDEO_RATE
+	prompt "Frame rate offered to the phone"
+	default SAMPLE_AA_HU_VIDEO_30FPS
+	help
+	  The phone sends at whatever rate it is offered, and every picture
+	  costs the receive thread a decode, a colour conversion and a copy to
+	  the display. Thirty is what the sample can hold at 800x480 with room
+	  to spare; sixty doubles all of it for a stream the eye barely tells
+	  apart at this size.
+
+config SAMPLE_AA_HU_VIDEO_30FPS
+	bool "30"
+
+config SAMPLE_AA_HU_VIDEO_60FPS
+	bool "60"
+
+endchoice
+
 config SAMPLE_AA_HU_VIDEO_WIDTH
 	int
 	default 1280 if SAMPLE_AA_HU_VIDEO_1280X720
