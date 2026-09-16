@@ -163,6 +163,15 @@ config SAMPLE_AA_HU_YUV_BUFFERS_SECTION
 	  avoids external-memory traffic for packing and display scanout.
 	  The section must hold four bytes per pixel at the video resolution.
 
+config SAMPLE_AA_HU_VIDEO_PROFILE
+	bool "Report how long a picture takes"
+	depends on SAMPLE_AA_HU_H264
+	help
+	  Log the time a picture spends in the decoder and the time it spends
+	  being converted and copied to the display, averaged over the last
+	  couple of seconds. The two answer different questions: the first is
+	  the decoder's, the second is the sample's own.
+
 config SAMPLE_AA_HU_H264_HEAP_STATS
 	bool "Report how much of the decoder heap is used"
 	depends on SAMPLE_AA_HU_H264
