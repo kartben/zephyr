@@ -42,6 +42,14 @@ static uint8_t yuv_shown[AA_SCREEN_BUFFERS][YUV_PICTURE_SIZE]
 static uint8_t yuv_next;
 #endif
 
+/*
+ * The strip below the video is black and stays black, so it only has to be
+ * written when the layout moves it. Filling it with every picture cost as many
+ * stores as the scaled picture itself, which is most of what split screen was
+ * meant to save.
+ */
+static struct aa_rect banded[AA_SCREEN_BUFFERS];
+
 static void blit(void)
 {
 	struct display_buffer_descriptor desc = {
@@ -82,9 +90,10 @@ static void compose(const uint8_t *pic, uint16_t w, uint16_t h)
 	} else {
 		aa_scale_fill_yuyv(dst, DISPLAY_W, &video);
 	}
-	if (band.h != 0U) {
+	if (band.h != 0U && memcmp(&banded[idx], &band, sizeof(band)) != 0) {
 		aa_scale_fill_yuyv(dst, DISPLAY_W, &band);
 	}
+	banded[idx] = band;
 	aa_gui_apply_yuyv(dst, DISPLAY_W, idx);
 
 	if (stm32_ltdc_set_yuyv_frame(display, dst, YUV_PICTURE_SIZE) != 0) {
@@ -96,9 +105,10 @@ static void compose(const uint8_t *pic, uint16_t w, uint16_t h)
 	} else {
 		aa_scale_fill_rgb565(framebuffer, DISPLAY_W, &video);
 	}
-	if (band.h != 0U) {
+	if (band.h != 0U && memcmp(&banded[0], &band, sizeof(band)) != 0) {
 		aa_scale_fill_rgb565(framebuffer, DISPLAY_W, &band);
 	}
+	banded[0] = band;
 	aa_gui_apply_rgb565(framebuffer, DISPLAY_W, 0U);
 
 	blit();
