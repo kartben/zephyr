@@ -14,6 +14,10 @@ if(CONFIG_SOC_SERIES_STM32N6X)
   zephyr_linker_sources(SECTIONS axisram1_check.ld)
 endif()
 
+if(CONFIG_MBEDTLS_HEAP_CUSTOM_SECTION AND CONFIG_SOC_SERIES_STM32N6X)
+  zephyr_linker_sources(SECTIONS mbedtls_heap.ld)
+endif()
+
 target_sources(app PRIVATE
   src/aa_audio.c
   src/aa_control.c
