@@ -84,10 +84,29 @@ static inline int z_vrfy_adc_read_async(const struct device *dev,
 		K_OOPS(K_SYSCALL_VERIFY_MSG(sequence.options->callback == NULL,
 			    "ADC sequence callbacks forbidden from user mode"));
 	}
-	K_OOPS(K_SYSCALL_OBJ(async, K_OBJ_POLL_SIGNAL));
+	if (async != NULL) {
+		K_OOPS(K_SYSCALL_OBJ(async, K_OBJ_POLL_SIGNAL));
+	}
 
 	return z_impl_adc_read_async(dev, &sequence,
 				     async);
 }
 #include <zephyr/syscalls/adc_read_async_mrsh.c>
 #endif /* CONFIG_ADC_ASYNC */
+
+#ifdef CONFIG_ADC_STREAM
+static inline int z_vrfy_adc_get_decoder(const struct device *dev,
+					 const struct adc_decoder_api **api)
+{
+	const struct adc_decoder_api *decoder = NULL;
+	int ret;
+
+	K_OOPS(K_SYSCALL_OBJ(dev, K_OBJ_DRIVER_ADC));
+
+	ret = z_impl_adc_get_decoder(dev, &decoder);
+	K_OOPS(k_usermode_to_copy(api, &decoder, sizeof(decoder)));
+
+	return ret;
+}
+#include <zephyr/syscalls/adc_get_decoder_mrsh.c>
+#endif /* CONFIG_ADC_STREAM */
