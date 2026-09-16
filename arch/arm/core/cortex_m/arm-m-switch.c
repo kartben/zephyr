@@ -24,106 +24,62 @@ struct hw_frame_fpu {
 	uint32_t reserved;
 };
 
-/* The hardware frame pushed when entry happens with a misaligned stack */
-struct hw_frame_align {
-	struct hw_frame_base base;
-	uint32_t align_pad;
-};
-
-/* Both of the above */
-struct hw_frame_align_fpu {
-	struct hw_frame_fpu base;
-	uint32_t align_pad;
-};
-
-/* Zephyr's synthesized frame used during context switch on interrupt
- * exit: a minimal hardware frame with storage for r4-r11.
- * This is the variant with no alignment word.
+/* Zephyr's frame for a suspended thread.  The top of it is laid out
+ * exactly as a hardware exception frame, so a thread suspended by an
+ * interrupt needs no conversion: the frame the CPU pushed is already in
+ * place and only the callee-saved block below it has to be filled in.
+ * Resuming such a thread on interrupt exit is likewise just a matter of
+ * pointing PSP at .base.
  */
-struct synth_frame {
-	uint32_t r7, r8, r9, r10, r11;
-	uint32_t r4, r5, r6; /* these match switch format */
-	struct hw_frame_base base;
-};
-
-/* Zephyr's synthesized frame used during context switch on interrupt
- * exit: variant used when alignment word is needed.
- */
-struct synth_frame_align {
-	uint32_t r7, r8, r9, r10, r11;
-	uint32_t r4, r5, r6; /* these do NOT match switch format */
-	struct hw_frame_align base;
-};
-
-/* Zephyr's custom frame used for suspended threads, not hw-compatible */
 struct switch_frame {
 #ifdef CONFIG_BUILTIN_STACK_GUARD
 	uint32_t psplim;
 #endif
-	uint32_t apsr;
-	uint32_t r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12;
-	uint32_t lr;
-	uint32_t pc;
+	uint32_t r4, r5, r6, r7, r8, r9, r10, r11;
+	struct hw_frame_base base;
 };
 
-/* Union of synth and switch frame, used during context switch */
-union u_frame {
-	struct {
-		char pad[sizeof(struct switch_frame) - sizeof(struct synth_frame)];
-		struct synth_frame hw;
-	};
-	struct switch_frame sw;
-};
+/* The callee-saved block the exception exit fixup assembly moves with a
+ * single ldm/stm, now that it is contiguous in both directions.
+ */
+#define SWITCH_CS(f) (&(f)->r4)
 
-/* u_frame with have_fpu flag prepended (zero value), no FPU state */
+/* Switch frame with the have_fpu flag prepended (zero value here) */
 struct z_frame {
 #ifdef CONFIG_FPU
 	uint32_t have_fpu;
 #endif
-	union u_frame u;
+	struct switch_frame sw;
 };
 
-/* u_frame + FPU data, with have_fpu (non-zero) */
+/* Switch frame for a thread holding live FPU context.  The hardware's FP
+ * sub-frame is left exactly where the CPU pushed it, above the integer
+ * frame, so that resuming through an FP exception return restores s0-s15
+ * and FPSCR at no cost.  Only the callee-saved half, which the hardware
+ * never touches, has to be spilled below.
+ */
 struct z_frame_fpu {
 	uint32_t have_fpu;
-	uint32_t s_regs[32];
+	uint32_t s_regs[16]; /* s16-s31 */
+	struct switch_frame sw;
+	uint32_t hw_s_regs[16]; /* s0-s15, hardware layout */
 	uint32_t fpscr;
-	union u_frame u;
+	uint32_t reserved;
 };
 
-/* Union of all possible stack frame formats, aligned at the top (!).
- * Note that FRAMESZ is constructed to be larger than any of them to
- * avoid having a zero-length array.  The code doesn't ever use the
- * size of this struct, it just wants to be have compiler-visible
- * offsets for in-place copies.
- */
-/* clang-format off */
-#define FRAMESZ (4 + MAX(sizeof(struct z_frame_fpu), sizeof(struct hw_frame_align_fpu)))
-#define PAD(T)  char pad_##T[FRAMESZ - sizeof(struct T)]
-union frame {
-	struct { PAD(hw_frame_base);      struct hw_frame_base hw;          };
-	struct { PAD(hw_frame_fpu);       struct hw_frame_fpu hwfp;         };
-	struct { PAD(hw_frame_align);     struct hw_frame_align hw_a;       };
-	struct { PAD(hw_frame_align_fpu); struct hw_frame_align_fpu hwfp_a; };
-	struct { PAD(z_frame);            struct z_frame z;                 };
-	struct { PAD(z_frame_fpu);        struct z_frame_fpu zfp;           };
-	struct { PAD(synth_frame_align);  struct synth_frame_align synth_a; };
-};
-/* clang-format on */
-
-#ifdef __GNUC__
-/* Validate the structs are correctly top-aligned */
-#define FRAME_FIELD_END(F) ((void *)&(&(((union frame *)0)->F))[1])
-BUILD_ASSERT(FRAME_FIELD_END(hw) == FRAME_FIELD_END(hwfp));
-BUILD_ASSERT(FRAME_FIELD_END(hw) == FRAME_FIELD_END(hw_a));
-BUILD_ASSERT(FRAME_FIELD_END(hw) == FRAME_FIELD_END(hwfp_a));
-BUILD_ASSERT(FRAME_FIELD_END(hw) == FRAME_FIELD_END(z));
-BUILD_ASSERT(FRAME_FIELD_END(hw) == FRAME_FIELD_END(zfp));
-BUILD_ASSERT(FRAME_FIELD_END(hw) == FRAME_FIELD_END(synth_a));
-#endif
+BUILD_ASSERT(offsetof(struct z_frame_fpu, hw_s_regs) - offsetof(struct z_frame_fpu, sw) ==
+		     sizeof(struct switch_frame),
+	     "FP sub-frame must sit directly above the integer frame");
+BUILD_ASSERT(sizeof(struct switch_frame) == ARM_M_SW_FRAME_SZ,
+	     "ARM_M_SW_FRAME_SZ out of sync with struct switch_frame");
+BUILD_ASSERT(sizeof(struct z_frame_fpu) - offsetof(struct z_frame_fpu, hw_s_regs) ==
+		     ARM_M_FP_ABOVE_SZ,
+	     "ARM_M_FP_ABOVE_SZ out of sync with struct z_frame_fpu");
 
 #ifdef CONFIG_FPU
-uint32_t arm_m_switch_stack_buffer = sizeof(struct z_frame_fpu) - sizeof(struct hw_frame_base);
+/* Extra stack the switch layer needs below what the CPU already pushed */
+uint32_t arm_m_switch_stack_buffer =
+	sizeof(struct z_frame_fpu) - sizeof(struct hw_frame_fpu);
 #else
 uint32_t arm_m_switch_stack_buffer = sizeof(struct z_frame) - sizeof(struct hw_frame_base);
 #endif
@@ -140,9 +96,6 @@ struct arm_m_cs_ptrs arm_m_cs_ptrs;
 void *arm_m_lto_refs[2];
 #endif
 
-/* Bitmask to determine if the XPSR indicates the exception frame was padded */
-#define XPSR_STACK_ALIGN BIT(9)
-
 /* Unit test hook, unused in production */
 void *arm_m_last_switch_handle;
 
@@ -151,46 +104,6 @@ uint32_t *arm_m_exc_lr_ptr;
 
 /* Dummy used in arch_switch() when USERSPACE=y */
 uint32_t arm_m_switch_control;
-
-/* clang-format off */
-/* Emits an in-place copy from a hw_frame_base to a switch_frame */
-#define HW_TO_SWITCH(hw, sw) do {					\
-	uint32_t r0 = hw.r0, r1 = hw.r1, r2 = hw.r2, r3 = hw.r3;        \
-	uint32_t r12 = hw.r12, lr = hw.lr, pc = hw.pc, apsr = hw.apsr;  \
-	pc |= 1; /* thumb bit! */                                       \
-	sw.r0 = r0; sw.r1 = r1; sw.r2 = r2; sw.r3 = r3;                 \
-	sw.r12 = r12; sw.lr = lr; sw.pc = pc; sw.apsr = apsr;           \
-} while (false)
-
-/* Emits an in-place copy from a switch_frame to a synth_frame
- * but is generic as to whether the frame has an alignment word so takes
- * a separate parameter for the struct hw_frame_base
- */
-#define SWITCH_TO_SYNTH_INNER(sw, syntmp, syntmp_hw) do {               \
-	syntmp.r4 = sw.r4, syntmp.r5 = sw.r5, syntmp.r6 = sw.r6,        \
-	syntmp.r7 = sw.r7, syntmp.r8 = sw.r8, syntmp.r9 = sw.r9,        \
-	syntmp.r10 = sw.r10, syntmp.r11 = sw.r11, syntmp_hw.r0 = sw.r0, \
-	syntmp_hw.r1 = sw.r1, syntmp_hw.r2 = sw.r2,                     \
-	syntmp_hw.r3 = sw.r3, syntmp_hw.r12 = sw.r12,                   \
-	syntmp_hw.lr = sw.lr, syntmp_hw.pc = sw.pc,                     \
-	syntmp_hw.apsr = sw.apsr;                                       \
-} while (false)
-
-/* Emits an in-place copy from a switch_frame to a synth_frame */
-#define SWITCH_TO_SYNTH(sw, hw) do {                                    \
-	struct synth_frame tmp = { 0 };                                 \
-	SWITCH_TO_SYNTH_INNER(sw, tmp, tmp.base);                       \
-	hw = tmp;                                                       \
-} while (false)
-
-/* Emits an in-place copy from a switch_frame to a synth_frame_align */
-#define SWITCH_TO_SYNTH_ALIGN(sw, hw) do {                              \
-	struct synth_frame_align tmp = { 0 };                           \
-	SWITCH_TO_SYNTH_INNER(sw, tmp, tmp.base.base);                  \
-	hw = tmp;                                                       \
-} while (false)
-
-/* clang-format on */
 
 /* The arch/cpu/toolchain are horrifyingly inconsistent with how the
  * thumb bit is treated in runtime addresses.  The PC target for a B
@@ -291,101 +204,53 @@ bool arm_m_iciit_check(uint32_t msp, uint32_t psp, uint32_t lr)
 	return false;
 }
 
-#ifdef CONFIG_BUILTIN_STACK_GUARD
-#define PSPLIM(f) ((f)->z.u.sw.psplim)
-#else
-#define PSPLIM(f) 0
-#endif
-
-/* Converts, in place, a pickled "switch" frame from a suspended
- * thread to a "synthesized" format that can be restored by the CPU
- * hardware on exception exit.
- */
+/* Prepare a saved frame for hardware exception return. */
 static void *arm_m_switch_to_cpu(void *sp)
 {
-	union frame *f;
-	uint32_t splim;
-	bool padded;
+	struct switch_frame *sw;
 
 #ifdef CONFIG_FPU
-	/* When FPU switching is enabled, the suspended handle always
-	 * points to the have_fpu word, which will be followed by FPU
-	 * state if non-zero.
-	 */
-	bool have_fpu = (*(uint32_t *)sp) != 0;
+	if (*(uint32_t *)sp != 0U) {
+		struct z_frame_fpu *zf = CONTAINER_OF(sp, struct z_frame_fpu, have_fpu);
 
-	if (have_fpu) {
-		f = CONTAINER_OF(sp, union frame, zfp.have_fpu);
-		splim = PSPLIM(f);
-		__asm__ volatile("vldm %0, {s0-s31}" ::"r"(&f->zfp.s_regs[0]));
-		padded = f->zfp.u.sw.apsr & XPSR_STACK_ALIGN;
-		if (padded) {
-			SWITCH_TO_SYNTH_ALIGN(f->zfp.u.sw, f->synth_a);
-		} else {
-			SWITCH_TO_SYNTH(f->zfp.u.sw, f->zfp.u.hw);
-		}
+		/* The hardware restores s0-s15 and FPSCR from the frame we
+		 * are returning through, so only the callee-saved half has
+		 * to be reloaded here.
+		 */
+		__asm__ volatile("vldm %0, {s16-s31}" ::"r"(&zf->s_regs[0]));
+		arm_m_cs_ptrs.lr_save = (void *)EXC_RETURN_FPU;
+		sw = &zf->sw;
 	} else {
-		f = CONTAINER_OF(sp, union frame, z.have_fpu);
-		splim = PSPLIM(f);
-		padded = f->z.u.sw.apsr & XPSR_STACK_ALIGN;
-		if (padded) {
-			SWITCH_TO_SYNTH_ALIGN(f->z.u.sw, f->synth_a);
-		} else {
-			SWITCH_TO_SYNTH(f->z.u.sw, f->z.u.hw);
-		}
+		struct z_frame *z = CONTAINER_OF(sp, struct z_frame, have_fpu);
+
+		arm_m_cs_ptrs.lr_save = (void *)EXC_RETURN_INT;
+		sw = &z->sw;
 	}
 #else
-	f = CONTAINER_OF(sp, union frame, z.u.sw);
-	padded = f->z.u.sw.apsr & XPSR_STACK_ALIGN;
-	splim = PSPLIM(f);
-
-	if (padded) {
-		SWITCH_TO_SYNTH_ALIGN(f->z.u.sw, f->synth_a);
-	} else {
-		SWITCH_TO_SYNTH(f->z.u.sw, f->z.u.hw);
-	}
+	sw = sp;
+	arm_m_cs_ptrs.lr_save = (void *)EXC_RETURN_INT;
 #endif
 
-#ifdef CONFIG_BUILTIN_STACK_GUARD
-	__asm__ volatile("msr psplim, %0" ::"r"(splim));
-#endif
+	IF_ENABLED(CONFIG_BUILTIN_STACK_GUARD,
+		   (__asm__ volatile("msr psplim, %0" ::"r"(sw->psplim));))
 
-	/* Mark the callee-saved pointer for the fixup assembly.  Note
-	 * funny layout that puts r7 first!
-	 */
-	if (padded) {
-		arm_m_cs_ptrs.in = &f->synth_a.r7;
-	} else {
-		arm_m_cs_ptrs.in = &f->z.u.hw.r7;
-	}
+	/* Mark the callee-saved pointer for the fixup assembly */
+	arm_m_cs_ptrs.in = SWITCH_CS(sw);
 
-	return padded ? &f->synth_a.base.base : &f->z.u.hw.base;
+	return &sw->base;
 }
 
-static void fpu_cs_copy(struct hw_frame_fpu *src, struct z_frame_fpu *dst)
-{
-	for (int i = 0; IS_ENABLED(CONFIG_FPU) && i < 16; i++) {
-		dst->s_regs[i] = src->s_regs[i];
-	}
-}
-
-/* Converts, in-place, a CPU-spilled ("hardware") exception entry
- * frame to our ("zephyr") switch handle format such that the thread
- * can be suspended
- */
 static void *arm_m_cpu_to_switch(struct k_thread *th, void *sp, bool fpu)
 {
-	union frame *f = NULL;
 	struct hw_frame_base *base = sp;
-	bool padded = (base->apsr & XPSR_STACK_ALIGN);
-	uint32_t fpscr;
+	struct switch_frame *sw;
 
-	if (fpu && IS_ENABLED(CONFIG_FPU)) {
+	if (IS_ENABLED(CONFIG_FPU) && fpu) {
 		uint32_t dummy = 0;
 
-		/* Lazy FPU stacking is enabled, so before we touch
-		 * the stack frame we have to tickle the FPU to force
-		 * it to spill the caller-save registers.  Then clear
+		/* Lazy FPU stacking is enabled, so before we touch the
+		 * stack frame we have to tickle the FPU to force it to
+		 * spill the caller-save registers.  Then clear
 		 * CONTROL.FPCA which gets set again by that instruction.
 		 */
 		__asm__ volatile("vmov %0, s0;"
@@ -400,53 +265,38 @@ static void *arm_m_cpu_to_switch(struct k_thread *th, void *sp, bool fpu)
 	 */
 	iciit_fixup(th, base, base->apsr);
 
-	if (IS_ENABLED(CONFIG_FPU) && fpu) {
-		fpscr = CONTAINER_OF(sp, struct hw_frame_fpu, base)->fpscr;
-	}
-
-	/* There are four (!) different offsets from the interrupted
-	 * stack at which the hardware frame might be found at
-	 * runtime.  These expansions let the compiler generate
-	 * optimized in-place copies for each.  In practice it does a
-	 * pretty good job, much better than a double-copy via an
-	 * intermediate buffer.  Note that when FPU state is spilled
-	 * we must copy the 16 spilled registers first, to make room
-	 * for the copy.
+	/* The hardware frame already is the top of a switch frame.  All
+	 * that remains is to set the thumb bit, which the software restore
+	 * path branches through (the hardware ignores it on exception
+	 * return).  The hardware's alignment padding is left in place and
+	 * the restore reads XPSR bit 9 to know whether to step over it,
+	 * which is far cheaper than shifting the frame over it here.
 	 */
-	if (!fpu && !padded) {
-		f = CONTAINER_OF(sp, union frame, hw.r0);
-		HW_TO_SWITCH(f->hw, f->z.u.sw);
-	} else if (!fpu && padded) {
-		f = CONTAINER_OF(sp, union frame, hw_a.base.r0);
-		HW_TO_SWITCH(f->hw_a.base, f->z.u.sw);
-	} else if (fpu && !padded) {
-		f = CONTAINER_OF(sp, union frame, hwfp.base.r0);
-		fpu_cs_copy(&f->hwfp, &f->zfp);
-		HW_TO_SWITCH(f->hwfp.base, f->z.u.sw);
-	} else if (fpu && padded) {
-		f = CONTAINER_OF(sp, union frame, hwfp_a.base.base.r0);
-		fpu_cs_copy(&f->hwfp_a.base, &f->zfp);
-		HW_TO_SWITCH(f->hwfp_a.base.base, f->z.u.sw);
-	}
+	base->pc |= 1U;
 
-#ifdef CONFIG_BUILTIN_STACK_GUARD
-	__asm__ volatile("mrs %0, psplim" : "=r"(f->z.u.sw.psplim));
-#endif
+	sw = CONTAINER_OF(base, struct switch_frame, base);
+
+	IF_ENABLED(CONFIG_BUILTIN_STACK_GUARD,
+		   (__asm__ volatile("mrs %0, psplim" : "=r"(sw->psplim));))
 
 	/* Mark the callee-saved pointer for the fixup assembly */
-	arm_m_cs_ptrs.out = &f->z.u.sw.r4;
+	arm_m_cs_ptrs.out = SWITCH_CS(sw);
 
 #ifdef CONFIG_FPU
 	if (fpu) {
-		__asm__ volatile("vstm %0, {s16-s31}" ::"r"(&f->zfp.s_regs[16]));
-		f->zfp.fpscr = fpscr;
-		f->zfp.have_fpu = true;
-		return &f->zfp.have_fpu;
+		struct z_frame_fpu *zf = CONTAINER_OF(sw, struct z_frame_fpu, sw);
+
+		__asm__ volatile("vstm %0, {s16-s31}" ::"r"(&zf->s_regs[0]) : "memory");
+		zf->have_fpu = 1U;
+		return &zf->have_fpu;
 	}
-	f->z.have_fpu = false;
-	return &f->z.have_fpu;
+
+	struct z_frame *z = CONTAINER_OF(sw, struct z_frame, sw);
+
+	z->have_fpu = 0U;
+	return &z->have_fpu;
 #else
-	return &f->z.u.sw;
+	return sw;
 #endif
 }
 
@@ -489,14 +339,17 @@ void *arm_m_new_stack(char *base, uint32_t sz, void *entry, void *arg0, void *ar
 	 */
 	sw = (void *)(baddr + sz - sizeof(*sw));
 	*sw = (struct switch_frame){
-		IF_ENABLED(CONFIG_BUILTIN_STACK_GUARD, (.psplim = baddr,)) .r0 = (uint32_t)arg0,
-			   .r1 = (uint32_t)arg1, .r2 = (uint32_t)arg2, .r3 = (uint32_t)arg3,
-			   .pc = ((uint32_t)entry) | 1, /* set thumb bit! */
-			   .apsr = 0x1000000,           /* thumb bit here too! */
-		};
+		IF_ENABLED(CONFIG_BUILTIN_STACK_GUARD, (.psplim = baddr,))
+		.base = {
+			.r0 = (uint32_t)arg0, .r1 = (uint32_t)arg1,
+			.r2 = (uint32_t)arg2, .r3 = (uint32_t)arg3,
+			.pc = (uint32_t)entry | 1U,
+			.apsr = 0x01000000U,
+		},
+	};
 
 #ifdef CONFIG_FPU
-	struct z_frame *zf = CONTAINER_OF(sw, struct z_frame, u.sw);
+	struct z_frame *zf = CONTAINER_OF(sw, struct z_frame, sw);
 
 	zf->have_fpu = false;
 	return zf;
@@ -619,8 +472,7 @@ void arm_m_legacy_exit(void)
  * call arm_m_must_switch() (which handles the other context switch
  * duties), and spill/fill if necessary.  If no context switch is
  * needed, we just return via the original LR.  If we are switching,
- * we synthesize a integer-only EXC_RETURN as FPU state switching was
- * handled in software already.
+ * lr_save holds the EXC_RETURN selected for the incoming frame.
  */
 #ifdef CONFIG_MULTITHREADING
 __attribute__((naked)) void arm_m_exc_exit(void)
@@ -630,11 +482,9 @@ __attribute__((naked)) void arm_m_exc_exit(void)
 		"  mov r3, #0;"
 		"  ldr lr, [r2, #8];" /* lr_save */
 		"  cbz r0, 1f;"
-		"  mov lr, #0xfffffffd;" /* integer-only LR */
 		"  ldm r2, {r0, r1};"    /* fields: out, in */
-		"  stm r0, {r4-r11};"    /* out is a switch_frame */
-		"  ldm r1!, {r7-r11};"   /* in is a synth_frame */
-		"  ldm r1, {r4-r6};"
+		"  stm r0, {r4-r11};"    /* both are switch frames now, so the */
+		"  ldm r1, {r4-r11};"    /* callee-saved block is contiguous */
 		"1:\n"
 		"  msr basepri, r3;" /* release lock taken in must_switch */
 		"  bx lr;");
