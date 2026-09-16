@@ -97,6 +97,14 @@
 	interrupts = <14 1>, <15 1>, <16 1>, <17 1>;
 	interrupt-names = "rxi", "txi", "tei", "eri";
 	status = "okay";
+
+	audio_codec: da7212@1a {
+		compatible = "dlg,da7212";
+		reg = <0x1a>;
+		clocks = <&audio_clock 0>;
+		clock-names = "mclk";
+		clock-source = "PLL";
+	};
 };
 
 &port_irq13 {
@@ -203,6 +211,37 @@
 	interrupt-names = "drw";
 	interrupts = <31 12>;
 	status = "okay";
+};
+
+&i2s0 {
+	pinctrl-0 = <&ssie0_default>;
+	pinctrl-names = "default";
+	interrupts = <32 12>, <33 12>, <34 12>;
+	interrupt-names = "ssi_txi", "ssi_rxi", "ssi_if";
+	clocks = <&pclkb MSTPC 8>, <&audio_clock 0>;
+	clock-names = "pclk", "audio-clock";
+	status = "okay";
+};
+
+&pwm2 {
+	pinctrl-0 = <&pwm2_default>;
+	pinctrl-names = "default";
+	interrupts = <35 1>, <36 1>;
+	interrupt-names = "gtioca", "overflow";
+	status = "okay";
+
+	/*
+	 * Drives AUDIO_MCLK on PD06 and, over the internal GPT route, the SSIE
+	 * audio clock. The rate only has to land in the 2 to 50 MHz the DA7212
+	 * PLL accepts, since the PLL synthesizes the codec system clock from
+	 * it, so it is the closest the 300 MHz GPTCLK reaches to 12.288 MHz.
+	 */
+	audio_clock: pwmclock {
+		compatible = "pwm-clock";
+		#clock-cells = <1>;
+		pwms = <&pwm2 0 PWM_HZ(12500000) PWM_POLARITY_NORMAL>;
+		status = "okay";
+	};
 };
 
 zephyr_lcdif: &lcdif {};

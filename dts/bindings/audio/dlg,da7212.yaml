@@ -15,9 +15,21 @@ properties:
     default: "MCLK"
     description: |
       Codec's internal clock (SYSCLK) source selection. Available options:
-      - "MCLK": external MCLK supplied by host
+      - "MCLK": the MCLK supplied by the host is used as SYSCLK directly, with the PLL
+        bypassed. MCLK must then be 11.2896 MHz for the 11.025, 22.05, 44.1 and 88.2 kHz
+        sample rates and 12.288 MHz for the others, or a multiple of either.
+      - "PLL": the codec PLL synthesizes SYSCLK from an MCLK anywhere between 2 and
+        50 MHz. MCLK must be synchronous with BCLK and WCLK.
+      - "PLL_SRM": as "PLL", with sample rate tracking, so that the PLL follows the
+        incoming WCLK. Needed when the codec is the DAI target and MCLK is not
+        synchronous with WCLK. WCLK may drift 4% either side of the configured
+        sample rate.
+
+      An MCLK below 5 MHz needs a setup sequence the driver does not implement.
     enum:
       - "MCLK"
+      - "PLL"
+      - "PLL_SRM"
 
   clocks:
     type: phandle-array
