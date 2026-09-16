@@ -30,6 +30,12 @@ layout <west-workspaces>`.
 Before you start, make sure you have a working Zephyr development environment, as per the
 instructions in the :ref:`getting_started`.
 
+.. note::
+
+   VS Code can also run the whole toolchain inside the Zephyr Docker image through its Dev
+   Containers extension, so that nothing needs to be installed on the host. See
+   :ref:`docker_devcontainer`.
+
 Open the project in VS Code
 ***************************
 
