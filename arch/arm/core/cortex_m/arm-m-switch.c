@@ -70,11 +70,12 @@ struct z_frame_fpu {
 BUILD_ASSERT(offsetof(struct z_frame_fpu, hw_s_regs) - offsetof(struct z_frame_fpu, sw) ==
 		     sizeof(struct switch_frame),
 	     "FP sub-frame must sit directly above the integer frame");
-BUILD_ASSERT(sizeof(struct switch_frame) == ARM_M_SW_FRAME_SZ,
-	     "ARM_M_SW_FRAME_SZ out of sync with struct switch_frame");
-BUILD_ASSERT(sizeof(struct z_frame_fpu) - offsetof(struct z_frame_fpu, hw_s_regs) ==
-		     ARM_M_FP_ABOVE_SZ,
-	     "ARM_M_FP_ABOVE_SZ out of sync with struct z_frame_fpu");
+BUILD_ASSERT(offsetof(struct switch_frame, base) - offsetof(struct switch_frame, r4) == 32U);
+BUILD_ASSERT(offsetof(struct switch_frame, base.pc) - offsetof(struct switch_frame, r4) == 56U);
+
+#define XPSR_STACK_ALIGN BIT(9)
+#define EXC_RETURN_INT 0xfffffffdU
+#define EXC_RETURN_FPU 0xffffffedU
 
 #ifdef CONFIG_FPU
 /* Extra stack the switch layer needs below what the CPU already pushed */
@@ -240,6 +241,118 @@ static void *arm_m_switch_to_cpu(void *sp)
 	return &sw->base;
 }
 
+/* The DSP extension changes the mnemonic for restoring the flags. */
+#ifdef _ARM_M_SWITCH_HAVE_DSP
+#define ARM_M_MSR_APSR(r) "msr apsr_nzcvqg, " r ";"
+#else
+#define ARM_M_MSR_APSR(r) "msr apsr_nzcvq, " r ";"
+#endif
+
+/* Keep SP below the entire saved frame until the final load updates SP and
+ * PC together. Exception stacking, including lazy FP stacking, therefore
+ * cannot overwrite any part of the saved context. The extra word below the
+ * handle holds a copy of PC for that final post-indexed load.
+ *
+ * Each frame shape needs a separate tail because the SP increment is an
+ * immediate and no scratch register survives the last register load. Both
+ * LDM base registers remain intact until their last transfer, so an interrupt
+ * that returns without switching can continue either instruction normally.
+ */
+#if defined(CONFIG_USERSPACE) && defined(CONFIG_USE_SWITCH)
+#define RESTORE_CONTROL "msr control, r8; isb;"
+#else
+#define RESTORE_CONTROL ""
+#endif
+
+#define RESTORE_TAIL(skip)                  \
+	"msr basepri, r0;"                  \
+	RESTORE_CONTROL                    \
+	ARM_M_MSR_APSR("r2")                \
+	"ldm r12, {r4-r11};"                \
+	"ldm lr, {r0-r3, r12, lr};"         \
+	"ldr pc, [sp], " skip ";"
+
+__used __attribute__((naked)) void arm_m_switch_restore(void)
+{
+	__asm__("mov r3, r4;"
+#ifdef CONFIG_FPU
+		"ldm r4!, {r7};"
+		"cbz r7, 1f;"
+		"vldm r4!, {s16-s31};"
+		"add r6, r4, %[sw_size];"
+		"vldm r6!, {s0-s15};"
+		"ldr r6, [r6];"
+		"vmsr fpscr, r6;"
+		"1:;"
+#endif
+#ifdef CONFIG_BUILTIN_STACK_GUARD
+		"ldr r1, [r4], #4;"
+#endif
+		"ldr r2, [r4, #56];" /* PC in the hardware frame */
+		"str r2, [r3, #-4]!;"
+		"mov sp, r3;"
+#ifdef CONFIG_BUILTIN_STACK_GUARD
+		"msr psplim, r1;"
+#endif
+		"mov r12, r4;" /* callee-saved block */
+		"add lr, r4, #32;" /* hardware frame */
+		"ldr r2, [lr, #28];" /* xPSR */
+#if defined(CONFIG_FPU) && defined(CONFIG_USERSPACE) && defined(CONFIG_USE_SWITCH)
+		/* Preserve the incoming FPCA rather than the outgoing thread's. */
+		"mrs r6, control;"
+		"and r6, r6, #4;"
+		"bic r8, r8, #4;"
+		"orr r8, r8, r6;"
+#endif
+		".global arm_m_switch_restore_start;"
+		"arm_m_switch_restore_start:;"
+#ifdef CONFIG_FPU
+		"cbz r7, 2f;"
+		"tst r2, %[padbit];"
+		"bne 3f;"
+		RESTORE_TAIL("%[fp_size]")
+		"3:;"
+		RESTORE_TAIL("%[fp_pad_size]")
+		"2:;"
+#endif
+		"tst r2, %[padbit];"
+		"bne 4f;"
+		RESTORE_TAIL("%[size]")
+		"4:;"
+		RESTORE_TAIL("%[pad_size]")
+		".global arm_m_switch_restore_end;"
+		"arm_m_switch_restore_end:;"
+		:: [sw_size] "i"(sizeof(struct switch_frame)),
+		   [padbit] "i"(XPSR_STACK_ALIGN),
+		   [size] "i"(sizeof(struct z_frame) + 4U),
+		   [pad_size] "i"(sizeof(struct z_frame) + 8U),
+		   [fp_size] "i"(sizeof(struct z_frame_fpu) + 4U),
+		   [fp_pad_size] "i"(sizeof(struct z_frame_fpu) + 8U));
+}
+
+extern char arm_m_switch_restore_start, arm_m_switch_restore_end;
+
+/* The interrupted SP points at the temporary PC word throughout the
+ * interruptible restore. Recover it from the exception frame, not from a
+ * partially restored register or a per-thread copy of the switch handle.
+ */
+static void *interrupted_restore(struct hw_frame_base *base, bool fpu)
+{
+	uint32_t start = (uint32_t)&arm_m_switch_restore_start;
+	uint32_t end = (uint32_t)&arm_m_switch_restore_end;
+	uint32_t pc = base->pc & ~1U;
+	size_t size = fpu ? sizeof(struct hw_frame_fpu) : sizeof(*base);
+
+	if ((pc - start) >= (end - start)) {
+		return NULL;
+	}
+	if ((base->apsr & XPSR_STACK_ALIGN) != 0U) {
+		size += sizeof(uint32_t);
+	}
+
+	return (uint8_t *)base + size + sizeof(uint32_t);
+}
+
 static void *arm_m_cpu_to_switch(struct k_thread *th, void *sp, bool fpu)
 {
 	struct hw_frame_base *base = sp;
@@ -258,6 +371,17 @@ static void *arm_m_cpu_to_switch(struct k_thread *th, void *sp, bool fpu)
 				 "bic %0, %0, #4;"
 				 "msr control, %0;"
 				 : "+r"(dummy));
+	}
+
+	void *restore = interrupted_restore(base, fpu);
+
+	if (restore != NULL) {
+		/* The saved frame is intact. Discard the partial register restore
+		 * into the exception frame, which is no longer needed, instead
+		 * of spilling it over the original callee-saved registers.
+		 */
+		arm_m_cs_ptrs.out = base;
+		return restore;
 	}
 
 	/* Detects interrupted ICI/IT instructions and rigs up thread
@@ -328,7 +452,7 @@ void *arm_m_new_stack(char *base, uint32_t sz, void *entry, void *arg0, void *ar
 
 	sz = ((uint32_t)(base + sz) - baddr) & ~7;
 
-	if (sz < sizeof(struct switch_frame)) {
+	if (sz < sizeof(struct z_frame) + sizeof(uint32_t)) {
 		return NULL;
 	}
 

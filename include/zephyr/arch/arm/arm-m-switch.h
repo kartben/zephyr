@@ -46,35 +46,6 @@
 #define _ARM_M_SWITCH_HAVE_DSP
 #endif
 
-/* Size of struct switch_frame, and of the hardware FP sub-frame that sits
- * directly above it (s0-s15, FPSCR, reserved).  The .c file asserts these
- * against the actual structs; the inline assembly below needs them as
- * literals.
- */
-#ifdef CONFIG_BUILTIN_STACK_GUARD
-#define ARM_M_SW_FRAME_SZ (17 * 4)
-#else
-#define ARM_M_SW_FRAME_SZ (16 * 4)
-#endif
-
-/* Same, but past the psplim slot, which the restore pops separately */
-#define ARM_M_SW_REGS_SZ (16 * 4)
-#define ARM_M_FP_ABOVE_SZ (18 * 4)
-
-/* XPSR bit 9: the CPU inserted 4 bytes of stack alignment padding */
-#define XPSR_STACK_ALIGN_BIT 0x200
-
-/* EXC_RETURN values used when resuming a thread from interrupt exit */
-#define EXC_RETURN_INT 0xfffffffd
-#define EXC_RETURN_FPU 0xffffffed
-
-/* The DSP extension changes the mnemonic for restoring the flags */
-#ifdef _ARM_M_SWITCH_HAVE_DSP
-#define ARM_M_MSR_APSR(r) "msr apsr_nzcvqg, " r ";"
-#else
-#define ARM_M_MSR_APSR(r) "msr apsr_nzcvq, " r ";"
-#endif
-
 /**
  * @brief Create an initial switch frame on a new thread's stack.
  *
@@ -236,6 +207,14 @@ static inline void arm_m_exc_tail(void)
 }
 
 /**
+ * @brief Restore a Cortex-M software switch frame.
+ *
+ * Assembly entry point with the incoming handle in r4, interrupts locked,
+ * r0 zero, and r8 holding CONTROL when userspace is enabled.
+ */
+void arm_m_switch_restore(void);
+
+/**
  * @brief Core Cortex-M context switch routine.
  *
  * Performs the low-level swap between the outgoing and incoming thread switch
@@ -326,11 +305,6 @@ static ALWAYS_INLINE void arm_m_switch(void *switch_to, void **switched_from)
 			 "   bic r8, r8, #4;"
 			 "   msr control, r8;"
 
-			 /* Incoming handle in r4 points at its have_fpu word */
-			 "   ldm r4!, {r7};"
-			 "   cbz r7, 2f;"
-			 "   vldm r4!, {s16-s31};" /* (note: sets FPCA for us) */
-			 "2:;"
 #endif
 
 #if defined(CONFIG_USERSPACE) && defined(CONFIG_USE_SWITCH)
@@ -338,75 +312,13 @@ static ALWAYS_INLINE void arm_m_switch(void *switch_to, void **switched_from)
 			 "  ldr r8, [r8];"
 #endif
 
-			 /* Save the outgoing switch handle (which is SP), swap stacks,
-			  * and enable interrupts.  The restore process is
-			  * interruptible code (running in the incoming thread) once
-			  * the stack is valid.
-			  */
+			 /* Complete the incoming restore at one identifiable location. */
 			 "str sp, [r5];"
-			 "mov sp, r4;"
-			 "msr basepri, r0;"
-
-#if defined(CONFIG_USERSPACE) && defined(CONFIG_USE_SWITCH)
-			 "  msr control, r8;" /* Now we can drop privilege */
-#endif
-
-	/* Restore: the stack limit (if enabled) and the callee-saved
-	 * block come off first, then the flags are read out of the
-	 * hardware-format part of the frame before the registers holding
-	 * it are reloaded.  The final load skips the APSR word that sits
-	 * above PC in hardware layout.
-	 */
-#ifdef CONFIG_BUILTIN_STACK_GUARD
-			 "pop {r1};"
-			 "msr psplim, r1;"
-#endif
-	/* Four frame shapes reach here: with or without FPU state above the
-	 * integer frame, each with or without the hardware's 4 byte stack
-	 * alignment padding at the very top.  They differ only in how far SP
-	 * has to step at the end, and the flag registers do not survive the
-	 * register reload, so each gets its own short tail.  Leaving the
-	 * padding in place costs these few instructions instead of shifting
-	 * the whole frame over it on every interrupt that switches.
-	 */
-#ifdef CONFIG_FPU
-			 "   cbz r7, 5f;"
-			 /* Reload the caller-saved half from above the frame */
-			 "   add r6, sp, %[fpoff];"
-			 "   vldm r6!, {s0-s15};"
-			 "   ldr r6, [r6];"
-			 "   vmsr fpscr, r6;"
-			 "   ldmia sp!, {r4-r11};"
-			 "   ldr r2, [sp, #28];"
-			 "   tst r2, %[padbit];"
-			 "   bne 7f;"
-			 ARM_M_MSR_APSR("r2")
-			 "   ldmia sp!, {r0-r3, r12, lr};"
-			 "   ldr pc, [sp], %[skip_fp];"
-			 "7:;"
-			 ARM_M_MSR_APSR("r2")
-			 "   ldmia sp!, {r0-r3, r12, lr};"
-			 "   ldr pc, [sp], %[skip_fp_pad];"
-			 "5:;"
-#endif
-			 "ldmia sp!, {r4-r11};"
-			 "ldr r2, [sp, #28];" /* APSR */
-			 "tst r2, %[padbit];"
-			 "bne 8f;"
-			 ARM_M_MSR_APSR("r2")
-			 "ldmia sp!, {r0-r3, r12, lr};"
-			 "ldr pc, [sp], %[skip];"
-			 "8:;"
-			 ARM_M_MSR_APSR("r2")
-			 "ldmia sp!, {r0-r3, r12, lr};"
-			 "ldr pc, [sp], %[skip_pad];"
+			 "b arm_m_switch_restore;"
 
 			 "3:" /* Label for restore address */
 			 _R7_CLOBBER_OPT("pop {r7};")::"r"(r4),
-			 "r"(r5), [fpoff] "i"(ARM_M_SW_REGS_SZ), [padbit] "i"(XPSR_STACK_ALIGN_BIT),
-			 [skip] "i"(8), [skip_pad] "i"(12),
-			 [skip_fp] "i"(8 + ARM_M_FP_ABOVE_SZ),
-			 [skip_fp_pad] "i"(12 + ARM_M_FP_ABOVE_SZ)
+			 "r"(r5)
 			 : "r6", "r8", "r9", "r10",
 #ifndef CONFIG_ARM_FP_CLOBBER_WORKAROUND
 			   "r7",
