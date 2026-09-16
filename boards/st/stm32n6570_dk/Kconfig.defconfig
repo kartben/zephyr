@@ -43,6 +43,17 @@ config VIDEO_STM32_VENC_HEAP_ZEPHYR_REGION_NAME
 	default "PSRAM"
 
 endif # VIDEO_STM32_VENC
+
+if EDGE264
+
+config EDGE264_HEAP_ZEPHYR_REGION
+	default y
+
+config EDGE264_HEAP_ZEPHYR_REGION_NAME
+	default "PSRAM"
+
+endif # EDGE264
+
 endif # VIDEO
 
 if LVGL
