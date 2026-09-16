@@ -105,14 +105,25 @@ void aa_sensor_handle(uint16_t msg_id, const uint8_t *body, size_t len)
 }
 
 #ifdef CONFIG_SAMPLE_AA_HU_NIGHT_BUTTON
-#define NIGHT_BUTTON DT_ALIAS(sw0)
+#if DT_HAS_ALIAS(aa_longpress)
+/*
+ * Holding the same button switches the display layout, so listen for the code
+ * the long press device reports when it is let go early. Listening to the
+ * button itself would report a press that was meant for the layout as well.
+ */
+#define NIGHT_DEV  DEVICE_DT_GET(DT_ALIAS(aa_longpress))
+#define NIGHT_CODE DT_PROP_BY_IDX(DT_ALIAS(aa_longpress), short_codes, 0)
+#else
+#define NIGHT_DEV  DEVICE_DT_GET(DT_PARENT(DT_ALIAS(sw0)))
+#define NIGHT_CODE DT_PROP(DT_ALIAS(sw0), zephyr_code)
+#endif
 
 /* Stand in for a light sensor: each press reports the opposite of the last one */
 static void night_button_cb(struct input_event *evt, void *user_data)
 {
 	ARG_UNUSED(user_data);
 
-	if (evt->code != DT_PROP(NIGHT_BUTTON, zephyr_code) || evt->value == 0) {
+	if (evt->code != NIGHT_CODE || evt->value == 0) {
 		return;
 	}
 
@@ -120,7 +131,7 @@ static void night_button_cb(struct input_event *evt, void *user_data)
 	aa_sensor_set_night(!is_night);
 }
 
-INPUT_CALLBACK_DEFINE(DEVICE_DT_GET(DT_PARENT(NIGHT_BUTTON)), night_button_cb, NULL);
+INPUT_CALLBACK_DEFINE(NIGHT_DEV, night_button_cb, NULL);
 #endif /* CONFIG_SAMPLE_AA_HU_NIGHT_BUTTON */
 
 void aa_sensor_set_night(bool night)

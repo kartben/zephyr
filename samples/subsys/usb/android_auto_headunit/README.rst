@@ -11,9 +11,9 @@ This sample is the counterpart of the :zephyr:code-sample:`android-auto` accesso
 board acts as the car head unit. It connects to a phone that speaks the Android Auto projection
 protocol, drives the version exchange, the TLS handshake (as the client) and service discovery,
 opens a video and an input channel, decodes the H.264 stream the phone sends and shows it on a
-display. The board's own touch screen is forwarded to the phone as touch events, and the
-user button reports a change of light level so that the phone switches between its day and
-night themes.
+display. The board's own touch screen is forwarded to the phone as touch events; the user button
+reports a change of light level so that the phone switches between its day and night themes when
+it is tapped, and splits the display with a GUI of the head unit's own when it is held.
 
 The protocol, framing, TLS and protobuf code mirror the accessory sample with the roles swapped.
 The video path is new: a small decoder reconstructs the picture from the companion sample's
@@ -133,6 +133,49 @@ Direct planar or semiplanar YUV420 scanout is not functional on STM32N6 silicon,
 in `ES0620, section 2.7.1
 <https://www.st.com/resource/en/errata_sheet/es0620-stm32n6xxxx-device-errata-stmicroelectronics.pdf>`_.
 The packed format avoids this limitation.
+
+Split screen
+************
+
+A long press on the button behind the ``sw0`` alias switches the display between the phone alone
+and the phone beside a GUI of the head unit's own. Split screen scales the phone's picture into the
+top left quarter of the display and gives the right half to two panels the sample draws itself. The
+change is animated: the picture shrinks as the panels are pushed in from the right. A short press
+still switches night mode.
+
+One button reports both, through an input longpress device that the board overlay puts on the
+board's own button and the ``aa-longpress`` alias names:
+
+.. code-block:: devicetree
+
+   longpress {
+           compatible = "zephyr,input-longpress";
+           input = <&{/gpio_keys}>;
+           input-codes = <INPUT_KEY_0>;
+           short-codes = <INPUT_KEY_N>;
+           long-codes = <INPUT_KEY_S>;
+           long-delay-ms = <700>;
+   };
+
+The phone is told none of this. It is offered the whole display as before and keeps drawing
+800x480, so a touch on the scaled picture is scaled back up before it is forwarded and a touch on
+the head unit's own half is not forwarded at all.
+
+Scaling the picture into a quarter of the display costs less than showing all of it rather than
+more. Half the width and half the height is every second sample of every second row, which reads a
+quarter of the picture and needs no arithmetic at all: on the packed YUV surface it is a four way
+de-interleave of the luminance row and a two way de-interleave of each chroma row. The sizes in
+between, which are only on screen while the change is being animated, take a general nearest
+neighbour path.
+
+The GUI is drawn into an RGB565 canvas of its own, and only what has changed in it is converted
+into the display buffers. It does not use a GUI library: the serial boot image has a little over
+half a megabyte of RAM for everything, of which the protocol, TLS and the decoder leave a few
+kilobytes.
+
+:kconfig:option:`CONFIG_SAMPLE_AA_HU_SPLIT_SCREEN` turns all of it off. It needs
+:kconfig:option:`CONFIG_SAMPLE_AA_HU_H264`, because the bundled I_PCM decoder writes its pictures
+straight to the framebuffer at their own size.
 
 Renesas EK-RA8P1
 ****************

@@ -16,6 +16,8 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
+#include "aa_gui.h"
+#include "aa_layout.h"
 #include "aa_mem.h"
 #include "aa_scale.h"
 #include "hu_fb_dump.h"
@@ -52,35 +54,52 @@ static void blit(void)
 	(void)display_write(display, 0, 0, &desc, framebuffer);
 }
 
-/* One decoded picture onto the surface, or a black one when there is none */
+/*
+ * The video keeps the left of the display and the GUI takes what is left over,
+ * so between them they cover the width. What the video does not reach below
+ * itself is the only part of the display neither owns.
+ */
 static void compose(const uint8_t *pic, uint16_t w, uint16_t h)
 {
 #ifdef CONFIG_SAMPLE_AA_HU_LTDC_YUV
-	uint8_t *dst;
+	uint8_t idx = yuv_next;
+	uint8_t *dst = yuv_shown[idx];
+#endif
+	struct aa_rect video;
+	struct aa_rect band;
 
-	if (pic != NULL && (w != DISPLAY_W || h != DISPLAY_H)) {
-		LOG_WRN_ONCE("YUV picture dimensions do not match the display");
-		return;
-	}
+	aa_layout_video(&video);
+	band.x = 0U;
+	band.y = video.h;
+	band.w = video.w;
+	band.h = DISPLAY_H - video.h;
 
-	dst = yuv_shown[yuv_next];
+#ifdef CONFIG_SAMPLE_AA_HU_LTDC_YUV
 	yuv_next ^= 1U;
 
-	if (pic == NULL) {
-		memset(dst, 0, YUV_PICTURE_SIZE);
+	if (pic != NULL) {
+		aa_scale_i420_yuyv(dst, DISPLAY_W, &video, pic, w, h);
 	} else {
-		aa_scale_i420_yuyv(dst, pic, w, h);
+		aa_scale_fill_yuyv(dst, DISPLAY_W, &video);
 	}
+	if (band.h != 0U) {
+		aa_scale_fill_yuyv(dst, DISPLAY_W, &band);
+	}
+	aa_gui_apply_yuyv(dst, DISPLAY_W, idx);
 
 	if (stm32_ltdc_set_yuyv_frame(display, dst, YUV_PICTURE_SIZE) != 0) {
 		LOG_WRN_ONCE("Display cannot show YUV");
 	}
 #else
-	if (pic == NULL) {
-		memset(framebuffer, 0, sizeof(framebuffer));
+	if (pic != NULL) {
+		aa_scale_i420_rgb565(framebuffer, DISPLAY_W, &video, pic, w, h);
 	} else {
-		aa_scale_i420_rgb565(framebuffer, DISPLAY_W, DISPLAY_H, pic, w, h);
+		aa_scale_fill_rgb565(framebuffer, DISPLAY_W, &video);
 	}
+	if (band.h != 0U) {
+		aa_scale_fill_rgb565(framebuffer, DISPLAY_W, &band);
+	}
+	aa_gui_apply_rgb565(framebuffer, DISPLAY_W, 0U);
 
 	blit();
 	(void)hu_fb_dump_write(framebuffer, DISPLAY_W * DISPLAY_H);

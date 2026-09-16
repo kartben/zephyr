@@ -19,6 +19,7 @@ target_sources(app PRIVATE
   src/aa_control.c
   src/aa_frame.c
   src/aa_input.c
+  src/aa_layout.c
   src/aa_mic.c
   src/aa_nav.c
   src/aa_play.c
@@ -34,6 +35,7 @@ target_sources(app PRIVATE
 )
 
 target_sources_ifdef(CONFIG_SAMPLE_AA_HU_TRANSPORT_TCP app PRIVATE src/aa_transport_tcp.c)
+target_sources_ifdef(CONFIG_SAMPLE_AA_HU_SPLIT_SCREEN app PRIVATE src/aa_gui.c)
 
 # The decoder is the h264bsd module, which the west manifest carries; only
 # the glue that drives it belongs to the sample.

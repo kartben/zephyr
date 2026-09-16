@@ -15,6 +15,7 @@
 #include "src/aa.pb.h"
 #include "aa_frame.h"
 #include "aa_ids.h"
+#include "aa_layout.h"
 #include "aa_session.h"
 
 LOG_MODULE_REGISTER(aa_input, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
@@ -38,7 +39,28 @@ struct touch_point {
 	/* Track id the screen gave this pointer, -1 while the slot is free */
 	int32_t id;
 	bool down;
+	/* Whether the gesture started on the phone's picture rather than the GUI */
+	bool on_video;
 };
+
+/*
+ * The phone always draws a whole screen, whatever share of the display it is
+ * given, so a touch has to be scaled back up to the picture it landed on. A
+ * pointer already down is kept in the picture: a finger dragged off the edge
+ * has to reach a release, or the phone is left holding a touch forever.
+ */
+static bool map_point(const struct touch_point *p, uint32_t *x, uint32_t *y)
+{
+	struct aa_rect video;
+
+	aa_layout_video(&video);
+	if (video.w == 0U || video.h == 0U) {
+		return false;
+	}
+
+	return aa_layout_map_touch(MIN(p->x, (uint32_t)video.w - 1U),
+				   MIN(p->y, (uint32_t)video.h - 1U), x, y);
+}
 
 /*
  * Report every pointer of the gesture, with action_index naming the one the
@@ -53,12 +75,20 @@ static int __maybe_unused send_touch(const struct touch_point *pts, uint8_t slot
 	uint32_t count = 0;
 	int n;
 
-	if (atomic_get(&forwarding) == 0) {
+	/* The gesture belongs to the head unit's own GUI, not to the phone */
+	if (atomic_get(&forwarding) == 0 || !pts[slot].on_video) {
 		return 0;
 	}
 
 	for (uint8_t i = 0; i < TOUCH_MAX_POINTS; i++) {
+		uint32_t x;
+		uint32_t y;
+
 		if (!pts[i].down && !(lifting && i == slot)) {
+			continue;
+		}
+
+		if (!pts[i].on_video || !map_point(&pts[i], &x, &y)) {
 			continue;
 		}
 
@@ -68,9 +98,9 @@ static int __maybe_unused send_touch(const struct touch_point *pts, uint8_t slot
 		}
 
 		ind.touch_event.touch_location[count].has_x = true;
-		ind.touch_event.touch_location[count].x = pts[i].x;
+		ind.touch_event.touch_location[count].x = x;
 		ind.touch_event.touch_location[count].has_y = true;
-		ind.touch_event.touch_location[count].y = pts[i].y;
+		ind.touch_event.touch_location[count].y = y;
 		ind.touch_event.touch_location[count].has_pointer_id = true;
 		ind.touch_event.touch_location[count].pointer_id = i;
 		count++;
@@ -174,6 +204,12 @@ static void report_slot(uint8_t slot, bool changed)
 		last_drag = now;
 		action = AA_TOUCH_ACTION_DRAG;
 	} else if (points[slot].down) {
+		uint32_t vx;
+		uint32_t vy;
+
+		/* Where a gesture starts decides who gets the rest of it */
+		points[slot].on_video = aa_layout_map_touch(points[slot].x, points[slot].y,
+							    &vx, &vy);
 		action = (points_down() == 1U) ? AA_TOUCH_ACTION_PRESS
 					       : AA_TOUCH_ACTION_POINTER_DOWN;
 		last_drag = k_uptime_get();
@@ -244,7 +280,8 @@ static struct k_thread demo_thread_data;
 static void demo_thread(void *p1, void *p2, void *p3)
 {
 	struct touch_point tap[TOUCH_MAX_POINTS] = {
-		{ .x = CONFIG_SAMPLE_AA_HU_DEMO_TAP_X, .y = CONFIG_SAMPLE_AA_HU_DEMO_TAP_Y },
+		{ .x = CONFIG_SAMPLE_AA_HU_DEMO_TAP_X, .y = CONFIG_SAMPLE_AA_HU_DEMO_TAP_Y,
+		  .on_video = true },
 	};
 
 	ARG_UNUSED(p1);
