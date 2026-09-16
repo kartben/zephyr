@@ -168,10 +168,21 @@ de-interleave of the luminance row and a two way de-interleave of each chroma ro
 between, which are only on screen while the change is being animated, take a general nearest
 neighbour path.
 
+The right half carries two panels the sample draws itself. The first is the Zephyr kite over a
+car, flattened onto the black behind it so that the artwork's transparency costs no alpha
+channel, reduced to 256 colours and run length encoded, which is a quarter of what the same
+picture would take as pixels. The second names the four busiest threads and the share of the
+processor each is taking, and charts those shares beside the names over the last minute and a
+half, a sample every half second, read with :c:func:`k_thread_runtime_stats_get` over the threads
+:c:func:`k_thread_foreach_unlocked` walks. Idle threads are left out, being what the rest is
+measured against.
+
 The GUI is drawn into an RGB565 canvas of its own, and only what has changed in it is converted
-into the display buffers. It does not use a GUI library: the serial boot image has a little over
+into the display buffers. None of it uses a GUI library: the serial boot image has a little over
 half a megabyte of RAM for everything, of which the protocol, TLS and the decoder leave a few
-kilobytes.
+thousand bytes, and the smallest useful LVGL build overruns that by more than two hundred
+kilobytes. Text is drawn with the character framebuffer's smallest font, which the sample selects
+that subsystem for.
 
 :kconfig:option:`CONFIG_SAMPLE_AA_HU_SPLIT_SCREEN` turns all of it off. It needs
 :kconfig:option:`CONFIG_SAMPLE_AA_HU_H264`, because the bundled I_PCM decoder writes its pictures
