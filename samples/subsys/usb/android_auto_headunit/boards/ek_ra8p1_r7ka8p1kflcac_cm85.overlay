@@ -1,0 +1,62 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
+/*
+ * The high speed controller drives the board's USB-C connector, which is where
+ * the phone attaches. SW4-8 selects USBHS for that connector.
+ */
+&usbhs {
+	status = "okay";
+
+	zephyr_uhc0: uhc {
+		status = "okay";
+	};
+};
+
+/* One controller, one role: the board enables the device side by default */
+&zephyr_udc0 {
+	status = "disabled";
+};
+
+/*
+ * The connector is a device port until PD07 is driven high, which is also what
+ * turns on the five volts the phone draws: in host mode J7 is fed from U18,
+ * good for two amps. The board leaves port D off entirely.
+ */
+&ioportd {
+	status = "okay";
+
+	usbhs_host_mode {
+		gpio-hog;
+		gpios = <7 GPIO_ACTIVE_HIGH>;
+		output-high;
+	};
+};
+
+/* The board leaves its buttons off, and the layout needs one */
+&button0 {
+	status = "okay";
+};
+
+/ {
+	aliases {
+		aa-longpress = &user_button_press;
+	};
+
+	/*
+	 * Holding the button switches the display between the phone alone and
+	 * the phone beside the head unit's own GUI; a tap switches night mode.
+	 */
+	user_button_press: longpress {
+		compatible = "zephyr,input-longpress";
+		input = <&{/buttons}>;
+		input-codes = <INPUT_KEY_0>;
+		short-codes = <INPUT_KEY_N>;
+		long-codes = <INPUT_KEY_S>;
+		long-delay-ms = <700>;
+	};
+};
