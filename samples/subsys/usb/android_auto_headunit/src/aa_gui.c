@@ -270,6 +270,22 @@ void aa_gui_apply_rgb565(uint16_t *dst, uint16_t pitch, unsigned int idx)
 	k_mutex_unlock(&canvas_lock);
 }
 
+void aa_gui_apply_argb8888(uint32_t *dst, uint16_t pitch, unsigned int idx)
+{
+	const uint16_t *src;
+	struct aa_rect area;
+
+	if (!ready || k_mutex_lock(&canvas_lock, K_NO_WAIT) != 0) {
+		return;
+	}
+
+	if (next_area(idx, &area, &src)) {
+		aa_scale_rgb565_argb8888(dst, pitch, &area, src, GUI_W);
+	}
+
+	k_mutex_unlock(&canvas_lock);
+}
+
 bool aa_gui_dirty(void)
 {
 	struct aa_rect gui;

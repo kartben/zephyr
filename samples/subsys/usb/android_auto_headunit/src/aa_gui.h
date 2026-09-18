@@ -36,6 +36,9 @@ void aa_gui_apply_yuyv(uint8_t *dst, uint16_t pitch, unsigned int idx);
 /** @brief Copy the GUI into an RGB565 display buffer. */
 void aa_gui_apply_rgb565(uint16_t *dst, uint16_t pitch, unsigned int idx);
 
+/** @brief Copy the GUI into an ARGB8888 display buffer. */
+void aa_gui_apply_argb8888(uint32_t *dst, uint16_t pitch, unsigned int idx);
+
 /** @brief Whether any display buffer is missing pixels the GUI has drawn. */
 bool aa_gui_dirty(void);
 

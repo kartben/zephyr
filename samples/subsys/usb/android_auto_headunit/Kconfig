@@ -152,6 +152,18 @@ config SAMPLE_AA_HU_LTDC_YUV
 	  avoiding software color conversion. Packed YUV422 avoids the STM32N6
 	  planar YUV420 silicon limitation (ES0620, section 2.7.1).
 
+config SAMPLE_AA_HU_DISPLAY_ARGB8888
+	bool "Compose into a word per pixel"
+	depends on SAMPLE_AA_HU_H264 && !SAMPLE_AA_HU_LTDC_YUV
+	default y if QEMU_RAMFB_DISPLAY
+	help
+	  Convert the decoder's pictures to ARGB8888 rather than RGB565, for a
+	  display that scans nothing narrower. The QEMU ramfb the browser
+	  emulator paints is one: it carries a DRM format code and only
+	  answers for AR24. The bundled I_PCM decoder writes RGB565 pixels
+	  straight to the surface, so this needs the full decoder, whose
+	  pictures are composed on the way.
+
 config SAMPLE_AA_HU_YUV_BUFFERS_SECTION
 	string "Memory section for YUV display buffers"
 	depends on SAMPLE_AA_HU_LTDC_YUV
@@ -592,6 +604,7 @@ config SAMPLE_AA_HU_BUFFERS_SECTION
 config SAMPLE_AA_HU_FB_DUMP
 	bool "Dump decoded pictures to a host file"
 	depends on ARCH_POSIX
+	depends on !SAMPLE_AA_HU_DISPLAY_ARGB8888
 	help
 	  Append every decoded RGB565 picture to a host file so that the stream
 	  can be inspected without a display.

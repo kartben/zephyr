@@ -18,6 +18,7 @@ static inline int16x8_t mve_clip255(int16x8_t v)
 
 #include <string.h>
 
+#include <zephyr/init.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/util.h>
 
@@ -328,6 +329,175 @@ void aa_scale_i420_rgb565(uint16_t *dst, uint16_t pitch, const struct aa_rect *r
 	}
 }
 
+#ifdef CONFIG_SAMPLE_AA_HU_DISPLAY_ARGB8888
+
+/*
+ * The same conversion into a word per pixel, for a display that scans nothing
+ * narrower. The alpha byte is what the format calls for rather than anything
+ * the sample blends with: everything written here is opaque.
+ *
+ * Where the display is this one the processor is emulated, and instructions
+ * rather than memory are what the frame rate is made of, so the conversion is
+ * done by table. Each table holds one channel already clamped and already in
+ * the byte it occupies, with the alpha riding in the red one, which turns a
+ * multiply, an add, a shift and two compares per channel into a shift and a
+ * load. The bias that makes every index positive is folded into the chroma
+ * term, so it costs nothing per pixel.
+ *
+ * Thirteen kilobytes is the trade. A board whose display controller converts
+ * during scanout never builds any of this.
+ */
+#define CLIP_BIAS 288
+#define CLIP_SPAN 1024
+#define CLIP_TERM (128 + (CLIP_BIAS << 8))
+
+static uint32_t tab_r[CLIP_SPAN];
+static uint32_t tab_g[CLIP_SPAN];
+static uint32_t tab_b[CLIP_SPAN];
+static int32_t tab_y[256];
+
+static int argb8888_tables(void)
+{
+	for (uint32_t i = 0U; i < CLIP_SPAN; i++) {
+		uint32_t v = (uint32_t)CLAMP((int32_t)i - CLIP_BIAS, 0, 255);
+
+		tab_r[i] = 0xFF000000U | (v << 16);
+		tab_g[i] = v << 8;
+		tab_b[i] = v;
+	}
+
+	for (int32_t y = 0; y < 256; y++) {
+		tab_y[y] = 298 * (y - 16);
+	}
+
+	return 0;
+}
+
+SYS_INIT(argb8888_tables, POST_KERNEL, 0);
+
+static inline uint32_t argb8888(int32_t r, int32_t g, int32_t b)
+{
+	return 0xFF000000U | ((uint32_t)CLAMP(r, 0, 255) << 16) |
+	       ((uint32_t)CLAMP(g, 0, 255) << 8) | (uint32_t)CLAMP(b, 0, 255);
+}
+
+/*
+ * One pixel from its own luma and the chroma pair it shares. The three chroma
+ * terms are what a caller converting a run of pixels hoists out of its loop.
+ */
+static inline uint32_t argb_pixel(int32_t c, int32_t rt, int32_t gt, int32_t bt)
+{
+	return tab_r[(c + rt) >> 8] | tab_g[(c + gt) >> 8] | tab_b[(c + bt) >> 8];
+}
+
+static inline uint32_t yuv_to_argb8888(int32_t y, int32_t cb, int32_t cr)
+{
+	int32_t d = cb - 128;
+	int32_t e = cr - 128;
+
+	return argb_pixel(tab_y[y], 409 * e + CLIP_TERM,
+			  -100 * d - 208 * e + CLIP_TERM, 516 * d + CLIP_TERM);
+}
+
+/*
+ * The whole picture. Two pixels side by side read the same chroma samples, so
+ * the three products those samples enter into are computed once for the pair
+ * and only the luma term changes between its two pixels. That is five
+ * multiplies for two pixels where a pixel at a time needs six for one, which
+ * is worth having on a processor without a vector unit to convert with.
+ */
+static void argb8888_1_1(uint32_t *dst, uint16_t pitch, const struct aa_rect *r,
+			 const uint8_t *pic, uint16_t w, uint16_t h)
+{
+	const uint8_t *cb = pic + (size_t)w * h;
+	const uint8_t *cr = cb + (size_t)w * h / 4U;
+
+	for (uint16_t y = 0U; y < h; y++) {
+		const uint8_t *y_row = pic + (size_t)y * w;
+		const uint8_t *cb_row = cb + (size_t)(y / 2U) * (w / 2U);
+		const uint8_t *cr_row = cr + (size_t)(y / 2U) * (w / 2U);
+		uint32_t *out = dst + (size_t)(r->y + y) * pitch + r->x;
+		uint16_t x = 0U;
+
+		for (; (x + 1U) < w; x += 2U) {
+			int32_t d = (int32_t)cb_row[x / 2U] - 128;
+			int32_t e = (int32_t)cr_row[x / 2U] - 128;
+			int32_t rt = 409 * e + CLIP_TERM;
+			int32_t gt = -100 * d - 208 * e + CLIP_TERM;
+			int32_t bt = 516 * d + CLIP_TERM;
+
+			out[x] = argb_pixel(tab_y[y_row[x]], rt, gt, bt);
+			out[x + 1U] = argb_pixel(tab_y[y_row[x + 1U]], rt, gt, bt);
+		}
+
+		if (x < w) {
+			out[x] = yuv_to_argb8888(y_row[x], cb_row[x / 2U], cr_row[x / 2U]);
+		}
+	}
+}
+
+/* Half in each direction, the ratio split screen settles at */
+static void argb8888_2_1(uint32_t *dst, uint16_t pitch, const struct aa_rect *r,
+			 const uint8_t *pic, uint16_t w, uint16_t h)
+{
+	const uint8_t *cb = pic + (size_t)w * h;
+	const uint8_t *cr = cb + (size_t)w * h / 4U;
+
+	for (uint16_t y = 0U; y < r->h; y++) {
+		const uint8_t *y_row = pic + (size_t)y * 2U * w;
+		const uint8_t *cb_row = cb + (size_t)y * (w / 2U);
+		const uint8_t *cr_row = cr + (size_t)y * (w / 2U);
+		uint32_t *out = dst + (size_t)(r->y + y) * pitch + r->x;
+
+		for (uint16_t x = 0U; x < r->w; x++) {
+			out[x] = yuv_to_argb8888(y_row[(size_t)x * 2U], cb_row[x], cr_row[x]);
+		}
+	}
+}
+
+/* Any other ratio, for the frames the layout is being animated over */
+static void argb8888_nearest(uint32_t *dst, uint16_t pitch, const struct aa_rect *r,
+			     const uint8_t *pic, uint16_t w, uint16_t h)
+{
+	const uint8_t *cb = pic + (size_t)w * h;
+	const uint8_t *cr = cb + (size_t)w * h / 4U;
+	uint32_t x_step = ((uint32_t)w << 16) / r->w;
+	uint32_t y_step = ((uint32_t)h << 16) / r->h;
+	uint32_t y_acc = 0U;
+
+	for (uint16_t y = 0U; y < r->h; y++) {
+		uint16_t sy = (uint16_t)(y_acc >> 16);
+		const uint8_t *y_row = pic + (size_t)sy * w;
+		const uint8_t *cb_row = cb + (size_t)(sy / 2U) * (w / 2U);
+		const uint8_t *cr_row = cr + (size_t)(sy / 2U) * (w / 2U);
+		uint32_t *out = dst + (size_t)(r->y + y) * pitch + r->x;
+		uint32_t x_acc = 0U;
+
+		for (uint16_t x = 0U; x < r->w; x++) {
+			uint16_t sx = (uint16_t)(x_acc >> 16);
+
+			out[x] = yuv_to_argb8888(y_row[sx], cb_row[sx / 2U], cr_row[sx / 2U]);
+			x_acc += x_step;
+		}
+
+		y_acc += y_step;
+	}
+}
+
+void aa_scale_i420_argb8888(uint32_t *dst, uint16_t pitch, const struct aa_rect *r,
+			    const uint8_t *pic, uint16_t w, uint16_t h)
+{
+	if (r->w == w && r->h == h) {
+		argb8888_1_1(dst, pitch, r, pic, w, h);
+	} else if (r->w * 2U == w && r->h * 2U == h) {
+		argb8888_2_1(dst, pitch, r, pic, w, h);
+	} else {
+		argb8888_nearest(dst, pitch, r, pic, w, h);
+	}
+}
+
+#endif /* CONFIG_SAMPLE_AA_HU_DISPLAY_ARGB8888 */
+
 void aa_scale_fill_yuyv(uint8_t *dst, uint16_t pitch, const struct aa_rect *r)
 {
 	for (uint16_t y = 0U; y < r->h; y++) {
@@ -349,6 +519,19 @@ void aa_scale_fill_rgb565(uint16_t *dst, uint16_t pitch, const struct aa_rect *r
 		}
 	}
 }
+
+#ifdef CONFIG_SAMPLE_AA_HU_DISPLAY_ARGB8888
+void aa_scale_fill_argb8888(uint32_t *dst, uint16_t pitch, const struct aa_rect *r)
+{
+	for (uint16_t y = 0U; y < r->h; y++) {
+		uint32_t *out = dst + (size_t)(r->y + y) * pitch + r->x;
+
+		for (uint16_t x = 0U; x < r->w; x++) {
+			out[x] = 0xFF000000U;
+		}
+	}
+}
+#endif /* CONFIG_SAMPLE_AA_HU_DISPLAY_ARGB8888 */
 
 /* Expand a channel to eight bits by repeating its top bits into the gap */
 static inline int32_t chan5(uint16_t px, unsigned int shift)
@@ -410,3 +593,18 @@ void aa_scale_rgb565_copy(uint16_t *dst, uint16_t pitch, const struct aa_rect *r
 		       (size_t)r->w * sizeof(uint16_t));
 	}
 }
+
+#ifdef CONFIG_SAMPLE_AA_HU_DISPLAY_ARGB8888
+void aa_scale_rgb565_argb8888(uint32_t *dst, uint16_t pitch, const struct aa_rect *r,
+			      const uint16_t *src, uint16_t src_pitch)
+{
+	for (uint16_t y = 0U; y < r->h; y++) {
+		const uint16_t *in = src + (size_t)y * src_pitch;
+		uint32_t *out = dst + (size_t)(r->y + y) * pitch + r->x;
+
+		for (uint16_t x = 0U; x < r->w; x++) {
+			out[x] = argb8888(chan5(in[x], 11U), chan6(in[x]), chan5(in[x], 0U));
+		}
+	}
+}
+#endif /* CONFIG_SAMPLE_AA_HU_DISPLAY_ARGB8888 */
