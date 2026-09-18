@@ -28,7 +28,10 @@ static uint8_t decoder_arena[CONFIG_SAMPLE_AA_HU_H264_HEAP_SIZE]
 static uint8_t decoder_fallback_arena[CONFIG_SAMPLE_AA_HU_H264_HEAP_FALLBACK_SIZE]
 	Z_GENERIC_SECTION(CONFIG_SAMPLE_AA_HU_H264_HEAP_FALLBACK_SECTION) __aligned(8);
 #endif
+static uint8_t state_arena[CONFIG_SAMPLE_AA_HU_H264_STATE_HEAP_SIZE]
+	Z_GENERIC_SECTION(CONFIG_SAMPLE_AA_HU_H264_STATE_HEAP_SECTION) __aligned(8);
 static struct k_heap decoder_heap;
+static struct k_heap state_heap;
 static uint8_t *arena;
 static size_t arena_size;
 static storage_t *decoder;
@@ -49,8 +52,13 @@ static void report_heap(void)
 		return;
 	}
 
-	LOG_INF("Decoder heap: %zu now, %zu at most, of %zu", stats.allocated_bytes,
+	LOG_INF("Picture heap: %zu now, %zu at most, of %zu", stats.allocated_bytes,
 		stats.max_allocated_bytes, arena_size);
+
+	if (sys_heap_runtime_stats_get(&state_heap.heap, &stats) == 0) {
+		LOG_INF("State heap: %zu now, %zu at most, of %zu", stats.allocated_bytes,
+			stats.max_allocated_bytes, sizeof(state_arena));
+	}
 }
 #else
 static inline void report_heap(void)
@@ -110,13 +118,29 @@ static void report_timing(void)
 }
 #endif
 
-/* The decoder library's allocator, redirected onto the heap above */
+/*
+ * The decoder library's two allocators. Everything but the pictures comes from
+ * the state heap, which is small enough to keep in internal RAM and is read
+ * far more often per byte; the pictures come from the arena the board placed.
+ */
 void *aa_h264_malloc(size_t size)
+{
+	return k_heap_alloc(&state_heap, size, K_NO_WAIT);
+}
+
+void aa_h264_free(void *ptr)
+{
+	if (ptr != NULL) {
+		k_heap_free(&state_heap, ptr);
+	}
+}
+
+void *aa_h264_picture_malloc(size_t size)
 {
 	return k_heap_alloc(&decoder_heap, size, K_NO_WAIT);
 }
 
-void aa_h264_free(void *ptr)
+void aa_h264_picture_free(void *ptr)
 {
 	if (ptr != NULL) {
 		k_heap_free(&decoder_heap, ptr);
@@ -125,9 +149,16 @@ void aa_h264_free(void *ptr)
 
 static int decoder_open(uint8_t *buf, size_t size)
 {
+	static bool state_ready;
+
 	arena = buf;
 	arena_size = size;
 	k_heap_init(&decoder_heap, buf, size);
+
+	if (!state_ready) {
+		k_heap_init(&state_heap, state_arena, sizeof(state_arena));
+		state_ready = true;
+	}
 
 	decoder = h264bsdAlloc();
 	if (decoder == NULL) {
