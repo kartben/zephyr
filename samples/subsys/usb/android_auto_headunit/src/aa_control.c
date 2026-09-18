@@ -59,7 +59,14 @@ int aa_control_send_version_request(void)
 
 static int send_service_discovery_response(void)
 {
-	ServiceDiscoveryResponse rsp = ServiceDiscoveryResponse_init_zero;
+	/*
+	 * Every channel the head unit offers, with room for the configurations
+	 * each of them carries. That is several kilobytes, which is more than
+	 * a thread stack should hold for a message built once a session, and
+	 * overran the receive thread outright on a 64-bit board. It is built
+	 * here and nowhere else, so one of them is enough.
+	 */
+	static ServiceDiscoveryResponse rsp;
 	struct aa_hu_session *s = aa_hu_session_get();
 	ChannelDescriptor *video = &rsp.channels[0];
 	ChannelDescriptor *input = &rsp.channels[1];
@@ -80,6 +87,7 @@ static int send_service_discovery_response(void)
 	uint8_t buf[512];
 	int len;
 
+	memset(&rsp, 0, sizeof(rsp));
 	rsp.channels_count = 5U + ARRAY_SIZE(audio);
 
 	video->has_channel_id = true;
