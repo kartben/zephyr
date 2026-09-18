@@ -50,6 +50,15 @@ struct aa_rect {
 void aa_layout_video(struct aa_rect *r);
 
 /**
+ * @brief The part of the surface the phone's picture owns.
+ *
+ * The picture sits in the middle of this and never fills it unless it is
+ * exactly as large; what surrounds it belongs to neither the picture nor the
+ * GUI and is left dark.
+ */
+void aa_layout_area(struct aa_rect *r);
+
+/**
  * @brief Where the head unit's own GUI goes on the display right now.
  *
  * The rectangle starts at the right edge of the video and runs to the right

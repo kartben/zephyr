@@ -121,12 +121,12 @@ static void report_timing(void)
 #endif
 
 /*
- * The strip below the video is black and stays black, so it only has to be
- * written when the layout moves it. Filling it with every picture cost as many
- * stores as the scaled picture itself, which is most of what split screen was
- * meant to save.
+ * Where the picture was last drawn in each buffer. What surrounds it is black
+ * and stays black, so it only has to be written when the picture moves.
+ * Filling it with every picture cost as many stores as the picture itself,
+ * which is most of what split screen was meant to save.
  */
-static struct aa_rect banded[AA_SCREEN_BUFFERS];
+static struct aa_rect framed[AA_SCREEN_BUFFERS];
 
 #ifndef CONFIG_SAMPLE_AA_HU_LTDC_YUV
 /*
@@ -197,18 +197,19 @@ static void blit(void)
 
 	/*
 	 * The write returns once the controller has taken the buffer, so the
-	 * other one is free to compose into. Between them the video, the strip
-	 * below it and the GUI cover the surface, and banded[] remembers the
-	 * strip per buffer, so nothing of the older frame shows through.
+	 * other one is free to compose into. Between them the area the video
+	 * owns and the GUI cover the surface, and both remember per buffer what
+	 * they last drew, so nothing of the older frame shows through.
 	 */
 	fb_idx ^= 1U;
 	framebuffer = fb_store[fb_idx];
 }
 
 /*
- * The video keeps the left of the display and the GUI takes what is left over,
- * so between them they cover the width. What the video does not reach below
- * itself is the only part of the display neither owns.
+ * The video keeps the left of the surface and the GUI takes what is left over,
+ * so between them they cover it. The picture sits in the middle of what the
+ * video owns at the size the phone sent it, so the area around it is filled
+ * whenever the picture moves.
  */
 static void compose(const uint8_t *pic, uint16_t w, uint16_t h)
 {
@@ -217,15 +218,12 @@ static void compose(const uint8_t *pic, uint16_t w, uint16_t h)
 	uint8_t *dst = yuv_shown[idx];
 #endif
 	struct aa_rect video;
-	struct aa_rect band;
+	struct aa_rect area;
 	uint32_t at;
 
 	report_timing();
 	aa_layout_video(&video);
-	band.x = 0U;
-	band.y = video.h;
-	band.w = video.w;
-	band.h = SURFACE_H - video.h;
+	aa_layout_area(&area);
 
 #ifdef CONFIG_SAMPLE_AA_HU_LTDC_YUV
 	yuv_next ^= 1U;
@@ -235,10 +233,10 @@ static void compose(const uint8_t *pic, uint16_t w, uint16_t h)
 	} else {
 		aa_scale_fill_yuyv(dst, SURFACE_W, &video);
 	}
-	if (band.h != 0U && memcmp(&banded[idx], &band, sizeof(band)) != 0) {
-		aa_scale_fill_yuyv(dst, SURFACE_W, &band);
+	if (memcmp(&framed[idx], &video, sizeof(video)) != 0) {
+		aa_scale_fill_yuyv(dst, SURFACE_W, &area);
+		framed[idx] = video;
 	}
-	banded[idx] = band;
 	aa_gui_apply_yuyv(dst, SURFACE_W, idx);
 
 	if (stm32_ltdc_set_yuyv_frame(display, dst, YUV_PICTURE_SIZE) != 0) {
@@ -251,10 +249,10 @@ static void compose(const uint8_t *pic, uint16_t w, uint16_t h)
 	} else {
 		surface_fill(&video);
 	}
-	if (band.h != 0U && memcmp(&banded[fb_idx], &band, sizeof(band)) != 0) {
-		surface_fill(&band);
+	if (memcmp(&framed[fb_idx], &video, sizeof(video)) != 0) {
+		surface_fill(&area);
+		framed[fb_idx] = video;
 	}
-	banded[fb_idx] = band;
 	surface_gui(fb_idx);
 	elapsed(&convert_us, at);
 

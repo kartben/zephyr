@@ -154,12 +154,31 @@ bool aa_layout_step(uint32_t elapsed_ms)
 
 #endif /* CONFIG_SAMPLE_AA_HU_SPLIT_SCREEN */
 
-void aa_layout_video(struct aa_rect *r)
+void aa_layout_area(struct aa_rect *r)
 {
 	r->x = 0U;
 	r->y = 0U;
 	r->w = video_width();
 	r->h = video_height();
+}
+
+void aa_layout_video(struct aa_rect *r)
+{
+	uint16_t aw = video_width();
+	uint16_t ah = video_height();
+	/*
+	 * Never larger than the picture the phone sends. Scaling it up costs
+	 * more of the frame than the decode does and the panel is not the
+	 * shape of the stream in any case, so it sits in the middle of what it
+	 * owns and the rest is left dark.
+	 */
+	uint16_t w = MIN(aw, (uint16_t)STREAM_W) & ~1U;
+	uint16_t h = MIN(ah, (uint16_t)STREAM_H) & ~1U;
+
+	r->w = w;
+	r->h = h;
+	r->x = (uint16_t)((aw - w) / 2U) & ~1U;
+	r->y = (uint16_t)((ah - h) / 2U);
 }
 
 void aa_layout_gui(struct aa_rect *r)
@@ -172,15 +191,16 @@ void aa_layout_gui(struct aa_rect *r)
 
 bool aa_layout_map_touch(uint32_t px, uint32_t py, uint32_t *vx, uint32_t *vy)
 {
-	uint16_t w = video_width();
-	uint16_t h = video_height();
+	struct aa_rect v;
 
-	if (px >= w || py >= h) {
+	aa_layout_video(&v);
+
+	if (px < v.x || py < v.y || px >= (uint32_t)v.x + v.w || py >= (uint32_t)v.y + v.h) {
 		return false;
 	}
 
-	*vx = px * STREAM_W / w;
-	*vy = py * STREAM_H / h;
+	*vx = (px - v.x) * STREAM_W / v.w;
+	*vy = (py - v.y) * STREAM_H / v.h;
 
 	return true;
 }
