@@ -21,8 +21,7 @@ LOG_MODULE_REGISTER(aa_layout, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
  * pushed in from the right as the picture shrinks.
  */
 
-#define DISPLAY_W CONFIG_SAMPLE_AA_HU_VIDEO_WIDTH
-#define DISPLAY_H CONFIG_SAMPLE_AA_HU_VIDEO_HEIGHT
+
 
 /* Fixed point one, for the fraction of the way to split screen */
 #define PROGRESS_ONE 1000U
@@ -48,7 +47,7 @@ static uint32_t ease(uint32_t p)
 /* How far the video edges have travelled towards the split screen position */
 static uint16_t video_width(void)
 {
-	uint16_t w = DISPLAY_W - (uint16_t)((DISPLAY_W / 2U) * ease(progress) / PROGRESS_ONE);
+	uint16_t w = SURFACE_W - (uint16_t)((SURFACE_W / 2U) * ease(progress) / PROGRESS_ONE);
 
 	/* Packed YUV 4:2:2 carries one chroma pair per two pixels */
 	return w & ~1U;
@@ -56,14 +55,14 @@ static uint16_t video_width(void)
 
 static uint16_t video_height(void)
 {
-	uint16_t h = DISPLAY_H - (uint16_t)((DISPLAY_H / 2U) * ease(progress) / PROGRESS_ONE);
+	uint16_t h = SURFACE_H - (uint16_t)((SURFACE_H / 2U) * ease(progress) / PROGRESS_ONE);
 
 	return h & ~1U;
 }
 
 bool aa_layout_gui_visible(void)
 {
-	return video_width() < DISPLAY_W;
+	return video_width() < SURFACE_W;
 }
 
 bool aa_layout_moving(void)
@@ -124,12 +123,12 @@ INPUT_CALLBACK_DEFINE(DEVICE_DT_GET(SPLIT_BUTTON), split_button_cb, NULL);
 
 static uint16_t video_width(void)
 {
-	return DISPLAY_W;
+	return SURFACE_W;
 }
 
 static uint16_t video_height(void)
 {
-	return DISPLAY_H;
+	return SURFACE_H;
 }
 
 bool aa_layout_gui_visible(void)
@@ -167,8 +166,8 @@ void aa_layout_gui(struct aa_rect *r)
 {
 	r->x = video_width();
 	r->y = 0U;
-	r->w = DISPLAY_W - r->x;
-	r->h = DISPLAY_H;
+	r->w = SURFACE_W - r->x;
+	r->h = SURFACE_H;
 }
 
 bool aa_layout_map_touch(uint32_t px, uint32_t py, uint32_t *vx, uint32_t *vy)
@@ -180,8 +179,8 @@ bool aa_layout_map_touch(uint32_t px, uint32_t py, uint32_t *vx, uint32_t *vy)
 		return false;
 	}
 
-	*vx = px * DISPLAY_W / w;
-	*vy = py * DISPLAY_H / h;
+	*vx = px * STREAM_W / w;
+	*vy = py * STREAM_H / h;
 
 	return true;
 }
