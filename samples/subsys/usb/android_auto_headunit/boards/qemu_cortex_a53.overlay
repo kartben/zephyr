@@ -1,0 +1,37 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
+/*
+ * The machine's framebuffer is the head unit's panel, so give it the size of
+ * the video the head unit offers and a picture lands on it pixel for pixel.
+ * It scans ARGB8888 and nothing else, which is what
+ * CONFIG_SAMPLE_AA_HU_DISPLAY_ARGB8888 composes into.
+ */
+&ramfb0 {
+	width = <800>;
+	height = <480>;
+};
+
+/ {
+	aliases {
+		aa-longpress = &user_button_press;
+	};
+
+	/*
+	 * Holding a button switches the display between the phone alone and
+	 * the phone beside the head unit's own GUI. No input device is named:
+	 * whichever one the machine has been given supplies the key, and only
+	 * its code has to match.
+	 */
+	user_button_press: longpress {
+		compatible = "zephyr,input-longpress";
+		input-codes = <INPUT_KEY_0>;
+		short-codes = <INPUT_KEY_N>;
+		long-codes = <INPUT_KEY_S>;
+		long-delay-ms = <700>;
+	};
+};
