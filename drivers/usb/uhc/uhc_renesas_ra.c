@@ -99,6 +99,7 @@ static int uhc_renesas_ra_data_send(const struct device *dev, struct uhc_transfe
 		return -EIO;
 	}
 
+
 	return 0;
 }
 
@@ -344,30 +345,29 @@ static bool uhc_renesas_ra_chk_edpt_open(const struct device *dev, uint8_t addr,
 static int uhc_renesas_ra_ep_enqueue(const struct device *dev, struct uhc_transfer *const xfer)
 {
 	struct uhc_renesas_ra_data *priv = uhc_get_private(dev);
-	uint8_t mxps0 = xfer->udev->dev_desc.bMaxPacketSize0 > 0
-				? xfer->udev->dev_desc.bMaxPacketSize0
-				: 64;
-	usb_speed_t speed;
 	fsp_err_t err;
 	int ret;
 
 	switch (xfer->udev->speed) {
 	case USB_SPEED_SPEED_LS:
-		speed = USB_SPEED_LS;
-		break;
 	case USB_SPEED_SPEED_FS:
-		speed = USB_SPEED_FS;
-		break;
 	case USB_SPEED_SPEED_HS:
-		speed = USB_SPEED_HS;
 		break;
 	default:
 		LOG_DBG("Device speed %d is not supported by controller", xfer->udev->speed);
 		return -ENOTSUP;
 	}
 
-	/* TODO: Configure split transaction once the host stack knows hubs */
-	err = R_USBH_PortOpen(&priv->uhc_ctrl, xfer->udev->addr, speed, mxps0, 0, 0);
+	/*
+	 * The controller takes neither the speed nor the control endpoint's
+	 * maximum packet size: it uses the speed the port negotiated and fixes
+	 * the default control pipe at sixty-four bytes. High speed has no other
+	 * legal value and full speed devices generally use it, but a low speed
+	 * device, whose control endpoint is eight bytes, cannot be told.
+	 *
+	 * TODO: Configure split transaction once the host stack knows hubs
+	 */
+	err = R_USBH_PortOpen(&priv->uhc_ctrl, xfer->udev->addr);
 	if (err != FSP_SUCCESS) {
 		return -EIO;
 	}
@@ -394,17 +394,15 @@ static int uhc_renesas_ra_ep_enqueue(const struct device *dev, struct uhc_transf
 static int uhc_renesas_ra_ep_dequeue(const struct device *dev, struct uhc_transfer *const xfer)
 {
 	struct uhc_renesas_ra_data *priv = uhc_get_private(dev);
-	struct uhc_transfer *const last_xfer = priv->last_xfer;
-	fsp_err_t err;
 
-	if (last_xfer != xfer) {
+	/*
+	 * The controller cannot be told to take back a transfer it has already
+	 * been given, so one that is in flight is left to finish and answered
+	 * when it does. Only a transfer still queued behind it is dropped here.
+	 */
+	if (priv->last_xfer != xfer) {
 		sys_dlist_remove(&xfer->node);
 		uhc_xfer_free(dev, xfer);
-	}
-
-	err = R_USBH_XferAbort(&priv->uhc_ctrl, last_xfer->udev->addr, last_xfer->ep);
-	if (err != FSP_SUCCESS) {
-		return -EIO;
 	}
 
 	return 0;
@@ -458,7 +456,7 @@ static int uhc_renesas_ra_poll_device_speed(const struct device *dev)
 	}
 
 	/* Root port device: no upstream hub, so no split transaction is required. */
-	err = R_USBH_PortOpen(&priv->uhc_ctrl, 0, speed, 64, 0, 0);
+	err = R_USBH_PortOpen(&priv->uhc_ctrl, 0);
 	if (err != FSP_SUCCESS) {
 		return -EIO;
 	}
