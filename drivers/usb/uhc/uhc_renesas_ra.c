@@ -394,17 +394,29 @@ static int uhc_renesas_ra_ep_enqueue(const struct device *dev, struct uhc_transf
 static int uhc_renesas_ra_ep_dequeue(const struct device *dev, struct uhc_transfer *const xfer)
 {
 	struct uhc_renesas_ra_data *priv = uhc_get_private(dev);
+	bool in_flight;
+	unsigned int key;
+
+	key = irq_lock();
+	xfer->err = -ECONNRESET;
+	in_flight = (priv->last_xfer == xfer);
+	if (in_flight) {
+		priv->last_xfer = NULL;
+	}
+	irq_unlock(key);
 
 	/*
 	 * The controller cannot be told to take back a transfer it has already
-	 * been given, so one that is in flight is left to finish and answered
-	 * when it does. Only a transfer still queued behind it is dropped here.
+	 * been given, so quiesce the pipe instead and let whatever comes next
+	 * start from a quiet one. Reopening the port is what puts the default
+	 * control pipe back to NAK, and is what the next control transfer on it
+	 * would do in any case.
 	 */
-	if (priv->last_xfer != xfer) {
-		sys_dlist_remove(&xfer->node);
-		uhc_xfer_free(dev, xfer);
+	if (in_flight && USB_EP_GET_IDX(xfer->ep) == 0) {
+		(void)R_USBH_PortOpen(&priv->uhc_ctrl, xfer->udev->addr);
 	}
 
+	/* The caller owns the transfer from here: it clears the queued flag */
 	return 0;
 }
 
@@ -645,7 +657,8 @@ static int uhc_renesas_ra_shutdown(const struct device *dev)
 	struct uhc_renesas_ra_data *priv = uhc_get_private(dev);
 
 	if (priv->last_xfer != NULL) {
-		uhc_xfer_free(dev, priv->last_xfer);
+		/* Hand it back rather than free it: it is still queued */
+		uhc_xfer_return(dev, priv->last_xfer, -ECONNRESET);
 		priv->last_xfer = NULL;
 	}
 
