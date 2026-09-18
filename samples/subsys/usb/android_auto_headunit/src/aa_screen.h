@@ -16,11 +16,7 @@
  */
 
 /** Buffers the surface is scanned out of, and so the buffers the GUI tracks. */
-#ifdef CONFIG_SAMPLE_AA_HU_LTDC_YUV
 #define AA_SCREEN_BUFFERS 2
-#else
-#define AA_SCREEN_BUFFERS 1
-#endif
 
 /**
  * @brief Claim the display and show a blank picture on it.

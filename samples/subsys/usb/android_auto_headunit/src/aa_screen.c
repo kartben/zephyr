@@ -43,7 +43,17 @@ typedef uint16_t surface_px;
 #define SURFACE_RGB(r, g, b)                                                                       \
 	((surface_px)(((r) & 0xF8U) << 8 | ((g) & 0xFCU) << 3 | (b) >> 3))
 #endif
-static surface_px framebuffer[DISPLAY_W * DISPLAY_H] AA_HU_BIG_BUF;
+#define FB_PIXELS ((size_t)DISPLAY_W * DISPLAY_H)
+#define FB_BYTES  (FB_PIXELS * sizeof(surface_px))
+
+/*
+ * The controller is handed a buffer and scans it until it is handed another,
+ * so composing into the one on the panel shows the frame being drawn. Keep
+ * two and compose into whichever the controller is not reading.
+ */
+static surface_px fb_store[2][FB_PIXELS] AA_HU_BIG_BUF;
+static surface_px *framebuffer = fb_store[0];
+static uint8_t fb_idx;
 /* The decoder thread and the GUI thread both compose into the surface */
 static K_MUTEX_DEFINE(lock);
 static int64_t last_picture;
@@ -170,20 +180,30 @@ static void surface_dump(void)
 static void blit(void)
 {
 	struct display_buffer_descriptor desc = {
-		.buf_size = sizeof(framebuffer),
+		.buf_size = FB_BYTES,
 		.width = DISPLAY_W,
 		.height = DISPLAY_H,
 		.pitch = DISPLAY_W,
 	};
+	surface_px *shown = framebuffer;
 
 	/*
 	 * The display controller reads the framebuffer out of memory itself,
 	 * so what composing it left behind in the cache has to reach memory
 	 * before it does. Without a data cache this costs nothing.
 	 */
-	sys_cache_data_flush_range(framebuffer, sizeof(framebuffer));
+	sys_cache_data_flush_range(shown, FB_BYTES);
 
-	(void)display_write(display, 0, 0, &desc, framebuffer);
+	(void)display_write(display, 0, 0, &desc, shown);
+
+	/*
+	 * The write returns once the controller has taken the buffer, so the
+	 * other one is free to compose into. Between them the video, the strip
+	 * below it and the GUI cover the surface, and banded[] remembers the
+	 * strip per buffer, so nothing of the older frame shows through.
+	 */
+	fb_idx ^= 1U;
+	framebuffer = fb_store[fb_idx];
 }
 
 /*
@@ -232,11 +252,11 @@ static void compose(const uint8_t *pic, uint16_t w, uint16_t h)
 	} else {
 		surface_fill(&video);
 	}
-	if (band.h != 0U && memcmp(&banded[0], &band, sizeof(band)) != 0) {
+	if (band.h != 0U && memcmp(&banded[fb_idx], &band, sizeof(band)) != 0) {
 		surface_fill(&band);
 	}
-	banded[0] = band;
-	surface_gui(0U);
+	banded[fb_idx] = band;
+	surface_gui(fb_idx);
 	elapsed(&convert_us, at);
 
 	at = stamp();
@@ -273,7 +293,7 @@ int aa_screen_init(void)
 	 * sends a frame the display would otherwise show whatever the memory
 	 * happened to hold.
 	 */
-	memset(framebuffer, 0, sizeof(framebuffer));
+	memset(framebuffer, 0, FB_BYTES);
 #ifdef CONFIG_SAMPLE_AA_HU_TEST_PATTERN
 	/* Colour bars, to check the panel and the pixel format */
 	for (uint32_t y = 0; y < DISPLAY_H; y++) {
@@ -340,7 +360,7 @@ void aa_screen_blank(bool on)
 		 */
 		(void)display_blanking_on(display);
 	} else {
-		memset(framebuffer, 0, sizeof(framebuffer));
+		memset(framebuffer, 0, FB_BYTES);
 		blit();
 	}
 
