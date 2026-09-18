@@ -24,6 +24,15 @@ config SAMPLE_AA_HU_TRANSPORT_USB_HOST
 	  Accessory mode and carry the protocol over its bulk endpoints. The
 	  board must be able to supply VBUS to the phone.
 
+config SAMPLE_AA_HU_TRANSPORT_NONE
+	bool "None"
+	help
+	  Build with no way to reach a phone, for a board that has neither a
+	  network nor a USB host port and for the emulators. The head unit
+	  brings up its display and its own GUI and stays in its link down
+	  state; SAMPLE_AA_HU_DEMO_CLIP is what then gives it something to
+	  show.
+
 endchoice
 
 if SAMPLE_AA_HU_TRANSPORT_USB_HOST
@@ -238,6 +247,22 @@ config SAMPLE_AA_HU_NAL_SCRATCH_SIZE
 	help
 	  Must hold the largest NAL unit; the companion encoder slices a picture
 	  into macroblock rows to keep NAL units small.
+
+config SAMPLE_AA_HU_DEMO_CLIP
+	bool "Play a clip of the sample's own instead of connecting to a phone"
+	depends on SAMPLE_AA_HU_H264
+	help
+	  Decode the navigation clip built into the image, over and over, and
+	  leave the transport alone. Everything after the decoder is what a
+	  phone's pictures go through, so the display, the layout and the head
+	  unit's own GUI can be seen where no phone can be attached: an
+	  emulator, or a board without a USB host port. The clip is
+	  src/aa_demo_clip.h, which scripts/make_demo_clip.py writes.
+
+config SAMPLE_AA_HU_DEMO_CLIP_STACK_SIZE
+	int "Clip player thread stack size"
+	depends on SAMPLE_AA_HU_DEMO_CLIP
+	default 4096
 
 config SAMPLE_AA_HU_MAX_UNACKED
 	int "Media messages the phone may send without an acknowledgment"

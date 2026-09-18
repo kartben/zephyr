@@ -214,6 +214,36 @@ stream stays at 800x480 and is written to the top left of the panel.
 The decoder's reference pictures and the framebuffer are placed in the board's
 64 MB of SDRAM; neither fits the internal RAM.
 
+Without a phone
+***************
+
+:kconfig:option:`CONFIG_SAMPLE_AA_HU_DEMO_CLIP` decodes a navigation clip built into the image,
+over and over, and never opens a transport at all, so the display, the layout and the head unit's
+own GUI can be seen where no phone can be attached. Only where the pictures come from differs:
+they go through the same decoder and the same composition as a phone's.
+
+``scripts/make_demo_clip.py`` renders the clip and writes ``src/aa_demo_clip.h``. It is encoded
+for a processor that has to decode it in software: baseline profile with one reference picture,
+deblocking off, full pixel motion only, and a map that scrolls a whole number of pixels per frame
+so most of it is copied rather than reconstructed. Four seconds at 800x480 is 56 KB, and the clip
+opens on the only key frame in it, so playing it again from the start needs nothing of the decoder.
+
+:zephyr:board:`qemu_cortex_a53` is configured this way, and is also the target
+`Zephyr in the browser <https://kartben.github.io/zephyr-in-the-browser/>`_ runs. Its framebuffer
+is a QEMU ``ramfb``, which carries a DRM format code and answers for ARGB8888 and nothing else, so
+:kconfig:option:`CONFIG_SAMPLE_AA_HU_DISPLAY_ARGB8888` composes into a word per pixel instead of
+the usual RGB565 halfword. The board overlay sizes the framebuffer to the video resolution and
+puts the layout's long press on whichever button the machine has been given:
+
+.. code-block:: console
+
+   west build -b qemu_cortex_a53 samples/subsys/usb/android_auto_headunit
+   QEMU_EXTRA_FLAGS="-device ramfb -vga none" west build -t run
+
+QEMU only carries a ``ramfb`` when it is asked for one, hence the extra flag; a machine without it
+leaves the sample with no display to bring up. The button needs a GPIO the machine has, which the
+plain ``virt`` machine has not, so the split screen is reachable only where something provides one.
+
 References
 **********
 
