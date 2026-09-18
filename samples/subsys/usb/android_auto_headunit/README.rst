@@ -204,15 +204,20 @@ panel is 1024x600:
    west build -b ek_ra8p1/r7ka8p1kflcac/cm85 --shield rtklcdpar1s00001be \
      samples/subsys/usb/android_auto_headunit
 
-Two things differ from a board that can host a phone. Zephyr has a USB device
-driver for this SoC but not a host one, and the head unit is the host, so a
-phone cannot be attached over USB; the configuration selects the TCP transport
-instead and is driven over Ethernet by ``scripts/aa_headunit.py``. And 1024x600
-is not one of the resolutions the projection protocol can ask for, so the
-stream stays at 800x480 and is written to the top left of the panel.
+The phone attaches to the USB-C connector, which the SoC's high speed
+controller drives. That connector is a device port until PD07 is driven high,
+which is also what switches on the five volts the phone draws from it, so the
+board overlay hogs the pin; SW4-8 has to select USBHS for the connector.
 
-The decoder's reference pictures and the framebuffer are placed in the board's
+1024x600 is not one of the resolutions the projection protocol can ask for, so
+the stream stays at 800x480 and is written to the top left of the panel. The
+decoder's reference pictures and the framebuffer are placed in the board's
 64 MB of SDRAM; neither fits the internal RAM.
+
+A phone enumerates here and answers for the accessory protocol, but the
+identity strings that follow it do not go out: the controller API the driver
+builds on cannot start a control transfer with an OUT data stage, so the
+accessory handshake does not complete on this board yet.
 
 Without a phone
 ***************
