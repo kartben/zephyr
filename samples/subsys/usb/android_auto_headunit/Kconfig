@@ -222,6 +222,23 @@ config SAMPLE_AA_HU_H264_HEAP_SECTION
 	  when it reads reference pictures, at the cost of holding the whole
 	  arena there.
 
+config SAMPLE_AA_HU_H264_STATE_HEAP_SIZE
+	int "Decoder state heap (bytes)"
+	depends on SAMPLE_AA_HU_H264
+	default 524288
+	help
+	  Holds everything the decoder keeps apart from the pictures, which is
+	  mostly one record per macroblock of the frame. It is read far more
+	  often per byte than the pictures are, and is small enough to keep in
+	  internal RAM on a board whose pictures have to go elsewhere.
+
+config SAMPLE_AA_HU_H264_STATE_HEAP_SECTION
+	string "Linker section for the decoder state heap"
+	depends on SAMPLE_AA_HU_H264
+	default ".bss"
+	help
+	  Internal RAM by default, wherever the pictures end up.
+
 config SAMPLE_AA_HU_H264_HEAP_FALLBACK
 	bool "Keep a second decoder heap for streams the first cannot hold"
 	depends on SAMPLE_AA_HU_H264 && SAMPLE_AA_HU_BUFFERS_IN_EXT_RAM
