@@ -16,6 +16,9 @@ LOG_MODULE_REGISTER(uhc_renesas_ra, CONFIG_UHC_DRIVER_LOG_LEVEL);
 
 #define UHC_RENESA_RA_MAX_UDEV 5
 
+/* The default control pipe, and the nine the controller can give an endpoint */
+#define UHC_RENESAS_RA_PIPES 10
+
 enum uhc_renesas_ra_event_type {
 	/* Shim driver event to trigger next transfer */
 	UHC_RENESAS_RA_EVT_XFER,
@@ -27,8 +30,22 @@ struct uhc_renesas_ra_evt {
 	enum uhc_renesas_ra_event_type type;
 };
 
+/*
+ * What one pipe of the controller is carrying. Every device's endpoint zero
+ * shares the control pipe, which takes one transfer at a time, and each of the
+ * other pipes belongs to a single endpoint, so several transfers are in flight
+ * at once and a completion has to be matched to the endpoint reporting it.
+ */
+struct uhc_renesas_ra_pipe {
+	struct uhc_transfer *xfer;
+	uint8_t addr;
+	uint8_t ep;
+	/* The stage it has reached has still to be handed to the controller */
+	bool issue;
+};
+
 struct uhc_renesas_ra_data {
-	struct uhc_transfer *last_xfer;
+	struct uhc_renesas_ra_pipe pipe[UHC_RENESAS_RA_PIPES];
 	struct k_thread thread_data;
 	struct k_msgq msgq;
 	struct st_usbh_instance_ctrl uhc_ctrl;
@@ -60,6 +77,49 @@ static void uhc_renesas_ra_xfer_request(const struct device *dev)
 
 	ret = k_msgq_put(&priv->msgq, &event, K_NO_WAIT);
 	__ASSERT_NO_MSG(ret == 0);
+}
+
+/*
+ * The pipe a transfer is in flight on, or NULL if it is not. Endpoint zero is
+ * always the first pipe, whichever device the transfer is for.
+ */
+static struct uhc_renesas_ra_pipe *uhc_renesas_ra_pipe_find(const struct device *dev,
+							    const uint8_t addr, const uint8_t ep)
+{
+	struct uhc_renesas_ra_data *priv = uhc_get_private(dev);
+
+	if (USB_EP_GET_IDX(ep) == 0) {
+		return priv->pipe[0].xfer != NULL ? &priv->pipe[0] : NULL;
+	}
+
+	for (size_t i = 1; i < UHC_RENESAS_RA_PIPES; i++) {
+		struct uhc_renesas_ra_pipe *pipe = &priv->pipe[i];
+
+		if (pipe->xfer != NULL && pipe->addr == addr && pipe->ep == ep) {
+			return pipe;
+		}
+	}
+
+	return NULL;
+}
+
+/* A pipe to carry a transfer that is not in flight yet, if one is free */
+static struct uhc_renesas_ra_pipe *uhc_renesas_ra_pipe_claim(const struct device *dev,
+							     struct uhc_transfer *const xfer)
+{
+	struct uhc_renesas_ra_data *priv = uhc_get_private(dev);
+
+	if (USB_EP_GET_IDX(xfer->ep) == 0) {
+		return priv->pipe[0].xfer == NULL ? &priv->pipe[0] : NULL;
+	}
+
+	for (size_t i = 1; i < UHC_RENESAS_RA_PIPES; i++) {
+		if (priv->pipe[i].xfer == NULL) {
+			return &priv->pipe[i];
+		}
+	}
+
+	return NULL;
 }
 
 static int uhc_renesas_ra_lock(const struct device *dev)
@@ -166,6 +226,8 @@ static int uhc_renesas_ra_control_xfer(const struct device *dev, struct uhc_tran
 	fsp_err_t err;
 	int ret = 0;
 
+	LOG_DBG("issue ep 0x%02x stage %d", xfer->ep, xfer->stage);
+
 	switch (xfer->stage) {
 	case UHC_CONTROL_STAGE_SETUP:
 		err = R_USBH_SetupSend(&priv->uhc_ctrl, xfer->udev->addr, xfer->setup_pkt);
@@ -188,23 +250,6 @@ static int uhc_renesas_ra_control_xfer(const struct device *dev, struct uhc_tran
 	return ret;
 }
 
-struct uhc_transfer *uhc_renesas_ra_xfer_get_next(const struct device *dev)
-{
-	struct uhc_renesas_ra_data *priv = uhc_get_private(dev);
-	struct uhc_transfer *xfer;
-
-	xfer = uhc_xfer_get_next(dev);
-	if (xfer == NULL) {
-		sys_dnode_t *node = sys_dlist_peek_head(&priv->xfers);
-
-		if (node != NULL) {
-			xfer = SYS_DLIST_CONTAINER(node, xfer, node);
-		}
-	}
-
-	return xfer;
-}
-
 static int uhc_renesas_ra_transfer_append(const struct device *dev, struct uhc_transfer *const xfer)
 {
 	struct uhc_renesas_ra_data *priv = uhc_get_private(dev);
@@ -222,57 +267,155 @@ static int uhc_renesas_ra_transfer_append(const struct device *dev, struct uhc_t
 	return 0;
 }
 
-static int uhc_renesas_ra_schedule_xfer(const struct device *dev)
+static int uhc_renesas_ra_issue(const struct device *dev, struct uhc_transfer *const xfer)
 {
-	struct uhc_renesas_ra_data *priv = uhc_get_private(dev);
-
-	if (priv->last_xfer == NULL) {
-		/* Allocate buffer to establish a new transaction */
-		priv->last_xfer = uhc_renesas_ra_xfer_get_next(dev);
-		if (priv->last_xfer == NULL) {
-			LOG_DBG("Cannot schedule transfer: no pending transfers");
-			return 0;
-		}
-	}
-
-	if (USB_EP_GET_IDX(priv->last_xfer->ep) == 0) {
+	if (USB_EP_GET_IDX(xfer->ep) == 0) {
 		/*
-		 * If there is a control xfer, the driver should maintaince control xfer stage
-		 * update properly to not conrrupt the control transfer seq
+		 * A control transfer is handed over a stage at a time, and the
+		 * driver keeps track of which one it is on.
 		 */
-		return uhc_renesas_ra_control_xfer(dev, priv->last_xfer);
+		return uhc_renesas_ra_control_xfer(dev, xfer);
 	}
 
-	return uhc_renesas_ra_data_xfer(dev, priv->last_xfer);
+	return uhc_renesas_ra_data_xfer(dev, xfer);
 }
 
-static void uhc_control_stage_update(const struct device *dev)
+static void uhc_renesas_ra_pipe_release(struct uhc_renesas_ra_pipe *const pipe)
+{
+	pipe->xfer = NULL;
+	pipe->issue = false;
+}
+
+/* Give a transfer a pipe and hand its first stage to the controller */
+static void uhc_renesas_ra_start(const struct device *dev, struct uhc_transfer *const xfer)
+{
+	struct uhc_renesas_ra_pipe *pipe;
+	int ret;
+
+	pipe = uhc_renesas_ra_pipe_claim(dev, xfer);
+	if (pipe == NULL) {
+		/* Every pipe is carrying something: this one waits its turn */
+		return;
+	}
+
+	pipe->xfer = xfer;
+	pipe->addr = xfer->udev->addr;
+	pipe->ep = xfer->ep;
+	pipe->issue = false;
+
+	ret = uhc_renesas_ra_issue(dev, xfer);
+	if (ret != 0) {
+		uhc_renesas_ra_pipe_release(pipe);
+		uhc_xfer_return(dev, xfer, ret);
+	}
+}
+
+/*
+ * A transfer the caller has given up on. The controller cannot be told to take
+ * back one it has already been given, so quiesce the pipe instead and let
+ * whatever comes next start from a quiet one. Reopening the port is what puts
+ * the default control pipe back to NAK, and is what the next control transfer
+ * on it would do in any case.
+ */
+static void uhc_renesas_ra_drop(const struct device *dev, struct uhc_transfer *const xfer)
 {
 	struct uhc_renesas_ra_data *priv = uhc_get_private(dev);
-	struct uhc_transfer *xfer = priv->last_xfer;
+	struct uhc_renesas_ra_pipe *pipe;
 
-	switch (xfer->stage) {
-	case UHC_CONTROL_STAGE_SETUP: {
-		if (xfer->buf != NULL) {
-			/* S-[in]-status or S-[out]-status */
-			xfer->stage = UHC_CONTROL_STAGE_DATA;
-			uhc_renesas_ra_xfer_request(dev);
-		} else {
-			/* S-[status] */
-			xfer->stage = UHC_CONTROL_STAGE_STATUS;
-			uhc_renesas_ra_control_status_xfer(dev, xfer);
+	pipe = uhc_renesas_ra_pipe_find(dev, xfer->udev->addr, xfer->ep);
+	if (pipe != NULL && pipe->xfer == xfer) {
+		uhc_renesas_ra_pipe_release(pipe);
+
+		if (USB_EP_GET_IDX(xfer->ep) == 0) {
+			(void)R_USBH_PortOpen(&priv->uhc_ctrl, xfer->udev->addr);
 		}
-		break;
 	}
+
+	uhc_xfer_return(dev, xfer, -ECONNRESET);
+}
+
+/*
+ * Hand over every stage the controller is waiting to be given, then start what
+ * there is a free pipe for. A transfer already on a pipe keeps it until it
+ * finishes, so a bulk endpoint that is only listening does not hold up the
+ * others.
+ */
+static int uhc_renesas_ra_submit_pending(const struct device *dev)
+{
+	struct uhc_renesas_ra_data *priv = uhc_get_private(dev);
+	struct uhc_data *const data = dev->data;
+	struct uhc_transfer *xfer, *tmp;
+
+	for (size_t i = 0; i < UHC_RENESAS_RA_PIPES; i++) {
+		struct uhc_renesas_ra_pipe *pipe = &priv->pipe[i];
+		struct uhc_transfer *staged = pipe->xfer;
+		int ret;
+
+		if (staged == NULL || !pipe->issue) {
+			continue;
+		}
+
+		pipe->issue = false;
+
+		ret = uhc_renesas_ra_issue(dev, staged);
+		if (ret != 0) {
+			uhc_renesas_ra_pipe_release(pipe);
+			uhc_xfer_return(dev, staged, ret);
+		}
+	}
+
+	SYS_DLIST_FOR_EACH_CONTAINER_SAFE(&data->ctrl_xfers, xfer, tmp, node) {
+		if (xfer->err == -ECONNRESET) {
+			uhc_renesas_ra_drop(dev, xfer);
+			continue;
+		}
+
+		if (uhc_renesas_ra_pipe_find(dev, xfer->udev->addr, xfer->ep) == NULL) {
+			uhc_renesas_ra_start(dev, xfer);
+		}
+	}
+
+	SYS_DLIST_FOR_EACH_CONTAINER_SAFE(&priv->xfers, xfer, tmp, node) {
+		if (xfer->err == -ECONNRESET) {
+			uhc_renesas_ra_drop(dev, xfer);
+			continue;
+		}
+
+		if (uhc_renesas_ra_pipe_find(dev, xfer->udev->addr, xfer->ep) == NULL) {
+			uhc_renesas_ra_start(dev, xfer);
+		}
+	}
+
+	return 0;
+}
+
+static void uhc_control_stage_update(const struct device *dev,
+				     struct uhc_renesas_ra_pipe *const pipe)
+{
+	struct uhc_transfer *xfer = pipe->xfer;
+
+	/*
+	 * Only move the stage on here; starting it belongs to the driver thread.
+	 * This runs in the controller's own interrupt, and handing a transfer to
+	 * the controller clears that interrupt pending in the ICU and the NVIC,
+	 * which discards anything that arrived while the handler was running.
+	 */
+	switch (xfer->stage) {
+	case UHC_CONTROL_STAGE_SETUP:
+		/* S-[in]-status, S-[out]-status or S-[status] */
+		xfer->stage = (xfer->buf != NULL) ? UHC_CONTROL_STAGE_DATA
+						  : UHC_CONTROL_STAGE_STATUS;
+		pipe->issue = true;
+		break;
 	case UHC_CONTROL_STAGE_DATA:
 		/* S-in-[status] or S-out-[status] */
 		xfer->stage = UHC_CONTROL_STAGE_STATUS;
-		uhc_renesas_ra_control_status_xfer(dev, xfer);
+		pipe->issue = true;
 		break;
 	case UHC_CONTROL_STAGE_STATUS:
 		/* Transfer is completed */
+		uhc_renesas_ra_pipe_release(pipe);
 		uhc_xfer_return(dev, xfer, 0);
-		priv->last_xfer = NULL;
 		break;
 	default:
 		break;
@@ -281,32 +424,34 @@ static void uhc_control_stage_update(const struct device *dev)
 
 static int uhc_renesas_ra_event_xfer_complete(const struct device *dev, usbh_event_t *hal_evt)
 {
-	struct uhc_renesas_ra_data *priv = uhc_get_private(dev);
-	struct uhc_transfer *const xfer = priv->last_xfer;
+	const uint8_t ep = hal_evt->complete.ep_addr;
+	struct uhc_renesas_ra_pipe *pipe;
+	struct uhc_transfer *xfer;
 	int ret = 0;
 
-	if (xfer == NULL) {
-		LOG_DBG("No transfer in progress");
+	pipe = uhc_renesas_ra_pipe_find(dev, hal_evt->dev_addr, ep);
+	if (pipe == NULL) {
+		LOG_WRN("No transfer in progress on ep 0x%02x", ep);
 		return -EINVAL;
 	}
+
+	xfer = pipe->xfer;
 
 	switch (hal_evt->complete.result) {
 	case USB_XFER_RESULT_STALLED:
 	case USB_XFER_RESULT_TIMEOUT:
 	case USB_XFER_RESULT_FAILED:
-		uhc_xfer_return(dev, priv->last_xfer, -EPIPE);
+		uhc_renesas_ra_pipe_release(pipe);
+		uhc_xfer_return(dev, xfer, -EPIPE);
 		ret = -EAGAIN;
 		break;
-	case USB_XFER_RESULT_SUCCESS: {
-		uint8_t ep = hal_evt->complete.ep_addr;
-
+	case USB_XFER_RESULT_SUCCESS:
 		if (USB_EP_GET_IDX(ep) == 0) {
-			if (ep == USB_CONTROL_EP_IN &&
-			    priv->last_xfer->stage == UHC_CONTROL_STAGE_DATA) {
+			if (ep == USB_CONTROL_EP_IN && xfer->stage == UHC_CONTROL_STAGE_DATA) {
 				net_buf_add(xfer->buf, hal_evt->complete.len);
 			}
 
-			uhc_control_stage_update(dev);
+			uhc_control_stage_update(dev, pipe);
 			break;
 		}
 
@@ -316,15 +461,18 @@ static int uhc_renesas_ra_event_xfer_complete(const struct device *dev, usbh_eve
 			}
 		}
 
+		uhc_renesas_ra_pipe_release(pipe);
 		uhc_xfer_return(dev, xfer, 0);
-		priv->last_xfer = NULL;
 		break;
-	}
 	default:
 		/* USB_XFER_RESULT_INVALID */
+		uhc_renesas_ra_pipe_release(pipe);
 		uhc_xfer_return(dev, xfer, -EINVAL);
 		ret = -EINVAL;
 	}
+
+	/* A stage to hand over, or a pipe something else was waiting for */
+	uhc_renesas_ra_xfer_request(dev);
 
 	return ret;
 }
@@ -358,6 +506,11 @@ static int uhc_renesas_ra_ep_enqueue(const struct device *dev, struct uhc_transf
 		return -ENOTSUP;
 	}
 
+	if (xfer->udev->addr >= UHC_RENESA_RA_MAX_UDEV) {
+		LOG_ERR("Device address %u is beyond what the driver tracks", xfer->udev->addr);
+		return -ENOTSUP;
+	}
+
 	/*
 	 * The controller takes neither the speed nor the control endpoint's
 	 * maximum packet size: it uses the speed the port negotiated and fixes
@@ -365,11 +518,19 @@ static int uhc_renesas_ra_ep_enqueue(const struct device *dev, struct uhc_transf
 	 * legal value and full speed devices generally use it, but a low speed
 	 * device, whose control endpoint is eight bytes, cannot be told.
 	 *
+	 * It only has to be told about a device once. Doing it again puts the
+	 * default control pipe back to NAK and rewrites the address registers,
+	 * which would be underneath whatever else is in flight.
+	 *
 	 * TODO: Configure split transaction once the host stack knows hubs
 	 */
-	err = R_USBH_PortOpen(&priv->uhc_ctrl, xfer->udev->addr);
-	if (err != FSP_SUCCESS) {
-		return -EIO;
+	if (priv->devadd[xfer->udev->addr] == 0) {
+		err = R_USBH_PortOpen(&priv->uhc_ctrl, xfer->udev->addr);
+		if (err != FSP_SUCCESS) {
+			return -EIO;
+		}
+
+		priv->devadd[xfer->udev->addr] = 1;
 	}
 
 	ret = uhc_renesas_ra_transfer_append(dev, xfer);
@@ -393,30 +554,19 @@ static int uhc_renesas_ra_ep_enqueue(const struct device *dev, struct uhc_transf
 
 static int uhc_renesas_ra_ep_dequeue(const struct device *dev, struct uhc_transfer *const xfer)
 {
-	struct uhc_renesas_ra_data *priv = uhc_get_private(dev);
-	bool in_flight;
 	unsigned int key;
 
+	/*
+	 * Mark it and leave the rest to the driver thread, which hands it back
+	 * once the caller has cleared the queued flag: uhc_xfer_free() refuses
+	 * a transfer that is still queued.
+	 */
 	key = irq_lock();
 	xfer->err = -ECONNRESET;
-	in_flight = (priv->last_xfer == xfer);
-	if (in_flight) {
-		priv->last_xfer = NULL;
-	}
 	irq_unlock(key);
 
-	/*
-	 * The controller cannot be told to take back a transfer it has already
-	 * been given, so quiesce the pipe instead and let whatever comes next
-	 * start from a quiet one. Reopening the port is what puts the default
-	 * control pipe back to NAK, and is what the next control transfer on it
-	 * would do in any case.
-	 */
-	if (in_flight && USB_EP_GET_IDX(xfer->ep) == 0) {
-		(void)R_USBH_PortOpen(&priv->uhc_ctrl, xfer->udev->addr);
-	}
+	uhc_renesas_ra_xfer_request(dev);
 
-	/* The caller owns the transfer from here: it clears the queued flag */
 	return 0;
 }
 
@@ -496,7 +646,18 @@ static int uhc_renesas_ra_port_release(const struct device *dev)
 		}
 	}
 
-	priv->last_xfer = NULL;
+	for (size_t i = 0; i < UHC_RENESAS_RA_PIPES; i++) {
+		struct uhc_renesas_ra_pipe *pipe = &priv->pipe[i];
+		struct uhc_transfer *xfer = pipe->xfer;
+
+		if (xfer == NULL) {
+			continue;
+		}
+
+		/* Hand it back rather than free it: it is still queued */
+		uhc_renesas_ra_pipe_release(pipe);
+		uhc_xfer_return(dev, xfer, -ECONNRESET);
+	}
 
 	uhc_submit_event(dev, UHC_EVT_DEV_REMOVED, 0);
 
@@ -521,7 +682,7 @@ static void uhc_renesas_ra_thread(void *p1, void *p2, void *p3)
 
 		switch (event.type) {
 		case UHC_RENESAS_RA_EVT_XFER:
-			ret = uhc_renesas_ra_schedule_xfer(dev);
+			ret = uhc_renesas_ra_submit_pending(dev);
 			if (unlikely(ret)) {
 				LOG_WRN("Schedule xfer failed with error %d", ret);
 			}
@@ -656,10 +817,17 @@ static int uhc_renesas_ra_shutdown(const struct device *dev)
 {
 	struct uhc_renesas_ra_data *priv = uhc_get_private(dev);
 
-	if (priv->last_xfer != NULL) {
+	for (size_t i = 0; i < UHC_RENESAS_RA_PIPES; i++) {
+		struct uhc_renesas_ra_pipe *pipe = &priv->pipe[i];
+		struct uhc_transfer *xfer = pipe->xfer;
+
+		if (xfer == NULL) {
+			continue;
+		}
+
 		/* Hand it back rather than free it: it is still queued */
-		uhc_xfer_return(dev, priv->last_xfer, -ECONNRESET);
-		priv->last_xfer = NULL;
+		uhc_renesas_ra_pipe_release(pipe);
+		uhc_xfer_return(dev, xfer, -ECONNRESET);
 	}
 
 	if (R_USBH_Close(&priv->uhc_ctrl) != FSP_SUCCESS) {
@@ -687,6 +855,10 @@ static const struct uhc_driver_api uhc_renesas_ra_api = {
 static void uhc_renesas_ra_callback(usbh_callback_arg_t *p_args)
 {
 	const struct device *dev = p_args->p_context;
+
+	LOG_DBG("evt %d ep 0x%02x res %d len %u", p_args->event.event_id,
+		p_args->event.complete.ep_addr, p_args->event.complete.result,
+		p_args->event.complete.len);
 
 	switch (p_args->event.event_id) {
 	case USBH_EVENT_XFER_COMPLETE:
