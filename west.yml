@@ -240,8 +240,9 @@ manifest:
       groups:
         - hal
     - name: hal_renesas
+      remote: kartben
       path: modules/hal/renesas
-      revision: pull/205/head
+      revision: ra-usbhs-host-fixes
       groups:
         - hal
     - name: hal_rpi_pico
