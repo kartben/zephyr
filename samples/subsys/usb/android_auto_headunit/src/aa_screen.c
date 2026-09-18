@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <string.h>
 
+#include <zephyr/cache.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/display.h>
 #ifdef CONFIG_SAMPLE_AA_HU_LTDC_YUV
@@ -174,6 +175,13 @@ static void blit(void)
 		.height = DISPLAY_H,
 		.pitch = DISPLAY_W,
 	};
+
+	/*
+	 * The display controller reads the framebuffer out of memory itself,
+	 * so what composing it left behind in the cache has to reach memory
+	 * before it does. Without a data cache this costs nothing.
+	 */
+	sys_cache_data_flush_range(framebuffer, sizeof(framebuffer));
 
 	(void)display_write(display, 0, 0, &desc, framebuffer);
 }
