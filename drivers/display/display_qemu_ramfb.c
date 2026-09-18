@@ -13,6 +13,7 @@
 #include <zephyr/drivers/display.h>
 #include <zephyr/drivers/firmware/qemu_fwcfg/qemu_fwcfg.h>
 #include <zephyr/sys/device_mmio.h>
+#include <zephyr/cache.h>
 #include <zephyr/sys/byteorder.h>
 #include <string.h>
 
@@ -100,6 +101,9 @@ static int ramfb_write(const struct device *dev, uint16_t x, uint16_t y,
 		src += desc->pitch;
 	}
 
+	sys_cache_data_flush_range(data->fb + x + (y * data->pitch),
+				   (size_t)desc->height * data->pitch * BPP);
+
 	return 0;
 }
 
@@ -166,7 +170,7 @@ static int ramfb_init(const struct device *dev)
 		return -EINVAL;
 	}
 
-	device_map(&data->fb_map, cfg->fb_phys, req_size, K_MEM_CACHE_NONE);
+	device_map(&data->fb_map, cfg->fb_phys, req_size, K_MEM_CACHE_WB);
 	fb_va = (uint8_t *)data->fb_map;
 	data->fb = (uint32_t *)fb_va;
 	data->pitch = cfg->width;
