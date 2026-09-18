@@ -34,8 +34,8 @@ LOG_MODULE_REGISTER(aa_gui, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
  * brings in.
  */
 
-#define GUI_W (CONFIG_SAMPLE_AA_HU_VIDEO_WIDTH / 2)
-#define GUI_H CONFIG_SAMPLE_AA_HU_VIDEO_HEIGHT
+#define GUI_W (SURFACE_W / 2)
+#define GUI_H SURFACE_H
 
 /* How long the phone has to have sent nothing before the GUI drives the display */
 #define VIDEO_IDLE_MS CONFIG_SAMPLE_AA_HU_GUI_IDLE_MS

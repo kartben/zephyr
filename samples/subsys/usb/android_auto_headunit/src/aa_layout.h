@@ -9,6 +9,28 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include <zephyr/devicetree.h>
+
+/*
+ * The surface the head unit composes, which is the panel's own size: handing
+ * the display driver anything smaller makes it copy the frame into a buffer of
+ * that size instead of scanning ours where it lies. A board whose panel does
+ * not say how large it is gets a surface the size of the stream, which is what
+ * the sample did throughout before.
+ */
+#if DT_HAS_CHOSEN(zephyr_display) && DT_NODE_HAS_PROP(DT_CHOSEN(zephyr_display), width) &&         \
+	DT_NODE_HAS_PROP(DT_CHOSEN(zephyr_display), height)
+#define SURFACE_W DT_PROP(DT_CHOSEN(zephyr_display), width)
+#define SURFACE_H DT_PROP(DT_CHOSEN(zephyr_display), height)
+#else
+#define SURFACE_W CONFIG_SAMPLE_AA_HU_VIDEO_WIDTH
+#define SURFACE_H CONFIG_SAMPLE_AA_HU_VIDEO_HEIGHT
+#endif
+
+/* What the phone is asked to send, which the surface is not obliged to match */
+#define STREAM_W CONFIG_SAMPLE_AA_HU_VIDEO_WIDTH
+#define STREAM_H CONFIG_SAMPLE_AA_HU_VIDEO_HEIGHT
+
 /** Rectangle of the display, in pixels from its top left corner. */
 struct aa_rect {
 	uint16_t x;

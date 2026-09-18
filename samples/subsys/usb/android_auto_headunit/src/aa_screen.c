@@ -25,8 +25,7 @@
 
 LOG_MODULE_REGISTER(aa_screen, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
 
-#define DISPLAY_W CONFIG_SAMPLE_AA_HU_VIDEO_WIDTH
-#define DISPLAY_H CONFIG_SAMPLE_AA_HU_VIDEO_HEIGHT
+
 
 static const struct device *display;
 /*
@@ -43,7 +42,7 @@ typedef uint16_t surface_px;
 #define SURFACE_RGB(r, g, b)                                                                       \
 	((surface_px)(((r) & 0xF8U) << 8 | ((g) & 0xFCU) << 3 | (b) >> 3))
 #endif
-#define FB_PIXELS ((size_t)DISPLAY_W * DISPLAY_H)
+#define FB_PIXELS ((size_t)SURFACE_W * SURFACE_H)
 #define FB_BYTES  (FB_PIXELS * sizeof(surface_px))
 
 /*
@@ -59,7 +58,7 @@ static K_MUTEX_DEFINE(lock);
 static int64_t last_picture;
 
 #ifdef CONFIG_SAMPLE_AA_HU_LTDC_YUV
-#define YUV_PICTURE_SIZE ((size_t)DISPLAY_W * DISPLAY_H * 2U)
+#define YUV_PICTURE_SIZE ((size_t)SURFACE_W * SURFACE_H * 2U)
 
 /* Keep the scanned frame separate from both the decoder and the next frame. */
 static uint8_t yuv_shown[AA_SCREEN_BUFFERS][YUV_PICTURE_SIZE]
@@ -138,34 +137,34 @@ static struct aa_rect banded[AA_SCREEN_BUFFERS];
 
 static void surface_picture(const struct aa_rect *r, const uint8_t *pic, uint16_t w, uint16_t h)
 {
-	aa_scale_i420_argb8888(framebuffer, DISPLAY_W, r, pic, w, h);
+	aa_scale_i420_argb8888(framebuffer, SURFACE_W, r, pic, w, h);
 }
 
 static void surface_fill(const struct aa_rect *r)
 {
-	aa_scale_fill_argb8888(framebuffer, DISPLAY_W, r);
+	aa_scale_fill_argb8888(framebuffer, SURFACE_W, r);
 }
 
 static void surface_gui(unsigned int idx)
 {
-	aa_gui_apply_argb8888(framebuffer, DISPLAY_W, idx);
+	aa_gui_apply_argb8888(framebuffer, SURFACE_W, idx);
 }
 
 #else
 
 static void surface_picture(const struct aa_rect *r, const uint8_t *pic, uint16_t w, uint16_t h)
 {
-	aa_scale_i420_rgb565(framebuffer, DISPLAY_W, r, pic, w, h);
+	aa_scale_i420_rgb565(framebuffer, SURFACE_W, r, pic, w, h);
 }
 
 static void surface_fill(const struct aa_rect *r)
 {
-	aa_scale_fill_rgb565(framebuffer, DISPLAY_W, r);
+	aa_scale_fill_rgb565(framebuffer, SURFACE_W, r);
 }
 
 static void surface_gui(unsigned int idx)
 {
-	aa_gui_apply_rgb565(framebuffer, DISPLAY_W, idx);
+	aa_gui_apply_rgb565(framebuffer, SURFACE_W, idx);
 }
 
 #endif /* CONFIG_SAMPLE_AA_HU_DISPLAY_ARGB8888 */
@@ -174,16 +173,16 @@ static void surface_gui(unsigned int idx)
 /* The dump is an RGB565 stream, and Kconfig only offers it where the surface is one */
 static void surface_dump(void)
 {
-	(void)hu_fb_dump_write((const uint16_t *)framebuffer, DISPLAY_W * DISPLAY_H);
+	(void)hu_fb_dump_write((const uint16_t *)framebuffer, SURFACE_W * SURFACE_H);
 }
 
 static void blit(void)
 {
 	struct display_buffer_descriptor desc = {
 		.buf_size = FB_BYTES,
-		.width = DISPLAY_W,
-		.height = DISPLAY_H,
-		.pitch = DISPLAY_W,
+		.width = SURFACE_W,
+		.height = SURFACE_H,
+		.pitch = SURFACE_W,
 	};
 	surface_px *shown = framebuffer;
 
@@ -226,21 +225,21 @@ static void compose(const uint8_t *pic, uint16_t w, uint16_t h)
 	band.x = 0U;
 	band.y = video.h;
 	band.w = video.w;
-	band.h = DISPLAY_H - video.h;
+	band.h = SURFACE_H - video.h;
 
 #ifdef CONFIG_SAMPLE_AA_HU_LTDC_YUV
 	yuv_next ^= 1U;
 
 	if (pic != NULL) {
-		aa_scale_i420_yuyv(dst, DISPLAY_W, &video, pic, w, h);
+		aa_scale_i420_yuyv(dst, SURFACE_W, &video, pic, w, h);
 	} else {
-		aa_scale_fill_yuyv(dst, DISPLAY_W, &video);
+		aa_scale_fill_yuyv(dst, SURFACE_W, &video);
 	}
 	if (band.h != 0U && memcmp(&banded[idx], &band, sizeof(band)) != 0) {
-		aa_scale_fill_yuyv(dst, DISPLAY_W, &band);
+		aa_scale_fill_yuyv(dst, SURFACE_W, &band);
 	}
 	banded[idx] = band;
-	aa_gui_apply_yuyv(dst, DISPLAY_W, idx);
+	aa_gui_apply_yuyv(dst, SURFACE_W, idx);
 
 	if (stm32_ltdc_set_yuyv_frame(display, dst, YUV_PICTURE_SIZE) != 0) {
 		LOG_WRN_ONCE("Display cannot show YUV");
@@ -278,9 +277,9 @@ int aa_screen_init(void)
 	}
 
 	display_get_capabilities(display, &caps);
-	if (caps.x_resolution != DISPLAY_W || caps.y_resolution != DISPLAY_H) {
-		LOG_WRN("Display is %ux%u, stream is %ux%u", caps.x_resolution,
-			caps.y_resolution, DISPLAY_W, DISPLAY_H);
+	if (caps.x_resolution != SURFACE_W || caps.y_resolution != SURFACE_H) {
+		LOG_WRN("Display is %ux%u, surface is %ux%u: the driver will copy every frame",
+			caps.x_resolution, caps.y_resolution, SURFACE_W, SURFACE_H);
 	}
 	if (caps.current_pixel_format != SURFACE_FORMAT) {
 		LOG_WRN("Display format is %d, the picture may look wrong",
@@ -296,12 +295,12 @@ int aa_screen_init(void)
 	memset(framebuffer, 0, FB_BYTES);
 #ifdef CONFIG_SAMPLE_AA_HU_TEST_PATTERN
 	/* Colour bars, to check the panel and the pixel format */
-	for (uint32_t y = 0; y < DISPLAY_H; y++) {
-		for (uint32_t x = 0; x < DISPLAY_W; x++) {
+	for (uint32_t y = 0; y < SURFACE_H; y++) {
+		for (uint32_t x = 0; x < SURFACE_W; x++) {
 			static const uint16_t bars[] = {0xFFFFU, 0xFFE0U, 0x07FFU, 0x07E0U,
 							0xF81FU, 0xF800U, 0x001FU, 0x0000U};
 
-			framebuffer[y * DISPLAY_W + x] = bars[(x * ARRAY_SIZE(bars)) / DISPLAY_W];
+			framebuffer[y * SURFACE_W + x] = bars[(x * ARRAY_SIZE(bars)) / SURFACE_W];
 		}
 	}
 #endif
