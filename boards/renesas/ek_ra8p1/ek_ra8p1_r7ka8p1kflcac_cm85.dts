@@ -254,3 +254,66 @@ arducam_ffc_40pin_dvp_xclk: &cam_clock {};
 		status = "okay";
 	};
 };
+
+/*
+ * The board's audio. J41 is fitted by default, which gives P405 and P406 to
+ * the codec rather than to the parallel camera; only one of the two can have
+ * them, so both are described here and left for an application to choose. The
+ * codec's master clock comes from GPT2.
+ */
+&pwm2 {
+	pinctrl-0 = <&pwm2_default>;
+	pinctrl-names = "default";
+	interrupts = <32 1>, <33 1>;
+	interrupt-names = "gtioca", "overflow";
+
+	/*
+	 * GTIOC2A on PD06 is the codec's MCLK, and the SSIE takes the same
+	 * output as its own audio clock. The timer counts a 300 MHz clock,
+	 * whose closest whole divisor to a 256 * 48 kHz master clock is 24,
+	 * giving 12.5 MHz: the codec and the bit clock then both land 1.7 %
+	 * above 48 kHz. No divider of this board's clock tree reaches
+	 * 12.288 MHz without moving a PLL that the display and USB are on.
+	 */
+	audio_clock: pwmclock {
+		compatible = "pwm-clock";
+		#clock-cells = <1>;
+		clock-frequency = <12500000>;
+		pwms = <&pwm2 0 PWM_HZ(12500000) PWM_POLARITY_NORMAL>;
+		status = "disabled";
+	};
+};
+
+/* U14's digital audio interface, which the SSIE drives both clocks of */
+&i2s0 {
+	pinctrl-0 = <&ssie0_default>;
+	pinctrl-names = "default";
+	interrupts = <34 1>, <35 1>, <36 1>;
+	interrupt-names = "ssi_txi", "ssi_rxi", "ssi_if";
+	clocks = <&pclkb MSTPC 8>, <&audio_clock 0>;
+	clock-names = "pclk", "audio-clock";
+};
+
+/*
+ * MIC1 and MIC2 share PDMDAT2 on P502 and PDMCLK2 on P812. MIC1 has its select
+ * input grounded and drives the line on the rising edge, which is what channel
+ * 2 reads; MIC2 is pulled up and is read by channel 0 on the falling edge.
+ */
+&pdm2 {
+	pinctrl-0 = <&pdm2_default>;
+	pinctrl-names = "default";
+	interrupts = <37 1>, <38 1>;
+	interrupt-names = "dat", "err";
+};
+
+&iic1 {
+	/* U14, whose control port shares the bus with the display's touch panel */
+	audio_codec: da7212@1a {
+		compatible = "dlg,da7212";
+		reg = <0x1a>;
+		clocks = <&audio_clock 0>;
+		clock-names = "mclk";
+		clock-source = "MCLK";
+		status = "disabled";
+	};
+};
