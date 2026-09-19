@@ -240,8 +240,9 @@ manifest:
       groups:
         - hal
     - name: hal_renesas
+      remote: kartben
       path: modules/hal/renesas
-      revision: pull/227/head
+      revision: ra-ek-ra8p1-demo
       groups:
         - hal
     - name: hal_rpi_pico
