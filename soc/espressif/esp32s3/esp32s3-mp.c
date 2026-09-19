@@ -173,7 +173,6 @@ static void appcpu_entry2(void)
 {
 	volatile int ps, ie;
 
-
 	/* Copy over VECBASE from the main CPU for an initial value
 	 * (will need to revisit this if we ever allow a user API to
 	 * change interrupt vectors at runtime). Make sure interrupts
@@ -189,7 +188,6 @@ static void appcpu_entry2(void)
 	__asm__ volatile("wsr.VECBASE %0" : : "r"(start_rec->vecbase));
 	__asm__ volatile("rsync");
 
-
 	/* Set up the CPU pointer. Really this should be xtensa arch
 	 * code, not in the ESP32-S3 layer.
 	 */
@@ -197,25 +195,21 @@ static void appcpu_entry2(void)
 
 	__asm__ volatile("wsr %0, " ZSR_CPU_STR : : "r"(cpu));
 
-
 	/* The ROM left this core's matrix in whatever state it booted
 	 * with; clear it before allocating anything, as IDF does in
 	 * call_start_cpu1(). The esp32 port omits this.
 	 */
 	core_intr_matrix_clear();
 
-
 	/* So a core-1 reset idles in the ROM rather than re-entering us. */
 	esp_rom_ets_set_appcpu_boot_addr((void *)0);
 
 	smp_log("ESP32S3: APPCPU running");
 
-	/* Register this core's IPI before releasing CPU0: once it is
-	 * scheduling it may target us immediately. start_rec is still
-	 * valid here because CPU0 is spinning on ->alive.
+	/* This core's scheduler IPI is registered later, from a kernel
+	 * context -- see esp_crosscore_init_all(). esp_intr_alloc() cannot
+	 * be called from here.
 	 */
-	esp_crosscore_int_init();
-
 
 	/* start_rec lives on CPU0's stack and dies with the handshake,
 	 * so latch what we still need out of it first.
@@ -301,9 +295,6 @@ void arch_cpu_start(int cpu_num, k_thread_stack_t *stack, int sz, arch_cpustart_
 
 	start_rec = &sr;
 
-	/* Register CPU0's own IPI once, on CPU0. */
-	esp_crosscore_int_init();
-
 	esp_appcpu_start(appcpu_entry1);
 
 	while (!alive_flag) {
@@ -314,6 +305,57 @@ void arch_cpu_start(int cpu_num, k_thread_stack_t *stack, int sz, arch_cpustart_
 
 	smp_log("ESP32S3: APPCPU initialized");
 }
+
+/* esp_intr_alloc() must run on the core it allocates for, but it is a
+ * kernel-context API: intc_esp32.c takes irq_lock(), which under SMP is
+ * z_smp_global_lock() and dereferences _current. On a secondary core
+ * _current does not exist until smp_init_top() installs the dummy
+ * thread, which is after arch_cpu_start() returns -- so the registration
+ * cannot happen in the core's entry path.
+ *
+ * Register at INIT_LEVEL_SMP instead, which runs after z_smp_init(), and
+ * reach each secondary core through a thread pinned to it. Until this
+ * runs the scheduler just falls back to waking the other core on its
+ * next timer tick.
+ */
+static K_THREAD_STACK_DEFINE(ipi_init_stack, 1024);
+static struct k_thread ipi_init_thread;
+static K_SEM_DEFINE(ipi_init_done, 0, 1);
+
+static void ipi_init_fn(void *a, void *b, void *c)
+{
+	ARG_UNUSED(a);
+	ARG_UNUSED(b);
+	ARG_UNUSED(c);
+
+	esp_crosscore_int_init();
+	k_sem_give(&ipi_init_done);
+}
+
+static int esp_crosscore_init_all(void)
+{
+	/* Runs on CPU0, so CPU0 registers itself directly. */
+	esp_crosscore_int_init();
+
+	for (int cpu = 1; cpu < arch_num_cpus(); cpu++) {
+		k_tid_t tid = k_thread_create(&ipi_init_thread, ipi_init_stack,
+					      K_THREAD_STACK_SIZEOF(ipi_init_stack), ipi_init_fn,
+					      NULL, NULL, NULL, 0, 0, K_FOREVER);
+
+		k_thread_name_set(tid, "ipi-init");
+		if (k_thread_cpu_pin(tid, cpu) != 0) {
+			return -EIO;
+		}
+		k_thread_start(tid);
+
+		/* Serialised: the thread object and stack are reused per core. */
+		k_sem_take(&ipi_init_done, K_FOREVER);
+		k_thread_join(tid, K_FOREVER);
+	}
+
+	return 0;
+}
+SYS_INIT(esp_crosscore_init_all, SMP, 0);
 
 bool arch_cpu_active(int cpu_num)
 {
@@ -329,8 +371,6 @@ bool arch_cpu_active(int cpu_num)
 
 #define sys_mmap   bootloader_mmap
 #define sys_munmap bootloader_munmap
-
-
 
 static int load_segment(uint32_t src_addr, uint32_t src_len, uint32_t dst_addr)
 {
