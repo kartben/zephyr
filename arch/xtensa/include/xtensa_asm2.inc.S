@@ -165,6 +165,47 @@
  *
  * Does not populate or modify the PS/PC save locations.
  */
+/*
+ * ODD_REG_SAVE_SYNC
+ *
+ * The variant for a *synchronous* switch (xtensa_switch), where the odd
+ * registers are not all live. It must still fill every slot that
+ * ODD_REG_RESTORE reads back, because that macro is shared with the
+ * interrupt path and writes each one unconditionally -- leaving a slot
+ * unwritten would restore stack garbage into a special register.
+ *
+ * LBEG/LEND/LCOUNT are zeroed rather than saved: a zero-overhead loop cannot
+ * span a call, and restoring a nonzero LCOUNT with stale LBEG/LEND could
+ * trigger a spurious loopback. EXCCAUSE is zeroed rather than saved: it is
+ * exception status, not scratch, so there is nothing meaningful to carry
+ * across a voluntary switch, and zero is a defined value rather than
+ * whatever the slot happened to hold.
+ *
+ * SAR and SCOMPARE1 are still saved. They are caller-saved by the ABI and so
+ * arguably dead here, but they are cheap and keeping them means this macro
+ * changes no architectural state that the restore path relies on.
+ */
+.macro ODD_REG_SAVE_SYNC SCRATCH_REG, BSA_PTR
+	rsr.sar \SCRATCH_REG
+	s32i \SCRATCH_REG, \BSA_PTR, ___xtensa_irq_bsa_t_sar_OFFSET
+	movi \SCRATCH_REG, 0
+#if XCHAL_HAVE_LOOPS
+	s32i \SCRATCH_REG, \BSA_PTR, ___xtensa_irq_bsa_t_lbeg_OFFSET
+	s32i \SCRATCH_REG, \BSA_PTR, ___xtensa_irq_bsa_t_lend_OFFSET
+	s32i \SCRATCH_REG, \BSA_PTR, ___xtensa_irq_bsa_t_lcount_OFFSET
+#endif
+	s32i \SCRATCH_REG, \BSA_PTR, ___xtensa_irq_bsa_t_exccause_OFFSET
+#if XCHAL_HAVE_S32C1I
+	rsr.scompare1 \SCRATCH_REG
+	s32i \SCRATCH_REG, \BSA_PTR, ___xtensa_irq_bsa_t_scompare1_OFFSET
+#endif
+#if XCHAL_HAVE_THREADPTR && \
+	(defined(CONFIG_USERSPACE) || defined(CONFIG_THREAD_LOCAL_STORAGE))
+	rur.THREADPTR \SCRATCH_REG
+	s32i \SCRATCH_REG, \BSA_PTR, ___xtensa_irq_bsa_t_threadptr_OFFSET
+#endif
+.endm
+
 .macro ODD_REG_SAVE SCRATCH_REG, BSA_PTR
 	rsr.sar \SCRATCH_REG
 	s32i \SCRATCH_REG, \BSA_PTR, ___xtensa_irq_bsa_t_sar_OFFSET
