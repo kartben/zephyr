@@ -66,6 +66,24 @@ struct cpustart_rec {
 /* Temporary bring-up tracing: lock-free and usable before the per-CPU
  * pointer exists, unlike smp_log().
  */
+/* CCOUNT is a per-CPU register, but the system clock's baseline
+ * (timer_core_last_cycle in drivers/timer/system_timer_generic.h) is global.
+ * Core 1's CCOUNT starts counting only when it is released from reset, so
+ * without this the two cores compute their tick deltas against unrelated
+ * counters and the clock runs fast. Both count the same 240 MHz PLL, so a
+ * single alignment at startup holds for good: CPU0 republishes its CCOUNT
+ * while it waits for the handshake, and core 1 adopts the last value.
+ */
+static volatile uint32_t ccount_sync;
+
+static ALWAYS_INLINE uint32_t zrd_ccount(void)
+{
+	uint32_t v;
+
+	__asm__ volatile("rsr.CCOUNT %0" : "=r"(v));
+	return v;
+}
+
 volatile struct cpustart_rec *start_rec;
 static void *appcpu_top;
 static bool cpus_active[CONFIG_MP_MAX_NUM_CPUS];
@@ -172,6 +190,11 @@ static void core_intr_matrix_clear(void)
 static void appcpu_entry2(void)
 {
 	volatile int ps, ie;
+
+	/* First thing, before this core's timer is armed: adopt CPU0's cycle
+	 * count so the shared tick baseline means the same thing on both.
+	 */
+	__asm__ volatile("wsr.CCOUNT %0" : : "r"(ccount_sync));
 
 	/* Copy over VECBASE from the main CPU for an initial value
 	 * (will need to revisit this if we ever allow a user API to
@@ -297,7 +320,11 @@ void arch_cpu_start(int cpu_num, k_thread_stack_t *stack, int sz, arch_cpustart_
 
 	esp_appcpu_start(appcpu_entry1);
 
+	/* Keep publishing until core 1 signals: it adopts whatever it last saw,
+	 * so the residual offset is only the store-to-load delay between cores.
+	 */
 	while (!alive_flag) {
+		ccount_sync = zrd_ccount();
 	}
 
 	cpus_active[0] = true;
