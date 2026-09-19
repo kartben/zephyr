@@ -310,7 +310,7 @@ __switch_swap_same_domain:
 	s32i a0, a1, ___xtensa_irq_bsa_t_a0_OFFSET
 	s32i a2, a1, ___xtensa_irq_bsa_t_a2_OFFSET
 	s32i a3, a1, ___xtensa_irq_bsa_t_a3_OFFSET
-	ODD_REG_SAVE a0, a1
+	ODD_REG_SAVE_SYNC a0, a1
 
 #if XCHAL_HAVE_FP && defined(CONFIG_CPU_HAS_FPU) && defined(CONFIG_FPU_SHARING)
 	FPU_REG_SAVE
@@ -344,8 +344,22 @@ __switch_swap_same_domain:
 	wsr a6, CPENABLE
 #endif
 
-	/* Now the high registers */
-	call0 xtensa_save_high_regs
+	/* No high registers to save. SPILL_ALL_WINDOWS above has already
+	 * written every live window out to its caller frame, so WINDOWSTART
+	 * is down to this frame alone and A4-A15 hold nothing but dead copies
+	 * of values that are now in memory; the window underflow handlers
+	 * reload them from there as this thread returns. Calling
+	 * xtensa_save_high_regs here would store twelve registers and reload
+	 * them on the way back for no effect.
+	 *
+	 * Push the same "nothing was spilled" marker it would have left --
+	 * the saved pointer equal to the SP just above it -- so
+	 * xtensa_restore_high_regs takes its beq and restores nothing. A2 is
+	 * scratch: it was stashed into the BSA above.
+	 */
+	mov a2, a1
+	addi a1, a1, -4
+	s32i a2, a1, 0
 
 #if defined(CONFIG_KERNEL_COHERENCE)
 	/* Flush the stack.  The top of stack was stored for us by
