@@ -28,8 +28,13 @@ endif # SOC_SERIES_ESP32S3
 
 if SMP
 
+# Not optional: the scheduler IPI is registered on the secondary core through a
+# thread pinned to it (esp32s3-mp.c), so k_thread_cpu_pin() has to exist. The
+# mask API works with all three ready-queue backends, so this must not be tied
+# to one of them -- selecting SCHED_MULTIQ would otherwise drop it and the SoC
+# would fail to build.
 config SCHED_CPU_MASK
-	default y if SCHED_SIMPLE
+	default y
 
 config MP_MAX_NUM_CPUS
 	default 2
