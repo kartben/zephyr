@@ -7,6 +7,7 @@
 config XTENSA_TIMER
 	bool "Xtensa timer support"
 	depends on XTENSA
+	depends on !ESP32_SYS_TIMER
 	default y
 	select TICKLESS_CAPABLE
 	help
