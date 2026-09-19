@@ -220,31 +220,27 @@ static int sys_clock_driver_init(void)
 		return ret;
 	}
 
-#ifdef CONFIG_XTENSA
-	/* systimer_hal_init() only sets the module's own clock-enable bit; the
-	 * peripheral bus clock and reset are separate, and IDF handles them
-	 * apart from the HAL (PERIPH_RCC_ACQUIRE_ATOMIC on
-	 * PERIPH_SYSTIMER_MODULE). On esp32s3 the peripheral comes out of reset
-	 * gated, so without this the counter never advances, the alarm never
-	 * fires and the kernel hangs on its first sleep.
-	 *
-	 * Confined to Xtensa: the RISC-V targets this driver already ran on
-	 * evidently come up with the clock enabled, and are left alone rather
-	 * than changed untested.
-	 */
-	systimer_ll_enable_bus_clock(true);
-	systimer_ll_reset_register();
-#endif
-
 	systimer_hal_init(&systimer_hal);
 	systimer_hal_connect_alarm_counter(&systimer_hal,
 		SYSTIMER_ALARM_OS_TICK_CORE0, SYSTIMER_COUNTER_OS_TICK);
 
 	systimer_hal_enable_counter(&systimer_hal, SYSTIMER_COUNTER_OS_TICK);
+	/* The OS-tick counter is unit 1, whose two "stall with this core" bits
+	 * both default to 1 (SYSTIMER_TIMER_UNIT1_CORE{0,1}_STALL_EN, bits
+	 * 26/25; unit 0's default to 0). On esp32s3 esp_errata() RUNSTALLs core
+	 * 1 before the kernel starts, and nothing releases it until
+	 * z_smp_init() -- far past this point, and never at all in a
+	 * single-core build. Leaving the core-1 bit set therefore freezes the
+	 * system clock through the whole of early boot, which shows up as a
+	 * silent hang: the USB-serial console's poll_out gives up on a full TX
+	 * FIFO via k_uptime_get(), so a clock that never advances spins there
+	 * forever.
+	 *
+	 * Tie the tick to core 0 only, as IDF does for the same silicon in
+	 * esp_timer_impl_systimer.c ("can_stall = (cpuid < 1)").
+	 */
 	systimer_hal_counter_can_stall_by_cpu(&systimer_hal, SYSTIMER_COUNTER_OS_TICK, 0, true);
-#if defined(CONFIG_SMP)
-	systimer_hal_counter_can_stall_by_cpu(&systimer_hal, SYSTIMER_COUNTER_OS_TICK, 1, true);
-#endif
+	systimer_hal_counter_can_stall_by_cpu(&systimer_hal, SYSTIMER_COUNTER_OS_TICK, 1, false);
 
 
 	/* Seed the announce baseline from the systimer and arm the first tick. */
