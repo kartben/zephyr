@@ -60,3 +60,15 @@
 		long-delay-ms = <700>;
 	};
 };
+
+/*
+ * The second core is not started, so its RAM is free. The two banks are
+ * contiguous, which makes them one 1664 KB bank the decoder's pictures fit in.
+ */
+&sram0 {
+	reg = <0x22000000 DT_SIZE_K(1664)>;
+};
+
+&sram1 {
+	status = "disabled";
+};
