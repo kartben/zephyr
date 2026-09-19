@@ -57,6 +57,24 @@ static uint8_t fb_idx;
 static K_MUTEX_DEFINE(lock);
 static int64_t last_picture;
 
+/*
+ * Handing a buffer to the controller means waiting for the panel to start
+ * scanning it, which rounds every frame up to a whole refresh period. That
+ * wait runs on a thread of its own, so the decoder is busy with the next
+ * picture while it happens.
+ *
+ * fb_free counts the buffers that may be drawn into. A present completing
+ * releases the one the panel was showing before it, so claim a buffer
+ * before writing into the surface and let blit() give it away.
+ */
+static K_SEM_DEFINE(fb_free, 1, 1);
+static K_SEM_DEFINE(fb_queued, 0, 1);
+static surface_px *fb_pending;
+static struct k_thread present_thread_data;
+static K_THREAD_STACK_DEFINE(present_stack, CONFIG_SAMPLE_AA_HU_PRESENT_STACK_SIZE);
+/* Held across every call into the display, which the presenter also makes */
+static K_MUTEX_DEFINE(disp);
+
 #ifdef CONFIG_SAMPLE_AA_HU_LTDC_YUV
 #define YUV_PICTURE_SIZE ((size_t)SURFACE_W * SURFACE_H * 2U)
 
@@ -74,6 +92,7 @@ static uint8_t yuv_next;
  */
 static uint32_t convert_us;
 static uint32_t push_us;
+static uint32_t wait_us;
 static uint32_t composed;
 
 #ifdef CONFIG_SAMPLE_AA_HU_VIDEO_PROFILE
@@ -96,10 +115,11 @@ static void report_timing(void)
 		return;
 	}
 
-	LOG_INF("Per picture: convert %u us, push %u us", convert_us / composed,
-		push_us / composed);
+	LOG_INF("Per picture: convert %u us, push %u us, wait %u us", convert_us / composed,
+		push_us / composed, wait_us / composed);
 	convert_us = 0U;
 	push_us = 0U;
+	wait_us = 0U;
 	composed = 0U;
 	since = now;
 }
@@ -171,19 +191,19 @@ static void surface_gui(unsigned int idx)
 #endif /* CONFIG_SAMPLE_AA_HU_LTDC_YUV */
 
 /* The dump is an RGB565 stream, and Kconfig only offers it where the surface is one */
-static void surface_dump(void)
+static void surface_dump(const surface_px *fb)
 {
-	(void)hu_fb_dump_write((const uint16_t *)framebuffer, SURFACE_W * SURFACE_H);
+	(void)hu_fb_dump_write((const uint16_t *)fb, SURFACE_W * SURFACE_H);
 }
 
-static void blit(void)
+/* Wait for the surface to be free, which it is once the panel has moved on */
+static void surface_claim(void)
 {
-	struct display_buffer_descriptor desc = {
-		.buf_size = FB_BYTES,
-		.width = SURFACE_W,
-		.height = SURFACE_H,
-		.pitch = SURFACE_W,
-	};
+	k_sem_take(&fb_free, K_FOREVER);
+}
+
+static surface_px *blit(void)
+{
 	surface_px *shown = framebuffer;
 
 	/*
@@ -193,16 +213,51 @@ static void blit(void)
 	 */
 	sys_cache_data_flush_range(shown, FB_BYTES);
 
-	(void)display_write(display, 0, 0, &desc, shown);
+	fb_pending = shown;
+	k_sem_give(&fb_queued);
 
 	/*
-	 * The write returns once the controller has taken the buffer, so the
-	 * other one is free to compose into. Between them the area the video
-	 * owns and the GUI cover the surface, and both remember per buffer what
-	 * they last drew, so nothing of the older frame shows through.
+	 * The panel goes on showing the other buffer until this one reaches
+	 * it, so whoever draws next claims it first. Between them the area the
+	 * video owns and the GUI cover the surface, and both remember per
+	 * buffer what they last drew, so nothing of the older frame shows
+	 * through.
 	 */
 	fb_idx ^= 1U;
 	framebuffer = fb_store[fb_idx];
+
+	return shown;
+}
+
+static void present_thread(void *p1, void *p2, void *p3)
+{
+	struct display_buffer_descriptor desc = {
+		.buf_size = FB_BYTES,
+		.width = SURFACE_W,
+		.height = SURFACE_H,
+		.pitch = SURFACE_W,
+	};
+
+	ARG_UNUSED(p1);
+	ARG_UNUSED(p2);
+	ARG_UNUSED(p3);
+
+	while (true) {
+		const surface_px *shown;
+
+		k_sem_take(&fb_queued, K_FOREVER);
+		shown = fb_pending;
+
+		k_mutex_lock(&disp, K_FOREVER);
+		(void)display_write(display, 0, 0, &desc, shown);
+		k_mutex_unlock(&disp);
+
+		/*
+		 * The write returns once the panel is scanning this buffer,
+		 * which is what frees the one it was scanning before.
+		 */
+		k_sem_give(&fb_free);
+	}
 }
 
 /*
@@ -220,6 +275,9 @@ static void compose(const uint8_t *pic, uint16_t w, uint16_t h)
 	struct aa_rect video;
 	struct aa_rect area;
 	uint32_t at;
+#ifndef CONFIG_SAMPLE_AA_HU_LTDC_YUV
+	surface_px *shown;
+#endif
 
 	report_timing();
 	aa_layout_video(&video);
@@ -244,6 +302,10 @@ static void compose(const uint8_t *pic, uint16_t w, uint16_t h)
 	}
 #else
 	at = stamp();
+	surface_claim();
+	elapsed(&wait_us, at);
+
+	at = stamp();
 	if (pic != NULL) {
 		surface_picture(&video, pic, w, h);
 	} else {
@@ -257,10 +319,10 @@ static void compose(const uint8_t *pic, uint16_t w, uint16_t h)
 	elapsed(&convert_us, at);
 
 	at = stamp();
-	blit();
+	shown = blit();
 	elapsed(&push_us, at);
 	composed++;
-	surface_dump();
+	surface_dump(shown);
 #endif
 }
 
@@ -273,6 +335,11 @@ int aa_screen_init(void)
 		LOG_ERR("Display not ready");
 		return -ENODEV;
 	}
+
+	k_thread_create(&present_thread_data, present_stack,
+			K_THREAD_STACK_SIZEOF(present_stack), present_thread, NULL, NULL, NULL,
+			CONFIG_SAMPLE_AA_HU_PRESENT_THREAD_PRIORITY, 0, K_NO_WAIT);
+	k_thread_name_set(&present_thread_data, "aa_hu_present");
 
 	display_get_capabilities(display, &caps);
 	if (caps.x_resolution != SURFACE_W || caps.y_resolution != SURFACE_H) {
@@ -290,6 +357,7 @@ int aa_screen_init(void)
 	 * sends a frame the display would otherwise show whatever the memory
 	 * happened to hold.
 	 */
+	surface_claim();
 	memset(framebuffer, 0, FB_BYTES);
 #ifdef CONFIG_SAMPLE_AA_HU_TEST_PATTERN
 	/* Colour bars, to check the panel and the pixel format */
@@ -302,10 +370,19 @@ int aa_screen_init(void)
 		}
 	}
 #endif
-	blit();
-	LOG_INF("Framebuffer %p pushed to the display", (void *)framebuffer);
+	LOG_INF("Framebuffer %p pushed to the display", (void *)blit());
 
+	/*
+	 * Let it reach the panel before the backlight comes on, so the first
+	 * thing shown is the blank surface rather than whatever the memory
+	 * happened to hold.
+	 */
+	surface_claim();
+	k_sem_give(&fb_free);
+
+	k_mutex_lock(&disp, K_FOREVER);
 	(void)display_blanking_off(display);
+	k_mutex_unlock(&disp);
 	(void)hu_fb_dump_open();
 
 	return 0;
@@ -337,8 +414,8 @@ void aa_screen_push(void)
 {
 	k_mutex_lock(&lock, K_FOREVER);
 
-	blit();
-	surface_dump();
+	surface_claim();
+	surface_dump(blit());
 	last_picture = k_uptime_get();
 
 	k_mutex_unlock(&lock);
@@ -349,16 +426,21 @@ void aa_screen_blank(bool on)
 	k_mutex_lock(&lock, K_FOREVER);
 
 	if (!on) {
+		k_mutex_lock(&disp, K_FOREVER);
 		(void)display_blanking_off(display);
+		k_mutex_unlock(&disp);
 	} else if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_LTDC_YUV)) {
 		/*
 		 * The layer is showing the decoder's picture, not a buffer of
 		 * ours, so blank the panel instead of overwriting one.
 		 */
+		k_mutex_lock(&disp, K_FOREVER);
 		(void)display_blanking_on(display);
+		k_mutex_unlock(&disp);
 	} else {
+		surface_claim();
 		memset(framebuffer, 0, FB_BYTES);
-		blit();
+		(void)blit();
 	}
 
 	k_mutex_unlock(&lock);
