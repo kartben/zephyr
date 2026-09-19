@@ -6,6 +6,7 @@ config SOC_ENABLE_APPCPU
 	default y
 	depends on (IPM || MBOX)
 	depends on SOC_SERIES_ESP32 || SOC_SERIES_ESP32S3
+	depends on !SMP
 	help
 	  This hidden configuration lets PROCPU core to map and start APPCPU whenever IPM is enabled.
 

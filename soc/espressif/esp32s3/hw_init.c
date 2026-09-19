@@ -63,7 +63,7 @@ int hardware_init(void)
 	 * which configure the cache appropriately.
 	 */
 	mmu_hal_config_t mmu_config = {
-		.core_nums = 1,
+		.core_nums = CONFIG_MP_MAX_NUM_CPUS,
 		.mmu_page_size = CONFIG_MMU_PAGE_SIZE,
 	};
 	mmu_hal_ctx_init(&mmu_config);

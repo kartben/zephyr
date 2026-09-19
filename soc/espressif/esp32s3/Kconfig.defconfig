@@ -25,3 +25,13 @@ endchoice
 endif # PM && TICKLESS_KERNEL
 
 endif # SOC_SERIES_ESP32S3
+
+if SMP
+
+config SCHED_CPU_MASK
+	default y if SCHED_SIMPLE
+
+config MP_MAX_NUM_CPUS
+	default 2
+
+endif # SMP

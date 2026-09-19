@@ -173,6 +173,25 @@
 			#mbox-cells = <1>;
 		};
 
+		/* Cross-core interrupts used as scheduler IPIs under CONFIG_SMP.
+		 * Unlike the esp32 nodes these carry the real SYSTEM_CPU_INTR_FROM_CPU_n
+		 * addresses, so the driver can derive the trigger register from DT.
+		 * ipiN is owned by, and delivered to, core N.
+		 */
+		ipi0: ipi@600c0030 {
+			compatible = "espressif,crosscore-interrupt";
+			reg = <0x600c0030 0x4>;
+			interrupts = <FROM_CPU_INTR0_SOURCE IRQ_DEFAULT_PRIORITY 0>;
+			interrupt-parent = <&intc>;
+		};
+
+		ipi1: ipi@600c0034 {
+			compatible = "espressif,crosscore-interrupt";
+			reg = <0x600c0034 0x4>;
+			interrupts = <FROM_CPU_INTR1_SOURCE IRQ_DEFAULT_PRIORITY 0>;
+			interrupt-parent = <&intc>;
+		};
+
 		rtc_slow_ram: memory@50000000 {
 			compatible = "zephyr,memory-region", "mmio-sram";
 			reg = <0x50000000 DT_SIZE_K(8)>;

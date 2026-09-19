@@ -227,7 +227,17 @@ static bool intr_has_handler(int intr, int cpu)
 {
 	bool r;
 
-	r = _sw_isr_table[intr * CONFIG_MP_MAX_NUM_CPUS + cpu].isr != z_irq_spurious;
+	/* _sw_isr_table is a single flat table indexed by Xtensa interrupt
+	 * number and shared by both cores -- z_isr_install() installs at
+	 * [irq], and xtensa_handle_irq_lvl() dispatches from [irq]. Scaling
+	 * the index by the CPU count was a no-op while MP_MAX_NUM_CPUS was
+	 * 1, but reads the wrong entry (and past the end of the table for
+	 * intr >= NUM_IRQS/2) as soon as SMP is enabled. A handler occupies
+	 * the slot for both cores, so cpu is not part of the lookup.
+	 */
+	ARG_UNUSED(cpu);
+
+	r = _sw_isr_table[intr].isr != z_irq_spurious;
 
 	return r;
 }
