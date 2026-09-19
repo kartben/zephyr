@@ -4,6 +4,7 @@
  */
 
 #include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <zephyr/dt-bindings/memory-attr/memory-attr-arm.h>
 
 /*
  * The high speed controller drives the board's USB-C connector, which is where
@@ -71,4 +72,24 @@
 
 &sram1 {
 	status = "disabled";
+};
+
+/*
+ * The display controller reads the surface for every line it draws, while the
+ * processor writes it once per frame. Holding it in the data cache makes the
+ * processor read each line back before overwriting it, and that traffic is
+ * bandwidth the controller needs: it underruns and drops a band of the
+ * picture. Give it the top of the external RAM, uncached.
+ */
+&sdram1 {
+	reg = <0x68000000 DT_SIZE_M(60)>;
+};
+
+/ {
+	fb_sdram: memory@6bc00000 {
+		compatible = "zephyr,memory-region", "mmio-sram";
+		reg = <0x6bc00000 DT_SIZE_M(4)>;
+		zephyr,memory-region = "FB_SDRAM";
+		zephyr,memory-attr = <DT_MEM_ARM(ATTR_MPU_RAM_NOCACHE)>;
+	};
 };
