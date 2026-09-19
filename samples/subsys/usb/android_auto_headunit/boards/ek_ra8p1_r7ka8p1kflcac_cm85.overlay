@@ -46,6 +46,9 @@
 / {
 	aliases {
 		aa-longpress = &user_button_press;
+		aa-i2s-out = &i2s0;
+		aa-audio-codec = &audio_codec;
+		dmic0 = &pdm2;
 	};
 
 	/*
@@ -92,4 +95,30 @@
 		zephyr,memory-region = "FB_SDRAM";
 		zephyr,memory-attr = <DT_MEM_ARM(ATTR_MPU_RAM_NOCACHE)>;
 	};
+};
+
+/*
+ * The phone's audio goes out through the board's codec and the head unit is
+ * heard through MIC1. The board describes both but leaves them off, because
+ * the codec's data lines are the parallel camera's; this sample has no camera,
+ * so it takes them. J41 carries those two lines and is fitted by default.
+ */
+&pwm2 {
+	status = "okay";
+};
+
+&audio_clock {
+	status = "okay";
+};
+
+&i2s0 {
+	status = "okay";
+};
+
+&audio_codec {
+	status = "okay";
+};
+
+&pdm2 {
+	status = "okay";
 };
