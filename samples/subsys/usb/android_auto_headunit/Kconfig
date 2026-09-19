@@ -376,6 +376,21 @@ config SAMPLE_AA_HU_GUI_THREAD_PRIORITY
 	  Kept below the receive thread so that redrawing the GUI never costs
 	  the video a frame.
 
+config SAMPLE_AA_HU_PRESENT_STACK_SIZE
+	int "Present thread stack size"
+	default 1024
+	help
+	  The thread only hands a composed buffer to the display driver, so it
+	  needs whatever that driver uses and little else.
+
+config SAMPLE_AA_HU_PRESENT_THREAD_PRIORITY
+	int "Present thread priority"
+	default 4
+	help
+	  Kept above the receive thread: handing a buffer over late costs a
+	  whole refresh period, and the thread waits for the panel rather than
+	  running.
+
 config SAMPLE_AA_HU_TOF_NIGHT
 	bool "Drive night mode from a time-of-flight ranger"
 	depends on SENSOR && SENSOR_ASYNC_API
