@@ -345,9 +345,10 @@ void arch_cpu_start(int cpu_num, k_thread_stack_t *stack, int sz, arch_cpustart_
  * runs the scheduler just falls back to waking the other core on its
  * next timer tick.
  */
-static K_THREAD_STACK_DEFINE(ipi_init_stack, 1024);
-static struct k_thread ipi_init_thread;
-static K_SEM_DEFINE(ipi_init_done, 0, 1);
+#define ZRD_SECONDARY_CPUS (CONFIG_MP_MAX_NUM_CPUS - 1)
+
+static K_THREAD_STACK_ARRAY_DEFINE(ipi_init_stacks, ZRD_SECONDARY_CPUS, 1024);
+static struct k_thread ipi_init_threads[ZRD_SECONDARY_CPUS];
 
 static void ipi_init_fn(void *a, void *b, void *c)
 {
@@ -356,7 +357,6 @@ static void ipi_init_fn(void *a, void *b, void *c)
 	ARG_UNUSED(c);
 
 	esp_crosscore_int_init();
-	k_sem_give(&ipi_init_done);
 }
 
 static int esp_crosscore_init_all(void)
@@ -364,20 +364,21 @@ static int esp_crosscore_init_all(void)
 	/* Runs on CPU0, so CPU0 registers itself directly. */
 	esp_crosscore_int_init();
 
+	/* Deliberately fire-and-forget. Waiting here would deadlock: this runs
+	 * before main(), and the only thing that would promptly tell a
+	 * secondary core to pick the thread up is the IPI being installed. Each
+	 * core registers whenever it next schedules; until then the scheduler
+	 * falls back to that core's timer tick, which is correct, just slower.
+	 */
 	for (int cpu = 1; cpu < arch_num_cpus(); cpu++) {
-		k_tid_t tid = k_thread_create(&ipi_init_thread, ipi_init_stack,
-					      K_THREAD_STACK_SIZEOF(ipi_init_stack), ipi_init_fn,
-					      NULL, NULL, NULL, 0, 0, K_FOREVER);
+		k_tid_t tid = k_thread_create(&ipi_init_threads[cpu - 1], ipi_init_stacks[cpu - 1],
+					      K_THREAD_STACK_SIZEOF(ipi_init_stacks[cpu - 1]),
+					      ipi_init_fn, NULL, NULL, NULL, 0, 0, K_FOREVER);
 
 		k_thread_name_set(tid, "ipi-init");
-		if (k_thread_cpu_pin(tid, cpu) != 0) {
-			return -EIO;
+		if (k_thread_cpu_pin(tid, cpu) == 0) {
+			k_thread_start(tid);
 		}
-		k_thread_start(tid);
-
-		/* Serialised: the thread object and stack are reused per core. */
-		k_sem_take(&ipi_init_done, K_FOREVER);
-		k_thread_join(tid, K_FOREVER);
 	}
 
 	return 0;

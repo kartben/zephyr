@@ -5,7 +5,6 @@ menuconfig WIFI_ESP32
 	default y
 	depends on DT_HAS_ESPRESSIF_ESP32_WIFI_ENABLED
 	depends on ZEPHYR_HAL_ESPRESSIF_MODULE_BLOBS || BUILD_ONLY_NO_BLOBS
-	depends on !SMP
 	select THREAD_CUSTOM_DATA
 	select EVENTS
 	select NET_L2_WIFI_MGMT
