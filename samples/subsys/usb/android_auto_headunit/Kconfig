@@ -184,6 +184,24 @@ config SAMPLE_AA_HU_YUV_BUFFERS_SECTION
 	  avoids external-memory traffic for packing and display scanout.
 	  The section must hold four bytes per pixel at the video resolution.
 
+config SAMPLE_AA_HU_FB_SECTION
+	string "Memory section for the surface the display scans"
+	default SAMPLE_AA_HU_BUFFERS_SECTION if SAMPLE_AA_HU_BUFFERS_IN_EXT_RAM
+	default ".bss"
+	help
+	  The display controller reads this buffer for every line it draws, so
+	  a board can place it apart from the buffers only the processor
+	  touches.
+
+config SAMPLE_AA_HU_FB_UNCACHED
+	bool "The surface is in memory the data cache does not hold"
+	help
+	  Say y where SAMPLE_AA_HU_FB_SECTION names an uncached region. The
+	  surface is written once per frame and read only by the display, so
+	  caching it buys nothing and costs a read of every line before it is
+	  overwritten. Nothing then has to be flushed before the controller is
+	  handed the buffer.
+
 config SAMPLE_AA_HU_VIDEO_PROFILE
 	bool "Report how long a picture takes"
 	depends on SAMPLE_AA_HU_H264

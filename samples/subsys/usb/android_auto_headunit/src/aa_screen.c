@@ -50,7 +50,7 @@ typedef uint16_t surface_px;
  * so composing into the one on the panel shows the frame being drawn. Keep
  * two and compose into whichever the controller is not reading.
  */
-static surface_px fb_store[2][FB_PIXELS] AA_HU_BIG_BUF;
+static surface_px fb_store[2][FB_PIXELS] Z_GENERIC_SECTION(CONFIG_SAMPLE_AA_HU_FB_SECTION);
 static surface_px *framebuffer = fb_store[0];
 static uint8_t fb_idx;
 /* The decoder thread and the GUI thread both compose into the surface */
@@ -209,9 +209,12 @@ static surface_px *blit(void)
 	/*
 	 * The display controller reads the framebuffer out of memory itself,
 	 * so what composing it left behind in the cache has to reach memory
-	 * before it does. Without a data cache this costs nothing.
+	 * before it does. Without a data cache this costs nothing, and where
+	 * the surface is uncached there is nothing to write back.
 	 */
-	sys_cache_data_flush_range(shown, FB_BYTES);
+	if (!IS_ENABLED(CONFIG_SAMPLE_AA_HU_FB_UNCACHED)) {
+		sys_cache_data_flush_range(shown, FB_BYTES);
+	}
 
 	fb_pending = shown;
 	k_sem_give(&fb_queued);
