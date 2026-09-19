@@ -166,7 +166,13 @@ static int decoder_open(uint8_t *buf, size_t size)
 		return -ENOMEM;
 	}
 
-	if (h264bsdInit(decoder, 0U) != H264BSD_RDY) {
+	/*
+	 * A phone streams baseline H.264, which has no picture the decoder would
+	 * have to hold back, so take every picture as it comes. The decoder then
+	 * keeps the references the stream asks for rather than the number the
+	 * level allows, which is most of the heap.
+	 */
+	if (h264bsdInit(decoder, 1U) != H264BSD_RDY) {
 		LOG_ERR("Decoder init failed");
 		h264bsdFree(decoder);
 		decoder = NULL;
