@@ -204,6 +204,19 @@
 			zephyr,memory-region = "RTC_FAST_RAM";
 		};
 
+		/* One alarm per core: SYSTIMER_ALARM_OS_TICK_CORE0 uses TARGET0 and
+		 * CORE1 uses TARGET1. The counter itself is shared, which is why
+		 * this is the system clock under SMP -- CCOUNT is per-CPU.
+		 */
+		systimer0: systimer@60023000 {
+			compatible = "espressif,esp32-systimer";
+			reg = <0x60023000 0x80>;
+			interrupts = <SYSTIMER_TARGET0_EDGE_INTR_SOURCE IRQ_DEFAULT_PRIORITY 0>,
+				     <SYSTIMER_TARGET1_EDGE_INTR_SOURCE IRQ_DEFAULT_PRIORITY 0>;
+			interrupt-parent = <&intc>;
+			status = "okay";
+		};
+
 		intc: interrupt-controller@600c2000 {
 			#interrupt-cells = <3>;
 			#address-cells = <0>;

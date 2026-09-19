@@ -22,6 +22,7 @@
 
 #include "esp32_sys_timer.h"
 
+
 #if defined(CONFIG_TEST)
 const int32_t z_sys_timer_irq_for_test = DT_IRQN(DT_NODELABEL(systimer0));
 #endif
@@ -35,18 +36,33 @@ static bool timeout_idle;
 /* Systimer HAL layer object */
 static systimer_hal_context_t systimer_hal;
 
+/* The systimer counter is shared by both cores, but each core owns an alarm of
+ * its own (SYSTIMER_ALARM_OS_TICK_CORE0/CORE1, wired to TARGET0/TARGET1). A CPU
+ * only ever arms, clears or disables its own, so arming and announcing stay on
+ * the same CPU while the baseline they share stays meaningful.
+ */
+static inline uint32_t os_tick_alarm(void)
+{
+#ifdef CONFIG_SMP
+	return SYSTIMER_ALARM_OS_TICK_CORE0 + arch_curr_cpu()->id;
+#else
+	return SYSTIMER_ALARM_OS_TICK_CORE0;
+#endif
+}
+
 static void set_systimer_alarm(uint64_t time)
 {
-	systimer_hal_select_alarm_mode(&systimer_hal,
-		SYSTIMER_ALARM_OS_TICK_CORE0, SYSTIMER_ALARM_MODE_ONESHOT);
+	const uint32_t alarm = os_tick_alarm();
 
-	systimer_counter_value_t alarm = {.val = time};
+	systimer_hal_select_alarm_mode(&systimer_hal, alarm, SYSTIMER_ALARM_MODE_ONESHOT);
 
-	systimer_ll_enable_alarm(systimer_hal.dev, SYSTIMER_ALARM_OS_TICK_CORE0, false);
-	systimer_ll_set_alarm_target(systimer_hal.dev, SYSTIMER_ALARM_OS_TICK_CORE0, alarm.val);
-	systimer_ll_apply_alarm_value(systimer_hal.dev, SYSTIMER_ALARM_OS_TICK_CORE0);
-	systimer_ll_enable_alarm(systimer_hal.dev, SYSTIMER_ALARM_OS_TICK_CORE0, true);
-	systimer_ll_enable_alarm_int(systimer_hal.dev, SYSTIMER_ALARM_OS_TICK_CORE0, true);
+	systimer_counter_value_t target = {.val = time};
+
+	systimer_ll_enable_alarm(systimer_hal.dev, alarm, false);
+	systimer_ll_set_alarm_target(systimer_hal.dev, alarm, target.val);
+	systimer_ll_apply_alarm_value(systimer_hal.dev, alarm);
+	systimer_ll_enable_alarm(systimer_hal.dev, alarm, true);
+	systimer_ll_enable_alarm_int(systimer_hal.dev, alarm, true);
 }
 
 static uint64_t get_systimer_alarm(void)
@@ -99,10 +115,34 @@ static void timer_driver_set_compare(uint64_t cycles)
 static void IRAM_ATTR sys_timer_isr(void *arg)
 {
 	ARG_UNUSED(arg);
-	systimer_ll_clear_alarm_int(systimer_hal.dev, SYSTIMER_ALARM_OS_TICK_CORE0);
+	systimer_ll_clear_alarm_int(systimer_hal.dev, os_tick_alarm());
 
 	timer_core_announce();
 }
+
+#ifdef CONFIG_SMP
+/* Runs on the CPU being started, from smp_init_top(), which has already
+ * installed a dummy thread -- so esp_intr_alloc() (which takes irq_lock(), and
+ * therefore dereferences _current) is safe here, unlike in the core's entry.
+ */
+void smp_timer_init(void)
+{
+	int ret = esp_intr_alloc(
+		DT_IRQ_BY_IDX(DT_NODELABEL(systimer0), 1, irq),
+		ESP_PRIO_TO_FLAGS(DT_IRQ_BY_IDX(DT_NODELABEL(systimer0), 1, priority)) |
+			ESP_INT_FLAGS_CHECK(DT_IRQ_BY_IDX(DT_NODELABEL(systimer0), 1, flags)) |
+			ESP_INTR_FLAG_IRAM,
+		sys_timer_isr, NULL, NULL);
+
+	if (ret != 0) {
+		return;
+	}
+
+	systimer_hal_connect_alarm_counter(&systimer_hal, os_tick_alarm(),
+					   SYSTIMER_COUNTER_OS_TICK);
+	timer_core_smp_prime();
+}
+#endif /* CONFIG_SMP */
 
 void sys_clock_disable(void)
 {
@@ -168,6 +208,7 @@ static int sys_clock_driver_init(void)
 {
 	int ret;
 
+
 	ret = esp_intr_alloc(
 		DT_IRQ_BY_IDX(DT_NODELABEL(systimer0), 0, irq),
 		ESP_PRIO_TO_FLAGS(DT_IRQ_BY_IDX(DT_NODELABEL(systimer0), 0, priority)) |
@@ -179,6 +220,22 @@ static int sys_clock_driver_init(void)
 		return ret;
 	}
 
+#ifdef CONFIG_XTENSA
+	/* systimer_hal_init() only sets the module's own clock-enable bit; the
+	 * peripheral bus clock and reset are separate, and IDF handles them
+	 * apart from the HAL (PERIPH_RCC_ACQUIRE_ATOMIC on
+	 * PERIPH_SYSTIMER_MODULE). On esp32s3 the peripheral comes out of reset
+	 * gated, so without this the counter never advances, the alarm never
+	 * fires and the kernel hangs on its first sleep.
+	 *
+	 * Confined to Xtensa: the RISC-V targets this driver already ran on
+	 * evidently come up with the clock enabled, and are left alone rather
+	 * than changed untested.
+	 */
+	systimer_ll_enable_bus_clock(true);
+	systimer_ll_reset_register();
+#endif
+
 	systimer_hal_init(&systimer_hal);
 	systimer_hal_connect_alarm_counter(&systimer_hal,
 		SYSTIMER_ALARM_OS_TICK_CORE0, SYSTIMER_COUNTER_OS_TICK);
@@ -188,6 +245,7 @@ static int sys_clock_driver_init(void)
 #if defined(CONFIG_SMP)
 	systimer_hal_counter_can_stall_by_cpu(&systimer_hal, SYSTIMER_COUNTER_OS_TICK, 1, true);
 #endif
+
 
 	/* Seed the announce baseline from the systimer and arm the first tick. */
 	timer_core_init();
