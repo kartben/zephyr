@@ -285,6 +285,23 @@ static bool is_vect_desc_usable(struct vector_desc_t *vd, int flags, int cpu, in
 		return false;
 	}
 
+	/* _sw_isr_table is ONE array shared by both cores, but everything above
+	 * this point is per-core bookkeeping. A handler installed without going
+	 * through this allocator leaves no vector_desc, so on the other core the
+	 * interrupt looks free -- and handing it out overwrites that handler for
+	 * both cores, because they dispatch from the same table.
+	 *
+	 * That is not hypothetical: the Wi-Fi blob installs its MAC ISR on CPU
+	 * interrupt 0 with a raw irq_connect_dynamic(), and esp_cpu_intr_get_desc()
+	 * reserves interrupt 0 on core 0 only. The first allocation ever made on
+	 * core 1 is therefore offered interrupt 0.
+	 */
+	if ((vd->flags & (VECDESC_FL_SHARED | VECDESC_FL_NONSHARED)) == 0 &&
+	    intr_has_handler(x, cpu)) {
+		INTC_LOG("....Unusable: handler installed outside the allocator");
+		return false;
+	}
+
 	/* Ints can't be both shared and non-shared. */
 	assert(!((vd->flags & VECDESC_FL_SHARED) && (vd->flags & VECDESC_FL_NONSHARED)));
 	/* check if interrupt already is in use by a non-shared interrupt */
