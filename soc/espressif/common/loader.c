@@ -375,6 +375,28 @@ void __start(void)
 {
 	extern uint32_t _init_start;
 
+	/* Nothing on the way here has cleared INTENABLE. Zephyr's Xtensa reset
+	 * vector zeroes it before it lowers PS.INTLEVEL, but that vector never
+	 * runs on this SoC: the ROM, or MCUboot, jumps straight to this
+	 * function with whatever it left enabled. MCUboot is itself a Zephyr
+	 * image with a CCOUNT-driven tick, so it arrives with the Xtensa timer
+	 * interrupt enabled and CCOMPARE0 armed. An enabled interrupt with no
+	 * handler in this image's _sw_isr_table is a spurious IRQ, i.e. a fatal
+	 * error, the moment PS.INTLEVEL drops -- which is exactly what happens
+	 * to an application clocked by the systimer instead of CCOUNT, since
+	 * nothing in it ever touches interrupt 6 again.
+	 */
+	__asm__ __volatile__("wsr.intenable %0; rsync" : : "r"(0));
+#if XCHAL_NUM_INTERRUPTS > 32
+	__asm__ __volatile__("wsr.intenable1 %0; rsync" : : "r"(0));
+#endif
+#if XCHAL_NUM_INTERRUPTS > 64
+	__asm__ __volatile__("wsr.intenable2 %0; rsync" : : "r"(0));
+#endif
+#if XCHAL_NUM_INTERRUPTS > 96
+	__asm__ __volatile__("wsr.intenable3 %0; rsync" : : "r"(0));
+#endif
+
 	/* Move the exception vector table to IRAM. */
 	__asm__ __volatile__("wsr %0, vecbase" : : "r"(&_init_start));
 
