@@ -7,6 +7,7 @@
 #include <zephyr/device.h>
 #include <zephyr/kernel.h>
 #include <zephyr/spinlock.h>
+#include <zephyr/shell/shell.h>
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/drivers/interrupt_controller/intc_esp32.h>
 
@@ -400,6 +401,14 @@ SYS_INIT(esp_crosscore_init_all, SMP, 0);
 static struct k_spinlock mp_pause_lock;
 static k_spinlock_key_t mp_pause_key;
 
+/* How much of the peer core's life this costs. A stalled core cannot service
+ * its own timer, so every microsecond here lands directly on whatever it was
+ * supposed to be running. */
+static uint32_t mp_pause_count;
+static uint32_t mp_pause_cycles;
+static uint32_t mp_pause_worst;
+static uint32_t mp_pause_started;
+
 void soc_mp_pause_others(void)
 {
 	const int peer = arch_curr_cpu()->id ? 0 : 1;
@@ -410,6 +419,7 @@ void soc_mp_pause_others(void)
 
 	mp_pause_key = k_spin_lock(&mp_pause_lock);
 	esp_cpu_stall(peer);
+	mp_pause_started = k_cycle_get_32();
 }
 
 void soc_mp_resume_others(void)
@@ -420,9 +430,43 @@ void soc_mp_resume_others(void)
 		return;
 	}
 
+	const uint32_t held = k_cycle_get_32() - mp_pause_started;
+
+	mp_pause_count++;
+	mp_pause_cycles += held;
+	if (held > mp_pause_worst) {
+		mp_pause_worst = held;
+	}
+
 	esp_cpu_unstall(peer);
 	k_spin_unlock(&mp_pause_lock, mp_pause_key);
 }
+
+static int cmd_mp_pause(const struct shell *sh, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	const uint32_t hz = (uint32_t)sys_clock_hw_cycles_per_sec();
+	const uint32_t n = mp_pause_count;
+	const uint32_t cyc = mp_pause_cycles;
+	const uint32_t worst = mp_pause_worst;
+
+	shell_print(sh, "peer parked %u times, %u us total, worst %u us", n,
+		    (unsigned int)((uint64_t)cyc * 1000000U / hz),
+		    (unsigned int)((uint64_t)worst * 1000000U / hz));
+
+	if (argc > 1) {
+		mp_pause_count = 0U;
+		mp_pause_cycles = 0U;
+		mp_pause_worst = 0U;
+	}
+
+	return 0;
+}
+
+SHELL_CMD_ARG_REGISTER(mppause, NULL, "Flash-op peer-core stalls (any arg resets)", cmd_mp_pause,
+		       1, 1);
 
 bool arch_cpu_active(int cpu_num)
 {
