@@ -385,6 +385,45 @@ static int esp_crosscore_init_all(void)
 }
 SYS_INIT(esp_crosscore_init_all, SMP, 0);
 
+/*
+ * Park the peer core around a flash operation.
+ *
+ * The flash driver suspends the cache while it works, so no core may be
+ * executing flash-mapped code for the duration -- on this SoC the cache is
+ * shared, but the requirement holds whatever the topology. hal_espressif's
+ * cache_utils.c calls these as the outermost pair, before it takes any flash
+ * or cache lock, so a parked core can never be holding one the caller is
+ * about to wait on.
+ *
+ * Both are reached with the cache still enabled, so they may live in flash.
+ */
+static struct k_spinlock mp_pause_lock;
+static k_spinlock_key_t mp_pause_key;
+
+void soc_mp_pause_others(void)
+{
+	const int peer = arch_curr_cpu()->id ? 0 : 1;
+
+	if (!cpus_active[peer]) {
+		return;
+	}
+
+	mp_pause_key = k_spin_lock(&mp_pause_lock);
+	esp_cpu_stall(peer);
+}
+
+void soc_mp_resume_others(void)
+{
+	const int peer = arch_curr_cpu()->id ? 0 : 1;
+
+	if (!cpus_active[peer]) {
+		return;
+	}
+
+	esp_cpu_unstall(peer);
+	k_spin_unlock(&mp_pause_lock, mp_pause_key);
+}
+
 bool arch_cpu_active(int cpu_num)
 {
 	return cpus_active[cpu_num];

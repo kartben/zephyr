@@ -43,6 +43,15 @@ config ESP32_TIMER_TASK_PRIO
 	  Set the task priority for the internal high resolution ESP Timer
 	  used in Wi-Fi and BLE peripherals.
 
+config SOC_ESP32_TIMER_TASK_CORE_ID
+	int "Core the high resolution ESP Timer task runs on"
+	default 0
+	range 0 1
+	help
+	  Under SMP the esp_timer task is pinned to this core. The radio
+	  stacks dispatch their callbacks from it and assume the task and
+	  their interrupt share a core, so it must not migrate.
+
 if (BT_ESP32 || WIFI_ESP32 || IEEE802154_ESP32)
 
 config ESP32_PHY_MAX_TX_POWER
