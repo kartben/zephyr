@@ -193,6 +193,24 @@ And similarly for the ROM usage.
    :align: center
    :alt: ROM usage sunburst chart
 
+Build Targets: ram_report_diff/rom_report_diff/ram_plot_diff/rom_plot_diff
+===========================================================================
+
+You can also generate RAM/ROM diffs against a previous build directory.
+Set ``FOOTPRINT_COMPARE_BUILD_DIR`` to a build directory containing
+``ram.json`` and ``rom.json``, then build one of the diff targets.
+
+The ``*_report_diff`` targets print a symbol-level diff in the terminal.
+The ``*_plot_diff`` targets generate an HTML sunburst chart where each node is
+colored by byte delta (green for decreases, red for increases), which is useful
+to quickly identify the largest regressions.
+
+.. code-block:: shell
+
+   west build -b reel_board samples/hello_world -- -DFOOTPRINT_COMPARE_BUILD_DIR=/path/to/old/build
+   west build -d build -t ram_report_diff
+   west build -d build -t ram_plot_diff
+
 
 Build Target: puncover
 ======================
