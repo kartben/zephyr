@@ -16,6 +16,37 @@ Requirements
 
 This project requires a USB device driver, and either 96KiB of RAM or a FLASH device.
 
+The RAM-disk examples need a USB device controller supported by the
+:ref:`USB device stack <usb_device_stack_next>` and are tested on the following boards (the FAT
+file system variant is not tested on :zephyr:board:`max32690evkit`):
+
+* :zephyr:board:`frdm_k64f`
+* :zephyr:board:`max32690evkit` (``max32690evkit/max32690/m4``)
+* :zephyr:board:`mimxrt1060_evk` (``mimxrt1060_evk/mimxrt1062/qspi``)
+* :zephyr:board:`mimxrt685_evk` (``mimxrt685_evk/mimxrt685s/cm33``)
+* :zephyr:board:`nrf52840dk` (``nrf52840dk/nrf52840``)
+* :zephyr:board:`nrf54h20dk` (``nrf54h20dk/nrf54h20/cpuapp``)
+* :zephyr:board:`nucleo_f413zh`
+* :zephyr:board:`rpi_pico`
+* :zephyr:board:`stm32f723e_disco`
+
+The external QSPI flash examples are known to work on the following boards, configured by
+overlays in :zephyr_file:`samples/subsys/usb/mass/boards`:
+
+* :zephyr:board:`adafruit_feather_nrf52840` (Sense variant)
+* :zephyr:board:`nrf52840dk`
+* :zephyr:board:`nrf5340dk`
+
+The SD card example requires a board with a ``zephyr,sdmmc-disk`` devicetree node and is tested
+on the following boards:
+
+* :zephyr:board:`mimxrt1050_evk` (``mimxrt1050_evk/mimxrt1052/hyperflash``)
+* :zephyr:board:`mimxrt1060_evk` (``mimxrt1060_evk/mimxrt1062/qspi``)
+* :zephyr:board:`mimxrt685_evk` (``mimxrt685_evk/mimxrt685s/cm33``)
+
+Pull request CI builds the RAM-disk and QSPI flash examples on ``nrf52840dk/nrf52840`` and the
+SD card example on ``mimxrt1050_evk/mimxrt1052/hyperflash``.
+
 Building and Running
 ********************
 
