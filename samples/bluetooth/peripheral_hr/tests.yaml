@@ -21,15 +21,7 @@ tests:
       - nrf54lm20dk/nrf54lm20a/cpuapp
     integration_platforms:
       - qemu_cortex_m3
-      - nrf52_bsim
-      - nrf5340bsim/nrf5340/cpuapp
-      - nrf51dk/nrf51822
-      - nrf52dk/nrf52832
       - nrf52840dk/nrf52840
-      - nrf5340dk/nrf5340/cpuapp
-      - nrf54l15dk/nrf54l15/cpuapp
-      - ophelia4ev/nrf54l15/cpuapp
-      - nrf54lm20dk/nrf54lm20a/cpuapp
     sysbuild: true
   sample.bluetooth.peripheral_hr.bsim:
     harness: bsim
@@ -58,7 +50,6 @@ tests:
       - nrf54l15dk/nrf54l15/cpuapp
     integration_platforms:
       - bbc_microbit
-      - nrf52dk/nrf52832
       - nrf54l15dk/nrf54l15/cpuapp
     extra_args:
       - CONF_FILE=prj_minimal.conf
@@ -71,8 +62,6 @@ tests:
       - nrf52840dk/nrf52840
     integration_platforms:
       - nrf52_bsim
-      - nrf52dk/nrf52832
-      - nrf52840dk/nrf52840
     extra_args: EXTRA_CONF_FILE=overlay-extended.conf
   sample.bluetooth.peripheral_hr.multicore.bt_ll_sw_split.extended:
     harness: bluetooth
@@ -81,7 +70,6 @@ tests:
       - nrf5340dk/nrf5340/cpuapp
     integration_platforms:
       - nrf5340bsim/nrf5340/cpuapp
-      - nrf5340dk/nrf5340/cpuapp
     extra_args: CONFIG_BT_EXT_ADV=y
     sysbuild: true
   sample.bluetooth.peripheral_hr.extended.bsim:
@@ -105,8 +93,6 @@ tests:
       - nrf52840dk/nrf52840
     integration_platforms:
       - nrf52_bsim
-      - nrf52dk/nrf52832
-      - nrf52840dk/nrf52840
     extra_args: EXTRA_CONF_FILE=overlay-phy_coded.conf
     sysbuild: true
   sample.bluetooth.peripheral_hr.multicore.bt_ll_sw_split.phy_coded:
@@ -116,7 +102,6 @@ tests:
       - nrf5340dk/nrf5340/cpuapp
     integration_platforms:
       - nrf5340bsim/nrf5340/cpuapp
-      - nrf5340dk/nrf5340/cpuapp
     extra_args:
       - CONFIG_BT_EXT_ADV=y
     sysbuild: true
@@ -154,3 +139,10 @@ tests:
     harness: bluetooth
     depends_on: arduino_serial
     extra_args: SHIELD=frdm_kw41z
+    platform_allow:
+      - frdm_k64f
+      - mimxrt1020_evk
+      - mimxrt1050_evk/mimxrt1052/hyperflash
+      - mimxrt1060_evk/mimxrt1062/qspi
+    integration_platforms:
+      - frdm_k64f
