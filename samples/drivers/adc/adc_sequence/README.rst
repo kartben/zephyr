@@ -17,15 +17,48 @@ If voltage of the used reference can be obtained, the raw readings are converted
 This example constructs an adc device and setups its channels, according to the
 given devicetree configuration.
 
+Requirements
+************
+
+The board must provide an ``adc0`` devicetree alias pointing to an enabled ADC node
+(``status = "okay";``) that has each channel to sample as a child node, with the desired
+settings like gain, reference, acquisition time and oversampling setting (if used). See
+:zephyr_file:`samples/drivers/adc/adc_sequence/boards/nrf52840dk_nrf52840.overlay` for an
+example of such setup.
+
+The sample has been verified on the following board targets:
+
+- ``cy8cproto_062_4343w``
+- ``cy8cproto_063_ble``
+- ``frdm_ke15z``
+- ``frdm_mcxc242``
+- ``frdm_mcxe247``
+- ``mck_ra4t1``
+- ``nrf52840dk/nrf52840``
+- ``nrf5340dk/nrf5340/cpuapp``
+- ``nrf54h20dk/nrf54h20/cpuapp``
+- ``nrf54h20dk/nrf54h20/cpuppr``
+- ``nrf54l15dk/nrf54l15/cpuapp``
+- ``nrf54lm20dk/nrf54lm20a/cpuapp``
+- ``nrf54lm20dk/nrf54lm20b/cpuapp``
+- ``ophelia4ev/nrf54l15/cpuapp``
+- ``raytac_an54lq_db_15/nrf54l15/cpuapp``
+- ``raytac_an54lv_db_15/nrf54l15/cpuapp``
+- ``s32k148_evb``
+- ``siwx917_rb4342a``
+- ``slwrb4180a``
+- ``ucans32k1sic``
+- ``xg27_rb4194a``
+- ``xg29_rb4412a``
+
+The 8-bit resolution variant (``CONFIG_SEQUENCE_RESOLUTION=8``) has been verified on
+the nRF54H20, nRF54L15 and nRF54LM20 development kit targets listed above.
+
+The sample's :file:`boards` directory also provides overlays for other boards, which are not
+part of the verified list above.
+
 Building and Running
 ********************
-
-Make sure that the ADC is enabled (``status = "okay";``) and has each channel as a
-child node, with your desired settings like gain, reference, or acquisition time and
-oversampling setting (if used). It is also needed to provide an alias ``adc0`` for the
-desired adc. See :zephyr_file:`boards/nrf52840dk_nrf52840.overlay
-<samples/drivers/adc/adc_dt/boards/nrf52840dk_nrf52840.overlay>` for an example of
-such setup.
 
 Building and Running for Nordic nRF52840
 ========================================
