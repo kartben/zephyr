@@ -1,0 +1,33 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	test {
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		test_gpio: gpio@deadbeef {
+			compatible = "vnd,gpio";
+			gpio-controller;
+			reg = <0xdeadbeef 0x1000>;
+			#gpio-cells = <2>;
+			status = "okay";
+		};
+
+		test_rtl8720_uart: uart@87208720 {
+			compatible = "vnd,serial";
+			reg = <0x87208720 0x1000>;
+			status = "okay";
+			current-speed = <614400>;
+
+			test_rtl8720_erpc: rtl8720 {
+				compatible = "realtek,rtl8720-erpc";
+				status = "okay";
+				power-gpios = <&test_gpio 0 0>;
+			};
+		};
+	};
+};

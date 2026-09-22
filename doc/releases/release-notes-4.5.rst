@@ -1879,6 +1879,7 @@ New Drivers
   * :dtcompatible:`espressif,esp-hosted-mcu` (:github:`114532`)
   * :dtcompatible:`espressif,esp-hosted-mcu-wifi` (:github:`114532`)
   * :dtcompatible:`realtek,ameba-wifi` (:github:`105614`)
+  * :dtcompatible:`realtek,rtl8720-erpc`
   * :dtcompatible:`st,st67w611m1` (:github:`111583`)
   * :dtcompatible:`zephyr,wifi-hwsim` (:github:`111236`)
 
@@ -2123,6 +2124,12 @@ Other notable changes
     :c:struct:`wifi_status` carries the raw IEEE 802.11 status and reason codes
     behind the failure. The supplicant fills these in, and the Wi-Fi shell prints
     them with the connection and disconnection results. (:github:`116704`)
+
+  * Added a driver for the Realtek RTL8720 running the Seeed eRPC firmware,
+    :dtcompatible:`realtek,rtl8720-erpc`. The module runs the IP stack and the
+    sockets, so the driver is an offloaded socket implementation over an eRPC
+    link on the module's UART. The Wio Terminal uses it for its on-board
+    RTL8720DN.
 
   * The transmit power ceiling properties in ``wifi-tx-power-2g.yaml`` and
     ``wifi-tx-power-5g.yaml`` are no longer ``required`` and now carry
