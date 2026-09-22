@@ -1,6 +1,8 @@
 common:
   tags: lorawan
   depends_on: lora
+  integration_platforms:
+    - nucleo_wl55jc
   harness: console
   harness_config:
     type: one_line
@@ -11,40 +13,75 @@ sample:
   name: LoRaWAN Class-A
 tests:
   sample.lorawan.class_a.as923:
+    platform_allow:
+      - 96b_wistrio
+      - nucleo_wl55jc
     extra_configs:
       - CONFIG_LORAWAN_REGION_AS923=y
   sample.lorawan.class_a.au915:
+    platform_allow:
+      - 96b_wistrio
+      - nucleo_wl55jc
     extra_configs:
       - CONFIG_LORAWAN_REGION_AU915=y
   sample.lorawan.class_a.cn470:
+    platform_allow:
+      - 96b_wistrio
+      - nucleo_wl55jc
     extra_configs:
       - CONFIG_LORAWAN_REGION_CN470=y
   sample.lorawan.class_a.cn779:
+    platform_allow:
+      - 96b_wistrio
+      - nucleo_wl55jc
     extra_configs:
       - CONFIG_LORAWAN_REGION_CN779=y
   sample.lorawan.class_a.eu433:
+    platform_allow:
+      - 96b_wistrio
+      - nucleo_wl55jc
     extra_configs:
       - CONFIG_LORAWAN_REGION_EU433=y
   sample.lorawan.class_a.eu868:
+    platform_allow:
+      - 96b_wistrio
+      - nucleo_wl55jc
     extra_configs:
       - CONFIG_LORAWAN_REGION_EU868=y
   sample.lorawan.class_a.kr920:
+    platform_allow:
+      - 96b_wistrio
+      - nucleo_wl55jc
     extra_configs:
       - CONFIG_LORAWAN_REGION_KR920=y
   sample.lorawan.class_a.in865:
+    platform_allow:
+      - 96b_wistrio
+      - nucleo_wl55jc
     extra_configs:
       - CONFIG_LORAWAN_REGION_IN865=y
   sample.lorawan.class_a.us915:
+    platform_allow:
+      - 96b_wistrio
+      - nucleo_wl55jc
     extra_configs:
       - CONFIG_LORAWAN_REGION_US915=y
   sample.lorawan.class_a.ru864:
+    platform_allow:
+      - 96b_wistrio
+      - nucleo_wl55jc
     extra_configs:
       - CONFIG_LORAWAN_REGION_RU864=y
   sample.lorawan.class_a.multiregion:
+    platform_allow:
+      - 96b_wistrio
+      - nucleo_wl55jc
     extra_configs:
       - CONFIG_LORAWAN_REGION_EU868=y
       - CONFIG_LORAWAN_REGION_US915=y
   sample.lorawan.class_a.native:
+    platform_allow:
+      - nucleo_wl55jc
     extra_configs:
       - CONFIG_LORA_MODULE_BACKEND_NATIVE=y
       - CONFIG_LORAWAN_REGION_EU868=y

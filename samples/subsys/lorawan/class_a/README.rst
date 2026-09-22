@@ -11,6 +11,19 @@ A simple application to demonstrate the :ref:`LoRaWAN subsystem <lorawan_api>` o
 Every fifth uplink requests a link check, logging the demodulation margin and
 gateway count reported by the network.
 
+Requirements
+************
+
+A board with a LoRa radio supported by the :ref:`LoRa driver API <lora_api>`, listing ``lora`` in
+its supported features and exposing the radio through the ``lora0`` devicetree alias.
+
+The sample has been tested on the following boards:
+
+* :zephyr:board:`nucleo_wl55jc`, also with the native LoRa backend (STM32WL sub-GHz radio)
+* :zephyr:board:`96b_wistrio`
+
+Pull request CI builds it on :zephyr:board:`nucleo_wl55jc`.
+
 Building and Running
 ********************
 
