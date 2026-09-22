@@ -17,7 +17,11 @@ The source code for this sample application can be found at:
 Requirements
 ************
 
-- :ref:`networking_with_host`
+- A board with a network interface, or :zephyr:board:`native_sim` or QEMU as described in
+  :ref:`networking_with_host`. The sample is tested on :zephyr:board:`native_sim` and
+  :zephyr:board:`qemu_x86`; pull request CI builds it on :zephyr:board:`native_sim`.
+- For the Wi-Fi variant, a board with Wi-Fi support. It is tested on
+  :zephyr:board:`nrf7002dk`, which pull request CI also builds it on.
 
 Building and Running
 ********************
