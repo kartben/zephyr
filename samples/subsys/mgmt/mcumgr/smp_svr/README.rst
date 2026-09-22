@@ -33,6 +33,39 @@ Caveats
   properly. More information about the Device Firmware Upgrade subsystem and
   MCUboot can be found in :ref:`mcuboot`.
 
+Requirements
+************
+
+Except for ``native_sim``, which builds without a bootloader, the sample requires a board that can
+run MCUboot and has the hardware used by the selected transport.
+It is known to work on the following boards, grouped by configuration:
+
+* Bluetooth (``bt.conf``): ``nrf52dk/nrf52832``, ``nrf52840dk/nrf52840``, ``pinnacle_100_dvk``,
+  ``mg100``
+* Serial (``serial.conf``) and shell (``shell.conf``): ``nrf52840dk/nrf52840``,
+  ``pinnacle_100_dvk``, ``mg100``, and the NXP boards ``frdm_k22f``, ``frdm_k64f``,
+  ``frdm_k82f``, ``frdm_ke17z``, ``frdm_ke17z512``, ``rddrone_fmuk66``, ``twr_ke18f``,
+  ``twr_kv58f220m``, ``frdm_mcxn947/mcxn947/cpu0``, ``mcx_n9xx_evk/mcxn947/cpu0``,
+  ``lpcxpresso55s06``, ``lpcxpresso55s16``, ``lpcxpresso55s28``, ``lpcxpresso55s36``,
+  ``lpcxpresso55s69/lpc55s69/cpu0``, ``mimxrt1010_evk``, ``mimxrt1015_evk``, ``mimxrt1020_evk``,
+  ``mimxrt1024_evk``, ``mimxrt1040_evk``, ``mimxrt1050_evk/mimxrt1052/hyperflash``,
+  ``mimxrt1060_evk/mimxrt1062/qspi``, ``mimxrt1062_fmurt6``, ``mimxrt1064_evk``,
+  ``mimxrt1160_evk/mimxrt1166/cm7``, ``mimxrt1170_evk/mimxrt1176/cm7``,
+  ``vmu_rt1170/mimxrt1176/cm7``, ``mimxrt595_evk/mimxrt595s/cm33``,
+  ``mimxrt685_evk/mimxrt685s/cm33``, ``rd_rw612_bga``; serial also on
+  ``nrf54h20dk/nrf54h20/cpuapp``
+* Serial console, shell management and file system (``serial-console.conf``, ``shell-mgmt.conf``,
+  ``fs.conf``): ``nrf52840dk/nrf52840``, ``pinnacle_100_dvk``, ``mg100``
+* Raw UART (``raw-serial.conf``): ``nrf52840dk/nrf52840``
+* USB CDC ACM (``cdc.conf``): ``nrf52833dk/nrf52820``, ``nrf52833dk/nrf52833``,
+  ``nrf52840dk/nrf52840``, ``nrf5340dk/nrf5340/cpuapp``, ``pinnacle_100_dvk``,
+  ``frdm_mcxn947/mcxn947/cpu0``, ``mcx_n9xx_evk/mcxn947/cpu0``
+* UDP (``udp.conf``): ``frdm_k64f``, ``frdm_mcxn947/mcxn947/cpu0``, ``mcx_n9xx_evk/mcxn947/cpu0``;
+  over IEEE 802.15.4 sub-GHz on ``beagleconnect_freedom``; with DTLS (``udp-dtls.conf``) on
+  ``native_sim``
+* RAM load (``FILE_SUFFIX=ram_load``): ``nrf52840dk/nrf52840``,
+  ``mimxrt1050_evk/mimxrt1052/hyperflash``
+
 Prerequisites
 *************
 
