@@ -193,6 +193,46 @@ black to white.
       For such displays, the color of the bottom-left corner will change at a much slower rate than
       on a typical LCD, to align with the typical refresh rate of e-ink technologies.
 
+Requirements
+************
+
+The board must set the ``zephyr,display`` chosen node to a supported display controller, either
+built into the board or provided by a shield or a devicetree overlay.
+
+The sample is known to work on the following boards with a built-in display:
+
+- :zephyr:board:`native_sim <native_sim>` with its emulated SDL display
+- :zephyr:board:`esp32p4x_function_ev_board`
+- :zephyr:board:`rp2040_geek`
+
+It is also known to work on the following board and shield combinations:
+
+- :zephyr:board:`da1469x_dk_pro` with the ``da1469x_dk_pro_mipi_dbi.overlay`` overlay
+- :zephyr:board:`ek_ra8d1` with ``rtkmipilcdb00000be``, or ``rtk7eka6m3b00001bu`` stacked on
+  ``ek_ra8d1_rtk7eka6m3b00001bu``
+- :zephyr:board:`frdm_k22f` with ``ls013b7dh03``
+- :zephyr:board:`frdm_k64f` with ``ssd1306_128x64``
+- :zephyr:board:`frdm_rw612` with ``lcd_par_s035_spi``
+- :zephyr:board:`lpcxpresso55s69` with ``adafruit_2_8_tft_touch_v2``
+- :zephyr:board:`m5stack_atoms3` with ``m5stack_unit_minioled``
+- :zephyr:board:`mimxrt1010_evk` with ``st7789v_waveshare_240x240``
+- :zephyr:board:`mimxrt1064_evk` with ``rk043fn66hs_ctg``
+- :zephyr:board:`mimxrt1170_evk` with ``rk055hdmipi4ma0``
+- :zephyr:board:`mimxrt595_evk` with ``g1120b0mipi``
+- :zephyr:board:`mimxrt685_evk` with ``waveshare_epaper_gdeh0213b1``
+- :zephyr:board:`mimxrt700_evk` with ``zc143ac72mipi`` or ``lcd_par_s035_8080``
+- :zephyr:board:`nrf52833dk` with ``st7735r_ada_160x128``
+- :zephyr:board:`nrf52840dk` with ``ssd1306_128x32`` or ``max7219_8x8``
+- :zephyr:board:`nrf52dk` with ``st7789v_tl019fqv01``
+- :zephyr:board:`nucleo_g071rb` with ``x_nucleo_gfx01m2``
+- :zephyr:board:`nucleo_l433rc_p` with ``waveshare_epaper_gdew042t2``
+- :zephyr:board:`rza3m_ek` with ``rtkapplcdms02001be``
+- :zephyr:board:`stm32h747i_disco` with ``st_b_lcd40_dsi1_mb1166`` or
+  ``st_b_lcd40_dsi1_mb1166_a09``
+
+Pull request CI builds the sample for :zephyr:board:`native_sim <native_sim>` and, with the
+``adafruit_2_8_tft_touch_v2`` shield, for :zephyr:board:`lpcxpresso55s69`.
+
 Building and Running
 ********************
 
