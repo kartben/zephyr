@@ -11,6 +11,57 @@ tests:
     platform_type:
       - mcu
     filter: dt_alias_exists("qdec0")
+    platform_allow:
+      - b_u585i_iot02a
+      - bl54l15_dvk/nrf54l15/cpuapp
+      - disco_l475_iot1
+      - esp32c6_devkitc/esp32c6/hpcore
+      - esp32s3_devkitc/esp32s3/procpu
+      - esp32s3_luatos_core/esp32s3/procpu
+      - esp32s3_luatos_core/esp32s3/procpu/usb
+      - frdm_imxrt1186/mimxrt1186/cm33
+      - frdm_imxrt1186/mimxrt1186/cm7
+      - frdm_mcxa153
+      - frdm_mcxa156
+      - frdm_mcxa266
+      - frdm_mcxa344
+      - frdm_mcxa346
+      - frdm_mcxa366
+      - frdm_mcxn236
+      - frdm_mcxn947/mcxn947/cpu0
+      - matouch_mtro128g/esp32s3/procpu
+      - mcx_n5xx_evk/mcxn547/cpu0
+      - mimxrt1180_evk/mimxrt1189/cm33
+      - mimxrt1180_evk/mimxrt1189/cm7
+      - mr_canhubk3
+      - nucleo_c071rb
+      - nucleo_c5a3zg
+      - nucleo_f091rc
+      - nucleo_f103rb
+      - nucleo_f207zg
+      - nucleo_f401re
+      - nucleo_f429zi
+      - nucleo_f746zg
+      - nucleo_g071rb
+      - nucleo_g474re
+      - nucleo_h753zi
+      - nucleo_l073rz
+      - nucleo_l152re
+      - nucleo_u385rg_q
+      - nucleo_wb09ke
+      - nucleo_wb55rg
+      - nucleo_wba55cg
+      - nucleo_wl55jc
+      - rtl8752h_evb/rtl8752hjl
+      - rtl87x2g_evb_a/rtl8762gku
+      - stm32f3_disco
+      - stm32h573i_dk
+      - stm32h7s78_dk
+      - stm32l562e_dk
+      - stm32n6570_dk/stm32n657xx/sb
+      - stm32u083c_dk
+    integration_platforms:
+      - nucleo_f401re
     harness_config:
       type: multi_line
       ordered: true
@@ -22,6 +73,17 @@ tests:
     filter: >
       dt_alias_exists("qdec0") and dt_alias_exists("qenca")
       and dt_alias_exists("qencb") and CONFIG_EQDC_MCUX
+    platform_allow:
+      - frdm_imxrt1186/mimxrt1186/cm33
+      - frdm_imxrt1186/mimxrt1186/cm7
+      - frdm_mcxa153
+      - frdm_mcxa156
+      - frdm_mcxa266
+      - frdm_mcxa344
+      - frdm_mcxa346
+      - frdm_mcxa366
+      - mimxrt1180_evk/mimxrt1189/cm33
+      - mimxrt1180_evk/mimxrt1189/cm7
     integration_platforms:
       - frdm_mcxa153
     extra_configs:
@@ -44,6 +106,8 @@ tests:
   sample.sensor.sam_qdec_sensor:
     platform_allow:
       - sam_e70_xplained/same70q21
+      - sam_e70_xplained/same70q21b
+    integration_platforms:
       - sam_e70_xplained/same70q21b
     harness_config:
       type: multi_line
@@ -77,12 +141,6 @@ tests:
       - ophelia4ev/nrf54l15/cpuapp
     integration_platforms:
       - nrf52840dk/nrf52840
-      - nrf5340dk/nrf5340/cpuapp
-      - nrf54h20dk/nrf54h20/cpuapp
-      - nrf54l15dk/nrf54l15/cpuapp
-      - nrf54lm20dk/nrf54lm20a/cpuapp
-      - nrf7120dk/nrf7120/cpuapp
-      - ophelia4ev/nrf54l15/cpuapp
     harness_config:
       fixture: gpio_loopback
       type: multi_line
