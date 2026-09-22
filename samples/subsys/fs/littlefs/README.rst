@@ -72,6 +72,29 @@ Flash memory device
 This example should work on any board that provides a "storage"
 partition.  Two tested board targets are described below.
 
+The sample is known to build for the following board targets:
+
+* ``disco_l475_iot1``, ``stm32f429i_disc1``, ``stm32f746g_disco``,
+  ``stm32h747i_disco/stm32h747xx/m7``, ``stm32h750b_dk``
+* ``frdm_ke17z``, ``frdm_ke17z512``, ``lpcxpresso55s69/lpc55s69/cpu0``,
+  ``mimxrt685_evk/mimxrt685s/cm33``, ``mimxrt685_aud_evk/mimxrt685s/cm33``,
+  ``mimxrt1060_evk/mimxrt1062/qspi``, ``mimxrt1064_evk``, ``mimxrt1160_evk/mimxrt1166/cm7``
+* ``mr_canhubk3``, ``s32k5xxcvb/s32k566/m7``, ``s32k5xxcvb/s32k566/r52``,
+  ``s32z2xxdc2/s32z270/rtu0``, ``s32z2xxdc2/s32z270/rtu1``,
+  ``s32z2xxdc2@D/s32z270/rtu0``, ``s32z2xxdc2@D/s32z270/rtu1``
+* ``nrf52840dk/nrf52840``, ``nrf54l15dk/nrf54l15/cpuapp``, ``particle_xenon``
+* ``native_sim``, ``qemu_x86``
+
+The following board targets have additional build variants that place the file system on an
+external or alternative flash device, selected with the matching ``EXTRA_CONF_FILE`` (and
+``DTC_OVERLAY_FILE``) from the :file:`boards` directory:
+
+* ``nrf52840dk/nrf52840``: external SPI NOR flash (``nrf52840dk_nrf52840_spi``) or QSPI NOR
+  flash (``nrf52840dk_nrf52840_qspi``)
+* ``nucleo_h743zi``: QSPI NOR flash (``nucleo_h743zi_qspi``)
+* ``stm32l562e_dk``: OSPI NOR flash (``stm32l562e_dk_ospi``)
+* ``frdm_rw612``: FlexSPI NAND flash through a flash translation layer (``frdm_rw612_nand``)
+
 You can set ``CONFIG_APP_WIPE_STORAGE`` to force the file system to be
 recreated.
 
@@ -80,6 +103,8 @@ Block device (e.g. SD card)
 
 This example has been devised and initially tested on :zephyr:board:`nucleo_h743zi`
 board. It can be also run on any other board with SD/MMC card connected to it.
+It is also known to build for ``rcar_h3ulcb/r8a77951/a57``, ``rcar_salvator_xs``,
+``stm32f746g_disco`` and ``stm32h747i_disco/stm32h747xx/m7``.
 
 To build the test:
 

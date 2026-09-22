@@ -42,49 +42,67 @@ tests:
     platform_allow:
       - rcar_h3ulcb/r8a77951/a57
       - rcar_salvator_xs
+    integration_platforms:
+      - rcar_h3ulcb/r8a77951/a57
   sample.filesystem.littlefs.nrf52840dk_spi:
     build_only: true
     platform_allow: nrf52840dk/nrf52840
+    integration_platforms:
+      - nrf52840dk/nrf52840
     extra_args:
       - EXTRA_CONF_FILE=boards/nrf52840dk_nrf52840_spi.conf
       - DTC_OVERLAY_FILE=boards/nrf52840dk_nrf52840_spi.overlay
   sample.filesystem.littlefs.nrf52840dk_qspi:
     build_only: true
     platform_allow: nrf52840dk/nrf52840
+    integration_platforms:
+      - nrf52840dk/nrf52840
     extra_args:
       - EXTRA_CONF_FILE=boards/nrf52840dk_nrf52840_qspi.conf
       - DTC_OVERLAY_FILE=boards/nrf52840dk_nrf52840_qspi.overlay
   sample.filesystem.littlefs.stm32h747i_disco_m7_blk:
     build_only: true
     platform_allow: stm32h747i_disco/stm32h747xx/m7
+    integration_platforms:
+      - stm32h747i_disco/stm32h747xx/m7
     extra_args:
       - EXTRA_CONF_FILE=stm32_blk.conf
       - CONF_FILE=prj_blk.conf
   sample.filesystem.littlefs.nucleo_h743zi_qspi:
     build_only: true
     platform_allow: nucleo_h743zi
+    integration_platforms:
+      - nucleo_h743zi
     extra_args:
       - EXTRA_CONF_FILE=boards/nucleo_h743zi_qspi.conf
   sample.filesystem.littlefs.nucleo_h743zi_blk:
     build_only: true
     platform_allow: nucleo_h743zi
+    integration_platforms:
+      - nucleo_h743zi
     extra_args:
       - EXTRA_CONF_FILE=boards/nucleo_h743zi_blk.conf
       - CONF_FILE=prj_blk.conf
   sample.filesystem.littlefs.stm32l562e_dk_ospi:
     build_only: true
     platform_allow: stm32l562e_dk
+    integration_platforms:
+      - stm32l562e_dk
     extra_args:
       - EXTRA_CONF_FILE=boards/stm32l562e_dk_ospi.conf
   sample.filesystem.littlefs.stm32f746g_disco_blk:
     build_only: true
     platform_allow: stm32f746g_disco
+    integration_platforms:
+      - stm32f746g_disco
     extra_args:
       - EXTRA_CONF_FILE=stm32_blk.conf
       - CONF_FILE=prj_blk.conf
   sample.filesystem.littlefs.frdm_rw612_nand:
     build_only: true
     platform_allow: frdm_rw612
+    integration_platforms:
+      - frdm_rw612
     extra_args:
       - EXTRA_CONF_FILE=boards/frdm_rw612_nand.conf
       - DTC_OVERLAY_FILE=boards/frdm_rw612_nand.overlay
