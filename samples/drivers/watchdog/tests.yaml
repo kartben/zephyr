@@ -41,6 +41,59 @@ tests:
       - bl54l15_dvk/nrf54l15/cpuapp/ns
       - raytac_an54lq_db_15/nrf54l15/cpuapp/ns
       - raytac_an54lv_db_15/nrf54l15/cpuapp/ns
+    platform_allow:
+      - adp_xc7k/ae350
+      - adp_xc7k/ae350/clic
+      - bl54l15_dvk/nrf54l10/cpuapp
+      - bl54l15_dvk/nrf54l15/cpuapp
+      - bl54l15_dvk/nrf54l15/cpuflpr
+      - bl54l15_dvk/nrf54l15/cpuflpr/xip
+      - cc1352r1_launchxl
+      - cc26x2r1_launchxl
+      - ch32v003evt
+      - ch32v006evt
+      - esp32_devkitc/esp32/procpu
+      - esp32s2_saola
+      - intel_adl_crb
+      - intel_adl_rvp
+      - intel_btl_s_crb
+      - intel_ehl_crb
+      - intel_rpl_p_crb
+      - intel_rpl_s_crb
+      - mps2/an385
+      - nrf5340dk/nrf5340/cpuapp
+      - nrf5340dk/nrf5340/cpunet
+      - nrf54h20dk/nrf54h20/cpuapp
+      - nrf54l15dk/nrf54l05/cpuapp
+      - nrf54l15dk/nrf54l10/cpuapp
+      - nrf54l15dk/nrf54l15/cpuapp
+      - nrf54lm20dk/nrf54lm20a/cpuapp
+      - nrf54lm20dk/nrf54lm20b/cpuapp
+      - nrf7120dk/nrf7120/cpuapp
+      - nrf9280pdk/nrf9280/cpuapp
+      - opentitan_earlgrey
+      - ophelia4ev/nrf54l15/cpuapp
+      - pic32cm_gc00_cpro
+      - pic32cm_jh01_cpro
+      - pic32cm_sg00_cpro
+      - pic32cx_sg41_cult
+      - pic32cx_sg61_cult
+      - pic32cz_ca80_cult
+      - pic32cz_ca90_cult
+      - raytac_an54lq_db_15/nrf54l15/cpuapp
+      - raytac_an54lq_db_15/nrf54l15/cpuflpr
+      - raytac_an54lq_db_15/nrf54l15/cpuflpr/xip
+      - sam_e54_xpro
+      - siwx917_dk2605a
+      - siwx917_ek2708a
+      - siwx917_rb4338a
+      - siwx917_rb4342a
+      - xiao_nrf54l15/nrf54l15/cpuapp
+      - xiao_nrf54l15/nrf54l15/cpuflpr
+      - xmc45_relax_kit
+      - xmc47_relax_kit
+    integration_platforms:
+      - mps2/an385
   sample.drivers.watchdog.stm32_wwdg:
     extra_args: DTC_OVERLAY_FILE=boards/stm32_wwdg.overlay
     filter: dt_compat_enabled("st,stm32-window-watchdog")
