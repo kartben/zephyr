@@ -15,21 +15,40 @@ provided by this driver.
 Requirements
 ************
 
-This project requires an USB device driver, which is available for multiple
-boards supported in Zephyr.
+This project requires a USB device controller driver (UDC API) and a board
+devicetree that provides the ``zephyr_udc0`` node label for the controller.
+The sample is tested on the following boards:
+
+* :zephyr:board:`nrf52840dk` (``nrf52840dk/nrf52840``)
+* :zephyr:board:`nrf54h20dk` (``nrf54h20dk/nrf54h20/cpuapp``)
+* :zephyr:board:`frdm_k64f` (``frdm_k64f``)
+* :zephyr:board:`stm32f723e_disco` (``stm32f723e_disco``)
+* :zephyr:board:`nucleo_f413zh` (``nucleo_f413zh``)
+* :zephyr:board:`mimxrt685_evk` (``mimxrt685_evk/mimxrt685s/cm33``)
+* :zephyr:board:`mimxrt1060_evk` (``mimxrt1060_evk/mimxrt1062/qspi``)
+* :zephyr:board:`max32690evkit` (``max32690evkit/max32690/m4``)
+* :zephyr:board:`sam4e_xpro` (``sam4e_xpro``)
+* :zephyr:board:`sam4l_ek` (``sam4l_ek``)
+* :zephyr:board:`samd21_xpro` (``samd21_xpro``)
+* :zephyr:board:`same54_xpro` (``same54_xpro``)
+* :zephyr:board:`sam_v71_xult` (``sam_v71_xult/samv71q21b``)
+
+The ``cdc-acm-workqueue`` test scenario runs on ``frdm_k64f`` only. Pull
+request CI builds the sample for ``nrf52840dk/nrf52840`` and the
+``cdc-acm-workqueue`` scenario for ``frdm_k64f``.
 
 Building and Running
 ********************
 
-Reel Board
+nRF52840 DK
 ===========
 
 To see the console output of the app, open a serial port emulator and
-attach it to the USB to TTL Serial cable. Build and flash the project:
+attach it to the board's console UART. Build and flash the project:
 
 .. zephyr-app-commands::
    :zephyr-app: samples/subsys/usb/cdc_acm
-   :board: reel_board
+   :board: nrf52840dk/nrf52840
    :goals: flash
    :compact:
 
@@ -49,7 +68,7 @@ The board will be detected as shown by the Linux dmesg command:
    usb 9-1: SerialNumber: 00.01
    cdc_acm 9-1:1.0: ttyACM1: USB ACM device
 
-The app prints on serial output (UART1), used for the console:
+The app prints on the console UART:
 
 .. code-block:: console
 

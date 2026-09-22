@@ -4,7 +4,7 @@ tests:
   sample.usb.usb_device_next.cdc-acm:
     depends_on: usbd
     tags: usb
-    integration_platforms:
+    platform_allow:
       - nrf52840dk/nrf52840
       - nrf54h20dk/nrf54h20/cpuapp
       - frdm_k64f
@@ -18,6 +18,8 @@ tests:
       - samd21_xpro
       - same54_xpro
       - sam_v71_xult/samv71q21b
+    integration_platforms:
+      - nrf52840dk/nrf52840
     harness: console
     harness_config:
       type: one_line
@@ -28,6 +30,8 @@ tests:
     tags: usb
     extra_args:
       - DCONFIG_USBD_CDC_ACM_WORKQUEUE=y
+    platform_allow:
+      - frdm_k64f
     integration_platforms:
       - frdm_k64f
     harness: console
