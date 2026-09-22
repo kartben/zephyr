@@ -187,20 +187,23 @@
 	};
 };
 
-/* RTL8720D (Wifi/BLE) */
+/* RTL8720DN (Wi-Fi/BLE) host interface, eRPC over UART */
 &sercom0 {
 	status = "okay";
-	compatible = "atmel,sam0-spi";
-	#address-cells = <1>;
-	#size-cells = <0>;
-	dipo = <2>;
-	dopo = <0>;
-	pinctrl-0 = <&sercom0_spi_default>;
+	compatible = "atmel,sam0-uart";
+	current-speed = <614400>;
+	rxpo = <2>;
+	txpo = <0>;
+	pinctrl-0 = <&sercom0_uart_default>;
 	pinctrl-names = "default";
-	cs-gpios = <&portc 25 GPIO_ACTIVE_LOW>;
+
+	rtl8720: rtl8720 {
+		compatible = "realtek,rtl8720-erpc";
+		power-gpios = <&porta 18 GPIO_ACTIVE_HIGH>;
+	};
 };
 
-/* RTL8720D (Wifi/BLE) */
+/* RTL8720DN log and download UART */
 &sercom1 {
 	status = "okay";
 	compatible = "atmel,sam0-uart";
