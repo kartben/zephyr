@@ -11,6 +11,35 @@ This sample application demonstrates how to use 3-Axis accelerometers using the
 :ref:`RTIO framework <rtio>` based :ref:`Read and Decode method <sensor-read-and-decode>`
 in polling mode (sensor_read).
 
+Requirements
+************
+
+The sample runs on any board or shield that provides an accelerometer with a
+devicetree alias ``accel0``.
+
+It has been tested on the following boards, which cover a range of accelerometer drivers:
+
+- :zephyr:board:`b_l4s5i_iot01a` (LSM6DSL)
+- :zephyr:board:`bbc_microbit` (MMA8653FC)
+- :zephyr:board:`bl5340_dvk` (LIS3DH)
+- :zephyr:board:`blueclover_plt_demo_v2` (BMI270)
+- :zephyr:board:`cc1352r_sensortag` (ADXL362)
+- :zephyr:board:`frdm_k64f` (FXOS8700)
+- :zephyr:board:`frdm_kl25z` (MMA8451Q)
+- :zephyr:board:`frdm_mcxw23` (FXLS8974)
+- :zephyr:board:`lpcxpresso55s28` (MMA8652FC)
+- :zephyr:board:`mimxrt1040_evk` (FXLS8974)
+- :zephyr:board:`sensortile_box` (LIS2DW12, LSM6DSO and IIS3DHHC)
+- :zephyr:board:`sparkfun_thing_plus` (LIS2DH)
+- :zephyr:board:`stm32f3_disco` (LSM303DLHC)
+- :zephyr:board:`stm32f411e_disco` (LSM303AGR)
+- :zephyr:board:`thingy52` (LIS2DH12)
+- :zephyr:board:`thingy53` (ADXL362 and BMI270)
+- :zephyr:board:`adafruit_qt_py_rp2040` with the :ref:`adafruit_lis3dh` shield
+
+Pull request CI builds the sample on :zephyr:board:`frdm_k64f`, :zephyr:board:`sensortile_box`
+and :zephyr:board:`adafruit_qt_py_rp2040` with the :ref:`adafruit_lis3dh` shield.
+
 Building and Running
 ********************
 
