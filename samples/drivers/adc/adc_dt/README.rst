@@ -16,6 +16,21 @@ be obtained, the raw readings are converted to millivolts.
 The pins of the ADC channels are board-specific. Please refer to the board
 or MCU datasheet for further details.
 
+Requirements
+************
+
+The sample runs on any board with an enabled ADC controller whose devicetree
+provides the ``io-channels`` property of the ``zephyr,user`` node (see below).
+The boards the sample is verified on are listed under ``platform_allow`` in
+:zephyr_file:`samples/drivers/adc/adc_dt/tests.yaml`.
+
+The sample can also be used with the following shields:
+
+- :ref:`eval_cn0391_ardz` on the :zephyr:board:`apard32690`
+- :ref:`adi_lsmspg` on a board with a Feather SPI connector, such as the
+  :zephyr:board:`max32690fthr`, :zephyr:board:`max32655fthr` or
+  :zephyr:board:`adafruit_feather_rp2040`
+
 Building and Running
 ********************
 
