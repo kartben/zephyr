@@ -17,4 +17,5 @@ supported:
   - spi
   - usbd
   - watchdog
+  - wifi
 vendor: seeed
