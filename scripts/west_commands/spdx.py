@@ -56,6 +56,12 @@ class ZephyrSpdx(WestCommand):
             help="SPDX specification version to use (default: 2.3)",
         )
         parser.add_argument(
+            '--supplier',
+            help="organization supplying the application and the build outputs, recorded "
+            "as the SPDX package supplier (e.g. --supplier 'Example Corp'). Without it "
+            "the supplier is taken from the application's git remote, or left unasserted",
+        )
+        parser.add_argument(
             '--analyze-includes', action="store_true", help="also analyze included header files"
         )
         parser.add_argument(
@@ -77,6 +83,7 @@ class ZephyrSpdx(WestCommand):
         self.dbg("  --namespace-prefix is", args.namespace_prefix)
         self.dbg("  --spdx-dir is", args.spdx_dir)
         self.dbg("  --spdx-version is", args.spdx_version)
+        self.dbg("  --supplier is", args.supplier)
         self.dbg("  --analyze-includes is", args.analyze_includes)
         self.dbg("  --include-sdk is", args.include_sdk)
 
@@ -132,6 +139,8 @@ class ZephyrSpdx(WestCommand):
             cfg.spdx_dir = args.spdx_dir
         else:
             cfg.spdx_dir = os.path.join(args.build_dir, "spdx")
+        if args.supplier:
+            cfg.supplier = args.supplier
         if args.analyze_includes:
             cfg.analyze_includes = True
         if args.include_sdk:

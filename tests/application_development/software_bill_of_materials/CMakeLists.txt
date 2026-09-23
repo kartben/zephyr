@@ -40,6 +40,11 @@ set(
 
 set(SPDX_VERSIONS_TO_TEST "2.2" "2.3" "3.0")
 
+# Organization recorded as the supplier of the application and the build outputs. Only
+# whoever runs the build knows this, so 'west spdx' takes it as an option; the test
+# checks it reaches the generated documents. Keep in sync with verify_spdx_content.py.
+set(SBOM_TEST_SUPPLIER "SBOM Test Application Supplier")
+
 function(add_spdx2_validation_tests spdx_version version_suffix)
   foreach(spdx_file ${SPDX2_FILES})
     # Smoke test: check spdx_file is a valid SPDX 2.x document as per pyspdxtools
@@ -96,6 +101,7 @@ foreach(spdx_version ${SPDX_VERSIONS_TO_TEST})
   add_test(
     NAME spdx_gen_${version_suffix}
     COMMAND west spdx -d ${CMAKE_BINARY_DIR} --spdx-version ${spdx_version}
+                      --supplier "${SBOM_TEST_SUPPLIER}"
   )
   set_tests_properties(
     spdx_gen_${version_suffix}
