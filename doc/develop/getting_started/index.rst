@@ -54,6 +54,12 @@ Next, install the host tools Zephyr needs to configure and build applications.
 The instructions below use the recommended package manager for each operating
 system so the tools are available from your terminal.
 
+.. tip::
+
+   If you would rather not install these tools on your machine, or want to
+   work in the same environment as the Zephyr Project's CI, you can develop
+   inside the official Zephyr Docker images instead. See :ref:`docker_dev_env`.
+
 The current minimum required versions for the main dependencies are:
 
 .. list-table::
@@ -574,6 +580,8 @@ Here are some next steps for exploring Zephyr:
 * Find out about west's :ref:`flashing and debugging <west-build-flash-debug>`
   features, or more about :ref:`flashing_and_debugging` in general
 * Check out :ref:`beyond-GSG` for additional setup alternatives and ideas
+* Use the :ref:`Zephyr Docker images <docker_dev_env>` for a ready-made
+  development environment identical to the one used by the project's CI
 * Discover :ref:`project-resources` for getting help from the Zephyr
   community
 

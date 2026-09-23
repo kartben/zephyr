@@ -29,6 +29,12 @@ command-prompt. This allows you to use software such as the :ref:`Zephyr SDK
 
 #. Follow the Ubuntu instructions in the :ref:`installation_linux` document.
 
+.. tip::
+
+   With WSL 2 set up, you can also use the :ref:`Zephyr Docker images
+   <docker_dev_env>` through Docker Desktop, without installing any Zephyr
+   dependency in your WSL distribution.
+
 .. NOTE FOR DOCS AUTHORS: as a reminder, do *NOT* put dependencies for building
    the documentation itself here.
 
