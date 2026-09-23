@@ -23,7 +23,7 @@ if(CONFIG_NXP_SNPS_BLE_CTRL)
     set(BLELIBOS_PATH       ${BLE_LIBS_PATH}/libble_ll_os.a)
     set(BLELIBUTILS_PATH    ${BLE_LIBS_PATH}/libble_ll_utils_os.a)
 
-    zephyr_blobs_verify(FILES
+    zephyr_blobs_verify(MODULE hal_nxp FILES
       ${BLELIBOS_PATH}
       ${BLELIBUTILS_PATH}
     )

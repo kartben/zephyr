@@ -2355,13 +2355,16 @@ function(zephyr_syscall_header_ifdef feature_toggle)
 endfunction()
 
 #[=======================================================================[.rst:
-.. cmake:signature:: zephyr_blobs_verify(<MODULE module | FILES file [files...]> [REQUIRED])
+.. cmake:signature:: zephyr_blobs_verify([MODULE module] [FILES file [files...]] [REQUIRED])
 
    Verify blobs fetched using west. If the sha256 checksum isn't valid, a warning/fatal error
    message is printed (level depends on ``REQUIRED`` flag).
 
+   At least one of ``MODULE`` and ``FILES`` must be given.
+
    ``MODULE module``
-     Verify all blobs in the given module.
+     Restrict verification to the given module. Without ``FILES``, every blob declared by the
+     module is verified.
 
    ``FILES file [files...]``
      Verify the specified files.
@@ -2369,6 +2372,10 @@ endfunction()
    ``REQUIRED``
      If specified, a fatal error is raised if the verification fails. Otherwise, a warning is
      printed.
+
+   Reading the blob list means hashing every blob that is present on disk, so a module that
+   declares many blobs should pass ``MODULE`` alongside ``FILES``: verification is then limited
+   to the files that are actually used, without hashing the blobs of unrelated modules.
 
    Example usage:
 
@@ -2379,12 +2386,15 @@ endfunction()
 
       # Verify a single file and print on error
       zephyr_blobs_verify(FILES img/file.bin)
+
+      # Verify two files without hashing the blobs of other modules
+      zephyr_blobs_verify(MODULE my_module FILES lib/first.a lib/second.a REQUIRED)
 #]=======================================================================]
 function(zephyr_blobs_verify)
   cmake_parse_arguments(BLOBS_VERIFY "REQUIRED" "MODULE" "FILES" ${ARGN})
 
-  if((DEFINED BLOBS_VERIFY_MODULE) EQUAL (DEFINED BLOBS_VERIFY_FILES))
-    message(FATAL_ERROR "Either MODULE or FILES required when calling ${CMAKE_CURRENT_FUNCTION}")
+  if(NOT DEFINED BLOBS_VERIFY_MODULE AND NOT DEFINED BLOBS_VERIFY_FILES)
+    message(FATAL_ERROR "MODULE and/or FILES required when calling ${CMAKE_CURRENT_FUNCTION}")
   endif()
 
   if(NOT WEST)
@@ -2404,6 +2414,7 @@ function(zephyr_blobs_verify)
     set(msg_lvl WARNING)
   endif()
 
+  string(STRIP "west blobs fetch ${BLOBS_VERIFY_MODULE}" fetch_hint)
   string(REPLACE "\n" ";" BLOBS_LIST ${BLOBS_LIST_OUTPUT})
 
   if(DEFINED BLOBS_VERIFY_FILES)
@@ -2419,10 +2430,10 @@ function(zephyr_blobs_verify)
       message(VERBOSE "Verifying blob \"${path}\"")
 
       if(NOT EXISTS "${path}")
-        message(${msg_lvl} "Blob for path \"${path}\" missing. Update with: west blobs fetch")
+        message(${msg_lvl} "Blob for path \"${path}\" missing. Update with: ${fetch_hint}")
       elseif(NOT "A ${path}" IN_LIST BLOBS_LIST)
         # Each path that has a correct sha256 is prefixed with an A
-        message(${msg_lvl} "Blob for path \"${path}\" isn't valid. Update with: west blobs fetch")
+        message(${msg_lvl} "Blob for path \"${path}\" isn't valid. Update with: ${fetch_hint}")
       endif()
     endforeach()
   else()
@@ -2434,9 +2445,9 @@ function(zephyr_blobs_verify)
       message(VERBOSE "Verifying blob \"${path}\"")
 
       if(NOT EXISTS "${path}")
-        message(${msg_lvl} "Blob for path \"${path}\" missing. Update with: west blobs fetch ${BLOBS_VERIFY_MODULE}")
+        message(${msg_lvl} "Blob for path \"${path}\" missing. Update with: ${fetch_hint}")
       elseif(NOT "${status}" STREQUAL "A")
-        message(${msg_lvl} "Blob for path \"${path}\" isn't valid. Update with: west blobs fetch ${BLOBS_VERIFY_MODULE}")
+        message(${msg_lvl} "Blob for path \"${path}\" isn't valid. Update with: ${fetch_hint}")
       endif()
     endforeach()
   endif()
