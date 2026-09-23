@@ -39,6 +39,13 @@ include(extensions)
 # Warn the user if SNIPPET changes later. Such changes are ignored.
 zephyr_check_cache(SNIPPET WATCH)
 
+# The snippet search below serves a requested SNIPPET and the 'snippets'
+# target that lists them all. Script mode has no targets, so with no SNIPPET
+# there is nothing left to search for.
+if(CMAKE_SCRIPT_MODE_FILE AND NOT DEFINED SNIPPET)
+  return()
+endif()
+
 # Putting the body into a function prevents us from polluting the
 # parent scope. We'll set our outcome variables in the parent scope of
 # the function to ensure the outcome of the module.

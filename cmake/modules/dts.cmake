@@ -6,7 +6,48 @@ include(extensions)
 include(python)
 include(boards)
 include(pre_dt)
-find_package(HostTools)
+
+# Internal: true when the caller loaded this module without Kconfig, as
+#
+#   cmake -DMODULES=dts -P <ZEPHYR_BASE>/cmake/package_helper.cmake
+#
+# does. Such a run returns once the devicetree is available and never reaches
+# Kconfig or compilation. 'SUB_COMPONENTS' holds the requested modules and is
+# undefined for a normal build, which always continues into both.
+if(DEFINED SUB_COMPONENTS AND NOT "kconfig" IN_LIST SUB_COMPONENTS)
+  set(DTS_ONLY_RUN TRUE)
+endif()
+
+# Internal: true for any such run, whichever modules it asked for. None of
+# them assembles a build system, so none reaches compilation or the CMake
+# dt_* API, whose only users are reached later still.
+if(DEFINED SUB_COMPONENTS)
+  set(DTS_COMPONENT_RUN TRUE)
+endif()
+
+# The only thing this module needs from the host tools is a C preprocessor
+# for the devicetree sources, in 'CMAKE_C_COMPILER'. A devicetree-only run
+# needs nothing else from them, so any C preprocessor on the PATH will do and
+# no toolchain has to be installed at all. The devicetree sources are
+# preprocessed with -nostdinc, -undef and -D__DTS__ only, which is what makes
+# the result independent of the preprocessor used.
+if(DTS_ONLY_RUN AND NOT DEFINED CMAKE_DTS_PREPROCESSOR)
+  find_program(dts_host_preprocessor NAMES gcc clang cpp)
+  if(dts_host_preprocessor)
+    set(CMAKE_DTS_PREPROCESSOR ${dts_host_preprocessor})
+  endif()
+endif()
+
+if(DTS_ONLY_RUN AND DEFINED CMAKE_DTS_PREPROCESSOR)
+  # Take over the one preprocessor flag the toolchain files would have set;
+  # note that NOSYSDEF_CFLAG may be an empty string, and set_ifndef() does
+  # not work with empty string.
+  if(NOT DEFINED NOSYSDEF_CFLAG)
+    set(NOSYSDEF_CFLAG -undef)
+  endif()
+else()
+  find_package(HostTools)
+endif()
 find_package(Dtc 1.4.6)
 
 # This module makes information from the devicetree available to
@@ -440,14 +481,39 @@ function(dts_build_info_output)
   build_info(devicetree files PATH ${dts_files})
   build_info(devicetree include-dirs PATH ${DTS_ROOT_SYSTEM_INCLUDE_DIRS})
   build_info(devicetree bindings-dirs PATH ${CACHED_DTS_ROOT_BINDINGS})
+
+  # Everything the preprocessor read, so that a consumer of the devicetree
+  # can tell when it has gone stale. 'empty_file.c' only exists to give the
+  # preprocessor an input file and is not part of the devicetree.
+  set(include_files ${DTS_INCLUDE_FILES})
+  list(REMOVE_ITEM include_files ${ZEPHYR_BASE}/misc/empty_file.c)
+  if(include_files)
+    build_info(devicetree include-files PATH ${include_files})
+  endif()
+
+  # The dtc flags the board asked for in its pre_dt_board.cmake, which decide
+  # among other things whether the register/unit-address mismatch warning is
+  # enabled.
+  if(EXTRA_DTC_FLAGS)
+    build_info(devicetree extra-dtc-flags VALUE ${EXTRA_DTC_FLAGS})
+  endif()
 endfunction()
 
+# Three of the outputs of this module exist only for the stages that follow
+# it: 'Kconfig.dts' for Kconfig, 'devicetree_generated.h' for compilation and
+# the imported devicetree target for the CMake dt_* API. Each is produced
+# only by a run that goes on to reach its consumer. 'zephyr.dts' and
+# 'edt.pickle', which this module is for, always are.
 macro(dts_init)
   dts_configuration_files()
   dts_edt_pickle()
-  dts_gen_defines()
-  dts_gen_driver_kconfig()
-  dts_import()
+  if(NOT DTS_ONLY_RUN)
+    dts_gen_driver_kconfig()
+  endif()
+  if(NOT DTS_COMPONENT_RUN)
+    dts_gen_defines()
+    dts_import()
+  endif()
   dts_dtc()
   dts_build_info_output()
 endmacro()
