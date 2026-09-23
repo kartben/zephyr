@@ -30,6 +30,8 @@ int zvfs_poll_internal(struct zvfs_pollfd *fds, int nfds, k_timeout_t timeout)
 	struct k_mutex *lock;
 	k_timepoint_t end;
 	bool offload = false;
+	bool update_optional = true;
+	bool did_update = false;
 	const struct fd_op_vtable *offl_vtable = NULL;
 	void *offl_ctx = NULL;
 
@@ -45,9 +47,17 @@ int zvfs_poll_internal(struct zvfs_pollfd *fds, int nfds, k_timeout_t timeout)
 			continue;
 		}
 
+		/* Unsolicited POLLERR/POLLHUP on an fd with no requested
+		 * events can only surface through the update pass.
+		 */
+		if (pfd->events == 0) {
+			update_optional = false;
+		}
+
 		ctx = zvfs_get_fd_obj_and_vtable(pfd->fd, &vtable, &lock);
 		if (ctx == NULL) {
 			/* Will set POLLNVAL in return loop */
+			update_optional = false;
 			continue;
 		}
 
@@ -55,6 +65,16 @@ int zvfs_poll_internal(struct zvfs_pollfd *fds, int nfds, k_timeout_t timeout)
 
 		result = zvfs_fdtable_call_ioctl(vtable, ctx, ZFD_IOCTL_POLL_PREPARE, pfd, &pev,
 						 pev_end);
+		if (result == ZFD_POLL_PREPARE_UPDATE_OPTIONAL) {
+			/* This backend's update pass has no side effects and
+			 * reports nothing a registered k_poll event does not
+			 * capture (see fdtable.h).
+			 */
+			result = 0;
+		} else {
+			update_optional = false;
+		}
+
 		if (result == -EALREADY) {
 			/* If POLL_PREPARE returned with EALREADY, it means
 			 * it already detected that some socket is ready. In
@@ -113,8 +133,48 @@ int zvfs_poll_internal(struct zvfs_pollfd *fds, int nfds, k_timeout_t timeout)
 			return -1;
 		}
 
+		if (ret == -EAGAIN && update_optional && !did_update) {
+			struct k_poll_event *pe;
+
+			/* The wait timed out and every descriptor declared its
+			 * update pass optional: unless an event fired in the
+			 * window between the timeout expiring and the poller
+			 * deregistering, no descriptor has anything to report,
+			 * so the per-descriptor update pass (fd resolution,
+			 * fd lock/unlock and two ioctl calls each) is skipped.
+			 * Descriptor validity is still checked so that a
+			 * descriptor closed during the wait reports POLLNVAL.
+			 */
+			for (pe = poll_events; pe < pev; pe++) {
+				if (pe->state != K_POLL_STATE_NOT_READY) {
+					break;
+				}
+			}
+
+			if (pe == pev) {
+				ret = 0;
+
+				for (pfd = fds, i = nfds; i--; pfd++) {
+					pfd->revents = 0;
+
+					if (pfd->fd < 0) {
+						continue;
+					}
+
+					if (zvfs_get_fd_obj_and_vtable(pfd->fd, &vtable, &lock) ==
+					    NULL) {
+						pfd->revents = ZVFS_POLLNVAL;
+						ret++;
+					}
+				}
+
+				return ret;
+			}
+		}
+
 		retry = false;
 		ret = 0;
+		did_update = true;
 
 		pev = poll_events;
 		for (pfd = fds, i = nfds; i--; pfd++) {

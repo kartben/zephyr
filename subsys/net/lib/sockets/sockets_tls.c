@@ -4136,6 +4136,12 @@ static int ztls_poll_prepare_ctx(struct tls_context *ctx,
 
 	ret = zvfs_fdtable_call_ioctl(vtable, obj, ZFD_IOCTL_POLL_PREPARE,
 				   pfd, pev, pev_end);
+	if (ret == ZFD_POLL_PREPARE_UPDATE_OPTIONAL) {
+		/* The TLS layer has update-only state of its own, so the
+		 * underlying socket's declaration must not propagate.
+		 */
+		ret = 0;
+	}
 	if (ret != 0) {
 		goto exit;
 	}
@@ -4472,6 +4478,9 @@ static int ztls_poll_update_ctx(struct tls_context *ctx,
 			ret = zvfs_fdtable_call_ioctl(vtable, obj,
 						   ZFD_IOCTL_POLL_PREPARE,
 						   pfd, pev, *pev + 1);
+			if (ret == ZFD_POLL_PREPARE_UPDATE_OPTIONAL) {
+				ret = 0;
+			}
 			if (ret != 0 && ret != -EALREADY) {
 				goto out;
 			}

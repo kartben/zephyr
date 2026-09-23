@@ -307,6 +307,19 @@ enum {
 };
 
 /**
+ * ZFD_IOCTL_POLL_PREPARE may return this positive value instead of 0 to
+ * declare that the descriptor's ZFD_IOCTL_POLL_UPDATE handler is optional
+ * when nothing happened: it has no side effects, and every condition it
+ * would report either already existed at prepare time (in which case
+ * prepare returned -EALREADY) or sets the state of a k_poll event
+ * registered by prepare.  poll() may then skip the update pass entirely
+ * when the wait timed out with no registered event signaled.  Backends
+ * whose update pass reports state not covered by the above, or performs
+ * cleanup (deregistration), must keep returning 0.
+ */
+#define ZFD_POLL_PREPARE_UPDATE_OPTIONAL 1
+
+/**
  * @brief Open a file with a given name.
  *
  * @param name Name of the file
