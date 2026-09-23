@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -1052,6 +1053,70 @@ ZTEST(util, test_SIZEOF_FIELD)
 	BUILD_ASSERT(SIZEOF_FIELD(struct test_t, b) == 1, "The b member is 1-byte wide.");
 	BUILD_ASSERT(SIZEOF_FIELD(struct test_t, c) == 17, "The c member is 17-byte wide.");
 	BUILD_ASSERT(SIZEOF_FIELD(struct test_t, d) == 2, "The d member is 2-byte wide.");
+}
+
+ZTEST(util, test_FLEXIBLE_ARRAY_DECLARE)
+{
+	/* The wrapper the macro puts around the array must cost nothing: the
+	 * array has to land where a plain trailing array of the same type
+	 * would, in C and in C++ alike.
+	 */
+	struct only {
+		FLEXIBLE_ARRAY_DECLARE(uint8_t, data);
+	};
+	struct after_header {
+		uint32_t hdr;
+		FLEXIBLE_ARRAY_DECLARE(uint16_t, data);
+	};
+	struct aligned {
+		uint8_t hdr;
+		FLEXIBLE_ARRAY_DECLARE(uint32_t, data);
+	};
+	struct in_union {
+		uint8_t hdr;
+		union {
+			uint8_t byte;
+			FLEXIBLE_ARRAY_DECLARE(uint8_t, data);
+		};
+	};
+	struct not_last {
+		uint8_t hdr;
+		FLEXIBLE_ARRAY_DECLARE(uint8_t, data);
+		uint8_t tail;
+	};
+	union {
+		struct after_header msg;
+		uint8_t bytes[sizeof(uint32_t) + 2 * sizeof(uint16_t)];
+	} storage;
+
+	BUILD_ASSERT(sizeof(struct only) == 0, "The wrapper takes no space.");
+	BUILD_ASSERT(offsetof(struct only, data) == 0, "The array is at the start.");
+
+	BUILD_ASSERT(sizeof(struct after_header) == sizeof(uint32_t), "No trailing padding.");
+	BUILD_ASSERT(offsetof(struct after_header, data) == sizeof(uint32_t),
+		     "The array follows the header.");
+
+	BUILD_ASSERT(sizeof(struct aligned) == sizeof(uint32_t), "The wrapper takes no space.");
+	BUILD_ASSERT(offsetof(struct aligned, data) == sizeof(uint32_t),
+		     "The array keeps the alignment of its type.");
+
+	BUILD_ASSERT(sizeof(struct in_union) == 2, "The wrapper takes no space.");
+	BUILD_ASSERT(offsetof(struct in_union, data) == 1, "The array shares the union.");
+
+	BUILD_ASSERT(sizeof(struct not_last) == 2, "The wrapper takes no space.");
+	BUILD_ASSERT(offsetof(struct not_last, data) == offsetof(struct not_last, tail),
+		     "The array overlaps what follows it.");
+
+	memset(&storage, 0, sizeof(storage));
+
+	storage.msg.hdr = UINT32_MAX;
+	zassert_equal(storage.msg.data[0], 0, "The array overlaps the header.");
+	zassert_equal(storage.msg.data[1], 0, "The array overlaps the header.");
+
+	storage.msg.data[0] = UINT16_MAX;
+	storage.msg.data[1] = UINT16_MAX;
+	zassert_equal(storage.msg.hdr, UINT32_MAX, "The header overlaps the array.");
+	zassert_equal(storage.bytes[sizeof(uint32_t)], UINT8_MAX, "The array is misplaced.");
 }
 
 ZTEST(util, test_utf8_trunc_truncated)
