@@ -1,0 +1,6 @@
+board:
+  name: xteink_x4
+  full_name: Xteink X4 eReader
+  vendor: xteink
+  socs:
+  - name: esp32c3
