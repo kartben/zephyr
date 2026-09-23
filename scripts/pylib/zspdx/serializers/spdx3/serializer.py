@@ -891,7 +891,7 @@ class SPDX3Serializer:
         components = sbom_doc.components.values()
 
         element_ids, import_ids = self._collect_document_element_ids(sbom_doc, components)
-        self._populate_document(document, element_ids, import_ids, components, sbom_doc)
+        self._populate_document(document, element_ids, import_ids, sbom_doc)
 
         self.elements.append(document)
         self.documents[sbom_doc.name] = document
@@ -1062,24 +1062,67 @@ class SPDX3Serializer:
         document: spdx.SpdxDocument,
         element_ids: set,
         import_ids: set,
-        components,
         sbom_doc: SBOMDocument,
     ):
         """Attach the selected elements, imports and root components to the document."""
-        for element in self.elements:
-            if self._belongs_in_document(element, document._id, element_ids):
-                document.element.append(element)
+        owned_elements = [
+            element
+            for element in self.elements
+            if self._belongs_in_document(element, document._id, element_ids)
+        ]
+
+        sbom = self._create_sbom(sbom_doc, owned_elements)
+
+        for element in owned_elements:
+            document.element.append(element)
+        document.element.append(sbom)
 
         self._add_external_maps(document, import_ids)
 
-        for component in components:
-            package = self.component_elements.get(component.name)
-            if package:
-                document.rootElement.append(package)
+        # The SpdxDocument has a single root: the Sbom that collects this document's
+        # content. Consumers looking for "what does this document describe?" find the
+        # Sbom, and its own rootElement names the packages the SBOM is about.
+        document.rootElement.append(sbom)
 
-        # The Build element is a root of the build document.
-        if self.build and sbom_doc.name == self._BUILD_DOCUMENT:
-            document.rootElement.append(self.build)
+    def _create_sbom(self, sbom_doc: SBOMDocument, owned_elements):
+        """Build the ``software_Sbom`` that collects a document's content.
+
+        SPDX 3 draws a distinction that SPDX 2.x does not: an ``SpdxDocument`` is a
+        serialization container, while an ``Sbom`` is the bill of materials itself. Only
+        the latter can carry ``software_sbomType``, and tooling that looks for "the
+        packages this SBOM describes" (the SPDX 3 equivalent of a 2.x ``DESCRIBES``
+        relationship) looks at an Sbom's ``rootElement``, not the document's.
+        """
+        namespace = (
+            sbom_doc.namespace.rstrip("/")
+            if sbom_doc.namespace
+            else self.sbom_data.namespace_prefix.rstrip("/")
+        )
+
+        sbom = spdx.software_Sbom()
+        sbom._id = self._shorten_id(f"{namespace}/sboms/{sbom_doc.name}")
+        sbom.creationInfo = self.creation_info._id
+        sbom.name = self._DOCUMENT_NAMES.get(sbom_doc.name, f"Zephyr {sbom_doc.name.capitalize()}")
+        # Every document describes a completed Zephyr build, so each declares the "build"
+        # SBOM type: the SPDX 3 encoding of the SBOM generation context that CISA's
+        # Framing Software Component Transparency lists as a baseline attribute.
+        sbom.software_sbomType.append(spdx.software_SbomType.build)
+
+        # Everything the document serializes is part of this SBOM.
+        for element in owned_elements:
+            sbom.element.append(element._id)
+
+        # An SBOM has a single top-level subject: the product it is about. The other
+        # packages reach it through relationships rather than by being roots too, so
+        # consumers can tell "the thing described" from "the things it is made of".
+        root_name = sbom_doc.get_root_component()
+        root_package = self.component_elements.get(root_name) if root_name else None
+        if root_package:
+            sbom.rootElement.append(root_package._id)
+        else:
+            _logger.warning(f"document {sbom_doc.name} has no root component")
+
+        return sbom
 
     def _add_external_maps(self, document: spdx.SpdxDocument, import_ids: set):
         """Declare elements used by, but defined outside, this document.
@@ -1280,22 +1323,11 @@ class SPDX3Serializer:
 
         seen_ids = {getattr(elem, '_id', None) for elem in elements}
 
-        referenced_ids = {
-            elem._id for elem in getattr(document, 'element', []) if getattr(elem, '_id', None)
-        }
-
-        elements_by_id = {}
-        for elem in self.elements:
+        for elem in getattr(document, 'element', []):
             elem_id = getattr(elem, '_id', None)
-            if elem_id and elem_id not in elements_by_id:
-                elements_by_id[elem_id] = elem
-
-        for elem_id in referenced_ids:
-            if elem_id in seen_ids:
+            if not elem_id or elem_id in seen_ids:
                 continue
-            elem = elements_by_id.get(elem_id)
-            if elem is not None:
-                elements.append(elem)
-                seen_ids.add(elem_id)
+            elements.append(elem)
+            seen_ids.add(elem_id)
 
         return elements
