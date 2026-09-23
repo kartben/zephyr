@@ -56,10 +56,15 @@ static inline int z_vrfy_auxdisplay_cursor_position_set(const struct device *dev
 static inline int z_vrfy_auxdisplay_cursor_position_get(const struct device *dev, int16_t *x,
 							int16_t *y)
 {
+	int16_t k_x = 0;
+	int16_t k_y = 0;
+	int ret;
+
 	K_OOPS(K_SYSCALL_DRIVER_AUXDISPLAY(dev, cursor_position_get));
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(x, sizeof(int16_t)));
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(y, sizeof(int16_t)));
-	return z_impl_auxdisplay_cursor_position_get(dev, x,  y);
+	ret = z_impl_auxdisplay_cursor_position_get(dev, &k_x, &k_y);
+	K_OOPS(k_usermode_to_copy(x, &k_x, sizeof(*x)));
+	K_OOPS(k_usermode_to_copy(y, &k_y, sizeof(*y)));
+	return ret;
 }
 #include <zephyr/syscalls/auxdisplay_cursor_position_get_mrsh.c>
 
@@ -75,19 +80,28 @@ static inline int z_vrfy_auxdisplay_display_position_set(const struct device *de
 static inline int z_vrfy_auxdisplay_display_position_get(const struct device *dev, int16_t *x,
 							 int16_t *y)
 {
+	int16_t k_x = 0;
+	int16_t k_y = 0;
+	int ret;
+
 	K_OOPS(K_SYSCALL_DRIVER_AUXDISPLAY(dev, display_position_get));
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(x, sizeof(int16_t)));
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(y, sizeof(int16_t)));
-	return z_impl_auxdisplay_display_position_get(dev, x, y);
+	ret = z_impl_auxdisplay_display_position_get(dev, &k_x, &k_y);
+	K_OOPS(k_usermode_to_copy(x, &k_x, sizeof(*x)));
+	K_OOPS(k_usermode_to_copy(y, &k_y, sizeof(*y)));
+	return ret;
 }
 #include <zephyr/syscalls/auxdisplay_display_position_get_mrsh.c>
 
 static inline int z_vrfy_auxdisplay_capabilities_get(const struct device *dev,
 						struct auxdisplay_capabilities *capabilities)
 {
+	struct auxdisplay_capabilities caps = { 0 };
+	int ret;
+
 	K_OOPS(K_SYSCALL_DRIVER_AUXDISPLAY(dev, capabilities_get));
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(capabilities, sizeof(struct auxdisplay_capabilities)));
-	return z_impl_auxdisplay_capabilities_get(dev, capabilities);
+	ret = z_impl_auxdisplay_capabilities_get(dev, &caps);
+	K_OOPS(k_usermode_to_copy(capabilities, &caps, sizeof(*capabilities)));
+	return ret;
 }
 #include <zephyr/syscalls/auxdisplay_capabilities_get_mrsh.c>
 
@@ -101,9 +115,13 @@ static inline int z_vrfy_auxdisplay_clear(const struct device *dev)
 static inline int z_vrfy_auxdisplay_brightness_get(const struct device *dev,
 						   uint8_t *brightness)
 {
+	uint8_t k_brightness = 0;
+	int ret;
+
 	K_OOPS(K_SYSCALL_DRIVER_AUXDISPLAY(dev, brightness_get));
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(brightness, sizeof(uint8_t)));
-	return z_impl_auxdisplay_brightness_get(dev, brightness);
+	ret = z_impl_auxdisplay_brightness_get(dev, &k_brightness);
+	K_OOPS(k_usermode_to_copy(brightness, &k_brightness, sizeof(*brightness)));
+	return ret;
 }
 #include <zephyr/syscalls/auxdisplay_brightness_get_mrsh.c>
 
@@ -118,9 +136,13 @@ static inline int z_vrfy_auxdisplay_brightness_set(const struct device *dev,
 static inline int z_vrfy_auxdisplay_backlight_get(const struct device *dev,
 						  uint8_t *backlight)
 {
+	uint8_t k_backlight = 0;
+	int ret;
+
 	K_OOPS(K_SYSCALL_DRIVER_AUXDISPLAY(dev, backlight_get));
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(backlight, sizeof(uint8_t)));
-	return z_impl_auxdisplay_backlight_get(dev, backlight);
+	ret = z_impl_auxdisplay_backlight_get(dev, &k_backlight);
+	K_OOPS(k_usermode_to_copy(backlight, &k_backlight, sizeof(*backlight)));
+	return ret;
 }
 #include <zephyr/syscalls/auxdisplay_backlight_get_mrsh.c>
 
@@ -142,9 +164,29 @@ static inline int z_vrfy_auxdisplay_is_busy(const struct device *dev)
 static inline int z_vrfy_auxdisplay_custom_character_set(const struct device *dev,
 							 struct auxdisplay_character *character)
 {
+	struct auxdisplay_character character_copy;
+	struct auxdisplay_capabilities caps = { 0 };
+	int ret;
+
 	K_OOPS(K_SYSCALL_DRIVER_AUXDISPLAY(dev, custom_character_set));
-	K_OOPS(K_SYSCALL_MEMORY_READ(character, sizeof(struct auxdisplay_character)));
-	return z_impl_auxdisplay_custom_character_set(dev, character);
+	K_OOPS(k_usermode_from_copy(&character_copy, character, sizeof(character_copy)));
+
+	ret = z_impl_auxdisplay_capabilities_get(dev, &caps);
+	if (ret != 0) {
+		return ret;
+	}
+
+	if ((caps.custom_character_width == 0U) || (caps.custom_character_height == 0U)) {
+		return -EINVAL;
+	}
+
+	K_OOPS(K_SYSCALL_MEMORY_ARRAY_READ(character_copy.data,
+					   caps.custom_character_width,
+					   caps.custom_character_height));
+
+	ret = z_impl_auxdisplay_custom_character_set(dev, &character_copy);
+	K_OOPS(k_usermode_to_copy(character, &character_copy, sizeof(*character)));
+	return ret;
 }
 #include <zephyr/syscalls/auxdisplay_custom_character_set_mrsh.c>
 
@@ -160,9 +202,15 @@ static inline int z_vrfy_auxdisplay_write(const struct device *dev, const uint8_
 static inline int z_vrfy_auxdisplay_custom_command(const struct device *dev,
 						   struct auxdisplay_custom_data *data)
 {
+	struct auxdisplay_custom_data data_copy;
+
 	K_OOPS(K_SYSCALL_DRIVER_AUXDISPLAY(dev, custom_command));
-	K_OOPS(K_SYSCALL_MEMORY_READ(data, sizeof(struct auxdisplay_custom_data)));
-	return z_impl_auxdisplay_custom_command(dev, data);
+	K_OOPS(k_usermode_from_copy(&data_copy, data, sizeof(data_copy)));
+	if (data_copy.len > 0U) {
+		K_OOPS(K_SYSCALL_MEMORY_READ(data_copy.data, data_copy.len));
+	}
+
+	return z_impl_auxdisplay_custom_command(dev, &data_copy);
 }
 #include <zephyr/syscalls/auxdisplay_custom_command_mrsh.c>
 
