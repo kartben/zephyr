@@ -1,0 +1,107 @@
+# Copyright 2026 Benjamin Cabé
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Sensor based encoder input device
+
+  Implement an input device generating relative axis event reports from any
+  sensor device exposing a rotation or a quadrature encoder count channel,
+  such as a hardware quadrature decoder peripheral or a magnetic angle
+  sensor.
+
+  The driver periodically samples the configured channel of the backing
+  sensor device, computes the difference from the previous sample and
+  reports it as a relative input event.
+
+compatible: "zephyr,input-sensor-encoder"
+
+include: base.yaml
+
+properties:
+  sensor:
+    type: phandle
+    required: true
+    description: |
+      Sensor device to read the encoder position from. Must support the
+      channel specified in the channel property.
+
+  channel:
+    type: string
+    default: "rotation"
+    enum:
+      - "rotation"
+      - "encoder-count"
+    description: |
+      Sensor channel to sample:
+
+      - "rotation" reads SENSOR_CHAN_ROTATION, an absolute angle. The raw
+        value is scaled to millidegrees.
+      - "encoder-count" reads SENSOR_CHAN_ENCODER_COUNT, the raw decoder
+        counter value. The raw value is used as-is, in counts.
+
+      Defaults to "rotation", which is the channel supported by the widest
+      range of sensor drivers.
+
+  zephyr,axis:
+    type: int
+    required: true
+    description: |
+      The input code for the axis to report for the device, typically any of
+      INPUT_REL_*.
+
+  poll-period-ms:
+    type: int
+    default: 20
+    description: |
+      How often to sample the sensor channel, in milliseconds. Defaults to
+      20ms if unspecified.
+
+  steps-per-period:
+    type: int
+    default: 1
+    description: |
+      How many raw units to accumulate before reporting an input event, and
+      the value each reported event unit corresponds to.
+
+      The unit depends on the channel property: counts for "encoder-count",
+      millidegrees for "rotation". For example an encoder with 16 detents
+      per revolution read through the "rotation" channel would use 22500
+      (22.5 degrees per detent), and the same encoder read through the
+      "encoder-count" channel with a single count per detent would use 1.
+
+      Any remainder is carried over to the next sample, so no movement is
+      lost. Defaults to 1 if unspecified.
+
+  rollover:
+    type: int
+    description: |
+      Modulus of the raw value, in the same unit as steps-per-period, used to
+      detect and correct counter wrap around.
+
+      If non zero, a difference between two samples larger than half the
+      modulus is interpreted as a wrap around, so that for instance a
+      rotation going from 359 to 1 degrees is reported as a positive two
+      degrees movement rather than a negative 358 degrees one.
+
+      Defaults to 360000 (360 degrees expressed in millidegrees) for the
+      "rotation" channel and to 0, no wrap around detection, for the
+      "encoder-count" channel. Set it explicitly for a counter that wraps at
+      a known value, for example 65536 for a 16 bit counter.
+
+  invert-direction:
+    type: boolean
+    description: |
+      Invert the reported direction.
+
+examples:
+  - |
+    #include <zephyr/dt-bindings/input/input-event-codes.h>
+
+    encoder {
+            compatible = "zephyr,input-sensor-encoder";
+            sensor = <&qdec0>;
+            channel = "rotation";
+            steps-per-period = <22500>;
+            zephyr,axis = <INPUT_REL_WHEEL>;
+            poll-period-ms = <20>;
+    };
