@@ -1740,3 +1740,8 @@ test_i2c_sts35: sts35@e1 {
 	compatible = "sensirion,sts35";
 	reg = <0xe1>;
 };
+
+test_i2c_ak09940a: ak09940a@e2 {
+	compatible = "asahi-kasei,ak09940a";
+	reg = <0xe2>;
+};
