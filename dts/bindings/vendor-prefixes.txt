@@ -260,6 +260,7 @@ fanke	FANKE Technology Co., Ltd.
 faraday	Faraday Technology Corporation
 fastrax	Fastrax Oy
 fcs	Fairchild Semiconductor
+feetech	Shenzhen Feetech RC Model Co., Ltd.
 feixin	Shenzhen Feixin Photoelectic Co., Ltd
 feiyang	Shenzhen Fly Young Technology Co.,LTD.
 festo	Festo SE & Co. KG
