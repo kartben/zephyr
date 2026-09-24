@@ -152,6 +152,16 @@ Boards
   <REGULATOR_RPI_PICO_MODE_NORMAL>`` properties are now set by default in the SoC dtsi. Boards
   that previously set them explicitly can remove those lines. (:github:`114751`)
 
+* On RP2350 (rpi_pico family), the ``hazard3`` and ``m33`` cpucluster qualifiers are deprecated in
+  favor of ``hazard3_0`` and ``m33_0``, which explicitly identify the cluster as CPU0 and pave the
+  way for dual-core support. All in-tree RP2350 boards have been migrated to the new qualifiers
+  (e.g. ``rpi_pico2/rp2350a/m33`` to ``rpi_pico2/rp2350a/m33_0``). Out-of-tree boards using the bare
+  ``hazard3``/``m33`` qualifiers should rename their board files, ``board.yml`` ``cpucluster:``
+  entries, and Kconfig select lines to use ``SOC_RP2350[AB]_HAZARD3_0``/``SOC_RP2350[AB]_M33_0``.
+  The bare ``hazard3``/``m33`` entries in ``soc.yml`` and the corresponding
+  ``SOC_RP2350[AB]_HAZARD3``/``_M33`` Kconfig symbols are deprecated and will both be removed in a
+  future release.
+
 * The Kconfig options :kconfig:option:`CONFIG_SRAM_SIZE` and
   :kconfig:option:`CONFIG_SRAM_BASE_ADDRESS` have been deprecated, boards should instead use the
   devicetree ``zephyr.sram`` chosen node to specify the RAM node which will be used (whose values
@@ -703,6 +713,16 @@ Display
   BGR channel order. Boards relying on firmware-negotiated pixel order to correct swapped
   channels must also set ``red-blue-swap``. (:github:`115633`)
 
+* The ``chipone,co5300`` MIPI DSI display driver no longer maintains an
+  internal shadow framebuffer, and the ``pitch-align``, ``addr-align``, and
+  ``ext-ram`` devicetree properties have been removed from the
+  :dtcompatible:`chipone,co5300` binding. Boards previously relying on these
+  properties to satisfy display-controller alignment requirements should
+  instead enable :kconfig:option:`CONFIG_LV_Z_AREA_X_ALIGNMENT_WIDTH` and
+  :kconfig:option:`CONFIG_LV_Z_AREA_Y_ALIGNMENT_WIDTH` (LVGL) so that
+  invalidated areas are rounded to the required boundary before reaching the
+  driver. (:github:`117765`)
+
 DMA
 ===
 
@@ -914,6 +934,9 @@ GPIO
   behavior as before since these flags were effectively ignored. (:github:`104690`)
 
 * On STM32F1 series, GPIO output pins now use 50 MHz max. speed instead of 10 MHz. (:github:`104690`)
+
+* The :dtcompatible:`awinic,aw9523b-gpio` driver no longer has the ``reset-gpios`` property. This has instead
+  been moved to the parent :dtcompatible:`awinic,aw9523b` MFD device.
 
 Haptics
 =======
@@ -1805,6 +1828,16 @@ Timer
   :c:func:`sys_clock_elapsed` and :c:func:`sys_clock_cycle_get_32` /
   :c:func:`sys_clock_cycle_get_64` (:github:`115844`).
 
+* When :kconfig:option:`SYSTEM_TIMER_LPM_COMPANION_COUNTER` is enabled, the Low-Power
+  Companion counter, selected by the :ref:`generic chosen <devicetree-zephyr-chosen-nodes>`
+  ``zephyr,system-timer-companion``, is checked at build time and must be usable as
+  wake-up source. If not already present, the ``wakeup-source`` property should be
+  added to such nodes to indicate they can be used as wake-up source. (:github:`117274`)
+
+  .. note::
+
+    This behavior was already expected in previous Zephyr releases but never asserted.
+
 USB
 ===
 
@@ -2087,6 +2120,14 @@ Bluetooth HCI
   layer (e.g. the Bluetooth Host stack). For drivers that need access to any error from recv()
   (most don't) there's also a new :c:func:`bt_hci_recv_err` API that leaves the responsibility
   of unrefing the buffer to the caller in case of error situations.
+
+* :kconfig:option:`CONFIG_BT_HCI_SET_PUBLIC_ADDR` no longer selects
+  :kconfig:option:`CONFIG_BT_HCI_SETUP`. Out-of-tree HCI drivers that apply the public
+  address in their ``setup()`` implementation must now select
+  :kconfig:option:`CONFIG_BT_HCI_SETUP` themselves; without it the ``setup`` member does
+  not exist in :c:struct:`bt_hci_driver_api` and the callback is not invoked. The address
+  is now also available from the time the transport is opened, through
+  :c:func:`bt_hci_get_public_addr`, allowing drivers to apply it during ``open()`` instead.
 
 Bluetooth Host
 ==============

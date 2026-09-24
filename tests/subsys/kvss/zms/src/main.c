@@ -23,6 +23,12 @@
 #define TEST_ZMS_AREA_DEV    DEVICE_DT_GET(DT_MTD_FROM_PARTITION(DT_NODELABEL(TEST_ZMS_AREA)))
 #define TEST_DATA_ID         1
 #define TEST_SECTOR_COUNT    5U
+
+/* Free space tests walk a whole sector entry by entry, too slow on large
+ * sectors.
+ */
+#define ZMS_MAX_SECTOR_SIZE_FOR_FREE_SPACE_TEST 8192U
+
 #if defined(CONFIG_ZMS_LOOKUP_CACHE_MANUAL)
 #define TEST_ZMS_LOOKUP_CACHE_SIZE 64
 #elif defined(CONFIG_ZMS_LOOKUP_CACHE)
@@ -174,6 +180,62 @@ ZTEST_F(zms, test_zms_write)
 	zassert_true(err == 0, "zms_mount call failure: %d", err);
 
 	execute_long_pattern_write(TEST_DATA_ID, &fixture->fs);
+}
+
+/*
+ * zms_recover_last_ate() scans allocation table slots downwards from the end
+ * of a sector. As it finds external-data ATEs, their offset and aligned data
+ * length establish the lower bound of that scan: slots below this boundary
+ * belong to the data area and must not be interpreted as ATEs.
+ *
+ * An inline-data ATE following an external-data ATE must preserve that lower
+ * bound. This test creates that sequence, embeds a CRC-valid ATE-shaped
+ * pattern in the payload, and verifies that recovery does not scan far enough
+ * to let the payload alter the recovered data write address.
+ */
+ZTEST_F(zms, test_zms_mount_fake_ate)
+{
+	struct zms_ate fake_ate;
+	uint8_t data[64];
+	uint32_t inline_data = 0;
+	int err;
+	ssize_t len;
+
+	err = zms_mount(&fixture->fs);
+	zassert_ok(err, "zms_mount failed: %d", err);
+
+	/* Fill the data record with erased bytes, then embed a valid-looking ATE. */
+	memset(data, fixture->fs.flash_parameters->erase_value, sizeof(data));
+	memset(&fake_ate, 0, sizeof(fake_ate));
+	fake_ate.cycle_cnt = fixture->fs.sector_cycle;
+	fake_ate.len = 256;
+	fake_ate.id = 0x01000100;
+	fake_ate.offset = UINT32_MAX;
+	fake_ate.crc8 = crc8_ccitt(0xff,
+				  (uint8_t *)&fake_ate + SIZEOF_FIELD(struct zms_ate, crc8),
+				  sizeof(fake_ate) - SIZEOF_FIELD(struct zms_ate, crc8));
+	memcpy(data + sizeof(fake_ate), &fake_ate, sizeof(fake_ate));
+
+	len = zms_write(&fixture->fs, TEST_DATA_ID, data, sizeof(data));
+	zassert_equal(len, sizeof(data), "zms_write failed: %zd", len);
+
+	/*
+	 * The newer inline-data ATE is visited after the external-data ATE during
+	 * the downward scan. It verifies that this inline ATE preserves the data
+	 * boundary established by the external-data ATE.
+	 */
+	len = zms_write(&fixture->fs, TEST_DATA_ID + 1, &inline_data, sizeof(inline_data));
+	zassert_equal(len, sizeof(inline_data), "zms_write of inline data failed: %zd", len);
+
+	/* Simulate a reboot so recovery, rather than the live cursors, is used. */
+	memset(&fixture->fs, 0, sizeof(fixture->fs));
+	(void)setup();
+	err = zms_mount(&fixture->fs);
+	zassert_ok(err, "zms_mount after reboot failed: %d", err);
+
+	zassert_equal(fixture->fs.data_wra, sizeof(data),
+		      "data payload was mistaken for an ATE: data_wra=%llx",
+		      fixture->fs.data_wra);
 }
 
 #ifdef CONFIG_TEST_ZMS_SIMULATOR
@@ -1387,6 +1449,11 @@ ZTEST_F(zms, test_zms_free_space)
 
 	fixture->fs.sector_count = 2;
 
+	/* Too slow on large sectors. */
+	if (fixture->fs.sector_size > ZMS_MAX_SECTOR_SIZE_FOR_FREE_SPACE_TEST) {
+		ztest_test_skip();
+	}
+
 	err = zms_mount(&fixture->fs);
 	zassert_true(err == 0, "zms_mount call failure: %d", err);
 
@@ -1626,6 +1693,11 @@ ZTEST_F(zms, test_zms_free_space_5sectors)
 	char *write_buf;
 
 	fixture->fs.sector_count = 5;
+
+	/* Same reason as in test_zms_free_space. */
+	if (fixture->fs.sector_size > ZMS_MAX_SECTOR_SIZE_FOR_FREE_SPACE_TEST) {
+		ztest_test_skip();
+	}
 
 	err = zms_mount(&fixture->fs);
 	zassert_true(err == 0, "zms_mount call failure: %d", err);

@@ -456,7 +456,8 @@ static int zms_flash_erase_sector(struct zms_fs *fs, uint64_t addr)
 		return rc;
 	}
 
-	if (zms_flash_cmp_const(fs, addr, fs->flash_parameters->erase_value, fs->sector_size)) {
+	if (flash_params_erase_value_readable(fs->flash_parameters) &&
+	    zms_flash_cmp_const(fs, addr, fs->flash_parameters->erase_value, fs->sector_size)) {
 		LOG_ERR("Failure while erasing the sector at offset 0x%lx", (long)offset);
 		rc = -ENXIO;
 	}
@@ -712,9 +713,12 @@ static int zms_recover_last_ate(struct zms_fs *fs, uint64_t *addr, uint64_t *dat
 			return rc;
 		}
 		if (zms_ate_valid(fs, &end_ate)) {
-			/* found a valid ate, update data_end_addr and *addr */
-			data_end_addr &= ADDR_SECT_MASK;
+			/* Found a valid ATE.
+			 * Unconditionally update ATE write address.
+			 * Only update data end address for entry with data.
+			 */
 			if (end_ate.len > ZMS_DATA_IN_ATE_SIZE) {
+				data_end_addr &= ADDR_SECT_MASK;
 				data_end_addr += end_ate.offset + zms_al_size(fs, end_ate.len);
 				*data_wra = data_end_addr;
 			}
@@ -1467,9 +1471,10 @@ static int zms_init(struct zms_fs *fs)
 
 		/* Verify that the next location is empty.
 		 * For devices that do not need erase this should be a non valid ATE.
-		 * For devices that needs erase this should be filled with erase_value.
+		 * For devices that needs erase this should be filled with erase_value,
+		 * unless the erase value is not readable.
 		 */
-		if (ebw_required) {
+		if (ebw_required && flash_params_erase_value_readable(fs->flash_parameters)) {
 			size_t byte;
 
 			for (byte = 0; byte < sizeof(last_ate); byte++) {
