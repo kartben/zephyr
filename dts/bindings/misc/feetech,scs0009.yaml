@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Feetech SCS0009 serial bus servo
+
+  Position-controlled servo with a 0-1023 position range that can also be switched to a
+  continuous rotation (PWM) mode. Other servos of the SCSCL series share its register map.
+
+compatible: "feetech,scs0009"
+
+on-bus: feetech-scs
+
+include: base.yaml
+
+properties:
+  reg:
+    required: true
+    description: Servo ID on the bus, from 0 to 253.

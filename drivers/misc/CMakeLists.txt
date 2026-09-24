@@ -4,6 +4,7 @@
 add_subdirectory_ifdef(CONFIG_DEVMUX devmux)
 add_subdirectory_ifdef(CONFIG_ESP_HOSTED_MCU esp_hosted_mcu)
 add_subdirectory_ifdef(CONFIG_ETHOS_U ethos_u)
+add_subdirectory_ifdef(CONFIG_FEETECH_SCS feetech_scs)
 add_subdirectory_ifdef(CONFIG_FT800 ft8xx)
 add_subdirectory_ifdef(CONFIG_GROVE_LCD_RGB grove_lcd_rgb)
 add_subdirectory_ifdef(CONFIG_MCUX_FLEXIO mcux_flexio)

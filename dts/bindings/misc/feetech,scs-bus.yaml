@@ -1,0 +1,41 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Feetech SCS serial servo bus
+
+  Half-duplex UART bus shared by Feetech SCS series serial bus servos. The node is a child of the
+  UART the bus is wired to, and each servo on the bus is a child node whose unit address is its
+  servo ID.
+
+  Example:
+
+    &uart1 {
+      current-speed = <1000000>;
+
+      servo-bus {
+        compatible = "feetech,scs-bus";
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        servo@1 {
+          compatible = "feetech,scs0009";
+          reg = <1>;
+        };
+      };
+    };
+
+compatible: "feetech,scs-bus"
+
+include: uart-device.yaml
+
+bus: feetech-scs
+
+properties:
+  "#address-cells":
+    required: true
+    const: 1
+
+  "#size-cells":
+    required: true
+    const: 0
