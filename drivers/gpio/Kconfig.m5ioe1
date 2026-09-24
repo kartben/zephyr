@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config GPIO_M5IOE1
+	bool "M5Stack M5IOE1 GPIO driver"
+	default y
+	depends on DT_HAS_M5STACK_M5IOE1_GPIO_ENABLED
+	select MFD
+	help
+	  Enable the GPIO controller driver for the M5Stack M5IOE1 I/O
+	  expander.

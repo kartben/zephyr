@@ -188,6 +188,18 @@
 				gpio-controller;
 			};
 
+			test_i2c_m5ioe1: io-expander@6f {
+				compatible = "m5stack,m5ioe1";
+				reg = <0x6f>;
+
+				test_i2c_m5ioe1_gpio: gpio {
+					compatible = "m5stack,m5ioe1-gpio";
+					gpio-controller;
+					#gpio-cells = <2>;
+					ngpios = <14>;
+				};
+			};
+
 			test_i2c_m5pm1: pmic@6e {
 				compatible = "m5stack,m5pm1";
 				reg = <0x6e>;

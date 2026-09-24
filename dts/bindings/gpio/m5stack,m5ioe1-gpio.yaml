@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+title: M5Stack M5IOE1 GPIO controller
+
+description: |
+  The controller has 14 pins, so set ngpios = <14>. GPIO pin n maps to the IOn+1 pin of the
+  M5IOE1 (pin 0 is IO1, pin 13 is IO14). Outputs support push-pull and open-drain modes and every
+  pin has configurable pull-up and pull-down resistors. Interrupts are not supported.
+
+compatible: "m5stack,m5ioe1-gpio"
+
+include: gpio-controller.yaml
+
+on-bus: m5ioe1
+
+properties:
+  "#gpio-cells":
+    const: 2
+
+gpio-cells:
+  - pin
+  - flags
