@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+title: M5Stack M5IOE1 I/O expander
+
+description: |
+  The M5IOE1 is a PY32 microcontroller running M5Stack firmware that provides 14 GPIOs, four of
+  which can be used as ADC inputs and four as PWM outputs, and a WS2812-style LED driver on IO14.
+  Its I2C address is selected between 0x6f and 0x76 by the level of IO7 at power-on.
+
+compatible: "m5stack,m5ioe1"
+
+include: i2c-device.yaml
+
+bus: m5ioe1
+
+properties:
+  reg:
+    required: true
+
+examples:
+  - |
+    &i2c0 {
+      m5ioe1: io-expander@6f {
+        compatible = "m5stack,m5ioe1";
+        reg = <0x6f>;
+
+        m5ioe1_gpio: gpio {
+          compatible = "m5stack,m5ioe1-gpio";
+          gpio-controller;
+          #gpio-cells = <2>;
+          ngpios = <14>;
+        };
+      };
+    };
