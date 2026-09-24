@@ -16,6 +16,18 @@
 / {
 	model = "M5Stack StackChan PROCPU";
 	compatible = "m5stack,stackchan";
+
+	/*
+	 * Servo motor supply. VM_EN drives a transistor base without a series
+	 * resistor, so it is pulled up by the M5IOE1 rather than driven high.
+	 */
+	servo_vm: servo-vm {
+		compatible = "regulator-fixed";
+		regulator-name = "servo_vm";
+		enable-gpios = <&m5ioe1_gpio 0 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN | GPIO_PULL_UP)>;
+		startup-delay-us = <200000>;
+		regulator-boot-on;
+	};
 };
 
 /*
@@ -37,6 +49,22 @@
 
 &uart1 {
 	current-speed = <1000000>;
+
+	servo_bus: servo-bus {
+		compatible = "feetech,scs-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		servo_yaw: servo@1 {
+			compatible = "feetech,scs0009";
+			reg = <1>;
+		};
+
+		servo_pitch: servo@2 {
+			compatible = "feetech,scs0009";
+			reg = <2>;
+		};
+	};
 };
 
 /* PORT.C (Grove) of the body is wired to GPIO17 (TX) / GPIO18 (RX). */
@@ -58,6 +86,19 @@
 		rshunt-micro-ohms = <10000>;
 		/* max expected current ~3 A / 2^15 */
 		current-lsb-microamps = <100>;
+	};
+
+	/* IO1: servo supply enable, IO14: RGB LEDs */
+	m5ioe1: io-expander@6f {
+		compatible = "m5stack,m5ioe1";
+		reg = <0x6f>;
+
+		m5ioe1_gpio: gpio {
+			compatible = "m5stack,m5ioe1-gpio";
+			gpio-controller;
+			#gpio-cells = <2>;
+			ngpios = <14>;
+		};
 	};
 };
 

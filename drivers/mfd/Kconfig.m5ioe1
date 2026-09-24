@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config MFD_M5IOE1
+	bool "M5Stack M5IOE1 I/O expander"
+	default y
+	depends on DT_HAS_M5STACK_M5IOE1_ENABLED
+	select I2C
+	help
+	  Enable the M5Stack M5IOE1 multi-function I/O expander driver.
+
+config MFD_M5IOE1_BOOT_TIMEOUT_MS
+	int "Time to wait for the M5IOE1 to answer at initialization"
+	depends on MFD_M5IOE1
+	default 1000
+	help
+	  The M5IOE1 firmware can take several hundred milliseconds to start
+	  answering on I2C after power-on. The driver polls the device for
+	  up to this many milliseconds before failing to initialize.

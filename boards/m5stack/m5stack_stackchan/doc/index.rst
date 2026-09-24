@@ -36,13 +36,21 @@ Robot body:
 
 - Battery 550mAh 3.7 V with INA226 battery monitor
 - Two SCS0009 serial servos (yaw / pitch) on UART1 (GPIO6 TX / GPIO7 RX, 1 Mbps half-duplex)
-- IO expander PY32L020 (servo power enable, 12 RGB LEDs)
+- M5IOE1 I/O expander (PY32L020, servo power enable, 12 RGB LEDs)
 - Touch panel Si12T (3 zones)
 - IR transmitter (GPIO5) and IRM56384 IR receiver (GPIO10)
 - NFC ST25R3916
 - Three Grove (HY2.0-4P) ports: PORT.A (I2C), PORT.B (GPIO / ADC), PORT.C (UART)
 
 The M-Bus of the main unit is occupied by the robot body and is not exposed.
+
+Servos
+======
+
+The two SCS0009 servos are the ``servo_yaw`` (ID 1) and ``servo_pitch`` (ID 2) nodes of the
+``servo_bus`` Feetech SCS bus on UART1. Their supply, the ``servo_vm`` regulator, is switched by
+IO1 of the M5IOE1 I/O expander and is enabled at boot. See the
+:zephyr:code-sample:`feetech-scs` sample.
 
 Grove ports
 ===========
