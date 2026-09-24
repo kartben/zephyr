@@ -19,7 +19,8 @@ endif # LVGL
 
 if REGULATOR_FIXED
 
-# Needs to init after MFD_AW9523B (80), since bus_5v uses aw9523b_gpio.
+# Needs to init after the AW9523B and M5IOE1 GPIO controllers (80), since
+# the bus_5v and servo_vm enable pins are on them.
 config REGULATOR_FIXED_INIT_PRIORITY
 	default 81
 
