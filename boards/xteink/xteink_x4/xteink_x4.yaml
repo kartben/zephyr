@@ -1,0 +1,23 @@
+identifier: xteink_x4
+name: Xteink X4
+type: mcu
+arch: riscv
+toolchain:
+  - zephyr
+supported:
+  - adc
+  - gpio
+  - watchdog
+  - uart
+  - spi
+  - counter
+  - entropy
+  - dma
+  - input
+  - crypto
+  - retained_mem
+  - netif:wifi
+testing:
+  ignore_tags:
+    - bluetooth
+vendor: xteink
