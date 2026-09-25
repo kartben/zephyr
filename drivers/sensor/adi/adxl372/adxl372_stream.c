@@ -217,6 +217,7 @@ static void adxl372_process_fifo_samples_cb(struct rtio *r, const struct rtio_sq
 	/* Read FIFO and call back to rtio with rtio_sqe completion */
 	struct adxl372_fifo_data *hdr = (struct adxl372_fifo_data *)buf;
 
+	memset(hdr, 0, sizeof(*hdr));
 	hdr->is_fifo = 1;
 	hdr->timestamp = data->timestamp;
 	hdr->int_status = data->status1;
