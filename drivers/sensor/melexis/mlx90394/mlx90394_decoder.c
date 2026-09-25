@@ -23,13 +23,13 @@ static int mlx90394_decoder_get_size_info(struct sensor_chan_spec channel, size_
 					  size_t *frame_size)
 {
 	switch (channel.chan_type) {
-	case SENSOR_CHAN_MAGN_X:
-	case SENSOR_CHAN_MAGN_Y:
-	case SENSOR_CHAN_MAGN_Z:
 	case SENSOR_CHAN_MAGN_XYZ: {
 		*base_size = sizeof(struct sensor_three_axis_data);
 		*frame_size = sizeof(struct sensor_three_axis_sample_data);
 	} break;
+	case SENSOR_CHAN_MAGN_X:
+	case SENSOR_CHAN_MAGN_Y:
+	case SENSOR_CHAN_MAGN_Z:
 	case SENSOR_CHAN_AMBIENT_TEMP: {
 		*base_size = sizeof(struct sensor_q31_data);
 		*frame_size = sizeof(struct sensor_q31_sample_data);
@@ -81,7 +81,22 @@ static int mlx90394_decoder_decode(const uint8_t *buffer, struct sensor_chan_spe
 	switch (channel.chan_type) {
 	case SENSOR_CHAN_MAGN_X:
 	case SENSOR_CHAN_MAGN_Y:
-	case SENSOR_CHAN_MAGN_Z:
+	case SENSOR_CHAN_MAGN_Z: {
+		struct sensor_q31_data *out = data_out;
+
+		out->header.base_timestamp_ns = edata->header.timestamp;
+		out->header.reading_count = 1;
+		if (edata->header.config_val == MLX90394_CTRL2_CONFIG_HIGH_SENSITIVITY_LOW_NOISE) {
+			out->shift = MLX90394_SHIFT_MAGN_HIGH_SENSITIVITY;
+		} else {
+			out->shift = MLX90394_SHIFT_MAGN_HIGH_RANGE;
+		}
+
+		mlx90394_convert_raw_magn_to_q31(
+			edata->readings[channel.chan_type - SENSOR_CHAN_MAGN_X],
+			&out->readings[0].value, edata->header.config_val);
+		*fit = 1;
+	} break;
 	case SENSOR_CHAN_MAGN_XYZ: {
 		struct sensor_three_axis_data *out = data_out;
 
