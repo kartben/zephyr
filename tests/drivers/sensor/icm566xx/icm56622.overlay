@@ -1,0 +1,19 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/sensor/icm566xx.h>
+
+&i2c0 {
+	imu: icm56622@68 {
+		compatible = "invensense,icm56622";
+		reg = <0x68>;
+		int-gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
+		accel-fs = <ICM566XX_DT_ACCEL_FS_16>;
+		gyro-fs = <ICM566XX_DT_GYRO_FS_2000>;
+		fifo-watermark = <4>;
+	};
+};
