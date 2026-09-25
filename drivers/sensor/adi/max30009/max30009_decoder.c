@@ -18,6 +18,12 @@ LOG_MODULE_DECLARE(MAX30009);
 #define MAX30009_BIOZ_I_TAG         0x1
 #define MAX30009_BIOZ_Q_TAG         0x2
 
+static bool max30009_chan_is_supported(struct sensor_chan_spec chan_spec)
+{
+	return chan_spec.chan_idx == 0U && ((int)chan_spec.chan_type == SENSOR_CHAN_BIOZ_I ||
+					    (int)chan_spec.chan_type == SENSOR_CHAN_BIOZ_Q);
+}
+
 static inline uint8_t get_channel_tag(struct sensor_chan_spec channel)
 {
 	return (channel.chan_type == SENSOR_CHAN_BIOZ_I) ? MAX30009_BIOZ_I_TAG
@@ -33,7 +39,7 @@ static int max30009_decoder_get_frame_count(const uint8_t *buffer, struct sensor
 	const struct max30009_fifo_data *data = (const struct max30009_fifo_data *)buffer;
 	uint8_t channel_tag = get_channel_tag(channel);
 
-	if (channel.chan_type != SENSOR_CHAN_BIOZ_I && channel.chan_type != SENSOR_CHAN_BIOZ_Q) {
+	if (!max30009_chan_is_supported(channel)) {
 		return -ENOTSUP;
 	}
 
@@ -66,8 +72,8 @@ static int max30009_decoder_decode(const uint8_t *buffer, struct sensor_chan_spe
 	struct sensor_q31_data *out = (struct sensor_q31_data *)data_out;
 	uint8_t channel_tag = get_channel_tag(channel);
 
-	if (channel.chan_type != SENSOR_CHAN_BIOZ_I && channel.chan_type != SENSOR_CHAN_BIOZ_Q) {
-		LOG_ERR("Unsupported channel type %d", channel.chan_type);
+	if (!max30009_chan_is_supported(channel)) {
+		LOG_ERR("Unsupported channel %d index %u", channel.chan_type, channel.chan_idx);
 		return -ENOTSUP;
 	}
 
@@ -132,16 +138,14 @@ static int max30009_decoder_get_size_info(struct sensor_chan_spec channel, size_
 	__ASSERT_NO_MSG(base_size != NULL);
 	__ASSERT_NO_MSG(frame_size != NULL);
 
-	switch ((int)channel.chan_type) {
-	case SENSOR_CHAN_BIOZ_I:
-	case SENSOR_CHAN_BIOZ_Q:
-		*base_size = sizeof(struct sensor_q31_data);
-		*frame_size = sizeof(struct sensor_q31_sample_data);
-		return 0;
-	default:
-		LOG_ERR("Unsupported channel type %d", channel.chan_type);
+	if (!max30009_chan_is_supported(channel)) {
+		LOG_ERR("Unsupported channel %d index %u", channel.chan_type, channel.chan_idx);
 		return -ENOTSUP;
 	}
+
+	*base_size = sizeof(struct sensor_q31_data);
+	*frame_size = sizeof(struct sensor_q31_sample_data);
+	return 0;
 }
 
 static bool max30009_decoder_has_trigger(const uint8_t *buffer, enum sensor_trigger_type trigger)
