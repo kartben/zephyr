@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#define DT_DRV_COMPAT bosch_bmi323
+
 #include <limits.h>
 
 #include <zephyr/drivers/sensor.h>
