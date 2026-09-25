@@ -174,10 +174,10 @@ static inline uint8_t lis2dux12_bus_reg(rtio_bus_type bus, uint8_t addr)
 {
 	return (rtio_is_spi(bus)) ? addr | 0x80 : addr;
 }
+#endif
 
 #define LIS2DUX12_FIFO_ITEM_LEN 7
 #define LIS2DUX12_FIFO_SIZE(x) (x * LIS2DUX12_FIFO_ITEM_LEN)
-#endif
 
 #ifdef CONFIG_LIS2DUX12_TRIGGER
 int lis2dux12_trigger_set(const struct device *dev,
