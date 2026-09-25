@@ -749,7 +749,8 @@ static bool adxl367_decoder_has_trigger(const uint8_t *buffer, enum sensor_trigg
 {
 	const struct adxl367_fifo_data *data = (const struct adxl367_fifo_data *)buffer;
 
-	if (!data->is_fifo) {
+	/* Without CONFIG_ADXL367_STREAM, buffers hold single samples, which have no is_fifo bit */
+	if (!IS_ENABLED(CONFIG_ADXL367_STREAM) || data->is_fifo == 0U) {
 		return false;
 	}
 
