@@ -299,6 +299,8 @@ static void iis3dwb_read_fifo_cb(struct rtio *r, const struct rtio_sqe *sqe, int
 		},
 		.fifo_count = fifo_count,
 		.accel_batch_odr = iis3dwb->accel_batch_odr,
+		.temp_batch_odr = iis3dwb->temp_batch_odr,
+		.ts_batch_odr = iis3dwb->ts_batch_odr,
 		.accel_odr = iis3dwb->odr,
 	};
 	/* clang-format on */
