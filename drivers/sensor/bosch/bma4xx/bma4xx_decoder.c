@@ -408,7 +408,21 @@ static int bma4xx_decoder_decode(const uint8_t *buffer, struct sensor_chan_spec 
 
 static bool bma4xx_decoder_has_trigger(const uint8_t *buffer, enum sensor_trigger_type trigger)
 {
-	return false;
+	const struct bma4xx_fifo_data *fdata = (const struct bma4xx_fifo_data *)buffer;
+
+	/* Only FIFO buffers store the interrupt status */
+	if (!IS_ENABLED(CONFIG_BMA4XX_STREAM) || fdata->header.is_fifo == 0U) {
+		return false;
+	}
+
+	switch (trigger) {
+	case SENSOR_TRIG_FIFO_WATERMARK:
+		return FIELD_GET(BMA4XX_BIT_INT_STAT_1_FWM_INT, fdata->int_status) != 0U;
+	case SENSOR_TRIG_FIFO_FULL:
+		return FIELD_GET(BMA4XX_BIT_INT_STAT_1_FFULL_INT, fdata->int_status) != 0U;
+	default:
+		return false;
+	}
 }
 
 SENSOR_DECODER_API_DT_DEFINE() = {
