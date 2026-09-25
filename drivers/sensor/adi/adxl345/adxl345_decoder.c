@@ -4,312 +4,203 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <zephyr/drivers/sensor_decoder.h>
+#include <zephyr/sys/byteorder.h>
+
 #include "adxl345.h"
 
-/** The q-scale factor will always be the same, as the nominal LSB/g
- * changes at the same rate the selected shift parameter per range:
- *
- * - At 2G: 256 LSB/g, 10-bits resolution.
- * - At 4g: 128 LSB/g, 10-bits resolution.
- * - At 8g: 64 LSB/g, 10-bits resolution.
- * - At 16g 32 LSB/g, 10-bits resolution.
- */
-static const uint32_t qscale_factor_no_full_res[] = {
-	/* (1.0 / Resolution-LSB-per-g * (2^31 / 2^5) * SENSOR_G / 1000000 */
-	[ADXL345_RANGE_2G] = UINT32_C(2570754),
-	/* (1.0 / Resolution-LSB-per-g) * (2^31 / 2^6) * SENSOR_G / 1000000  */
-	[ADXL345_RANGE_4G] = UINT32_C(2570754),
-	/* (1.0 / Resolution-LSB-per-g) * (2^31 / 2^7) ) * SENSOR_G / 1000000 */
-	[ADXL345_RANGE_8G] = UINT32_C(2570754),
-	/* (1.0 / Resolution-LSB-per-g) * (2^31 / 2^8) ) * SENSOR_G / 1000000 */
-	[ADXL345_RANGE_16G] = UINT32_C(2570754),
-};
+/* Nominal sensitivity at +/-2 g, and in full resolution mode at any range */
+#define ADXL345_LSB_PER_G 256
 
+#define ADXL345_Q31_SCALE(lsb_per_g, shift)                                                        \
+	SENSOR_Q31_SCALE(SENSOR_G, (lsb_per_g) * 1000000LL, (shift))
 
-/** Sensitivities based on Range:
- *
- * - At 2G: 256 LSB/g, 10-bits resolution.
- * - At 4g: 256 LSB/g, 11-bits resolution.
- * - At 8g: 256 LSB/g, 12-bits resolution.
- * - At 16g 256 LSB/g, 13-bits resolution.
- */
-static const uint32_t qscale_factor_full_res[] = {
-	/* (1.0 / Resolution-LSB-per-g) * (2^31 / 2^5) * SENSOR_G / 1000000 */
-	[ADXL345_RANGE_2G] = UINT32_C(2570754),
-	/* (1.0 / Resolution-LSB-per-g) * (2^31 / 2^6) * SENSOR_G / 1000000  */
-	[ADXL345_RANGE_4G] = UINT32_C(1285377),
-	/* (1.0 / Resolution-LSB-per-g) * (2^31 / 2^7) ) * SENSOR_G / 1000000 */
-	[ADXL345_RANGE_8G] = UINT32_C(642688),
-	/* (1.0 / Resolution-LSB-per-g) * (2^31 / 2^8) ) * SENSOR_G / 1000000 */
-	[ADXL345_RANGE_16G] = UINT32_C(321344),
-};
-
-static const uint32_t range_to_shift[] = {
+static const int8_t range_to_shift[] = {
 	[ADXL345_RANGE_2G] = 5,
 	[ADXL345_RANGE_4G] = 6,
 	[ADXL345_RANGE_8G] = 7,
 	[ADXL345_RANGE_16G] = 8,
 };
 
-static inline void adxl345_accel_convert_q31(q31_t *out, int16_t sample, int32_t range,
-					uint8_t is_full_res)
-{
-	if (is_full_res) {
-		switch (range) {
-		case ADXL345_RANGE_2G:
-			if (sample & BIT(9)) {
-				sample |= ADXL345_COMPLEMENT_MASK(10);
-			}
-			break;
-		case ADXL345_RANGE_4G:
-			if (sample & BIT(10)) {
-				sample |= ADXL345_COMPLEMENT_MASK(11);
-			}
-			break;
-		case ADXL345_RANGE_8G:
-			if (sample & BIT(11)) {
-				sample |= ADXL345_COMPLEMENT_MASK(12);
-			}
-			break;
-		case ADXL345_RANGE_16G:
-			if (sample & BIT(12)) {
-				sample |= ADXL345_COMPLEMENT_MASK(13);
-			}
-			break;
-		}
-		*out = sample * qscale_factor_full_res[range];
-	} else {
-		if (sample & BIT(9)) {
-			sample |= ADXL345_COMPLEMENT;
-		}
-		*out = sample * qscale_factor_no_full_res[range];
-	}
-}
-
-#ifdef CONFIG_ADXL345_STREAM
-
-#define SENSOR_SCALING_FACTOR (SENSOR_G / (16 * 1000 / 100))
-
-static const uint32_t accel_period_ns[] = {
-	[ADXL345_ODR_12_5HZ] = UINT32_C(1000000000) / 12,
-	[ADXL345_ODR_25HZ] = UINT32_C(1000000000) / 25,
-	[ADXL345_ODR_50HZ] = UINT32_C(1000000000) / 50,
-	[ADXL345_ODR_100HZ] = UINT32_C(1000000000) / 100,
-	[ADXL345_ODR_200HZ] = UINT32_C(1000000000) / 200,
-	[ADXL345_ODR_400HZ] = UINT32_C(1000000000) / 400,
+/* Full resolution mode: 256 LSB/g, 10 to 13 bits depending on the range */
+static const int32_t qscale_full_res[] = {
+	[ADXL345_RANGE_2G] = ADXL345_Q31_SCALE(ADXL345_LSB_PER_G, 5),
+	[ADXL345_RANGE_4G] = ADXL345_Q31_SCALE(ADXL345_LSB_PER_G, 6),
+	[ADXL345_RANGE_8G] = ADXL345_Q31_SCALE(ADXL345_LSB_PER_G, 7),
+	[ADXL345_RANGE_16G] = ADXL345_Q31_SCALE(ADXL345_LSB_PER_G, 8),
 };
 
-static int adxl345_decode_stream(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
-				 uint32_t *fit, uint16_t max_count, void *data_out)
+/*
+ * 10-bit mode: the sensitivity halves at each range step while the shift grows by one, so the
+ * scale factor is the same for all ranges.
+ */
+#define ADXL345_QSCALE_10BIT ADXL345_Q31_SCALE(ADXL345_LSB_PER_G, 5)
+
+static const uint64_t accel_period_ns[] = {
+	[ADXL345_ODR_12_5HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(12500),
+	[ADXL345_ODR_25HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(25000),
+	[ADXL345_ODR_50HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(50000),
+	[ADXL345_ODR_100HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(100000),
+	[ADXL345_ODR_200HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(200000),
+	[ADXL345_ODR_400HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(400000),
+};
+
+struct adxl345_frame_format {
+	uint8_t bits;
+	int32_t scale;
+};
+
+static bool adxl345_chan_is_supported(struct sensor_chan_spec chan_spec)
 {
-	const struct adxl345_fifo_data *enc_data = (const struct adxl345_fifo_data *)buffer;
-	const uint8_t *buffer_end =
-		buffer + sizeof(struct adxl345_fifo_data) + enc_data->fifo_byte_count;
-	int count = 0;
-	uint8_t sample_num = 0;
-
-	if ((uintptr_t)buffer_end <= *fit || chan_spec.chan_idx != 0) {
-		return 0;
-	}
-
-	struct sensor_three_axis_data *data = (struct sensor_three_axis_data *)data_out;
-
-	memset(data, 0, sizeof(struct sensor_three_axis_data));
-	data->shift = range_to_shift[enc_data->selected_range];
-
-	buffer += sizeof(struct adxl345_fifo_data);
-
-	uint8_t sample_set_size = enc_data->sample_set_size;
-
-	if (sample_set_size == 0) {
-		return -ENODATA;
-	}
-
-	uint64_t period_ns = accel_period_ns[enc_data->accel_odr];
-	uint16_t total_samples = enc_data->fifo_byte_count / sample_set_size;
-
-	data->header.base_timestamp_ns =
-		enc_data->timestamp -
-		(total_samples > 0 ? (total_samples - 1) : 0) * period_ns;
-	uint8_t is_full_res = enc_data->is_full_res;
-
-	/* Calculate which sample is decoded. */
-	if ((uint8_t *)*fit >= buffer) {
-		sample_num = ((uint8_t *)*fit - buffer) / sample_set_size;
-	}
-
-	while (count < max_count && buffer < buffer_end) {
-		const uint8_t *sample_end = buffer;
-
-		sample_end += sample_set_size;
-
-		if ((uintptr_t)buffer < *fit) {
-			/* This frame was already decoded, move on to the next frame */
-			buffer = sample_end;
-			continue;
-		}
-
-		switch (chan_spec.chan_type) {
-		case SENSOR_CHAN_ACCEL_XYZ:
-			data->readings[count].timestamp_delta = sample_num * period_ns;
-			uint8_t buff_offset = 0;
-
-			adxl345_accel_convert_q31(&data->readings[count].x, *(int16_t *)buffer,
-					enc_data->selected_range, is_full_res);
-			buff_offset = 2;
-			adxl345_accel_convert_q31(&data->readings[count].y,
-						*(int16_t *)(buffer + buff_offset),
-							enc_data->selected_range, is_full_res);
-			buff_offset += 2;
-			adxl345_accel_convert_q31(&data->readings[count].z,
-						*(int16_t *)(buffer + buff_offset),
-							enc_data->selected_range, is_full_res);
-			break;
-		default:
-			return -ENOTSUP;
-		}
-		buffer = sample_end;
-		*fit = (uintptr_t)sample_end;
-		count++;
-	}
-	data->header.reading_count = count;
-	return count;
+	return chan_spec.chan_idx == 0U && SENSOR_CHANNEL_IS_ACCEL(chan_spec.chan_type);
 }
 
-#endif /* CONFIG_ADXL345_STREAM */
-
-static int adxl345_decoder_get_frame_count(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
-					   uint16_t *frame_count)
+static int adxl345_decode_frame(const uint8_t *frame, struct sensor_chan_spec chan_spec,
+				const void *user_data, struct sensor_frame_reading *reading)
 {
-	int32_t ret = -ENOTSUP;
-
-	if (chan_spec.chan_idx != 0) {
-		return ret;
-	}
-
-#ifdef CONFIG_ADXL345_STREAM
-	const struct adxl345_fifo_data *data = (const struct adxl345_fifo_data *)buffer;
-
-	if (!data->is_fifo) {
-#endif /* CONFIG_ADXL345_STREAM */
-		switch (chan_spec.chan_type) {
-		case SENSOR_CHAN_ACCEL_X:
-		case SENSOR_CHAN_ACCEL_Y:
-		case SENSOR_CHAN_ACCEL_Z:
-		case SENSOR_CHAN_ACCEL_XYZ:
-			*frame_count = 1;
-			ret = 0;
-			break;
-
-		default:
-			break;
-		}
-#ifdef CONFIG_ADXL345_STREAM
-	} else {
-		if (data->fifo_byte_count == 0) {
-			*frame_count = 0;
-			ret = 0;
-		} else {
-			switch (chan_spec.chan_type) {
-			case SENSOR_CHAN_ACCEL_XYZ:
-				*frame_count =
-					data->fifo_byte_count / data->sample_set_size;
-				ret = 0;
-				break;
-
-			default:
-				break;
-			}
-		}
-	}
-#endif /* CONFIG_ADXL345_STREAM */
-
-	return ret;
-}
-
-static int adxl345_decode_sample(const struct adxl345_sample *data,
-				 struct sensor_chan_spec chan_spec, uint32_t *fit,
-				 uint16_t max_count, void *data_out)
-{
-	struct sensor_three_axis_data *out = (struct sensor_three_axis_data *)data_out;
-
-	memset(out, 0, sizeof(struct sensor_three_axis_data));
-	out->header.base_timestamp_ns = k_ticks_to_ns_floor64(k_uptime_ticks());
-	out->header.reading_count = 1;
-	out->shift = range_to_shift[data->selected_range];
-
-	if (*fit > 0) {
-		return -ENOTSUP;
-	}
+	const struct adxl345_frame_format *fmt = user_data;
+	uint8_t first;
+	uint8_t num;
 
 	switch (chan_spec.chan_type) {
 	case SENSOR_CHAN_ACCEL_XYZ:
-		adxl345_accel_convert_q31(&out->readings->x, data->x, data->selected_range,
-					  data->is_full_res);
-		adxl345_accel_convert_q31(&out->readings->y, data->y, data->selected_range,
-					  data->is_full_res);
-		adxl345_accel_convert_q31(&out->readings->z, data->z, data->selected_range,
-					  data->is_full_res);
+		first = 0U;
+		num = 3U;
+		break;
+	case SENSOR_CHAN_ACCEL_X:
+		first = 0U;
+		num = 1U;
+		break;
+	case SENSOR_CHAN_ACCEL_Y:
+		first = 1U;
+		num = 1U;
+		break;
+	case SENSOR_CHAN_ACCEL_Z:
+		first = 2U;
+		num = 1U;
 		break;
 	default:
 		return -ENOTSUP;
 	}
 
-	*fit = 1;
+	if (reading == NULL) {
+		return 1;
+	}
+
+	for (uint8_t i = 0U; i < num; i++) {
+		reading->values[i] = sensor_raw_to_q31(sys_get_le16(&frame[(first + i) * 2U]),
+						       fmt->bits, fmt->scale);
+	}
 
 	return 1;
 }
 
-static int adxl345_decoder_decode(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
-				    uint32_t *fit, uint16_t max_count, void *data_out)
+static int adxl345_get_frames(const uint8_t *buffer, struct sensor_raw_frames *frames,
+			      struct adxl345_frame_format *fmt)
 {
-	const struct adxl345_sample *data = (const struct adxl345_sample *)buffer;
+	const struct adxl345_fifo_data *hdr = (const struct adxl345_fifo_data *)buffer;
+	const struct adxl345_sample *sample = (const struct adxl345_sample *)buffer;
+	uint8_t range;
+	bool is_full_res;
 
-#ifdef CONFIG_ADXL345_STREAM
-	if (data->is_fifo) {
-		return adxl345_decode_stream(buffer, chan_spec, fit, max_count, data_out);
+	*frames = (struct sensor_raw_frames){
+		.frame_size = SAMPLE_SIZE,
+		.decode_frame = adxl345_decode_frame,
+		.user_data = fmt,
+	};
+
+	if (IS_ENABLED(CONFIG_ADXL345_STREAM) && hdr->is_fifo == 1U) {
+		if (hdr->accel_odr >= ARRAY_SIZE(accel_period_ns)) {
+			return -EINVAL;
+		}
+
+		range = hdr->selected_range;
+		is_full_res = hdr->is_full_res == 1U;
+		frames->frames = buffer + sizeof(*hdr);
+		frames->size = hdr->fifo_byte_count;
+		frames->period_ns = accel_period_ns[hdr->accel_odr];
+		frames->timestamp_ns = hdr->timestamp;
+	} else {
+		range = sample->selected_range;
+		is_full_res = sample->is_full_res;
+		frames->frames = sample->axis_data;
+		frames->size = sizeof(sample->axis_data);
+		frames->timestamp_ns = k_ticks_to_ns_floor64(k_uptime_ticks());
 	}
-#endif /* CONFIG_ADXL345_STREAM */
 
-	return adxl345_decode_sample(data, chan_spec, fit, max_count, data_out);
+	if (range >= ARRAY_SIZE(range_to_shift)) {
+		return -EINVAL;
+	}
+
+	frames->shift = range_to_shift[range];
+	fmt->bits = is_full_res ? 10U + range : 10U;
+	fmt->scale = is_full_res ? qscale_full_res[range] : ADXL345_QSCALE_10BIT;
+
+	return 0;
+}
+
+static int adxl345_decoder_get_frame_count(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+					   uint16_t *frame_count)
+{
+	struct sensor_raw_frames frames;
+	struct adxl345_frame_format fmt;
+	int rc;
+
+	if (!adxl345_chan_is_supported(chan_spec)) {
+		return -ENOTSUP;
+	}
+
+	rc = adxl345_get_frames(buffer, &frames, &fmt);
+	if (rc != 0) {
+		return rc;
+	}
+
+	return sensor_raw_frames_count(&frames, chan_spec, frame_count);
+}
+
+static int adxl345_decoder_decode(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+				  uint32_t *fit, uint16_t max_count, void *data_out)
+{
+	struct sensor_raw_frames frames;
+	struct adxl345_frame_format fmt;
+	int rc;
+
+	if (!adxl345_chan_is_supported(chan_spec)) {
+		return -ENOTSUP;
+	}
+
+	rc = adxl345_get_frames(buffer, &frames, &fmt);
+	if (rc != 0) {
+		return rc;
+	}
+
+	return sensor_decode_frames(&frames, chan_spec, fit, max_count, data_out);
 }
 
 static bool adxl345_decoder_has_trigger(const uint8_t *buffer, enum sensor_trigger_type trigger)
 {
 	const struct adxl345_fifo_data *data = (const struct adxl345_fifo_data *)buffer;
 
-	if (!data->is_fifo) {
+	if (!IS_ENABLED(CONFIG_ADXL345_STREAM) || data->is_fifo == 0U) {
 		return false;
 	}
 
 	switch (trigger) {
 	case SENSOR_TRIG_FIFO_WATERMARK:
-		return FIELD_GET(ADXL345_INT_MAP_WATERMARK_MSK, data->int_status);
+		return FIELD_GET(ADXL345_INT_MAP_WATERMARK_MSK, data->int_status) != 0U;
 	default:
 		return false;
 	}
 }
 
-static int adxl345_get_size_info(struct sensor_chan_spec channel, size_t *base_size,
+static int adxl345_get_size_info(struct sensor_chan_spec chan_spec, size_t *base_size,
 				 size_t *frame_size)
 {
-	__ASSERT_NO_MSG(base_size != NULL);
-	__ASSERT_NO_MSG(frame_size != NULL);
-
-	if (channel.chan_type >= SENSOR_CHAN_ALL) {
+	if (!adxl345_chan_is_supported(chan_spec)) {
 		return -ENOTSUP;
 	}
 
-	switch (channel.chan_type) {
-	case SENSOR_CHAN_ACCEL_XYZ:
-		*base_size = sizeof(struct sensor_three_axis_data);
-		*frame_size = sizeof(struct sensor_three_axis_sample_data);
-		return 0;
-	default:
-		break;
-	}
-
-	return -ENOTSUP;
+	return sensor_decode_frames_size_info(chan_spec, 0U, base_size, frame_size);
 }
 
 SENSOR_DECODER_API_DT_DEFINE() = {

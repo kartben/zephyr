@@ -63,7 +63,6 @@
 #define ADXL345_ENABLE_MEASURE_BIT (1 << 3)
 #define ADXL345_FIFO_STREAM_MODE   (1 << 7)
 #define ADXL345_FIFO_COUNT_MASK    0x3f
-#define ADXL345_COMPLEMENT_MASK(x) GENMASK(15, (x))
 #define ADXL345_COMPLEMENT         0xfc00
 
 #define ADXL345_MAX_FIFO_SIZE      32
@@ -228,9 +227,8 @@ struct adxl345_sample {
 #endif /* CONFIG_ADXL345_STREAM */
 	uint8_t selected_range;
 	bool is_full_res;
-	int16_t x;
-	int16_t y;
-	int16_t z;
+	/* DATAX0 to DATAZ1 registers, little-endian */
+	uint8_t axis_data[SAMPLE_SIZE];
 };
 
 union adxl345_bus {
