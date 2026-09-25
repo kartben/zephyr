@@ -11,6 +11,7 @@
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/sensor_clock.h>
+#include <zephyr/drivers/sensor_decoder.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/rtio/rtio.h>
 #include <zephyr/sys/mpsc_lockfree.h>
@@ -343,90 +344,106 @@ void ens210_submit(const struct device *dev, struct rtio_iodev_sqe *iodev_sqe)
 }
 
 /*
- * Direct raw-to-q31 conversions for the ENS210.
- *
- * Per datasheet (§ "Register T_VAL" and § "Register H_VAL"):
- *   T_VAL: 16-bit unsigned, temperature in 1/64 Kelvin
- *   H_VAL: 16-bit unsigned, relative humidity in 1/512 %RH
- *
- * With shift=16 (q15.16 format, 2^15 = 32768), the sensor's
- * power-of-2 scaling factors cancel exactly:
- *
- *   Humidity:  H_VAL × 2^15 / 512 = H_VAL × 64
- *   Temp:      T_VAL × 2^15 / 64  = T_VAL × 512
- *
- * Temperature also needs a Kelvin→Celsius offset:
- *   273.15 K × 2^15 = 8950579.2 → 8950579 (q15.16 fixed constant)
- *
- * No runtime division is needed — only multiply and subtract.
+ * T_VAL and H_VAL registers: 16-bit unsigned value, little-endian, followed by a byte holding
+ * the valid bit (bit 0) and the CRC. T_VAL is in 1/64 K, H_VAL in 1/512 %RH.
  */
-static q31_t ens210_temp_raw_to_q31(const struct ens210_value_data *raw)
-{
-	uint16_t val = sys_le16_to_cpu(raw->val);
+#define ENS210_VALUE_SIZE  sizeof(struct ens210_value_data)
+#define ENS210_VALUE_VALID BIT(0)
+#define ENS210_T_VAL_POS   0U
+#define ENS210_H_VAL_POS   ENS210_VALUE_SIZE
+#define ENS210_FRAME_SIZE  (2U * ENS210_VALUE_SIZE)
 
-	return (q31_t)((int32_t)val * ENS210_TEMP_Q31_MUL) - ENS210_KELVIN_OFFSET_Q31;
+#define ENS210_TEMP_SCALE    SENSOR_Q31_SCALE(1, 64, ENS210_TEMP_SHIFT)
+#define ENS210_HUM_SCALE     SENSOR_Q31_SCALE(1, 512, ENS210_HUMIDITY_SHIFT)
+#define ENS210_KELVIN_OFFSET SENSOR_Q31_SCALE(27315, 100, ENS210_TEMP_SHIFT)
+
+/* The raw values are unsigned: convert them as 17-bit two's complement values */
+#define ENS210_VALUE_BITS 17U
+
+static bool ens210_chan_is_supported(struct sensor_chan_spec chan_spec)
+{
+	return chan_spec.chan_idx == 0U && (chan_spec.chan_type == SENSOR_CHAN_AMBIENT_TEMP ||
+					    chan_spec.chan_type == SENSOR_CHAN_HUMIDITY);
 }
 
-static q31_t ens210_humidity_raw_to_q31(const struct ens210_value_data *raw)
+static int ens210_decode_frame(const uint8_t *frame, struct sensor_chan_spec chan_spec,
+			       const void *user_data, struct sensor_frame_reading *reading)
 {
-	uint16_t val = sys_le16_to_cpu(raw->val);
+	const uint8_t *value;
 
-	return (q31_t)((uint32_t)val * ENS210_HUM_Q31_MUL);
-}
-
-/*
- * Get the value of a channel, NULL for an unsupported channel. The valid bit is clear when the
- * channel was not measured, for example when it is disabled.
- */
-static const struct ens210_value_data *ens210_decoder_value(const uint8_t *buffer,
-							    struct sensor_chan_spec chan_spec)
-{
-	const struct ens210_encoded_data *edata = (const struct ens210_encoded_data *)buffer;
-
-	if (chan_spec.chan_idx != 0) {
-		return NULL;
-	}
+	ARG_UNUSED(user_data);
 
 	switch (chan_spec.chan_type) {
 	case SENSOR_CHAN_AMBIENT_TEMP:
-		return &edata->temp;
+		value = &frame[ENS210_T_VAL_POS];
+		break;
 	case SENSOR_CHAN_HUMIDITY:
-		return &edata->humidity;
+		value = &frame[ENS210_H_VAL_POS];
+		break;
 	default:
-		return NULL;
+		return -ENOTSUP;
 	}
+
+	/* No measurement of this channel, for example when it is disabled */
+	if ((value[2] & ENS210_VALUE_VALID) == 0U) {
+		return 0;
+	}
+
+	if (reading == NULL) {
+		return 1;
+	}
+
+	if (chan_spec.chan_type == SENSOR_CHAN_AMBIENT_TEMP) {
+		reading->values[0] = sensor_raw_to_q31(sys_get_le16(value), ENS210_VALUE_BITS,
+						       ENS210_TEMP_SCALE) -
+				     ENS210_KELVIN_OFFSET;
+	} else {
+		reading->values[0] =
+			sensor_raw_to_q31(sys_get_le16(value), ENS210_VALUE_BITS, ENS210_HUM_SCALE);
+	}
+
+	return 1;
+}
+
+static void ens210_get_frames(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+			      struct sensor_raw_frames *frames)
+{
+	const struct ens210_encoded_data *edata = (const struct ens210_encoded_data *)buffer;
+
+	*frames = (struct sensor_raw_frames){
+		.frames = (const uint8_t *)&edata->temp,
+		.size = ENS210_FRAME_SIZE,
+		.frame_size = ENS210_FRAME_SIZE,
+		.decode_frame = ens210_decode_frame,
+		.timestamp_ns = edata->header.base_timestamp_ns,
+		.shift = (chan_spec.chan_type == SENSOR_CHAN_AMBIENT_TEMP) ? ENS210_TEMP_SHIFT
+									   : ENS210_HUMIDITY_SHIFT,
+	};
 }
 
 static int ens210_decoder_get_frame_count(const uint8_t *buffer,
 					  struct sensor_chan_spec chan_spec,
 					  uint16_t *frame_count)
 {
-	const struct ens210_value_data *value = ens210_decoder_value(buffer, chan_spec);
+	struct sensor_raw_frames frames;
 
-	if (value == NULL) {
+	if (!ens210_chan_is_supported(chan_spec)) {
 		return -ENOTSUP;
 	}
 
-	*frame_count = (value->valid != 0U) ? 1U : 0U;
-	return 0;
+	ens210_get_frames(buffer, chan_spec, &frames);
+
+	return sensor_raw_frames_count(&frames, chan_spec, frame_count);
 }
 
 static int ens210_decoder_get_size_info(struct sensor_chan_spec chan_spec,
 					size_t *base_size, size_t *frame_size)
 {
-	if (chan_spec.chan_idx != 0) {
+	if (!ens210_chan_is_supported(chan_spec)) {
 		return -ENOTSUP;
 	}
 
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_AMBIENT_TEMP:
-	case SENSOR_CHAN_HUMIDITY:
-		*base_size = sizeof(struct sensor_q31_data);
-		*frame_size = sizeof(struct sensor_q31_sample_data);
-		return 0;
-	default:
-		return -ENOTSUP;
-	}
+	return sensor_decode_frames_size_info(chan_spec, 1U, base_size, frame_size);
 }
 
 static int ens210_decoder_decode(const uint8_t *buffer,
@@ -434,44 +451,15 @@ static int ens210_decoder_decode(const uint8_t *buffer,
 				 uint32_t *fit, uint16_t max_count,
 				 void *data_out)
 {
-	const struct ens210_encoded_data *edata =
-		(const struct ens210_encoded_data *)buffer;
-	struct sensor_q31_data *out = data_out;
-	const struct ens210_value_data *value;
+	struct sensor_raw_frames frames;
 
-	if ((max_count == 0U) || (*fit != 0U)) {
-		return 0;
-	}
-	if (chan_spec.chan_idx != 0) {
+	if (!ens210_chan_is_supported(chan_spec)) {
 		return -ENOTSUP;
 	}
 
-	value = ens210_decoder_value(buffer, chan_spec);
-	if (value != NULL && value->valid == 0U) {
-		return -ENODATA;
-	}
+	ens210_get_frames(buffer, chan_spec, &frames);
 
-	out->header.base_timestamp_ns = edata->header.base_timestamp_ns;
-	out->header.reading_count = 1U;
-	out->readings[0].timestamp_delta = 0U;
-
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_AMBIENT_TEMP:
-		out->shift = ENS210_TEMP_SHIFT;
-		out->readings[0].temperature =
-			ens210_temp_raw_to_q31(&edata->temp);
-		break;
-	case SENSOR_CHAN_HUMIDITY:
-		out->shift = ENS210_HUMIDITY_SHIFT;
-		out->readings[0].humidity =
-			ens210_humidity_raw_to_q31(&edata->humidity);
-		break;
-	default:
-		return -ENOTSUP;
-	}
-
-	*fit = 1;
-	return 1;
+	return sensor_decode_frames(&frames, chan_spec, fit, max_count, data_out);
 }
 
 SENSOR_DECODER_API_DT_DEFINE() = {
