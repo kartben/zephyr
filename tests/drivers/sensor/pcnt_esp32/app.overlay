@@ -1,0 +1,22 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	pcnt: pcnt {
+		compatible = "espressif,esp32-pcnt";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		unit@0 {
+			reg = <0>;
+			counts-per-revolution = <400>;
+		};
+
+		unit@2 {
+			reg = <2>;
+		};
+	};
+};
