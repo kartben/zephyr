@@ -1,0 +1,29 @@
+# Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+common:
+  tags:
+    - drivers
+    - sensor
+  platform_allow:
+    - native_sim
+    - native_sim/native/64
+  integration_platforms:
+    - native_sim
+tests:
+  drivers.sensor.bma4xx.decoder:
+    extra_configs:
+      - CONFIG_BMA4XX_STREAM=n
+  drivers.sensor.bma4xx.decoder.temperature:
+    extra_configs:
+      - CONFIG_BMA4XX_STREAM=n
+      - CONFIG_BMA4XX_TEMPERATURE=y
+  drivers.sensor.bma4xx.decoder.stream:
+    extra_configs:
+      - CONFIG_GPIO=y
+      - CONFIG_BMA4XX_STREAM=y
+  drivers.sensor.bma4xx.decoder.stream.temperature:
+    extra_configs:
+      - CONFIG_GPIO=y
+      - CONFIG_BMA4XX_STREAM=y
+      - CONFIG_BMA4XX_TEMPERATURE=y
