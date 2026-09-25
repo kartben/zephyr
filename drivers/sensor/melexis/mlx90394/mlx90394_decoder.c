@@ -5,17 +5,68 @@
 
 #include "mlx90394.h"
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/sys/byteorder.h>
+#include <zephyr/sys/util.h>
 
 #define DT_DRV_COMPAT melexis_mlx90394
+
+/* Index of each value in mlx90394_encoded_data.readings, in 16-bit words */
+#define MLX90394_READING_X    0U
+#define MLX90394_READING_Y    1U
+#define MLX90394_READING_Z    2U
+#define MLX90394_READING_TEMP 3U
+
+/* Bit mask of the readings a decoded channel is made of, 0 for other channels */
+static uint8_t mlx90394_channel_readings(uint16_t chan)
+{
+	switch (chan) {
+	case SENSOR_CHAN_MAGN_X:
+		return BIT(MLX90394_READING_X);
+	case SENSOR_CHAN_MAGN_Y:
+		return BIT(MLX90394_READING_Y);
+	case SENSOR_CHAN_MAGN_Z:
+		return BIT(MLX90394_READING_Z);
+	case SENSOR_CHAN_MAGN_XYZ:
+		return BIT(MLX90394_READING_X) | BIT(MLX90394_READING_Y) | BIT(MLX90394_READING_Z);
+	case SENSOR_CHAN_AMBIENT_TEMP:
+		return BIT(MLX90394_READING_TEMP);
+	default:
+		return 0U;
+	}
+}
+
+/*
+ * The sensor only converts the axes and temperature of the measured channel: check that the
+ * readings of chan are among them
+ */
+static bool mlx90394_channel_measured(uint16_t measured, uint16_t chan)
+{
+	const uint8_t needed = mlx90394_channel_readings(chan);
+	uint8_t available;
+
+	if (measured == SENSOR_CHAN_ALL) {
+		available = BIT(MLX90394_READING_X) | BIT(MLX90394_READING_Y) |
+			    BIT(MLX90394_READING_Z) | BIT(MLX90394_READING_TEMP);
+	} else {
+		available = mlx90394_channel_readings(measured);
+	}
+
+	return (available & needed) == needed;
+}
+
+static int16_t mlx90394_reading_get(const struct mlx90394_encoded_data *edata, uint8_t idx)
+{
+	return (int16_t)sys_get_le16(&edata->readings[idx * sizeof(uint16_t)]);
+}
 
 static int mlx90394_decoder_get_frame_count(const uint8_t *buffer, struct sensor_chan_spec channel,
 					    uint16_t *frame_count)
 {
-	ARG_UNUSED(buffer);
-	ARG_UNUSED(channel);
+	const struct mlx90394_encoded_data *edata = (const struct mlx90394_encoded_data *)buffer;
 
-	/* This sensor lacks a FIFO; there will always only be one frame at a time. */
-	*frame_count = 1;
+	/* This sensor lacks a FIFO: the buffer holds one frame if the channel was measured */
+	*frame_count =
+		mlx90394_channel_measured(edata->header.channel, channel.chan_type) ? 1U : 0U;
 	return 0;
 }
 
@@ -78,6 +129,10 @@ static int mlx90394_decoder_decode(const uint8_t *buffer, struct sensor_chan_spe
 		return 0;
 	}
 
+	if (!mlx90394_channel_measured(edata->header.channel, channel.chan_type)) {
+		return -ENODATA;
+	}
+
 	switch (channel.chan_type) {
 	case SENSOR_CHAN_MAGN_X:
 	case SENSOR_CHAN_MAGN_Y:
@@ -93,7 +148,8 @@ static int mlx90394_decoder_decode(const uint8_t *buffer, struct sensor_chan_spe
 		}
 
 		mlx90394_convert_raw_magn_to_q31(
-			edata->readings[channel.chan_type - SENSOR_CHAN_MAGN_X],
+			mlx90394_reading_get(edata,
+					     (uint8_t)(channel.chan_type - SENSOR_CHAN_MAGN_X)),
 			&out->readings[0].value, edata->header.config_val);
 		*fit = 1;
 	} break;
@@ -108,12 +164,12 @@ static int mlx90394_decoder_decode(const uint8_t *buffer, struct sensor_chan_spe
 			out->shift = MLX90394_SHIFT_MAGN_HIGH_RANGE;
 		}
 
-		mlx90394_convert_raw_magn_to_q31(edata->readings[0], &out->readings[0].x,
-						 edata->header.config_val);
-		mlx90394_convert_raw_magn_to_q31(edata->readings[1], &out->readings[0].y,
-						 edata->header.config_val);
-		mlx90394_convert_raw_magn_to_q31(edata->readings[2], &out->readings[0].z,
-						 edata->header.config_val);
+		mlx90394_convert_raw_magn_to_q31(mlx90394_reading_get(edata, MLX90394_READING_X),
+						 &out->readings[0].x, edata->header.config_val);
+		mlx90394_convert_raw_magn_to_q31(mlx90394_reading_get(edata, MLX90394_READING_Y),
+						 &out->readings[0].y, edata->header.config_val);
+		mlx90394_convert_raw_magn_to_q31(mlx90394_reading_get(edata, MLX90394_READING_Z),
+						 &out->readings[0].z, edata->header.config_val);
 		*fit = 1;
 	} break;
 	case SENSOR_CHAN_AMBIENT_TEMP: {
@@ -122,7 +178,8 @@ static int mlx90394_decoder_decode(const uint8_t *buffer, struct sensor_chan_spe
 		out->header.base_timestamp_ns = edata->header.timestamp;
 		out->header.reading_count = 1;
 		out->shift = MLX90394_SHIFT_TEMP;
-		mlx90394_convert_raw_temp_to_q31(edata->readings[3], &out->readings[0].temperature);
+		mlx90394_convert_raw_temp_to_q31(mlx90394_reading_get(edata, MLX90394_READING_TEMP),
+						 &out->readings[0].temperature);
 		*fit = 1;
 	} break;
 	default:

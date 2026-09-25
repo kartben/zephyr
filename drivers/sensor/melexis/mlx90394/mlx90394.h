@@ -82,11 +82,14 @@ void mlx90394_async_fetch(struct k_work *work);
 struct mlx90394_decoder_header {
 	uint64_t timestamp;
 	enum mlx90394_reg_config_val config_val;
+	/* Channel measured: only its values in readings are valid */
+	uint16_t channel;
 };
 
 struct mlx90394_encoded_data {
 	struct mlx90394_decoder_header header;
-	int16_t readings[4];
+	/* X, Y, Z and temperature as read from the sensor, little endian */
+	uint8_t readings[8];
 };
 
 int mlx90394_get_decoder(const struct device *dev, const struct sensor_decoder_api **decoder);
