@@ -127,42 +127,41 @@ static const int8_t temp_range = 9;
 
 #endif
 
-/* Calculate scaling factor to transform micro-g/LSB unit into micro-ms2/LSB */
-#define SENSOR_SCALE_UG_TO_UMS2(ug_lsb)	\
-	(int32_t)((ug_lsb) * SENSOR_G / 1000000LL)
-
 /*
- * Accelerometer scaling factors table for a given accel_fs_idx value
- * GAIN_UNIT_XL is expressed in ug/LSB.
+ * Expand nano_val (a generic nano unit) to q31_t according to its range; this is achieved
+ * multiplying by 2^31/2^range. Then transform it to val.
  */
+#define Q31_SHIFT_NANOVAL(nano_val, range)                                                         \
+	(q31_t)((int64_t)(nano_val) * ((int64_t)1 << (31 - (range))) / 1000000000LL)
+
+/* Accelerometer LSB at +/-2 g: GAIN_UNIT_XL ug, in nm/s^2 */
+#define LSM6DSV16X_XL_LSB_NMS2 ((GAIN_UNIT_XL * SENSOR_G + 500LL) / 1000LL)
+
+/* Accelerometer scaling factors table for a given accel_fs_idx value, in nm/s^2 per LSB */
 static const int32_t accel_scaler[] = {
 	/* LSM6DSV16X_DT_FS_2G */
-	SENSOR_SCALE_UG_TO_UMS2(GAIN_UNIT_XL),
+	LSM6DSV16X_XL_LSB_NMS2,
 	/* LSM6DSV16X_DT_FS_4G / LSM6DSV32X_DT_FS_4G */
-	SENSOR_SCALE_UG_TO_UMS2(2 * GAIN_UNIT_XL),
+	2 * LSM6DSV16X_XL_LSB_NMS2,
 	/* LSM6DSV16X_DT_FS_8G / LSM6DSV32X_DT_FS_8G*/
-	SENSOR_SCALE_UG_TO_UMS2(4 * GAIN_UNIT_XL),
+	4 * LSM6DSV16X_XL_LSB_NMS2,
 	/* LSM6DSV16X_DT_FS_16G / LSM6DSV32X_DT_FS_16G */
-	SENSOR_SCALE_UG_TO_UMS2(8 * GAIN_UNIT_XL),
+	8 * LSM6DSV16X_XL_LSB_NMS2,
 	/* LSM6DSV32X_DT_FS_32G */
-	SENSOR_SCALE_UG_TO_UMS2(16 * GAIN_UNIT_XL),
+	16 * LSM6DSV16X_XL_LSB_NMS2,
 };
 
-/* Calculate scaling factor to transform micro-dps/LSB unit into micro-rads/LSB */
-#define SENSOR_SCALE_UDPS_TO_URADS(udps_lsb) \
-	(int32_t)(((udps_lsb) * SENSOR_PI / 180LL) / 1000000LL)
+/* Gyroscope LSB at +/-125 dps: GAIN_UNIT_G udps, in nrad/s */
+#define LSM6DSV16X_GY_LSB_NRADS ((GAIN_UNIT_G * SENSOR_PI + 90000LL) / 180000LL)
 
-/*
- * Accelerometer scaling factors table (indexed by full scale)
- * GAIN_UNIT_G is expressed in udps/LSB.
- */
+/* Gyroscope scaling factors table (indexed by full scale), in nrad/s per LSB */
 static const int32_t gyro_scaler[] = {
-	[LSM6DSV16X_DT_FS_125DPS] = SENSOR_SCALE_UDPS_TO_URADS(GAIN_UNIT_G),
-	[LSM6DSV16X_DT_FS_250DPS] = SENSOR_SCALE_UDPS_TO_URADS(2 * GAIN_UNIT_G),
-	[LSM6DSV16X_DT_FS_500DPS] = SENSOR_SCALE_UDPS_TO_URADS(4 * GAIN_UNIT_G),
-	[LSM6DSV16X_DT_FS_1000DPS] = SENSOR_SCALE_UDPS_TO_URADS(8 * GAIN_UNIT_G),
-	[LSM6DSV16X_DT_FS_2000DPS] = SENSOR_SCALE_UDPS_TO_URADS(16 * GAIN_UNIT_G),
-	[LSM6DSV16X_DT_FS_4000DPS] = SENSOR_SCALE_UDPS_TO_URADS(32 * GAIN_UNIT_G),
+	[LSM6DSV16X_DT_FS_125DPS] = LSM6DSV16X_GY_LSB_NRADS,
+	[LSM6DSV16X_DT_FS_250DPS] = 2 * LSM6DSV16X_GY_LSB_NRADS,
+	[LSM6DSV16X_DT_FS_500DPS] = 4 * LSM6DSV16X_GY_LSB_NRADS,
+	[LSM6DSV16X_DT_FS_1000DPS] = 8 * LSM6DSV16X_GY_LSB_NRADS,
+	[LSM6DSV16X_DT_FS_2000DPS] = 16 * LSM6DSV16X_GY_LSB_NRADS,
+	[LSM6DSV16X_DT_FS_4000DPS] = 32 * LSM6DSV16X_GY_LSB_NRADS,
 };
 
 #if defined(CONFIG_LSM6DSV16X_SENSORHUB)
@@ -431,9 +430,9 @@ static int lsm6dsv16x_decode_fifo(const uint8_t *buffer, struct sensor_chan_spec
 
 			out->shift = accel_range[header->accel_fs_idx];
 
-			out->readings[count].x = Q31_SHIFT_MICROVAL(scale * x, out->shift);
-			out->readings[count].y = Q31_SHIFT_MICROVAL(scale * y, out->shift);
-			out->readings[count].z = Q31_SHIFT_MICROVAL(scale * z, out->shift);
+			out->readings[count].x = Q31_SHIFT_NANOVAL((int64_t)scale * x, out->shift);
+			out->readings[count].y = Q31_SHIFT_NANOVAL((int64_t)scale * y, out->shift);
+			out->readings[count].z = Q31_SHIFT_NANOVAL((int64_t)scale * z, out->shift);
 			break;
 		}
 		case LSM6DSV16X_GY_NC_TAG: {
@@ -462,9 +461,9 @@ static int lsm6dsv16x_decode_fifo(const uint8_t *buffer, struct sensor_chan_spec
 
 			out->shift = gyro_range[header->gyro_fs];
 
-			out->readings[count].x = Q31_SHIFT_MICROVAL(scale * x, out->shift);
-			out->readings[count].y = Q31_SHIFT_MICROVAL(scale * y, out->shift);
-			out->readings[count].z = Q31_SHIFT_MICROVAL(scale * z, out->shift);
+			out->readings[count].x = Q31_SHIFT_NANOVAL((int64_t)scale * x, out->shift);
+			out->readings[count].y = Q31_SHIFT_NANOVAL((int64_t)scale * y, out->shift);
+			out->readings[count].z = Q31_SHIFT_NANOVAL((int64_t)scale * z, out->shift);
 			break;
 		}
 #if defined(CONFIG_LSM6DSV16X_ENABLE_TEMP)
@@ -580,9 +579,9 @@ static int lsm6dsv16x_decode_fifo(const uint8_t *buffer, struct sensor_chan_spec
 
 			out->shift = gyro_range[LSM6DSV16X_DT_FS_125DPS];
 
-			out->readings[count].x = Q31_SHIFT_MICROVAL(scale * x, out->shift);
-			out->readings[count].y = Q31_SHIFT_MICROVAL(scale * y, out->shift);
-			out->readings[count].z = Q31_SHIFT_MICROVAL(scale * z, out->shift);
+			out->readings[count].x = Q31_SHIFT_NANOVAL((int64_t)scale * x, out->shift);
+			out->readings[count].y = Q31_SHIFT_NANOVAL((int64_t)scale * y, out->shift);
+			out->readings[count].z = Q31_SHIFT_NANOVAL((int64_t)scale * z, out->shift);
 			break;
 		}
 
@@ -732,9 +731,9 @@ static int lsm6dsv16x_decode_sample(const uint8_t *buffer, struct sensor_chan_sp
 
 		out->shift = accel_range[header->accel_fs_idx];
 
-		out->readings[0].x = Q31_SHIFT_MICROVAL(scale * edata->acc[0], out->shift);
-		out->readings[0].y = Q31_SHIFT_MICROVAL(scale * edata->acc[1], out->shift);
-		out->readings[0].z = Q31_SHIFT_MICROVAL(scale * edata->acc[2], out->shift);
+		out->readings[0].x = Q31_SHIFT_NANOVAL((int64_t)scale * edata->acc[0], out->shift);
+		out->readings[0].y = Q31_SHIFT_NANOVAL((int64_t)scale * edata->acc[1], out->shift);
+		out->readings[0].z = Q31_SHIFT_NANOVAL((int64_t)scale * edata->acc[2], out->shift);
 		*fit = 1;
 		return 1;
 	}
@@ -755,9 +754,9 @@ static int lsm6dsv16x_decode_sample(const uint8_t *buffer, struct sensor_chan_sp
 
 		out->shift = gyro_range[header->gyro_fs];
 
-		out->readings[0].x = Q31_SHIFT_MICROVAL(scale * edata->gyro[0], out->shift);
-		out->readings[0].y = Q31_SHIFT_MICROVAL(scale * edata->gyro[1], out->shift);
-		out->readings[0].z = Q31_SHIFT_MICROVAL(scale * edata->gyro[2], out->shift);
+		out->readings[0].x = Q31_SHIFT_NANOVAL((int64_t)scale * edata->gyro[0], out->shift);
+		out->readings[0].y = Q31_SHIFT_NANOVAL((int64_t)scale * edata->gyro[1], out->shift);
+		out->readings[0].z = Q31_SHIFT_NANOVAL((int64_t)scale * edata->gyro[2], out->shift);
 		*fit = 1;
 		return 1;
 	}
