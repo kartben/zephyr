@@ -1,0 +1,23 @@
+# Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+common:
+  tags:
+    - drivers
+    - sensor
+  platform_allow:
+    - native_sim
+    - native_sim/native/64
+  integration_platforms:
+    - native_sim
+tests:
+  drivers.sensor.ens210.decoder: {}
+  drivers.sensor.ens210.decoder.single_shot:
+    extra_configs:
+      - CONFIG_ENS210_TEMPERATURE_SINGLE=y
+      - CONFIG_ENS210_HUMIDITY_SINGLE=y
+  drivers.sensor.ens210.decoder.temperature_off:
+    extra_configs:
+      - CONFIG_ENS210_TEMPERATURE_OFF=y
+      - CONFIG_ENS210_HUMIDITY_SINGLE=y
+      - CONFIG_ENS210_CRC_CHECK=n
