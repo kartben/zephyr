@@ -51,6 +51,9 @@ LOG_MODULE_REGISTER(bmi270_decoder, CONFIG_SENSOR_LOG_LEVEL);
 /* SENSOR_G/SENSOR_PI are in micro units; divide this back out once per scale. */
 #define BMI270_MICRO_UNIT_SCALE 1000000LL
 
+/* Samples are 16-bit two's complement, full scale is +/-32768 LSB */
+#define BMI270_FULL_SCALE_LSB 32768LL
+
 static inline uint8_t bmi270_fifo_control_frame_size(uint8_t parm)
 {
 	switch (parm) {
@@ -181,7 +184,7 @@ static int bmi270_decoder_get_size_info(struct sensor_chan_spec chan_spec, size_
 /* Precompute the accel raw-to-Q31 scale once per buffer instead of per frame. */
 static int64_t bmi270_accel_scale(uint8_t range_g, int8_t shift)
 {
-	return (int64_t)SENSOR_G * range_g * (1LL << (31 - shift)) / INT16_MAX /
+	return (int64_t)SENSOR_G * range_g * (1LL << (31 - shift)) / BMI270_FULL_SCALE_LSB /
 	       BMI270_MICRO_UNIT_SCALE;
 }
 
@@ -189,7 +192,7 @@ static int64_t bmi270_accel_scale(uint8_t range_g, int8_t shift)
 static int64_t bmi270_gyro_scale(uint16_t range_dps, int8_t shift)
 {
 	return (int64_t)range_dps * SENSOR_PI * (1LL << (31 - shift)) /
-	       (180LL * INT16_MAX) / BMI270_MICRO_UNIT_SCALE;
+	       (180LL * BMI270_FULL_SCALE_LSB) / BMI270_MICRO_UNIT_SCALE;
 }
 
 /* Accel: raw -> m/s^2 in Q31, using a scale precomputed once per buffer by bmi270_accel_scale(). */
