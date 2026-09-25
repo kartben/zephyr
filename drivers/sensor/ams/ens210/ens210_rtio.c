@@ -374,24 +374,41 @@ static q31_t ens210_humidity_raw_to_q31(const struct ens210_value_data *raw)
 	return (q31_t)((uint32_t)val * ENS210_HUM_Q31_MUL);
 }
 
-static int ens210_decoder_get_frame_count(const uint8_t *buffer,
-					  struct sensor_chan_spec chan_spec,
-					  uint16_t *frame_count)
+/*
+ * Get the value of a channel, NULL for an unsupported channel. The valid bit is clear when the
+ * channel was not measured, for example when it is disabled.
+ */
+static const struct ens210_value_data *ens210_decoder_value(const uint8_t *buffer,
+							    struct sensor_chan_spec chan_spec)
 {
-	ARG_UNUSED(buffer);
+	const struct ens210_encoded_data *edata = (const struct ens210_encoded_data *)buffer;
 
 	if (chan_spec.chan_idx != 0) {
-		return -ENOTSUP;
+		return NULL;
 	}
 
 	switch (chan_spec.chan_type) {
 	case SENSOR_CHAN_AMBIENT_TEMP:
+		return &edata->temp;
 	case SENSOR_CHAN_HUMIDITY:
-		*frame_count = 1;
-		return 0;
+		return &edata->humidity;
 	default:
+		return NULL;
+	}
+}
+
+static int ens210_decoder_get_frame_count(const uint8_t *buffer,
+					  struct sensor_chan_spec chan_spec,
+					  uint16_t *frame_count)
+{
+	const struct ens210_value_data *value = ens210_decoder_value(buffer, chan_spec);
+
+	if (value == NULL) {
 		return -ENOTSUP;
 	}
+
+	*frame_count = (value->valid != 0U) ? 1U : 0U;
+	return 0;
 }
 
 static int ens210_decoder_get_size_info(struct sensor_chan_spec chan_spec,
@@ -420,12 +437,18 @@ static int ens210_decoder_decode(const uint8_t *buffer,
 	const struct ens210_encoded_data *edata =
 		(const struct ens210_encoded_data *)buffer;
 	struct sensor_q31_data *out = data_out;
+	const struct ens210_value_data *value;
 
 	if ((max_count == 0U) || (*fit != 0U)) {
 		return 0;
 	}
 	if (chan_spec.chan_idx != 0) {
 		return -ENOTSUP;
+	}
+
+	value = ens210_decoder_value(buffer, chan_spec);
+	if (value != NULL && value->valid == 0U) {
+		return -ENODATA;
 	}
 
 	out->header.base_timestamp_ns = edata->header.base_timestamp_ns;
