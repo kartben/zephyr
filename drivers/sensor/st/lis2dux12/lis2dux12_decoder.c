@@ -97,9 +97,9 @@ static const int8_t accel_range[] = {
 /* bit range for Temperature sensor */
 static const int8_t temp_range = 9;
 
-/* transform temperature LSB into micro-Celsius */
+/* transform temperature LSB into micro-Celsius: 355.5 LSB/degC */
 #define SENSOR_TEMP_UCELSIUS(t_lsb) \
-	(int64_t) (25000000LL + (((int64_t)(t_lsb) * 1000000LL) / 355LL))
+	(int64_t) (25000000LL + (((int64_t)(t_lsb) * 2000000LL) / 711LL))
 
 #endif
 
