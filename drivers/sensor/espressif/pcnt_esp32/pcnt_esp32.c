@@ -19,6 +19,8 @@
 #include <zephyr/drivers/clock_control.h>
 #include <zephyr/drivers/interrupt_controller/intc_esp32.h>
 
+#include "pcnt_esp32_decoder.h"
+
 #ifdef CONFIG_SENSOR_ASYNC_API
 #include <zephyr/rtio/rtio.h>
 #include <zephyr/drivers/sensor_clock.h>
@@ -26,12 +28,6 @@
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(pcnt_esp32, CONFIG_SENSOR_LOG_LEVEL);
-
-#ifdef CONFIG_SOC_SERIES_ESP32
-#define PCNT_ESP32_MAX_UNITS 8
-#else
-#define PCNT_ESP32_MAX_UNITS 4
-#endif
 
 #define PCNT_INTR_THRES_1 BIT(2)
 #define PCNT_INTR_THRES_0 BIT(3)
@@ -549,120 +545,6 @@ static int pcnt_esp32_trigger_set(const struct device *dev, const struct sensor_
 #endif /* CONFIG_PCNT_ESP32_TRIGGER */
 
 #ifdef CONFIG_SENSOR_ASYNC_API
-struct pcnt_esp32_encoded_data {
-	uint64_t timestamp_ns;
-	uint8_t num_units;
-	int32_t counts[PCNT_ESP32_MAX_UNITS];
-	uint32_t counts_per_rev[PCNT_ESP32_MAX_UNITS];
-	uint8_t unit_idx[PCNT_ESP32_MAX_UNITS];
-};
-
-static int pcnt_esp32_decoder_get_frame_count(const uint8_t *buffer,
-					      struct sensor_chan_spec chan_spec,
-					      uint16_t *frame_count)
-{
-	const struct pcnt_esp32_encoded_data *edata =
-		(const struct pcnt_esp32_encoded_data *)buffer;
-
-	if (chan_spec.chan_type != SENSOR_CHAN_ROTATION &&
-	    chan_spec.chan_type != SENSOR_CHAN_ENCODER_COUNT) {
-		return -ENOTSUP;
-	}
-
-	for (uint8_t i = 0; i < edata->num_units; i++) {
-		if (edata->unit_idx[i] == chan_spec.chan_idx) {
-			*frame_count = 1;
-			return 0;
-		}
-	}
-
-	return -EINVAL;
-}
-
-static int pcnt_esp32_decoder_get_size_info(struct sensor_chan_spec chan_spec, size_t *base_size,
-					    size_t *frame_size)
-{
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_ROTATION:
-	case SENSOR_CHAN_ENCODER_COUNT:
-		*base_size = sizeof(struct sensor_q31_data);
-		*frame_size = sizeof(struct sensor_q31_sample_data);
-		return 0;
-	default:
-		return -ENOTSUP;
-	}
-}
-
-static int pcnt_esp32_decoder_decode(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
-				     uint32_t *fit, uint16_t max_count, void *data_out)
-{
-	const struct pcnt_esp32_encoded_data *edata =
-		(const struct pcnt_esp32_encoded_data *)buffer;
-	struct sensor_q31_data *out = data_out;
-	int32_t raw = 0;
-	uint32_t cpr = 0;
-	bool found = false;
-
-	if (*fit != 0 || max_count < 1) {
-		return 0;
-	}
-
-	if (chan_spec.chan_type != SENSOR_CHAN_ROTATION &&
-	    chan_spec.chan_type != SENSOR_CHAN_ENCODER_COUNT) {
-		return -ENOTSUP;
-	}
-
-	for (uint8_t i = 0; i < edata->num_units; i++) {
-		if (edata->unit_idx[i] == chan_spec.chan_idx) {
-			raw = edata->counts[i];
-			cpr = edata->counts_per_rev[i];
-			found = true;
-			break;
-		}
-	}
-
-	if (!found) {
-		return -EINVAL;
-	}
-
-	out->header.base_timestamp_ns = edata->timestamp_ns;
-	out->header.reading_count = 1;
-
-	if (chan_spec.chan_type == SENSOR_CHAN_ROTATION && cpr > 0) {
-		int32_t cpr_i = (int32_t)cpr;
-		int32_t wrapped = raw % cpr_i;
-		int64_t deg_q31;
-
-		if (wrapped < 0) {
-			wrapped += cpr_i;
-		}
-		/* shift=9 keeps the q31 value in the [0, 360) degree range */
-		deg_q31 = ((int64_t)wrapped * 360 * ((int64_t)INT32_MAX + 1)) / cpr_i;
-		out->shift = 9;
-		out->readings[0].value = (q31_t)(deg_q31 >> out->shift);
-	} else {
-		out->shift = 0;
-		out->readings[0].value = (q31_t)raw;
-	}
-
-	*fit = 1;
-	return 1;
-}
-
-SENSOR_DECODER_API_DT_DEFINE() = {
-	.get_frame_count = pcnt_esp32_decoder_get_frame_count,
-	.get_size_info = pcnt_esp32_decoder_get_size_info,
-	.decode = pcnt_esp32_decoder_decode,
-};
-
-static int pcnt_esp32_get_decoder(const struct device *dev,
-				  const struct sensor_decoder_api **decoder)
-{
-	ARG_UNUSED(dev);
-	*decoder = &SENSOR_DECODER_NAME();
-	return 0;
-}
-
 static void pcnt_esp32_submit(const struct device *dev, struct rtio_iodev_sqe *iodev_sqe)
 {
 	const struct sensor_read_config *cfg = iodev_sqe->sqe.iodev->data;
