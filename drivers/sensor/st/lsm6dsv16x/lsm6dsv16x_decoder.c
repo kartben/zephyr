@@ -68,9 +68,10 @@ static const uint32_t baro_period_ns = UINT32_C(1000000000) / 10;
 
 /*
  * Expand val to q31_t according to its range; this is achieved multiplying by 2^31/2^range.
+ * The result saturates: 1.0 in the Q0.31 format gives INT32_MAX.
  */
-#define Q31_SHIFT_VAL(val, range) \
-	(q31_t) (roundf((val) * ((int64_t)1 << (31 - (range)))))
+#define Q31_SHIFT_VAL(val, range)                                                                  \
+	(q31_t)CLAMP((int64_t)roundf((val) * ((int64_t)1 << (31 - (range)))), INT32_MIN, INT32_MAX)
 
 /*
  * Expand micro_val (a generic micro unit) to q31_t according to its range; this is achieved
