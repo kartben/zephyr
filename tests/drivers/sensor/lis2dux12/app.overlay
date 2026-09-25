@@ -1,0 +1,19 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/sensor/lis2dux12.h>
+
+&i2c0 {
+	lis2dux12: lis2dux12@19 {
+		compatible = "st,lis2dux12";
+		reg = <0x19>;
+		int1-gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
+		range = <LIS2DUX12_DT_FS_4G>;
+		odr = <LIS2DUX12_DT_ODR_100Hz>;
+		power-mode = <LIS2DUX12_OPER_MODE_LOW_POWER>;
+	};
+};

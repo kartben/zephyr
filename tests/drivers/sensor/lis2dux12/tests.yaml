@@ -1,0 +1,17 @@
+# Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+common:
+  tags:
+    - drivers
+    - sensor
+  platform_allow:
+    - native_sim
+    - native_sim/native/64
+  integration_platforms:
+    - native_sim
+tests:
+  drivers.sensor.lis2dux12.decoder: {}
+  drivers.sensor.lis2dux12.decoder.temp:
+    extra_configs:
+      - CONFIG_LIS2DUX12_ENABLE_TEMP=y
