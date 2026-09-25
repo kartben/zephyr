@@ -262,10 +262,13 @@ static int icm4268x_read_imu_from_packet(const uint8_t *pkt, bool is_accel, int 
 	bool is_hires = FIELD_GET(FIFO_HEADER_20, pkt[0]) == 1;
 	int offset = 1 + (axis_offset * 2);
 
-	const uint32_t scale[2][2] = {
-		/* low-res,	hi-res */
-		{35744,		2235}, /* gyro */
-		{40168,		2511}, /* accel */
+	/*
+	 * Scale of a 16-bit sample. A 20-bit sample has 4 more fractional bits, so its scale is
+	 * this one divided by 16.
+	 */
+	const int64_t scale[2] = {
+		35744, /* gyro */
+		40168, /* accel */
 	};
 
 	if (!is_accel && FIELD_GET(FIFO_HEADER_ACCEL, pkt[0]) == 1) {
@@ -296,7 +299,11 @@ static int icm4268x_read_imu_from_packet(const uint8_t *pkt, bool is_accel, int 
 		signed_value = unsigned_value | (0 - (unsigned_value & BIT(15)));
 	}
 
-	*out = (q31_t)(signed_value * scale[is_accel][is_hires]);
+	if (is_hires) {
+		*out = (q31_t)((signed_value * scale[is_accel]) / 16);
+	} else {
+		*out = (q31_t)(signed_value * scale[is_accel]);
+	}
 	return 0;
 }
 
