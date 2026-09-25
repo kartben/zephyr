@@ -1,0 +1,17 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+&spi0 {
+	adis1647x: adis1647x@0 {
+		compatible = "adi,adis1647x";
+		reg = <0>;
+		spi-max-frequency = <1000000>;
+		model = "adis16477-1";
+		drdy-gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
+	};
+};
