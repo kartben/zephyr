@@ -38,7 +38,9 @@ static int max30009_decoder_get_frame_count(const uint8_t *buffer, struct sensor
 	}
 
 	buffer += sizeof(struct max30009_fifo_data);
-	const uint8_t *buffer_end = buffer + data->fifo_byte_count;
+	/* A trailing partial FIFO word is ignored */
+	const uint8_t *buffer_end =
+		buffer + ROUND_DOWN(data->fifo_byte_count, MAX30009_FIFO_BYTES_PER_SAMPLE);
 	uint16_t count = 0;
 
 	while (buffer < buffer_end) {
@@ -76,7 +78,9 @@ static int max30009_decoder_decode(const uint8_t *buffer, struct sensor_chan_spe
 	}
 
 	buffer += sizeof(struct max30009_fifo_data);
-	const uint8_t *buffer_end = buffer + data->fifo_byte_count;
+	/* A trailing partial FIFO word is ignored */
+	const uint8_t *buffer_end =
+		buffer + ROUND_DOWN(data->fifo_byte_count, MAX30009_FIFO_BYTES_PER_SAMPLE);
 	int count = 0;
 	uint32_t samples_seen = 0;
 	uint32_t start_offset = *fit;
