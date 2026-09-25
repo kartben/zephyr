@@ -1,0 +1,19 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/sensor/lsm6dsv16x.h>
+
+&i2c0 {
+	lsm6dsv16x: lsm6dsv16x@6b {
+		compatible = "st,lsm6dsv16x";
+		reg = <0x6b>;
+		int1-gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
+		drdy-pin = <1>;
+		accel-range = <LSM6DSV16X_DT_FS_4G>;
+		gyro-range = <LSM6DSV16X_DT_FS_2000DPS>;
+	};
+};
