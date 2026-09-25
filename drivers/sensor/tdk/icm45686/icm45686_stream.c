@@ -551,8 +551,8 @@ void icm45686_stream_submit(const struct device *dev, struct rtio_iodev_sqe *iod
 			}
 
 			/* Enable per-packet hardware timestamp insertion (20-byte hires packets).
-			 * Use 16μs resolution so that batches up to ~500ms fit in the signed
-			 * 16-bit delta used for correlation in the decoder.
+			 * Use 16μs resolution so that batches up to ~1s fit in the 16-bit
+			 * delta used for correlation in the decoder.
 			 */
 			val = REG_FIFO_CONFIG4_TMST_FSYNC_EN(true);
 			err = icm45686_reg_write_rtio(&data->bus, FIFO_CONFIG4, &val, 1);
