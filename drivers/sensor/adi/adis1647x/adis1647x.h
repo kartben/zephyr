@@ -152,10 +152,6 @@ void adis1647x_submit(const struct device *dev, struct rtio_iodev_sqe *iodev_sqe
 #endif
 int adis1647x_get_decoder(const struct device *dev, const struct sensor_decoder_api **decoder);
 
-/* Conversion helpers */
-void adis1647x_accel_convert(struct sensor_value *val, int16_t raw, uint8_t accel_scale_num);
-void adis1647x_gyro_convert(struct sensor_value *val, int16_t raw, uint16_t gyro_scale_num);
-
 /* Data helpers */
 int adis1647x_get_data(const struct device *dev, struct adis1647x_sample_data *sample_data);
 int adis1647x_verify_burst(const struct adis1647x_burst_data *b);
