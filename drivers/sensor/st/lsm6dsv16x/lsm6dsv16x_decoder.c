@@ -841,12 +841,41 @@ static int lsm6dsv16x_decoder_decode(const uint8_t *buffer, struct sensor_chan_s
 static int lsm6dsv16x_decoder_get_size_info(struct sensor_chan_spec chan_spec, size_t *base_size,
 					    size_t *frame_size)
 {
+	/* SFLP and sensor hub data are only decoded from FIFO buffers */
+	const bool sflp = IS_ENABLED(CONFIG_LSM6DSV16X_STREAM);
+	const bool shub = sflp && IS_ENABLED(CONFIG_LSM6DSV16X_SENSORHUB);
+
 	switch (chan_spec.chan_type) {
+	case SENSOR_CHAN_GRAVITY_VECTOR:
+	case SENSOR_CHAN_GBIAS_XYZ:
+		if (!sflp) {
+			return -ENOTSUP;
+		}
+		__fallthrough;
 	case SENSOR_CHAN_ACCEL_XYZ:
 	case SENSOR_CHAN_GYRO_XYZ:
 		*base_size = sizeof(struct sensor_three_axis_data);
 		*frame_size = sizeof(struct sensor_three_axis_sample_data);
 		return 0;
+	case SENSOR_CHAN_MAGN_XYZ:
+		if (!shub) {
+			return -ENOTSUP;
+		}
+		*base_size = sizeof(struct sensor_three_axis_data);
+		*frame_size = sizeof(struct sensor_three_axis_sample_data);
+		return 0;
+	case SENSOR_CHAN_GAME_ROTATION_VECTOR:
+		if (!sflp) {
+			return -ENOTSUP;
+		}
+		*base_size = sizeof(struct sensor_game_rotation_vector_data);
+		*frame_size = sizeof(struct sensor_game_rotation_vector_sample_data);
+		return 0;
+	case SENSOR_CHAN_PRESS:
+		if (!shub) {
+			return -ENOTSUP;
+		}
+		__fallthrough;
 	case SENSOR_CHAN_ACCEL_X:
 	case SENSOR_CHAN_ACCEL_Y:
 	case SENSOR_CHAN_ACCEL_Z:
