@@ -41,8 +41,7 @@ static void lis2dux12_submit_sample(const struct device *dev, struct rtio_iodev_
 
 	edata = (struct lis2dux12_rtio_data *)buf;
 
-	edata->has_accel = 0;
-	edata->has_temp = 0;
+	memset(edata, 0, sizeof(*edata));
 
 	for (int i = 0; i < num_channels; i++) {
 		switch (channels[i].chan_type) {
