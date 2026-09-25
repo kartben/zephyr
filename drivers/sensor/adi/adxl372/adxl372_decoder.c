@@ -9,7 +9,7 @@
 #ifdef CONFIG_ADXL372_STREAM
 
 /* (1.0 / 10 (sensor sensitivity)) * (2^31 / 2^11 (sensor shift) ) * SENSOR_G */
-#define SENSOR_QSCALE_FACTOR UINT32_C(1027604)
+#define SENSOR_QSCALE_FACTOR UINT32_C(1028302)
 
 #define ADXL372_COMPLEMENT         0xf000
 
