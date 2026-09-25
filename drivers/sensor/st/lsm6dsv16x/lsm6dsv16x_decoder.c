@@ -168,6 +168,34 @@ static const int32_t gyro_scaler[] = {
 static const int32_t magn_scaler = 1500; /* uGauss/LSB */
 #endif
 
+/*
+ * Store an accelerometer or gyroscope reading: all axes as sensor_three_axis_data for
+ * SENSOR_CHAN_ACCEL_XYZ and SENSOR_CHAN_GYRO_XYZ, one axis as sensor_q31_data for the single
+ * axis channels.
+ */
+static void lsm6dsv16x_store_xyz(enum sensor_channel chan, void *data_out, int idx,
+				 uint32_t timestamp_delta, int8_t shift, const q31_t v[3])
+{
+	if (chan == SENSOR_CHAN_ACCEL_XYZ || chan == SENSOR_CHAN_GYRO_XYZ) {
+		struct sensor_three_axis_data *out = data_out;
+
+		out->shift = shift;
+		out->readings[idx].timestamp_delta = timestamp_delta;
+		out->readings[idx].x = v[0];
+		out->readings[idx].y = v[1];
+		out->readings[idx].z = v[2];
+	} else {
+		struct sensor_q31_data *out = data_out;
+		/* The X, Y and Z channels follow each other */
+		const int axis = SENSOR_CHANNEL_IS_ACCEL(chan) ? chan - SENSOR_CHAN_ACCEL_X
+							       : chan - SENSOR_CHAN_GYRO_X;
+
+		out->shift = shift;
+		out->readings[idx].timestamp_delta = timestamp_delta;
+		out->readings[idx].value = v[axis];
+	}
+}
+
 static int lsm6dsv16x_decoder_get_frame_count(const uint8_t *buffer,
 					      struct sensor_chan_spec chan_spec,
 					      uint16_t *frame_count)
@@ -405,9 +433,10 @@ static int lsm6dsv16x_decode_fifo(const uint8_t *buffer, struct sensor_chan_spec
 
 		switch (fifo_tag) {
 		case LSM6DSV16X_XL_NC_TAG: {
-			struct sensor_three_axis_data *out = data_out;
 			int16_t x, y, z;
+			q31_t v[3];
 			const int32_t scale = accel_scaler[header->accel_fs_idx];
+			const int8_t shift = accel_range[header->accel_fs_idx];
 
 			xl_count++;
 			if ((uintptr_t)buffer < *fit) {
@@ -421,24 +450,24 @@ static int lsm6dsv16x_decode_fifo(const uint8_t *buffer, struct sensor_chan_spec
 				continue;
 			}
 
-			out->readings[count].timestamp_delta =
-				(xl_count - 1) * accel_period_ns[edata->accel_batch_odr];
-
 			x = *(int16_t *)&buffer[1];
 			y = *(int16_t *)&buffer[3];
 			z = *(int16_t *)&buffer[5];
 
-			out->shift = accel_range[header->accel_fs_idx];
+			v[0] = Q31_SHIFT_NANOVAL((int64_t)scale * x, shift);
+			v[1] = Q31_SHIFT_NANOVAL((int64_t)scale * y, shift);
+			v[2] = Q31_SHIFT_NANOVAL((int64_t)scale * z, shift);
 
-			out->readings[count].x = Q31_SHIFT_NANOVAL((int64_t)scale * x, out->shift);
-			out->readings[count].y = Q31_SHIFT_NANOVAL((int64_t)scale * y, out->shift);
-			out->readings[count].z = Q31_SHIFT_NANOVAL((int64_t)scale * z, out->shift);
+			lsm6dsv16x_store_xyz(
+				chan_spec.chan_type, data_out, count,
+				(xl_count - 1) * accel_period_ns[edata->accel_batch_odr], shift, v);
 			break;
 		}
 		case LSM6DSV16X_GY_NC_TAG: {
-			struct sensor_three_axis_data *out = data_out;
 			int16_t x, y, z;
+			q31_t v[3];
 			const int32_t scale = gyro_scaler[header->gyro_fs];
+			const int8_t shift = gyro_range[header->gyro_fs];
 
 			gy_count++;
 			if ((uintptr_t)buffer < *fit) {
@@ -452,18 +481,17 @@ static int lsm6dsv16x_decode_fifo(const uint8_t *buffer, struct sensor_chan_spec
 				continue;
 			}
 
-			out->readings[count].timestamp_delta =
-				(gy_count - 1) * gyro_period_ns[edata->gyro_batch_odr];
-
 			x = *(int16_t *)&buffer[1];
 			y = *(int16_t *)&buffer[3];
 			z = *(int16_t *)&buffer[5];
 
-			out->shift = gyro_range[header->gyro_fs];
+			v[0] = Q31_SHIFT_NANOVAL((int64_t)scale * x, shift);
+			v[1] = Q31_SHIFT_NANOVAL((int64_t)scale * y, shift);
+			v[2] = Q31_SHIFT_NANOVAL((int64_t)scale * z, shift);
 
-			out->readings[count].x = Q31_SHIFT_NANOVAL((int64_t)scale * x, out->shift);
-			out->readings[count].y = Q31_SHIFT_NANOVAL((int64_t)scale * y, out->shift);
-			out->readings[count].z = Q31_SHIFT_NANOVAL((int64_t)scale * z, out->shift);
+			lsm6dsv16x_store_xyz(chan_spec.chan_type, data_out, count,
+					     (gy_count - 1) * gyro_period_ns[edata->gyro_batch_odr],
+					     shift, v);
 			break;
 		}
 #if defined(CONFIG_LSM6DSV16X_ENABLE_TEMP)
@@ -722,21 +750,23 @@ static int lsm6dsv16x_decode_sample(const uint8_t *buffer, struct sensor_chan_sp
 	case SENSOR_CHAN_ACCEL_Z:
 	case SENSOR_CHAN_ACCEL_XYZ: {
 		const int32_t scale = accel_scaler[header->accel_fs_idx];
+		const int8_t shift = accel_range[header->accel_fs_idx];
+		q31_t v[3];
 
 		if (edata->has_accel == 0) {
 			return -ENODATA;
 		}
 
-		struct sensor_three_axis_data *out = data_out;
+		struct sensor_data_header *out = data_out;
 
-		out->header.base_timestamp_ns = edata->header.timestamp;
-		out->header.reading_count = 1;
+		out->base_timestamp_ns = edata->header.timestamp;
+		out->reading_count = 1;
 
-		out->shift = accel_range[header->accel_fs_idx];
+		for (int i = 0; i < 3; i++) {
+			v[i] = Q31_SHIFT_NANOVAL((int64_t)scale * edata->acc[i], shift);
+		}
 
-		out->readings[0].x = Q31_SHIFT_NANOVAL((int64_t)scale * edata->acc[0], out->shift);
-		out->readings[0].y = Q31_SHIFT_NANOVAL((int64_t)scale * edata->acc[1], out->shift);
-		out->readings[0].z = Q31_SHIFT_NANOVAL((int64_t)scale * edata->acc[2], out->shift);
+		lsm6dsv16x_store_xyz(chan_spec.chan_type, data_out, 0, 0, shift, v);
 		*fit = 1;
 		return 1;
 	}
@@ -745,21 +775,23 @@ static int lsm6dsv16x_decode_sample(const uint8_t *buffer, struct sensor_chan_sp
 	case SENSOR_CHAN_GYRO_Z:
 	case SENSOR_CHAN_GYRO_XYZ: {
 		const int32_t scale = gyro_scaler[header->gyro_fs];
+		const int8_t shift = gyro_range[header->gyro_fs];
+		q31_t v[3];
 
 		if (edata->has_gyro == 0) {
 			return -ENODATA;
 		}
 
-		struct sensor_three_axis_data *out = data_out;
+		struct sensor_data_header *out = data_out;
 
-		out->header.base_timestamp_ns = edata->header.timestamp;
-		out->header.reading_count = 1;
+		out->base_timestamp_ns = edata->header.timestamp;
+		out->reading_count = 1;
 
-		out->shift = gyro_range[header->gyro_fs];
+		for (int i = 0; i < 3; i++) {
+			v[i] = Q31_SHIFT_NANOVAL((int64_t)scale * edata->gyro[i], shift);
+		}
 
-		out->readings[0].x = Q31_SHIFT_NANOVAL((int64_t)scale * edata->gyro[0], out->shift);
-		out->readings[0].y = Q31_SHIFT_NANOVAL((int64_t)scale * edata->gyro[1], out->shift);
-		out->readings[0].z = Q31_SHIFT_NANOVAL((int64_t)scale * edata->gyro[2], out->shift);
+		lsm6dsv16x_store_xyz(chan_spec.chan_type, data_out, 0, 0, shift, v);
 		*fit = 1;
 		return 1;
 	}
@@ -810,17 +842,17 @@ static int lsm6dsv16x_decoder_get_size_info(struct sensor_chan_spec chan_spec, s
 					    size_t *frame_size)
 {
 	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_ACCEL_X:
-	case SENSOR_CHAN_ACCEL_Y:
-	case SENSOR_CHAN_ACCEL_Z:
 	case SENSOR_CHAN_ACCEL_XYZ:
-	case SENSOR_CHAN_GYRO_X:
-	case SENSOR_CHAN_GYRO_Y:
-	case SENSOR_CHAN_GYRO_Z:
 	case SENSOR_CHAN_GYRO_XYZ:
 		*base_size = sizeof(struct sensor_three_axis_data);
 		*frame_size = sizeof(struct sensor_three_axis_sample_data);
 		return 0;
+	case SENSOR_CHAN_ACCEL_X:
+	case SENSOR_CHAN_ACCEL_Y:
+	case SENSOR_CHAN_ACCEL_Z:
+	case SENSOR_CHAN_GYRO_X:
+	case SENSOR_CHAN_GYRO_Y:
+	case SENSOR_CHAN_GYRO_Z:
 	case SENSOR_CHAN_DIE_TEMP:
 		*base_size = sizeof(struct sensor_q31_data);
 		*frame_size = sizeof(struct sensor_q31_sample_data);
