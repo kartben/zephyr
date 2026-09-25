@@ -356,7 +356,7 @@ void ens210_submit(const struct device *dev, struct rtio_iodev_sqe *iodev_sqe)
  *   Temp:      T_VAL × 2^15 / 64  = T_VAL × 512
  *
  * Temperature also needs a Kelvin→Celsius offset:
- *   273.15 K × 2^15 = 8958259.2 → 8958259 (q15.16 fixed constant)
+ *   273.15 K × 2^15 = 8950579.2 → 8950579 (q15.16 fixed constant)
  *
  * No runtime division is needed — only multiply and subtract.
  */

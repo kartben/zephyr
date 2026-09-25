@@ -72,8 +72,8 @@
 #define ENS210_TEMP_Q31_MUL       (ENS210_Q31_SCALE / ENS210_TEMP_LSB_PER_K)
 #define ENS210_HUM_Q31_MUL        (ENS210_Q31_SCALE / ENS210_HUM_LSB_PER_RH)
 
-/* 273.15 K in q31 (shift 16): 273.15 * 2^15 → 8958259 */
-#define ENS210_KELVIN_OFFSET_Q31   8958259
+/* 273.15 K in q31 (shift 16): 273.15 * 2^15 = 8950579.2 → 8950579 */
+#define ENS210_KELVIN_OFFSET_Q31   8950579
 
 struct rtio_iodev_sqe;
 struct sensor_decoder_api;
