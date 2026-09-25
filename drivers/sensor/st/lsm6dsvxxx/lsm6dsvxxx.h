@@ -289,10 +289,6 @@ struct lsm6dsvxxx_rtio_data {
 #define SENSOR_SCALE_UG_TO_UMS2(ug_lsb)	\
 	(int32_t)((ug_lsb) * SENSOR_G / 1000000LL)
 
-/* Calculate scaling factor to transform micro-dps/LSB unit into micro-rads/LSB */
-#define SENSOR_SCALE_UDPS_TO_URADS(udps_lsb) \
-	(int32_t)(((udps_lsb) * SENSOR_PI / 180LL) / 1000000LL)
-
 #ifdef CONFIG_LSM6DSVXXX_STREAM
 #define LSM6DSVXXX_FIFO_ITEM_LEN 7
 #define LSM6DSVXXX_FIFO_SIZE(x) (x * LSM6DSVXXX_FIFO_ITEM_LEN)
