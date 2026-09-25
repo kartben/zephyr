@@ -20,6 +20,7 @@ struct bmi270_decoder_header {
 	uint8_t reserved: 1;
 	uint16_t acc_odr_hz;
 	uint16_t gyr_odr_hz;
+	uint8_t int_status; /* INT_STATUS_1 register value */
 } __attribute__((__packed__));
 
 /** Encoded FIFO read result: header + raw FIFO bytes */

@@ -14,6 +14,7 @@
 #include <zephyr/sys/util.h>
 #include <zephyr/logging/log.h>
 
+#include "bmi270.h"
 #include "bmi270_decoder.h"
 
 LOG_MODULE_REGISTER(bmi270_decoder, CONFIG_SENSOR_LOG_LEVEL);
@@ -375,9 +376,21 @@ static int bmi270_decoder_decode(const uint8_t *buffer, struct sensor_chan_spec 
 
 static bool bmi270_decoder_has_trigger(const uint8_t *buffer, enum sensor_trigger_type trigger)
 {
-	ARG_UNUSED(buffer);
-	ARG_UNUSED(trigger);
-	return false;
+	const struct bmi270_fifo_encoded_data *edata =
+		(const struct bmi270_fifo_encoded_data *)buffer;
+
+	if (edata->header.is_fifo == 0U) {
+		return false;
+	}
+
+	switch (trigger) {
+	case SENSOR_TRIG_FIFO_WATERMARK:
+		return (edata->header.int_status & BMI270_INT_STATUS_1_FWM_INT) != 0U;
+	case SENSOR_TRIG_FIFO_FULL:
+		return (edata->header.int_status & BMI270_INT_STATUS_1_FFULL_INT) != 0U;
+	default:
+		return false;
+	}
 }
 
 static const struct sensor_decoder_api bmi270_decoder_api = {

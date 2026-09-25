@@ -266,6 +266,7 @@ static void fifo_fill_encoded_header(struct bmi270_fifo_encoded_data *edata,
 	edata->header.acc_range = acc_fullscale_g_to_decoder_idx(data->acc_range);
 	edata->header.acc_odr_hz = acc_odr_reg_to_hz(data->acc_odr);
 	edata->header.gyr_odr_hz = gyr_odr_reg_to_hz(data->gyr_odr);
+	edata->header.int_status = data->int_status_1;
 	edata->header.gyr_range_idx = gyr_fullscale_dps_to_decoder_idx(data->gyr_range);
 	edata->fifo_byte_count = fifo_len;
 }
