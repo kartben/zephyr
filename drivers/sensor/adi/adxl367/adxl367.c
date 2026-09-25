@@ -902,13 +902,8 @@ static int adxl367_sample_fetch(const struct device *dev,
 
 	return ret;
 }
-#ifdef CONFIG_SENSOR_ASYNC_API
-void adxl367_accel_convert(struct sensor_value *val, int16_t value,
-				enum adxl367_range range)
-#else
 static void adxl367_accel_convert(struct sensor_value *val, int16_t value,
 				enum adxl367_range range)
-#endif /*CONFIG_SENSOR_ASYNC_API*/
 {
 	int64_t micro_ms2 = value * (SENSOR_G * 250 / 1000 *
 			  adxl367_scale_mul[range] / 1000);
@@ -917,11 +912,7 @@ static void adxl367_accel_convert(struct sensor_value *val, int16_t value,
 	val->val2 = micro_ms2 % 1000000;
 }
 
-#ifdef CONFIG_SENSOR_ASYNC_API
-void adxl367_temp_convert(struct sensor_value *val, int16_t value)
-#else
 static void adxl367_temp_convert(struct sensor_value *val, int16_t value)
-#endif /*CONFIG_SENSOR_ASYNC_API*/
 {
 	int32_t temp_from_25 = value - ADXL367_TEMP_25C;
 	int32_t temp_data = temp_from_25 * ADXL367_TEMP_SCALE;
