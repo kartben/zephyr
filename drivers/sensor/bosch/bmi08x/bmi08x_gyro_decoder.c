@@ -10,7 +10,9 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/sensor_clock.h>
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/drivers/sensor_decoder.h>
 #include <zephyr/rtio/rtio.h>
+#include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/check.h>
 
 #define DT_DRV_COMPAT bosch_bmi08x_gyro
@@ -23,16 +25,27 @@
 LOG_MODULE_REGISTER(BMI08X_GYRO_DECODER, CONFIG_SENSOR_LOG_LEVEL);
 
 /* Period in ns indexed by BMI08X_GYRO_BW_* register value (0x00..0x07) */
-static const uint32_t gyro_period_ns[] = {
-	[0x00] = UINT32_C(500000),    /* 2000 Hz */
-	[0x01] = UINT32_C(500000),    /* 2000 Hz */
-	[0x02] = UINT32_C(1000000),   /* 1000 Hz */
-	[0x03] = UINT32_C(2500000),   /* 400 Hz  */
-	[0x04] = UINT32_C(5000000),   /* 200 Hz  */
-	[0x05] = UINT32_C(10000000),  /* 100 Hz  */
-	[0x06] = UINT32_C(5000000),   /* 200 Hz  */
-	[0x07] = UINT32_C(10000000),  /* 100 Hz  */
+static const uint64_t gyro_period_ns[] = {
+	[BMI08X_GYRO_BW_532_ODR_2000_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(2000000),
+	[BMI08X_GYRO_BW_230_ODR_2000_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(2000000),
+	[BMI08X_GYRO_BW_116_ODR_1000_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(1000000),
+	[BMI08X_GYRO_BW_47_ODR_400_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(400000),
+	[BMI08X_GYRO_BW_23_ODR_200_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(200000),
+	[BMI08X_GYRO_BW_12_ODR_100_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(100000),
+	[BMI08X_GYRO_BW_64_ODR_200_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(200000),
+	[BMI08X_GYRO_BW_32_ODR_100_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(100000),
 };
+
+/*
+ * At the 2000 dps range, one LSB is 2000 / 32768 dps; the ratio in rad/s is reduced by 16000 to
+ * fit in 32 bits. Each range step halves the LSB and 2^shift, so the q31 value does not depend on
+ * the range. Bits needed for the integer part in rad/s: 6 at 2000 dps (34.91 rad/s), 5 at
+ * 1000 dps, 4 at 500 dps, 3 at 250 dps and 2 at 125 dps.
+ */
+BUILD_ASSERT((2000LL * SENSOR_PI) % 16000LL == 0);
+#define BMI08X_GYRO_LSB_NUM    ((int32_t)(2000LL * SENSOR_PI / 16000LL))
+#define BMI08X_GYRO_LSB_DEN    ((int32_t)(32768LL * 180LL * 1000000LL / 16000LL))
+#define BMI08X_GYRO_BASE_SHIFT 6
 
 void bmi08x_gyro_encode_header(const struct device *dev, struct bmi08x_gyro_encoded_data *edata,
 			       bool is_streaming)
@@ -53,87 +66,101 @@ void bmi08x_gyro_encode_header(const struct device *dev, struct bmi08x_gyro_enco
 	edata->header.gyro_odr = config->gyro_hz;
 }
 
-static int bmi08x_decoder_get_frame_count(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
-					  uint16_t *frame_count)
+static int bmi08x_gyro_decode_frame(const uint8_t *frame, struct sensor_chan_spec chan_spec,
+				    const void *user_data, struct sensor_frame_reading *reading)
+{
+	ARG_UNUSED(user_data);
+
+	if (chan_spec.chan_type != SENSOR_CHAN_GYRO_XYZ) {
+		return -ENOTSUP;
+	}
+
+	if (reading == NULL) {
+		return 1;
+	}
+
+	for (uint8_t i = 0U; i < 3U; i++) {
+		reading->values[i] = sensor_raw_to_q31_ratio(
+			sys_get_le16(&frame[i * 2U]), 16U, BMI08X_GYRO_LSB_NUM, BMI08X_GYRO_LSB_DEN,
+			BMI08X_GYRO_BASE_SHIFT);
+	}
+
+	return 1;
+}
+
+static int bmi08x_gyro_get_frames(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+				  struct sensor_raw_frames *frames)
 {
 	const struct bmi08x_gyro_encoded_data *edata =
 		(const struct bmi08x_gyro_encoded_data *)buffer;
+	size_t frame_count = 1U;
 
-	if (!edata->header.has_gyro || chan_spec.chan_idx != 0) {
+	if (chan_spec.chan_type != SENSOR_CHAN_GYRO_XYZ || chan_spec.chan_idx != 0U) {
+		return -ENOTSUP;
+	}
+
+	if (!edata->header.has_gyro) {
 		return -ENODATA;
 	}
-	if (chan_spec.chan_type != SENSOR_CHAN_GYRO_XYZ) {
-		return -EINVAL;
+
+	*frames = (struct sensor_raw_frames){
+		.frames = (const uint8_t *)edata->fifo,
+		.frame_size = sizeof(struct bmi08x_gyro_frame),
+		.decode_frame = bmi08x_gyro_decode_frame,
+		.timestamp_ns = edata->header.timestamp,
+		.shift = BMI08X_GYRO_BASE_SHIFT - edata->header.range,
+	};
+
+	if (edata->header.is_streaming) {
+		/* FIFO_STATUS bits 6:0 hold the number of frames in the FIFO, bit 7 the overrun */
+		frame_count =
+			MIN(edata->header.sample_count, edata->header.fifo_status & BIT_MASK(7));
+		if (edata->header.gyro_odr < ARRAY_SIZE(gyro_period_ns)) {
+			frames->period_ns = gyro_period_ns[edata->header.gyro_odr];
+		}
 	}
 
-	*frame_count = edata->header.sample_count;
+	frames->size = frame_count * sizeof(struct bmi08x_gyro_frame);
+
 	return 0;
+}
+
+static int bmi08x_decoder_get_frame_count(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+					  uint16_t *frame_count)
+{
+	struct sensor_raw_frames frames;
+	int ret;
+
+	ret = bmi08x_gyro_get_frames(buffer, chan_spec, &frames);
+	if (ret != 0) {
+		return ret;
+	}
+
+	return sensor_raw_frames_count(&frames, chan_spec, frame_count);
 }
 
 static int bmi08x_decoder_get_size_info(struct sensor_chan_spec chan_spec, size_t *base_size,
 					size_t *frame_size)
 {
-	if (chan_spec.chan_idx != 0 || chan_spec.chan_type != SENSOR_CHAN_GYRO_XYZ) {
-		return -EINVAL;
+	if (chan_spec.chan_type != SENSOR_CHAN_GYRO_XYZ || chan_spec.chan_idx != 0U) {
+		return -ENOTSUP;
 	}
 
-	*base_size = sizeof(struct sensor_three_axis_data);
-	*frame_size = sizeof(struct sensor_three_axis_sample_data);
-	return 0;
+	return sensor_decode_frames_size_info(chan_spec, 0U, base_size, frame_size);
 }
 
 static int bmi08x_decoder_decode(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
 				 uint32_t *fit, uint16_t max_count, void *data_out)
 {
-	const struct bmi08x_gyro_encoded_data *edata =
-		(const struct bmi08x_gyro_encoded_data *)buffer;
-	struct sensor_three_axis_data *data_output = (struct sensor_three_axis_data *)data_out;
-	uint32_t fit0 = *fit;
+	struct sensor_raw_frames frames;
+	int ret;
 
-	if (chan_spec.chan_type != SENSOR_CHAN_GYRO_XYZ || chan_spec.chan_idx != 0 ||
-	    max_count == 0) {
-		return -EINVAL;
+	ret = bmi08x_gyro_get_frames(buffer, chan_spec, &frames);
+	if (ret != 0) {
+		return ret;
 	}
-	if (!edata->header.has_gyro || *fit >= edata->header.sample_count) {
-		return -ENODATA;
-	}
-	if (edata->header.is_streaming &&
-	    ((edata->header.fifo_status & 0x7F) == 0)) {
-		return -ENODATA;
-	}
-	uint32_t max_samples = MIN(edata->header.sample_count, edata->header.fifo_status & 0x7F);
-	uint32_t period_ns = (edata->header.gyro_odr < ARRAY_SIZE(gyro_period_ns))
-			     ? gyro_period_ns[edata->header.gyro_odr] : 0;
 
-	/** Bits we need to represent the integer part of FSR in rad/s:
-	 * - 2000 dps (34.91 rad/s) = 6 bits.
-	 * - 1000 dps (17.45 rad/s) = 5 bits.
-	 * -  500 dps (8.73 rad/s) = 4 bits.
-	 * -  250 dps (4.36 rad/s) = 3 bits.
-	 * -  125 dps (2.18 rad/s) = 2 bits.
-	 */
-	data_output->shift = 6 - edata->header.range;
-	data_output->header.base_timestamp_ns =
-		edata->header.timestamp -
-		(uint64_t)(max_samples > 0 ? max_samples - 1 : 0) * period_ns;
-
-	do {
-		uint32_t idx = *fit - fit0;
-
-		for (size_t i = 0 ; i < 3 ; i++) {
-			int64_t raw_value;
-
-			raw_value = sign_extend_64(edata->fifo[*fit].payload[i], 15);
-			raw_value = (raw_value * 2000 << (31 - 6 - 15)) * SENSOR_PI / 1000000 / 180;
-
-			data_output->readings[idx].values[i] = raw_value;
-		}
-		data_output->readings[idx].timestamp_delta = idx * period_ns;
-	} while (++(*fit) < MIN(max_samples, fit0 + max_count));
-
-	data_output->header.reading_count = *fit - fit0;
-
-	return data_output->header.reading_count;
+	return sensor_decode_frames(&frames, chan_spec, fit, max_count, data_out);
 }
 
 static bool bmi08x_decoder_has_trigger(const uint8_t *buffer, enum sensor_trigger_type trigger)
