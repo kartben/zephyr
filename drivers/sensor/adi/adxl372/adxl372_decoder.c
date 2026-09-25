@@ -4,298 +4,228 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <zephyr/drivers/sensor_decoder.h>
+#include <zephyr/sys/byteorder.h>
+
 #include "adxl372.h"
 
-#ifdef CONFIG_ADXL372_STREAM
+/* 12-bit samples of 100 mg/LSB, read with a shift of 11 (up to 2048 m/s^2) */
+#define ADXL372_SAMPLE_BITS 12U
+#define ADXL372_SHIFT       11
+#define ADXL372_QSCALE      SENSOR_Q31_SCALE(SENSOR_G, 10 * 1000000LL, ADXL372_SHIFT)
 
-/* (1.0 / 10 (sensor sensitivity)) * (2^31 / 2^11 (sensor shift) ) * SENSOR_G */
-#define SENSOR_QSCALE_FACTOR UINT32_C(1028302)
+/* Bytes per axis in a frame: 12-bit sample left-justified in a big-endian 16-bit word */
+#define ADXL372_AXIS_SIZE 2U
+#define ADXL372_NUM_AXES  3U
 
-#define ADXL372_COMPLEMENT         0xf000
-
-static const uint32_t accel_period_ns[] = {
-	[ADXL372_ODR_400HZ] = UINT32_C(1000000000) / 400,
-	[ADXL372_ODR_800HZ] = UINT32_C(1000000000) / 800,
-	[ADXL372_ODR_1600HZ] = UINT32_C(1000000000) / 1600,
-	[ADXL372_ODR_3200HZ] = UINT32_C(1000000000) / 3200,
-	[ADXL372_ODR_6400HZ] = UINT32_C(1000000000) / 6400,
+static const uint64_t accel_period_ns[] = {
+	[ADXL372_ODR_400HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(400000),
+	[ADXL372_ODR_800HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(800000),
+	[ADXL372_ODR_1600HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(1600000),
+	[ADXL372_ODR_3200HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(3200000),
+	[ADXL372_ODR_6400HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(6400000),
 };
 
-static inline void adxl372_accel_convert_q31(q31_t *out, const uint8_t *buff)
+struct adxl372_frame_format {
+	/* Axes present in each frame, BIT(0) for X to BIT(2) for Z, packed in that order */
+	uint8_t axes;
+	/* Single sample converted to a frame of the FIFO format */
+	uint8_t sample[ADXL372_NUM_AXES * ADXL372_AXIS_SIZE];
+};
+
+static bool adxl372_chan_is_supported(struct sensor_chan_spec chan_spec)
 {
-	int16_t data_in = ((int16_t)*buff << 4) | (((int16_t)*(buff + 1) & 0xF0) >> 4);
-
-	if (data_in & BIT(11)) {
-		data_in |= ADXL372_COMPLEMENT;
-	}
-
-	*out = data_in * SENSOR_QSCALE_FACTOR;
+	return chan_spec.chan_idx == 0U && SENSOR_CHANNEL_IS_ACCEL(chan_spec.chan_type);
 }
 
-static int adxl372_decode_stream(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
-				 uint32_t *fit, uint16_t max_count, void *data_out)
+/* Size of the samples of the axes set in axes */
+static size_t adxl372_axes_size(uint8_t axes)
 {
-	const struct adxl372_fifo_data *enc_data = (const struct adxl372_fifo_data *)buffer;
-	const uint8_t *buffer_end =
-		buffer + sizeof(struct adxl372_fifo_data) + enc_data->fifo_byte_count;
-	int count = 0;
-	uint8_t sample_num = 0;
+	size_t size = 0U;
 
-	if ((uintptr_t)buffer_end <= *fit || chan_spec.chan_idx != 0) {
-		return 0;
-	}
-
-	struct sensor_three_axis_data *data = (struct sensor_three_axis_data *)data_out;
-
-	memset(data, 0, sizeof(struct sensor_three_axis_data));
-	data->shift = 11; /* Sensor shift */
-
-	buffer += sizeof(struct adxl372_fifo_data);
-
-	uint8_t sample_set_size = enc_data->sample_set_size;
-
-	if (sample_set_size == 0) {
-		return -ENODATA;
-	}
-
-	uint64_t period_ns = accel_period_ns[enc_data->accel_odr];
-	uint16_t total_samples = enc_data->fifo_byte_count / sample_set_size;
-
-	data->header.base_timestamp_ns =
-		enc_data->timestamp -
-		(total_samples > 0 ? (total_samples - 1) : 0) * period_ns;
-
-	/* Calculate which sample is decoded. */
-	if (*fit >= (uintptr_t)buffer) {
-		sample_num = (*fit - (uintptr_t)buffer) / sample_set_size;
-	}
-
-	while (count < max_count && buffer < buffer_end) {
-		const uint8_t *sample_end = buffer;
-
-		sample_end += sample_set_size;
-
-		if ((uintptr_t)buffer < *fit) {
-			/* This frame was already decoded, move on to the next frame */
-			buffer = sample_end;
-			continue;
+	for (uint8_t axis = 0U; axis < ADXL372_NUM_AXES; axis++) {
+		if ((axes & BIT(axis)) != 0U) {
+			size += ADXL372_AXIS_SIZE;
 		}
-
-		switch (chan_spec.chan_type) {
-		case SENSOR_CHAN_ACCEL_X:
-			if (enc_data->has_x) {
-				data->readings[count].timestamp_delta = sample_num * period_ns;
-				adxl372_accel_convert_q31(&data->readings[count].x, buffer);
-			}
-			break;
-		case SENSOR_CHAN_ACCEL_Y:
-			if (enc_data->has_y) {
-				uint8_t buff_offset = 0;
-
-				/* If packet has X channel, then Y channel has offset. */
-				if (enc_data->has_x) {
-					buff_offset = 2;
-				}
-				data->readings[count].timestamp_delta = sample_num * period_ns;
-				adxl372_accel_convert_q31(&data->readings[count].y,
-							  (buffer + buff_offset));
-			}
-			break;
-		case SENSOR_CHAN_ACCEL_Z:
-			if (enc_data->has_z) {
-				uint8_t buff_offset = 0;
-
-				/* If packet has X channel and/or Y channel,
-				 * then Z channel has offset.
-				 */
-				if (enc_data->has_x) {
-					buff_offset = 2;
-				}
-
-				if (enc_data->has_y) {
-					buff_offset += 2;
-				}
-				data->readings[count].timestamp_delta = sample_num * period_ns;
-				adxl372_accel_convert_q31(&data->readings[count].z,
-							  (buffer + buff_offset));
-			}
-			break;
-		case SENSOR_CHAN_ACCEL_XYZ:
-			data->readings[count].timestamp_delta = sample_num * period_ns;
-			uint8_t buff_offset = 0;
-
-			if (enc_data->has_x) {
-				adxl372_accel_convert_q31(&data->readings[count].x, buffer);
-				buff_offset = 2;
-			}
-
-			if (enc_data->has_y) {
-				adxl372_accel_convert_q31(&data->readings[count].y,
-							  (buffer + buff_offset));
-
-				buff_offset += 2;
-			}
-
-			if (enc_data->has_z) {
-				adxl372_accel_convert_q31(&data->readings[count].z,
-							  (buffer + buff_offset));
-			}
-			break;
-		default:
-			return -ENOTSUP;
-		}
-
-		buffer = sample_end;
-		*fit = (uintptr_t)sample_end;
-		count++;
 	}
-	data->header.reading_count = count;
-	return count;
+
+	return size;
 }
 
-#endif /* CONFIG_ADXL372_STREAM */
-
-static int adxl372_decoder_get_frame_count(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
-					   uint16_t *frame_count)
+static q31_t adxl372_axis_get(const uint8_t *frame, uint8_t axes, uint8_t axis)
 {
-	int32_t ret = -ENOTSUP;
+	/* The axes present in the frame are packed in X, Y, Z order */
+	const size_t offset = adxl372_axes_size(axes & (BIT(axis) - 1U));
 
-	if (chan_spec.chan_idx != 0) {
-		return ret;
-	}
-
-#ifdef CONFIG_ADXL372_STREAM
-	const struct adxl372_fifo_data *data = (const struct adxl372_fifo_data *)buffer;
-
-	if (!data->is_fifo) {
-#endif /* CONFIG_ADXL372_STREAM */
-		switch (chan_spec.chan_type) {
-		case SENSOR_CHAN_ACCEL_X:
-		case SENSOR_CHAN_ACCEL_Y:
-		case SENSOR_CHAN_ACCEL_Z:
-		case SENSOR_CHAN_ACCEL_XYZ:
-			*frame_count = 1;
-			ret = 0;
-			break;
-
-		default:
-			break;
-		}
-#ifdef CONFIG_ADXL372_STREAM
-	} else {
-		if (data->fifo_byte_count == 0) {
-			*frame_count = 0;
-			ret = 0;
-		} else {
-			switch (chan_spec.chan_type) {
-			case SENSOR_CHAN_ACCEL_X:
-				if (data->has_x) {
-					*frame_count =
-						data->fifo_byte_count / data->sample_set_size;
-					ret = 0;
-				}
-				break;
-			case SENSOR_CHAN_ACCEL_Y:
-				if (data->has_y) {
-					*frame_count =
-						data->fifo_byte_count / data->sample_set_size;
-					ret = 0;
-				}
-				break;
-			case SENSOR_CHAN_ACCEL_Z:
-				if (data->has_z) {
-					*frame_count =
-						data->fifo_byte_count / data->sample_set_size;
-					ret = 0;
-				}
-				break;
-			case SENSOR_CHAN_ACCEL_XYZ:
-				if (data->has_x || data->has_y || data->has_z) {
-					*frame_count =
-						data->fifo_byte_count / data->sample_set_size;
-					ret = 0;
-				}
-				break;
-
-			default:
-				break;
-			}
-		}
-	}
-#endif /* CONFIG_ADXL372_STREAM */
-
-	return ret;
+	return sensor_raw_to_q31((uint32_t)sys_get_be16(&frame[offset]) >> 4U, ADXL372_SAMPLE_BITS,
+				 ADXL372_QSCALE);
 }
 
-static int adxl372_decode_sample(const struct adxl372_xyz_accel_data *data,
-				 struct sensor_chan_spec chan_spec, uint32_t *fit,
-				 uint16_t max_count, void *data_out)
+static int adxl372_decode_frame(const uint8_t *frame, struct sensor_chan_spec chan_spec,
+				const void *user_data, struct sensor_frame_reading *reading)
 {
-	struct sensor_value *out = (struct sensor_value *)data_out;
-
-	if (*fit > 0) {
-		return -ENOTSUP;
-	}
+	const struct adxl372_frame_format *fmt = user_data;
+	uint8_t first;
+	uint8_t num;
 
 	switch (chan_spec.chan_type) {
+	case SENSOR_CHAN_ACCEL_XYZ:
+		first = 0U;
+		num = ADXL372_NUM_AXES;
+		break;
 	case SENSOR_CHAN_ACCEL_X:
-		adxl372_accel_convert(out, data->x);
+		first = 0U;
+		num = 1U;
 		break;
 	case SENSOR_CHAN_ACCEL_Y:
-		adxl372_accel_convert(out, data->y);
+		first = 1U;
+		num = 1U;
 		break;
 	case SENSOR_CHAN_ACCEL_Z:
-		adxl372_accel_convert(out, data->z);
-		break;
-	case SENSOR_CHAN_ACCEL_XYZ:
-		adxl372_accel_convert(out++, data->x);
-		adxl372_accel_convert(out++, data->y);
-		adxl372_accel_convert(out, data->z);
+		first = 2U;
+		num = 1U;
 		break;
 	default:
 		return -ENOTSUP;
 	}
 
-	*fit = 1;
+	/* Axes missing from the frames read as 0, unless all requested axes are missing */
+	if ((fmt->axes & GENMASK(first + num - 1U, first)) == 0U) {
+		return -ENOTSUP;
+	}
+
+	if (reading == NULL) {
+		return 1;
+	}
+
+	for (uint8_t i = 0U; i < num; i++) {
+		if ((fmt->axes & BIT(first + i)) != 0U) {
+			reading->values[i] = adxl372_axis_get(frame, fmt->axes, first + i);
+		}
+	}
+
+	return 1;
+}
+
+static int adxl372_get_frames(const uint8_t *buffer, struct sensor_raw_frames *frames,
+			      struct adxl372_frame_format *fmt)
+{
+	const struct adxl372_fifo_data *hdr = (const struct adxl372_fifo_data *)buffer;
+	const struct adxl372_xyz_accel_data *sample = (const struct adxl372_xyz_accel_data *)buffer;
+
+	*frames = (struct sensor_raw_frames){
+		.decode_frame = adxl372_decode_frame,
+		.user_data = fmt,
+		.shift = ADXL372_SHIFT,
+	};
+
+	if (IS_ENABLED(CONFIG_ADXL372_STREAM) && hdr->is_fifo == 1U) {
+		fmt->axes = (hdr->has_x == 1U ? BIT(0) : 0U) | (hdr->has_y == 1U ? BIT(1) : 0U) |
+			    (hdr->has_z == 1U ? BIT(2) : 0U);
+
+		if (hdr->accel_odr >= ARRAY_SIZE(accel_period_ns)) {
+			return -EINVAL;
+		}
+
+		frames->frames = buffer + sizeof(*hdr);
+		frames->size = hdr->fifo_byte_count;
+		frames->timestamp_ns = hdr->timestamp;
+		frames->period_ns = accel_period_ns[hdr->accel_odr];
+
+		if (frames->size == 0U) {
+			/* Buffers completed without data record no frame format */
+			frames->frame_size = ADXL372_NUM_AXES * ADXL372_AXIS_SIZE;
+		} else if (hdr->sample_set_size < adxl372_axes_size(fmt->axes)) {
+			return -EINVAL;
+		} else {
+			frames->frame_size = hdr->sample_set_size;
+		}
+	} else {
+		/* The single sample holds left-justified 12-bit values in CPU byte order */
+		fmt->axes = BIT_MASK(ADXL372_NUM_AXES);
+		sys_put_be16((uint16_t)sample->x, &fmt->sample[0]);
+		sys_put_be16((uint16_t)sample->y, &fmt->sample[2]);
+		sys_put_be16((uint16_t)sample->z, &fmt->sample[4]);
+
+		frames->frames = fmt->sample;
+		frames->size = sizeof(fmt->sample);
+		frames->frame_size = sizeof(fmt->sample);
+	}
 
 	return 0;
 }
 
-static int adxl372_decoder_decode(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
-				    uint32_t *fit, uint16_t max_count, void *data_out)
+static int adxl372_decoder_get_frame_count(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+					   uint16_t *frame_count)
 {
-	const struct adxl372_xyz_accel_data *data = (const struct adxl372_xyz_accel_data *)buffer;
+	struct sensor_raw_frames frames;
+	struct adxl372_frame_format fmt;
+	int rc;
 
-#ifdef CONFIG_ADXL372_STREAM
-	if (data->is_fifo) {
-		return adxl372_decode_stream(buffer, chan_spec, fit, max_count, data_out);
+	if (!adxl372_chan_is_supported(chan_spec)) {
+		return -ENOTSUP;
 	}
-#endif /* CONFIG_ADXL372_STREAM */
 
-	return adxl372_decode_sample(data, chan_spec, fit, max_count, data_out);
+	rc = adxl372_get_frames(buffer, &frames, &fmt);
+	if (rc != 0) {
+		return rc;
+	}
+
+	return sensor_raw_frames_count(&frames, chan_spec, frame_count);
+}
+
+static int adxl372_decoder_decode(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+				  uint32_t *fit, uint16_t max_count, void *data_out)
+{
+	struct sensor_raw_frames frames;
+	struct adxl372_frame_format fmt;
+	int rc;
+
+	if (!adxl372_chan_is_supported(chan_spec)) {
+		return -ENOTSUP;
+	}
+
+	rc = adxl372_get_frames(buffer, &frames, &fmt);
+	if (rc != 0) {
+		return rc;
+	}
+
+	return sensor_decode_frames(&frames, chan_spec, fit, max_count, data_out);
 }
 
 static bool adxl372_decoder_has_trigger(const uint8_t *buffer, enum sensor_trigger_type trigger)
 {
 	const struct adxl372_fifo_data *data = (const struct adxl372_fifo_data *)buffer;
 
-	if (!data->is_fifo) {
+	if (!IS_ENABLED(CONFIG_ADXL372_STREAM) || data->is_fifo == 0U) {
 		return false;
 	}
 
+	/* The STATUS_1 bits have the positions of the INT1_MAP bits */
 	switch (trigger) {
 	case SENSOR_TRIG_DATA_READY:
-		return FIELD_GET(ADXL372_INT1_MAP_DATA_RDY_MSK, data->int_status);
+		return FIELD_GET(ADXL372_INT1_MAP_DATA_RDY_MSK, data->int_status) != 0U;
 	case SENSOR_TRIG_FIFO_WATERMARK:
 	case SENSOR_TRIG_FIFO_FULL:
-		return FIELD_GET(ADXL372_INT1_MAP_FIFO_FULL_MSK, data->int_status);
+		return FIELD_GET(ADXL372_INT1_MAP_FIFO_FULL_MSK, data->int_status) != 0U;
 	default:
 		return false;
 	}
 }
 
+static int adxl372_decoder_get_size_info(struct sensor_chan_spec chan_spec, size_t *base_size,
+					 size_t *frame_size)
+{
+	if (!adxl372_chan_is_supported(chan_spec)) {
+		return -ENOTSUP;
+	}
+
+	return sensor_decode_frames_size_info(chan_spec, 0U, base_size, frame_size);
+}
+
 SENSOR_DECODER_API_DT_DEFINE() = {
 	.get_frame_count = adxl372_decoder_get_frame_count,
+	.get_size_info = adxl372_decoder_get_size_info,
 	.decode = adxl372_decoder_decode,
 	.has_trigger = adxl372_decoder_has_trigger,
 };
