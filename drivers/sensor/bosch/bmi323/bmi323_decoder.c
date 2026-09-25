@@ -27,11 +27,6 @@ static int bmi323_drop_reading(uint32_t *fit)
 	return 0;
 }
 
-static int32_t bmi323_centi_to_q31(int32_t centi_deg, int shift)
-{
-	return (int32_t)(((int64_t)centi_deg * (1LL << (31 - shift))) / 100LL);
-}
-
 /* Q31 conversion for accel:
  * q31 = raw * range_g * SENSOR_G / 1000000 * 2^21 / 32768
  *     = raw * range_g * SENSOR_G / 1000000 * 64
@@ -52,19 +47,16 @@ static int32_t bmi323_gyro_to_q31(int16_t raw, uint32_t range_dps)
 	return (int32_t)(((int64_t)raw * range_dps * SENSOR_PI) / 2812500LL);
 }
 
-/* Convert raw to centi-degrees C,
+/* Convert raw to micro-degrees C,
  * then to Q31 with shift=10:
- * q31 = centi_deg * 2^21 / 100
+ * q31 = micro_deg * 2^21 / 1000000
  */
 static int32_t bmi323_temp_to_q31(int16_t raw_temp)
 {
-	int32_t centi_deg =
-		(int32_t)(((int64_t)raw_temp *
-		IMU_BOSCH_DIE_TEMP_MICRO_DEG_CELSIUS_LSB) +
-		IMU_BOSCH_DIE_TEMP_OFFSET_MICRO_DEG_CELSIUS) /
-		10000LL;
+	int64_t micro_deg = (int64_t)raw_temp * IMU_BOSCH_DIE_TEMP_MICRO_DEG_CELSIUS_LSB +
+			    IMU_BOSCH_DIE_TEMP_OFFSET_MICRO_DEG_CELSIUS;
 
-	return bmi323_centi_to_q31(centi_deg, BMI323_TEMP_SHIFT);
+	return (int32_t)((micro_deg * (1LL << (31 - BMI323_TEMP_SHIFT))) / 1000000LL);
 }
 
 static int bmi323_decoder_get_frame_count(const uint8_t *buffer,
