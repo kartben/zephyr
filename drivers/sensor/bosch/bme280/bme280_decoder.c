@@ -3,112 +3,164 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "bme280.h"
-#include <math.h>
+#include <zephyr/drivers/sensor_decoder.h>
 
+#include "bme280.h"
+
+/* Scaling of a compensated reading: one LSB is 1/den of the channel unit */
+struct bme280_chan_format {
+	int32_t den;
+	int8_t shift;
+};
+
+/* comp_temp is in 0.01 degC */
+static const struct bme280_chan_format temp_format = {
+	.den = BME280_TEMP_CONV,
+	.shift = BME280_TEMP_SHIFT,
+};
+
+/* comp_press is in UQ24.8 Pa, decoded in kPa */
+static const struct bme280_chan_format press_format = {
+	.den = 256 * BME280_PRESS_CONV_KPA,
+	.shift = BME280_PRESS_SHIFT,
+};
+
+/* comp_humidity is in UQ22.10 %RH */
+static const struct bme280_chan_format hum_format = {
+	.den = 1024,
+	.shift = BME280_HUM_SHIFT,
+};
+
+static const struct bme280_chan_format *bme280_chan_format_get(struct sensor_chan_spec chan_spec)
+{
+	if (chan_spec.chan_idx != 0U) {
+		return NULL;
+	}
+
+	switch (chan_spec.chan_type) {
+	case SENSOR_CHAN_AMBIENT_TEMP:
+		return &temp_format;
+	case SENSOR_CHAN_PRESS:
+		return &press_format;
+	case SENSOR_CHAN_HUMIDITY:
+		return &hum_format;
+	default:
+		return NULL;
+	}
+}
+
+/* The buffer holds one frame: the whole struct bme280_encoded_data */
+static int bme280_decode_frame(const uint8_t *frame, struct sensor_chan_spec chan_spec,
+			       const void *user_data, struct sensor_frame_reading *reading)
+{
+	const struct bme280_encoded_data *edata = (const struct bme280_encoded_data *)frame;
+	const struct bme280_chan_format *fmt = user_data;
+	bool present;
+	uint32_t raw;
+
+	switch (chan_spec.chan_type) {
+	case SENSOR_CHAN_AMBIENT_TEMP:
+		present = edata->has_temp == 1U;
+		raw = (uint32_t)edata->reading.comp_temp;
+		break;
+	case SENSOR_CHAN_PRESS:
+		present = edata->has_press == 1U;
+		raw = edata->reading.comp_press;
+		break;
+	case SENSOR_CHAN_HUMIDITY:
+		present = edata->has_humidity == 1U;
+		raw = edata->reading.comp_humidity;
+		break;
+	default:
+		return -ENOTSUP;
+	}
+
+	if (!present) {
+		return 0;
+	}
+
+	if (reading != NULL) {
+		reading->values[0] = sensor_raw_to_q31_ratio(raw, 32U, 1, fmt->den, fmt->shift);
+	}
+
+	return 1;
+}
+
+static void bme280_get_frames(const uint8_t *buffer, const struct bme280_chan_format *fmt,
+			      struct sensor_raw_frames *frames)
+{
+	const struct bme280_encoded_data *edata = (const struct bme280_encoded_data *)buffer;
+
+	*frames = (struct sensor_raw_frames){
+		.frames = buffer,
+		.size = sizeof(*edata),
+		.frame_size = sizeof(*edata),
+		.decode_frame = bme280_decode_frame,
+		.user_data = fmt,
+		.timestamp_ns = edata->header.timestamp,
+		.shift = fmt->shift,
+	};
+}
+
+/*
+ * A channel that was not read, such as the humidity of a BMP280, is reported as not supported,
+ * as the default decoder does, so that callers iterating over channels skip it.
+ */
 static int bme280_decoder_get_frame_count(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
 					  uint16_t *frame_count)
 {
-	const struct bme280_encoded_data *edata = (const struct bme280_encoded_data *)buffer;
-	int32_t ret = -ENOTSUP;
+	const struct bme280_chan_format *fmt = bme280_chan_format_get(chan_spec);
+	struct sensor_raw_frames frames;
+	int rc;
 
-	if (chan_spec.chan_idx != 0) {
-		return ret;
+	if (fmt == NULL) {
+		return -ENOTSUP;
 	}
 
-	/* This sensor lacks a FIFO; there will always only be one frame at a time. */
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_AMBIENT_TEMP:
-		*frame_count = edata->has_temp ? 1 : 0;
-		break;
-	case SENSOR_CHAN_PRESS:
-		*frame_count = edata->has_press ? 1 : 0;
-		break;
-	case SENSOR_CHAN_HUMIDITY:
-		*frame_count = edata->has_humidity ? 1 : 0;
-		break;
-	default:
-		return ret;
+	bme280_get_frames(buffer, fmt, &frames);
+
+	rc = sensor_raw_frames_count(&frames, chan_spec, frame_count);
+	if (rc != 0) {
+		return rc;
 	}
 
-	if (*frame_count > 0) {
-		ret = 0;
-	}
-
-	return ret;
+	return (*frame_count > 0U) ? 0 : -ENOTSUP;
 }
 
 static int bme280_decoder_get_size_info(struct sensor_chan_spec chan_spec, size_t *base_size,
 					size_t *frame_size)
 {
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_AMBIENT_TEMP:
-	case SENSOR_CHAN_HUMIDITY:
-	case SENSOR_CHAN_PRESS:
-		*base_size = sizeof(struct sensor_q31_sample_data);
-		*frame_size = sizeof(struct sensor_q31_sample_data);
-		return 0;
-	default:
+	if (bme280_chan_format_get(chan_spec) == NULL) {
 		return -ENOTSUP;
 	}
+
+	return sensor_decode_frames_size_info(chan_spec, 0U, base_size, frame_size);
 }
 
 static int bme280_decoder_decode(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
 				 uint32_t *fit, uint16_t max_count, void *data_out)
 {
-	const struct bme280_encoded_data *edata = (const struct bme280_encoded_data *)buffer;
+	const struct bme280_chan_format *fmt = bme280_chan_format_get(chan_spec);
+	struct sensor_raw_frames frames;
+	uint16_t frame_count;
+	int rc;
 
-	if (*fit != 0) {
-		return 0;
+	if (fmt == NULL) {
+		return -ENOTSUP;
 	}
 
-	struct sensor_q31_data *out = data_out;
+	bme280_get_frames(buffer, fmt, &frames);
 
-	out->header.base_timestamp_ns = edata->header.timestamp;
-	out->header.reading_count = 1;
-
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_AMBIENT_TEMP:
-		if (edata->has_temp) {
-			int32_t readq = edata->reading.comp_temp * pow(2, 31 - BME280_TEMP_SHIFT);
-			int32_t convq = BME280_TEMP_CONV * pow(2, 31 - BME280_TEMP_SHIFT);
-
-			out->readings[0].temperature =
-				(int32_t)((((int64_t)readq) << (31 - BME280_TEMP_SHIFT)) /
-					  ((int64_t)convq));
-			out->shift = BME280_TEMP_SHIFT;
-		} else {
-			return -ENODATA;
-		}
-		break;
-	case SENSOR_CHAN_PRESS:
-		if (edata->has_press) {
-			int32_t readq = edata->reading.comp_press;
-			int32_t convq = BME280_PRESS_CONV_KPA * pow(2, 31 - BME280_PRESS_SHIFT);
-
-			out->readings[0].pressure =
-				(int32_t)((((int64_t)readq) << (31 - BME280_PRESS_SHIFT)) /
-					  ((int64_t)convq));
-			out->shift = BME280_PRESS_SHIFT;
-		} else {
-			return -ENODATA;
-		}
-		break;
-	case SENSOR_CHAN_HUMIDITY:
-		if (edata->has_humidity) {
-			out->readings[0].humidity = edata->reading.comp_humidity;
-			out->shift = BME280_HUM_SHIFT;
-		} else {
-			return -ENODATA;
-		}
-		break;
-	default:
-		return -EINVAL;
+	rc = sensor_raw_frames_count(&frames, chan_spec, &frame_count);
+	if (rc != 0) {
+		return rc;
 	}
 
-	*fit = 1;
+	if (frame_count == 0U) {
+		return -ENODATA;
+	}
 
-	return 1;
+	return sensor_decode_frames(&frames, chan_spec, fit, max_count, data_out);
 }
 
 SENSOR_DECODER_API_DT_DEFINE() = {

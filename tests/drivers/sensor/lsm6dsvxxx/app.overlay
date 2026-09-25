@@ -1,0 +1,43 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/sensor/ism6hg256x.h>
+#include <zephyr/dt-bindings/sensor/lsm6dsv320x.h>
+#include <zephyr/dt-bindings/sensor/lsm6dsv80x.h>
+#include <zephyr/dt-bindings/sensor/lsm6dsvxxx.h>
+
+&i2c0 {
+	lsm6dsv320x: lsm6dsv320x@6a {
+		compatible = "st,lsm6dsv320x";
+		reg = <0x6a>;
+		int1-gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
+		accel-range = <LSM6DSV320X_DT_FS_8G>;
+		accel-odr = <LSM6DSVXXX_DT_ODR_AT_60Hz>;
+		gyro-range = <LSM6DSV320X_DT_FS_2000DPS>;
+		gyro-odr = <LSM6DSVXXX_DT_ODR_AT_60Hz>;
+	};
+
+	lsm6dsv80x: lsm6dsv80x@6b {
+		compatible = "st,lsm6dsv80x";
+		reg = <0x6b>;
+		int1-gpios = <&gpio0 2 GPIO_ACTIVE_HIGH>;
+		accel-range = <LSM6DSV80X_DT_FS_8G>;
+		accel-odr = <LSM6DSVXXX_DT_ODR_AT_60Hz>;
+		gyro-range = <LSM6DSV80X_DT_FS_2000DPS>;
+		gyro-odr = <LSM6DSVXXX_DT_ODR_AT_60Hz>;
+	};
+
+	ism6hg256x: ism6hg256x@6c {
+		compatible = "st,ism6hg256x";
+		reg = <0x6c>;
+		int1-gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
+		accel-range = <ISM6HG256X_DT_FS_8G>;
+		accel-odr = <LSM6DSVXXX_DT_ODR_AT_60Hz>;
+		gyro-range = <ISM6HG256X_DT_FS_2000DPS>;
+		gyro-odr = <LSM6DSVXXX_DT_ODR_AT_60Hz>;
+	};
+};

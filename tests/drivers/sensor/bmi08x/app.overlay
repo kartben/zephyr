@@ -1,0 +1,27 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+&i2c0 {
+	bmi08x_accel: bmi08x-accel@18 {
+		compatible = "bosch,bmi08x-accel";
+		reg = <0x18>;
+		int-gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
+		accel-hz = "100";
+		accel-fs = <6>;
+		fifo-watermark = <4>;
+	};
+
+	bmi08x_gyro: bmi08x-gyro@68 {
+		compatible = "bosch,bmi08x-gyro";
+		reg = <0x68>;
+		int-gpios = <&gpio0 2 GPIO_ACTIVE_HIGH>;
+		gyro-hz = "1000_116";
+		gyro-fs = <1000>;
+		fifo-watermark = <4>;
+	};
+};

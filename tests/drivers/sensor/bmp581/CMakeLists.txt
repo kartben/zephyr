@@ -6,3 +6,4 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(bmp581)
 
 target_sources(app PRIVATE src/main.c)
+target_sources_ifdef(CONFIG_SENSOR_ASYNC_API app PRIVATE src/decoder.c)

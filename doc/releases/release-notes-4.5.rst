@@ -801,6 +801,13 @@ New APIs and options
   * :kconfig:option:`CONFIG_SECURE_STORAGE_ITS_TRANSFORM_AEAD_SCHEME_IS_CONFIGURABLE`
   * :kconfig:option:`CONFIG_SECURE_STORAGE_ITS_TRANSFORM_AEAD_KEY_SIZE_IS_CONFIGURABLE`
 
+* Sensor
+
+  * Added decoder helpers in :zephyr_file:`include/zephyr/drivers/sensor_decoder.h`:
+    :c:func:`sensor_decode_frames`, :c:func:`sensor_raw_frames_count`,
+    :c:func:`sensor_decode_frames_size_info`, :c:func:`sensor_raw_to_q31`,
+    :c:func:`sensor_raw_to_q31_ratio`, :c:macro:`SENSOR_Q31_SCALE` and
+    :c:macro:`SENSOR_ODR_MHZ_TO_PERIOD_NS`.
 
 * USB Type-C
 

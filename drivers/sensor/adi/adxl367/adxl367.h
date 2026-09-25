@@ -320,6 +320,8 @@ struct adxl367_sample_data {
 #endif /*CONFIG_ADXL367_STREAM*/
 	struct adxl367_xyz_accel_data xyz;
 	int16_t raw_temp;
+	/* Sensor clock time of the read, in nanoseconds */
+	uint64_t timestamp;
 };
 
 struct adxl367_transfer_function {
@@ -444,9 +446,6 @@ int adxl367_get_decoder(const struct device *dev, const struct sensor_decoder_ap
 int adxl367_get_accel_data(const struct device *dev,
 			   struct adxl367_xyz_accel_data *accel_data);
 int adxl367_get_temp_data(const struct device *dev, int16_t *raw_temp, bool check_data_rdy);
-void adxl367_accel_convert(struct sensor_value *val, int16_t value,
-				enum adxl367_range range);
-void adxl367_temp_convert(struct sensor_value *val, int16_t value);
 #endif /* CONFIG_SENSOR_ASYNC_API */
 
 #ifdef CONFIG_ADXL367_STREAM

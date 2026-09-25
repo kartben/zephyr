@@ -5,13 +5,30 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <stdalign.h>
+
 #include <zephyr/drivers/sensor_clock.h>
+#include <zephyr/drivers/sensor_decoder.h>
+#include <zephyr/sys/byteorder.h>
 
 #include "bmm350.h"
 #include "bmm350_decoder.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(BMM350_DECODER, CONFIG_SENSOR_LOG_LEVEL);
+
+/* Offset of a data register in struct bmm350_raw_mag_data, after the two dummy bytes */
+#define BMM350_RAW_OFFSET(reg) (2U + (reg) - BMM350_REG_MAG_X_XLSB)
+
+/* Output shift for gauss and degC: 8 fractional bits */
+#define BMM350_DECODER_SHIFT (31 - 8)
+
+/* Read a signed 24-bit little-endian data register */
+static int32_t bmm350_raw_get(const struct bmm350_raw_mag_data *raw_data, uint8_t reg)
+{
+	return sign_extend(sys_get_le24(&raw_data->buf[BMM350_RAW_OFFSET(reg)]),
+			   BMM350_SIGNED_24_BIT);
+}
 
 void bmm350_decoder_compensate_raw_data(const struct bmm350_raw_mag_data *raw_data,
 					const struct mag_compensate *comp,
@@ -28,16 +45,16 @@ void bmm350_decoder_compensate_raw_data(const struct bmm350_raw_mag_data *raw_da
 	int32_t dut_offset_coef[3], dut_sensit_coef[3], dut_tco[3], dut_tcs[3];
 
 	/* Convert mag lsb to uT and temp lsb to centi-degC (0.01 degC) */
-	out_data[0] = ((sign_extend(raw_data->magn_x, BMM350_SIGNED_24_BIT) *
-			BMM350_LSB_TO_UT_XY_COEFF) /
-		       BMM350_LSB_TO_UT_COEFF_DIV);
-	out_data[1] = ((sign_extend(raw_data->magn_y, BMM350_SIGNED_24_BIT) *
-			BMM350_LSB_TO_UT_XY_COEFF) /
-		       BMM350_LSB_TO_UT_COEFF_DIV);
-	out_data[2] = ((sign_extend(raw_data->magn_z, BMM350_SIGNED_24_BIT) *
-			BMM350_LSB_TO_UT_Z_COEFF) /
-		       BMM350_LSB_TO_UT_COEFF_DIV);
-	out_data[3] = ((int64_t)sign_extend(raw_data->temp, BMM350_SIGNED_24_BIT) *
+	out_data[0] =
+		((bmm350_raw_get(raw_data, BMM350_REG_MAG_X_XLSB) * BMM350_LSB_TO_UT_XY_COEFF) /
+		 BMM350_LSB_TO_UT_COEFF_DIV);
+	out_data[1] =
+		((bmm350_raw_get(raw_data, BMM350_REG_MAG_Y_XLSB) * BMM350_LSB_TO_UT_XY_COEFF) /
+		 BMM350_LSB_TO_UT_COEFF_DIV);
+	out_data[2] =
+		((bmm350_raw_get(raw_data, BMM350_REG_MAG_Z_XLSB) * BMM350_LSB_TO_UT_Z_COEFF) /
+		 BMM350_LSB_TO_UT_COEFF_DIV);
+	out_data[3] = ((int64_t)bmm350_raw_get(raw_data, BMM350_REG_TEMP_XLSB) *
 		       BMM350_LSB_TO_UT_TEMP_COEFF * 100) /
 		      BMM350_LSB_TO_UT_COEFF_DIV;
 
@@ -186,156 +203,115 @@ int bmm350_encode(const struct device *dev,
 	return 0;
 }
 
-static int bmm350_decoder_get_frame_count(const uint8_t *buffer,
-					  struct sensor_chan_spec chan_spec,
-					  uint16_t *frame_count)
-{
-	const struct bmm350_encoded_data *edata = (const struct bmm350_encoded_data *)buffer;
+/* The frame pointer is cast to the payload type, which must be accessible at any address */
+BUILD_ASSERT(alignof(struct bmm350_raw_mag_data) == 1U);
 
-	if (chan_spec.chan_idx != 0) {
+static int bmm350_decode_frame(const uint8_t *frame, struct sensor_chan_spec chan_spec,
+			       const void *user_data, struct sensor_frame_reading *reading)
+{
+	const struct bmm350_raw_mag_data *raw = (const struct bmm350_raw_mag_data *)frame;
+	struct bmm350_mag_temp_data result;
+	const int32_t *values;
+	uint8_t num;
+
+	if (reading == NULL) {
+		return 1;
+	}
+
+	bmm350_decoder_compensate_raw_data(raw, user_data, &result);
+
+	switch (chan_spec.chan_type) {
+	case SENSOR_CHAN_MAGN_X:
+	case SENSOR_CHAN_MAGN_Y:
+	case SENSOR_CHAN_MAGN_Z:
+		values = &result.mag[chan_spec.chan_type - SENSOR_CHAN_MAGN_X];
+		num = 1U;
+		break;
+	case SENSOR_CHAN_MAGN_XYZ:
+		values = result.mag;
+		num = 3U;
+		break;
+	case SENSOR_CHAN_DIE_TEMP:
+		values = &result.temperature;
+		num = 1U;
+		break;
+	default:
 		return -ENOTSUP;
 	}
 
+	/* Magnetic field in uT (0.01 G) to gauss, temperature in 0.01 degC to degC */
+	for (uint8_t i = 0U; i < num; i++) {
+		reading->values[i] = sensor_raw_to_q31_ratio((uint32_t)values[i], 32U, 1, 100,
+							     BMM350_DECODER_SHIFT);
+	}
+
+	return 1;
+}
+
+/* Describe the payload as a single frame, for a supported channel that was read */
+static int bmm350_get_frames(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+			     struct sensor_raw_frames *frames)
+{
+	const struct bmm350_encoded_data *edata = (const struct bmm350_encoded_data *)buffer;
 	uint8_t channel_request = bmm350_encode_channel(chan_spec.chan_type);
 
-	/** Filter unknown channels and having no data. */
+	if (chan_spec.chan_idx != 0U || channel_request == 0U) {
+		return -ENOTSUP;
+	}
+
 	if ((edata->header.channels & channel_request) != channel_request) {
 		return -ENODATA;
 	}
 
-	*frame_count = 1;
+	*frames = (struct sensor_raw_frames){
+		.frames = edata->payload.buf,
+		.size = sizeof(edata->payload.buf),
+		.frame_size = sizeof(edata->payload.buf),
+		.decode_frame = bmm350_decode_frame,
+		.user_data = &edata->comp,
+		.timestamp_ns = edata->header.timestamp,
+		.shift = BMM350_DECODER_SHIFT,
+	};
 
 	return 0;
 }
 
-static int bmm350_decoder_get_size_info(struct sensor_chan_spec chan_spec,
-					size_t *base_size,
-					size_t *frame_size)
+static int bmm350_decoder_get_frame_count(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+					  uint16_t *frame_count)
 {
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_MAGN_XYZ:
-		*base_size = sizeof(struct sensor_three_axis_data);
-		*frame_size = sizeof(struct sensor_three_axis_sample_data);
-		return 0;
-	case SENSOR_CHAN_MAGN_X:
-	case SENSOR_CHAN_MAGN_Y:
-	case SENSOR_CHAN_MAGN_Z:
-	case SENSOR_CHAN_DIE_TEMP:
-		*base_size = sizeof(struct sensor_q31_data);
-		*frame_size = sizeof(struct sensor_q31_sample_data);
-		return 0;
-	default:
-		return -ENOTSUP;
+	struct sensor_raw_frames frames;
+	int rc;
+
+	rc = bmm350_get_frames(buffer, chan_spec, &frames);
+	if (rc != 0) {
+		return rc;
 	}
+
+	return sensor_raw_frames_count(&frames, chan_spec, frame_count);
 }
 
-static int bmm350_decoder_decode(const uint8_t *buffer,
-				 struct sensor_chan_spec chan_spec,
-				 uint32_t *fit,
-				 uint16_t max_count,
-				 void *data_out)
+static int bmm350_decoder_get_size_info(struct sensor_chan_spec chan_spec, size_t *base_size,
+					size_t *frame_size)
 {
-	const struct bmm350_encoded_data *edata = (const struct bmm350_encoded_data *)buffer;
-	uint8_t channel_request;
-
-	if (*fit != 0) {
-		return 0;
+	if (bmm350_encode_channel(chan_spec.chan_type) == 0U) {
+		return -ENOTSUP;
 	}
 
-	if (max_count == 0 || chan_spec.chan_idx != 0) {
-		return -EINVAL;
+	return sensor_decode_frames_size_info(chan_spec, 0U, base_size, frame_size);
+}
+
+static int bmm350_decoder_decode(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+				 uint32_t *fit, uint16_t max_count, void *data_out)
+{
+	struct sensor_raw_frames frames;
+	int rc;
+
+	rc = bmm350_get_frames(buffer, chan_spec, &frames);
+	if (rc != 0) {
+		return rc;
 	}
 
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_MAGN_X:
-	case SENSOR_CHAN_MAGN_Y:
-	case SENSOR_CHAN_MAGN_Z: {
-
-		channel_request = bmm350_encode_channel(chan_spec.chan_type);
-		if ((channel_request & edata->header.channels) != channel_request) {
-			return -ENODATA;
-		}
-
-		struct sensor_q31_data *out = data_out;
-
-		out->header.base_timestamp_ns = edata->header.timestamp;
-		out->header.reading_count = 1;
-
-		struct bmm350_mag_temp_data result;
-
-		bmm350_decoder_compensate_raw_data(&edata->payload,
-						   &edata->comp,
-						   &result);
-
-		/** Data compensation returns data in uT (x100 Gauss),
-		 * so we're reserving 8 fractional bits.
-		 */
-		out->shift = (31 - 8);
-		out->readings[0].value =
-			(result.mag[chan_spec.chan_type - SENSOR_CHAN_MAGN_X] << 8) / 100;
-
-		*fit = 1;
-		return 1;
-	}
-	case SENSOR_CHAN_MAGN_XYZ: {
-
-		channel_request = bmm350_encode_channel(chan_spec.chan_type);
-		if ((channel_request & edata->header.channels) != channel_request) {
-			return -ENODATA;
-		}
-
-		struct sensor_three_axis_data *out = data_out;
-
-		out->header.base_timestamp_ns = edata->header.timestamp;
-		out->header.reading_count = 1;
-
-		struct bmm350_mag_temp_data result;
-
-		bmm350_decoder_compensate_raw_data(&edata->payload,
-						   &edata->comp,
-						   &result);
-
-		/** Data compensation returns data in uT (x100 Gauss),
-		 * so we're reserving 8 fractional bits.
-		 */
-		out->shift = (31 - 8);
-		out->readings[0].values[0] = (result.mag[0] << 8) / 100;
-		out->readings[0].values[1] = (result.mag[1] << 8) / 100;
-		out->readings[0].values[2] = (result.mag[2] << 8) / 100;
-
-		*fit = 1;
-		return 1;
-	}
-	case SENSOR_CHAN_DIE_TEMP: {
-
-		channel_request = bmm350_encode_channel(chan_spec.chan_type);
-		if ((channel_request & edata->header.channels) != channel_request) {
-			return -ENODATA;
-		}
-
-		struct sensor_q31_data *out = data_out;
-
-		out->header.base_timestamp_ns = edata->header.timestamp;
-		out->header.reading_count = 1;
-
-		struct bmm350_mag_temp_data result;
-
-		bmm350_decoder_compensate_raw_data(&edata->payload,
-						   &edata->comp,
-						   &result);
-
-		/** Temperature is in centi-degC (0.01 degC),
-		 * so we're reserving 8 fractional bits.
-		 */
-		out->shift = (31 - 8);
-		out->readings[0].value = (result.temperature << 8) / 100;
-
-		*fit = 1;
-		return 1;
-	}
-	default:
-		return -EINVAL;
-	}
+	return sensor_decode_frames(&frames, chan_spec, fit, max_count, data_out);
 }
 
 static bool bmm350_decoder_has_trigger(const uint8_t *buffer, enum sensor_trigger_type trigger)

@@ -156,6 +156,10 @@ static void pat9136_stream_get_data(const struct device *dev)
 	}
 	buf->header.timestamp = sensor_clock_cycles_to_ns(cycles);
 
+	/* Only the lower resolution bytes are read, the upper ones are set to 0 at init */
+	buf->header.resolution.buf[1] = 0U;
+	buf->header.resolution.buf[3] = 0U;
+
 	CHECKIF(!write_res_x_sqe || !read_res_x_sqe ||
 		!write_res_y_sqe || !read_res_y_sqe ||
 		!write_sqe || !read_sqe || !cb_sqe) {

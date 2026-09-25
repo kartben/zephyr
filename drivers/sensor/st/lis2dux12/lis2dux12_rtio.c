@@ -12,6 +12,7 @@
 #include "lis2dux12_decoder.h"
 #include <zephyr/rtio/work.h>
 #include <zephyr/drivers/sensor_clock.h>
+#include <zephyr/sys/byteorder.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(LIS2DUX12_RTIO, CONFIG_SENSOR_LOG_LEVEL);
@@ -28,6 +29,8 @@ static void lis2dux12_submit_sample(const struct device *dev, struct rtio_iodev_
 	uint32_t buf_len;
 	struct lis2dux12_rtio_data *edata;
 	struct lis2dux12_data *data = dev->data;
+	int16_t acc[3] = {0};
+	int16_t temp = 0;
 
 	const struct lis2dux12_config *config = dev->config;
 	const struct lis2dux12_chip_api *chip_api = config->chip_api;
@@ -41,8 +44,7 @@ static void lis2dux12_submit_sample(const struct device *dev, struct rtio_iodev_
 
 	edata = (struct lis2dux12_rtio_data *)buf;
 
-	edata->has_accel = 0;
-	edata->has_temp = 0;
+	memset(edata, 0, sizeof(*edata));
 
 	for (int i = 0; i < num_channels; i++) {
 		switch (channels[i].chan_type) {
@@ -52,7 +54,7 @@ static void lis2dux12_submit_sample(const struct device *dev, struct rtio_iodev_
 		case SENSOR_CHAN_ACCEL_XYZ:
 			edata->has_accel = 1;
 
-			rc = chip_api->rtio_read_accel(dev, edata->acc);
+			rc = chip_api->rtio_read_accel(dev, acc);
 			if (rc  < 0) {
 				LOG_DBG("Failed to read accel sample");
 				goto err;
@@ -62,7 +64,7 @@ static void lis2dux12_submit_sample(const struct device *dev, struct rtio_iodev_
 		case SENSOR_CHAN_DIE_TEMP:
 			edata->has_temp = 1;
 
-			rc = chip_api->rtio_read_temp(dev, &edata->temp);
+			rc = chip_api->rtio_read_temp(dev, &temp);
 			if (rc < 0) {
 				LOG_DBG("Failed to read temp sample");
 				goto err;
@@ -72,7 +74,7 @@ static void lis2dux12_submit_sample(const struct device *dev, struct rtio_iodev_
 		case SENSOR_CHAN_ALL:
 			edata->has_accel = 1;
 
-			rc = chip_api->rtio_read_accel(dev, edata->acc);
+			rc = chip_api->rtio_read_accel(dev, acc);
 			if (rc  < 0) {
 				LOG_DBG("Failed to read accel sample");
 				goto err;
@@ -81,7 +83,7 @@ static void lis2dux12_submit_sample(const struct device *dev, struct rtio_iodev_
 #if defined(CONFIG_LIS2DUX12_ENABLE_TEMP)
 			edata->has_temp = 1;
 
-			rc = chip_api->rtio_read_temp(dev, &edata->temp);
+			rc = chip_api->rtio_read_temp(dev, &temp);
 			if (rc < 0) {
 				LOG_DBG("Failed to read temp sample");
 				goto err;
@@ -91,6 +93,16 @@ static void lis2dux12_submit_sample(const struct device *dev, struct rtio_iodev_
 		default:
 			continue;
 		}
+	}
+
+	if (edata->has_accel != 0U) {
+		for (int i = 0; i < 3; i++) {
+			sys_put_le16((uint16_t)acc[i], &edata->acc[i * 2]);
+		}
+	}
+
+	if (edata->has_temp != 0U) {
+		sys_put_le16((uint16_t)temp, edata->temp);
 	}
 
 	rc = sensor_clock_get_cycles(&cycles);

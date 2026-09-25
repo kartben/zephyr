@@ -28,14 +28,8 @@ struct rm3100_encoded_data {
 			bool drdy : 1;
 		} events;
 	} header;
-	union {
-		uint8_t payload[RM3100_TOTAL_BYTES];
-		struct {
-			uint32_t x : 24;
-			uint32_t y : 24;
-			uint32_t z : 24;
-		} __attribute__((__packed__)) magn;
-	};
+	/* MX, MY and MZ registers: 24-bit big-endian two's complement values */
+	uint8_t payload[RM3100_TOTAL_BYTES];
 };
 
 struct rm3100_config {

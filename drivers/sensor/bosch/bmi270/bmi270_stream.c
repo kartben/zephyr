@@ -53,28 +53,6 @@ static inline uint16_t fifo_watermark_bytes(void)
 #endif
 }
 
-static inline uint16_t acc_odr_reg_to_hz(uint8_t odr_reg)
-{
-	switch (odr_reg) {
-	case BMI270_ACC_ODR_25_HZ:
-		return 25;
-	case BMI270_ACC_ODR_50_HZ:
-		return 50;
-	case BMI270_ACC_ODR_100_HZ:
-		return 100;
-	case BMI270_ACC_ODR_200_HZ:
-		return 200;
-	case BMI270_ACC_ODR_400_HZ:
-		return 400;
-	case BMI270_ACC_ODR_800_HZ:
-		return 800;
-	case BMI270_ACC_ODR_1600_HZ:
-		return 1600;
-	default:
-		return 0;
-	}
-}
-
 /* Full-scale G (2, 4, 8, 16) to bmi270_decoder_header.acc_range field 0..3 */
 static inline uint8_t acc_fullscale_g_to_decoder_idx(uint8_t fs_g)
 {
@@ -106,30 +84,6 @@ static inline uint8_t gyr_fullscale_dps_to_decoder_idx(uint16_t range_dps)
 		return 4U;
 	default:
 		return 0U;
-	}
-}
-
-static inline uint16_t gyr_odr_reg_to_hz(uint8_t odr_reg)
-{
-	switch (odr_reg) {
-	case BMI270_GYR_ODR_25_HZ:
-		return 25;
-	case BMI270_GYR_ODR_50_HZ:
-		return 50;
-	case BMI270_GYR_ODR_100_HZ:
-		return 100;
-	case BMI270_GYR_ODR_200_HZ:
-		return 200;
-	case BMI270_GYR_ODR_400_HZ:
-		return 400;
-	case BMI270_GYR_ODR_800_HZ:
-		return 800;
-	case BMI270_GYR_ODR_1600_HZ:
-		return 1600;
-	case BMI270_GYR_ODR_3200_HZ:
-		return 3200;
-	default:
-		return 0;
 	}
 }
 
@@ -264,8 +218,9 @@ static void fifo_fill_encoded_header(struct bmi270_fifo_encoded_data *edata,
 #endif
 	edata->header.timestamp = data->timestamp;
 	edata->header.acc_range = acc_fullscale_g_to_decoder_idx(data->acc_range);
-	edata->header.acc_odr_hz = acc_odr_reg_to_hz(data->acc_odr);
-	edata->header.gyr_odr_hz = gyr_odr_reg_to_hz(data->gyr_odr);
+	edata->header.acc_odr = data->acc_odr;
+	edata->header.gyr_odr = data->gyr_odr;
+	edata->header.int_status = data->int_status_1;
 	edata->header.gyr_range_idx = gyr_fullscale_dps_to_decoder_idx(data->gyr_range);
 	edata->fifo_byte_count = fifo_len;
 }

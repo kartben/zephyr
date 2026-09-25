@@ -7,6 +7,7 @@
 #include <zephyr/rtio/work.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/drivers/sensor_clock.h>
 
 #include "adxl367.h"
 
@@ -22,6 +23,7 @@ static void adxl367_submit_fetch(struct rtio_iodev_sqe *iodev_sqe)
 	uint32_t min_buffer_len = sizeof(struct adxl367_sample_data);
 	uint8_t *buffer;
 	uint32_t buffer_len;
+	uint64_t cycles;
 
 	rc = rtio_sqe_rx_buf(iodev_sqe, min_buffer_len, min_buffer_len, &buffer, &buffer_len);
 	if (rc != 0) {
@@ -43,6 +45,14 @@ static void adxl367_submit_fetch(struct rtio_iodev_sqe *iodev_sqe)
 		return;
 	}
 
+	rc = sensor_clock_get_cycles(&cycles);
+	if (rc != 0) {
+		LOG_ERR("Failed to get sensor clock cycles");
+		rtio_iodev_sqe_err(iodev_sqe, rc);
+		return;
+	}
+
+	enc_data->timestamp = sensor_clock_cycles_to_ns(cycles);
 	enc_data->xyz.range = data->range;
 	bool check_temp_data_ready = false;
 

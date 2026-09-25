@@ -9,7 +9,6 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/rtio/rtio.h>
 #include <zephyr/drivers/sensor_clock.h>
-#include <zephyr/sys/byteorder.h>
 
 #include "akm09918c.h"
 
@@ -176,10 +175,6 @@ void akm09918_complete_cb(struct rtio *rtio_ctx, const struct rtio_sqe *sqe, int
 		rtio_iodev_sqe_err(parent_iodev_sqe, -EBUSY);
 		return;
 	}
-
-	edata->reading.data[0] = sys_le16_to_cpu(edata->reading.data[0]);
-	edata->reading.data[1] = sys_le16_to_cpu(edata->reading.data[1]);
-	edata->reading.data[2] = sys_le16_to_cpu(edata->reading.data[2]);
 
 	rtio_iodev_sqe_ok(parent_iodev_sqe, 0);
 }

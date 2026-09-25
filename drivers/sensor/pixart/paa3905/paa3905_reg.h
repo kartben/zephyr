@@ -46,5 +46,13 @@
 #define SQUAL_MIN_SUPER_LOW_LIGHT		0x55
 #define SHUTTER_MAX_SUPER_LOW_LIGHT		0x025998
 
+/* Offsets of the fields in the REG_BURST_READ data */
+#define BURST_MOTION				0
+#define BURST_OBSERVATION			1
+#define BURST_DELTA_X				2
+#define BURST_DELTA_Y				4
+#define BURST_SQUAL				7
+#define BURST_SHUTTER				11
+
 
 #endif /* ZEPHYR_DRIVERS_SENSOR_PAA3905_REG_H_ */

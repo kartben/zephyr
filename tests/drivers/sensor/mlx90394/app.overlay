@@ -1,0 +1,12 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&i2c0 {
+	mlx90394: mlx90394@60 {
+		compatible = "melexis,mlx90394";
+		reg = <0x60>;
+	};
+};

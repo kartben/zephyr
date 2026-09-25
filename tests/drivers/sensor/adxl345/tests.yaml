@@ -1,0 +1,19 @@
+# Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+common:
+  tags:
+    - drivers
+    - sensor
+  platform_allow:
+    - native_sim
+    - native_sim/native/64
+  integration_platforms:
+    - native_sim
+tests:
+  drivers.sensor.adxl345.decoder: {}
+  drivers.sensor.adxl345.decoder.stream:
+    extra_configs:
+      - CONFIG_GPIO=y
+      - CONFIG_I2C_RTIO=y
+      - CONFIG_ADXL345_STREAM=y

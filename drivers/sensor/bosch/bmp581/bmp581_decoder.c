@@ -6,6 +6,9 @@
  */
 
 #include <zephyr/drivers/sensor_clock.h>
+#include <zephyr/drivers/sensor_decoder.h>
+#include <zephyr/dt-bindings/sensor/bmp581.h>
+#include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/util.h>
 #include "bmp581.h"
 #include "bmp581_decoder.h"
@@ -13,38 +16,52 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(BMP581_DECODER, CONFIG_SENSOR_LOG_LEVEL);
 
-/* Period in ns indexed by BMP581_DT_ODR_* value (0x00 = 240 Hz .. 0x1D = 0.5 Hz) */
-static const uint32_t odr_period_ns[] = {
-	[0x00] = UINT32_C(4166666),    /* 240 Hz   */
-	[0x01] = UINT32_C(4575637),    /* 218.5 Hz */
-	[0x02] = UINT32_C(5022603),    /* 199.1 Hz */
-	[0x03] = UINT32_C(5580357),    /* 179.2 Hz */
-	[0x04] = UINT32_C(6250000),    /* 160 Hz   */
-	[0x05] = UINT32_C(6698592),    /* 149.3 Hz */
-	[0x06] = UINT32_C(7142857),    /* 140 Hz   */
-	[0x07] = UINT32_C(7703559),    /* 129.8 Hz */
-	[0x08] = UINT32_C(8333333),    /* 120 Hz   */
-	[0x09] = UINT32_C(9082652),    /* 110.1 Hz */
-	[0x0A] = UINT32_C(9980040),    /* 100.2 Hz */
-	[0x0B] = UINT32_C(11160714),   /* 89.6 Hz  */
-	[0x0C] = UINT32_C(12500000),   /* 80 Hz    */
-	[0x0D] = UINT32_C(14285714),   /* 70 Hz    */
-	[0x0E] = UINT32_C(16666667),   /* 60 Hz    */
-	[0x0F] = UINT32_C(20000000),   /* 50 Hz    */
-	[0x10] = UINT32_C(22222222),   /* 45 Hz    */
-	[0x11] = UINT32_C(25000000),   /* 40 Hz    */
-	[0x12] = UINT32_C(28571428),   /* 35 Hz    */
-	[0x13] = UINT32_C(33333333),   /* 30 Hz    */
-	[0x14] = UINT32_C(40000000),   /* 25 Hz    */
-	[0x15] = UINT32_C(50000000),   /* 20 Hz    */
-	[0x16] = UINT32_C(66666667),   /* 15 Hz    */
-	[0x17] = UINT32_C(100000000),  /* 10 Hz    */
-	[0x18] = UINT32_C(200000000),  /* 5 Hz     */
-	[0x19] = UINT32_C(250000000),  /* 4 Hz     */
-	[0x1A] = UINT32_C(333333333),  /* 3 Hz     */
-	[0x1B] = UINT32_C(500000000),  /* 2 Hz     */
-	[0x1C] = UINT32_C(1000000000), /* 1 Hz     */
-	[0x1D] = UINT32_C(2000000000), /* 0.5 Hz   */
+/* Temperature and pressure are decoded with the same shift */
+#define BMP581_SHIFT 15
+
+/* Temperature: 24-bit two's complement, 1/65536 degC per LSB */
+#define BMP581_TEMP_OFFSET 0U
+#define BMP581_TEMP_BITS   24U
+#define BMP581_TEMP_SCALE  SENSOR_Q31_SCALE(1, 65536, BMP581_SHIFT)
+
+/* Pressure: 24-bit unsigned, 1/64 Pa per LSB, decoded in kPa */
+#define BMP581_PRESS_OFFSET      3U
+#define BMP581_PRESS_BITS        25U
+#define BMP581_PRESS_LSB_PER_KPA 64000
+
+static const uint64_t odr_period_ns[] = {
+	[BMP581_DT_ODR_240_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(240000),
+	[BMP581_DT_ODR_218_5_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(218500),
+	[BMP581_DT_ODR_199_1_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(199100),
+	[BMP581_DT_ODR_179_2_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(179200),
+	[BMP581_DT_ODR_160_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(160000),
+	[BMP581_DT_ODR_149_3_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(149300),
+	[BMP581_DT_ODR_140_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(140000),
+	[BMP581_DT_ODR_129_8_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(129800),
+	[BMP581_DT_ODR_120_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(120000),
+	[BMP581_DT_ODR_110_1_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(110100),
+	[BMP581_DT_ODR_100_2_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(100200),
+	[BMP581_DT_ODR_89_6_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(89600),
+	[BMP581_DT_ODR_80_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(80000),
+	[BMP581_DT_ODR_70_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(70000),
+	[BMP581_DT_ODR_60_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(60000),
+	[BMP581_DT_ODR_50_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(50000),
+	[BMP581_DT_ODR_45_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(45000),
+	[BMP581_DT_ODR_40_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(40000),
+	[BMP581_DT_ODR_35_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(35000),
+	[BMP581_DT_ODR_30_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(30000),
+	[BMP581_DT_ODR_25_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(25000),
+	[BMP581_DT_ODR_20_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(20000),
+	[BMP581_DT_ODR_15_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(15000),
+	[BMP581_DT_ODR_10_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(10000),
+	[BMP581_DT_ODR_5_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(5000),
+	[BMP581_DT_ODR_4_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(4000),
+	[BMP581_DT_ODR_3_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(3000),
+	[BMP581_DT_ODR_2_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(2000),
+	[BMP581_DT_ODR_1_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(1000),
+	[BMP581_DT_ODR_0_5_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(500),
+	[BMP581_DT_ODR_0_250_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(250),
+	[BMP581_DT_ODR_0_125_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(125),
 };
 
 static uint8_t bmp581_encode_channel(enum sensor_channel chan)
@@ -106,97 +123,109 @@ int bmp581_encode(const struct device *dev,
 	return 0;
 }
 
-static int bmp581_decoder_get_frame_count(const uint8_t *buffer,
-					 struct sensor_chan_spec chan_spec,
-					 uint16_t *frame_count)
+static bool bmp581_chan_is_supported(struct sensor_chan_spec chan_spec)
 {
-	const struct bmp581_encoded_data *edata = (const struct bmp581_encoded_data *)buffer;
+	return chan_spec.chan_idx == 0U && (chan_spec.chan_type == SENSOR_CHAN_AMBIENT_TEMP ||
+					    chan_spec.chan_type == SENSOR_CHAN_PRESS);
+}
 
-	if (chan_spec.chan_idx != 0) {
-		return -ENOTSUP;
-	}
-
+static bool bmp581_chan_has_data(const struct bmp581_encoded_header *header,
+				 struct sensor_chan_spec chan_spec)
+{
 	uint8_t channel_request = bmp581_encode_channel(chan_spec.chan_type);
 
-	/* Filter unknown channels and having no data */
-	if ((edata->header.channels & channel_request) != channel_request) {
-		return -ENODATA;
+	if ((header->channels & channel_request) != channel_request) {
+		return false;
 	}
 
-	if (edata->header.events & BMP581_EVENT_FIFO_WM) {
-		*frame_count = edata->header.fifo_count;
-	} else {
-		*frame_count = 1;
-	}
-	return 0;
+	return chan_spec.chan_type != SENSOR_CHAN_PRESS || header->press_en != 0U;
 }
 
-static int bmp581_decoder_get_size_info(struct sensor_chan_spec chan_spec,
-					size_t *base_size,
-					size_t *frame_size)
+static int bmp581_decode_frame(const uint8_t *frame, struct sensor_chan_spec chan_spec,
+			       const void *user_data, struct sensor_frame_reading *reading)
 {
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_AMBIENT_TEMP:
-	case SENSOR_CHAN_PRESS:
-		*base_size = sizeof(struct sensor_q31_data);
-		*frame_size = sizeof(struct sensor_q31_sample_data);
-		return 0;
-	default:
+	ARG_UNUSED(user_data);
+
+	if (chan_spec.chan_type != SENSOR_CHAN_AMBIENT_TEMP &&
+	    chan_spec.chan_type != SENSOR_CHAN_PRESS) {
 		return -ENOTSUP;
 	}
+
+	if (reading == NULL) {
+		return 1;
+	}
+
+	if (chan_spec.chan_type == SENSOR_CHAN_AMBIENT_TEMP) {
+		reading->values[0] = sensor_raw_to_q31(sys_get_le24(&frame[BMP581_TEMP_OFFSET]),
+						       BMP581_TEMP_BITS, BMP581_TEMP_SCALE);
+	} else {
+		reading->values[0] = sensor_raw_to_q31_ratio(
+			sys_get_le24(&frame[BMP581_PRESS_OFFSET]), BMP581_PRESS_BITS, 1,
+			BMP581_PRESS_LSB_PER_KPA, BMP581_SHIFT);
+	}
+
+	return 1;
 }
 
-static int bmp581_convert_raw_to_q31_value(const struct bmp581_encoded_header *header,
-					   struct sensor_chan_spec *chan_spec,
-					   const struct bmp581_frame *frame,
-					   uint32_t *fit,
-					   struct sensor_q31_data *out)
+static int bmp581_get_frames(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+			     struct sensor_raw_frames *frames)
 {
-	if (((header->events & BMP581_EVENT_FIFO_WM) != 0 && *fit >= header->fifo_count) ||
-	     ((header->events & BMP581_EVENT_FIFO_WM) == 0 && *fit != 0)) {
+	const struct bmp581_encoded_data *edata = (const struct bmp581_encoded_data *)buffer;
+	size_t frame_count = 1U;
+
+	if (!bmp581_chan_is_supported(chan_spec)) {
+		return -ENOTSUP;
+	}
+
+	/* Channel not requested in a one-shot read, or pressure disabled */
+	if (!bmp581_chan_has_data(&edata->header, chan_spec)) {
 		return -ENODATA;
 	}
 
-	switch (chan_spec->chan_type) {
-	case SENSOR_CHAN_AMBIENT_TEMP: {
-		/* Temperature is in data[2:0], data[2] is integer part */
-		uint32_t raw_temp = ((uint32_t)frame[*fit].payload[2] << 16) |
-				    ((uint16_t)frame[*fit].payload[1] << 8) |
-				    frame[*fit].payload[0];
-		int32_t raw_temp_signed = sign_extend(raw_temp, 23);
+	*frames = (struct sensor_raw_frames){
+		.frames = edata->payload,
+		.frame_size = sizeof(struct bmp581_frame),
+		.decode_frame = bmp581_decode_frame,
+		.timestamp_ns = edata->header.timestamp,
+		.shift = BMP581_SHIFT,
+	};
 
-		out->shift = (31 - 16); /* 16 left shifts gives us the value in celsius */
-		out->readings[*fit].value = raw_temp_signed;
-		break;
-	}
-	case SENSOR_CHAN_PRESS: {
-		if (!header->press_en) {
-			return -ENODATA;
+	if ((edata->header.events & BMP581_EVENT_FIFO_WM) != 0U) {
+		if (edata->header.odr >= ARRAY_SIZE(odr_period_ns)) {
+			return -EINVAL;
 		}
-		/* Shift by 10 bits because we'll divide by 1000 to make it kPa */
-		uint64_t raw_press = (((uint32_t)frame[*fit].payload[5] << 16) |
-				       ((uint16_t)frame[*fit].payload[4] << 8) |
-				       frame[*fit].payload[3]);
 
-		int64_t raw_press_signed = sign_extend_64(raw_press, 23);
-
-		raw_press_signed *= 1024;
-		raw_press_signed /= 1000;
-
-		/* Original value was in Pa by left-shifting 6 spaces, but
-		 * we've multiplied by 2^10 to not lose precision when
-		 * converting to kPa. Hence, left-shift 16 spaces.
-		 */
-		out->shift = (31 - 6 - 10);
-		out->readings[*fit].value = (int32_t)raw_press_signed;
-		break;
-	}
-	default:
-		return -EINVAL;
+		frame_count = edata->header.fifo_count;
+		frames->period_ns = odr_period_ns[edata->header.odr];
 	}
 
-	*fit = (*fit) + 1;
+	frames->size = frame_count * sizeof(struct bmp581_frame);
+
 	return 0;
+}
+
+static int bmp581_decoder_get_frame_count(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+					  uint16_t *frame_count)
+{
+	struct sensor_raw_frames frames;
+	int rc;
+
+	rc = bmp581_get_frames(buffer, chan_spec, &frames);
+	if (rc != 0) {
+		return rc;
+	}
+
+	return sensor_raw_frames_count(&frames, chan_spec, frame_count);
+}
+
+static int bmp581_decoder_get_size_info(struct sensor_chan_spec chan_spec, size_t *base_size,
+					size_t *frame_size)
+{
+	if (!bmp581_chan_is_supported(chan_spec)) {
+		return -ENOTSUP;
+	}
+
+	return sensor_decode_frames_size_info(chan_spec, 0U, base_size, frame_size);
 }
 
 static int bmp581_decoder_decode(const uint8_t *buffer,
@@ -205,47 +234,15 @@ static int bmp581_decoder_decode(const uint8_t *buffer,
 				uint16_t max_count,
 				void *data_out)
 {
-	const struct bmp581_encoded_data *edata = (const struct bmp581_encoded_data *)buffer;
-	uint8_t channel_request;
+	struct sensor_raw_frames frames;
+	int rc;
 
-	if (max_count == 0 || chan_spec.chan_idx != 0) {
-		return -EINVAL;
+	rc = bmp581_get_frames(buffer, chan_spec, &frames);
+	if (rc != 0) {
+		return rc;
 	}
 
-	channel_request = bmp581_encode_channel(chan_spec.chan_type);
-	if ((channel_request & edata->header.channels) != channel_request) {
-		return -ENODATA;
-	}
-
-	struct sensor_q31_data *out = data_out;
-	uint8_t total_frames = (edata->header.events & BMP581_EVENT_FIFO_WM)
-			       ? edata->header.fifo_count : 1;
-	uint32_t period_ns = (edata->header.odr < ARRAY_SIZE(odr_period_ns))
-			     ? odr_period_ns[edata->header.odr] : 0;
-
-	out->header.base_timestamp_ns =
-		edata->header.timestamp -
-		(uint64_t)(total_frames > 0 ? total_frames - 1 : 0) * period_ns;
-
-	int err;
-	uint32_t fit_0 = *fit;
-	uint32_t frame_idx = 0;
-
-	do {
-		err = bmp581_convert_raw_to_q31_value(&edata->header, &chan_spec,
-						      edata->frame, fit, out);
-		if (err == 0) {
-			out->readings[frame_idx].timestamp_delta = frame_idx * period_ns;
-			frame_idx++;
-		}
-	} while (err == 0 && *fit < max_count);
-
-	if (*fit == fit_0 || err != 0) {
-		return err;
-	}
-
-	out->header.reading_count = *fit;
-	return *fit - fit_0;
+	return sensor_decode_frames(&frames, chan_spec, fit, max_count, data_out);
 }
 
 static bool bmp581_decoder_has_trigger(const uint8_t *buffer, enum sensor_trigger_type trigger)

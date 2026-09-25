@@ -166,6 +166,7 @@ static void iis3dwb_submit_one_shot(const struct device *dev, struct rtio_iodev_
 
 	edata->header.is_fifo = false;
 	edata->header.range = data->range;
+	edata->header.int_status = 0U;
 	edata->header.timestamp = sensor_clock_cycles_to_ns(cycles);
 
 	for (int i = 0; i < num_channels; i++) {

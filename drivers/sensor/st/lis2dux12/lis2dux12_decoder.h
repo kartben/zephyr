@@ -30,8 +30,8 @@ struct lis2dux12_fifo_data {
 	struct lis2dux12_decoder_header header;
 	uint32_t accel_odr: 4;
 	uint32_t fifo_mode_sel: 2;
-	uint32_t fifo_count: 7;
-	uint32_t reserved_1: 5;
+	uint32_t fifo_count: 8;
+	uint32_t reserved_1: 4;
 	uint32_t accel_batch_odr: 3;
 	uint32_t ts_batch_odr: 2;
 	uint32_t reserved: 9;
@@ -44,8 +44,10 @@ struct lis2dux12_rtio_data {
 		uint8_t has_temp: 1;  /* set if temp channel has data */
 		uint8_t reserved: 6;
 	}  __attribute__((__packed__));
-	int16_t acc[3];
-	int16_t temp;
+	/* OUTX_L to OUTZ_H registers, little-endian */
+	uint8_t acc[6];
+	/* OUT_T_L and OUT_T_H registers, little-endian */
+	uint8_t temp[2];
 };
 
 int lis2dux12_encode(const struct device *dev, const struct sensor_chan_spec *const channels,

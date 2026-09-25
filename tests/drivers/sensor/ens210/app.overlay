@@ -1,0 +1,12 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&i2c0 {
+	ens210: ens210@43 {
+		compatible = "ams,ens210";
+		reg = <0x43>;
+	};
+};

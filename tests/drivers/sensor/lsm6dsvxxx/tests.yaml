@@ -1,0 +1,27 @@
+# Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+common:
+  tags:
+    - drivers
+    - sensor
+  platform_allow:
+    - native_sim
+    - native_sim/native/64
+  integration_platforms:
+    - native_sim
+tests:
+  drivers.sensor.lsm6dsvxxx.decoder:
+    extra_configs:
+      - CONFIG_LSM6DSVXXX_STREAM=n
+  drivers.sensor.lsm6dsvxxx.decoder.temp:
+    extra_configs:
+      - CONFIG_LSM6DSVXXX_STREAM=n
+      - CONFIG_LSM6DSVXXX_ENABLE_TEMP=y
+  drivers.sensor.lsm6dsvxxx.decoder.stream:
+    extra_configs:
+      - CONFIG_LSM6DSVXXX_STREAM=y
+  drivers.sensor.lsm6dsvxxx.decoder.stream.temp:
+    extra_configs:
+      - CONFIG_LSM6DSVXXX_STREAM=y
+      - CONFIG_LSM6DSVXXX_ENABLE_TEMP=y

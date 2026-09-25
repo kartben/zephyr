@@ -1,0 +1,17 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+&bmp581 {
+	int-gpios = <&gpio0 2 GPIO_ACTIVE_HIGH>;
+	fifo-watermark = <4>;
+};
+
+/* With CONFIG_BMP581_STREAM, every instance needs an interrupt line */
+&bmp581_spi {
+	int-gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
+};

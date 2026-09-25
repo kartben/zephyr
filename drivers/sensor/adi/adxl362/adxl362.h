@@ -175,11 +175,13 @@
 #define ADXL362_TEMP_BIAS_LSB 350
 #define ADXL362_TEMP_BIAS_TEST_CONDITION 25
 
-/* ADXL362 check fifo sample header */
-#define ADXL362_FIFO_HDR_CHECK_ACCEL_X(x)	((((x) & 0xC000) >> 14) == 0x00)
-#define ADXL362_FIFO_HDR_CHECK_ACCEL_Y(x)	((((x) & 0xC000) >> 14) == 0x01)
-#define ADXL362_FIFO_HDR_CHECK_ACCEL_Z(x)	((((x) & 0xC000) >> 14) == 0x02)
-#define ADXL362_FIFO_HDR_CHECK_TEMP(x)	((((x) & 0xC000) >> 14) == 0x03)
+/* Axis tag of a FIFO entry: 0 for X, 1 for Y, 2 for Z, 3 for temperature */
+#define ADXL362_FIFO_TAG_MSK GENMASK(15, 14)
+
+/* Size of the XDATA_L to TEMP_H registers, and of a FIFO sample set with temperature */
+#define ADXL362_SAMPLE_SIZE       8
+/* Size of a FIFO sample set without temperature */
+#define ADXL362_SAMPLE_SIZE_ACCEL 6
 
 struct adxl362_config {
 	struct spi_dt_spec bus;
@@ -250,11 +252,11 @@ struct adxl362_sample_data {
 	uint8_t res: 7;
 #endif /*CONFIG_ADXL362_STREAM*/
 	uint8_t selected_range;
-	int16_t acc_x;
-	int16_t acc_y;
-	int16_t acc_z;
-	int16_t temp;
-};
+	/* XDATA_L to TEMP_H registers, little-endian */
+	uint8_t raw[ADXL362_SAMPLE_SIZE];
+	/* Sensor clock time of the read, in nanoseconds */
+	uint64_t timestamp;
+} __packed;
 
 struct adxl362_fifo_data {
 	uint8_t is_fifo: 1;
@@ -321,9 +323,6 @@ int adxl362_rtio_fetch(const struct device *dev,
 				struct adxl362_sample_data *sample_data);
 void adxl362_submit(const struct device *dev, struct rtio_iodev_sqe *iodev_sqe);
 int adxl362_get_decoder(const struct device *dev, const struct sensor_decoder_api **decoder);
-void adxl362_accel_convert(struct sensor_value *val, int accel,
-				  int range);
-void adxl362_temp_convert(struct sensor_value *val, int temp);
 #endif /* CONFIG_SENSOR_ASYNC_API */
 
 #ifdef CONFIG_ADXL362_STREAM

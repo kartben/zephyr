@@ -85,6 +85,29 @@ static int adis1647x_sample_fetch(const struct device *dev, enum sensor_channel 
 	return 0;
 }
 
+/* 1000 converts from mg to g, 100 rescales accel_scale */
+#define ADIS1647X_ACCEL_SCALE_DEN (1000LL * 100)
+/* 100000 rescales gyro_scale, 180 for PI/180 rad->deg conversion */
+#define ADIS1647X_GYRO_SCALE_DEN  (100000LL * 180)
+
+static void adis1647x_accel_convert(struct sensor_value *val, int16_t raw, uint8_t accel_scale_num)
+{
+	int64_t micro_m_s2 =
+		((int64_t)raw * SENSOR_G * accel_scale_num) / ADIS1647X_ACCEL_SCALE_DEN;
+
+	val->val1 = (int32_t)(micro_m_s2 / 1000000);
+	val->val2 = (int32_t)(micro_m_s2 % 1000000);
+}
+
+static void adis1647x_gyro_convert(struct sensor_value *val, int16_t raw, uint16_t gyro_scale_num)
+{
+	int64_t micro_rad_s =
+		((int64_t)raw * SENSOR_PI * gyro_scale_num) / ADIS1647X_GYRO_SCALE_DEN;
+
+	val->val1 = (int32_t)(micro_rad_s / 1000000);
+	val->val2 = (int32_t)(micro_rad_s % 1000000);
+}
+
 static int adis1647x_channel_get(const struct device *dev, enum sensor_channel chan,
 				 struct sensor_value *val)
 {
@@ -136,8 +159,8 @@ static int adis1647x_channel_get(const struct device *dev, enum sensor_channel c
 static DEVICE_API(sensor, adis1647x_api) = {
 	.sample_fetch = adis1647x_sample_fetch,
 	.channel_get = adis1647x_channel_get,
-	.get_decoder = adis1647x_get_decoder,
 #ifdef CONFIG_SENSOR_ASYNC_API
+	.get_decoder = adis1647x_get_decoder,
 	.submit = adis1647x_submit,
 #endif
 #ifdef CONFIG_ADIS1647X_TRIGGER

@@ -1,0 +1,23 @@
+# Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+common:
+  tags:
+    - drivers
+    - sensor
+  platform_allow:
+    - native_sim
+    - native_sim/native/64
+  integration_platforms:
+    - native_sim
+tests:
+  drivers.sensor.bmi270.decoder:
+    extra_configs:
+      - CONFIG_BMI270_TRIGGER_GLOBAL_THREAD=y
+      - CONFIG_BMI270_STREAM=y
+  drivers.sensor.bmi270.decoder.headerless:
+    extra_configs:
+      - CONFIG_BMI270_TRIGGER_OWN_THREAD=y
+      - CONFIG_BMI270_STREAM=y
+      - CONFIG_BMI270_FIFO_HEADERLESS=y
+  drivers.sensor.bmi270.no_stream: {}

@@ -50,47 +50,17 @@ void mlx90394_async_fetch(struct k_work *work)
 	edata->header.timestamp = data->work_ctx.timestamp;
 	edata->header.config_val = data->work_ctx.config_val;
 
-	switch (cfg->channels->chan_type) {
-	case SENSOR_CHAN_MAGN_X: {
-		edata->readings[0] =
-			(int16_t)((uint16_t)data->sample.x_l | (uint16_t)(data->sample.x_h << 8));
-	} break;
-	case SENSOR_CHAN_MAGN_Y: {
-		edata->readings[1] =
-			(int16_t)((uint16_t)data->sample.y_l | (uint16_t)(data->sample.y_h << 8));
-	} break;
-	case SENSOR_CHAN_MAGN_Z: {
-		edata->readings[2] =
-			(int16_t)((uint16_t)data->sample.z_l | (uint16_t)(data->sample.z_h << 8));
-	} break;
-	case SENSOR_CHAN_AMBIENT_TEMP: {
-		edata->readings[3] = (int16_t)((uint16_t)data->sample.temp_l |
-					       (uint16_t)(data->sample.temp_h << 8));
-	} break;
-	case SENSOR_CHAN_MAGN_XYZ: {
-		edata->readings[0] =
-			(int16_t)((uint16_t)data->sample.x_l | (uint16_t)(data->sample.x_h << 8));
-		edata->readings[1] =
-			(int16_t)((uint16_t)data->sample.y_l | (uint16_t)(data->sample.y_h << 8));
-		edata->readings[2] =
-			(int16_t)((uint16_t)data->sample.z_l | (uint16_t)(data->sample.z_h << 8));
-	} break;
-	case SENSOR_CHAN_ALL: {
-		edata->readings[0] =
-			(int16_t)((uint16_t)data->sample.x_l | (uint16_t)(data->sample.x_h << 8));
-		edata->readings[1] =
-			(int16_t)((uint16_t)data->sample.y_l | (uint16_t)(data->sample.y_h << 8));
-		edata->readings[2] =
-			(int16_t)((uint16_t)data->sample.z_l | (uint16_t)(data->sample.z_h << 8));
-		edata->readings[3] = (int16_t)((uint16_t)data->sample.temp_l |
-					       (uint16_t)(data->sample.temp_h << 8));
-	} break;
-	default: {
-		LOG_DBG("Invalid channel %d", cfg->channels->chan_type);
-		rtio_iodev_sqe_err(data->work_ctx.iodev_sqe, -ENOTSUP);
-		return;
-	}
-	}
+	edata->header.channel = cfg->channels->chan_type;
+
+	edata->readings[0] = data->sample.x_l;
+	edata->readings[1] = data->sample.x_h;
+	edata->readings[2] = data->sample.y_l;
+	edata->readings[3] = data->sample.y_h;
+	edata->readings[4] = data->sample.z_l;
+	edata->readings[5] = data->sample.z_h;
+	edata->readings[6] = data->sample.temp_l;
+	edata->readings[7] = data->sample.temp_h;
+
 	rtio_iodev_sqe_ok(data->work_ctx.iodev_sqe, 0);
 }
 

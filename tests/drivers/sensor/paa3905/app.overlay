@@ -1,0 +1,16 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+&spi0 {
+	paa3905: paa3905@0 {
+		compatible = "pixart,paa3905";
+		reg = <0>;
+		spi-max-frequency = <2000000>;
+		int-gpios = <&gpio0 1 GPIO_ACTIVE_LOW>;
+	};
+};

@@ -12,6 +12,7 @@
 #include <zephyr/devicetree.h>
 #include <string.h>
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/drivers/sensor_clock.h>
 #include <zephyr/init.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/sys/byteorder.h>
@@ -553,12 +554,16 @@ int adxl362_rtio_fetch(const struct device *dev,
 				struct adxl362_sample_data *sample_data)
 {
 	struct adxl362_data *data = dev->data;
-	int16_t buf[4];
+	uint64_t cycles;
 	int ret;
 
-	ret = adxl362_get_reg(dev, (uint8_t *)buf, ADXL362_REG_XDATA_L,
-			      sizeof(buf));
-	if (ret) {
+	ret = sensor_clock_get_cycles(&cycles);
+	if (ret != 0) {
+		return ret;
+	}
+
+	ret = adxl362_get_reg(dev, sample_data->raw, ADXL362_REG_XDATA_L, sizeof(sample_data->raw));
+	if (ret != 0) {
 		return ret;
 	}
 
@@ -566,11 +571,8 @@ int adxl362_rtio_fetch(const struct device *dev,
 	sample_data->is_fifo = 0;
 #endif /*CONFIG_ADXL362_STREAM*/
 
-	sample_data->acc_x = sys_le16_to_cpu(buf[0]);
-	sample_data->acc_y = sys_le16_to_cpu(buf[1]);
-	sample_data->acc_z = sys_le16_to_cpu(buf[2]);
-	sample_data->temp = sys_le16_to_cpu(buf[3]);
 	sample_data->selected_range = data->selected_range;
+	sample_data->timestamp = sensor_clock_cycles_to_ns(cycles);
 
 	return 0;
 }
@@ -591,13 +593,8 @@ static inline int adxl362_range_to_scale(int range)
 	}
 }
 
-#ifdef CONFIG_SENSOR_ASYNC_API
-void adxl362_accel_convert(struct sensor_value *val, int accel,
-				  int range)
-#else
 static void adxl362_accel_convert(struct sensor_value *val, int accel,
 				  int range)
-#endif /*CONFIG_SENSOR_ASYNC_API*/
 {
 	int scale = adxl362_range_to_scale(range);
 	long micro_ms2 = accel * SENSOR_G / scale;
@@ -608,11 +605,7 @@ static void adxl362_accel_convert(struct sensor_value *val, int accel,
 	val->val2 = micro_ms2 % 1000000;
 }
 
-#ifdef CONFIG_SENSOR_ASYNC_API
-void adxl362_temp_convert(struct sensor_value *val, int temp)
-#else
 static void adxl362_temp_convert(struct sensor_value *val, int temp)
-#endif /*CONFIG_SENSOR_ASYNC_API*/
 {
 	/* See sensitivity and bias specifications in table 1 of datasheet */
 	int milli_c = (temp - ADXL362_TEMP_BIAS_LSB) * ADXL362_TEMP_MC_PER_LSB +

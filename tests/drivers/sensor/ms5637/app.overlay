@@ -1,0 +1,12 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&i2c0 {
+	ms5637: ms5637@76 {
+		compatible = "meas,ms5637";
+		reg = <0x76>;
+	};
+};

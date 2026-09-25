@@ -217,10 +217,10 @@ static inline uint8_t lsm6dsv16x_bus_reg(rtio_bus_type bus, uint8_t addr)
 {
 	return (rtio_is_spi(bus)) ? addr | 0x80 : addr;
 }
+#endif
 
 #define LSM6DSV16X_FIFO_ITEM_LEN 7
 #define LSM6DSV16X_FIFO_SIZE(x) (x * LSM6DSV16X_FIFO_ITEM_LEN)
-#endif
 
 int lsm6dsv16x_accel_set_odr_raw(const struct device *dev, uint8_t odr);
 int lsm6dsv16x_gyro_set_odr_raw(const struct device *dev, uint8_t odr);

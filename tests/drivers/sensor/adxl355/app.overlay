@@ -1,0 +1,18 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/sensor/adxl355.h>
+
+&i2c0 {
+	adxl355: adxl355@1d {
+		compatible = "adi,adxl355";
+		reg = <0x1d>;
+		int1-gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
+		range = <ADXL355_DT_RANGE_2G>;
+		fifo-watermark = <24>;
+	};
+};

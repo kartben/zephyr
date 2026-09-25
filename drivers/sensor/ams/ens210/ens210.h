@@ -61,20 +61,6 @@
 #define ENS210_TEMP_SHIFT 16
 #define ENS210_HUMIDITY_SHIFT 16
 
-/* q31: real = reading / 2^(31 - shift); both channels use shift 16 → 2^15 */
-#define ENS210_Q31_SCALE           BIT(31 - ENS210_TEMP_SHIFT)
-
-/* LSB sizes from datasheet */
-#define ENS210_TEMP_LSB_PER_K      64    /* T_VAL: 1/64 K */
-#define ENS210_HUM_LSB_PER_RH      512   /* H_VAL: 1/512 %RH */
-
-/* Q31 multipliers for temperature and humidity */
-#define ENS210_TEMP_Q31_MUL       (ENS210_Q31_SCALE / ENS210_TEMP_LSB_PER_K)
-#define ENS210_HUM_Q31_MUL        (ENS210_Q31_SCALE / ENS210_HUM_LSB_PER_RH)
-
-/* 273.15 K in q31 (shift 16): 273.15 * 2^15 → 8958259 */
-#define ENS210_KELVIN_OFFSET_Q31   8958259
-
 struct rtio_iodev_sqe;
 struct sensor_decoder_api;
 

@@ -10,7 +10,9 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/sensor_clock.h>
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/drivers/sensor_decoder.h>
 #include <zephyr/rtio/rtio.h>
+#include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/check.h>
 
 #define DT_DRV_COMPAT bosch_bmi08x_accel
@@ -30,7 +32,10 @@ enum bmi08x_accel_fifo_header {
 	BMI08X_ACCEL_FIFO_FRAME_EMPTY = 0x80,
 };
 
-struct frame_len {
+/* The two low bits of a frame header are interrupt tags */
+#define BMI08X_ACCEL_FIFO_HEADER_MASK 0xFCU
+
+static const struct frame_len {
 	enum bmi08x_accel_fifo_header header;
 	uint8_t len;
 } fifo_frame_len[] = {
@@ -43,15 +48,31 @@ struct frame_len {
 };
 
 /* Period in ns indexed by BMI08X_ACCEL_ODR_* register value (0x05 = 12.5 Hz .. 0x0C = 1600 Hz) */
-static const uint32_t accel_period_ns[] = {
-	[BMI08X_ACCEL_ODR_12_5_HZ] = UINT32_C(80000000),
-	[BMI08X_ACCEL_ODR_25_HZ]   = UINT32_C(40000000),
-	[BMI08X_ACCEL_ODR_50_HZ]   = UINT32_C(20000000),
-	[BMI08X_ACCEL_ODR_100_HZ]  = UINT32_C(10000000),
-	[BMI08X_ACCEL_ODR_200_HZ]  = UINT32_C(5000000),
-	[BMI08X_ACCEL_ODR_400_HZ]  = UINT32_C(2500000),
-	[BMI08X_ACCEL_ODR_800_HZ]  = UINT32_C(1250000),
-	[BMI08X_ACCEL_ODR_1600_HZ] = UINT32_C(625000),
+static const uint64_t accel_period_ns[] = {
+	[BMI08X_ACCEL_ODR_12_5_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(12500),
+	[BMI08X_ACCEL_ODR_25_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(25000),
+	[BMI08X_ACCEL_ODR_50_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(50000),
+	[BMI08X_ACCEL_ODR_100_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(100000),
+	[BMI08X_ACCEL_ODR_200_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(200000),
+	[BMI08X_ACCEL_ODR_400_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(400000),
+	[BMI08X_ACCEL_ODR_800_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(800000),
+	[BMI08X_ACCEL_ODR_1600_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(1600000),
+};
+
+/*
+ * At the lowest range, one LSB is fsr_g / 32768 g, with fsr_g = 2 for the BMI085 and 3 for the
+ * BMI088; the ratio is reduced by 50 to fit in 32 bits. Each range step doubles both the LSB
+ * and 2^shift, so the q31 value does not depend on the range. Bits needed for the integer
+ * part in m/s^2: 5 at 2 - 3 g, 6 at 4 - 6 g, 7 at 8 - 12 g and 8 at 16 - 24 g.
+ */
+BUILD_ASSERT(SENSOR_G % 50 == 0);
+#define BMI08X_ACCEL_LSB_NUM(fsr_g) ((int32_t)((fsr_g) * (SENSOR_G / 50)))
+#define BMI08X_ACCEL_LSB_DEN        ((int32_t)(32768 * (1000000 / 50)))
+#define BMI08X_ACCEL_BASE_SHIFT     5
+
+struct bmi08x_accel_frame_format {
+	int32_t lsb_num;
+	bool is_fifo;
 };
 
 void bmi08x_accel_encode_header(const struct device *dev, struct bmi08x_accel_encoded_data *edata,
@@ -75,153 +96,136 @@ void bmi08x_accel_encode_header(const struct device *dev, struct bmi08x_accel_en
 	edata->header.accel_odr = config->accel_hz;
 }
 
-static int bmi08x_decoder_get_frame_count(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
-					  uint16_t *frame_count)
+static int bmi08x_accel_fifo_frame_len(const uint8_t *frame, size_t remaining,
+				       const void *user_data)
+{
+	uint8_t header = frame[0] & BMI08X_ACCEL_FIFO_HEADER_MASK;
+
+	ARG_UNUSED(remaining);
+	ARG_UNUSED(user_data);
+
+	for (size_t i = 0; i < ARRAY_SIZE(fifo_frame_len); i++) {
+		if (header == fifo_frame_len[i].header) {
+			return fifo_frame_len[i].len;
+		}
+	}
+
+	/* The rest of the data cannot be parsed: keep the frames read so far */
+	LOG_WRN_RATELIMIT("Invalid frame header: 0x%02X", header);
+
+	return 0;
+}
+
+static int bmi08x_accel_decode_frame(const uint8_t *frame, struct sensor_chan_spec chan_spec,
+				     const void *user_data, struct sensor_frame_reading *reading)
+{
+	const struct bmi08x_accel_frame_format *fmt = user_data;
+	const uint8_t *payload = frame;
+
+	if (chan_spec.chan_type != SENSOR_CHAN_ACCEL_XYZ) {
+		return -ENOTSUP;
+	}
+
+	if (fmt->is_fifo) {
+		if ((frame[0] & BMI08X_ACCEL_FIFO_HEADER_MASK) != BMI08X_ACCEL_FIFO_FRAME_ACCEL) {
+			return 0;
+		}
+		payload = &frame[1];
+	}
+
+	if (reading == NULL) {
+		return 1;
+	}
+
+	for (uint8_t i = 0U; i < 3U; i++) {
+		reading->values[i] =
+			sensor_raw_to_q31_ratio(sys_get_le16(&payload[i * 2U]), 16U, fmt->lsb_num,
+						BMI08X_ACCEL_LSB_DEN, BMI08X_ACCEL_BASE_SHIFT);
+	}
+
+	return 1;
+}
+
+static int bmi08x_accel_get_frames(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+				   struct sensor_raw_frames *frames,
+				   struct bmi08x_accel_frame_format *fmt)
 {
 	const struct bmi08x_accel_encoded_data *edata =
 		(const struct bmi08x_accel_encoded_data *)buffer;
 
-	if (!edata->header.has_accel || chan_spec.chan_idx != 0) {
+	if (chan_spec.chan_type != SENSOR_CHAN_ACCEL_XYZ || chan_spec.chan_idx != 0U) {
+		return -ENOTSUP;
+	}
+
+	if (!edata->header.has_accel) {
 		return -ENODATA;
 	}
 
-	if (chan_spec.chan_type != SENSOR_CHAN_ACCEL_XYZ) {
-		return -EINVAL;
+	fmt->lsb_num = (edata->header.chip_id == BMI085_ACCEL_CHIP_ID) ? BMI08X_ACCEL_LSB_NUM(2)
+								       : BMI08X_ACCEL_LSB_NUM(3);
+	fmt->is_fifo = edata->header.is_streaming;
+
+	*frames = (struct sensor_raw_frames){
+		.decode_frame = bmi08x_accel_decode_frame,
+		.user_data = fmt,
+		.timestamp_ns = edata->header.timestamp,
+		.shift = BMI08X_ACCEL_BASE_SHIFT + edata->header.range,
+	};
+
+	if (edata->header.is_streaming) {
+		frames->frames = edata->fifo;
+		frames->size = edata->header.buf_len;
+		frames->frame_len = bmi08x_accel_fifo_frame_len;
+		if (edata->header.accel_odr < ARRAY_SIZE(accel_period_ns)) {
+			frames->period_ns = accel_period_ns[edata->header.accel_odr];
+		}
+	} else {
+		frames->frames = (const uint8_t *)edata->payload;
+		frames->size = sizeof(edata->payload);
+		frames->frame_size = sizeof(edata->payload);
 	}
 
-	*frame_count = edata->header.sample_count;
 	return 0;
+}
+
+static int bmi08x_decoder_get_frame_count(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+					  uint16_t *frame_count)
+{
+	struct sensor_raw_frames frames;
+	struct bmi08x_accel_frame_format fmt;
+	int ret;
+
+	ret = bmi08x_accel_get_frames(buffer, chan_spec, &frames, &fmt);
+	if (ret != 0) {
+		return ret;
+	}
+
+	return sensor_raw_frames_count(&frames, chan_spec, frame_count);
 }
 
 static int bmi08x_decoder_get_size_info(struct sensor_chan_spec chan_spec, size_t *base_size,
 					size_t *frame_size)
 {
-	if (chan_spec.chan_idx != 0 || chan_spec.chan_type != SENSOR_CHAN_ACCEL_XYZ) {
-		return -EINVAL;
+	if (chan_spec.chan_type != SENSOR_CHAN_ACCEL_XYZ || chan_spec.chan_idx != 0U) {
+		return -ENOTSUP;
 	}
 
-	*base_size = sizeof(struct sensor_three_axis_data);
-	*frame_size = sizeof(struct sensor_three_axis_sample_data);
-	return 0;
-}
-
-static inline void fixed_point_from_encoded_data(const uint16_t encoded_payload[3], uint8_t shift,
-						 uint32_t fsr_value_g, q31_t output[3])
-{
-	for (size_t i = 0 ; i < 3 ; i++) {
-		int64_t raw_value;
-
-		raw_value = sign_extend_64(encoded_payload[i], 15);
-		raw_value = (raw_value * fsr_value_g << (31 - 5 - 15)) * SENSOR_G / 1000000;
-
-		output[i] = raw_value;
-	}
-}
-
-static inline int bmi08x_decode_one_shot(const struct bmi08x_accel_encoded_data *edata,
-					 uint32_t *fit, struct sensor_three_axis_data *data_output)
-{
-	uint32_t fsr_value_g = (edata->header.chip_id == BMI085_ACCEL_CHIP_ID) ? 2 : 3;
-
-	if (*fit != 0) {
-		return -ENODATA;
-	}
-
-	/** Bits we need to represent the integer part of FSR in m/s2:
-	 * - 2 - 3 G (19.6 - 29.4 m/s2) = 5 bits.
-	 * - 4 - 6 G (39.2 - 58.8 m/s2) = 6 bits.
-	 * - 8 - 12 G (78.4 - 117.6 m/s2) = 7 bits.
-	 * - 16 - 24 G (156.8 235.2 m/s2) = 8 bits.
-	 */
-	data_output->shift = 5 + edata->header.range;
-	data_output->header.reading_count = 1;
-	data_output->header.base_timestamp_ns = edata->header.timestamp;
-	fixed_point_from_encoded_data(edata->payload, data_output->shift, fsr_value_g,
-				      data_output->readings[0].values);
-
-	return ++(*fit);
-}
-
-static inline int fifo_get_frame_len(enum bmi08x_accel_fifo_header header)
-{
-	for (size_t i = 0 ; i < ARRAY_SIZE(fifo_frame_len) ; i++) {
-		if (header == fifo_frame_len[i].header) {
-			return fifo_frame_len[i].len;
-		}
-	}
-	return -EINVAL;
-}
-
-static inline int bmi08x_decode_fifo(const struct bmi08x_accel_encoded_data *edata, uint32_t *fit,
-				     uint16_t max_count, struct sensor_three_axis_data *data_output)
-{
-	uint8_t reading_count = 0;
-	uint32_t fsr_value_g = edata->header.chip_id == BMI085_ACCEL_CHIP_ID ? 2 : 3;
-
-	if (*fit >= edata->header.buf_len) {
-		return -ENODATA;
-	}
-
-	/** Bits we need to represent the integer part of FSR in m/s2:
-	 * - 2 - 3 G (19.6 - 29.4 m/s2) = 5 bits.
-	 * - 4 - 6 G (39.2 - 58.8 m/s2) = 6 bits.
-	 * - 8 - 12 G (78.4 - 117.6 m/s2) = 7 bits.
-	 * - 16 - 24 G (156.8 235.2 m/s2) = 8 bits.
-	 */
-	uint32_t period_ns = (edata->header.accel_odr < ARRAY_SIZE(accel_period_ns))
-			     ? accel_period_ns[edata->header.accel_odr] : 0;
-
-	data_output->shift = 5 + edata->header.range;
-	data_output->header.reading_count = 0;
-	data_output->header.base_timestamp_ns =
-		edata->header.timestamp -
-		(uint64_t)(edata->header.sample_count > 0
-			   ? edata->header.sample_count - 1 : 0) * period_ns;
-
-	do {
-		uint8_t header_byte = edata->fifo[*fit] & 0xFC;
-		int frame_len = fifo_get_frame_len(header_byte);
-
-		if (frame_len < 0) {
-			LOG_WRN("Invalid frame header: 0x%02X", header_byte);
-			return frame_len;
-		}
-
-		if (header_byte == BMI08X_ACCEL_FIFO_FRAME_ACCEL &&
-		    *fit + frame_len <= edata->header.buf_len) {
-			const uint16_t *values = (const uint16_t *)&edata->fifo[*fit + 1];
-
-			fixed_point_from_encoded_data(
-				values, data_output->shift, fsr_value_g,
-				data_output->readings[reading_count].values);
-			data_output->readings[reading_count].timestamp_delta =
-				reading_count * period_ns;
-			reading_count++;
-		}
-		*fit += frame_len;
-	} while (*fit < edata->header.buf_len && reading_count < max_count);
-
-	data_output->header.reading_count = reading_count;
-	return reading_count;
+	return sensor_decode_frames_size_info(chan_spec, 0U, base_size, frame_size);
 }
 
 static int bmi08x_decoder_decode(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
 				 uint32_t *fit, uint16_t max_count, void *data_out)
 {
-	struct sensor_three_axis_data *data_output = (struct sensor_three_axis_data *)data_out;
-	const struct bmi08x_accel_encoded_data *edata =
-		(const struct bmi08x_accel_encoded_data *)buffer;
+	struct sensor_raw_frames frames;
+	struct bmi08x_accel_frame_format fmt;
+	int ret;
 
-	if (chan_spec.chan_type != SENSOR_CHAN_ACCEL_XYZ || chan_spec.chan_idx != 0 ||
-	    max_count == 0 || !edata->header.has_accel) {
-		return -EINVAL;
+	ret = bmi08x_accel_get_frames(buffer, chan_spec, &frames, &fmt);
+	if (ret != 0) {
+		return ret;
 	}
 
-	if (edata->header.is_streaming) {
-		return bmi08x_decode_fifo(edata, fit, max_count, data_output);
-	} else {
-		return bmi08x_decode_one_shot(edata, fit, data_output);
-	}
+	return sensor_decode_frames(&frames, chan_spec, fit, max_count, data_out);
 }
 
 static bool bmi08x_decoder_has_trigger(const uint8_t *buffer, enum sensor_trigger_type trigger)

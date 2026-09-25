@@ -1,0 +1,12 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&i2c0 {
+	als31300: als31300@60 {
+		compatible = "allegro,als31300";
+		reg = <0x60>;
+	};
+};

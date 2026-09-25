@@ -3,14 +3,28 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#define DT_DRV_COMPAT allegro_als31300
+
 #include "als31300.h"
 
 #include <zephyr/device.h>
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/drivers/sensor_decoder.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/dsp/types.h>
 
 LOG_MODULE_DECLARE(als31300, CONFIG_SENSOR_LOG_LEVEL);
+
+/* One LSB is 1/4 G (ALS31300-500) */
+#define ALS31300_MAGN_Q31_SCALE                                                                    \
+	SENSOR_Q31_SCALE(1, ALS31300_SENSITIVITY_LSB_PER_GAUSS, ALS31300_MAGN_SHIFT)
+
+/* One LSB above the offset is 302/4096 degrees Celsius */
+#define ALS31300_TEMP_Q31_SCALE                                                                    \
+	SENSOR_Q31_SCALE(ALS31300_TEMP_SCALE_FACTOR, ALS31300_TEMP_DIVISOR, ALS31300_TEMP_SHIFT)
+
+BUILD_ASSERT(ALS31300_MAGN_SHIFT == ALS31300_TEMP_SHIFT,
+	     "The magnetic field and temperature share the q31 shift");
 
 /**
  * @brief Encode channel flags for the given sensor channel
@@ -45,40 +59,116 @@ static uint8_t als31300_encode_channel(enum sensor_channel chan)
 	return encode_bmask;
 }
 
-/**
- * @brief Convert raw magnetic field value to Q31 format
- * @param raw_value Signed 12-bit magnetic field value
- * @param q31_out Pointer to store Q31 value
- */
-static void als31300_convert_raw_to_q31_magn(int16_t raw_value, q31_t *q31_out)
+static bool als31300_chan_is_supported(struct sensor_chan_spec chan_spec)
 {
-	/* Convert to microgauss using integer arithmetic */
-	int32_t microgauss = als31300_convert_to_gauss(raw_value);
+	if (chan_spec.chan_idx != 0U) {
+		return false;
+	}
 
-	/* Convert to Q31 format: Q31 = (value * 2^(31 - shift)) / 1000000
-	 * For magnetic field, we use shift=16, so the full scale is ±2^16 = ±65536 gauss
-	 * This gives us good resolution for the ±500G range of the ALS31300
-	 * microgauss * 2^15 / 1000000 = microgauss * 32768 / 1000000
-	 */
-	*q31_out = (q31_t)(((int64_t)microgauss << (31 - ALS31300_MAGN_SHIFT)) / 1000000);
+	switch (chan_spec.chan_type) {
+	case SENSOR_CHAN_MAGN_X:
+	case SENSOR_CHAN_MAGN_Y:
+	case SENSOR_CHAN_MAGN_Z:
+	case SENSOR_CHAN_MAGN_XYZ:
+	case SENSOR_CHAN_AMBIENT_TEMP:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static int als31300_decode_frame(const uint8_t *frame, struct sensor_chan_spec chan_spec,
+				 const void *user_data, struct sensor_frame_reading *reading)
+{
+	struct als31300_readings readings;
+	int16_t axes[3];
+	uint8_t first;
+	uint8_t num;
+
+	ARG_UNUSED(user_data);
+
+	if (chan_spec.chan_type == SENSOR_CHAN_AMBIENT_TEMP) {
+		if (reading != NULL) {
+			als31300_parse_registers(frame, &readings);
+			/* |temp - offset| < 4096 and the scale is 2416: no overflow */
+			reading->values[0] = ((int32_t)readings.temp - ALS31300_TEMP_OFFSET) *
+					     ALS31300_TEMP_Q31_SCALE;
+		}
+
+		return 1;
+	}
+
+	switch (chan_spec.chan_type) {
+	case SENSOR_CHAN_MAGN_X:
+		first = 0U;
+		num = 1U;
+		break;
+	case SENSOR_CHAN_MAGN_Y:
+		first = 1U;
+		num = 1U;
+		break;
+	case SENSOR_CHAN_MAGN_Z:
+		first = 2U;
+		num = 1U;
+		break;
+	case SENSOR_CHAN_MAGN_XYZ:
+		first = 0U;
+		num = 3U;
+		break;
+	default:
+		return -ENOTSUP;
+	}
+
+	if (reading == NULL) {
+		return 1;
+	}
+
+	als31300_parse_registers(frame, &readings);
+
+	axes[0] = readings.x;
+	axes[1] = readings.y;
+	axes[2] = readings.z;
+
+	for (uint8_t i = 0U; i < num; i++) {
+		reading->values[i] =
+			sensor_raw_to_q31((uint16_t)axes[first + i], 16U, ALS31300_MAGN_Q31_SCALE);
+	}
+
+	return 1;
 }
 
 /**
- * @brief Convert raw temperature value to Q31 format
- * @param raw_temp 12-bit raw temperature value
- * @param q31_out Pointer to store Q31 value
+ * @brief Describe the encoded buffer for a channel
+ *
+ * @retval 0 Success
+ * @retval -ENOTSUP Channel not supported
+ * @retval -ENODATA Channel not requested in the read that produced the buffer
  */
-static void als31300_convert_temp_to_q31(uint16_t raw_temp, q31_t *q31_out)
+static int als31300_get_frames(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+			       struct sensor_raw_frames *frames)
 {
-	/* Convert to microcelsius using integer arithmetic */
-	int32_t microcelsius = als31300_convert_temperature(raw_temp);
+	const struct als31300_encoded_data *edata = (const struct als31300_encoded_data *)buffer;
+	uint8_t channel_request;
 
-	/* Convert to Q31 format: Q31 = (value * 2^(31 - shift)) / 1000000
-	 * For temperature, we use shift=16, so the full scale is ±2^16 = ±65536°C
-	 * This gives us good resolution for typical temperature ranges (-40°C to +125°C)
-	 * microcelsius * 2^15 / 1000000 = microcelsius * 32768 / 1000000
-	 */
-	*q31_out = (q31_t)(((int64_t)microcelsius << (31 - ALS31300_TEMP_SHIFT)) / 1000000);
+	if (!als31300_chan_is_supported(chan_spec)) {
+		return -ENOTSUP;
+	}
+
+	channel_request = als31300_encode_channel(chan_spec.chan_type);
+	if ((edata->header.channels & channel_request) != channel_request) {
+		return -ENODATA;
+	}
+
+	*frames = (struct sensor_raw_frames){
+		.frames = edata->payload,
+		.size = sizeof(edata->payload),
+		.frame_size = sizeof(edata->payload),
+		.decode_frame = als31300_decode_frame,
+		.timestamp_ns = edata->header.timestamp,
+		.shift = ALS31300_MAGN_SHIFT,
+	};
+
+	return 0;
 }
 
 /**
@@ -88,21 +178,15 @@ static int als31300_decoder_get_frame_count(const uint8_t *buffer,
 					    struct sensor_chan_spec chan_spec,
 					    uint16_t *frame_count)
 {
-	const struct als31300_encoded_data *edata = (const struct als31300_encoded_data *)buffer;
+	struct sensor_raw_frames frames;
+	int rc;
 
-	if (chan_spec.chan_idx != 0) {
-		return -ENOTSUP;
+	rc = als31300_get_frames(buffer, chan_spec, &frames);
+	if (rc != 0) {
+		return rc;
 	}
 
-	uint8_t channel_request = als31300_encode_channel(chan_spec.chan_type);
-
-	/* Filter unknown channels and having no data */
-	if ((edata->header.channels & channel_request) != channel_request) {
-		return -ENODATA;
-	}
-
-	*frame_count = 1;
-	return 0;
+	return sensor_raw_frames_count(&frames, chan_spec, frame_count);
 }
 
 /**
@@ -111,21 +195,11 @@ static int als31300_decoder_get_frame_count(const uint8_t *buffer,
 static int als31300_decoder_get_size_info(struct sensor_chan_spec chan_spec, size_t *base_size,
 					  size_t *frame_size)
 {
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_MAGN_X:
-	case SENSOR_CHAN_MAGN_Y:
-	case SENSOR_CHAN_MAGN_Z:
-	case SENSOR_CHAN_MAGN_XYZ:
-		*base_size = sizeof(struct sensor_three_axis_data);
-		*frame_size = sizeof(struct sensor_three_axis_sample_data);
-		return 0;
-	case SENSOR_CHAN_AMBIENT_TEMP:
-		*base_size = sizeof(struct sensor_q31_data);
-		*frame_size = sizeof(struct sensor_q31_sample_data);
-		return 0;
-	default:
+	if (!als31300_chan_is_supported(chan_spec)) {
 		return -ENOTSUP;
 	}
+
+	return sensor_decode_frames_size_info(chan_spec, 0U, base_size, frame_size);
 }
 
 /**
@@ -134,49 +208,15 @@ static int als31300_decoder_get_size_info(struct sensor_chan_spec chan_spec, siz
 static int als31300_decoder_decode(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
 				   uint32_t *fit, uint16_t max_count, void *data_out)
 {
-	const struct als31300_encoded_data *edata = (const struct als31300_encoded_data *)buffer;
+	struct sensor_raw_frames frames;
+	int rc;
 
-	if (*fit != 0) {
-		return 0;
+	rc = als31300_get_frames(buffer, chan_spec, &frames);
+	if (rc != 0) {
+		return rc;
 	}
 
-	/* Parse raw payload data using common helper */
-	struct als31300_readings readings;
-
-	als31300_parse_registers(edata->payload, &readings);
-
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_MAGN_X:
-	case SENSOR_CHAN_MAGN_Y:
-	case SENSOR_CHAN_MAGN_Z:
-	case SENSOR_CHAN_MAGN_XYZ: {
-		struct sensor_three_axis_data *out = data_out;
-
-		out->header.base_timestamp_ns = edata->header.timestamp;
-		out->header.reading_count = 1;
-		out->shift = ALS31300_MAGN_SHIFT;
-
-		/* Convert raw readings to Q31 format */
-		als31300_convert_raw_to_q31_magn(readings.x, &out->readings[0].x);
-		als31300_convert_raw_to_q31_magn(readings.y, &out->readings[0].y);
-		als31300_convert_raw_to_q31_magn(readings.z, &out->readings[0].z);
-		*fit = 1;
-		return 1;
-	}
-	case SENSOR_CHAN_AMBIENT_TEMP: {
-		struct sensor_q31_data *out = data_out;
-
-		out->header.base_timestamp_ns = edata->header.timestamp;
-		out->header.reading_count = 1;
-		out->shift = ALS31300_TEMP_SHIFT;
-
-		als31300_convert_temp_to_q31(readings.temp, &out->readings[0].temperature);
-		*fit = 1;
-		return 1;
-	}
-	default:
-		return -ENOTSUP;
-	}
+	return sensor_decode_frames(&frames, chan_spec, fit, max_count, data_out);
 }
 
 SENSOR_DECODER_API_DT_DEFINE() = {

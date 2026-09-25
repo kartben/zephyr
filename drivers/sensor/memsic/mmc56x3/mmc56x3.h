@@ -63,27 +63,12 @@ extern const struct mmc56x3_bus_io mmc56x3_bus_io_i2c;
 #define MMC56X3_STATUS_MEAS_T_DONE 0x40
 
 #define MMC56X3_REG_MAGN_X_OUT_0     0x00
-/* Range is -30 to 30, sensitivity of raw 20-bit reading is
- * 16384 = 1 Gauss. To convert raw reading to
- * Q5.26 with range -32 to 32,
- * reading * (1/16384) * pow(2, 31)/32
- * = reading * 4096
- */
-#define MMC56X3_MAGN_CONV_Q5_26_20B  4096
 /* 1/16384 */
 #define MMC56X3_MAGN_GAUSS_RES       0.000061035
-/* To convert reading to Q7.24 with range -128, 128,
- * (BASE + reading * RES) * pow(2, 31)/128
- * = BASE * pow(2, 31)/128 + reading * RES * pow(2, 31)/128
- * CONV_BASE = BASE * pow(2, 31)/128
- * CONV_RES = RES * pow(2, 31)/128
- * = CONV_BASE + reading * CONV_RES
- */
 #define MMC56X3_TEMP_BASE            -75
 #define MMC56X3_TEMP_RES             0.8
-#define MMC56X3_TEMP_CONV_Q7_24_BASE -1258291200
-#define MMC56X3_TEMP_CONV_Q7_24_RES  13421773
 
+/* Decoder q31 output ranges: -32 to 32 Gauss and -128 to 128 degC */
 #define MMC56X3_MAGN_SHIFT 5
 #define MMC56X3_TEMP_SHIFT 7
 

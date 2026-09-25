@@ -7,6 +7,8 @@
  */
 
 #include <zephyr/drivers/sensor_clock.h>
+#include <zephyr/drivers/sensor_decoder.h>
+#include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/check.h>
 
 #include "icm45686.h"
@@ -18,177 +20,304 @@ LOG_MODULE_REGISTER(ICM45686_DECODER, CONFIG_SENSOR_LOG_LEVEL);
 
 #define DT_DRV_COMPAT invensense_icm45686
 
-/* Hardware timestamp resolution: 16μs per tick (TMST_RESOL=1 in TMST_WOM_CONFIG).
- * Each 20-byte FIFO packet contains a 16-bit hardware timestamp at this resolution.
- * The signed int16_t delta handles 16-bit wraparound, valid for batch spans < 524ms.
- */
-#define ICM45686_HW_TS_NS_PER_TICK UINT32_C(16000) /* 16μs in ns */
+/* Hardware timestamp resolution: 16 us per tick (TMST_RESOL=1 in TMST_WOM_CONFIG) */
+#define ICM45686_HW_TS_NS_PER_TICK UINT64_C(16000)
 
-static int icm45686_get_shift(enum sensor_channel channel, int accel_fs, int gyro_fs, int8_t *shift)
+/*
+ * Positions of the samples in the single sample payload (int16_t words) and in the FIFO
+ * packets (16-bit MSB words after the packet header)
+ */
+#define ICM45686_POS_ACCEL 0U
+#define ICM45686_POS_GYRO  3U
+#define ICM45686_POS_TEMP  6U
+
+#define ICM45686_FIFO_DATA_OFFSET offsetof(struct icm45686_encoded_fifo_payload, accel.x)
+#define ICM45686_FIFO_TS_OFFSET   offsetof(struct icm45686_encoded_fifo_payload, timestamp)
+#define ICM45686_FIFO_LSB_OFFSET  offsetof(struct icm45686_encoded_fifo_payload, lsb)
+
+/* Temperature: 132.48 LSB/degC, 0 LSB at 25 degC */
+#define ICM45686_TEMP_SHIFT        9
+#define ICM45686_TEMP_LSB_PER_100C 13248
+#define ICM45686_TEMP_OFFSET_Q31   SENSOR_Q31_SCALE(25, 1, ICM45686_TEMP_SHIFT)
+
+/* Full scale in micro-rad/s from a full scale in milli-degrees/s */
+#define ICM45686_GYRO_FS_URADS(fs_mdps)                                                            \
+	((int32_t)(((int64_t)(fs_mdps) * SENSOR_PI + 90000) / 180000))
+
+static const int32_t accel_fs_ums2[] = {
+	[ICM45686_DT_ACCEL_FS_32] = 32 * SENSOR_G,
+	[ICM45686_DT_ACCEL_FS_16] = 16 * SENSOR_G,
+	[ICM45686_DT_ACCEL_FS_8] = 8 * SENSOR_G,
+	[ICM45686_DT_ACCEL_FS_4] = 4 * SENSOR_G,
+	[ICM45686_DT_ACCEL_FS_2] = 2 * SENSOR_G,
+};
+
+static const int8_t accel_shift[] = {
+	[ICM45686_DT_ACCEL_FS_32] = 9,
+	[ICM45686_DT_ACCEL_FS_16] = 8,
+	[ICM45686_DT_ACCEL_FS_8] = 7,
+	[ICM45686_DT_ACCEL_FS_4] = 6,
+	[ICM45686_DT_ACCEL_FS_2] = 5,
+};
+
+static const int32_t gyro_fs_urads[] = {
+	[ICM45686_DT_GYRO_FS_4000] = ICM45686_GYRO_FS_URADS(4000000),
+	[ICM45686_DT_GYRO_FS_2000] = ICM45686_GYRO_FS_URADS(2000000),
+	[ICM45686_DT_GYRO_FS_1000] = ICM45686_GYRO_FS_URADS(1000000),
+	[ICM45686_DT_GYRO_FS_500] = ICM45686_GYRO_FS_URADS(500000),
+	[ICM45686_DT_GYRO_FS_250] = ICM45686_GYRO_FS_URADS(250000),
+	[ICM45686_DT_GYRO_FS_125] = ICM45686_GYRO_FS_URADS(125000),
+	[ICM45686_DT_GYRO_FS_62_5] = ICM45686_GYRO_FS_URADS(62500),
+	[ICM45686_DT_GYRO_FS_31_25] = ICM45686_GYRO_FS_URADS(31250),
+	[ICM45686_DT_GYRO_FS_15_625] = ICM45686_GYRO_FS_URADS(15625),
+};
+
+static const int8_t gyro_shift[] = {
+	[ICM45686_DT_GYRO_FS_4000] = 12,
+	[ICM45686_DT_GYRO_FS_2000] = 11,
+	[ICM45686_DT_GYRO_FS_1000] = 10,
+	[ICM45686_DT_GYRO_FS_500] = 9,
+	[ICM45686_DT_GYRO_FS_250] = 8,
+	[ICM45686_DT_GYRO_FS_125] = 7,
+	[ICM45686_DT_GYRO_FS_62_5] = 6,
+	[ICM45686_DT_GYRO_FS_31_25] = 5,
+	[ICM45686_DT_GYRO_FS_15_625] = 4,
+};
+
+struct icm45686_frame_format {
+	/* 20-bit FIFO packets instead of one 16-bit sample of each channel */
+	bool fifo;
+	/* Full scale of the decoded channel in micro-units, 0 for the temperature */
+	int32_t fs;
+	int8_t shift;
+	/* Host timestamp and hardware timestamp of the last FIFO packet */
+	uint64_t timestamp_ns;
+	uint16_t hw_ts_last;
+};
+
+static bool icm45686_is_fifo(const struct icm45686_encoded_header *header)
 {
-	switch (channel) {
-	case SENSOR_CHAN_ACCEL_XYZ:
-	case SENSOR_CHAN_ACCEL_X:
-	case SENSOR_CHAN_ACCEL_Y:
-	case SENSOR_CHAN_ACCEL_Z:
-		switch (accel_fs) {
-		case ICM45686_DT_ACCEL_FS_32:
-			*shift = 9;
-			return 0;
-		case ICM45686_DT_ACCEL_FS_16:
-			*shift = 8;
-			return 0;
-		case ICM45686_DT_ACCEL_FS_8:
-			*shift = 7;
-			return 0;
-		case ICM45686_DT_ACCEL_FS_4:
-			*shift = 6;
-			return 0;
-		case ICM45686_DT_ACCEL_FS_2:
-			*shift = 5;
-			return 0;
-		default:
-			return -EINVAL;
-		}
-	case SENSOR_CHAN_GYRO_XYZ:
-	case SENSOR_CHAN_GYRO_X:
-	case SENSOR_CHAN_GYRO_Y:
-	case SENSOR_CHAN_GYRO_Z:
-		switch (gyro_fs) {
-		case ICM45686_DT_GYRO_FS_4000:
-			*shift = 12;
-			return 0;
-		case ICM45686_DT_GYRO_FS_2000:
-			*shift = 11;
-			return 0;
-		case ICM45686_DT_GYRO_FS_1000:
-			*shift = 10;
-			return 0;
-		case ICM45686_DT_GYRO_FS_500:
-			*shift = 9;
-			return 0;
-		case ICM45686_DT_GYRO_FS_250:
-			*shift = 8;
-			return 0;
-		case ICM45686_DT_GYRO_FS_125:
-			*shift = 7;
-			return 0;
-		case ICM45686_DT_GYRO_FS_62_5:
-			*shift = 6;
-			return 0;
-		case ICM45686_DT_GYRO_FS_31_25:
-			*shift = 5;
-			return 0;
-		default:
-			return -EINVAL;
-		}
-	case SENSOR_CHAN_DIE_TEMP:
-		*shift = 9;
-		return 0;
-	default:
-		return -EINVAL;
-	}
+	return (header->events &
+		(REG_INT1_STATUS0_FIFO_THS(true) | REG_INT1_STATUS0_FIFO_FULL(true))) != 0U;
 }
 
-int icm45686_convert_raw_to_q31(struct icm45686_encoded_data *edata, enum sensor_channel chan,
-				int32_t reading, q31_t *out)
+/* Get the position of the first sample of a channel and the number of samples */
+static int icm45686_chan_layout(enum sensor_channel chan, uint8_t *pos, uint8_t *num)
 {
-	int32_t whole;
-	int32_t fraction;
-	int64_t intermediate;
-	int8_t shift;
-	int rc;
-
-	rc = icm45686_get_shift(chan, edata->header.accel_fs, edata->header.gyro_fs, &shift);
-	if (rc != 0) {
-		return rc;
-	}
+	*num = 1U;
 
 	switch (chan) {
 	case SENSOR_CHAN_ACCEL_XYZ:
+		*num = 3U;
+		__fallthrough;
 	case SENSOR_CHAN_ACCEL_X:
+		*pos = ICM45686_POS_ACCEL;
+		return 0;
 	case SENSOR_CHAN_ACCEL_Y:
+		*pos = ICM45686_POS_ACCEL + 1U;
+		return 0;
 	case SENSOR_CHAN_ACCEL_Z:
-		icm45686_accel_ms(edata->header.accel_fs, reading, false, &whole, &fraction);
-		break;
+		*pos = ICM45686_POS_ACCEL + 2U;
+		return 0;
 	case SENSOR_CHAN_GYRO_XYZ:
+		*num = 3U;
+		__fallthrough;
 	case SENSOR_CHAN_GYRO_X:
+		*pos = ICM45686_POS_GYRO;
+		return 0;
 	case SENSOR_CHAN_GYRO_Y:
+		*pos = ICM45686_POS_GYRO + 1U;
+		return 0;
 	case SENSOR_CHAN_GYRO_Z:
-		icm45686_gyro_rads(edata->header.gyro_fs, reading, false, &whole, &fraction);
-		break;
+		*pos = ICM45686_POS_GYRO + 2U;
+		return 0;
 	case SENSOR_CHAN_DIE_TEMP:
-		icm45686_temp_c(reading, &whole, &fraction);
-		break;
+		*pos = ICM45686_POS_TEMP;
+		return 0;
 	default:
 		return -ENOTSUP;
-	}
-	intermediate = ((int64_t)whole * INT64_C(1000000) + fraction);
-	if (shift < 0) {
-		intermediate =
-			intermediate * ((int64_t)INT32_MAX + 1) * (1 << -shift) / INT64_C(1000000);
-	} else {
-		intermediate =
-			intermediate * ((int64_t)INT32_MAX + 1) / ((1 << shift) * INT64_C(1000000));
-	}
-	*out = CLAMP(intermediate, INT32_MIN, INT32_MAX);
-
-	return 0;
-}
-
-static int icm45686_get_channel_position(enum sensor_channel chan)
-{
-	switch (chan) {
-	case SENSOR_CHAN_ACCEL_XYZ:
-	case SENSOR_CHAN_ACCEL_X:
-		return offsetof(struct icm45686_encoded_payload, accel.x) / sizeof(int16_t);
-	case SENSOR_CHAN_ACCEL_Y:
-		return offsetof(struct icm45686_encoded_payload, accel.y) / sizeof(int16_t);
-	case SENSOR_CHAN_ACCEL_Z:
-		return offsetof(struct icm45686_encoded_payload, accel.z) / sizeof(int16_t);
-	case SENSOR_CHAN_GYRO_XYZ:
-	case SENSOR_CHAN_GYRO_X:
-		return offsetof(struct icm45686_encoded_payload, gyro.x) / sizeof(int16_t);
-	case SENSOR_CHAN_GYRO_Y:
-		return offsetof(struct icm45686_encoded_payload, gyro.y) / sizeof(int16_t);
-	case SENSOR_CHAN_GYRO_Z:
-		return offsetof(struct icm45686_encoded_payload, gyro.z) / sizeof(int16_t);
-	case SENSOR_CHAN_DIE_TEMP:
-		return offsetof(struct icm45686_encoded_payload, temp) / sizeof(int16_t);
-	default:
-		return 0;
 	}
 }
 
 static uint8_t icm45686_encode_channel(enum sensor_channel chan)
 {
-	uint8_t encode_bmask = 0;
+	uint8_t pos;
+	uint8_t num;
 
-	switch (chan) {
-	case SENSOR_CHAN_ACCEL_X:
-	case SENSOR_CHAN_ACCEL_Y:
-	case SENSOR_CHAN_ACCEL_Z:
-	case SENSOR_CHAN_GYRO_X:
-	case SENSOR_CHAN_GYRO_Y:
-	case SENSOR_CHAN_GYRO_Z:
-	case SENSOR_CHAN_DIE_TEMP:
-		encode_bmask = BIT(icm45686_get_channel_position(chan));
-		break;
-	case SENSOR_CHAN_ACCEL_XYZ:
-		encode_bmask = BIT(icm45686_get_channel_position(SENSOR_CHAN_ACCEL_X)) |
-			       BIT(icm45686_get_channel_position(SENSOR_CHAN_ACCEL_Y)) |
-			       BIT(icm45686_get_channel_position(SENSOR_CHAN_ACCEL_Z));
-		break;
-	case SENSOR_CHAN_GYRO_XYZ:
-		encode_bmask = BIT(icm45686_get_channel_position(SENSOR_CHAN_GYRO_X)) |
-			       BIT(icm45686_get_channel_position(SENSOR_CHAN_GYRO_Y)) |
-			       BIT(icm45686_get_channel_position(SENSOR_CHAN_GYRO_Z));
-		break;
-	default:
-		break;
+	if (icm45686_chan_layout(chan, &pos, &num) != 0) {
+		return 0U;
 	}
 
-	return encode_bmask;
+	return (uint8_t)(BIT_MASK(num) << pos);
+}
+
+/* Convert a sample whose full scale, reached at 2^(bits - 1) LSB, is fs micro-units */
+static q31_t icm45686_convert(uint32_t raw, uint8_t bits, const struct icm45686_frame_format *fmt)
+{
+	if (fmt->fs == 0) {
+		return sensor_raw_to_q31_ratio(raw, bits, 100, ICM45686_TEMP_LSB_PER_100C,
+					       ICM45686_TEMP_SHIFT) +
+		       ICM45686_TEMP_OFFSET_Q31;
+	}
+
+	/* One LSB is fs / 2^(bits - 1): dividing by 2^(bits - 1) adds bits - 1 to the shift */
+	return sensor_raw_to_q31_ratio(raw, bits, fmt->fs, 1000000,
+				       (int8_t)(fmt->shift + bits - 1));
+}
+
+static int icm45686_decode_fifo_frame(const uint8_t *frame, uint8_t pos, uint8_t num,
+				      const struct icm45686_frame_format *fmt,
+				      struct sensor_frame_reading *reading)
+{
+	const uint8_t header = frame[0];
+	uint16_t hw_ts;
+
+	/* This driver assumes 20-byte packets with both accel and gyro and no auxiliary sensor */
+	CHECKIF(!(((header & FIFO_HEADER_EXT_HEADER_EN(true)) == 0U) &&
+		  ((header & FIFO_HEADER_ACCEL_EN(true)) != 0U) &&
+		  ((header & FIFO_HEADER_GYRO_EN(true)) != 0U) &&
+		  ((header & FIFO_HEADER_HIRES_EN(true)) != 0U))) {
+		LOG_ERR("Unsupported FIFO packet format 0x%02x", header);
+		return -ENOTSUP;
+	}
+
+	for (uint8_t i = 0U; i < num; i++) {
+		const uint8_t p = pos + i;
+		uint32_t raw = sys_get_le16(&frame[ICM45686_FIFO_DATA_OFFSET + p * 2U]);
+		uint8_t lsb;
+
+		if (p == ICM45686_POS_TEMP) {
+			reading->values[i] = icm45686_convert(raw, 16U, fmt);
+			continue;
+		}
+
+		if (raw == FIFO_NO_DATA) {
+			return -ENODATA;
+		}
+
+		/* Low nibbles of the 20-bit samples: accel in bits 7:4, gyro in bits 3:0 */
+		if (p < ICM45686_POS_GYRO) {
+			lsb = FIELD_GET(GENMASK(7, 4), frame[ICM45686_FIFO_LSB_OFFSET + p]);
+		} else {
+			lsb = FIELD_GET(GENMASK(3, 0),
+					frame[ICM45686_FIFO_LSB_OFFSET + p - ICM45686_POS_GYRO]);
+		}
+		reading->values[i] = icm45686_convert((raw << 4) | lsb, 20U, fmt);
+	}
+
+	/* The last packet was read at the host timestamp; the counter wraps after 1.05 s */
+	hw_ts = sys_get_le16(&frame[ICM45686_FIFO_TS_OFFSET]);
+	reading->timestamp_ns = fmt->timestamp_ns -
+				(uint16_t)(fmt->hw_ts_last - hw_ts) * ICM45686_HW_TS_NS_PER_TICK;
+
+	return 1;
+}
+
+static int icm45686_decode_frame(const uint8_t *frame, struct sensor_chan_spec chan_spec,
+				 const void *user_data, struct sensor_frame_reading *reading)
+{
+	const struct icm45686_frame_format *fmt = user_data;
+	uint8_t pos;
+	uint8_t num;
+	int rc;
+
+	rc = icm45686_chan_layout(chan_spec.chan_type, &pos, &num);
+	if (rc != 0) {
+		return rc;
+	}
+
+	if (reading == NULL) {
+		return 1;
+	}
+
+	if (fmt->fifo) {
+		return icm45686_decode_fifo_frame(frame, pos, num, fmt, reading);
+	}
+
+	for (uint8_t i = 0U; i < num; i++) {
+		reading->values[i] =
+			icm45686_convert(sys_get_le16(&frame[(pos + i) * 2U]), 16U, fmt);
+	}
+
+	return 1;
+}
+
+static int icm45686_get_frames(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+			       struct sensor_raw_frames *frames, struct icm45686_frame_format *fmt)
+{
+	const struct icm45686_encoded_data *edata = (const struct icm45686_encoded_data *)buffer;
+	uint8_t accel_fs = edata->header.accel_fs;
+	uint8_t gyro_fs = edata->header.gyro_fs;
+	uint8_t pos;
+	uint8_t num;
+	int rc;
+
+	if (chan_spec.chan_idx != 0U) {
+		return -ENOTSUP;
+	}
+
+	rc = icm45686_chan_layout(chan_spec.chan_type, &pos, &num);
+	if (rc != 0) {
+		return rc;
+	}
+
+	*fmt = (struct icm45686_frame_format){
+		.fifo = icm45686_is_fifo(&edata->header),
+		.timestamp_ns = edata->header.timestamp,
+	};
+	*frames = (struct sensor_raw_frames){
+		.decode_frame = icm45686_decode_frame,
+		.user_data = fmt,
+		.timestamp_ns = edata->header.timestamp,
+	};
+
+	if (fmt->fifo) {
+		/* Individual axes are not decoded from FIFO packets */
+		if (num == 1U && pos != ICM45686_POS_TEMP) {
+			return -ENOTSUP;
+		}
+
+		/* High resolution FIFO packets have a fixed full scale */
+		accel_fs = ICM45686_DT_ACCEL_FS_32;
+		gyro_fs = ICM45686_DT_GYRO_FS_4000;
+		frames->frames = (const uint8_t *)edata->fifo_payload;
+		frames->frame_size = sizeof(struct icm45686_encoded_fifo_payload);
+		frames->size = edata->header.fifo_count * frames->frame_size;
+		if (frames->size > 0U) {
+			fmt->hw_ts_last =
+				sys_get_le16(&frames->frames[frames->size - frames->frame_size +
+							     ICM45686_FIFO_TS_OFFSET]);
+		}
+	} else {
+		uint8_t channels = icm45686_encode_channel(chan_spec.chan_type);
+
+		if ((edata->header.channels & channels) != channels) {
+			return -ENODATA;
+		}
+
+		frames->frames = edata->payload.buf;
+		frames->frame_size = sizeof(edata->payload.buf);
+		frames->size = sizeof(edata->payload.buf);
+	}
+
+	if (pos == ICM45686_POS_TEMP) {
+		fmt->shift = ICM45686_TEMP_SHIFT;
+	} else if (pos < ICM45686_POS_GYRO) {
+		if (accel_fs >= ARRAY_SIZE(accel_shift)) {
+			return -EINVAL;
+		}
+		fmt->fs = accel_fs_ums2[accel_fs];
+		fmt->shift = accel_shift[accel_fs];
+	} else {
+		if (gyro_fs >= ARRAY_SIZE(gyro_shift)) {
+			return -EINVAL;
+		}
+		fmt->fs = gyro_fs_urads[gyro_fs];
+		fmt->shift = gyro_shift[gyro_fs];
+	}
+	frames->shift = fmt->shift;
+
+	return 0;
 }
 
 int icm45686_encode(const struct device *dev, const struct sensor_chan_spec *const channels,
@@ -222,339 +351,45 @@ static int icm45686_decoder_get_frame_count(const uint8_t *buffer,
 					    struct sensor_chan_spec chan_spec,
 					    uint16_t *frame_count)
 {
-	struct icm45686_encoded_data *edata = (struct icm45686_encoded_data *)buffer;
+	struct icm45686_frame_format fmt;
+	struct sensor_raw_frames frames;
+	int rc;
 
-	if (chan_spec.chan_idx != 0) {
-		return -ENOTSUP;
+	rc = icm45686_get_frames(buffer, chan_spec, &frames, &fmt);
+	if (rc != 0) {
+		return rc;
 	}
 
-	uint8_t channel_request = icm45686_encode_channel(chan_spec.chan_type);
-
-	if ((edata->header.channels & channel_request) != channel_request) {
-		return -ENODATA;
-	}
-
-	if (!edata->header.events || (edata->header.events & REG_INT1_STATUS0_DRDY(true))) {
-		switch (chan_spec.chan_type) {
-		case SENSOR_CHAN_ACCEL_X:
-		case SENSOR_CHAN_ACCEL_Y:
-		case SENSOR_CHAN_ACCEL_Z:
-		case SENSOR_CHAN_ACCEL_XYZ:
-		case SENSOR_CHAN_GYRO_X:
-		case SENSOR_CHAN_GYRO_Y:
-		case SENSOR_CHAN_GYRO_Z:
-		case SENSOR_CHAN_GYRO_XYZ:
-		case SENSOR_CHAN_DIE_TEMP:
-			*frame_count = 1;
-			return 0;
-		default:
-			return -ENOTSUP;
-		}
-	}
-
-	if (edata->header.events & REG_INT1_STATUS0_FIFO_THS(true) ||
-	    edata->header.events & REG_INT1_STATUS0_FIFO_FULL(true)) {
-		switch (chan_spec.chan_type) {
-		case SENSOR_CHAN_ACCEL_XYZ:
-		case SENSOR_CHAN_GYRO_XYZ:
-		case SENSOR_CHAN_DIE_TEMP:
-			*frame_count = edata->header.fifo_count;
-			return 0;
-		/** We're skipping individual axis for fifo packets */
-		default:
-			return -ENOTSUP;
-		}
-	}
-
-	return -1;
+	return sensor_raw_frames_count(&frames, chan_spec, frame_count);
 }
 
 static int icm45686_decoder_get_size_info(struct sensor_chan_spec chan_spec, size_t *base_size,
 					  size_t *frame_size)
 {
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_ACCEL_XYZ:
-	case SENSOR_CHAN_GYRO_XYZ:
-		*base_size = sizeof(struct sensor_three_axis_data);
-		*frame_size = sizeof(struct sensor_three_axis_sample_data);
-		return 0;
-	case SENSOR_CHAN_ACCEL_X:
-	case SENSOR_CHAN_ACCEL_Y:
-	case SENSOR_CHAN_ACCEL_Z:
-	case SENSOR_CHAN_GYRO_X:
-	case SENSOR_CHAN_GYRO_Y:
-	case SENSOR_CHAN_GYRO_Z:
-	case SENSOR_CHAN_DIE_TEMP:
-		*base_size = sizeof(struct sensor_q31_data);
-		*frame_size = sizeof(struct sensor_q31_sample_data);
-		return 0;
-	default:
+	uint8_t pos;
+	uint8_t num;
+
+	if (chan_spec.chan_idx != 0U ||
+	    icm45686_chan_layout(chan_spec.chan_type, &pos, &num) != 0) {
 		return -ENOTSUP;
 	}
-}
 
-static int icm45686_one_shot_decode(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
-				    uint32_t *fit, uint16_t max_count, void *data_out)
-{
-	struct icm45686_encoded_data *edata = (struct icm45686_encoded_data *)buffer;
-	uint8_t channel_request;
-	int err;
-
-	if (*fit != 0) {
-		return 0;
-	}
-
-	if (max_count == 0 || chan_spec.chan_idx != 0) {
-		return -EINVAL;
-	}
-
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_ACCEL_X:
-	case SENSOR_CHAN_ACCEL_Y:
-	case SENSOR_CHAN_ACCEL_Z:
-	case SENSOR_CHAN_GYRO_X:
-	case SENSOR_CHAN_GYRO_Y:
-	case SENSOR_CHAN_GYRO_Z:
-	case SENSOR_CHAN_DIE_TEMP: {
-		channel_request = icm45686_encode_channel(chan_spec.chan_type);
-		if ((channel_request & edata->header.channels) != channel_request) {
-			return -ENODATA;
-		}
-
-		struct sensor_q31_data *out = data_out;
-
-		out->header.base_timestamp_ns = edata->header.timestamp;
-		out->header.reading_count = 1;
-
-		err = icm45686_get_shift(chan_spec.chan_type, edata->header.accel_fs,
-					 edata->header.gyro_fs, &out->shift);
-		if (err != 0) {
-			return -EINVAL;
-		}
-
-		icm45686_convert_raw_to_q31(
-			edata, chan_spec.chan_type,
-			edata->payload.readings[icm45686_get_channel_position(chan_spec.chan_type)],
-			&out->readings[0].value);
-		*fit = 1;
-		return 1;
-	}
-	case SENSOR_CHAN_ACCEL_XYZ:
-	case SENSOR_CHAN_GYRO_XYZ: {
-		channel_request = icm45686_encode_channel(chan_spec.chan_type);
-		if ((channel_request & edata->header.channels) != channel_request) {
-			return -ENODATA;
-		}
-
-		struct sensor_three_axis_data *out = data_out;
-		struct icm45686_encoded_payload *payload = &edata->payload;
-
-		out->header.base_timestamp_ns = edata->header.timestamp;
-		out->header.reading_count = 1;
-
-		err = icm45686_get_shift(chan_spec.chan_type, edata->header.accel_fs,
-					 edata->header.gyro_fs, &out->shift);
-		if (err != 0) {
-			return -EINVAL;
-		}
-
-		icm45686_convert_raw_to_q31(
-			edata, chan_spec.chan_type - 3,
-			payload->readings[icm45686_get_channel_position(chan_spec.chan_type - 3)],
-			&out->readings[0].x);
-		icm45686_convert_raw_to_q31(
-			edata, chan_spec.chan_type - 2,
-			payload->readings[icm45686_get_channel_position(chan_spec.chan_type - 2)],
-			&out->readings[0].y);
-		icm45686_convert_raw_to_q31(
-			edata, chan_spec.chan_type - 1,
-			payload->readings[icm45686_get_channel_position(chan_spec.chan_type - 1)],
-			&out->readings[0].z);
-		*fit = 1;
-		return 1;
-	}
-	default:
-		return -EINVAL;
-	}
-}
-
-static q31_t icm45686_fifo_read_temp_from_packet(const uint8_t *pkt)
-{
-	struct icm45686_encoded_fifo_payload *fdata = (struct icm45686_encoded_fifo_payload *)pkt;
-
-	int32_t whole;
-	uint32_t fraction;
-	int64_t intermediate;
-	int8_t shift;
-	int err;
-
-	err = icm45686_get_shift(SENSOR_CHAN_DIE_TEMP, 0, 0, &shift);
-	if (err != 0) {
-		return -1;
-	}
-
-	icm45686_temp_c(fdata->temp, &whole, &fraction);
-
-	intermediate = ((int64_t)whole * INT64_C(1000000) + fraction);
-	if (shift < 0) {
-		intermediate =
-			intermediate * ((int64_t)INT32_MAX + 1) * (1 << -shift) / INT64_C(1000000);
-	} else {
-		intermediate =
-			intermediate * ((int64_t)INT32_MAX + 1) / ((1 << shift) * INT64_C(1000000));
-	}
-
-	return CLAMP(intermediate, INT32_MIN, INT32_MAX);
-}
-
-static int icm45686_fifo_read_imu_from_packet(const uint8_t *pkt, bool is_accel,
-					      uint8_t axis_offset, q31_t *out)
-{
-	uint32_t unsigned_value;
-	int32_t signed_value;
-	int offset = 1 + (axis_offset * 2) + (is_accel ? 0 : 6);
-	uint32_t mask = is_accel ? GENMASK(7, 4) : GENMASK(3, 0);
-	uint8_t accel_fs = ICM45686_DT_ACCEL_FS_32;
-	uint8_t gyro_fs = ICM45686_DT_GYRO_FS_4000;
-
-	int32_t whole;
-	int32_t fraction;
-	int64_t intermediate;
-	int8_t shift;
-
-	unsigned_value = (pkt[offset] | (pkt[offset + 1] << 8));
-	if (unsigned_value == FIFO_NO_DATA) {
-		return -ENODATA;
-	}
-
-	unsigned_value =
-		(unsigned_value << 4) | ((pkt[17 + axis_offset] & mask) >> (is_accel ? 4 : 0));
-	signed_value = sign_extend(unsigned_value, 19);
-
-	if (!is_accel) {
-		icm45686_get_shift(SENSOR_CHAN_GYRO_XYZ, accel_fs, gyro_fs, &shift);
-		icm45686_gyro_rads(gyro_fs, signed_value, true, &whole, &fraction);
-	} else {
-		icm45686_get_shift(SENSOR_CHAN_ACCEL_XYZ, accel_fs, gyro_fs, &shift);
-		icm45686_accel_ms(accel_fs, signed_value, true, &whole, &fraction);
-	}
-
-	intermediate = ((int64_t)whole * INT64_C(1000000) + fraction);
-	if (shift < 0) {
-		intermediate =
-			intermediate * ((int64_t)INT32_MAX + 1) * (1 << -shift) / INT64_C(1000000);
-	} else {
-		intermediate =
-			intermediate * ((int64_t)INT32_MAX + 1) / ((1 << shift) * INT64_C(1000000));
-	}
-
-	*out = CLAMP(intermediate, INT32_MIN, INT32_MAX);
-
-	return 0;
-}
-
-static int icm45686_fifo_decode(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
-				uint32_t *fit, uint16_t max_count, void *data_out)
-{
-	struct icm45686_encoded_data *edata = (struct icm45686_encoded_data *)buffer;
-	struct icm45686_encoded_fifo_payload *frame_begin = edata->fifo_payload;
-	int count = 0;
-	int err;
-
-	if (*fit >= edata->header.fifo_count || chan_spec.chan_idx != 0) {
-		return 0;
-	}
-
-	uint16_t total = edata->header.fifo_count;
-
-	/*
-	 * Each 20-byte FIFO packet contains a 16-bit hardware timestamp at 16μs resolution.
-	 * The last packet's timestamp correlates with the host IRQ time (edata->header.timestamp).
-	 * Casting the delta to int16_t handles 16-bit counter wraparound — valid for batch
-	 * spans up to ±32767 * 16μs ≈ ±524ms.
-	 *
-	 * base_timestamp_ns = host_irq_time + (ts_first - ts_last) * 16μs
-	 *                   ≈ host time of the first sample in the batch
-	 */
-	uint16_t ts_first = (total > 0) ? frame_begin[0].timestamp : 0;
-	uint16_t ts_last  = (total > 0) ? frame_begin[total - 1].timestamp : 0;
-	int32_t  span_ns  = (int16_t)(ts_first - ts_last) * (int32_t)ICM45686_HW_TS_NS_PER_TICK;
-	uint64_t base_ts  = edata->header.timestamp + (int64_t)span_ns;
-
-	while (count < max_count && (*fit < edata->header.fifo_count)) {
-		struct icm45686_encoded_fifo_payload *fdata = &frame_begin[*fit];
-
-		/** This driver assumes 20-byte fifo packets, with both accel and gyro,
-		 * and no auxiliary sensors.
-		 */
-		CHECKIF(!(!(fdata->header & FIFO_HEADER_EXT_HEADER_EN(true)) &&
-			  (fdata->header & FIFO_HEADER_ACCEL_EN(true)) &&
-			  (fdata->header & FIFO_HEADER_GYRO_EN(true)) &&
-			  (fdata->header & FIFO_HEADER_HIRES_EN(true)))) {
-			LOG_ERR("Unsupported FIFO packet format 0x%02x", fdata->header);
-			return -ENOTSUP;
-		}
-
-		/* Per-packet delta from first sample using hardware timestamps */
-		uint32_t hw_delta_ns = (uint32_t)((int16_t)(fdata->timestamp - ts_first) *
-						   (int32_t)ICM45686_HW_TS_NS_PER_TICK);
-
-		switch (chan_spec.chan_type) {
-		case SENSOR_CHAN_ACCEL_XYZ:
-		case SENSOR_CHAN_GYRO_XYZ: {
-			struct sensor_three_axis_data *out = data_out;
-			bool is_accel = chan_spec.chan_type == SENSOR_CHAN_ACCEL_XYZ;
-
-			icm45686_get_shift(chan_spec.chan_type, edata->header.accel_fs,
-					   edata->header.gyro_fs, &out->shift);
-
-			out->header.base_timestamp_ns = base_ts;
-			out->readings[count].timestamp_delta = hw_delta_ns;
-
-			err = icm45686_fifo_read_imu_from_packet((uint8_t *)fdata, is_accel, 0,
-								 &out->readings[count].x);
-			err |= icm45686_fifo_read_imu_from_packet((uint8_t *)fdata, is_accel, 1,
-								  &out->readings[count].y);
-			err |= icm45686_fifo_read_imu_from_packet((uint8_t *)fdata, is_accel, 2,
-								  &out->readings[count].z);
-			if (err != 0) {
-				count--;
-			}
-			break;
-		}
-		case SENSOR_CHAN_DIE_TEMP: {
-			struct sensor_q31_data *out = data_out;
-
-			icm45686_get_shift(chan_spec.chan_type, edata->header.accel_fs,
-					   edata->header.gyro_fs, &out->shift);
-
-			out->header.base_timestamp_ns = base_ts;
-			out->readings[count].timestamp_delta = hw_delta_ns;
-			out->readings[count].temperature =
-				icm45686_fifo_read_temp_from_packet((uint8_t *)fdata);
-			break;
-		}
-		default:
-			return 0;
-		}
-		*fit = *fit + 1;
-		count++;
-	}
-
-	return count;
+	return sensor_decode_frames_size_info(chan_spec, 0U, base_size, frame_size);
 }
 
 static int icm45686_decoder_decode(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
 				   uint32_t *fit, uint16_t max_count, void *data_out)
 {
-	struct icm45686_encoded_data *edata = (struct icm45686_encoded_data *)buffer;
+	struct icm45686_frame_format fmt;
+	struct sensor_raw_frames frames;
+	int rc;
 
-	if (edata->header.events & REG_INT1_STATUS0_FIFO_THS(true) ||
-	    edata->header.events & REG_INT1_STATUS0_FIFO_FULL(true)) {
-		return icm45686_fifo_decode(buffer, chan_spec, fit, max_count, data_out);
-	} else {
-		return icm45686_one_shot_decode(buffer, chan_spec, fit, max_count, data_out);
+	rc = icm45686_get_frames(buffer, chan_spec, &frames, &fmt);
+	if (rc != 0) {
+		return rc;
 	}
+
+	return sensor_decode_frames(&frames, chan_spec, fit, max_count, data_out);
 }
 
 static bool icm45686_decoder_has_trigger(const uint8_t *buffer, enum sensor_trigger_type trigger)

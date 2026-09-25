@@ -3,83 +3,126 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <zephyr/drivers/sensor_decoder.h>
+#include <zephyr/sys/byteorder.h>
+
 #include "akm09918c.h"
 
 #define DT_DRV_COMPAT asahi_kasei_akm09918c
 
-static int akm09918c_decoder_get_frame_count(const uint8_t *buffer,
-					     struct sensor_chan_spec chan_spec,
-					     uint16_t *frame_count)
-{
-	ARG_UNUSED(buffer);
-	ARG_UNUSED(chan_spec);
+/*
+ * Fixed shift value to use. All channels (MAGN_X, _Y, and _Z) have the same fixed range of
+ * +/- 49.12 Gauss.
+ */
+#define AKM09918C_SHIFT 6
 
-	/* This sensor lacks a FIFO; there will always only be one frame at a time. */
-	*frame_count = 1;
-	return 0;
-}
-
-static int akm09918c_decoder_get_size_info(struct sensor_chan_spec chan_spec, size_t *base_size,
-					   size_t *frame_size)
+static bool akm09918c_chan_is_supported(struct sensor_chan_spec chan_spec)
 {
 	switch (chan_spec.chan_type) {
 	case SENSOR_CHAN_MAGN_X:
 	case SENSOR_CHAN_MAGN_Y:
 	case SENSOR_CHAN_MAGN_Z:
 	case SENSOR_CHAN_MAGN_XYZ:
-		*base_size = sizeof(struct sensor_three_axis_data);
-		*frame_size = sizeof(struct sensor_three_axis_sample_data);
-		return 0;
+		return chan_spec.chan_idx == 0U;
 	default:
-		return -ENOTSUP;
+		return false;
 	}
 }
 
-/** Fixed shift value to use. All channels (MAGN_X, _Y, and _Z) have the same fixed range of
- *  +/- 49.12 Gauss.
- */
-#define AKM09918C_SHIFT (6)
-
-static int akm09918c_convert_raw_to_q31(int16_t reading, q31_t *out)
+static int akm09918c_decode_frame(const uint8_t *frame, struct sensor_chan_spec chan_spec,
+				  const void *user_data, struct sensor_frame_reading *reading)
 {
-	int64_t intermediate = ((int64_t)reading * AKM09918C_MICRO_GAUSS_PER_BIT) *
-			       ((int64_t)INT32_MAX + 1) /
-			       ((1 << AKM09918C_SHIFT) * INT64_C(1000000));
+	uint8_t first;
+	uint8_t num;
 
-	*out = CLAMP(intermediate, INT32_MIN, INT32_MAX);
-	return 0;
+	ARG_UNUSED(user_data);
+
+	switch (chan_spec.chan_type) {
+	case SENSOR_CHAN_MAGN_XYZ:
+		first = 0U;
+		num = 3U;
+		break;
+	case SENSOR_CHAN_MAGN_X:
+		first = 0U;
+		num = 1U;
+		break;
+	case SENSOR_CHAN_MAGN_Y:
+		first = 1U;
+		num = 1U;
+		break;
+	case SENSOR_CHAN_MAGN_Z:
+		first = 2U;
+		num = 1U;
+		break;
+	default:
+		return -ENOTSUP;
+	}
+
+	if (reading == NULL) {
+		return 1;
+	}
+
+	for (uint8_t i = 0U; i < num; i++) {
+		reading->values[i] = sensor_raw_to_q31_ratio(sys_get_le16(&frame[(first + i) * 2U]),
+							     16U, AKM09918C_MICRO_GAUSS_PER_BIT,
+							     1000000, AKM09918C_SHIFT);
+	}
+
+	return 1;
+}
+
+/* The sensor has no FIFO: the buffer holds a single sample */
+static void akm09918c_get_frames(const uint8_t *buffer, struct sensor_raw_frames *frames)
+{
+	const struct akm09918c_encoded_data *edata = (const struct akm09918c_encoded_data *)buffer;
+
+	*frames = (struct sensor_raw_frames){
+		.frames = edata->reading.data,
+		.size = sizeof(edata->reading.data),
+		.frame_size = sizeof(edata->reading.data),
+		.decode_frame = akm09918c_decode_frame,
+		.timestamp_ns = edata->header.timestamp,
+		.shift = AKM09918C_SHIFT,
+	};
+}
+
+static int akm09918c_decoder_get_frame_count(const uint8_t *buffer,
+					     struct sensor_chan_spec chan_spec,
+					     uint16_t *frame_count)
+{
+	struct sensor_raw_frames frames;
+
+	if (!akm09918c_chan_is_supported(chan_spec)) {
+		return -ENOTSUP;
+	}
+
+	akm09918c_get_frames(buffer, &frames);
+
+	return sensor_raw_frames_count(&frames, chan_spec, frame_count);
+}
+
+static int akm09918c_decoder_get_size_info(struct sensor_chan_spec chan_spec, size_t *base_size,
+					   size_t *frame_size)
+{
+	if (!akm09918c_chan_is_supported(chan_spec)) {
+		return -ENOTSUP;
+	}
+
+	return sensor_decode_frames_size_info(chan_spec, 0U, base_size, frame_size);
 }
 
 static int akm09918c_decoder_decode(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
 				    uint32_t *fit, uint16_t max_count, void *data_out)
 {
-	const struct akm09918c_encoded_data *edata = (const struct akm09918c_encoded_data *)buffer;
+	struct sensor_raw_frames frames;
 
-	if (*fit != 0) {
-		return 0;
+	if (!akm09918c_chan_is_supported(chan_spec)) {
+		return -ENOTSUP;
 	}
 
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_MAGN_X:
-	case SENSOR_CHAN_MAGN_Y:
-	case SENSOR_CHAN_MAGN_Z:
-	case SENSOR_CHAN_MAGN_XYZ: {
-		struct sensor_three_axis_data *out = data_out;
+	akm09918c_get_frames(buffer, &frames);
 
-		out->header.base_timestamp_ns = edata->header.timestamp;
-		out->header.reading_count = 1;
-		out->shift = AKM09918C_SHIFT;
-
-		akm09918c_convert_raw_to_q31(edata->reading.data[0], &out->readings[0].x);
-		akm09918c_convert_raw_to_q31(edata->reading.data[1], &out->readings[0].y);
-		akm09918c_convert_raw_to_q31(edata->reading.data[2], &out->readings[0].z);
-		*fit = 1;
-
-		return 1;
-	}
-	default:
-		return -EINVAL;
-	}
+	return sensor_decode_frames(&frames, chan_spec, fit, max_count, data_out);
 }
 
 SENSOR_DECODER_API_DT_DEFINE() = {

@@ -35,8 +35,10 @@ extern "C" {
  */
 enum sensor_channel_afbr_s50 {
 	/**
-	 * Obtain matrix of pixels, with readings in meters.
-	 * The sensor supports up to 32 pixels in a single reading (4 x 8 matrix).
+	 * Distances of the 32 pixels of the 4 x 8 matrix, in meters.
+	 *
+	 * The decoder returns one reading per pixel: reading n holds pixel n. A pixel without
+	 * a valid measurement reads as @ref AFBR_PIXEL_INVALID_VALUE.
 	 */
 	SENSOR_CHAN_AFBR_S50_PIXELS = SENSOR_CHAN_PRIV_START + 1,
 };

@@ -10,13 +10,12 @@
 #include <stddef.h>
 
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/drivers/sensor_decoder.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/util.h>
-#include <zephyr/logging/log.h>
 
+#include "bmi270.h"
 #include "bmi270_decoder.h"
-
-LOG_MODULE_REGISTER(bmi270_decoder, CONFIG_SENSOR_LOG_LEVEL);
 
 /*
  * BMI270 FIFO header byte layout
@@ -27,77 +26,200 @@ LOG_MODULE_REGISTER(bmi270_decoder, CONFIG_SENSOR_LOG_LEVEL);
  * fh_parm for regular frames:
  *   bit 0 = ACC, bit 1 = GYR, bit 2 = AUX, bit 3 = reserved
  */
-#define BMI270_FIFO_HDR_MODE(h)             (((h) >> 6) & 0x03)
-#define BMI270_FIFO_HDR_PARM(h)             (((h) >> 2) & 0x0F)
-#define BMI270_FIFO_MODE_REGULAR            0x02
-#define BMI270_FIFO_MODE_CONTROL            0x01
+#define BMI270_FIFO_HDR_MODE(h)             (((h) >> 6) & 0x03U)
+#define BMI270_FIFO_HDR_PARM(h)             (((h) >> 2) & 0x0FU)
+#define BMI270_FIFO_MODE_REGULAR            0x02U
+#define BMI270_FIFO_MODE_CONTROL            0x01U
 #define BMI270_FIFO_PARM_ACC                BIT(0)
 #define BMI270_FIFO_PARM_GYR                BIT(1)
-#define BMI270_FIFO_CTRL_PARM_SKIP_FRAME    0x00
-#define BMI270_FIFO_CTRL_PARM_SENSORTIME    0x01
-#define BMI270_FIFO_CTRL_PARM_CONFIG_CHANGE 0x02
+#define BMI270_FIFO_CTRL_PARM_SKIP_FRAME    0x00U
+#define BMI270_FIFO_CTRL_PARM_SENSORTIME    0x01U
+#define BMI270_FIFO_CTRL_PARM_CONFIG_CHANGE 0x02U
 
-#define BMI270_FIFO_SENSOR_BYTES           6
-#define BMI270_FIFO_PAYLOAD_ACC_GYR        12
+#define BMI270_FIFO_SENSOR_BYTES           6U
+#define BMI270_FIFO_PAYLOAD_ACC_GYR        12U
+#define BMI270_FIFO_REGULAR_LEN_EMPTY      2
 #define BMI270_FIFO_CTRL_LEN_SKIP_FRAME    2
 #define BMI270_FIFO_CTRL_LEN_SENSORTIME    4
 #define BMI270_FIFO_CTRL_LEN_CONFIG_CHANGE 5
 
 #define BMI270_ACC_SHIFT_BASE 5
-#define BMI270_GYR_SHIFT_BASE 6
+#define BMI270_GYR_SHIFT      6
 
-/* SENSOR_G/SENSOR_PI are in micro units; divide this back out once per scale. */
-#define BMI270_MICRO_UNIT_SCALE 1000000LL
+/* Samples are 16-bit two's complement, full scale is +/-32768 LSB */
+#define BMI270_SAMPLE_BITS    16U
+#define BMI270_FULL_SCALE_LSB 32768LL
 
-static inline uint8_t bmi270_fifo_control_frame_size(uint8_t parm)
+/*
+ * The accelerometer shift grows by one when the range doubles, so the scale factor is the same
+ * for all ranges: range_g * g / 32768 per LSB with shift 5 + log2(range_g / 2).
+ */
+#define BMI270_ACC_SCALE                                                                           \
+	SENSOR_Q31_SCALE((int64_t)SENSOR_G * 2, BMI270_FULL_SCALE_LSB * 1000000LL,                 \
+			 BMI270_ACC_SHIFT_BASE)
+
+/* range_dps * pi / 180 / 32768 rad/s per LSB */
+#define BMI270_GYR_SCALE(range_dps)                                                                \
+	SENSOR_Q31_SCALE((int64_t)(range_dps) * SENSOR_PI,                                         \
+			 180LL * BMI270_FULL_SCALE_LSB * 1000000LL, BMI270_GYR_SHIFT)
+
+/* Indexed by bmi270_decoder_header.gyr_range_idx */
+static const int32_t gyr_scale[] = {
+	BMI270_GYR_SCALE(2000), BMI270_GYR_SCALE(1000), BMI270_GYR_SCALE(500),
+	BMI270_GYR_SCALE(250),  BMI270_GYR_SCALE(125),
+};
+
+/*
+ * Sample period indexed by the ACC_CONF.acc_odr and GYR_CONF.gyr_odr register value, which
+ * both use the same encoding.
+ */
+static const uint64_t odr_period_ns[] = {
+	/* 25/32 Hz and 25/16 Hz are not a whole number of millihertz */
+	[BMI270_ACC_ODR_25D32_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(25000) * 32U,
+	[BMI270_ACC_ODR_25D16_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(25000) * 16U,
+	[BMI270_ACC_ODR_25D8_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(3125),
+	[BMI270_ACC_ODR_25D4_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(6250),
+	[BMI270_ACC_ODR_25D2_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(12500),
+	[BMI270_ACC_ODR_25_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(25000),
+	[BMI270_ACC_ODR_50_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(50000),
+	[BMI270_ACC_ODR_100_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(100000),
+	[BMI270_ACC_ODR_200_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(200000),
+	[BMI270_ACC_ODR_400_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(400000),
+	[BMI270_ACC_ODR_800_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(800000),
+	[BMI270_ACC_ODR_1600_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(1600000),
+	[BMI270_GYR_ODR_3200_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(3200000),
+};
+
+struct bmi270_frame_format {
+	int32_t scale;
+	bool is_headerless;
+};
+
+static bool bmi270_chan_type_is_supported(struct sensor_chan_spec chan_spec)
+{
+	return chan_spec.chan_type == SENSOR_CHAN_ACCEL_XYZ ||
+	       chan_spec.chan_type == SENSOR_CHAN_GYRO_XYZ;
+}
+
+static int bmi270_fifo_control_frame_len(uint8_t parm)
 {
 	switch (parm) {
-	case BMI270_FIFO_CTRL_PARM_SKIP_FRAME:
-		return BMI270_FIFO_CTRL_LEN_SKIP_FRAME;
 	case BMI270_FIFO_CTRL_PARM_SENSORTIME:
 		return BMI270_FIFO_CTRL_LEN_SENSORTIME;
 	case BMI270_FIFO_CTRL_PARM_CONFIG_CHANGE:
 		return BMI270_FIFO_CTRL_LEN_CONFIG_CHANGE;
+	case BMI270_FIFO_CTRL_PARM_SKIP_FRAME:
 	default:
 		return BMI270_FIFO_CTRL_LEN_SKIP_FRAME;
 	}
 }
 
-static inline uint32_t bmi270_sample_period_ns(const struct bmi270_decoder_header *header,
-					       enum sensor_channel chan)
+static uint8_t bmi270_fifo_payload_len(uint8_t parm)
 {
-	const uint16_t odr_hz =
-		(chan == SENSOR_CHAN_ACCEL_XYZ) ? header->acc_odr_hz : header->gyr_odr_hz;
-
-	return (uint32_t)(1000000000ULL / odr_hz);
+	return (((parm & BMI270_FIFO_PARM_ACC) != 0U) ? BMI270_FIFO_SENSOR_BYTES : 0U) +
+	       (((parm & BMI270_FIFO_PARM_GYR) != 0U) ? BMI270_FIFO_SENSOR_BYTES : 0U);
 }
 
-/* Advance past one FIFO frame; increment *count if frame has a sample for the requested channel. */
-static const uint8_t *bmi270_fifo_advance_frame(const uint8_t *p, bool want_acc, uint16_t *count)
+/* Header mode: length of the frame starting with the header byte at frame[0] */
+static int bmi270_fifo_frame_len(const uint8_t *frame, size_t remaining, const void *user_data)
 {
-	uint8_t h = *p;
-	uint8_t mode = BMI270_FIFO_HDR_MODE(h);
-	uint8_t parm = BMI270_FIFO_HDR_PARM(h);
+	uint8_t parm = BMI270_FIFO_HDR_PARM(frame[0]);
 
-	if (mode == BMI270_FIFO_MODE_REGULAR) {
-		if (parm == 0) {
-			return p + 2;
+	ARG_UNUSED(remaining);
+	ARG_UNUSED(user_data);
+
+	switch (BMI270_FIFO_HDR_MODE(frame[0])) {
+	case BMI270_FIFO_MODE_REGULAR:
+		if (parm == 0U) {
+			/* Over-read marker 0x80 0x00 */
+			return BMI270_FIFO_REGULAR_LEN_EMPTY;
 		}
-		uint8_t payload = (parm & BMI270_FIFO_PARM_ACC ? BMI270_FIFO_SENSOR_BYTES : 0) +
-				  (parm & BMI270_FIFO_PARM_GYR ? BMI270_FIFO_SENSOR_BYTES : 0);
-		if (payload == 0) {
-			return p + 1;
-		}
-		if ((want_acc && (parm & BMI270_FIFO_PARM_ACC)) ||
-		    (!want_acc && (parm & BMI270_FIFO_PARM_GYR))) {
-			(*count)++;
-		}
-		return p + 1 + payload;
+		return 1 + bmi270_fifo_payload_len(parm);
+	case BMI270_FIFO_MODE_CONTROL:
+		return bmi270_fifo_control_frame_len(parm);
+	default:
+		return 1;
 	}
-	if (mode == BMI270_FIFO_MODE_CONTROL) {
-		return p + bmi270_fifo_control_frame_size(parm);
+}
+
+/*
+ * Frame payload order: GYR (6 bytes, if present) then ACC (6 bytes, if present). Headerless
+ * frames always carry both.
+ */
+static int bmi270_decode_frame(const uint8_t *frame, struct sensor_chan_spec chan_spec,
+			       const void *user_data, struct sensor_frame_reading *reading)
+{
+	const struct bmi270_frame_format *fmt = user_data;
+	bool is_accel = chan_spec.chan_type == SENSOR_CHAN_ACCEL_XYZ;
+	const uint8_t *payload;
+
+	if (fmt->is_headerless) {
+		payload = is_accel ? &frame[BMI270_FIFO_SENSOR_BYTES] : frame;
+	} else {
+		uint8_t parm = BMI270_FIFO_HDR_PARM(frame[0]);
+		bool has_acc = (parm & BMI270_FIFO_PARM_ACC) != 0U;
+		bool has_gyr = (parm & BMI270_FIFO_PARM_GYR) != 0U;
+
+		if (BMI270_FIFO_HDR_MODE(frame[0]) != BMI270_FIFO_MODE_REGULAR ||
+		    (is_accel ? !has_acc : !has_gyr)) {
+			return 0;
+		}
+
+		payload = &frame[1];
+		if (is_accel && has_gyr) {
+			payload += BMI270_FIFO_SENSOR_BYTES;
+		}
 	}
-	return p + 1;
+
+	if (reading == NULL) {
+		return 1;
+	}
+
+	for (uint8_t i = 0U; i < 3U; i++) {
+		reading->values[i] = sensor_raw_to_q31(sys_get_le16(&payload[i * 2U]),
+						       BMI270_SAMPLE_BITS, fmt->scale);
+	}
+
+	return 1;
+}
+
+static void bmi270_get_frames(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+			      struct sensor_raw_frames *frames, struct bmi270_frame_format *fmt)
+{
+	const struct bmi270_fifo_encoded_data *edata =
+		(const struct bmi270_fifo_encoded_data *)buffer;
+	uint8_t odr;
+
+	*frames = (struct sensor_raw_frames){
+		.frames = edata->fifo_data,
+		.size = edata->fifo_byte_count,
+		.decode_frame = bmi270_decode_frame,
+		.user_data = fmt,
+		.timestamp_ns = edata->header.timestamp,
+	};
+
+	fmt->is_headerless = edata->header.is_headerless != 0U;
+	if (fmt->is_headerless) {
+		frames->frame_size = BMI270_FIFO_PAYLOAD_ACC_GYR;
+	} else {
+		frames->frame_len = bmi270_fifo_frame_len;
+	}
+
+	if (chan_spec.chan_type == SENSOR_CHAN_ACCEL_XYZ) {
+		frames->shift = BMI270_ACC_SHIFT_BASE + edata->header.acc_range;
+		fmt->scale = BMI270_ACC_SCALE;
+		odr = edata->header.acc_odr;
+	} else {
+		frames->shift = BMI270_GYR_SHIFT;
+		/* Unknown ranges decode as +/-2000 dps */
+		fmt->scale = (edata->header.gyr_range_idx < ARRAY_SIZE(gyr_scale))
+				     ? gyr_scale[edata->header.gyr_range_idx]
+				     : gyr_scale[0];
+		odr = edata->header.gyr_odr;
+	}
+
+	/* A disabled or unknown ODR gives all readings the timestamp of the buffer */
+	frames->period_ns = (odr < ARRAY_SIZE(odr_period_ns)) ? odr_period_ns[odr] : 0U;
 }
 
 static int bmi270_decoder_get_frame_count(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
@@ -105,224 +227,34 @@ static int bmi270_decoder_get_frame_count(const uint8_t *buffer, struct sensor_c
 {
 	const struct bmi270_fifo_encoded_data *edata =
 		(const struct bmi270_fifo_encoded_data *)buffer;
+	struct sensor_raw_frames frames;
+	struct bmi270_frame_format fmt;
 
-	if (chan_spec.chan_idx != 0) {
-		return -EINVAL;
-	}
-
-	if (!edata->header.is_fifo) {
-		return -ENODATA;
-	}
-
-	if (chan_spec.chan_type != SENSOR_CHAN_ACCEL_XYZ &&
-	    chan_spec.chan_type != SENSOR_CHAN_GYRO_XYZ) {
+	if (chan_spec.chan_idx != 0U) {
 		return -ENOTSUP;
 	}
 
-	if (edata->header.is_headerless) {
-		*frame_count = edata->fifo_byte_count / BMI270_FIFO_PAYLOAD_ACC_GYR;
-		return 0;
+	if (edata->header.is_fifo == 0U) {
+		return -ENODATA;
 	}
 
-	uint16_t count = 0;
-	const uint8_t *p = edata->fifo_data;
-	const uint8_t *end = p + edata->fifo_byte_count;
-	bool want_acc = (chan_spec.chan_type == SENSOR_CHAN_ACCEL_XYZ);
-
-	while (p < end) {
-		p = bmi270_fifo_advance_frame(p, want_acc, &count);
+	if (!bmi270_chan_type_is_supported(chan_spec)) {
+		return -ENOTSUP;
 	}
 
-	*frame_count = count;
-	return 0;
+	bmi270_get_frames(buffer, chan_spec, &frames, &fmt);
+
+	return sensor_raw_frames_count(&frames, chan_spec, frame_count);
 }
 
 static int bmi270_decoder_get_size_info(struct sensor_chan_spec chan_spec, size_t *base_size,
 					size_t *frame_size)
 {
-	if (chan_spec.chan_idx != 0) {
-		return -EINVAL;
-	}
-
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_ACCEL_XYZ:
-	case SENSOR_CHAN_GYRO_XYZ:
-		*base_size = sizeof(struct sensor_three_axis_data);
-		*frame_size = sizeof(struct sensor_three_axis_sample_data);
-		return 0;
-	default:
+	if (chan_spec.chan_idx != 0U || !bmi270_chan_type_is_supported(chan_spec)) {
 		return -ENOTSUP;
 	}
-}
 
-/* Precompute the accel raw-to-Q31 scale once per buffer instead of per frame. */
-static int64_t bmi270_accel_scale(uint8_t range_g, int8_t shift)
-{
-	return (int64_t)SENSOR_G * range_g * (1LL << (31 - shift)) / INT16_MAX /
-	       BMI270_MICRO_UNIT_SCALE;
-}
-
-/* Precompute the gyro raw-to-Q31 scale for a given range/shift; see bmi270_accel_scale(). */
-static int64_t bmi270_gyro_scale(uint16_t range_dps, int8_t shift)
-{
-	return (int64_t)range_dps * SENSOR_PI * (1LL << (31 - shift)) /
-	       (180LL * INT16_MAX) / BMI270_MICRO_UNIT_SCALE;
-}
-
-/* Accel: raw -> m/s^2 in Q31, using a scale precomputed once per buffer by bmi270_accel_scale(). */
-static void decode_accel_frame(const uint8_t *payload, int64_t scale,
-			       struct sensor_three_axis_sample_data *out)
-{
-	int16_t x = (int16_t)sys_get_le16(&payload[0]);
-	int16_t y = (int16_t)sys_get_le16(&payload[2]);
-	int16_t z = (int16_t)sys_get_le16(&payload[4]);
-
-	out->timestamp_delta = 0;
-	out->x = (q31_t)(x * scale);
-	out->y = (q31_t)(y * scale);
-	out->z = (q31_t)(z * scale);
-}
-
-/* Gyro: raw -> rad/s in Q31, using a scale precomputed once per buffer by bmi270_gyro_scale(). */
-static void decode_gyro_frame(const uint8_t *payload, int64_t scale,
-			      struct sensor_three_axis_sample_data *out)
-{
-	int16_t x = (int16_t)sys_get_le16(&payload[0]);
-	int16_t y = (int16_t)sys_get_le16(&payload[2]);
-	int16_t z = (int16_t)sys_get_le16(&payload[4]);
-
-	out->timestamp_delta = 0;
-	out->x = (q31_t)(x * scale);
-	out->y = (q31_t)(y * scale);
-	out->z = (q31_t)(z * scale);
-}
-
-/* Accel range register value to G (2,4,8,16) */
-static uint8_t acc_range_reg_to_g(uint8_t reg)
-{
-	static const uint8_t g[] = {2, 4, 8, 16};
-
-	return reg < ARRAY_SIZE(g) ? g[reg] : 2;
-}
-
-/* Gyro range register index to dps (2000,1000,500,250,125) */
-static uint16_t gyr_range_idx_to_dps(uint8_t idx)
-{
-	static const uint16_t dps[] = {2000, 1000, 500, 250, 125};
-
-	return idx < ARRAY_SIZE(dps) ? dps[idx] : 2000;
-}
-
-/* Per-invocation decode state (one buffer, one channel) shared by FIFO decode helpers. */
-struct bmi270_fifo_decode_ctx {
-	struct sensor_three_axis_data *out;
-	uint32_t fit_base;
-	uint32_t sample_period_ns;
-	uint16_t chan_type;
-	int8_t acc_shift;
-	int8_t gyr_shift;
-	int64_t acc_scale;
-	int64_t gyr_scale;
-};
-
-/* Headerless: fixed 12-byte frames, payload order GYR then ACC (same as header mode). */
-static uint16_t decode_fifo_headerless(const uint8_t *p, const uint8_t *end, uint16_t max_count,
-				       const struct bmi270_fifo_decode_ctx *ctx)
-{
-	uint32_t skip = ctx->fit_base;
-	uint16_t decoded = 0;
-
-	while (p + BMI270_FIFO_PAYLOAD_ACC_GYR <= end && decoded < max_count) {
-		if (skip > 0) {
-			skip--;
-			p += BMI270_FIFO_PAYLOAD_ACC_GYR;
-			continue;
-		}
-		if (ctx->chan_type == SENSOR_CHAN_ACCEL_XYZ) {
-			decode_accel_frame(&p[6], ctx->acc_scale, &ctx->out->readings[decoded]);
-		} else {
-			decode_gyro_frame(p, ctx->gyr_scale, &ctx->out->readings[decoded]);
-		}
-		ctx->out->readings[decoded].timestamp_delta =
-			(uint32_t)(ctx->fit_base + decoded) * ctx->sample_period_ns;
-		decoded++;
-		p += BMI270_FIFO_PAYLOAD_ACC_GYR;
-	}
-
-	return decoded;
-}
-
-/*
- * One REGULAR FIFO frame at p: advance pointer; optionally decode into *decoded if it matches
- * chan_type and skip count is satisfied.
- */
-static const uint8_t *fifo_decode_regular_frame(const uint8_t *p, const uint8_t *end,
-						uint32_t *skip, uint16_t *decoded,
-						const struct bmi270_fifo_decode_ctx *ctx)
-{
-	uint8_t parm = BMI270_FIFO_HDR_PARM(*p);
-
-	if (parm == 0) {
-		return p + 2;
-	}
-
-	bool has_gyr = (parm & BMI270_FIFO_PARM_GYR) != 0;
-	bool has_acc = (parm & BMI270_FIFO_PARM_ACC) != 0;
-	int payload =
-		(has_gyr ? BMI270_FIFO_SENSOR_BYTES : 0) + (has_acc ? BMI270_FIFO_SENSOR_BYTES : 0);
-
-	if (payload == 0 || p + 1 + payload > end) {
-		return p + 1;
-	}
-
-	bool want_this = (ctx->chan_type == SENSOR_CHAN_ACCEL_XYZ) ? has_acc : has_gyr;
-
-	if (!want_this) {
-		return p + 1 + payload;
-	}
-	if (*skip > 0) {
-		(*skip)--;
-		return p + 1 + payload;
-	}
-
-	/*
-	 * Payload order (datasheet): GYR (6B if present) then ACC (6B if present).
-	 * ACC offset = 0 when GYR absent, 6 when GYR present.
-	 */
-	const uint8_t *frame = p + 1;
-
-	if (ctx->chan_type == SENSOR_CHAN_ACCEL_XYZ) {
-		int acc_off = has_gyr ? BMI270_FIFO_SENSOR_BYTES : 0;
-
-		decode_accel_frame(&frame[acc_off], ctx->acc_scale, &ctx->out->readings[*decoded]);
-	} else {
-		decode_gyro_frame(frame, ctx->gyr_scale, &ctx->out->readings[*decoded]);
-	}
-	ctx->out->readings[*decoded].timestamp_delta =
-		(uint32_t)(ctx->fit_base + *decoded) * ctx->sample_period_ns;
-	(*decoded)++;
-	return p + 1 + payload;
-}
-
-static uint16_t decode_fifo_header_mode(const uint8_t *p, const uint8_t *end, uint16_t max_count,
-					const struct bmi270_fifo_decode_ctx *ctx)
-{
-	uint32_t skip = ctx->fit_base;
-	uint16_t decoded = 0;
-
-	while (p < end && decoded < max_count) {
-		uint8_t mode = BMI270_FIFO_HDR_MODE(*p);
-
-		if (mode == BMI270_FIFO_MODE_REGULAR) {
-			p = fifo_decode_regular_frame(p, end, &skip, &decoded, ctx);
-		} else if (mode == BMI270_FIFO_MODE_CONTROL) {
-			p += bmi270_fifo_control_frame_size(BMI270_FIFO_HDR_PARM(*p));
-		} else {
-			p++;
-		}
-	}
-
-	return decoded;
+	return sensor_decode_frames_size_info(chan_spec, 0U, base_size, frame_size);
 }
 
 static int bmi270_decoder_decode(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
@@ -330,57 +262,46 @@ static int bmi270_decoder_decode(const uint8_t *buffer, struct sensor_chan_spec 
 {
 	const struct bmi270_fifo_encoded_data *edata =
 		(const struct bmi270_fifo_encoded_data *)buffer;
-	struct sensor_three_axis_data *out = data_out;
-	const uint8_t *p = edata->fifo_data;
-	const uint8_t *end = p + edata->fifo_byte_count;
-	uint16_t decoded;
-	struct bmi270_fifo_decode_ctx ctx;
+	struct sensor_raw_frames frames;
+	struct bmi270_frame_format fmt;
 
-	if (!edata->header.is_fifo || chan_spec.chan_idx != 0) {
-		return -EINVAL;
-	}
-
-	if (chan_spec.chan_type != SENSOR_CHAN_ACCEL_XYZ &&
-	    chan_spec.chan_type != SENSOR_CHAN_GYRO_XYZ) {
+	if (chan_spec.chan_idx != 0U) {
 		return -ENOTSUP;
 	}
 
-	out->header.base_timestamp_ns = edata->header.timestamp;
-	out->header.reading_count = 0;
-
-	ctx.out = out;
-	ctx.fit_base = *fit;
-	ctx.chan_type = chan_spec.chan_type;
-	ctx.acc_shift =
-		BMI270_ACC_SHIFT_BASE + (edata->header.acc_range > 0 ? edata->header.acc_range : 0);
-	ctx.gyr_shift = BMI270_GYR_SHIFT_BASE;
-
-	ctx.sample_period_ns = bmi270_sample_period_ns(&edata->header, chan_spec.chan_type);
-	ctx.acc_scale =
-		bmi270_accel_scale(acc_range_reg_to_g(edata->header.acc_range), ctx.acc_shift);
-	ctx.gyr_scale =
-		bmi270_gyro_scale(gyr_range_idx_to_dps(edata->header.gyr_range_idx), ctx.gyr_shift);
-
-	if (edata->header.is_headerless) {
-		decoded = decode_fifo_headerless(p, end, max_count, &ctx);
-	} else {
-		decoded = decode_fifo_header_mode(p, end, max_count, &ctx);
+	if (edata->header.is_fifo == 0U) {
+		return -EINVAL;
 	}
 
-	*fit += decoded;
-	out->shift = (chan_spec.chan_type == SENSOR_CHAN_ACCEL_XYZ) ? ctx.acc_shift : ctx.gyr_shift;
-	out->header.reading_count = decoded;
-	return (int)decoded;
+	if (!bmi270_chan_type_is_supported(chan_spec)) {
+		return -ENOTSUP;
+	}
+
+	bmi270_get_frames(buffer, chan_spec, &frames, &fmt);
+
+	return sensor_decode_frames(&frames, chan_spec, fit, max_count, data_out);
 }
 
 static bool bmi270_decoder_has_trigger(const uint8_t *buffer, enum sensor_trigger_type trigger)
 {
-	ARG_UNUSED(buffer);
-	ARG_UNUSED(trigger);
-	return false;
+	const struct bmi270_fifo_encoded_data *edata =
+		(const struct bmi270_fifo_encoded_data *)buffer;
+
+	if (edata->header.is_fifo == 0U) {
+		return false;
+	}
+
+	switch (trigger) {
+	case SENSOR_TRIG_FIFO_WATERMARK:
+		return (edata->header.int_status & BMI270_INT_STATUS_1_FWM_INT) != 0U;
+	case SENSOR_TRIG_FIFO_FULL:
+		return (edata->header.int_status & BMI270_INT_STATUS_1_FFULL_INT) != 0U;
+	default:
+		return false;
+	}
 }
 
-static const struct sensor_decoder_api bmi270_decoder_api = {
+SENSOR_DECODER_API_DT_DEFINE() = {
 	.get_frame_count = bmi270_decoder_get_frame_count,
 	.get_size_info = bmi270_decoder_get_size_info,
 	.decode = bmi270_decoder_decode,
@@ -390,6 +311,7 @@ static const struct sensor_decoder_api bmi270_decoder_api = {
 int bmi270_get_decoder(const struct device *dev, const struct sensor_decoder_api **decoder)
 {
 	ARG_UNUSED(dev);
-	*decoder = &bmi270_decoder_api;
+	*decoder = &SENSOR_DECODER_NAME();
+
 	return 0;
 }

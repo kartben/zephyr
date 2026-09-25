@@ -13,6 +13,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/pm/device.h>
 #include <zephyr/sys/__assert.h>
+#include <zephyr/sys/byteorder.h>
 
 #include "adxl345.h"
 
@@ -343,8 +344,7 @@ static int adxl345_attr_set(const struct device *dev,
 int adxl345_read_sample(const struct device *dev,
 			       struct adxl345_sample *sample)
 {
-	int16_t raw_x, raw_y, raw_z;
-	uint8_t axis_data[6], status1;
+	uint8_t status1;
 	struct adxl345_dev_data *data = dev->data;
 
 	if (!IS_ENABLED(CONFIG_ADXL345_TRIGGER)) {
@@ -353,20 +353,13 @@ int adxl345_read_sample(const struct device *dev,
 		} while (!(ADXL345_STATUS_DATA_RDY(status1)));
 	}
 
-	int rc = adxl345_reg_read(dev, ADXL345_X_AXIS_DATA_0_REG, axis_data, 6);
+	int rc = adxl345_reg_read(dev, ADXL345_X_AXIS_DATA_0_REG, sample->axis_data,
+				  sizeof(sample->axis_data));
 
 	if (rc < 0) {
 		LOG_ERR("Samples read failed with rc=%d\n", rc);
 		return rc;
 	}
-
-	raw_x = axis_data[0] | (axis_data[1] << 8);
-	raw_y = axis_data[2] | (axis_data[3] << 8);
-	raw_z = axis_data[4] | (axis_data[5] << 8);
-
-	sample->x = raw_x;
-	sample->y = raw_y;
-	sample->z = raw_z;
 
 	sample->selected_range = data->selected_range;
 	sample->is_full_res = data->is_full_res;
@@ -407,9 +400,9 @@ static int adxl345_sample_fetch(const struct device *dev,
 		LOG_ERR("Failed to fetch sample rc=%d\n", rc);
 		return rc;
 	}
-	data->samples.x = sample.x;
-	data->samples.y = sample.y;
-	data->samples.z = sample.z;
+	data->samples.x = (int16_t)sys_get_le16(&sample.axis_data[0]);
+	data->samples.y = (int16_t)sys_get_le16(&sample.axis_data[2]);
+	data->samples.z = (int16_t)sys_get_le16(&sample.axis_data[4]);
 
 	return 0;
 }

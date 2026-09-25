@@ -1,0 +1,16 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+&i2c0 {
+	icm45686: icm45686@68 {
+		compatible = "invensense,icm45686";
+		reg = <0x68>;
+		int-gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
+		fifo-watermark = <4>;
+	};
+};

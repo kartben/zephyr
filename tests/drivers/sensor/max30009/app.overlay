@@ -1,0 +1,15 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+&i2c0 {
+	max30009: max30009@32 {
+		compatible = "adi,max30009";
+		reg = <0x32>;
+		int-gpios = <&gpio0 1 GPIO_ACTIVE_LOW>;
+	};
+};
