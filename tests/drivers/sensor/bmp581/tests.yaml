@@ -1,12 +1,24 @@
 # Copyright (c) 2026 Meta Platforms
 # SPDX-License-Identifier: Apache-2.0
 
+common:
+  tags:
+    - drivers
+    - sensor
+  platform_allow:
+    - native_sim
+    - native_sim/native/64
+  integration_platforms:
+    - native_sim
 tests:
-  drivers.sensor.bmp581:
-    tags:
-      - drivers
-      - sensor
-    platform_allow:
-      - native_sim
-    integration_platforms:
-      - native_sim
+  drivers.sensor.bmp581: {}
+  drivers.sensor.bmp581.async:
+    extra_configs:
+      - CONFIG_SENSOR_ASYNC_API=y
+  drivers.sensor.bmp581.stream:
+    extra_args:
+      - EXTRA_DTC_OVERLAY_FILE=stream.overlay
+    extra_configs:
+      - CONFIG_SENSOR_ASYNC_API=y
+      - CONFIG_GPIO=y
+      - CONFIG_BMP581_STREAM=y
