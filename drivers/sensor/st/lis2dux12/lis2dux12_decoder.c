@@ -9,6 +9,7 @@
 #include "lis2dux12.h"
 #include "lis2dux12_decoder.h"
 #include <zephyr/dt-bindings/sensor/lis2dux12.h>
+#include <zephyr/sys/byteorder.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(LIS2DUX12_DECODER, CONFIG_SENSOR_LOG_LEVEL);
@@ -433,6 +434,7 @@ static int lis2dux12_decode_sample(const uint8_t *buffer, struct sensor_chan_spe
 	case SENSOR_CHAN_ACCEL_Z:
 	case SENSOR_CHAN_ACCEL_XYZ: {
 		const int32_t scale = accel_scaler[header->range];
+		int16_t x, y, z;
 
 		if (edata->has_accel == 0) {
 			return -ENODATA;
@@ -445,9 +447,13 @@ static int lis2dux12_decode_sample(const uint8_t *buffer, struct sensor_chan_spe
 
 		out->shift = accel_range[header->range];
 
-		out->readings[0].x = Q31_SHIFT_MICROVAL(scale * edata->acc[0], out->shift);
-		out->readings[0].y = Q31_SHIFT_MICROVAL(scale * edata->acc[1], out->shift);
-		out->readings[0].z = Q31_SHIFT_MICROVAL(scale * edata->acc[2], out->shift);
+		x = (int16_t)sys_get_le16(&edata->acc[0]);
+		y = (int16_t)sys_get_le16(&edata->acc[2]);
+		z = (int16_t)sys_get_le16(&edata->acc[4]);
+
+		out->readings[0].x = Q31_SHIFT_MICROVAL(scale * x, out->shift);
+		out->readings[0].y = Q31_SHIFT_MICROVAL(scale * y, out->shift);
+		out->readings[0].z = Q31_SHIFT_MICROVAL(scale * z, out->shift);
 		*fit = 1;
 		return 1;
 	}
@@ -467,7 +473,7 @@ static int lis2dux12_decode_sample(const uint8_t *buffer, struct sensor_chan_spe
 		out->shift = temp_range;
 
 		/* transform temperature LSB into micro-Celsius */
-		t_uC = SENSOR_TEMP_UCELSIUS(edata->temp);
+		t_uC = SENSOR_TEMP_UCELSIUS((int16_t)sys_get_le16(edata->temp));
 
 		out->readings[0].temperature = Q31_SHIFT_MICROVAL(t_uC, out->shift);
 		*fit = 1;
