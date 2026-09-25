@@ -4,137 +4,179 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <string.h>
+
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/drivers/sensor_decoder.h>
 
 #include "bme680.h"
 
-static inline int32_t bme680_q31_conv(int64_t val, int64_t mult, int32_t div)
-{
-	int64_t q = (val * mult) / div;
+/* Conversion of a compensated value: one LSB is 1 / den of the channel unit */
+struct bme680_chan_conv {
+	int32_t den;
+	int8_t shift;
+};
 
-	return (int32_t)CLAMP(q, (int64_t)INT32_MIN, (int64_t)INT32_MAX);
+static int bme680_chan_conv_get(struct sensor_chan_spec chan_spec, struct bme680_chan_conv *conv)
+{
+	if (chan_spec.chan_idx != 0U) {
+		return -ENOTSUP;
+	}
+
+	switch (chan_spec.chan_type) {
+	case SENSOR_CHAN_AMBIENT_TEMP:
+		/* 0.01 degC */
+		*conv = (struct bme680_chan_conv){.den = 100, .shift = BME680_TEMP_SHIFT};
+		return 0;
+	case SENSOR_CHAN_PRESS:
+		/* Pa, output in kPa */
+		*conv = (struct bme680_chan_conv){.den = 1000, .shift = BME680_PRESS_SHIFT};
+		return 0;
+	case SENSOR_CHAN_HUMIDITY:
+		/* 0.001 %RH */
+		*conv = (struct bme680_chan_conv){.den = 1000, .shift = BME680_HUM_SHIFT};
+		return 0;
+	case SENSOR_CHAN_GAS_RES:
+		/* ohm */
+		*conv = (struct bme680_chan_conv){.den = 1, .shift = BME680_GAS_SHIFT};
+		return 0;
+	default:
+		return -ENOTSUP;
+	}
 }
 
-/* Get frame count for specified channel from encoded data */
-static int bme680_decoder_get_frame_count(const uint8_t *buffer, struct sensor_chan_spec chan,
+/* Unsigned values above INT32_MAX saturate in the q31 output anyway */
+static uint32_t bme680_unsigned_clamp(uint32_t val)
+{
+	return MIN(val, (uint32_t)INT32_MAX);
+}
+
+static int bme680_decode_frame(const uint8_t *frame, struct sensor_chan_spec chan_spec,
+			       const void *user_data, struct sensor_frame_reading *reading)
+{
+	const struct bme680_chan_conv *conv = user_data;
+	struct bme680_encoded_data edata;
+	bool present;
+	uint32_t raw;
+
+	/* The buffer is not necessarily aligned for struct bme680_encoded_data */
+	memcpy(&edata, frame, sizeof(edata));
+
+	switch (chan_spec.chan_type) {
+	case SENSOR_CHAN_AMBIENT_TEMP:
+		present = edata.has_temp != 0U;
+		raw = (uint32_t)edata.reading.comp_temp;
+		break;
+	case SENSOR_CHAN_PRESS:
+		present = edata.has_press != 0U;
+		raw = bme680_unsigned_clamp(edata.reading.comp_press);
+		break;
+	case SENSOR_CHAN_HUMIDITY:
+		present = edata.has_humidity != 0U;
+		raw = bme680_unsigned_clamp(edata.reading.comp_humidity);
+		break;
+	case SENSOR_CHAN_GAS_RES:
+		present = edata.has_gas != 0U;
+		raw = bme680_unsigned_clamp(edata.reading.comp_gas);
+		break;
+	default:
+		return -ENOTSUP;
+	}
+
+	if (!present) {
+		return 0;
+	}
+
+	if (reading != NULL) {
+		reading->values[0] = sensor_raw_to_q31_ratio(raw, 32U, 1, conv->den, conv->shift);
+	}
+
+	return 1;
+}
+
+static int bme680_get_frames(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+			     struct sensor_raw_frames *frames, struct bme680_chan_conv *conv)
+{
+	struct bme680_decoder_header header;
+	int rc;
+
+	rc = bme680_chan_conv_get(chan_spec, conv);
+	if (rc != 0) {
+		return rc;
+	}
+
+	memcpy(&header, buffer, sizeof(header));
+
+	/* A single sample: one frame, no period */
+	*frames = (struct sensor_raw_frames){
+		.frames = buffer,
+		.size = sizeof(struct bme680_encoded_data),
+		.frame_size = sizeof(struct bme680_encoded_data),
+		.decode_frame = bme680_decode_frame,
+		.user_data = conv,
+		.timestamp_ns = header.timestamp,
+		.shift = conv->shift,
+		.num_values = 1U,
+	};
+
+	return 0;
+}
+
+static int bme680_decoder_get_frame_count(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
 					  uint16_t *frame_count)
 {
-	const struct bme680_encoded_data *edata =
-		(const struct bme680_encoded_data *)buffer;
+	struct sensor_raw_frames frames;
+	struct bme680_chan_conv conv;
+	int rc;
 
-	if (chan.chan_idx != 0) {
-		return -ENOTSUP;
+	rc = bme680_get_frames(buffer, chan_spec, &frames, &conv);
+	if (rc != 0) {
+		return rc;
 	}
 
-	switch (chan.chan_type) {
-	case SENSOR_CHAN_AMBIENT_TEMP:
-		*frame_count = edata->has_temp ? 1 : 0;
-		return 0;
-	case SENSOR_CHAN_PRESS:
-		*frame_count = edata->has_press ? 1 : 0;
-		return 0;
-	case SENSOR_CHAN_HUMIDITY:
-		*frame_count = edata->has_humidity ? 1 : 0;
-		return 0;
-	case SENSOR_CHAN_GAS_RES:
-		*frame_count = edata->has_gas ? 1 : 0;
-		return 0;
-	default:
-		return -ENOTSUP;
-	}
+	return sensor_raw_frames_count(&frames, chan_spec, frame_count);
 }
 
-/* Get size information for decoded channel data */
-static int bme680_decoder_get_size_info(struct sensor_chan_spec chan,
-					size_t *base_size,
+static int bme680_decoder_get_size_info(struct sensor_chan_spec chan_spec, size_t *base_size,
 					size_t *frame_size)
 {
-	switch (chan.chan_type) {
-	case SENSOR_CHAN_AMBIENT_TEMP:
-	case SENSOR_CHAN_PRESS:
-	case SENSOR_CHAN_HUMIDITY:
-	case SENSOR_CHAN_GAS_RES:
-		*base_size = sizeof(struct sensor_q31_data);
-		*frame_size = sizeof(struct sensor_q31_sample_data);
-		return 0;
-	default:
-		return -ENOTSUP;
+	struct bme680_chan_conv conv;
+	int rc;
+
+	rc = bme680_chan_conv_get(chan_spec, &conv);
+	if (rc != 0) {
+		return rc;
 	}
+
+	return sensor_decode_frames_size_info(chan_spec, 1U, base_size, frame_size);
 }
 
-/* Decode sensor data to Q31 format */
-static int bme680_decoder_decode(const uint8_t *buffer,
-				 struct sensor_chan_spec chan,
-				 uint32_t *fit,
-				 uint16_t max_count,
-				 void *data_out)
+static int bme680_decoder_decode(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+				 uint32_t *fit, uint16_t max_count, void *data_out)
 {
-	const struct bme680_encoded_data *edata =
-		(const struct bme680_encoded_data *)buffer;
-	struct sensor_q31_data *out = data_out;
+	struct sensor_raw_frames frames;
+	struct bme680_chan_conv conv;
+	uint16_t frame_count;
+	int rc;
 
-	ARG_UNUSED(max_count);
-
-	if (*fit != 0) {
-		return 0;
+	rc = bme680_get_frames(buffer, chan_spec, &frames, &conv);
+	if (rc != 0) {
+		return rc;
 	}
 
-	out->header.base_timestamp_ns = edata->header.timestamp;
-	out->header.reading_count = 1;
-	out->readings[0].timestamp_delta = 0;
+	if (*fit == 0U) {
+		rc = sensor_raw_frames_count(&frames, chan_spec, &frame_count);
+		if (rc != 0) {
+			return rc;
+		}
 
-	switch (chan.chan_type) {
-	case SENSOR_CHAN_AMBIENT_TEMP:
-		if (edata->has_temp) {
-			/* BME680 temperature is in centi-degrees (x100), convert to Q31 */
-			out->readings[0].temperature =
-				bme680_q31_conv(edata->reading.comp_temp,
-						(int64_t)1 << (31 - BME680_TEMP_SHIFT), 100);
-			out->shift = BME680_TEMP_SHIFT;
-		} else {
+		/* The channel was not part of this read */
+		if (frame_count == 0U) {
 			return -ENODATA;
 		}
-		break;
-	case SENSOR_CHAN_PRESS:
-		if (edata->has_press) {
-			/* BME680 pressure is in Pa, convert to kPa in Q31 */
-			out->readings[0].pressure =
-				bme680_q31_conv(edata->reading.comp_press,
-						(int64_t)1 << (31 - BME680_PRESS_SHIFT), 1000);
-			out->shift = BME680_PRESS_SHIFT;
-		} else {
-			return -ENODATA;
-		}
-		break;
-	case SENSOR_CHAN_HUMIDITY:
-		if (edata->has_humidity) {
-			/* BME680 humidity is in milli-% (x1000), convert to Q31 */
-			out->readings[0].humidity =
-				bme680_q31_conv(edata->reading.comp_humidity,
-						(int64_t)1 << (31 - BME680_HUM_SHIFT), 1000);
-			out->shift = BME680_HUM_SHIFT;
-		} else {
-			return -ENODATA;
-		}
-		break;
-	case SENSOR_CHAN_GAS_RES:
-		if (edata->has_gas) {
-			/* Gas resistance in ohms, output as integer */
-			out->readings[0].resistance =
-				bme680_q31_conv(edata->reading.comp_gas,
-						(int64_t)1 << (31 - BME680_GAS_SHIFT),
-						1);
-			out->shift = BME680_GAS_SHIFT;
-		} else {
-			return -ENODATA;
-		}
-		break;
-	default:
-		return -ENOTSUP;
 	}
 
-	*fit = 1;
-	return 1;
+	return sensor_decode_frames(&frames, chan_spec, fit, max_count, data_out);
 }
 
 SENSOR_DECODER_API_DT_DEFINE() = {
