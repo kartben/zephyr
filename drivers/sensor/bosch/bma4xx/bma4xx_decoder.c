@@ -55,7 +55,8 @@ static int bma4xx_decoder_get_frame_count(const uint8_t *buffer, struct sensor_c
 		return -ENOTSUP;
 	}
 
-	if (!header->is_fifo) {
+	/* The encoder only writes the FIFO flag with CONFIG_BMA4XX_STREAM */
+	if (!IS_ENABLED(CONFIG_BMA4XX_STREAM) || header->is_fifo == 0U) {
 		switch (ch.chan_type) {
 		case SENSOR_CHAN_ACCEL_X:
 		case SENSOR_CHAN_ACCEL_Y:
