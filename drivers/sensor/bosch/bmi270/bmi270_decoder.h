@@ -18,8 +18,8 @@ struct bmi270_decoder_header {
 	uint8_t acc_range: 2;     /* 0=2G, 1=4G, 2=8G, 3=16G */
 	uint8_t gyr_range_idx: 3; /* 0=2000dps .. 4=125dps */
 	uint8_t reserved: 1;
-	uint16_t acc_odr_hz;
-	uint16_t gyr_odr_hz;
+	uint8_t acc_odr: 4; /* ACC_CONF.acc_odr register value */
+	uint8_t gyr_odr: 4; /* GYR_CONF.gyr_odr register value */
 	uint8_t int_status; /* INT_STATUS_1 register value */
 } __attribute__((__packed__));
 

@@ -10,6 +10,7 @@
 #include <stddef.h>
 
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/drivers/sensor_decoder.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/logging/log.h>
@@ -64,13 +65,34 @@ static inline uint8_t bmi270_fifo_control_frame_size(uint8_t parm)
 	}
 }
 
+/*
+ * Sample period indexed by the ACC_CONF.acc_odr and GYR_CONF.gyr_odr register value, which
+ * both use the same encoding.
+ */
+static const uint32_t odr_period_ns[] = {
+	/* 25/32 Hz and 25/16 Hz are not a whole number of millihertz */
+	[BMI270_ACC_ODR_25D32_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(25000) * 32U,
+	[BMI270_ACC_ODR_25D16_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(25000) * 16U,
+	[BMI270_ACC_ODR_25D8_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(3125),
+	[BMI270_ACC_ODR_25D4_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(6250),
+	[BMI270_ACC_ODR_25D2_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(12500),
+	[BMI270_ACC_ODR_25_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(25000),
+	[BMI270_ACC_ODR_50_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(50000),
+	[BMI270_ACC_ODR_100_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(100000),
+	[BMI270_ACC_ODR_200_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(200000),
+	[BMI270_ACC_ODR_400_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(400000),
+	[BMI270_ACC_ODR_800_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(800000),
+	[BMI270_ACC_ODR_1600_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(1600000),
+	[BMI270_GYR_ODR_3200_HZ] = SENSOR_ODR_MHZ_TO_PERIOD_NS(3200000),
+};
+
 static inline uint32_t bmi270_sample_period_ns(const struct bmi270_decoder_header *header,
 					       enum sensor_channel chan)
 {
-	const uint16_t odr_hz =
-		(chan == SENSOR_CHAN_ACCEL_XYZ) ? header->acc_odr_hz : header->gyr_odr_hz;
+	const uint8_t odr = (chan == SENSOR_CHAN_ACCEL_XYZ) ? header->acc_odr : header->gyr_odr;
 
-	return (uint32_t)(1000000000ULL / odr_hz);
+	/* A disabled or unknown ODR gives all readings the timestamp of the buffer */
+	return (odr < ARRAY_SIZE(odr_period_ns)) ? odr_period_ns[odr] : 0U;
 }
 
 /* Advance past one FIFO frame; increment *count if frame has a sample for the requested channel. */
