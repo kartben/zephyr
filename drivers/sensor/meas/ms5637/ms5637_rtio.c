@@ -11,6 +11,7 @@
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/sensor_clock.h>
+#include <zephyr/drivers/sensor_decoder.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/rtio/rtio.h>
 #include <zephyr/sys/mpsc_lockfree.h>
@@ -255,101 +256,101 @@ void ms5637_submit(const struct device *dev, struct rtio_iodev_sqe *iodev_sqe)
 /* ------------------------------------------------------------------ */
 
 /*
- * Q31 fixed-point conversions.
- *
- * Temperature is in centidegrees C:  q31 = centideg * 2^(31-shift) / 100
- * Pressure is in Pascals → kPa:      q31 = Pa * 2^(31-shift) / 1000
- *
- * Shift is fixed at 16 (Q15.16), giving ±2^15 range with ~0.0015°C
- * and ~0.015 Pa resolution — sufficient for the MS5637's 24-bit ADC.
+ * The compensated temperature, in centidegrees Celsius, and pressure, in Pa, are converted to
+ * degrees Celsius and kPa with an exact ratio.
  */
-static q31_t ms5637_centi_to_q31(int32_t val)
+#define MS5637_CENTIDEG_PER_DEG 100
+#define MS5637_PA_PER_KPA       1000
+
+static bool ms5637_chan_is_supported(struct sensor_chan_spec chan_spec)
 {
-	return (q31_t)(((int64_t)val * (INT64_C(1) << (31 - MS5637_TEMP_SHIFT))) / 100);
+	return chan_spec.chan_idx == 0U && (chan_spec.chan_type == SENSOR_CHAN_PRESS ||
+					    chan_spec.chan_type == SENSOR_CHAN_AMBIENT_TEMP);
 }
 
-static q31_t ms5637_pa_to_kpa_q31(int32_t val)
+static int ms5637_decode_frame(const uint8_t *frame, struct sensor_chan_spec chan_spec,
+			       const void *user_data, struct sensor_frame_reading *reading)
 {
-	return (q31_t)(((int64_t)val * (INT64_C(1) << (31 - MS5637_PRESS_SHIFT))) / 1000);
-}
+	const struct ms5637_encoded_data *edata = (const struct ms5637_encoded_data *)frame;
+	struct ms5637_reading comp;
 
-static int ms5637_decoder_get_frame_count(const uint8_t *buffer,
-					  struct sensor_chan_spec chan_spec,
-					  uint16_t *frame_count)
-{
-	ARG_UNUSED(buffer);
+	ARG_UNUSED(user_data);
 
-	if (chan_spec.chan_idx != 0) {
+	if (!ms5637_chan_is_supported(chan_spec)) {
 		return -ENOTSUP;
 	}
 
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_PRESS:
-	case SENSOR_CHAN_AMBIENT_TEMP:
-		*frame_count = 1;
-		return 0;
-	default:
-		return -ENOTSUP;
+	if (reading == NULL) {
+		return 1;
 	}
+
+	ms5637_compensate(&edata->calibration, edata->adc_temperature, edata->adc_pressure, &comp);
+
+	if (chan_spec.chan_type == SENSOR_CHAN_PRESS) {
+		reading->values[0] = sensor_raw_to_q31_ratio((uint32_t)comp.pressure, 32U, 1,
+							     MS5637_PA_PER_KPA, MS5637_PRESS_SHIFT);
+	} else {
+		reading->values[0] =
+			sensor_raw_to_q31_ratio((uint32_t)comp.temperature, 32U, 1,
+						MS5637_CENTIDEG_PER_DEG, MS5637_TEMP_SHIFT);
+	}
+
+	return 1;
 }
 
-static int ms5637_decoder_get_size_info(struct sensor_chan_spec chan_spec,
-					size_t *base_size, size_t *frame_size)
-{
-	if (chan_spec.chan_idx != 0) {
-		return -ENOTSUP;
-	}
-
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_PRESS:
-	case SENSOR_CHAN_AMBIENT_TEMP:
-		*base_size = sizeof(struct sensor_q31_data);
-		*frame_size = sizeof(struct sensor_q31_sample_data);
-		return 0;
-	default:
-		return -ENOTSUP;
-	}
-}
-
-static int ms5637_decoder_decode(const uint8_t *buffer,
-				 struct sensor_chan_spec chan_spec,
-				 uint32_t *fit, uint16_t max_count, void *data_out)
+/* A read holds a single sample of both channels, taken at the header timestamp */
+static void ms5637_get_frames(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+			      struct sensor_raw_frames *frames)
 {
 	const struct ms5637_encoded_data *edata = (const struct ms5637_encoded_data *)buffer;
-	struct ms5637_reading reading;
-	struct sensor_q31_data *out = data_out;
 
-	if ((max_count == 0U) || (*fit != 0U)) {
-		return 0;
-	}
-	if (chan_spec.chan_idx != 0) {
+	*frames = (struct sensor_raw_frames){
+		.frames = buffer,
+		.size = sizeof(*edata),
+		.frame_size = sizeof(*edata),
+		.decode_frame = ms5637_decode_frame,
+		.timestamp_ns = edata->header.base_timestamp_ns,
+		.shift = (chan_spec.chan_type == SENSOR_CHAN_PRESS) ? MS5637_PRESS_SHIFT
+								    : MS5637_TEMP_SHIFT,
+	};
+}
+
+static int ms5637_decoder_get_frame_count(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+					  uint16_t *frame_count)
+{
+	struct sensor_raw_frames frames;
+
+	if (!ms5637_chan_is_supported(chan_spec)) {
 		return -ENOTSUP;
 	}
 
-	ms5637_compensate(&edata->calibration, edata->adc_temperature,
-			  edata->adc_pressure, &reading);
+	ms5637_get_frames(buffer, chan_spec, &frames);
 
-	out->header.base_timestamp_ns = edata->header.base_timestamp_ns;
-	out->header.reading_count = 1U;
-	out->readings[0].timestamp_delta = 0U;
+	return sensor_raw_frames_count(&frames, chan_spec, frame_count);
+}
 
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_PRESS:
-		out->shift = MS5637_PRESS_SHIFT;
-		out->readings[0].pressure =
-			ms5637_pa_to_kpa_q31(reading.pressure);
-		break;
-	case SENSOR_CHAN_AMBIENT_TEMP:
-		out->shift = MS5637_TEMP_SHIFT;
-		out->readings[0].temperature =
-			ms5637_centi_to_q31(reading.temperature);
-		break;
-	default:
+static int ms5637_decoder_get_size_info(struct sensor_chan_spec chan_spec, size_t *base_size,
+					size_t *frame_size)
+{
+	if (!ms5637_chan_is_supported(chan_spec)) {
 		return -ENOTSUP;
 	}
 
-	*fit = 1;
-	return 1;
+	return sensor_decode_frames_size_info(chan_spec, 0U, base_size, frame_size);
+}
+
+static int ms5637_decoder_decode(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+				 uint32_t *fit, uint16_t max_count, void *data_out)
+{
+	struct sensor_raw_frames frames;
+
+	if (!ms5637_chan_is_supported(chan_spec)) {
+		return -ENOTSUP;
+	}
+
+	ms5637_get_frames(buffer, chan_spec, &frames);
+
+	return sensor_decode_frames(&frames, chan_spec, fit, max_count, data_out);
 }
 
 SENSOR_DECODER_API_DT_DEFINE() = {
