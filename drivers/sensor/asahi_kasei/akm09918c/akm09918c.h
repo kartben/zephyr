@@ -101,7 +101,7 @@ struct akm09918c_encoded_data {
 	struct akm09918c_decoder_header header;
 	struct __packed {
 		uint8_t st1;
-		int16_t data[3];
+		uint8_t data[6]; /* HXL to HZH, little-endian */
 		uint8_t tmps; /* not used  - only for padding */
 		uint8_t st2;  /* not used but includes overflow data */
 	} reading;
