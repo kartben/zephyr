@@ -1,0 +1,20 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/sensor/iis3dwb.h>
+
+&spi0 {
+	iis3dwb: iis3dwb@0 {
+		compatible = "st,iis3dwb";
+		reg = <0>;
+		spi-max-frequency = <1000000>;
+		int1-gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
+		odr = <IIS3DWB_DT_ODR_26k7Hz>;
+		accel-fifo-batch-rate = <IIS3DWB_DT_XL_BATCHED_AT_26k7Hz>;
+		temp-fifo-batch-rate = <IIS3DWB_DT_TEMP_BATCHED_AT_104Hz>;
+	};
+};
