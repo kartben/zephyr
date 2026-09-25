@@ -12,7 +12,7 @@
 #define ADXL367_COMPLEMENT		0xC000
 /* Scale factor is the same for all ranges. */
 /* (1.0 / sensor sensitivity) * (2^31 / 2^sensor shift ) * SENSOR_G / 1000000 */
-#define SENSOR_QSCALE_FACTOR UINT32_C(164584)
+#define SENSOR_QSCALE_FACTOR UINT32_C(164528)
 
 /* (2^31 / 2^8(shift) */
 #define ADXL367_TEMP_QSCALE   8388608
