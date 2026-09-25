@@ -79,11 +79,21 @@ void mmc56x3_submit_sync(struct rtio_iodev_sqe *iodev_sqe)
 		}
 	}
 
+	/*
+	 * The temperature is not measured in continuous mode. Mark it as not written, so the
+	 * fetch itself tells whether it was measured.
+	 */
+	edata->data.temp = UINT32_MAX;
+
 	rc = mmc56x3_sample_fetch_helper(dev, SENSOR_CHAN_ALL, &edata->data);
 	if (rc != 0) {
 		LOG_ERR("Failed to fetch samples");
 		rtio_iodev_sqe_err(iodev_sqe, rc);
 		return;
+	}
+
+	if (edata->data.temp > UINT8_MAX) {
+		edata->has_temp = 0;
 	}
 
 	rtio_iodev_sqe_ok(iodev_sqe, 0);
