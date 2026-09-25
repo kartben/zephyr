@@ -62,7 +62,12 @@ static int bma4xx_decoder_get_frame_count(const uint8_t *buffer, struct sensor_c
 		case SENSOR_CHAN_ACCEL_Y:
 		case SENSOR_CHAN_ACCEL_Z:
 		case SENSOR_CHAN_ACCEL_XYZ:
+			*frame_count = 1;
+			return 0;
 		case SENSOR_CHAN_DIE_TEMP:
+			if (!IS_ENABLED(CONFIG_BMA4XX_TEMPERATURE)) {
+				return -ENOTSUP;
+			}
 			*frame_count = 1;
 			return 0;
 		default:
@@ -123,6 +128,9 @@ static int bma4xx_decoder_get_size_info(struct sensor_chan_spec ch, size_t *base
 		*frame_size = sizeof(struct sensor_three_axis_sample_data);
 		return 0;
 	case SENSOR_CHAN_DIE_TEMP:
+		if (!IS_ENABLED(CONFIG_BMA4XX_TEMPERATURE)) {
+			return -ENOTSUP;
+		}
 		*base_size = sizeof(struct sensor_q31_data);
 		*frame_size = sizeof(struct sensor_q31_sample_data);
 		return 0;
