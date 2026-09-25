@@ -587,7 +587,9 @@ static int lsm6dsv16x_decode_fifo(const uint8_t *buffer, struct sensor_chan_spec
 
 		case LSM6DSV16X_SFLP_GRAVITY_VECTOR_TAG: {
 			struct sensor_three_axis_data *out = data_out;
-			float32_t x, y, z;
+			int16_t x, y, z;
+			/* The gravity vector has the accelerometer LSB at +/-2 g */
+			const int32_t scale = accel_scaler[0];
 
 			gravity_count++;
 			if ((uintptr_t)buffer < *fit) {
@@ -604,15 +606,16 @@ static int lsm6dsv16x_decode_fifo(const uint8_t *buffer, struct sensor_chan_spec
 			out->readings[count].timestamp_delta =
 				(gravity_count - 1) * sflp_period_ns[edata->sflp_batch_odr];
 
-			x = lsm6dsv16x_from_sflp_to_mg(buffer[1] | (buffer[2] << 8));
-			y = lsm6dsv16x_from_sflp_to_mg(buffer[3] | (buffer[4] << 8));
-			z = lsm6dsv16x_from_sflp_to_mg(buffer[5] | (buffer[6] << 8));
+			x = buffer[1] | (buffer[2] << 8);
+			y = buffer[3] | (buffer[4] << 8);
+			z = buffer[5] | (buffer[6] << 8);
 
-			out->shift = 12;
+			/* m/s^2 in a +/-2 g range */
+			out->shift = 5;
 
-			out->readings[count].x = Q31_SHIFT_VAL(x, out->shift);
-			out->readings[count].y = Q31_SHIFT_VAL(y, out->shift);
-			out->readings[count].z = Q31_SHIFT_VAL(z, out->shift);
+			out->readings[count].x = Q31_SHIFT_NANOVAL((int64_t)scale * x, out->shift);
+			out->readings[count].y = Q31_SHIFT_NANOVAL((int64_t)scale * y, out->shift);
+			out->readings[count].z = Q31_SHIFT_NANOVAL((int64_t)scale * z, out->shift);
 			break;
 		}
 
