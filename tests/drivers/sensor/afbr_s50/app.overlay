@@ -1,0 +1,23 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/sensor/afbr_s50.h>
+
+&spi0 {
+	afbr_s50: afbr_s50@0 {
+		compatible = "brcm,afbr-s50";
+		reg = <0>;
+		spi-max-frequency = <10000000>;
+		measurement-mode = <AFBR_S50_DT_MODE_SHORT_RANGE>;
+		dual-freq-mode = <AFBR_S50_DT_DFM_MODE_OFF>;
+		odr = <10>;
+		int-gpios = <&gpio0 0 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+		spi-sdi-gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
+		spi-sck-gpios = <&gpio0 2 GPIO_ACTIVE_HIGH>;
+		spi-sdo-gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
+	};
+};
