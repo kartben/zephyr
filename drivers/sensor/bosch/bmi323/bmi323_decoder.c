@@ -14,6 +14,19 @@
 
 #ifdef CONFIG_SENSOR_ASYNC_API
 
+/* A data register holds 0x8000 when no valid sample is available */
+static bool bmi323_sample_is_valid(int16_t raw)
+{
+	return raw != INT16_MIN;
+}
+
+/* Consume the frame without a reading, as it holds no valid sample for the channel */
+static int bmi323_drop_reading(uint32_t *fit)
+{
+	*fit = 1U;
+	return 0;
+}
+
 static int32_t bmi323_centi_to_q31(int32_t centi_deg, int shift)
 {
 	return (int32_t)(((int64_t)centi_deg * (1LL << (31 - shift))) / 100LL);
@@ -136,6 +149,12 @@ static int bmi323_decoder_decode(const uint8_t *buffer,
 			return -ENODATA;
 		}
 
+		if (!bmi323_sample_is_valid(edata->reading.accel_x) ||
+		    !bmi323_sample_is_valid(edata->reading.accel_y) ||
+		    !bmi323_sample_is_valid(edata->reading.accel_z)) {
+			return bmi323_drop_reading(fit);
+		}
+
 		out->header.base_timestamp_ns    = edata->header.timestamp;
 		out->header.reading_count        = 1U;
 		out->shift                       = BMI323_ACCEL_SHIFT;
@@ -157,6 +176,12 @@ static int bmi323_decoder_decode(const uint8_t *buffer,
 
 		if (!edata->has_gyro) {
 			return -ENODATA;
+		}
+
+		if (!bmi323_sample_is_valid(edata->reading.gyro_x) ||
+		    !bmi323_sample_is_valid(edata->reading.gyro_y) ||
+		    !bmi323_sample_is_valid(edata->reading.gyro_z)) {
+			return bmi323_drop_reading(fit);
 		}
 
 		out->header.base_timestamp_ns    = edata->header.timestamp;
@@ -187,6 +212,10 @@ static int bmi323_decoder_decode(const uint8_t *buffer,
 			raw = edata->reading.accel_z;
 		}
 
+		if (!bmi323_sample_is_valid(raw)) {
+			return bmi323_drop_reading(fit);
+		}
+
 		out->header.base_timestamp_ns       = edata->header.timestamp;
 		out->header.reading_count           = 1U;
 		out->readings[0].timestamp_delta    = 0U;
@@ -213,6 +242,10 @@ static int bmi323_decoder_decode(const uint8_t *buffer,
 			raw = edata->reading.gyro_z;
 		}
 
+		if (!bmi323_sample_is_valid(raw)) {
+			return bmi323_drop_reading(fit);
+		}
+
 		out->header.base_timestamp_ns    = edata->header.timestamp;
 		out->header.reading_count        = 1U;
 		out->shift                       = BMI323_GYRO_SHIFT;
@@ -226,6 +259,10 @@ static int bmi323_decoder_decode(const uint8_t *buffer,
 
 		if (!edata->has_temp) {
 			return -ENODATA;
+		}
+
+		if (!bmi323_sample_is_valid(edata->reading.temperature)) {
+			return bmi323_drop_reading(fit);
 		}
 
 		out->header.base_timestamp_ns    = edata->header.timestamp;
