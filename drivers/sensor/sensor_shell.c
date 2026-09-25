@@ -414,7 +414,9 @@ void sensor_shell_processing_callback(int result, uint8_t *buf, uint32_t buf_len
 				case SENSOR_CHAN_ACCEL_XYZ:
 				case SENSOR_CHAN_GYRO_XYZ:
 				case SENSOR_CHAN_MAGN_XYZ:
-				case SENSOR_CHAN_POS_DXYZ: {
+				case SENSOR_CHAN_POS_DXYZ:
+				case SENSOR_CHAN_GRAVITY_VECTOR:
+				case SENSOR_CHAN_GBIAS_XYZ: {
 					struct sensor_three_axis_data *data =
 						(struct sensor_three_axis_data *)decoded_buffer;
 
@@ -425,7 +427,9 @@ void sensor_shell_processing_callback(int result, uint8_t *buf, uint32_t buf_len
 					accumulator_buffer.count++;
 					accumulator_buffer.shift = data->shift;
 					accumulator_buffer.timestamp_delta +=
-						data->readings[0].timestamp_delta;
+						data->header.base_timestamp_ns +
+						data->readings[0].timestamp_delta -
+						accumulator_buffer.base_timestamp_ns;
 					accumulator_buffer.values[0] += data->readings[0].values[0];
 					accumulator_buffer.values[1] += data->readings[0].values[1];
 					accumulator_buffer.values[2] += data->readings[0].values[2];
@@ -441,7 +445,9 @@ void sensor_shell_processing_callback(int result, uint8_t *buf, uint32_t buf_len
 					}
 					accumulator_buffer.count++;
 					accumulator_buffer.timestamp_delta +=
-						data->readings[0].timestamp_delta;
+						data->header.base_timestamp_ns +
+						data->readings[0].timestamp_delta -
+						accumulator_buffer.base_timestamp_ns;
 					accumulator_buffer.values[0] += data->readings[0].is_near;
 					break;
 				}
@@ -456,11 +462,19 @@ void sensor_shell_processing_callback(int result, uint8_t *buf, uint32_t buf_len
 					accumulator_buffer.count++;
 					accumulator_buffer.shift = data->shift;
 					accumulator_buffer.timestamp_delta +=
-						data->readings[0].timestamp_delta;
+						data->header.base_timestamp_ns +
+						data->readings[0].timestamp_delta -
+						accumulator_buffer.base_timestamp_ns;
 					accumulator_buffer.values[0] += data->readings[0].value;
 					break;
 				}
 				}
+			}
+
+			if (accumulator_buffer.count == 0) {
+				/* The buffer holds no reading of this channel */
+				++ch.chan_idx;
+				continue;
 			}
 
 			/* Print the accumulated value average */
@@ -468,7 +482,9 @@ void sensor_shell_processing_callback(int result, uint8_t *buf, uint32_t buf_len
 			case SENSOR_CHAN_ACCEL_XYZ:
 			case SENSOR_CHAN_GYRO_XYZ:
 			case SENSOR_CHAN_MAGN_XYZ:
-			case SENSOR_CHAN_POS_DXYZ: {
+			case SENSOR_CHAN_POS_DXYZ:
+			case SENSOR_CHAN_GRAVITY_VECTOR:
+			case SENSOR_CHAN_GBIAS_XYZ: {
 				struct sensor_three_axis_data *data =
 					(struct sensor_three_axis_data *)decoded_buffer;
 
