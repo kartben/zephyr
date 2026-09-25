@@ -766,11 +766,20 @@ static bool adxl367_decoder_has_trigger(const uint8_t *buffer, enum sensor_trigg
 	}
 }
 
-SENSOR_DECODER_API_DT_DEFINE() = {
-	.get_frame_count = adxl367_decoder_get_frame_count,
-	.decode = adxl367_decoder_decode,
-	.has_trigger = adxl367_decoder_has_trigger,
-};
+#define ADXL367_DECODER_API                                                                        \
+	{                                                                                          \
+		.get_frame_count = adxl367_decoder_get_frame_count,                                \
+		.decode = adxl367_decoder_decode,                                                  \
+		.has_trigger = adxl367_decoder_has_trigger,                                        \
+	}
+
+/* One decoder per compatible, as SENSOR_DECODER_DT_GET() expects */
+#define DT_DRV_COMPAT adi_adxl366
+SENSOR_DECODER_API_DT_DEFINE() = ADXL367_DECODER_API;
+#undef DT_DRV_COMPAT
+
+#define DT_DRV_COMPAT adi_adxl367
+SENSOR_DECODER_API_DT_DEFINE() = ADXL367_DECODER_API;
 
 int adxl367_get_decoder(const struct device *dev, const struct sensor_decoder_api **decoder)
 {
