@@ -10,6 +10,7 @@
 #include <zephyr/init.h>
 
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/drivers/sensor_decoder.h>
 #include <zephyr/rtio/work.h>
 
 #include <zephyr/drivers/mfd/ds3231.h>
@@ -95,15 +96,6 @@ static int sensor_ds3231_channel_get(const struct device *dev, enum sensor_chann
 
 /* Read and Decode */
 
-struct sensor_ds3231_header {
-	uint64_t timestamp;
-} __attribute__((__packed__));
-
-struct sensor_ds3231_edata {
-	struct sensor_ds3231_header header;
-	uint16_t raw_temp;
-};
-
 void sensor_ds3231_submit_sync(struct rtio_iodev_sqe *iodev_sqe)
 {
 	uint32_t min_buf_len = sizeof(struct sensor_ds3231_edata);
@@ -162,73 +154,70 @@ void sensor_ds3231_submit(const struct device *dev, struct rtio_iodev_sqe *iodev
 	rtio_work_req_submit(req, iodev_sqe, sensor_ds3231_submit_sync);
 }
 
+/* One LSB of raw_temp is 1/4 degC; the range of -128 to 127.75 degC needs a shift of 7 */
+#define DS3231_TEMP_SHIFT 7
+#define DS3231_TEMP_SCALE SENSOR_Q31_SCALE(1, 4, DS3231_TEMP_SHIFT)
+
+static int sensor_ds3231_decode_frame(const uint8_t *frame, struct sensor_chan_spec chan_spec,
+				      const void *user_data, struct sensor_frame_reading *reading)
+{
+	ARG_UNUSED(user_data);
+
+	if (chan_spec.chan_type != SENSOR_CHAN_AMBIENT_TEMP) {
+		return -ENOTSUP;
+	}
+
+	if (reading != NULL) {
+		reading->values[0] = sensor_raw_to_q31(UNALIGNED_GET((const uint16_t *)frame),
+						       DS3231_TEMP_BITS, DS3231_TEMP_SCALE);
+	}
+
+	return 1;
+}
+
+static void sensor_ds3231_get_frames(const uint8_t *buffer, struct sensor_raw_frames *frames)
+{
+	const struct sensor_ds3231_edata *edata = (const struct sensor_ds3231_edata *)buffer;
+
+	*frames = (struct sensor_raw_frames){
+		.frames = (const uint8_t *)&edata->raw_temp,
+		.size = sizeof(edata->raw_temp),
+		.frame_size = sizeof(edata->raw_temp),
+		.decode_frame = sensor_ds3231_decode_frame,
+		.timestamp_ns = edata->header.timestamp,
+		.shift = DS3231_TEMP_SHIFT,
+	};
+}
+
 static int sensor_ds3231_decoder_get_frame_count(const uint8_t *buffer,
 						 struct sensor_chan_spec chan_spec,
 						 uint16_t *frame_count)
 {
-	int err = -ENOTSUP;
+	struct sensor_raw_frames frames;
 
-	if (chan_spec.chan_idx != 0) {
-		return err;
-	}
+	sensor_ds3231_get_frames(buffer, &frames);
 
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_AMBIENT_TEMP:
-		*frame_count = 1;
-		break;
-	default:
-		return err;
-	}
-
-	if (*frame_count > 0) {
-		err = 0;
-	}
-
-	return err;
+	return sensor_raw_frames_count(&frames, chan_spec, frame_count);
 }
 
 static int sensor_ds3231_decoder_get_size_info(struct sensor_chan_spec chan_spec, size_t *base_size,
 					       size_t *frame_size)
 {
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_AMBIENT_TEMP:
-		*base_size = sizeof(struct sensor_q31_sample_data);
-		*frame_size = sizeof(struct sensor_q31_sample_data);
-		return 0;
-	default:
+	if (chan_spec.chan_type != SENSOR_CHAN_AMBIENT_TEMP) {
 		return -ENOTSUP;
 	}
+
+	return sensor_decode_frames_size_info(chan_spec, 0U, base_size, frame_size);
 }
 
 static int sensor_ds3231_decoder_decode(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
 					uint32_t *fit, uint16_t max_count, void *data_out)
 {
-	if (*fit != 0) {
-		return 0;
-	}
+	struct sensor_raw_frames frames;
 
-	struct sensor_q31_data *out = data_out;
+	sensor_ds3231_get_frames(buffer, &frames);
 
-	out->header.reading_count = 1;
-
-	const struct sensor_ds3231_edata *edata = (const struct sensor_ds3231_edata *)buffer;
-
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_AMBIENT_TEMP:
-		out->header.base_timestamp_ns = edata->header.timestamp;
-		const uint16_t raw_temp = edata->raw_temp;
-
-		out->shift = 8 - 1;
-		out->readings[0].temperature = (q31_t)raw_temp << (32 - 10);
-
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	*fit = 1;
-
-	return 1;
+	return sensor_decode_frames(&frames, chan_spec, fit, max_count, data_out);
 }
 
 SENSOR_DECODER_API_DT_DEFINE() = {
