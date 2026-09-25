@@ -92,6 +92,13 @@ static int max30009_decoder_decode(const uint8_t *buffer, struct sensor_chan_spe
 			if (samples_seen >= start_offset) {
 				int32_t sample = sign_extend(fifo_data & MAX30009_FIFO_DATA_FIELD,
 							     MAX30009_FIFO_DATA_SIGN_BIT);
+				uint64_t delta = (uint64_t)(samples_seen - start_offset) *
+						 data->sample_period_ns;
+
+				if (delta > UINT32_MAX) {
+					/* The next call continues from this sample */
+					break;
+				}
 
 				if (count == 0) {
 					/*
@@ -105,8 +112,7 @@ static int max30009_decoder_decode(const uint8_t *buffer, struct sensor_chan_spe
 							data->sample_period_ns;
 					out->shift = 0;
 				}
-				out->readings[count].timestamp_delta =
-					(samples_seen - start_offset) * data->sample_period_ns;
+				out->readings[count].timestamp_delta = (uint32_t)delta;
 				out->readings[count].value = sample;
 				count++;
 			}
