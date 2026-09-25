@@ -10,7 +10,6 @@
 #include <zephyr/drivers/sensor_clock.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/rtio/rtio.h>
-#include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/atomic.h>
 
 #include "bmi323.h"
@@ -30,8 +29,6 @@ LOG_MODULE_DECLARE(bosch_bmi323, CONFIG_SENSOR_LOG_LEVEL);
  * Worst-case allocation: 1 (addr) + 2 (max dummy) + 14 (data) = 17 bytes.
  */
 #define BMI323_DATA_REG  IMU_BOSCH_BMI323_REG_ACC_DATA_X
-
-#define BMI323_DATA_LEN  (7 * sizeof(uint16_t))
 
 /*
  * bmi323_complete_cb - RTIO completion callback
@@ -146,7 +143,6 @@ static void bmi323_complete_cb(struct rtio *r, const struct rtio_sqe *sqe,
 	struct rtio_iodev_sqe *iodev_sqe = sqe->userdata;
 	const struct sensor_read_config *cfg = iodev_sqe->sqe.iodev->data;
 	struct bmi323_encoded_data *edata;
-	struct bmi323_reading reading;
 	const uint8_t *data_raw;
 	uint8_t *buf;
 	uint32_t buf_len;
@@ -194,14 +190,6 @@ static void bmi323_complete_cb(struct rtio *r, const struct rtio_sqe *sqe,
 		}
 	}
 
-	reading.accel_x    = (int16_t)sys_get_le16(&data_raw[0]);
-	reading.accel_y    = (int16_t)sys_get_le16(&data_raw[2]);
-	reading.accel_z    = (int16_t)sys_get_le16(&data_raw[4]);
-	reading.gyro_x     = (int16_t)sys_get_le16(&data_raw[6]);
-	reading.gyro_y     = (int16_t)sys_get_le16(&data_raw[8]);
-	reading.gyro_z     = (int16_t)sys_get_le16(&data_raw[10]);
-	reading.temperature = (int16_t)sys_get_le16(&data_raw[12]);
-
 	rc = rtio_sqe_rx_buf(iodev_sqe, sizeof(*edata), sizeof(*edata),
 			&buf, &buf_len);
 	if (rc != 0) {
@@ -229,7 +217,7 @@ static void bmi323_complete_cb(struct rtio *r, const struct rtio_sqe *sqe,
 	edata->accel_range      = (data->acc_full_scale / 1000);
 	/* gyro_full_scale is in micro-dps, convert to dps */
 	edata->gyro_range       = (data->gyro_full_scale / 1000);
-	edata->reading          = reading;
+	memcpy(edata->data, data_raw, sizeof(edata->data));
 
 	rtio_iodev_sqe_ok(iodev_sqe, 0);
 

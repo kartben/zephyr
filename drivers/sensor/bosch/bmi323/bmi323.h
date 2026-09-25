@@ -251,22 +251,11 @@ struct bosch_bmi323_data {
 #endif
 };
 
-/* Raw sensor readings (not sensor_value) - in micro units
- * Defined outside CONFIG_SENSOR_ASYNC_API as it's used by sample_fetch_impl
- * for both sync and async code paths.
- */
-struct bmi323_reading {
-	int16_t accel_x;
-	int16_t accel_y;
-	int16_t accel_z;
-	int16_t gyro_x;
-	int16_t gyro_y;
-	int16_t gyro_z;
-	int16_t temperature;
-};
-
 /* RTIO support structures */
 #ifdef CONFIG_SENSOR_ASYNC_API
+
+/* Length of the data registers read by an async read: accel XYZ, gyro XYZ and temperature */
+#define BMI323_DATA_LEN (7U * sizeof(uint16_t))
 
 /* Decoder header with timestamp */
 struct bmi323_decoder_header {
@@ -280,7 +269,8 @@ struct bmi323_encoded_data {
 	bool has_temp;
 	uint16_t accel_range;
 	uint16_t gyro_range;
-	struct bmi323_reading reading;
+	/* Data registers as read from the bus, little-endian */
+	uint8_t data[BMI323_DATA_LEN];
 } __attribute__((__packed__));
 
 /* Q31 conversion constants */
