@@ -36,7 +36,8 @@ struct icm4268x_encoded_data {
 		uint8_t channels: 7;
 		uint8_t reserved: 1;
 	}  __attribute__((__packed__));
-	int16_t readings[7];
+	/* TEMP_DATA1 to GYRO_DATA_Z0 registers, big-endian */
+	uint8_t readings[14];
 };
 
 int icm4268x_encode(const struct device *dev, const struct sensor_chan_spec *const channels,
