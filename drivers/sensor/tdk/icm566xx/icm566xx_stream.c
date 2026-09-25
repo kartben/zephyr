@@ -318,9 +318,11 @@ static void icm566xx_event_handler(const struct device *dev)
 		ext_read_sqe->flags |= RTIO_SQE_CHAINED;
 #endif
 	} else {
-		/** No need additional actions as probably we'll want to
-		 * flush the data or just report the event.
+		/** No data is read as probably we'll want to flush the data or
+		 * just report the event: the buffer holds no channel.
 		 */
+		buf->header.channels = 0;
+		buf->header.fifo_count = 0;
 	}
 
 	struct rtio_sqe *complete_sqe = rtio_sqe_acquire(data->bus.rtio.ctx);
