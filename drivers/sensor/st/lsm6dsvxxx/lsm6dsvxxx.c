@@ -209,6 +209,8 @@ static void lsm6dsvxxx_submit_one_shot(const struct device *dev, struct rtio_iod
 	edata->header.cfg = config;
 	edata->header.is_fifo = false;
 	edata->header.accel_fs = data->accel_fs;
+	edata->header.gyro_fs = data->gyro_fs;
+	edata->header.int_status = 0U;
 	edata->header.timestamp = sensor_clock_cycles_to_ns(cycles);
 
 	for (int i = 0; i < num_channels; i++) {
