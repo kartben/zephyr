@@ -164,7 +164,7 @@ static int lis2dux12_decoder_get_frame_count(const uint8_t *buffer,
 	const struct lis2dux12_fifo_data *edata = (const struct lis2dux12_fifo_data *)buffer;
 	const uint8_t *buffer_end;
 	uint8_t fifo_tag;
-	uint8_t tot_accel_fifo_words = 0;
+	uint16_t tot_accel_fifo_words = 0;
 	uint8_t tot_ts_fifo_words = 0;
 
 	buffer += sizeof(struct lis2dux12_fifo_data);

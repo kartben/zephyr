@@ -30,8 +30,8 @@ struct lis2dux12_fifo_data {
 	struct lis2dux12_decoder_header header;
 	uint32_t accel_odr: 4;
 	uint32_t fifo_mode_sel: 2;
-	uint32_t fifo_count: 7;
-	uint32_t reserved_1: 5;
+	uint32_t fifo_count: 8;
+	uint32_t reserved_1: 4;
 	uint32_t accel_batch_odr: 3;
 	uint32_t ts_batch_odr: 2;
 	uint32_t reserved: 9;
