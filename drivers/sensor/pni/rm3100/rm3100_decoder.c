@@ -5,8 +5,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#define DT_DRV_COMPAT pni_rm3100
+
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/sensor_clock.h>
+#include <zephyr/drivers/sensor_decoder.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/dt-bindings/sensor/rm3100.h>
@@ -40,6 +43,8 @@ int rm3100_encode(const struct device *dev,
 	int err;
 
 	edata->header.channels = 0;
+	edata->header.status = 0U;
+	edata->header.events.drdy = false;
 
 	if (data->settings.odr == RM3100_DT_ODR_600) {
 		edata->header.cycle_count = RM3100_CYCLE_COUNT_HIGH_ODR;
@@ -61,162 +66,154 @@ int rm3100_encode(const struct device *dev,
 	return 0;
 }
 
-static int rm3100_decoder_get_size_info(struct sensor_chan_spec chan_spec,
-					 size_t *base_size,
-					 size_t *frame_size)
+/* Sensitivity in LSB/Gauss and q31 shift covering the full 24-bit range */
+struct rm3100_scale {
+	int32_t lsb_per_gauss;
+	int8_t shift;
+};
+
+/* 75 LSB/uT at the default cycle count (200): 2^23 LSB is below 2^11 Gauss */
+static const struct rm3100_scale rm3100_scale_default = {
+	.lsb_per_gauss = 7500,
+	.shift = 11,
+};
+
+/* 38 LSB/uT at the cycle count of the 600 Hz ODR (100): 2^23 LSB is below 2^12 Gauss */
+static const struct rm3100_scale rm3100_scale_high_odr = {
+	.lsb_per_gauss = 3800,
+	.shift = 12,
+};
+
+static bool rm3100_chan_is_supported(struct sensor_chan_spec chan_spec)
 {
+	if (chan_spec.chan_idx != 0U) {
+		return false;
+	}
+
 	switch (chan_spec.chan_type) {
 	case SENSOR_CHAN_MAGN_X:
 	case SENSOR_CHAN_MAGN_Y:
 	case SENSOR_CHAN_MAGN_Z:
-		*base_size = sizeof(struct sensor_q31_data);
-		*frame_size = sizeof(struct sensor_q31_sample_data);
-		return 0;
 	case SENSOR_CHAN_MAGN_XYZ:
-		*base_size = sizeof(struct sensor_three_axis_data);
-		*frame_size = sizeof(struct sensor_three_axis_data);
-		return 0;
+		return true;
+	default:
+		return false;
+	}
+}
+
+static int rm3100_decode_frame(const uint8_t *frame, struct sensor_chan_spec chan_spec,
+			       const void *user_data, struct sensor_frame_reading *reading)
+{
+	const struct rm3100_scale *scale = user_data;
+	uint8_t first;
+	uint8_t num;
+
+	switch (chan_spec.chan_type) {
+	case SENSOR_CHAN_MAGN_XYZ:
+		first = 0U;
+		num = 3U;
+		break;
+	case SENSOR_CHAN_MAGN_X:
+		first = 0U;
+		num = 1U;
+		break;
+	case SENSOR_CHAN_MAGN_Y:
+		first = 1U;
+		num = 1U;
+		break;
+	case SENSOR_CHAN_MAGN_Z:
+		first = 2U;
+		num = 1U;
+		break;
 	default:
 		return -ENOTSUP;
 	}
 
-	return 0;
+	if (reading == NULL) {
+		return 1;
+	}
+
+	/* Each axis is a 24-bit big-endian two's complement value */
+	for (uint8_t i = 0U; i < num; i++) {
+		reading->values[i] = sensor_raw_to_q31_ratio(
+			sys_get_be24(&frame[(first + i) * RM3100_BYTES_PER_AXIS]), 24U, 1,
+			scale->lsb_per_gauss, scale->shift);
+	}
+
+	return 1;
 }
 
-static int rm3100_decoder_get_frame_count(const uint8_t *buffer,
-					  struct sensor_chan_spec chan_spec,
-					  uint16_t *frame_count)
+static int rm3100_get_frames(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+			     struct sensor_raw_frames *frames)
 {
 	const struct rm3100_encoded_data *edata = (const struct rm3100_encoded_data *)buffer;
+	const struct rm3100_scale *scale;
+	uint8_t channel_request;
 
-	if (chan_spec.chan_idx != 0) {
+	if (!rm3100_chan_is_supported(chan_spec)) {
 		return -ENOTSUP;
 	}
 
-	uint8_t channel_request = rm3100_encode_channel(chan_spec.chan_type);
-
-	if (((edata->header.channels & channel_request) != channel_request)) {
+	channel_request = rm3100_encode_channel(chan_spec.chan_type);
+	if ((edata->header.channels & channel_request) != channel_request) {
 		return -ENODATA;
 	}
 
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_MAGN_X:
-	case SENSOR_CHAN_MAGN_Y:
-	case SENSOR_CHAN_MAGN_Z:
-	case SENSOR_CHAN_MAGN_XYZ:
-		*frame_count = 1;
-		return 0;
-	default:
-		return -ENOTSUP;
-	}
-
-	return -1;
-}
-
-static int rm3100_convert_raw_to_q31(uint16_t cycle_count, uint32_t raw_reading,
-				     q31_t *out, int8_t *shift)
-{
-	int64_t value;
-	uint8_t divider;
-
-	raw_reading = sys_be24_to_cpu(raw_reading);
-	value = sign_extend(raw_reading, 23);
-
-	/** Convert to Gauss, assuming 75 LSB = 1 uT, given default Cycle-Counting (200).
-	 * We can represent the largest sample (2^23 LSB) in Gauss with 11 bits.
-	 */
-	if (cycle_count == RM3100_CYCLE_COUNT_DEFAULT) {
-		*shift = 11;
-		divider = 75;
+	if (edata->header.cycle_count == RM3100_CYCLE_COUNT_DEFAULT) {
+		scale = &rm3100_scale_default;
 	} else {
-		/** Otherwise, it's 38 LSB = 1 uT at Cycle-counting for 600 Hz ODR (100):
-		 * 12-bits max value.
-		 */
-		*shift = 12;
-		divider = 38;
+		scale = &rm3100_scale_high_odr;
 	}
 
-	int64_t micro_tesla_scaled = ((int64_t)value << (31 - *shift)) / divider;
-	int64_t gauss_scaled = (int64_t)micro_tesla_scaled / 100;
-
-	*out = gauss_scaled;
+	*frames = (struct sensor_raw_frames){
+		.frames = edata->payload,
+		.size = sizeof(edata->payload),
+		.frame_size = RM3100_TOTAL_BYTES,
+		.decode_frame = rm3100_decode_frame,
+		.user_data = scale,
+		.timestamp_ns = edata->header.timestamp,
+		.shift = scale->shift,
+	};
 
 	return 0;
 }
 
-static int rm3100_decoder_decode(const uint8_t *buffer,
-				 struct sensor_chan_spec chan_spec,
-				 uint32_t *fit,
-				 uint16_t max_count,
-				 void *data_out)
+static int rm3100_decoder_get_size_info(struct sensor_chan_spec chan_spec, size_t *base_size,
+					size_t *frame_size)
 {
-	const struct rm3100_encoded_data *edata = (const struct rm3100_encoded_data *)buffer;
-	uint8_t channel_request;
-
-	if (*fit != 0) {
-		return 0;
+	if (!rm3100_chan_is_supported(chan_spec)) {
+		return -ENOTSUP;
 	}
 
-	if (max_count == 0 || chan_spec.chan_idx != 0) {
-		return -EINVAL;
+	return sensor_decode_frames_size_info(chan_spec, 0U, base_size, frame_size);
+}
+
+static int rm3100_decoder_get_frame_count(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+					  uint16_t *frame_count)
+{
+	struct sensor_raw_frames frames;
+	int rc;
+
+	rc = rm3100_get_frames(buffer, chan_spec, &frames);
+	if (rc != 0) {
+		return rc;
 	}
 
-	switch (chan_spec.chan_type) {
-	case SENSOR_CHAN_MAGN_X:
-	case SENSOR_CHAN_MAGN_Y:
-	case SENSOR_CHAN_MAGN_Z: {
-		channel_request = rm3100_encode_channel(chan_spec.chan_type);
-		if ((edata->header.channels & channel_request) != channel_request) {
-			return -ENODATA;
-		}
+	return sensor_raw_frames_count(&frames, chan_spec, frame_count);
+}
 
-		struct sensor_q31_data *out = (struct sensor_q31_data *)data_out;
+static int rm3100_decoder_decode(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
+				 uint32_t *fit, uint16_t max_count, void *data_out)
+{
+	struct sensor_raw_frames frames;
+	int rc;
 
-		out->header.base_timestamp_ns = edata->header.timestamp;
-		out->header.reading_count = 1;
-
-		uint32_t raw_reading;
-
-		if (chan_spec.chan_type == SENSOR_CHAN_MAGN_X) {
-			raw_reading = edata->magn.x;
-		} else if (chan_spec.chan_type == SENSOR_CHAN_MAGN_Y) {
-			raw_reading = edata->magn.y;
-		} else {
-			raw_reading = edata->magn.z;
-		}
-
-		rm3100_convert_raw_to_q31(
-			edata->header.cycle_count, raw_reading, &out->readings->value, &out->shift);
-
-		*fit = 1;
-		return 1;
-	}
-	case SENSOR_CHAN_MAGN_XYZ: {
-		channel_request = rm3100_encode_channel(chan_spec.chan_type);
-		if ((edata->header.channels & channel_request) != channel_request) {
-			return -ENODATA;
-		}
-
-		struct sensor_three_axis_data *out = (struct sensor_three_axis_data *)data_out;
-
-		out->header.base_timestamp_ns = edata->header.timestamp;
-		out->header.reading_count = 1;
-
-		rm3100_convert_raw_to_q31(
-			edata->header.cycle_count, edata->magn.x, &out->readings[0].x, &out->shift);
-		rm3100_convert_raw_to_q31(
-			edata->header.cycle_count, edata->magn.y, &out->readings[0].y, &out->shift);
-		rm3100_convert_raw_to_q31(
-			edata->header.cycle_count, edata->magn.z, &out->readings[0].z, &out->shift);
-
-		*fit = 1;
-		return 1;
-	}
-	default:
-		return -EINVAL;
+	rc = rm3100_get_frames(buffer, chan_spec, &frames);
+	if (rc != 0) {
+		return rc;
 	}
 
-	return -1;
+	return sensor_decode_frames(&frames, chan_spec, fit, max_count, data_out);
 }
 
 static bool rm3100_decoder_has_trigger(const uint8_t *buffer,
