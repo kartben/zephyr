@@ -402,13 +402,14 @@ static bool iis3dwb_decoder_has_trigger(const uint8_t *buffer, enum sensor_trigg
 #ifdef CONFIG_IIS3DWB_STREAM
 	const struct iis3dwb_decoder_header *header = (const struct iis3dwb_decoder_header *)buffer;
 
+	/* int_status holds STATUS_REG for single samples, FIFO_STATUS2 for FIFO data */
 	switch (trigger) {
 	case SENSOR_TRIG_DATA_READY:
-		return header->int_status & 0x01;
+		return header->is_fifo == 0U && (header->int_status & 0x01U) != 0U;
 	case SENSOR_TRIG_FIFO_WATERMARK:
-		return header->int_status & 0x80;
+		return header->is_fifo == 1U && (header->int_status & 0x80U) != 0U;
 	case SENSOR_TRIG_FIFO_FULL:
-		return header->int_status & 0x20;
+		return header->is_fifo == 1U && (header->int_status & 0x20U) != 0U;
 	default:
 		return false;
 	}
