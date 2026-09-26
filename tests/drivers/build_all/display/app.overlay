@@ -458,6 +458,15 @@
 				busy-gpios = <&test_gpio 0 0>;
 			};
 
+			test_mipi_dbi_ssd1677: ssd1677@1a {
+				compatible = "solomon,ssd1677";
+				mipi-max-frequency = <4000000>;
+				reg = <0x1a>;
+				width = <480>;
+				height = <800>;
+				busy-gpios = <&test_gpio 0 0>;
+			};
+
 			test_mipi_dbi_ed2208_gca: ed2208_gca@25 {
 				compatible = "eink,ed2208-gca";
 				reg = <0x25>;
