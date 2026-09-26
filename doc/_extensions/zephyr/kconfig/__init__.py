@@ -36,7 +36,6 @@ import argparse
 import json
 import os
 import re
-import sys
 from collections.abc import Iterable
 from itertools import chain
 from pathlib import Path
@@ -59,16 +58,16 @@ from sphinx.util.nodes import make_refnode
 __version__ = "0.1.0"
 
 
-sys.path.insert(0, str(Path(__file__).parents[4] / "scripts"))
-sys.path.insert(0, str(Path(__file__).parents[4] / "scripts/kconfig"))
+from zephyr._paths import ZEPHYR_BASE, add_script_paths, resources_dir
 
-import kconfiglib
-import list_boards
-import list_hardware
-import zephyr_module
+add_script_paths("scripts", "kconfig")
 
-RESOURCES_DIR = Path(__file__).parent / "static"
-ZEPHYR_BASE = Path(__file__).parents[4]
+import kconfiglib  # noqa: E402
+import list_boards  # noqa: E402
+import list_hardware  # noqa: E402
+import zephyr_module  # noqa: E402
+
+RESOURCES_DIR = resources_dir(__file__)
 
 
 def kconfig_load(app: Sphinx) -> tuple[kconfiglib.Kconfig, kconfiglib.Kconfig, dict[str, str]]:
