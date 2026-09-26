@@ -71,6 +71,7 @@ Cortex®-M33 core running up to 250 MHz with the following features:
 - Ethernet (RJ45 RGMII interface)
 - USB High Speed Host and Device (USB-C connector)
 - 512 Mb (64 MB) External Octo-SPI Flash (present in the MCU Native Pin Access area of the EK-RA8P1 board)
+- DA7212 audio CODEC with a speaker connector (J33)
 
 Hardware
 ********
@@ -94,6 +95,38 @@ Supported Features
      +-------------+-------------+----------------+---------------+-----------+------------+-------------+-------------+
      |     OFF     |     OFF     |      OFF       |     OFF       |     OFF   |     ON     |     OFF     |    OFF      |
      +-------------+-------------+----------------+---------------+-----------+------------+-------------+-------------+
+
+Audio CODEC
+===========
+
+The DA7212 CODEC is controlled over ``iic1`` at address 0x1a and carries audio over SSIE0:
+BCLK on P403, WCLK on P404, data to the CODEC on P405 and data from it on P406. Its speaker
+output is on connector J33; the headphone and line pin header J38 is not populated.
+
+P405 and P406 are shared with the parallel camera, so the CODEC and the camera cannot be used
+at the same time. The links on J41 connect them to the CODEC and are fitted by default; remove
+them to use the parallel camera.
+
+GPT2 drives AUDIO_MCLK on PD06, which is both the CODEC's master clock and, over the internal
+GPT route, the SSIE audio clock from which the bit clock is divided.
+
+The DA7212 expects a 12.288 MHz system clock for the 48 kHz sample rate family, and that is
+not an integer division of this board's 300 MHz GPTCLK. The CODEC is therefore configured as
+``clock-source = "PLL"``, which synthesizes the system clock inside the CODEC and leaves
+``audio_clock`` free to run at 12.5 MHz, the closest GPT2 reaches.
+
+That fixes the CODEC's system clock but not the bit clock: no standard sample rate is an
+integer division of 300 MHz either, so when the SSIE is the DAI controller the word clock it
+generates misses the nominal rate by up to a couple of percent. For exact sample rates, make
+the CODEC the DAI controller and the SSIE the target, so that the CODEC derives the bit and
+word clocks from its own PLL:
+
+.. code-block:: c
+
+   .options = I2S_OPT_BIT_CLK_TARGET | I2S_OPT_FRAME_CLK_TARGET,
+
+Running the SSIE as the DAI controller instead calls for ``clock-source = "PLL_SRM"``, which
+makes the CODEC PLL track the incoming word clock.
 
 Dual Core Operation
 *******************
