@@ -1,3 +1,8 @@
+modules:
+- cmsis
+- cmsis_6
+- hal_silabs
+
 family:
   - name: silabs_s0
     series:

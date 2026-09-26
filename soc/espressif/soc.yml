@@ -1,3 +1,6 @@
+modules:
+- hal_espressif
+
 family:
 - name: espressif_esp32
   series:
