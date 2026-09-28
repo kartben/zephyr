@@ -87,6 +87,12 @@ described in :ref:`getting_started`. Then install additional tools
 that are only required to generate the documentation,
 as described below:
 
+.. tip::
+
+   The :ref:`Zephyr Docker images <docker_dev_env>` already include Doxygen
+   and Graphviz. See :ref:`docker_docs` for building the documentation in a
+   container.
+
 .. doc_processors_installation_start
 
 .. tabs::
