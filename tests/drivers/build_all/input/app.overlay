@@ -351,6 +351,13 @@
 					zephyr,codes = <0>, <1>, <2>;
 				};
 			};
+
+			axs5106l@10 {
+				compatible = "chipsourcetek,axs5106l";
+				reg = <0x10>;
+				irq-gpios = <&test_gpio 0 0>;
+				reset-gpios = <&test_gpio 1 0>;
+			};
 		};
 
 		spi@2 {
