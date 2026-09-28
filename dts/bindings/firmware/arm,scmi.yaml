@@ -1,9 +1,12 @@
 # Copyright 2024 NXP
 # SPDX-License-Identifier: Apache-2.0
 
+title: Arm SCMI firmware interface
+
 description: |
-        SCMI (System Control and Management Interface) with doorbell
-        and SHMEM (shared memory) transport.
+  Arm System Control and Management Interface (SCMI) base node using
+  doorbell mailbox signaling and shared-memory transport for protocol
+  child nodes.
 
 compatible: "arm,scmi"
 
