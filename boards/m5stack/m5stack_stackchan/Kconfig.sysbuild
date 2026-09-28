@@ -1,0 +1,14 @@
+# Copyright (c) 2024 M5Stack
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_M5STACK_STACKCHAN
+
+choice BOOTLOADER
+	default BOOTLOADER_ESP_IDF
+endchoice
+
+choice BOOTLOADER_ESP_IDF_BOOTLOADER
+	default BOOTLOADER_ESP_IDF_BOOTLOADER_SECURE_V2
+endchoice
+
+endif # BOARD_M5STACK_STACKCHAN
