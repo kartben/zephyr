@@ -1,7 +1,13 @@
 # Copyright 2025 NXP
 # SPDX-License-Identifier: Apache-2.0
 
-description: SCMI (System Control and Management Interface) cpu domain protocol
+title: NXP SCMI CPU domain management
+
+description: |
+  NXP vendor-specific SCMI (System Control and Management Interface) CPU domain
+  management protocol node (protocol ID: 0x82). This is a child node of the SCMI
+  transport node and provides CPU domain management capabilities specific to NXP
+  platforms through the SCMI interface.
 
 compatible: "nxp,scmi-cpu"
 
