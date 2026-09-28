@@ -331,6 +331,13 @@ nine pads on the bottom side of the board, placed between the castellated pins. 
 form factor, typically carrier boards on which the module is soldered, can use the Xiao node labels
 listed above as well as the following ones.
 
+.. figure:: ../../../boards/shields/seeed_xiao_display_gadgets/doc/seeed_xiao_display_1_47.webp
+     :align: center
+     :width: 500px
+     :alt: XIAO 1.47" IPS Touch Display
+
+     XIAO 1.47" IPS Touch Display, an example of a Xiao Plus shield (Credit: Seeed Studio)
+
 Relevant devicetree node labels:
 
 - ``xiao_plus_d`` See :dtcompatible:`seeed,xiao-plus-gpio` for GPIO pin definitions.
