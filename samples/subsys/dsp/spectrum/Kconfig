@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
+source "samples/subsys/usb/common/Kconfig.sample_usbd"
+
 source "Kconfig.zephyr"
 
 config SAMPLE_SPECTRUM_DMIC
@@ -8,3 +10,10 @@ config SAMPLE_SPECTRUM_DMIC
 	help
 	  Read 16-bit mono PCM from the DMIC device selected by the dmic0 alias.
 	  Enable CONFIG_AUDIO and CONFIG_AUDIO_DMIC as well.
+
+config SAMPLE_SPECTRUM_USB_MIC
+	bool "Expose the PCM source as a USB Audio Class 2 microphone"
+	depends on USB_DEVICE_STACK_NEXT && USBD_AUDIO2_CLASS
+	help
+	  Send the PCM stream to the USB host as 16 kHz mono, 16-bit audio.
+	  Requires the usb_mic.overlay devicetree overlay.

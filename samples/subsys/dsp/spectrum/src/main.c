@@ -17,10 +17,15 @@
 #include <zephyr/mpipe/base/mpipe_app_sink.h>
 #include <zephyr/mpipe/base/mpipe_app_src.h>
 #include <zephyr/mpipe/base/mpipe_queue.h>
+#include <zephyr/mpipe/base/mpipe_tee.h>
 #include <zephyr/mpipe/mpipe_bin.h>
 #include <zephyr/mpipe/mpipe_buffer.h>
 #include <zephyr/mpipe/mpipe_pipeline.h>
 #include <zephyr/sys/util.h>
+
+#ifdef CONFIG_SAMPLE_SPECTRUM_USB_MIC
+#include "usb_mic.h"
+#endif
 
 #ifdef CONFIG_SAMPLE_SPECTRUM_DMIC
 #include <zephyr/audio/dmic.h>
@@ -93,6 +98,10 @@ static struct mpipe pipeline;
 static struct mpipe_app_src pcm_src;
 static struct mpipe_queue fft_queue;
 static struct mpipe_app_sink fft_sink;
+#ifdef CONFIG_SAMPLE_SPECTRUM_USB_MIC
+static struct mpipe_tee pcm_tee;
+static struct mpipe_app_sink usb_sink;
+#endif
 
 #ifdef CONFIG_SAMPLE_SPECTRUM_DMIC
 K_MEM_SLAB_DEFINE_STATIC(dmic_slab, BLOCK_SIZE * sizeof(int16_t), 4, 4);
@@ -411,6 +420,15 @@ static void fft_pcm_cb(const struct net_buf *buf, void *user_data)
 		    mpipe_buffer_get_meta(buf)->bytes_used / sizeof(int16_t));
 }
 
+#ifdef CONFIG_SAMPLE_SPECTRUM_USB_MIC
+static void usb_pcm_cb(const struct net_buf *buf, void *user_data)
+{
+	ARG_UNUSED(user_data);
+	usb_mic_feed((const int16_t *)buf->data,
+		     mpipe_buffer_get_meta(buf)->bytes_used / sizeof(int16_t));
+}
+#endif
+
 static int init_pcm_pipeline(void)
 {
 	struct mpipe_structure caps;
@@ -430,6 +448,10 @@ static int init_pcm_pipeline(void)
 	err = err ?: mpipe_app_src_init(&pcm_src, 2);
 	err = err ?: mpipe_queue_init(&fft_queue, 3);
 	err = err ?: mpipe_app_sink_init(&fft_sink, 4);
+#ifdef CONFIG_SAMPLE_SPECTRUM_USB_MIC
+	err = err ?: mpipe_tee_init(&pcm_tee, 5);
+	err = err ?: mpipe_app_sink_init(&usb_sink, 6);
+#endif
 	if (err < 0) {
 		return err;
 	}
@@ -440,11 +462,30 @@ static int init_pcm_pipeline(void)
 		MPIPE_PROP_BASE_APP_SINK_CB, &fft_cb, MPIPE_PROP_LIST_END);
 	err = err ?: mpipe_object_set_properties((struct mpipe_object *)&fft_queue,
 		MPIPE_PROP_BASE_QUEUE_LEAK, &leak, MPIPE_PROP_LIST_END);
+#ifdef CONFIG_SAMPLE_SPECTRUM_USB_MIC
+	const struct mpipe_app_sink_cb usb_cb = {.fn = usb_pcm_cb};
+
+	err = err ?: mpipe_object_set_properties((struct mpipe_object *)&usb_sink,
+		MPIPE_PROP_BASE_APP_SINK_CAPS, &caps,
+		MPIPE_PROP_BASE_APP_SINK_CB, &usb_cb, MPIPE_PROP_LIST_END);
+	err = err ?: mpipe_bin_add((struct mpipe_bin *)&pipeline,
+		(struct mpipe_element *)&pcm_src, (struct mpipe_element *)&pcm_tee,
+		(struct mpipe_element *)&fft_queue, (struct mpipe_element *)&fft_sink,
+		(struct mpipe_element *)&usb_sink, NULL);
+	err = err ?: mpipe_element_link((struct mpipe_element *)&pcm_src,
+		(struct mpipe_element *)&pcm_tee, NULL);
+	err = err ?: mpipe_element_link((struct mpipe_element *)&pcm_tee,
+		(struct mpipe_element *)&fft_queue, (struct mpipe_element *)&fft_sink, NULL);
+	if (err == 0) {
+		mpipe_pad_link(&pcm_tee.src_pads[1], &usb_sink.sink.sink_pad);
+	}
+#else
 	err = err ?: mpipe_bin_add((struct mpipe_bin *)&pipeline,
 		(struct mpipe_element *)&pcm_src, (struct mpipe_element *)&fft_queue,
 		(struct mpipe_element *)&fft_sink, NULL);
 	err = err ?: mpipe_element_link((struct mpipe_element *)&pcm_src,
 		(struct mpipe_element *)&fft_queue, (struct mpipe_element *)&fft_sink, NULL);
+#endif
 	return err ?: mpipe_element_set_state((struct mpipe_element *)&pipeline,
 					     MPIPE_STATE_PLAYING);
 }
@@ -601,6 +642,13 @@ int main(void)
 		return 0;
 	}
 	display_device = display;
+#ifdef CONFIG_SAMPLE_SPECTRUM_USB_MIC
+	err = usb_mic_init();
+	if (err < 0) {
+		printk("USB microphone initialization failed: %d\n", err);
+		return 0;
+	}
+#endif
 	err = init_pcm_pipeline();
 	if (err < 0) {
 		printk("PCM pipeline initialization failed: %d\n", err);

@@ -1,0 +1,45 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/usb/audio.h>
+
+/ {
+	uac2_microphone: usb_audio2 {
+		compatible = "zephyr,uac2";
+		status = "okay";
+		full-speed;
+		high-speed;
+		audio-function = <AUDIO_FUNCTION_MICROPHONE>;
+
+		uac_clock: clock {
+			compatible = "zephyr,uac2-clock-source";
+			clock-type = "internal-programmable";
+			frequency-control = "read-only";
+			sampling-frequencies = <16000>;
+		};
+
+		mic_input: microphone {
+			compatible = "zephyr,uac2-input-terminal";
+			clock-source = <&uac_clock>;
+			terminal-type = <INPUT_TERMINAL_MICROPHONE>;
+			front-left;
+		};
+
+		mic_output: usb_stream {
+			compatible = "zephyr,uac2-output-terminal";
+			data-source = <&mic_input>;
+			clock-source = <&uac_clock>;
+			terminal-type = <USB_TERMINAL_STREAMING>;
+		};
+
+		mic_stream: streaming {
+			compatible = "zephyr,uac2-audio-streaming";
+			linked-terminal = <&mic_output>;
+			subslot-size = <2>;
+			bit-resolution = <16>;
+		};
+	};
+};

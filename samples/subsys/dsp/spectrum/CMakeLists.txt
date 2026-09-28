@@ -6,3 +6,8 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(spectrum)
 
 target_sources(app PRIVATE src/main.c)
+
+if(CONFIG_SAMPLE_SPECTRUM_USB_MIC)
+  include(${ZEPHYR_BASE}/samples/subsys/usb/common/common.cmake)
+  target_sources(app PRIVATE src/usb_mic.c)
+endif()

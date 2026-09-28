@@ -12,7 +12,9 @@ applies a Hann window, computes a 1024-point floating-point real FFT with
 :c:func:`zdsp_rfft_fast_f32`, and renders 48 logarithmically spaced frequency
 bands on a display. The default generated source makes it possible to try the
 visualization without a microphone. Set ``CONFIG_SAMPLE_SPECTRUM_DMIC=y`` to
-use the DMIC driver instead.
+use the DMIC driver instead. An optional USB Audio Class 2 configuration
+exposes the same PCM source to a host as a mono microphone. The host receives
+the generated tones in demo mode or the live microphone signal in DMIC mode.
 
 The display must be at least 80 x 160 and support RGB565 or byte-swapped
 RGB565X. The spectrum and waterfall fill the screen, including 800 x 480
@@ -32,7 +34,8 @@ with hard real-time guarantees.
 
 The 16 kHz mono PCM enters an mpipe application source linked to a leaky
 ``mpipe_queue``, which keeps the FFT off the capture thread and drops the
-oldest blocks if analysis falls behind. The FFT itself calls the zDSP API
+oldest blocks if analysis falls behind. In USB builds, an ``mpipe_tee``
+shares each buffer between that queue and the USB branch. The FFT itself calls the zDSP API
 directly, as mpipe does not define a spectrum media format.
 
 Requirements
@@ -41,6 +44,9 @@ Requirements
 * A board with a ``zephyr,display`` chosen node, an RGB565 or RGB565X display
   of at least 80 x 160, an FPU, sufficient RAM for the framebuffer and audio
   pipeline, a full C library, and the CMSIS-DSP module.
+* For USB microphone output, a USB device controller supported by the
+  device_next USB stack. The USB configuration uses the in-tree USB sample
+  VID/PID and is intended for evaluation.
 * For microphone capture, a ``dmic0`` devicetree alias referring to a ready
   DMIC device that supports 16 kHz, mono, 16-bit PCM. Some boards need an
   overlay to enable or alias their microphone.
@@ -62,6 +68,25 @@ Build with microphone capture instead:
 
    west build -b stm32f769i_disco --shield st_b_lcd40_dsi1_mb1166 samples/subsys/dsp/spectrum -- -DEXTRA_CONF_FILE=dmic.conf
    west flash
+
+To make the board appear as a UAC2 microphone while showing generated tones,
+add the USB configuration and overlay:
+
+.. code-block:: console
+
+   west build -b stm32f769i_disco --shield st_b_lcd40_dsi1_mb1166 samples/subsys/dsp/spectrum -- -DEXTRA_CONF_FILE=usb_mic.conf -DDTC_OVERLAY_FILE=usb_mic.overlay
+   west flash
+
+For live DMIC audio sent to both the display and the USB host:
+
+.. code-block:: console
+
+   west build -b stm32f769i_disco --shield st_b_lcd40_dsi1_mb1166 samples/subsys/dsp/spectrum -- -DEXTRA_CONF_FILE=dmic_usb_mic.conf -DDTC_OVERLAY_FILE=usb_mic.overlay
+   west flash
+
+The USB interface advertises 16 kHz, mono, signed 16-bit PCM. Its SOF callback
+reads from a bounded buffer, adds silence on underrun, and changes packet size
+by one sample to compensate for drift between the audio clock and USB host.
 
 The spectrogram adds new rows at the top. Frequencies run logarithmically
 from 50 Hz to 8 kHz. The FFT uses a 1024-sample (64 ms) analysis window and
