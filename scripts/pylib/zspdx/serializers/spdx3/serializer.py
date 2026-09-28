@@ -597,6 +597,12 @@ class SPDX3Serializer:
         if supplier_agent:
             package.suppliedBy = supplier_agent._id
 
+        # A package-level hash lets a consumer verify a delivered artifact against the
+        # SBOM. Only build-target packages have a single artifact to hash.
+        if component.target_build_file:
+            for hash_obj in self._hash_objects(component.target_build_file.hashes):
+                package.verifiedUsing.append(hash_obj)
+
         # Download location
         if component.url:
             package.software_downloadLocation = generate_download_url(
@@ -629,12 +635,35 @@ class SPDX3Serializer:
                 ext_id.externalIdentifierType = spdx.ExternalIdentifierType.packageUrl
                 ext_id.identifier = ref.locator
                 package.externalIdentifier.append(ext_id)
+                # software_packageUrl holds the single canonical purl; a package with
+                # several (e.g. a release tag and a curated upstream one) keeps the first.
+                if not package.software_packageUrl:
+                    package.software_packageUrl = ref.locator
             else:
                 _logger.warning(f"Unknown external reference format: {ref.locator}")
 
         self.elements.append(package)
         self.component_elements[component.name] = package
         return package
+
+    # SPDX 3 hash algorithm name for each hash algorithm zspdx computes.
+    _HASH_ALGORITHMS = {"SHA1": "sha1", "SHA256": "sha256", "MD5": "md5"}
+
+    def _hash_objects(self, hashes: dict) -> list:
+        """Convert a mapping of algorithm name to digest into SPDX 3 ``Hash`` objects."""
+        hash_objects = []
+        for hash_type, hash_value in hashes.items():
+            if not hash_value:
+                continue
+            algorithm = self._HASH_ALGORITHMS.get(hash_type)
+            if not algorithm:
+                _logger.warning(f"Unknown hash algorithm: {hash_type}")
+                continue
+            hash_obj = spdx.Hash()
+            hash_obj.algorithm = getattr(spdx.HashAlgorithm, algorithm)
+            hash_obj.hashValue = hash_value
+            hash_objects.append(hash_obj)
+        return hash_objects
 
     def _create_software_file(self, file_obj: SBOMFile) -> spdx.software_File:
         """Convert SBOMFile to SPDX 3.0 software_File."""
@@ -658,20 +687,8 @@ class SPDX3Serializer:
                 file_element.description = blob["description"]
 
         # Hashes - SPDX 3.0 uses verifiedUsing with Hash (which is a type of IntegrityMethod)
-        for hash_type, hash_value in file_obj.hashes.items():
-            if hash_value:
-                hash_obj = spdx.Hash()
-                if hash_type == "SHA1":
-                    hash_obj.algorithm = spdx.HashAlgorithm.sha1
-                elif hash_type == "SHA256":
-                    hash_obj.algorithm = spdx.HashAlgorithm.sha256
-                elif hash_type == "MD5":
-                    hash_obj.algorithm = spdx.HashAlgorithm.md5
-                else:
-                    _logger.warning(f"Unknown hash algorithm: {hash_type}")
-                    continue
-                hash_obj.hashValue = hash_value
-                file_element.verifiedUsing.append(hash_obj)
+        for hash_obj in self._hash_objects(file_obj.hashes):
+            file_element.verifiedUsing.append(hash_obj)
 
         if self.spdx_version == SPDX_VERSION_3_1 and file_obj.size is not None:
             file_element.software_artifactSize = file_obj.size
