@@ -1,6 +1,6 @@
 board:
   name: niosv_m
-  full_name: INTEL FPGA niosv_m
+  full_name: Intel FPGA Nios V/m
   vendor: intel
   socs:
     - name: niosv_m
