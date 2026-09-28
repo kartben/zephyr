@@ -1,0 +1,31 @@
+# Copyright 2026 Benjamin Cabé
+# SPDX-License-Identifier: Apache-2.0
+
+config INPUT_SENSOR_ENCODER
+	bool "Sensor based encoder input driver"
+	default y
+	depends on DT_HAS_ZEPHYR_INPUT_SENSOR_ENCODER_ENABLED
+	depends on MULTITHREADING
+	select SENSOR
+	help
+	  Input driver generating relative axis events from a sensor device
+	  exposing a rotation or a quadrature encoder count channel, such as a
+	  hardware quadrature decoder peripheral or a magnetic angle sensor.
+
+if INPUT_SENSOR_ENCODER
+
+config INPUT_SENSOR_ENCODER_THREAD_STACK_SIZE
+	int "Stack size for the sensor encoder thread"
+	default 1024
+	help
+	  Size of the stack used for the sensor encoder polling thread. The
+	  default leaves room for sensor drivers sampling over a bus such as
+	  I2C or SPI.
+
+config INPUT_SENSOR_ENCODER_THREAD_PRIORITY
+	int "Priority for the sensor encoder thread"
+	default 0
+	help
+	  Priority level of the sensor encoder polling thread.
+
+endif # INPUT_SENSOR_ENCODER
