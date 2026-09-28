@@ -9,7 +9,7 @@ properties:
     type: array
     required: true
     description: |
-      Many DEC/MEC periperals interrupt signals are direct capable. The signals are
+      Many DEC/MEC peripherals interrupt signals are direct capable. The signals are
       connected to bits in a GIRQ. Each GIRQ is composed of 5 32-bit registers:
       status(latched or r/w1-c), set-enable, clr-enable, and result (read-only).
       The read-only result register bits are the bitwise AND of status and enable.

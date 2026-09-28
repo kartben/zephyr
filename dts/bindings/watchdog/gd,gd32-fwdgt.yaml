@@ -18,7 +18,7 @@ properties:
       Set timeout value in milliseconds.
       The following equation gives the maximum timeout value
 
-        timeout = (reload + 1) / (peripheral_freqency / prescaler).
+        timeout = (reload + 1) / (peripheral_frequency / prescaler).
 
       where the maximum prescaler = 256 and the maximum reload = 4096.
       The peripheral_frequency uses GD32_LOW_SPEED_IRC_FREQUENCY

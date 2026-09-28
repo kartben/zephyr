@@ -73,7 +73,7 @@ child-binding:
         * 2 : Analog
         * 3 : GPIO output
         In case selected pin function is GPIO output, pin is statically configured as
-        a plain output GPIO, which configuration can be set by adding 'ouptut-low' or
+        a plain output GPIO, which configuration can be set by adding 'output-low' or
         'output-high' properties to the pinctrl configuration. Default is output-low.
         - remap: The pin remapping configuration. It allows to assign the pin
         function to a different peripheral. Remain configuration can be:

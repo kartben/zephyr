@@ -17,7 +17,7 @@ properties:
 
   regulator-init-microvolt:
     type: int
-    description: Voltage set during initialisation
+    description: Voltage set during initialization
 
   regulator-min-microvolt:
     type: int
@@ -33,7 +33,7 @@ properties:
 
   regulator-init-microamp:
     type: int
-    description: Current set during initialisation
+    description: Current set during initialization
 
   regulator-min-microamp:
     type: int
@@ -78,7 +78,7 @@ properties:
     type: int
     description: |
       ramp delay for regulator(in uV/us) For hardware which supports disabling
-      ramp rate, it should be explicitly initialised to zero
+      ramp rate, it should be explicitly initialized to zero
       (regulator-ramp-delay = <0>) for disabling ramp delay.
 
   regulator-enable-ramp-delay:
