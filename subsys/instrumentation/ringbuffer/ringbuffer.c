@@ -18,7 +18,7 @@ struct ring_buf *instr_buffer_get_ring_buf(void)
 void instr_buffer_init(void)
 {
 	ring_buf_init(&instr_ring_buf,
-		      sizeof(instr_buffer), instr_buffer);
+		      CONFIG_INSTRUMENTATION_MODE_CALLGRAPH_TRACE_BUFFER_SIZE, instr_buffer);
 }
 
 void instr_buffer_reset(void)
