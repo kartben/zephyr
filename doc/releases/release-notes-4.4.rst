@@ -754,9 +754,17 @@ New APIs and options
 
 * Video
 
+  * :kconfig:option:`CONFIG_EDGE264`
+  * :kconfig:option:`CONFIG_EDGE264_HEAP_SIZE`
+  * :kconfig:option:`CONFIG_EDGE264_HEAP_ZEPHYR_REGION`
+  * :kconfig:option:`CONFIG_EDGE264_HEAP_ZEPHYR_REGION_NAME`
   * :kconfig:option:`CONFIG_VIDEO_BUFFER_POOL_HEAP_SIZE`
   * :kconfig:option:`CONFIG_VIDEO_BUFFER_POOL_ZEPHYR_REGION`
   * :kconfig:option:`CONFIG_VIDEO_BUFFER_POOL_ZEPHYR_REGION_NAME`
+  * :kconfig:option:`CONFIG_VIDEO_EDGE264`
+  * :kconfig:option:`CONFIG_VIDEO_EDGE264_MAX_HEIGHT`
+  * :kconfig:option:`CONFIG_VIDEO_EDGE264_MAX_WIDTH`
+  * :kconfig:option:`CONFIG_VIDEO_EDGE264_STACK_SIZE`
   * :c:func:`video_transform_cap`
   * :c:macro:`VIDEO_PIX_FMT_SBGGR8P16`
   * :c:macro:`VIDEO_PIX_FMT_SGBRG8P16`
@@ -1787,6 +1795,7 @@ New Drivers
    * :dtcompatible:`ovti,ov5642` (:github:`97106`)
    * :dtcompatible:`ovti,ov7675` (:github:`96319`)
    * :dtcompatible:`sony,imx219` (:github:`101754`)
+   * :dtcompatible:`zephyr,video-edge264`
 
 * Wakeup Controller
 
@@ -1844,6 +1853,7 @@ New Samples
 * :zephyr:code-sample:`flash-ipm`
 * :zephyr:code-sample:`frdm_mcxa156_lpdac_opamp_lpadc`
 * :zephyr:code-sample:`ftp-client`
+* :zephyr:code-sample:`h264_decode`
 * :zephyr:code-sample:`hello_hl78xx`
 * :zephyr:code-sample:`hwspinlock`
 * :zephyr:code-sample:`instrumentation`
