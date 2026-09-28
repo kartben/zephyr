@@ -1,0 +1,97 @@
+================================================================================
+PERIPHERAL DOCUMENTATION FILES BY COMPLETENESS CATEGORY
+================================================================================
+
+🔴 EMPTY OR NEARLY EMPTY (12 files)
+--------------------------------------------------------------------------------
+  adc.rst                                              8 words
+  audio/index.rst                                     11 words
+  can/index.rst                                       12 words
+  counter.rst                                          4 words
+  gpio.rst                                            16 words
+  i2c_eeprom_target.rst                                6 words
+  ipm.rst                                              7 words
+  pcie.rst                                             9 words
+  pwm.rst                                              7 words
+  spi.rst                                              8 words
+  tgpio.rst                                           18 words
+  watchdog.rst                                         4 words
+
+🟡 VERY MINIMAL CONTENT (27 files)
+--------------------------------------------------------------------------------
+  audio/codec.rst                                     23 words
+  audio/dai.rst                                       40 words
+  audio/dmic.rst                                      23 words
+  audio/i2s.rst                                       49 words
+  auxdisplay.rst                                      94 words
+  clock_control.rst                                   33 words
+  crc.rst                                             34 words
+  dac.rst                                             28 words
+  edac/index.rst                                      37 words
+  eeprom/api.rst                                      30 words
+  eeprom/index.rst                                    35 words
+  entropy.rst                                         46 words
+  flash.rst                                           87 words
+  haptics.rst                                         95 words
+  hwinfo.rst                                          76 words
+  hwspinlock.rst                                      76 words
+  led.rst                                             36 words
+  mbox.rst                                            55 words
+  mdio.rst                                            57 words
+  opamp.rst                                           59 words
+  peci.rst                                            73 words
+  ps2.rst                                             76 words
+  psi5.rst                                            28 words
+  reset.rst                                           82 words
+  sensor/triggers.rst                                 75 words
+  sent.rst                                            30 words
+  usbc_vbus.rst                                       57 words
+
+🟠 INCOMPLETE DOCUMENTATION (25 files)
+--------------------------------------------------------------------------------
+  bbram.rst                                          125 words
+  can/transceiver.rst                                189 words
+  charger.rst                                        238 words
+  comparator.rst                                     260 words
+  coredump.rst                                       104 words
+  display/index.rst                                  294 words
+  edac/ibecc.rst                                     442 words
+  espi.rst                                           112 words
+  fuel_gauge.rst                                     190 words
+  gnss.rst                                           167 words
+  i2c.rst                                            284 words
+  index.rst                                          137 words
+  regulators.rst                                     156 words
+  retained_mem.rst                                   139 words
+  sdhc.rst                                           285 words
+  sensor/attributes.rst                              161 words
+  sensor/channels.rst                                125 words
+  sensor/device_tree.rst                             150 words
+  sensor/fetch_and_get.rst                           394 words
+  sensor/power_management.rst                        194 words
+  sensor/read_and_decode.rst                         604 words
+  smbus.rst                                          271 words
+  tcpc.rst                                           237 words
+  uart.rst                                           295 words
+  video.rst                                          211 words
+
+✅ COMPLETE DOCUMENTATION (11 files)
+--------------------------------------------------------------------------------
+  bc12.rst                                            565 words
+  can/controller.rst                                 1600 words
+  can/shell.rst                                      1471 words
+  dma.rst                                             440 words
+  eeprom/shell.rst                                    458 words
+  i3c.rst                                            1757 words
+  mspi.rst                                            987 words
+  rtc.rst                                             901 words
+  sensor/index.rst                                    547 words
+  stepper.rst                                         415 words
+  w1.rst                                              457 words
+
+================================================================================
+SUMMARY
+================================================================================
+Total files: 75
+Need attention: 64 (85.3%)
+Complete: 11 (14.7%)
