@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+
+source "Kconfig.zephyr"
+
+config SAMPLE_SPECTRUM_DMIC
+	bool "Capture microphone audio instead of generating tones"
+	default n
+	help
+	  Read 16-bit mono PCM from the DMIC device selected by the dmic0 alias.
+	  Enable CONFIG_AUDIO and CONFIG_AUDIO_DMIC as well.
