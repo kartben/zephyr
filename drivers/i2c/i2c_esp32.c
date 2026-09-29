@@ -1234,9 +1234,12 @@ static int IRAM_ATTR i2c_esp32_init(const struct device *dev)
 
 	clock_control_on(config->clock_dev, config->clock_subsys);
 
+	/* The handler uses the HAL: an interrupt pending when it is hooked fires at once */
+	i2c_hal_init(&data->hal, config->index);
+
 	ret = esp_intr_alloc(config->irq_source,
 			ESP_PRIO_TO_FLAGS(config->irq_priority) |
-			ESP_INT_FLAGS_CHECK(config->irq_flags) | ESP_INTR_FLAG_IRAM,
+			ESP_INT_FLAGS_CHECK(config->irq_flags) | (IS_ENABLED(CONFIG_SMP) ? 0 : ESP_INTR_FLAG_IRAM),
 			i2c_esp32_isr,
 			(void *)dev,
 			NULL);
@@ -1245,8 +1248,6 @@ static int IRAM_ATTR i2c_esp32_init(const struct device *dev)
 		LOG_ERR("could not allocate interrupt (err %d)", ret);
 		return ret;
 	}
-
-	i2c_hal_init(&data->hal, config->index);
 
 	i2c_hal_master_init(&data->hal);
 
