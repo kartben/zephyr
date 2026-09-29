@@ -130,6 +130,7 @@ config SAMPLE_AA_HU_RX_MSG_SIZE
 
 config SAMPLE_AA_HU_TEST_PATTERN
 	bool "Show colour bars at startup"
+	depends on !SAMPLE_AA_HU_DISPLAY_YUYV && !SAMPLE_AA_HU_DISPLAY_ARGB8888
 	help
 	  Fill the framebuffer with colour bars before the phone connects, to
 	  check the panel and the pixel format.
@@ -157,19 +158,20 @@ configdefault H264BSD_PICTURE_MALLOC
 configdefault H264BSD_PICTURE_FREE
 	default "aa_h264_picture_free" if SAMPLE_AA_HU_H264
 
-config SAMPLE_AA_HU_LTDC_YUV
-	bool "Let the display controller convert the decoded pictures"
-	depends on SAMPLE_AA_HU_H264 && STM32_LTDC_YUV
-	default y if STM32_LTDC_YUV
+config SAMPLE_AA_HU_DISPLAY_YUYV
+	bool "Let the display convert the decoded pictures"
+	depends on SAMPLE_AA_HU_H264
+	default y if SOC_SERIES_STM32N6X && STM32_LTDC
 	help
 	  Interleave the decoder's planar YUV420 pictures into packed YUYV
-	  buffers. The display controller converts them to RGB during scanout,
-	  avoiding software color conversion. Packed YUV422 avoids the STM32N6
-	  planar YUV420 silicon limitation (ES0620, section 2.7.1).
+	  surfaces and hand them to a display that converts them to RGB
+	  during scanout, which takes the colour conversion off the processor.
+	  The display has to accept PIXEL_FORMAT_YUYV, as the STM32N6's LTDC
+	  does; its planar YUV420 modes do not work (ES0620, section 2.7.1).
 
 config SAMPLE_AA_HU_DISPLAY_ARGB8888
 	bool "Compose into a word per pixel"
-	depends on SAMPLE_AA_HU_H264 && !SAMPLE_AA_HU_LTDC_YUV
+	depends on SAMPLE_AA_HU_H264 && !SAMPLE_AA_HU_DISPLAY_YUYV
 	default y if QEMU_RAMFB_DISPLAY
 	help
 	  Convert the decoder's pictures to ARGB8888 rather than RGB565, for a
@@ -194,13 +196,13 @@ config SAMPLE_AA_HU_ROTATE_0
 
 config SAMPLE_AA_HU_ROTATE_90
 	bool "Clockwise"
-	depends on !SAMPLE_AA_HU_LTDC_YUV && !SAMPLE_AA_HU_DISPLAY_ARGB8888
+	depends on !SAMPLE_AA_HU_DISPLAY_YUYV && !SAMPLE_AA_HU_DISPLAY_ARGB8888
 	help
 	  The top of the picture runs along the right edge of the panel.
 
 config SAMPLE_AA_HU_ROTATE_270
 	bool "Counterclockwise"
-	depends on !SAMPLE_AA_HU_LTDC_YUV && !SAMPLE_AA_HU_DISPLAY_ARGB8888
+	depends on !SAMPLE_AA_HU_DISPLAY_YUYV && !SAMPLE_AA_HU_DISPLAY_ARGB8888
 	help
 	  The top of the picture runs along the left edge of the panel.
 
@@ -209,7 +211,7 @@ endchoice
 config SAMPLE_AA_HU_PPA
 	bool "Convert the pictures with the ESP32-P4 pixel processing accelerator"
 	depends on SAMPLE_AA_HU_H264 && ESP32_PPA
-	depends on !SAMPLE_AA_HU_LTDC_YUV && !SAMPLE_AA_HU_DISPLAY_ARGB8888
+	depends on !SAMPLE_AA_HU_DISPLAY_YUYV && !SAMPLE_AA_HU_DISPLAY_ARGB8888
 	default y
 	help
 	  Let the accelerator convert the decoder's pictures to RGB565 and
@@ -219,25 +221,17 @@ config SAMPLE_AA_HU_PPA
 	  fraction of the conversion. The frames of the layout animation are
 	  still drawn by the processor.
 
-config SAMPLE_AA_HU_YUV_BUFFERS_SECTION
-	string "Memory section for YUV display buffers"
-	depends on SAMPLE_AA_HU_LTDC_YUV
-	default "AXISRAM1" if BOARD_STM32N6570_DK
-	default SAMPLE_AA_HU_BUFFERS_SECTION if SAMPLE_AA_HU_BUFFERS_IN_EXT_RAM
-	default ".bss"
-	help
-	  Linker section for the two packed display buffers. Internal SRAM
-	  avoids external-memory traffic for packing and display scanout.
-	  The section must hold four bytes per pixel at the video resolution.
-
 config SAMPLE_AA_HU_FB_SECTION
 	string "Memory section for the surface the display scans"
+	default "AXISRAM1" if SAMPLE_AA_HU_DISPLAY_YUYV && BOARD_STM32N6570_DK
 	default SAMPLE_AA_HU_BUFFERS_SECTION if SAMPLE_AA_HU_BUFFERS_IN_EXT_RAM
 	default ".bss"
 	help
 	  The display controller reads this buffer for every line it draws, so
 	  a board can place it apart from the buffers only the processor
-	  touches.
+	  touches. The section holds two surfaces. On the STM32N6570-DK the
+	  packed YUV ones go to internal RAM, which spares the interleaving
+	  and the scanout the external memory's latency.
 
 config SAMPLE_AA_HU_FB_UNCACHED
 	bool "The surface is in memory the data cache does not hold"
@@ -725,7 +719,7 @@ config SAMPLE_AA_HU_BUFFERS_SECTION
 config SAMPLE_AA_HU_FB_DUMP
 	bool "Dump decoded pictures to a host file"
 	depends on ARCH_POSIX
-	depends on !SAMPLE_AA_HU_DISPLAY_ARGB8888
+	depends on !SAMPLE_AA_HU_DISPLAY_ARGB8888 && !SAMPLE_AA_HU_DISPLAY_YUYV
 	help
 	  Append every decoded RGB565 picture to a host file so that the stream
 	  can be inspected without a display.

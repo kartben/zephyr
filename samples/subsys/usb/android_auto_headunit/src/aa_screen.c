@@ -11,9 +11,6 @@
 #include <zephyr/cache.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/display.h>
-#ifdef CONFIG_SAMPLE_AA_HU_LTDC_YUV
-#include <zephyr/drivers/display/stm32_ltdc.h>
-#endif
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
@@ -30,17 +27,18 @@ LOG_MODULE_REGISTER(aa_screen, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
 static const struct device *display;
 /*
  * A word per pixel where the display scans nothing narrower, which is what the
- * QEMU ramfb the browser emulator paints is fixed at; two bytes otherwise.
+ * QEMU ramfb the browser emulator paints is fixed at; two bytes otherwise,
+ * either RGB565 or packed YUV that the display converts during scanout.
  */
-#ifdef CONFIG_SAMPLE_AA_HU_DISPLAY_ARGB8888
+#if defined(CONFIG_SAMPLE_AA_HU_DISPLAY_ARGB8888)
 typedef uint32_t surface_px;
-#define SURFACE_FORMAT       PIXEL_FORMAT_ARGB_8888
-#define SURFACE_RGB(r, g, b) (0xFF000000U | ((r) << 16) | ((g) << 8) | (b))
+#define SURFACE_FORMAT PIXEL_FORMAT_ARGB_8888
+#elif defined(CONFIG_SAMPLE_AA_HU_DISPLAY_YUYV)
+typedef uint16_t surface_px;
+#define SURFACE_FORMAT PIXEL_FORMAT_YUYV
 #else
 typedef uint16_t surface_px;
-#define SURFACE_FORMAT       PIXEL_FORMAT_RGB_565
-#define SURFACE_RGB(r, g, b)                                                                       \
-	((surface_px)(((r) & 0xF8U) << 8 | ((g) & 0xFCU) << 3 | (b) >> 3))
+#define SURFACE_FORMAT PIXEL_FORMAT_RGB_565
 #endif
 #define FB_PIXELS ((size_t)SURFACE_W * SURFACE_H)
 #define FB_BYTES  (FB_PIXELS * sizeof(surface_px))
@@ -77,15 +75,6 @@ static struct k_thread present_thread_data;
 static K_THREAD_STACK_DEFINE(present_stack, CONFIG_SAMPLE_AA_HU_PRESENT_STACK_SIZE);
 /* Held across every call into the display, which the presenter also makes */
 static K_MUTEX_DEFINE(disp);
-
-#ifdef CONFIG_SAMPLE_AA_HU_LTDC_YUV
-#define YUV_PICTURE_SIZE ((size_t)SURFACE_W * SURFACE_H * 2U)
-
-/* Keep the scanned frame separate from both the decoder and the next frame. */
-static uint8_t yuv_shown[AA_SCREEN_BUFFERS][YUV_PICTURE_SIZE]
-	Z_GENERIC_SECTION(CONFIG_SAMPLE_AA_HU_YUV_BUFFERS_SECTION) __aligned(32);
-static uint8_t yuv_next;
-#endif
 
 /*
  * Where a picture's time goes once the decoder is done with it. aa_h264 times
@@ -151,12 +140,11 @@ static void report_timing(void)
  */
 static struct aa_rect framed[AA_SCREEN_BUFFERS];
 
-#ifndef CONFIG_SAMPLE_AA_HU_LTDC_YUV
 /*
- * The three writers the surface needs, picked by its pixel width so that
- * compose() reads the same either way.
+ * The writers the surface needs, picked by its pixel format so that compose()
+ * reads the same whichever it is.
  */
-#ifdef CONFIG_SAMPLE_AA_HU_DISPLAY_ARGB8888
+#if defined(CONFIG_SAMPLE_AA_HU_DISPLAY_ARGB8888)
 
 static void surface_picture(const struct aa_rect *r, const uint8_t *pic, uint16_t w, uint16_t h)
 {
@@ -171,6 +159,36 @@ static void surface_fill(const struct aa_rect *r)
 static void surface_gui(unsigned int idx)
 {
 	aa_gui_apply_argb8888(framebuffer, SURFACE_W, idx);
+}
+
+static void surface_clear(void)
+{
+	memset(framebuffer, 0, FB_BYTES);
+}
+
+#elif defined(CONFIG_SAMPLE_AA_HU_DISPLAY_YUYV)
+
+static void surface_picture(const struct aa_rect *r, const uint8_t *pic, uint16_t w, uint16_t h)
+{
+	aa_scale_i420_yuyv((uint8_t *)framebuffer, SURFACE_W, r, pic, w, h);
+}
+
+static void surface_fill(const struct aa_rect *r)
+{
+	aa_scale_fill_yuyv((uint8_t *)framebuffer, SURFACE_W, r);
+}
+
+static void surface_gui(unsigned int idx)
+{
+	aa_gui_apply_yuyv((uint8_t *)framebuffer, SURFACE_W, idx);
+}
+
+/* Zero is not black in YUV: it is a dark green */
+static void surface_clear(void)
+{
+	const struct aa_rect all = {.w = SURFACE_W, .h = SURFACE_H};
+
+	aa_scale_fill_yuyv((uint8_t *)framebuffer, SURFACE_W, &all);
 }
 
 #else
@@ -190,8 +208,12 @@ static void surface_gui(unsigned int idx)
 	aa_gui_apply_rgb565(framebuffer, SURFACE_W, idx);
 }
 
+static void surface_clear(void)
+{
+	memset(framebuffer, 0, FB_BYTES);
+}
+
 #endif /* CONFIG_SAMPLE_AA_HU_DISPLAY_ARGB8888 */
-#endif /* CONFIG_SAMPLE_AA_HU_LTDC_YUV */
 
 /* The dump is an RGB565 stream, and Kconfig only offers it where the surface is one */
 static void surface_dump(const surface_px *fb)
@@ -274,39 +296,15 @@ static void present_thread(void *p1, void *p2, void *p3)
  */
 static void compose(const uint8_t *pic, uint16_t w, uint16_t h)
 {
-#ifdef CONFIG_SAMPLE_AA_HU_LTDC_YUV
-	uint8_t idx = yuv_next;
-	uint8_t *dst = yuv_shown[idx];
-#endif
 	struct aa_rect video;
 	struct aa_rect area;
 	uint32_t at;
-#ifndef CONFIG_SAMPLE_AA_HU_LTDC_YUV
 	surface_px *shown;
-#endif
 
 	report_timing();
 	aa_layout_video(&video);
 	aa_layout_area(&area);
 
-#ifdef CONFIG_SAMPLE_AA_HU_LTDC_YUV
-	yuv_next ^= 1U;
-
-	if (pic != NULL) {
-		aa_scale_i420_yuyv(dst, SURFACE_W, &video, pic, w, h);
-	} else {
-		aa_scale_fill_yuyv(dst, SURFACE_W, &video);
-	}
-	if (memcmp(&framed[idx], &video, sizeof(video)) != 0) {
-		aa_scale_fill_yuyv(dst, SURFACE_W, &area);
-		framed[idx] = video;
-	}
-	aa_gui_apply_yuyv(dst, SURFACE_W, idx);
-
-	if (stm32_ltdc_set_yuyv_frame(display, dst, YUV_PICTURE_SIZE) != 0) {
-		LOG_WRN_ONCE("Display cannot show YUV");
-	}
-#else
 	at = stamp();
 	surface_claim();
 	elapsed(&wait_us, at);
@@ -329,7 +327,6 @@ static void compose(const uint8_t *pic, uint16_t w, uint16_t h)
 	elapsed(&push_us, at);
 	composed++;
 	surface_dump(shown);
-#endif
 }
 
 int aa_screen_init(void)
@@ -352,7 +349,8 @@ int aa_screen_init(void)
 		LOG_WRN("Display is %ux%u, surface is %ux%u: the driver will copy every frame",
 			caps.x_resolution, caps.y_resolution, SCAN_W, SCAN_H);
 	}
-	if (caps.current_pixel_format != SURFACE_FORMAT) {
+	if (caps.current_pixel_format != SURFACE_FORMAT &&
+	    display_set_pixel_format(display, SURFACE_FORMAT) != 0) {
 		LOG_WRN("Display format is %d, the picture may look wrong",
 			caps.current_pixel_format);
 	}
@@ -364,7 +362,7 @@ int aa_screen_init(void)
 	 * happened to hold.
 	 */
 	surface_claim();
-	memset(framebuffer, 0, FB_BYTES);
+	surface_clear();
 #ifdef CONFIG_SAMPLE_AA_HU_TEST_PATTERN
 	/* Colour bars, to check the panel and the pixel format */
 	for (uint32_t y = 0; y < SCAN_H; y++) {
@@ -435,17 +433,9 @@ void aa_screen_blank(bool on)
 		k_mutex_lock(&disp, K_FOREVER);
 		(void)display_blanking_off(display);
 		k_mutex_unlock(&disp);
-	} else if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_LTDC_YUV)) {
-		/*
-		 * The layer is showing the decoder's picture, not a buffer of
-		 * ours, so blank the panel instead of overwriting one.
-		 */
-		k_mutex_lock(&disp, K_FOREVER);
-		(void)display_blanking_on(display);
-		k_mutex_unlock(&disp);
 	} else {
 		surface_claim();
-		memset(framebuffer, 0, FB_BYTES);
+		surface_clear();
 		(void)blit();
 	}
 

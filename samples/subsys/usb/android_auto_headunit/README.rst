@@ -111,19 +111,20 @@ supply the panel, the external RAM and an attached phone at once.
 Hardware YUV scanout on STM32N6
 ******************************
 
-With the full H.264 decoder enabled, set :kconfig:option:`CONFIG_STM32_LTDC_YUV` to use
-hardware color conversion. :kconfig:option:`CONFIG_SAMPLE_AA_HU_LTDC_YUV` then defaults to
-enabled. The decoder itself is the ``h264bsd`` module, so the west manifest has to
-carry it; :kconfig:option:`CONFIG_SAMPLE_AA_HU_H264` selects it and points its
-allocation at the sample's own heap.
+The LTDC of the STM32N6 converts packed YUV to RGB during scanout, so on that series
+:kconfig:option:`CONFIG_SAMPLE_AA_HU_DISPLAY_YUYV` defaults to enabled: the sample selects
+``PIXEL_FORMAT_YUYV`` on the display and there is no software YUV-to-RGB conversion. The
+decoder itself is the ``h264bsd`` module, so the west manifest has to carry it;
+:kconfig:option:`CONFIG_SAMPLE_AA_HU_H264` selects it and points its allocation at the sample's
+own heaps.
 
 The sample interleaves the decoder's I420 planes into packed YUYV 4:2:2, repeating each
-chroma row for two luminance rows. The LTDC converts BT.601 limited-range samples to RGB
-during scanout. There is no software YUV-to-RGB conversion. Two packed framebuffers use
-1,536,000 bytes at 800x480, placed in AXISRAM1 on the STM32N6570-DK. A display worker waits
-for VSync while the receive thread decodes the next picture. The old front buffer is reused
-only after the swap completes. :kconfig:option:`CONFIG_SAMPLE_AA_HU_YUV_BUFFERS_SECTION`
-selects the memory section on other targets.
+chroma row for two luminance rows, and the LTDC converts BT.601 limited-range samples to RGB.
+The planar YUV420 modes are not used: erratum ES0620, section 2.7.1, says they do not work.
+Two packed surfaces use 1,536,000 bytes at 800x480, placed in AXISRAM1 on the STM32N6570-DK. A
+present thread waits for the controller to take a finished surface at the next vertical
+blanking while the receive thread decodes the next picture.
+:kconfig:option:`CONFIG_SAMPLE_AA_HU_FB_SECTION` selects the memory section on other targets.
 
 The STM32N6570-DK configurations optimize for execution speed. Software H.264 decoding
 still limits the frame rate for complex scenes; hardware color conversion alone does not
