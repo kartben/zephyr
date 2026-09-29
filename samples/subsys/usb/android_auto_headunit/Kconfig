@@ -200,6 +200,19 @@ config SAMPLE_AA_HU_ROTATE_270
 
 endchoice
 
+config SAMPLE_AA_HU_PPA
+	bool "Convert the pictures with the ESP32-P4 pixel processing accelerator"
+	depends on SAMPLE_AA_HU_H264 && ESP32_PPA
+	depends on !SAMPLE_AA_HU_LTDC_YUV && !SAMPLE_AA_HU_DISPLAY_ARGB8888
+	default y
+	help
+	  Let the accelerator convert the decoder's pictures to RGB565 and
+	  turn and halve them as the layout asks, instead of the processor.
+	  It only reads Espressif's packed YUV 4:2:0, so the decoder's planes
+	  are interleaved into that first, a byte shuffle that costs a
+	  fraction of the conversion. The frames of the layout animation are
+	  still drawn by the processor.
+
 config SAMPLE_AA_HU_YUV_BUFFERS_SECTION
 	string "Memory section for YUV display buffers"
 	depends on SAMPLE_AA_HU_LTDC_YUV

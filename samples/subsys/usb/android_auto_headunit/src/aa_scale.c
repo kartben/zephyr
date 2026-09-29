@@ -23,6 +23,19 @@ static inline int16x8_t mve_clip255(int16x8_t v)
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/util.h>
 
+#ifdef CONFIG_SAMPLE_AA_HU_PPA
+#include <errno.h>
+
+#include <zephyr/cache.h>
+#include <zephyr/logging/log.h>
+
+#include <driver/ppa.h>
+
+#include "aa_mem.h"
+
+LOG_MODULE_REGISTER(aa_scale, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
+#endif
+
 /* Black in the limited range samples the display controller is told to expect */
 #define YUYV_BLACK 0x80108010U
 
@@ -437,9 +450,160 @@ static void rgb565_nearest(uint16_t *dst, uint16_t pitch, const struct aa_rect *
 	}
 }
 
+#ifdef CONFIG_SAMPLE_AA_HU_PPA
+/*
+ * The ESP32-P4's pixel processing accelerator converts a YUV picture to RGB565
+ * and turns and scales it on its own. It only reads Espressif's packed 4:2:0,
+ * in which every pair of luma samples is preceded by the pair's U sample on an
+ * even line and by its V sample on an odd one, so the decoder's three planes
+ * are interleaved into that first. That is a byte shuffle, done here eight
+ * pixels to three words, where converting in software costs a multiply and a
+ * clamp per channel and pixel.
+ */
+#define PPA_PACKED_SIZE ((size_t)STREAM_W * STREAM_H * 3U / 2U)
+#define PPA_FB_SIZE     ((size_t)SCAN_W * SCAN_H * sizeof(uint16_t))
+
+static uint8_t ppa_packed[PPA_PACKED_SIZE] AA_HU_BIG_BUF __aligned(128);
+static ppa_client_handle_t ppa_client;
+
+static int ppa_client_init(void)
+{
+	const ppa_client_config_t cfg = {
+		.oper_type = PPA_OPERATION_SRM,
+		.data_burst_length = PPA_DATA_BURST_LENGTH_128,
+	};
+
+	if (ppa_register_client(&cfg, &ppa_client) != ESP_OK) {
+		LOG_ERR("No accelerator client, converting in software");
+		ppa_client = NULL;
+	}
+
+	return 0;
+}
+
+SYS_INIT(ppa_client_init, APPLICATION, 0);
+
+static void ppa_pack_line(uint32_t *out, const uint8_t *luma, const uint8_t *chroma, uint16_t w)
+{
+	const uint32_t *l = (const uint32_t *)luma;
+	const uint32_t *c = (const uint32_t *)chroma;
+
+	for (uint16_t x = 0U; x < w; x += 8U) {
+		uint32_t a = *l++;
+		uint32_t b = *l++;
+		uint32_t cw = *c++;
+
+		*out++ = (cw & 0xFFU) | ((a & 0xFFFFU) << 8) | ((cw & 0xFF00U) << 16);
+		*out++ = (a >> 16) | (cw & 0xFF0000U) | ((b & 0xFFU) << 24);
+		*out++ = ((b >> 8) & 0xFFU) | ((cw >> 24) << 8) | (b & 0xFFFF0000U);
+	}
+}
+
+/* Where the rectangle of the picture's frame lands on the panel */
+static void ppa_out_rect(const struct aa_rect *r, uint32_t *x, uint32_t *y)
+{
+#if defined(CONFIG_SAMPLE_AA_HU_ROTATE_90)
+	*x = SCAN_W - r->y - r->h;
+	*y = r->x;
+#elif defined(CONFIG_SAMPLE_AA_HU_ROTATE_270)
+	*x = r->y;
+	*y = SCAN_H - r->x - r->w;
+#else
+	*x = r->x;
+	*y = r->y;
+#endif
+}
+
+static int ppa_picture(uint16_t *dst, const struct aa_rect *r, const uint8_t *pic, uint16_t w,
+		       uint16_t h)
+{
+	const uint8_t *u = pic + (size_t)w * h;
+	const uint8_t *v = u + (size_t)w * h / 4U;
+	ppa_srm_oper_config_t cfg = {
+		.in = {
+			.buffer = ppa_packed,
+			.pic_w = w,
+			.pic_h = h,
+			.block_w = w,
+			.block_h = h,
+			.srm_cm = PPA_SRM_COLOR_MODE_YUV420,
+			.yuv_range = PPA_COLOR_RANGE_LIMIT,
+			.yuv_std = PPA_COLOR_CONV_STD_RGB_YUV_BT601,
+		},
+		.out = {
+			.buffer = dst,
+			.buffer_size = PPA_FB_SIZE,
+			.pic_w = SCAN_W,
+			.pic_h = SCAN_H,
+			.srm_cm = PPA_SRM_COLOR_MODE_RGB565,
+		},
+#if defined(CONFIG_SAMPLE_AA_HU_ROTATE_90)
+		.rotation_angle = PPA_SRM_ROTATION_ANGLE_270,
+#elif defined(CONFIG_SAMPLE_AA_HU_ROTATE_270)
+		.rotation_angle = PPA_SRM_ROTATION_ANGLE_90,
+#else
+		.rotation_angle = PPA_SRM_ROTATION_ANGLE_0,
+#endif
+		.mode = PPA_TRANS_MODE_BLOCKING,
+	};
+	esp_err_t err;
+
+	/*
+	 * The accelerator scales by a fraction with a few bits behind the
+	 * point, so only the two sizes the layout settles at come out exactly
+	 * the size of the rectangle. The ones in between are left to the
+	 * processor.
+	 */
+	if (ppa_client == NULL || (size_t)w * h * 3U / 2U > sizeof(ppa_packed) || (w % 8U) != 0U) {
+		return -ENOTSUP;
+	}
+	if (r->w == w && r->h == h) {
+		cfg.scale_x = 1.0f;
+		cfg.scale_y = 1.0f;
+	} else if (r->w * 2U == w && r->h * 2U == h) {
+		cfg.scale_x = 0.5f;
+		cfg.scale_y = 0.5f;
+	} else {
+		return -ENOTSUP;
+	}
+	ppa_out_rect(r, &cfg.out.block_offset_x, &cfg.out.block_offset_y);
+
+	for (uint16_t y = 0U; y < h; y += 2U) {
+		uint32_t *out = (uint32_t *)(ppa_packed + (size_t)y * w * 3U / 2U);
+		size_t c = (size_t)(y / 2U) * (w / 2U);
+
+		ppa_pack_line(out, pic + (size_t)y * w, u + c, w);
+		ppa_pack_line(out + w * 3U / 8U, pic + (size_t)(y + 1U) * w, v + c, w);
+	}
+	sys_cache_data_flush_range(ppa_packed, sizeof(ppa_packed));
+
+	/*
+	 * Nothing the processor wrote may be written back over the picture
+	 * once the accelerator has put it there, and nothing it cached before
+	 * may be read in its place afterwards.
+	 */
+	sys_cache_data_flush_and_invd_range(dst, PPA_FB_SIZE);
+	err = ppa_do_scale_rotate_mirror(ppa_client, &cfg);
+	sys_cache_data_invd_range(dst, PPA_FB_SIZE);
+
+	if (err != ESP_OK) {
+		LOG_WRN_ONCE("Accelerator failed (%d), converting in software", err);
+		return -EIO;
+	}
+
+	return 0;
+}
+#endif /* CONFIG_SAMPLE_AA_HU_PPA */
+
 void aa_scale_i420_rgb565(uint16_t *dst, uint16_t pitch, const struct aa_rect *r,
 			  const uint8_t *pic, uint16_t w, uint16_t h)
 {
+#ifdef CONFIG_SAMPLE_AA_HU_PPA
+	if (ppa_picture(dst, r, pic, w, h) == 0) {
+		return;
+	}
+#endif
+
 	if (r->w == w && r->h == h) {
 #if RGB_ROTATED
 		/* Its word stores need the pair of panel pixels to start on a word */
