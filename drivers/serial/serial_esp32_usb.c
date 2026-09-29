@@ -115,7 +115,7 @@ static int serial_esp32_usb_init(const struct device *dev)
 #ifdef CONFIG_UART_INTERRUPT_DRIVEN
 	ret = esp_intr_alloc(config->irq_source,
 			     ESP_PRIO_TO_FLAGS(config->irq_priority) |
-				     ESP_INT_FLAGS_CHECK(config->irq_flags) | ESP_INTR_FLAG_IRAM,
+				     ESP_INT_FLAGS_CHECK(config->irq_flags) | (IS_ENABLED(CONFIG_SMP) ? 0 : ESP_INTR_FLAG_IRAM),
 			     (intr_handler_t)serial_esp32_usb_isr, (void *)dev, NULL);
 #endif
 	return ret;

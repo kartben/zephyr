@@ -694,7 +694,7 @@ static int spi_esp32_init(const struct device *dev)
 
 	err = esp_intr_alloc(cfg->irq_source,
 			ESP_PRIO_TO_FLAGS(cfg->irq_priority) |
-			ESP_INT_FLAGS_CHECK(cfg->irq_flags) | ESP_INTR_FLAG_IRAM,
+			ESP_INT_FLAGS_CHECK(cfg->irq_flags) | (IS_ENABLED(CONFIG_SMP) ? 0 : ESP_INTR_FLAG_IRAM),
 			(intr_handler_t)spi_esp32_isr,
 			(void *)dev,
 			NULL);

@@ -624,7 +624,7 @@ static int gpio_esp32_init(const struct device *dev)
 			DT_IRQ_BY_IDX(DT_NODELABEL(gpio0), 0, irq),
 			ESP_PRIO_TO_FLAGS(DT_IRQ_BY_IDX(DT_NODELABEL(gpio0), 0, priority)) |
 				ESP_INT_FLAGS_CHECK(DT_IRQ_BY_IDX(DT_NODELABEL(gpio0), 0, flags)) |
-				ESP_INTR_FLAG_SHARED | ESP_INTR_FLAG_IRAM,
+				ESP_INTR_FLAG_SHARED | (IS_ENABLED(CONFIG_SMP) ? 0 : ESP_INTR_FLAG_IRAM),
 			(uint32_t)(uintptr_t)&GPIO.pcpu_int, 0xFFFFFFFF,
 			(intr_handler_t)gpio_esp32_isr, (void *)dev, NULL);
 #else
@@ -632,7 +632,7 @@ static int gpio_esp32_init(const struct device *dev)
 			DT_IRQ_BY_IDX(DT_NODELABEL(gpio0), 0, irq),
 			ESP_PRIO_TO_FLAGS(DT_IRQ_BY_IDX(DT_NODELABEL(gpio0), 0, priority)) |
 				ESP_INT_FLAGS_CHECK(DT_IRQ_BY_IDX(DT_NODELABEL(gpio0), 0, flags)) |
-				ESP_INTR_FLAG_IRAM,
+				(IS_ENABLED(CONFIG_SMP) ? 0 : ESP_INTR_FLAG_IRAM),
 			(intr_handler_t)gpio_esp32_isr, (void *)dev, NULL);
 #endif
 
