@@ -18,6 +18,10 @@
  * number of pixels wide, because a packed YUV pixel pair shares its chroma
  * samples.
  *
+ * An RGB565 surface may be turned a quarter turn onto its panel
+ * (SAMPLE_AA_HU_ROTATION). Rectangles are then still given in the picture's
+ * frame, and the writers lay the pixels out in the panel's.
+ *
  * Only the two ratios the sample settles at are worth writing quickly: the
  * whole display, and a quarter of it with every second sample dropped. The
  * ratios in between are only on screen while the two are being animated

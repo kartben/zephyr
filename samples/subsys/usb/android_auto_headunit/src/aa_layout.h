@@ -20,11 +20,23 @@
  */
 #if DT_HAS_CHOSEN(zephyr_display) && DT_NODE_HAS_PROP(DT_CHOSEN(zephyr_display), width) &&         \
 	DT_NODE_HAS_PROP(DT_CHOSEN(zephyr_display), height)
-#define SURFACE_W DT_PROP(DT_CHOSEN(zephyr_display), width)
-#define SURFACE_H DT_PROP(DT_CHOSEN(zephyr_display), height)
+#define SCAN_W DT_PROP(DT_CHOSEN(zephyr_display), width)
+#define SCAN_H DT_PROP(DT_CHOSEN(zephyr_display), height)
 #else
-#define SURFACE_W CONFIG_SAMPLE_AA_HU_VIDEO_WIDTH
-#define SURFACE_H CONFIG_SAMPLE_AA_HU_VIDEO_HEIGHT
+#define SCAN_W CONFIG_SAMPLE_AA_HU_VIDEO_WIDTH
+#define SCAN_H CONFIG_SAMPLE_AA_HU_VIDEO_HEIGHT
+#endif
+
+/*
+ * Everything but the writers that store pixels works in the frame the picture
+ * is seen in, which a panel turned a quarter turn swaps the sides of.
+ */
+#if defined(CONFIG_SAMPLE_AA_HU_ROTATE_90) || defined(CONFIG_SAMPLE_AA_HU_ROTATE_270)
+#define SURFACE_W SCAN_H
+#define SURFACE_H SCAN_W
+#else
+#define SURFACE_W SCAN_W
+#define SURFACE_H SCAN_H
 #endif
 
 /* What the phone is asked to send, which the surface is not obliged to match */

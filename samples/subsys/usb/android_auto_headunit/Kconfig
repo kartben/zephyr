@@ -173,6 +173,33 @@ config SAMPLE_AA_HU_DISPLAY_ARGB8888
 	  straight to the surface, so this needs the full decoder, whose
 	  pictures are composed on the way.
 
+choice SAMPLE_AA_HU_ROTATION
+	prompt "Quarter turns between the stream and the panel"
+	default SAMPLE_AA_HU_ROTATE_0
+	help
+	  The phone always sends a landscape picture. A panel that scans in
+	  portrait gets it turned a quarter turn, so that the picture fills
+	  it and the board is held in landscape. Only the RGB565 surface can
+	  be turned. The touch screen has to report positions in the turned
+	  frame as well, which its devicetree node describes.
+
+config SAMPLE_AA_HU_ROTATE_0
+	bool "None"
+
+config SAMPLE_AA_HU_ROTATE_90
+	bool "Clockwise"
+	depends on !SAMPLE_AA_HU_LTDC_YUV && !SAMPLE_AA_HU_DISPLAY_ARGB8888
+	help
+	  The top of the picture runs along the right edge of the panel.
+
+config SAMPLE_AA_HU_ROTATE_270
+	bool "Counterclockwise"
+	depends on !SAMPLE_AA_HU_LTDC_YUV && !SAMPLE_AA_HU_DISPLAY_ARGB8888
+	help
+	  The top of the picture runs along the left edge of the panel.
+
+endchoice
+
 config SAMPLE_AA_HU_YUV_BUFFERS_SECTION
 	string "Memory section for YUV display buffers"
 	depends on SAMPLE_AA_HU_LTDC_YUV

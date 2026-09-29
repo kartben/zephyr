@@ -236,9 +236,9 @@ static void present_thread(void *p1, void *p2, void *p3)
 {
 	struct display_buffer_descriptor desc = {
 		.buf_size = FB_BYTES,
-		.width = SURFACE_W,
-		.height = SURFACE_H,
-		.pitch = SURFACE_W,
+		.width = SCAN_W,
+		.height = SCAN_H,
+		.pitch = SCAN_W,
 	};
 
 	ARG_UNUSED(p1);
@@ -345,9 +345,9 @@ int aa_screen_init(void)
 	k_thread_name_set(&present_thread_data, "aa_hu_present");
 
 	display_get_capabilities(display, &caps);
-	if (caps.x_resolution != SURFACE_W || caps.y_resolution != SURFACE_H) {
+	if (caps.x_resolution != SCAN_W || caps.y_resolution != SCAN_H) {
 		LOG_WRN("Display is %ux%u, surface is %ux%u: the driver will copy every frame",
-			caps.x_resolution, caps.y_resolution, SURFACE_W, SURFACE_H);
+			caps.x_resolution, caps.y_resolution, SCAN_W, SCAN_H);
 	}
 	if (caps.current_pixel_format != SURFACE_FORMAT) {
 		LOG_WRN("Display format is %d, the picture may look wrong",
@@ -364,12 +364,12 @@ int aa_screen_init(void)
 	memset(framebuffer, 0, FB_BYTES);
 #ifdef CONFIG_SAMPLE_AA_HU_TEST_PATTERN
 	/* Colour bars, to check the panel and the pixel format */
-	for (uint32_t y = 0; y < SURFACE_H; y++) {
-		for (uint32_t x = 0; x < SURFACE_W; x++) {
+	for (uint32_t y = 0; y < SCAN_H; y++) {
+		for (uint32_t x = 0; x < SCAN_W; x++) {
 			static const uint16_t bars[] = {0xFFFFU, 0xFFE0U, 0x07FFU, 0x07E0U,
 							0xF81FU, 0xF800U, 0x001FU, 0x0000U};
 
-			framebuffer[y * SURFACE_W + x] = bars[(x * ARRAY_SIZE(bars)) / SURFACE_W];
+			framebuffer[y * SCAN_W + x] = bars[(x * ARRAY_SIZE(bars)) / SCAN_W];
 		}
 	}
 #endif

@@ -16,6 +16,7 @@ static inline int16x8_t mve_clip255(int16x8_t v)
 }
 #endif
 
+#include <stddef.h>
 #include <string.h>
 
 #include <zephyr/init.h>
@@ -41,6 +42,28 @@ static inline void yuyv_pair(uint8_t *out, uint8_t y0, uint8_t cb, uint8_t y1, u
 
 	*(uint32_t *)out = sys_cpu_to_le32(pair);
 }
+
+/*
+ * Where pixel (x, y) of the picture's frame lands in an RGB565 surface, and how
+ * far apart in memory two neighbours on one of its rows are. On a panel turned
+ * a quarter turn the rows of the picture run along the panel's columns, so a
+ * row is written with a stride of a whole panel line.
+ */
+#if defined(CONFIG_SAMPLE_AA_HU_ROTATE_90)
+#define RGB_ROTATED 1
+#define RGB_AT(dst, pitch, x, y) ((dst) + (size_t)(x) * SCAN_W + (SCAN_W - 1U - (y)))
+#define RGB_STEP ((ptrdiff_t)SCAN_W)
+#define RGB_DOWN ((ptrdiff_t)-1)
+#elif defined(CONFIG_SAMPLE_AA_HU_ROTATE_270)
+#define RGB_ROTATED 1
+#define RGB_AT(dst, pitch, x, y) ((dst) + (size_t)(SCAN_H - 1U - (x)) * SCAN_W + (y))
+#define RGB_STEP (-(ptrdiff_t)SCAN_W)
+#define RGB_DOWN ((ptrdiff_t)1)
+#else
+#define RGB_ROTATED 0
+#define RGB_AT(dst, pitch, x, y) ((dst) + (size_t)(y) * (pitch) + (x))
+#define RGB_STEP ((ptrdiff_t)1)
+#endif
 
 /* BT.601 limited range, the coefficients the decoder's samples are defined by */
 static inline uint16_t yuv_to_rgb565(int32_t y, int32_t cb, int32_t cr)
@@ -204,6 +227,7 @@ void aa_scale_i420_yuyv(uint8_t *dst, uint16_t pitch, const struct aa_rect *r, c
 	}
 }
 
+#if !RGB_ROTATED
 /* The whole picture, converted for a display that scans RGB */
 static void rgb565_1_1(uint16_t *dst, uint16_t pitch, const struct aa_rect *r, const uint8_t *pic,
 		       uint16_t w, uint16_t h)
@@ -265,6 +289,100 @@ static void rgb565_1_1(uint16_t *dst, uint16_t pitch, const struct aa_rect *r, c
 	}
 }
 
+#else /* !RGB_ROTATED */
+
+/*
+ * The whole picture onto a turned surface. A row of the picture runs down a
+ * column of the panel, so writing it a row at a time lands every pixel on a
+ * line of memory of its own. Squares of the picture keep both sides local
+ * instead: down a column of a square the pixels are neighbours on one line of
+ * the panel, and the square's rows are few enough to stay cached while it is
+ * walked. Two rows of the picture are two neighbouring pixels of that line,
+ * so they are stored together as one word.
+ *
+ * The conversion is done by table, as for ARGB8888: a processor with no vector
+ * unit spends more on the multiplies and the clamps than on the memory. Each
+ * table holds one channel clamped and already in its bits of the RGB565 pixel.
+ */
+#define ROT_TILE 32U
+#define ROT_BIAS 288
+#define ROT_SPAN 1024
+#define ROT_TERM (128 + (ROT_BIAS << 8))
+
+static uint16_t rot_r[ROT_SPAN];
+static uint16_t rot_g[ROT_SPAN];
+static uint16_t rot_b[ROT_SPAN];
+static int32_t rot_y[256];
+
+static int rgb565_rot_tables(void)
+{
+	for (uint32_t i = 0U; i < ROT_SPAN; i++) {
+		uint32_t v = (uint32_t)CLAMP((int32_t)i - ROT_BIAS, 0, 255);
+
+		rot_r[i] = (uint16_t)((v & 0xF8U) << 8);
+		rot_g[i] = (uint16_t)((v & 0xFCU) << 3);
+		rot_b[i] = (uint16_t)(v >> 3);
+	}
+
+	for (int32_t y = 0; y < 256; y++) {
+		rot_y[y] = 298 * (y - 16);
+	}
+
+	return 0;
+}
+
+SYS_INIT(rgb565_rot_tables, POST_KERNEL, 0);
+
+static inline uint32_t rot_pixel(int32_t c, int32_t rt, int32_t gt, int32_t bt)
+{
+	return (uint32_t)rot_r[(c + rt) >> 8] | rot_g[(c + gt) >> 8] | rot_b[(c + bt) >> 8];
+}
+
+/* A pixel and the one below it in the picture, which are neighbours on the panel */
+#if defined(CONFIG_SAMPLE_AA_HU_ROTATE_90)
+#define ROT_PAIR(p, top, below) (*(uint32_t *)((p) - 1) = (below) | ((top) << 16))
+#else
+#define ROT_PAIR(p, top, below) (*(uint32_t *)(p) = (top) | ((below) << 16))
+#endif
+
+static void rgb565_1_1_rot(uint16_t *dst, uint16_t pitch, const struct aa_rect *r,
+			   const uint8_t *pic, uint16_t w, uint16_t h)
+{
+	const uint8_t *cb = pic + (size_t)w * h;
+	const uint8_t *cr = cb + (size_t)w * h / 4U;
+
+	for (uint16_t ty = 0U; ty < h; ty += ROT_TILE) {
+		uint16_t y_end = MIN(ty + ROT_TILE, h);
+
+		for (uint16_t tx = 0U; tx < w; tx += ROT_TILE) {
+			uint16_t x_end = MIN(tx + ROT_TILE, w);
+
+			for (uint16_t x = tx; x < x_end; x += 2U) {
+				uint16_t *out0 = RGB_AT(dst, pitch, r->x + x, r->y + ty);
+				uint16_t *out1 = out0 + RGB_STEP;
+
+				for (uint16_t y = ty; y < y_end; y += 2U) {
+					const uint8_t *l0 = pic + (size_t)y * w + x;
+					const uint8_t *l1 = l0 + w;
+					size_t ci = (size_t)(y / 2U) * (w / 2U) + x / 2U;
+					int32_t d = (int32_t)cb[ci] - 128;
+					int32_t e = (int32_t)cr[ci] - 128;
+					int32_t rt = 409 * e + ROT_TERM;
+					int32_t gt = -100 * d - 208 * e + ROT_TERM;
+					int32_t bt = 516 * d + ROT_TERM;
+					ptrdiff_t at = (ptrdiff_t)(y - ty) * RGB_DOWN;
+
+					ROT_PAIR(out0 + at, rot_pixel(rot_y[l0[0]], rt, gt, bt),
+						 rot_pixel(rot_y[l1[0]], rt, gt, bt));
+					ROT_PAIR(out1 + at, rot_pixel(rot_y[l0[1]], rt, gt, bt),
+						 rot_pixel(rot_y[l1[1]], rt, gt, bt));
+				}
+			}
+		}
+	}
+}
+#endif /* !RGB_ROTATED */
+
 /*
  * Half in each direction. One output row per two picture rows means the chroma
  * row is used as it is, and one output pixel per two picture pixels means
@@ -280,10 +398,11 @@ static void rgb565_2_1(uint16_t *dst, uint16_t pitch, const struct aa_rect *r, c
 		const uint8_t *y_row = pic + (size_t)y * 2U * w;
 		const uint8_t *cb_row = cb + (size_t)y * (w / 2U);
 		const uint8_t *cr_row = cr + (size_t)y * (w / 2U);
-		uint16_t *out = dst + (size_t)(r->y + y) * pitch + r->x;
+		uint16_t *out = RGB_AT(dst, pitch, r->x, r->y + y);
 
 		for (uint16_t x = 0U; x < r->w; x++) {
-			out[x] = yuv_to_rgb565(y_row[(size_t)x * 2U], cb_row[x], cr_row[x]);
+			out[x * RGB_STEP] =
+				yuv_to_rgb565(y_row[(size_t)x * 2U], cb_row[x], cr_row[x]);
 		}
 	}
 }
@@ -303,13 +422,14 @@ static void rgb565_nearest(uint16_t *dst, uint16_t pitch, const struct aa_rect *
 		const uint8_t *y_row = pic + (size_t)sy * w;
 		const uint8_t *cb_row = cb + (size_t)(sy / 2U) * (w / 2U);
 		const uint8_t *cr_row = cr + (size_t)(sy / 2U) * (w / 2U);
-		uint16_t *out = dst + (size_t)(r->y + y) * pitch + r->x;
+		uint16_t *out = RGB_AT(dst, pitch, r->x, r->y + y);
 		uint32_t x_acc = 0U;
 
 		for (uint16_t x = 0U; x < r->w; x++) {
 			uint16_t sx = (uint16_t)(x_acc >> 16);
 
-			out[x] = yuv_to_rgb565(y_row[sx], cb_row[sx / 2U], cr_row[sx / 2U]);
+			out[x * RGB_STEP] =
+				yuv_to_rgb565(y_row[sx], cb_row[sx / 2U], cr_row[sx / 2U]);
 			x_acc += x_step;
 		}
 
@@ -321,7 +441,16 @@ void aa_scale_i420_rgb565(uint16_t *dst, uint16_t pitch, const struct aa_rect *r
 			  const uint8_t *pic, uint16_t w, uint16_t h)
 {
 	if (r->w == w && r->h == h) {
+#if RGB_ROTATED
+		/* Its word stores need the pair of panel pixels to start on a word */
+		if ((r->y % 2U) == 0U) {
+			rgb565_1_1_rot(dst, pitch, r, pic, w, h);
+		} else {
+			rgb565_nearest(dst, pitch, r, pic, w, h);
+		}
+#else
 		rgb565_1_1(dst, pitch, r, pic, w, h);
+#endif
 	} else if (r->w * 2U == w && r->h * 2U == h) {
 		rgb565_2_1(dst, pitch, r, pic, w, h);
 	} else {
@@ -512,10 +641,10 @@ void aa_scale_fill_yuyv(uint8_t *dst, uint16_t pitch, const struct aa_rect *r)
 void aa_scale_fill_rgb565(uint16_t *dst, uint16_t pitch, const struct aa_rect *r)
 {
 	for (uint16_t y = 0U; y < r->h; y++) {
-		uint16_t *out = dst + (size_t)(r->y + y) * pitch + r->x;
+		uint16_t *out = RGB_AT(dst, pitch, r->x, r->y + y);
 
 		for (uint16_t x = 0U; x < r->w; x++) {
-			out[x] = 0U;
+			out[x * RGB_STEP] = 0U;
 		}
 	}
 }
@@ -589,8 +718,17 @@ void aa_scale_rgb565_copy(uint16_t *dst, uint16_t pitch, const struct aa_rect *r
 			  const uint16_t *src, uint16_t src_pitch)
 {
 	for (uint16_t y = 0U; y < r->h; y++) {
-		memcpy(dst + (size_t)(r->y + y) * pitch + r->x, src + (size_t)y * src_pitch,
-		       (size_t)r->w * sizeof(uint16_t));
+		const uint16_t *in = src + (size_t)y * src_pitch;
+		uint16_t *out = RGB_AT(dst, pitch, r->x, r->y + y);
+
+		if (!RGB_ROTATED) {
+			memcpy(out, in, (size_t)r->w * sizeof(uint16_t));
+			continue;
+		}
+
+		for (uint16_t x = 0U; x < r->w; x++) {
+			out[x * RGB_STEP] = in[x];
+		}
 	}
 }
 
