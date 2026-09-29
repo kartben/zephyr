@@ -48,9 +48,12 @@ typedef uint16_t surface_px;
 /*
  * The controller is handed a buffer and scans it until it is handed another,
  * so composing into the one on the panel shows the frame being drawn. Keep
- * two and compose into whichever the controller is not reading.
+ * two and compose into whichever the controller is not reading. They start on
+ * a cache line of the longest kind any board here has, which a controller
+ * that scans a caller's buffer where it lies, as the ESP32-P4's does, needs.
  */
-static surface_px fb_store[2][FB_PIXELS] Z_GENERIC_SECTION(CONFIG_SAMPLE_AA_HU_FB_SECTION);
+static surface_px fb_store[2][FB_PIXELS] Z_GENERIC_SECTION(CONFIG_SAMPLE_AA_HU_FB_SECTION)
+	__aligned(128);
 static surface_px *framebuffer = fb_store[0];
 static uint8_t fb_idx;
 /* The decoder thread and the GUI thread both compose into the surface */

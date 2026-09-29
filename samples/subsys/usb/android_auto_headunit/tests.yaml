@@ -24,6 +24,7 @@ tests:
   sample.usb.android_auto_headunit.usb_host:
     build_only: true
     platform_allow:
+      - esp32p4_wifi6_touch_lcd_4_3/esp32p4/hpcore
       - esp32s3_devkitc/esp32s3/procpu
       - stm32n6570_dk/stm32n657xx/sb
     integration_platforms:

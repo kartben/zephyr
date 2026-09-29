@@ -14,7 +14,8 @@ if(CONFIG_SOC_SERIES_STM32N6X)
   zephyr_linker_sources(SECTIONS axisram1_check.ld)
 endif()
 
-if(CONFIG_MBEDTLS_HEAP_CUSTOM_SECTION)
+# The Espressif linker scripts place the section in PSRAM themselves
+if(CONFIG_MBEDTLS_HEAP_CUSTOM_SECTION AND NOT CONFIG_ESP_MBEDTLS_HEAP_ALLOC_EXT_RAM)
   zephyr_linker_sources(SECTIONS mbedtls_heap.ld)
 endif()
 

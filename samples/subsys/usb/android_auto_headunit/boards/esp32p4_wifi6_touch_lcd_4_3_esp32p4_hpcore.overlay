@@ -1,0 +1,49 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
+/*
+ * The high-speed OTG controller is the host the phone is attached to, on the
+ * Type-C connector next to the USB to UART one. That connector presents itself
+ * as a sink and takes its VBUS from outside rather than supplying it, so the
+ * phone has to be reached through a powered hub or a VBUS injector.
+ */
+zephyr_uhc0: &usb_otg {
+	status = "okay";
+};
+
+/*
+ * The panel scans in portrait and the sample turns the picture a quarter turn
+ * clockwise, so the touch screen reports positions in the same turned frame.
+ */
+&gt911 {
+	inverted-x;
+	swapped-x-y;
+};
+
+/* Converts the decoded pictures to RGB565 and turns them onto the panel */
+&ppa {
+	status = "okay";
+};
+
+/ {
+	aliases {
+		aa-longpress = &boot_button_press;
+	};
+
+	/*
+	 * The BOOT button taps to switch the phone between its day and night
+	 * themes, and held switches the display to split screen and back.
+	 */
+	boot_button_press: longpress {
+		compatible = "zephyr,input-longpress";
+		input = <&{/gpio_keys}>;
+		input-codes = <INPUT_KEY_0>;
+		short-codes = <INPUT_KEY_N>;
+		long-codes = <INPUT_KEY_S>;
+		long-delay-ms = <700>;
+	};
+};
