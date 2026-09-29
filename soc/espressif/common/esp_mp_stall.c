@@ -19,6 +19,14 @@
 
 #if defined(CONFIG_XTENSA)
 #include <xtensa/corebits.h>
+#include <xtensa/config/core-isa.h>
+#endif
+
+#if defined(CONFIG_XTENSA_TIMER)
+/* The tick runs expired timeouts, whose callbacks are in flash */
+#define STALL_TICK_MASK BIT(UTIL_CAT(XCHAL_TIMER, UTIL_CAT(CONFIG_XTENSA_TIMER_ID, _INTERRUPT)))
+#else
+#define STALL_TICK_MASK 0U
 #endif
 
 #define STALL_SPIN_MAX 100000000U
@@ -92,6 +100,7 @@ void IRAM_ATTR esp_mp_stall_isr(const void *arg)
 
 	/* Mask before acking: the requester suspends the cache once it sees the ack. */
 	masked = esp_intr_noniram_mask_local();
+	z_xt_ints_off(STALL_TICK_MASK);
 	s_stall_ack[core_id] = 1;
 	barrier_dmem_fence_full();
 
@@ -106,6 +115,7 @@ void IRAM_ATTR esp_mp_stall_isr(const void *arg)
 
 	barrier_dmem_fence_full();
 	s_stall_ack[core_id] = 0;
+	z_xt_ints_on(STALL_TICK_MASK);
 	esp_intr_noniram_unmask_local(masked);
 }
 
