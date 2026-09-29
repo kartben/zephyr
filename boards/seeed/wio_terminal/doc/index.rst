@@ -66,6 +66,30 @@ host PC.  See the :zephyr:code-sample-category:`usb` sample applications for mor
 :zephyr:code-sample:`usb-cdc-acm` sample which sets up a virtual serial port that echos
 characters back to the host PC.
 
+Wi-Fi
+=====
+
+The RTL8720DN wireless module provides a station mode Wi-Fi interface, enabled
+with :kconfig:option:`CONFIG_WIFI_RTL8720`. The module runs the IP stack and
+owns the sockets, so Zephyr offloads both to it over the eRPC link on SERCOM0.
+SERCOM1 carries the module's own log and download UART at 115200 baud.
+Bluetooth is not supported.
+
+The module has to run Seeed's `eRPC firmware`_. If it does not, flash it as
+`Updating the wireless core firmware`_ describes.
+
+The :zephyr:code-sample:`wifi-shell` sample runs on the board as it comes:
+
+.. zephyr-app-commands::
+   :zephyr-app: samples/net/wifi/shell
+   :board: wio_terminal
+   :goals: build
+   :compact:
+
+Since the module owns the IP stack, the addresses the board holds come from
+the module's DHCP client rather than from Zephyr's, and only its own TLS
+implementation is reachable, not Zephyr's.
+
 Programming and Debugging
 *************************
 
@@ -148,6 +172,12 @@ References
 
 .. _schematics:
     https://wiki.seeedstudio.com/Wio-Terminal-Getting-Started/#resources
+
+.. _eRPC firmware:
+    https://github.com/Seeed-Studio/seeed-ambd-firmware
+
+.. _Updating the wireless core firmware:
+    https://wiki.seeedstudio.com/Wio-Terminal-Network-Overview/
 
 .. _Test with SWD:
     https://wiki.seeedstudio.com/Wio-Terminal-Getting-Started/#test-with-swd

@@ -1,0 +1,22 @@
+# Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Realtek RTL8720 Wi-Fi/BLE module running the Seeed eRPC firmware
+  (https://github.com/Seeed-Studio/seeed-ambd-firmware), which is the firmware
+  Seeed ships on its boards.
+
+  The module runs the IP stack and owns the sockets. The host drives it with
+  eRPC 1.7.4 over the UART this node hangs off, so that UART's current-speed
+  has to match the rate the firmware was built for, 614400 by default.
+
+compatible: "realtek,rtl8720-erpc"
+
+include: uart-device.yaml
+
+properties:
+  power-gpios:
+    type: phandle-array
+    description: |
+      Chip enable line. The module is held in reset while this line is
+      inactive.

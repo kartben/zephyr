@@ -1,0 +1,128 @@
+# Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig WIFI_RTL8720
+	bool "Realtek RTL8720 eRPC Wi-Fi support"
+	default y
+	depends on DT_HAS_REALTEK_RTL8720_ERPC_ENABLED
+	select CRC
+	select NET_L2_WIFI_MGMT
+	select WIFI_OFFLOAD
+	select NET_OFFLOAD
+	select NET_SOCKETS
+	select SERIAL
+	select UART_INTERRUPT_DRIVEN
+	imply NET_SOCKETS_OFFLOAD
+	select GPIO
+	help
+	  Enable the Wi-Fi driver for a Realtek RTL8720 running the Seeed eRPC
+	  firmware, which is what Seeed ships on its boards. The module runs the
+	  IP stack and the sockets, and the host drives it over an eRPC link on
+	  the UART the module is wired to.
+
+if WIFI_RTL8720
+
+config WIFI_RTL8720_MTU
+	int "Largest payload exchanged with the module"
+	default 1500
+	help
+	  Upper bound on the payload of a single send or receive call. Requests
+	  larger than this are split, so raising it only trades memory for
+	  fewer round trips.
+
+config WIFI_RTL8720_TX_BUF_SIZE
+	int "Request buffer size"
+	default 1600
+	help
+	  Holds one eRPC request, so it has to fit the largest payload plus its
+	  message and argument headers.
+
+config WIFI_RTL8720_RX_BUF_SIZE
+	int "Reply buffer size"
+	default 1600
+	help
+	  Holds one eRPC reply. Scan results are returned in a single blob, so
+	  this also bounds how many access points a scan can report.
+
+config WIFI_RTL8720_RX_RING_SIZE
+	int "Receive ring buffer size"
+	default 1024
+	help
+	  Bytes the UART interrupt can buffer before the receive thread drains
+	  them.
+
+config WIFI_RTL8720_RX_STACK_SIZE
+	int "Stack size for the receive thread"
+	default 1024
+
+config WIFI_RTL8720_RX_THREAD_PRIORITY
+	int "Priority of the receive thread"
+	default 7
+
+config WIFI_RTL8720_WORKQ_STACK_SIZE
+	int "Stack size for the driver work queue"
+	default 2048
+	help
+	  Used for scanning and association, which block on the module.
+
+config WIFI_RTL8720_WORKQ_THREAD_PRIORITY
+	int "Priority of the work queue thread"
+	default 7
+
+config WIFI_RTL8720_RESET_HOLD
+	int "Reset hold time"
+	default 50
+	help
+	  How long in milliseconds to hold the chip enable line inactive.
+
+config WIFI_RTL8720_BOOT_DELAY
+	int "Boot delay"
+	default 1000
+	help
+	  How long in milliseconds to wait after releasing the chip enable line
+	  before the first request is sent.
+
+config WIFI_RTL8720_REQUEST_TIMEOUT
+	int "Request timeout"
+	default 20000
+	help
+	  How long in milliseconds to wait for the module to answer a request.
+	  Association is answered only once it has succeeded or failed, so this
+	  has to cover a full association attempt.
+
+config WIFI_RTL8720_FRAME_TIMEOUT
+	int "Frame timeout"
+	default 1000
+	help
+	  How long in milliseconds to wait for the rest of a frame whose header
+	  has already arrived, before dropping it and resynchronizing.
+
+config WIFI_RTL8720_RECV_TIMEOUT
+	int "Receive timeout"
+	default 100
+	help
+	  How long in milliseconds the module waits for data before answering a
+	  receive request. It bounds how long a blocking read stalls the link,
+	  since only one request is in flight at a time.
+
+config WIFI_RTL8720_POLL_INTERVAL
+	int "Poll interval"
+	default 50
+	help
+	  How long in milliseconds poll() waits between asking the module how
+	  much each socket has buffered.
+
+config WIFI_RTL8720_SCAN_POLL_INTERVAL
+	int "Scan poll interval"
+	default 250
+	help
+	  How long in milliseconds to wait between asking the module whether a
+	  scan has finished.
+
+config WIFI_RTL8720_SCAN_POLL_RETRIES
+	int "Scan poll retries"
+	default 40
+	help
+	  How many times to ask before giving up on a scan.
+
+endif # WIFI_RTL8720
