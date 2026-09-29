@@ -22,6 +22,14 @@ zephyr_uhc0: &usbotg_hs2 {
 	ghwcfg1 = <0x00000000>;
 	ghwcfg2 = <0x228fe052>;
 	ghwcfg4 = <0xe2103e30>;
+	/*
+	 * The host driver sizes the FIFOs itself; these only have to stay
+	 * inside the controller's 4 KB of FIFO RAM (1024 words) for the
+	 * binding.
+	 */
+	g-rx-fifo-size = <256>;
+	g-np-tx-fifo-size = <64>;
+	g-tx-fifo-size = <64 64 64 64 64 64 64 64>;
 	vbus-gpios = <&gpiob 9 GPIO_ACTIVE_HIGH>;
 	status = "okay";
 };
