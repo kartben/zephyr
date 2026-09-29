@@ -36,7 +36,7 @@ static bool ready;
 
 /* What the last turn and distance messages said, drawn together */
 static struct turn nav_turn;
-static char nav_distance[8];
+static char nav_distance[12];
 static char nav_unit[4];
 static bool nav_active;
 

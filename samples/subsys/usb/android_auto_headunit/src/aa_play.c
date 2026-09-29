@@ -380,7 +380,7 @@ int aa_play_init(void)
 		.word_size = 16U,
 		.channels = OUT_CHANNELS,
 		.format = I2S_FMT_DATA_FORMAT_I2S,
-		.options = I2S_OPT_FRAME_CLK_MASTER | I2S_OPT_BIT_CLK_MASTER,
+		.options = I2S_OPT_FRAME_CLK_CONTROLLER | I2S_OPT_BIT_CLK_CONTROLLER,
 		/*
 		 * Measured against the samples leaving the controller, the SAI
 		 * runs at four times the rate its clock is described as, so

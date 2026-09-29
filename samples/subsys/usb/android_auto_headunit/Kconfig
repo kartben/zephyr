@@ -641,7 +641,6 @@ config SAMPLE_AA_HU_AUDIO_MAX_UNACKED
 config SAMPLE_AA_HU_PLAYBACK
 	def_bool $(dt_alias_enabled,aa-i2s-out)
 	depends on I2S && AUDIO_CODEC
-	select RING_BUFFER
 	select RING_BUFFER_LARGE
 	help
 	  The half-second stereo media queue holds 96000 bytes and requires
