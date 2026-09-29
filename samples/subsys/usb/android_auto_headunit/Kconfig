@@ -151,6 +151,12 @@ configdefault H264BSD_MALLOC
 configdefault H264BSD_FREE
 	default "aa_h264_free" if SAMPLE_AA_HU_H264
 
+configdefault H264BSD_PICTURE_MALLOC
+	default "aa_h264_picture_malloc" if SAMPLE_AA_HU_H264
+
+configdefault H264BSD_PICTURE_FREE
+	default "aa_h264_picture_free" if SAMPLE_AA_HU_H264
+
 config SAMPLE_AA_HU_LTDC_YUV
 	bool "Let the display controller convert the decoded pictures"
 	depends on SAMPLE_AA_HU_H264 && STM32_LTDC_YUV
@@ -293,9 +299,10 @@ config SAMPLE_AA_HU_H264_STATE_HEAP_SIZE
 config SAMPLE_AA_HU_H264_STATE_HEAP_SECTION
 	string "Linker section for the decoder state heap"
 	depends on SAMPLE_AA_HU_H264
-	default ".bss"
+	default SAMPLE_AA_HU_H264_HEAP_SECTION
 	help
-	  Internal RAM by default, wherever the pictures end up.
+	  The pictures' section by default. A board whose pictures have to go
+	  to external RAM can keep the state in internal RAM instead.
 
 config SAMPLE_AA_HU_H264_HEAP_FALLBACK
 	bool "Keep a second decoder heap for streams the first cannot hold"
