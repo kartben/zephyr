@@ -1,0 +1,82 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "ESPDet-Pico object detection pipeline sample"
+
+menu "Camera"
+
+config VIDEO_FRAME_WIDTH
+	int "Width of the camera frame"
+	default 320
+
+config VIDEO_FRAME_HEIGHT
+	int "Height of the camera frame"
+	default 240
+
+config VIDEO_PIXEL_FORMAT
+	string "Pixel format of the camera frame"
+	default "RGBR"
+	help
+	  Four-character code of the camera pixel format: "RGBR" for RGB565X
+	  (big-endian) or "RGBP" for RGB565.
+
+config VIDEO_CTRL_HFLIP
+	bool "Mirror the camera frame horizontally"
+
+config VIDEO_CTRL_VFLIP
+	bool "Mirror the camera frame vertically"
+
+endmenu
+
+menu "Object detection"
+
+config ESPDET_CLASS_LABELS
+	string "Class labels"
+	default "person,phone"
+	help
+	  Comma-separated labels of the classes of the model, in the order of
+	  its training dataset. Up to 8 classes are named.
+
+config ESPDET_SCORE_THRESHOLD
+	int "Detection score threshold, in percent"
+	range 1 99
+	default 50
+
+config ESPDET_NMS_THRESHOLD
+	int "Non-maximum suppression IoU threshold, in percent"
+	range 1 99
+	default 70
+
+config ESPDET_TOP_K
+	int "Maximum number of candidates kept before non-maximum suppression"
+	default 10
+
+config ESPDET_MAX_BOXES
+	int "Maximum number of detections drawn"
+	default 10
+
+config ESPDET_MAX_INTERNAL_SIZE
+	int "Internal SRAM the model may use for its activations, in bytes"
+	default 98304
+	help
+	  ESP-DL keeps as many activation buffers as fit in this budget in
+	  internal SRAM and the rest in PSRAM. It must fit in
+	  ESP_DL_INTERNAL_HEAP_SIZE.
+
+config ESPDET_THREAD_STACK_SIZE
+	int "Stack size of the detection thread"
+	default 4096
+
+config ESPDET_THREAD_PRIORITY
+	int "Priority of the detection thread"
+	default 10
+	help
+	  Keep it lower (numerically higher) than the pipeline thread so that
+	  the video keeps flowing while a frame is being analyzed.
+
+config ESPDET_LOG_DETECTIONS
+	bool "Log every detection"
+
+endmenu
+
+source "Kconfig.zephyr"

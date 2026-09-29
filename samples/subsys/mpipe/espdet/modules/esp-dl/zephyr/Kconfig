@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig ESP_DL
+	bool "Espressif ESP-DL inference library"
+	depends on SOC_SERIES_ESP32S3
+	depends on ESP_SPIRAM
+	depends on STD_CPP20 || STD_CPP2B
+	select REQUIRES_FULL_LIBCPP
+	select SYS_HEAP_RUNTIME_STATS
+	help
+	  Build ESP-DL, Espressif's neural network inference library, from an
+	  ESP-DL source tree given by the ESP_DL_DIR CMake or environment
+	  variable. The model reader, which ESP-DL only distributes as a
+	  prebuilt library, is replaced by an open implementation.
+
+if ESP_DL
+
+config ESP_DL_INTERNAL_HEAP_SIZE
+	int "Internal RAM heap size for ESP-DL"
+	default 131072
+	help
+	  Size in bytes of the heap in internal SRAM that serves ESP-DL
+	  allocations asking for internal memory. The model places its
+	  activation buffers here first, as internal SRAM is faster than PSRAM.
+
+config ESP_DL_PSRAM_HEAP_SIZE
+	int "PSRAM heap size for ESP-DL"
+	default 2097152
+	help
+	  Size in bytes of the heap carved out of the PSRAM shared multi-heap
+	  that serves all other ESP-DL allocations: model parameters, the
+	  activations that do not fit in internal SRAM and tensor bookkeeping.
+	  It is taken from ESP_SPIRAM_HEAP_SIZE, which must leave room for it.
+
+endif # ESP_DL
