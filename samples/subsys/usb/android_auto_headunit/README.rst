@@ -108,6 +108,23 @@ Power the board from an external 5 V supply rather than from the ST-LINK connect
 host connector is drawn from the same rail as the rest of the board, and the ST-LINK port cannot
 supply the panel, the external RAM and an attached phone at once.
 
+The :zephyr:board:`esp32p4_wifi6_touch_lcd_4_3` shows the phone on its 480x800 panel turned a
+quarter turn. Its USB OTG port does not supply VBUS, so connect the phone through a powered USB 2.0
+hub. The image runs on both HP cores: the first decodes, and the second deblocks the pictures,
+packs them for the pixel processing accelerator and composes the surface.
+
+The decoder and the packing have kernels for the PIE vector extension of the ESP32-P4, which the
+Zephyr SDK assembler does not know. They are built when the build is given the GCC of Espressif's
+``riscv32-esp-elf`` toolchain, release ``esp-14.4.0`` for instance:
+
+.. code-block:: console
+
+   west build -b esp32p4_wifi6_touch_lcd_4_3/esp32p4/hpcore \
+      samples/subsys/usb/android_auto_headunit -- -DH264BSD_PIE_CC=<path>/riscv32-esp-elf-gcc
+
+Without it the sample builds from C alone, which takes about 1.7 times as long to decode a
+picture.
+
 Hardware YUV scanout on STM32N6
 ******************************
 
