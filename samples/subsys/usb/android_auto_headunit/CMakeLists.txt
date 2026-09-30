@@ -48,6 +48,19 @@ target_sources_ifdef(CONFIG_SAMPLE_AA_HU_SPLIT_SCREEN app PRIVATE src/aa_gui.c)
 # the glue that drives it belongs to the sample.
 target_sources_ifdef(CONFIG_SAMPLE_AA_HU_H264 app PRIVATE src/aa_h264.c)
 
+# ESP32-P4 PIE kernels, assembled with the compiler given to h264bsd for its own
+if(H264BSD_PIE_CC)
+  set(pie_obj ${CMAKE_CURRENT_BINARY_DIR}/aa_pack_pie.obj)
+  add_custom_command(OUTPUT ${pie_obj}
+    COMMAND ${H264BSD_PIE_CC} -march=rv32imafc_zicsr_zifencei_xesploop_xespv -mabi=ilp32f
+            -c ${CMAKE_CURRENT_SOURCE_DIR}/src/aa_pack_pie.S -o ${pie_obj}.tmp
+    COMMAND ${CMAKE_OBJCOPY} --remove-section .riscv.attributes ${pie_obj}.tmp ${pie_obj}
+    DEPENDS src/aa_pack_pie.S)
+  set_source_files_properties(${pie_obj} PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
+  target_sources(app PRIVATE ${pie_obj})
+  target_compile_definitions(app PRIVATE AA_HU_HAS_PIE)
+endif()
+
 if(CONFIG_SAMPLE_AA_HU_TRANSPORT_USB_HOST)
   target_sources(app PRIVATE src/aa_transport_usbh.c)
   # The host stack keeps its request and descriptor helpers private

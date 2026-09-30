@@ -578,10 +578,18 @@ static void ppa_pack_line(uint32_t *out, const uint8_t *luma, const uint8_t *chr
 	}
 }
 
+#ifdef AA_HU_HAS_PIE
+extern void aa_pie_pack_line(uint32_t *out, const uint8_t *luma, const uint8_t *chroma,
+			     uint16_t w);
+#endif
 
-/* Pack lines first to end - 1 of a picture, first and end even */
+/*
+ * Pack lines first to end - 1 of a picture, first and end even, with the vector
+ * unit if vector is set, which only the thread packing ahead of the
+ * accelerator may use.
+ */
 static void ppa_pack_lines(uint8_t *packed, const uint8_t *pic, uint16_t w, uint16_t h,
-			   uint16_t first, uint16_t end)
+			   uint16_t first, uint16_t end, bool vector)
 {
 	const uint8_t *u = pic + (size_t)w * h;
 	const uint8_t *v = u + (size_t)w * h / 4U;
@@ -590,6 +598,13 @@ static void ppa_pack_lines(uint8_t *packed, const uint8_t *pic, uint16_t w, uint
 		uint32_t *out = (uint32_t *)(packed + (size_t)y * w * 3U / 2U);
 		size_t c = (size_t)(y / 2U) * (w / 2U);
 
+#ifdef AA_HU_HAS_PIE
+		if (vector && (w % 32U) == 0U) {
+			aa_pie_pack_line(out, pic + (size_t)y * w, u + c, w);
+			aa_pie_pack_line(out + w * 3U / 8U, pic + (size_t)(y + 1U) * w, v + c, w);
+			continue;
+		}
+#endif
 		ppa_pack_line(out, pic + (size_t)y * w, u + c, w);
 		ppa_pack_line(out + w * 3U / 8U, pic + (size_t)(y + 1U) * w, v + c, w);
 	}
@@ -659,7 +674,7 @@ void aa_scale_pack_rows(const uint8_t *pic, uint16_t w, uint16_t h, uint16_t fir
 		return;
 	}
 
-	ppa_pack_lines(filling->mem, pic, w, h, first, end);
+	ppa_pack_lines(filling->mem, pic, w, h, first, end, true);
 	sys_cache_data_flush_range(filling->mem + from, to - from);
 
 	if (end == h) {
@@ -753,7 +768,7 @@ static int ppa_picture(uint16_t *dst, const struct aa_rect *r, const uint8_t *pi
 			k_sem_give(&ppa_idle);
 			return -EBUSY;
 		}
-		ppa_pack_lines(pack->mem, pic, w, h, 0U, h);
+		ppa_pack_lines(pack->mem, pic, w, h, 0U, h, false);
 		sys_cache_data_flush_range(pack->mem, (size_t)w * h * 3U / 2U);
 	}
 	cfg.in.buffer = pack->mem;
