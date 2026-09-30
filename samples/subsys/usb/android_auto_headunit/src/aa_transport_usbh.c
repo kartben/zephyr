@@ -48,6 +48,15 @@ LOG_MODULE_REGISTER(aa_usbh, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
 	((USB_REQTYPE_DIR_TO_DEVICE << 7) | (USB_REQTYPE_TYPE_VENDOR << 5) |                       \
 	 USB_REQTYPE_RECIPIENT_DEVICE)
 
+/*
+ * A phone that has just dropped out of accessory mode, as it does when the head
+ * unit restarts under it, can ignore a start request that arrives while it is
+ * still settling: it neither detaches nor switches. One that acts on the request
+ * detaches within a fraction of a second, so one still there later is asked again.
+ */
+#define AOA_SWITCH_RETRY_MS 2000
+#define AOA_SWITCH_RETRIES  3U
+
 #define IN_XFER_SIZE  CONFIG_SAMPLE_AA_HU_USBH_IN_XFER_SIZE
 #define IN_ERROR_LIMIT 16U
 #define OUT_XFER_SIZE CONFIG_SAMPLE_AA_HU_USBH_OUT_XFER_SIZE
@@ -325,9 +334,40 @@ static int aoa_switch_device(struct usb_device *const udev)
 	return 0;
 }
 
+/* The device asked to switch, until it detaches */
+static struct {
+	struct usb_device *udev;
+	uint8_t retries;
+	struct k_work_delayable retry;
+} aoa;
+
+static void aoa_switch_retry(struct k_work *work)
+{
+	int ret;
+
+	ARG_UNUSED(work);
+
+	if (aoa.retries == AOA_SWITCH_RETRIES) {
+		LOG_WRN("Device ignores the accessory mode request, replug it");
+		return;
+	}
+
+	aoa.retries++;
+	LOG_INF("Device did not switch, asking again (%u of %u)", aoa.retries, AOA_SWITCH_RETRIES);
+
+	ret = aoa_switch_device(aoa.udev);
+	if (ret != 0) {
+		LOG_WRN("Accessory mode request failed (%d)", ret);
+	}
+
+	(void)k_work_schedule(&aoa.retry, K_MSEC(AOA_SWITCH_RETRY_MS));
+}
+
 static int aoa_switch_init(struct usbh_class_data *const c_data)
 {
 	ARG_UNUSED(c_data);
+
+	k_work_init_delayable(&aoa.retry, aoa_switch_retry);
 
 	return 0;
 }
@@ -351,18 +391,31 @@ static int aoa_switch_probe(struct usbh_class_data *const c_data, struct usb_dev
 
 	LOG_INF("New device %04x:%04x", udev->dev_desc.idVendor, udev->dev_desc.idProduct);
 
-	(void)aoa_switch_device(udev);
+	if (aoa_switch_device(udev) != 0) {
+		return -ENOTSUP;
+	}
 
 	/*
-	 * Never bind: the phone detaches and comes back as an accessory, and
-	 * this instance has to stay free to switch the next device.
+	 * Bind until the phone detaches, which is how this class learns that
+	 * it switched, and ask again if it is still there after a while. The
+	 * instance is free again for the next device once this one is gone.
 	 */
-	return -ENOTSUP;
+	aoa.udev = udev;
+	aoa.retries = 0U;
+	(void)k_work_schedule(&aoa.retry, K_MSEC(AOA_SWITCH_RETRY_MS));
+
+	return 0;
 }
 
 static int aoa_switch_removed(struct usbh_class_data *const c_data)
 {
+	struct k_work_sync sync;
+
 	ARG_UNUSED(c_data);
+
+	/* The device is freed once this returns, so wait out a request in progress */
+	(void)k_work_cancel_delayable_sync(&aoa.retry, &sync);
+	aoa.udev = NULL;
 
 	return 0;
 }
