@@ -9,6 +9,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <zephyr/kernel.h>
+
 /**
  * @brief Set up the baseline decoder.
  *
@@ -36,5 +38,23 @@ int aa_h264_reset(void);
  * @retval -EINVAL The stream could not be decoded.
  */
 int aa_h264_decode_au(const uint8_t *au, size_t len);
+
+/**
+ * @brief Keep a thread that decodes on the first CPU.
+ *
+ * Vector kernels of the decoder keep intermediate results in registers that
+ * a thread switch does not save, which is only harmless as long as the thread
+ * comes back on the CPU it left. Call before the thread is started.
+ *
+ * @param thread The thread that will call aa_h264_decode_au().
+ */
+static inline void aa_h264_pin(k_tid_t thread)
+{
+#ifdef CONFIG_SCHED_CPU_MASK
+	(void)k_thread_cpu_pin(thread, 0);
+#else
+	ARG_UNUSED(thread);
+#endif
+}
 
 #endif /* SAMPLES_SUBSYS_USB_ANDROID_AUTO_HEADUNIT_SRC_AA_H264_H_ */

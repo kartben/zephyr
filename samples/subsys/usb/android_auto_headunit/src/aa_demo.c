@@ -188,8 +188,10 @@ int aa_hu_demo_start(void)
 
 	k_thread_create(&clip_thread_data, clip_stack, K_THREAD_STACK_SIZEOF(clip_stack),
 			clip_thread, NULL, NULL, NULL, CONFIG_SAMPLE_AA_HU_RX_THREAD_PRIORITY, 0,
-			K_NO_WAIT);
+			K_FOREVER);
 	k_thread_name_set(&clip_thread_data, "aa_hu_clip");
+	aa_h264_pin(&clip_thread_data);
+	k_thread_start(&clip_thread_data);
 
 	LOG_INF("Android Auto head unit ready (playing the built in clip, %ux%u)",
 		AA_DEMO_CLIP_WIDTH, AA_DEMO_CLIP_HEIGHT);

@@ -19,6 +19,7 @@
 
 #include "aa_control.h"
 #include "aa_frame.h"
+#include "aa_h264.h"
 #include "aa_ids.h"
 #include "aa_input.h"
 #include "aa_mic.h"
@@ -331,8 +332,10 @@ int aa_hu_session_start(void)
 	}
 
 	k_thread_create(&rx_thread_data, rx_stack, K_THREAD_STACK_SIZEOF(rx_stack), rx_thread,
-			NULL, NULL, NULL, CONFIG_SAMPLE_AA_HU_RX_THREAD_PRIORITY, 0, K_NO_WAIT);
+			NULL, NULL, NULL, CONFIG_SAMPLE_AA_HU_RX_THREAD_PRIORITY, 0, K_FOREVER);
 	k_thread_name_set(&rx_thread_data, "aa_hu_rx");
+	aa_h264_pin(&rx_thread_data);
+	k_thread_start(&rx_thread_data);
 
 	return 0;
 }
