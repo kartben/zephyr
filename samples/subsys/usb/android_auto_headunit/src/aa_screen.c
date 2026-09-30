@@ -276,6 +276,9 @@ static void present_thread(void *p1, void *p2, void *p3)
 		k_sem_take(&fb_queued, K_FOREVER);
 		shown = fb_pending;
 
+		/* An accelerator may still be writing the picture into it */
+		aa_scale_sync();
+
 		k_mutex_lock(&disp, K_FOREVER);
 		(void)display_write(display, 0, 0, &desc, shown);
 		k_mutex_unlock(&disp);
@@ -309,17 +312,21 @@ static void compose(const uint8_t *pic, uint16_t w, uint16_t h)
 	surface_claim();
 	elapsed(&wait_us, at);
 
+	/*
+	 * The picture goes in last: the fill covers it, and a picture an
+	 * accelerator writes may still be arriving after this returns.
+	 */
 	at = stamp();
-	if (pic != NULL) {
-		surface_picture(&video, pic, w, h);
-	} else {
-		surface_fill(&video);
-	}
 	if (memcmp(&framed[fb_idx], &video, sizeof(video)) != 0) {
 		surface_fill(&area);
 		framed[fb_idx] = video;
 	}
 	surface_gui(fb_idx);
+	if (pic != NULL) {
+		surface_picture(&video, pic, w, h);
+	} else {
+		surface_fill(&video);
+	}
 	elapsed(&convert_us, at);
 
 	at = stamp();

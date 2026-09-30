@@ -44,6 +44,9 @@ void aa_scale_i420_yuyv(uint8_t *dst, uint16_t pitch, const struct aa_rect *r, c
  * @brief Write a planar YUV420 picture into a rectangle of an RGB565 surface.
  *
  * The BT.601 limited range samples the phone sends are converted on the way.
+ * Where an accelerator does the conversion, this returns once @p pic has been
+ * read and the rectangle may still be being written: call aa_scale_sync()
+ * before the surface is shown, and draw nothing else into it in between.
  *
  * @param dst   Start of the surface.
  * @param pitch Surface width in pixels.
@@ -53,6 +56,9 @@ void aa_scale_i420_yuyv(uint8_t *dst, uint16_t pitch, const struct aa_rect *r, c
  */
 void aa_scale_i420_rgb565(uint16_t *dst, uint16_t pitch, const struct aa_rect *r,
 			  const uint8_t *pic, uint16_t w, uint16_t h);
+
+/** @brief Wait until the last picture aa_scale_i420_rgb565() took is in its surface. */
+void aa_scale_sync(void);
 
 /**
  * @brief Write a planar YUV420 picture into a rectangle of an ARGB8888 surface.

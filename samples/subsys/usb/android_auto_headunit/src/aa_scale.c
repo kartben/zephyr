@@ -466,19 +466,55 @@ static void rgb565_nearest(uint16_t *dst, uint16_t pitch, const struct aa_rect *
 static uint8_t ppa_packed[PPA_PACKED_SIZE] AA_HU_BIG_BUF __aligned(128);
 static ppa_client_handle_t ppa_client;
 
+/*
+ * The accelerator runs while the decoder works on the next picture. This is
+ * available while it is neither reading ppa_packed nor writing a surface, and
+ * ppa_dst is the surface it last wrote, until the cache is cleared of it.
+ */
+static K_SEM_DEFINE(ppa_idle, 1, 1);
+static uint16_t *ppa_dst;
+
+static bool ppa_done(ppa_client_handle_t client, ppa_event_data_t *event, void *user_data)
+{
+	ARG_UNUSED(client);
+	ARG_UNUSED(event);
+	ARG_UNUSED(user_data);
+
+	k_sem_give(&ppa_idle);
+
+	return false;
+}
+
 static int ppa_client_init(void)
 {
 	const ppa_client_config_t cfg = {
 		.oper_type = PPA_OPERATION_SRM,
 		.data_burst_length = PPA_DATA_BURST_LENGTH_128,
 	};
+	const ppa_event_callbacks_t cbs = {
+		.on_trans_done = ppa_done,
+	};
 
-	if (ppa_register_client(&cfg, &ppa_client) != ESP_OK) {
+	if (ppa_register_client(&cfg, &ppa_client) != ESP_OK ||
+	    ppa_client_register_event_callbacks(ppa_client, &cbs) != ESP_OK) {
 		LOG_ERR("No accelerator client, converting in software");
 		ppa_client = NULL;
 	}
 
 	return 0;
+}
+
+/*
+ * Drop what the cache may have fetched of the surface while the accelerator
+ * was writing it, so that the next drawing into it starts from memory.
+ * Called with ppa_idle held.
+ */
+static void ppa_retire(void)
+{
+	if (ppa_dst != NULL) {
+		sys_cache_data_invd_range(ppa_dst, PPA_FB_SIZE);
+		ppa_dst = NULL;
+	}
 }
 
 SYS_INIT(ppa_client_init, APPLICATION, 0);
@@ -544,7 +580,7 @@ static int ppa_picture(uint16_t *dst, const struct aa_rect *r, const uint8_t *pi
 #else
 		.rotation_angle = PPA_SRM_ROTATION_ANGLE_0,
 #endif
-		.mode = PPA_TRANS_MODE_BLOCKING,
+		.mode = PPA_TRANS_MODE_NON_BLOCKING,
 	};
 	esp_err_t err;
 
@@ -568,6 +604,10 @@ static int ppa_picture(uint16_t *dst, const struct aa_rect *r, const uint8_t *pi
 	}
 	ppa_out_rect(r, &cfg.out.block_offset_x, &cfg.out.block_offset_y);
 
+	/* The previous picture may still be being read out of ppa_packed */
+	k_sem_take(&ppa_idle, K_FOREVER);
+	ppa_retire();
+
 	for (uint16_t y = 0U; y < h; y += 2U) {
 		uint32_t *out = (uint32_t *)(ppa_packed + (size_t)y * w * 3U / 2U);
 		size_t c = (size_t)(y / 2U) * (w / 2U);
@@ -584,16 +624,25 @@ static int ppa_picture(uint16_t *dst, const struct aa_rect *r, const uint8_t *pi
 	 */
 	sys_cache_data_flush_and_invd_range(dst, PPA_FB_SIZE);
 	err = ppa_do_scale_rotate_mirror(ppa_client, &cfg);
-	sys_cache_data_invd_range(dst, PPA_FB_SIZE);
-
 	if (err != ESP_OK) {
+		k_sem_give(&ppa_idle);
 		LOG_WRN_ONCE("Accelerator failed (%d), converting in software", err);
 		return -EIO;
 	}
+	ppa_dst = dst;
 
 	return 0;
 }
 #endif /* CONFIG_SAMPLE_AA_HU_PPA */
+
+void aa_scale_sync(void)
+{
+#ifdef CONFIG_SAMPLE_AA_HU_PPA
+	k_sem_take(&ppa_idle, K_FOREVER);
+	ppa_retire();
+	k_sem_give(&ppa_idle);
+#endif
+}
 
 void aa_scale_i420_rgb565(uint16_t *dst, uint16_t pitch, const struct aa_rect *r,
 			  const uint8_t *pic, uint16_t w, uint16_t h)
