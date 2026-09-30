@@ -925,6 +925,16 @@ static uint32_t ch_handle_in_bulk_control(const struct device *dev,
 				ch_events |= BIT(UHC_DWC2_CHANNEL_DO_REINIT);
 				ch_events |= BIT(UHC_DWC2_CHANNEL_DO_REWIND);
 			}
+		} else if ((hcint & USB_DWC2_HCINT_DTGERR) && ch->xfer->type == USB_EP_TYPE_BULK) {
+			/*
+			 * A repeated packet, acknowledged and dropped by the core.
+			 * Resume from what the device has delivered, with the
+			 * toggle the core now expects.
+			 */
+			ch->error_count = 0;
+			LOG_DBG("IN channel%d toggle error, HCINT 0x%08x", ch->index, hcint);
+			ch_events |= BIT(UHC_DWC2_CHANNEL_DO_REINIT);
+			ch_events |= BIT(UHC_DWC2_CHANNEL_DO_REWIND);
 		} else {
 			/* The channel halted without reporting a reason. Fail the
 			 * transfer instead of leaving the caller waiting.
@@ -1043,6 +1053,18 @@ static uint32_t ch_handle_in_interrupt(struct uhc_dwc2_channel *const ch,
 			/* Channel NAKed */
 			ch->error_count = 0;
 			/* TODO: Optimize by handling transfer with bInterval=1 immediately */
+			ch_events |= BIT(UHC_DWC2_CHANNEL_DO_WAIT_SOF);
+		} else if (hcint & USB_DWC2_HCINT_DTGERR) {
+			/*
+			 * The packet carried the other toggle, so the core
+			 * acknowledged and dropped it as a repeat. Take the toggle
+			 * the core now expects and poll again at the next interval.
+			 */
+			ch->error_count = 0;
+			ch->data->next_pid =
+				usb_dwc2_get_hctsiz_pid(sys_read32((mem_addr_t)&ch->regs->hctsiz));
+			LOG_DBG("IN channel%d toggle error, next_pid=%u", ch->index,
+				ch->data->next_pid);
 			ch_events |= BIT(UHC_DWC2_CHANNEL_DO_WAIT_SOF);
 		} else {
 			/* TODO: Add handling for other cases */
