@@ -12,6 +12,7 @@
 
 #include <h264bsd_decoder.h>
 
+#include "aa_scale.h"
 #include "aa_screen.h"
 
 LOG_MODULE_REGISTER(aa_h264, CONFIG_SAMPLE_AA_HU_LOG_LEVEL);
@@ -236,6 +237,21 @@ int aa_h264_reset(void)
 
 	return aa_h264_init();
 }
+
+#ifdef CONFIG_H264BSD_DEBLOCK_THREAD
+/*
+ * Called on h264bsd's deblocking thread as rows of macroblocks become final,
+ * named by CONFIG_H264BSD_DEBLOCK_ROWS_HOOK.
+ */
+void aa_h264_rows_ready(const uint8_t *pic, uint32_t w_mbs, uint32_t h_mbs, uint32_t first,
+			uint32_t end)
+{
+	if (IS_ENABLED(CONFIG_SAMPLE_AA_HU_PPA)) {
+		aa_scale_pack_rows(pic, (uint16_t)(w_mbs * 16U), (uint16_t)(h_mbs * 16U),
+				   (uint16_t)(first * 16U), (uint16_t)(end * 16U));
+	}
+}
+#endif
 
 /* Whether the first slice of an access unit makes its picture a reference */
 static bool au_is_reference(const uint8_t *au, size_t len)

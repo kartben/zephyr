@@ -61,6 +61,22 @@ void aa_scale_i420_rgb565(uint16_t *dst, uint16_t pitch, const struct aa_rect *r
 void aa_scale_sync(void);
 
 /**
+ * @brief Prepare lines of a picture that no longer change for its conversion.
+ *
+ * Where an accelerator converts, it reads the picture in a layout of its own.
+ * A decoder that finishes a picture a few lines at a time can have those
+ * rearranged while they are still in the cache, so that converting the
+ * complete picture with aa_scale_i420_rgb565() needs nothing more.
+ *
+ * @param pic       Planar YUV420 picture, as later given to aa_scale_i420_rgb565().
+ * @param w,h       Picture size in pixels.
+ * @param first,end First and end line; a picture starts at line 0 and every
+ *                  line comes once, in order.
+ */
+void aa_scale_pack_rows(const uint8_t *pic, uint16_t w, uint16_t h, uint16_t first,
+			uint16_t end);
+
+/**
  * @brief Write a planar YUV420 picture into a rectangle of an ARGB8888 surface.
  *
  * As aa_scale_i420_rgb565(), for a display whose narrowest pixel is a word.

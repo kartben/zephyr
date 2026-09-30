@@ -463,23 +463,66 @@ static void rgb565_nearest(uint16_t *dst, uint16_t pitch, const struct aa_rect *
 #define PPA_PACKED_SIZE ((size_t)STREAM_W * STREAM_H * 3U / 2U)
 #define PPA_FB_SIZE     ((size_t)SCAN_W * SCAN_H * sizeof(uint16_t))
 
-static uint8_t ppa_packed[PPA_PACKED_SIZE] AA_HU_BIG_BUF __aligned(128);
 static ppa_client_handle_t ppa_client;
 
 /*
+ * Two packed buffers take turns, so that one can be filled with the next
+ * picture while the accelerator reads the other. Where the decoder deblocks on
+ * another CPU, the rows of a picture are packed there as they become final,
+ * while they are still in the cache, and composing the picture only starts the
+ * accelerator on them. Otherwise composing packs the picture itself.
+ */
+enum ppa_pack_state {
+	PACK_FREE,
+	/* Rows of pic are being packed into it */
+	PACK_FILLING,
+	/* All of pic is in it, waiting to be converted */
+	PACK_READY,
+	/* The accelerator reads it */
+	PACK_BUSY,
+};
+
+struct ppa_pack {
+	uint8_t *mem;
+	const uint8_t *pic;
+	enum ppa_pack_state state;
+};
+
+static uint8_t ppa_packed[2][PPA_PACKED_SIZE] AA_HU_BIG_BUF __aligned(128);
+static struct ppa_pack ppa_packs[2] = {
+	{.mem = ppa_packed[0]},
+	{.mem = ppa_packed[1]},
+};
+static struct k_spinlock pack_lock;
+/* Given whenever the accelerator is done with a packed buffer */
+static K_SEM_DEFINE(pack_freed, 0, 1);
+/* The buffer the accelerator reads */
+static struct ppa_pack *ppa_reading;
+
+/*
  * The accelerator runs while the decoder works on the next picture. This is
- * available while it is neither reading ppa_packed nor writing a surface, and
- * ppa_dst is the surface it last wrote, until the cache is cleared of it.
+ * available while it is neither reading a packed buffer nor writing a surface,
+ * and ppa_dst is the surface it last wrote, until the cache is cleared of it.
  */
 static K_SEM_DEFINE(ppa_idle, 1, 1);
 static uint16_t *ppa_dst;
 
 static bool ppa_done(ppa_client_handle_t client, ppa_event_data_t *event, void *user_data)
 {
+	k_spinlock_key_t key;
+
 	ARG_UNUSED(client);
 	ARG_UNUSED(event);
 	ARG_UNUSED(user_data);
 
+	key = k_spin_lock(&pack_lock);
+	if (ppa_reading != NULL) {
+		ppa_reading->state = PACK_FREE;
+		ppa_reading = NULL;
+	}
+	k_spin_unlock(&pack_lock, key);
+
+	k_sem_give(&pack_freed);
 	k_sem_give(&ppa_idle);
 
 	return false;
@@ -535,6 +578,96 @@ static void ppa_pack_line(uint32_t *out, const uint8_t *luma, const uint8_t *chr
 	}
 }
 
+
+/* Pack lines first to end - 1 of a picture, first and end even */
+static void ppa_pack_lines(uint8_t *packed, const uint8_t *pic, uint16_t w, uint16_t h,
+			   uint16_t first, uint16_t end)
+{
+	const uint8_t *u = pic + (size_t)w * h;
+	const uint8_t *v = u + (size_t)w * h / 4U;
+
+	for (uint16_t y = first; y < end; y += 2U) {
+		uint32_t *out = (uint32_t *)(packed + (size_t)y * w * 3U / 2U);
+		size_t c = (size_t)(y / 2U) * (w / 2U);
+
+		ppa_pack_line(out, pic + (size_t)y * w, u + c, w);
+		ppa_pack_line(out + w * 3U / 8U, pic + (size_t)(y + 1U) * w, v + c, w);
+	}
+}
+
+/*
+ * Move the first buffer found in state from, and holding pic unless pic is
+ * NULL, to state to.
+ */
+static struct ppa_pack *pack_move(enum ppa_pack_state from, const uint8_t *pic,
+				  enum ppa_pack_state to)
+{
+	struct ppa_pack *found = NULL;
+	k_spinlock_key_t key = k_spin_lock(&pack_lock);
+
+	for (size_t i = 0U; i < ARRAY_SIZE(ppa_packs); i++) {
+		if (ppa_packs[i].state == from && (pic == NULL || ppa_packs[i].pic == pic)) {
+			ppa_packs[i].state = to;
+			found = &ppa_packs[i];
+			break;
+		}
+	}
+	k_spin_unlock(&pack_lock, key);
+
+	return found;
+}
+
+static bool ppa_fits(uint16_t w, uint16_t h)
+{
+	return ppa_client != NULL && (size_t)w * h * 3U / 2U <= PPA_PACKED_SIZE && (w % 8U) == 0U;
+}
+
+void aa_scale_pack_rows(const uint8_t *pic, uint16_t w, uint16_t h, uint16_t first,
+			uint16_t end)
+{
+	static struct ppa_pack *filling;
+	size_t from = (size_t)first * w * 3U / 2U;
+	size_t to = (size_t)end * w * 3U / 2U;
+
+	if (first == 0U) {
+		if (filling != NULL) {
+			(void)pack_move(PACK_FILLING, NULL, PACK_FREE);
+			filling = NULL;
+		}
+		if (!ppa_fits(w, h)) {
+			return;
+		}
+		/* A picture read before from the same decoder buffer is stale */
+		(void)pack_move(PACK_READY, pic, PACK_FREE);
+
+		/*
+		 * The accelerator is normally long done with the older buffer.
+		 * Should it not be, composing packs this picture itself.
+		 */
+		for (int tries = 0; tries < 3 && filling == NULL; tries++) {
+			filling = pack_move(PACK_FREE, NULL, PACK_FILLING);
+			if (filling == NULL) {
+				(void)k_sem_take(&pack_freed, K_MSEC(20));
+			}
+		}
+		if (filling == NULL) {
+			return;
+		}
+		filling->pic = pic;
+	}
+	if (filling == NULL || filling->pic != pic) {
+		return;
+	}
+
+	ppa_pack_lines(filling->mem, pic, w, h, first, end);
+	sys_cache_data_flush_range(filling->mem + from, to - from);
+
+	if (end == h) {
+		(void)pack_move(PACK_FILLING, pic, PACK_READY);
+		filling = NULL;
+	}
+}
+
 /* Where the rectangle of the picture's frame lands on the panel */
 static void ppa_out_rect(const struct aa_rect *r, uint32_t *x, uint32_t *y)
 {
@@ -553,11 +686,9 @@ static void ppa_out_rect(const struct aa_rect *r, uint32_t *x, uint32_t *y)
 static int ppa_picture(uint16_t *dst, const struct aa_rect *r, const uint8_t *pic, uint16_t w,
 		       uint16_t h)
 {
-	const uint8_t *u = pic + (size_t)w * h;
-	const uint8_t *v = u + (size_t)w * h / 4U;
+	struct ppa_pack *pack;
 	ppa_srm_oper_config_t cfg = {
 		.in = {
-			.buffer = ppa_packed,
 			.pic_w = w,
 			.pic_h = h,
 			.block_w = w,
@@ -590,9 +721,6 @@ static int ppa_picture(uint16_t *dst, const struct aa_rect *r, const uint8_t *pi
 	 * the size of the rectangle. The ones in between are left to the
 	 * processor.
 	 */
-	if (ppa_client == NULL || (size_t)w * h * 3U / 2U > sizeof(ppa_packed) || (w % 8U) != 0U) {
-		return -ENOTSUP;
-	}
 	if (r->w == w && r->h == h) {
 		cfg.scale_x = 1.0f;
 		cfg.scale_y = 1.0f;
@@ -600,22 +728,36 @@ static int ppa_picture(uint16_t *dst, const struct aa_rect *r, const uint8_t *pi
 		cfg.scale_x = 0.5f;
 		cfg.scale_y = 0.5f;
 	} else {
+		/* Packed for nothing, then */
+		(void)pack_move(PACK_READY, pic, PACK_FREE);
+		k_sem_give(&pack_freed);
+		return -ENOTSUP;
+	}
+	if (!ppa_fits(w, h)) {
 		return -ENOTSUP;
 	}
 	ppa_out_rect(r, &cfg.out.block_offset_x, &cfg.out.block_offset_y);
 
-	/* The previous picture may still be being read out of ppa_packed */
+	/* The previous picture may still be being read out of its buffer */
 	k_sem_take(&ppa_idle, K_FOREVER);
 	ppa_retire();
 
-	for (uint16_t y = 0U; y < h; y += 2U) {
-		uint32_t *out = (uint32_t *)(ppa_packed + (size_t)y * w * 3U / 2U);
-		size_t c = (size_t)(y / 2U) * (w / 2U);
-
-		ppa_pack_line(out, pic + (size_t)y * w, u + c, w);
-		ppa_pack_line(out + w * 3U / 8U, pic + (size_t)(y + 1U) * w, v + c, w);
+	pack = pack_move(PACK_READY, pic, PACK_BUSY);
+	if (pack == NULL) {
+		/* With nothing reading one, a buffer not being filled is free */
+		pack = pack_move(PACK_FREE, NULL, PACK_BUSY);
+		if (pack == NULL) {
+			pack = pack_move(PACK_READY, NULL, PACK_BUSY);
+		}
+		if (pack == NULL) {
+			k_sem_give(&ppa_idle);
+			return -EBUSY;
+		}
+		ppa_pack_lines(pack->mem, pic, w, h, 0U, h);
+		sys_cache_data_flush_range(pack->mem, (size_t)w * h * 3U / 2U);
 	}
-	sys_cache_data_flush_range(ppa_packed, sizeof(ppa_packed));
+	cfg.in.buffer = pack->mem;
+	ppa_reading = pack;
 
 	/*
 	 * Nothing the processor wrote may be written back over the picture
@@ -625,6 +767,11 @@ static int ppa_picture(uint16_t *dst, const struct aa_rect *r, const uint8_t *pi
 	sys_cache_data_flush_and_invd_range(dst, PPA_FB_SIZE);
 	err = ppa_do_scale_rotate_mirror(ppa_client, &cfg);
 	if (err != ESP_OK) {
+		k_spinlock_key_t key = k_spin_lock(&pack_lock);
+
+		pack->state = PACK_FREE;
+		ppa_reading = NULL;
+		k_spin_unlock(&pack_lock, key);
 		k_sem_give(&ppa_idle);
 		LOG_WRN_ONCE("Accelerator failed (%d), converting in software", err);
 		return -EIO;
