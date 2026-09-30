@@ -14,6 +14,12 @@ if(CONFIG_SOC_SERIES_STM32N6X)
   zephyr_linker_sources(SECTIONS axisram1_check.ld)
 endif()
 
+# Both ESP32-P4 cores fetch through one flash cache, which the decoder's
+# per-macroblock code would otherwise keep thrashing
+if(CONFIG_SOC_SERIES_ESP32P4 AND CONFIG_SAMPLE_AA_HU_H264)
+  zephyr_linker_sources(RAMFUNC_SECTION h264bsd_iram.ld)
+endif()
+
 # The Espressif linker scripts place the section in PSRAM themselves
 if(CONFIG_MBEDTLS_HEAP_CUSTOM_SECTION AND NOT CONFIG_ESP_MBEDTLS_HEAP_ALLOC_EXT_RAM)
   zephyr_linker_sources(SECTIONS mbedtls_heap.ld)
