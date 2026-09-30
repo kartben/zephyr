@@ -237,11 +237,30 @@ int aa_h264_reset(void)
 	return aa_h264_init();
 }
 
+/* Whether the first slice of an access unit makes its picture a reference */
+static bool au_is_reference(const uint8_t *au, size_t len)
+{
+	for (size_t i = 0U; (i + 3U) < len; i++) {
+		if (au[i] == 0U && au[i + 1U] == 0U && au[i + 2U] == 1U) {
+			uint8_t type = au[i + 3U] & 0x1FU;
+
+			if (type == 1U || type == 5U) {
+				return (au[i + 3U] & 0x60U) != 0U;
+			}
+			i += 2U;
+		}
+	}
+
+	return false;
+}
+
 int aa_h264_decode_au(const uint8_t *au, size_t len)
 {
+	static bool shown_reference = true;
 	uint8_t *p = (uint8_t *)au;
 	uint32_t left = (uint32_t)len;
 	bool stalled = false;
+	bool reference = false;
 	int ready = 0;
 
 	report_heap();
@@ -249,6 +268,18 @@ int aa_h264_decode_au(const uint8_t *au, size_t len)
 
 	if (decoder == NULL) {
 		return -EINVAL;
+	}
+
+	/*
+	 * The screen may still be reading the last picture on another CPU.
+	 * The next one is decoded into another buffer unless the last one is
+	 * not kept for reference, in which case its buffer is reused at once.
+	 */
+	if (IS_ENABLED(CONFIG_SMP)) {
+		if (!shown_reference) {
+			aa_screen_sync();
+		}
+		reference = au_is_reference(au, len);
 	}
 
 	while (left > 0U) {
@@ -294,6 +325,7 @@ int aa_h264_decode_au(const uint8_t *au, size_t len)
 				elapsed(&display_us, at);
 				pictures++;
 				ready = 1;
+				shown_reference = reference;
 			}
 			break;
 		}

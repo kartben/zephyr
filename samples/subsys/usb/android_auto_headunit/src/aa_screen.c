@@ -336,6 +336,46 @@ static void compose(const uint8_t *pic, uint16_t w, uint16_t h)
 	surface_dump(shown);
 }
 
+static void show(const uint8_t *pic, uint16_t w, uint16_t h)
+{
+	k_mutex_lock(&lock, K_FOREVER);
+
+	compose(pic, w, h);
+	if (pic != NULL) {
+		last_picture = k_uptime_get();
+	}
+
+	k_mutex_unlock(&lock);
+}
+
+#ifdef CONFIG_SMP
+/*
+ * With a second CPU, a picture is composed on a thread of its own while the
+ * decoder works on the next one. A picture is handed over once the one before
+ * it has been composed, and the decoder leaves it alone until then.
+ */
+static K_SEM_DEFINE(compose_idle, 1, 1);
+static K_SEM_DEFINE(compose_go, 0, 1);
+static const uint8_t *compose_pic;
+static uint16_t compose_w;
+static uint16_t compose_h;
+static struct k_thread compose_thread_data;
+static K_THREAD_STACK_DEFINE(compose_stack, CONFIG_SAMPLE_AA_HU_COMPOSE_STACK_SIZE);
+
+static void compose_thread(void *p1, void *p2, void *p3)
+{
+	ARG_UNUSED(p1);
+	ARG_UNUSED(p2);
+	ARG_UNUSED(p3);
+
+	while (true) {
+		k_sem_take(&compose_go, K_FOREVER);
+		show(compose_pic, compose_w, compose_h);
+		k_sem_give(&compose_idle);
+	}
+}
+#endif /* CONFIG_SMP */
+
 int aa_screen_init(void)
 {
 	struct display_capabilities caps;
@@ -350,6 +390,12 @@ int aa_screen_init(void)
 			K_THREAD_STACK_SIZEOF(present_stack), present_thread, NULL, NULL, NULL,
 			CONFIG_SAMPLE_AA_HU_PRESENT_THREAD_PRIORITY, 0, K_NO_WAIT);
 	k_thread_name_set(&present_thread_data, "aa_hu_present");
+#ifdef CONFIG_SMP
+	k_thread_create(&compose_thread_data, compose_stack, K_THREAD_STACK_SIZEOF(compose_stack),
+			compose_thread, NULL, NULL, NULL, CONFIG_SAMPLE_AA_HU_RX_THREAD_PRIORITY, 0,
+			K_NO_WAIT);
+	k_thread_name_set(&compose_thread_data, "aa_hu_compose");
+#endif
 
 	display_get_capabilities(display, &caps);
 	if (caps.x_resolution != SCAN_W || caps.y_resolution != SCAN_H) {
@@ -411,14 +457,23 @@ uint16_t *aa_screen_framebuffer(void)
 
 void aa_screen_show(const uint8_t *pic, uint16_t w, uint16_t h)
 {
-	k_mutex_lock(&lock, K_FOREVER);
+#ifdef CONFIG_SMP
+	k_sem_take(&compose_idle, K_FOREVER);
+	compose_pic = pic;
+	compose_w = w;
+	compose_h = h;
+	k_sem_give(&compose_go);
+#else
+	show(pic, w, h);
+#endif
+}
 
-	compose(pic, w, h);
-	if (pic != NULL) {
-		last_picture = k_uptime_get();
-	}
-
-	k_mutex_unlock(&lock);
+void aa_screen_sync(void)
+{
+#ifdef CONFIG_SMP
+	k_sem_take(&compose_idle, K_FOREVER);
+	k_sem_give(&compose_idle);
+#endif
 }
 
 void aa_screen_push(void)

@@ -442,6 +442,14 @@ config SAMPLE_AA_HU_PRESENT_STACK_SIZE
 	  The thread only hands a composed buffer to the display driver, so it
 	  needs whatever that driver uses and little else.
 
+config SAMPLE_AA_HU_COMPOSE_STACK_SIZE
+	int "Compose thread stack size"
+	default 4096
+	depends on SMP
+	help
+	  With a second CPU, each picture is composed with the GUI on a
+	  thread of its own while the decoder works on the next one.
+
 config SAMPLE_AA_HU_PRESENT_THREAD_PRIORITY
 	int "Present thread priority"
 	default 4

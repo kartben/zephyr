@@ -37,10 +37,17 @@ uint16_t *aa_screen_framebuffer(void);
 /**
  * @brief Compose one picture with the GUI and show the result.
  *
+ * With more than one CPU the picture is composed on another one, and this
+ * returns once it has been handed over: @p pic is read until the next call
+ * returns, or until aa_screen_sync() does.
+ *
  * @param pic  Planar YUV420 picture, or NULL to leave the video area black.
  * @param w,h  Picture size in pixels.
  */
 void aa_screen_show(const uint8_t *pic, uint16_t w, uint16_t h);
+
+/** @brief Wait until the last picture given to aa_screen_show() has been read. */
+void aa_screen_sync(void);
 
 /** @brief Show what a decoder has already written to the framebuffer. */
 void aa_screen_push(void);
