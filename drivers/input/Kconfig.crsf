@@ -5,11 +5,13 @@ config INPUT_CRSF
 	bool "CRSF driver"
 	default y
 	depends on DT_HAS_TBS_CRSF_ENABLED
-	depends on UART_INTERRUPT_DRIVEN
+	depends on UART_ASYNC_API || UART_INTERRUPT_DRIVEN
 	select CRC
 	select UART_USE_RUNTIME_CONFIGURE
 	help
-	  Enable driver for CRSF Remote controller.
+	  Enable driver for CRSF Remote controller. The driver receives through
+	  the UART async API when the UART supports it, and through the
+	  interrupt-driven API otherwise.
 
 if INPUT_CRSF
 
