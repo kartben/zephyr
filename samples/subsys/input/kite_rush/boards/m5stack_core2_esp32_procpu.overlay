@@ -1,0 +1,23 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * Unless use-iomux is set, the controller compensates for MISO going through
+ * the GPIO matrix, which it cannot do at 40 MHz in full-duplex mode. The
+ * display only writes, and this sample does not use the microSD card on MISO.
+ */
+&spi3 {
+	use-iomux;
+};
+
+/* Run the display at 40 MHz, as M5Stack's own libraries do */
+&ili9342c {
+	mipi-max-frequency = <40000000>;
+};
+
+/* Receiver on the Grove port A: GPIO32 (TX) and GPIO33 (RX) */
+crsf_uart: &grove_uart {};
+
+#include "crsf_receiver.dtsi"
