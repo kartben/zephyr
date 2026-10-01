@@ -669,6 +669,8 @@ ZTEST_USER(uart_async_read_abort, test_read_abort)
 #endif /* NOCACHE_MEM */
 	uint32_t baudrate;
 
+	Z_TEST_SKIP_IFNDEF(CONFIG_TEST_ABORT_ONGOING_TRANSFER);
+
 	memset(rx_buf, 0, sizeof(rx_buf));
 	memset(tx_buf, 1, sizeof(tx_buf));
 
@@ -793,6 +795,8 @@ ZTEST_USER(uart_async_write_abort, test_write_abort)
 #else
 	 __aligned(sizeof(void *)) uint8_t tx_buf[100];
 #endif /* NOCACHE_MEM */
+
+	Z_TEST_SKIP_IFNDEF(CONFIG_TEST_ABORT_ONGOING_TRANSFER);
 
 	memset(test_rx_buf, 0, sizeof(test_rx_buf));
 	memset(tx_buf, 1, sizeof(tx_buf));

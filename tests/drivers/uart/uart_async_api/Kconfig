@@ -31,3 +31,11 @@ config VAR_LENGTH_BUFFER_TEST_BAUDRATE_LIMIT
 config VAR_LENGTH_BUFFER_MAX_SIZE
 	int "Max size of uart buffer used for testing. Testing buffer sizes from 1 to this value."
 	default 10
+
+config TEST_ABORT_ONGOING_TRANSFER
+	bool "Test aborting transfers before they complete"
+	default y
+	help
+	  The read and write abort tests stop a transfer while the loopback is
+	  still carrying it. Disable them where transfers complete instantly,
+	  as with emulated UARTs that do not model the baud rate.
