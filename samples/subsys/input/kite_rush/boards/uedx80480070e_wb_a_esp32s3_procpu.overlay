@@ -1,0 +1,38 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/pinctrl/esp32s3-pinctrl.h>
+
+/*
+ * The game redraws every frame and keeps up with a faster panel than the
+ * board's 15 MHz pixel clock: 20 MHz refreshes it at 38 Hz instead of 28 Hz.
+ */
+&lcd_cam_rgb {
+	display-timings {
+		clock-frequency = <20000000>;
+	};
+};
+
+/* Receiver on the side headers: GPIO17 (TX) and GPIO18 (RX) */
+&pinctrl {
+	uart1_crsf: uart1_crsf {
+		group1 {
+			pinmux = <UART1_TX_GPIO17>;
+			output-high;
+		};
+
+		group2 {
+			pinmux = <UART1_RX_GPIO18>;
+			bias-pull-up;
+		};
+	};
+};
+
+crsf_uart: &uart1 {
+	pinctrl-0 = <&uart1_crsf>;
+	pinctrl-names = "default";
+};
+
+#include "crsf_receiver.dtsi"
