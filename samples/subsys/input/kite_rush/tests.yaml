@@ -1,0 +1,25 @@
+sample:
+  name: Kite Rush
+  description: RC game over a CRSF link, with telemetry back to the radio
+common:
+  tags:
+    - input
+    - display
+  build_only: true
+tests:
+  sample.input.kite_rush:
+    platform_allow:
+      - qemu_x86
+      - native_sim
+      - native_sim/native/64
+      - wio_terminal
+      - t_deck/esp32s3/procpu
+      - m5stack_core2/esp32/procpu
+      - uedx80480070e_wb_a/esp32s3/procpu
+    integration_platforms:
+      - qemu_x86
+  sample.input.kite_rush.autoplay:
+    platform_allow:
+      - qemu_x86
+    extra_configs:
+      - CONFIG_KITE_RUSH_AUTOPLAY=y

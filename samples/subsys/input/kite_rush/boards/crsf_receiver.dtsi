@@ -1,0 +1,42 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * CRSF receiver on the UART labeled crsf_uart by the board overlay, with the
+ * AETR channel order used by ExpressLRS and most flight controllers.
+ */
+
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
+&crsf_uart {
+	status = "okay";
+	current-speed = <420000>;
+
+	crsf: crsf {
+		compatible = "tbs,crsf";
+
+		aileron {
+			channel = <1>;
+			type = <INPUT_EV_ABS>;
+			zephyr,code = <INPUT_ABS_RX>;
+		};
+
+		elevator {
+			channel = <2>;
+			type = <INPUT_EV_ABS>;
+			zephyr,code = <INPUT_ABS_RY>;
+		};
+
+		throttle {
+			channel = <3>;
+			type = <INPUT_EV_ABS>;
+			zephyr,code = <INPUT_ABS_THROTTLE>;
+		};
+
+		rudder {
+			channel = <4>;
+			type = <INPUT_EV_ABS>;
+			zephyr,code = <INPUT_ABS_RUDDER>;
+		};
+	};
+};
