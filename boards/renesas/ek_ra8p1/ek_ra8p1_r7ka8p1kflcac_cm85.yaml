@@ -14,4 +14,6 @@ supported:
   - spi
   - sdhc
   - netif:eth
+  - i2s
+  - pwm
 vendor: renesas
