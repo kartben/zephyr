@@ -163,11 +163,59 @@ or copyright properties (SPDX 3.0).
    Copyright extraction uses heuristics that may not capture complete notice text, so
    ``FileCopyrightText`` content is best-effort. This aligns with SPDX specification recommendations.
 
+Binary blobs
+------------
+
+:ref:`Binary blobs <bin-blobs>` a module contributes to the image are recorded alongside its
+sources. A blob is picked up however the build consumes it:
+
+- linked as a prebuilt library, whether through an imported CMake target, an ``-lNAME``/``-L``
+  pair, or an ``-l:FILENAME`` flag naming the archive verbatim;
+
+- converted into a C array by ``generate_inc_file_for_target()``, which one of the module's sources
+  then includes, the way the Wi-Fi firmware images are;
+
+- embedded by an assembler ``.incbin`` directive whose path the build passes down as a compile
+  definition.
+
+In each case what the SBOM records is the blob itself, as fetched by :ref:`west blobs
+<west-blobs>` into the module's :file:`zephyr/blobs/` directory, and never the intermediate file
+the build derived from it. The blob belongs to the package of the module that provides it, and is
+related to the artifact it ends up in: the library that embeds it where the build says which one,
+the final image otherwise.
+
+Blobs also carry the metadata their module declares for them in :file:`zephyr/module.yml`: the
+version and download URL as a file comment, the description as the SPDX 3.0 element description,
+and the ``sha256``, which is checked against the file on disk so that a blob that does not match
+what its module declares is reported.
+
+Since a binary cannot carry ``SPDX-License-Identifier`` and ``SPDX-FileCopyrightText`` comments of
+its own, its license and copyright are the ones the module's :file:`REUSE.toml` annotates it with,
+typically in a single entry covering every blob the module ships:
+
+.. code-block:: toml
+
+   version = 1
+
+   [[annotations]]
+   path = "zephyr/blobs/**"
+   SPDX-License-Identifier = "LicenseRef-Vendor-Binary-License"
+   SPDX-FileCopyrightText = "Copyright (c) 2026 Vendor Inc."
+
+A blob whose module carries no matching annotation is still listed, with no license information
+attached to it.
+
+.. note::
+   A blob a module feeds to a hand-written ``add_custom_command()`` rather than to one of the
+   ``generate_inc_*`` helpers is not detected: nothing then declares it anywhere the CMake
+   file-based API reports, and the SBOM has no way to know the build consumed it.
+
 Relationships
 -------------
 
 SPDX relationships are created to indicate dependencies between CMake build targets, build targets
-that are linked together, and source files that are compiled to generate the built library files.
+that are linked together, and the files that are compiled or embedded to generate the built library
+files.
 
 The two specification families express build provenance differently:
 

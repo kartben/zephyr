@@ -27,4 +27,16 @@ int sbom_used_module_answer(void);
  */
 int sbom_used_module_from_reuse_toml(void);
 
+/**
+ * @brief Total size of the firmware blobs this module embeds.
+ *
+ * src/firmware.c embeds two of the module's binary blobs: one rendered as a C
+ * array by generate_inc_file_for_target(), one pulled in by an .incbin
+ * directive naming a compile definition. Neither is on the link line, so this
+ * is what proves 'west spdx' finds blobs a build merely embeds.
+ *
+ * @return The combined size, in bytes, of both embedded blobs.
+ */
+int sbom_used_module_firmware_size(void);
+
 #endif /* SBOM_USED_MODULE_ANSWER_H_ */

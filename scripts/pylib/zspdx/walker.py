@@ -65,6 +65,15 @@ COMMON_GIT_URL_REGEX = (
     r'(?P<namespace>[\w,\-,\_\/]+)\/(?P<package>[\w,\-,\_]+)(.git){0,1}((\/){0,1})$'
 )
 
+# Directory a module's binary blobs are fetched into, relative to the module root
+# (see the "Binary Blobs" section of the modules documentation).
+BLOB_SUBDIR = "zephyr/blobs/"
+
+
+def mentions_blob_subdir(text):
+    """True if ``text`` mentions a module's blobs directory, whatever the separator."""
+    return BLOB_SUBDIR in text.replace("\\", "/")
+
 
 def get_tool_version(tool_path):
     """Get a tool's version by running it with ``--version``.
@@ -138,6 +147,7 @@ class Walker:
         self.component_app = None
         self.component_zephyr = None
         self.component_sdk = None
+        self.component_image = None  # build target component of the final image
         self.component_build_targets = {}  # target_name -> SBOMComponent
         self.component_zephyr_modules = {}  # module_name -> SBOMComponent
         self.component_modules_deps = {}  # module_name -> SBOMComponent
@@ -156,6 +166,14 @@ class Walker:
         # blob's absolute path; used to enrich matching Files with the blob's
         # provenance metadata (url, version, sha256, ...)
         self.module_blobs = {}
+
+        # (build file path, blob path) pairs already recorded, so that a blob
+        # consumed by several of a target's build steps is only related once
+        self.recorded_blobs = set()
+
+        # module blobs named by a compile definition, recorded against the final
+        # image once every target has been walked
+        self.defined_blobs = set()
 
         # queue of pending relationship data to create, process and assign
         # Format: (from_type, from_identifier, to_type, to_identifier, relationship_type)
@@ -779,13 +797,14 @@ class Walker:
 
         # assuming just one configuration; consider whether this is incorrect
         cfg_targets = self.cm.configurations[0].config_targets
+        targets_by_name = {ct.name: ct for ct in cfg_targets}
         for cfg_target in cfg_targets:
             # Skip CMake UTILITY targets (menuconfig, ram_report, run/flash/debug,
             # code-generation helpers, ...). These are phony build-system convenience
             # targets, not software components: they produce no build artifacts and
-            # only add noise to the SBOM. Generated sources that end up in the
-            # firmware are still captured via the artifact-producing targets that
-            # compile them, so nothing of value is lost by dropping them.
+            # only add noise to the SBOM. Files a code-generation helper turns into
+            # firmware content are still recorded, through the artifact-producing
+            # target that depends on the helper (see collect_generated_blobs).
             if cfg_target.target.type == TargetType.UTILITY:
                 _logger.debug(f"  - skipping UTILITY target {cfg_target.name}")
                 continue
@@ -801,6 +820,7 @@ class Walker:
                     component.purpose = ComponentPurpose.APPLICATION
                     # the build document's primary subject is the final image
                     self.doc_build.add_described_component(component)
+                    self.component_image = component
                 else:
                     component.purpose = ComponentPurpose.LIBRARY
 
@@ -810,11 +830,15 @@ class Walker:
                 if bf:
                     self.collect_pending_source_files(cfg_target, component, bf)
                     self.collect_linked_libraries(cfg_target, component, bf)
+                    self.collect_generated_blobs(targets_by_name, cfg_target, component, bf)
+                    self.collect_defined_blobs(cfg_target)
             else:
                 _logger.debug(f"  - target {cfg_target.name} has no build artifacts")
 
             # get its target dependencies
             self.collect_target_dependencies(cfg_targets, cfg_target, component)
+
+        self.record_defined_blobs()
 
     # capture the per-target metadata the SPDX 3.0 Build profile needs to attribute a compiler/
     # archiver to each artifact: target type, compiled languages and per-language compile flags
@@ -1047,6 +1071,80 @@ class Walker:
             _logger.debug(f"    - add pending linked library {lib_abspath}")
             self.pending_sources.append((lib_abspath, component))
             self.pending_relationships.append(("file", bf.path, "file", lib_abspath, "STATIC_LINK"))
+
+    # collect the module blobs a code-generation step turns into firmware content
+    # for this target, e.g. the blobs generate_inc_file_for_target() renders as a
+    # C array to be #included by one of the target's sources. The helper target
+    # running the step lists the file it converts among its own sources, which is
+    # where they are found: a custom command's DEPENDS are not reported by the
+    # CMake file-based API, a target's sources are.
+    # call with:
+    #   1) all ConfigTargets from the CodeModel, keyed by target name
+    #   2) this particular ConfigTarget
+    #   3) Component for that target
+    #   4) build File for that target
+    def collect_generated_blobs(self, targets_by_name, cfg_target, component, bf):
+        for dep in cfg_target.target.dependencies:
+            dep_target = targets_by_name.get(dep.id.split(":")[0])
+            # anything else is a target of its own, walked in its own right
+            if not dep_target or dep_target.target.type != TargetType.UTILITY:
+                continue
+
+            for src in dep_target.target.sources:
+                # the helper's other sources are the stamp files that stand in
+                # for the code-generation step itself
+                if src.is_generated:
+                    continue
+                src_abspath = src.path
+                if not os.path.isabs(src_abspath):
+                    src_abspath = os.path.join(self.cm.paths_source, src_abspath)
+                src_abspath = os.path.normpath(src_abspath)
+                if src_abspath in self.module_blobs:
+                    _logger.debug(f"    - add pending embedded blob {src_abspath}")
+                    self.add_pending_blob(component, bf, src_abspath, "GENERATED_FROM")
+
+    # collect the module blobs this target's sources embed by naming them in a
+    # compile definition, the way the AIROC Wi-Fi driver passes its firmware
+    # images to an assembler .incbin directive
+    # call with:
+    #   1) ConfigTarget
+    def collect_defined_blobs(self, cfg_target):
+        for cg in cfg_target.target.compile_groups:
+            for define in cg.defines:
+                value = define.define.partition("=")[2].strip('"')
+                if not value or not mentions_blob_subdir(value):
+                    continue
+                blob_abspath = os.path.normpath(value)
+                if blob_abspath in self.module_blobs:
+                    _logger.debug(f"    - found blob {blob_abspath} in a compile definition")
+                    self.defined_blobs.add(blob_abspath)
+
+    # record the blobs named by compile definitions, once every target has been
+    # walked. Modules set these definitions globally, so which target compiled
+    # the .incbin that pulls the blob in is not known; what is known is that the
+    # blob ends up in the image, which is what the image is related to.
+    def record_defined_blobs(self):
+        if not self.defined_blobs or not self.component_image:
+            return
+        bf = self.component_image.target_build_file
+        if not bf:
+            return
+        for blob_abspath in sorted(self.defined_blobs):
+            _logger.debug(f"  - add pending blob {blob_abspath} embedded in the image")
+            self.add_pending_blob(self.component_image, bf, blob_abspath, "GENERATED_FROM")
+
+    # add a module blob to the pending sources queue and relate the target's build
+    # file to it, skipping the pairs already recorded (a blob is regularly
+    # consumed by several steps of the same target)
+    def add_pending_blob(self, component, bf, blob_abspath, relationship):
+        if (bf.path, blob_abspath) in self.recorded_blobs:
+            return
+        if not os.path.isfile(blob_abspath):
+            _logger.debug(f"    - blob {blob_abspath} not found after build; skipping")
+            return
+        self.recorded_blobs.add((bf.path, blob_abspath))
+        self.pending_sources.append((blob_abspath, component))
+        self.pending_relationships.append(("file", bf.path, "file", blob_abspath, relationship))
 
     # collect relationships for dependencies of this target Component
     # call with:
