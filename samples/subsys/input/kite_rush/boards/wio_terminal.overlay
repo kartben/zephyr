@@ -1,0 +1,54 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
+/* The top buttons labeled A and B act as on a game pad, C as the action key */
+&user_button_0 {
+	zephyr,code = <INPUT_BTN_A>;
+};
+
+&user_button_1 {
+	zephyr,code = <INPUT_BTN_B>;
+};
+
+&user_button_2 {
+	zephyr,code = <INPUT_BTN_START>;
+};
+
+/* Feed the display with DMA, so that the CPU draws while a strip is sent */
+&sercom7 {
+	dmas = <&dmac 0 19>, <&dmac 1 18>;
+	dma-names = "tx", "rx";
+};
+
+/*
+ * Run the display at 60 MHz (GCLK0 / 2), as Seeed's own LCD library does.
+ * This exceeds the SAMD51 data sheet SERCOM figures but halves the time a
+ * frame spends on the link.
+ */
+&ili9341 {
+	mipi-max-frequency = <60000000>;
+};
+
+/* The last 16 KiB of flash keep the high scores */
+&code_partition {
+	reg = <0x4000 DT_SIZE_K(512 - 16 - 16)>;
+};
+
+&flash0 {
+	partitions {
+		storage_partition: partition@7c000 {
+			compatible = "zephyr,mapped-partition";
+			label = "storage";
+			reg = <0x7c000 DT_SIZE_K(16)>;
+		};
+	};
+};
+
+/* Receiver on the 40-pin header: pin 8 (TXD, PB26) and pin 10 (RXD, PB27) */
+crsf_uart: &sercom2 {};
+
+#include "crsf_receiver.dtsi"

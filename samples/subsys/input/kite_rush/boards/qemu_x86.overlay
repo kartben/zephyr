@@ -1,0 +1,13 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* COM2 hosts the CRSF receiver instead of the Bluetooth HCI */
+&bt_hci_uart {
+	status = "disabled";
+};
+
+crsf_uart: &uart1 {};
+
+#include "crsf_receiver.dtsi"
