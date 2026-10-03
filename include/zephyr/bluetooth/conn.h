@@ -15,7 +15,7 @@
  * @brief Connection management
  * @defgroup bt_conn Connection management
  * @since 1.0
- * @version 1.0.0
+ * @version 1.0.1
  * @ingroup bluetooth
  * @{
  */
@@ -1781,7 +1781,7 @@ int bt_conn_le_set_default_phy(uint8_t pref_tx_phy, uint8_t pref_rx_phy);
  *   - @ref BT_HCI_ERR_REMOTE_LOW_RESOURCES
  *   - @ref BT_HCI_ERR_REMOTE_POWER_OFF
  *   - @ref BT_HCI_ERR_UNSUPP_REMOTE_FEATURE
- *   - @ref BT_HCI_ERR_PAIRING_NOT_SUPPORTED
+ *   - @ref BT_HCI_ERR_PAIRING_NOT_SUPPORTED (BR/EDR connections only)
  *   - @ref BT_HCI_ERR_UNACCEPT_CONN_PARAM
  *
  *  @param conn Connection to disconnect.
@@ -2024,6 +2024,9 @@ int bt_conn_create_auto_stop(void);
  *
  *  @return 0 on success or negative error
  *  @return -EINVAL @p conn is not a valid @ref BT_CONN_TYPE_LE or @ref BT_CONN_TYPE_BR connection.
+ *  @return -EALREADY A Security Request is already in flight (one sent by the
+ *                    peripheral has not yet been answered). It is left as-is and
+ *                    the security level it carries is not changed.
  */
 int bt_conn_set_security(struct bt_conn *conn, bt_security_t sec);
 
@@ -2089,39 +2092,50 @@ enum bt_conn_le_cs_procedure_enable_state {
 
 /** CS Test Tone Antenna Config Selection.
  *
+ *  See Bluetooth Core Specification, Vol 6, Part A, Section 5.3
+ *  and Bluetooth Core Specification, Vol 6, Part H, Section 4.7
+ *
  *  These enum values are indices in the following table, where N_AP is the maximum
  *  number of antenna paths (in the range [1, 4]).
  *
- * +--------------+-------------+-------------------+-------------------+--------+
- * | Config Index | Total Paths | Dev A: # Antennas | Dev B: # Antennas | Config |
- * +--------------+-------------+-------------------+-------------------+--------+
- * |            0 |           1 |                 1 |                 1 | 1:1    |
- * |            1 |           2 |                 2 |                 1 | N_AP:1 |
- * |            2 |           3 |                 3 |                 1 | N_AP:1 |
- * |            3 |           4 |                 4 |                 1 | N_AP:1 |
- * |            4 |           2 |                 1 |                 2 | 1:N_AP |
- * |            5 |           3 |                 1 |                 3 | 1:N_AP |
- * |            6 |           4 |                 1 |                 4 | 1:N_AP |
- * |            7 |           4 |                 2 |                 2 | 2:2    |
- * +--------------+-------------+-------------------+-------------------+--------+
+ * +--------------+-------------+-----------------------+-----------------------+--------+
+ * | Config Index | Total Paths | Initiator: # Antennas | Reflector: # Antennas | Config |
+ * +--------------+-------------+-----------------------+-----------------------+--------+
+ * |            0 |           1 |                     1 |                     1 | 1:1    |
+ * |            1 |           2 |                     2 |                     1 | N_AP:1 |
+ * |            2 |           3 |                     3 |                     1 | N_AP:1 |
+ * |            3 |           4 |                     4 |                     1 | N_AP:1 |
+ * |            4 |           2 |                     1 |                     2 | 1:N_AP |
+ * |            5 |           3 |                     1 |                     3 | 1:N_AP |
+ * |            6 |           4 |                     1 |                     4 | 1:N_AP |
+ * |            7 |           4 |                     2 |                     2 | 2:2    |
+ * +--------------+-------------+-----------------------+-----------------------+--------+
  *
  *  There are therefore four groups of possible antenna configurations:
  *
- *  - 1:1 configuration, where both A and B support 1 antenna each
- *  - 1:N_AP configuration, where A supports 1 antenna, B supports N_AP antennas, and
- *    N_AP is a value in the range [2, 4]
- *  - N_AP:1 configuration, where A supports N_AP antennas, B supports 1 antenna, and
- *    N_AP is a value in the range [2, 4]
- *  - 2:2 configuration, where both A and B support 2 antennas and N_AP = 4
+ *  - 1:1 configuration, where both Initiator and Reflector support 1 antenna each
+ *  - 1:N_AP configuration, where Initiator supports 1 antenna, Reflector supports
+ *    N_AP antennas, and N_AP is a value in the range [2, 4]
+ *  - N_AP:1 configuration, where Initiator supports N_AP antennas, Reflector supports
+ *    1 antenna, and N_AP is a value in the range [2, 4]
+ *  - 2:2 configuration, where both Initiator and Reflector support 2 antennas and N_AP = 4
  */
 enum bt_conn_le_cs_tone_antenna_config_selection {
+	/** Initiator (dev A): 1 antenna, Reflector (dev B): 1 antenna */
 	BT_LE_CS_TONE_ANTENNA_CONFIGURATION_A1_B1 = BT_HCI_OP_LE_CS_ACI_0,
+	/** Initiator (dev A): 2 antennas, Reflector (dev B): 1 antenna */
 	BT_LE_CS_TONE_ANTENNA_CONFIGURATION_A2_B1 = BT_HCI_OP_LE_CS_ACI_1,
+	/** Initiator (dev A): 3 antennas, Reflector (dev B): 1 antenna */
 	BT_LE_CS_TONE_ANTENNA_CONFIGURATION_A3_B1 = BT_HCI_OP_LE_CS_ACI_2,
+	/** Initiator (dev A): 4 antennas, Reflector (dev B): 1 antenna */
 	BT_LE_CS_TONE_ANTENNA_CONFIGURATION_A4_B1 = BT_HCI_OP_LE_CS_ACI_3,
+	/** Initiator (dev A): 1 antenna, Reflector (dev B): 2 antennas */
 	BT_LE_CS_TONE_ANTENNA_CONFIGURATION_A1_B2 = BT_HCI_OP_LE_CS_ACI_4,
+	/** Initiator (dev A): 1 antenna, Reflector (dev B): 3 antennas */
 	BT_LE_CS_TONE_ANTENNA_CONFIGURATION_A1_B3 = BT_HCI_OP_LE_CS_ACI_5,
+	/** Initiator (dev A): 1 antenna, Reflector (dev B): 4 antennas */
 	BT_LE_CS_TONE_ANTENNA_CONFIGURATION_A1_B4 = BT_HCI_OP_LE_CS_ACI_6,
+	/** Initiator (dev A): 2 antennas, Reflector (dev B): 2 antennas */
 	BT_LE_CS_TONE_ANTENNA_CONFIGURATION_A2_B2 = BT_HCI_OP_LE_CS_ACI_7,
 };
 
@@ -3169,6 +3183,21 @@ struct bt_conn_auth_info_cb {
 	 *  @param peer Remote address.
 	 */
 	void (*bond_deleted)(uint8_t id, const bt_addr_le_t *peer);
+
+	/** @brief The peer's support for address resolution has been read.
+	 *
+	 *  This callback notifies the application that the automatic read of
+	 *  a bonded peer's Central Address Resolution characteristic, enabled
+	 *  with @kconfig{CONFIG_BT_GATT_AUTO_READ_CENTRAL_ADDR_RES}, has
+	 *  finished. The answer is also available from
+	 *  bt_le_bond_addr_res_support(), and remains unknown when the read
+	 *  failed.
+	 *
+	 *  @param conn    Connection the characteristic was read on.
+	 *  @param support The peer's support for address resolution.
+	 */
+	void (*addr_res_support_read)(struct bt_conn *conn,
+				      enum bt_le_addr_res_support support);
 
 #if defined(CONFIG_BT_CLASSIC) || defined(__DOXYGEN__)
 	/** @brief Notify that bond of classic has been deleted.

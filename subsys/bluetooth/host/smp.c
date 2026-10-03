@@ -72,7 +72,7 @@ LOG_MODULE_REGISTER(bt_smp);
 #define ID_DIST 0
 #endif
 
-#if defined(CONFIG_BT_CLASSIC)
+#if defined(CONFIG_BT_SMP_DERIVE_LK)
 #define LINK_DIST BT_SMP_DIST_LINK_KEY
 #else
 #define LINK_DIST 0
@@ -773,6 +773,10 @@ static bool ltk_derive_link_key_allowed(struct bt_smp *smp)
 	struct bt_keys_link_key *link_key;
 	struct bt_keys *keys;
 
+	if (!IS_ENABLED(CONFIG_BT_SMP_DERIVE_LK)) {
+		return false;
+	}
+
 	if (!smp->chan.chan.conn) {
 		return false;
 	}
@@ -1270,6 +1274,10 @@ static bool smp_br_pairing_allowed(struct bt_smp_br *smp)
 	struct bt_conn *conn;
 	struct bt_keys_link_key *key;
 	struct bt_keys *le_keys;
+
+	if (!IS_ENABLED(CONFIG_BT_SMP_DERIVE_LTK)) {
+		return false;
+	}
 
 	if (!smp->chan.chan.conn) {
 		return false;
@@ -1825,7 +1833,7 @@ int bt_smp_br_send_pairing_req(struct bt_conn *conn)
 
 	/* check if we are allowed to start SMP over BR/EDR */
 	if (!smp_br_pairing_allowed(smp)) {
-		return 0;
+		return -ENOTSUP;
 	}
 
 	/* Channel not yet connected, will start pairing once connected */
@@ -2865,10 +2873,18 @@ static uint8_t smp_central_ident(struct bt_smp *smp, struct net_buf *buf)
 
 static int smp_init(struct bt_smp *smp)
 {
+	/* SMP_FLAG_SEC_REQ is claimed before this runs and has to stay set for
+	 * the whole procedure, so the flags are cleared without ever dropping
+	 * it.
+	 */
+	(void)atomic_and(smp->flags, BIT(SMP_FLAG_SEC_REQ));
+
 	/* Initialize SMP context excluding L2CAP channel context and anything
 	 * else declared after.
 	 */
-	(void)memset(smp, 0, offsetof(struct bt_smp, chan));
+	(void)memset(smp, 0, offsetof(struct bt_smp, flags));
+	(void)memset(&smp->method, 0,
+		     offsetof(struct bt_smp, chan) - offsetof(struct bt_smp, method));
 
 	/* Generate local random number */
 	if (bt_rand(smp->prnd, 16)) {
@@ -3138,28 +3154,35 @@ static int smp_send_security_req(struct bt_conn *conn)
 		}
 	}
 
+	if (atomic_test_and_set_bit(smp->flags, SMP_FLAG_SEC_REQ)) {
+		return -EALREADY;
+	}
+
 	if (smp_init(smp) != 0) {
+		atomic_clear_bit(smp->flags, SMP_FLAG_SEC_REQ);
 		return -ENOBUFS;
 	}
 
 	req_buf = smp_create_pdu(smp, BT_SMP_CMD_SECURITY_REQUEST,
 				 sizeof(*req));
 	if (!req_buf) {
+		atomic_clear_bit(smp->flags, SMP_FLAG_SEC_REQ);
 		return -ENOBUFS;
 	}
 
 	req = net_buf_add(req_buf, sizeof(*req));
 	req->auth_req = get_auth(smp, BT_SMP_AUTH_DEFAULT);
 
+	atomic_set_bit(smp->allowed_cmds, BT_SMP_CMD_PAIRING_REQ);
+
 	/* SMP timer is not restarted for SecRequest so don't use smp_send */
 	err = bt_l2cap_send_pdu(&smp->chan, req_buf, NULL, NULL);
 	if (err) {
 		net_buf_unref(req_buf);
+		atomic_clear_bit(smp->flags, SMP_FLAG_SEC_REQ);
+		atomic_clear_bit(smp->allowed_cmds, BT_SMP_CMD_PAIRING_REQ);
 		return err;
 	}
-
-	atomic_set_bit(smp->flags, SMP_FLAG_SEC_REQ);
-	atomic_set_bit(smp->allowed_cmds, BT_SMP_CMD_PAIRING_REQ);
 
 	return 0;
 }

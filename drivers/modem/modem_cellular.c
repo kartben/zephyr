@@ -24,6 +24,7 @@
 #include <zephyr/pm/device.h>
 #include <zephyr/pm/device_runtime.h>
 #include <zephyr/sys/atomic.h>
+#include <zephyr/sys/__assert.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(modem_cellular, CONFIG_MODEM_LOG_LEVEL);
@@ -44,6 +45,8 @@ LOG_MODULE_REGISTER(modem_cellular, CONFIG_MODEM_LOG_LEVEL);
 #define CESQ_RSRP_TO_DB(v) (-140 + (v))
 #define CESQ_RSRQ_TO_DB(v) (-20 + ((v) / 2))
 
+BUILD_ASSERT(sizeof(enum modem_cellular_event) == 1, "Event enum expanded");
+
 #ifdef CONFIG_MODEM_CELLULAR_APN
 BUILD_ASSERT(sizeof(CONFIG_MODEM_CELLULAR_APN) - 1 < MODEM_CELLULAR_DATA_APN_LEN,
 			"CONFIG_MODEM_CELLULAR_APN too long for data->apn");
@@ -54,6 +57,9 @@ static void modem_cellular_enter_state(struct modem_cellular_data *data,
 
 static void modem_cellular_delegate_event(struct modem_cellular_data *data,
 					  enum modem_cellular_event evt);
+
+static void modem_cellular_delegate_event_ptr(struct modem_cellular_data *data,
+					      enum modem_cellular_event evt, const void *ptr);
 
 static void modem_cellular_event_handler(struct modem_cellular_data *data,
 					 enum modem_cellular_event evt);
@@ -404,14 +410,17 @@ static void modem_cellular_dlci2_pipe_handler(struct modem_pipe *pipe,
 
 void modem_cellular_chat_callback_handler(struct modem_chat *chat,
 					  enum modem_chat_script_result result,
+					  const struct modem_chat_script_completion_info *info,
 					  void *user_data)
 {
 	struct modem_cellular_data *data = (struct modem_cellular_data *)user_data;
+	const struct modem_chat_script *script = info->script;
 
 	if (result == MODEM_CHAT_SCRIPT_RESULT_SUCCESS) {
-		modem_cellular_delegate_event(data, MODEM_CELLULAR_EVENT_SCRIPT_SUCCESS);
+		modem_cellular_delegate_event_ptr(data, MODEM_CELLULAR_EVENT_SCRIPT_SUCCESS,
+						  script);
 	} else {
-		modem_cellular_delegate_event(data, MODEM_CELLULAR_EVENT_SCRIPT_FAILED);
+		modem_cellular_delegate_event_ptr(data, MODEM_CELLULAR_EVENT_SCRIPT_FAILED, script);
 	}
 }
 
@@ -433,7 +442,52 @@ void modem_cellular_chat_on_imei(struct modem_chat *chat, char **argv, uint16_t 
 		return;
 	}
 
+	/* Any modem using this callback is making the assumption that IMEI == SN,
+	 * as the documented response to 'AT+CGSN' is the SN, not the IMEI.
+	 */
 	strncpy(data->imei, argv[1], sizeof(data->imei) - 1);
+	modem_cellular_emit_modem_info(data, CELLULAR_MODEM_INFO_IMEI);
+	strncpy(data->sn, argv[1], sizeof(data->sn) - 1);
+	modem_cellular_emit_modem_info(data, CELLULAR_MODEM_INFO_SERIAL_NUMBER);
+}
+
+void modem_cellular_chat_on_cgsn_sn(struct modem_chat *chat, char **argv, uint16_t argc,
+				    void *user_data)
+{
+	struct modem_cellular_data *data = (struct modem_cellular_data *)user_data;
+
+	if (argc != 2) {
+		return;
+	}
+
+	strncpy(data->sn, argv[1], sizeof(data->sn) - 1);
+	modem_cellular_emit_modem_info(data, CELLULAR_MODEM_INFO_SERIAL_NUMBER);
+}
+
+void modem_cellular_chat_on_cgsn_imei(struct modem_chat *chat, char **argv, uint16_t argc,
+				      void *user_data)
+{
+	struct modem_cellular_data *data = (struct modem_cellular_data *)user_data;
+	const char *rsp;
+	size_t rsp_len;
+
+	if (argc != 2) {
+		return;
+	}
+
+	/* 3GPP specifies 15 digit string type in decimal format */
+	rsp = argv[1];
+	rsp_len = strlen(rsp);
+	if ((rsp_len != 17) || (rsp[0] != '"') || (rsp[16] != '"')) {
+		LOG_WRN("Invalid CGSN respnse: %s", rsp);
+		return;
+	}
+
+	/* IMEI from AT+CGSN is string quoted.
+	 * 3GPP specifies the length as exactly 15 digits.
+	 * Start from offset 1 to skip first quote character.
+	 */
+	memcpy(data->imei, rsp + 1, 15);
 	modem_cellular_emit_modem_info(data, CELLULAR_MODEM_INFO_IMEI);
 }
 
@@ -529,12 +583,14 @@ void modem_cellular_chat_on_imsi(struct modem_chat *chat, char **argv, uint16_t 
 
 static bool modem_cellular_is_registered(struct modem_cellular_data *data)
 {
-	return (data->registration_status_gsm == CELLULAR_REGISTRATION_REGISTERED_HOME)
-		|| (data->registration_status_gsm == CELLULAR_REGISTRATION_REGISTERED_ROAMING)
-		|| (data->registration_status_gprs == CELLULAR_REGISTRATION_REGISTERED_HOME)
-		|| (data->registration_status_gprs == CELLULAR_REGISTRATION_REGISTERED_ROAMING)
-		|| (data->registration_status_lte == CELLULAR_REGISTRATION_REGISTERED_HOME)
-		|| (data->registration_status_lte == CELLULAR_REGISTRATION_REGISTERED_ROAMING);
+	return (data->registration_status_gsm == CELLULAR_REGISTRATION_REGISTERED_HOME) ||
+		(data->registration_status_gsm == CELLULAR_REGISTRATION_REGISTERED_ROAMING) ||
+		(data->registration_status_gprs == CELLULAR_REGISTRATION_REGISTERED_HOME) ||
+		(data->registration_status_gprs == CELLULAR_REGISTRATION_REGISTERED_ROAMING) ||
+		(data->registration_status_lte == CELLULAR_REGISTRATION_REGISTERED_HOME) ||
+		(data->registration_status_lte == CELLULAR_REGISTRATION_REGISTERED_ROAMING) ||
+		(data->registration_status_5g == CELLULAR_REGISTRATION_REGISTERED_HOME) ||
+		(data->registration_status_5g == CELLULAR_REGISTRATION_REGISTERED_ROAMING);
 }
 
 static void modem_cellular_clear_registration_status(struct modem_cellular_data *data)
@@ -542,6 +598,7 @@ static void modem_cellular_clear_registration_status(struct modem_cellular_data 
 	data->registration_status_gsm = CELLULAR_REGISTRATION_NOT_REGISTERED;
 	data->registration_status_gprs = CELLULAR_REGISTRATION_NOT_REGISTERED;
 	data->registration_status_lte = CELLULAR_REGISTRATION_NOT_REGISTERED;
+	data->registration_status_5g = CELLULAR_REGISTRATION_NOT_REGISTERED;
 }
 
 #if defined(CONFIG_MODEM_CELLULAR_STATS)
@@ -593,6 +650,7 @@ void modem_cellular_chat_on_cxreg(struct modem_chat *chat, char **argv, uint16_t
 	 *   +CREG: <stat>[,<lac>,<ci>[,<AcT>]]
 	 *   +CGREG:<stat>[,<lac>,<ci>[,<AcT>,<rac>]]
 	 *   +CEREG: <stat>[,[<tac>],[<ci>],[<AcT>]]
+	 *   +C5GREG: <stat>[,[<tac>],[<ci>],[<AcT>],[<Allowed_NSSAI_length>],[<Allowed_NSSAI>]]
 	 */
 	num_args = argc - base;
 	registration_status = atoi(argv[base]);
@@ -610,6 +668,9 @@ void modem_cellular_chat_on_cxreg(struct modem_chat *chat, char **argv, uint16_t
 	} else if (strcmp(argv[0], "+CGREG: ") == 0) {
 		registration_prev = data->registration_status_gprs;
 		data->registration_status_gprs = registration_status;
+	} else if (strcmp(argv[0], "+C5GREG: ") == 0) {
+		registration_prev = data->registration_status_5g;
+		data->registration_status_5g = registration_status;
 	} else { /* CEREG */
 		registration_prev = data->registration_status_lte;
 		data->registration_status_lte = registration_status;
@@ -762,14 +823,20 @@ static void modem_cellular_build_apn_script(struct modem_cellular_data *data)
 	const char *apn_value = data->apn;
 
 	if (config->use_default_apn) {
-		/* Omit the APN name AT+CGDCONT=1,"IP","" */
+		/* Omit the APN name AT+CGDCONT=<cid>,"IP","" */
 		apn_value = "";
 	}
-	append_apn_cmd(data, &steps, "AT+CGDCONT=1,\"IP\",\"%s\"", apn_value);
+	append_apn_cmd(data, &steps,
+		       "AT+CGDCONT=" STRINGIFY(CONFIG_MODEM_CELLULAR_PDP_CONTEXT_ID)
+		       ",\"IP\",\"%s\"",
+		       apn_value);
 
 	/* Vendor‑specific extras */
 #if DT_HAS_COMPAT_STATUS_OKAY(swir_hl7800)
-	append_apn_cmd(data, &steps, "AT+KCNXCFG=1,\"GPRS\",\"%s\",,,\"IPV4\"", apn_value);
+	append_apn_cmd(data, &steps,
+		       "AT+KCNXCFG=" STRINGIFY(CONFIG_MODEM_CELLULAR_PDP_CONTEXT_ID)
+		       ",\"GPRS\",\"%s\",,,\"IPV4\"",
+		       apn_value);
 #endif
 
 	/* Glue the array into the script object */
@@ -811,20 +878,32 @@ static void modem_cellular_event_dispatch_handler(struct k_work *item)
 {
 	struct modem_cellular_data *data =
 		CONTAINER_OF(item, struct modem_cellular_data, event_dispatch_work);
+	struct modem_cellular_event_pkg pkg;
 
-	enum modem_cellular_event event;
-	const size_t len = sizeof(event);
-
-	while (k_pipe_read(&data->event_pipe, (uint8_t *)&event, len, K_NO_WAIT) == len) {
-		modem_cellular_event_handler(data, (enum modem_cellular_event)event);
+	while (k_msgq_get(&data->event_queue, &pkg, K_NO_WAIT) == 0) {
+		data->event_ptr = pkg.ptr;
+		modem_cellular_event_handler(data, pkg.event);
 	}
+}
+
+static void modem_cellular_delegate_event_ptr(struct modem_cellular_data *data,
+					      enum modem_cellular_event evt, const void *ptr)
+{
+	struct modem_cellular_event_pkg pkg = {.event = evt, .ptr = ptr};
+	int ret;
+
+	ret = k_msgq_put(&data->event_queue, &pkg, K_NO_WAIT);
+	if (ret < 0) {
+		LOG_WRN("Event %d dropped", evt);
+		return;
+	}
+	k_work_submit(&data->event_dispatch_work);
 }
 
 static void modem_cellular_delegate_event(struct modem_cellular_data *data,
 					  enum modem_cellular_event evt)
 {
-	k_pipe_write(&data->event_pipe, (const uint8_t *)&evt, sizeof(evt), K_NO_WAIT);
-	k_work_submit(&data->event_dispatch_work);
+	return modem_cellular_delegate_event_ptr(data, evt, NULL);
 }
 
 static void modem_cellular_begin_power_off_pulse(struct modem_cellular_data *data)
@@ -1103,6 +1182,7 @@ static void modem_cellular_await_power_on_event_handler(struct modem_cellular_da
 	case MODEM_CELLULAR_EVENT_MODEM_READY:
 		/* disable the timer and fall through, as we are ready to proceed */
 		modem_cellular_stop_timer(data);
+		__fallthrough;
 	case MODEM_CELLULAR_EVENT_TIMEOUT:
 		if (config->vendor->scripts.set_baudrate != NULL) {
 			modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_SET_BAUDRATE);
@@ -1817,17 +1897,30 @@ static int modem_cellular_on_await_registered_state_enter(struct modem_cellular_
 }
 
 static void modem_cellular_await_registered_event_handler(struct modem_cellular_data *data,
-						  enum modem_cellular_event evt)
+							  enum modem_cellular_event evt)
 {
 	const struct modem_cellular_config *config = data->dev->config;
+	const struct modem_chat_script *script;
 
 	switch (evt) {
 	case MODEM_CELLULAR_EVENT_SCRIPT_SUCCESS:
+		script = data->event_ptr;
+		if (script != config->vendor->scripts.periodic) {
+			/* Non-periodic script result (e.g. from modem_cellular_get_signal) */
+			LOG_DBG("Ignoring non-periodic result (%s)", script ? script->name : "");
+			return;
+		}
 		modem_cellular_script_success(data);
 		modem_cellular_start_timer(data, MODEM_CELLULAR_PERIODIC_SCRIPT_TIMEOUT);
 		break;
 
 	case MODEM_CELLULAR_EVENT_SCRIPT_FAILED:
+		script = data->event_ptr;
+		if (script != config->vendor->scripts.periodic) {
+			/* Non-periodic script result (e.g. from modem_cellular_get_signal) */
+			LOG_DBG("Ignoring non-periodic result (%s)", script ? script->name : "");
+			return;
+		}
 		modem_cellular_script_failed(data);
 		if (modem_cellular_is_script_retry_exceeded(data)) {
 			modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_IDLE);
@@ -1871,6 +1964,12 @@ static void modem_cellular_await_registered_event_handler(struct modem_cellular_
 			modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_REGISTERED);
 		}
 		break;
+	case MODEM_CELLULAR_EVENT_PPP_DEAD:
+		if (net_if_is_admin_up(modem_ppp_get_iface(config->ppp))) {
+			modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_AWAIT_PPP_DEAD);
+			modem_cellular_start_timer(data, MODEM_CELLULAR_PERIODIC_SCRIPT_TIMEOUT);
+		}
+		break;
 	case MODEM_CELLULAR_EVENT_HANGUP:
 		modem_cellular_enter_state(data, MODEM_CELLULAR_STATE_AWAIT_PPP_DEAD);
 		modem_cellular_start_timer(data, MODEM_CELLULAR_PERIODIC_SCRIPT_TIMEOUT);
@@ -1907,10 +2006,17 @@ static void modem_cellular_registered_event_handler(struct modem_cellular_data *
 {
 	const struct modem_cellular_config *config = data->dev->config;
 	struct cellular_evt_modem_comms_check_result result;
+	const struct modem_chat_script *script;
 	int ret;
 
 	switch (evt) {
 	case MODEM_CELLULAR_EVENT_SCRIPT_SUCCESS:
+		script = data->event_ptr;
+		if (script != config->vendor->scripts.periodic) {
+			/* Non-periodic script result (e.g. from modem_cellular_get_signal) */
+			LOG_DBG("Ignoring non-periodic result (%s)", script ? script->name : "");
+			return;
+		}
 		modem_cellular_script_success(data);
 		modem_cellular_start_timer(data, MODEM_CELLULAR_PERIODIC_SCRIPT_TIMEOUT);
 		result.success = true;
@@ -1918,6 +2024,12 @@ static void modem_cellular_registered_event_handler(struct modem_cellular_data *
 		break;
 
 	case MODEM_CELLULAR_EVENT_SCRIPT_FAILED:
+		script = data->event_ptr;
+		if (script != config->vendor->scripts.periodic) {
+			/* Non-periodic script result (e.g. from modem_cellular_get_signal) */
+			LOG_DBG("Ignoring non-periodic result (%s)", script ? script->name : "");
+			return;
+		}
 		modem_cellular_script_failed(data);
 		if (modem_cellular_is_script_retry_exceeded(data)) {
 			net_if_carrier_off(modem_ppp_get_iface(config->ppp));
@@ -2017,6 +2129,7 @@ static void modem_cellular_await_ppp_dead_event_handler(struct modem_cellular_da
 	case MODEM_CELLULAR_EVENT_RING:
 		LOG_DBG("RING received!");
 		modem_pipe_open_async(data->uart_pipe);
+		break;
 	case MODEM_CELLULAR_EVENT_PPP_DEAD:
 		/* Wait for the channel to return to AT mode after PPP termination */
 		modem_cellular_start_timer(data, K_MSEC(config->vendor->reset_pulse_duration_ms));
@@ -2644,34 +2757,46 @@ static int modem_cellular_get_modem_info(const struct device *dev,
 					 enum cellular_modem_info_type type,
 					 char *info, size_t size)
 {
-	int ret = 0;
 	struct modem_cellular_data *data = (struct modem_cellular_data *)dev->data;
+	const char *info_str;
+
+	if (size <= 1) {
+		return -EINVAL;
+	}
 
 	switch (type) {
 	case CELLULAR_MODEM_INFO_IMEI:
-		strncpy(info, &data->imei[0], MIN(size, sizeof(data->imei)));
+		info_str = &data->imei[0];
 		break;
 	case CELLULAR_MODEM_INFO_SIM_IMSI:
-		strncpy(info, &data->imsi[0], MIN(size, sizeof(data->imsi)));
+		info_str = &data->imsi[0];
 		break;
 	case CELLULAR_MODEM_INFO_MANUFACTURER:
-		strncpy(info, &data->manufacturer[0], MIN(size, sizeof(data->manufacturer)));
+		info_str = &data->manufacturer[0];
 		break;
 	case CELLULAR_MODEM_INFO_FW_VERSION:
-		strncpy(info, &data->fw_version[0], MIN(size, sizeof(data->fw_version)));
+		info_str = &data->fw_version[0];
 		break;
 	case CELLULAR_MODEM_INFO_MODEL_ID:
-		strncpy(info, &data->model_id[0], MIN(size, sizeof(data->model_id)));
+		info_str = &data->model_id[0];
 		break;
 	case CELLULAR_MODEM_INFO_SIM_ICCID:
-		strncpy(info, &data->iccid[0], MIN(size, sizeof(data->iccid)));
+		info_str = &data->iccid[0];
+		break;
+	case CELLULAR_MODEM_INFO_SERIAL_NUMBER:
+		info_str = &data->sn[0];
 		break;
 	default:
-		ret = -ENODATA;
-		break;
+		return -ENODATA;
 	}
 
-	return ret;
+	/* All internal copies of modem info are NUL terminated.
+	 * Copy at most `size - 1` bytes of the info to the output.
+	 * Manually NUL terminate the output.
+	 */
+	strncpy(info, info_str, size - 1);
+	info[size - 1] = '\0';
+	return 0;
 }
 static int modem_cellular_get_registration_status(const struct device *dev,
 						  enum cellular_access_technology tech,
@@ -2680,10 +2805,6 @@ static int modem_cellular_get_registration_status(const struct device *dev,
 	int ret = 0;
 	struct modem_cellular_data *data = (struct modem_cellular_data *)dev->data;
 
-	/* Techs explicitly not handled as N/A to CREG, CGREG, CEREG:
-	 *   CELLULAR_ACCESS_TECHNOLOGY_NR_5G_CN
-	 *   CELLULAR_ACCESS_TECHNOLOGY_NG_RAN
-	 */
 	switch (tech) {
 	case CELLULAR_ACCESS_TECHNOLOGY_GSM:
 	case CELLULAR_ACCESS_TECHNOLOGY_GSM_COMPACT:
@@ -2704,6 +2825,11 @@ static int modem_cellular_get_registration_status(const struct device *dev,
 	case CELLULAR_ACCESS_TECHNOLOGY_E_UTRAN_WB_S1_SAT:
 	case CELLULAR_ACCESS_TECHNOLOGY_NG_RAN_SAT:
 		*status = data->registration_status_lte;
+		break;
+	case CELLULAR_ACCESS_TECHNOLOGY_E_UTRA_5G_CN:
+	case CELLULAR_ACCESS_TECHNOLOGY_NR_5G_CN:
+	case CELLULAR_ACCESS_TECHNOLOGY_NG_RAN:
+		*status = data->registration_status_5g;
 		break;
 	default:
 		ret = -ENODATA;
@@ -2986,7 +3112,8 @@ int modem_cellular_init(const struct device *dev)
 	k_mutex_init(&data->api_lock);
 	k_work_init_delayable(&data->timeout_work, modem_cellular_timeout_handler);
 	k_work_init(&data->event_dispatch_work, modem_cellular_event_dispatch_handler);
-	k_pipe_init(&data->event_pipe, data->event_buf, sizeof(data->event_buf));
+	k_msgq_init(&data->event_queue, (void *)data->event_buf, sizeof(data->event_buf[0]),
+		    ARRAY_SIZE(data->event_buf));
 
 	k_sem_init(&data->suspended_sem, 0, 1);
 

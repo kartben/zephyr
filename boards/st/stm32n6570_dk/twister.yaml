@@ -13,7 +13,9 @@ supported:
   - can
   - counter
   - crc
+  - crypto
   - dma
+  - dmic
   - i2c
   - gpio
   - memc

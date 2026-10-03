@@ -33,16 +33,22 @@ We are pleased to announce the release of Zephyr version 4.5.0.
 
 Major enhancements with this release include:
 
+**Infineon TriCore support**
+  Zephyr now supports the :zephyr:board-catalog:`Infineon TriCore architecture <#arch=tricore>`.
+
 **New driver classes**
 
   Zephyr 4.5 adds several new driver APIs, including:
 
   - :ref:`Clock Monitor <clock_monitor_api>` for runtime observation of clock frequency
+  - :ref:`LIN <lin>` for the Local Interconnect Network automotive serial bus
 
 **New subsystems**
 
   Zephyr 4.5 adds several new subsystem APIs, including:
 
+  - :ref:`Precision timing <precision_timing>` for shared checked time arithmetic, clock operations,
+    and PI control
   - :ref:`Video <video_api>` for controlling video drivers
 
 An overview of the changes required or recommended when migrating your application from Zephyr
@@ -148,6 +154,31 @@ Removed APIs and options
       * ``scobc_module1``
       * ``xiao_esp32c6``
 
+    * The following boards have been deprecated and renamed:
+
+      * ``adafruit_metro_rp2350/rp2350b/m33`` to ``adafruit_metro_rp2350/rp2350b/m33_0``
+      * ``motion_2350_pro/rp2350a/m33`` to ``motion_2350_pro/rp2350a/m33_0``
+      * ``motion_2350_pro/rp2350a/hazard3`` to ``motion_2350_pro/rp2350a/hazard3_0``
+      * ``beetle_rp2350/rp2350a/m33`` to ``beetle_rp2350/rp2350a/m33_0``
+      * ``beetle_rp2350/rp2350a/hazard3`` to ``beetle_rp2350/rp2350a/hazard3_0``
+      * ``pico2_spe/rp2350a/m33`` to ``pico2_spe/rp2350a/m33_0``
+      * ``pico_plus2/rp2350b/m33`` to ``pico_plus2/rp2350b/m33_0``
+      * ``pico_plus2/rp2350b/hazard3`` to ``pico_plus2/rp2350b/hazard3_0``
+      * ``rpi_pico2/rp2350a/m33`` to ``rpi_pico2/rp2350a/m33_0``
+      * ``rpi_pico2/rp2350a/m33/w`` to ``rpi_pico2/rp2350a/m33_0/w``
+      * ``rpi_pico2/rp2350a/m33/mcuboot`` to ``rpi_pico2/rp2350a/m33_0/mcuboot``
+      * ``rpi_pico2/rp2350a/m33/w/mcuboot`` to ``rpi_pico2/rp2350a/m33_0/w/mcuboot``
+      * ``rpi_pico2/rp2350a/hazard3`` to ``rpi_pico2/rp2350a/hazard3_0``
+      * ``xiao_rp2350/rp2350a/m33`` to ``xiao_rp2350/rp2350a/m33_0``
+      * ``xiao_rp2350/rp2350a/hazard3`` to ``xiao_rp2350/rp2350a/hazard3_0``
+      * ``rp2350_zero/rp2350a/m33`` to ``rp2350_zero/rp2350a/m33_0``
+      * ``rp2350_zero/rp2350a/hazard3`` to ``rp2350_zero/rp2350a/hazard3_0``
+      * ``rp2350b_core/rp2350b/m33`` to ``rp2350b_core/rp2350b/m33_0``
+      * ``rp2350b_core/rp2350b/hazard3`` to ``rp2350b_core/rp2350b/hazard3_0``
+      * ``w5500_evb_pico2/rp2350a/m33`` to ``w5500_evb_pico2/rp2350a/m33_0``
+      * ``w6100_evb_pico2/rp2350a/m33`` to ``w6100_evb_pico2/rp2350a/m33_0``
+      * ``w6300_evb_pico2/rp2350a/m33`` to ``w6300_evb_pico2/rp2350a/m33_0``
+
 * Build system
 
     * ``CONFIG_BUILD_NO_GAP_FILL``
@@ -185,6 +216,19 @@ Removed APIs and options
 
     * ``zephyr,memory-region-mpu``
 
+
+* Ethernet
+
+    * The NuMaker Ethernet driver with ``CONFIG_ETH_NUMAKER`` is superseded by
+      :kconfig:option:`CONFIG_ETH_NUMAKER_DWC_ETHER_1000`. See the migration guide.
+
+* Debug
+
+  * The experimental ``CONFIG_ASSERT_CUSTOM_HEADER`` option and its ``zephyr_custom_assert.h``
+    include hook have been removed without a deprecation period, per the experimental API policy.
+    Applications that need to customize assertion handling should override the weak zassert hooks
+    (``zassert_fail``/``zassert_vprint``/``zassert_post_action``) instead.
+
 * LLEXT
 
     * ``llext_get_fn_table``, replaced by ``llext_get_fn_table_entry``
@@ -213,6 +257,8 @@ Removed APIs and options
 
     * ``CONFIG_NET_TC_SKIP_FOR_HIGH_PRIO``
     * ``CONFIG_NET_SOCKETS_POLL_MAX``
+    * ``CONFIG_NET_TEST_PROTOCOL``, together with the
+      ``samples/net/sockets/tcp`` sample that was its only system under test.
     * ``CONFIG_NET_GPTP_CLOCK_ACCURACY_*``
     * ``net_ipv6_set_hop_limit()``
     * ``net_if_ipv4_get_netmask()``
@@ -227,6 +273,7 @@ Removed APIs and options
     * ``struct openthread_state_changed_cb``
     * ``TLS_CREDENTIAL_SERVER_CERTIFICATE``
     * ``start_11r_roaming``
+    * ``IEEE802154_HW_SLEEP_TO_TX``
 
 * Nordic
 
@@ -242,6 +289,10 @@ Removed APIs and options
     * ``CONFIG_SOC_DCDC_NRF53X_APP``
     * ``CONFIG_SOC_DCDC_NRF53X_NET``
     * ``CONFIG_SOC_DCDC_NRF53X_HV``
+
+* POSIX
+
+    * ``CONFIG_POSIX_READER_WRITER_LOCKS``
 
 * Random
 
@@ -261,6 +312,12 @@ Removed APIs and options
 * Stream Flash
 
     * ``stream_flash_erase_page()``
+
+* Tracing
+
+  * The ``_track_list_k_*`` object tracking list heads, ``SYS_PORT_TRACK_NEXT()`` and
+    :file:`include/zephyr/tracing/tracking.h`. Object tracking now enumerates objects through
+    the :ref:`object core framework <object_cores_api>`.
 
 * ZTest
 
@@ -285,10 +342,65 @@ Deprecated APIs and options
   * The :c:struct:`audio_codec_api` struct has been deprecated. Audio codec drivers are now
     expected to use the :c:macro:`DEVICE_API` macro to declare their driver API.
 
+* Bluetooth
+
+  * The :kconfig:option:`CONFIG_BT_CUSTOM` stack selection has been deprecated. It dates from the
+    time when a whole Bluetooth Host could be offloaded behind the Zephyr Bluetooth API and has no
+    user in the tree; HCI transports are regular device drivers. The HCI-based stack,
+    :kconfig:option:`CONFIG_BT_HCI`, is the only selection left in the tree; the choice itself
+    stays as the extension point for out-of-tree stacks.
+
+  * The HCI driver ``setup()`` op, :c:func:`bt_hci_setup`,
+    :c:struct:`bt_hci_setup_params` and :kconfig:option:`CONFIG_BT_HCI_SETUP` have
+    been deprecated. A driver performs its vendor-specific initialization inside
+    :c:member:`bt_hci_driver_api.open` instead, over its own transport. See the
+    migration guide.
+
 * Build system
 
   * The ``zephyr_file_copy()`` CMake function has been deprecated. Use the native
     ``file(COPY_FILE ...)`` CMake command instead.
+
+* Clock control
+
+  * The function :c:func:`z_nrf_clock_control_get_onoff` has been deprecated.
+    See the :ref:`migration guide <migration_4.5>` for details.
+
+  * The macro :c:macro:`CLOCK_CONTROL_NRF_K32SRC_ACCURACY` has been deprecated.
+    See the :ref:`migration guide <migration_4.5>` for details.
+
+  * The macro :c:macro:`CLOCK_CONTROL_NRF_K32SRC` has been deprecated.
+    See the :ref:`migration guide <migration_4.5>` for details.
+
+  * The macro :c:macro:`CLOCK_CONTROL_NRF_SUBSYS_HFAUDIO` has been deprecated.
+    See the :ref:`migration guide <migration_4.5>` for details.
+
+  * The macro :c:macro:`CLOCK_CONTROL_NRF_SUBSYS_HFAUDIO` has been deprecated.
+    See the :ref:`migration guide <migration_4.5>` for details.
+
+  * The macro :c:macro:`CLOCK_CONTROL_NRF_SUBSYS_HF24M` has been deprecated.
+    See the :ref:`migration guide <migration_4.5>` for details.
+
+  * The macro :c:macro:`CLOCK_CONTROL_NRF_SUBSYS_HF24M` has been deprecated.
+    See the :ref:`migration guide <migration_4.5>` for details.
+
+  * The macro :c:macro:`CLOCK_CONTROL_NRF_SUBSYS_HF` has been deprecated.
+    See the :ref:`migration guide <migration_4.5>` for details.
+
+  * The enum :c:enumerator:`clock_control_nrf_type` has been deprecated.
+    See the :ref:`migration guide <migration_4.5>` for details.
+
+  * The Kconfig option :kconfig:option:`CONFIG_CLOCK_CONTROL_NRF` and all dependent kconfigs have
+    been deprecated. See the :ref:`migration guide <migration_4.5>` for details. The Kconfigs are
+    located in the ``drivers/clock_control/Kconfig.nrf`` and  ``modules/hal_nordic/nrfx/Kconfig``
+    files.
+
+* Controller Area Network (CAN)
+
+  * :c:func:`can_set_state_change_callback` is deprecated in favor of
+    :c:func:`can_init_state_change_callback`, :c:func:`can_add_state_change_callback`, and
+    :c:func:`can_remove_state_change_callback`. The new API functions allow adding more than one CAN
+    controller state change callback (:github:`117889`).
 
 * CPU Load
 
@@ -312,6 +424,17 @@ Deprecated APIs and options
   * Renamed :c:func:`lora_recv_duty_cycle` to :c:func:`lora_recv_duty_cycle_async`
     to be consistent with the existing sync/async naming convention.
 
+* MCUmgr
+
+  * The :c:type:`smp_transport_get_mtu_fn` type and the ``get_mtu`` member of
+    :c:struct:`smp_transport_api_t` have been deprecated, as the SMP layer does not use them.
+    See the :ref:`migration guide <migration_4.5>` for details.
+
+  * :kconfig:option:`CONFIG_MCUMGR_TRANSPORT_UART_MTU` and
+    :kconfig:option:`CONFIG_MCUMGR_TRANSPORT_SHELL_MTU` have been deprecated, as they only set the
+    value returned by the deprecated ``get_mtu`` callback. See the
+    :ref:`migration guide <migration_4.5>` for details.
+
 * Nordic
 
   * The internal SoC platform Kconfig symbols ``NRF_PLATFORM_HALTIUM`` and
@@ -323,11 +446,37 @@ Deprecated APIs and options
   * The Nordic SoC headers :file:`<haltium_power.h>` and :file:`<haltium_pm_s2ram.h>`
     have been renamed to :file:`<soc_power.h>` and :file:`<soc_pm_s2ram.h>` respectively.
 
+* Raspberry Pi
+
+  * The RP2350 ``SOC_RP2350A_HAZARD3``, ``SOC_RP2350A_M33``, ``SOC_RP2350B_HAZARD3``, and
+    ``SOC_RP2350B_M33`` Kconfig symbols, along with the corresponding bare ``hazard3``/``m33``
+    cpuclusters in ``soc.yml``, are deprecated in favor of ``SOC_RP2350A_HAZARD3_0``,
+    ``SOC_RP2350A_M33_0``, ``SOC_RP2350B_HAZARD3_0``, and ``SOC_RP2350B_M33_0`` and their
+    ``hazard3_0``/``m33_0`` cpuclusters, to align RP2350 dual-core cluster naming with the hardware
+    model v2. Both the old Kconfig symbols and the ``soc.yml`` entries will be removed
+    in a future release. All in-tree boards have been migrated.
+
 * Ring buffer
 
   * The ring buffer item API (:c:func:`ring_buf_item_init`, :c:func:`ring_buf_item_put`,
     :c:func:`ring_buf_item_get`, :c:func:`ring_buf_item_space_get`) has been deprecated in favor of
     :c:struct:`sys_ringq` (see :ref:`fixed_size_ringq_api`).
+
+  * The zero-copy claim/finish API (:c:func:`ring_buf_put_claim`, :c:func:`ring_buf_put_finish`,
+    :c:func:`ring_buf_get_claim`, :c:func:`ring_buf_get_finish`) has been deprecated in favor of
+    the new :c:func:`ring_buf_put_ptr` / :c:func:`ring_buf_get_ptr` API. Code still using it must
+    enable :kconfig:option:`CONFIG_RING_BUFFER`.
+
+  * :kconfig:option:`CONFIG_RING_BUFFER` is deprecated. The ring buffer API is now header-only and
+    always available, so the option is no longer required to use ring buffers. It now only serves
+    as the deprecated switch that restores the legacy claim/finish and item APIs while out-of-tree
+    code migrates to the replacement APIs.
+
+* Network buffers
+
+  * :c:func:`net_buf_max_len` and :c:func:`net_buf_simple_max_len` have been deprecated. Use
+    :c:func:`net_buf_tailroom` and :c:func:`net_buf_simple_tailroom` instead. See the
+    :ref:`migration guide <migration_4.5>` for details.
 
 * Networking
 
@@ -361,6 +510,11 @@ Deprecated APIs and options
     :c:func:`sys_clock_set_timeout` with ``ticks=K_TICKS_FOREVER``.
   * New :c:func:`sys_clock_idle_enter` hook for handling of entry in low-power state,
     replacing the call to :c:func:`sys_clock_set_timeout` with ``idle=true``.
+
+* :abbr:`USB (Universal Serial Bus)`
+
+  * Deprecated property ``clock-reference`` of :dtcompatible:`st,stm32u5-otghs-phy`.
+    Do not specify the property; it is no longer required by the underlying driver.
 
 * Video
 
@@ -398,13 +552,29 @@ New APIs and options
     :c:enumerator:`ADC_REF_INTERNAL` when the callback is NULL.
     :c:func:`adc_raw_to_millivolts_dt` falls back to channel DT
     ``zephyr,vref-mv`` when :c:func:`adc_ref_get` fails.
+  * :kconfig:option:`CONFIG_ADC_STM32_VREFINT_CALIBRATE` (measure VREF+ from
+    VREFINT at init and on ``sequence.calibrate``)
 
 * Architectures
 
   * :kconfig:option:`CONFIG_ARM_MPU_CM7_UNMAPPED_REGION` (Arm Cortex-M7 catch-all MPU region
     for unmapped addresses, erratum 1013783 workaround)
+  * :kconfig:option:`CONFIG_CORTEX_M_ERRATUM_440977_WORKAROUND` (keeps an ISB after
+    priority-raising BASEPRI writes; enabled by default on Arm Cortex-M7, where erratum
+    440977 applies to r0p0/r0p1 cores. Other Cortex-M cores no longer execute barriers in
+    the interrupt lock/unlock fast paths, speeding up kernel hot paths)
   * :kconfig:option:`CONFIG_EXCEPTION_DUMP` (enabled by default, can be disabled to compile
     out the fault handler output on size constrained builds)
+  * :kconfig:option:`CONFIG_RISCV_ISA_EXT_ZKR` (RISC-V Zkr entropy source extension, enabled
+    from the ``riscv,isa-extensions`` devicetree property)
+  * :kconfig:option:`CONFIG_RISCV_USER_STRING_NLEN_VALIDATE` (RISC-V, validate the user
+    string chunk by chunk in ``arch_user_string_nlen()`` instead of relying on the fault fixup,
+    for SoCs whose load access fault is imprecise)
+  * :kconfig:option:`CONFIG_RISCV_SOC_HAS_SYSCALL_INTMASK` (RISC-V SoC hook to mask
+    interrupts in the user-mode syscall body without clearing ``mstatus.MIE``)
+  * :kconfig:option:`CONFIG_RISCV_SOC_SYSCALL_CLOSE_ECALL` (RISC-V SoC hook to leave the
+    ecall exception before the user-mode syscall body runs, for SoCs that cannot deliver a
+    fault raised by the body while that exception is open)
 
 * Audio
 
@@ -415,6 +585,7 @@ New APIs and options
 
   * Audio
 
+    * :c:func:`bt_aics_client_free_instance`
     * :c:func:`bt_ascs_register`
     * :c:func:`bt_ascs_unregister`
     * :c:func:`bt_bap_unicast_client_qos_from_group`
@@ -429,11 +600,47 @@ New APIs and options
     * :c:member:`bt_bap_unicast_group_info.c_to_p_ft`
     * :c:member:`bt_bap_unicast_group_info.p_to_c_ft`
     * :c:member:`bt_bap_unicast_group_info.iso_interval`
+    * :c:member:`bt_cap_initiator_cb.unicast_start_codec_configured`
+    * :c:member:`bt_cap_initiator_cb.unicast_start_qos_configured`
+    * :c:member:`bt_cap_initiator_cb.unicast_start_enabled`
+    * :c:member:`bt_cap_initiator_cb.unicast_start_connected`
+    * :c:member:`bt_cap_initiator_cb.unicast_start_started`
+    * :c:member:`bt_cap_initiator_cb.unicast_stop_disabled`
+    * :c:member:`bt_cap_initiator_cb.unicast_stop_stopped`
+    * :c:member:`bt_cap_initiator_cb.unicast_stop_released`
+    * :c:func:`bt_vocs_client_free_instance`
+
+  * Classic
+
+    * :kconfig:option:`CONFIG_BT_SMP_DERIVE_LTK`
+    * :kconfig:option:`CONFIG_BT_SMP_DERIVE_LK`
+    * :c:func:`bt_sdp_unregister_service`
+
+  * HCI Drivers
+
+    * :c:macro:`BT_HCI_PKT_CMD_DEFINE`
+    * :c:macro:`BT_HCI_PKT_CMD_DEFINE_STATIC`
+    * :c:func:`bt_hci_pkt_reset_cmd`
+    * :c:func:`bt_hci_pkt_push_cmd_hdr`
+    * :c:func:`bt_hci_pkt_pull_cmd_complete`
+    * :c:func:`bt_hci_pkt_pull_cmd_status`
+    * :c:func:`bt_hci_pkt_parse_cmd_rsp`
+    * :c:func:`bt_hci_lockstep_cmd_send_sync`
+    * :c:func:`bt_hci_lockstep_reset`
+    * :c:func:`bt_hci_set_public_addr` and :c:func:`bt_hci_get_public_addr`
+    * :c:func:`bt_hci_can_close`
 
   * Host
 
+    * :c:func:`bt_att_get_max_notify_size`
+    * :c:func:`bt_att_get_max_indicate_size`
     * :c:func:`bt_conn_take`
     * :c:func:`bt_conn_drop`
+    * :c:func:`bt_id_reset_irk`
+    * :c:macro:`BT_IRK_SIZE`
+    * :c:func:`bt_iso_chan_state_str`
+    * :c:member:`bt_iso_chan_ops.send_failed`
+    * :c:func:`bt_iso_get_chan_by_conn`
     * :c:func:`bt_le_per_adv_update_did`
     * :c:member:`bt_le_adv_param.tx_power` and :c:enumerator:`BT_LE_ADV_OPT_TX_POWER`
       to request a specific TX power level per extended advertising set.
@@ -444,6 +651,11 @@ New APIs and options
     * :c:func:`bt_rfcomm_dlc_recv_complete` to return RX credits to the peer. Applications can
       return ``-EINPROGRESS`` from the :c:member:`bt_rfcomm_dlc_ops.recv` callback to defer buffer
       release and flow-control credit refill until processing is complete.
+    * :c:func:`bt_le_bond_addr_res_support`, :c:enum:`bt_le_addr_res_support` and
+      :c:member:`bt_conn_auth_info_cb.addr_res_support_read`
+    * :c:enumerator:`BT_LE_SCAN_OPT_EXT_FILTER_POLICY`
+    * :kconfig:option:`CONFIG_BT_SCAN_EXT_FILTER_POLICY`
+    * :c:member:`bt_le_scan_recv_info.direct_addr`
 
   * Mesh
 
@@ -452,6 +664,22 @@ New APIs and options
     * :c:func:`bt_mesh_stat_lpn_timing_reset`
     * :kconfig:option:`CONFIG_BT_MESH_LPN_OFFER_WAIT_TIMEOUT`
 
+* Clock control
+
+  * :kconfig:option:`CLOCK_CONTROL_NRF_ONOFF`
+  * The following functions are now supported for devices compatible with ``nordic,nrf-clock-hfclk``,
+    ``nordic,nrf-clock-lfclk``, ``nordic,nrf-clock-hfclk192m``, ``nordic,nrf-clock-hfclk24m``,
+    ``nordic,nrf-clock-hfclkaudio``, ``nordic,nrf-clock-xo``, ``nordic,nrf-clock-xo24m``:
+    See the :ref:`migration guide <migration_4.5>` for details.
+    * :c:func:`clock_control_request`
+    * :c:func:`clock_control_request_sync`
+    * :c:func:`clock_control_release`
+    * :c:func:`clock_control_cancel_or_release`
+
+* CPUFreq
+
+  * :kconfig:option:`CONFIG_CPU_FREQ_POLICY_TIMING_NOISE`
+
 * Crypto
 
   * :c:enumerator:`CRYPTO_CIPHER_MODE_CFB`
@@ -459,23 +687,69 @@ New APIs and options
   * :c:func:`cipher_cfb_op`
   * :c:func:`cipher_ofb_op`
 
+* Debug
+
+  * Introduced ZASSERT, a granular per-module/file assertion facility.
+    Each source file selects an assertion module via ``ZASSERT_MODULE(<MODULE>)``,
+    the level is resolved from ``CONFIG_ASSERT_MODULE_<MODULE>_LEVEL`` and
+    may be overridden per file.
+    Four levels are available: off (compiled out), terse (check only),
+    normal (check + location only), and verbose (check + location, condition and message).
+    Failure behavior is customizable through the weak hooks ``zassert_fail()``,
+    ``zassert_vprint()`` and ``zassert_post_action()``.
+    The legacy ``__ASSERT()`` family continues to work largely unchanged as a thin compatibility
+    layer over the ZASSERT ``DEFAULT`` module.
+
 * Devicetree
 
   * :c:macro:`DT_IRQN_BY_NAME`
   * :c:macro:`DT_INST_IRQN_BY_NAME`
 
+* Display
+
+  * :c:enumerator:`PIXEL_FORMAT_YUYV`
+  * :c:macro:`PANEL_PIXEL_FORMAT_YUYV`
+
+* Entropy
+
+  * :kconfig:option:`CONFIG_ENTROPY_RISCV_ZKR` (architectural entropy driver based on the
+    ``seed`` CSR of the RISC-V Zkr extension)
+
+* FIDO2
+
+  * :c:func:`fido2_up_reset`
+  * :c:macro:`FIDO2_BLE_SERVICE_UUID_VAL`
+  * :c:macro:`FIDO2_BLE_SERVICE_DATA_PAIRING_MODE`
+  * :kconfig:option:`CONFIG_FIDO2_TRANSPORT_BLE`
+  * :kconfig:option:`CONFIG_FIDO2_BLE_REQUIRE_AUTHENTICATED_LINK`
+  * :kconfig:option:`CONFIG_FIDO2_BLE_RX_WORKQ_STACK_SIZE`
+  * :kconfig:option:`CONFIG_FIDO2_BLE_CONTROL_POINT_LENGTH`
+  * :kconfig:option:`CONFIG_FIDO2_BLE_RX_QUEUE_DEPTH`
+  * :kconfig:option:`CONFIG_FIDO2_BLE_TX_FRAME_COUNT`
+  * :kconfig:option:`CONFIG_FIDO2_BLE_KEEPALIVE_INTERVAL_MS`
+  * :kconfig:option:`CONFIG_FIDO2_BLE_RX_TIMEOUT_MS`
+
+* Fuel Gauge
+
+  * :c:func:`fuel_gauge_set_buffer_prop` and the optional
+    :c:member:`fuel_gauge_driver_api.set_buffer_property` callback for writing variable
+    length buffer properties, symmetric to :c:func:`fuel_gauge_get_buffer_prop`.
+
 * Haptics
 
-  * :c:enumerator:`haptics_monitor`
-  * :c:enumerator:`haptics_monitor_type`
-  * :c:enumerator:`haptics_source`
+  * :c:enum:`haptics_monitor`
+  * :c:enum:`haptics_monitor_type`
+  * :c:enum:`haptics_source`
+  * :c:enum:`haptics_trigger_type`
   * :c:union:`haptics_config`
   * :c:func:`haptics_calibrate`
   * :c:func:`haptics_monitor_get`
   * :c:func:`haptics_monitor_set`
   * :c:func:`haptics_select_source`
   * :c:func:`haptics_set_level`
+  * :c:func:`haptics_set_trigger`
   * :c:func:`haptics_stream_samples`
+  * :c:func:`haptics_trigger`
 
 * HWSPINLOCK
 
@@ -490,6 +764,10 @@ New APIs and options
 
 * Kernel
 
+  * :c:func:`k_obj_core_evict_range`
+  * :kconfig:option:`CONFIG_OBJ_CORE_MAX_DYNAMIC_OBJECTS`
+  * :kconfig:option:`CONFIG_OBJ_CORE_EVICT_ON_FREE`
+  * :kconfig:option:`CONFIG_OBJ_CORE_QUEUE`
   * :c:func:`k_thread_runtime_stats_is_enabled`
   * :c:func:`atomic_test_and_set_bit_to`
   * :c:macro:`K_MSGQ_DEFINE_STATIC`
@@ -501,6 +779,22 @@ New APIs and options
     :c:func:`k_irq_lock`, :c:func:`k_irq_unlock`, :c:func:`k_irq_enable`,
     :c:func:`k_irq_disable`, :c:func:`k_irq_is_enabled`,
     :c:func:`k_irq_connect_dynamic` and :c:func:`k_irq_disconnect_dynamic`
+
+* LIN
+
+  * :c:func:`lin_start`
+  * :c:func:`lin_stop`
+  * :c:func:`lin_configure`
+  * :c:func:`lin_get_config`
+  * :c:func:`lin_send`
+  * :c:func:`lin_receive`
+  * :c:func:`lin_response`
+  * :c:func:`lin_read`
+  * :c:func:`lin_wakeup_send`
+  * :c:func:`lin_set_event_callback`
+  * :c:func:`lin_set_rx_filter`
+  * :c:func:`lin_get_transceiver`
+  * :kconfig:option:`CONFIG_LIN`
 
 * LoRa
 
@@ -526,9 +820,21 @@ New APIs and options
       :kconfig:option:`CONFIG_MCUMGR_GRP_TRANSPORT_GROUP_ID_CUSTOM_FUNCTION` and
       :kconfig:option:`CONFIG_MCUMGR_GRP_TRANSPORT_INFO_FUNCTIONS`.
 
+* Modem
+
+  * :c:enumerator:`CELLULAR_MODEM_INFO_SERIAL_NUMBER`
+
+* Multimedia Pipeline
+
+  * :kconfig:option:`CONFIG_MPIPE` (see :ref:`mpipe`)
+
 * Network
 
   * Add :c:func:`net_eth_set_if_type_wifi` to set the ethernet interface type to Wi-Fi.
+  * Add a public neighbor cache API: :c:func:`net_if_ipv4_nbr_flush` and
+    :c:func:`net_if_ipv6_nbr_flush` drop the neighbors an interface has
+    learned, and :c:func:`net_if_ipv4_nbr_rm` and :c:func:`net_if_ipv6_nbr_rm`
+    remove a single one. On an Ethernet link the IPv4 cache is the ARP cache.
   * Add :c:func:`net_dhcpv4_set_reboot_hint` to seed the DHCPv4 client with a
     previously leased address for INIT-REBOOT.
   * Add an mDNS responder interface policy
@@ -586,6 +892,34 @@ New APIs and options
     Memberships still held when the socket is closed are dropped automatically,
     and :kconfig:option:`CONFIG_NET_SOCKETS_PACKET_MCAST_MEMBERSHIP_COUNT` sets
     how many memberships can be active at the same time.
+  * Add TCP selective acknowledgment of received data (:rfc:`2018`,
+    :kconfig:option:`CONFIG_NET_TCP_SACK`, enabled by default). Zephyr now
+    offers SACK in the handshake and reports out-of-order data held in the
+    receive queue, so that a sender which supports SACK can resend only the
+    missing data. Incoming SACK blocks are not yet used when retransmitting.
+  * :kconfig:option:`CONFIG_PTP_NETWORK_MODE_HYBRID`
+  * Add experimental iperf3 support to zperf
+    (:kconfig:option:`CONFIG_NET_ZPERF_IPERF3`), chosen in place of iPerf 2
+    (:kconfig:option:`CONFIG_NET_ZPERF_IPERF2`). The zperf API and shell commands are the
+    same for both. See :ref:`zperf_iperf3`.
+  * Add an SNTP server (:kconfig:option:`CONFIG_SNTP_SERVER`) that answers time
+    queries on UDP port 123 on every enabled address family. The application
+    sets the system clock and then tells the server about its clock source with
+    :c:func:`sntp_server_clock_source`; until it does, the server tells clients
+    that its time must not be used. The SNTP client is now selected by
+    :kconfig:option:`CONFIG_SNTP` alone, both share
+    :kconfig:option:`CONFIG_SNTP_LIB`.
+  * Add :c:func:`dns_resolve_is_active` to check whether a DNS resolving
+    context is active without reading the context internals.
+  * Add :c:func:`coap_client_reregister_observe` to refresh an ongoing CoAP
+    observation (:rfc:`7641` re-registration) without tearing it down.
+  * :c:func:`net_config_init_clock_via_sntp` to set system clock via SNTP.
+  * :c:func:`net_config_sntp_set_server`
+
+* POSIX
+
+  * :kconfig:option:`CONFIG_POSIX_AEP_CHOICE_NETAPP`, a Zephyr-specific subprofile with the
+    features of PSE52 plus the networking interfaces of PSE53, without multi-process support.
 
 * Power Management
 
@@ -611,10 +945,30 @@ New APIs and options
 * Ring buffer
 
   * :c:struct:`sys_ringq` (see :ref:`fixed_size_ringq_api`)
+  * :c:func:`ring_buf_put_ptr`
+  * :c:func:`ring_buf_get_ptr`
+  * :c:func:`ring_buf_commit`
+  * :c:func:`ring_buf_consume`
+
+* Secure Storage
+
+  * :kconfig:option:`CONFIG_SECURE_STORAGE_ITS_TRANSFORM_AEAD_CRYPT_CUSTOM` to allow
+    implementing your own :c:func:`secure_storage_its_transform_aead_crypt`. (:github:`118542`)
+  * :kconfig:option:`CONFIG_SECURE_STORAGE_ITS_TRANSFORM_AEAD_SCHEME_IS_CONFIGURABLE`
+  * :kconfig:option:`CONFIG_SECURE_STORAGE_ITS_TRANSFORM_AEAD_KEY_SIZE_IS_CONFIGURABLE`
+
+
+* Timer
+
+  * :c:func:`z_sys_clock_lpm_enter`
 
 * USB Type-C
 
   * :kconfig:option:`CONFIG_USBC_LOG_PD_MSG_NAMES`
+
+* Utilities
+
+  * :c:macro:`ARGS_UNUSED` to mark multiple arguments as unused.
 
 * Zbus
 
@@ -988,6 +1342,7 @@ New Shields
 * :ref:`NXP MX8 DSI OLED1A Panel <nxp_mx8_dsi_oled1a>`
 * :ref:`NXP MX9 DSI OLED Panel <nxp_mx9_dsi_oled>`
 * :ref:`OD-6010 SLCD Panel Shield <od_6010_shield>`
+* :ref:`RAK19007 WisBlock Base Board 2nd Gen <rakwireless_rak19007>`
 * :ref:`Seeed Studio COB LED Driver Board for XIAO <seeed_xiao_cob_led>`
 * :ref:`ST B-M2MEM-PACK1 M.2 serial memory pack <st_b_m2mem_pack1_shield>`
 * :ref:`X-NUCLEO-67W61M1: Wi-Fi 6 expansion board <x_nucleo_67w61m1>`
@@ -1073,6 +1428,7 @@ New Drivers
 
 * Clock control
 
+  * :dtcompatible:`aesc,clock-controller` (:github:`116703`)
   * :dtcompatible:`bflb,bl616cl-clock-controller` (:github:`112738`)
   * :dtcompatible:`bflb,bl808-clock-controller` (:github:`105580`)
   * :dtcompatible:`bflb,mm-clk` (:github:`105580`)
@@ -1264,6 +1620,7 @@ New Drivers
   * :dtcompatible:`snps,dwmac-mdio` (:github:`108046`)
   * :dtcompatible:`snps,dwmac-ptp-clock` (:github:`114242`)
   * :dtcompatible:`wch,ch9120` (:github:`111708`)
+  * :dtcompatible:`wiznet,w5100s` (:github:`113315`)
   * :dtcompatible:`wiznet,w6300` (:github:`102727`)
   * :dtcompatible:`xlnx,gem-mdio` (:github:`87313`)
   * :dtcompatible:`zephyr,native-ptp-clock` (:github:`109265`)
@@ -1334,6 +1691,7 @@ New Drivers
   * :dtcompatible:`nxp,lpc-pmc-hwinfo` (:github:`114693`)
   * :dtcompatible:`nxp,mc-rgm` (:github:`111359`)
   * :dtcompatible:`nxp,otp-uid` (:github:`111493`)
+  * :dtcompatible:`zephyr,hwinfo-nvmem` (:github:`118693`)
 
 * :abbr:`I2C (Inter-Integrated Circuit)`
 
@@ -1392,6 +1750,10 @@ New Drivers
 
   * :dtcompatible:`worldsemi,ws2812-bflb-wo` (:github:`105325`)
   * :dtcompatible:`worldsemi,ws2812-pulse-io` (:github:`110466`)
+
+* LIN
+
+  * :dtcompatible:`renesas,ra-lin-sci-b`
 
 * LoRa
 
@@ -1483,6 +1845,12 @@ New Drivers
 
 * Networking
 
+  * gPTP
+
+    * :kconfig:option:`CONFIG_NET_GPTP_STATIC_TIME_RECEIVER` operates the node as a
+      statically configured time receiver, so it can synchronize through IEEE 802.1AS
+      automotive profile bridges that transmit no Announce messages.
+
   * :dtcompatible:`st,stm32wba-radio` (:github:`110546`)
 
 * :abbr:`OPAMP (Operational Amplifier)`
@@ -1502,6 +1870,7 @@ New Drivers
 
 * PHY
 
+  * :dtcompatible:`lin-transceiver-gpio`
   * :dtcompatible:`st,stm32f7-usbphyc` (:github:`114696`)
   * :dtcompatible:`st,stm32n6-usbphyc` (:github:`114696`)
 
@@ -1604,6 +1973,7 @@ New Drivers
   * :dtcompatible:`microchip,pac194x` (:github:`105902`)
   * :dtcompatible:`nordic,nrf-vbat` (:github:`106102`)
   * :dtcompatible:`nxp,mcux-eqdc` (:github:`111927`)
+  * :dtcompatible:`plantower,pmsa003i` (:github:`113377`)
   * :dtcompatible:`raspberrypi,bcm283x-vc-thermal` (:github:`110192`)
   * :dtcompatible:`realtek,bee-aon-qdec` (:github:`105129`)
   * :dtcompatible:`realtek,bee-basic-qdec` (:github:`105129`)
@@ -1657,6 +2027,10 @@ New Drivers
   * :dtcompatible:`microchip,udphs-g1-udc` (:github:`99620`)
   * :dtcompatible:`nordic,nrf-usbhs-bc12` (:github:`106759`)
 
+* Video
+
+  * :dtcompatible:`zephyr,native-sim-video-fifo` (:github:`119658`)
+
 * Wakeup Controller
 
   * :dtcompatible:`nxp,sleepcon-wuc` (:github:`113447`)
@@ -1691,6 +2065,7 @@ New Samples
 
 * :zephyr:code-sample:`adi-gpio-wakeup`
 * :zephyr:code-sample:`adi-pm`
+* :zephyr:code-sample:`assert`
 * :zephyr:code-sample:`autanalog_fir_fifo`
 * :zephyr:code-sample:`bluetooth_cap_handover`
 * :zephyr:code-sample:`buzzer-tone`
@@ -1699,6 +2074,7 @@ New Samples
 * :zephyr:code-sample:`coredump-udp-demo-shell`
 * :zephyr:code-sample:`coresight_stm_shell`
 * :zephyr:code-sample:`cpu_freq_thermal_cap`
+* :zephyr:code-sample:`cpu_freq_timing_noise`
 * :zephyr:code-sample:`cs40l26`
 * :zephyr:code-sample:`dali`
 * :zephyr:code-sample:`dhcpv6-pd`
@@ -1706,6 +2082,7 @@ New Samples
 * :zephyr:code-sample:`espnow`
 * :zephyr:code-sample:`fido2`
 * :zephyr:code-sample:`flow-meter`
+* :zephyr:code-sample:`fota-http`
 * :zephyr:code-sample:`frdm-mcxe31b-system-off`
 * :zephyr:code-sample:`i2c-tiny-usb`
 * :zephyr:code-sample:`logging_multidomain`
@@ -1719,6 +2096,8 @@ New Samples
 * :zephyr:code-sample:`nxp_mcx_s2ram`
 * :zephyr:code-sample:`nxp_mcx_system_off`
 * :zephyr:code-sample:`nxp_smartdma_mem_to_mem`
+* :zephyr:code-sample:`object_cores`
+* :zephyr:code-sample:`object_monitor`
 * :zephyr:code-sample:`pm-latency`
 * :zephyr:code-sample:`pulse_io_byte_transfer`
 * :zephyr:code-sample:`qdec_multi`
@@ -1781,6 +2160,13 @@ Libraries / Subsystems
   * Added :kconfig:option:`CONFIG_IMG_CUSTOM_SECTOR_SIZE` to allow MCUboot to use a different
     sector size for reducing the swap-using-offset status area size.
 
+* Management
+
+  * Added the :ref:`fota_http` library, a firmware-over-the-air client that
+    downloads an MCUboot image over HTTP or HTTPS straight into the secondary
+    slot, with optional resume, redirect following, SHA-256 verification and a
+    ``fota`` shell command.
+
 * LoRa / LoRaWAN
 
   * Added a native LoRaWAN backend
@@ -1788,6 +2174,49 @@ Libraries / Subsystems
     LoRaWAN 1.0.x Class A directly on top of the LoRa radio driver, without
     the Semtech LoRaMac-node dependency.  Currently supports the EU868 region.
   * :c:member:`lora_modem_config.sync_word`
+
+* Networking
+
+  * Added tracking of local ports bound through offloaded sockets
+    (:kconfig:option:`CONFIG_NET_SOCKETS_OFFLOAD_PORT_TRACKING`). Offloaded
+    sockets bind in the offload engine, outside the ``net_context`` layer, so
+    :c:func:`net_context_port_in_use` could not see them. The socket layer now
+    tracks those bindings and provides ``net_socket_port_in_use()`` to check
+    both native and offloaded ports. mDNS probe port selection and DNS-SD
+    service checks use this new function.
+
+* Management
+
+  * MCUmgr
+
+    * The image management client now supports SHA-512 image digests. It can
+      list and select images for testing or confirmation on targets built with
+      :kconfig:option:`CONFIG_MCUBOOT_BOOTLOADER_USES_SHA512`.
+* Networking
+
+  * CoAP
+
+    * The CoAP server accepts an observe registration that carries an empty token, which
+      :rfc:`7641` allows, and keys the observer on the endpoint and that empty token.
+
+* Secure Storage
+
+  * The ``psa_its_get*()`` functions now return ``PSA_ERROR_INVALID_SIGNATURE`` or
+    ``PSA_ERROR_DATA_CORRUPT`` for an entry that fails authentication or is malformed,
+    instead of ``PSA_ERROR_GENERIC_ERROR``.
+
+  * The ITS operations that modify an entry are now serialized, and discarding an entry
+    that cannot be read back is logged as a warning.
+
+  * ``psa_its_get()`` called with a ``data_size`` of 0 now reports whether the entry exists
+    and is valid instead of always returning ``PSA_SUCCESS``.
+
+* Multimedia Pipeline
+
+  * Introducing :ref:`mpipe`, a new subsystem for building multimedia
+    applications out of reusable elements - sources, transforms and sinks -
+    linked together into a pipeline. It lets an application describe the media
+    flow it wants instead of driving each audio, video or display device itself.
 
 * Video
 
@@ -1814,8 +2243,49 @@ Devicetree
   * :c:macro:`DT_NODELABEL_C_TOKEN`
   * :c:macro:`DT_NODELABEL_C_TOKEN_BY_IDX`
 
+* Bindings can declare device class membership with the new ``class:`` key
+  (see :ref:`dt-bindings-class`), enabling build-time enumeration of all
+  nodes of a device class:
+
+  * :c:macro:`DT_NODE_HAS_CLASS`
+  * :c:macro:`DT_HAS_CLASS_STATUS_OKAY`
+  * :c:macro:`DT_NUM_CLASS_STATUS_OKAY`
+  * :c:macro:`DT_FOREACH_CLASS_STATUS_OKAY`
+  * :c:macro:`DT_FOREACH_CLASS_STATUS_OKAY_VARGS`
+  * The ``$(dt_class_enabled,<class name>)`` Kconfig preprocessor function
+
+* The ADC shell now enumerates ADC controllers through the ``adc`` device
+  class instead of a hardcoded list of compatibles, so it also covers
+  out-of-tree ADC drivers.
+
+* The I3C shell now enumerates I3C controllers through the ``i3c`` device
+  class instead of a hardcoded list of compatibles, so it also covers
+  out-of-tree I3C drivers.
+
 Other notable changes
 *********************
+
+* ADC
+
+  * STM32 ADC driver (:dtcompatible:`st,stm32-adc`): when
+    :kconfig:option:`CONFIG_ADC_STM32_VREFINT_CALIBRATE` is enabled,
+    :c:func:`adc_ref_internal` may return a measured scale instead of DT
+    ``vref-mv``. Any ADC named by an :dtcompatible:`st,stm32-vref`
+    ``io-channels`` property can take that measurement; the result is
+    cached SoC-wide. See the :ref:`migration guide<migration_4.5>` ADC section.
+
+  * STM32G4 SoC dtsi files now describe the extra VREFINT inputs that exist in
+    silicon: :dtcompatible:`st,stm32-vref` ``vref3`` (ADC3, G491 and up),
+    ``vref4`` and ``vref5`` (ADC4/ADC5, G473 and up). Nodes stay disabled;
+    boards enable the instance they use. ADC2 has no VREFINT mux.
+
+* Bluetooth
+
+  * :kconfig:option:`CONFIG_SYSTEM_WORKQUEUE_PRIORITY` is no longer forced to a
+    cooperative priority by :kconfig:option:`CONFIG_BT` alone. Only the components
+    that submit work to the system workqueue require it now, so a build without any
+    of them, such as an HCI raw image driving an external controller, can select a
+    preemptible priority again (:github:`119123`).
 
 * Build system
 
@@ -1823,7 +2293,24 @@ Other notable changes
     Ubuntu 24.04 LTS package repositories. See the :ref:`migration guide <migration_4.5>` for
     options if your distribution ships an older version.
 
+  * The :ref:`hardening tool <hardening>` (``west build -t hardenconfig``) now sources its
+    recommendations from a schema-validated YAML database instead of a CSV file: profiles in
+    :file:`scripts/kconfig/hardening.yaml` and per-subsystem ``hardening.yaml`` fragments living
+    next to the Kconfig files they relate to. Every recommendation now carries a rationale,
+    displayed in the report, and may reference CWE/CVE entries; recommendations are grouped into
+    profiles (``base`` and ``strict``, selectable with ``-DHARDENCONFIG_PROFILE=``); integer
+    recommendations can express minimum/maximum constraints; JSON output and a failing exit code
+    are available for CI use; and out-of-tree databases can be layered with
+    ``-DHARDENCONFIG_EXTRA_SOURCES=``. The database is validated in CI against the actual Kconfig
+    tree so entries can no longer go stale.
+
 * Kernel
+
+  * The :ref:`object core framework <object_cores_api>` no longer keeps registry state inside
+    the objects it tracks. Statically defined objects are enumerated in place and objects
+    initialized at run time are referenced from a bounded registry, so a kernel object may be
+    declared on a stack, embedded in freed memory or initialized again without corrupting the
+    registry. Objects in stack storage are not tracked.
 
   * :kconfig:option:`CONFIG_SCHED_CPU_MASK` no longer depends on
     :kconfig:option:`CONFIG_SCHED_SIMPLE`.  CPU affinity masks are now
@@ -1857,10 +2344,35 @@ Other notable changes
     cycle-counter read plus an absolute-compare arm. See the
     :ref:`migration guide <migration_4.5>` for how to use it (:github:`115844`).
 
+* Networking
+
+  * The DHCPv4 client now takes the leased address, the lease's DNS servers and
+    the gateway it installed off the interface on every path that gives a lease
+    up, and waits about ten seconds before restarting after a refused request
+    or a declined address.
+
 * Wi-Fi
 
   * Removed the ``samples/net/wifi/test_certs/rsa2k`` enterprise test
     certificates (DES-encrypted private keys). Use ``rsa2k_no_des`` instead.
+
+  * The connection result event can now say that the access point rejected the
+    authentication or the association, through the new
+    :c:enumerator:`WIFI_STATUS_CONN_AUTH_REJECT` and
+    :c:enumerator:`WIFI_STATUS_CONN_ASSOC_REJECT` values, and
+    :c:struct:`wifi_status` carries the raw IEEE 802.11 status and reason codes
+    behind the failure. The supplicant fills these in, and the Wi-Fi shell prints
+    them with the connection and disconnection results. (:github:`116704`)
+
+  * The ESP32 Wi-Fi driver gained 802.11k/v/r and MBO support, all off by
+    default. :kconfig:option:`CONFIG_ESP32_WIFI_11KV_SUPPORT` turns on 802.11k
+    and 802.11v, :kconfig:option:`CONFIG_ESP32_WIFI_MBO_SUPPORT` turns on MBO
+    on top of them, and :kconfig:option:`CONFIG_ESP32_WIFI_11R_SUPPORT` turns
+    on 802.11r. The ``wifi 11k`` and ``wifi 11v_btm_query`` shell commands now
+    work on ESP32 while the station is associated, and
+    :kconfig:option:`CONFIG_ESP32_WIFI_SIGNAL_CHANGE_EVENT` raises
+    :c:macro:`NET_EVENT_WIFI_SIGNAL_CHANGE` when the signal of the connected
+    access point weakens, for an application that decides when to roam.
 
   * The transmit power ceiling properties in ``wifi-tx-power-2g.yaml`` and
     ``wifi-tx-power-5g.yaml`` are no longer ``required`` and now carry
@@ -1868,6 +2380,13 @@ Other notable changes
     the side of transmitting too little rather than exceeding a regulatory
     limit. Boards that have measured their own limits continue to state them
     explicitly, so no board changes behaviour.
+
+  * P2P gained shell commands to set the local device name and to query the
+    current P2P status, backed by the new :c:enumerator:`WIFI_P2P_SET_DEV_NAME`
+    and :c:enumerator:`WIFI_P2P_STATUS` :c:enum:`wifi_p2p_op` operations. The
+    corresponding ``device_name`` and ``status`` members were added to
+    :c:struct:`wifi_p2p_params`, along with the new
+    :c:macro:`WIFI_P2P_STATUS_BUF_SIZE` buffer-size macro.
 
 * MCUboot
 
@@ -1878,6 +2397,11 @@ Other notable changes
     production-signed images, while production bootloaders embed only the production
     key. The first entry is the key the application is signed with and the rest are
     verification-only public keys. See :ref:`build-signing`.
+
+  * Espressif boards no longer force overwrite-only mode and unsigned images under sysbuild.
+    They now build a swap-using-offset MCUboot with rollback and an RSA-2048 signed
+    application, and the shared Espressif partition tables no longer reserve a scratch
+    partition. See the :ref:`migration guide <migration_4.5>`.
 
 * NXP
 

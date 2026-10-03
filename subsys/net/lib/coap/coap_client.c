@@ -17,6 +17,8 @@ LOG_MODULE_DECLARE(net_coap, CONFIG_COAP_LOG_LEVEL);
 #include <zephyr/net/coap.h>
 #include <zephyr/net/coap_client.h>
 
+#include "coap_client_internal.h"
+
 #define COAP_VERSION 1
 #define COAP_SEPARATE_TIMEOUT 6000
 #define COAP_PERIODIC_TIMEOUT 500
@@ -227,7 +229,7 @@ static int coap_client_init_request(struct coap_client *client, struct coap_clie
 {
 	int ret = 0;
 	int i;
-	bool block2 = false;
+	bool block2 = internal_req->recv_blockwise;
 
 	memset(internal_req->send_buf, 0, sizeof(internal_req->send_buf));
 
@@ -265,9 +267,13 @@ static int coap_client_init_request(struct coap_client *client, struct coap_clie
 		}
 	}
 
-	/* Blockwise receive ongoing, request next block. */
-	if (internal_req->recv_blk_ctx.current > 0) {
-		block2 = true;
+	/* Blockwise receive ongoing, request the current block. The context
+	 * position does not tell: it is zero both before any transfer and
+	 * after a truncated response, where the retry must carry a block2
+	 * option so the server switches to a block-wise response instead of
+	 * repeating the truncated one.
+	 */
+	if (block2) {
 		ret = coap_append_block2_option(&internal_req->request,
 						&internal_req->recv_blk_ctx);
 
@@ -279,10 +285,13 @@ static int coap_client_init_request(struct coap_client *client, struct coap_clie
 
 	/* Add extra options if any */
 	for (i = 0; i < req->num_options; i++) {
-		if (COAP_OPTION_BLOCK2 == req->options[i].code && block2) {
-			/* After the first request, ignore any block2 option added by the
-			 * application, since NUM (and possibly SZX) must be updated based on the
-			 * server response.
+		if (block2 && (req->options[i].code == COAP_OPTION_BLOCK2 ||
+			       req->options[i].code == COAP_OPTION_OBSERVE)) {
+			/* On Block2 continuation retrievals, drop the application's block2
+			 * option, since NUM (and possibly SZX) must be updated based on the
+			 * server response, and the Observe option, since RFC 7959 Section 3.4
+			 * requires that block retrievals of a notification body do not carry
+			 * Observe (only the block-0 notification does).
 			 */
 			continue;
 		}
@@ -430,6 +439,17 @@ static int coap_client_init_request(struct coap_client *client, struct coap_clie
 		if (internal_req->send_blk_ctx.total_size > 0) {
 			coap_next_block(&internal_req->request, &internal_req->send_blk_ctx);
 		}
+	}
+
+	/* Snapshot the registration token of an observe request (the initial request or
+	 * an Echo retry, both of which mint a new token). Block retrievals overwrite
+	 * request_token with fresh tokens, so the registration token is kept separately
+	 * for matching server-pushed notifications and for deregister.
+	 */
+	if (coap_request_is_observe(&internal_req->request)) {
+		memcpy(internal_req->observe_token, internal_req->request_token,
+		       internal_req->request_tkl);
+		internal_req->observe_tkl = internal_req->request_tkl;
 	}
 out:
 	return ret;
@@ -999,18 +1019,30 @@ static struct coap_client_internal_request *get_request_with_token(
 	response_tkl = coap_header_get_token(resp, response_token);
 
 	for (int i = 0; i < CONFIG_COAP_CLIENT_MAX_REQUESTS; i++) {
-		if (client->requests[i].request_ongoing ||
-		    !exchange_lifetime_exceeded(&client->requests[i])) {
-			if (client->requests[i].request_tkl == 0) {
-				continue;
-			}
-			if (client->requests[i].request_tkl != response_tkl) {
-				continue;
-			}
-			if (memcmp(&client->requests[i].request_token, &response_token,
-			    response_tkl) == 0) {
-				return &client->requests[i];
-			}
+		struct coap_client_internal_request *internal_req = &client->requests[i];
+
+		if (!internal_req->request_ongoing &&
+		    exchange_lifetime_exceeded(internal_req)) {
+			continue;
+		}
+
+		/* Current request token. For an observation mid-blockwise-notification
+		 * this is the block-retrieval (continuation) token.
+		 */
+		if (internal_req->request_tkl != 0 &&
+		    internal_req->request_tkl == response_tkl &&
+		    memcmp(&internal_req->request_token, &response_token, response_tkl) == 0) {
+			return internal_req;
+		}
+
+		/* Registration token of an active observation, so asynchronous
+		 * notifications stay matchable for the whole observation, including while
+		 * a blockwise notification body is being retrieved.
+		 */
+		if (internal_req->is_observe && internal_req->observe_tkl != 0 &&
+		    internal_req->observe_tkl == response_tkl &&
+		    memcmp(&internal_req->observe_token, &response_token, response_tkl) == 0) {
+			return internal_req;
 		}
 	}
 
@@ -1239,7 +1271,18 @@ static int handle_response(struct coap_client *client, const struct net_sockaddr
 	}
 
 	if (internal_req->pending.timeout != 0) {
-		coap_pending_clear(&internal_req->pending);
+		/* An observe slot also receives notifications while a confirmable
+		 * (re-)registration awaits its acknowledgment. Those must not stop its
+		 * retransmission: only the ACK carrying the request's message ID answers
+		 * it. Once retransmissions are over (an empty ACK announced a separate
+		 * response) the next response does, as it does for a non-confirmable
+		 * request, which is never retransmitted and answered by a NON.
+		 */
+		if (!internal_req->is_observe || internal_req->pending.retries == 0 ||
+		    coap_header_get_type(&internal_req->request) == COAP_TYPE_NON_CON ||
+		    (response_type == COAP_TYPE_ACK && response_id == internal_req->pending.id)) {
+			coap_pending_clear(&internal_req->pending);
+		}
 	}
 
 #if defined(CONFIG_COAP_CLIENT_MULTICAST)
@@ -1262,6 +1305,7 @@ static int handle_response(struct coap_client *client, const struct net_sockaddr
 	block_option = coap_get_option_int(response, COAP_OPTION_BLOCK2);
 	if (block_option > 0 || response_truncated) {
 		blockwise_transfer = true;
+		internal_req->recv_blockwise = true;
 		last_block = response_truncated ? false : !GET_MORE(block_option);
 		block_num = (block_option > 0) ? GET_BLOCK_NUM(block_option) : 0;
 
@@ -1272,12 +1316,23 @@ static int handle_response(struct coap_client *client, const struct net_sockaddr
 			internal_req->offset = 0;
 		}
 
+		/* RFC 7959, section 2.4: blocks reassembled into one representation
+		 * must all carry the same ETag.
+		 */
+		ret = coap_client_check_etag(response, block_num == 0, internal_req->recv_etag,
+					     &internal_req->recv_etag_len);
+		if (ret < 0) {
+			LOG_ERR("ETag changed during block-wise transfer");
+			goto fail;
+		}
+
 		ret = coap_update_from_block(response, &internal_req->recv_blk_ctx);
 		if (ret < 0) {
 			LOG_ERR("Error updating block context");
 		}
 		coap_next_block(response, &internal_req->recv_blk_ctx);
 	} else {
+		internal_req->recv_blockwise = false;
 		internal_req->offset = 0;
 		last_block = true;
 	}
@@ -1392,7 +1447,10 @@ fail:
 #endif
 
 	if (was_observe) {
-		/* Observer: keep request active until unobserve */
+		/* Observer: keep request active until unobserve. The registration token
+		 * stays matchable in get_request_with_token(), so no token restore is
+		 * needed here.
+		 */
 		return ret;
 	}
 
@@ -1519,8 +1577,18 @@ void coap_client_cancel_request(struct coap_client *client, struct coap_client_r
 	k_mutex_unlock(&client->lock);
 }
 
-int coap_client_deregister_observe(struct coap_client *client, struct coap_client_request *req)
+/*
+ * Re-send an ongoing observation's GET, reusing its token, to either refresh
+ * the registration (Observe 0, RFC 7641 re-registration) or deregister it
+ * (Observe 1). A deregister tears the observation down; a refresh keeps it
+ * alive - its response arrives on the same token via the normal path. The
+ * matching, packet build and (for confirmable requests) pending setup are the
+ * same for both.
+ */
+static int coap_client_observe_resend(struct coap_client *client, struct coap_client_request *req,
+				      bool deregister)
 {
+	bool matched = false;
 	int ret = 0;
 
 	k_mutex_lock(&client->lock, K_FOREVER);
@@ -1536,34 +1604,81 @@ int coap_client_deregister_observe(struct coap_client *client, struct coap_clien
 			continue;
 		}
 
+		matched = true;
+
+		/* A refresh must not clobber a request that is still awaiting its response
+		 * on this slot (the registration itself, an earlier refresh or a Block2
+		 * retrieval of a notification), nor run from the slot's response callback:
+		 * the pending state is cleared before the callback and a Block2 continuation
+		 * is sent after it returns. A deregister may, it tears the slot down.
+		 */
+		if (!deregister && (internal_req->pending.timeout != 0 ||
+				    atomic_get(&internal_req->in_callback) != 0)) {
+			LOG_WRN("Observe refresh while a request is pending, try again later");
+			ret = -EBUSY;
+			continue;
+		}
+
 		mid = coap_next_id();
 		memset(internal_req->send_buf, 0, sizeof(internal_req->send_buf));
 
+		/* Cancel using the registration token; request_token may currently hold a
+		 * block-retrieval token from an in-progress blockwise notification.
+		 */
 		err = coap_packet_init(
 			&pkt, internal_req->send_buf, sizeof(internal_req->send_buf), COAP_VERSION,
 			internal_req->coap_request.confirmable ? COAP_TYPE_CON : COAP_TYPE_NON_CON,
-			internal_req->request_tkl, internal_req->request_token, COAP_METHOD_GET,
-			mid);
+			internal_req->observe_tkl, internal_req->observe_token,
+			internal_req->coap_request.method, mid);
 
 		if (err == 0) {
 			err = coap_packet_set_path(&pkt, internal_req->coap_request.path);
 		}
 
+		/* RFC 7641 3.3.1 and 3.6: all options of a re-registration or deregister must
+		 * be identical to those of the registration request. Re-add the application's
+		 * options except Observe, which is set below.
+		 */
+		for (int j = 0; err == 0 && j < internal_req->coap_request.num_options; j++) {
+			const struct coap_client_option *opt =
+				&internal_req->coap_request.options[j];
+
+			if (opt->code == COAP_OPTION_OBSERVE) {
+				continue;
+			}
+
+			err = coap_packet_append_option(&pkt, opt->code, opt->value, opt->len);
+		}
+
 		if (err == 0) {
-			err = coap_append_option_int(&pkt, COAP_OPTION_OBSERVE, 1);
+			err = coap_append_option_int(&pkt, COAP_OPTION_OBSERVE, deregister ? 1 : 0);
 		}
 
 		if (err < 0) {
-			LOG_ERR("Failed to build observe deregister packet: %d", err);
-			report_or_defer_error(client, internal_req, err);
-			cancel_internal_request(internal_req);
+			LOG_ERR("Failed to build observe %s packet: %d",
+				deregister ? "deregister" : "refresh", err);
+			/* A failed refresh leaves the observation intact; a failed
+			 * deregister still tears it down locally.
+			 */
+			if (deregister) {
+				report_or_defer_error(client, internal_req, err);
+				cancel_internal_request(internal_req);
+			}
 			ret = err;
 			continue;
 		}
 
 		internal_req->request = pkt;
 		internal_req->last_id = mid;
-		internal_req->is_observe = false;
+		if (deregister) {
+			/* Match the deregister response via request_token once is_observe
+			 * is cleared.
+			 */
+			memcpy(internal_req->request_token, internal_req->observe_token,
+			       internal_req->observe_tkl);
+			internal_req->request_tkl = internal_req->observe_tkl;
+			internal_req->is_observe = false;
+		}
 
 		if (internal_req->coap_request.confirmable) {
 			struct coap_transmission_parameters params = internal_req->pending.params;
@@ -1571,9 +1686,12 @@ int coap_client_deregister_observe(struct coap_client *client, struct coap_clien
 			err = coap_pending_init(&internal_req->pending, &internal_req->request,
 						net_sad(&internal_req->addr), &params);
 			if (err < 0) {
-				LOG_ERR("Failed to init pending for deregister: %d", err);
-				report_or_defer_error(client, internal_req, err);
-				cancel_internal_request(internal_req);
+				LOG_ERR("Failed to init pending for observe %s: %d",
+					deregister ? "deregister" : "refresh", err);
+				if (deregister) {
+					report_or_defer_error(client, internal_req, err);
+					cancel_internal_request(internal_req);
+				}
 				ret = err;
 				continue;
 			}
@@ -1585,25 +1703,51 @@ int coap_client_deregister_observe(struct coap_client *client, struct coap_clien
 				   internal_req->request.offset, 0, net_sad(&internal_req->addr),
 				   internal_req->addrlen);
 		if (err < 0) {
-			LOG_ERR("Failed to send observe deregister: %d", err);
-			report_or_defer_error(client, internal_req, err);
-			cancel_internal_request(internal_req);
+			LOG_ERR("Failed to send observe %s: %d",
+				deregister ? "deregister" : "refresh", err);
+			if (deregister) {
+				report_or_defer_error(client, internal_req, err);
+				cancel_internal_request(internal_req);
+			} else {
+				/* Disarm the retransmission set up for a confirmable refresh, or
+				 * the resend handler would retry it and time the observation out.
+				 */
+				coap_pending_clear(&internal_req->pending);
+			}
 			ret = err;
 			continue;
 		}
 
-		if (!internal_req->coap_request.confirmable) {
-			/* NON: no ACK expected, release immediately */
+		if (deregister && !internal_req->coap_request.confirmable) {
+			/* NON deregister: no ACK expected, release immediately */
 			report_or_defer_error(client, internal_req, -ECANCELED);
 			cancel_internal_request(internal_req);
 		}
-		/* CON: slot stays alive; retransmissions and final response
-		 * handled via the normal response path once the server ACKs
+		/* CON deregister: slot stays until the server ACKs; a refresh's slot
+		 * always stays - the re-registration response comes back on the same
+		 * token via the normal response path.
 		 */
+	}
+
+	/* Refreshing an observation that no longer exists, e.g. after a timeout or
+	 * a RST, must not look like success. Deregistering it is a harmless no-op.
+	 */
+	if (!deregister && !matched) {
+		ret = -ENOENT;
 	}
 
 	k_mutex_unlock(&client->lock);
 	return ret;
+}
+
+int coap_client_deregister_observe(struct coap_client *client, struct coap_client_request *req)
+{
+	return coap_client_observe_resend(client, req, true);
+}
+
+int coap_client_reregister_observe(struct coap_client *client, struct coap_client_request *req)
+{
+	return coap_client_observe_resend(client, req, false);
 }
 
 void coap_client_recv(void *coap_cl, void *a, void *b)
