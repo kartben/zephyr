@@ -1,5 +1,7 @@
 family:
 - name: gd_gd32
+  modules:
+  - hal_gigadevice
   series:
   - name: gd32a50x
     socs:
