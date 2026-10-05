@@ -106,7 +106,7 @@ def test_glue_names_the_module(tmp_path, monkeypatch):
 
 def test_option_of_missing_module(tmp_path, monkeypatch):
     kconf, glue = configure(tmp_path, monkeypatch, {"FOO": "y"})
-    kconfig.check_assigned_sym_values(kconf, glue)
+    assert kconfig.check_assigned_sym_values(kconf, glue) == {"foo": ["FOO"]}
 
     assert len(kconfig.warnings) == 1
     warning = kconfig.warnings[0]
@@ -117,14 +117,30 @@ def test_option_of_missing_module(tmp_path, monkeypatch):
 
 def test_option_of_available_module(tmp_path, monkeypatch):
     kconf, glue = configure(tmp_path, monkeypatch, {"FOO": "y"}, available=("foo",))
-    kconfig.check_assigned_sym_values(kconf, glue)
-
+    assert kconfig.check_assigned_sym_values(kconf, glue) == {}
     assert kconfig.warnings == []
+
+
+def test_disabled_option_of_missing_module(tmp_path, monkeypatch):
+    kconf, glue = configure(tmp_path, monkeypatch, {"FOO": "n"})
+    assert kconfig.check_assigned_sym_values(kconf, glue) == {}
+    assert kconfig.warnings == []
+
+
+def test_board_defconfig_option_of_missing_module(tmp_path, monkeypatch):
+    kconf, glue = configure(tmp_path, monkeypatch, {})
+    write_conf(tmp_path / "board_defconfig", {"FOO": "y"})
+    kconf.load_config(str(tmp_path / "board_defconfig"))
+
+    assert kconfig.check_assigned_sym_values(kconf, glue) == {}
+    assert len(kconfig.warnings) == 1
+    warning = kconfig.warnings[0]
+    assert "FOO needs the foo module, which is not available." in warning
 
 
 def test_dependency_on_missing_module(tmp_path, monkeypatch):
     kconf, glue = configure(tmp_path, monkeypatch, {"DRIVER": "y"})
-    kconfig.check_assigned_sym_values(kconf, glue)
+    assert kconfig.check_assigned_sym_values(kconf, glue) == {"bar": ["DRIVER"]}
 
     assert len(kconfig.warnings) == 1
     warning = kconfig.warnings[0]
@@ -164,3 +180,27 @@ def test_promptless_option_of_available_module(tmp_path, monkeypatch):
     message = " ".join(str(e.value).split())
     assert "not directly user-configurable" in message
     assert "lv module" not in message
+
+
+def run_main(tmp_path, monkeypatch, conf, available=()):
+    """Runs kconfig.py on 'conf' the way the build does for a prj.conf."""
+    configure(tmp_path, monkeypatch, conf, available)
+    files = [str(tmp_path / name) for name in (".config", "autoconf.h", "sources.txt", "prj.conf")]
+    argv = ["kconfig.py", "--handwritten-input-configs", "Kconfig", *files]
+    monkeypatch.setattr("sys.argv", argv)
+    kconfig.main()
+
+
+def test_main_stops_on_option_of_missing_module(tmp_path, monkeypatch, capsys):
+    with pytest.raises(SystemExit) as e:
+        run_main(tmp_path, monkeypatch, {"FOO": "y"})
+
+    assert "Aborting due to missing modules" in str(e.value)
+    assert "The foo module is not available, but FOO needs it." in capsys.readouterr().err
+    assert not (tmp_path / ".config").exists()
+
+
+def test_main_writes_configuration_with_modules_available(tmp_path, monkeypatch):
+    run_main(tmp_path, monkeypatch, {"FOO": "y"}, available=("foo",))
+
+    assert "CONFIG_FOO=y" in (tmp_path / ".config").read_text()
