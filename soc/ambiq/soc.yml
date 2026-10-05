@@ -1,5 +1,7 @@
 family:
 - name: ambiq
+  modules:
+  - hal_ambiq
   series:
   - name: apollo2x
     socs:
