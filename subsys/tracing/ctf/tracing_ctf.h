@@ -1155,6 +1155,15 @@ void sys_trace_pm_system_suspend_exit(int32_t ticks, enum pm_state state);
 void sys_trace_pm_device_action_run_enter(const struct device *dev, uint8_t action);
 void sys_trace_pm_device_action_run_exit(const struct device *dev, uint8_t action, int32_t ret);
 
+/* SoC power state transitions */
+#define sys_port_trace_pm_state_set_enter(cpu, state, substate_id)                                 \
+	sys_trace_pm_state_set_enter((uint8_t)(cpu), (uint8_t)(state), (uint8_t)(substate_id))
+#define sys_port_trace_pm_state_set_exit(cpu, state, substate_id)                                  \
+	sys_trace_pm_state_set_exit((uint8_t)(cpu), (uint8_t)(state), (uint8_t)(substate_id))
+
+void sys_trace_pm_state_set_enter(uint8_t cpu, uint8_t state, uint8_t substate_id);
+void sys_trace_pm_state_set_exit(uint8_t cpu, uint8_t state, uint8_t substate_id);
+
 /*
  * Fill any sys_port_trace_* hook not defined above with a canonical no-op. The
  * per-macro #ifndef guards keep the real definitions above; only gaps are filled,

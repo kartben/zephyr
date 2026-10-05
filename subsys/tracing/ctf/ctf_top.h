@@ -519,6 +519,9 @@ typedef enum {
 	/* Device Power Management Actions */
 	CTF_EVENT_PM_DEVICE_ACTION_RUN_ENTER = 0x198,
 	CTF_EVENT_PM_DEVICE_ACTION_RUN_EXIT = 0x199,
+	/* SoC power state transitions */
+	CTF_EVENT_PM_STATE_SET_ENTER = 0x19A,
+	CTF_EVENT_PM_STATE_SET_EXIT = 0x19B,
 
 } ctf_event_t;
 
@@ -2597,6 +2600,17 @@ static inline void ctf_top_pm_device_action_run_enter(uint32_t dev, uint8_t acti
 static inline void ctf_top_pm_device_action_run_exit(uint32_t dev, uint8_t action, int32_t ret)
 {
 	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_PM_DEVICE_ACTION_RUN_EXIT), dev, action, ret);
+}
+
+/* SoC power state transitions */
+static inline void ctf_top_pm_state_set_enter(uint8_t cpu, uint8_t state, uint8_t substate_id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_PM_STATE_SET_ENTER), cpu, state, substate_id);
+}
+
+static inline void ctf_top_pm_state_set_exit(uint8_t cpu, uint8_t state, uint8_t substate_id)
+{
+	CTF_EVENT(CTF_LITERAL(uint16_t, CTF_EVENT_PM_STATE_SET_EXIT), cpu, state, substate_id);
 }
 
 #endif /* SUBSYS_DEBUG_TRACING_CTF_TOP_H */

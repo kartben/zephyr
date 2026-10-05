@@ -2480,3 +2480,14 @@ void sys_trace_pm_device_action_run_exit(const struct device *dev, uint8_t actio
 {
 	ctf_top_pm_device_action_run_exit((uint32_t)(uintptr_t)dev, action, ret);
 }
+
+/* SoC power state transitions */
+void sys_trace_pm_state_set_enter(uint8_t cpu, uint8_t state, uint8_t substate_id)
+{
+	ctf_top_pm_state_set_enter(cpu, state, substate_id);
+}
+
+void sys_trace_pm_state_set_exit(uint8_t cpu, uint8_t state, uint8_t substate_id)
+{
+	ctf_top_pm_state_set_exit(cpu, state, substate_id);
+}

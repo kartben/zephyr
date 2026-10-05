@@ -3569,3 +3569,23 @@ event {
 		int32_t ret;
 	};
 };
+
+event {
+	name = pm_state_set_enter;
+	id = 0x19A;
+	fields := struct {
+		uint8_t cpu;
+		uint8_t state;
+		uint8_t substate_id;
+	};
+};
+
+event {
+	name = pm_state_set_exit;
+	id = 0x19B;
+	fields := struct {
+		uint8_t cpu;
+		uint8_t state;
+		uint8_t substate_id;
+	};
+};
