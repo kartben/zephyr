@@ -80,6 +80,7 @@ def main():
         print(kconf.load_config(config, replace=False))
 
     glue = module_glue(kconf)
+    missing = {}
 
     if args.handwritten_input_configs:
         # Check that there are no assignments to promptless symbols, which
@@ -93,7 +94,7 @@ def main():
         # Print warnings for symbols that didn't get the assigned value. Only
         # do this for handwritten input too, to avoid likely unhelpful warnings
         # when using an old configuration and updating Kconfig files.
-        check_assigned_sym_values(kconf, glue)
+        missing = check_assigned_sym_values(kconf, glue)
         check_assigned_choice_values(kconf)
 
     if kconf.syms.get('WARN_DEPRECATED', kconf.y).tri_value == 2:
@@ -132,8 +133,16 @@ def main():
         # different value than the one it was assigned. Keep that one as just a
         # warning for now.
         if error_out:
-            report_missing_modules(selected_missing_modules(kconf, glue))
+            for module, names in selected_missing_modules(kconf, glue).items():
+                missing.setdefault(module, []).extend(names)
+            report_missing_modules(missing)
             err("Aborting due to Kconfig warnings")
+
+    # Unlike other assigned values that do not take, an option enabled without
+    # the module it needs would only fail later in the build, if at all
+    if missing:
+        report_missing_modules(missing)
+        err("Aborting due to missing modules")
 
     # All warnings have already been printed above, either by warn() or by the
     # kconf.warnings loop. With --warning-as-error, any of them is fatal, also
@@ -183,7 +192,11 @@ def check_assigned_sym_values(kconf, glue):
     # Verifies that the values assigned to symbols "took" (matches the value
     # the symbols actually got), printing warnings otherwise. Choice symbols
     # are checked separately, in check_assigned_choice_values().
+    #
+    # Returns a dict mapping the name of each module that is not available to
+    # the symbols that did not take their value because they need it.
 
+    missing = {}
     for sym in kconf.unique_defined_syms:
         if sym.choice:
             continue
@@ -227,8 +240,14 @@ def check_assigned_sym_values(kconf, glue):
 
             for name in modules:
                 msg += f"{sym.name} needs the {name} module, which is not available. "
+                # A board defconfig may enable what its board supports, such as
+                # RTT, and a build without the module just goes without it
+                if sym.user_loc is None or not sym.user_loc[0].endswith("_defconfig"):
+                    missing.setdefault(name, []).append(sym.name)
 
             warn(msg + SYM_INFO_HINT.format(sym))
+
+    return missing
 
 
 def missing_deps(sym):
