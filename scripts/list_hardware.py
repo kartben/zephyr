@@ -6,7 +6,7 @@
 import argparse
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path, PurePath
 
 import jsonschema
@@ -57,12 +57,15 @@ class Systems:
                         f'{best_match(errors).message} in {best_match(errors).json_path}')
 
         for f in data.get('family', []):
-            family = Family(f['name'], [folder], [], [])
+            family = Family(f['name'], [folder], [], [], f.get('modules', []))
             for s in f.get('series', []):
-                series = Series(s['name'], [folder], f['name'], [])
+                series = Series(s['name'], [folder], f['name'], [], s.get('modules', []))
                 socs = [(Soc(soc['name'],
                              [c['name'] for c in soc.get('cpuclusters', [])],
-                             [folder], s['name'], f['name']))
+                             [folder], s['name'], f['name'],
+                             merge_modules(family.modules, series.modules,
+                                           soc.get('modules', [])),
+                             cpucluster_modules(soc)))
                         for soc in s.get('socs', [])]
                 series.socs.extend(socs)
                 self._series.append(series)
@@ -71,16 +74,20 @@ class Systems:
                 family.socs.extend(socs)
             socs = [(Soc(soc['name'],
                          [c['name'] for c in soc.get('cpuclusters', [])],
-                         [folder], None, f['name']))
+                         [folder], None, f['name'],
+                         merge_modules(family.modules, soc.get('modules', [])),
+                         cpucluster_modules(soc)))
                     for soc in f.get('socs', [])]
             self._socs.extend(socs)
             self._families.append(family)
 
         for s in data.get('series', []):
-            series = Series(s['name'], [folder], '', [])
+            series = Series(s['name'], [folder], '', [], s.get('modules', []))
             socs = [(Soc(soc['name'],
                          [c['name'] for c in soc.get('cpuclusters', [])],
-                         [folder], s['name'], ''))
+                         [folder], s['name'], '',
+                         merge_modules(series.modules, soc.get('modules', [])),
+                         cpucluster_modules(soc)))
                     for soc in s.get('socs', [])]
             series.socs.extend(socs)
             self._series.append(series)
@@ -89,11 +96,13 @@ class Systems:
         for soc in data.get('socs', []):
             if soc.get('name') is not None:
                 self._socs.append(Soc(soc['name'], [c['name'] for c in soc.get('cpuclusters', [])],
-                                  [folder], '', ''))
+                                  [folder], '', '', soc.get('modules', []),
+                                  cpucluster_modules(soc)))
             elif soc.get('extend') is not None:
                 self._extended_socs.append(Soc(soc['extend'],
                                            [c['name'] for c in soc.get('cpuclusters', [])],
-                                           [folder], '', ''))
+                                           [folder], '', '', [],
+                                           cpucluster_modules(soc)))
             else:
                 # This should not happen if schema validation passed
                 sys.exit(f'ERROR: Malformed "socs" section in SoC file: {soc_yaml}\n'
@@ -175,6 +184,18 @@ class Systems:
                      f"and that soc-root containing '{name}' has been correctly defined.")
 
 
+def merge_modules(*levels):
+    '''Merge the modules listed at each level of the SoC hierarchy, in order and once each.
+    '''
+    return list(dict.fromkeys(m for level in levels for m in level))
+
+
+def cpucluster_modules(soc):
+    '''Map the CPU clusters of a SoC entry in soc.yml to the modules they list.
+    '''
+    return {c['name']: c['modules'] for c in soc.get('cpuclusters', []) if 'modules' in c}
+
+
 @dataclass
 class Soc:
     name: str
@@ -182,11 +203,18 @@ class Soc:
     folder: list[str]
     series: str = ''
     family: str = ''
+    # The modules of the SoC, including those of its series and family
+    modules: list[str] = field(default_factory=list)
+    # The modules that only some of its CPU clusters need, by cluster
+    cpucluster_modules: dict[str, list[str]] = field(default_factory=dict)
 
     def extend(self, soc):
         if self.name == soc.name:
             self.cpuclusters.extend(soc.cpuclusters)
             self.folder.extend(soc.folder)
+            for cluster, modules in soc.cpucluster_modules.items():
+                self.cpucluster_modules[cluster] = merge_modules(
+                    self.cpucluster_modules.get(cluster, []), modules)
 
 
 @dataclass
@@ -195,6 +223,7 @@ class Series:
     folder: list[str]
     family: str
     socs: list[Soc]
+    modules: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -203,6 +232,7 @@ class Family:
     folder: list[str]
     series: list[Series]
     socs: list[Soc]
+    modules: list[str] = field(default_factory=list)
 
 
 def unique_paths(paths):
@@ -293,7 +323,9 @@ def dump_v2_archs(args):
                 SERIES='',
                 FAMILY='',
                 ARCH='',
-                VENDOR=''
+                VENDOR='',
+                MODULES='',
+                CPUCLUSTER_MODULES=''
             )
         else:
             info = args.format.format(
@@ -306,7 +338,9 @@ def dump_v2_archs(args):
                 series='',
                 family='',
                 arch='',
-                vendor=''
+                vendor='',
+                modules='',
+                cpucluster_modules=''
             )
 
         print(info)
@@ -334,6 +368,10 @@ def dump_v2_system(args, type, system):
     else:
         series = ""
 
+    # Modules that only some CPU clusters need, as <cluster>=<module> pairs
+    by_cluster = system.cpucluster_modules if type == 'soc' else {}
+    cluster_modules = [f'{c}={m}' for c, modules in by_cluster.items() for m in modules]
+
     if args.cmakeformat is not None:
         info = args.cmakeformat.format(
            TYPE='TYPE;' + type,
@@ -341,7 +379,9 @@ def dump_v2_system(args, type, system):
            DIR='DIR;' + ';'.join([Path(x).as_posix() for x in system.folder]),
            HWM='HWM;' + 'v2',
            FAMILY='FAMILY;' + family,
-           SERIES='SERIES;' + series
+           SERIES='SERIES;' + series,
+           MODULES='MODULES;' + ';'.join(system.modules),
+           CPUCLUSTER_MODULES='CPUCLUSTER_MODULES;' + ';'.join(cluster_modules)
         )
     else:
         info = args.format.format(
@@ -350,7 +390,9 @@ def dump_v2_system(args, type, system):
            dir=system.folder,
            hwm='v2',
            family=family,
-           series=series
+           series=series,
+           modules=','.join(system.modules),
+           cpucluster_modules=','.join(cluster_modules)
         )
 
     print(info)
