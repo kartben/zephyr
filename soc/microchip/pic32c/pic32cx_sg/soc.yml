@@ -3,6 +3,8 @@
 
 family:
 - name: microchip_pic32cx_sg
+  modules:
+  - hal_microchip
   series:
   - name: pic32cx_sg41
     socs:
