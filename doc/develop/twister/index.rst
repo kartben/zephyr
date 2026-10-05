@@ -960,7 +960,9 @@ expect_reboot: <True|False> (default False)
 modules: <list of module names>
     Build and run this test scenario only when all of the listed
     :ref:`modules <modules>` are present in the workspace. Scenarios that
-    require a module which is not available are filtered out.
+    require a module which is not available are filtered out. With
+    ``--strict-soc-modules``, the listed modules also stay available to the
+    build when they are modules that a ``soc.yml`` lists for other SoCs.
 
 type: <string> (default integration)
     Test type of the scenario. Set to ``unit`` for unit tests that are built
