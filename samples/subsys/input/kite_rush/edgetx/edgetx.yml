@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+package:
+  id: github.com/zephyrproject-rtos/zephyr/samples/subsys/input/kite_rush/edgetx
+  name: "Kite Rush"
+  description: Radio dashboard for the Zephyr Kite Rush CRSF game sample
+  authors:
+    - name: The Zephyr Project Contributors
+  urls:
+    - name: Sample
+      url: "https://docs.zephyrproject.org/latest/samples/subsys/input/kite_rush/README.html"
+    - name: Repository
+      url: "https://github.com/zephyrproject-rtos/zephyr"
+  keywords: ["zephyr", "crsf", "game", "widget"]
+  license: Apache-2.0
+  min_edgetx_version: "2.10.0"
+  capabilities:
+    display:
+      type: colorlcd
+
+widgets:
+  - name: KiteRush
+    path: WIDGETS/KiteRush

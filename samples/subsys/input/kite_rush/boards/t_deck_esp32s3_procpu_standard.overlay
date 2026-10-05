@@ -1,0 +1,15 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * Receiver on the Grove port: GPIO43 (TX) and GPIO44 (RX). The T-Deck Plus
+ * has its GNSS module on these pins.
+ */
+crsf_uart: &uart0 {
+	pinctrl-0 = <&uart0_default>;
+	pinctrl-names = "default";
+};
+
+#include "crsf_receiver.dtsi"

@@ -19,21 +19,17 @@
 
 LOG_MODULE_REGISTER(tbs_crsf, CONFIG_INPUT_LOG_LEVEL);
 
+/*
+ * The RX buffers are used for DMA by the UART driver, which is responsible for
+ * their cache coherency. Place them in DTCM or non-cacheable memory when
+ * available.
+ */
 #if DT_NODE_HAS_STATUS_OKAY(DT_CHOSEN(zephyr_dtcm)) && CONFIG_INPUT_CRSF_USE_DTCM_FOR_DMA_BUFFER
 #define _dma_buffer_section __dtcm_noinit_section
 #elif defined(CONFIG_NOCACHE_MEMORY)
 #define _dma_buffer_section __nocache
 #else
 #define _dma_buffer_section
-#ifdef CONFIG_CACHE_MANAGEMENT
-#include <zephyr/cache.h>
-#define CRSF_INVALIDATE_CACHE
-#elif defined(CONFIG_DCACHE)
-#error "CRSF input requires a DMA-safe buffer, but no suitable memory configuration was found. \
-Enable one of the following: \
-CONFIG_INPUT_CRSF_USE_DTCM_FOR_DMA_BUFFER with a zephyr,dtcm node, \
-CONFIG_NOCACHE_MEMORY, or CONFIG_CACHE_MANAGEMENT."
-#endif
 #endif
 
 struct crsf_input_channel {
@@ -66,6 +62,7 @@ struct input_crsf_config {
 #define CRSF_TX_BUF_SIZE           CRSF_MAX_FRAME_LEN
 #define CRSF_RX_BUF_SIZE           (2 * CRSF_MAX_FRAME_LEN) /* Async RX DMA buffer size */
 #define CRSF_RX_TIMEOUT_US         1000                     /* Flush timeout for async RX */
+#define CRSF_IRQ_RX_CHUNK_SIZE     16                       /* FIFO read size for IRQ RX */
 #define CRSF_QUEUE_SIZE            3
 
 #define REPORT_FILTER      CONFIG_INPUT_CRSF_REPORT_FILTER
@@ -98,6 +95,7 @@ struct input_crsf_data {
 	/* Async RX DMA Buffers (Double buffering) */
 	uint8_t *rx_buf_a;
 	uint8_t *rx_buf_b;
+	uint8_t *rx_buf_last; /* Last buffer handed to the UART */
 
 	uint8_t crsf_frame[CRSF_MAX_FRAME_LEN];
 
@@ -474,22 +472,16 @@ static void crsf_uart_callback(const struct device *uart_dev, struct uart_event 
 			break;
 		}
 
-#ifdef CRSF_INVALIDATE_CACHE
-		arch_dcache_invd_range(&rx_buf[rx_off], rx_len);
-#endif
 		/* Process received data chunk */
 		crsf_process_bytes(dev, &rx_buf[rx_off], rx_len);
 		break;
 	}
 
 	case UART_RX_BUF_REQUEST:
-		/* Provide the next buffer to keep reception continuous */
-		{
-			uint8_t *next_buf = (evt->data.rx_buf.buf == data->rx_buf_a)
-						    ? data->rx_buf_b
-						    : data->rx_buf_a;
-			uart_rx_buf_rsp(uart_dev, next_buf, CRSF_RX_BUF_SIZE);
-		}
+		/* The request carries no buffer, alternate between the two */
+		data->rx_buf_last = (data->rx_buf_last == data->rx_buf_a) ? data->rx_buf_b
+									    : data->rx_buf_a;
+		uart_rx_buf_rsp(uart_dev, data->rx_buf_last, CRSF_RX_BUF_SIZE);
 		break;
 
 	case UART_RX_BUF_RELEASED:
@@ -498,12 +490,75 @@ static void crsf_uart_callback(const struct device *uart_dev, struct uart_event 
 
 	case UART_RX_DISABLED:
 		/* Restart RX if disabled (error recovery) */
+		data->rx_buf_last = data->rx_buf_a;
 		uart_rx_enable(uart_dev, data->rx_buf_a, CRSF_RX_BUF_SIZE, CRSF_RX_TIMEOUT_US);
 		break;
 
 	default:
 		break;
 	}
+}
+
+/*
+ * Interrupt-driven RX ISR, used when the UART does not implement the async API
+ */
+static void crsf_uart_isr(const struct device *uart_dev, void *user_data)
+{
+	const struct device *dev = user_data;
+	uint8_t chunk[CRSF_IRQ_RX_CHUNK_SIZE];
+	int len;
+
+	uart_irq_update(uart_dev);
+
+	if (uart_irq_rx_ready(uart_dev) <= 0) {
+		return;
+	}
+
+	do {
+		len = uart_fifo_read(uart_dev, chunk, CRSF_IRQ_RX_CHUNK_SIZE);
+		if (len > 0) {
+			crsf_process_bytes(dev, chunk, len);
+		}
+	} while (len == CRSF_IRQ_RX_CHUNK_SIZE);
+}
+
+static int crsf_rx_start_async(const struct device *dev)
+{
+	const struct input_crsf_config *const config = dev->config;
+	struct input_crsf_data *const data = dev->data;
+	int ret;
+
+	ret = uart_callback_set(config->uart_dev, crsf_uart_callback, (void *)dev);
+	if (ret < 0) {
+		return ret;
+	}
+
+	data->rx_buf_last = data->rx_buf_a;
+	ret = uart_rx_enable(config->uart_dev, data->rx_buf_a, CRSF_RX_BUF_SIZE,
+			     CRSF_RX_TIMEOUT_US);
+	if (ret < 0) {
+		(void)uart_callback_set(config->uart_dev, NULL, NULL);
+	}
+
+	return ret;
+}
+
+static int crsf_rx_start_irq(const struct device *dev)
+{
+	const struct input_crsf_config *const config = dev->config;
+	int ret;
+
+	uart_irq_rx_disable(config->uart_dev);
+	uart_irq_tx_disable(config->uart_dev);
+
+	ret = uart_irq_callback_user_data_set(config->uart_dev, crsf_uart_isr, (void *)dev);
+	if (ret < 0) {
+		return ret;
+	}
+
+	uart_irq_rx_enable(config->uart_dev);
+
+	return 0;
 }
 
 static int input_crsf_init(const struct device *dev)
@@ -534,18 +589,13 @@ static int input_crsf_init(const struct device *dev)
 		return ret;
 	}
 
-	/* Set Async Callback */
-	ret = uart_callback_set(config->uart_dev, crsf_uart_callback, (void *)dev);
-	if (ret < 0) {
-		LOG_ERR("Failed to set UART callback: %d", ret);
-		return ret;
-	}
-
 	k_msgq_init(&data->rx_queue, data->rx_queue_slab, CRSF_MAX_FRAME_LEN, CRSF_QUEUE_SIZE);
 
-	/* Start Async RX */
-	ret = uart_rx_enable(config->uart_dev, data->rx_buf_a, CRSF_RX_BUF_SIZE,
-			     CRSF_RX_TIMEOUT_US);
+	ret = crsf_rx_start_async(dev);
+	if (ret < 0) {
+		LOG_DBG("Async RX unavailable (%d), using interrupt-driven RX", ret);
+		ret = crsf_rx_start_irq(dev);
+	}
 	if (ret < 0) {
 		LOG_ERR("Failed to enable UART RX: %d", ret);
 		return ret;
