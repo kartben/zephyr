@@ -35,6 +35,7 @@ from kconfiglib import (
     TYPE_TO_STR,
     Kconfig,
     Symbol,
+    expr_items,
     expr_str,
     expr_value,
     split_expr,
@@ -143,6 +144,10 @@ def main():
     if missing:
         report_missing_modules(missing)
         err("Aborting due to missing modules")
+
+    # A device can be enabled without the application using it, so this is
+    # only a note
+    report_drivers_off(drivers_off(kconf, glue))
 
     # All warnings have already been printed above, either by warn() or by the
     # kconf.warnings loop. With --warning-as-error, any of them is fatal, also
@@ -371,6 +376,76 @@ def selected_missing_modules(kconf, glue):
             missing.setdefault(module, []).append(sym.name)
 
     return missing
+
+
+# Generated for each devicetree compatible, next to a DT_COMPAT_<compat>
+# variable that holds the compatible string
+DT_HAS_RE = re.compile(r"DT_HAS_(\w+)_ENABLED")
+
+
+def drivers_off(kconf, glue):
+    # Returns a dict mapping the name of each module that is not available to
+    # the (driver, compatible) pairs of the drivers that only this module keeps
+    # off, although they default to y and the devicetree enables their device
+
+    off = {}
+    for sym in kconf.unique_defined_syms:
+        if sym.type not in (BOOL, TRISTATE) or sym.tri_value != 0 or sym.user_value is not None:
+            continue
+        # The conditions of the defaults include the unsatisfied dependencies
+        if not any(expr_value(value) == 2 for value, _, _ in sym.defaults):
+            continue
+
+        deps = split_expr(sym.direct_dep, AND)
+        compats = enabled_compats(kconf, deps)
+        if not compats:
+            continue
+
+        unmet = [dep for dep in deps if expr_value(dep) == 0]
+        # Undefined dependencies are the 'if 0' of the glue of a missing module
+        if any(
+            presence_module(dep, glue) is None and not (isinstance(dep, Symbol) and not dep.nodes)
+            for dep in unmet
+        ):
+            continue
+
+        for module in missing_modules(sym, unmet, glue):
+            off.setdefault(module, []).append((sym.name, compats[0]))
+
+    return off
+
+
+def enabled_compats(kconf, deps):
+    # Returns the sorted compatibles of the enabled devicetree devices that
+    # the satisfied dependencies among 'deps' refer to
+
+    compats = set()
+    for dep in deps:
+        if expr_value(dep) != 2:
+            continue
+        for item in expr_items(dep):
+            match = DT_HAS_RE.fullmatch(item.name) if isinstance(item, Symbol) else None
+            var = match and f"DT_COMPAT_{match.group(1)}"
+            if item.tri_value == 2 and var in kconf.variables:
+                compats.add(kconf.variables[var].value)
+    return sorted(compats)
+
+
+def report_drivers_off(off):
+    for module, drivers in sorted(off.items()):
+        devices = ", ".join(f"{compat} ({name})" for name, compat in sorted(drivers))
+        if len(drivers) == 1:
+            what = "this device, which the devicetree enables, has"
+        else:
+            what = "these devices, which the devicetree enables, have"
+        print(
+            "\n"
+            + textwrap.fill(
+                f"note: The {module} module is not available, so {what} no driver: {devices}.",
+                100,
+            ),
+            file=sys.stderr,
+        )
 
 
 def report_missing_modules(missing):
