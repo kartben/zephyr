@@ -1,5 +1,7 @@
 family:
 - name: cat1a
+  modules:
+  - hal_infineon
   series:
   - name: psoc6
     socs:

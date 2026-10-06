@@ -5,6 +5,8 @@
 
 family:
 - name: microchip_sama5
+  modules:
+  - hal_microchip
   series:
   - name: sama5d2
     socs:

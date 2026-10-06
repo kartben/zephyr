@@ -1,5 +1,7 @@
 family:
 - name: espressif_esp32
+  modules:
+  - hal_espressif
   series:
   - name: esp32
     socs:

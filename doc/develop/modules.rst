@@ -629,7 +629,10 @@ modules. These can be used e.g. to declare dependencies from other Kconfig symbo
 which depend on the module or blobs from the module. To satisfy compliance checking
 when building Zephyr without the module present, it's recommended for the module to
 have default definitions for these symbols in its respective Kconfig file under
-``modules/`` in the Zephyr main tree.
+``modules/`` in the Zephyr main tree. When a configuration needs a module that is not
+available, Kconfig finds these definitions and reports the module by the name of the
+:file:`modules/<module_name>/` directory that holds them. It also prints a note for each
+driver that only the missing module keeps off, although the devicetree enables its device.
 
 In CMake, ``ZEPHYR_<MODULE_NAME>_CMAKE_DIR`` contains the
 absolute path to the directory containing the :file:`CMakeLists.txt` file that

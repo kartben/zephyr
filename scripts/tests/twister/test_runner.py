@@ -2380,6 +2380,7 @@ def test_projectbuilder_cmake():
     pb.testsuite.extra_overlay_confs = ['some', 'files3']
     pb.testsuite.extra_dtc_overlay_files = ['some', 'files4']
     pb.options.extra_args = ['other', 'args']
+    pb.options.strict_soc_modules = False
     pb.cmake_assemble_args = mock.Mock(return_value=['dummy'])
     cmake_res_mock = mock.Mock()
     pb.run_cmake = mock.Mock(return_value=cmake_res_mock)
@@ -2398,6 +2399,27 @@ def test_projectbuilder_cmake():
         pb.instance.build_dir
     )
     pb.run_cmake.assert_called_once_with(['dummy'], ['dummy filter'])
+
+
+def test_projectbuilder_cmake_strict_soc_modules():
+    instance_mock = mock.Mock()
+    env_mock = mock.Mock()
+
+    pb = ProjectBuilder(instance_mock, env_mock, mocked_jobserver)
+    pb.testsuite.extra_args = []
+    pb.options.strict_soc_modules = True
+    pb.cmake_assemble_args = mock.Mock(return_value=['dummy'])
+    pb.run_cmake = mock.Mock()
+
+    with mock.patch(
+        'twisterlib.runner.visible_modules', return_value=['/m/hal', '/m/lib']
+    ) as visible_mock:
+        pb.cmake()
+
+    visible_mock.assert_called_once_with(
+        pb.instance.platform.name, pb.testsuite.modules, pb.env.soc_roots
+    )
+    pb.run_cmake.assert_called_once_with(['dummy', '-DZEPHYR_MODULES=/m/hal;/m/lib'], [])
 
 
 @pytest.mark.parametrize(
@@ -2445,6 +2467,7 @@ def test_projectbuilder_cmake_platform_extra_args_matches_platform_aliases(
     pb.testsuite.extra_overlay_confs = []
     pb.testsuite.extra_dtc_overlay_files = []
     pb.options.extra_args = []
+    pb.options.strict_soc_modules = False
     pb.cmake_assemble_args = mock.Mock(return_value=['dummy'])
     pb.run_cmake = mock.Mock()
 

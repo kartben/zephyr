@@ -1,5 +1,7 @@
 family:
 - name: infineon_xmc
+  modules:
+  - hal_infineon
   series:
   - name: xmc4xxx
     socs:

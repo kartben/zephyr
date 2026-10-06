@@ -1,5 +1,7 @@
 family:
 - name: numicro
+  modules:
+  - nuvoton
   series:
   - name: m48x
     socs:

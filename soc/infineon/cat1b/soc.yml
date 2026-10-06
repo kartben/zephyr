@@ -5,6 +5,8 @@
 
 family:
 - name: cat1b
+  modules:
+  - hal_infineon
   series:
   - name: cyw20829
     socs:

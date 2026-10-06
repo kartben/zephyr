@@ -1,2 +1,4 @@
 socs:
   - name: myra
+    modules:
+      - hal_stm32
