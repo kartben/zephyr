@@ -1,5 +1,7 @@
 family:
 - name: ti_simplelink
+  modules:
+  - ti
   series:
   - name: cc13x2_cc26x2
     socs:
