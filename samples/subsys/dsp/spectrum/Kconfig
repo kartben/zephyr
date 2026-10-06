@@ -17,3 +17,13 @@ config SAMPLE_SPECTRUM_USB_MIC
 	help
 	  Send the PCM stream to the USB host as 16 kHz mono, 16-bit audio.
 	  Requires the usb_mic.overlay devicetree overlay.
+
+config SAMPLE_SPECTRUM_BATTERY
+	bool "Show the battery charge in the header"
+	default y
+	depends on $(dt_alias_enabled,fuel-gauge0)
+	select FUEL_GAUGE
+	select SENSOR
+	help
+	  Read the state of charge from the fuel gauge selected by the
+	  fuel-gauge0 alias every few seconds and draw it in the header.

@@ -27,6 +27,10 @@
 #include "usb_mic.h"
 #endif
 
+#ifdef CONFIG_SAMPLE_SPECTRUM_BATTERY
+#include <zephyr/drivers/fuel_gauge.h>
+#endif
+
 #ifdef CONFIG_SAMPLE_SPECTRUM_DMIC
 #include <zephyr/audio/dmic.h>
 #if !DT_NODE_EXISTS(DT_ALIAS(dmic0))
@@ -45,6 +49,7 @@
 #define SAMPLE_RATE 16000
 #define BAND_COUNT  48
 #define PI_F        3.14159265358979323846f
+#define BATTERY_POLL_MS 5000
 
 /* One strip is drawn while the writer thread sends the other to the display. */
 static uint16_t strips[STRIP_COUNT][FB_WIDTH * TILE_ROWS];
@@ -67,6 +72,7 @@ static int tile_rows;
 static int water_head;
 static int water_filled;
 static bool swapped_bytes;
+static int battery_pct = -1;
 static uint16_t palette[256];
 static uint16_t band_x[BAND_COUNT + 1];
 static int16_t bar_top[BAND_COUNT];
@@ -107,8 +113,8 @@ static struct mpipe_app_sink usb_sink;
 K_MEM_SLAB_DEFINE_STATIC(dmic_slab, BLOCK_SIZE * sizeof(int16_t), 4, 4);
 #endif
 
-/* Five columns by seven rows, 0-9 followed by A-Z. */
-static const uint8_t font[36][7] = {
+/* Five columns by seven rows, 0-9, A-Z, then '%'. */
+static const uint8_t font[37][7] = {
 	{14, 17, 19, 21, 25, 17, 14}, {4, 12, 4, 4, 4, 4, 14},
 	{14, 17, 1, 2, 4, 8, 31}, {30, 1, 1, 14, 1, 1, 30},
 	{2, 6, 10, 18, 31, 2, 2}, {31, 16, 16, 30, 1, 1, 30},
@@ -127,6 +133,7 @@ static const uint8_t font[36][7] = {
 	{17, 17, 17, 17, 17, 17, 14}, {17, 17, 17, 17, 17, 10, 4},
 	{17, 17, 17, 21, 21, 21, 10}, {17, 17, 10, 4, 10, 17, 17},
 	{17, 17, 10, 4, 4, 4, 4}, {31, 1, 2, 4, 8, 16, 31},
+	{24, 25, 2, 4, 8, 19, 3},
 };
 
 static uint16_t rgb(uint8_t r, uint8_t g, uint8_t b)
@@ -168,7 +175,8 @@ static void label(const char *string, int x, int y, uint16_t color)
 	for (; *string != '\0'; string++, x += 6 * scale) {
 		unsigned int ch = (unsigned char)*string;
 		int index = ch >= '0' && ch <= '9' ? ch - '0' :
-			    ch >= 'A' && ch <= 'Z' ? ch - 'A' + 10 : -1;
+			    ch >= 'A' && ch <= 'Z' ? ch - 'A' + 10 :
+			    ch == '%' ? 36 : -1;
 
 		if (index < 0) {
 			continue;
@@ -184,19 +192,49 @@ static void label(const char *string, int x, int y, uint16_t color)
 	}
 }
 
+/* Draw the battery icon and percentage right-aligned at x, return the left edge. */
+static int draw_battery(int x, int y)
+{
+	const uint16_t outline = rgb(124, 146, 186);
+	uint16_t level = battery_pct > 50 ? rgb(64, 229, 141) :
+			 battery_pct > 20 ? rgb(255, 202, 90) : rgb(255, 92, 92);
+	char text[5];
+	int len;
+
+	if (battery_pct < 0) {
+		return x;
+	}
+	len = snprintk(text, sizeof(text), "%d%%", battery_pct);
+	x -= 20 * scale;
+	rect(x + 18 * scale, y + 2 * scale, 2 * scale, 5 * scale, outline);
+	rect(x, y, 18 * scale, 9 * scale, outline);
+	rect(x + scale, y + scale, 16 * scale, 7 * scale, rgb(17, 23, 47));
+	rect(x + 2 * scale, y + 2 * scale, MAX(1, battery_pct * 14 / 100) * scale, 5 * scale,
+	     level);
+	x -= (4 + 6 * len) * scale;
+	label(text, x, y + scale, rgb(214, 224, 250));
+
+	return x;
+}
+
 static void init_graphics(void)
 {
 	const uint16_t text = rgb(214, 224, 250);
 	const uint16_t dim = rgb(124, 146, 186);
+	const char *mode = IS_ENABLED(CONFIG_SAMPLE_SPECTRUM_DMIC) ? "MIC" : "DEMO";
+	int right;
 
 	rect(0, tile_y, width, tile_rows, rgb(10, 14, 32));
 	rect(0, 0, width, header, rgb(17, 23, 47));
 	rect(margin, 9 * scale, 3 * scale, 13 * scale, rgb(174, 141, 255));
-	label("SPECTRUM", margin + 9 * scale, 12 * scale, text);
-	if (width >= 120 * scale) {
-		label(IS_ENABLED(CONFIG_SAMPLE_SPECTRUM_DMIC) ? "MIC" : "DEMO",
-		      width - (IS_ENABLED(CONFIG_SAMPLE_SPECTRUM_DMIC) ? 28 : 34) * scale,
-		      12 * scale, dim);
+	right = draw_battery(width - margin, 11 * scale);
+	/* Narrow panels have no room for both the title and the battery. */
+	if (right >= margin + 58 * scale) {
+		label("SPECTRUM", margin + 9 * scale, 12 * scale, text);
+	}
+	right -= (6 * strlen(mode) + (right < width - margin ? 6 : 0)) * scale;
+	if (right >= margin + 63 * scale) {
+		label(mode, right, 12 * scale, dim);
 	}
 	rect(0, header - scale, width, scale, rgb(48, 57, 88));
 	rect(0, water_y - 20 * scale, width, scale, rgb(48, 57, 88));
@@ -336,9 +374,43 @@ static void draw_rows(int y0, int y1, bool background, bool last)
 	}
 }
 
+#ifdef CONFIG_SAMPLE_SPECTRUM_BATTERY
+/* Return true when the displayed percentage changed. */
+static bool poll_battery(void)
+{
+	static const struct device *const gauge = DEVICE_DT_GET(DT_ALIAS(fuel_gauge0));
+	static int64_t next_poll;
+	union fuel_gauge_prop_val val;
+	int pct;
+
+	if (k_uptime_get() < next_poll) {
+		return false;
+	}
+	next_poll = k_uptime_get() + BATTERY_POLL_MS;
+	if (!device_is_ready(gauge) ||
+	    fuel_gauge_get_prop(gauge, FUEL_GAUGE_RELATIVE_STATE_OF_CHARGE_PCT, &val) < 0) {
+		pct = -1;
+	} else {
+		pct = MIN(val.relative_state_of_charge_pct, 100);
+	}
+	if (pct == battery_pct) {
+		return false;
+	}
+	battery_pct = pct;
+
+	return true;
+}
+#else
+static bool poll_battery(void)
+{
+	return false;
+}
+#endif
+
 static void render(void)
 {
 	static bool background_drawn;
+	bool battery_changed = poll_battery();
 
 	k_mutex_lock(&spectrum_lock, K_FOREVER);
 	water_head = (water_head + water_rows - 1) % water_rows;
@@ -354,6 +426,9 @@ static void render(void)
 		draw_rows(0, height, true, true);
 		background_drawn = true;
 	} else {
+		if (battery_changed) {
+			draw_rows(0, header, true, false);
+		}
 		draw_rows(plot_top, plot_bottom + scale, false, false);
 		draw_rows(water_y, water_y + water_filled, false, true);
 	}
