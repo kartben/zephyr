@@ -5,6 +5,8 @@
 
 family:
 - name: psoc4
+  modules:
+  - hal_infineon
   series:
   - name: psoc4100tp
     socs:
