@@ -7,6 +7,7 @@
 #include <nordic/nrf52840_partition_uf2_sdv7.dtsi>
 #include <zephyr/dt-bindings/adc/adc.h>
 #include <zephyr/dt-bindings/adc/nrf-saadc.h>
+#include <zephyr/dt-bindings/battery/battery.h>
 #include "xiao_nrf52840_plus-pinctrl.dtsi"
 #include "seeed_xiao_connector.dtsi"
 #include "seeed_xiao_plus_connector.dtsi"
@@ -57,6 +58,13 @@
 		power-gpios = <&gpio0 14 (GPIO_OPEN_DRAIN | GPIO_ACTIVE_LOW)>;
 	};
 
+	fuel_gauge: fuel-gauge {
+		compatible = "zephyr,fuel-gauge-composite";
+		source-primary = <&vbatt>;
+		device-chemistry = "lithium-ion-polymer";
+		ocv-capacity-table-0 = <BATTERY_OCV_CURVE_LITHIUM_ION_POLYMER_DEFAULT>;
+	};
+
 	aliases {
 		led0 = &led0;
 		led1 = &led1;
@@ -64,6 +72,7 @@
 		pwm-led0 = &pwm_led0;
 		mcuboot-led0 = &led0;
 		watchdog0 = &wdt0;
+		fuel-gauge0 = &fuel_gauge;
 	};
 };
 
