@@ -8,6 +8,11 @@ source "Kconfig.zephyr"
 
 if DCACHE
 
+# The cache coherency suite needs the cache API to place data in the cache
+# without it reaching memory.
+configdefault CACHE_MANAGEMENT
+	default y
+
 config DT_DEFINED_NOCACHE
 	bool "Enable this if a nocache region is defined in devicetree"
 
