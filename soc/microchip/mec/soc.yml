@@ -2,6 +2,8 @@ family:
 - name: microchip_mec
   series:
   - name: mec15xx
+    modules:
+    - hal_microchip
     socs:
     - name: mec1501_hsz
   - name: mec165xb
