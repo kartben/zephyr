@@ -30,6 +30,37 @@ config DRIVER
 	bool "Driver built from the bar module"
 	depends on ZEPHYR_BAR_MODULE
 
+DT_COMPAT_VND_DEV := vnd,dev
+DT_COMPAT_VND_OFF := vnd,off
+
+config DT_HAS_VND_DEV_ENABLED
+	def_bool y
+
+config DT_HAS_VND_OFF_ENABLED
+	def_bool n
+
+config SUBSYS
+	bool "Subsystem"
+
+config DEV_DRIVER
+	bool "Driver for an enabled device, built from the bar module"
+	default y
+	depends on DT_HAS_VND_DEV_ENABLED
+	depends on ZEPHYR_BAR_MODULE
+
+config SUBSYS_DEV_DRIVER
+	bool "Same, but also off without its subsystem"
+	default y
+	depends on DT_HAS_VND_DEV_ENABLED
+	depends on ZEPHYR_BAR_MODULE
+	depends on SUBSYS
+
+config OFF_DRIVER
+	bool "Driver for a disabled device, built from the bar module"
+	default y
+	depends on DT_HAS_VND_OFF_ENABLED
+	depends on ZEPHYR_BAR_MODULE
+
 if 0
 osource "modules/*/Kconfig"
 endif
@@ -182,6 +213,23 @@ def test_promptless_option_of_available_module(tmp_path, monkeypatch):
     assert "lv module" not in message
 
 
+def test_driver_off_for_missing_module(tmp_path, monkeypatch):
+    kconf, glue = configure(tmp_path, monkeypatch, {})
+    # Not SUBSYS_DEV_DRIVER, which SUBSYS keeps off too, nor OFF_DRIVER, whose
+    # device is disabled
+    assert kconfig.drivers_off(kconf, glue) == {"bar": [("DEV_DRIVER", "vnd,dev")]}
+
+
+def test_driver_on_with_module_available(tmp_path, monkeypatch):
+    kconf, glue = configure(tmp_path, monkeypatch, {}, available=("bar",))
+    assert kconfig.drivers_off(kconf, glue) == {}
+
+
+def test_driver_disabled_by_configuration(tmp_path, monkeypatch):
+    kconf, glue = configure(tmp_path, monkeypatch, {"DEV_DRIVER": "n"})
+    assert kconfig.drivers_off(kconf, glue) == {}
+
+
 def run_main(tmp_path, monkeypatch, conf, available=()):
     """Runs kconfig.py on 'conf' the way the build does for a prj.conf."""
     configure(tmp_path, monkeypatch, conf, available)
@@ -204,3 +252,13 @@ def test_main_writes_configuration_with_modules_available(tmp_path, monkeypatch)
     run_main(tmp_path, monkeypatch, {"FOO": "y"}, available=("foo",))
 
     assert "CONFIG_FOO=y" in (tmp_path / ".config").read_text()
+
+
+def test_main_notes_driver_off_for_missing_module(tmp_path, monkeypatch, capsys):
+    run_main(tmp_path, monkeypatch, {})
+
+    assert (
+        "note: The bar module is not available, so this device, which the devicetree "
+        "enables, has no driver: vnd,dev (DEV_DRIVER)."
+    ) in " ".join(capsys.readouterr().err.split())
+    assert (tmp_path / ".config").exists()
