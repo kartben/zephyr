@@ -2,3 +2,5 @@ vendor: intel
 comment: "Intel Elkhart Lake SoC"
 socs:
 - name: elkhart_lake
+  modules:
+  - acpica
