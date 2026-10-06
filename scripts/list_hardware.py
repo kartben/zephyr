@@ -9,14 +9,40 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path, PurePath
 
-import jsonschema
 import yaml
-from jsonschema.exceptions import best_match
 
 try:
     from yaml import CSafeLoader as SafeLoader
 except ImportError:
     from yaml import SafeLoader
+
+# West extension commands also use this file before Zephyr's Python requirements
+# are installed: without jsonschema, the files are read but not validated.
+try:
+    import jsonschema
+    from jsonschema.exceptions import best_match
+except ImportError:
+    jsonschema = None
+
+
+def schema_validator(schema):
+    '''Returns a validator for schema, or None if jsonschema is not installed.
+    '''
+    if jsonschema is None:
+        return None
+    validator_class = jsonschema.validators.validator_for(schema)
+    validator_class.check_schema(schema)
+    return validator_class(schema)
+
+
+def schema_error(validator, data):
+    '''Returns the most relevant error of data against the validator's schema, or None.
+    '''
+    errors = list(validator.iter_errors(data)) if validator is not None else []
+    if not errors:
+        return None
+    error = best_match(errors)
+    return f'{error.message} in {error.json_path}'
 
 
 SOC_SCHEMA_PATH = str(Path(__file__).parent / 'schemas' / 'soc-schema.yaml')
@@ -27,13 +53,8 @@ ARCH_SCHEMA_PATH = str(Path(__file__).parent / 'schemas' / 'arch-schema.yaml')
 with open(ARCH_SCHEMA_PATH) as f:
     arch_schema = yaml.load(f.read(), Loader=SafeLoader)
 
-validator_class = jsonschema.validators.validator_for(soc_schema)
-validator_class.check_schema(soc_schema)
-soc_validator = validator_class(soc_schema)
-
-validator_class = jsonschema.validators.validator_for(arch_schema)
-validator_class.check_schema(arch_schema)
-arch_validator = validator_class(arch_schema)
+soc_validator = schema_validator(soc_schema)
+arch_validator = schema_validator(arch_schema)
 
 SOC_YML = 'soc.yml'
 ARCHS_YML_PATH = PurePath('arch/archs.yml')
@@ -50,11 +71,11 @@ class Systems:
             return
 
         data = yaml.load(soc_yaml, Loader=SafeLoader)
-        errors = list(soc_validator.iter_errors(data))
-        if errors:
+        error = schema_error(soc_validator, data)
+        if error is not None:
             sys.exit('ERROR: Malformed soc YAML file: \n'
                         f'{soc_yaml}\n'
-                        f'{best_match(errors).message} in {best_match(errors).json_path}')
+                        f'{error}')
 
         for f in data.get('family', []):
             family = Family(f['name'], [folder], [], [], f.get('modules', []))
@@ -249,11 +270,11 @@ def find_v2_archs(args):
             with Path(archs_yml).open('r', encoding='utf-8') as f:
                 archs = yaml.load(f.read(), Loader=SafeLoader)
 
-            errors = list(arch_validator.iter_errors(archs))
-            if errors:
+            error = schema_error(arch_validator, archs)
+            if error is not None:
                 sys.exit('ERROR: Malformed arch YAML file: '
                          f'{archs_yml.as_posix()}\n'
-                         f'{best_match(errors).message} in {best_match(errors).json_path}')
+                         f'{error}')
 
             if args.arch is not None:
                 archs = {'archs': list(filter(
@@ -412,6 +433,8 @@ def dump_v2_systems(args):
 
 
 if __name__ == '__main__':
+    if jsonschema is None:
+        sys.exit('ERROR: the jsonschema Python package is needed to validate the SoC files')
     args = parse_args()
     if any([args.socs, args.soc, args.soc_series, args.soc_family]):
         dump_v2_systems(args)

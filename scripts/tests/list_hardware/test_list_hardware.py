@@ -5,6 +5,7 @@
 Unit tests for the modules a SoC needs, as list_hardware.py reads them from soc.yml.
 """
 
+import importlib.util
 import sys
 from pathlib import Path
 
@@ -103,6 +104,20 @@ def test_extension_adds_cpucluster_modules():
 def test_module_listed_twice_is_rejected():
     with pytest.raises(SystemExit, match="Malformed soc YAML"):
         list_hardware.Systems.from_yaml("socs:\n  - name: s\n    modules: [a, a]\n")
+
+
+def test_reads_soc_yml_without_jsonschema(monkeypatch):
+    # A fresh copy of the module, imported as if jsonschema was not installed
+    monkeypatch.setitem(sys.modules, "jsonschema", None)
+    spec = importlib.util.spec_from_file_location("list_hardware_copy", list_hardware.__file__)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    assert module.soc_validator is None
+    socs = {soc.name: soc for soc in module.Systems.from_yaml(SOC_YML).get_socs()}
+    assert socs["soc_in_series"].modules == ["hal_fam", "hal_ser", "hal_soc"]
+    # Not validated, so not rejected
+    module.Systems.from_yaml("socs:\n  - name: s\n    modules: [a, a]\n")
 
 
 @pytest.mark.parametrize(
