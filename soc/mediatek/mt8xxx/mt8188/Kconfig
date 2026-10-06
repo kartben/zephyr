@@ -4,6 +4,7 @@
 
 config SOC_MT8188_ADSP
 	select XTENSA
+	select XTENSA_HAL if ("$(ZEPHYR_TOOLCHAIN_VARIANT)" != "xcc" && "$(ZEPHYR_TOOLCHAIN_VARIANT)" != "xt-clang")
 	select CPU_HAS_DCACHE
 	select ARCH_HAS_NOCACHE_MEMORY_SUPPORT
 
