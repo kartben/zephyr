@@ -1,5 +1,7 @@
 socs:
 - name: openisa_rv32m1
+  modules:
+  - openisa
   cpuclusters:
   - name: zero_riscy
   - name: ri5cy
