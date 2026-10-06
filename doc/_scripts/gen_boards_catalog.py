@@ -240,6 +240,7 @@ def get_catalog(
     shields = list_shields.find_shields(args_find_boards)
     systems = list_hardware.find_v2_systems(args_find_boards)
     archs = list_hardware.find_v2_archs(args_find_boards)
+    hw_socs = {soc.name: soc for soc in systems.get_socs()}
     board_catalog = {}
     shield_catalog = {}
     board_devicetrees = {}
@@ -257,6 +258,22 @@ def get_catalog(
         vendor = board.vendor or "others"
         socs = {soc.name for soc in board.socs}
         full_name = board.full_name or board.name
+
+        # Modules that the board's SoCs and CPU clusters list in soc.yml, with the board
+        # qualifiers that need each one
+        qualifiers = []
+        modules = {}
+        for soc in board.socs:
+            hw_soc = hw_socs.get(soc.name)
+            for cluster in [c.name for c in soc.cpuclusters] or [None]:
+                qualifier = soc.name if cluster is None else f"{soc.name}/{cluster}"
+                qualifiers.append(qualifier)
+                if hw_soc is None:
+                    continue
+                for module in list_hardware.merge_modules(
+                    hw_soc.modules, hw_soc.cpucluster_modules.get(cluster, [])
+                ):
+                    modules.setdefault(module, []).append(qualifier)
         doc_page = guess_doc_page(board)
 
         supported_features = {}
@@ -377,6 +394,11 @@ def get_catalog(
             "vendor": vendor,
             "archs": list(board_archs),
             "socs": list(socs),
+            # Module name -> qualifiers that need it, empty when all of them do
+            "modules": {
+                module: [] if len(needed_by) == len(qualifiers) else needed_by
+                for module, needed_by in sorted(modules.items())
+            },
             "revision_default": board.revision_default,
             "supported_features": supported_features,
             "compatibles": compatibles,
