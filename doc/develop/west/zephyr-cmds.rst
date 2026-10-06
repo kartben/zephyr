@@ -27,6 +27,75 @@ Additional help about the formatting options can be found by running::
 
   west boards -h
 
+.. _west-board-modules:
+
+Fetching what a board needs: ``west board-modules``
+***************************************************
+
+The ``board-modules`` command lists the west projects that a board target needs, so that a
+workspace can get those instead of every project of the manifest. Right after ``west init``, when
+only the zephyr repository is cloned, fetch what a board needs with::
+
+  west board-modules --update wio_terminal
+
+Without ``--update``, the command prints one line per project, with the :ref:`module <modules>`
+that the project provides and why the board target needs it::
+
+  $ west board-modules nrf5340dk/nrf5340/cpuapp
+  cmsis_6     cmsis_6     Cortex-M CPU
+  hal_nordic  hal_nordic  SoC nrf5340
+
+``-q`` prints only the names of the projects, for use with other commands::
+
+  west update $(west board-modules -q nrf5340dk/nrf5340/cpuapp)
+
+``west update`` without project names updates every active project, so prefer ``--update`` for
+board targets that need no project, such as :zephyr:board:`native_sim <native_sim>`.
+
+A board target needs:
+
+- the modules that :file:`soc.yml` lists for its SoC and CPU cluster, and for the series and family
+  of the SoC,
+- ``cmsis_6`` for a Cortex-M CPU, ``cmsis`` for a Cortex-A or Cortex-R CPU, and ``hal_xtensa`` for
+  an Xtensa CPU,
+- ``trusted-firmware-m`` or ``trusted-firmware-a`` for a non-secure (``ns``) target.
+
+Modules that an application, a board configuration or a snippet enables, such as ``mbedtls`` or
+``lvgl``, are not listed. Give their projects to ``west update`` as well, and add them to
+``manifest.project-filter`` if ``--filter`` set it.
+
+The board target is given as to ``west build -b``. A board name alone selects the SoC of a board
+that has only one, as the build system does. Qualifiers that only start board targets, such as
+``nrf5340dk``, select all of them.
+
+Before a project is cloned, the module it provides is not known. A module is taken to be in the
+project of the same name, or else in the project whose path ends with its name. If there is
+neither, the command reads :file:`zephyr/module.yml` from the remote of the projects whose name or
+path ends with the module name, without cloning them.
+
+``--filter`` adds the projects to the ``manifest.project-filter`` option in the local
+configuration, which makes every project that the option does not activate inactive. Later
+``west update`` runs then only update these projects, and those that the option already
+activated, for example for another board. To use every project again, delete the option with
+``west config -d manifest.project-filter``.
+
+The build ignores :ref:`inactive projects <west-active-inactive-projects>`, even cloned ones.
+``--update`` refuses to fetch an inactive project, unless ``--filter`` activates it.
+
+In a workspace whose manifest imports zephyr, as in the :ref:`T2 topology <west-t2>`, west refuses
+to update the imported projects by name, so ``west update`` does not accept the output of ``-q``.
+``--update`` runs ``west update`` with a temporary ``manifest.project-filter`` that activates only
+the projects and zephyr, which west then updates as well. ``--filter`` adds zephyr to the option
+too, since west ignores the imports of inactive projects.
+
+If the import of zephyr leaves out projects that a board target needs, for example with a
+``name-allowlist``, the command names them and ``--update`` refuses to run. ``--allowlist`` prints
+the projects as entries for that list::
+
+  $ west board-modules --allowlist wio_terminal
+  - cmsis_6
+  - hal_atmel
+
 .. _west-completion:
 
 Shell completion scripts: ``west completion``
