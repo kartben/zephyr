@@ -30,6 +30,9 @@
 #ifdef CONFIG_SAMPLE_SPECTRUM_BATTERY
 #include <zephyr/drivers/fuel_gauge.h>
 #endif
+#ifdef CONFIG_SAMPLE_SPECTRUM_HEADER_KEY
+#include <zephyr/input/input.h>
+#endif
 
 #ifdef CONFIG_SAMPLE_SPECTRUM_DMIC
 #include <zephyr/audio/dmic.h>
@@ -73,6 +76,8 @@ static int water_head;
 static int water_filled;
 static bool swapped_bytes;
 static int battery_pct = -1;
+static bool header_shown = true;
+static atomic_t header_toggled;
 static uint16_t palette[256];
 static uint16_t band_x[BAND_COUNT + 1];
 static int16_t bar_top[BAND_COUNT];
@@ -217,14 +222,13 @@ static int draw_battery(int x, int y)
 	return x;
 }
 
-static void init_graphics(void)
+static void draw_header(void)
 {
 	const uint16_t text = rgb(214, 224, 250);
 	const uint16_t dim = rgb(124, 146, 186);
 	const char *mode = IS_ENABLED(CONFIG_SAMPLE_SPECTRUM_DMIC) ? "MIC" : "DEMO";
 	int right;
 
-	rect(0, tile_y, width, tile_rows, rgb(10, 14, 32));
 	rect(0, 0, width, header, rgb(17, 23, 47));
 	rect(margin, 9 * scale, 3 * scale, 13 * scale, rgb(174, 141, 255));
 	right = draw_battery(width - margin, 11 * scale);
@@ -237,6 +241,17 @@ static void init_graphics(void)
 		label(mode, right, 12 * scale, dim);
 	}
 	rect(0, header - scale, width, scale, rgb(48, 57, 88));
+}
+
+static void init_graphics(void)
+{
+	const uint16_t text = rgb(214, 224, 250);
+	const uint16_t dim = rgb(124, 146, 186);
+
+	rect(0, tile_y, width, tile_rows, rgb(10, 14, 32));
+	if (header_shown) {
+		draw_header();
+	}
 	rect(0, water_y - 20 * scale, width, scale, rgb(48, 57, 88));
 	rect(0, water_y - 19 * scale, width, 19 * scale, rgb(17, 23, 47));
 	label("WATERFALL", margin, water_y - 14 * scale, text);
@@ -407,10 +422,42 @@ static bool poll_battery(void)
 }
 #endif
 
+#ifdef CONFIG_SAMPLE_SPECTRUM_HEADER_KEY
+/* The first user button hides the header and lets the plots take its space. */
+static void header_key_cb(struct input_event *evt, void *user_data)
+{
+	ARG_UNUSED(user_data);
+
+	if (evt->type == INPUT_EV_KEY && evt->code == INPUT_KEY_0 && evt->value == 1) {
+		atomic_set(&header_toggled, 1);
+	}
+}
+
+INPUT_CALLBACK_DEFINE(NULL, header_key_cb, NULL);
+#endif
+
+static void layout(void)
+{
+	header = header_shown ? 31 * scale : 0;
+	plot_top = header + 3 * scale;
+	plot_bottom = header + 2 * (height - header - footer) / 5;
+	bar_height = plot_bottom - (header + 9 * scale);
+	water_y = plot_bottom + 28 * scale;
+	water_rows = height - footer - 5 * scale - water_y;
+	water_head = 0;
+	water_filled = 0;
+}
+
 static void render(void)
 {
 	static bool background_drawn;
 	bool battery_changed = poll_battery();
+
+	if (atomic_clear(&header_toggled) != 0) {
+		header_shown = !header_shown;
+		layout();
+		background_drawn = false;
+	}
 
 	k_mutex_lock(&spectrum_lock, K_FOREVER);
 	water_head = (water_head + water_rows - 1) % water_rows;
@@ -426,7 +473,7 @@ static void render(void)
 		draw_rows(0, height, true, true);
 		background_drawn = true;
 	} else {
-		if (battery_changed) {
+		if (battery_changed && header_shown) {
 			draw_rows(0, header, true, false);
 		}
 		draw_rows(plot_top, plot_bottom + scale, false, false);
@@ -692,14 +739,9 @@ int main(void)
 	swapped_bytes = caps.current_pixel_format == PIXEL_FORMAT_RGB_565X;
 	scale = MAX(1, MIN(width / 320, height / 240));
 	margin = 10 * scale;
-	header = 31 * scale;
 	footer = 17 * scale;
 	plot_width = width - 2 * margin;
-	plot_top = header + 3 * scale;
-	plot_bottom = header + 2 * (height - header - footer) / 5;
-	bar_height = plot_bottom - (header + 9 * scale);
-	water_y = plot_bottom + 28 * scale;
-	water_rows = height - footer - 5 * scale - water_y;
+	layout();
 	for (int i = 0; i < ARRAY_SIZE(palette); i++) {
 		palette[i] = heat(i / 255.0f);
 	}

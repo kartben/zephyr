@@ -27,3 +27,12 @@ config SAMPLE_SPECTRUM_BATTERY
 	help
 	  Read the state of charge from the fuel gauge selected by the
 	  fuel-gauge0 alias every few seconds and draw it in the header.
+
+config SAMPLE_SPECTRUM_HEADER_KEY
+	bool "Toggle the header with the first user button"
+	default y
+	depends on $(dt_alias_enabled,sw0)
+	select INPUT
+	help
+	  Hide or show the header when an INPUT_KEY_0 press is reported, so
+	  the spectrum and waterfall can use the full screen height.
