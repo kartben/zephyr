@@ -7,6 +7,8 @@
 
 #include "test_uart.h"
 
+#include <zephyr/cache.h>
+
 #if defined(CONFIG_PM)
 #include <zephyr/pm/pm.h>
 #endif
@@ -1251,6 +1253,175 @@ ZTEST_SUITE(uart_async_write_abort, NULL, write_abort_setup,
 
 ZTEST_SUITE(uart_async_timeout, NULL, forever_timeout_setup,
 		NULL, NULL, NULL);
+
+/*
+ * Buffers below are deliberately placed in cacheable memory, line aligned so
+ * that the cache maintenance done by the test cannot touch unrelated data.
+ * Each test leaves the cache in a state that only matches memory if the driver
+ * performs the maintenance the DMA needs, so a missing flush or invalidate
+ * shows up as a data mismatch instead of depending on cache line eviction.
+ */
+#if defined(CONFIG_DCACHE_LINE_SIZE)
+#define CACHE_TEST_LINE_SIZE CONFIG_DCACHE_LINE_SIZE
+#else
+#define CACHE_TEST_LINE_SIZE 32
+#endif
+#define CACHE_TEST_LEN    (2 * CACHE_TEST_LINE_SIZE)
+#define CACHE_TEST_STALE  0x00U
+#define CACHE_TEST_POISON 0xAAU
+
+static uint8_t cache_tx_buf[CACHE_TEST_LEN] __aligned(CACHE_TEST_LINE_SIZE);
+static uint8_t cache_rx_buf[2 * CACHE_TEST_LEN] __aligned(CACHE_TEST_LINE_SIZE);
+static uint8_t cache_rx_copy[CACHE_TEST_LEN];
+static volatile size_t cache_rx_len;
+static bool cache_rx_invalidate;
+
+static void cache_test_callback(const struct device *dev, struct uart_event *evt, void *user_data)
+{
+	ARG_UNUSED(dev);
+	ARG_UNUSED(user_data);
+
+	switch (evt->type) {
+	case UART_TX_DONE:
+		k_sem_give(&tx_done);
+		break;
+	case UART_RX_RDY:
+		if (cache_rx_invalidate) {
+			(void)sys_cache_data_invd_range(cache_rx_buf, sizeof(cache_rx_buf));
+		}
+		if ((cache_rx_len + evt->data.rx.len) > sizeof(cache_rx_copy)) {
+			failed_in_isr = true;
+			break;
+		}
+		memcpy(&cache_rx_copy[cache_rx_len], &evt->data.rx.buf[evt->data.rx.offset],
+		       evt->data.rx.len);
+		cache_rx_len += evt->data.rx.len;
+		k_sem_give(&rx_rdy);
+		break;
+	case UART_RX_DISABLED:
+		k_sem_give(&rx_disabled);
+		break;
+	default:
+		break;
+	}
+}
+
+static void *cache_coherency_setup(void)
+{
+	static int idx;
+
+	uart_async_test_init(idx++);
+
+	uart_callback_set(uart_dev, cache_test_callback, NULL);
+
+	return NULL;
+}
+
+/* True if writes to buf stay in a write-back data cache until flushed. */
+static bool buf_in_write_back_cache(uint8_t *buf, size_t len)
+{
+	memset(buf, CACHE_TEST_STALE, len);
+	if (sys_cache_data_flush_range(buf, len) != 0) {
+		return false;
+	}
+	memset(buf, CACHE_TEST_POISON, len);
+	if (sys_cache_data_invd_range(buf, len) != 0) {
+		return false;
+	}
+
+	return *(volatile uint8_t *)buf == CACHE_TEST_STALE;
+}
+
+static void cache_test_fill_tx(void)
+{
+	for (size_t i = 0; i < sizeof(cache_tx_buf); i++) {
+		cache_tx_buf[i] = 'a' + (i % 26);
+	}
+}
+
+static void cache_test_transfer(void)
+{
+	int err;
+
+	cache_rx_len = 0;
+	failed_in_isr = false;
+
+	err = uart_rx_enable(uart_dev, cache_rx_buf, sizeof(cache_rx_buf), 10 * USEC_PER_MSEC);
+	if (err == -EFAULT) {
+		ztest_test_skip();
+	}
+	zassert_equal(err, 0, "rx_enable failed: %d", err);
+
+	err = uart_tx(uart_dev, cache_tx_buf, sizeof(cache_tx_buf), 100 * USEC_PER_MSEC);
+	if (err == -EFAULT) {
+		uart_rx_disable(uart_dev);
+		ztest_test_skip();
+	}
+	zassert_equal(err, 0, "tx failed: %d", err);
+	zassert_equal(k_sem_take(&tx_done, K_MSEC(100)), 0, "TX_DONE timeout");
+
+	while (cache_rx_len < sizeof(cache_tx_buf)) {
+		zassert_equal(k_sem_take(&rx_rdy, K_MSEC(100)), 0,
+			      "RX_RDY timeout, received %zu of %zu bytes", cache_rx_len,
+			      sizeof(cache_tx_buf));
+	}
+
+	uart_rx_disable(uart_dev);
+	zassert_equal(k_sem_take(&rx_disabled, K_MSEC(100)), 0, "RX_DISABLED timeout");
+
+	zassert_false(failed_in_isr, "Unexpected amount of data received");
+	zassert_mem_equal(cache_rx_copy, cache_tx_buf, sizeof(cache_tx_buf),
+			  "Received data does not match transmitted data");
+}
+
+static void cache_test_require_cacheable(void)
+{
+	if (!buf_in_write_back_cache(cache_tx_buf, sizeof(cache_tx_buf)) ||
+	    !buf_in_write_back_cache(cache_rx_buf, sizeof(cache_rx_buf))) {
+		TC_PRINT("Test buffers are not in write-back cacheable memory\n");
+		ztest_test_skip();
+	}
+}
+
+/*
+ * TX data is only in the data cache when uart_tx() is called: memory still
+ * holds stale bytes, so the driver must clean the buffer before the DMA reads
+ * it. The test keeps the RX side coherent itself to isolate the TX path.
+ */
+ZTEST(uart_async_cache, test_tx_buf_dirty_in_cache)
+{
+	cache_test_require_cacheable();
+
+	memset(cache_tx_buf, CACHE_TEST_STALE, sizeof(cache_tx_buf));
+	zassert_ok(sys_cache_data_flush_range(cache_tx_buf, sizeof(cache_tx_buf)));
+	cache_test_fill_tx();
+
+	zassert_ok(sys_cache_data_flush_and_invd_range(cache_rx_buf, sizeof(cache_rx_buf)));
+	cache_rx_invalidate = true;
+
+	cache_test_transfer();
+}
+
+/*
+ * The RX buffer holds dirty poison lines when it is handed to the driver: the
+ * driver must keep them from being read back, or evicted over the DMA data,
+ * before reporting UART_RX_RDY. The test cleans the TX buffer itself to isolate
+ * the RX path.
+ */
+ZTEST(uart_async_cache, test_rx_buf_dirty_in_cache)
+{
+	cache_test_require_cacheable();
+
+	cache_test_fill_tx();
+	zassert_ok(sys_cache_data_flush_range(cache_tx_buf, sizeof(cache_tx_buf)));
+
+	memset(cache_rx_buf, CACHE_TEST_POISON, sizeof(cache_rx_buf));
+	cache_rx_invalidate = false;
+
+	cache_test_transfer();
+}
+
+ZTEST_SUITE(uart_async_cache, NULL, cache_coherency_setup, NULL, NULL, NULL);
 
 #if defined(CONFIG_PM)
 static atomic_t pm_state_entered;
