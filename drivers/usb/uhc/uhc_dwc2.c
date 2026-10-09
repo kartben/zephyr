@@ -1051,6 +1051,17 @@ static uint32_t ch_handle_in_interrupt(struct uhc_dwc2_channel *const ch,
 			ch->error_count = 0;
 			/* TODO: Optimize by handling transfer with bInterval=1 immediately */
 			ch_events |= BIT(UHC_DWC2_CHANNEL_DO_WAIT_SOF);
+		} else if (hcint & USB_DWC2_HCINT_DTGERR) {
+			/*
+			 * The core acknowledged and dropped a repeated packet. Take
+			 * the toggle it now expects and poll at the next interval.
+			 */
+			ch->error_count = 0U;
+			ch->data->next_pid =
+				usb_dwc2_get_hctsiz_pid(sys_read32((mem_addr_t)&ch->regs->hctsiz));
+			LOG_DBG("IN channel%d toggle error, next_pid=%u", ch->index,
+				ch->data->next_pid);
+			ch_events |= BIT(UHC_DWC2_CHANNEL_DO_WAIT_SOF);
 		} else {
 			/* TODO: Add handling for other cases */
 			LOG_WRN("IN halted, unhandled HCINT 0x%08x", hcint);
@@ -1685,6 +1696,29 @@ static inline void submit_new_device(const struct device *dev)
 	priv->has_device = true;
 }
 
+/*
+ * Give back the channels of a device that is gone. Its transfers are not
+ * returned: the host stack frees them along with the device.
+ */
+static void ch_release_all(const struct device *dev)
+{
+	struct uhc_dwc2_data *const priv = uhc_get_private(dev);
+
+	for (uint8_t idx = 0; idx < priv->numhstchnl; idx++) {
+		struct uhc_dwc2_channel *const ch = &priv->ch[idx];
+
+		if (ch->xfer == NULL) {
+			continue;
+		}
+
+		LOG_DBG("Channel%u still held by the removed device", ch->index);
+		(void)atomic_set(&ch->events, 0);
+		ch->hcint_cplt_pending = 0U;
+		ch->error_count = 0U;
+		ch_release(dev, ch);
+	}
+}
+
 static inline void submit_dev_gone(const struct device *dev)
 {
 	struct uhc_dwc2_data *const priv = uhc_get_private(dev);
@@ -2009,24 +2043,28 @@ static void port_handle_events(const struct device *dev, uint32_t event_mask)
 	}
 
 	if (event_mask & BIT(UHC_DWC2_EVENT_PORT_DISCONNECTION)) {
-		/* Port disconnected */
-		/* Debounce port disconnection */
+		/*
+		 * The core disables the port on a disconnect, so tear down even
+		 * if the line reads connected again after the debounce.
+		 */
 		if (port_debounce(dev, UHC_DWC2_EVENT_PORT_DISCONNECTION)) {
 			LOG_DBG("Port disconnected");
-			/* Notify upper layer */
-			submit_dev_gone(dev);
-			/* Reset the controller to handle new connection */
-			soft_reset(dev);
-			/* Prepare for device connection */
-			port_enable(dev);
 		} else {
-			/* TODO: Implement handling */
-			LOG_ERR("Port changed during debouncing disconnect");
+			LOG_WRN("Port reconnected during disconnect debounce");
 		}
+
+		ch_release_all(dev);
+		/* Notify upper layer */
+		submit_dev_gone(dev);
+		/* Reset the controller to handle new connection */
+		soft_reset(dev);
+		/* Prepare for device connection */
+		port_enable(dev);
 	}
 
 	if (event_mask & BIT(UHC_DWC2_EVENT_PORT_ERROR)) {
 		LOG_DBG("Port error");
+		ch_release_all(dev);
 		/* Notify upper layer */
 		submit_dev_gone(dev);
 		/* TODO: recover from the error */
@@ -2364,8 +2402,6 @@ static int uhc_dwc2_bus_resume(const struct device *const dev)
 
 static int uhc_dwc2_enqueue(const struct device *const dev, struct uhc_transfer *const xfer)
 {
-	uhc_lock_internal(dev, K_FOREVER);
-
 	(void)uhc_xfer_append(dev, xfer);
 
 	/*
@@ -2373,8 +2409,6 @@ static int uhc_dwc2_enqueue(const struct device *const dev, struct uhc_transfer 
 	 * in the list and is started later from the completion path.
 	 */
 	submit_pending(dev);
-
-	uhc_unlock_internal(dev);
 
 	return 0;
 }
@@ -2384,8 +2418,6 @@ static int uhc_dwc2_dequeue(const struct device *const dev, struct uhc_transfer 
 	struct uhc_dwc2_data *const priv = uhc_get_private(dev);
 	struct uhc_data *const data = dev->data;
 	struct uhc_transfer *tmp;
-
-	uhc_lock_internal(dev, K_FOREVER);
 
 	/*
 	 * Mark the queued transfer as cancelled. The dequeue process itself
@@ -2398,8 +2430,6 @@ static int uhc_dwc2_dequeue(const struct device *const dev, struct uhc_transfer 
 			break;
 		}
 	}
-
-	uhc_unlock_internal(dev);
 
 	return 0;
 }
