@@ -9,6 +9,7 @@
 
 #include <zephyr/device.h>
 #include <zephyr/input/input.h>
+#include <zephyr/input/input_sbus.h>
 #include <zephyr/irq.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
@@ -78,9 +79,8 @@ struct input_sbus_data {
 	bool in_sync;
 	uint32_t last_rx_time;
 
-	bool failsafe;
-	bool frame_lost;
-	bool receiver_lost;
+	struct k_spinlock lock;
+	struct input_sbus_status status;
 
 	uint16_t last_reported_value[SBUS_CHANNEL_COUNT];
 	int8_t channel_mapping[SBUS_CHANNEL_COUNT];
@@ -124,14 +124,27 @@ static void input_sbus_report(const struct device *dev, unsigned int sbus_channe
 	}
 }
 
+void input_sbus_get_status(const struct device *dev, struct input_sbus_status *status)
+{
+	struct input_sbus_data *const data = dev->data;
+
+	K_SPINLOCK(&data->lock) {
+		*status = data->status;
+	}
+}
+
 static bool input_sbus_update_flag(const struct device *dev, int32_t code, bool *state, bool value,
 				   bool sync)
 {
+	struct input_sbus_data *const data = dev->data;
+
 	if (*state == value) {
 		return false;
 	}
 
-	*state = value;
+	K_SPINLOCK(&data->lock) {
+		*state = value;
+	}
 
 	if (code != SBUS_CODE_NONE) {
 		input_report_key(dev, code, value ? 1 : 0, sync, K_FOREVER);
@@ -144,6 +157,7 @@ static void input_sbus_input_report_thread(const struct device *dev, void *dummy
 {
 	const struct input_sbus_config *const config = dev->config;
 	struct input_sbus_data *const data = dev->data;
+	struct input_sbus_status *const status = &data->status;
 
 	ARG_UNUSED(dummy2);
 	ARG_UNUSED(dummy3);
@@ -163,7 +177,7 @@ static void input_sbus_input_report_thread(const struct device *dev, void *dummy
 			if (data->in_sync) {
 				LOG_DBG("SBUS receiver connected");
 				(void)input_sbus_update_flag(dev, config->receiver_lost_code,
-							     &data->receiver_lost, false, false);
+							     &status->receiver_lost, false, false);
 			} else {
 				continue;
 			}
@@ -182,7 +196,7 @@ static void input_sbus_input_report_thread(const struct device *dev, void *dummy
 
 				LOG_DBG("SBUS receiver connection lost");
 				(void)input_sbus_update_flag(dev, config->receiver_lost_code,
-							     &data->receiver_lost, true,
+							     &status->receiver_lost, true,
 							     SEND_SYNC);
 				continue;
 			}
@@ -192,12 +206,19 @@ static void input_sbus_input_report_thread(const struct device *dev, void *dummy
 		failsafe = (flags & SBUS_BYTE24_FAILSAFE) != 0U;
 		frame_lost = (flags & SBUS_BYTE24_FRAME_LOST) != 0U;
 
-		if (input_sbus_update_flag(dev, config->failsafe_code, &data->failsafe, failsafe,
+		K_SPINLOCK(&data->lock) {
+			status->last_frame_ms = k_uptime_get();
+			if (frame_lost) {
+				status->frames_lost++;
+			}
+		}
+
+		if (input_sbus_update_flag(dev, config->failsafe_code, &status->failsafe, failsafe,
 					   false)) {
 			LOG_DBG("SBUS failsafe %s", failsafe ? "set" : "cleared");
 		}
 
-		if (input_sbus_update_flag(dev, config->frame_lost_code, &data->frame_lost,
+		if (input_sbus_update_flag(dev, config->frame_lost_code, &status->frame_lost,
 					   frame_lost, false)) {
 			LOG_DBG("SBUS frame lost flag %s", frame_lost ? "set" : "cleared");
 		}
