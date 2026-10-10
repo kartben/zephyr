@@ -13,10 +13,41 @@ description: |
   Each channel can be configured to generate either absolute position events
   (for joysticks) or key events (for switches).
 
+  The receiver state can be reported as key events as well, by setting the
+  failsafe-code, frame-lost-code and receiver-lost-code properties. A key
+  event is reported when the state changes: value 1 when the condition starts
+  and value 0 when it ends. The failsafe and frame lost events of a frame are
+  reported before its channel values.
+
 
 compatible: "futaba,sbus"
 
 include: [base.yaml, uart-device.yaml]
+
+properties:
+  failsafe-code:
+    type: int
+    description: |
+      Key code reported for the failsafe flag of the SBUS frames. Receivers
+      set this flag when they have lost the transmitter. They keep sending
+      frames, and the channel values of these frames are the failsafe values
+      configured in the receiver, or the last values received, not the
+      position of the transmitter sticks.
+
+  frame-lost-code:
+    type: int
+    description: |
+      Key code reported for the frame lost flag of the SBUS frames. Receivers
+      set this flag when they missed a frame from the transmitter. The
+      channel values of the frame are the last values received. Unlike the
+      failsafe flag, this flag does not mean that the transmitter was lost.
+
+  receiver-lost-code:
+    type: int
+    description: |
+      Key code reported when the receiver stops sending frames: value 1 when
+      no frame was received for 20 ms, value 0 when a valid frame is received
+      again.
 
 child-binding:
   description: |
@@ -42,12 +73,18 @@ child-binding:
 
 examples:
   - |
-    /* Example configuration for 2 joysticks and a button using 5 channels */
+    /*
+     * Example configuration for 2 joysticks and a button using 5 channels,
+     * reporting the receiver state as key events.
+     */
     &lpuart6 {
       status = "okay";
 
       sbus {
           compatible = "futaba,sbus";
+          failsafe-code = <INPUT_KEY_F1>;
+          frame-lost-code = <INPUT_KEY_F2>;
+          receiver-lost-code = <INPUT_KEY_F3>;
 
           right_stick_x {
               channel = <1>;

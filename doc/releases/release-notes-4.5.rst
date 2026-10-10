@@ -766,6 +766,13 @@ New APIs and options
   * :c:macro:`HWSPINLOCK_COMMON_CONFIG_FROM_DT_NODE`
   * :c:macro:`HWSPINLOCK_COMMON_CONFIG_FROM_DT_INST`
 
+* Input
+
+  * :dtcompatible:`futaba,sbus` can report the failsafe and frame lost flags of the SBUS frames,
+    and the loss of the receiver, as key events with the optional ``failsafe-code``,
+    ``frame-lost-code`` and ``receiver-lost-code`` properties.
+  * :c:func:`input_sbus_get_status` returns the status of an SBUS receiver.
+
 * Kconfig
 
   * Add ``dt_partition_mtd`` preprocessor function (:github:`111599`)
