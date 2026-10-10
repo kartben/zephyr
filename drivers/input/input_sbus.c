@@ -38,6 +38,9 @@ struct input_sbus_config {
 	const struct sbus_input_channel *channel_info;
 	const struct device *uart_dev;
 	uart_irq_callback_user_data_t cb;
+	int32_t failsafe_code;
+	int32_t frame_lost_code;
+	int32_t receiver_lost_code;
 };
 
 #define SBUS_FRAME_LEN 25
@@ -57,9 +60,12 @@ struct input_sbus_config {
 #define SBUS_INTERFRAME_SPACING_MS 20 /* Max spacing between SBUS frames */
 #define SBUS_CHANNEL_COUNT         16
 
+#define SBUS_CODE_NONE -1
+
 #define REPORT_FILTER      CONFIG_INPUT_SBUS_REPORT_FILTER
 #define CHANNEL_VALUE_ZERO CONFIG_INPUT_SBUS_CHANNEL_VALUE_ZERO
 #define CHANNEL_VALUE_ONE  CONFIG_INPUT_SBUS_CHANNEL_VALUE_ONE
+#define SEND_SYNC          IS_ENABLED(CONFIG_INPUT_SBUS_SEND_SYNC)
 
 struct input_sbus_data {
 	struct k_thread thread;
@@ -71,6 +77,10 @@ struct input_sbus_data {
 	bool partial_sync;
 	bool in_sync;
 	uint32_t last_rx_time;
+
+	bool failsafe;
+	bool frame_lost;
+	bool receiver_lost;
 
 	uint16_t last_reported_value[SBUS_CHANNEL_COUNT];
 	int8_t channel_mapping[SBUS_CHANNEL_COUNT];
@@ -114,8 +124,25 @@ static void input_sbus_report(const struct device *dev, unsigned int sbus_channe
 	}
 }
 
+static bool input_sbus_update_flag(const struct device *dev, int32_t code, bool *state, bool value,
+				   bool sync)
+{
+	if (*state == value) {
+		return false;
+	}
+
+	*state = value;
+
+	if (code != SBUS_CODE_NONE) {
+		input_report_key(dev, code, value ? 1 : 0, sync, K_FOREVER);
+	}
+
+	return true;
+}
+
 static void input_sbus_input_report_thread(const struct device *dev, void *dummy2, void *dummy3)
 {
+	const struct input_sbus_config *const config = dev->config;
 	struct input_sbus_data *const data = dev->data;
 
 	ARG_UNUSED(dummy2);
@@ -123,17 +150,20 @@ static void input_sbus_input_report_thread(const struct device *dev, void *dummy
 
 	uint8_t i, channel;
 	uint8_t *sbus_channel_data = &data->sbus_frame[1]; /* Omit header */
+	uint8_t flags;
+	bool failsafe, frame_lost;
 	uint32_t value;
 	int bits_read;
 	unsigned int key;
 	int ret;
-	bool connected_reported = false;
 
 	while (true) {
 		if (!data->in_sync) {
 			k_sem_take(&data->report_lock, K_FOREVER);
 			if (data->in_sync) {
 				LOG_DBG("SBUS receiver connected");
+				(void)input_sbus_update_flag(dev, config->receiver_lost_code,
+							     &data->receiver_lost, false, false);
 			} else {
 				continue;
 			}
@@ -150,22 +180,26 @@ static void input_sbus_input_report_thread(const struct device *dev, void *dummy
 				data->xfer_bytes = 0;
 				irq_unlock(key);
 
-				connected_reported = false;
 				LOG_DBG("SBUS receiver connection lost");
-
-				/* Report connection lost */
+				(void)input_sbus_update_flag(dev, config->receiver_lost_code,
+							     &data->receiver_lost, true,
+							     SEND_SYNC);
 				continue;
 			}
 		}
 
-		if (connected_reported &&
-		    data->sbus_frame[SBUS_BYTE24_IDX] & SBUS_BYTE24_FRAME_LOST) {
-			LOG_DBG("SBUS controller connection lost");
-			connected_reported = false;
-		} else if (!connected_reported &&
-			   !(data->sbus_frame[SBUS_BYTE24_IDX] & SBUS_BYTE24_FRAME_LOST)) {
-			LOG_DBG("SBUS controller connected");
-			connected_reported = true;
+		flags = data->sbus_frame[SBUS_BYTE24_IDX];
+		failsafe = (flags & SBUS_BYTE24_FAILSAFE) != 0U;
+		frame_lost = (flags & SBUS_BYTE24_FRAME_LOST) != 0U;
+
+		if (input_sbus_update_flag(dev, config->failsafe_code, &data->failsafe, failsafe,
+					   false)) {
+			LOG_DBG("SBUS failsafe %s", failsafe ? "set" : "cleared");
+		}
+
+		if (input_sbus_update_flag(dev, config->frame_lost_code, &data->frame_lost,
+					   frame_lost, false)) {
+			LOG_DBG("SBUS frame lost flag %s", frame_lost ? "set" : "cleared");
 		}
 
 		/* Parse the data */
@@ -367,6 +401,9 @@ static int input_sbus_init(const struct device *dev)
 		.uart_dev = DEVICE_DT_GET(DT_INST_BUS(n)),                                         \
 		.num_channels = ARRAY_SIZE(input_##n),                                             \
 		.cb = sbus_uart_isr,                                                               \
+		.failsafe_code = DT_INST_PROP_OR(n, failsafe_code, SBUS_CODE_NONE),                \
+		.frame_lost_code = DT_INST_PROP_OR(n, frame_lost_code, SBUS_CODE_NONE),            \
+		.receiver_lost_code = DT_INST_PROP_OR(n, receiver_lost_code, SBUS_CODE_NONE),      \
 	};                                                                                         \
                                                                                                    \
 	DEVICE_DT_INST_DEFINE(n, input_sbus_init, NULL, &sbus_data_##n, &sbus_cfg_##n,             \
