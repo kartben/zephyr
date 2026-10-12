@@ -333,6 +333,166 @@ ZTEST(gnss_nmea0183, test_parse_gga_fix)
 	zassert_equal(data.nav_data.altitude, 15234, "Incorrectly parsed altitude");
 }
 
+/* "$GNGSA,A,1,,,,,,,,,,,,,99.99,99.99,99.99,1*33" */
+const char *gsa_argv_no_fix[20] = {
+	"$GNGSA",
+	"A",
+	"1",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"99.99",
+	"99.99",
+	"99.99",
+	"1",
+	"33",
+};
+
+ZTEST(gnss_nmea0183, test_parse_gsa_no_fix)
+{
+	int ret;
+
+	/* Corrupt data */
+	memset(&data, 0xFF, sizeof(data));
+
+	ret = gnss_nmea0183_parse_gsa(gsa_argv_no_fix, ARRAY_SIZE(gsa_argv_no_fix), &data);
+	zassert_ok(ret, "NMEA0183 GSA message parse should succeed");
+	zassert_equal(data.info.fix_type, GNSS_FIX_TYPE_UNKNOWN, "Incorrectly parsed fix type");
+	zassert_equal(data.info.vdop, 0, "Incorrectly parsed VDOP");
+}
+
+/* "$GNGSA,A,3,82,67,74,68,73,80,83,,,,,,0.99,0.53,0.84,2*09" */
+const char *gsa_argv_fix[20] = {
+	"$GNGSA",
+	"A",
+	"3",
+	"82",
+	"67",
+	"74",
+	"68",
+	"73",
+	"80",
+	"83",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"0.99",
+	"0.53",
+	"0.84",
+	"2",
+	"09",
+};
+
+ZTEST(gnss_nmea0183, test_parse_gsa_fix)
+{
+	int ret;
+
+	/* Corrupt data */
+	memset(&data, 0xFF, sizeof(data));
+
+	ret = gnss_nmea0183_parse_gsa(gsa_argv_fix, ARRAY_SIZE(gsa_argv_fix), &data);
+	zassert_ok(ret, "NMEA0183 GSA message parse should succeed");
+	zassert_equal(data.info.fix_type, GNSS_FIX_TYPE_3D, "Incorrectly parsed fix type");
+	zassert_equal(data.info.vdop, 840, "Incorrectly parsed VDOP");
+
+	gsa_argv_fix[2] = "2";
+	ret = gnss_nmea0183_parse_gsa(gsa_argv_fix, ARRAY_SIZE(gsa_argv_fix), &data);
+	gsa_argv_fix[2] = "3";
+	zassert_ok(ret, "NMEA0183 GSA message parse should succeed");
+	zassert_equal(data.info.fix_type, GNSS_FIX_TYPE_2D, "Incorrectly parsed fix type");
+
+	gsa_argv_fix[2] = "4";
+	ret = gnss_nmea0183_parse_gsa(gsa_argv_fix, ARRAY_SIZE(gsa_argv_fix), &data);
+	gsa_argv_fix[2] = "3";
+	zassert_equal(ret, -EINVAL, "Should fail to parse invalid fix type");
+}
+
+/* "$GPGST,172814.0,0.006,0.023,0.020,273.6,0.023,0.020,0.031*6A" */
+const char *gst_argv[10] = {
+	"$GPGST",
+	"172814.0",
+	"0.006",
+	"0.023",
+	"0.020",
+	"273.6",
+	"0.023",
+	"0.020",
+	"0.031",
+	"6A",
+};
+
+ZTEST(gnss_nmea0183, test_parse_gst)
+{
+	int ret;
+
+	/* Corrupt data */
+	memset(&data, 0xFF, sizeof(data));
+
+	ret = gnss_nmea0183_parse_gst(gst_argv, ARRAY_SIZE(gst_argv), &data);
+	zassert_ok(ret, "NMEA0183 GST message parse should succeed");
+	zassert_equal(data.info.horizontal_accuracy, 30, "Incorrectly parsed horizontal accuracy");
+	zassert_equal(data.info.vertical_accuracy, 31, "Incorrectly parsed vertical accuracy");
+}
+
+/* "$GNGST,091200.54,45,,,,1.2,0.77,2.2*70" */
+const char *gst_argv_no_ellipse[10] = {
+	"$GNGST",
+	"091200.54",
+	"45",
+	"",
+	"",
+	"",
+	"1.2",
+	"0.77",
+	"2.2",
+	"70",
+};
+
+/* "$GPGST,024603.00,3.2,,,,,,*5B" */
+const char *gst_argv_no_fix[10] = {
+	"$GPGST",
+	"024603.00",
+	"3.2",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"5B",
+};
+
+ZTEST(gnss_nmea0183, test_parse_gst_empty_fields)
+{
+	int ret;
+
+	/* Corrupt data */
+	memset(&data, 0xFF, sizeof(data));
+
+	ret = gnss_nmea0183_parse_gst(gst_argv_no_ellipse, ARRAY_SIZE(gst_argv_no_ellipse),
+				      &data);
+	zassert_ok(ret, "NMEA0183 GST message parse should succeed");
+	zassert_equal(data.info.horizontal_accuracy, 1425,
+		      "Incorrectly parsed horizontal accuracy");
+	zassert_equal(data.info.vertical_accuracy, 2200, "Incorrectly parsed vertical accuracy");
+
+	ret = gnss_nmea0183_parse_gst(gst_argv_no_fix, ARRAY_SIZE(gst_argv_no_fix), &data);
+	zassert_ok(ret, "NMEA0183 GST message parse should succeed");
+	zassert_equal(data.info.horizontal_accuracy, 0, "Incorrectly parsed horizontal accuracy");
+	zassert_equal(data.info.vertical_accuracy, 0, "Incorrectly parsed vertical accuracy");
+}
+
 ZTEST(gnss_nmea0183, test_snprintk)
 {
 	int ret;

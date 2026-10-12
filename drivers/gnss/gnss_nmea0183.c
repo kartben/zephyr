@@ -557,6 +557,112 @@ int gnss_nmea0183_parse_gga(const char **argv, uint16_t argc, struct gnss_data *
 	return 0;
 }
 
+int gnss_nmea0183_parse_gsa(const char **argv, uint16_t argc, struct gnss_data *data)
+{
+	int32_t tmp32;
+	int64_t tmp64;
+
+	__ASSERT(argv != NULL, "argv argument must be provided");
+	__ASSERT(data != NULL, "data argument must be provided");
+
+	if (argc < 18) {
+		return -EINVAL;
+	}
+
+	/* Parse fix type */
+	if ((gnss_parse_atoi(argv[2], 10, &tmp32) < 0) ||
+	    (tmp32 < 1) ||
+	    (tmp32 > 3)) {
+		return -EINVAL;
+	}
+
+	/* Validate GNSS has fix */
+	if (tmp32 == 1) {
+		data->info.fix_type = GNSS_FIX_TYPE_UNKNOWN;
+		data->info.vdop = 0;
+		return 0;
+	}
+
+	data->info.fix_type = (tmp32 == 2) ? GNSS_FIX_TYPE_2D : GNSS_FIX_TYPE_3D;
+
+	/* Parse VDOP */
+	if ((gnss_parse_dec_to_milli(argv[17], &tmp64) < 0) ||
+	    (tmp64 > UINT32_MAX) ||
+	    (tmp64 < 0)) {
+		return -EINVAL;
+	}
+
+	data->info.vdop = (uint32_t)tmp64;
+	return 0;
+}
+
+static int parse_gst_error(const char *str, int64_t *error)
+{
+	if ((gnss_parse_dec_to_milli(str, error) < 0) ||
+	    (*error > INT32_MAX) ||
+	    (*error < 0)) {
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/* Integer square root of x * x + y * y */
+static uint32_t hypot_u32(uint32_t x, uint32_t y)
+{
+	uint64_t value = ((uint64_t)x * x) + ((uint64_t)y * y);
+	uint64_t root = 0;
+	uint64_t bit = BIT64(62);
+
+	while (bit > value) {
+		bit >>= 2;
+	}
+
+	while (bit != 0) {
+		if (value >= (root + bit)) {
+			value -= root + bit;
+			root = (root >> 1) + bit;
+		} else {
+			root >>= 1;
+		}
+
+		bit >>= 2;
+	}
+
+	return (uint32_t)root;
+}
+
+int gnss_nmea0183_parse_gst(const char **argv, uint16_t argc, struct gnss_data *data)
+{
+	int64_t lat_error;
+	int64_t lon_error;
+	int64_t alt_error;
+
+	__ASSERT(argv != NULL, "argv argument must be provided");
+	__ASSERT(data != NULL, "data argument must be provided");
+
+	if (argc < 9) {
+		return -EINVAL;
+	}
+
+	/* Parse standard deviations of latitude, longitude and altitude errors */
+	if ((parse_gst_error(argv[6], &lat_error) < 0) ||
+	    (parse_gst_error(argv[7], &lon_error) < 0) ||
+	    (parse_gst_error(argv[8], &alt_error) < 0)) {
+		return -EINVAL;
+	}
+
+	if ((lat_error == 0) || (lon_error == 0)) {
+		data->info.horizontal_accuracy = 0;
+	} else {
+		data->info.horizontal_accuracy = hypot_u32((uint32_t)lat_error,
+							   (uint32_t)lon_error);
+	}
+
+	data->info.vertical_accuracy = (uint32_t)alt_error;
+	return 0;
+}
+
 static int parse_gsv_svs(struct gnss_satellite *satellites, const struct gsv_sv_args *svs,
 			 uint16_t svs_size)
 {
