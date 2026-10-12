@@ -12,24 +12,28 @@ tests:
     harness_config:
       type: multi_line
       regex:
-        - "gnss_dev: gnss_info: {satellites_cnt: 0, hdop: 0.0, \
-           fix_status: NO_FIX, fix_quality: INVALID}"
+        - "gnss_dev: gnss_info: {satellites_cnt: 0, hdop: 0.000, vdop: 0.000, \
+           fix_status: NO_FIX, fix_quality: INVALID, fix_type: UNKNOWN, \
+           horizontal_accuracy: 0.000, vertical_accuracy: 0.000, speed_accuracy: 0.000, \
+           vertical_speed_valid: 0}"
         - "gnss_dev: navigation_data: {latitude: 0.000000000, longitude : 0.000000000, \
-           bearing 0.000, speed 0.000, altitude: 0.000}"
+           bearing 0.000, speed 0.000, altitude: 0.000, vertical_speed: 0.000}"
         - "gnss_dev: gnss_time: {hour: 0, minute: 0, millisecond 0, month_day 0, month: 0, \
            century_year: 0}"
-        - "gnss_dev: gnss_info: {satellites_cnt: 6, hdop: 0.7, \
-           fix_status: GNSS_FIX, fix_quality: GNSS_PPS}"
+        - "gnss_dev: gnss_info: {satellites_cnt: 6, hdop: 0.007, vdop: 0.008, \
+           fix_status: GNSS_FIX, fix_quality: GNSS_PPS, fix_type: 3D, \
+           horizontal_accuracy: 9.009, vertical_accuracy: 10.010, speed_accuracy: 11.011, \
+           vertical_speed_valid: 1}"
         - "gnss_dev: navigation_data: {latitude: 10.000000001, longitude : 20.000000002, \
-           bearing 3.003, speed 4.004, altitude: 5.005}"
+           bearing 3.003, speed 4.004, altitude: 5.005, vertical_speed: 12.012}"
         - "gnss_dev: gnss_time: {hour: 1, minute: 2, millisecond 3, month_day 4, month: 5, \
            century_year: 6}"
         - "gnss_dev: navigation_data: {latitude: 0.000000001, longitude : 0.000000002, \
-           bearing 0.003, speed 0.004, altitude: 0.005}"
+           bearing 0.003, speed 0.004, altitude: 0.005, vertical_speed: 0.012}"
         - "gnss_dev: navigation_data: {latitude: -10.000000001, longitude : -20.000000002, \
-           bearing 0.003, speed 0.004, altitude: -5.005}"
+           bearing 0.003, speed 0.004, altitude: -5.005, vertical_speed: -12.012}"
         - "gnss_dev: navigation_data: {latitude: -0.000000001, longitude : -0.000000002, \
-           bearing 0.003, speed 0.004, altitude: -0.005}"
+           bearing 0.003, speed 0.004, altitude: -0.005, vertical_speed: -0.012}"
         - "gnss_dev: gnss_satellite: {prn: 0, snr: 0, elevation 0, azimuth 0, system: unknown, \
            is_tracked: 0}"
         - "gnss_dev: gnss_satellite: {prn: 1, snr: 2, elevation 0, azimuth 3, system: GALILEO, \

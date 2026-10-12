@@ -125,18 +125,40 @@ enum gnss_fix_quality {
 	GNSS_FIX_QUALITY_ESTIMATED = 6,
 };
 
+/** GNSS fix type */
+enum gnss_fix_type {
+	/** Unknown fix type */
+	GNSS_FIX_TYPE_UNKNOWN = 0,
+	/** Two-dimensional fix, the altitude is not measured */
+	GNSS_FIX_TYPE_2D = 1,
+	/** Three-dimensional fix */
+	GNSS_FIX_TYPE_3D = 2,
+};
+
 /** GNSS info data structure */
 struct gnss_info {
 	/** Number of satellites being tracked */
 	uint16_t satellites_cnt;
 	/** Horizontal dilution of precision in 1/1000 */
 	uint32_t hdop;
+	/** Vertical dilution of precision in 1/1000, 0 if unknown */
+	uint32_t vdop;
 	/** Geoid separation in millimeters */
 	int32_t geoid_separation;
 	/** The fix status */
 	enum gnss_fix_status fix_status;
 	/** The fix quality */
 	enum gnss_fix_quality fix_quality;
+	/** The fix type */
+	enum gnss_fix_type fix_type;
+	/** Horizontal position accuracy (standard deviation) in millimeters, 0 if unknown */
+	uint32_t horizontal_accuracy;
+	/** Vertical position accuracy (standard deviation) in millimeters, 0 if unknown */
+	uint32_t vertical_accuracy;
+	/** Speed accuracy (standard deviation) in millimeters per second, 0 if unknown */
+	uint32_t speed_accuracy;
+	/** The vertical speed of the navigation data is measured */
+	bool vertical_speed_valid;
 };
 
 /** GNSS time data structure */

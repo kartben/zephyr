@@ -35,10 +35,12 @@ struct navigation_data {
 	int64_t longitude;
 	/** Bearing angle in millidegrees (0 to 360E3) */
 	uint32_t bearing;
-	/** Speed in millimeters per second */
+	/** Horizontal speed in millimeters per second */
 	uint32_t speed;
 	/** Altitude above MSL in millimeters */
 	int32_t altitude;
+	/** Vertical speed in millimeters per second, positive upwards */
+	int32_t vertical_speed;
 };
 
 /**
