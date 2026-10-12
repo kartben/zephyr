@@ -366,7 +366,7 @@ void hl78xx_gnss_nmea0183_match_gsa(struct modem_chat *chat, char **argv, uint16
 {
 	struct hl78xx_data *data = (struct hl78xx_data *)user_data;
 
-	gnss_nmea0183_match_gsa_callback(chat, argv, argc, data->devices.gnss->data);
+	hl78xx_gnss_aux_gsa_callback(chat, argv, argc, data->devices.gnss->data);
 }
 
 void hl78xx_gnss_nmea0183_match_gst(struct modem_chat *chat, char **argv, uint16_t argc,
@@ -374,7 +374,7 @@ void hl78xx_gnss_nmea0183_match_gst(struct modem_chat *chat, char **argv, uint16
 {
 	struct hl78xx_data *data = (struct hl78xx_data *)user_data;
 
-	gnss_nmea0183_match_gst_callback(chat, argv, argc, data->devices.gnss->data);
+	hl78xx_gnss_aux_gst_callback(chat, argv, argc, data->devices.gnss->data);
 }
 
 void hl78xx_gnss_nmea_match_epu(struct modem_chat *chat, char **argv, uint16_t argc,
@@ -382,7 +382,7 @@ void hl78xx_gnss_nmea_match_epu(struct modem_chat *chat, char **argv, uint16_t a
 {
 	struct hl78xx_data *data = (struct hl78xx_data *)user_data;
 
-	gnss_nmea0183_match_epu_callback(chat, argv, argc, data->devices.gnss->data);
+	hl78xx_gnss_aux_epu_callback(chat, argv, argc, data->devices.gnss->data);
 }
 #endif /* CONFIG_HL78XX_GNSS_AUX_DATA_PARSER */
 /* -------------------------------------------------------------------------
