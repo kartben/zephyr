@@ -1,0 +1,26 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+&i2c0 {
+	spa06_i2c: spa06@77 {
+		compatible = "goertek,spa06";
+		reg = <0x77>;
+		int-gpios = <&gpio0 1 GPIO_ACTIVE_LOW>;
+		/* Initialized by the test, after it sets the coefficients */
+		zephyr,deferred-init;
+	};
+};
+
+&spi0 {
+	spa06_spi: spa06@0 {
+		compatible = "goertek,spa06";
+		reg = <0>;
+		spi-max-frequency = <10000000>;
+		zephyr,deferred-init;
+	};
+};
