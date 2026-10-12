@@ -25,11 +25,18 @@ static void test_gnss_data(void)
 	test_data.nav_data.bearing = 3003;
 	test_data.nav_data.speed = 4004;
 	test_data.nav_data.altitude = 5005;
+	test_data.nav_data.vertical_speed = 12012;
 
 	test_data.info.satellites_cnt = 6;
 	test_data.info.hdop = 7;
+	test_data.info.vdop = 8;
 	test_data.info.fix_status = GNSS_FIX_STATUS_GNSS_FIX;
 	test_data.info.fix_quality = GNSS_FIX_QUALITY_GNSS_PPS;
+	test_data.info.fix_type = GNSS_FIX_TYPE_3D;
+	test_data.info.horizontal_accuracy = 9009;
+	test_data.info.vertical_accuracy = 10010;
+	test_data.info.speed_accuracy = 11011;
+	test_data.info.vertical_speed_valid = true;
 
 	test_data.utc.hour = 1;
 	test_data.utc.minute = 2;
@@ -46,6 +53,7 @@ static void test_gnss_data(void)
 	test_data.nav_data.bearing = 3;
 	test_data.nav_data.speed = 4;
 	test_data.nav_data.altitude = 5;
+	test_data.nav_data.vertical_speed = 12;
 
 	gnss_publish_data(gnss_dev, &test_data);
 
@@ -53,6 +61,7 @@ static void test_gnss_data(void)
 	test_data.nav_data.latitude = -10000000001;
 	test_data.nav_data.longitude = -20000000002;
 	test_data.nav_data.altitude = -5005;
+	test_data.nav_data.vertical_speed = -12012;
 
 	gnss_publish_data(gnss_dev, &test_data);
 
@@ -60,6 +69,7 @@ static void test_gnss_data(void)
 	test_data.nav_data.latitude = -1;
 	test_data.nav_data.longitude = -2;
 	test_data.nav_data.altitude = -5;
+	test_data.nav_data.vertical_speed = -12;
 
 	gnss_publish_data(gnss_dev, &test_data);
 }

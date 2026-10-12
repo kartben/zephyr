@@ -21,12 +21,14 @@
  * The struct gnss_nmea0183_match_data context must be initialized using
  * gnss_nmea0183_match_init().
  *
- * When initializing the modem_chat instance, the three match callbacks must be added
- * as part of the unsolicited matches.
+ * When initializing the modem_chat instance, the match callbacks must be added
+ * as part of the unsolicited matches. The GSA and GST match callbacks are optional.
  *
  *   MODEM_CHAT_MATCHES_DEFINE(unsol_matches,
  *           MODEM_CHAT_MATCH_WILDCARD("$??GGA,", ",*", gnss_nmea0183_match_gga_callback),
  *           MODEM_CHAT_MATCH_WILDCARD("$??RMC,", ",*", gnss_nmea0183_match_rmc_callback),
+ *           MODEM_CHAT_MATCH_WILDCARD("$??GSA,", ",*", gnss_nmea0183_match_gsa_callback),
+ *           MODEM_CHAT_MATCH_WILDCARD("$??GST,", ",*", gnss_nmea0183_match_gst_callback),
  *   #if CONFIG_GNSS_SATELLITES
  *           MODEM_CHAT_MATCH_WILDCARD("$??GSV,", ",*", gnss_nmea0183_match_gsv_callback),
  *   #endif
@@ -80,6 +82,22 @@ void gnss_nmea0183_match_gga_callback(struct modem_chat *chat, char **argv, uint
  * @details Should be used as the callback of a modem_chat match which matches "$??RMC,"
  */
 void gnss_nmea0183_match_rmc_callback(struct modem_chat *chat, char **argv, uint16_t argc,
+				      void *user_data);
+
+/**
+ * @brief Match callback for the NMEA GSA NMEA0183 message
+ *
+ * @details Should be used as the callback of a modem_chat match which matches "$??GSA,"
+ */
+void gnss_nmea0183_match_gsa_callback(struct modem_chat *chat, char **argv, uint16_t argc,
+				      void *user_data);
+
+/**
+ * @brief Match callback for the NMEA GST NMEA0183 message
+ *
+ * @details Should be used as the callback of a modem_chat match which matches "$??GST,"
+ */
+void gnss_nmea0183_match_gst_callback(struct modem_chat *chat, char **argv, uint16_t argc,
 				      void *user_data);
 
 /**

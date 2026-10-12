@@ -48,6 +48,8 @@ UBX_FRAME_DEFINE(disable_zda,
 	UBX_FRAME_CFG_MSG_RATE_INITIALIZER(UBX_CLASS_ID_NMEA_STD, UBX_MSG_ID_NMEA_STD_ZDA, 0));
 UBX_FRAME_DEFINE(enable_nav,
 	UBX_FRAME_CFG_MSG_RATE_INITIALIZER(UBX_CLASS_ID_NAV, UBX_MSG_ID_NAV_PVT, 1));
+UBX_FRAME_DEFINE(enable_dop,
+	UBX_FRAME_CFG_MSG_RATE_INITIALIZER(UBX_CLASS_ID_NAV, UBX_MSG_ID_NAV_DOP, 1));
 #if CONFIG_GNSS_SATELLITES
 UBX_FRAME_DEFINE(enable_sat,
 	UBX_FRAME_CFG_MSG_RATE_INITIALIZER(UBX_CLASS_ID_NAV, UBX_MSG_ID_NAV_SAT, 1));
@@ -56,13 +58,15 @@ UBX_FRAME_DEFINE(enable_sat,
 UBX_FRAME_ARRAY_DEFINE(u_blox_m8_init_seq,
 	&disable_gga, &disable_rmc, &disable_gsv, &disable_dtm, &disable_gbs,
 	&disable_gll, &disable_gns, &disable_grs, &disable_gsa, &disable_gst,
-	&disable_vlw, &disable_vtg, &disable_zda, &enable_nav,
+	&disable_vlw, &disable_vtg, &disable_zda, &enable_nav, &enable_dop,
 #if CONFIG_GNSS_SATELLITES
 	&enable_sat,
 #endif
 );
 
 MODEM_UBX_MATCH_ARRAY_DEFINE(u_blox_m8_unsol_messages,
+	MODEM_UBX_MATCH_DEFINE(UBX_CLASS_ID_NAV, UBX_MSG_ID_NAV_DOP,
+			       gnss_ubx_common_dop_callback),
 	MODEM_UBX_MATCH_DEFINE(UBX_CLASS_ID_NAV, UBX_MSG_ID_NAV_PVT,
 			       gnss_ubx_common_pvt_callback),
 #if CONFIG_GNSS_SATELLITES

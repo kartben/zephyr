@@ -53,6 +53,20 @@ static const char *gnss_fix_quality_to_str(enum gnss_fix_quality fix_quality)
 	return "unknown";
 }
 
+static const char *gnss_fix_type_to_str(enum gnss_fix_type fix_type)
+{
+	switch (fix_type) {
+	case GNSS_FIX_TYPE_UNKNOWN:
+		return "UNKNOWN";
+	case GNSS_FIX_TYPE_2D:
+		return "2D";
+	case GNSS_FIX_TYPE_3D:
+		return "3D";
+	}
+
+	return "unknown";
+}
+
 #if CONFIG_GNSS_SATELLITES
 static const char *gnss_system_to_str(enum gnss_system system)
 {
@@ -82,12 +96,20 @@ static const char *gnss_system_to_str(enum gnss_system system)
 int gnss_dump_info(char *str, uint16_t strsize, const struct gnss_info *info)
 {
 	int ret;
-	const char *fmt = "gnss_info: {satellites_cnt: %u, hdop: %u.%u, fix_status: %s, "
-			  "fix_quality: %s}";
+	const char *fmt = "gnss_info: {satellites_cnt: %u, hdop: %u.%03u, vdop: %u.%03u, "
+			  "fix_status: %s, fix_quality: %s, fix_type: %s, "
+			  "horizontal_accuracy: %u.%03u, vertical_accuracy: %u.%03u, "
+			  "speed_accuracy: %u.%03u, vertical_speed_valid: %u}";
 
 	ret = snprintk(str, strsize, fmt, info->satellites_cnt, info->hdop / 1000,
-		       info->hdop % 1000, gnss_fix_status_to_str(info->fix_status),
-		       gnss_fix_quality_to_str(info->fix_quality));
+		       info->hdop % 1000, info->vdop / 1000, info->vdop % 1000,
+		       gnss_fix_status_to_str(info->fix_status),
+		       gnss_fix_quality_to_str(info->fix_quality),
+		       gnss_fix_type_to_str(info->fix_type),
+		       info->horizontal_accuracy / 1000, info->horizontal_accuracy % 1000,
+		       info->vertical_accuracy / 1000, info->vertical_accuracy % 1000,
+		       info->speed_accuracy / 1000, info->speed_accuracy % 1000,
+		       info->vertical_speed_valid);
 
 	return (strsize < ret) ? -ENOMEM : 0;
 }
@@ -96,10 +118,12 @@ int gnss_dump_nav_data(char *str, uint16_t strsize, const struct navigation_data
 {
 	int ret;
 	const char *fmt = "navigation_data: {latitude: %s%lli.%09lli, longitude : %s%lli.%09lli, "
-			  "bearing %u.%03u, speed %u.%03u, altitude: %s%i.%03i}";
+			  "bearing %u.%03u, speed %u.%03u, altitude: %s%i.%03i, "
+			  "vertical_speed: %s%i.%03i}";
 	char *lat_sign = nav_data->latitude < 0 ? "-" : "";
 	char *lon_sign = nav_data->longitude < 0 ? "-" : "";
 	char *alt_sign = nav_data->altitude < 0 ? "-" : "";
+	char *vs_sign = nav_data->vertical_speed < 0 ? "-" : "";
 
 	ret = snprintk(str, strsize, fmt,
 		       lat_sign,
@@ -110,7 +134,9 @@ int gnss_dump_nav_data(char *str, uint16_t strsize, const struct navigation_data
 		       llabs(nav_data->longitude) % 1000000000,
 		       nav_data->bearing / 1000, nav_data->bearing % 1000,
 		       nav_data->speed / 1000, nav_data->speed % 1000,
-		       alt_sign, abs(nav_data->altitude) / 1000, abs(nav_data->altitude) % 1000);
+		       alt_sign, abs(nav_data->altitude) / 1000, abs(nav_data->altitude) % 1000,
+		       vs_sign, abs(nav_data->vertical_speed) / 1000,
+		       abs(nav_data->vertical_speed) % 1000);
 
 	return (ret < 0 || ret >= strsize) ? -ENOMEM : 0;
 }

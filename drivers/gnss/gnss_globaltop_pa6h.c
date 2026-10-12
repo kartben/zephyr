@@ -68,6 +68,8 @@ struct globaltop_pa6h_data {
 MODEM_CHAT_MATCHES_DEFINE(
 	unsol_matches, MODEM_CHAT_MATCH_WILDCARD("$??GGA,", ",*", gnss_nmea0183_match_gga_callback),
 	MODEM_CHAT_MATCH_WILDCARD("$??RMC,", ",*", gnss_nmea0183_match_rmc_callback),
+	MODEM_CHAT_MATCH_WILDCARD("$??GSA,", ",*", gnss_nmea0183_match_gsa_callback),
+	MODEM_CHAT_MATCH_WILDCARD("$??GST,", ",*", gnss_nmea0183_match_gst_callback),
 #if CONFIG_GNSS_SATELLITES
 	MODEM_CHAT_MATCH_WILDCARD("$??GSV,", ",*", gnss_nmea0183_match_gsv_callback),
 #endif

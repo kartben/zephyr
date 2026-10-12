@@ -10,6 +10,21 @@
 
 #include "gnss_ubx_common.h"
 
+/* The DOPs are published with the next NAV-PVT message */
+void gnss_ubx_common_dop_callback(struct modem_ubx *ubx, const struct ubx_frame *frame,
+				 size_t len, void *user_data)
+{
+	if (len < UBX_FRAME_SZ(sizeof(struct ubx_nav_dop))) {
+		return;
+	}
+
+	struct gnss_ubx_common_data *data = user_data;
+	const struct ubx_nav_dop *nav_dop = (const struct ubx_nav_dop *)frame->payload_and_checksum;
+
+	data->hdop = nav_dop->hdop * 10;
+	data->vdop = nav_dop->vdop * 10;
+}
+
 void gnss_ubx_common_pvt_callback(struct modem_ubx *ubx, const struct ubx_frame *frame,
 				 size_t len, void *user_data)
 {
@@ -23,6 +38,7 @@ void gnss_ubx_common_pvt_callback(struct modem_ubx *ubx, const struct ubx_frame 
 
 	enum gnss_fix_quality fix_quality = GNSS_FIX_QUALITY_INVALID;
 	enum gnss_fix_status fix_status = GNSS_FIX_STATUS_NO_FIX;
+	enum gnss_fix_type fix_type = GNSS_FIX_TYPE_UNKNOWN;
 
 	if ((nav_pvt->flags & UBX_NAV_PVT_FLAGS_GNSS_FIX_OK) &&
 	    !(nav_pvt->nav.flags3 & UBX_NAV_PVT_FLAGS3_INVALID_LLH)) {
@@ -51,16 +67,29 @@ void gnss_ubx_common_pvt_callback(struct modem_ubx *ubx, const struct ubx_frame 
 			 * is not valid.
 			 */
 		}
+
+		if (nav_pvt->fix_type == UBX_NAV_FIX_TYPE_2D) {
+			fix_type = GNSS_FIX_TYPE_2D;
+		} else if ((nav_pvt->fix_type == UBX_NAV_FIX_TYPE_3D) ||
+			   (nav_pvt->fix_type == UBX_NAV_FIX_TYPE_GNSS_DR_COMBINED)) {
+			fix_type = GNSS_FIX_TYPE_3D;
+		}
 	}
 
 	struct gnss_data gnss_data = {
 		.info = {
 			.satellites_cnt = nav_pvt->nav.num_sv,
-			.hdop = nav_pvt->nav.pdop * 10,
+			.hdop = data->hdop,
+			.vdop = data->vdop,
 			.geoid_separation = (nav_pvt->nav.height -
 						nav_pvt->nav.hmsl),
 			.fix_status = fix_status,
 			.fix_quality = fix_quality,
+			.fix_type = fix_type,
+			.horizontal_accuracy = nav_pvt->nav.horiz_acc,
+			.vertical_accuracy = nav_pvt->nav.vert_acc,
+			.speed_accuracy = nav_pvt->nav.speed_acc,
+			.vertical_speed_valid = (fix_type == GNSS_FIX_TYPE_3D),
 		},
 		.nav_data = {
 			.latitude = (int64_t)nav_pvt->nav.latitude * 100,
@@ -70,6 +99,7 @@ void gnss_ubx_common_pvt_callback(struct modem_ubx *ubx, const struct ubx_frame 
 					(nav_pvt->nav.head_motion)) / 100),
 			.speed = nav_pvt->nav.ground_speed,
 			.altitude = nav_pvt->nav.hmsl,
+			.vertical_speed = -nav_pvt->nav.vel_down,
 		},
 		.utc = {
 			.hour = nav_pvt->time.hour,

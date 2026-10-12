@@ -25,8 +25,8 @@
  * @param argc Number of fields in argv
  * @param user_data Pointer to hl78xx_gnss_data structure
  */
-void gnss_nmea0183_match_gsa_callback(struct modem_chat *chat, char **argv, uint16_t argc,
-				      void *user_data);
+void hl78xx_gnss_aux_gsa_callback(struct modem_chat *chat, char **argv, uint16_t argc,
+				  void *user_data);
 
 /**
  * @brief Match callback for NMEA0183 GST message (GNSS Pseudorange Error Statistics)
@@ -39,8 +39,8 @@ void gnss_nmea0183_match_gsa_callback(struct modem_chat *chat, char **argv, uint
  * @param argc Number of fields in argv
  * @param user_data Pointer to hl78xx_gnss_data structure
  */
-void gnss_nmea0183_match_gst_callback(struct modem_chat *chat, char **argv, uint16_t argc,
-				      void *user_data);
+void hl78xx_gnss_aux_gst_callback(struct modem_chat *chat, char **argv, uint16_t argc,
+				  void *user_data);
 
 /**
  * @brief Match callback for PSEPU message (Position Velocity Accuracy Index)
@@ -55,8 +55,8 @@ void gnss_nmea0183_match_gst_callback(struct modem_chat *chat, char **argv, uint
  * @param argc Number of fields in argv
  * @param user_data Pointer to hl78xx_gnss_data structure
  */
-void gnss_nmea0183_match_epu_callback(struct modem_chat *chat, char **argv, uint16_t argc,
-				      void *user_data);
+void hl78xx_gnss_aux_epu_callback(struct modem_chat *chat, char **argv, uint16_t argc,
+				  void *user_data);
 
 void gnss_publish_aux_data(const struct device *dev,
 			   const struct hl78xx_gnss_nmea_aux_data *aux_data, uint16_t size);

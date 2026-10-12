@@ -16,6 +16,8 @@
 struct gnss_ubx_common_data {
 	const struct device *gnss;
 	struct gnss_data data;
+	uint32_t hdop;
+	uint32_t vdop;
 #if CONFIG_GNSS_SATELLITES
 	struct {
 		struct gnss_satellite *data;
@@ -31,6 +33,9 @@ struct gnss_ubx_common_config {
 		size_t size;
 	} satellites;
 };
+
+void gnss_ubx_common_dop_callback(struct modem_ubx *ubx, const struct ubx_frame *frame,
+				 size_t len, void *user_data);
 
 void gnss_ubx_common_pvt_callback(struct modem_ubx *ubx, const struct ubx_frame *frame,
 				 size_t len, void *user_data);

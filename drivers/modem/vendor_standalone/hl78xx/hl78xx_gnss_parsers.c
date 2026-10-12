@@ -58,8 +58,8 @@ static bool hl78xx_gnss_aux_should_publish(enum hl78xx_gnss_aux_sentence sentenc
 	return sentence == HL78XX_GNSS_AUX_SENTENCE_GSA;
 }
 
-void gnss_nmea0183_match_gsa_callback(struct modem_chat *chat, char **argv, uint16_t argc,
-				      void *user_data)
+void hl78xx_gnss_aux_gsa_callback(struct modem_chat *chat, char **argv, uint16_t argc,
+				  void *user_data)
 {
 	struct hl78xx_gnss_data *data = (struct hl78xx_gnss_data *)user_data;
 	int ret;
@@ -85,8 +85,8 @@ void gnss_nmea0183_match_gsa_callback(struct modem_chat *chat, char **argv, uint
 	}
 }
 
-void gnss_nmea0183_match_gst_callback(struct modem_chat *chat, char **argv, uint16_t argc,
-				      void *user_data)
+void hl78xx_gnss_aux_gst_callback(struct modem_chat *chat, char **argv, uint16_t argc,
+				  void *user_data)
 {
 	struct hl78xx_gnss_data *data = (struct hl78xx_gnss_data *)user_data;
 	int ret;
@@ -109,8 +109,8 @@ void gnss_nmea0183_match_gst_callback(struct modem_chat *chat, char **argv, uint
 }
 
 
-void gnss_nmea0183_match_epu_callback(struct modem_chat *chat, char **argv, uint16_t argc,
-				      void *user_data)
+void hl78xx_gnss_aux_epu_callback(struct modem_chat *chat, char **argv, uint16_t argc,
+				  void *user_data)
 {
 	struct hl78xx_gnss_data *data = (struct hl78xx_gnss_data *)user_data;
 	int ret;

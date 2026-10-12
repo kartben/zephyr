@@ -137,6 +137,38 @@ int gnss_nmea0183_parse_rmc(const char **argv, uint16_t argc, struct gnss_data *
  */
 int gnss_nmea0183_parse_gga(const char **argv, uint16_t argc, struct gnss_data *data);
 
+/**
+ * @brief Parses NMEA0183 GSA message
+ *
+ * @details Parses the fix type and VDOP from the NMEA0183 GSA message provided
+ * as an array of strings split by ','
+ *
+ * @param argv Array of arguments split by ',' including message id and checksum
+ * @param argc Number of arguments in argv
+ * @param data Destination for data parsed from NMEA0183 GSA message
+ *
+ * @retval 0 if successful
+ * @retval -EINVAL if input is invalid
+ */
+int gnss_nmea0183_parse_gsa(const char **argv, uint16_t argc, struct gnss_data *data);
+
+/**
+ * @brief Parses NMEA0183 GST message
+ *
+ * @details Parses the horizontal and vertical accuracy from the standard deviations
+ * of the latitude, longitude and altitude errors in the NMEA0183 GST message provided
+ * as an array of strings split by ','. An empty standard deviation is parsed as an
+ * unknown accuracy.
+ *
+ * @param argv Array of arguments split by ',' including message id and checksum
+ * @param argc Number of arguments in argv
+ * @param data Destination for data parsed from NMEA0183 GST message
+ *
+ * @retval 0 if successful
+ * @retval -EINVAL if input is invalid
+ */
+int gnss_nmea0183_parse_gst(const char **argv, uint16_t argc, struct gnss_data *data);
+
 /** GSV header structure */
 struct gnss_nmea0183_gsv_header {
 	/** Indicates the system of the space-vehicles contained in the message */
