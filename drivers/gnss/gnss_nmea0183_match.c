@@ -79,6 +79,23 @@ void gnss_nmea0183_match_rmc_callback(struct modem_chat *chat, char **argv, uint
 	gnss_nmea0183_match_publish(data);
 }
 
+/* The data parsed from GSA and GST messages is published with the next GGA and RMC messages */
+void gnss_nmea0183_match_gsa_callback(struct modem_chat *chat, char **argv, uint16_t argc,
+				      void *user_data)
+{
+	struct gnss_nmea0183_match_data *data = user_data;
+
+	(void)gnss_nmea0183_parse_gsa((const char **)argv, argc, &data->data);
+}
+
+void gnss_nmea0183_match_gst_callback(struct modem_chat *chat, char **argv, uint16_t argc,
+				      void *user_data)
+{
+	struct gnss_nmea0183_match_data *data = user_data;
+
+	(void)gnss_nmea0183_parse_gst((const char **)argv, argc, &data->data);
+}
+
 #if CONFIG_GNSS_SATELLITES
 void gnss_nmea0183_match_gsv_callback(struct modem_chat *chat, char **argv, uint16_t argc,
 				      void *user_data)
