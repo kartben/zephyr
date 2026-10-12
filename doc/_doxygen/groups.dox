@@ -89,6 +89,12 @@
 @{
 @}
 
+@defgroup sensor_interface_ext_goertek Goertek
+@ingroup sensor_interface_ext
+@brief Device-specific extensions for sensors from Goertek.
+@{
+@}
+
 @defgroup sensor_interface_ext_gss Gas Sensing Solutions
 @ingroup sensor_interface_ext
 @brief Device-specific extensions for sensors from Gas Sensing Solutions.

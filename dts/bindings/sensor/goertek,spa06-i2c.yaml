@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Goertek SPA06-003 barometric pressure and temperature sensor on I2C.
+
+  The I2C address is 0x77, or 0x76 when the SDO pin is pulled low.
+
+compatible: "goertek,spa06"
+
+include: [i2c-device.yaml, "goertek,spa06-common.yaml"]
+
+properties:
+  int-gpios:
+    type: phandle-array
+    description: |
+      Interrupt output, on the SDO pin. Its active level depends on the
+      address strap: GPIO_ACTIVE_LOW at address 0x77, GPIO_ACTIVE_HIGH at
+      address 0x76. Data-ready triggers and streaming need this property and
+      a pressure-odr.
+
+examples:
+  - |
+    #include <zephyr/dt-bindings/gpio/gpio.h>
+    #include <zephyr/dt-bindings/sensor/spa06.h>
+
+    &i2c0 {
+      spa06@77 {
+        compatible = "goertek,spa06";
+        reg = <0x77>;
+        int-gpios = <&gpio0 5 GPIO_ACTIVE_LOW>;
+        pressure-oversampling = <16>;
+        pressure-odr = <SPA06_DT_ODR_16>;
+      };
+    };

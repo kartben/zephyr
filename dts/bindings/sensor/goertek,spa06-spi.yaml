@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Goertek SPA06-003 barometric pressure and temperature sensor on 4-wire SPI.
+
+  In this mode the SDO pin is the data output, so the sensor's interrupt
+  output is not available.
+
+compatible: "goertek,spa06"
+
+include: [spi-device.yaml, "goertek,spa06-common.yaml"]
+
+examples:
+  - |
+    &spi0 {
+      spa06@0 {
+        compatible = "goertek,spa06";
+        reg = <0>;
+        spi-max-frequency = <10000000>;
+      };
+    };
