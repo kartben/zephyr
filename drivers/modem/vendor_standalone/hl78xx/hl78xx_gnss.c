@@ -366,6 +366,7 @@ void hl78xx_gnss_nmea0183_match_gsa(struct modem_chat *chat, char **argv, uint16
 {
 	struct hl78xx_data *data = (struct hl78xx_data *)user_data;
 
+	gnss_nmea0183_match_gsa_callback(chat, argv, argc, data->devices.gnss->data);
 	hl78xx_gnss_aux_gsa_callback(chat, argv, argc, data->devices.gnss->data);
 }
 
@@ -374,6 +375,7 @@ void hl78xx_gnss_nmea0183_match_gst(struct modem_chat *chat, char **argv, uint16
 {
 	struct hl78xx_data *data = (struct hl78xx_data *)user_data;
 
+	gnss_nmea0183_match_gst_callback(chat, argv, argc, data->devices.gnss->data);
 	hl78xx_gnss_aux_gst_callback(chat, argv, argc, data->devices.gnss->data);
 }
 
