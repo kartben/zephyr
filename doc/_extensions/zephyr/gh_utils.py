@@ -36,7 +36,6 @@ Configuration options
 import os
 import re
 import subprocess
-import sys
 from datetime import datetime
 from functools import cache, lru_cache, partial
 from pathlib import Path
@@ -46,12 +45,13 @@ from urllib.parse import urlencode
 from sphinx.application import Sphinx
 from sphinx.util.i18n import format_date
 
-sys.path.insert(0, str(Path(__file__).parents[3] / "scripts"))
+from zephyr._paths import ZEPHYR_BASE, add_script_paths
 
-from get_maintainer import Maintainers
+add_script_paths("scripts")
 
-ZEPHYR_BASE: Final[str] = Path(__file__).parents[3]
-MAINTAINERS: Final[Maintainers] = Maintainers(filename=f"{ZEPHYR_BASE}/MAINTAINERS.yml")
+from get_maintainer import Maintainers  # noqa: E402
+
+MAINTAINERS: Final[Maintainers] = Maintainers(filename=str(ZEPHYR_BASE / "MAINTAINERS.yml"))
 
 
 __version__ = "0.1.0"

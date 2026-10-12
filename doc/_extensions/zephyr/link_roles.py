@@ -8,12 +8,12 @@ import re
 import subprocess
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Final
+from typing import Any
 
 from docutils import nodes
 from sphinx.util import logging
 
-ZEPHYR_BASE: Final[str] = Path(__file__).parents[3]
+from zephyr._paths import ZEPHYR_BASE
 
 try:
     import west.manifest
