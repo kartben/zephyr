@@ -40,6 +40,18 @@ static void publish_pvt(const struct ubx_nav_pvt *nav_pvt)
 	gnss_ubx_common_pvt_callback(NULL, frame, UBX_FRAME_SZ(sizeof(*nav_pvt)), &ubx_data);
 }
 
+static void receive_dop(const struct ubx_nav_dop *nav_dop)
+{
+	struct ubx_frame *frame = (struct ubx_frame *)frame_buf;
+
+	frame->class = UBX_CLASS_ID_NAV;
+	frame->id = UBX_MSG_ID_NAV_DOP;
+	frame->payload_size = sizeof(*nav_dop);
+	memcpy(frame->payload_and_checksum, nav_dop, sizeof(*nav_dop));
+
+	gnss_ubx_common_dop_callback(NULL, frame, UBX_FRAME_SZ(sizeof(*nav_dop)), &ubx_data);
+}
+
 ZTEST(gnss_ubx_common, test_pvt_3d_fix)
 {
 	struct ubx_nav_pvt nav_pvt = {
@@ -89,6 +101,28 @@ ZTEST(gnss_ubx_common, test_pvt_no_fix)
 	zassert_equal(published.info.fix_status, GNSS_FIX_STATUS_NO_FIX);
 	zassert_equal(published.info.fix_type, GNSS_FIX_TYPE_UNKNOWN);
 	zassert_false(published.info.vertical_speed_valid);
+}
+
+ZTEST(gnss_ubx_common, test_dop)
+{
+	const struct ubx_nav_dop nav_dop = {
+		.pdop = 150,
+		.hdop = 85,
+		.vdop = 120,
+	};
+	struct ubx_nav_pvt nav_pvt = {
+		.fix_type = UBX_NAV_FIX_TYPE_3D,
+		.flags = UBX_NAV_PVT_FLAGS_GNSS_FIX_OK,
+		.nav = {
+			.pdop = 150,
+		},
+	};
+
+	receive_dop(&nav_dop);
+	publish_pvt(&nav_pvt);
+
+	zassert_equal(published.info.hdop, 850);
+	zassert_equal(published.info.vdop, 1200);
 }
 
 static void *gnss_ubx_common_setup(void)

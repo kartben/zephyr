@@ -27,6 +27,8 @@ UBX_FRAME_DEFINE(disable_nmea,
 	UBX_FRAME_CFG_VAL_SET_U8_INITIALIZER(UBX_KEY_UART1_PROTO_OUT_NMEA, 0));
 UBX_FRAME_DEFINE(enable_nav,
 	UBX_FRAME_CFG_VAL_SET_U8_INITIALIZER(UBX_KEY_MSG_OUT_UBX_NAV_PVT_UART1, 1));
+UBX_FRAME_DEFINE(enable_dop,
+	UBX_FRAME_CFG_VAL_SET_U8_INITIALIZER(UBX_KEY_MSG_OUT_UBX_NAV_DOP_UART1, 1));
 UBX_FRAME_DEFINE(nav_fix_mode_auto,
 	UBX_FRAME_CFG_VAL_SET_U8_INITIALIZER(UBX_KEY_NAV_CFG_FIX_MODE, UBX_FIX_MODE_AUTO));
 UBX_FRAME_DEFINE(enable_prot_in_ubx,
@@ -50,7 +52,7 @@ UBX_FRAME_DEFINE(enable_sat,
 #endif
 
 UBX_FRAME_ARRAY_DEFINE(u_blox_f9p_init_seq,
-	&disable_nmea, &enable_nav, &nav_fix_mode_auto,
+	&disable_nmea, &enable_nav, &enable_dop, &nav_fix_mode_auto,
 	&enable_prot_in_ubx, &enable_prot_out_ubx,
 #if CONFIG_GNSS_U_BLOX_F9P_RTK
 	&enable_prot_in_rtcm3,
@@ -62,6 +64,8 @@ UBX_FRAME_ARRAY_DEFINE(u_blox_f9p_init_seq,
 );
 
 MODEM_UBX_MATCH_ARRAY_DEFINE(u_blox_f9p_unsol_messages,
+	MODEM_UBX_MATCH_DEFINE(UBX_CLASS_ID_NAV, UBX_MSG_ID_NAV_DOP,
+			       gnss_ubx_common_dop_callback),
 	MODEM_UBX_MATCH_DEFINE(UBX_CLASS_ID_NAV, UBX_MSG_ID_NAV_PVT,
 			       gnss_ubx_common_pvt_callback),
 #if CONFIG_GNSS_SATELLITES

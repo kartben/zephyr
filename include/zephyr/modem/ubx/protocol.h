@@ -61,6 +61,7 @@ enum ubx_class_id {
 };
 
 enum ubx_msg_id_nav {
+	UBX_MSG_ID_NAV_DOP = 0x04,
 	UBX_MSG_ID_NAV_PVT = 0x07,
 	UBX_MSG_ID_NAV_SAT = 0x35,
 };
@@ -89,6 +90,17 @@ enum ubx_nav_hp_dgnss_mode {
 #define UBX_NAV_PVT_FLAGS_GNSS_CARR_SOLN_FIXED		BIT(7)
 
 #define UBX_NAV_PVT_FLAGS3_INVALID_LLH			BIT(0)
+
+struct ubx_nav_dop {
+	uint32_t itow;
+	uint16_t gdop; /* scaling: 1e-2 */
+	uint16_t pdop; /* scaling: 1e-2 */
+	uint16_t tdop; /* scaling: 1e-2 */
+	uint16_t vdop; /* scaling: 1e-2 */
+	uint16_t hdop; /* scaling: 1e-2 */
+	uint16_t ndop; /* scaling: 1e-2 */
+	uint16_t edop; /* scaling: 1e-2 */
+} __packed;
 
 struct ubx_nav_pvt {
 	struct {

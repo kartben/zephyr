@@ -10,6 +10,21 @@
 
 #include "gnss_ubx_common.h"
 
+/* The DOPs are published with the next NAV-PVT message */
+void gnss_ubx_common_dop_callback(struct modem_ubx *ubx, const struct ubx_frame *frame,
+				 size_t len, void *user_data)
+{
+	if (len < UBX_FRAME_SZ(sizeof(struct ubx_nav_dop))) {
+		return;
+	}
+
+	struct gnss_ubx_common_data *data = user_data;
+	const struct ubx_nav_dop *nav_dop = (const struct ubx_nav_dop *)frame->payload_and_checksum;
+
+	data->hdop = nav_dop->hdop * 10;
+	data->vdop = nav_dop->vdop * 10;
+}
+
 void gnss_ubx_common_pvt_callback(struct modem_ubx *ubx, const struct ubx_frame *frame,
 				 size_t len, void *user_data)
 {
@@ -64,7 +79,8 @@ void gnss_ubx_common_pvt_callback(struct modem_ubx *ubx, const struct ubx_frame 
 	struct gnss_data gnss_data = {
 		.info = {
 			.satellites_cnt = nav_pvt->nav.num_sv,
-			.hdop = nav_pvt->nav.pdop * 10,
+			.hdop = data->hdop,
+			.vdop = data->vdop,
 			.geoid_separation = (nav_pvt->nav.height -
 						nav_pvt->nav.hmsl),
 			.fix_status = fix_status,
