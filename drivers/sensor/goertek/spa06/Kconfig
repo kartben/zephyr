@@ -64,4 +64,12 @@ config SPA06_STREAM
 	  sensor API. The interrupt is handled in the context selected by the
 	  trigger mode.
 
+config EMUL_SPA06
+	bool "Emulator for the SPA06-003"
+	default y
+	depends on EMUL
+	help
+	  Enable the emulator for the SPA06-003, used to test the driver
+	  without hardware.
+
 endif # SPA06

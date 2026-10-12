@@ -12,3 +12,5 @@ zephyr_library_sources_ifdef(CONFIG_SENSOR_ASYNC_API
   spa06_decoder.c
 )
 zephyr_library_sources_ifdef(CONFIG_SPA06_STREAM spa06_stream.c)
+zephyr_library_sources_ifdef(CONFIG_EMUL_SPA06 spa06_emul.c)
+zephyr_include_directories_ifdef(CONFIG_EMUL_SPA06 .)
