@@ -57,4 +57,13 @@ config AUDIO_CODEC_INIT_PRIORITY
 
 endif # AUDIO_CODEC
 
+if VIDEO
+
+# Needs to init after MFD_AW9523B (80), since the camera reset uses aw9523b_gpio,
+# and after REGULATOR_AXP192_AXP2101 (81), since AXP2101 powers the camera.
+config VIDEO_INIT_PRIORITY
+	default 82
+
+endif # VIDEO
+
 endif # BOARD_M5STACK_CORES3_ESP32S3_PROCPU || BOARD_M5STACK_CORES3_ESP32S3_PROCPU_SE

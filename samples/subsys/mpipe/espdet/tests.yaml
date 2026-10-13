@@ -1,0 +1,18 @@
+sample:
+  name: ESPDet-Pico object detection pipeline
+
+tests:
+  sample.mpipe.espdet:
+    tags:
+      - mpipe
+      - video
+      - samples
+    platform_allow:
+      - m5stack_stackchan/esp32s3/procpu
+      - m5stack_cores3/esp32s3/procpu
+    integration_platforms:
+      - m5stack_stackchan/esp32s3/procpu
+    # ESP-DL and a model are not part of the Zephyr manifest
+    modules:
+      - esp-dl
+    build_only: true
