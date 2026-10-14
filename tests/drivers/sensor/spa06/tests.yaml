@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+common:
+  tags:
+    - drivers
+    - sensor
+  platform_allow:
+    - native_sim
+  integration_platforms:
+    - native_sim
+tests:
+  drivers.sensor.spa06: {}
+  drivers.sensor.spa06.own_thread:
+    extra_configs:
+      - CONFIG_SPA06_TRIGGER_OWN_THREAD=y
+  drivers.sensor.spa06.pm:
+    extra_configs:
+      - CONFIG_PM_DEVICE=y

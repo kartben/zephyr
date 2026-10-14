@@ -1,0 +1,51 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+include: sensor-device.yaml
+
+properties:
+  pressure-oversampling:
+    type: int
+    default: 16
+    enum: [1, 2, 4, 8, 16, 32, 64, 128]
+    description: |
+      Number of pressure samples averaged into one measurement. Higher values
+      lower the noise and lengthen the measurement time, from 3.6 ms for 1 to
+      206.8 ms for 128. The default is the setting the datasheet calls
+      standard precision. It can be changed at run time with
+      SENSOR_ATTR_OVERSAMPLING.
+
+  temperature-oversampling:
+    type: int
+    default: 1
+    enum: [1, 2, 4, 8, 16, 32, 64, 128]
+    description: |
+      Number of temperature samples averaged into one measurement. The default
+      is the sensor's power-on setting. It can be changed at run time with
+      SENSOR_ATTR_OVERSAMPLING.
+
+  pressure-odr:
+    type: int
+    enum: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    description: |
+      Pressure measurement rate, one of the SPA06_DT_ODR_* values from
+      <zephyr/dt-bindings/sensor/spa06.h>. When the property is present, the
+      sensor measures pressure and temperature continuously from
+      initialization, and a sample fetch returns the latest results. When it
+      is absent, each sample fetch starts a measurement and waits for it to
+      complete. The rate can be changed at run time with
+      SENSOR_ATTR_SAMPLING_FREQUENCY, where 0 returns to on-demand
+      measurements.
+
+      The measurement time at each rate must add up to less than one second:
+      pressure rate x pressure measurement time + temperature rate x
+      temperature measurement time < 1 s. Initialization fails otherwise.
+
+  temperature-odr:
+    type: int
+    default: 0
+    enum: [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15]
+    description: |
+      Temperature measurement rate in continuous mode, one of the
+      SPA06_DT_ODR_* values except SPA06_DT_ODR_1_5625. The default is 1 Hz.
+      Pressure compensation uses the latest temperature result.

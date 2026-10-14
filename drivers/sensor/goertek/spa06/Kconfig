@@ -1,0 +1,75 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config SPA06
+	bool "Goertek SPA06-003 pressure and temperature sensor"
+	default y
+	depends on DT_HAS_GOERTEK_SPA06_ENABLED
+	select I2C if $(dt_compat_on_bus,$(DT_COMPAT_GOERTEK_SPA06),i2c)
+	select SPI if $(dt_compat_on_bus,$(DT_COMPAT_GOERTEK_SPA06),spi)
+	help
+	  Enable the driver for the Goertek SPA06-003 barometric pressure and
+	  temperature sensor.
+
+if SPA06
+
+choice SPA06_TRIGGER_MODE
+	prompt "Trigger mode"
+	default SPA06_TRIGGER_GLOBAL_THREAD
+	help
+	  Context in which the sensor's interrupt is handled, for data-ready
+	  triggers and streaming.
+
+config SPA06_TRIGGER_NONE
+	bool "No trigger"
+
+config SPA06_TRIGGER_GLOBAL_THREAD
+	bool "Use global thread"
+	depends on GPIO
+	depends on $(dt_compat_any_has_prop,$(DT_COMPAT_GOERTEK_SPA06),int-gpios)
+	select SPA06_TRIGGER
+
+config SPA06_TRIGGER_OWN_THREAD
+	bool "Use own thread"
+	depends on GPIO
+	depends on $(dt_compat_any_has_prop,$(DT_COMPAT_GOERTEK_SPA06),int-gpios)
+	select SPA06_TRIGGER
+
+endchoice
+
+config SPA06_TRIGGER
+	bool
+
+config SPA06_THREAD_PRIORITY
+	int "Thread priority"
+	depends on SPA06_TRIGGER_OWN_THREAD
+	default 10
+	help
+	  Priority of the thread that handles the interrupt.
+
+config SPA06_THREAD_STACK_SIZE
+	int "Thread stack size"
+	depends on SPA06_TRIGGER_OWN_THREAD
+	default 1024
+	help
+	  Stack size of the thread that handles the interrupt.
+
+config SPA06_STREAM
+	bool "Streaming mode"
+	default y
+	depends on SENSOR_ASYNC_API
+	depends on SPA06_TRIGGER
+	help
+	  Stream data-ready and FIFO-full events through the asynchronous
+	  sensor API. The interrupt is handled in the context selected by the
+	  trigger mode.
+
+config EMUL_SPA06
+	bool "Emulator for the SPA06-003"
+	default y
+	depends on EMUL
+	help
+	  Enable the emulator for the SPA06-003, used to test the driver
+	  without hardware.
+
+endif # SPA06
