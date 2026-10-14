@@ -13,6 +13,12 @@
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/timer/system_timer_lpm.h>
 
+#if defined(CONFIG_CORTEX_M_SYSTICK_RELOAD_DWT) &&                                                \
+	!DT_PROP(DT_NODELABEL(systick), external_clock_source)
+#include <cortex_m/dwt.h>
+#define SYSTICK_RELOAD_DWT 1
+#endif
+
 #define COUNTER_MAX 0x00ffffff
 #define TIMER_STOPPED 0xff000000
 
@@ -119,6 +125,11 @@ static uint32_t cycle_count;
  * the overflow_cyc must be reset to zero.
  */
 static volatile uint32_t overflow_cyc;
+
+#ifdef SYSTICK_RELOAD_DWT
+/* Whether the DWT implements a cycle counter, to count the cycles lost on a restart */
+static bool reload_dwt;
+#endif
 
 #if !defined(CONFIG_SYSTEM_TIMER_LPM_COMPANION_NONE)
 /* This local variable indicates that the timeout was set right before
@@ -247,9 +258,19 @@ static void timer_driver_set_reload(uint32_t cycles)
 	last_load = cycles;
 
 	uint32_t val2 = SysTick->VAL;
+#ifdef SYSTICK_RELOAD_DWT
+	uint32_t dwt_val2 = z_arm_dwt_get_cycles();
+#endif
 
 	SysTick->LOAD = cycles - 1U;
 	SysTick->VAL = 0U;	/* resets counter, clears COUNTFLAG */
+
+#ifdef SYSTICK_RELOAD_DWT
+	/* The counter restarted some cycles after val2 was read: count them */
+	if (reload_dwt) {
+		cycle_count += z_arm_dwt_get_cycles() - dwt_val2;
+	}
+#endif
 
 	/*
 	 * Clear any pending SysTick exception from the old schedule. Writing
@@ -577,6 +598,14 @@ static int sys_clock_driver_init(void)
 
 	NVIC_SetPriority(SysTick_IRQn, SYSTICK_IRQ_PRIO);
 	min_delay = systick_min_delay();
+
+#ifdef SYSTICK_RELOAD_DWT
+	z_arm_dwt_init();
+	if ((DWT->CTRL & DWT_CTRL_NOCYCCNT_Msk) == 0U) {
+		DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+		reload_dwt = true;
+	}
+#endif
 	last_load = TIMER_CORE_CYC_PER_TICK;
 	overflow_cyc = 0U;
 	SysTick->LOAD = last_load - 1;

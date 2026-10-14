@@ -5,6 +5,9 @@ zephyr_library_sources(sys_clock_init.c)
 zephyr_library_sources_ifndef(CONFIG_SYSTEM_TIMER_LPM_COMPANION_NONE sys_lpm_hooks_stubs.c)
 
 zephyr_library_include_directories(${ZEPHYR_BASE}/drivers/counter)
+# cortex_m/dwt.h
+zephyr_library_include_directories_ifdef(CONFIG_CORTEX_M_SYSTICK_RELOAD_DWT
+  ${ZEPHYR_BASE}/arch/arm/include)
 # zephyr-keep-sorted-start
 zephyr_library_sources_ifdef(CONFIG_AMBIQ_STIMER_TIMER ambiq_stimer.c)
 zephyr_library_sources_ifdef(CONFIG_AMD_TMRCTR amd_tmrctr.c)
