@@ -11,12 +11,20 @@ title: Zephyr SoC Schema
 description: Schema for validating Zephyr SoC metadata files
 type: object
 $defs:
+  modules:
+    type: array
+    items:
+      type: string
+    uniqueItems: true
+    description: Names of the Zephyr modules that a build for the SoC cannot do without
   cpucluster:
     type: object
     properties:
       name:
         type: string
         description: Name of the CPU cluster
+      modules:
+        $ref: "#/$defs/modules"
     required:
       - name
     additionalProperties: false
@@ -30,6 +38,8 @@ $defs:
         type: array
         items:
           $ref: "#/$defs/cpucluster"
+      modules:
+        $ref: "#/$defs/modules"
     required:
       - name
     additionalProperties: false
@@ -45,6 +55,8 @@ $defs:
             type: array
             items:
               $ref: "#/$defs/cpucluster"
+          modules:
+            $ref: "#/$defs/modules"
         required:
           - name
         additionalProperties: false
@@ -70,6 +82,8 @@ $defs:
         type: array
         items:
           $ref: "#/$defs/soc"
+      modules:
+        $ref: "#/$defs/modules"
     required:
       - name
     additionalProperties: false
@@ -87,6 +101,8 @@ $defs:
         type: array
         items:
           $ref: "#/$defs/soc"
+      modules:
+        $ref: "#/$defs/modules"
     required:
       - name
     additionalProperties: false

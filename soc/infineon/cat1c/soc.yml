@@ -1,5 +1,7 @@
 family:
 - name: cat1c
+  modules:
+  - hal_infineon
   series:
   - name: xmc7200
     socs:

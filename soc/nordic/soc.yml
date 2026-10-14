@@ -1,5 +1,7 @@
 family:
   - name: nordic_nrf
+    modules:
+      - hal_nordic
     series:
       - name: nrf51
         socs:

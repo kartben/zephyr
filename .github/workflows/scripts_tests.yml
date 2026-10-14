@@ -14,8 +14,11 @@ on:
       - 'scripts/checkpatch/**'
       - 'scripts/cmake/**'
       - 'scripts/kconfig/**'
+      - 'scripts/list_hardware.py'
       - 'scripts/schemas/hardening-schema.yaml'
+      - 'scripts/schemas/soc-schema.yaml'
       - 'scripts/tests/hardenconfig/**'
+      - 'scripts/tests/list_hardware/**'
       - '.github/workflows/scripts_tests.yml'
   pull_request:
     branches:
@@ -27,8 +30,11 @@ on:
       - 'scripts/checkpatch/**'
       - 'scripts/cmake/**'
       - 'scripts/kconfig/**'
+      - 'scripts/list_hardware.py'
       - 'scripts/schemas/hardening-schema.yaml'
+      - 'scripts/schemas/soc-schema.yaml'
       - 'scripts/tests/hardenconfig/**'
+      - 'scripts/tests/list_hardware/**'
       - '.github/workflows/scripts_tests.yml'
 
 permissions:
@@ -85,4 +91,5 @@ jobs:
           ZEPHYR_BASE: ./
         run: |
           echo "Run script tests"
-          pytest ./scripts/build ./scripts/checkpatch ./scripts/cmake ./scripts/kconfig ./scripts/tests/hardenconfig
+          pytest ./scripts/build ./scripts/checkpatch ./scripts/cmake ./scripts/kconfig \
+            ./scripts/tests/hardenconfig ./scripts/tests/list_hardware

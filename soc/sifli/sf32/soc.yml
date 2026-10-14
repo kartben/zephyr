@@ -3,6 +3,8 @@
 
 family:
 - name: sf32
+  modules:
+  - hal_sifli
   series:
   - name: sf32lb52x
     socs:

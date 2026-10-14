@@ -3,6 +3,8 @@
 
 family:
 - name: max32
+  modules:
+  - adi
   socs:
   - name: max32650
   - name: max32651

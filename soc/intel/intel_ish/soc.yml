@@ -1,5 +1,7 @@
 family:
   - name: intel_ish
+    modules:
+      - hal_intel
     series:
       - name: intel_ish5
         socs:

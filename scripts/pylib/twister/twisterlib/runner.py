@@ -59,6 +59,7 @@ from twisterlib.log_helper import log_command
 from twisterlib.platform import Platform
 from twisterlib.runmonitor import console_ui_active, make_event
 from twisterlib.sidecars import SidecarImporter
+from twisterlib.soc_modules import visible_modules
 from twisterlib.testinstance import TestInstance
 from twisterlib.testplan import change_skip_to_error_if_integration
 from twisterlib.testsuite import TestSuite
@@ -1578,6 +1579,11 @@ class ProjectBuilder(FilterBuilder):
             self.options.extra_args, # CMake extra args
             self.instance.build_dir,
         )
+        if self.options.strict_soc_modules:
+            modules = visible_modules(
+                self.instance.platform.name, self.testsuite.modules, self.env.soc_roots
+            )
+            args.append(f'-DZEPHYR_MODULES={";".join(modules)}')
         return self.run_cmake(args,filter_stages)
 
     def build(self):

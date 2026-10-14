@@ -1,5 +1,7 @@
 family:
 - name: atmel_sam0
+  modules:
+  - atmel
   series:
   - name: samc20
     socs:

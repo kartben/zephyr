@@ -1,5 +1,7 @@
 family:
 - name: mcxn
+  modules:
+  - hal_nxp
   socs:
   - name: mcxn947
     cpuclusters:
@@ -20,12 +22,16 @@ family:
   - name: mcxn236
   - name: mcxn235
 - name: mcxc
+  modules:
+  - hal_nxp
   socs:
   - name: mcxc141
   - name: mcxc142
   - name: mcxc242
   - name: mcxc444
 - name: mcxe
+  modules:
+  - hal_nxp
   series:
   - name: mcxe24x
     socs:
@@ -33,6 +39,8 @@ family:
     - name: mcxe246
     - name: mcxe247
 - name: mcxe
+  modules:
+  - hal_nxp
   series:
   - name: mcxe31x
     socs:
@@ -41,6 +49,8 @@ family:
     - name: mcxe317
     - name: mcxe31b
 - name: mcxa
+  modules:
+  - hal_nxp
   series:
   - name: mcxa1x3
     socs:
@@ -70,6 +80,8 @@ family:
     - name: mcxa287
     - name: mcxa286
 - name: mcxw
+  modules:
+  - hal_nxp
   series:
   - name: mcxw2xx
     socs:
@@ -81,6 +93,8 @@ family:
     - name: mcxw716c
     - name: mcxw727c
 - name: mcxl
+  modules:
+  - hal_nxp
   series:
   - name: mcxl25x
     socs:

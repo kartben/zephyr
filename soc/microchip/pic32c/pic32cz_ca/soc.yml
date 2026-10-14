@@ -3,6 +3,8 @@
 
 family:
 - name: microchip_pic32cz_ca
+  modules:
+  - hal_microchip
   series:
   - name: pic32cz_ca80
     socs:

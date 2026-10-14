@@ -3,6 +3,8 @@
 
 family:
 - name: microchip_sama7
+  modules:
+  - hal_microchip
   series:
   - name: sama7d6
     socs:

@@ -10,11 +10,9 @@ from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import jsonschema
 import list_hardware
 import yaml
-from jsonschema.exceptions import best_match
-from list_hardware import unique_paths
+from list_hardware import schema_error, schema_validator, unique_paths
 
 try:
     from yaml import CSafeLoader as SafeLoader
@@ -25,9 +23,7 @@ BOARD_SCHEMA_PATH = str(Path(__file__).parent / 'schemas' / 'board-schema.yaml')
 with open(BOARD_SCHEMA_PATH) as f:
     board_schema = yaml.load(f.read(), Loader=SafeLoader)
 
-validator_class = jsonschema.validators.validator_for(board_schema)
-validator_class.check_schema(board_schema)
-board_validator = validator_class(board_schema)
+board_validator = schema_validator(board_schema)
 
 BOARD_YML = 'board.yml'
 
@@ -160,11 +156,11 @@ def load_v2_boards(board_name, board_yml, systems):
         with board_yml.open('r', encoding='utf-8') as f:
             b = yaml.load(f.read(), Loader=SafeLoader)
 
-        errors = list(board_validator.iter_errors(b))
-        if errors:
+        error = schema_error(board_validator, b)
+        if error is not None:
             raise RuntimeError('Malformed board YAML file: '
                                f'{board_yml.as_posix()}\n'
-                               f'{best_match(errors).message} in {best_match(errors).json_path}')
+                               f'{error}')
 
         board_array = b.get('boards', [b.get('board', None)])
         for board in board_array:
@@ -355,6 +351,8 @@ def dump_v2_boards(args):
 
 
 if __name__ == '__main__':
+    if list_hardware.jsonschema is None:
+        sys.exit('ERROR: the jsonschema Python package is needed to validate the board files')
     try:
         args = parse_args()
         dump_v2_boards(args)

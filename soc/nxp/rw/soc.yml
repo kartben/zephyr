@@ -1,5 +1,7 @@
 family:
 - name: nxp_rw
+  modules:
+  - hal_nxp
   series:
   - name: rw61x
     socs:

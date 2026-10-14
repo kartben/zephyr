@@ -1,5 +1,7 @@
 family:
   - name: realtek_ameba
+    modules:
+      - hal_realtek
     series:
       - name: amebad
         socs:

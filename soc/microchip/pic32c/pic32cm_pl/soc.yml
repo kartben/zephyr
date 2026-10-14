@@ -3,6 +3,8 @@
 
 family:
 - name: microchip_pic32cm_pl
+  modules:
+  - hal_microchip
   series:
   - name: pic32cm_pl10
     socs:

@@ -1,2 +1,4 @@
 socs:
   - name: quicklogic_eos_s3
+    modules:
+      - quicklogic

@@ -2,9 +2,13 @@ family:
   - name: renesas_rx
     series:
       - name: rx130
+        modules:
+          - hal_renesas
         socs:
           - name: r5f51308axfp
       - name: rx140
+        modules:
+          - hal_renesas
         socs:
           - name: r5f51406bdfn
           - name: r5f51406bgfn
@@ -12,17 +16,27 @@ family:
         socs:
           - name: r5f562n8
       - name: rx261
+        modules:
+          - hal_renesas
         socs:
           - name: r5f52618bgfp
       - name: rx26t
+        modules:
+          - hal_renesas
         socs:
           - name: r5f526tfddfp
       - name: rx14t
+        modules:
+          - hal_renesas
         socs:
           - name: r5f514t5amfm
       - name: rx74m
+        modules:
+          - hal_renesas
         socs:
           - name: r5k574mcb4ae
       - name: rx74n
+        modules:
+          - hal_renesas
         socs:
           - name: r5k574ncb4ae
