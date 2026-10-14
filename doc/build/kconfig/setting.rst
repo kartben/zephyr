@@ -197,9 +197,10 @@ Treating Kconfig warnings as errors
 ***********************************
 
 Some Kconfig warnings abort the build by default, for example assignments to
-undefined symbols. Others are only printed, for example when a symbol is set
-more than once, or when an assignment is ignored because the dependencies of
-the symbol are not satisfied.
+undefined symbols, or to symbols that need a :ref:`module <modules>` that is not
+available, unless the assignment comes from a board's defconfig file. Others are
+only printed, for example when a symbol is set more than once, or when an
+assignment is ignored because the dependencies of the symbol are not satisfied.
 
 Set the :makevar:`KCONFIG_WARNING_AS_ERROR` CMake variable to treat *every*
 Kconfig warning as an error:
