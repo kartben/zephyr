@@ -1,0 +1,33 @@
+# Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config EDGE264
+	bool "edge264 H.264 decoder library"
+	help
+	  Build the edge264 software H.264/AVC decoder. Requires the
+	  edge264 west module (modules/lib/edge264 after west update).
+	  On Cortex-M the portable Clang-vector backend is used, with
+	  GCC fallbacks for the vector builtins.
+
+if EDGE264
+
+config EDGE264_HEAP_SIZE
+	int "edge264 decoder heap size in bytes"
+	default 2097152
+	help
+	  Heap used for the decoder context and reconstructed frames.
+
+config EDGE264_HEAP_ZEPHYR_REGION
+	bool "Place the edge264 heap in a Zephyr memory-region"
+	help
+	  Place the decoder heap in a linker section named by
+	  EDGE264_HEAP_ZEPHYR_REGION_NAME.
+
+config EDGE264_HEAP_ZEPHYR_REGION_NAME
+	string "Name of the zephyr memory-region for the edge264 heap"
+	depends on EDGE264_HEAP_ZEPHYR_REGION
+	help
+	  Linker section name of a 'zephyr,memory-region' node, for example
+	  PSRAM on stm32n6570_dk.
+
+endif # EDGE264
