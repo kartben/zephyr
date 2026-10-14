@@ -39,6 +39,7 @@ each command.
    config.rst
    alias.rst
    extensions.rst
+   modules-opt-in.rst
    build-flash-debug.rst
    sign.rst
    zephyr-cmds.rst

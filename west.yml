@@ -24,6 +24,9 @@ manifest:
     - name: babblesim
       url-base: https://github.com/BabbleSim
 
+  # HALs stay active by default for backward compatibility. To fetch
+  # only the projects a board needs, see doc/develop/west/modules-opt-in.rst
+  # and use: west modules fetch -b <board>
   group-filter: [-babblesim, -optional, -testing]
 
   #

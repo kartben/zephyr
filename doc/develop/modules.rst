@@ -64,6 +64,19 @@ Modules are found by the Zephyr build system either via :ref:`west itself
 The contents of this page only apply to modules, and not to west projects in
 general (unless they are a module themselves).
 
+Hardware-declared module dependencies
+*************************************
+
+Vendor HALs and other modules are large. The thing that *uses* a
+module should declare it: SoC YAML, driver Kconfig
+(``depends on ZEPHYR_<NAME>_MODULE``), optional binding ``modules:``,
+or a sample's Twister ``modules:`` list. A board name is only used to
+resolve that graph. See :ref:`west-modules-opt-in`.
+
+``ZEPHYR_<NAME>_MODULE`` still means "this module is present" at
+Kconfig time. The opt-in fetch path uses the same symbols so a driver
+does not need a second declaration.
+
 Module Repositories
 *******************
 

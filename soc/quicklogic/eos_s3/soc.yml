@@ -1,2 +1,7 @@
+modules:
+- cmsis
+- cmsis_6
+- hal_quicklogic
+
 socs:
   - name: quicklogic_eos_s3

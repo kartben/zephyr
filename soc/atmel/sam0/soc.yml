@@ -1,3 +1,8 @@
+modules:
+- cmsis
+- cmsis_6
+- hal_atmel
+
 family:
 - name: atmel_sam0
   series:

@@ -1,2 +1,6 @@
+modules:
+- cmsis
+- cmsis_6
+
 socs:
 - name: ti_lm3s6965

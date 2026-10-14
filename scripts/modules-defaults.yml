@@ -1,0 +1,12 @@
+# Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Default west projects fetched by `west modules fetch` in addition to
+# hardware-declared dependencies. Keep this list small: these are pulled
+# for every board that uses the opt-in workflow.
+#
+# Hardware-specific modules belong in soc.yml / board.yml / shield.yml.
+# See doc/develop/west/modules-opt-in.rst.
+
+defaults:
+  - picolibc

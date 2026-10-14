@@ -80,6 +80,7 @@ list(APPEND zephyr_cmake_modules zephyr_module)
 
 list(APPEND zephyr_cmake_modules boards)
 list(APPEND zephyr_cmake_modules shields)
+list(APPEND zephyr_cmake_modules modules_deps)
 list(APPEND zephyr_cmake_modules snippets)
 list(APPEND zephyr_cmake_modules hwm_v2)
 list(APPEND zephyr_cmake_modules configuration_files)

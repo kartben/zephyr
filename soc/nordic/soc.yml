@@ -1,3 +1,8 @@
+modules:
+- cmsis
+- cmsis_6
+- hal_nordic
+
 family:
   - name: nordic_nrf
     series:
