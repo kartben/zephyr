@@ -325,10 +325,27 @@ struct uart_ns16550_tx_dma_params {
 	size_t timeout_us;
 };
 
+/* Asynchronous API served from the UART interrupt, for instances without DMA */
+struct uart_ns16550_async_pio {
+	const uint8_t *tx_buf;
+	size_t tx_len;
+	size_t tx_pos;
+	struct k_timer tx_timer;
+	uint8_t *rx_buf;
+	size_t rx_len;
+	size_t rx_pos;
+	size_t rx_offset;
+	uint8_t *rx_next_buf;
+	size_t rx_next_len;
+	int32_t rx_timeout_us;
+	struct k_timer rx_timer;
+};
+
 struct uart_ns16550_async_data {
 	const struct device *uart_dev;
 	struct uart_ns16550_tx_dma_params tx_dma_params;
 	struct uart_ns16550_rx_dma_params rx_dma_params;
+	struct uart_ns16550_async_pio pio;
 	uint8_t *next_rx_buffer;
 	size_t next_rx_buffer_len;
 	uart_callback_t user_callback;
@@ -337,6 +354,9 @@ struct uart_ns16550_async_data {
 
 static void uart_ns16550_async_rx_timeout(struct k_work *work);
 static void uart_ns16550_async_tx_timeout(struct k_work *work);
+static void async_pio_rx_timeout(struct k_timer *timer);
+static void async_pio_tx_timeout(struct k_timer *timer);
+static bool async_pio_isr(const struct device *dev);
 #endif
 
 /** Device config structure */
@@ -972,10 +992,10 @@ static int uart_ns16550_init(const struct device *dev)
 		}
 	}
 #if defined(CONFIG_UART_ASYNC_API)
+	data->async.uart_dev = dev;
 	if (data->async.tx_dma_params.dma_dev != NULL) {
 		data->async.next_rx_buffer = NULL;
 		data->async.next_rx_buffer_len = 0;
-		data->async.uart_dev = dev;
 		k_work_init_delayable(&data->async.rx_dma_params.timeout_work,
 				      uart_ns16550_async_rx_timeout);
 		k_work_init_delayable(&data->async.tx_dma_params.timeout_work,
@@ -1000,10 +1020,13 @@ static int uart_ns16550_init(const struct device *dev)
 				    DEVICE_MMIO_GET(dev) + DMA_INTEL_LPSS_REMAP_HI);
 		}
 #endif
+	} else {
+		k_timer_init(&data->async.pio.rx_timer, async_pio_rx_timeout, NULL);
+		k_timer_init(&data->async.pio.tx_timer, async_pio_tx_timeout, NULL);
 	}
 #endif
 
-#ifdef CONFIG_UART_INTERRUPT_DRIVEN
+#if defined(CONFIG_UART_INTERRUPT_DRIVEN) || defined(CONFIG_UART_ASYNC_API)
 	dev_cfg->irq_config_func(dev);
 #endif
 
@@ -1475,10 +1498,15 @@ static void uart_ns16550_irq_callback_set(const struct device *dev,
 	k_spin_unlock(&dev_data->lock, key);
 }
 
+#endif /* CONFIG_UART_INTERRUPT_DRIVEN */
+
+#if defined(CONFIG_UART_INTERRUPT_DRIVEN) || defined(CONFIG_UART_ASYNC_API)
+
 /**
  * @brief Interrupt service routine.
  *
- * This simply calls the callback function, if one exists.
+ * This serves the asynchronous API transfers in progress, or calls the
+ * callback function, if one exists.
  *
  * @param arg Argument to ISR.
  */
@@ -1486,10 +1514,19 @@ static void uart_ns16550_isr(const struct device *dev)
 {
 	struct uart_ns16550_dev_data * const dev_data = dev->data;
 	const struct uart_ns16550_dev_config * const dev_cfg = dev->config;
+	bool handled = false;
 
-	if (dev_data->cb) {
+#ifdef CONFIG_UART_ASYNC_API
+	handled = async_pio_isr(dev);
+#endif
+#ifdef CONFIG_UART_INTERRUPT_DRIVEN
+	if (!handled && (dev_data->cb != NULL)) {
 		dev_data->cb(dev, dev_data->cb_data);
-	} else if ((IS_ENABLED(CONFIG_UART_NS16550_DW8250_DW_APB)) &&
+		handled = true;
+	}
+#endif
+
+	if (!handled && IS_ENABLED(CONFIG_UART_NS16550_DW8250_DW_APB) &&
 	    ((ns16550_inbyte(dev_cfg, IIR(dev)) & IIR_MASK) == IIR_BUSY)) {
 		/*
 		 * The Synopsys DesignWare 8250 has an extra feature whereby
@@ -1532,7 +1569,7 @@ static void uart_ns16550_isr(const struct device *dev)
 #endif
 }
 
-#endif /* CONFIG_UART_INTERRUPT_DRIVEN */
+#endif /* CONFIG_UART_INTERRUPT_DRIVEN || CONFIG_UART_ASYNC_API */
 
 #ifdef CONFIG_UART_NS16550_LINE_CTRL
 
@@ -1697,6 +1734,390 @@ static void async_evt_rx_buf_request(const struct device *dev)
 	async_user_callback(dev, &evt);
 }
 
+/*
+ * Interrupt-driven implementation of the asynchronous API, for instances without DMA.
+ * Callbacks are always invoked with the lock released, so that they can call the API.
+ */
+
+static void async_pio_evt_rx_rdy(const struct device *dev, uint8_t *buf, size_t offset,
+				 size_t len)
+{
+	struct uart_event evt = {
+		.type = UART_RX_RDY,
+		.data.rx.buf = buf,
+		.data.rx.offset = offset,
+		.data.rx.len = len,
+	};
+
+	if (len > 0U) {
+		async_user_callback(dev, &evt);
+	}
+}
+
+static void async_pio_evt_rx_buf_released(const struct device *dev, uint8_t *buf)
+{
+	struct uart_event evt = {
+		.type = UART_RX_BUF_RELEASED,
+		.data.rx_buf.buf = buf,
+	};
+
+	async_user_callback(dev, &evt);
+}
+
+/* Report the data received since the last UART_RX_RDY. Called with the lock held. */
+static void async_pio_rx_rdy(const struct device *dev, k_spinlock_key_t *key)
+{
+	struct uart_ns16550_dev_data *data = dev->data;
+	struct uart_ns16550_async_pio *pio = &data->async.pio;
+	uint8_t *buf = pio->rx_buf;
+	size_t offset = pio->rx_offset;
+	size_t len = pio->rx_pos - pio->rx_offset;
+
+	pio->rx_offset = pio->rx_pos;
+	k_spin_unlock(&data->lock, *key);
+	async_pio_evt_rx_rdy(dev, buf, offset, len);
+	*key = k_spin_lock(&data->lock);
+}
+
+/* Stop receiving and report it. Called with the lock held, returns with it released. */
+static void async_pio_rx_stop(const struct device *dev, k_spinlock_key_t key)
+{
+	struct uart_ns16550_dev_data *data = dev->data;
+	const struct uart_ns16550_dev_config *cfg = dev->config;
+	struct uart_ns16550_async_pio *pio = &data->async.pio;
+	uint8_t *buf = pio->rx_buf;
+	uint8_t *next_buf = pio->rx_next_buf;
+	size_t offset = pio->rx_offset;
+	size_t len = pio->rx_pos - pio->rx_offset;
+	struct uart_event evt = {
+		.type = UART_RX_DISABLED,
+	};
+
+	ns16550_outbyte(cfg, IER(dev), ns16550_inbyte(cfg, IER(dev)) & ~IER_RXRDY);
+	k_timer_stop(&pio->rx_timer);
+	pio->rx_buf = NULL;
+	pio->rx_next_buf = NULL;
+	k_spin_unlock(&data->lock, key);
+
+	async_pio_evt_rx_rdy(dev, buf, offset, len);
+	async_pio_evt_rx_buf_released(dev, buf);
+	if (next_buf != NULL) {
+		async_pio_evt_rx_buf_released(dev, next_buf);
+	}
+	async_user_callback(dev, &evt);
+}
+
+/* Continue in the next buffer once the current one is full. Called with the lock held. */
+static void async_pio_rx_buf_full(const struct device *dev, k_spinlock_key_t *key)
+{
+	struct uart_ns16550_dev_data *data = dev->data;
+	struct uart_ns16550_async_pio *pio = &data->async.pio;
+	uint8_t *buf = pio->rx_buf;
+
+	k_timer_stop(&pio->rx_timer);
+	async_pio_rx_rdy(dev, key);
+
+	/* Nothing left to do if the callback stopped or restarted reception */
+	if ((pio->rx_buf != buf) || (pio->rx_pos != pio->rx_len)) {
+		return;
+	}
+
+	if (pio->rx_next_buf == NULL) {
+		async_pio_rx_stop(dev, *key);
+		*key = k_spin_lock(&data->lock);
+		return;
+	}
+
+	pio->rx_buf = pio->rx_next_buf;
+	pio->rx_len = pio->rx_next_len;
+	pio->rx_pos = 0U;
+	pio->rx_offset = 0U;
+	pio->rx_next_buf = NULL;
+	k_spin_unlock(&data->lock, *key);
+
+	async_pio_evt_rx_buf_released(dev, buf);
+	async_evt_rx_buf_request(dev);
+	*key = k_spin_lock(&data->lock);
+}
+
+/* Called with the lock held */
+static void async_pio_rx_isr(const struct device *dev, k_spinlock_key_t *key)
+{
+	struct uart_ns16550_dev_data *data = dev->data;
+	const struct uart_ns16550_dev_config *cfg = dev->config;
+	struct uart_ns16550_async_pio *pio = &data->async.pio;
+	bool received = false;
+
+	while ((pio->rx_buf != NULL) && ((ns16550_inbyte(cfg, LSR(dev)) & LSR_RXRDY) != 0U)) {
+		pio->rx_buf[pio->rx_pos] = ns16550_inbyte(cfg, RDR(dev));
+		pio->rx_pos++;
+		received = true;
+		if (pio->rx_pos == pio->rx_len) {
+			async_pio_rx_buf_full(dev, key);
+			received = false;
+		}
+	}
+
+	if (received) {
+		if (pio->rx_timeout_us == 0) {
+			async_pio_rx_rdy(dev, key);
+		} else if (pio->rx_timeout_us > 0) {
+			k_timer_start(&pio->rx_timer, K_USEC(pio->rx_timeout_us), K_NO_WAIT);
+		} else {
+			/* SYS_FOREVER_US: wait for the buffer to fill up */
+		}
+	}
+}
+
+/* Fill the TX FIFO, which must be empty. Called with the lock held. */
+static void async_pio_tx_fill(const struct device *dev)
+{
+	struct uart_ns16550_dev_data *data = dev->data;
+	const struct uart_ns16550_dev_config *cfg = dev->config;
+	struct uart_ns16550_async_pio *pio = &data->async.pio;
+
+	for (uint8_t i = 0U; (i < data->fifo_size) && (pio->tx_pos < pio->tx_len); i++) {
+		ns16550_outbyte(cfg, THR(dev), pio->tx_buf[pio->tx_pos]);
+		pio->tx_pos++;
+	}
+}
+
+/* Called with the lock held */
+static void async_pio_tx_isr(const struct device *dev, k_spinlock_key_t *key)
+{
+	struct uart_ns16550_dev_data *data = dev->data;
+	const struct uart_ns16550_dev_config *cfg = dev->config;
+	struct uart_ns16550_async_pio *pio = &data->async.pio;
+	struct uart_event evt = {
+		.type = UART_TX_DONE,
+	};
+
+	if ((pio->tx_buf == NULL) || ((ns16550_inbyte(cfg, LSR(dev)) & LSR_THRE) == 0U)) {
+		return;
+	}
+
+	if (pio->tx_pos < pio->tx_len) {
+		async_pio_tx_fill(dev);
+		return;
+	}
+
+	/* There is no interrupt for the shift register becoming empty, report it as done now */
+	ns16550_outbyte(cfg, IER(dev), ns16550_inbyte(cfg, IER(dev)) & ~IER_TBE);
+	k_timer_stop(&pio->tx_timer);
+	evt.data.tx.buf = pio->tx_buf;
+	evt.data.tx.len = pio->tx_len;
+	pio->tx_buf = NULL;
+	k_spin_unlock(&data->lock, *key);
+
+	async_user_callback(dev, &evt);
+	*key = k_spin_lock(&data->lock);
+}
+
+/*
+ * Serve the asynchronous API of an instance without DMA. Returns false when the
+ * interrupt is left to the interrupt-driven API, as no transfer is in progress.
+ */
+static bool async_pio_isr(const struct device *dev)
+{
+	struct uart_ns16550_dev_data *data = dev->data;
+	const struct uart_ns16550_dev_config *cfg = dev->config;
+	struct uart_ns16550_async_pio *pio = &data->async.pio;
+	k_spinlock_key_t key;
+	bool pending = true;
+
+	if (data->async.tx_dma_params.dma_dev != NULL) {
+		return false;
+	}
+
+	key = k_spin_lock(&data->lock);
+
+	/* Loop until nothing is pending, as the interrupt may be edge triggered */
+	while (pending && ((pio->rx_buf != NULL) || (pio->tx_buf != NULL))) {
+		uint8_t iir = ns16550_inbyte(cfg, IIR(dev));
+
+		pending = ((iir & IIR_NIP) == 0U);
+		if (pending) {
+			if (IS_ENABLED(CONFIG_UART_NS16550_DW8250_DW_APB) &&
+			    ((iir & IIR_MASK) == IIR_BUSY)) {
+				(void)ns16550_inword(cfg, USR(dev));
+			}
+			async_pio_rx_isr(dev, &key);
+			async_pio_tx_isr(dev, &key);
+		}
+	}
+
+	k_spin_unlock(&data->lock, key);
+
+	return !pending;
+}
+
+static void async_pio_rx_timeout(struct k_timer *timer)
+{
+	struct uart_ns16550_async_data *async =
+		CONTAINER_OF(timer, struct uart_ns16550_async_data, pio.rx_timer);
+	const struct device *dev = async->uart_dev;
+	struct uart_ns16550_dev_data *data = dev->data;
+	k_spinlock_key_t key = k_spin_lock(&data->lock);
+
+	if (async->pio.rx_buf != NULL) {
+		async_pio_rx_rdy(dev, &key);
+	}
+	k_spin_unlock(&data->lock, key);
+}
+
+static int async_pio_tx(const struct device *dev, const uint8_t *buf, size_t len,
+			int32_t timeout_us)
+{
+	struct uart_ns16550_dev_data *data = dev->data;
+	const struct uart_ns16550_dev_config *cfg = dev->config;
+	struct uart_ns16550_async_pio *pio = &data->async.pio;
+	k_spinlock_key_t key = k_spin_lock(&data->lock);
+
+	if (pio->tx_buf != NULL) {
+		k_spin_unlock(&data->lock, key);
+		return -EBUSY;
+	}
+
+	pio->tx_buf = buf;
+	pio->tx_len = len;
+	pio->tx_pos = 0U;
+
+	/* Only flow control can stall the transmitter */
+	if ((data->uart_config.flow_ctrl != UART_CFG_FLOW_CTRL_NONE) && (timeout_us > 0)) {
+		k_timer_start(&pio->tx_timer, K_USEC(timeout_us), K_NO_WAIT);
+	}
+
+	if ((ns16550_inbyte(cfg, LSR(dev)) & LSR_THRE) != 0U) {
+		async_pio_tx_fill(dev);
+	}
+	ns16550_outbyte(cfg, IER(dev), ns16550_inbyte(cfg, IER(dev)) | IER_TBE);
+	k_spin_unlock(&data->lock, key);
+
+	return 0;
+}
+
+static int async_pio_tx_abort(const struct device *dev)
+{
+	struct uart_ns16550_dev_data *data = dev->data;
+	const struct uart_ns16550_dev_config *cfg = dev->config;
+	struct uart_ns16550_async_pio *pio = &data->async.pio;
+	struct uart_event evt = {
+		.type = UART_TX_ABORTED,
+	};
+	k_spinlock_key_t key = k_spin_lock(&data->lock);
+
+	if (pio->tx_buf == NULL) {
+		k_spin_unlock(&data->lock, key);
+		return -EFAULT;
+	}
+
+	ns16550_outbyte(cfg, IER(dev), ns16550_inbyte(cfg, IER(dev)) & ~IER_TBE);
+	k_timer_stop(&pio->tx_timer);
+	/* What is already in the FIFO still goes out */
+	evt.data.tx.buf = pio->tx_buf;
+	evt.data.tx.len = pio->tx_pos;
+	pio->tx_buf = NULL;
+	k_spin_unlock(&data->lock, key);
+
+	async_user_callback(dev, &evt);
+
+	return 0;
+}
+
+static void async_pio_tx_timeout(struct k_timer *timer)
+{
+	struct uart_ns16550_async_data *async =
+		CONTAINER_OF(timer, struct uart_ns16550_async_data, pio.tx_timer);
+
+	(void)async_pio_tx_abort(async->uart_dev);
+}
+
+static int async_pio_rx_enable(const struct device *dev, uint8_t *buf, size_t len,
+			       int32_t timeout_us)
+{
+	struct uart_ns16550_dev_data *data = dev->data;
+	const struct uart_ns16550_dev_config *cfg = dev->config;
+	struct uart_ns16550_async_pio *pio = &data->async.pio;
+	k_spinlock_key_t key;
+
+	if (len == 0U) {
+		return -EINVAL;
+	}
+
+	key = k_spin_lock(&data->lock);
+	if (pio->rx_buf != NULL) {
+		k_spin_unlock(&data->lock, key);
+		return -EBUSY;
+	}
+
+	pio->rx_buf = buf;
+	pio->rx_len = len;
+	pio->rx_pos = 0U;
+	pio->rx_offset = 0U;
+	pio->rx_timeout_us = timeout_us;
+	k_spin_unlock(&data->lock, key);
+
+	/* Ask for the next buffer before data starts coming in */
+	async_evt_rx_buf_request(dev);
+
+	key = k_spin_lock(&data->lock);
+	if (pio->rx_buf != NULL) {
+		ns16550_outbyte(cfg, IER(dev), ns16550_inbyte(cfg, IER(dev)) | IER_RXRDY);
+	}
+	k_spin_unlock(&data->lock, key);
+
+	return 0;
+}
+
+static int async_pio_rx_buf_rsp(const struct device *dev, uint8_t *buf, size_t len)
+{
+	struct uart_ns16550_dev_data *data = dev->data;
+	struct uart_ns16550_async_pio *pio = &data->async.pio;
+	k_spinlock_key_t key;
+	int ret = 0;
+
+	if (len == 0U) {
+		return -EINVAL;
+	}
+
+	key = k_spin_lock(&data->lock);
+	if (pio->rx_buf == NULL) {
+		ret = -EACCES;
+	} else if (pio->rx_next_buf != NULL) {
+		ret = -EBUSY;
+	} else {
+		pio->rx_next_buf = buf;
+		pio->rx_next_len = len;
+	}
+	k_spin_unlock(&data->lock, key);
+
+	return ret;
+}
+
+static int async_pio_rx_disable(const struct device *dev)
+{
+	struct uart_ns16550_dev_data *data = dev->data;
+	const struct uart_ns16550_dev_config *cfg = dev->config;
+	struct uart_ns16550_async_pio *pio = &data->async.pio;
+	k_spinlock_key_t key = k_spin_lock(&data->lock);
+
+	if (pio->rx_buf == NULL) {
+		k_spin_unlock(&data->lock, key);
+		return -EFAULT;
+	}
+
+	/* Keep what the FIFO already holds */
+	while ((pio->rx_pos < pio->rx_len) &&
+	       ((ns16550_inbyte(cfg, LSR(dev)) & LSR_RXRDY) != 0U)) {
+		pio->rx_buf[pio->rx_pos] = ns16550_inbyte(cfg, RDR(dev));
+		pio->rx_pos++;
+	}
+
+	async_pio_rx_stop(dev, key);
+
+	return 0;
+}
+
 static void uart_ns16550_async_rx_flush(const struct device *dev)
 {
 	struct uart_ns16550_dev_data *data = dev->data;
@@ -1719,9 +2140,14 @@ static int uart_ns16550_rx_disable(const struct device *dev)
 {
 	struct uart_ns16550_dev_data *data = (struct uart_ns16550_dev_data *)dev->data;
 	struct uart_ns16550_rx_dma_params *dma_params = &data->async.rx_dma_params;
-	k_spinlock_key_t key = k_spin_lock(&data->lock);
+	k_spinlock_key_t key;
 	int ret = 0;
 
+	if (dma_params->dma_dev == NULL) {
+		return async_pio_rx_disable(dev);
+	}
+
+	key = k_spin_lock(&data->lock);
 	if (!device_is_ready(dma_params->dma_dev)) {
 		ret = -ENODEV;
 		goto out;
@@ -1821,9 +2247,14 @@ static int uart_ns16550_tx(const struct device *dev, const uint8_t *buf, size_t 
 {
 	struct uart_ns16550_dev_data *data = dev->data;
 	struct uart_ns16550_tx_dma_params *tx_params = &data->async.tx_dma_params;
-	k_spinlock_key_t key = k_spin_lock(&data->lock);
+	k_spinlock_key_t key;
 	int ret = 0;
 
+	if (tx_params->dma_dev == NULL) {
+		return async_pio_tx(dev, buf, len, timeout_us);
+	}
+
+	key = k_spin_lock(&data->lock);
 	if (!device_is_ready(tx_params->dma_dev)) {
 		ret = -ENODEV;
 		goto out;
@@ -1862,9 +2293,13 @@ static int uart_ns16550_tx_abort(const struct device *dev)
 	struct dma_status status;
 	int ret = 0;
 	size_t bytes_tx;
+	k_spinlock_key_t key;
 
-	k_spinlock_key_t key = k_spin_lock(&data->lock);
+	if (tx_params->dma_dev == NULL) {
+		return async_pio_tx_abort(dev);
+	}
 
+	key = k_spin_lock(&data->lock);
 	if (!device_is_ready(tx_params->dma_dev)) {
 		ret = -ENODEV;
 		goto out;
@@ -1898,8 +2333,13 @@ static int uart_ns16550_rx_enable(const struct device *dev, uint8_t *buf, const 
 	const struct uart_ns16550_dev_config *config = dev->config;
 	struct uart_ns16550_rx_dma_params *rx_dma_params = &data->async.rx_dma_params;
 	int ret = 0;
-	k_spinlock_key_t key = k_spin_lock(&data->lock);
+	k_spinlock_key_t key;
 
+	if (rx_dma_params->dma_dev == NULL) {
+		return async_pio_rx_enable(dev, buf, len, timeout_us);
+	}
+
+	key = k_spin_lock(&data->lock);
 	if (!device_is_ready(rx_dma_params->dma_dev)) {
 		ret = -ENODEV;
 		goto out;
@@ -1930,6 +2370,10 @@ out:
 static int uart_ns16550_rx_buf_rsp(const struct device *dev, uint8_t *buf, size_t len)
 {
 	struct uart_ns16550_dev_data *data = dev->data;
+
+	if (data->async.tx_dma_params.dma_dev == NULL) {
+		return async_pio_rx_buf_rsp(dev, buf, len);
+	}
 
 	assert(data->async.next_rx_buffer == NULL);
 	assert(data->async.next_rx_buffer_len == 0);
@@ -2055,7 +2499,7 @@ static DEVICE_API(uart, uart_ns16550_driver_api) = {
 		pcie_irq_enable(dev_cfg->pcie->bdf, irq);                    \
 	}
 
-#ifdef CONFIG_UART_INTERRUPT_DRIVEN
+#if defined(CONFIG_UART_INTERRUPT_DRIVEN) || defined(CONFIG_UART_ASYNC_API)
 #define DEV_CONFIG_IRQ_FUNC_INIT(n) \
 	.irq_config_func = uart_ns16550_irq_config_func##n,
 #define UART_NS16550_IRQ_FUNC_DECLARE(n) \
@@ -2070,7 +2514,7 @@ static DEVICE_API(uart, uart_ns16550_driver_api) = {
 #define UART_NS16550_PCIE_IRQ_FUNC_DEFINE(n) \
 	UART_NS16550_IRQ_CONFIG_PCIE(n)
 #else
-/* !CONFIG_UART_INTERRUPT_DRIVEN */
+/* !CONFIG_UART_INTERRUPT_DRIVEN && !CONFIG_UART_ASYNC_API */
 #define DEV_CONFIG_IRQ_FUNC_INIT(n)
 #define UART_NS16550_IRQ_FUNC_DECLARE(n)
 #define UART_NS16550_IRQ_FUNC_DEFINE(n)
@@ -2078,7 +2522,7 @@ static DEVICE_API(uart, uart_ns16550_driver_api) = {
 #define DEV_CONFIG_PCIE_IRQ_FUNC_INIT(n)
 #define UART_NS16550_PCIE_IRQ_FUNC_DECLARE(n)
 #define UART_NS16550_PCIE_IRQ_FUNC_DEFINE(n)
-#endif /* CONFIG_UART_INTERRUPT_DRIVEN */
+#endif /* CONFIG_UART_INTERRUPT_DRIVEN || CONFIG_UART_ASYNC_API */
 
 #ifdef CONFIG_UART_ASYNC_API
 #define DMA_PARAMS(n)								\

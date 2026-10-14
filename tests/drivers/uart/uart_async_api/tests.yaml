@@ -48,6 +48,12 @@ tests:
     extra_args: DTC_OVERLAY_FILE="boards/nrf52840dk_nrf52840.overlay;boards/nrf_uart.overlay"
     integration_platforms:
       - nrf52840dk/nrf52840
+  drivers.uart.async_api.ns16550:
+    filter: CONFIG_SERIAL_SUPPORT_ASYNC
+    harness: ztest
+    platform_allow: qemu_x86
+    integration_platforms:
+      - qemu_x86
   drivers.uart.async_api.rtt:
     filter: CONFIG_SERIAL_SUPPORT_ASYNC and CONFIG_HAS_SEGGER_RTT
       and not CONFIG_UART_MCUX_LPUART and not CONFIG_UART_MCUX_FLEXCOMM
