@@ -63,6 +63,11 @@ New APIs and options
 
 .. zephyr-keep-sorted-start re(^\* \w) ignorecase
 
+* Pulse IO
+
+  * :c:func:`pulse_io_channel_get_resolution` returns the tick rate a configured channel
+    actually runs at.
+
 .. zephyr-keep-sorted-stop
 
 .. _boards_added_in_zephyr_4_6:

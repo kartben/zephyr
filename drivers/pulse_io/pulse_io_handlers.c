@@ -52,6 +52,17 @@ static inline int z_vrfy_pulse_io_channel_configure(const struct device *dev,
 }
 #include <zephyr/syscalls/pulse_io_channel_configure_mrsh.c>
 
+static inline int z_vrfy_pulse_io_channel_get_resolution(const struct device *dev,
+							 struct pulse_io_channel *chan,
+							 uint32_t *resolution_hz)
+{
+	K_OOPS(K_SYSCALL_DRIVER_PULSE_IO(dev, channel_get_resolution));
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(resolution_hz, sizeof(*resolution_hz)));
+	return z_impl_pulse_io_channel_get_resolution((const struct device *)dev, chan,
+						      resolution_hz);
+}
+#include <zephyr/syscalls/pulse_io_channel_get_resolution_mrsh.c>
+
 static inline int z_vrfy_pulse_io_transmit_sync(const struct device *dev,
 						struct pulse_io_channel *chan,
 						const struct pulse_io_tx_req *req,

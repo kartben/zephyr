@@ -326,6 +326,22 @@ static int rmt_channel_configure(const struct device *dev, struct pulse_io_chann
 	return 0;
 }
 
+static int rmt_channel_get_resolution(const struct device *dev, struct pulse_io_channel *chan,
+				      uint32_t *resolution_hz)
+{
+	struct rmt_channel *ch = rmt_to_channel(dev, chan);
+
+	if (ch == NULL || resolution_hz == NULL) {
+		return -EINVAL;
+	}
+	if (ch->state != RMT_CH_READY && ch->state != RMT_CH_ACTIVE) {
+		return -EINVAL;
+	}
+
+	*resolution_hz = ch->resolution_hz;
+	return 0;
+}
+
 static int rmt_transmit_sync(const struct device *dev, struct pulse_io_channel *chan,
 			     const struct pulse_io_tx_req *req, k_timeout_t timeout)
 {
@@ -473,6 +489,7 @@ static DEVICE_API(pulse_io, rmt_pulse_io_api) = {
 	.transmit_sync = rmt_transmit_sync,
 	.receive_sync = rmt_receive_sync,
 	.stop = rmt_stop,
+	.channel_get_resolution = rmt_channel_get_resolution,
 };
 
 #if RMT_DMA_SUPPORTED

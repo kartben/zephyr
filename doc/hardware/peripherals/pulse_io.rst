@@ -50,7 +50,10 @@ Configuration
 Clients query :c:func:`pulse_io_get_capabilities` at probe time to decide
 which mode and feature set to use, reserve a channel with
 :c:func:`pulse_io_channel_get`, and configure it with
-:c:func:`pulse_io_channel_configure` before any transfer. Blocking
+:c:func:`pulse_io_channel_configure` before any transfer. The backend
+rounds the requested tick rate to the nearest rate its clock tree can
+produce; :c:func:`pulse_io_channel_get_resolution` returns the rate the
+channel actually runs at, so clients can compute durations from it. Blocking
 transfers use :c:func:`pulse_io_transmit_sync` and
 :c:func:`pulse_io_receive_sync`; asynchronous and streaming transfers use
 the RTIO path.

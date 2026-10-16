@@ -295,6 +295,10 @@ __subsystem struct pulse_io_driver_api {
 	/** @driver_ops_mandatory */
 	int (*stop)(const struct device *dev, struct pulse_io_channel *chan);
 
+	/** @driver_ops_optional NULL returns -ENOSYS from the wrapper. */
+	int (*channel_get_resolution)(const struct device *dev, struct pulse_io_channel *chan,
+				      uint32_t *resolution_hz);
+
 	/** @driver_ops_optional RTIO submit; NULL if the backend has no RTIO support. */
 	void (*submit)(const struct device *dev, struct rtio_iodev_sqe *iodev_sqe);
 	/** @driver_ops_optional */
@@ -371,6 +375,38 @@ static inline int z_impl_pulse_io_channel_configure(const struct device *dev,
 						    const struct pulse_io_config *cfg)
 {
 	return DEVICE_API_GET(pulse_io, dev)->channel_configure(dev, chan, cfg);
+}
+
+/**
+ * @brief Get the tick rate a configured channel actually runs at.
+ *
+ * The backend rounds @c resolution_hz of @ref pulse_io_config to the
+ * nearest rate its clock tree can produce. Clients that derive durations
+ * from the tick rate read the effective rate back with this call after
+ * @ref pulse_io_channel_configure.
+ *
+ * @param dev           Pulse IO device.
+ * @param chan          Configured channel.
+ * @param resolution_hz Output: effective tick rate in Hz.
+ *
+ * @retval 0 on success.
+ * @retval -EINVAL if the channel is not configured.
+ * @retval -ENOSYS if the backend does not implement this.
+ */
+__syscall int pulse_io_channel_get_resolution(const struct device *dev,
+					      struct pulse_io_channel *chan,
+					      uint32_t *resolution_hz);
+
+static inline int z_impl_pulse_io_channel_get_resolution(const struct device *dev,
+							 struct pulse_io_channel *chan,
+							 uint32_t *resolution_hz)
+{
+	const struct pulse_io_driver_api *api = DEVICE_API_GET(pulse_io, dev);
+
+	if (api->channel_get_resolution == NULL) {
+		return -ENOSYS;
+	}
+	return api->channel_get_resolution(dev, chan, resolution_hz);
 }
 
 /**

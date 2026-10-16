@@ -103,6 +103,19 @@ static int lb_channel_configure(const struct device *dev, struct pulse_io_channe
 	return 0;
 }
 
+static int lb_channel_get_resolution(const struct device *dev, struct pulse_io_channel *chan,
+				     uint32_t *resolution_hz)
+{
+	struct pulse_io_lb_channel *ch = to_channel(dev, chan);
+
+	if (ch == NULL || !ch->configured || resolution_hz == NULL) {
+		return -EINVAL;
+	}
+	/* Software timing: every requested rate is achievable. */
+	*resolution_hz = ch->cfg.resolution_hz;
+	return 0;
+}
+
 static int lb_transmit_sync(const struct device *dev, struct pulse_io_channel *chan,
 			    const struct pulse_io_tx_req *req, k_timeout_t timeout)
 {
@@ -222,6 +235,7 @@ static DEVICE_API(pulse_io, pulse_io_lb_api) = {
 	.transmit_sync = lb_transmit_sync,
 	.receive_sync = lb_receive_sync,
 	.stop = lb_stop,
+	.channel_get_resolution = lb_channel_get_resolution,
 #ifdef CONFIG_RTIO
 	.submit = lb_submit,
 	.get_encoder = lb_get_encoder,

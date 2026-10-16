@@ -54,6 +54,29 @@ ZTEST(pulse_io_api, test_configure_rejects_bad_mode)
 	zassert_ok(pulse_io_channel_release(dev, ch));
 }
 
+ZTEST(pulse_io_api, test_channel_get_resolution)
+{
+	struct pulse_io_channel *ch;
+	struct pulse_io_config cfg = {
+		.mode = PULSE_IO_MODE_SYMBOL,
+		.dir = PULSE_IO_DIR_TX,
+		.resolution_hz = 8000000,
+	};
+	uint32_t resolution_hz = 0;
+
+	zassert_ok(pulse_io_channel_get(dev, 3, &ch));
+
+	/* An unconfigured channel has no resolution yet. */
+	zassert_equal(pulse_io_channel_get_resolution(dev, ch, &resolution_hz), -EINVAL);
+
+	/* The loopback backend reports the requested rate unchanged. */
+	zassert_ok(pulse_io_channel_configure(dev, ch, &cfg));
+	zassert_ok(pulse_io_channel_get_resolution(dev, ch, &resolution_hz));
+	zassert_equal(resolution_hz, cfg.resolution_hz);
+
+	zassert_ok(pulse_io_channel_release(dev, ch));
+}
+
 ZTEST(pulse_io_api, test_transmit_receive_roundtrip)
 {
 	struct pulse_io_channel *ch;
