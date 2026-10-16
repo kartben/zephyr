@@ -1,0 +1,22 @@
+sample:
+  name: DShot
+  description: Send DShot frames to brushless motor speed controllers
+common:
+  tags:
+    - drivers
+    - dshot
+  filter: dt_alias_exists("dshot0")
+  harness: console
+  harness_config:
+    type: multi_line
+    ordered: true
+    regex:
+      - "DShot600 on 4 channels"
+      - "armed"
+      - "frames sent: [0-9]+, errors: 0"
+tests:
+  sample.drivers.dshot:
+    platform_allow:
+      - esp32s3_devkitc/esp32s3/procpu
+    integration_platforms:
+      - esp32s3_devkitc/esp32s3/procpu

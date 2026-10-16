@@ -1,0 +1,42 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "DShot sample"
+
+config SAMPLE_DSHOT_SPEED
+	int "DShot speed"
+	default 600
+	help
+	  Bit rate in kbit/s the sample configures at startup: 150, 300,
+	  600 or 1200. It overrides the dshot-speed devicetree property.
+
+config SAMPLE_DSHOT_UPDATE_RATE_HZ
+	int "Frame rate"
+	default 1000
+	range 1 8000
+	help
+	  Number of frames sent per second on every channel.
+
+config SAMPLE_DSHOT_BEACON
+	bool "Send a beacon command"
+	default y
+	help
+	  Make every ESC beep once after arming. The motors do not spin.
+
+config SAMPLE_DSHOT_THROTTLE
+	int "Test throttle"
+	default 0
+	range 0 2047
+	help
+	  Throttle value sent to every channel during the test, from 48 to
+	  2047. 0 disables the test, so that only motor stop frames are
+	  sent. Remove the propellers before setting a nonzero value.
+
+config SAMPLE_DSHOT_THROTTLE_MS
+	int "Test duration in milliseconds"
+	default 2000
+	help
+	  Time during which the test throttle is sent, after which the
+	  motors are stopped.
+
+source "Kconfig.zephyr"

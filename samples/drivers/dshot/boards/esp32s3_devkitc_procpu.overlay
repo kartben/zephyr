@@ -1,0 +1,35 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Four ESC signal lines on GPIO4 to GPIO7, driven by RMT transmit
+ * channels 0 to 3.
+ */
+
+&pinctrl {
+	rmt_dshot: rmt_dshot {
+		group1 {
+			pinmux = <RMT_OUT0_GPIO4>, <RMT_OUT1_GPIO5>,
+				 <RMT_OUT2_GPIO6>, <RMT_OUT3_GPIO7>;
+		};
+	};
+};
+
+&rmt {
+	pinctrl-0 = <&rmt_dshot>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+/ {
+	aliases {
+		dshot0 = &esc;
+	};
+
+	esc: dshot {
+		compatible = "zephyr,dshot-pulse-io";
+		pulse-ios = <&rmt 0>, <&rmt 1>, <&rmt 2>, <&rmt 3>;
+		dshot-speed = <600>;
+	};
+};

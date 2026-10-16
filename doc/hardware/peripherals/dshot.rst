@@ -103,6 +103,9 @@ application obtains it from devicetree and uses the functions in
 
    dshot_stop(esc);
 
+The :zephyr:code-sample:`dshot` sample arms a set of ESCs, sends a command and ramps a test
+throttle.
+
 Special commands
 ================
 
