@@ -1,0 +1,38 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	fake_pio0: pulse-io-0 {
+		compatible = "vnd,pulse-io-fake";
+		#pulse-io-cells = <1>;
+		num-channels = <8>;
+	};
+
+	fake_pio1: pulse-io-1 {
+		compatible = "vnd,pulse-io-fake";
+		#pulse-io-cells = <1>;
+		num-channels = <2>;
+	};
+
+	/* Four ESCs spread over two controllers */
+	esc: dshot-0 {
+		compatible = "zephyr,dshot-pulse-io";
+		pulse-ios = <&fake_pio0 0>, <&fake_pio0 1>, <&fake_pio0 2>, <&fake_pio1 0>;
+		dshot-speed = <600>;
+	};
+
+	/* Claims a channel esc already owns, so it never becomes ready */
+	esc_conflict: dshot-1 {
+		compatible = "zephyr,dshot-pulse-io";
+		pulse-ios = <&fake_pio0 1>;
+	};
+
+	esc_slow: dshot-2 {
+		compatible = "zephyr,dshot-pulse-io";
+		pulse-ios = <&fake_pio0 5>;
+		dshot-speed = <150>;
+	};
+};

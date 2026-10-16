@@ -1,0 +1,19 @@
+common:
+  tags:
+    - drivers
+    - dshot
+    - pulse_io
+  harness: ztest
+tests:
+  drivers.dshot.pulse_io:
+    integration_platforms:
+      - native_sim
+  drivers.dshot.pulse_io.userspace:
+    filter: CONFIG_ARCH_HAS_USERSPACE
+    tags:
+      - userspace
+    extra_configs:
+      - CONFIG_USERSPACE=y
+      - CONFIG_TEST_USERSPACE=y
+    integration_platforms:
+      - qemu_x86

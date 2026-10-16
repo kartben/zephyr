@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Test double for a Pulse IO controller. It records what clients transmit
+  and lets the test change the capabilities it reports.
+
+compatible: "vnd,pulse-io-fake"
+
+include: [pulse-io-controller.yaml]
+
+properties:
+  num-channels:
+    type: int
+    required: true
+    description: Number of channels the controller exposes.
