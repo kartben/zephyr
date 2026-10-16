@@ -1,0 +1,12 @@
+common:
+  tags:
+    - drivers
+    - dshot
+    - pulse_io
+  harness: ztest
+tests:
+  drivers.dshot.hw_loopback:
+    platform_allow:
+      - esp32s3_devkitc/esp32s3/procpu
+    integration_platforms:
+      - esp32s3_devkitc/esp32s3/procpu

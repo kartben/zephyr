@@ -1,0 +1,38 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * RMT transmit channels 0 and 1 drive GPIO8 and GPIO9, which RMT receive
+ * channels 0 and 1 (Pulse IO channels 4 and 5) capture internally.
+ */
+
+&pinctrl {
+	dshot_loopback: dshot_loopback {
+		group1 {
+			pinmux = <RMT_OUT0_GPIO8>, <RMT_OUT1_GPIO9>;
+		};
+
+		group2 {
+			pinmux = <RMT_IN0_GPIO8>, <RMT_IN1_GPIO9>;
+			input-enable;
+		};
+	};
+};
+
+&rmt {
+	pinctrl-0 = <&dshot_loopback>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+/ {
+	esc: dshot {
+		compatible = "zephyr,dshot-pulse-io";
+		pulse-ios = <&rmt 0>, <&rmt 1>;
+	};
+
+	zephyr,user {
+		capture-channels = <4 5>;
+	};
+};
