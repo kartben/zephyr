@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config PULSE_IO_NXP_FLEXIO
+	bool "NXP FlexIO Pulse IO backend"
+	default y
+	depends on DT_HAS_NXP_FLEXIO_PULSE_IO_ENABLED
+	depends on CLOCK_CONTROL
+	select MCUX_FLEXIO
+	select PINCTRL
+	help
+	  Enable the Pulse IO backend that generates and captures pulse
+	  streams with NXP FlexIO shifters and timers.
+
+config PULSE_IO_NXP_FLEXIO_MAX_TICK_RATE
+	int "Highest FlexIO Pulse IO tick rate"
+	depends on PULSE_IO_NXP_FLEXIO
+	default 16000000
+	range 1000 100000000
+	help
+	  Highest tick rate, in Hz, a channel accepts. A channel that
+	  transmits or captures interrupts the CPU once every 32 ticks to
+	  refill or drain its shifter, every 2 us at 16 MHz. Lower it when
+	  the CPU cannot service the interrupt that fast: a late interrupt
+	  makes the transfer fail with -EIO.

@@ -12,4 +12,5 @@ zephyr_library_sources_ifdef(CONFIG_PULSE_IO_ESP32_RMT
   pulse_io_esp32_rmt_tx.c
 )
 zephyr_library_sources_ifdef(CONFIG_PULSE_IO_LOOPBACK pulse_io_loopback.c)
+zephyr_library_sources_ifdef(CONFIG_PULSE_IO_NXP_FLEXIO pulse_io_nxp_flexio.c)
 zephyr_library_sources_ifdef(CONFIG_USERSPACE pulse_io_handlers.c)

@@ -1,0 +1,53 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+title: NXP FlexIO Pulse IO controller
+
+description: |
+  Pulse IO channels built from FlexIO shifters and timers. Each channel
+  uses one shifter and one timer of the parent FlexIO, allocated at boot,
+  and one FlexIO pin.
+
+  A channel shifts one bit per tick, in either direction: the tick rate
+  is the FlexIO clock divided by an even number from 2 to 512, capped by
+  CONFIG_PULSE_IO_NXP_FLEXIO_MAX_TICK_RATE. Channels transmit in SYMBOL
+  and CELL modes and capture in SYMBOL mode. They have no carrier, loop
+  or glitch filter support.
+
+  Channel n uses the FlexIO pin given by entry n of pin-ids. Several
+  channels can share a pin, for example to capture what another channel
+  transmits.
+
+  The example below provides four channels on FlexIO2 data pins 0 to 3.
+
+compatible: "nxp,flexio-pulse-io"
+
+include: [base.yaml, pinctrl-device.yaml, pulse-io-controller.yaml]
+
+properties:
+  pinctrl-0:
+    required: true
+
+  pinctrl-names:
+    required: true
+
+  pin-ids:
+    type: array
+    required: true
+    description: |
+      FlexIO data pin of each channel: entry n is the number 'x' of the
+      FXIO_D<x> pin that channel n drives or samples.
+
+examples:
+  - |
+    &flexio2 {
+        status = "okay";
+
+        pulse_io: pulse-io {
+            compatible = "nxp,flexio-pulse-io";
+            pinctrl-0 = <&pinmux_flexio2_pulse_io>;
+            pinctrl-names = "default";
+            #pulse-io-cells = <1>;
+            pin-ids = <0 1 2 3>;
+        };
+    };
