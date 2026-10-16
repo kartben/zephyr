@@ -18,5 +18,8 @@ tests:
   sample.drivers.dshot:
     platform_allow:
       - esp32s3_devkitc/esp32s3/procpu
+      - frdm_mcxn947/mcxn947/cpu0
+      - mimxrt1170_evk/mimxrt1176/cm7
     integration_platforms:
       - esp32s3_devkitc/esp32s3/procpu
+      - mimxrt1170_evk/mimxrt1176/cm7

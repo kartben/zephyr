@@ -30,9 +30,13 @@ its channels and their pins.
 Requirements
 ************
 
-* A board with a Pulse IO controller and an overlay for this sample. The
-  ``esp32s3_devkitc/esp32s3/procpu`` overlay drives four ESCs from the RMT transmit channels 0 to
-  3 on GPIO4 to GPIO7.
+* A board with a Pulse IO controller and an overlay for this sample. The overlays provided drive
+  four ESCs from:
+
+  * ``esp32s3_devkitc/esp32s3/procpu``: the RMT transmit channels 0 to 3, on GPIO4 to GPIO7.
+  * ``mimxrt1170_evk/mimxrt1176/cm7``: FlexIO2, on Arduino header pins D6, D9, D5 and D8.
+  * ``frdm_mcxn947/mcxn947/cpu0``: FlexIO0, on Arduino header pins D9, D6, D3 and A4. Its
+    15 MHz FlexIO tick cannot generate DShot1200.
 * Optionally, ESCs that support DShot, such as ESCs running BLHeli_32, Bluejay or AM32 firmware.
 * A logic analyzer or an oscilloscope to check the frames, which is enough to try the sample
   without an ESC.
@@ -95,8 +99,8 @@ Probe the signal pins at 24 MHz or more (100 MHz or more for DShot1200) and use 
 pulse width decoder:
 
 * Bit period: 6.667, 3.333, 1.667 or 0.833 µs for DShot150, 300, 600 and 1200, within 2 %.
-* High time: 37.5 % of the bit period for a zero and 75 % for a one. On the ESP32 RMT the
-  timing is quantized to 12.5 ns.
+* High time: 37.5 % of the bit period for a zero and 75 % for a one, quantized to the Pulse IO
+  tick: 12.5 ns on the ESP32 RMT, 70 ns on the i.MX RT1170 FlexIO.
 * Frames: 16 bits, followed by at least two bit periods and 2 µs low. Motor stop frames are
   sixteen zeros (``0x0000``); the beacon frames read ``0x0033``.
 * Frame rate and jitter: frames start every 1 ms at the default update rate. The jitter between

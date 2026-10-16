@@ -1,0 +1,47 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Four ESC signal lines on Arduino D9, D6, D3 and A4 (FXIO_D2, D10, D31
+ * and D7), driven by FlexIO0.
+ */
+
+&pinctrl {
+	pinmux_flexio0_dshot: pinmux_flexio0_dshot {
+		group0 {
+			pinmux = <FLEXIO0_D2_PIO0_10>,
+				 <FLEXIO0_D10_PIO1_2>,
+				 <FLEXIO0_D31_PIO1_23>,
+				 <FLEXIO0_D7_PIO0_15>;
+			slew-rate = "fast";
+			drive-strength = "low";
+			bias-pull-down;
+		};
+	};
+};
+
+&flexio0 {
+	status = "okay";
+
+	flexio0_pulse_io: pulse-io {
+		compatible = "nxp,flexio-pulse-io";
+		pinctrl-0 = <&pinmux_flexio0_dshot>;
+		pinctrl-names = "default";
+		#pulse-io-cells = <1>;
+		pin-ids = <2 10 31 7>;
+	};
+};
+
+/ {
+	aliases {
+		dshot0 = &esc;
+	};
+
+	esc: dshot {
+		compatible = "zephyr,dshot-pulse-io";
+		pulse-ios = <&flexio0_pulse_io 0>, <&flexio0_pulse_io 1>,
+			    <&flexio0_pulse_io 2>, <&flexio0_pulse_io 3>;
+		dshot-speed = <600>;
+	};
+};

@@ -224,6 +224,29 @@ RMT, the timing is:
      - 25 / 50
      - −0.50 %
 
+On the NXP FlexIO Pulse IO backend, a channel shifts one bit per tick, and each transmitting
+channel interrupts the CPU every 32 ticks. The tick rate is capped by
+:kconfig:option:`CONFIG_PULSE_IO_NXP_FLEXIO_MAX_TICK_RATE`, 16 MHz by default, which gives:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Variant
+     - i.MX RT1170, 200 MHz FlexIO clock (14.29 MHz tick)
+     - MCXN947, 150 MHz FlexIO clock (15 MHz tick)
+   * - DShot150
+     - 95 ticks, high 36 / 71, +0.25 %
+     - 100 ticks, high 38 / 75, exact
+   * - DShot300
+     - 48 ticks, high 18 / 36, −0.79 %
+     - 50 ticks, high 19 / 38, exact
+   * - DShot600
+     - 24 ticks, high 9 / 18, −0.79 %
+     - 25 ticks, high 9 / 19, exact
+   * - DShot1200
+     - 12 ticks, high 5 / 9, −0.79 %
+     - not supported (−3.8 %)
+
 Every frame is followed by a low period of at least two bit periods and at least 2 µs (three bit
 periods at DShot1200), which ESCs need to tell frames apart. The transmission only completes after
 it, so calling :c:func:`dshot_send` back to back cannot break the frame spacing.
