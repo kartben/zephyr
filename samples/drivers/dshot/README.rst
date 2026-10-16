@@ -105,5 +105,7 @@ pulse width decoder:
   sixteen zeros (``0x0000``); the beacon frames read ``0x0033``.
 * Frame rate and jitter: frames start every 1 ms at the default update rate. The jitter between
   frames comes from the thread scheduling, not from the waveform, which the hardware generates.
-* Skew between channels: the channels are sent one after another, so channel ``n`` starts after
-  the frame and idle time of channel ``n - 1`` plus the driver overhead.
+* Skew between channels: compare the first rising edge of every channel in one update. Channels
+  of a controller that reports ``tx_sync_multi_channel``, such as the ESP32-S3 RMT and the FlexIO
+  backend, start on the same tick edge, so their first edges should be within one tick of each
+  other.

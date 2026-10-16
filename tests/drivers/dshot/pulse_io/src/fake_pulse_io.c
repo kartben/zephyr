@@ -18,8 +18,10 @@
 
 struct fake_pio_data {
 	struct pulse_io_caps caps;
+	struct fake_pio_groups groups;
 	uint32_t src_clk_hz;
 	bool readback;
+	bool group_support;
 	uint8_t num_channels;
 	struct fake_pio_channel channels[FAKE_PIO_MAX_CHANNELS];
 };
@@ -39,6 +41,7 @@ static void fake_pio_default_caps(struct fake_pio_data *data)
 		.cell_duty_bits = 15,
 		.tx_max_streaming = SIZE_MAX,
 	};
+	data->caps.tx_sync_multi_channel = data->group_support;
 	data->src_clk_hz = FAKE_PIO_SRC_CLK_HZ;
 	data->readback = true;
 }
@@ -83,11 +86,19 @@ void fake_pio_set_readback(const struct device *dev, bool supported)
 	data->readback = supported;
 }
 
+struct fake_pio_groups *fake_pio_groups(const struct device *dev)
+{
+	struct fake_pio_data *data = dev->data;
+
+	return &data->groups;
+}
+
 void fake_pio_reset(const struct device *dev)
 {
 	struct fake_pio_data *data = dev->data;
 
 	fake_pio_default_caps(data);
+	data->groups = (struct fake_pio_groups){0};
 	for (uint8_t i = 0; i < data->num_channels; i++) {
 		struct fake_pio_channel *ch = &data->channels[i];
 
@@ -210,18 +221,20 @@ static uint16_t fake_decode(const struct fake_pio_channel *ch)
 	return bits;
 }
 
-static int fake_transmit_sync(const struct device *dev, struct pulse_io_channel *chan,
-			      const struct pulse_io_tx_req *req, k_timeout_t timeout)
+static int fake_check_tx(struct fake_pio_channel *ch, const struct pulse_io_tx_req *req)
 {
-	struct fake_pio_channel *ch = to_channel(dev, chan);
-
 	if ((ch == NULL) || !ch->configured || (req->count == 0U)) {
 		return -EINVAL;
 	}
 	if (req->count > FAKE_PIO_MAX_ENTRIES) {
 		return -ENOMEM;
 	}
+	return 0;
+}
 
+static int fake_record_tx(struct fake_pio_channel *ch, const struct pulse_io_tx_req *req,
+			  k_timeout_t timeout)
+{
 	if (ch->tx_gate != NULL) {
 		ch->tx_waiting = true;
 		k_sem_take(ch->tx_gate, K_FOREVER);
@@ -238,6 +251,49 @@ static int fake_transmit_sync(const struct device *dev, struct pulse_io_channel 
 	}
 
 	return ch->tx_error;
+}
+
+static int fake_transmit_sync(const struct device *dev, struct pulse_io_channel *chan,
+			      const struct pulse_io_tx_req *req, k_timeout_t timeout)
+{
+	struct fake_pio_channel *ch = to_channel(dev, chan);
+	int ret = fake_check_tx(ch, req);
+
+	return (ret != 0) ? ret : fake_record_tx(ch, req, timeout);
+}
+
+static int fake_transmit_group_sync(const struct device *dev,
+				    const struct pulse_io_tx_group_entry *entries, size_t count,
+				    uint32_t flags, k_timeout_t timeout)
+{
+	struct fake_pio_data *data = dev->data;
+	int first_err = 0;
+
+	if (((flags & PULSE_IO_TX_GROUP_SYNC) != 0U) && !data->caps.tx_sync_multi_channel) {
+		return -ENOTSUP;
+	}
+	for (size_t i = 0; i < count; i++) {
+		int ret = fake_check_tx(to_channel(dev, entries[i].chan), &entries[i].req);
+
+		if (ret != 0) {
+			return ret;
+		}
+	}
+
+	data->groups.calls++;
+	data->groups.last_count = count;
+	data->groups.last_flags = flags;
+
+	for (size_t i = 0; i < count; i++) {
+		int ret = fake_record_tx(to_channel(dev, entries[i].chan), &entries[i].req,
+					 timeout);
+
+		if ((ret != 0) && (first_err == 0)) {
+			first_err = ret;
+		}
+	}
+
+	return first_err;
 }
 
 static int fake_receive_sync(const struct device *dev, struct pulse_io_channel *chan,
@@ -268,6 +324,19 @@ static DEVICE_API(pulse_io, fake_pio_api) = {
 	.channel_get_resolution = fake_channel_get_resolution,
 };
 
+/* Same controller with group transmission */
+static DEVICE_API(pulse_io, fake_pio_group_api) = {
+	.get_capabilities = fake_get_capabilities,
+	.channel_get = fake_channel_get,
+	.channel_release = fake_channel_release,
+	.channel_configure = fake_channel_configure,
+	.transmit_sync = fake_transmit_sync,
+	.receive_sync = fake_receive_sync,
+	.stop = fake_stop,
+	.channel_get_resolution = fake_channel_get_resolution,
+	.transmit_group_sync = fake_transmit_group_sync,
+};
+
 static int fake_pio_init(const struct device *dev)
 {
 	fake_pio_default_caps(dev->data);
@@ -278,8 +347,11 @@ static int fake_pio_init(const struct device *dev)
 	BUILD_ASSERT(DT_INST_PROP(inst, num_channels) <= FAKE_PIO_MAX_CHANNELS);                   \
 	static struct fake_pio_data fake_pio_data_##inst = {                                       \
 		.num_channels = DT_INST_PROP(inst, num_channels),                                  \
+		.group_support = DT_INST_PROP(inst, group_transmit),                               \
 	};                                                                                         \
 	DEVICE_DT_INST_DEFINE(inst, fake_pio_init, NULL, &fake_pio_data_##inst, NULL, POST_KERNEL, \
-			      CONFIG_PULSE_IO_INIT_PRIORITY, &fake_pio_api);
+			      CONFIG_PULSE_IO_INIT_PRIORITY,                                       \
+			      COND_CODE_1(DT_INST_PROP(inst, group_transmit),                      \
+					  (&fake_pio_group_api), (&fake_pio_api)));
 
 DT_INST_FOREACH_STATUS_OKAY(FAKE_PIO_DEFINE)

@@ -14,3 +14,9 @@ properties:
     type: int
     required: true
     description: Number of channels the controller exposes.
+
+  group-transmit:
+    type: boolean
+    description: |
+      Implement group transmission, with channels starting on the same
+      edge.

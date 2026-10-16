@@ -37,6 +37,8 @@ struct dshot_pio_config {
 struct dshot_pio_channel {
 	struct pulse_io_channel *handle;
 	struct dshot_pio_timing timing;
+	/* The controller starts channels on the same tick edge */
+	bool sync;
 	/* Frame staged by the application, guarded by frame_lock */
 	uint16_t staged;
 	union {
@@ -116,6 +118,8 @@ static int dshot_pio_channel_apply(const struct dshot_pio_channel_config *cc,
 		return ret;
 	}
 
+	ch->sync = caps.tx_sync_multi_channel;
+
 	ret = dshot_pio_timing_init(&ch->timing, req.mode, bitrate, resolution_hz, req.max_ticks);
 	if (ret != 0) {
 		LOG_ERR("%s channel %u: %u Hz tick cannot generate %u bit/s", cc->pio->name,
@@ -160,39 +164,67 @@ static int dshot_pio_apply(const struct device *dev, enum dshot_speed speed)
 	return 0;
 }
 
+static int dshot_pio_encode(struct dshot_pio_channel *ch, uint16_t frame,
+			    struct pulse_io_tx_req *req)
+{
+	size_t count = 0;
+	int ret;
+
+	if (ch->timing.mode == PULSE_IO_MODE_CELL) {
+		ret = dshot_pio_encode_cells(&ch->timing, frame, ch->wave.cells,
+					     ARRAY_SIZE(ch->wave.cells), &count);
+		req->cells = ch->wave.cells;
+	} else {
+		ret = dshot_pio_encode_symbols(&ch->timing, frame, ch->wave.symbols,
+					       ARRAY_SIZE(ch->wave.symbols), &count);
+		req->symbols = ch->wave.symbols;
+	}
+	req->count = count;
+	req->loop_count = 0;
+
+	return ret;
+}
+
+/*
+ * Send the frames in tx_frames. Consecutive channels of one controller are
+ * started together; each controller starts after the previous one is done.
+ */
 static int dshot_pio_transmit(const struct device *dev)
 {
 	const struct dshot_pio_config *config = dev->config;
 	struct dshot_pio_data *data = dev->data;
+	struct pulse_io_tx_group_entry group[PULSE_IO_TX_GROUP_MAX];
 	int first_err = 0;
+	uint8_t i = 0;
 
 	if (!data->configured) {
 		return -EIO;
 	}
 
-	for (uint8_t i = 0; i < config->num_channels; i++) {
-		const struct dshot_pio_channel_config *cc = &config->channels[i];
-		struct dshot_pio_channel *ch = &data->channels[i];
-		struct pulse_io_tx_req req = {0};
+	while (i < config->num_channels) {
+		const struct device *pio = config->channels[i].pio;
+		uint32_t flags = data->channels[i].sync ? PULSE_IO_TX_GROUP_SYNC : 0U;
 		size_t count = 0;
-		int ret;
+		int ret = 0;
 
-		if (ch->timing.mode == PULSE_IO_MODE_CELL) {
-			ret = dshot_pio_encode_cells(&ch->timing, data->tx_frames[i],
-						     ch->wave.cells, ARRAY_SIZE(ch->wave.cells),
-						     &count);
-			req.cells = ch->wave.cells;
-		} else {
-			ret = dshot_pio_encode_symbols(&ch->timing, data->tx_frames[i],
-						       ch->wave.symbols,
-						       ARRAY_SIZE(ch->wave.symbols), &count);
-			req.symbols = ch->wave.symbols;
+		while ((i < config->num_channels) && (config->channels[i].pio == pio) &&
+		       (count < ARRAY_SIZE(group))) {
+			struct dshot_pio_channel *ch = &data->channels[i];
+
+			if (dshot_pio_encode(ch, data->tx_frames[i], &group[count].req) == 0) {
+				group[count].chan = ch->handle;
+				count++;
+			} else {
+				ret = -EIO;
+			}
+			i++;
 		}
-		req.count = count;
 
-		if (ret == 0) {
-			ret = pulse_io_transmit_sync(cc->pio, ch->handle, &req,
-						     DSHOT_PIO_TX_TIMEOUT);
+		if (count > 0U) {
+			int group_ret = pulse_io_transmit_group_sync(pio, group, count, flags,
+								      DSHOT_PIO_TX_TIMEOUT);
+
+			ret = (ret != 0) ? ret : group_ret;
 		}
 		if ((ret != 0) && (first_err == 0)) {
 			first_err = ret;

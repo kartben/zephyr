@@ -9,6 +9,7 @@
 		compatible = "vnd,pulse-io-fake";
 		#pulse-io-cells = <1>;
 		num-channels = <8>;
+		group-transmit;
 	};
 
 	fake_pio1: pulse-io-1 {

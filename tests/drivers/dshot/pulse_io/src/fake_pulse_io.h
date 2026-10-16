@@ -46,9 +46,21 @@ struct fake_pio_channel {
 	volatile bool tx_waiting;
 };
 
+/* Group transmissions received by a controller with group-transmit */
+struct fake_pio_groups {
+	uint32_t calls;
+	size_t last_count;
+	uint32_t last_flags;
+};
+
 struct fake_pio_channel *fake_pio_channel(const struct device *dev, uint8_t index);
 
-/* Capabilities reported from now on; channels keep their configuration */
+struct fake_pio_groups *fake_pio_groups(const struct device *dev);
+
+/*
+ * Capabilities reported from now on; channels keep their configuration.
+ * tx_sync_multi_channel defaults to the group-transmit property.
+ */
 struct pulse_io_caps *fake_pio_caps(const struct device *dev);
 
 /* Effective rate is src_clk_hz divided by the nearest integer */

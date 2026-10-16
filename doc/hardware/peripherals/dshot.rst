@@ -254,16 +254,21 @@ it, so calling :c:func:`dshot_send` back to back cannot break the frame spacing.
 Channels and blocking
 =====================
 
-:c:func:`dshot_send` transmits the channels one after another with
-:c:func:`pulse_io_transmit_sync`, and returns once the last frame and its idle period are out. The
-calling thread is blocked for the frame and idle time of every channel plus the Pulse IO driver
-overhead, and channel ``n`` starts after channel ``n - 1`` has completed. At DShot600 with four
-channels that is at least 4 × (26.7 + 3.3) µs = 120 µs per update, and the last motor is updated
-about 90 µs after the first. Pulse IO has no operation that starts several channels together yet,
-even on hardware that advertises ``tx_sync_multi_channel``.
+:c:func:`dshot_send` hands consecutive channels of the same Pulse IO controller to
+:c:func:`pulse_io_transmit_group_sync`, and returns once the last frame and its idle period are
+out. How close together the channels start depends on the controller:
 
-Concurrent calls are serialized. A channel whose transmission fails does not prevent the others
-from being sent; the first error is returned.
+* Controllers that report ``tx_sync_multi_channel`` start them on the same tick edge. The NXP
+  FlexIO backend does, and so does the ESP32 RMT backend on every SoC but the ESP32.
+* Other controllers with group support start them within a few register writes.
+* Controllers without group support send them one after another: channel ``n`` starts after
+  channel ``n - 1`` has completed. At DShot600 with four channels the last motor is then updated
+  about 90 µs after the first, and the call blocks for at least 4 × (26.7 + 3.3) µs.
+
+Channels on different controllers, or listed after a channel of another controller, form separate
+groups that are sent one after another.
+
+Concurrent calls are serialized. The first error reported by a controller is returned.
 
 Bidirectional DShot
 *******************

@@ -136,6 +136,37 @@ ZTEST(dshot_pulse_io, test_send_frames)
 	zassert_false(K_TIMEOUT_EQ(ch->last_timeout, K_NO_WAIT));
 }
 
+ZTEST(dshot_pulse_io, test_group_transmit)
+{
+	struct fake_pio_groups *groups = fake_pio_groups(pio0);
+
+	zassert_ok(dshot_set_throttle(esc, 1, 1046, false));
+	zassert_ok(dshot_send(esc));
+
+	/* The three channels of pio0 start together on the same edge */
+	zassert_equal(groups->calls, 1U);
+	zassert_equal(groups->last_count, 3U);
+	zassert_equal(groups->last_flags, PULSE_IO_TX_GROUP_SYNC);
+	assert_history(1, 1, 0x82c6);
+
+	/* pio1 has no group support and transmits on its own */
+	zassert_equal(fake_pio_groups(pio1)->calls, 0U);
+	assert_history(3, 1, 0x0000);
+}
+
+ZTEST(dshot_pulse_io, test_group_without_sync)
+{
+	struct fake_pio_groups *groups = fake_pio_groups(pio0);
+
+	/* A controller that cannot align the starts still gets one group */
+	fake_pio_caps(pio0)->tx_sync_multi_channel = false;
+	force_speed(DSHOT_SPEED_600);
+	zassert_ok(dshot_send(esc));
+	zassert_equal(groups->calls, 1U);
+	zassert_equal(groups->last_count, 3U);
+	zassert_equal(groups->last_flags, 0U);
+}
+
 ZTEST(dshot_pulse_io, test_staged_value_persists)
 {
 	uint16_t frame = dshot_frame_encode(500, false);
