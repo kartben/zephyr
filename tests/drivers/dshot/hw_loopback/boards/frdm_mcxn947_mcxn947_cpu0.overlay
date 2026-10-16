@@ -1,0 +1,43 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * FlexIO channels 0 and 1 drive FXIO_D2 and FXIO_D10 (Arduino D9 and D6),
+ * which channels 2 and 3 capture.
+ */
+
+&pinctrl {
+	pinmux_flexio0_dshot: pinmux_flexio0_dshot {
+		group0 {
+			pinmux = <FLEXIO0_D2_PIO0_10>,
+				 <FLEXIO0_D10_PIO1_2>;
+			slew-rate = "fast";
+			drive-strength = "low";
+			input-enable;
+		};
+	};
+};
+
+&flexio0 {
+	status = "okay";
+
+	flexio0_pulse_io: pulse-io {
+		compatible = "nxp,flexio-pulse-io";
+		pinctrl-0 = <&pinmux_flexio0_dshot>;
+		pinctrl-names = "default";
+		#pulse-io-cells = <1>;
+		pin-ids = <2 10 2 10>;
+	};
+};
+
+/ {
+	esc: dshot {
+		compatible = "zephyr,dshot-pulse-io";
+		pulse-ios = <&flexio0_pulse_io 0>, <&flexio0_pulse_io 1>;
+	};
+
+	zephyr,user {
+		capture-channels = <2 3>;
+	};
+};
