@@ -247,8 +247,8 @@ int rmt_tx_configure(const struct device *dev, struct rmt_channel *ch)
 	return 0;
 }
 
-int rmt_tx_start(const struct device *dev, struct rmt_channel *ch,
-		 const struct pulse_io_tx_req *req)
+int rmt_tx_prepare(const struct device *dev, struct rmt_channel *ch,
+		   const struct pulse_io_tx_req *req)
 {
 	struct rmt_data *data = dev->data;
 	rmt_soc_handle_t regs = data->hal.regs;
@@ -377,14 +377,73 @@ int rmt_tx_start(const struct device *dev, struct rmt_channel *ch,
 		}
 	}
 
-	ch->state = RMT_CH_ACTIVE;
-	key = k_spin_lock(&ch->lock);
-	rmt_ll_tx_fix_idle_level(regs, id, ch->cfg.idle_high, true);
-	rmt_ll_tx_start(regs, id);
-	k_spin_unlock(&ch->lock, key);
-
 	return 0;
 }
+
+void rmt_tx_fire(const struct device *dev, struct rmt_channel *ch)
+{
+	struct rmt_data *data = dev->data;
+	rmt_soc_handle_t regs = data->hal.regs;
+	k_spinlock_key_t key;
+
+	ch->state = RMT_CH_ACTIVE;
+	key = k_spin_lock(&ch->lock);
+	rmt_ll_tx_fix_idle_level(regs, ch->index, ch->cfg.idle_high, true);
+	rmt_ll_tx_start(regs, ch->index);
+	k_spin_unlock(&ch->lock, key);
+}
+
+void rmt_tx_cancel(const struct device *dev, struct rmt_channel *ch)
+{
+	struct rmt_data *data = dev->data;
+	rmt_soc_handle_t regs = data->hal.regs;
+	k_spinlock_key_t key;
+
+	key = k_spin_lock(&data->glock);
+	rmt_ll_enable_interrupt(regs, RMT_LL_EVENT_TX_MASK(ch->index), false);
+	rmt_ll_clear_interrupt_status(regs, RMT_LL_EVENT_TX_MASK(ch->index));
+	k_spin_unlock(&data->glock, key);
+
+#if RMT_DMA_SUPPORTED
+	if (ch->with_dma) {
+		const struct rmt_config *config = dev->config;
+
+		dma_stop(config->dma_dev, config->tx_dma_channel);
+	}
+#endif
+
+	ch->state = RMT_CH_READY;
+}
+
+int rmt_tx_start(const struct device *dev, struct rmt_channel *ch,
+		 const struct pulse_io_tx_req *req)
+{
+	int ret = rmt_tx_prepare(dev, ch, req);
+
+	if (ret == 0) {
+		rmt_tx_fire(dev, ch);
+	}
+
+	return ret;
+}
+
+#if RMT_LL_SUPPORT(TX_SYNCHRO)
+void rmt_tx_sync_group_set(const struct device *dev, uint32_t channel_mask)
+{
+	struct rmt_data *data = dev->data;
+	rmt_soc_handle_t regs = data->hal.regs;
+	k_spinlock_key_t key = k_spin_lock(&data->glock);
+
+	rmt_ll_tx_clear_sync_group(regs);
+	if (channel_mask != 0U) {
+		/* Channels in the group wait for each other to be started */
+		rmt_ll_tx_sync_group_add_channels(regs, channel_mask);
+		rmt_ll_tx_reset_channels_clock_div(regs, channel_mask);
+	}
+	rmt_ll_tx_enable_sync(regs, channel_mask != 0U);
+	k_spin_unlock(&data->glock, key);
+}
+#endif
 
 void rmt_tx_halt(const struct device *dev, struct rmt_channel *ch)
 {

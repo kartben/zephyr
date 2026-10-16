@@ -206,6 +206,9 @@ static int rmt_get_capabilities(const struct device *dev, struct pulse_io_caps *
 #endif
 		.cell_duty_bits = 15,
 		.cell_period_per_chunk = true,
+#if RMT_LL_SUPPORT(TX_SYNCHRO)
+		.tx_sync_multi_channel = true,
+#endif
 	};
 
 	return 0;
@@ -373,6 +376,96 @@ static int rmt_transmit_sync(const struct device *dev, struct pulse_io_channel *
 	return ch->result;
 }
 
+static int rmt_transmit_group_sync(const struct device *dev,
+				   const struct pulse_io_tx_group_entry *entries, size_t count,
+				   uint32_t flags, k_timeout_t timeout)
+{
+	struct rmt_data *data = dev->data;
+	struct rmt_channel *chans[PULSE_IO_TX_GROUP_MAX];
+	k_timepoint_t end = sys_timepoint_calc(timeout);
+	uint32_t mask = 0;
+	unsigned int key;
+	int first_err = 0;
+	size_t prepared;
+	int ret = 0;
+
+#if !RMT_LL_SUPPORT(TX_SYNCHRO)
+	if ((flags & PULSE_IO_TX_GROUP_SYNC) != 0U) {
+		return -ENOTSUP;
+	}
+#endif
+
+	for (size_t i = 0; i < count; i++) {
+		const struct pulse_io_tx_req *req = &entries[i].req;
+		struct rmt_channel *ch = rmt_to_channel(dev, entries[i].chan);
+
+		if ((ch == NULL) || (req->symbols == NULL) || (req->count == 0U) ||
+		    (ch->state != RMT_CH_READY) || (ch->cfg.dir != PULSE_IO_DIR_TX) ||
+		    ((mask & BIT(ch->index)) != 0U)) {
+			return -EINVAL;
+		}
+		if (req->loop_count != 0U) {
+			return -ENOTSUP;
+		}
+		mask |= BIT(ch->index);
+		chans[i] = ch;
+	}
+
+	k_mutex_lock(&data->group_lock, K_FOREVER);
+
+	for (prepared = 0; prepared < count; prepared++) {
+		ret = rmt_tx_prepare(dev, chans[prepared], &entries[prepared].req);
+		if (ret != 0) {
+			break;
+		}
+	}
+	if (ret != 0) {
+		while (prepared-- > 0U) {
+			rmt_tx_cancel(dev, chans[prepared]);
+		}
+		k_mutex_unlock(&data->group_lock);
+		return ret;
+	}
+
+#if RMT_LL_SUPPORT(TX_SYNCHRO)
+	if ((flags & PULSE_IO_TX_GROUP_SYNC) != 0U) {
+		rmt_tx_sync_group_set(dev, mask);
+	}
+#endif
+
+	/* Without the sync group the starts are a few register writes apart */
+	key = irq_lock();
+	for (size_t i = 0; i < count; i++) {
+		rmt_tx_fire(dev, chans[i]);
+	}
+	irq_unlock(key);
+
+	for (size_t i = 0; i < count; i++) {
+		struct rmt_channel *ch = chans[i];
+
+		if (k_sem_take(&ch->done, sys_timepoint_timeout(end)) != 0) {
+			rmt_tx_halt(dev, ch);
+			k_sem_reset(&ch->done);
+			ret = -ETIMEDOUT;
+		} else {
+			ret = ch->result;
+		}
+		if ((ret != 0) && (first_err == 0)) {
+			first_err = ret;
+		}
+	}
+
+#if RMT_LL_SUPPORT(TX_SYNCHRO)
+	if ((flags & PULSE_IO_TX_GROUP_SYNC) != 0U) {
+		rmt_tx_sync_group_set(dev, 0U);
+	}
+#endif
+
+	k_mutex_unlock(&data->group_lock);
+
+	return first_err;
+}
+
 static int rmt_receive_sync(const struct device *dev, struct pulse_io_channel *chan,
 			    const struct pulse_io_rx_req *req, size_t *count, k_timeout_t timeout)
 {
@@ -468,6 +561,8 @@ static int rmt_init(const struct device *dev)
 				     &data->filter_clk_hz);
 #endif
 
+	k_mutex_init(&data->group_lock);
+
 	for (uint8_t i = 0; i < RMT_NUM_CHANNELS; i++) {
 		struct rmt_channel *ch = &data->channels[i];
 
@@ -490,6 +585,7 @@ static DEVICE_API(pulse_io, rmt_pulse_io_api) = {
 	.receive_sync = rmt_receive_sync,
 	.stop = rmt_stop,
 	.channel_get_resolution = rmt_channel_get_resolution,
+	.transmit_group_sync = rmt_transmit_group_sync,
 };
 
 #if RMT_DMA_SUPPORTED

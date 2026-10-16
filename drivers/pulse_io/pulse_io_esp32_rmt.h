@@ -125,6 +125,8 @@ struct rmt_config {
 struct rmt_data {
 	rmt_hal_context_t hal;
 	struct k_spinlock glock;
+	/* Serializes group transmissions, which share the sync group */
+	struct k_mutex group_lock;
 	uint32_t group_resolution_hz;
 	uint32_t src_clk_hz;
 	uint32_t filter_clk_hz;
@@ -138,6 +140,17 @@ int rmt_tx_configure(const struct device *dev, struct rmt_channel *ch);
 int rmt_rx_configure(const struct device *dev, struct rmt_channel *ch);
 int rmt_tx_start(const struct device *dev, struct rmt_channel *ch,
 		 const struct pulse_io_tx_req *req);
+/* Load a transmission without starting it */
+int rmt_tx_prepare(const struct device *dev, struct rmt_channel *ch,
+		   const struct pulse_io_tx_req *req);
+/* Start a prepared transmission */
+void rmt_tx_fire(const struct device *dev, struct rmt_channel *ch);
+/* Drop a prepared transmission that was not started */
+void rmt_tx_cancel(const struct device *dev, struct rmt_channel *ch);
+#if RMT_LL_SUPPORT(TX_SYNCHRO)
+/* Make the channels in channel_mask start together; 0 ends the group */
+void rmt_tx_sync_group_set(const struct device *dev, uint32_t channel_mask);
+#endif
 int rmt_rx_start(const struct device *dev, struct rmt_channel *ch,
 		 const struct pulse_io_rx_req *req);
 void rmt_tx_halt(const struct device *dev, struct rmt_channel *ch);
