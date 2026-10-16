@@ -78,6 +78,27 @@ static inline int z_vrfy_pulse_io_transmit_sync(const struct device *dev,
 }
 #include <zephyr/syscalls/pulse_io_transmit_sync_mrsh.c>
 
+static inline int z_vrfy_pulse_io_transmit_group_sync(const struct device *dev,
+						      const struct pulse_io_tx_group_entry *entries,
+						      size_t count, uint32_t flags,
+						      k_timeout_t timeout)
+{
+	struct pulse_io_tx_group_entry copy[PULSE_IO_TX_GROUP_MAX];
+
+	K_OOPS(K_SYSCALL_DRIVER_PULSE_IO(dev, transmit_sync));
+	if (count > PULSE_IO_TX_GROUP_MAX) {
+		return -EINVAL;
+	}
+	K_OOPS(k_usermode_from_copy(copy, entries, count * sizeof(copy[0])));
+	for (size_t i = 0; i < count; i++) {
+		K_OOPS(K_SYSCALL_MEMORY_ARRAY_READ(copy[i].req.symbols, copy[i].req.count,
+						   PULSE_IO_ELEM_SIZE));
+	}
+	return z_impl_pulse_io_transmit_group_sync((const struct device *)dev, copy, count, flags,
+						   timeout);
+}
+#include <zephyr/syscalls/pulse_io_transmit_group_sync_mrsh.c>
+
 static inline int z_vrfy_pulse_io_receive_sync(const struct device *dev,
 					       struct pulse_io_channel *chan,
 					       const struct pulse_io_rx_req *req, size_t *count,

@@ -62,6 +62,16 @@ The byte-to-symbol helper :c:func:`pulse_io_encode_bytes` and its inverse
 :c:func:`pulse_io_decode_bytes` convert between a protocol byte stream and
 pulse symbols using a per-bit template.
 
+Group transmission
+******************
+
+:c:func:`pulse_io_transmit_group_sync` transmits on several channels of a controller together: it
+prepares every channel, starts them all, and returns when they have all completed. This is what
+clients driving several outputs in step need, such as motor speed controllers updated by the same
+control loop. Backends that report ``tx_sync_multi_channel`` in their capabilities start the
+channels on the same tick edge when :c:macro:`PULSE_IO_TX_GROUP_SYNC` is set. Backends without
+group support send the channels one after the other.
+
 RTIO
 ****
 

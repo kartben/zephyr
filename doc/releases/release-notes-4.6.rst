@@ -73,6 +73,8 @@ New APIs and options
 
   * :c:func:`pulse_io_channel_get_resolution` returns the tick rate a configured channel
     actually runs at.
+  * :c:func:`pulse_io_transmit_group_sync` transmits on several channels together, starting them
+    on the same tick edge with :c:macro:`PULSE_IO_TX_GROUP_SYNC`.
 
 .. zephyr-keep-sorted-stop
 

@@ -160,7 +160,10 @@ struct pulse_io_caps {
 	bool tx_carrier;
 	/** Hardware stops automatically at end of loop. */
 	bool tx_loop_auto_stop;
-	/** Multiple channels can start on the same clock edge. */
+	/**
+	 * Multiple channels can start on the same clock edge, with
+	 * @ref PULSE_IO_TX_GROUP_SYNC.
+	 */
 	bool tx_sync_multi_channel;
 	/** Hardware carrier demodulation on RX. */
 	bool rx_carrier_demod;
@@ -247,6 +250,26 @@ struct pulse_io_tx_req {
 	uint32_t loop_count;
 };
 
+/** @brief Largest number of channels in a group transmission. */
+#define PULSE_IO_TX_GROUP_MAX 8U
+
+/**
+ * @brief Start the channels of a group transmission on the same tick edge.
+ *
+ * Only valid when the backend reports @c tx_sync_multi_channel.
+ */
+#define PULSE_IO_TX_GROUP_SYNC BIT(0)
+
+/**
+ * @brief One channel of a group transmission.
+ */
+struct pulse_io_tx_group_entry {
+	/** Configured transmit channel. */
+	struct pulse_io_channel *chan;
+	/** What the channel transmits; @c loop_count must be 0. */
+	struct pulse_io_tx_req req;
+};
+
 /**
  * @brief RX submission descriptor.
  */
@@ -298,6 +321,11 @@ __subsystem struct pulse_io_driver_api {
 	/** @driver_ops_optional NULL returns -ENOSYS from the wrapper. */
 	int (*channel_get_resolution)(const struct device *dev, struct pulse_io_channel *chan,
 				      uint32_t *resolution_hz);
+
+	/** @driver_ops_optional NULL makes the wrapper transmit one channel after the other. */
+	int (*transmit_group_sync)(const struct device *dev,
+				   const struct pulse_io_tx_group_entry *entries, size_t count,
+				   uint32_t flags, k_timeout_t timeout);
 
 	/** @driver_ops_optional RTIO submit; NULL if the backend has no RTIO support. */
 	void (*submit)(const struct device *dev, struct rtio_iodev_sqe *iodev_sqe);
@@ -425,6 +453,67 @@ static inline int z_impl_pulse_io_transmit_sync(const struct device *dev,
 						k_timeout_t timeout)
 {
 	return DEVICE_API_GET(pulse_io, dev)->transmit_sync(dev, chan, req, timeout);
+}
+
+/**
+ * @brief Blocking transmit on several channels together.
+ *
+ * Prepares the transmission of every channel, starts them all, and
+ * returns once every channel has completed or the timeout elapses. All
+ * channels start before the first one completes; the delay between the
+ * first and the last start depends on the backend. With
+ * @ref PULSE_IO_TX_GROUP_SYNC the channels start on the same tick edge,
+ * which only backends that report @c tx_sync_multi_channel support.
+ *
+ * Backends without group support transmit the channels one after the
+ * other, as with successive @ref pulse_io_transmit_sync calls, each with
+ * the full @p timeout.
+ *
+ * @param dev     Pulse IO device.
+ * @param entries Channels and what they transmit; each channel once.
+ * @param count   Number of entries, 1 to @ref PULSE_IO_TX_GROUP_MAX.
+ * @param flags   0 or @ref PULSE_IO_TX_GROUP_SYNC.
+ * @param timeout Time to wait for every channel to complete.
+ *
+ * @retval 0 on success.
+ * @retval -EINVAL if @p count or an entry is invalid.
+ * @retval -ENOTSUP if @ref PULSE_IO_TX_GROUP_SYNC is set and the backend
+ *         cannot start channels on the same edge, or an entry loops.
+ * @retval -ETIMEDOUT if a channel did not complete in time.
+ * @retval -errno the first error reported by a channel.
+ */
+__syscall int pulse_io_transmit_group_sync(const struct device *dev,
+					   const struct pulse_io_tx_group_entry *entries,
+					   size_t count, uint32_t flags, k_timeout_t timeout);
+
+static inline int z_impl_pulse_io_transmit_group_sync(const struct device *dev,
+						      const struct pulse_io_tx_group_entry *entries,
+						      size_t count, uint32_t flags,
+						      k_timeout_t timeout)
+{
+	const struct pulse_io_driver_api *api = DEVICE_API_GET(pulse_io, dev);
+	int first_err = 0;
+
+	if ((entries == NULL) || (count == 0U) || (count > PULSE_IO_TX_GROUP_MAX) ||
+	    ((flags & ~PULSE_IO_TX_GROUP_SYNC) != 0U)) {
+		return -EINVAL;
+	}
+	if (api->transmit_group_sync != NULL) {
+		return api->transmit_group_sync(dev, entries, count, flags, timeout);
+	}
+	if ((flags & PULSE_IO_TX_GROUP_SYNC) != 0U) {
+		return -ENOTSUP;
+	}
+
+	for (size_t i = 0; i < count; i++) {
+		int ret = api->transmit_sync(dev, entries[i].chan, &entries[i].req, timeout);
+
+		if ((ret != 0) && (first_err == 0)) {
+			first_err = ret;
+		}
+	}
+
+	return first_err;
 }
 
 /**

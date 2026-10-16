@@ -77,6 +77,54 @@ ZTEST(pulse_io_api, test_channel_get_resolution)
 	zassert_ok(pulse_io_channel_release(dev, ch));
 }
 
+ZTEST(pulse_io_api, test_transmit_group_fallback)
+{
+	struct pulse_io_channel *ch[2];
+	struct pulse_io_config cfg = {
+		.mode = PULSE_IO_MODE_SYMBOL,
+		.dir = PULSE_IO_DIR_TX,
+		.resolution_hz = 1000000,
+	};
+	struct pulse_symbol a[] = {{.duration = 10, .level = 1}, {.duration = 20, .level = 0}};
+	struct pulse_symbol b[] = {{.duration = 30, .level = 1}};
+	struct pulse_io_tx_group_entry group[] = {
+		{.req = {.symbols = a, .count = ARRAY_SIZE(a)}},
+		{.req = {.symbols = b, .count = ARRAY_SIZE(b)}},
+	};
+	struct pulse_symbol rx[4];
+	struct pulse_io_rx_req rxr = {.symbols = rx, .capacity = ARRAY_SIZE(rx)};
+	size_t count = 0;
+
+	for (uint8_t i = 0; i < 2; i++) {
+		zassert_ok(pulse_io_channel_get(dev, i, &ch[i]));
+		zassert_ok(pulse_io_channel_configure(dev, ch[i], &cfg));
+		group[i].chan = ch[i];
+	}
+
+	zassert_equal(pulse_io_transmit_group_sync(dev, group, 0, 0, K_MSEC(10)), -EINVAL);
+	zassert_equal(pulse_io_transmit_group_sync(dev, group, PULSE_IO_TX_GROUP_MAX + 1U, 0,
+						   K_MSEC(10)),
+		      -EINVAL);
+	zassert_equal(pulse_io_transmit_group_sync(dev, group, 2, BIT(7), K_MSEC(10)), -EINVAL);
+
+	/* The loopback backend cannot align starts and has no group operation */
+	zassert_equal(pulse_io_transmit_group_sync(dev, group, 2, PULSE_IO_TX_GROUP_SYNC,
+						   K_MSEC(10)),
+		      -ENOTSUP);
+
+	/* Without it, the channels are sent one after the other */
+	zassert_ok(pulse_io_transmit_group_sync(dev, group, 2, 0, K_MSEC(10)));
+	zassert_ok(pulse_io_receive_sync(dev, ch[1], &rxr, &count, K_MSEC(10)));
+	zassert_equal(count, ARRAY_SIZE(b));
+	zassert_equal(rx[0].duration, 30U);
+	zassert_ok(pulse_io_receive_sync(dev, ch[0], &rxr, &count, K_MSEC(10)));
+	zassert_equal(count, ARRAY_SIZE(a));
+
+	for (uint8_t i = 0; i < 2; i++) {
+		zassert_ok(pulse_io_channel_release(dev, ch[i]));
+	}
+}
+
 ZTEST(pulse_io_api, test_transmit_receive_roundtrip)
 {
 	struct pulse_io_channel *ch;
