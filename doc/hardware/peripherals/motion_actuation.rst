@@ -3,11 +3,12 @@
 Motion & Actuation
 ##################
 
-PWM, stepper motors, haptics, buzzers, and other actuators.
+PWM, stepper motors, motor speed controllers, haptics, buzzers, and other actuators.
 
 .. toctree::
    :maxdepth: 1
 
+   dshot.rst
    haptics.rst
    pwm.rst
    stepper/index.rst

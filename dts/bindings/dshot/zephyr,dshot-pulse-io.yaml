@@ -1,0 +1,45 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+title: DShot ESC outputs driven by Pulse IO channels
+
+description: |
+  Electronic speed controllers (ESC) commanded with the DShot protocol,
+  each connected to a Pulse IO transmit channel.
+
+  Every entry of pulse-ios is one DShot channel: the first entry is
+  channel 0, the second channel 1, and so on. The entries can point to
+  different Pulse IO controllers. The driver reserves the Pulse IO
+  channels at boot, so no other driver can use them.
+
+  The example below drives four ESCs at DShot600 from the first four
+  transmit channels of the ESP32-S3 RMT, whose pins are routed by the RMT
+  pinctrl state.
+
+compatible: "zephyr,dshot-pulse-io"
+
+properties:
+  pulse-ios:
+    type: phandle-array
+    required: true
+    description: |
+      Pulse IO controller and transmit channel of each DShot channel.
+
+  dshot-speed:
+    type: int
+    default: 600
+    enum: [150, 300, 600, 1200]
+    description: |
+      Bit rate in kbit/s used at boot: DShot150, DShot300, DShot600 or
+      DShot1200. Applications can change it with dshot_configure().
+      DShot600 is the rate most ESCs support.
+
+examples:
+  - |
+    / {
+          esc: dshot {
+              compatible = "zephyr,dshot-pulse-io";
+              pulse-ios = <&rmt 0>, <&rmt 1>, <&rmt 2>, <&rmt 3>;
+              dshot-speed = <600>;
+          };
+    };

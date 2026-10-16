@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig DSHOT
+	bool "DShot electronic speed controller drivers"
+	help
+	  Enable drivers that control brushless motor electronic speed
+	  controllers (ESC) with the DShot protocol.
+
+if DSHOT
+
+config DSHOT_INIT_PRIORITY
+	int "DShot init priority"
+	default 90
+	help
+	  System initialization priority for DShot drivers. DShot devices
+	  initialize after the devices that generate their signals, such as
+	  Pulse IO controllers.
+
+module = DSHOT
+module-str = dshot
+source "subsys/logging/Kconfig.template.log_config"
+
+# zephyr-keep-sorted-start
+source "drivers/dshot/Kconfig.pulse_io"
+# zephyr-keep-sorted-stop
+
+endif # DSHOT

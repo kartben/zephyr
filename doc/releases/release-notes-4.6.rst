@@ -63,6 +63,12 @@ New APIs and options
 
 .. zephyr-keep-sorted-start re(^\* \w) ignorecase
 
+* DShot
+
+  * Added the :ref:`DShot <dshot_api>` driver API for brushless motor electronic speed
+    controllers, with a driver that generates DShot frames on :ref:`Pulse IO <pulse_io_api>`
+    channels (:dtcompatible:`zephyr,dshot-pulse-io`).
+
 * Pulse IO
 
   * :c:func:`pulse_io_channel_get_resolution` returns the tick rate a configured channel

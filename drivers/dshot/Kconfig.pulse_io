@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config DSHOT_PULSE_IO
+	bool "DShot over Pulse IO"
+	default y
+	depends on DT_HAS_ZEPHYR_DSHOT_PULSE_IO_ENABLED
+	select PULSE_IO
+	help
+	  Enable the DShot driver that generates frames with Pulse IO
+	  transmit channels, in CELL mode when the controller supports duty
+	  cycles and in SYMBOL mode otherwise.
