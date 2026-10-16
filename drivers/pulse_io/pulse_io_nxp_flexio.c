@@ -351,6 +351,7 @@ static int fpio_get_capabilities(const struct device *dev, struct pulse_io_caps 
 		.tx_max_streaming = SIZE_MAX,
 		.cell_duty_bits = 16,
 		.num_channels = config->num_channels,
+		.tx_sync_multi_channel = true,
 	};
 
 	return 0;
@@ -452,8 +453,12 @@ static void fpio_setup_rx(const struct device *dev, struct fpio_channel *ch)
 	FLEXIO_SetShifterConfig(config->base, ch->shifter, &shifter);
 }
 
-/* Arm the channel timer; it runs until the transfer ends */
-static void fpio_timer_start(const struct device *dev, struct fpio_channel *ch)
+/*
+ * Arm the channel timer; it runs until the transfer ends. A transmit
+ * timer starts when the buffer of trigger_shifter is written.
+ */
+static void fpio_timer_start(const struct device *dev, struct fpio_channel *ch,
+			     uint8_t trigger_shifter)
 {
 	const struct fpio_config *config = dev->config;
 	flexio_timer_config_t timer = {
@@ -472,8 +477,7 @@ static void fpio_timer_start(const struct device *dev, struct fpio_channel *ch)
 	};
 
 	if (ch->cfg.dir == PULSE_IO_DIR_TX) {
-		/* Start as soon as the first word is written to the buffer */
-		timer.triggerSelect = FLEXIO_TIMER_TRIGGER_SEL_SHIFTnSTAT(ch->shifter);
+		timer.triggerSelect = FLEXIO_TIMER_TRIGGER_SEL_SHIFTnSTAT(trigger_shifter);
 		timer.triggerPolarity = kFLEXIO_TimerTriggerPolarityActiveLow;
 		timer.timerEnable = kFLEXIO_TimerEnableOnTriggerHigh;
 	} else {
@@ -546,17 +550,8 @@ static int fpio_channel_get_resolution(const struct device *dev, struct pulse_io
 	return 0;
 }
 
-static int fpio_transmit_sync(const struct device *dev, struct pulse_io_channel *chan,
-			      const struct pulse_io_tx_req *req, k_timeout_t timeout)
+static int fpio_tx_check(const struct fpio_channel *ch, const struct pulse_io_tx_req *req)
 {
-	const struct fpio_config *config = dev->config;
-	struct fpio_data *data = dev->data;
-	struct fpio_channel *ch = fpio_to_channel(dev, chan);
-	FLEXIO_Type *base = config->base;
-	k_spinlock_key_t key;
-	bool last = false;
-	uint32_t word;
-
 	if ((ch == NULL) || (req == NULL) || (req->symbols == NULL) || (req->count == 0U)) {
 		return -EINVAL;
 	}
@@ -574,6 +569,17 @@ static int fpio_transmit_sync(const struct device *dev, struct pulse_io_channel 
 		}
 	}
 
+	return 0;
+}
+
+/* Load a transmission and arm its timer; returns the first word to write */
+static uint32_t fpio_tx_prepare(const struct device *dev, struct fpio_channel *ch,
+				const struct pulse_io_tx_req *req, uint8_t trigger_shifter)
+{
+	const struct fpio_config *config = dev->config;
+	bool last = false;
+	uint32_t word;
+
 	ch->syms = (ch->cfg.mode == PULSE_IO_MODE_SYMBOL) ? req->symbols : NULL;
 	ch->cells = (ch->cfg.mode == PULSE_IO_MODE_CELL) ? req->cells : NULL;
 	ch->count = req->count;
@@ -581,14 +587,35 @@ static int fpio_transmit_sync(const struct device *dev, struct pulse_io_channel 
 	ch->rem = 0;
 	ch->cell_low = false;
 	ch->result = 0;
-	k_sem_reset(&ch->done);
 
-	key = k_spin_lock(&data->lock);
 	word = fpio_tx_next_word(ch, &last);
 	ch->phase = last ? FPIO_TX_DRAIN : FPIO_TX_DATA;
 	ch->state = FPIO_ACTIVE;
-	base->SHIFTERR = BIT(ch->shifter);
-	fpio_timer_start(dev, ch);
+	config->base->SHIFTERR = BIT(ch->shifter);
+	fpio_timer_start(dev, ch, trigger_shifter);
+
+	return word;
+}
+
+static int fpio_transmit_sync(const struct device *dev, struct pulse_io_channel *chan,
+			      const struct pulse_io_tx_req *req, k_timeout_t timeout)
+{
+	const struct fpio_config *config = dev->config;
+	struct fpio_data *data = dev->data;
+	struct fpio_channel *ch = fpio_to_channel(dev, chan);
+	FLEXIO_Type *base = config->base;
+	k_spinlock_key_t key;
+	uint32_t word;
+	int ret;
+
+	ret = fpio_tx_check(ch, req);
+	if (ret != 0) {
+		return ret;
+	}
+	k_sem_reset(&ch->done);
+
+	key = k_spin_lock(&data->lock);
+	word = fpio_tx_prepare(dev, ch, req, ch->shifter);
 	/* Writing the buffer enables the timer */
 	base->SHIFTBUF[ch->shifter] = word;
 	fpio_irq_set(base, ch->shifter, true);
@@ -601,6 +628,77 @@ static int fpio_transmit_sync(const struct device *dev, struct pulse_io_channel 
 	}
 
 	return ch->result;
+}
+
+static int fpio_transmit_group_sync(const struct device *dev,
+				    const struct pulse_io_tx_group_entry *entries, size_t count,
+				    uint32_t flags, k_timeout_t timeout)
+{
+	const struct fpio_config *config = dev->config;
+	struct fpio_data *data = dev->data;
+	struct fpio_channel *chans[PULSE_IO_TX_GROUP_MAX];
+	uint32_t words[PULSE_IO_TX_GROUP_MAX];
+	k_timepoint_t end = sys_timepoint_calc(timeout);
+	FLEXIO_Type *base = config->base;
+	uint8_t trigger;
+	k_spinlock_key_t key;
+	int first_err = 0;
+	uint32_t seen = 0;
+
+	ARG_UNUSED(flags);
+
+	for (size_t i = 0; i < count; i++) {
+		struct fpio_channel *ch = fpio_to_channel(dev, entries[i].chan);
+		int ret = fpio_tx_check(ch, &entries[i].req);
+
+		if (ret != 0) {
+			return ret;
+		}
+		if ((seen & BIT(ch->index)) != 0U) {
+			return -EINVAL;
+		}
+		seen |= BIT(ch->index);
+		chans[i] = ch;
+	}
+	for (size_t i = 0; i < count; i++) {
+		k_sem_reset(&chans[i]->done);
+	}
+
+	/*
+	 * Every timer waits for the buffer of the last shifter, so writing
+	 * that buffer starts all the channels on the same FlexIO clock edge.
+	 */
+	trigger = chans[count - 1U]->shifter;
+
+	key = k_spin_lock(&data->lock);
+	for (size_t i = 0; i < count; i++) {
+		words[i] = fpio_tx_prepare(dev, chans[i], &entries[i].req, trigger);
+	}
+	for (size_t i = 0; i < count; i++) {
+		base->SHIFTBUF[chans[i]->shifter] = words[i];
+	}
+	for (size_t i = 0; i < count; i++) {
+		fpio_irq_set(base, chans[i]->shifter, true);
+	}
+	k_spin_unlock(&data->lock, key);
+
+	for (size_t i = 0; i < count; i++) {
+		struct fpio_channel *ch = chans[i];
+		int ret;
+
+		if (k_sem_take(&ch->done, sys_timepoint_timeout(end)) != 0) {
+			fpio_halt(dev, ch);
+			k_sem_reset(&ch->done);
+			ret = -ETIMEDOUT;
+		} else {
+			ret = ch->result;
+		}
+		if ((ret != 0) && (first_err == 0)) {
+			first_err = ret;
+		}
+	}
+
+	return first_err;
 }
 
 static int fpio_receive_sync(const struct device *dev, struct pulse_io_channel *chan,
@@ -636,7 +734,7 @@ static int fpio_receive_sync(const struct device *dev, struct pulse_io_channel *
 	base->SHIFTERR = BIT(ch->shifter);
 	/* Restart the shift register from a clean state */
 	fpio_setup_rx(dev, ch);
-	fpio_timer_start(dev, ch);
+	fpio_timer_start(dev, ch, ch->shifter);
 	fpio_irq_set(base, ch->shifter, true);
 	k_spin_unlock(&data->lock, key);
 
@@ -725,6 +823,7 @@ static DEVICE_API(pulse_io, fpio_api) = {
 	.receive_sync = fpio_receive_sync,
 	.stop = fpio_stop,
 	.channel_get_resolution = fpio_channel_get_resolution,
+	.transmit_group_sync = fpio_transmit_group_sync,
 };
 
 #define FPIO_NUM_CHANNELS(n) DT_INST_PROP_LEN(n, pin_ids)
