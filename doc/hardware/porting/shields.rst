@@ -67,6 +67,26 @@ When you then build for this board with this shield, Zephyr automatically "wires
    interface. Refer to their documentation for more details.
 
 
+3DR Control N1
+--------------
+
+This is the board-to-board footprint of the 3DR Control N1 flight controller module: two 30-pin
+and one 80-pin Hirose DF40 connectors. Carrier boards for the module are described as shields.
+
+Relevant devicetree node labels:
+
+- ``cn1_connector`` See :zephyr_file:`include/zephyr/dt-bindings/gpio/3dr-control-n1-connector.h`
+  for GPIO pin definitions.
+- ``cn1_adc`` Analog inputs, indexed 1 (ADC1) and 2 (ADC2).
+- ``cn1_pwm`` Outputs CH1 to CH12, indexed by output number.
+- ``cn1_sg1_serial`` to ``cn1_sg7_serial`` for serial groups SG1 to SG7
+- ``cn1_i2c1``
+- ``cn1_i2c2``
+- ``cn1_spi``
+- ``cn1_can1``
+- ``cn1_can2``
+
+
 Arduino MKR
 -----------
 
