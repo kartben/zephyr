@@ -748,6 +748,24 @@ using the ``--device`` option:
 
 For more about the UF2 format and its tooling, see `USB Flashing Format (UF2)`_.
 
+.. _runner_ap_bootloader:
+
+ArduPilot Bootloader
+********************
+
+The ap_bootloader runner flashes flight controllers that run the ArduPilot bootloader, which
+speaks the PX4 bootloader protocol over USB. The bootloader only erases and programs the
+application area that follows it in flash, so the application must be linked after it.
+
+The runner finds the bootloader from its USB ID or from ``--port``, and checks the board ID
+it reports against ``--board-id`` before erasing anything. When ArduPilot runs on the board,
+the runner reboots it into the bootloader over MAVLink. Otherwise, reset or replug the board
+while the runner waits for the bootloader.
+
+.. code-block:: console
+
+   west flash --runner ap_bootloader
+
 .. _runner_rtkprog:
 
 Realtek Alternate Flash Programmer (rtkprog)
