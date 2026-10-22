@@ -1,0 +1,44 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * Optional RP2350 overclock. 12 MHz * 100 / 6 / 1 = 200 MHz.
+ * Not applied unless this file is passed as DTC_OVERLAY_FILE.
+ * 400 MHz is out of specification and is not configured here.
+ */
+
+&pll_sys {
+	fb-div = <100>;
+	post-div1 = <6>;
+	post-div2 = <1>;
+};
+
+&clk_sys {
+	clock-frequency = <200000000>;
+};
+
+&clk_peri {
+	clock-frequency = <200000000>;
+};
+
+&clk_hstx {
+	clock-frequency = <200000000>;
+};
+
+&clk_gpout0 {
+	clock-frequency = <200000000>;
+};
+
+&clk_gpout1 {
+	clock-frequency = <200000000>;
+};
+
+&clk_gpout2 {
+	clock-frequency = <200000000>;
+};
+
+&clk_gpout3 {
+	clock-frequency = <200000000>;
+};
