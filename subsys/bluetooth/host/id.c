@@ -242,7 +242,8 @@ static void adv_rpa_expired(struct bt_le_ext_adv *adv, void *data)
 		}
 		bool *rpa_invalid_set_ptr = data;
 
-		if (!rpa_invalid) {
+		/* NULL when limited advertising ends, which rotates no shared RPA */
+		if (!rpa_invalid && rpa_invalid_set_ptr != NULL) {
 			rpa_invalid_set_ptr[adv->id] = false;
 		}
 	} else {
@@ -1481,6 +1482,28 @@ int bt_id_create(bt_addr_le_t *addr, uint8_t *irk)
 	return new_id;
 }
 
+static void id_conn_disconnect(struct bt_conn *conn, void *data)
+{
+	const uint8_t *id = data;
+	int err;
+
+	if (conn->id != *id) {
+		return;
+	}
+
+	err = bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+	if (err != 0 && err != -ENOTCONN) {
+		LOG_WRN("Failed to disconnect %p (err %d)", conn, err);
+	}
+}
+
+static void id_disconnect_conns(uint8_t id)
+{
+	if (IS_ENABLED(CONFIG_BT_CONN)) {
+		bt_conn_foreach(BT_CONN_TYPE_LE, id_conn_disconnect, &id);
+	}
+}
+
 int bt_id_reset(uint8_t id, bt_addr_le_t *addr, uint8_t *irk)
 {
 	int err;
@@ -1525,6 +1548,8 @@ int bt_id_reset(uint8_t id, bt_addr_le_t *addr, uint8_t *irk)
 		}
 	}
 
+	id_disconnect_conns(id);
+
 	err = id_create(id, addr, irk);
 	if (err) {
 		return err;
@@ -1563,6 +1588,8 @@ int bt_id_delete(uint8_t id)
 			return err;
 		}
 	}
+
+	id_disconnect_conns(id);
 
 #if defined(CONFIG_BT_PRIVACY)
 	(void)memset(bt_dev.irk[id], 0, 16);

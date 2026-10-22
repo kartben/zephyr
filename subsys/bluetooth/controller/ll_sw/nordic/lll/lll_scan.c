@@ -416,7 +416,15 @@ static int common_prepare_cb(struct lll_prepare_param *p, bool is_resume)
 		radio_switch_complete_and_tx(PHY_LEGACY, PHY_FLAGS_UNUSED,
 					     PHY_LEGACY, PHY_FLAGS_UNUSED);
 	} else {
-		radio_switch_complete_and_disable();
+		if (IS_ENABLED(CONFIG_BT_CTLR_SW_SWITCH_SINGLE_TIMER) &&
+		    IS_ENABLED(CONFIG_BT_CTLR_ADV_EXT)) {
+			/* Required under single time tIFS switching, to accumulate the packet
+			 * timer value at the time of clear on radio end.
+			 */
+			radio_switch_complete_end_capture_and_disable();
+		} else {
+			radio_switch_complete_and_disable();
+		}
 	}
 
 #if defined(CONFIG_BT_CTLR_PRIVACY)
@@ -581,7 +589,13 @@ static int is_abort_cb(void *next, void *curr, lll_prepare_cb_t *resume_cb)
 		}
 	}
 
-	if (0) {
+	/* We are here when same event is preempting, example continuous scanning */
+	if (lll->is_stop != 0U) {
+		/* Flagged to stop, lets yield to be cancelled so that done event is generated for
+		 * which ULL scan disable is waiting to take a semaphore.
+		 */
+		return -ECANCELED;
+
 #if defined(CONFIG_BT_CTLR_ADV_EXT)
 	} else if (unlikely(lll->duration_reload && !lll->duration_expire)) {
 		/* Duration expired, do not continue, close and generate
@@ -878,7 +892,15 @@ static void isr_common_done(void *param)
 		radio_switch_complete_and_tx(PHY_LEGACY, PHY_FLAGS_UNUSED,
 					     PHY_LEGACY, PHY_FLAGS_UNUSED);
 	} else {
-		radio_switch_complete_and_disable();
+		if (IS_ENABLED(CONFIG_BT_CTLR_SW_SWITCH_SINGLE_TIMER) &&
+		    IS_ENABLED(CONFIG_BT_CTLR_ADV_EXT)) {
+			/* Required under single time tIFS switching, to accumulate the packet
+			 * timer value at the time of clear on radio end.
+			 */
+			radio_switch_complete_end_capture_and_disable();
+		} else {
+			radio_switch_complete_and_disable();
+		}
 	}
 
 	node_rx = ull_pdu_rx_alloc_peek(1);
@@ -1171,6 +1193,7 @@ static inline int isr_rx_pdu(struct lll_scan *lll, struct pdu_adv *pdu_adv_rx,
 		struct node_rx_pdu *rx;
 		struct pdu_adv *pdu_tx;
 		uint32_t conn_space_us;
+		uint32_t conn_ind_us;
 		struct ull_hdr *ull;
 		uint32_t pdu_end_us;
 		uint8_t init_tx_addr;
@@ -1197,10 +1220,32 @@ static inline int isr_rx_pdu(struct lll_scan *lll, struct pdu_adv *pdu_adv_rx,
 			scan_interval_us = lll->interval * SCAN_INT_UNIT_US;
 			pdu_end_us %= scan_interval_us;
 		}
+
+		/* What follows the received PDU: the inter frame space and the
+		 * CONNECT_IND, with a margin for the resolution of the ticker.
+		 */
+		conn_ind_us = EVENT_IFS_US +
+			      PDU_AC_MAX_US(sizeof(struct pdu_adv_connect_ind), PHY_1M) +
+			      EVENT_TICKER_RES_MARGIN_US;
+
 		ull = HDR_LLL2ULL(lll);
 		if (pdu_end_us > (HAL_TICKER_TICKS_TO_US(ull->ticks_slot) -
-				  EVENT_IFS_US - 352 - EVENT_OVERHEAD_START_US -
-				  EVENT_TICKER_RES_MARGIN_US)) {
+				  EVENT_OVERHEAD_START_US - conn_ind_us)) {
+			return -ETIME;
+		}
+
+		/* A finite scan window is closed by the stop ticker, see
+		 * common_prepare_cb(), and the radio is disabled there: the
+		 * CONNECT_IND has to be over by then. The ticker counts from
+		 * the start of the event, which is EVENT_OVERHEAD_START_US
+		 * before the radio timer was started. In an event that has
+		 * been resumed the timer was started later, which makes this
+		 * a loose bound there. The shortest valid scan window is
+		 * longer than what is subtracted here.
+		 */
+		if (lll->ticks_window != 0U &&
+		    (pdu_end_us > (HAL_TICKER_TICKS_TO_US(lll->ticks_window) -
+				   EVENT_OVERHEAD_START_US - conn_ind_us))) {
 			return -ETIME;
 		}
 
