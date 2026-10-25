@@ -161,7 +161,8 @@ are executed with a firmware build with BOARD=unit_testing.
    subject to similar :ref:`limitations <posix_arch_limitations>` as documented
    for the :ref:`POSIX architecture<Posix arch>`. Running unit tests is
    therefore only supported for Linux. To run unit tests on Windows or macOS
-   it is necessary to use containers or Virtual Machines running a Linux guest.
+   it is necessary to use containers (for example the :ref:`Zephyr Docker
+   images <docker_dev_env>`) or Virtual Machines running a Linux guest.
    Follow the same instructions as for the
    :ref:`POSIX Arch dependencies<posix_arch_deps>`.
 

@@ -53,6 +53,7 @@ configurations for supported development platforms:
    Linux setup alternatives <getting_started/installation_linux.rst>
    macOS setup alternatives <getting_started/installation_mac.rst>
    Windows setup alternatives <getting_started/installation_win.rst>
+   Docker-based setup <getting_started/docker.rst>
 
 .. _gs_toolchain:
 

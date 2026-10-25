@@ -15,6 +15,12 @@ requirements and dependencies may not be met by your package manager. In that
 case please follow the additional instructions that are provided to find
 software from sources other than the package manager.
 
+.. tip::
+
+   The :ref:`Zephyr Docker images <docker_dev_env>` provide a ready-to-use
+   development environment on any Linux distribution, including those not
+   listed above, without installing the dependencies on your system.
+
 .. note:: If you're working behind a corporate firewall, you'll likely
    need to configure a proxy for accessing the internet, if you haven't
    done so already.  While some tools use the environment variables
