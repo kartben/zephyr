@@ -1,0 +1,16 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Devicetree overlay for native_sim: adds emulated biometrics sensor.
+ */
+
+/ {
+	aliases {
+		fingerprint = &biometrics_emul;
+	};
+
+	biometrics_emul: biometrics-emul {
+		compatible = "zephyr,biometrics-emul";
+		status = "okay";
+	};
+};
