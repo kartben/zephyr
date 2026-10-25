@@ -1,0 +1,17 @@
+sample:
+  name: Wi-Fi Direct hotspot with biometrics gate
+  description: Starts a Wi-Fi Direct group-owner hotspot and authenticates peers with biometrics
+
+tests:
+  sample.net.wifi.direct_hotspot_biometrics:
+    build_only: true
+    tags:
+      - net
+      - wifi
+      - biometrics
+      - gpio
+    platform_allow:
+      - native_sim
+      - native_sim/native/64
+    integration_platforms:
+      - native_sim
