@@ -552,8 +552,9 @@ class ProcessCodeSampleListingNode(SphinxPostTransform):
 
                 category_node = search.find(
                     code_samples_categories_tree,
-                    lambda node, category=category: hasattr(node, "category")
-                    and node.category["id"] == category,
+                    lambda node, category=category: (
+                        hasattr(node, "category") and node.category["id"] == category
+                    ),
                 )
                 self.output_sample_categories_sections(category_node, container)
 
