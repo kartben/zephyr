@@ -50,7 +50,7 @@ VL53L0X_Error VL53L0X_ReadMulti(VL53L0X_DEV Dev, uint8_t index, uint8_t *pdata,
 				    count);
 	if (status_int < 0) {
 		LOG_ERR("Failed to read");
-		return -EIO;
+		Status = VL53L0X_ERROR_CONTROL_INTERFACE;
 	}
 
 	return Status;
@@ -163,9 +163,10 @@ VL53L0X_Error VL53L0X_RdWord(VL53L0X_DEV Dev, uint8_t index, uint16_t *data)
 	status_int = i2c_burst_read(Dev->i2c, Dev->I2cDevAddr, index, buf, 2);
 	if (status_int < 0) {
 		LOG_ERR("i2c_burst_read failed");
-		return -EIO;
+		Status = VL53L0X_ERROR_CONTROL_INTERFACE;
+	} else {
+		*data = ((uint16_t)buf[0]<<8) + (uint16_t)buf[1];
 	}
-	*data = ((uint16_t)buf[0]<<8) + (uint16_t)buf[1];
 
 	return Status;
 }
@@ -179,10 +180,11 @@ VL53L0X_Error  VL53L0X_RdDWord(VL53L0X_DEV Dev, uint8_t index, uint32_t *data)
 	status_int = i2c_burst_read(Dev->i2c, Dev->I2cDevAddr, index, buf, 4);
 	if (status_int < 0) {
 		LOG_ERR("i2c_burst_read failed");
-		return -EIO;
+		Status = VL53L0X_ERROR_CONTROL_INTERFACE;
+	} else {
+		*data = ((uint32_t)buf[0]<<24) + ((uint32_t)buf[1]<<16) +
+			((uint32_t)buf[2]<<8) + (uint32_t)buf[3];
 	}
-	*data = ((uint32_t)buf[0]<<24) + ((uint32_t)buf[1]<<16) +
-		((uint32_t)buf[2]<<8) + (uint32_t)buf[3];
 
 	return Status;
 }
