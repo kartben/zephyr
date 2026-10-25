@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  DFRobot ID809 capacitive fingerprint sensor.
+
+  The ID809 uses a framed packet protocol over I2C and supports on-device
+  enrollment, verification, identification, template management, and LED
+  control.
+
+compatible: "dfrobot,id809"
+
+include: [i2c-device.yaml]
+
+properties:
+  max-templates:
+    type: int
+    required: true
+    description: |
+      Maximum number of fingerprint templates the connected module can store.
+      Common variants support 80 or 200 templates.
+
+  template-size:
+    type: int
+    default: 1008
+    description: |
+      Size of a single fingerprint template in bytes. ID809 modules use
+      1008-byte templates when uploading or downloading template data.
