@@ -135,13 +135,28 @@ extern "C" {
  *
  * It is specially useful for cases where flexible arrays are
  * used in unions or are not the last element in the struct.
+ *
+ * In C, a flexible array member must be the last member of a struct that has
+ * at least one other named member, hence the zero length array in front of
+ * it. That member occupies no storage and carries no alignment requirement of
+ * its own, so @p name still starts at offset 0 of the wrapper.
+ *
+ * C++ has no flexible array members, so there @p name is declared as a zero
+ * length array instead. Both forms have the same layout, which keeps a struct
+ * declared with this macro usable from C and C++ translation units alike.
  */
+#ifdef __cplusplus
 #define FLEXIBLE_ARRAY_DECLARE(type, name)                                                         \
 	struct {                                                                                   \
-		struct {                                                                           \
-		} __unused_##name;                                                                 \
+		type name[0];                                                                      \
+	}
+#else
+#define FLEXIBLE_ARRAY_DECLARE(type, name)                                                         \
+	struct {                                                                                   \
+		char __unused_##name[0];                                                           \
 		type name[];                                                                       \
 	}
+#endif
 
 /**
  * @brief Whether @p ptr is an element of @p array
