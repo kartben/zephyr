@@ -1,7 +1,12 @@
 # Copyright 2024 NXP
 # SPDX-License-Identifier: Apache-2.0
 
-description: SCMI (System Control and Management Interface) clock protocol
+title: Arm SCMI clock management
+
+description: |
+  Arm SCMI (System Control and Management Interface) clock management protocol node
+  (protocol ID: 0x14). This is a child node of the SCMI transport node and provides
+  clock control and rate configuration capabilities through the SCMI interface.
 
 compatible: "arm,scmi-clock"
 

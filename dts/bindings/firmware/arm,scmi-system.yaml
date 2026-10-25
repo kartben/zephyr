@@ -1,7 +1,13 @@
 # Copyright 2025 NXP
 # SPDX-License-Identifier: Apache-2.0
 
-description: SCMI (System Control and Management Interface) system power protocol
+title: Arm SCMI system power management
+
+description: |
+  Arm SCMI (System Control and Management Interface) system power management protocol
+  node (protocol ID: 0x12). This is a child node of the SCMI transport node and
+  provides system-level power state control capabilities, such as system reset and
+  shutdown, through the SCMI interface.
 
 compatible: "arm,scmi-system"
 
