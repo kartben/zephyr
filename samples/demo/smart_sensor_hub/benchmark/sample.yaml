@@ -1,0 +1,22 @@
+sample:
+  name: Smart Sensor Hub Benchmark — Zephyr 4.4 Ztest Benchmarks
+  description: |
+    Micro-benchmarks for the Smart Sensor Hub demo, showcasing the new
+    Ztest Benchmark Framework introduced in Zephyr 4.4.  The benchmark
+    framework relies on hardware timing counters and is intended for
+    real-hardware targets (not native_sim).
+tests:
+  sample.demo.smart_sensor_hub.benchmark:
+    tags:
+      - benchmark
+      - zbus
+      - cleanup
+      - demo
+    platform_allow:
+      - frdm_k64f
+    harness: console
+    harness_config:
+      type: multi_line
+      ordered: false
+      regex:
+        - "Benchmark complete"
