@@ -45,8 +45,8 @@ properties:
 
   fifo-tx-size:
     description: |
-      Fifo size used for buffering transmit bytes. A value of 0 implies that
-      the fifo is not used while transmitting. transmitting. If the UART is used in async mode
+      FIFO size used for buffering transmit bytes. A value of 0 implies that
+      the FIFO is not used while transmitting. If the UART is used in async mode
       then fifo-tx-size should be set to 0.
     required: true
     type: int
@@ -61,8 +61,8 @@ properties:
 
   fifo-rx-size:
     description: |
-      Fifo size used for buffering received bytes. A value of 0 implies that
-      the fifo is not used while receiving. If the UART is used in async mode
+      FIFO size used for buffering received bytes. A value of 0 implies that
+      the FIFO is not used while receiving. If the UART is used in async mode
       then fifo-rx-size should be set to 0.
     required: true
     type: int
