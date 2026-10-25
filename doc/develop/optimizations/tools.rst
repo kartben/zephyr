@@ -193,6 +193,83 @@ And similarly for the ROM usage.
    :align: center
    :alt: ROM usage sunburst chart
 
+.. _footprint_diff_tools:
+
+Build Targets: ram_report_diff/rom_report_diff
+==============================================
+
+When comparing two builds, the ``ram_report_diff`` and ``rom_report_diff`` targets
+produce a textual diff showing which symbols have grown, shrunk, been added, or been
+removed. These targets require a reference build directory to be specified via the
+:makevar:`ZEPHYR_FOOTPRINT_REFERENCE_BUILD` CMake variable.
+
+First, build the reference (old) build and make sure the ``ram_report`` or
+``rom_report`` target has been run to generate the JSON data files. Then, build
+the new build and run the diff target:
+
+.. code-block:: console
+
+   # Build and generate reports for the reference build
+   west build -b reel_board samples/hello_world -d build_ref
+   west build -d build_ref -t ram_report
+
+   # Build the current build and diff against the reference
+   west build -b reel_board samples/hello_world -d build_cur
+   west build -d build_cur -t ram_report_diff -- \
+     -DZEPHYR_FOOTPRINT_REFERENCE_BUILD=/path/to/build_ref
+
+The output shows symbol-level size changes with increases highlighted in red and
+decreases in green::
+
+    .text
+    +++++++++++++++++++++
+    .text -> +768
+    z_thread_entry -> +32
+    z_swap -> +64
+    uart_init -> +128
+    old_legacy_driver (-2048) disappeared.
+    main -> +128
+    process_data -> +256
+    k_mutex_lock (+256) is new.
+    new_analytics (+512) is new.
+
+The ``fpdiff.py`` script also supports a ``--json`` flag that produces a structured
+JSON file with per-symbol deltas, old and new sizes, and status
+(``changed``, ``added``, or ``removed``). This JSON output is generated automatically
+when using the CMake target and can be found at ``<build_dir>/ram_diff.json`` or
+``<build_dir>/rom_diff.json``.
+
+Build Targets: ram_plot_diff/rom_plot_diff
+==========================================
+
+Similar to the text-based diff targets, the ``ram_plot_diff`` and ``rom_plot_diff``
+targets produce a visual horizontal bar chart showing size differences between
+two builds. Red bars indicate growth and green bars indicate shrinkage. The chart
+is sorted by magnitude and limited to the top 40 entries for readability.
+
+.. code-block:: console
+
+   west build -d build_cur -t ram_plot_diff -- \
+     -DZEPHYR_FOOTPRINT_REFERENCE_BUILD=/path/to/build_ref
+
+.. image:: rom_plot_diff.png
+   :align: center
+   :alt: ROM diff bar chart
+
+The title of the chart displays the total size change along with the reference and
+current totals. You can hover over bars to see detailed size information for each symbol.
+
+Build Target: footprint_diff
+============================
+
+The ``footprint_diff`` target is a convenience target that runs both
+``ram_report_diff`` and ``rom_report_diff`` in a single invocation:
+
+.. code-block:: console
+
+   west build -d build_cur -t footprint_diff -- \
+     -DZEPHYR_FOOTPRINT_REFERENCE_BUILD=/path/to/build_ref
+
 
 Build Target: puncover
 ======================

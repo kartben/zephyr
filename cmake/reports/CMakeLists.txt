@@ -44,6 +44,38 @@ add_custom_target(
   DEPENDS ram_report rom_report
   )
 
+zephyr_get(ZEPHYR_FOOTPRINT_REFERENCE_BUILD)
+if(DEFINED ZEPHYR_FOOTPRINT_REFERENCE_BUILD)
+  foreach(report ram rom)
+    add_custom_target(
+      ${report}_report_diff
+      ${PYTHON_EXECUTABLE}
+      ${ZEPHYR_BASE}/scripts/footprint/fpdiff.py
+      ${ZEPHYR_FOOTPRINT_REFERENCE_BUILD}/${report}.json
+      ${report}.json
+      --json ${report}_diff.json
+      DEPENDS ${report}_report
+      USES_TERMINAL
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      )
+    add_custom_target(
+      ${report}_plot_diff
+      ${PYTHON_EXECUTABLE}
+      ${ZEPHYR_BASE}/scripts/footprint/plot.py
+      ${report}.json
+      --diff ${ZEPHYR_FOOTPRINT_REFERENCE_BUILD}/${report}.json
+      DEPENDS ${report}_report
+      USES_TERMINAL
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      )
+  endforeach()
+
+  add_custom_target(
+    footprint_diff
+    DEPENDS ram_report_diff rom_report_diff
+    )
+endif()
+
 if(CONFIG_BUILD_WITH_TFM)
   foreach(report ram rom)
     add_custom_target(
