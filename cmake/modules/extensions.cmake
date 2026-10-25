@@ -597,9 +597,10 @@ macro(get_property_and_add_prefix result target property prefix)
   endif()
 
   get_property(target_property TARGET ${target} PROPERTY ${property})
-  foreach(x ${target_property})
-    list(APPEND ${result} ${maybe_prefix}${x})
-  endforeach()
+  if(target_property)
+    list(TRANSFORM target_property PREPEND "${maybe_prefix}")
+    list(APPEND ${result} ${target_property})
+  endif()
 endmacro()
 
 
@@ -660,13 +661,13 @@ macro(zephyr_library_get_current_dir_lib_name base lib_name)
   get_filename_component(name ${name} DIRECTORY)
 
   # Replace / with __ (driver/serial => driver__serial)
-  string(REGEX REPLACE "/" "__" name ${name})
+  string(REPLACE "/" "__" name "${name}")
 
   # Replace : with __ (C:/zephyrproject => C____zephyrproject)
-  string(REGEX REPLACE ":" "__" name ${name})
+  string(REPLACE ":" "__" name "${name}")
 
   # Replace ~ with - (driver~serial => driver-serial)
-  string(REGEX REPLACE "~" "-" name ${name})
+  string(REPLACE "~" "-" name "${name}")
 
   set(${lib_name} ${name})
 endmacro()
@@ -2704,11 +2705,15 @@ Misc
 #]=======================================================================]
 function(import_kconfig prefix kconfig_fragment)
   cmake_parse_arguments(IMPORT_KCONFIG "" "TARGET" "" ${ARGN})
+  # Pre-filter: only read lines that start with the prefix or are
+  # "# <prefix>... is not set" comments. This avoids iterating over
+  # blank lines and unrelated comments in large .config files.
   file(
     READ
     ${kconfig_fragment}
     dot_config_content
     ENCODING "UTF-8"
+    REGEX "^(${prefix}|# ${prefix})"
   )
   string(APPEND dot_config_content "\n")
 
@@ -3405,8 +3410,8 @@ function(check_set_compiler_property)
   list(REMOVE_AT COMPILER_PROPERTY_PROPERTY 0)
 
   foreach(option ${COMPILER_PROPERTY_PROPERTY})
-    if(${option} MATCHES "^SHELL:")
-      string(REGEX REPLACE "^SHELL:" "" option ${option})
+    if(option MATCHES "^SHELL:")
+      string(SUBSTRING "${option}" 6 -1 option)
       separate_arguments(option UNIX_COMMAND ${option})
     endif()
 
