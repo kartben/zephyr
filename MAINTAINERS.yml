@@ -591,6 +591,7 @@ Binary Descriptors:
     - include/zephyr/bindesc.h
     - samples/subsys/bindesc/
     - scripts/west_commands/bindesc.py
+    - scripts/west_commands/tests/test_bindesc.py
     - tests/subsys/bindesc/
   labels:
     - "area: Binary Descriptors"
@@ -630,6 +631,7 @@ Bluetooth Audio:
     - jthm-ot
     - alexsven
     - koffes
+    - ciascai
   files:
     - subsys/bluetooth/audio/
     - include/zephyr/bluetooth/audio/
@@ -753,7 +755,7 @@ Bluetooth Host:
     - sjanc
     - Thalley
     - cvinayak
-    - HaavardRei
+    - KyraLengfeld
     - alxelax
     - lylezhu2012
   files:
@@ -849,9 +851,7 @@ Bluetooth Mesh:
     - PavelVPV
     - LingaoM
     - akredalen
-    - HaavardRei
     - omkar3141
-    - KyraLengfeld
     - ludvigsj
   files:
     - doc/services/connectivity/bluetooth/api/mesh/
@@ -1368,10 +1368,9 @@ Demand Paging:
 Device Driver Model:
   status: maintained
   maintainers:
-    - tbursztyka
+    - nashif
   collaborators:
     - dcpleung
-    - nashif
     - edersondisouza
   files:
     - include/zephyr/device.h
@@ -1734,6 +1733,8 @@ Documentation Infrastructure:
   status: maintained
   maintainers:
     - nordic-krch
+  collaborators:
+    - danieldegrasse
   files:
     - drivers/clock_control/
     - dts/bindings/clock/
@@ -2011,13 +2012,22 @@ Documentation Infrastructure:
   status: maintained
   maintainers:
     - ceolin
-  collaborators:
-    - tomi-font
   files:
     - drivers/entropy/
     - include/zephyr/drivers/entropy.h
     - tests/drivers/entropy/
     - doc/hardware/peripherals/entropy.rst
+  file-groups:
+    - name: PSA Crypto entropy driver
+      collaborators:
+        - tomi-font
+        - etienne-lms
+      files:
+        - drivers/entropy/entropy_psa_crypto.c
+        - drivers/entropy/Kconfig.psa_crypto
+        - include/zephyr/drivers/entropy.h
+        - tests/drivers/entropy/
+        - doc/hardware/peripherals/entropy.rst
   labels:
     - "area: Crypto / RNG"
   tests:
@@ -2052,6 +2062,7 @@ Documentation Infrastructure:
     - net.ethernet
     - sample.drivers.ethernet
     - net.ethernet.build
+    - sample.net.ptp
 
 "Drivers: FPGA":
   status: maintained
@@ -2870,11 +2881,10 @@ Documentation Infrastructure:
     - sample.drivers.smbus
 
 "Drivers: SPI":
-  status: maintained
-  maintainers:
-    - tbursztyka
+  status: odd fixes
   collaborators:
     - teburd
+    - maass-hamburg
   files:
     - drivers/spi/
     - include/zephyr/drivers/spi.h
@@ -3567,7 +3577,6 @@ Infineon AURIX Platforms:
     - include/zephyr/drivers/*/*aurix*
     - dts/bindings/*/infineon,asclin*
     - dts/bindings/*/infineon,aurix*
-    - dts/bindings/*/infineon,tc*
     - dts/tricore/
   labels:
     - "platform: Infineon AURIX"
@@ -4108,6 +4117,7 @@ MIPS arch:
     - boards/qemu/malta/
   labels:
     - "area: MIPS"
+  tests:
     - arch
     - kernel
 
@@ -4762,6 +4772,7 @@ Networking:
   collaborators:
     - pdgendt
   files:
+    - .github/workflows/net-perf*
     - scripts/net/
     - drivers/net/
     - include/zephyr/net/
@@ -5287,6 +5298,21 @@ Open AMP:
     - sample.ipc.openamp_rs_table
     - sample.ipc
 
+OpenHW Erbium Platform:
+  status: maintained
+  maintainers:
+    - AFOliveira
+  files:
+    - boards/openhwgroup/erbium/
+    - drivers/serial/Kconfig.shakti_nekko
+    - drivers/serial/uart_shakti_nekko.c
+    - dts/bindings/memory-controllers/openhwgroup,erbium-mram-controller.yaml
+    - dts/bindings/serial/openhwgroup,shakti-uart-v1.yaml
+    - dts/riscv/openhwgroup/erbium.dtsi
+    - soc/openhwgroup/erbium/
+  labels:
+    - "platform: OpenHW"
+
 OpenRISC Arch:
   status: maintained
   maintainers:
@@ -5679,11 +5705,10 @@ Release:
   status: maintained
   meta: true
   maintainers:
-    - henrikbrixandersen
-    - teburd
+    - nashif
+    - iuliana-prodan
   collaborators:
     - kartben
-    - nashif
   files:
     - VERSION
     - SDK_VERSION
@@ -5859,6 +5884,7 @@ SPDX Tooling:
     - pdgendt
   files:
     - scripts/pylib/zspdx/
+    - scripts/tests/zspdx/
     - scripts/west_commands/spdx.py
     - tests/application_development/software_bill_of_materials/
   labels:
@@ -6632,6 +6658,7 @@ TriCore arch:
     - arch/tricore/
     - cmake/compiler/*/target_tricore.cmake
     - cmake/toolchain/tricore/
+    - doc/hardware/arch/tricore.rst
     - include/zephyr/arch/tricore/
   labels:
     - "area: TriCore"
