@@ -200,6 +200,18 @@ static void dns_query_fail_pending_servers(struct dns_pending_query *pending_que
 	}
 }
 
+/* Length of the query name without the trailing dot of an absolute name */
+static size_t dns_query_name_len(const char *query)
+{
+	size_t len = strlen(query);
+
+	if (len > 1U && query[len - 1U] == '.') {
+		len--;
+	}
+
+	return len;
+}
+
 static bool dns_query_is_mdns(const char *query)
 {
 	if (query == NULL) {
@@ -207,9 +219,12 @@ static bool dns_query_is_mdns(const char *query)
 	}
 
 	if (IS_ENABLED(CONFIG_MDNS_RESOLVER)) {
-		const char *ptr = strrchr(query, '.');
+		static const char suffix[] = ".local";
+		const size_t suffix_len = sizeof(suffix) - 1U;
+		size_t len = dns_query_name_len(query);
 
-		return ptr != NULL && strcmp(ptr, ".local") == 0;
+		return len >= suffix_len &&
+		       strncmp(&query[len - suffix_len], suffix, suffix_len) == 0;
 	}
 
 	return false;
@@ -222,7 +237,10 @@ static bool dns_query_is_llmnr(const char *query)
 	}
 
 	if (IS_ENABLED(CONFIG_LLMNR_RESOLVER)) {
-		return strchr(query, '.') == NULL;
+		size_t len = dns_query_name_len(query);
+
+		/* A single label, relative ("host") or absolute ("host.") */
+		return len > 0U && memchr(query, '.', len) == NULL;
 	}
 
 	return false;
@@ -516,7 +534,7 @@ static int dispatcher_cb(struct dns_socket_dispatcher *my_ctx, int sock,
 	uint16_t query_hash = 0U;
 	uint16_t dns_id = 0U;
 	int ret = 0, i;
-	int server_idx;
+	int server_idx = -1;
 
 	ARG_UNUSED(sock);
 	ARG_UNUSED(addr);
@@ -542,6 +560,9 @@ static int dispatcher_cb(struct dns_socket_dispatcher *my_ctx, int sock,
 	server_idx = (int)(server - ctx->servers);
 	if (server_idx < 0 || server_idx >= SERVER_COUNT) {
 		server_idx = -1;
+	} else {
+		/* See dns_randomize_source_port() */
+		ctx->servers[server_idx].in_dispatch = true;
 	}
 
 	ret = dns_read(ctx, dns_data, len, &dns_id, dns_cname, &query_hash,
@@ -616,6 +637,10 @@ quit:
 free_buf:
 	if (dns_cname) {
 		net_buf_unref(dns_cname);
+	}
+
+	if (server_idx >= 0) {
+		ctx->servers[server_idx].in_dispatch = false;
 	}
 
 unlock:
@@ -815,6 +840,7 @@ static int dns_resolve_init_locked(struct dns_resolve_context *ctx,
 	const struct net_in_addr *addr4 = NULL;
 	struct net_if *iface;
 	int ret, count;
+	int free_slot;
 
 	if (!ctx) {
 		return -ENOENT;
@@ -1095,6 +1121,14 @@ static int dns_resolve_init_locked(struct dns_resolve_context *ctx,
 				&net_sin(net_sad(&ctx->servers[i].dns_server_addr))->sin_addr);
 		}
 
+		/* Same whole-array scan as dns_write(); see the comment there.
+		 * ret still holds the result of bind_to_iface() (or the socket
+		 * fd), so it has to be reset for a full poll array to be an error
+		 * here.
+		 */
+		ret = -ENOENT;
+		free_slot = -1;
+
 		ARRAY_FOR_EACH(ctx->fds, j) {
 			if (ctx->fds[j].fd == ctx->servers[i].sock) {
 				/* There was query to this server already */
@@ -1102,12 +1136,15 @@ static int dns_resolve_init_locked(struct dns_resolve_context *ctx,
 				break;
 			}
 
-			if (ctx->fds[j].fd < 0) {
-				ctx->fds[j].fd = ctx->servers[i].sock;
-				ctx->fds[j].events = ZSOCK_POLLIN;
-				ret = 0;
-				break;
+			if (free_slot < 0 && ctx->fds[j].fd < 0) {
+				free_slot = j;
 			}
+		}
+
+		if (ret < 0 && free_slot >= 0) {
+			ctx->fds[free_slot].fd = ctx->servers[i].sock;
+			ctx->fds[free_slot].events = ZSOCK_POLLIN;
+			ret = 0;
 		}
 
 		if (ret < 0) {
@@ -1471,6 +1508,25 @@ static inline int get_slot_by_id(struct dns_resolve_context *ctx,
 		    ctx->queries[i].id == dns_id &&
 		    (query_hash == 0 ||
 		     ctx->queries[i].query_hash == query_hash)) {
+			return i;
+		}
+	}
+
+	return -ENOENT;
+}
+
+/* Must be invoked with context lock held */
+static inline int get_slot_by_id_and_orig_hash(struct dns_resolve_context *ctx,
+					       uint16_t dns_id,
+					       uint16_t orig_query_hash)
+{
+	int i;
+
+	for (i = 0; i < CONFIG_DNS_NUM_CONCUR_QUERIES; i++) {
+		if (check_query_active(&ctx->queries[i], false) &&
+		    ctx->queries[i].id == dns_id &&
+		    (orig_query_hash == 0 ||
+		     ctx->queries[i].orig_query_hash == orig_query_hash)) {
 			return i;
 		}
 	}
@@ -1859,14 +1915,19 @@ int dns_validate_msg(struct dns_resolve_context *ctx,
 			goto quit;
 		}
 
-		if (dns_msg->response_type == DNS_RESPONSE_IP) {
-			if ((ctx->queries[*query_idx].query_type == DNS_QUERY_TYPE_A &&
-			     answer_type != DNS_RR_TYPE_A) ||
-			    (ctx->queries[*query_idx].query_type == DNS_QUERY_TYPE_AAAA &&
-			     answer_type != DNS_RR_TYPE_AAAA)) {
-				ret = DNS_EAI_ADDRFAMILY;
-				goto quit;
-			}
+		/* Verify that the answer RR type matches the outstanding query
+		 * type for every response classification, not only
+		 * DNS_RESPONSE_IP. A response to an A/AAAA query must carry the
+		 * matching address record; CNAME records are allowed here
+		 * because they are used below for query redirection.
+		 */
+		if (((ctx->queries[*query_idx].query_type == DNS_QUERY_TYPE_A &&
+		      answer_type != DNS_RR_TYPE_A) ||
+		     (ctx->queries[*query_idx].query_type == DNS_QUERY_TYPE_AAAA &&
+		      answer_type != DNS_RR_TYPE_AAAA)) &&
+		    answer_type != DNS_RR_TYPE_CNAME) {
+			ret = DNS_EAI_ADDRFAMILY;
+			goto quit;
 		}
 
 		/* If we did ANY query, we need to check what
@@ -2091,6 +2152,7 @@ static void dns_randomize_source_port(struct dns_resolve_context *ctx,
 	struct net_sockaddr_storage local;
 	net_socklen_t local_len;
 	int old_sock = server->sock;
+	int old_idx = -1;
 	int sock;
 	int ret;
 
@@ -2098,6 +2160,16 @@ static void dns_randomize_source_port(struct dns_resolve_context *ctx,
 	 * dispatcher pairs a resolver with a responder by that port.
 	 */
 	if (server->is_mdns || server->is_llmnr) {
+		return;
+	}
+
+	/* A query sent while this server's own reply is being dispatched (a
+	 * CNAME re-query, or a lookup started from the result callback) runs
+	 * inside that dispatch, which holds the dispatcher's lock. Renewing
+	 * the socket there would unregister and register that dispatcher and
+	 * re-initialize the lock under the dispatch, so keep the port.
+	 */
+	if (server->in_dispatch) {
 		return;
 	}
 
@@ -2120,15 +2192,32 @@ static void dns_randomize_source_port(struct dns_resolve_context *ctx,
 
 	/* Give the old socket up first. Its descriptor is then free for the
 	 * replacement, which matters where the descriptor budget is sized for
-	 * exactly the sockets the resolver holds.
+	 * exactly the sockets the resolver holds. Drop the descriptor from the
+	 * shared array before that: unregistering re-registers the socket
+	 * service with this array for the other servers, and a closed
+	 * descriptor must not stay polled, since its number can be reused by
+	 * an unrelated socket.
+	 *
+	 * This runs with the resolver lock held. A reply being dispatched on
+	 * the old socket holds the dispatcher's lock and waits for the
+	 * resolver lock, so waiting for that dispatch here would deadlock;
+	 * keep the port for this query instead.
 	 */
-	(void)dns_dispatcher_unregister(&server->dispatcher);
-
 	ARRAY_FOR_EACH(ctx->fds, j) {
 		if (ctx->fds[j].fd == old_sock) {
 			ctx->fds[j].fd = -1;
+			old_idx = j;
 			break;
 		}
+	}
+
+	if (dns_dispatcher_try_unregister(&server->dispatcher) == -EBUSY) {
+		/* Still registered and polled, so the descriptor stays listed */
+		if (old_idx >= 0) {
+			ctx->fds[old_idx].fd = old_sock;
+		}
+
+		return;
 	}
 
 	zsock_close(old_sock);
@@ -2197,6 +2286,7 @@ static int dns_write(struct dns_resolve_context *ctx,
 	int server_addr_len;
 	uint16_t dns_id, len;
 	int ret, sock, family;
+	int free_slot;
 	char *query_name;
 
 	if (IS_ENABLED(CONFIG_DNS_RESOLVER_RANDOMIZE_SOURCE_PORT)) {
@@ -2259,7 +2349,13 @@ static int dns_write(struct dns_resolve_context *ctx,
 	}
 
 	ret = -ENOENT;
+	free_slot = -1;
 
+	/* A socket may already be polled in a slot behind a hole left by a
+	 * closed server, so scan the whole array for it before claiming the
+	 * first free slot: claiming the hole first would poll one socket twice
+	 * and leave no slot for the next server that comes up.
+	 */
 	ARRAY_FOR_EACH(ctx->fds, i) {
 		if (ctx->fds[i].fd == sock) {
 			/* There was query to this server already */
@@ -2267,12 +2363,15 @@ static int dns_write(struct dns_resolve_context *ctx,
 			break;
 		}
 
-		if (ctx->fds[i].fd < 0) {
-			ctx->fds[i].fd = sock;
-			ctx->fds[i].events = ZSOCK_POLLIN;
-			ret = 0;
-			break;
+		if (free_slot < 0 && ctx->fds[i].fd < 0) {
+			free_slot = i;
 		}
+	}
+
+	if (ret < 0 && free_slot >= 0) {
+		ctx->fds[free_slot].fd = sock;
+		ctx->fds[free_slot].events = ZSOCK_POLLIN;
+		ret = 0;
 	}
 
 	if (ret < 0) {
@@ -2344,10 +2443,10 @@ static void dns_resolve_cancel_all(struct dns_resolve_context *ctx)
 	}
 }
 
-static int dns_resolve_cancel_with_hash(struct dns_resolve_context *ctx,
-					uint16_t dns_id,
-					uint16_t query_hash,
-					const char *query_name)
+static int dns_resolve_cancel_with_orig_hash(struct dns_resolve_context *ctx,
+					     uint16_t dns_id,
+					     uint16_t orig_query_hash,
+					     const char *query_name)
 {
 	int ret = 0;
 	int i;
@@ -2362,7 +2461,7 @@ static int dns_resolve_cancel_with_hash(struct dns_resolve_context *ctx,
 		goto unlock;
 	}
 
-	i = get_slot_by_id(ctx, dns_id, query_hash);
+	i = get_slot_by_id_and_orig_hash(ctx, dns_id, orig_query_hash);
 	if (i < 0) {
 		ret = -ENOENT;
 		goto unlock;
@@ -2370,7 +2469,7 @@ static int dns_resolve_cancel_with_hash(struct dns_resolve_context *ctx,
 
 	NET_DBG("Cancelling DNS req %u (name %s type %d hash %u)", dns_id,
 		query_name == NULL ? "<unknown>" : query_name,
-		ctx->queries[i].query_type, query_hash);
+		ctx->queries[i].query_type, orig_query_hash);
 
 	dns_resolve_cancel_slot(ctx, i);
 
@@ -2425,8 +2524,12 @@ int dns_resolve_cancel_with_name(struct dns_resolve_context *ctx,
 		}
 	}
 
-	return dns_resolve_cancel_with_hash(ctx, dns_id, query_hash,
-					    query_name);
+	/* The caller only knows the name it originally asked for, so we
+	 * delete by orig_query_hash instead of the current query_hash which
+	 * changes as CNAME aliases are followed.
+	 */
+	return dns_resolve_cancel_with_orig_hash(ctx, dns_id, query_hash,
+						 query_name);
 }
 
 int dns_resolve_cancel(struct dns_resolve_context *ctx, uint16_t dns_id)
@@ -2730,6 +2833,7 @@ try_resolve:
 	ctx->queries[i].user_data = user_data;
 	ctx->queries[i].ctx = ctx;
 	ctx->queries[i].query_hash = 0;
+	ctx->queries[i].orig_query_hash = 0;
 	ctx->queries[i].additional_queries = 0;
 	ctx->queries[i].cb_called = false;
 	ctx->queries[i].deadline = sys_timepoint_calc(tout);
@@ -2763,14 +2867,10 @@ try_resolve:
 	 * For mDNS the id should be set to 0, see RFC 6762 ch. 18.1 for
 	 * details.
 	 */
-	if (IS_ENABLED(CONFIG_MDNS_RESOLVER)) {
-		const char *ptr = strrchr(query, '.');
+	if (dns_query_is_mdns(query)) {
+		mdns_query = true;
 
-		if (ptr != NULL && strcmp(ptr, ".local") == 0) {
-			mdns_query = true;
-
-			ctx->queries[i].id = 0;
-		}
+		ctx->queries[i].id = 0;
 	}
 
 	/* Do this immediately after calculating the Id so that the unit
@@ -2790,6 +2890,8 @@ try_resolve:
 		ret = -ENOENT;
 		goto quit;
 	}
+
+	ctx->queries[i].orig_query_hash = ctx->queries[i].query_hash;
 
 	ret = 0;
 

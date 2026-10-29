@@ -19,6 +19,7 @@
 #include <zephyr/net/ethernet.h>
 #include <zephyr/net/phy.h>
 #include <zephyr/sys/device_mmio.h>
+#include <zephyr/sys/time_units.h>
 
 /*
  * Common checks
@@ -194,6 +195,7 @@ struct dwmac_priv {
 #define DWMAC_PTP_MACSTSUR 0x0b10
 #define DWMAC_PTP_MACSTNUR 0x0b14
 #define DWMAC_PTP_MACTSAR  0x0b18
+#define DWMAC_PTP_MACPPSCR 0x0b70
 
 #define DWMAC_PTP_CTRL_REG        DWMAC_PTP_MACTSCR
 #define DWMAC_PTP_SSINC_REG       DWMAC_PTP_MACSSIR
@@ -202,6 +204,7 @@ struct dwmac_priv {
 #define DWMAC_PTP_SEC_REG         DWMAC_PTP_MACSTSR
 #define DWMAC_PTP_NSEC_REG        DWMAC_PTP_MACSTNR
 #define DWMAC_PTP_ADDEND_REG      DWMAC_PTP_MACTSAR
+#define DWMAC_PTP_PPSCR_REG       DWMAC_PTP_MACPPSCR
 
 #define DWMAC_PTP_SSINC_SHIFT 16
 #else
@@ -212,6 +215,7 @@ struct dwmac_priv {
 #define DWMAC_PTP_PTPTSHUR 0x0710
 #define DWMAC_PTP_PTPTSLUR 0x0714
 #define DWMAC_PTP_PTPTSAR  0x0718
+#define DWMAC_PTP_PTPPPSCR 0x072c
 
 #define DWMAC_PTP_CTRL_REG        DWMAC_PTP_PTPTSCR
 #define DWMAC_PTP_SSINC_REG       DWMAC_PTP_PTPSSIR
@@ -220,9 +224,12 @@ struct dwmac_priv {
 #define DWMAC_PTP_SEC_REG         DWMAC_PTP_PTPTSHR
 #define DWMAC_PTP_NSEC_REG        DWMAC_PTP_PTPTSLR
 #define DWMAC_PTP_ADDEND_REG      DWMAC_PTP_PTPTSAR
+#define DWMAC_PTP_PPSCR_REG       DWMAC_PTP_PTPPPSCR
 
 #define DWMAC_PTP_SSINC_SHIFT 0
 #endif
+
+#define DWMAC_PTP_PPSCR_PPSCTRL   GENMASK(3, 0)
 
 #define DWMAC_PTP_CTRL_ENABLE			BIT(0)
 #define DWMAC_PTP_CTRL_FINE_UPDATE		BIT(1)
@@ -231,7 +238,31 @@ struct dwmac_priv {
 #define DWMAC_PTP_CTRL_ADDEND_UPDATE		BIT(5)
 #define DWMAC_PTP_CTRL_ALL_RX			BIT(8)
 #define DWMAC_PTP_CTRL_ROLLOVER			BIT(9)
+#define DWMAC_PTP_CTRL_PTPV2			BIT(10)
+#define DWMAC_PTP_CTRL_L2			BIT(11)
+#define DWMAC_PTP_CTRL_IPV6			BIT(12)
+#define DWMAC_PTP_CTRL_IPV4			BIT(13)
+#define DWMAC_PTP_CTRL_SNAPTYPSEL		GENMASK(17, 16)
+/* all event messages, from core version 3.70 on */
+#define DWMAC_PTP_CTRL_SNAPTYPSEL_EVENT		1
+/* all event messages, before core version 3.70 (P2P transparent clock node) */
+#define DWMAC_PTP_CTRL_SNAPTYPSEL_P2P_TC	3
 #define DWMAC_PTP_NSEC_UPDATE_ADDSUB		BIT(31)
+
+/*
+ * Rate of the sub-second field of the system time and of the timestamps in
+ * the DMA descriptors. In binary rollover mode it counts in units of 2^-31 s
+ * and wraps into the seconds field after 2^31 - 1. In digital rollover mode
+ * it counts nanoseconds and the conversions below are the identity.
+ */
+#define DWMAC_PTP_SUBSEC_PER_SEC                                                                   \
+	(IS_ENABLED(CONFIG_PTP_CLOCK_DWC_MAC_DIGITAL_ROLLOVER) ? NSEC_PER_SEC : BIT(31))
+
+/* truncates, so a full sub-second field never rounds up to NSEC_PER_SEC */
+#define DWMAC_PTP_SUBSEC_TO_NS(subsec)                                                             \
+	z_tmcvt_32(subsec, DWMAC_PTP_SUBSEC_PER_SEC, Z_HZ_ns, true, false, false)
+#define DWMAC_PTP_NS_TO_SUBSEC(ns)                                                                 \
+	z_tmcvt_32(ns, Z_HZ_ns, DWMAC_PTP_SUBSEC_PER_SEC, true, false, false)
 
 /*
  * Shared declarations between core and platform glue code
@@ -603,6 +634,8 @@ extern const struct ethernet_api dwmac_api;
 
 #define MAC_VERSION_USERVER			GENMASK(15, 8)
 #define MAC_VERSION_SNPSVER			GENMASK(7, 0)
+
+#define DWMAC_VERSION_REG			MAC_VERSION
 
 /* 17.1.52 */
 
@@ -1443,6 +1476,11 @@ extern const struct ethernet_api dwmac_api;
 #define DWMAC_MACA0HR    DWMAC_MACAHR(0)
 #define DWMAC_MACA0LR    DWMAC_MACALR(0)
 
+/* MAC version register bits */
+#define DWMAC_MACVERR_SNPSVER GENMASK(7, 0)
+
+#define DWMAC_VERSION_REG DWMAC_MACVERR
+
 /* MAC address high register bits (entries 1 and up) */
 #define DWMAC_MACAHR_AE  BIT(31)
 
@@ -1545,6 +1583,10 @@ extern const struct ethernet_api dwmac_api;
 #define MAC_MDIO_DATA_GD GENMASK(15, 0)
 
 #endif /* CONFIG_ETH_DWC_ETHER_1000_CORE */
+
+/* MAC version register bits, the same in both cores */
+#define DWMAC_VERSION_SNPSVER GENMASK(7, 0)
+#define DWMAC_CORE_3_70       0x37U
 
 /*
  * MAC management counters (MMC)

@@ -141,9 +141,9 @@ exclude_patterns = ["_build"]
 RELEASE_NOTES_GLOB_PATTERNS = [
     "releases/release-notes-[12].*.rst",
     "releases/release-notes-3.[0-6].rst",
-    "releases/release-notes-4.[01].rst",
+    "releases/release-notes-4.[0-3].rst",
     "releases/migration-guide-3.[56].rst",
-    "releases/migration-guide-4.[01].rst",
+    "releases/migration-guide-4.[0-3].rst",
 ]
 exclude_patterns.extend(RELEASE_NOTES_GLOB_PATTERNS)
 
@@ -268,8 +268,8 @@ html_context = {
     "current_version": version,
     "versions": (
         ("latest", "/"),
+        ("4.5.0", "/4.5.0/"),
         ("4.4.0", "/4.4.0/"),
-        ("4.3.0", "/4.3.0/"),
         ("3.7.0 (LTS)", "/3.7.0/"),
     ),
     "display_gh_links": True,
@@ -473,7 +473,7 @@ sitemap_url_scheme = "{link}"
 
 #-- Options for sphinxcontrib-mermaid -------------------------------------
 
-mermaid_version = "11.16.1"
+mermaid_version = "12.1.0"
 d3_version = "7.9.0"
 
 # Without this, every diagram is drawn in a box of a fixed height and centered in it.

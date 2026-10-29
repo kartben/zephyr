@@ -3,6 +3,7 @@
 # Copyright (c) 2014-2015 Wind River Systems, Inc.
 # Copyright (c) 2015 Intel Corporation
 # Copyright (c) 2016 Cadence Design Systems, Inc.
+# Copyright 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 # SPDX-License-Identifier: Apache-2.0
 
 # Include these first so that any properties (e.g. defaults) below can be
@@ -27,6 +28,7 @@ config ARC
 	select ARCH_SUPPORTS_ROM_OFFSET
 	select ARCH_HAS_DIRECTED_IPIS
 	select ARCH_HAS_DIRECT_INTERRUPTS
+	select ARCH_HAS_IRQ_OFFLOAD_NESTED if SMP
 	help
 	  ARC architecture
 
@@ -45,6 +47,7 @@ config ARM
 	select ARCH_HAS_SEMIHOST
 	select ARCH_HAS_ISR_TABLES_LOCAL_DECLARATION
 	select ARCH_SUPPORTS_ROM_OFFSET
+	select ARCH_HAS_IRQ_OFFLOAD_NESTED
 	select ARCH_HAS_CPU_IDLE_HOOKS if CPU_CORTEX_M
 	select ARCH_HAS_DIRECT_INTERRUPTS
 	help
@@ -135,9 +138,7 @@ config X86
 	select ARCH_HAS_THREAD_PRIV_STACK_SPACE_GET if USERSPACE
 	select ARCH_HAS_IRQ_OFFLOAD_NESTED
 	select ARCH_SUPPORTS_ROM_OFFSET
-	# Only the 32-bit (ia32) interrupt stub emits the ISR entry hook that
-	# closes the idle window; intel64 does not have one yet.
-	select ARCH_HAS_CPU_IDLE_HOOKS if !X86_64
+	select ARCH_HAS_CPU_IDLE_HOOKS
 	# Only the 32-bit (ia32) variant implements the direct interrupt hooks.
 	select ARCH_HAS_DIRECT_INTERRUPTS if !X86_64
 	help
@@ -234,6 +235,9 @@ config HEXAGON
 	select ATOMIC_OPERATIONS_BUILTIN
 	select ARCH_HAS_CUSTOM_BUSY_WAIT
 	select ARCH_HAS_THREAD_LOCAL_STORAGE
+	select ARCH_HAS_STACK_PROTECTION
+	select ARCH_HAS_USERSPACE if HEXAGON_MMU
+	select CPU_HAS_MMU
 	select USE_SWITCH
 	select USE_SWITCH_SUPPORTED
 	help
@@ -509,6 +513,9 @@ config NO_UNUSED_STACK_INSPECTION
 
 config MAX_THREAD_BYTES
 	int "Bytes to use when tracking object thread permissions"
+	default 5 if MP_MAX_NUM_CPUS > 4
+	default 4 if MP_MAX_NUM_CPUS > 2
+	default 3 if MP_MAX_NUM_CPUS > 1
 	default 2
 	depends on USERSPACE
 	help
@@ -516,6 +523,10 @@ config MAX_THREAD_BYTES
 	  thread permissions for that object. This controls the size of the
 	  bitfield (in bytes) and imposes a limit on how many threads can
 	  be created in the system.
+
+	  The default scales with the number of CPUs, since the kernel
+	  creates one idle thread per CPU. An application that declares many
+	  threads of its own still has to raise it further.
 
 config DYNAMIC_OBJECTS
 	bool "Allow kernel objects to be allocated at runtime"
@@ -605,11 +616,16 @@ config ISR_TABLES_LOCAL_DECLARATION
 
 config DYNAMIC_INTERRUPTS
 	bool "Installation of IRQs at runtime"
+	depends on !GEN_SW_ISR_TABLE_SWITCH
 	select SRAM_SW_ISR_TABLE
 	help
 	  Enable installation of interrupts at runtime, which will move some
 	  interrupt-related data structures to RAM instead of ROM, and
 	  on some architectures increase code size.
+
+	  This requires a software ISR table that can be written to, so it is
+	  unavailable with CONFIG_GEN_SW_ISR_TABLE_SWITCH, where the table is
+	  a generated switch statement instead of an array.
 
 config SHARED_INTERRUPTS
 	bool "Set this to enable support for shared interrupts [EXPERIMENTAL]"
@@ -880,6 +896,9 @@ config ARCH_HAS_EXECUTABLE_PAGE_BIT
 	bool
 
 config ARCH_HAS_NOCACHE_MEMORY_SUPPORT
+	bool
+
+config ARCH_HAS_NOCACHE_MEM_PARTITION_SUPPORT
 	bool
 
 config ARCH_HAS_RAMFUNC_SUPPORT
@@ -1319,7 +1338,7 @@ config FPU
 	  point operations, the "FPU register sharing" option must be enabled to
 	  preserve the floating point registers across context switches. This is
 	  done automatically if the platform enables an architecture-specific option
-	  enabling the compiler to generate FP instructions for general puprose
+	  enabling the compiler to generate FP instructions for general purpose
 	  integer work.
 
 	  Note that this option cannot be selected for the platforms that do not

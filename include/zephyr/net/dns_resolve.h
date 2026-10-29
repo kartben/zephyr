@@ -294,6 +294,10 @@ struct dns_socket_dispatcher {
 	 * context if sharing the socket between resolver / responder.
 	 */
 	struct dns_socket_dispatcher *pair;
+	/** Registered as the pair of another context, which delegates to
+	 * this one and whose socket service delivers the traffic.
+	 */
+	bool paired;
 	/** Mutex lock protecting access to this dispatcher context */
 	struct k_mutex lock;
 	/** Buffer allocation timeout */
@@ -534,6 +538,9 @@ struct dns_resolve_context {
 /** @cond INTERNAL_HIDDEN */
 		/** Dispatch DNS data between resolver and responder */
 		struct dns_socket_dispatcher dispatcher;
+
+		/** A reply from this server is being dispatched */
+		bool in_dispatch;
 /** @endcond */
 	} servers[DNS_RESOLVER_MAX_POLL]; /**< List of configured DNS servers */
 
@@ -598,6 +605,12 @@ struct dns_resolve_context {
 		 * cannot be used to find correct pending query.
 		 */
 		uint16_t query_hash;
+
+		/** Hash of the original DNS name + query type as requested by
+		 * the caller. Unlike @ref query_hash, this remains constant
+		 * even as the query follows CNAME aliases.
+		 */
+		uint16_t orig_query_hash;
 
 		/* Number of additional queries sent to resolve CNAME record
 		 * name aliases.

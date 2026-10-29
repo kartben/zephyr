@@ -118,3 +118,12 @@ set(w6100_evb_pico2/rp2350a/m33_DEPRECATED
 set(w6300_evb_pico2/rp2350a/m33_DEPRECATED
     w6300_evb_pico2/rp2350a/m33_0
 )
+set(stm32mp157c_dk2_DEPRECATED
+    stm32mp157x_dk2/stm32mp157cxx
+)
+set(kit_psc3m6_evk_DEPRECATED
+    kit_psc3m6_eval
+)
+set(kit_psc3m6_evk/psc3m6ges3ahq1_DEPRECATED
+    kit_psc3m6_eval/psc3m6ges3ahq1
+)

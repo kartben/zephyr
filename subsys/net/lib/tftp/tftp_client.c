@@ -4,10 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#undef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(tftp_client, CONFIG_TFTP_LOG_LEVEL);
 
 #include <stddef.h>
+#include <string.h>
 #include <zephyr/net/tftp.h>
 #include "tftp_client.h"
 #include "net_private.h"
@@ -16,23 +20,35 @@ LOG_MODULE_REGISTER(tftp_client, CONFIG_TFTP_LOG_LEVEL);
 	(sa->sa_family == NET_AF_INET ? \
 		sizeof(struct net_sockaddr_in) : sizeof(struct net_sockaddr_in6))
 
+static char *error_msg(struct tftpc *client, int rcv_size)
+{
+	size_t end = CLAMP((size_t)rcv_size, TFTP_HEADER_SIZE,
+			   sizeof(client->tftp_buf) - 1);
+
+	client->tftp_buf[end] = '\0';
+
+	return (char *)client->tftp_buf + TFTP_HEADER_SIZE;
+}
+
 /*
  * Prepare a request as required by RFC1350. This packet can be sent
  * out directly to the TFTP server.
  */
-static size_t make_request(uint8_t *buf, int request,
-			   const char *remote_file, const char *mode)
+ZTESTABLE_STATIC size_t make_request(uint8_t *buf, int request,
+				     const char *remote_file, const char *mode)
 {
 	char *ptr = (char *)buf;
 	const char def_mode[] = "octet";
+	size_t len;
 
 	/* Fill in the Request Type. */
 	sys_put_be16(request, ptr);
 	ptr += 2;
 
 	/* Copy the name of the remote file. */
+	len = strnlen(remote_file, TFTP_MAX_FILENAME_SIZE);
 	strncpy(ptr, remote_file, TFTP_MAX_FILENAME_SIZE);
-	ptr += strlen(remote_file);
+	ptr += len;
 	*ptr++ = '\0';
 
 	/* Default to "Octet" if mode not specified. */
@@ -41,11 +57,21 @@ static size_t make_request(uint8_t *buf, int request,
 	}
 
 	/* Copy the mode of operation. */
+	len = strnlen(mode, TFTP_MAX_MODE_SIZE);
 	strncpy(ptr, mode, TFTP_MAX_MODE_SIZE);
-	ptr += strlen(mode);
+	ptr += len;
 	*ptr++ = '\0';
 
 	return ptr - (char *)buf;
+}
+
+static bool request_fits(const char *remote_file, const char *mode)
+{
+	if (strnlen(remote_file, TFTP_MAX_FILENAME_SIZE + 1) > TFTP_MAX_FILENAME_SIZE) {
+		return false;
+	}
+
+	return mode == NULL || strnlen(mode, TFTP_MAX_MODE_SIZE + 1) <= TFTP_MAX_MODE_SIZE;
 }
 
 static const void *sa_addr(const struct net_sockaddr *sa)
@@ -176,12 +202,16 @@ static int send_data(int sock, struct tftpc *client, const struct net_sockaddr *
 				return ret;
 			}
 
-			if (ret != TFTP_HEADER_SIZE) {
-				break; /* wrong response, re-send data */
+			if (ret < TFTP_HEADER_SIZE) {
+				break;
 			}
 
 			uint16_t opcode = sys_get_be16(client->tftp_buf);
 			uint16_t blockno = sys_get_be16(client->tftp_buf + 2);
+
+			if (ret != TFTP_HEADER_SIZE && opcode != ERROR_OPCODE) {
+				break; /* wrong response, re-send data */
+			}
 
 			LOG_DBG("Receive: opcode %u, block no %u, size %d",
 				opcode, blockno, ret);
@@ -198,12 +228,12 @@ static int send_data(int sock, struct tftpc *client, const struct net_sockaddr *
 						.type = TFTP_EVT_ERROR
 					};
 
-					evt.param.error.msg = client->tftp_buf + TFTP_HEADER_SIZE;
-					evt.param.error.code = block_no;
+					evt.param.error.msg = error_msg(client, ret);
+					evt.param.error.code = blockno;
 					client->callback(&evt);
 				}
-				LOG_WRN("Server responded with obsolete block number.");
-				break;
+				LOG_ERR("Server rejected the data block.");
+				return TFTPC_REMOTE_ERROR;
 			} else {
 				LOG_ERR("Server responded with invalid opcode or block number.");
 				break; /* wrong response, re-send data */
@@ -212,8 +242,6 @@ static int send_data(int sock, struct tftpc *client, const struct net_sockaddr *
 
 		send_count++;
 	} while (true);
-
-	return TFTPC_REMOTE_ERROR;
 }
 
 /*
@@ -320,7 +348,7 @@ int tftp_get(struct tftpc *client, const char *remote_file, const char *mode)
 	int rcv_size;
 	int ret;
 
-	if (client == NULL) {
+	if (client == NULL || !request_fits(remote_file, mode)) {
 		return -EINVAL;
 	}
 
@@ -348,7 +376,7 @@ int tftp_get(struct tftpc *client, const char *remote_file, const char *mode)
 					.type = TFTP_EVT_ERROR
 				};
 
-				evt.param.error.msg = client->tftp_buf + TFTP_HEADER_SIZE;
+				evt.param.error.msg = error_msg(client, rcv_size);
 				evt.param.error.code = block_no;
 				client->callback(&evt);
 			}
@@ -441,7 +469,8 @@ int tftp_put(struct tftpc *client, const char *remote_file, const char *mode,
 	struct net_sockaddr_storage peer = {0};
 	int ret;
 
-	if (client == NULL || user_buf == NULL || user_buf_size == 0) {
+	if (client == NULL || user_buf == NULL || user_buf_size == 0 ||
+	    !request_fits(remote_file, mode)) {
 		return -EINVAL;
 	}
 
@@ -467,7 +496,7 @@ int tftp_put(struct tftpc *client, const char *remote_file, const char *mode,
 					.type = TFTP_EVT_ERROR
 				};
 
-				evt.param.error.msg = client->tftp_buf + TFTP_HEADER_SIZE;
+				evt.param.error.msg = error_msg(client, ret);
 				evt.param.error.code = block_no;
 				client->callback(&evt);
 			}

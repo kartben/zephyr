@@ -8,8 +8,8 @@
 #include "stm32h7s78_dk-common.dtsi"
 
 / {
-	model = "STMicroelectronics STM32H7S78 DISCOVERY KIT board";
 	compatible = "st,stm32h7s78-dk";
+	model = "STMicroelectronics STM32H7S78 DISCOVERY KIT board";
 
 	chosen {
 		zephyr,flash = &flash0;
@@ -26,8 +26,8 @@
 		#size-cells = <1>;
 
 		storage_partition: partition@0 {
-			label = "storage";
 			reg = <0x00000000 DT_SIZE_M(128)>; /* 128MB */
+			label = "storage";
 		};
 	};
 };
@@ -45,6 +45,7 @@ sdhc: &sdmmc1 {
 	min-bus-freq = <DT_FREQ_K(400)>;
 	max-bus-freq = <DT_FREQ_M(208)>;
 	cd-gpios = <&gpiom 14 GPIO_ACTIVE_LOW>;
+	status = "okay";
 
 	sdmmc {
 		compatible = "zephyr,sdmmc-disk";

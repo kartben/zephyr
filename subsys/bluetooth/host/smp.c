@@ -5081,13 +5081,17 @@ static void bt_smp_encrypt_change(struct bt_l2cap_chan *chan,
 			 */
 			atomic_set_bit(smp->flags, SMP_FLAG_DERIVE_LK);
 		}
-		/*
-		 * Those are used as pairing finished indicator so generated
-		 * but not distributed keys must be cleared here.
-		 */
-		smp->local_dist &= ~BT_SMP_DIST_LINK_KEY;
-		smp->remote_dist &= ~BT_SMP_DIST_LINK_KEY;
 	}
+
+	/*
+	 * Those are used as pairing finished indicator so generated
+	 * but not distributed keys must be cleared here. This applies to legacy
+	 * pairing too: a link key can only be derived from a Secure Connections
+	 * LTK, so the bit is never consumed there and would otherwise keep the
+	 * distribution set non-empty forever.
+	 */
+	smp->local_dist &= ~BT_SMP_DIST_LINK_KEY;
+	smp->remote_dist &= ~BT_SMP_DIST_LINK_KEY;
 
 	if (smp->remote_dist & BT_SMP_DIST_ENC_KEY) {
 		atomic_set_bit(smp->allowed_cmds, BT_SMP_CMD_ENCRYPT_INFO);
@@ -5349,36 +5353,6 @@ int bt_smp_sign(struct bt_conn *conn, struct net_buf *buf)
 	return -ENOTSUP;
 }
 #endif /* CONFIG_BT_SIGNING */
-
-static int smp_d1(const uint8_t *key, uint16_t d, uint16_t r, uint8_t res[16])
-{
-	int err;
-
-	LOG_DBG("key %s d %u r %u", bt_hex(key, 16), d, r);
-
-	sys_put_le16(d, &res[0]);
-	sys_put_le16(r, &res[2]);
-	memset(&res[4], 0, 16 - 4);
-
-	err = bt_encrypt_le(key, res, res);
-	if (err) {
-		return err;
-	}
-
-	LOG_DBG("res %s", bt_hex(res, 16));
-	return 0;
-}
-
-int bt_smp_irk_get(uint8_t *ir, uint8_t *irk)
-{
-	uint8_t invalid_ir[16] = { 0 };
-
-	if (!memcmp(ir, invalid_ir, 16)) {
-		return -EINVAL;
-	}
-
-	return smp_d1(ir, 1, 0, irk);
-}
 
 #if defined(CONFIG_BT_SMP_SELFTEST)
 /* Test vectors are taken from RFC 4493

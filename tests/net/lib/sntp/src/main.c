@@ -21,6 +21,7 @@
 #include <zephyr/net/net_ip.h>
 #include <zephyr/net/socket.h>
 #include <zephyr/net/sntp.h>
+#include <zephyr/sys/clock.h>
 #include <zephyr/ztest.h>
 
 #include "sntp_pkt.h"
@@ -35,6 +36,11 @@
 #define RECV_TIMEOUT_MS 100
 
 static int server_fd = -1;
+
+/* Seconds to advance the system clock between the request and the response,
+ * to reach a round trip that does not fit in 32 bits of microseconds.
+ */
+static uint32_t clock_jump_s;
 
 /* A well-formed response; a test overrides only the field it exercises.
  * The originate timestamp is left zero, filled in by exchange().
@@ -80,6 +86,14 @@ static int exchange(struct sntp_pkt *response, bool echo_originate, struct sntp_
 	ret = zsock_recvfrom(server_fd, &request, sizeof(request), 0,
 			     (struct net_sockaddr *)&client, &client_len);
 	zassert_equal(ret, (int)sizeof(request), "no request from the client: %d", ret);
+
+	if (clock_jump_s > 0) {
+		struct timespec now;
+
+		zassert_ok(sys_clock_gettime(SYS_CLOCK_REALTIME, &now), "could not read the clock");
+		now.tv_sec += clock_jump_s;
+		zassert_ok(sys_clock_settime(SYS_CLOCK_REALTIME, &now), "could not set the clock");
+	}
 
 	if (echo_originate) {
 		response->orig_tm_s = net_htonl((uint32_t)ctx.expected_orig_ts.seconds);
@@ -204,6 +218,162 @@ ZTEST(sntp_response, test_reversed_server_timestamps_are_rejected)
 
 	zassert_equal(exchange(&response, true, &ts), -EINVAL,
 		      "reversed server timestamps were accepted");
+}
+
+/* The delay and the uncertainty are reported in unsigned fields but are
+ * computed from timestamps the server chose, so a server whose turnaround
+ * exceeds the round trip the client measured drives both negative.
+ */
+ZTEST(sntp_response, test_negative_delay_and_uncertainty_are_clamped)
+{
+	struct sntp_pkt response = response_template();
+	struct sntp_time ts;
+
+	/* A second of server turnaround, far beyond the loopback round trip */
+	response.rx_tm_s = net_htonl(OFFSET_1970_JAN_1);
+	response.tx_tm_s = net_htonl(OFFSET_1970_JAN_1 + 1);
+
+	zassert_ok(exchange(&response, true, &ts), "a valid response was rejected");
+
+	zexpect_equal(ts.rsp_delay_us, 0, "negative delay reported as %u", ts.rsp_delay_us);
+	zexpect_equal(ts.uncertainty_us, 0, "negative uncertainty reported as %u",
+		      ts.uncertainty_us);
+}
+
+/* Root delay and root dispersion are seconds in Q16.16, so they reach about
+ * 65536 s, past what the microsecond field can express.
+ */
+ZTEST(sntp_response, test_excessive_uncertainty_is_clamped)
+{
+	struct sntp_pkt response = response_template();
+	struct sntp_time ts;
+
+	response.root_delay = net_htonl(UINT32_MAX);
+	response.root_dispersion = net_htonl(UINT32_MAX);
+
+	zassert_ok(exchange(&response, true, &ts), "a valid response was rejected");
+
+	zexpect_equal(ts.uncertainty_us, UINT32_MAX, "uncertainty reported as %u",
+		      ts.uncertainty_us);
+}
+
+/* A round trip longer than 32 bits of microseconds can hold, which the
+ * asynchronous read path has no timeout to bound.
+ */
+ZTEST(sntp_response, test_long_round_trip_is_measured)
+{
+	struct sntp_pkt response = response_template();
+	struct sntp_time ts;
+	struct timespec now;
+
+	/* No server turnaround, so the delay is half the round trip */
+	response.rx_tm_s = net_htonl(OFFSET_1970_JAN_1);
+	response.tx_tm_s = net_htonl(OFFSET_1970_JAN_1);
+
+	clock_jump_s = 3600;
+	zassert_ok(exchange(&response, true, &ts), "a valid response was rejected");
+	clock_jump_s = 0;
+
+	zexpect_within(ts.rsp_delay_us, 1800 * USEC_PER_SEC, USEC_PER_SEC,
+		       "half of an hour long round trip reported as %u", ts.rsp_delay_us);
+
+	/* Leave the clock where the rest of the suite expects it */
+	zassert_ok(sys_clock_gettime(SYS_CLOCK_REALTIME, &now), "could not read the clock");
+	now.tv_sec -= 3600;
+	zassert_ok(sys_clock_settime(SYS_CLOCK_REALTIME, &now), "could not set the clock");
+}
+
+/* The clamps must not swallow what an ordinary exchange produces */
+ZTEST(sntp_response, test_plausible_delay_and_uncertainty_are_reported)
+{
+	struct sntp_pkt response = response_template();
+	struct sntp_time ts;
+
+	response.rx_tm_s = net_htonl(OFFSET_1970_JAN_1);
+	response.tx_tm_s = net_htonl(OFFSET_1970_JAN_1);
+
+	zassert_ok(exchange(&response, true, &ts), "a valid response was rejected");
+
+	zexpect_true(ts.rsp_delay_us < USEC_PER_SEC, "implausible delay %u", ts.rsp_delay_us);
+	zexpect_true(ts.uncertainty_us < USEC_PER_SEC, "implausible uncertainty %u",
+		     ts.uncertainty_us);
+}
+
+/* sntp_simple_addr() waits 100 ms for the response to its first request
+ * and 200 ms for the second, so a first response sent after 150 ms is
+ * read while the client waits for the response to its second request.
+ */
+#define STALE_RESPONSE_DELAY_MS 150
+
+#define LATE_SERVER_STACK_SIZE 2048
+#define LATE_SERVER_PRIORITY   K_PRIO_PREEMPT(8)
+
+static struct k_thread late_server_thread_data;
+static K_THREAD_STACK_DEFINE(late_server_stack, LATE_SERVER_STACK_SIZE);
+
+/* Answer the first request late, never answer the second and answer the
+ * third at once. Returns when a request does not arrive within the server
+ * socket's receive timeout.
+ */
+static void late_server_thread(void *p1, void *p2, void *p3)
+{
+	ARG_UNUSED(p1);
+	ARG_UNUSED(p2);
+	ARG_UNUSED(p3);
+
+	for (int i = 0; i < 3; i++) {
+		struct sntp_pkt response = response_template();
+		struct net_sockaddr_in client;
+		net_socklen_t client_len = sizeof(client);
+		struct sntp_pkt request;
+		int ret;
+
+		ret = zsock_recvfrom(server_fd, &request, sizeof(request), 0,
+				     (struct net_sockaddr *)&client, &client_len);
+		if (ret != (int)sizeof(request)) {
+			return;
+		}
+
+		if (i == 1) {
+			continue;
+		}
+
+		if (i == 0) {
+			k_msleep(STALE_RESPONSE_DELAY_MS);
+		}
+
+		response.orig_tm_s = request.tx_tm_s;
+		response.orig_tm_f = request.tx_tm_f;
+
+		(void)zsock_sendto(server_fd, &response, sizeof(response), 0,
+				   (struct net_sockaddr *)&client, client_len);
+	}
+}
+
+/* A response to an earlier request, read while waiting for the response
+ * to the current one, must not end sntp_simple_addr() before its timeout
+ * when the current response is lost as well.
+ */
+ZTEST(sntp_response, test_simple_retries_after_stale_response)
+{
+	struct net_sockaddr_in server = {
+		.sin_family = NET_AF_INET,
+		.sin_port = net_htons(SNTP_PORT),
+		.sin_addr = {{{127, 0, 0, 1}}},
+	};
+	struct sntp_time ts;
+	int ret;
+
+	k_thread_create(&late_server_thread_data, late_server_stack,
+			K_THREAD_STACK_SIZEOF(late_server_stack), late_server_thread, NULL, NULL,
+			NULL, LATE_SERVER_PRIORITY, 0, K_NO_WAIT);
+
+	ret = sntp_simple_addr((struct net_sockaddr *)&server, sizeof(server), 2000, &ts);
+
+	zassert_ok(k_thread_join(&late_server_thread_data, K_SECONDS(2)),
+		   "the server thread did not stop");
+
+	zassert_ok(ret, "sntp_simple_addr() gave up before its timeout: %d", ret);
 }
 
 static void *setup(void)

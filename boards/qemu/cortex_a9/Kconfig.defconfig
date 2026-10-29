@@ -10,10 +10,6 @@ if BOARD_QEMU_CORTEX_A9
 config BUILD_OUTPUT_BIN
 	default n
 
-config SYS_CLOCK_HW_CYCLES_PER_SEC
-	int
-	default 111111111
-
 config SYS_CLOCK_TICKS_PER_SEC
 	default 1000
 
@@ -41,9 +37,6 @@ configdefault NET_MGMT_EVENT_STACK_SIZE
 
 configdefault TEST_RANDOM_GENERATOR
 	default y if NETWORKING
-
-configdefault ETH_PHY_DRIVER
-	default n if !NET_QEMU_ETHERNET
 
 if QEMU_ICOUNT
 

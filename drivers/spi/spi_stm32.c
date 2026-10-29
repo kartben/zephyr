@@ -881,6 +881,10 @@ static void spi_stm32_msg_start(const struct device *dev, bool is_rx_empty)
 	irq_disable(cfg->irq_line);
 #endif /* CONFIG_SPI_STM32_INTERRUPT && CONFIG_SOC_SERIES_STM32H7X */
 
+	/* Make sure DXP and EOT interrupts are disabled before starting the transfer */
+	ll_disable_int_dxp(spi);
+	ll_disable_int_eot(spi);
+
 	LL_SPI_Enable(spi);
 
 #if DT_HAS_COMPAT_STATUS_OKAY(st_stm32h7_spi)
@@ -1612,7 +1616,7 @@ static int spi_stm32_configure(const struct device *dev,
 	data->ctx.config = config;
 
 	LOG_DBG("Installed config %p: freq %uHz (div = %u), mode %u/%u/%u, peripheral %u",
-		config, clock >> br, 1 << br,
+		config, clock >> (br + shift), 1 << (br + shift),
 		(SPI_MODE_GET(config->operation) & SPI_MODE_CPOL) ? 1 : 0,
 		(SPI_MODE_GET(config->operation) & SPI_MODE_CPHA) ? 1 : 0,
 		(SPI_MODE_GET(config->operation) & SPI_MODE_LOOP) ? 1 : 0,
@@ -2072,7 +2076,7 @@ static int transceive(const struct device *dev,
 	int ret;
 	bool use_dma = false;
 	const struct spi_stm32_config *cfg = dev->config;
-	SPI_TypeDef *spi = cfg->spi;
+	__maybe_unused SPI_TypeDef *spi = cfg->spi;
 
 #if defined(CONFIG_SPI_STM32_DMA)
 	if ((SPI_OP_MODE_GET(config->operation) == SPI_OP_MODE_CONTROLLER) &&

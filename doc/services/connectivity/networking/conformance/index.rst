@@ -98,8 +98,16 @@ socket on a link of its own.
      - :zephyr_file:`tests/net/conformance/arp`
      - ``zethL2``
      - root
+   * - :zephyr_file:`igmp <tests/net/conformance/igmp/README.rst>`
+     - :zephyr_file:`tests/net/conformance/igmp`
+     - ``zethL2``
+     - root
    * - :zephyr_file:`ndp <tests/net/conformance/ndp/README.rst>`
      - :zephyr_file:`tests/net/conformance/ndp`
+     - ``zethL2``
+     - root
+   * - :zephyr_file:`mld <tests/net/conformance/mld/README.rst>`
+     - :zephyr_file:`tests/net/conformance/mld`
      - ``zethL2``
      - root
    * - :zephyr_file:`tcp <tests/net/conformance/tcp/README.rst>`
@@ -146,14 +154,6 @@ leaves both to the application: :c:func:`mqtt_publish` sends the identifier and
 the duplicate flag it is given, so a test of either would test the system under
 test's own counter rather than the client.
 
-CoAP block transfer and observe
-===============================
-
-``TD_COAP_BLOCK_01`` and ``TD_COAP_OBS_01`` are not run. They address
-``/large`` and ``/obs``, and the application provides only ``/test``; against
-it the observe case waits for notifications that never arrive and the run does
-not finish. Adding those two resources is the obvious next step.
-
 Overlapping DNS queries
 =======================
 
@@ -162,6 +162,28 @@ outstanding, which with the default of one query at a time means every query.
 Queries that overlap on one server still share a port, so the check in the
 ``dns`` suite would not catch a regression in that case. See :rfc:`5452`
 section 9.2.
+
+Continuous integration
+**********************
+
+These suites are not part of the ordinary Twister run: they need a Titan
+installation, a network interface facing the device, and a checkout of the
+suites, none of which a normal build has. They are also slow, and they cannot
+run at the same time as each other.
+
+They run nightly instead, from
+:zephyr_file:`.github/workflows/net_conformance.yml`, which can also be started
+by hand from the Actions tab and runs on a pull request that changes the tests,
+the script that runs them or the workflow itself. The job runs on a
+GitHub-hosted virtual machine
+rather than in a container, because creating a tap interface needs
+``CAP_NET_ADMIN`` and the containers on the project's own runners do not get
+it. It installs the packaged Titan and then runs
+:zephyr_file:`scripts/net/run-conformance-tests.sh`, which brings up both
+interfaces and runs the whole directory under ``sudo`` so that no suite is
+skipped. It sets ``NET_CONFORMANCE_REQUIRED``, so a suite that cannot run fails
+rather than skips: a run that tested nothing must not look like one that
+passed. The Twister report and the harness logs are kept as artifacts.
 
 Other TTCN-3 suites
 *******************

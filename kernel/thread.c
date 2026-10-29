@@ -21,6 +21,7 @@
 #include <timeout_q.h>
 #include <zephyr/internal/syscall_handler.h>
 #include <kernel_internal.h>
+#include <ksmp.h>
 #include <kswap.h>
 #include <zephyr/init.h>
 #include <zephyr/tracing/tracing.h>
@@ -39,8 +40,6 @@
 LOG_MODULE_DECLARE(os, CONFIG_KERNEL_LOG_LEVEL);
 
 #ifdef CONFIG_OBJ_CORE_THREAD
-static struct k_obj_type  obj_type_thread;
-
 #ifdef CONFIG_OBJ_CORE_STATS_THREAD
 static struct k_obj_core_stats_desc  thread_stats_desc = {
 	.raw_size = sizeof(struct k_cycle_stats),
@@ -852,16 +851,6 @@ static inline void init_thread_deadline(struct k_thread *thread)
 #endif /* CONFIG_SCHED_DEADLINE */
 }
 
-/* Initialize the wait queue used to synchronize SMP thread halt/abort. */
-static inline void init_thread_halt_queue(struct k_thread *thread)
-{
-#ifdef CONFIG_SMP
-	z_waitq_init(&thread->halt_queue);
-#else
-	ARG_UNUSED(thread);
-#endif /* CONFIG_SMP */
-}
-
 /* Initialize runtime CPU-usage tracking for the thread. */
 static inline void init_thread_usage(struct k_thread *thread)
 {
@@ -954,7 +943,7 @@ char *z_setup_new_thread(struct k_thread *new_thread,
 	init_thread_userspace_perms(new_thread, options);
 	init_thread_deadline(new_thread);
 	new_thread->resource_pool = _current->resource_pool;
-	init_thread_halt_queue(new_thread);
+	z_smp_halt_queue_init(new_thread);
 	init_thread_usage(new_thread);
 
 	SYS_PORT_TRACING_OBJ_FUNC(k_thread, create, new_thread);
@@ -1124,15 +1113,7 @@ void z_init_thread_base(struct _thread_base *thread_base, int priority,
 
 	thread_base->sched_locked = 0U;
 
-#ifdef CONFIG_SMP
-	thread_base->is_idle = 0;
-
-	/*
-	 * Pretend that the thread was last executing on CPU0 to prevent
-	 * out-of-bounds memory accesses to the _kernel.cpus[] array.
-	 */
-	thread_base->cpu = 0;
-#endif /* CONFIG_SMP */
+	z_smp_thread_base_init(thread_base);
 
 #ifdef CONFIG_TIMESLICE_PER_THREAD
 	thread_base->slice_ticks = 0;
@@ -1330,10 +1311,7 @@ int z_vrfy_k_thread_stack_space_get(const struct k_thread *thread,
 	size_t unused;
 	int ret;
 
-	ret = K_SYSCALL_OBJ(thread, K_OBJ_THREAD);
-	CHECKIF(ret != 0) {
-		return ret;
-	}
+	K_OOPS(K_SYSCALL_OBJ(thread, K_OBJ_THREAD));
 
 	ret = z_impl_k_thread_stack_space_get(thread, &unused);
 	CHECKIF(ret != 0) {

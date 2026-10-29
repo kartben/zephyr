@@ -10,10 +10,12 @@ config ESP_SPIRAM
 	bool "Support for external, SPI-connected RAM"
 	default n if MCUBOOT
 	default n if ESP32_USE_UNSUPPORTED_REVISION && SOC_SERIES_ESP32
-	select SHARED_MULTI_HEAP
 	help
 	  This enables support for an external SPI RAM chip, connected in
 	  parallel with the main SPI flash chip.
+
+configdefault SHARED_MULTI_HEAP
+	default y if ESP_SPIRAM
 
 menu "SPI RAM config"
 	depends on ESP_SPIRAM
@@ -29,17 +31,6 @@ config ESP_SPIRAM_MEMTEST
 	bool "Run memory test on SPI RAM initialization"
 	help
 	  Runs a memory test on initialization.
-
-config ESP_MBEDTLS_HEAP_ALLOC_EXT_RAM
-	bool "Allocate the Mbed TLS heap in external RAM (PSRAM)"
-	depends on MBEDTLS_ENABLE_HEAP
-	select MBEDTLS_HEAP_CUSTOM_SECTION
-	help
-	  Place the Mbed TLS heap in the .mbedtls_heap linker section and
-	  rely on the Espressif SoC linker scripts, which already map that
-	  section into the SoC's external RAM (PSRAM) region. This frees up
-	  internal SRAM and allows MBEDTLS_HEAP_SIZE to be sized well beyond
-	  what internal RAM alone could hold.
 
 choice SPIRAM_MODE
 	prompt "Mode (QUAD/OCT/HEX) of SPI RAM chip in use"
@@ -122,10 +113,15 @@ config SPIRAM_SPEED_200M
 	bool "200MHz clock speed"
 	depends on SOC_SERIES_ESP32P4
 
+config SPIRAM_SPEED_250M
+	bool "250MHz clock speed"
+	depends on SOC_SERIES_ESP32P4 && SOC_ESP32P4_REV_MIN_FULL >= 300
+
 endchoice # SPIRAM_SPEED
 
 config SPIRAM_SPEED
 	int
+	default 250 if SPIRAM_SPEED_250M
 	default 200 if SPIRAM_SPEED_200M
 	default 120 if SPIRAM_SPEED_120M
 	default 80 if SPIRAM_SPEED_80M

@@ -68,12 +68,13 @@ BUILD_ASSERT(CONFIG_NET_BUF_DATA_SIZE >= 96);
 #define MAX_IP_PROTO_LEN 8
 #else
 #if defined(CONFIG_NET_ETHERNET_BRIDGE) || \
+	defined(CONFIG_NET_L2_ETHERNET) || \
 	defined(CONFIG_NET_L2_IEEE802154) || \
 	defined(CONFIG_NET_L2_CUSTOM_IEEE802154)
 #define MAX_IP_PROTO_LEN 0
 #else
 #error "Some packet protocol (e.g. IPv6, IPv4, ETH, IEEE 802.15.4) needs to be selected."
-#endif /* ETHERNET_BRIDGE / L2_IEEE802154 */
+#endif /* ETHERNET_BRIDGE / L2_ETHERNET / L2_IEEE802154 */
 #endif /* SOCKETS_CAN */
 #endif /* IPv4 */
 #endif /* IPv6 */
@@ -85,12 +86,12 @@ BUILD_ASSERT(CONFIG_NET_BUF_DATA_SIZE >= 96);
 #if defined(CONFIG_NET_UDP)
 #define MAX_NEXT_PROTO_LEN NET_UDPH_LEN
 #else
-#if defined(CONFIG_NET_SOCKETS_CAN)
+#if defined(CONFIG_NET_SOCKETS_CAN) || !defined(CONFIG_NET_IP)
 #define MAX_NEXT_PROTO_LEN 0
 #else
 /* If no TCP and no UDP, apparently we still want pings to work. */
 #define MAX_NEXT_PROTO_LEN NET_ICMPH_LEN
-#endif /* SOCKETS_CAN */
+#endif /* SOCKETS_CAN || !NET_IP */
 #endif /* UDP */
 #endif /* TCP */
 
@@ -717,7 +718,7 @@ void net_pkt_frag_unref(struct net_buf *frag)
 	 * (and both call alloc_del) or neither does (alloc_del skipped
 	 * even though one of them is going to free the buf). Doing the
 	 * atomic dec here makes "am I the last reference?" authoritative,
-	 * and the value returned by atomic_dec() is what the log reports.
+	 * and the count before the decrement is what the log reports.
 	 *
 	 * Snapshot the chain link and the pool *before* the atomic dec:
 	 * once our reference is dropped, another holder may free the
@@ -728,7 +729,20 @@ void net_pkt_frag_unref(struct net_buf *frag)
 	while (frag) {
 		struct net_buf *next = frag->frags;
 		struct net_buf_pool *pool = net_buf_pool_get(frag->pool_id);
-		uint8_t old_ref = atomic_dec(&frag->ref_word);
+		atomic_val_t old_word;
+		uint8_t old_ref;
+
+		/* A zero count must not be decremented, not even by an unref
+		 * racing with the last one: the borrow would go into the other
+		 * bytes of ref_word of a buffer that has already been freed.
+		 */
+		do {
+			old_word = atomic_get(&frag->ref_word);
+			old_ref = (uint8_t)old_word;
+			if (old_ref == 0U) {
+				break;
+			}
+		} while (!atomic_cas(&frag->ref_word, old_word, old_word - 1));
 
 #if CONFIG_NET_PKT_LOG_LEVEL >= LOG_LEVEL_DBG
 		NET_DBG("%s (%s) [%d] frag %p ref %u (%s():%d)",
@@ -739,10 +753,9 @@ void net_pkt_frag_unref(struct net_buf *frag)
 		__ASSERT(old_ref != 0, "frag %p double free", frag);
 		if (old_ref != 1) {
 			/*
-			 * Not the last reference (or a double free that
-			 * wrapped past zero). Some other holder still
-			 * owns the rest of the frag chain; we must not
-			 * touch the buffer further.
+			 * Not the last reference (or a double free). Some
+			 * other holder still owns the rest of the frag
+			 * chain; we must not touch the buffer further.
 			 */
 			return;
 		}
@@ -1019,7 +1032,8 @@ static struct net_buf *pkt_alloc_buffer(struct net_pkt *pkt,
 	ARG_UNUSED(pkt);
 #endif
 
-	k_timepoint_t end = sys_timepoint_calc(timeout);
+	k_timepoint_t end;
+	bool end_set = false;
 	struct net_buf *first = NULL;
 	struct net_buf *current = NULL;
 
@@ -1027,8 +1041,8 @@ static struct net_buf *pkt_alloc_buffer(struct net_pkt *pkt,
 		struct net_buf *new;
 
 		/* An allocation that does not block cannot have consumed any
-		 * of the caller's timeout, so only work out how much of it is
-		 * left when the pool was empty and we actually have to wait.
+		 * of the caller's timeout, so the deadline is only taken the
+		 * first time the pool is empty and we actually have to wait.
 		 * That keeps the clock out of the common path: with K_NO_WAIT
 		 * the deadline handling in net_buf_alloc_len() short circuits
 		 * too, so nothing below here reads it either.
@@ -1037,6 +1051,11 @@ static struct net_buf *pkt_alloc_buffer(struct net_pkt *pkt,
 		if (new == NULL) {
 			if (K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
 				goto error;
+			}
+
+			if (!end_set) {
+				end = sys_timepoint_calc(timeout);
+				end_set = true;
 			}
 
 			new = net_buf_alloc_fixed(pool,
@@ -1408,10 +1427,10 @@ int net_pkt_alloc_buffer_with_reserve(struct net_pkt *pkt,
 
 	if (!buf) {
 #if NET_LOG_LEVEL >= LOG_LEVEL_DBG
-		NET_ERR("Data buffer (%zu) allocation failed (%s:%d)",
+		NET_ERR_RATELIMIT("Data buffer (%zu) allocation failed (%s:%d)",
 			alloc_len + reserve, caller, line);
 #else
-		NET_ERR("Data buffer (%zu) allocation failed.",
+		NET_ERR_RATELIMIT("Data buffer (%zu) allocation failed.",
 			alloc_len + reserve);
 #endif
 		return -ENOMEM;
@@ -1535,10 +1554,10 @@ int net_pkt_alloc_buffer_raw(struct net_pkt *pkt, size_t size,
 
 	if (!buf) {
 #if NET_LOG_LEVEL >= LOG_LEVEL_DBG
-		NET_ERR("Data buffer (%zd) allocation failed (%s:%d)",
+		NET_ERR_RATELIMIT("Data buffer (%zd) allocation failed (%s:%d)",
 			size, caller, line);
 #else
-		NET_ERR("Data buffer (%zd) allocation failed.", size);
+		NET_ERR_RATELIMIT("Data buffer (%zd) allocation failed.", size);
 #endif
 		return -ENOMEM;
 	}

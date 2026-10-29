@@ -40,7 +40,8 @@ missing piece skips the test with a reason rather than failing it.
 Installing Titan
 ****************
 
-Most distributions package a Titan:
+Most distributions package a Titan, and that is what continuous integration
+installs:
 
 .. code-block:: console
 
@@ -55,7 +56,7 @@ Building Titan from source
 
 :file:`net-tools/docker/Dockerfile.ttcn3` builds Titan into :file:`/opt/titan`
 and is the reference for doing it by hand, either as a container or as a recipe
-to follow.
+to follow. It is a local option, not what continuous integration uses.
 
 Two things a hand built Titan has to get right. Titan is configured through a
 :file:`Makefile.personal` in its source tree rather than a ``configure`` script,
@@ -285,6 +286,10 @@ checked:
      - Install ``expect`` and a Titan that ships the main controller
    * - ``has to be run as root``
      - Re-run under ``sudo -E``, or use the script
+
+Set ``NET_CONFORMANCE_REQUIRED`` in the environment to turn each of these into
+a failure. That is for a run whose purpose is the suites, such as the nightly
+job, where a test that did not run must not pass for one that did.
 
 Troubleshooting
 ***************

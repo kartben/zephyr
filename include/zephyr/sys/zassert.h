@@ -18,6 +18,7 @@
 #define ZEPHYR_INCLUDE_SYS_ZASSERT_H_
 
 #include <stdarg.h>
+#include <stddef.h>
 
 #include <zephyr/sys/util_macro.h>
 #include <zephyr/toolchain.h>
@@ -147,7 +148,7 @@ static inline __printf_like(1, 2) void zassert_print(const char *fmt, ...)
 			case ZASSERT_LEVEL_TERSE:					\
 				zassert_fail(NULL, NULL, 0, NULL);			\
 				break;							\
-			case ZASSERT_LEVEL_OFF: /* To silence warnings */		\
+			default: /* ZASSERT_LEVEL_OFF */				\
 				break;							\
 			}								\
 		}									\

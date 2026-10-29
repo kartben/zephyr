@@ -552,6 +552,89 @@ Here are more details on the peripherals that are currently provided with this b
 .. _SDL2:
    https://www.libsdl.org
 
+.. _nsim_per_video_fifo:
+
+**Video capture driver**
+  A video capture driver is provided that reads raw frames from a named pipe
+  (FIFO) on the host, and presents them through the :ref:`video_api` as an
+  ordinary ``zephyr,camera`` device. This makes it possible to feed an
+  application with frames coming from a real webcam, a video file, or a
+  generated test pattern, without any camera hardware.
+
+  The device can be instantiated using the :ref:`snippet-video-native-fifo`
+  snippet, or by adding a devicetree node with the
+  ``zephyr,native-sim-video-fifo`` compatible. The application selects the
+  pixel format and the frame size, up to 1920x1080, with
+  :c:func:`video_set_format`. The default is 320x240 RGB565. The host writer
+  must produce frames of that format, as the driver does no scaling or
+  conversion. In ``ffmpeg``, RGB565, YUYV and GREY are ``rgb565le``,
+  ``yuyv422`` and ``gray``.
+
+  The FIFO path is taken from the ``fifo-path`` devicetree property, and
+  defaults to ``/tmp/zephyr-<device>-<pid>.fifo``. Each instance exposes its own
+  command line override in the form ``--<device>=<path>``. For a node named
+  ``video-fifo`` this is ``--video-fifo=<path>``. A FIFO created by the driver
+  is removed when the simulator exits.
+
+  The FIFO is created by the driver when the application starts streaming. A
+  writer must therefore either create the FIFO itself, for instance with
+  ``mkfifo``, or be started afterwards. For example:
+
+  .. code-block:: console
+
+     $ mkfifo /tmp/zephyr-cam.fifo
+     $ zephyr.exe --video-fifo=/tmp/zephyr-cam.fifo
+
+  Then, from another terminal, feed it a test pattern in the default format:
+
+  .. code-block:: console
+
+     $ ffmpeg -re -f lavfi -i testsrc2=size=320x240:rate=10 \
+         -pix_fmt rgb565le -f rawvideo -y /tmp/zephyr-cam.fifo
+
+  To capture from a webcam instead:
+
+  .. code-block:: console
+
+     $ ffmpeg -f v4l2 -i /dev/video0 \
+         -vf "scale=320:240:force_original_aspect_ratio=increase,crop=320:240,fps=10" \
+         -pix_fmt rgb565le -f rawvideo -y /tmp/zephyr-cam.fifo
+
+  If the path exists but is not a FIFO, the driver prints an error and refuses
+  to start streaming. The FIFO is opened non-blocking and polled from a
+  dedicated thread, so the simulation is never blocked: while no host writer is
+  attached, no frame is delivered. If a writer disconnects in the middle of a
+  frame, the incomplete frame is discarded so that the next writer resumes on a
+  frame boundary.
+
+  Frames are handed to the application as soon as they arrive, without any
+  pacing of its own: the frame rate is entirely the one the host writer
+  produces. When the host has more data pending and the application still has a
+  free buffer, the driver keeps reading without waiting; ``poll-interval-ms``
+  only applies once the host has nothing more to offer.
+
+  The driver enlarges the host pipe to hold two frames. Unprivileged processes
+  are limited by ``/proc/sys/fs/pipe-max-size`` for each pipe (1 MiB by
+  default), and by ``/proc/sys/fs/pipe-user-pages-soft`` for all their pipes
+  together. When the pipe cannot hold two frames, the driver logs a warning, as
+  the frame rate may be limited: the host writer then waits for the driver to
+  make room, which it does every ``poll-interval-ms``. To avoid this, run
+  ``zephyr.exe`` with root privileges (or the CAP_SYS_RESOURCE POSIX
+  capability, to be exact), or raise the limit beforehand. 16 MiB fits two
+  frames of any supported format:
+
+  .. code-block:: console
+
+     $ sudo sysctl fs.pipe-max-size=16777216
+
+  A shorter ``poll-interval-ms`` also helps, down to one system tick, see
+  :kconfig:option:`CONFIG_SYS_CLOCK_TICKS_PER_SEC`.
+
+  When the application holds every buffer, the driver stops reading and the
+  host writer blocks once the pipe is full, so the driver drops nothing. Use a
+  rate-limited writer such as ``ffmpeg -re``: an unpaced one is read as fast as
+  the application returns buffers.
+
 .. _nsim_per_flash_simu:
 
 **EEPROM simulator**
@@ -618,6 +701,28 @@ Here are more details on the peripherals that are currently provided with this b
   to use the specified interface.
 
   SocketCAN support can be enabled by using the :ref:`snippet-socketcan-native-sim`.
+
+**Fuel gauge**
+
+  A fuel gauge driver is available for reading battery properties from a Linux
+  power_supply sysfs device on the host through the Zephyr fuel gauge API. It can
+  be enabled with :kconfig:option:`CONFIG_NATIVE_LINUX_FUEL_GAUGE` and
+  configured with the devicetree binding :dtcompatible:`zephyr,native-linux-fuel-gauge`.
+  A property whose sysfs attribute the battery does not provide is reported as unsupported.
+
+  The ``fuel_gauge0`` node of the board is disabled by default, as the name of the battery depends
+  on the host. For example, for ``/sys/class/power_supply/BAT0/`` you can configure:
+
+  .. code-block:: dts
+
+      &fuel_gauge0 {
+        path = "/sys/class/power_supply/BAT0";
+        status = "okay";
+      };
+
+  The ``--fuel-gauge-path=<path>`` command line option overrides the devicetree path, for
+  example to read a directory holding the attribute files of a fake power supply on a host
+  without a battery. The directory must contain a ``type`` file reading ``Battery``.
 
 **LED device**
   Implements a Zephyr LED device backed by a Linux LED. You configure which

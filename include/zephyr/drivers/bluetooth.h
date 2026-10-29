@@ -38,6 +38,11 @@
 extern "C" {
 #endif
 
+/** @brief Parameters of the setup() driver API op.
+ *
+ *  @deprecated Together with the op itself, see bt_hci_setup(). A driver takes
+ *              the public address from bt_hci_get_public_addr() instead.
+ */
 struct bt_hci_setup_params {
 	/** The public identity address to give to the controller. This field is used when the
 	 *  driver selects @kconfig{CONFIG_BT_HCI_SET_PUBLIC_ADDR} to indicate that it supports
@@ -69,16 +74,31 @@ enum {
 	 * the feature as not supported.
 	 */
 	BT_HCI_QUIRK_NO_FLOW_CONTROL = BIT(2),
+	/** No LE Advertising Set Terminated event when high duty cycle advertising times out.
+	 *
+	 * The controller reports the timeout of high duty cycle connectable directed advertising
+	 * enabled with the extended advertising commands with a connection complete event only.
+	 * Core Spec v6.3 Vol 4 Part E 7.8.56 allows that event, an LE Advertising Set Terminated
+	 * event, or both, and the host cannot tell which a controller sends. With this quirk it
+	 * ends the advertising set at the connection complete event. Never set it for a controller
+	 * that also sends LE Advertising Set Terminated; the host logs a warning when it gets one.
+	 *
+	 * The connection complete event names no advertising set, so the host refuses with -EBUSY
+	 * to start a second such set while one is enabled, reports 0 completed events to the set's
+	 * sent callback, and takes an event still queued when the application restarts
+	 * advertising for the end of the new advertising.
+	 */
+	BT_HCI_QUIRK_NO_ADV_TERM_ON_DIR_TIMEOUT = BIT(3),
 };
 
 #define BT_DT_HCI_QUIRK_OR(node_id, prop, idx) \
 	UTIL_CAT(BT_HCI_QUIRK_, DT_STRING_UPPER_TOKEN_BY_IDX(node_id, prop, idx))
-#define BT_DT_HCI_QUIRKS_GET(node_id) COND_CODE_1(DT_NODE_HAS_PROP(node_id, bt_hci_quirks), \
-						  (DT_FOREACH_PROP_ELEM_SEP(node_id, \
-									    bt_hci_quirks, \
-									    BT_DT_HCI_QUIRK_OR, \
-									    (|))), \
-						  (0))
+#define BT_DT_HCI_QUIRKS_GET(node_id) (COND_CODE_1(DT_NODE_HAS_PROP(node_id, bt_hci_quirks), \
+						   (DT_FOREACH_PROP_ELEM_SEP(node_id, \
+									     bt_hci_quirks, \
+									     BT_DT_HCI_QUIRK_OR, \
+									     (|))), \
+						   (0)))
 #define BT_DT_HCI_QUIRKS_INST_GET(inst) BT_DT_HCI_QUIRKS_GET(DT_DRV_INST(inst))
 
 #define BT_DT_HCI_NAME_GET(node_id) DT_PROP_OR(node_id, bt_hci_name, "HCI")
@@ -183,6 +203,8 @@ typedef int (*bt_hci_api_send_t)(const struct device *dev, struct net_buf *buf);
 /**
  * @brief Callback API for HCI vendor-specific setup.
  * See bt_hci_setup() for argument description
+ *
+ * @deprecated See bt_hci_setup().
  */
 typedef int (*bt_hci_api_setup_t)(const struct device *dev,
 				  const struct bt_hci_setup_params *param);
@@ -224,6 +246,8 @@ __subsystem struct bt_hci_driver_api {
 	/**
 	 * @driver_ops_optional @copybrief bt_hci_setup
 	 * @kconfig_dep{CONFIG_BT_HCI_SETUP}
+	 *
+	 * @deprecated See bt_hci_setup().
 	 */
 	bt_hci_api_setup_t setup;
 #endif /* CONFIG_BT_HCI_SETUP */
@@ -423,6 +447,9 @@ static inline int bt_hci_send(const struct device *dev, struct net_buf *buf)
  *
  * @note @kconfig{CONFIG_BT_HCI_SETUP} must be selected for this
  * field to be available.
+ *
+ * @deprecated A driver performs its vendor-specific initialization inside
+ *             open(), over its own transport. See the 4.5 migration guide.
  *
  * @return 0 on success or negative POSIX error number on failure.
  */
