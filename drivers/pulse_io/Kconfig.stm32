@@ -10,5 +10,6 @@ config PULSE_IO_STM32_TIMER
 	select CACHE_MANAGEMENT if DCACHE
 	help
 	  Enable the Pulse IO driver for STM32 timers. It transmits fixed-period
-	  cells on a timer channel in PWM mode, a DMA transfer loading the duty
-	  cycle of each period.
+	  cells on timer channels in PWM mode, a DMA burst loading the duty
+	  cycles of each period, and with RTIO receives the reply that follows
+	  a transmit on a channel with a capture DMA.
