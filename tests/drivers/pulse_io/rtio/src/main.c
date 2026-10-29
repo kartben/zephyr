@@ -28,25 +28,14 @@ static const struct pulse_io_bit_template tmpl = {
 
 RTIO_DEFINE(pio_rtio, 4, 4);
 
-/*
- * A minimal iodev that routes submissions to the pulse_io device's own
- * submit op via pulse_io_iodev_submit, exercising the device-backed RTIO
- * path (what a real backend like RMT implements).
- */
-static void dev_iodev_submit(struct rtio_iodev_sqe *iodev_sqe)
-{
-	const struct device *d = ((const struct rtio_iodev *)iodev_sqe->sqe.iodev)->data;
+/* Iodevs that route submissions to channels of the pulse_io device's own submit op */
+PULSE_IO_IODEV_DEFINE(dev_iodev, DEVICE_DT_GET(DT_NODELABEL(pulse_io0)));
+PULSE_IO_IODEV_DEFINE(dev_iodev2, DEVICE_DT_GET(DT_NODELABEL(pulse_io0)));
 
-	pulse_io_iodev_submit(d, iodev_sqe);
-}
-
-static const struct rtio_iodev_api dev_iodev_api = {
-	.submit = dev_iodev_submit,
-};
-
-static struct rtio_iodev dev_iodev = {
-	.api = &dev_iodev_api,
-	.data = (void *)DEVICE_DT_GET(DT_NODELABEL(pulse_io0)),
+static const struct pulse_io_config txrx_cfg = {
+	.mode = PULSE_IO_MODE_SYMBOL,
+	.dir = PULSE_IO_DIR_TX_RX,
+	.resolution_hz = 1000000,
 };
 
 /*
@@ -228,6 +217,12 @@ ZTEST(pulse_io_rtio, test_device_routed_submit)
 	rc = enc->encode(&tmpl, msg, sizeof(msg), syms, ARRAY_SIZE(syms), &produced);
 	zassert_ok(rc);
 
+	struct pulse_io_channel *ch;
+
+	zassert_ok(pulse_io_channel_get(pio_dev, 2, &ch));
+	zassert_ok(pulse_io_channel_configure(pio_dev, ch, &txrx_cfg));
+	pulse_io_iodev_set_channel(&dev_iodev, ch);
+
 	struct rtio_sqe *tx = rtio_sqe_acquire(&pio_rtio);
 
 	rtio_sqe_prep_write(tx, &dev_iodev, RTIO_PRIO_NORM, (const uint8_t *)syms,
@@ -256,6 +251,73 @@ ZTEST(pulse_io_rtio, test_device_routed_submit)
 			 &produced);
 	zassert_ok(rc);
 	zassert_mem_equal(decoded, msg, sizeof(msg), "payload mismatch");
+
+	pulse_io_iodev_set_channel(&dev_iodev, NULL);
+	zassert_ok(pulse_io_channel_release(pio_dev, ch));
+}
+
+/*
+ * Each iodev drives its own channel: a chained transmit then receive on
+ * two channels of the device gets back the symbols of its own channel,
+ * and a submission on an iodev without a channel fails.
+ */
+ZTEST(pulse_io_rtio, test_device_iodev_channels)
+{
+	struct pulse_symbol tx1[] = {{.duration = 10, .level = 1}, {.duration = 20, .level = 0}};
+	struct pulse_symbol tx2[] = {{.duration = 30, .level = 1}, {.duration = 40, .level = 0},
+				     {.duration = 50, .level = 1}};
+	struct pulse_symbol rx1[4];
+	struct pulse_symbol rx2[4];
+	struct pulse_io_channel *ch1;
+	struct pulse_io_channel *ch2;
+	struct rtio_cqe *cqe;
+
+	zassert_ok(pulse_io_channel_get(pio_dev, 1, &ch1));
+	zassert_ok(pulse_io_channel_get(pio_dev, 3, &ch2));
+	zassert_ok(pulse_io_channel_configure(pio_dev, ch1, &txrx_cfg));
+	zassert_ok(pulse_io_channel_configure(pio_dev, ch2, &txrx_cfg));
+	pulse_io_iodev_set_channel(&dev_iodev, ch1);
+	pulse_io_iodev_set_channel(&dev_iodev2, ch2);
+
+	struct rtio_sqe *sqe = rtio_sqe_acquire(&pio_rtio);
+
+	rtio_sqe_prep_write(sqe, &dev_iodev, RTIO_PRIO_NORM, (const uint8_t *)tx1, sizeof(tx1),
+			    NULL);
+	sqe->flags |= RTIO_SQE_CHAINED;
+	sqe = rtio_sqe_acquire(&pio_rtio);
+	rtio_sqe_prep_read(sqe, &dev_iodev, RTIO_PRIO_NORM, (uint8_t *)rx1, sizeof(rx1), NULL);
+	sqe = rtio_sqe_acquire(&pio_rtio);
+	rtio_sqe_prep_write(sqe, &dev_iodev2, RTIO_PRIO_NORM, (const uint8_t *)tx2, sizeof(tx2),
+			    NULL);
+	sqe->flags |= RTIO_SQE_CHAINED;
+	sqe = rtio_sqe_acquire(&pio_rtio);
+	rtio_sqe_prep_read(sqe, &dev_iodev2, RTIO_PRIO_NORM, (uint8_t *)rx2, sizeof(rx2), NULL);
+	zassert_ok(rtio_submit(&pio_rtio, 4));
+
+	for (int i = 0; i < 4; i++) {
+		cqe = rtio_cqe_consume(&pio_rtio);
+		zassert_not_null(cqe);
+		zassert_true(cqe->result >= 0, "submission %d failed: %d", i, cqe->result);
+		rtio_cqe_release(&pio_rtio, cqe);
+	}
+
+	zassert_equal(rx1[1].duration, 20);
+	zassert_equal(rx2[2].duration, 50);
+
+	/* No channel */
+	pulse_io_iodev_set_channel(&dev_iodev, NULL);
+	sqe = rtio_sqe_acquire(&pio_rtio);
+	rtio_sqe_prep_write(sqe, &dev_iodev, RTIO_PRIO_NORM, (const uint8_t *)tx1, sizeof(tx1),
+			    NULL);
+	zassert_ok(rtio_submit(&pio_rtio, 1));
+	cqe = rtio_cqe_consume(&pio_rtio);
+	zassert_not_null(cqe);
+	zassert_equal(cqe->result, -EINVAL);
+	rtio_cqe_release(&pio_rtio, cqe);
+
+	pulse_io_iodev_set_channel(&dev_iodev2, NULL);
+	zassert_ok(pulse_io_channel_release(pio_dev, ch2));
+	zassert_ok(pulse_io_channel_release(pio_dev, ch1));
 }
 
 static void *rtio_setup(void)

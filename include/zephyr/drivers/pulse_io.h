@@ -65,6 +65,11 @@ enum pulse_io_dir {
 	PULSE_IO_DIR_TX,
 	/** Receive (capture edges). */
 	PULSE_IO_DIR_RX,
+	/**
+	 * Half duplex on a single line: transmit, then receive the reply of the
+	 * other end, which drives the line once the transmit has ended.
+	 */
+	PULSE_IO_DIR_TX_RX,
 };
 
 /**
@@ -595,6 +600,59 @@ static inline int z_impl_pulse_io_get_decoder(const struct device *dev,
 }
 
 #ifdef CONFIG_RTIO
+/**
+ * @brief RTIO iodev data of a pulse_io channel.
+ *
+ * A transmit (RTIO_OP_TX) or receive (RTIO_OP_RX) submission on an iodev
+ * defined with @ref PULSE_IO_IODEV_DEFINE goes to the submit operation of
+ * @c dev, on the channel set with @ref pulse_io_iodev_set_channel. Chaining
+ * a receive to a transmit on a channel configured with
+ * @ref PULSE_IO_DIR_TX_RX receives the reply to the transmit.
+ */
+struct pulse_io_iodev {
+	/** Pulse IO device. */
+	const struct device *dev;
+	/** Reserved channel of the device, NULL until set. */
+	struct pulse_io_channel *chan;
+};
+
+/** @cond INTERNAL_HIDDEN */
+extern const struct rtio_iodev_api pulse_io_iodev_api;
+/** @endcond */
+
+/**
+ * @brief Define an RTIO iodev for a channel of a pulse_io device.
+ *
+ * @param name Name of the iodev.
+ * @param dev_ptr Pulse IO device.
+ */
+#define PULSE_IO_IODEV_DEFINE(name, dev_ptr)                                                       \
+	static struct pulse_io_iodev _CONCAT(name, _pulse_io) = {.dev = (dev_ptr)};                \
+	RTIO_IODEV_DEFINE(name, &pulse_io_iodev_api, &_CONCAT(name, _pulse_io))
+
+/**
+ * @brief Set the channel of a pulse_io iodev.
+ *
+ * @param iodev Iodev defined with @ref PULSE_IO_IODEV_DEFINE.
+ * @param chan  Reserved channel of its device.
+ */
+static inline void pulse_io_iodev_set_channel(struct rtio_iodev *iodev,
+					      struct pulse_io_channel *chan)
+{
+	((struct pulse_io_iodev *)iodev->data)->chan = chan;
+}
+
+/**
+ * @brief Get the channel of a submission on a pulse_io iodev.
+ *
+ * For backends: the channel of the iodev of @p iodev_sqe.
+ */
+static inline struct pulse_io_channel *
+pulse_io_iodev_channel(const struct rtio_iodev_sqe *iodev_sqe)
+{
+	return ((const struct pulse_io_iodev *)iodev_sqe->sqe.iodev->data)->chan;
+}
+
 /**
  * @brief Submit an RTIO request to a pulse_io device.
  *
