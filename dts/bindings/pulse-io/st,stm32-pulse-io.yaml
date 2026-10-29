@@ -5,10 +5,15 @@ title: STM32 timer Pulse IO controller
 
 description: |
   Pulse IO controller on the channels of an STM32 timer, for fixed-period
-  cells (CELL mode) in transmission only. The channel runs in PWM mode and
-  each timer update event triggers a DMA transfer that loads the duty cycle
-  of the next period. The channels share the timer prescaler and period and
-  transmit one at a time.
+  cells (CELL mode). The channels run in PWM mode and each timer update
+  event triggers a DMA burst that loads the duty cycles of the next period.
+  The channels share the timer prescaler and period, and the channels of a
+  multi-channel transmit start together.
+
+  A channel with a DMA request of its own (ch1 to ch4 in dma-names) can be
+  configured half duplex (PULSE_IO_DIR_TX_RX): a receive submitted with
+  RTIO after a transmit captures the edges of the reply on the same line.
+  The pin then needs a pull to its idle level.
 
   The node is a child of an st,stm32-timers node, whose other functions
   cannot be used at the same time. The pulse-ios cell is the timer channel
@@ -28,12 +33,15 @@ properties:
   dmas:
     required: true
     description: |
-      DMA channel driven by the update request of the timer (TIMx_UP).
+      DMA channel driven by the update request of the timer (TIMx_UP), and
+      optionally, for the receive on a channel, a DMA channel driven by the
+      capture/compare request of that channel (TIMx_CH1 to TIMx_CH4).
 
   dma-names:
     required: true
-    enum:
-      - tx
+    description: |
+      tx for the update request, ch1 to ch4 for the capture/compare
+      requests of the channels.
 
   "#pulse-io-cells":
     const: 1
@@ -43,7 +51,16 @@ properties:
     default: 256
     description: |
       Maximum number of cells of a transmission, plus one for the idle cell
-      that ends it. It sets the size of the DMA buffer, of 4 bytes per cell.
+      that ends it. It sets the size of the DMA buffer, of 4 bytes per cell
+      and channel.
+
+  st,max-edges:
+    type: int
+    default: 32
+    description: |
+      Maximum number of edges of a receive. It sets the size of the capture
+      buffer of each channel, of 4 bytes per edge, which must fill whole
+      data cache lines.
 
 examples:
   - |
