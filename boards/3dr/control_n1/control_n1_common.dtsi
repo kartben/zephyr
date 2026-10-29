@@ -120,6 +120,8 @@
 };
 
 &usart1 {
+	clocks = <&rcc STM32_CLOCK(APB2, 4)>,
+		 <&rcc STM32_SRC_PLL2_Q USART16_SEL(1)>;
 	pinctrl-0 = <&usart1_tx_pa9 &usart1_rx_pa10>;
 	pinctrl-names = "default";
 	current-speed = <115200>;
@@ -127,6 +129,8 @@
 };
 
 &usart2 {
+	clocks = <&rcc STM32_CLOCK(APB1, 17)>,
+		 <&rcc STM32_SRC_PLL2_Q USART2345678_SEL(1)>;
 	pinctrl-0 = <&usart2_tx_pd5 &usart2_rx_pd6 &usart2_cts_pd3 &usart2_rts_pd4>;
 	pinctrl-names = "default";
 	current-speed = <115200>;
@@ -134,6 +138,8 @@
 };
 
 &usart3 {
+	clocks = <&rcc STM32_CLOCK(APB1, 18)>,
+		 <&rcc STM32_SRC_PLL2_Q USART2345678_SEL(1)>;
 	pinctrl-0 = <&usart3_tx_pd8 &usart3_rx_pd9>;
 	pinctrl-names = "default";
 	current-speed = <115200>;
@@ -141,6 +147,8 @@
 };
 
 &uart4 {
+	clocks = <&rcc STM32_CLOCK(APB1, 19)>,
+		 <&rcc STM32_SRC_PLL2_Q USART2345678_SEL(1)>;
 	pinctrl-0 = <&uart4_tx_pd1 &uart4_rx_pd0 &uart4_cts_pb0 &uart4_rts_pa15>;
 	pinctrl-names = "default";
 	current-speed = <115200>;
@@ -148,6 +156,8 @@
 };
 
 &usart6 {
+	clocks = <&rcc STM32_CLOCK(APB2, 5)>,
+		 <&rcc STM32_SRC_PLL2_Q USART16_SEL(1)>;
 	pinctrl-0 = <&usart6_tx_pc6 &usart6_rx_pc7>;
 	pinctrl-names = "default";
 	current-speed = <115200>;
@@ -155,6 +165,8 @@
 };
 
 &uart7 {
+	clocks = <&rcc STM32_CLOCK(APB1, 30)>,
+		 <&rcc STM32_SRC_PLL2_Q USART2345678_SEL(1)>;
 	pinctrl-0 = <&uart7_tx_pe8 &uart7_rx_pe7 &uart7_cts_pe10 &uart7_rts_pe9>;
 	pinctrl-names = "default";
 	current-speed = <115200>;
@@ -162,6 +174,8 @@
 };
 
 &uart8 {
+	clocks = <&rcc STM32_CLOCK(APB1, 31)>,
+		 <&rcc STM32_SRC_PLL2_Q USART2345678_SEL(1)>;
 	pinctrl-0 = <&uart8_tx_pe1 &uart8_rx_pe0>;
 	pinctrl-names = "default";
 	current-speed = <115200>;
