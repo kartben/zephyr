@@ -86,7 +86,6 @@ Add the directive to a document (it takes no options)::
 from __future__ import annotations
 
 import re
-import sys
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Final
@@ -99,14 +98,15 @@ from sphinx.application import Sphinx
 from sphinx.util import logging
 from sphinx.util.docutils import SphinxDirective
 
+from zephyr._paths import ZEPHYR_BASE, add_script_paths
+
 __version__ = "0.1.0"
 
-ZEPHYR_BASE: Final[Path] = Path(__file__).parents[3]
 REUSE_TOML: Final[Path] = ZEPHYR_BASE / "REUSE.toml"
 
 # Reuse the licensing-policy helpers shared with the CI compliance check: the marker key that turns
 # a REUSE annotation into a documented exception, and license resolution through the reuse library.
-sys.path.append(str(ZEPHYR_BASE / "scripts"))
+add_script_paths("scripts")
 from list_undocumented_licenses import MARKER_KEY, resolved_licenses  # noqa: E402
 
 logger = logging.getLogger(__name__)
