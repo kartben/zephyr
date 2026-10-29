@@ -75,6 +75,13 @@ framework. The RTIO ops are optional; a backend that does not implement
 them leaves the corresponding driver API members ``NULL`` and the
 accessors return ``-ENOSYS``.
 
+An iodev defined with :c:macro:`PULSE_IO_IODEV_DEFINE` routes its
+submissions to the channel set with :c:func:`pulse_io_iodev_set_channel`.
+On a channel configured half duplex (``PULSE_IO_DIR_TX_RX``), a receive
+chained to a transmit captures the reply of the other end on the same line,
+as bidirectional DShot or one-wire protocols need, without the client
+waiting for it.
+
 API Reference
 *************
 

@@ -216,10 +216,13 @@ static int lb_get_decoder(const struct device *dev, const struct pulse_io_decode
 
 static void lb_submit(const struct device *dev, struct rtio_iodev_sqe *iodev_sqe)
 {
-	struct pulse_io_lb_data *data = dev->data;
-	/* The RTIO path uses a single channel for this test backend. */
-	struct pulse_io_lb_channel *ch = &data->channels[0];
+	struct pulse_io_lb_channel *ch = to_channel(dev, pulse_io_iodev_channel(iodev_sqe));
 	struct rtio_sqe *sqe = &iodev_sqe->sqe;
+
+	if (ch == NULL || !ch->configured) {
+		rtio_iodev_sqe_err(iodev_sqe, -EINVAL);
+		return;
+	}
 
 	if (sqe->op == RTIO_OP_TX) {
 		size_t nsyms = sqe->tx.buf_len / sizeof(struct pulse_symbol);
