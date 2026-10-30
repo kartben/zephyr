@@ -839,6 +839,14 @@ structure in the main Zephyr tree: boards/<vendor>/<board_name>/""")
              "example on Windows OS. This option can be used only with "
              "'--ninja' argument (to use Ninja build generator).")
 
+    parser.add_argument(
+        "--strict-soc-modules",
+        action="store_true",
+        help="Build with only the modules that a soc.yml lists for the SoC and CPU "
+             "cluster of the platform, or that no soc.yml lists at all, plus those "
+             "the test lists in 'modules'. A SoC that uses a module it does not "
+             "list then fails to build.")
+
     parser.add_argument("--timestamps",
                         action="store_true",
                         help="Print all messages with time stamps.")

@@ -3,6 +3,8 @@
 
 family:
 - name: microchip_sam_d5x_e5x
+  modules:
+  - hal_microchip
   series:
   - name: atsamd51
     socs:

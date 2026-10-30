@@ -1,5 +1,7 @@
 family:
 - name: bflb
+  modules:
+  - hal_bouffalolab
   series:
   - name: bl60x
     socs:

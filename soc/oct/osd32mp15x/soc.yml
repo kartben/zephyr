@@ -1,2 +1,4 @@
 socs:
   - name: osd32mp15x
+    modules:
+      - hal_stm32

@@ -1,5 +1,7 @@
 family:
 - name: nxp_imx
+  modules:
+  - hal_nxp
   series:
   - name: imx8
     socs:

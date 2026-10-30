@@ -2,3 +2,5 @@ vendor: intel
 comment: "Intel Alder Lake SoC"
 socs:
 - name: alder_lake
+  modules:
+  - acpica

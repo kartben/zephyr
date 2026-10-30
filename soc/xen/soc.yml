@@ -1,4 +1,6 @@
 series:
 - name: xenvm
+  modules:
+  - xenlib
   socs:
   - name: xenvm

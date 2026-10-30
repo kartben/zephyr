@@ -1,5 +1,7 @@
 family:
 - name: numaker
+  modules:
+  - nuvoton
   series:
   - name: m46x
     socs:

@@ -2,6 +2,8 @@ family:
 - name: ti_mspm
   series:
   - name: mspm0g
+    modules:
+    - ti
     socs:
     - name: mspm0g1105
     - name: mspm0g1106
@@ -20,6 +22,8 @@ family:
     - name: mspm0g3518
     - name: mspm0g3519
   - name: mspm0l
+    modules:
+    - ti
     socs:
     - name: mspm0l1105
     - name: mspm0l1106

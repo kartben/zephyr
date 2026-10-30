@@ -2,6 +2,8 @@ family:
 - name: lpc
   series:
   - name: lpc84x
+    modules:
+    - hal_nxp
     socs:
     - name: lpc845
   - name: lpc11u6x
@@ -10,9 +12,13 @@ family:
     - name: lpc11u67
     - name: lpc11u68
   - name: lpc51u68
+    modules:
+    - hal_nxp
     socs:
     - name: lpc51u68
   - name: lpc54xxx
+    modules:
+    - hal_nxp
     socs:
     - name: lpc54114
       cpuclusters:
@@ -20,6 +26,8 @@ family:
       - name: m0
     - name: lpc54628
   - name: lpc55xxx
+    modules:
+    - hal_nxp
     socs:
     - name: lpc55s06
     - name: lpc55s16

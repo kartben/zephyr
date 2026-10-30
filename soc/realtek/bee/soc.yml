@@ -1,5 +1,7 @@
 family:
 - name: realtek_bee
+  modules:
+  - hal_realtek
   series:
   - name: rtl87x2g
     socs:

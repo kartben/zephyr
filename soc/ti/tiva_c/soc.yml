@@ -1,5 +1,7 @@
 family:
 - name: ti_tiva_c
+  modules:
+  - ti
   series:
   - name: tm4c123x
     socs:

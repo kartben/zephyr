@@ -1,5 +1,7 @@
 family:
 - name: rpi_pico
+  modules:
+  - hal_rpi_pico
   series:
   - name: rp2040
     socs:

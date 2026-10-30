@@ -4,6 +4,8 @@
 
 family:
 - name: ch32v
+  modules:
+  - hal_wch
   series:
   - name: qingke-v2a
     socs:

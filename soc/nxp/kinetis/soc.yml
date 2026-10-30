@@ -1,5 +1,7 @@
 family:
 - name: kinetis
+  modules:
+  - hal_nxp
   series:
   - name: kwx
     socs:

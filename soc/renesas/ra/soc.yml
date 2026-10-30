@@ -1,5 +1,7 @@
 family:
   - name: renesas_ra
+    modules:
+      - hal_renesas
     series:
       - name: ra0e1
         socs:

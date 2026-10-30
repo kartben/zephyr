@@ -1,5 +1,7 @@
 family:
   - name: telink_tlsr
+    modules:
+      - hal_telink
     series:
       - name: tlsr951x
         socs:

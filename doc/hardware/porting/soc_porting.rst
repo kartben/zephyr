@@ -141,6 +141,31 @@ Multiple SoCs and SoC series in a common folder can be described in the
          - name: <series-2-name>
            ...
 
+A SoC that cannot be built without a :ref:`module <modules>`, such as its vendor HAL, lists the
+module under ``modules``, in the family, series, SoC or CPU cluster entry it applies to. A SoC
+needs the modules of its family and series as well, and a CPU cluster those of its SoC:
+
+.. code-block:: yaml
+
+   family:
+     - name: <family-name>
+       modules:
+         - <module-name>
+       series:
+         - name: <series-1-name>
+           socs:
+             - name: <soc1>
+               cpuclusters:
+                 - name: <coreA>
+                   modules:
+                     - <other-module-name>
+                 - name: <coreB>
+
+When one of these modules is not available, the build stops before processing the devicetree,
+with a message that names the module, rather than failing later on a file the module provides.
+Use the module name from its :file:`zephyr/module.yml`, which can differ from the name of the
+west project.
+
 
 Write your SoC devicetree
 *************************

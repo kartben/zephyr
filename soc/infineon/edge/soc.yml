@@ -5,6 +5,8 @@
 
 family:
 - name: edge
+  modules:
+  - hal_infineon
   series:
   - name: pse84
     socs:

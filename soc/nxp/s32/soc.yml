@@ -1,5 +1,7 @@
 family:
 - name: nxp_s32
+  modules:
+  - hal_nxp
   series:
   - name: s32k1
     socs:

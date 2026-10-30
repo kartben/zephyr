@@ -1,5 +1,7 @@
 family:
 - name: atmel_sam
+  modules:
+  - atmel
   series:
   - name: sam3x
     socs:

@@ -10,6 +10,11 @@ west-commands:
       - name: boards
         class: Boards
         help: display information about supported boards
+  - file: scripts/west_commands/board_modules.py
+    commands:
+      - name: board-modules
+        class: BoardModules
+        help: list or fetch the west projects a board target needs
   - file: scripts/west_commands/shields.py
     commands:
       - name: shields
