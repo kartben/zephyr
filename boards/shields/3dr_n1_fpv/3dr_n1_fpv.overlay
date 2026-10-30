@@ -7,6 +7,17 @@
 #include <zephyr/dt-bindings/gpio/pixhawk-connector.h>
 
 / {
+	/*
+	 * Battery voltage from the VBATT pads. The resistors are not documented:
+	 * these values give the ratio measured on a carrier, 22.5 V reading 2.483 V.
+	 */
+	fpv_vbatt: vbatt {
+		compatible = "voltage-divider";
+		io-channels = <&cn1_adc 1>;
+		output-ohms = <1240>;
+		full-ohms = <(10000 + 1240)>;
+	};
+
 	pixhawk_telem1_connector: sg1-connector {
 		compatible = "pixhawk-telem-connector";
 		#gpio-cells = <2>;
