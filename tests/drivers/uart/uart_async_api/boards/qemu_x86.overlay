@@ -1,0 +1,13 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* COM2 with TX looped back to RX inside the UART */
+dut: &uart1 {
+	loopback;
+};
+
+&bt_hci_uart {
+	status = "disabled";
+};
