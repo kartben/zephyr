@@ -445,6 +445,8 @@
 	/* The SDMMC driver needs a 48 MHz kernel clock */
 	clocks = <&rcc STM32_CLOCK(AHB3, 16)>,
 		 <&rcc STM32_SRC_PLL2_R SDMMC_SEL(1)>;
+	/* SDMMC_CK = 48 MHz / (2 * 1): 24 MHz, within the default speed of the card */
+	clk-div = <1>;
 	bus-width = <4>;
 	disk-name = "SD";
 	status = "okay";
