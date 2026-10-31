@@ -13,3 +13,11 @@ configdefault INIT_ARCH_HW_AT_BOOT
 	default y
 
 endif # BOARD_CONTROL_N1 && !BOARD_CONTROL_N1_STM32H743XX_BARE
+
+if BOARD_CONTROL_N1
+
+# A FatFs write of several sectors from an unaligned buffer goes through the IDMA in one transfer
+configdefault SDMMC_STM32_IDMA_BOUNCE_SIZE
+	default 4096
+
+endif # BOARD_CONTROL_N1
