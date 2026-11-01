@@ -213,6 +213,9 @@
 	pinctrl-names = "default";
 	st,gpio-control;
 	cs-gpios = <&gpioe 12 GPIO_ACTIVE_LOW>;
+	dmas = <&dmamux1 8 38 (STM32_DMA_PERIPH_TX | STM32_DMA_PRIORITY_HIGH)>,
+	       <&dmamux1 9 37 (STM32_DMA_PERIPH_RX | STM32_DMA_PRIORITY_HIGH)>;
+	dma-names = "tx", "rx";
 	status = "okay";
 
 	imu1: iim42653@0 {
@@ -235,6 +238,9 @@
 	pinctrl-names = "default";
 	st,gpio-control;
 	cs-gpios = <&gpioe 15 GPIO_ACTIVE_LOW>;
+	dmas = <&dmamux1 10 40 (STM32_DMA_PERIPH_TX | STM32_DMA_PRIORITY_HIGH)>,
+	       <&dmamux1 11 39 (STM32_DMA_PERIPH_RX | STM32_DMA_PRIORITY_HIGH)>;
+	dma-names = "tx", "rx";
 	status = "okay";
 
 	imu2: iim42653@0 {
@@ -399,6 +405,10 @@
 };
 
 &dma1 {
+	status = "okay";
+};
+
+&dma2 {
 	status = "okay";
 };
 
