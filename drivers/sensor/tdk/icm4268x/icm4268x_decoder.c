@@ -259,61 +259,73 @@ static inline q31_t icm4268x_read_temperature_from_packet(const uint8_t *pkt)
 			temperature = (int8_t)pkt[0x7];
 		}
 
-		int64_t sensitivity = 207;
-		int64_t temperature100 = (temperature * 100) + (25 * sensitivity);
+		int32_t sensitivity = 207;
+		int32_t temperature100 = (temperature * 100) + (25 * sensitivity);
 
 		whole = temperature100 / sensitivity;
-		fraction =
-			((temperature100 - whole * sensitivity) * INT64_C(1000000)) / sensitivity;
+		fraction = ((temperature100 - whole * sensitivity) * 1000000) / sensitivity;
 	}
 	__ASSERT_NO_MSG(whole >= -512 && whole <= 511);
-	return (q31_t)(((int64_t)whole << 22) + (((int64_t)fraction << 22) / INT64_C(1000000)));
+
+	/*
+	 * fraction * 2^22 / 10^6 is fraction * 2^16 / 15625, split so that the products fit in
+	 * 32 bits. Both parts have the sign of fraction, so the result is truncated the same way.
+	 */
+	int32_t fraction_q22 = (fraction / 15625) * 65536 + (fraction % 15625) * 65536 / 15625;
+
+	return (q31_t)(((int64_t)whole << 22) + fraction_q22);
 }
 
-static int icm4268x_read_imu_from_packet(const uint8_t *pkt, bool is_accel, int fs,
-					 uint8_t axis_offset, q31_t *out)
+static int icm4268x_read_imu_from_packet(const uint8_t *pkt, bool is_accel, q31_t out[3])
 {
-	uint32_t unsigned_value;
-	int32_t signed_value;
-	bool is_hires = FIELD_GET(FIFO_HEADER_20, pkt[0]) == 1;
-	int offset = 1 + (axis_offset * 2);
-
-	const uint32_t scale[2][2] = {
+	static const uint32_t scale[2][2] = {
 		/* low-res,	hi-res */
 		{35744,		2235}, /* gyro */
 		{40168,		2511}, /* accel */
 	};
+	const bool is_hires = FIELD_GET(FIFO_HEADER_20, pkt[0]) == 1;
+	const uint32_t lsb_scale = scale[is_accel][is_hires];
+	const uint8_t *data = &pkt[1];
+	int rc = 0;
 
 	if (!is_accel && FIELD_GET(FIFO_HEADER_ACCEL, pkt[0]) == 1) {
-		offset += 6;
+		data += 6;
 	}
 
-	unsigned_value = (pkt[offset] << 8) | pkt[offset + 1];
+	for (int i = 0; i < 3; i++) {
+		uint32_t unsigned_value = (data[2 * i] << 8) | data[2 * i + 1];
+		int32_t signed_value;
 
-	if (is_hires) {
-		uint32_t mask = is_accel ? GENMASK(7, 4) : GENMASK(3, 0);
-		offset = 17 + axis_offset;
-		unsigned_value = (unsigned_value << 4) | FIELD_GET(mask, pkt[offset]);
-		signed_value = unsigned_value | (0 - (unsigned_value & BIT(19)));
+		if (is_hires) {
+			uint8_t lsb = pkt[17 + i];
 
-		/*
-		 * By default, INTF_CONFIG0 is set to 0x30 and thus FIFO_HOLD_LAST_DATA_EN is set to
-		 * 0. For 20-bit FIFO packets, -524288 indicates invalid data.
-		 *
-		 * At the time of writing, INTF_CONFIG0 is not configured explicitly.
-		 *
-		 * TODO: Enable/disable this check based on FIFO_HOLD_LAST_DATA_EN if INTF_CONFIG0
-		 * is configured explicitly.
-		 */
-		if (signed_value == -524288) {
-			return -ENODATA;
+			/* Accel in the high nibble, gyro in the low one */
+			lsb = is_accel ? FIELD_GET(GENMASK(7, 4), lsb)
+				       : FIELD_GET(GENMASK(3, 0), lsb);
+			unsigned_value = (unsigned_value << 4) | lsb;
+			signed_value = unsigned_value | (0 - (unsigned_value & BIT(19)));
+
+			/*
+			 * By default, INTF_CONFIG0 is set to 0x30 and thus FIFO_HOLD_LAST_DATA_EN
+			 * is set to 0. For 20-bit FIFO packets, -524288 indicates invalid data.
+			 *
+			 * At the time of writing, INTF_CONFIG0 is not configured explicitly.
+			 *
+			 * TODO: Enable/disable this check based on FIFO_HOLD_LAST_DATA_EN if
+			 * INTF_CONFIG0 is configured explicitly.
+			 */
+			if (signed_value == -524288) {
+				rc = -ENODATA;
+				continue;
+			}
+		} else {
+			signed_value = unsigned_value | (0 - (unsigned_value & BIT(15)));
 		}
-	} else {
-		signed_value = unsigned_value | (0 - (unsigned_value & BIT(15)));
+
+		out[i] = (q31_t)(signed_value * lsb_scale);
 	}
 
-	*out = (q31_t)(signed_value * scale[is_accel][is_hires]);
-	return 0;
+	return rc;
 }
 
 static const uint32_t accel_period_ns[] = {
@@ -349,26 +361,51 @@ static const uint32_t gyro_period_ns[] = {
 	[ICM42688_DT_GYRO_ODR_32000] = UINT32_C(1000000) / 32,
 };
 
-static int icm4268x_calc_timestamp_delta(int rtc_freq, int chan_type, int dt_odr, int frame_count,
-					 uint64_t *out_delta)
-{
-	uint32_t period;
+/* Spacing of the FIFO frames of one sensor */
+struct icm4268x_fifo_period {
+	uint64_t whole_ns;
+	uint32_t remainder;
+	uint32_t period_ns;
+	uint16_t rtc_freq;
+};
 
-	if (IS_ACCEL(chan_type)) {
-		period = accel_period_ns[dt_odr];
-	} else if (IS_GYRO(chan_type)) {
-		period = gyro_period_ns[dt_odr];
-	} else {
-		return -EINVAL;
+/*
+ * When ODR is set to r and an external clock with frequency f is used,
+ * the actual ODR = f * r / 32000, so frame n comes period * n * 32000 / f ns
+ * after the first one. Split period * 32000 into whole_ns * f + remainder once
+ * per batch so that each frame only needs a 32-bit division.
+ */
+static void icm4268x_fifo_period_init(struct icm4268x_fifo_period *fp, uint32_t period_ns,
+				      uint16_t rtc_freq)
+{
+	uint32_t part = (period_ns % rtc_freq) * 32000U;
+
+	fp->whole_ns = (uint64_t)(period_ns / rtc_freq) * 32000U + part / rtc_freq;
+	fp->remainder = part % rtc_freq;
+	fp->period_ns = period_ns;
+	fp->rtc_freq = rtc_freq;
+}
+
+static uint64_t icm4268x_fifo_frame_delta(const struct icm4268x_fifo_period *fp, int frame)
+{
+	if (frame < 0) {
+		/* Temperature frame ahead of any gyro frame, wraps around as an unsigned value */
+		return (uint64_t)fp->period_ns * frame * 32000 / fp->rtc_freq;
 	}
 
-	/*
-	 * When ODR is set to r and an external clock with frequency f is used,
-	 * the actual ODR = f * r / 32000.
-	 */
-	*out_delta = (uint64_t)period * frame_count * 32000 / rtc_freq;
+	/* fifo_count is 11 bits wide, so frame < 256 and remainder * frame fits in 32 bits */
+	return fp->whole_ns * (uint32_t)frame + fp->remainder * (uint32_t)frame / fp->rtc_freq;
+}
 
-	return 0;
+static uint8_t icm4268x_fifo_frame_size(uint8_t header)
+{
+	if (FIELD_GET(FIFO_HEADER_20, header) == 1) {
+		return 20;
+	}
+	if (FIELD_GET(FIFO_HEADER_ACCEL, header) == 1 && FIELD_GET(FIFO_HEADER_GYRO, header) == 1) {
+		return 16;
+	}
+	return 8;
 }
 
 static int icm4268x_fifo_decode(const uint8_t *buffer, struct sensor_chan_spec chan_spec,
@@ -376,65 +413,50 @@ static int icm4268x_fifo_decode(const uint8_t *buffer, struct sensor_chan_spec c
 {
 	const struct icm4268x_fifo_data *edata = (const struct icm4268x_fifo_data *)buffer;
 	const uint8_t *buffer_end = buffer + sizeof(struct icm4268x_fifo_data) + edata->fifo_count;
+	struct icm4268x_fifo_period period;
 	int accel_frame_count = 0;
 	int gyro_frame_count = 0;
+	uint16_t total_frames = 0;
+	uint8_t chan_header;
 	int count = 0;
+	int8_t shift = 0;
+	int shift_rc;
 	int rc = 0;
 
 	if ((uintptr_t)buffer_end <= *fit || chan_spec.chan_idx != 0) {
 		return 0;
 	}
 
-	/* Pre-count frames for the requested channel to compute first-sample timestamp */
-	uint16_t total_frames = 0;
-	const uint8_t *pre = buffer + sizeof(struct icm4268x_fifo_data);
-
-	while (pre < buffer_end) {
-		const bool is_20b = FIELD_GET(FIFO_HEADER_20, pre[0]) == 1;
-		const bool has_accel = FIELD_GET(FIFO_HEADER_ACCEL, pre[0]) == 1;
-		const bool has_gyro = FIELD_GET(FIFO_HEADER_GYRO, pre[0]) == 1;
-
-		if ((IS_ACCEL(chan_spec.chan_type) && has_accel) ||
-		    (IS_GYRO(chan_spec.chan_type) && has_gyro) ||
-		    (chan_spec.chan_type == SENSOR_CHAN_DIE_TEMP && (has_accel || has_gyro))) {
-			total_frames++;
-		}
-		if (is_20b) {
-			pre += 20;
-		} else if (has_accel && has_gyro) {
-			pre += 16;
-		} else {
-			pre += 8;
-		}
+	/* Header bits of the frames that carry a sample of the requested channel */
+	if (IS_ACCEL(chan_spec.chan_type)) {
+		chan_header = FIFO_HEADER_ACCEL;
+	} else if (IS_GYRO(chan_spec.chan_type)) {
+		chan_header = FIFO_HEADER_GYRO;
+	} else if (chan_spec.chan_type == SENSOR_CHAN_DIE_TEMP) {
+		chan_header = FIFO_HEADER_ACCEL | FIFO_HEADER_GYRO;
+	} else {
+		chan_header = 0;
 	}
-
-	uint64_t period_ns = 0;
 
 	if (IS_ACCEL(chan_spec.chan_type) || chan_spec.chan_type == SENSOR_CHAN_DIE_TEMP) {
-		icm4268x_calc_timestamp_delta(edata->rtc_freq, SENSOR_CHAN_ACCEL_XYZ,
-					      edata->accel_odr, 1, &period_ns);
+		icm4268x_fifo_period_init(&period, accel_period_ns[edata->accel_odr],
+					  edata->rtc_freq);
 	} else {
-		icm4268x_calc_timestamp_delta(edata->rtc_freq, SENSOR_CHAN_GYRO_XYZ,
-					      edata->gyro_odr, 1, &period_ns);
+		icm4268x_fifo_period_init(&period, gyro_period_ns[edata->gyro_odr],
+					  edata->rtc_freq);
 	}
 
-	((struct sensor_data_header *)data_out)->base_timestamp_ns =
-		edata->header.timestamp -
-		(total_frames > 0 ? (total_frames - 1) : 0) * period_ns;
+	shift_rc = icm4268x_get_shift(chan_spec.chan_type, edata->header.accel_fs,
+				      edata->header.gyro_fs, edata->header.variant, &shift);
 
 	buffer += sizeof(struct icm4268x_fifo_data);
 	while (count < max_count && buffer < buffer_end) {
-		const bool is_20b = FIELD_GET(FIFO_HEADER_20, buffer[0]) == 1;
 		const bool has_accel = FIELD_GET(FIFO_HEADER_ACCEL, buffer[0]) == 1;
 		const bool has_gyro = FIELD_GET(FIFO_HEADER_GYRO, buffer[0]) == 1;
-		const uint8_t *frame_end = buffer;
+		const uint8_t *frame_end = buffer + icm4268x_fifo_frame_size(buffer[0]);
 
-		if (is_20b) {
-			frame_end += 20;
-		} else if (has_accel && has_gyro) {
-			frame_end += 16;
-		} else {
-			frame_end += 8;
+		if ((buffer[0] & chan_header) != 0) {
+			total_frames++;
 		}
 		if (has_accel) {
 			accel_frame_count++;
@@ -453,17 +475,16 @@ static int icm4268x_fifo_decode(const uint8_t *buffer, struct sensor_chan_spec c
 			uint64_t ts_delta;
 
 			if (has_accel) {
-				rc = icm4268x_calc_timestamp_delta(
-					edata->rtc_freq, SENSOR_CHAN_ACCEL_XYZ, edata->accel_odr,
-					accel_frame_count - 1, &ts_delta);
+				ts_delta = icm4268x_fifo_frame_delta(&period,
+								     accel_frame_count - 1);
 			} else {
-				rc = icm4268x_calc_timestamp_delta(
-					edata->rtc_freq, SENSOR_CHAN_GYRO_XYZ, edata->gyro_odr,
-					gyro_frame_count - 1, &ts_delta);
-			}
-			if (rc < 0) {
-				buffer = frame_end;
-				continue;
+				struct icm4268x_fifo_period gyro_period;
+
+				icm4268x_fifo_period_init(&gyro_period,
+							  gyro_period_ns[edata->gyro_odr],
+							  edata->rtc_freq);
+				ts_delta = icm4268x_fifo_frame_delta(&gyro_period,
+								     gyro_frame_count - 1);
 			}
 
 			/*
@@ -488,17 +509,11 @@ static int icm4268x_fifo_decode(const uint8_t *buffer, struct sensor_chan_spec c
 				(struct sensor_three_axis_data *)data_out;
 			uint64_t ts_delta;
 
-			icm4268x_get_shift(SENSOR_CHAN_ACCEL_XYZ, edata->header.accel_fs,
-					   edata->header.gyro_fs, edata->header.variant,
-					   &data->shift);
-
-			rc = icm4268x_calc_timestamp_delta(edata->rtc_freq, SENSOR_CHAN_ACCEL_XYZ,
-							   edata->accel_odr, accel_frame_count - 1,
-							   &ts_delta);
-			if (rc < 0) {
-				buffer = frame_end;
-				continue;
+			if (shift_rc == 0) {
+				data->shift = shift;
 			}
+
+			ts_delta = icm4268x_fifo_frame_delta(&period, accel_frame_count - 1);
 
 			/*
 			 * TODO: For some extreme combination of ODR and FIFO count, using uint32_t
@@ -514,10 +529,7 @@ static int icm4268x_fifo_decode(const uint8_t *buffer, struct sensor_chan_spec c
 
 			q31_t reading[3];
 
-			for (int i = 0; i < 3; i++) {
-				rc |= icm4268x_read_imu_from_packet(
-					buffer, true, edata->header.accel_fs, i, &reading[i]);
-			}
+			rc = icm4268x_read_imu_from_packet(buffer, true, reading);
 
 			for (int i = 0; i < 3; i++) {
 				data->readings[count].values[i] =
@@ -536,17 +548,11 @@ static int icm4268x_fifo_decode(const uint8_t *buffer, struct sensor_chan_spec c
 				(struct sensor_three_axis_data *)data_out;
 			uint64_t ts_delta;
 
-			icm4268x_get_shift(SENSOR_CHAN_GYRO_XYZ, edata->header.accel_fs,
-					   edata->header.gyro_fs, edata->header.variant,
-					   &data->shift);
-
-			rc = icm4268x_calc_timestamp_delta(edata->rtc_freq, SENSOR_CHAN_GYRO_XYZ,
-							   edata->gyro_odr, gyro_frame_count - 1,
-							   &ts_delta);
-			if (rc < 0) {
-				buffer = frame_end;
-				continue;
+			if (shift_rc == 0) {
+				data->shift = shift;
 			}
+
+			ts_delta = icm4268x_fifo_frame_delta(&period, gyro_frame_count - 1);
 
 			/*
 			 * TODO: For some extreme combination of ODR and FIFO count, using uint32_t
@@ -562,10 +568,7 @@ static int icm4268x_fifo_decode(const uint8_t *buffer, struct sensor_chan_spec c
 
 			q31_t reading[3];
 
-			for (int i = 0; i < 3; i++) {
-				rc |= icm4268x_read_imu_from_packet(
-					buffer, false, edata->header.gyro_fs, i, &reading[i]);
-			}
+			rc = icm4268x_read_imu_from_packet(buffer, false, reading);
 
 			for (int i = 0; i < 3; i++) {
 				data->readings[count].values[i] =
@@ -585,6 +588,19 @@ static int icm4268x_fifo_decode(const uint8_t *buffer, struct sensor_chan_spec c
 		*fit = (uintptr_t)frame_end;
 		count++;
 	}
+
+	/* The frames left after max_count still move the first one back in time */
+	while (buffer < buffer_end) {
+		if ((buffer[0] & chan_header) != 0) {
+			total_frames++;
+		}
+		buffer += icm4268x_fifo_frame_size(buffer[0]);
+	}
+
+	((struct sensor_data_header *)data_out)->base_timestamp_ns =
+		edata->header.timestamp -
+		(total_frames > 0 ? (total_frames - 1) : 0) * period.whole_ns;
+
 	return count;
 }
 

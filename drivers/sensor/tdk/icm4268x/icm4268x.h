@@ -607,22 +607,22 @@ static inline void icm4268x_gyro_rads(const struct icm4268x_cfg *cfg, int32_t in
  * @brief Convert icm4268x temp value to useful celsius values
  *
  * @param cfg icm4268x_cfg current device configuration
- * @param in raw data value in int32_t format
+ * @param in raw 16-bit data value in int32_t format
  * @param out_c whole celsius output in int32_t
  * @param out_uc micro (1/1000000) celsius as int32_t
  */
 static inline void icm4268x_temp_c(int32_t in, int32_t *out_c, int32_t *out_uc)
 {
-	int64_t sensitivity = 13248; /* value equivalent for x100 1c */
+	int32_t sensitivity = 13248; /* value equivalent for x100 1c */
 
-	/* Offset by 25 degrees Celsius */
-	int64_t in100 = (in * 100) + (25 * sensitivity);
+	/* Offset by 25 degrees Celsius, fits in 32 bits for a 16-bit sample */
+	int32_t in100 = (in * 100) + (25 * sensitivity);
 
 	/* Whole celsius */
 	*out_c = in100 / sensitivity;
 
-	/* Micro celsius */
-	*out_uc = ((in100 - (*out_c) * sensitivity) * INT64_C(1000000)) / sensitivity;
+	/* Micro celsius, 1000000 / 13248 reduced to 15625 / 207 to stay in 32 bits */
+	*out_uc = ((in100 - (*out_c) * sensitivity) * 15625) / 207;
 }
 
 #endif /* ZEPHYR_DRIVERS_SENSOR_ICM4268X_H_ */
