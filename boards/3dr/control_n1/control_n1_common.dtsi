@@ -46,6 +46,13 @@
 		pwms = <&pwm17 1 PWM_HZ(2700) PWM_POLARITY_NORMAL>;
 	};
 
+	imu_clkin: imu-clkin {
+		compatible = "pwm-clock";
+		#clock-cells = <1>;
+		clock-frequency = <32000>;
+		pwms = <&pwm14 1 PWM_HZ(32000) PWM_POLARITY_NORMAL>;
+	};
+
 	aliases {
 		led0 = &white_led;
 		led-strip = &rgb_led;
@@ -211,6 +218,7 @@
 	imu1: iim42653@0 {
 		compatible = "invensense,iim42653", "invensense,icm4268x";
 		reg = <0>;
+		clocks = <&imu_clkin 0>;
 		spi-max-frequency = <DT_FREQ_M(8)>;
 		accel-pwr-mode = <IIM42653_DT_ACCEL_LN>;
 		accel-odr = <IIM42653_DT_ACCEL_ODR_1000>;
@@ -231,6 +239,7 @@
 	imu2: iim42653@0 {
 		compatible = "invensense,iim42653", "invensense,icm4268x";
 		reg = <0>;
+		clocks = <&imu_clkin 0>;
 		spi-max-frequency = <DT_FREQ_M(8)>;
 		accel-pwr-mode = <IIM42653_DT_ACCEL_LN>;
 		accel-odr = <IIM42653_DT_ACCEL_ODR_1000>;
@@ -356,6 +365,17 @@
 
 	pwm4: pwm {
 		pinctrl-0 = <&tim4_ch1_pd12 &tim4_ch2_pd13 &tim4_ch3_pd14 &tim4_ch4_pd15>;
+		pinctrl-names = "default";
+		status = "okay";
+	};
+};
+
+/* IMU_CLK, pin 9 of both IMUs */
+&timers14 {
+	status = "okay";
+
+	pwm14: pwm {
+		pinctrl-0 = <&tim14_ch1_pa7>;
 		pinctrl-names = "default";
 		status = "okay";
 	};
