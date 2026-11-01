@@ -12,6 +12,7 @@
 #include <zephyr/fff.h>
 #include <zephyr/ztest.h>
 
+#include "icm4268x_decoder.h"
 #include "icm4268x_emul.h"
 #include "icm4268x_reg.h"
 
@@ -239,4 +240,173 @@ ZTEST_F(icm42688, test_interrupt)
 
 	/* Verify the handler was called */
 	zassert_equal(test_interrupt_trigger_handler_fake.call_count, 1);
+}
+
+#define FIFO_TEST_FRAMES       6
+#define FIFO_TEST_PACKET_SIZE  20
+#define FIFO_TEST_TIMESTAMP_NS UINT64_C(5000000000)
+
+struct fifo_test_buffer {
+	struct icm4268x_fifo_data hdr;
+	uint8_t packets[FIFO_TEST_FRAMES][FIFO_TEST_PACKET_SIZE];
+} __aligned(8);
+
+/* 20-bit samples, none equal to the -524288 "invalid" marker */
+static int32_t fifo_test_accel(int frame, int axis)
+{
+	return (axis == 1 ? -1 : 1) * (frame + 1) * (axis + 1) * 11111;
+}
+
+static int32_t fifo_test_gyro(int frame, int axis)
+{
+	return (axis == 2 ? 1 : -1) * (frame + 1) * (axis + 1) * 7777;
+}
+
+static int16_t fifo_test_temp(int frame)
+{
+	return (int16_t)(1000 - frame * 333);
+}
+
+static void fifo_test_fill(struct fifo_test_buffer *buf, uint8_t accel_odr, uint8_t gyro_odr,
+			   uint16_t rtc_freq)
+{
+	memset(buf, 0, sizeof(*buf));
+	buf->hdr.header.timestamp = FIFO_TEST_TIMESTAMP_NS;
+	buf->hdr.header.is_fifo = 1;
+	buf->hdr.header.variant = ICM4268X_VARIANT_ICM42688;
+	buf->hdr.header.accel_fs = ICM42688_DT_ACCEL_FS_16;
+	buf->hdr.header.gyro_fs = ICM42688_DT_GYRO_FS_2000;
+	for (int i = 0; i < 3; i++) {
+		buf->hdr.header.axis_align[i].index = i;
+		buf->hdr.header.axis_align[i].sign = 1;
+	}
+	buf->hdr.accel_odr = accel_odr;
+	buf->hdr.gyro_odr = gyro_odr;
+	buf->hdr.fifo_count = sizeof(buf->packets);
+	buf->hdr.rtc_freq = rtc_freq;
+
+	for (int f = 0; f < FIFO_TEST_FRAMES; f++) {
+		uint8_t *pkt = buf->packets[f];
+
+		pkt[0] = FIFO_HEADER_ACCEL | FIFO_HEADER_GYRO | FIFO_HEADER_20 |
+			 FIELD_PREP(FIFO_HEADER_TIMESTAMP_FSYNC, 2);
+		for (int a = 0; a < 3; a++) {
+			uint32_t accel = (uint32_t)fifo_test_accel(f, a) & GENMASK(19, 0);
+			uint32_t gyro = (uint32_t)fifo_test_gyro(f, a) & GENMASK(19, 0);
+
+			sys_put_be16(accel >> 4, &pkt[1 + 2 * a]);
+			sys_put_be16(gyro >> 4, &pkt[7 + 2 * a]);
+			pkt[17 + a] = ((accel & 0xf) << 4) | (gyro & 0xf);
+		}
+		sys_put_be16((uint16_t)fifo_test_temp(f), &pkt[13]);
+	}
+}
+
+/* Time of FIFO frame @p k relative to the first one, ODR scaled by the RTC clock */
+static uint64_t fifo_test_delta_ns(uint32_t period_ns, uint16_t rtc_freq, int k)
+{
+	return (uint64_t)period_ns * k * 32000 / rtc_freq;
+}
+
+static void fifo_test_check_q31(const struct sensor_q31_data *data, int frame, uint32_t delta)
+{
+	/* T = raw / 132.48 + 25 C, Q31 with a shift of 9 */
+	int64_t expect_uc = INT64_C(25000000) + fifo_test_temp(frame) * INT64_C(100000000) / 13248;
+	int64_t actual_uc = ((int64_t)data->readings[0].temperature * 1000000) >> 22;
+
+	zassert_equal(data->shift, 9);
+	zassert_equal(data->readings[0].timestamp_delta, delta, "frame %d", frame);
+	zassert_within(expect_uc, actual_uc, 2, "frame %d: expected %" PRIi64 " uC, got %" PRIi64,
+		       frame, expect_uc, actual_uc);
+}
+
+static void fifo_test_decode_channel(const struct sensor_decoder_api *decoder,
+				     const struct fifo_test_buffer *buf, enum sensor_channel chan,
+				     uint32_t period_ns)
+{
+	const struct sensor_chan_spec spec = {.chan_type = chan, .chan_idx = 0};
+	const uint8_t *raw = (const uint8_t *)buf;
+	const uint16_t rtc_freq = buf->hdr.rtc_freq;
+	const uint64_t base = FIFO_TEST_TIMESTAMP_NS -
+			      (FIFO_TEST_FRAMES - 1) * fifo_test_delta_ns(period_ns, rtc_freq, 1);
+	union {
+		struct sensor_three_axis_data three_axis;
+		struct sensor_q31_data q31;
+		uint8_t raw[sizeof(struct sensor_three_axis_data) +
+			    FIFO_TEST_FRAMES * sizeof(struct sensor_three_axis_sample_data)];
+	} all, one;
+	uint16_t frame_count;
+	uint32_t fit = 0;
+
+	zassert_ok(decoder->get_frame_count(raw, spec, &frame_count));
+	zassert_equal(frame_count, FIFO_TEST_FRAMES);
+
+	zassert_equal(decoder->decode(raw, spec, &fit, FIFO_TEST_FRAMES, &all), FIFO_TEST_FRAMES);
+	zassert_equal(all.three_axis.header.base_timestamp_ns, base,
+		      "chan %d rtc %u: base %" PRIu64 ", expected %" PRIu64, chan, rtc_freq,
+		      all.three_axis.header.base_timestamp_ns, base);
+
+	/* Decoding one frame per call returns the same samples */
+	fit = 0;
+	for (int f = 0; f < FIFO_TEST_FRAMES; f++) {
+		uint32_t delta = fifo_test_delta_ns(period_ns, rtc_freq, f);
+
+		zassert_equal(decoder->decode(raw, spec, &fit, 1, &one), 1);
+		zassert_equal(one.three_axis.header.base_timestamp_ns, base);
+
+		if (chan == SENSOR_CHAN_DIE_TEMP) {
+			struct sensor_q31_data *data = &one.q31;
+
+			fifo_test_check_q31(data, f, delta);
+			zassert_equal(all.q31.readings[f].timestamp_delta, delta);
+			zassert_equal(all.q31.readings[f].temperature,
+				      data->readings[0].temperature);
+			continue;
+		}
+
+		const bool accel = chan == SENSOR_CHAN_ACCEL_XYZ;
+		/* LSB of the 20-bit samples in Q31 for +/-16 g and +/-2000 dps */
+		const int32_t scale = accel ? 2511 : 2235;
+		struct sensor_three_axis_data *data = &one.three_axis;
+
+		zassert_equal(data->shift, accel ? 8 : 6);
+		zassert_equal(data->readings[0].timestamp_delta, delta,
+			      "chan %d rtc %u frame %d: delta %u, expected %u", chan, rtc_freq, f,
+			      data->readings[0].timestamp_delta, delta);
+		zassert_equal(all.three_axis.readings[f].timestamp_delta, delta);
+		for (int a = 0; a < 3; a++) {
+			int32_t sample = accel ? fifo_test_accel(f, a) : fifo_test_gyro(f, a);
+
+			zassert_equal(data->readings[0].values[a], sample * scale,
+				      "chan %d frame %d axis %d", chan, f, a);
+			zassert_equal(all.three_axis.readings[f].values[a], sample * scale);
+		}
+	}
+	zassert_equal(decoder->decode(raw, spec, &fit, 1, &one), 0);
+}
+
+static void fifo_test_decode(const struct device *dev, uint8_t odr, uint32_t period_ns,
+			     uint16_t rtc_freq)
+{
+	const struct sensor_decoder_api *decoder;
+	struct fifo_test_buffer buf;
+
+	zassert_ok(sensor_get_decoder(dev, &decoder));
+	/* Accel and gyro share the ODR register encoding */
+	fifo_test_fill(&buf, odr, odr, rtc_freq);
+
+	fifo_test_decode_channel(decoder, &buf, SENSOR_CHAN_ACCEL_XYZ, period_ns);
+	fifo_test_decode_channel(decoder, &buf, SENSOR_CHAN_GYRO_XYZ, period_ns);
+	fifo_test_decode_channel(decoder, &buf, SENSOR_CHAN_DIE_TEMP, period_ns);
+}
+
+ZTEST_F(icm42688, test_fifo_decode)
+{
+	/* Internal clock */
+	fifo_test_decode(fixture->dev, ICM42688_DT_ACCEL_ODR_1000, 1000000, 32000);
+	fifo_test_decode(fixture->dev, ICM42688_DT_ACCEL_ODR_8000, 125000, 32000);
+	/* External RTC clock, frame period not a whole number of nanoseconds */
+	fifo_test_decode(fixture->dev, ICM42688_DT_ACCEL_ODR_1000, 1000000, 37000);
+	fifo_test_decode(fixture->dev, ICM42688_DT_ACCEL_ODR_8000, 125000, 31000);
+	fifo_test_decode(fixture->dev, ICM42688_DT_ACCEL_ODR_12_5, 80000000, 50000);
 }
