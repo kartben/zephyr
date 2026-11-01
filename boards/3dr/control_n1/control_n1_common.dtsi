@@ -223,7 +223,7 @@
 		reg = <0>;
 		clocks = <&imu_clkin 0>;
 		int-gpios = <&gpioc 4 GPIO_ACTIVE_HIGH>;
-		spi-max-frequency = <DT_FREQ_M(8)>;
+		spi-max-frequency = <DT_FREQ_M(24)>;
 		accel-pwr-mode = <IIM42653_DT_ACCEL_LN>;
 		accel-odr = <IIM42653_DT_ACCEL_ODR_1000>;
 		accel-fs = <IIM42653_DT_ACCEL_FS_32>;
@@ -248,7 +248,7 @@
 		reg = <0>;
 		clocks = <&imu_clkin 0>;
 		int-gpios = <&gpioc 3 GPIO_ACTIVE_HIGH>;
-		spi-max-frequency = <DT_FREQ_M(8)>;
+		spi-max-frequency = <DT_FREQ_M(24)>;
 		accel-pwr-mode = <IIM42653_DT_ACCEL_LN>;
 		accel-odr = <IIM42653_DT_ACCEL_ODR_1000>;
 		accel-fs = <IIM42653_DT_ACCEL_FS_32>;
