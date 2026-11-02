@@ -110,6 +110,8 @@ struct stm32_pio_data {
 	/* Channels of the frame being sent */
 	uint8_t busy;
 	int dma_status;
+	/* The DMA stream keeps its configuration from the last transmit */
+	bool dma_ready;
 	/* The timer is in use by a synchronous transmit or an RTIO submission */
 	bool active;
 	struct k_spinlock active_lock;
@@ -251,6 +253,10 @@ static void stm32_pio_dma_callback(const struct device *dma_dev, void *user_data
 
 	/* The last value is in the preload register: no more requests needed */
 	LL_TIM_DisableDMAReq_UPDATE(cfg->timer);
+
+	if (status < 0) {
+		data->dma_ready = false;
+	}
 
 #ifdef CONFIG_RTIO
 	if (data->rtio_tx) {
@@ -414,15 +420,75 @@ unlock:
  * channels start on the same update event. Returns the number of cells,
  * the idle one included, of which the DMA sends those after the second.
  */
+/*
+ * Start the DMA of a block to the burst register. A stream that ended its last
+ * transfer keeps its configuration, so only the block is loaded again.
+ */
+static int stm32_pio_dma_load(const struct device *dev, uint32_t source, size_t size)
+{
+	const struct stm32_pio_config *cfg = dev->config;
+	struct stm32_pio_data *data = dev->data;
+	const uint32_t dest = (uint32_t)(uintptr_t)&cfg->timer->DMAR;
+	int ret;
+
+	k_sem_reset(&data->done);
+	data->dma_status = 0;
+
+	if (data->dma_ready) {
+		ret = dma_reload(cfg->dma_dev, cfg->dma_channel, source, dest, size);
+		if (ret < 0) {
+			data->dma_ready = false;
+			LOG_ERR("DMA reload failed (%d)", ret);
+		}
+
+		return ret;
+	}
+
+	struct dma_block_config block = {
+		.source_address = source,
+		.dest_address = dest,
+		.block_size = size,
+		.source_addr_adj = DMA_ADDR_ADJ_INCREMENT,
+		.dest_addr_adj = DMA_ADDR_ADJ_NO_CHANGE,
+	};
+	struct dma_config dma_cfg = {
+		.dma_slot = cfg->dma_slot,
+		.channel_direction = MEMORY_TO_PERIPHERAL,
+		.channel_priority = cfg->dma_priority,
+		.source_data_size = sizeof(cfg->buf[0]),
+		.dest_data_size = sizeof(cfg->buf[0]),
+		/* Single transfers: the timer requests one per register of the burst */
+		.source_burst_length = sizeof(cfg->buf[0]),
+		.dest_burst_length = sizeof(cfg->buf[0]),
+		.block_count = 1U,
+		.head_block = &block,
+		.dma_callback = stm32_pio_dma_callback,
+		.user_data = (void *)dev,
+	};
+
+	ret = dma_config(cfg->dma_dev, cfg->dma_channel, &dma_cfg);
+	if (ret < 0) {
+		LOG_ERR("DMA configuration failed (%d)", ret);
+		return ret;
+	}
+
+	ret = dma_start(cfg->dma_dev, cfg->dma_channel);
+	if (ret < 0) {
+		LOG_ERR("DMA start failed (%d)", ret);
+		return ret;
+	}
+
+	data->dma_ready = true;
+
+	return 0;
+}
+
 static int stm32_pio_tx_start(const struct device *dev, const uint8_t *idx,
 			      const struct pulse_io_tx_req *reqs, size_t num)
 {
 	const struct stm32_pio_config *cfg = dev->config;
 	struct stm32_pio_data *data = dev->data;
 	TIM_TypeDef *timer = cfg->timer;
-	struct dma_block_config block = {0};
-	struct dma_config dma_cfg = {0};
-	uint32_t ccr[STM32_PIO_NUM_CHANNELS];
 	uint8_t channels = 0U;
 	uint8_t first = STM32_PIO_NUM_CHANNELS;
 	uint8_t last = 0U;
@@ -438,32 +504,46 @@ static int stm32_pio_tx_start(const struct device *dev, const uint8_t *idx,
 		count = MAX(count, reqs[i].count);
 	}
 
-	/*
-	 * The DMA burst writes the compare registers from the first to the last
-	 * channel: the channels in between that don't transmit keep their value.
-	 * The idle level is a compare value of 0, in either PWM mode.
-	 */
 	span = last - first + 1U;
-	for (uint8_t ch = first; ch <= last; ch++) {
-		ccr[ch] = ((channels & BIT(ch)) == 0U) ? *stm32_pio_ccr(timer, ch) : 0U;
-	}
 
 	/* One more cell at the idle level ends the frame */
 	count++;
-	for (size_t c = 0; c < count; c++) {
-		uint32_t *cell = &cfg->buf[c * span];
 
-		for (uint8_t ch = first; ch <= last; ch++) {
-			cell[ch - first] = ccr[ch];
-		}
-		for (size_t i = 0; i < num; i++) {
-			if (c < reqs[i].count) {
-				uint32_t duty = MIN(reqs[i].cells[c].duty, data->period);
+	/*
+	 * The DMA burst writes the compare registers from the first to the last
+	 * channel: the channels in between that don't transmit keep their value.
+	 */
+	for (uint8_t ch = first; ch <= last; ch++) {
+		if ((channels & BIT(ch)) == 0U) {
+			const uint32_t ccr = *stm32_pio_ccr(timer, ch);
+			uint32_t *dst = &cfg->buf[ch - first];
 
-				/* PWM mode 2 holds the line low for the compare value */
-				cell[idx[i] - first] =
-					data->idle_high[idx[i]] ? data->period - duty : duty;
+			for (size_t c = 0; c < count; c++) {
+				dst[c * span] = ccr;
 			}
+		}
+	}
+
+	/* The idle level is a compare value of 0, in either PWM mode */
+	for (size_t i = 0; i < num; i++) {
+		const struct pulse_cell *cells = reqs[i].cells;
+		const uint32_t period = data->period;
+		uint32_t *dst = &cfg->buf[idx[i] - first];
+		size_t c = 0;
+
+		if (data->idle_high[idx[i]]) {
+			/* PWM mode 2 holds the line low for the compare value */
+			for (; c < reqs[i].count; c++) {
+				dst[c * span] = period - MIN(cells[c].duty, period);
+			}
+		} else {
+			for (; c < reqs[i].count; c++) {
+				dst[c * span] = MIN(cells[c].duty, period);
+			}
+		}
+
+		for (; c < count; c++) {
+			dst[c * span] = 0U;
 		}
 	}
 
@@ -491,37 +571,9 @@ static int stm32_pio_tx_start(const struct device *dev, const uint8_t *idx,
 			      << TIM_DCR_DBA_Pos) |
 			     ((span - 1U) << TIM_DCR_DBL_Pos);
 
-		block.source_address = (uint32_t)(uintptr_t)&cfg->buf[2U * span];
-		block.dest_address = (uint32_t)(uintptr_t)&timer->DMAR;
-		block.block_size = (count - 2U) * span * sizeof(cfg->buf[0]);
-		block.source_addr_adj = DMA_ADDR_ADJ_INCREMENT;
-		block.dest_addr_adj = DMA_ADDR_ADJ_NO_CHANGE;
-
-		dma_cfg.dma_slot = cfg->dma_slot;
-		dma_cfg.channel_direction = MEMORY_TO_PERIPHERAL;
-		dma_cfg.channel_priority = cfg->dma_priority;
-		dma_cfg.source_data_size = sizeof(cfg->buf[0]);
-		dma_cfg.dest_data_size = sizeof(cfg->buf[0]);
-		/* Single transfers: the timer requests one per register of the burst */
-		dma_cfg.source_burst_length = sizeof(cfg->buf[0]);
-		dma_cfg.dest_burst_length = sizeof(cfg->buf[0]);
-		dma_cfg.block_count = 1U;
-		dma_cfg.head_block = &block;
-		dma_cfg.dma_callback = stm32_pio_dma_callback;
-		dma_cfg.user_data = (void *)dev;
-
-		ret = dma_config(cfg->dma_dev, cfg->dma_channel, &dma_cfg);
+		ret = stm32_pio_dma_load(dev, (uint32_t)(uintptr_t)&cfg->buf[2U * span],
+					 (count - 2U) * span * sizeof(cfg->buf[0]));
 		if (ret < 0) {
-			LOG_ERR("DMA configuration failed (%d)", ret);
-			return ret;
-		}
-
-		k_sem_reset(&data->done);
-		data->dma_status = 0;
-
-		ret = dma_start(cfg->dma_dev, cfg->dma_channel);
-		if (ret < 0) {
-			LOG_ERR("DMA start failed (%d)", ret);
 			return ret;
 		}
 
@@ -618,7 +670,9 @@ static int stm32_pio_transmit(const struct device *dev, const uint8_t *idx,
 	if (count > 2U) {
 		ret = k_sem_take(&data->done, timeout);
 		if (ret < 0) {
+			/* Stopping a running stream disables its interrupts */
 			(void)dma_stop(cfg->dma_dev, cfg->dma_channel);
+			data->dma_ready = false;
 			stm32_pio_halt(dev, data->busy);
 			data->busy = 0U;
 			ret = -EAGAIN;
@@ -627,6 +681,7 @@ static int stm32_pio_transmit(const struct device *dev, const uint8_t *idx,
 
 		if (data->dma_status < 0) {
 			(void)dma_stop(cfg->dma_dev, cfg->dma_channel);
+			data->dma_ready = false;
 			stm32_pio_halt(dev, data->busy);
 			data->busy = 0U;
 			ret = (data->dma_status == -ECANCELED) ? -ECANCELED : -EIO;
