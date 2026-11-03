@@ -125,11 +125,11 @@ static void pat912x_motion_work_handler(struct k_work *work)
 	if (cfg->axis_x >= 0) {
 		bool sync = cfg->axis_y < 0;
 
-		input_report_rel(data->dev, cfg->axis_x, x, sync, K_FOREVER);
+		input_report_rel(dev, cfg->axis_x, x, sync, K_FOREVER);
 	}
 
 	if (cfg->axis_y >= 0) {
-		input_report_rel(data->dev, cfg->axis_y, y, true, K_FOREVER);
+		input_report_rel(dev, cfg->axis_y, y, true, K_FOREVER);
 	}
 
 	/* Trigger one more scan in case more data is available. */
