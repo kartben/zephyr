@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+identifier: micoair743_lite
+name: MicoAir743-Lite
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+ram: 512
+flash: 2048
+supported:
+  - adc
+  - backup_sram
+  - entropy
+  - gpio
+  - i2c
+  - pwm
+  - sdhc
+  - spi
+  - uart
+  - usbd
+  - watchdog
+vendor: micoair
