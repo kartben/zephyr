@@ -11,6 +11,14 @@ title: Zephyr SoC Schema
 description: Schema for validating Zephyr SoC metadata files
 type: object
 $defs:
+  modules:
+    type: array
+    items:
+      type: string
+    uniqueItems: true
+    description: >
+      West project names required to build this hardware. Inherited by
+      child series and SoCs. See doc/develop/west/modules-opt-in.rst.
   cpucluster:
     type: object
     properties:
@@ -30,6 +38,8 @@ $defs:
         type: array
         items:
           $ref: "#/$defs/cpucluster"
+      modules:
+        $ref: "#/$defs/modules"
     required:
       - name
     additionalProperties: false
@@ -45,6 +55,8 @@ $defs:
             type: array
             items:
               $ref: "#/$defs/cpucluster"
+          modules:
+            $ref: "#/$defs/modules"
         required:
           - name
         additionalProperties: false
@@ -57,6 +69,8 @@ $defs:
             type: array
             items:
               $ref: "#/$defs/cpucluster"
+          modules:
+            $ref: "#/$defs/modules"
         required:
           - extend
         additionalProperties: false
@@ -70,6 +84,8 @@ $defs:
         type: array
         items:
           $ref: "#/$defs/soc"
+      modules:
+        $ref: "#/$defs/modules"
     required:
       - name
     additionalProperties: false
@@ -87,6 +103,8 @@ $defs:
         type: array
         items:
           $ref: "#/$defs/soc"
+      modules:
+        $ref: "#/$defs/modules"
     required:
       - name
     additionalProperties: false
@@ -139,6 +157,8 @@ properties:
   vendor:
     type: string
     description: SoC series of the SoC
+  modules:
+    $ref: "#/$defs/modules"
   comment:
     type: string
     description: Free form comment with extra information regarding the SoC

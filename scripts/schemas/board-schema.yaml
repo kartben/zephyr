@@ -163,6 +163,14 @@ $defs:
           additionalProperties: false
       variants:
         $ref: "#/$defs/extendVariantSchema"
+      modules:
+        type: array
+        items:
+          type: string
+        uniqueItems: true
+        description: >
+          Extra west project names required by this board (for example a
+          sensor HAL). SoC-level modules are inherited automatically.
     # Conditional logic for requirements
     allOf:
       # 'name'/'full_name' and 'extend' are mutually exclusive: we're either defining a new board or

@@ -41,6 +41,7 @@ class Shield:
     full_name: str | None = None
     vendor: str | None = None
     supported_features: list[str] | None = None
+    modules: tuple[str, ...] = ()
 
 def shield_key(shield):
     return shield.name
@@ -53,6 +54,7 @@ def process_shield_data(shield_data, shield_dir):
         full_name=shield_data.get('full_name'),
         vendor=shield_data.get('vendor'),
         supported_features=shield_data.get('supported_features', []),
+        modules=tuple(shield_data.get('modules', [])),
     )
 
 def find_shields(args):

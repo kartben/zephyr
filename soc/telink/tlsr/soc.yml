@@ -1,3 +1,6 @@
+modules:
+- hal_telink
+
 family:
   - name: telink_tlsr
     series:

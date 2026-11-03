@@ -78,19 +78,21 @@ class Soc:
     name: str
     cpuclusters: list[str] = field(default_factory=list)
     variants: list[str] = field(default_factory=list)
+    modules: list[str] = field(default_factory=list)
 
     @staticmethod
     def from_soc(soc, variants):
         if soc is None:
             return None
+        modules = list(getattr(soc, 'modules', []) or [])
         if soc.cpuclusters:
             cpus = []
             for c in soc.cpuclusters:
                 cpus.append(Cpucluster(c,
                             [Variant.from_dict(v) for v in variants if c == v['cpucluster']]
                 ))
-            return Soc(soc.name, cpuclusters=cpus)
-        return Soc(soc.name, variants=[Variant.from_dict(v) for v in variants])
+            return Soc(soc.name, cpuclusters=cpus, modules=modules)
+        return Soc(soc.name, variants=[Variant.from_dict(v) for v in variants], modules=modules)
 
 
 @dataclass(frozen=True)
@@ -108,6 +110,7 @@ class Board:
     revisions: list[str] = field(default_factory=list, compare=False)
     socs: list[Soc] = field(default_factory=list, compare=False)
     variants: list[str] = field(default_factory=list, compare=False)
+    modules: list[str] = field(default_factory=list, compare=False)
 
     @property
     def dir(self):
@@ -195,6 +198,7 @@ def load_v2_boards(board_name, board_yml, systems):
                            board.get('revision', {}).get('revisions', [])],
                 socs=socs,
                 variants=[Variant.from_dict(v) for v in board.get('variants', [])],
+                modules=list(board.get('modules', [])),
                 hwm='v2',
             )
             board_qualifiers = board_v2_qualifiers(boards[board['name']])

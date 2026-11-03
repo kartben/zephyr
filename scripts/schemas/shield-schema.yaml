@@ -29,6 +29,13 @@ $defs:
         items:
           type: string
           description: A hardware feature the shield supports (see dts/bindings/binding-types.txt)
+      modules:
+        type: array
+        items:
+          type: string
+        uniqueItems: true
+        description: >
+          West project names required by this shield (for example a sensor HAL).
     required:
       - name
       - full_name

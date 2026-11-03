@@ -1,6 +1,11 @@
 # Copyright (c) 2025 Core Devices LLC
 # SPDX-License-Identifier: Apache-2.0
 
+modules:
+- cmsis
+- cmsis_6
+- hal_sifli
+
 family:
 - name: sf32
   series:
