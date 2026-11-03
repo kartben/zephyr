@@ -203,7 +203,10 @@ static inline int z_vrfy_zvfs_poll(struct zvfs_pollfd *fds, int nfds, int timeou
 	ret = z_impl_zvfs_poll(fds_copy, nfds, timeout);
 
 	if (ret >= 0) {
-		k_usermode_to_copy((void *)fds, fds_copy, fds_size);
+		if (k_usermode_to_copy((void *)fds, fds_copy, fds_size) != 0) {
+			errno = EFAULT;
+			ret = -1;
+		}
 	}
 	k_free(fds_copy);
 
