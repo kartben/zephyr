@@ -77,7 +77,10 @@ static int zvfs_eventfd_poll_prepare(struct zvfs_eventfd *efd,
 		(*pev)++;
 	}
 
-	return 0;
+	/* Readiness is fully mirrored by the two persistent signals
+	 * registered above, and the update pass only reads the counter.
+	 */
+	return ZFD_POLL_PREPARE_UPDATE_OPTIONAL;
 }
 
 static int zvfs_eventfd_poll_update(struct zvfs_eventfd *efd,
