@@ -124,6 +124,11 @@ const struct flexspi_nor_config_t g_flash_fast_config = {
 };
 
 
+/*
+ * The ROM starts the flash in SPI mode. An image behind a bootloader must not do this: the
+ * bootloader has already switched the flash to OPI, where it ignores these SPI commands.
+ */
+#ifndef CONFIG_USE_DT_CODE_PARTITION
 __ramfunc int imxrt_reclock_initialize(void)
 {
 	const uint32_t instance =  1;
@@ -142,3 +147,4 @@ __ramfunc int imxrt_reclock_initialize(void)
 }
 
 SYS_INIT(imxrt_reclock_initialize,  PRE_KERNEL_1, 0);
+#endif /* !CONFIG_USE_DT_CODE_PARTITION */
