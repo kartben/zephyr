@@ -204,6 +204,16 @@ __weak void clock_init(void)
 
 	rootCfg.div = 1;
 
+	/*
+	 * The drivers of many peripherals rely on the reset state of their clock root, on and from
+	 * OscRC48MDiv2. A bootloader can have turned off the roots that it does not use.
+	 */
+	for (size_t i = 0; i < ARRAY_SIZE(CCM->CLOCK_ROOT); i++) {
+		if (CCM->CLOCK_ROOT[i].CONTROL == CCM_CLOCK_ROOT_CONTROL_OFF_MASK) {
+			CCM->CLOCK_ROOT[i].CONTROL = 0;
+		}
+	}
+
 #ifdef CONFIG_CPU_CORTEX_M7
 	/* Switch both core, M7 Systick and Bus_Lpsr to OscRC48MDiv2 first */
 	rootCfg.mux = kCLOCK_M7_ClockRoot_MuxOscRc48MDiv2;
