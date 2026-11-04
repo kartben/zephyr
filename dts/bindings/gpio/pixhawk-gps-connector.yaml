@@ -6,8 +6,8 @@ title: Pixhawk GPS connector
 description: |
   6-pin JST-GH port combining a serial port and an I2C bus, as defined by
   the Pixhawk Connector Standard (DS-009). Flight controllers use it for
-  GNSS receivers with an integrated magnetometer. The 10-pin full GPS port
-  of the standard is not covered by this binding.
+  GNSS receivers with an integrated magnetometer. See
+  pixhawk-full-gps-connector for the 10-pin full GPS port.
 
   This binding provides a nexus mapping for the signal pins, indexed by
   connector pin number. Use the PIXHAWK_GPS_* constants in

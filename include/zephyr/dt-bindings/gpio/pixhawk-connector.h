@@ -32,6 +32,14 @@
 #define PIXHAWK_GPS_SCL 4 /**< GPS pin 4: I2C SCL */
 #define PIXHAWK_GPS_SDA 5 /**< GPS pin 5: I2C SDA */
 
+#define PIXHAWK_FULL_GPS_TX         2 /**< Full GPS pin 2: UART TX */
+#define PIXHAWK_FULL_GPS_RX         3 /**< Full GPS pin 3: UART RX */
+#define PIXHAWK_FULL_GPS_SCL        4 /**< Full GPS pin 4: I2C SCL */
+#define PIXHAWK_FULL_GPS_SDA        5 /**< Full GPS pin 5: I2C SDA */
+#define PIXHAWK_FULL_GPS_SAFETY_SW  6 /**< Full GPS pin 6: safety switch input */
+#define PIXHAWK_FULL_GPS_SAFETY_LED 7 /**< Full GPS pin 7: safety LED output */
+#define PIXHAWK_FULL_GPS_BUZZER     9 /**< Full GPS pin 9: buzzer output */
+
 #define PIXHAWK_I2C_SCL 2 /**< I2C pin 2: I2C SCL */
 #define PIXHAWK_I2C_SDA 3 /**< I2C pin 3: I2C SDA */
 
