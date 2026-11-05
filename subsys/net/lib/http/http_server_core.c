@@ -501,6 +501,13 @@ static int accept_new_client(int server_fd)
 		return new_socket;
 	}
 
+	if (IS_ENABLED(CONFIG_HTTP_SERVER_TCP_NODELAY)) {
+		if (zsock_setsockopt(new_socket, NET_IPPROTO_TCP, ZSOCK_TCP_NODELAY,
+				     &(int){1}, sizeof(int)) < 0) {
+			LOG_DBG("[%d] failed to set TCP_NODELAY (%d)", new_socket, errno);
+		}
+	}
+
 	const char * const addrstr =
 		net_sprint_addr(sa.ss_family, &net_sin((struct net_sockaddr *)&sa)->sin_addr);
 	LOG_DBG("New client from %s:%d", addrstr != NULL ? addrstr : "<unknown>",
@@ -747,6 +754,7 @@ static void init_client_ctx(struct http_client_ctx *client, const struct http_se
 	client->server_state = HTTP_SERVER_PREFACE_STATE;
 	client->has_upgrade_header = false;
 	client->preface_sent = false;
+	client->settings_acked = false;
 	client->window_size = HTTP_SERVER_INITIAL_WINDOW_SIZE;
 
 	if (IS_ENABLED(CONFIG_HTTP_SERVER_VERSION_3)) {

@@ -226,6 +226,9 @@ ADI Platforms:
     - boards/shields/ad_apardpfw_sl/
     - boards/shields/adi_lsmspg/
     - boards/shields/eval*ardz/
+    - boards/shields/mikroe_accel_click/
+    - boards/shields/mikroe_accel22_click/
+    - boards/shields/mikroe_adac_click/
     - boards/shields/pmod_acl/
     - drivers/*/*max*
     - drivers/*/*max*/
@@ -347,6 +350,7 @@ ARM64 arch:
     - npitre
     - JiafeiPan
     - carlocaione
+    - hongquan-prog
   files:
     - arch/arm64/
     - include/zephyr/arch/arm64/
@@ -2694,8 +2698,11 @@ Documentation Infrastructure:
   files:
     - drivers/ptp_clock/
     - include/zephyr/drivers/ptp_clock.h
+    - tests/drivers/ptp_clock/
   labels:
     - "area: Clocks"
+  tests:
+    - drivers.ptp_clock
 
 "Drivers: PWM":
   status: maintained
@@ -3753,6 +3760,7 @@ Intel Platforms (Xtensa):
     - ycsin
     - dcpleung
     - nashif
+    - hongquan-prog
   files:
     - drivers/interrupt_controller/
     - dts/bindings/interrupt-controller/
@@ -3996,6 +4004,7 @@ LoRa and LoRaWAN:
     - martinjaeger
     - mniestroj
     - carlocaione
+    - juanjin-dev
   files:
     - drivers/lora/
     - include/zephyr/drivers/lora.h
@@ -4239,6 +4248,7 @@ Microchip RISC-V Platforms:
     - boards/microchip/pic64gx_curiosity_kit/
     - dts/riscv/microchip/
     - soc/microchip/miv/
+    - soc/microchip/polarfire/
     - soc/microchip/pic64/
     - drivers/*/*mchp*mss*
     - dts/bindings/*/microchip,mpfs*
@@ -5205,6 +5215,7 @@ Nuvoton NPCX Platforms:
   collaborators:
     - TomChang19
     - alvsun
+    - amaoz123
     - keith-zephyr
     - fabiobaltieri
   files:
@@ -5262,6 +5273,7 @@ OTP:
     - drivers/otp/
     - dts/bindings/otp/
     - include/zephyr/drivers/otp.h
+    - tests/drivers/otp/
     - tests/subsys/nvmem/api/otp.overlay
   labels:
     - "area: OTP"
@@ -5349,7 +5361,6 @@ PHYTEC Platforms:
   maintainers:
     - dnltz
   collaborators:
-    - jonas-rem
     - pefech
   files:
     - boards/phytec/
@@ -5482,6 +5493,17 @@ QNX Hypervisor Platforms:
     - dts/arm/quicklogic/
   labels:
     - "platform: Quicklogic"
+
+RAKwireless Platforms:
+  status: maintained
+  maintainers:
+    - juanjin-dev
+  files:
+    - boards/rakwireless/
+    - boards/shields/rakwireless_*/
+    - dts/vendor/rakwireless/
+  labels:
+    - "platform: RAKwireless"
 
 RISCV Platforms:
   status: maintained
@@ -5729,6 +5751,7 @@ Renesas R-Car Platforms:
     - lorc
   collaborators:
     - xakep-amatop
+    - jpanisbl
   files:
     - boards/renesas/rcar_*/
     - drivers/*/*rcar*
@@ -5847,6 +5870,7 @@ Retention:
     - include/zephyr/retention/
     - subsys/retention/
     - doc/services/storage/retention/
+    - tests/subsys/retention/
   labels:
     - "area: Retention"
 

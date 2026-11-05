@@ -2828,6 +2828,8 @@ err:
  *	-------	--------	-----------------------------------------------
  *	  0	  0		SEG.SEQ = RCV.NXT
  *	  0	 >0		RCV.NXT =< SEG.SEQ < RCV.NXT+RCV.WND
+ *			     or SEG.SEQ = RCV.NXT+RCV.WND for an ACK
+ *			     without SYN, FIN or RST
  *	 >0	  0		not acceptable
  *	 >0	 >0		RCV.NXT =< SEG.SEQ < RCV.NXT+RCV.WND
  *			     or RCV.NXT =< SEG.SEQ+SEG.LEN-1 <RCV.NXT+RCV.WND
@@ -2840,8 +2842,17 @@ static bool tcp_validate_seq(struct tcp *conn, struct tcphdr *hdr, size_t len)
 
 	if (conn->recv_win > 0) {
 		if (len == 0) {
+			int32_t right = net_tcp_seq_cmp(th_seq(hdr), conn->ack + conn->recv_win);
+
+			/* Accept an ACK at the right edge, as a peer that has sent
+			 * the whole window uses that SEQ (Linux and BSD do the same).
+			 * SYN and FIN would fall outside the window; a RST must be
+			 * inside it.
+			 */
 			return ((net_tcp_seq_cmp(th_seq(hdr), conn->ack) >= 0) &&
-				(net_tcp_seq_cmp(th_seq(hdr), conn->ack + conn->recv_win) < 0));
+				((right < 0) ||
+				 ((right == 0) &&
+				  ((th_flags(hdr) & (ACK | SYN | FIN | RST)) == ACK))));
 		}
 		return (((net_tcp_seq_cmp(th_seq(hdr), conn->ack) >= 0) &&
 			 (net_tcp_seq_cmp(th_seq(hdr), conn->ack + conn->recv_win) < 0)) ||
@@ -3423,6 +3434,21 @@ static enum net_verdict tcp_in(struct tcp *conn, struct net_pkt *pkt,
 				 * passing it to accept() and printing it by "net conn"
 				 * command.
 				 */
+			}
+
+			/* Report a link-local peer with the index of the
+			 * connection's interface as the zone; conn->dst keeps
+			 * no zone.
+			 */
+			if (IS_ENABLED(CONFIG_NET_IPV6) &&
+			    conn->context->remote.sa_family == NET_AF_INET6 &&
+			    net_ipv6_is_ll_addr(&net_sin6(&conn->context->remote)->sin6_addr)) {
+				int ifindex = net_if_get_by_iface(conn->iface);
+
+				if (ifindex > 0 && ifindex <= UINT8_MAX) {
+					net_sin6(&conn->context->remote)->sin6_scope_id =
+						(uint8_t)ifindex;
+				}
 			}
 
 			accept_cb(conn->context, &conn->context->remote,

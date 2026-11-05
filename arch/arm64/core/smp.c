@@ -11,7 +11,6 @@
  */
 
 #include <string.h>
-#include <zephyr/cache.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/kernel.h>
@@ -21,6 +20,7 @@
 #include <ipi.h>
 #include <zephyr/init.h>
 #include <zephyr/arch/arm64/mm.h>
+#include <zephyr/arch/cache.h>
 #include <zephyr/arch/cpu.h>
 #include <zephyr/arch/exception.h>
 #include <zephyr/drivers/interrupt_controller/gic.h>
@@ -129,8 +129,16 @@ void arch_cpu_start(int cpu_num, k_thread_stack_t *stack, int sz,
 		/* store mpid last as this is our synchronization point */
 		arm64_cpu_boot_params.mpid = cpu_mpid;
 
-		sys_cache_data_flush_range((void *)&arm64_cpu_boot_params,
-					  sizeof(arm64_cpu_boot_params));
+		/*
+		 * The secondary core starts with the MMU and the data cache
+		 * disabled, so the parameters have to reach the point of
+		 * coherency before it is released.
+		 */
+		if (arch_dcache_flush_range((void *)&arm64_cpu_boot_params,
+					    sizeof(arm64_cpu_boot_params)) != 0) {
+			printk("Failed to clean the boot parameters to memory\n");
+			k_panic();
+		}
 
 		if (pm_cpu_on(cpu_mpid, (uint64_t)&__start)) {
 			printk("Failed to boot secondary CPU core %d (MPID:%#llx)\n",
@@ -280,12 +288,20 @@ void z_arm64_mem_cfg_ipi(void)
 #endif
 
 #ifdef CONFIG_FPU_SHARING
+struct fpu_flush_request {
+	atomic_t pending;
+} Z_DCACHE_ALIGN_SMP;
+
+static struct fpu_flush_request fpu_flush_requests[CONFIG_MP_MAX_NUM_CPUS];
+
 void flush_fpu_ipi_handler(const void *unused)
 {
 	ARG_UNUSED(unused);
 
 	disable_irq();
-	arch_flush_local_fpu();
+	if (atomic_clear(&fpu_flush_requests[_current_cpu->id].pending)) {
+		arch_flush_local_fpu();
+	}
 	/* no need to re-enable IRQs here */
 }
 
@@ -299,6 +315,8 @@ void arch_flush_fpu_ipi(unsigned int cpu)
 	}
 
 	aff0 = MPIDR_AFFLVL(mpidr, 0);
+	/* Publish before the SGI, including when the target has IRQs masked. */
+	atomic_set(&fpu_flush_requests[cpu].pending, 1);
 	gic_raise_sgi(SGI_FPU_IPI, mpidr, 1 << aff0);
 }
 
@@ -311,8 +329,13 @@ void arch_flush_fpu_ipi(unsigned int cpu)
  */
 void arch_spin_relax(void)
 {
-	if (arm_gic_irq_is_pending(SGI_FPU_IPI)) {
-		arm_gic_irq_clear_pending(SGI_FPU_IPI);
+	atomic_t *pending = &fpu_flush_requests[_current_cpu->id].pending;
+
+	if (atomic_get(pending) && atomic_clear(pending)) {
+		/* Consume before flushing so concurrent requests stay visible.
+		 * Keep the SGI pending: clearing it could lose a newer request.
+		 * Its handler skips the flush if this path already serviced it.
+		 */
 		/*
 		 * We may not be in IRQ context here hence cannot use
 		 * arch_flush_local_fpu() directly.

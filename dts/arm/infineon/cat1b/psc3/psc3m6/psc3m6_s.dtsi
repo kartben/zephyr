@@ -6,6 +6,7 @@
  */
 
 #include <mem.h>
+#include <zephyr/dt-bindings/i2c/i2c.h>
 #include "psc3m6.cm33.dtsi"
 
 / {
@@ -23,6 +24,21 @@
 			interrupts = <33 4>;
 			alarms-count = <2>;
 			status = "disabled";
+		};
+
+		cryptolite0: crypto@52230000 {
+			compatible = "infineon,mxcryptolite";
+			reg = <0x52230000 0x10000>;
+
+			mxcryptolite_trng: mxcryptolite_trng {
+				compatible = "infineon,mxcryptolite-trng";
+				status = "disabled";
+			};
+
+			mxcryptolite_crypto: mxcryptolite_crypto {
+				compatible = "infineon,mxcryptolite-crypto";
+				status = "disabled";
+			};
 		};
 
 		pinctrl: pinctrl@52400000 {

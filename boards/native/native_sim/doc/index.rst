@@ -847,6 +847,13 @@ Interaction with serial ports can be configured in several different ways:
 * Serial port and baud rate can also be set via command line options ``X_port``
   and ``X_baud`` respectively, where ``X`` is a name of a node. Command line
   options override values from the devicetree.
+* When neither ``serial-port`` nor ``X_port`` names the port, the driver can
+  find a USB serial adapter by vendor and product ID: the ``usb-ids`` property
+  lists ``<vendor-id product-id>`` pairs, tried in order, and the first host tty
+  whose USB device matches is opened. The application exits if none matches.
+* The ``low-latency`` property asks the host tty driver to deliver received
+  data at once instead of after a latency timer, which USB serial adapters such
+  as FTDI ones otherwise wait for.
 * The rest of the configuration options such as number of data and stop bits,
   parity, as well as baud rate can be set at runtime with ``uart_configure``.
 * This driver can emulate an interrupt-driven UART by enabling
@@ -859,7 +866,9 @@ driver.
 
 This driver only supports poll mode and interrupt mode. Async mode is not
 supported.
-It has runtime configuration support, but no line control support.
+It has runtime configuration support. With
+:kconfig:option:`CONFIG_UART_LINE_CTRL`, :c:func:`uart_line_ctrl_set` drives the
+port's DTR and RTS lines.
 
 .. _native_sim_backends:
 

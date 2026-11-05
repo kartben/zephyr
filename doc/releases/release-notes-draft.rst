@@ -50,6 +50,12 @@ API Changes
 Removed APIs and options
 ========================
 
+* Bluetooth
+
+  * Audio
+
+    * All ``media_proxy_`` functions and definitions for Bluetooth have been removed.
+
 Deprecated APIs and options
 ===========================
 
@@ -65,6 +71,19 @@ New APIs and options
 
 * Bluetooth
 
+  * Audio
+
+    * ``bt_mcp_media_control_server_*`` API for controlling the local media player has been added.
+    * :c:func:`bt_pacs_get_location`
+    * :c:struct:`bt_pacs_cb`
+    * :c:func:`bt_pacs_register_cb`
+    * :c:func:`bt_pacs_unregister_cb`
+
+  * Host
+
+    * :c:func:`bt_addr_matches_irk`
+    * :c:func:`bt_l2cap_server_unregister`
+
   * Services
 
     * :kconfig:option:`CONFIG_BT_HIDS`
@@ -73,6 +92,40 @@ New APIs and options
     * :c:func:`bt_hids_report_set`
     * :c:func:`bt_hids_report_get`
     * :c:func:`bt_hids_send_report`
+
+* Devicetree
+
+  * New ``var-uint64`` binding property type for variable-length unsigned
+    integers of up to 64 bits. It accepts a value encoded as 1 cell (32-bit
+    unsigned) or 2 cells (64-bit unsigned, high word first) and produces a
+    scalar ``DT_PROP`` integer macro
+
+* Display
+
+  * :c:func:`display_set_timing`
+  * :c:func:`display_get_timing`
+
+* FIDO2
+
+  * Added PSA Protected Storage backend, enable with
+    :kconfig:option:`CONFIG_FIDO2_STORAGE_PSA_PROTECTED_STORAGE`
+
+* Networking
+
+  * Add :kconfig:option:`CONFIG_NET_DHCPV6_START_ON_RA` to start the DHCPv6
+    client automatically based on the M and O flags of received Router
+    Advertisements, in stateful mode with the M flag and in stateless mode
+    (Information-request only) with the O flag.
+
+  * Connection manager
+
+    * Add name resolution readiness tracking, see :ref:`conn_mgr_monitoring_dns`:
+      :c:macro:`NET_EVENT_L4_DNS_READY`, :c:macro:`NET_EVENT_L4_DNS_LOST` and
+      :c:func:`conn_mgr_dns_is_ready`.
+
+  * DNS
+
+    * :c:func:`dns_resolve_get_server_families`
 
 .. zephyr-keep-sorted-stop
 
@@ -102,6 +155,10 @@ New Drivers
   Same as above, this will also be recomputed at the time of the release.
   Just link the driver, further details go in the binding description
 
+* :abbr:`RTC (Real Time Clock)`
+
+  * :dtcompatible:`microchip,mcp7940n` (:github:`119309`)
+
 New Samples
 ***********
 
@@ -116,6 +173,23 @@ Libraries / Subsystems
 
   * Added a HID Service server (:kconfig:option:`CONFIG_BT_HIDS`), the service
     the HID Device role of the HID over GATT Profile is built on.
+
+* Networking
+
+  * HTTP server: accepted connections now have ``TCP_NODELAY`` set, so a response
+    sent in several pieces (every TLS response, every websocket frame) is no
+    longer held back by the client's delayed acknowledgements. Applications that
+    prefer Nagle's algorithm can disable
+    :kconfig:option:`CONFIG_HTTP_SERVER_TCP_NODELAY`.
+
+Devicetree
+**********
+
+* :dtcompatible:`gnss-nmea-generic` supports optional enable and reset GPIOs, with configurable
+  reset pulse and wake-up delays.
+
+* :dtcompatible:`zephyr,charger-gpio` supports charging and charge-complete status inputs,
+  including chargers without a software-controlled enable pin.
 
 Other notable changes
 *********************
