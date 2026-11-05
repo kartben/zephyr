@@ -24,8 +24,7 @@
 	};
 
 	chosen {
-		zephyr,sram = &ocram1; /* TODO Merge with other OCRAM */
-		zephyr,sram1 = &ocram2; /* TODO Merge with other OCRAM */
+		zephyr,sram = &ocram1;
 		zephyr,dtcm = &dtcm;
 		zephyr,itcm = &itcm;
 		zephyr,console = &lpuart1;
@@ -164,6 +163,15 @@
 			   <PIXHAWK_GPS_SCL 0 &gpio3 17 0>,	/* GPIO_AD_18 */
 			   <PIXHAWK_GPS_SDA 0 &gpio3 18 0>;	/* GPIO_AD_19 */
 	};
+};
+
+/* OCRAM2 directly follows OCRAM1 */
+&ocram1 {
+	reg = <0x20240000 DT_SIZE_K(1024)>;
+};
+
+&ocram2 {
+	status = "disabled";
 };
 
 &gpio1 {
