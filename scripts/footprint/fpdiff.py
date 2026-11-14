@@ -28,8 +28,9 @@ importer = DictImporter()
 def parse_args():
     parser = argparse.ArgumentParser(
                 description="Compare footprint sizes of two builds.", allow_abbrev=False)
-    parser.add_argument("file1", help="First file")
-    parser.add_argument("file2", help="Second file")
+    parser.add_argument("file1", help="First file (reference/old build)")
+    parser.add_argument("file2", help="Second file (current/new build)")
+    parser.add_argument("--json", help="Output diff results as a JSON file")
 
     return parser.parse_args()
 
@@ -40,6 +41,105 @@ def nodesz(n: AnyNode) -> int:
     #
     # Access the dictionary directly as a workaround.
     return n.__dict__.get("size")
+
+
+def compute_diff(data1, data2):
+    """Compute the diff between two footprint JSON data sets.
+
+    Returns a list of diff entries, each containing:
+    - section: the top-level section name
+    - symbol: the symbol identifier
+    - old_size: size in the reference build
+    - new_size: size in the current build
+    - delta: size change (new - old)
+    - status: 'changed', 'added', or 'removed'
+    """
+    diff_entries = []
+
+    for idx, ch in enumerate(data1['symbols']['children']):
+        root1 = importer.import_(ch)
+        if idx >= len(data2['symbols']['children']):
+            root2 = AnyNode(identifier=None)
+        else:
+            root2 = importer.import_(data2['symbols']['children'][idx])
+        section_name = root1.name
+
+        for node in PreOrderIter(root1):
+            n1_size = nodesz(node)
+
+            try:
+                n = find(root2, lambda node2: node2.identifier == node.identifier)
+            except CountError:
+                continue
+
+            if n:
+                n2_size = nodesz(n)
+                if n2_size != n1_size:
+                    diff = n2_size - n1_size
+                    if diff == 0:
+                        continue
+                    if not n.children or not n.parent:
+                        diff_entries.append({
+                            'section': section_name,
+                            'symbol': n.identifier,
+                            'old_size': n1_size,
+                            'new_size': n2_size,
+                            'delta': diff,
+                            'status': 'changed',
+                        })
+            else:
+                if not node.children:
+                    diff_entries.append({
+                        'section': section_name,
+                        'symbol': node.identifier,
+                        'old_size': n1_size,
+                        'new_size': 0,
+                        'delta': -n1_size,
+                        'status': 'removed',
+                    })
+
+        for node in PreOrderIter(root2):
+            try:
+                n = find(root1, lambda node2: node2.identifier == node.identifier)
+            except CountError:
+                continue
+
+            if not n:
+                if not node.children and node.size != 0:
+                    n_size = nodesz(node)
+                    diff_entries.append({
+                        'section': section_name,
+                        'symbol': node.identifier,
+                        'old_size': 0,
+                        'new_size': n_size,
+                        'delta': n_size,
+                        'status': 'added',
+                    })
+
+    return diff_entries
+
+
+def print_diff(diff_entries):
+    """Print the diff entries with colored terminal output."""
+    current_section = None
+    for entry in diff_entries:
+        if entry['section'] != current_section:
+            current_section = entry['section']
+            print(f"{current_section}\n+++++++++++++++++++++")
+
+        symbol = entry['symbol']
+        delta = entry['delta']
+        status = entry['status']
+
+        if status == 'removed':
+            print(f"{symbol} ({Fore.GREEN}-{entry['old_size']}{Fore.RESET}) disappeared.")
+        elif status == 'added':
+            print(f"{symbol} ({Fore.RED}+{entry['new_size']}{Fore.RESET}) is new.")
+        elif delta < 0:
+            print(f"{symbol} -> {Fore.GREEN}{delta}{Fore.RESET}")
+        else:
+            print(f"{symbol} -> {Fore.RED}+{delta}{Fore.RESET}")
+
 
 def main():
     colorama.init()
@@ -52,50 +152,19 @@ def main():
     with open(args.file2, "r") as f:
         data2 = json.load(f)
 
-    for idx, ch in enumerate(data1['symbols']['children']):
-        root1 = importer.import_(ch)
-        if idx >= len(data2['symbols']['children']):
-            root2 = AnyNode(identifier=None)
-        else:
-            root2 = importer.import_(data2['symbols']['children'][idx])
-        print(f"{root1.name}\n+++++++++++++++++++++")
+    diff_entries = compute_diff(data1, data2)
+    print_diff(diff_entries)
 
-        for node in PreOrderIter(root1):
-            n1_size = nodesz(node)
+    if args.json:
+        result = {
+            'reference_total_size': data1.get('total_size', 0),
+            'current_total_size': data2.get('total_size', 0),
+            'total_delta': data2.get('total_size', 0) - data1.get('total_size', 0),
+            'entries': diff_entries,
+        }
+        with open(args.json, "w") as fp:
+            json.dump(result, fp, indent=4)
 
-            try:
-                # pylint: disable=undefined-loop-variable
-                n = find(root2, lambda node2: node2.identifier == node.identifier)
-            except CountError:
-                print(f"W: ignored duplicate symbol {node.identifier} (@ {node.address:#08x})")
-                continue
-
-            if n:
-                n2_size = nodesz(n)
-                if n2_size != n1_size:
-                    diff = n2_size - n1_size
-                    if diff == 0:
-                        continue
-                    if not n.children or not n.parent:
-                        if diff < 0:
-                            print(f"{n.identifier} -> {Fore.GREEN}{diff}{Fore.RESET}")
-                        else:
-                            print(f"{n.identifier} -> {Fore.RED}+{diff}{Fore.RESET}")
-
-            else:
-                if not node.children:
-                    print(f"{node.identifier} ({Fore.GREEN}-{n1_size}{Fore.RESET}) disappeared.")
-
-        for node in PreOrderIter(root2):
-            try:
-                n = find(root1, lambda node2: node2.identifier == node.identifier)
-            except CountError:
-                print(f"W: ignored duplicate symbol {node.identifier} (@ {node.address:#08x})")
-                continue
-
-            if not n:
-                if not node.children and node.size != 0:
-                    print(f"{node.identifier} ({Fore.RED}+{nodesz(node)}{Fore.RESET}) is new.")
 
 if __name__ == "__main__":
     main()
