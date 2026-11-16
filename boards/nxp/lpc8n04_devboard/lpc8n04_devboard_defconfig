@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+CONFIG_GPIO=y
+
+# No UART on the LPC8N04: console over SEGGER RTT through the on-board probe
+CONFIG_USE_SEGGER_RTT=y
+CONFIG_SEGGER_RTT_BUFFER_SIZE_UP=256
+CONFIG_SEGGER_RTT_MAX_NUM_UP_BUFFERS=1
+CONFIG_SEGGER_RTT_MAX_NUM_DOWN_BUFFERS=1
+CONFIG_CONSOLE=y
+CONFIG_RTT_CONSOLE=y
+CONFIG_UART_CONSOLE=n
