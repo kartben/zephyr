@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+board:
+  name: micoair743_lite
+  full_name: MicoAir743-Lite
+  vendor: micoair
+  socs:
+    - name: stm32h743xx
