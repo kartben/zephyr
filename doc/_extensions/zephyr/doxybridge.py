@@ -5,12 +5,10 @@ SPDX-License-Identifier: Apache-2.0
 """
 
 import concurrent.futures
-import os
 from typing import Any
 
 import doxmlparser
 from docutils import nodes
-from docutils.parsers.rst import directives
 from doxmlparser.compound import DoxCompoundKind, DoxMemberKind
 from sphinx import addnodes
 from sphinx.application import Sphinx
@@ -18,6 +16,9 @@ from sphinx.domains.c import CXRefRole
 from sphinx.transforms.post_transforms import SphinxPostTransform
 from sphinx.util import logging
 from sphinx.util.docutils import SphinxDirective
+
+from zephyr._paths import outdir_relative_uri
+from zephyr.doxyrunner import doxygen_input_changed, doxygen_outputs
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +36,6 @@ class DoxygenGroupDirective(SphinxDirective):
     has_content = False
     required_arguments = 1
     optional_arguments = 0
-    option_spec = {
-        "project": directives.unchanged,
-    }
 
     def run(self):
         desc_node = addnodes.desc()
@@ -51,7 +49,6 @@ class DoxygenGroupDirective(SphinxDirective):
             reftype="group",
             reftarget=self.arguments[0],
             refwarn=True,
-            project=self.options.get("project"),
         )
         group_xref += nodes.Text(self.arguments[0])
         title_signode += group_xref
@@ -62,11 +59,13 @@ class DoxygenGroupDirective(SphinxDirective):
 
 
 class DoxygenReferencer(SphinxPostTransform):
-    """Mapping between Doxygen memberdef kind and Sphinx kinds"""
+    """Resolve C-domain references into links to the Doxygen-generated HTML."""
 
     default_priority = 5
 
     def run(self, **kwargs: Any) -> None:
+        outputs = doxygen_outputs(self.app.config)
+
         for node in self.document.traverse(addnodes.pending_xref):
             if node.get("refdomain") != "c":
                 continue
@@ -79,45 +78,40 @@ class DoxygenReferencer(SphinxPostTransform):
 
             found_name = None
             found_id = None
-            for name in self.app.config.doxybridge_projects:
+            found_target = None
+            for name in outputs:
                 entry = self.app.env.doxybridge_cache[name].get(reftype)
                 if not entry:
                     continue
 
                 reftarget = node.get("reftarget").replace(".", "::").rstrip("()")
-                id = entry.get(reftarget)
-                if not id:
+                obj_id = entry.get(reftarget)
+                if not obj_id:
                     if reftype == "func":
                         # macros are sometimes referenced as functions, so try that
-                        id = self.app.env.doxybridge_cache[name].get("macro").get(reftarget)
-                        if not id:
+                        obj_id = self.app.env.doxybridge_cache[name].get("macro").get(reftarget)
+                        if not obj_id:
                             continue
                     else:
                         continue
 
                 found_name = name
-                found_id = id
+                found_id = obj_id
+                found_target = reftarget
                 break
 
             if not found_name or not found_id:
                 continue
 
             if reftype in ("struct", "union", "group"):
-                doxygen_target = f"{id}.html"
+                doxygen_target = f"{found_id}.html"
             else:
                 split = found_id.split("_")
                 doxygen_target = f"{'_'.join(split[:-1])}.html#{split[-1][1:]}"
 
-            doxygen_target = (
-                str(self.app.config.doxybridge_projects[found_name]) + "/html/" + doxygen_target
+            rel_uri = outdir_relative_uri(
+                self.app, outputs[found_name].html / doxygen_target, self.document.get("source")
             )
-
-            doc_dir = os.path.dirname(self.document.get("source"))
-            doc_dest = os.path.join(
-                self.app.outdir,
-                os.path.relpath(doc_dir, self.app.srcdir),
-            )
-            rel_uri = os.path.relpath(doxygen_target, doc_dest)
 
             refnode = nodes.reference("", "", internal=True, refuri=rel_uri, reftitle="")
 
@@ -125,7 +119,7 @@ class DoxygenReferencer(SphinxPostTransform):
 
             if reftype == "group":
                 refnode["classes"].append("doxygroup")
-                title = self.app.env.doxybridge_group_titles[found_name].get(reftarget, "group")
+                title = self.app.env.doxybridge_group_titles[found_name].get(found_target, "group")
                 refnode[0] = nodes.Text(title)
 
             node.replace_self([refnode])
@@ -217,9 +211,9 @@ def doxygen_parse(app: Sphinx) -> None:
     if not hasattr(app.env, "doxybridge_group_titles"):
         app.env.doxybridge_group_titles = dict()
 
-    for project, path in app.config.doxybridge_projects.items():
-        if project in app.env.doxygen_input_changed and not app.env.doxygen_input_changed[project]:
-            return
+    for project, output in doxygen_outputs(app.config).items():
+        if not doxygen_input_changed(app.env, project):
+            continue
 
         app.env.doxybridge_cache[project] = {
             "macro": {},
@@ -235,21 +229,25 @@ def doxygen_parse(app: Sphinx) -> None:
 
         app.env.doxybridge_group_titles[project] = dict()
 
-        parse_index(app, project, str(path / "xml"))
+        parse_index(app, project, str(output.xml))
 
 
 def setup(app: Sphinx) -> dict[str, Any]:
-    app.add_config_value("doxybridge_projects", None, "env")
+    # for doxyrunner_projects/doxyrunner_skip, and for the Doxygen XML its
+    # builder-inited handler produces
+    app.setup_extension("zephyr.doxyrunner")
 
     app.add_directive("doxygengroup", DoxygenGroupDirective)
 
     app.add_role_to_domain("c", "group", CXRefRole())
 
     app.add_post_transform(DoxygenReferencer)
-    app.connect("builder-inited", doxygen_parse)
+    # consumes what zephyr.doxyrunner produces at priority 300
+    app.connect("builder-inited", doxygen_parse, priority=400)
 
     return {
         "version": "0.1",
+        "env_version": 1,
         "parallel_read_safe": True,
         "parallel_write_safe": True,
     }

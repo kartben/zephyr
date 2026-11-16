@@ -9,15 +9,16 @@ A simple Sphinx extension that adds JS and CSS resources to the app
 to enable tooltips for C domain links.
 """
 
-from pathlib import Path
 from typing import Any
 
 from sphinx.application import Sphinx
 from sphinx.util import logging
 
+from zephyr._paths import resources_dir
+
 logger = logging.getLogger(__name__)
 
-RESOURCES_DIR = Path(__file__).parent / "static"
+RESOURCES_DIR = resources_dir(__file__)
 
 
 def setup(app: Sphinx) -> dict[str, Any]:
