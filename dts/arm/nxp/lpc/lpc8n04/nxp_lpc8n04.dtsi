@@ -1,0 +1,71 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <arm/armv6-m.dtsi>
+#include <mem.h>
+#include <zephyr/dt-bindings/clock/lpc8n04-clock.h>
+
+/ {
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu0: cpu@0 {
+			compatible = "arm,cortex-m0+";
+			reg = <0>;
+			/*
+			 * 8 MHz SFRO divided by a power of two. Without a battery the
+			 * part is limited to 2 MHz.
+			 */
+			clock-frequency = <8000000>;
+		};
+	};
+
+	soc {
+		iocon: iocon@40044000 {
+			compatible = "nxp,lpc-iocon";
+			reg = <0x40044000 0x30>;
+			clocks = <&syscon LPC8N04_CLK_IOCON>;
+
+			pinctrl: pinctrl {
+				compatible = "nxp,lpc8n04-pinctrl";
+			};
+		};
+
+		syscon: syscon@40048000 {
+			compatible = "nxp,lpc8n04-syscon";
+			reg = <0x40048000 0x400>;
+			#clock-cells = <1>;
+		};
+
+		gpio0: gpio@50000000 {
+			compatible = "nxp,lpc8n04-gpio";
+			reg = <0x50000000 0x10000>;
+			interrupts = <31 0>;
+			clocks = <&syscon LPC8N04_CLK_GPIO>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			ngpios = <12>;
+			nxp,iocon = <&iocon>;
+			nxp,i2c-pads = <4 5>;
+			status = "disabled";
+		};
+	};
+
+	flash0: flash@0 {
+		compatible = "soc-nv-flash";
+		reg = <0x00000000 DT_SIZE_K(32)>;
+	};
+
+	/* The last 32 bytes of SRAM are reserved for the IAP ROM routines. */
+	sram0: memory@10000000 {
+		compatible = "mmio-sram";
+		reg = <0x10000000 (DT_SIZE_K(8) - 32)>;
+	};
+};
+
+&nvic {
+	arm,num-irq-priority-bits = <2>;
+};

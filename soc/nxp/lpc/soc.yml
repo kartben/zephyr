@@ -30,6 +30,9 @@ family:
       cpuclusters:
       - name: cpu0
       - name: cpu1
+  - name: lpc8n04
+    socs:
+    - name: lpc8n04
 runners:
   run_once:
     '--erase':
