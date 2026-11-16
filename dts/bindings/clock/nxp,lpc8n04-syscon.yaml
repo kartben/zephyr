@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  NXP LPC8N04 system configuration block (SYSCON) clock controller.
+
+  The clock specifier cell is the peripheral's bit in SYSAHBCLKCTRL, see
+  include/zephyr/dt-bindings/clock/lpc8n04-clock.h. All peripheral clocks run
+  at the system clock rate set by the cpu node's clock-frequency.
+
+compatible: "nxp,lpc8n04-syscon"
+
+include: [clock-controller.yaml, base.yaml]
+
+properties:
+  reg:
+    required: true
+
+  "#clock-cells":
+    const: 1
+
+clock-cells:
+  - name
