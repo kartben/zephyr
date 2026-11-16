@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config GPIO_LPC8N04
+	bool "NXP LPC8N04 GPIO driver"
+	default y
+	depends on DT_HAS_NXP_LPC8N04_GPIO_ENABLED
+	help
+	  Enable the GPIO driver for the NXP LPC8N04 GPIO port.

@@ -1,0 +1,46 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  NXP GPIO port of the LPC11xx type, as found on the LPC8N04.
+
+  The data register is accessed through a pin mask in the address
+  (GPIODATA), and the direction and interrupt registers (DIR, IS, IBE, IEV,
+  IMSC, RIS, MIS, IC) follow at offset 0x8000. All pin interrupts share one
+  interrupt line.
+
+  Configuring a pin selects its GPIO function in IOCON, which must have one
+  register per pin in pin order, and sets its pull resistors there. Pins
+  listed in nxp,i2c-pads are open-drain I2C pads: their GPIO mode is set
+  through the I2CMODE field, they have no pull resistors, and as outputs they
+  need GPIO_OPEN_DRAIN.
+
+compatible: "nxp,lpc8n04-gpio"
+
+include: [gpio-controller.yaml, base.yaml]
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true
+
+  clocks:
+    required: true
+
+  nxp,iocon:
+    type: phandle
+    required: true
+    description: IOCON node holding the configuration registers of the port pins.
+
+  nxp,i2c-pads:
+    type: array
+    description: Pin numbers of the open-drain I2C pads of the port.
+
+  "#gpio-cells":
+    const: 2
+
+gpio-cells:
+  - pin
+  - flags

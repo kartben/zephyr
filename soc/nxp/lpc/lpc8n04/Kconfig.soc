@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config SOC_SERIES_LPC8N04
+	bool
+	select SOC_FAMILY_LPC
+	help
+	  Enable support for the NXP LPC8N04 series: Cortex-M0+ MCUs with an
+	  integrated NFC Forum Type 2 tag interface.
+
+config SOC_SERIES
+	default "lpc8n04" if SOC_SERIES_LPC8N04
+
+config SOC_LPC8N04
+	bool
+	select SOC_SERIES_LPC8N04
+	select SOC_PART_NUMBER_LPC8N04FHI24
+
+config SOC_PART_NUMBER_LPC8N04FHI24
+	bool
+
+config SOC_PART_NUMBER
+	default "LPC8N04FHI24" if SOC_PART_NUMBER_LPC8N04FHI24
+
+config SOC
+	default "lpc8n04" if SOC_LPC8N04

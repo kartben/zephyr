@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+board:
+  name: lpc8n04_devboard
+  full_name: LPC8N04 Development Board
+  vendor: nxp
+  socs:
+    - name: lpc8n04
