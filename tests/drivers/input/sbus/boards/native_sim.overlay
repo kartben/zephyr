@@ -1,0 +1,67 @@
+/*
+ * Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
+/ {
+	euart0: uart-emul0 {
+		compatible = "zephyr,uart-emul";
+		status = "okay";
+		current-speed = <100000>;
+
+		sbus_status: sbus {
+			compatible = "futaba,sbus";
+			failsafe-code = <INPUT_KEY_F1>;
+			frame-lost-code = <INPUT_KEY_F2>;
+			receiver-lost-code = <INPUT_KEY_F3>;
+
+			stick_x {
+				channel = <1>;
+				type = <INPUT_EV_ABS>;
+				zephyr,code = <INPUT_ABS_X>;
+			};
+
+			stick_y {
+				channel = <2>;
+				type = <INPUT_EV_ABS>;
+				zephyr,code = <INPUT_ABS_Y>;
+			};
+
+			arm_switch {
+				channel = <5>;
+				type = <INPUT_EV_KEY>;
+				zephyr,code = <INPUT_KEY_0>;
+			};
+		};
+	};
+
+	euart1: uart-emul1 {
+		compatible = "zephyr,uart-emul";
+		status = "okay";
+		current-speed = <100000>;
+
+		sbus_plain: sbus {
+			compatible = "futaba,sbus";
+
+			stick_x {
+				channel = <1>;
+				type = <INPUT_EV_ABS>;
+				zephyr,code = <INPUT_ABS_X>;
+			};
+
+			stick_y {
+				channel = <2>;
+				type = <INPUT_EV_ABS>;
+				zephyr,code = <INPUT_ABS_Y>;
+			};
+
+			arm_switch {
+				channel = <5>;
+				type = <INPUT_EV_KEY>;
+				zephyr,code = <INPUT_KEY_0>;
+			};
+		};
+	};
+};
