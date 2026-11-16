@@ -1,0 +1,16 @@
+sample:
+  name: Raspberry Pi PIO logic analyzer
+  description: |
+    Samples GPIO with a PIO state machine and DMA on RP2040 and RP2350.
+tests:
+  sample.boards.raspberrypi.logic_analyzer:
+    tags:
+      - pio
+      - dma
+      - gpio
+    platform_allow:
+      - rpi_pico
+      - rpi_pico2/rp2350a/m33_0
+      - rpi_pico2/rp2350a/hazard3_0
+    integration_platforms:
+      - rpi_pico

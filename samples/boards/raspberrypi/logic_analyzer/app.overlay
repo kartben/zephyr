@@ -1,0 +1,23 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * GPIO4/GPIO5 and GPIO16-GPIO19 are the default I2C0 and SPI0 pins. The
+ * capture window uses GPIO2-GPIO22, so those controllers stay off.
+ * DMA is programmed with the Pico SDK so the Zephyr DMA driver is left
+ * disabled and does not take the block out from under the capture.
+ */
+
+&pio0 {
+	status = "okay";
+};
+
+&i2c0 {
+	status = "disabled";
+};
+
+&spi0 {
+	status = "disabled";
+};
