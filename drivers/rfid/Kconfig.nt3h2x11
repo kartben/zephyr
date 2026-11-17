@@ -11,3 +11,12 @@ config RFID_NT3H2X11
 	  Enable the driver for the NXP NTAG I2C plus connected NFC tag. The
 	  tag acts as an ISO/IEC 14443-3 Type A target and exchanges data with
 	  the reader through its SRAM in pass-through mode.
+
+config EMUL_NT3H2X11
+	bool "NXP NTAG I2C plus emulator"
+	default y
+	depends on RFID_NT3H2X11
+	depends on EMUL
+	help
+	  Enable the I2C emulator for the NXP NTAG I2C plus, which models the
+	  session registers and the SRAM pass-through handshake.
