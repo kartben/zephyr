@@ -20,5 +20,6 @@ config RFID_INIT_PRIORITY
 	  Device driver initialization priority.
 
 source "drivers/rfid/Kconfig.cr95hf"
+source "drivers/rfid/Kconfig.nt3h2x11"
 
 endif # RFID
