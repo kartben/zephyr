@@ -1,0 +1,12 @@
+/*
+ * SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&i2c0 {
+	nt3h2111: nfc@55 {
+		compatible = "nxp,nt3h2111";
+		reg = <0x55>;
+		fd-gpios = <&gpio0 4 GPIO_ACTIVE_LOW>;
+	};
+};
