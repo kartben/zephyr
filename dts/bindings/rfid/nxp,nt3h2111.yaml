@@ -1,0 +1,38 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  NXP NTAG I2C plus connected NFC tag (NT3H2111, 1k EEPROM)
+
+  NFC Forum Type 2 Tag with an I2C target interface. The NFC side is an
+  ISO/IEC 14443-3 Type A target; the host exchanges data with the reader
+  through the 64-byte SRAM in pass-through mode.
+
+  The 2k variant (NT3H2211) uses the same driver:
+
+    compatible = "nxp,nt3h2211", "nxp,nt3h2111";
+
+compatible: "nxp,nt3h2111"
+
+include: i2c-device.yaml
+
+properties:
+  fd-gpios:
+    type: phandle-array
+    description: |
+      Field detection (FD) output. The pin is open-drain and pulled low by the
+      tag on an NFC event, so it is usually GPIO_ACTIVE_LOW with a pull-up.
+      Without it, the driver polls the session registers.
+
+examples:
+  - |
+    i2c {
+      #address-cells = <1>;
+      #size-cells = <0>;
+
+      nfc@55 {
+        compatible = "nxp,nt3h2111";
+        reg = <0x55>;
+        fd-gpios = <&gpio0 4 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+      };
+    };
