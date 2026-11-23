@@ -1,0 +1,48 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  NXP LPC8N04 pin controller (IOCON).
+
+  Each IOCON register selects the pin function and its electrical
+  configuration. Pin functions are listed in
+  include/zephyr/dt-bindings/pinctrl/lpc8n04-pinctrl.h. Example:
+
+  &pinctrl {
+    i2c0_default: i2c0_default {
+      group0 {
+        pinmux = <PIO0_4_I2C_SCL>, <PIO0_5_I2C_SDA>;
+      };
+    };
+  };
+
+  bias-pull-up, bias-pull-down and bias-bus-hold (repeater mode) set the MODE
+  field and nxp,low-pass-filter sets LPF. PIO0_4 and PIO0_5 are open-drain
+  I2C pads without MODE or LPF fields; these properties are ignored on them.
+
+compatible: "nxp,lpc8n04-pinctrl"
+
+include: base.yaml
+
+child-binding:
+  description: LPC8N04 pin controller pin group
+  child-binding:
+    description: LPC8N04 pin controller pin configuration node
+
+    include:
+      - name: pincfg-node.yaml
+        property-allowlist:
+          - bias-pull-up
+          - bias-pull-down
+          - bias-bus-hold
+
+    properties:
+      pinmux:
+        required: true
+        type: array
+        description: |
+          Pin function selection for this group, from lpc8n04-pinctrl.h.
+
+      nxp,low-pass-filter:
+        type: boolean
+        description: Enable the input low-pass filter (LPF bit).

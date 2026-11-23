@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+identifier: lpc8n04_devboard
+name: NXP LPC8N04 Development Board
+type: mcu
+arch: arm
+ram: 8
+flash: 32
+toolchain:
+  - zephyr
+supported:
+  - gpio
+vendor: nxp

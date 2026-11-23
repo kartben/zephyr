@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config CLOCK_CONTROL_LPC8N04
+	bool "NXP LPC8N04 SYSCON clock controller driver"
+	default y
+	depends on DT_HAS_NXP_LPC8N04_SYSCON_ENABLED
+	help
+	  Enable the clock control driver for the NXP LPC8N04 SYSCON block.
