@@ -22,6 +22,7 @@ import pickle
 import re
 import sys
 import textwrap
+from pathlib import PurePath
 
 # Zephyr doesn't use tristate symbols. They're supported here just to make the
 # script a bit more generic.
@@ -34,6 +35,7 @@ from kconfiglib import (
     TYPE_TO_STR,
     Kconfig,
     Symbol,
+    expr_items,
     expr_str,
     expr_value,
     split_expr,
@@ -78,6 +80,9 @@ def main():
         # replace=False creates a merged configuration
         print(kconf.load_config(config, replace=False))
 
+    glue = module_glue(kconf)
+    missing = {}
+
     if args.handwritten_input_configs:
         # Check that there are no assignments to promptless symbols, which
         # have no effect.
@@ -85,12 +90,12 @@ def main():
         # This only makes sense when loading handwritten fragments and not when
         # loading zephyr/.config, because zephyr/.config is configuration
         # output and also assigns promptless symbols.
-        check_no_promptless_assign(kconf)
+        check_no_promptless_assign(kconf, glue)
 
         # Print warnings for symbols that didn't get the assigned value. Only
         # do this for handwritten input too, to avoid likely unhelpful warnings
         # when using an old configuration and updating Kconfig files.
-        check_assigned_sym_values(kconf)
+        missing = check_assigned_sym_values(kconf, glue)
         check_assigned_choice_values(kconf)
 
     if kconf.syms.get('WARN_DEPRECATED', kconf.y).tri_value == 2:
@@ -129,7 +134,20 @@ def main():
         # different value than the one it was assigned. Keep that one as just a
         # warning for now.
         if error_out:
+            for module, names in selected_missing_modules(kconf, glue).items():
+                missing.setdefault(module, []).extend(names)
+            report_missing_modules(missing)
             err("Aborting due to Kconfig warnings")
+
+    # Unlike other assigned values that do not take, an option enabled without
+    # the module it needs would only fail later in the build, if at all
+    if missing:
+        report_missing_modules(missing)
+        err("Aborting due to missing modules")
+
+    # A device can be enabled without the application using it, so this is
+    # only a note
+    report_drivers_off(drivers_off(kconf, glue))
 
     # All warnings have already been printed above, either by warn() or by the
     # kconf.warnings loop. With --warning-as-error, any of them is fatal, also
@@ -152,11 +170,20 @@ def main():
     write_kconfig_filenames(kconf, args.kconfig_list_out)
 
 
-def check_no_promptless_assign(kconf):
+def check_no_promptless_assign(kconf, glue):
     # Checks that no promptless symbols are assigned
 
     for sym in kconf.unique_defined_syms:
         if sym.user_value is not None and promptless(sym):
+            # The glue of a missing module declares the module's options
+            # without the prompts the module adds
+            module = glue_module(sym, glue)
+            if module is not None:
+                err(
+                    f"{sym.name_and_loc} is assigned in a configuration file, but needs "
+                    f"the {module} module, which is not available. " + SYM_INFO_HINT.format(sym)
+                )
+
             err(
                 f"""\
 {sym.name_and_loc} is assigned in a configuration file, but is not directly
@@ -166,11 +193,15 @@ symbols. """
             )
 
 
-def check_assigned_sym_values(kconf):
+def check_assigned_sym_values(kconf, glue):
     # Verifies that the values assigned to symbols "took" (matches the value
     # the symbols actually got), printing warnings otherwise. Choice symbols
     # are checked separately, in check_assigned_choice_values().
+    #
+    # Returns a dict mapping the name of each module that is not available to
+    # the symbols that did not take their value because they need it.
 
+    missing = {}
     for sym in kconf.unique_defined_syms:
         if sym.choice:
             continue
@@ -192,6 +223,13 @@ def check_assigned_sym_values(kconf):
 
             # List any unsatisfied 'depends on' dependencies in the warning
             mdeps = missing_deps(sym)
+
+            modules = missing_modules(sym, mdeps, glue)
+            if modules:
+                # Undefined dependencies, like the 'if 0' that the glue of a
+                # missing module is sourced under, are down to that module
+                mdeps = [dep for dep in mdeps if not (isinstance(dep, Symbol) and not dep.nodes)]
+
             if mdeps:
                 expr_strs = []
                 for expr in mdeps:
@@ -205,7 +243,16 @@ def check_assigned_sym_values(kconf):
 
                 msg += "Check these unsatisfied dependencies: " + ", ".join(expr_strs) + ". "
 
+            for name in modules:
+                msg += f"{sym.name} needs the {name} module, which is not available. "
+                # A board defconfig may enable what its board supports, such as
+                # RTT, and a build without the module just goes without it
+                if sym.user_loc is None or not sym.user_loc[0].endswith("_defconfig"):
+                    missing.setdefault(name, []).append(sym.name)
+
             warn(msg + SYM_INFO_HINT.format(sym))
+
+    return missing
 
 
 def missing_deps(sym):
@@ -231,6 +278,188 @@ def missing_deps(sym):
         return [dep for dep in deps if expr_value(dep) < sym.user_value]
     # string/int/hex
     return [dep for dep in deps if expr_value(dep) == 0]
+
+
+# Module presence symbols. scripts/zephyr_module.py defines one for each module
+# in the build, and the in-tree glue of a module declares it too.
+MODULE_SYM_RE = re.compile(r"ZEPHYR_(\w+)_MODULE")
+
+
+def glue_location(filename):
+    # Returns 'modules/<name>' for a Kconfig file in Zephyr's modules/
+    # directory, which holds the in-tree glue of modules, and None otherwise
+
+    parts = PurePath(filename).parts
+    if len(parts) > 1 and parts[0] == "modules":
+        return f"modules/{parts[1]}"
+    return None
+
+
+def module_glue(kconf):
+    # Returns a dict mapping the location of each module's in-tree glue, a
+    # modules/<name>/ directory or a modules/Kconfig.<name> file, to a
+    # (name, available) tuple. The glue is found by the presence symbol it
+    # declares, and the module is available if that symbol is set.
+
+    glue = {}
+    for sym in kconf.unique_defined_syms:
+        match = MODULE_SYM_RE.fullmatch(sym.name)
+        if match is None:
+            continue
+
+        for node in sym.nodes:
+            loc = glue_location(node.filename)
+            if loc is None:
+                continue
+
+            name, available = glue.get(loc, (None, False))
+            if name is None:
+                part = loc.split("/")[1]
+                name = match.group(1).lower() if part.startswith("Kconfig") else part
+            glue[loc] = (name, available or sym.tri_value != 0)
+
+    return glue
+
+
+def glue_module(sym, glue):
+    # Returns the name of the module whose in-tree glue is the only place that
+    # defines 'sym', if that module is not available, and None otherwise
+
+    locs = {glue_location(node.filename) for node in sym.nodes}
+    if len(locs) == 1:
+        name, available = glue.get(locs.pop(), (None, True))
+        if not available:
+            return name
+    return None
+
+
+def presence_module(dep, glue):
+    # Returns the name of the module whose presence symbol is 'dep', if that
+    # module is not available, and None otherwise
+
+    if not isinstance(dep, Symbol) or dep.tri_value != 0:
+        return None
+
+    match = MODULE_SYM_RE.fullmatch(dep.name)
+    if match is None:
+        return None
+
+    for node in dep.nodes:
+        loc = glue_location(node.filename)
+        if loc in glue:
+            return glue[loc][0]
+    return match.group(1).lower()
+
+
+def missing_modules(sym, deps, glue):
+    # Returns the names of the modules that are not available and keep 'sym'
+    # from being enabled, given its unsatisfied dependencies 'deps'
+
+    module = glue_module(sym, glue)
+    if module is not None:
+        return [module]
+    return sorted({presence_module(dep, glue) for dep in deps} - {None})
+
+
+def selected_missing_modules(kconf, glue):
+    # Returns a dict mapping the name of each module that is not available to
+    # the symbols that are selected even though they need it
+
+    missing = {}
+    for sym in kconf.unique_defined_syms:
+        if sym.type not in (BOOL, TRISTATE):
+            continue
+        if expr_value(sym.rev_dep) <= expr_value(sym.direct_dep):
+            continue
+
+        for module in missing_modules(sym, split_expr(sym.direct_dep, AND), glue):
+            missing.setdefault(module, []).append(sym.name)
+
+    return missing
+
+
+# Generated for each devicetree compatible, next to a DT_COMPAT_<compat>
+# variable that holds the compatible string
+DT_HAS_RE = re.compile(r"DT_HAS_(\w+)_ENABLED")
+
+
+def drivers_off(kconf, glue):
+    # Returns a dict mapping the name of each module that is not available to
+    # the (driver, compatible) pairs of the drivers that only this module keeps
+    # off, although they default to y and the devicetree enables their device
+
+    off = {}
+    for sym in kconf.unique_defined_syms:
+        if sym.type not in (BOOL, TRISTATE) or sym.tri_value != 0 or sym.user_value is not None:
+            continue
+        # The conditions of the defaults include the unsatisfied dependencies
+        if not any(expr_value(value) == 2 for value, _, _ in sym.defaults):
+            continue
+
+        deps = split_expr(sym.direct_dep, AND)
+        compats = enabled_compats(kconf, deps)
+        if not compats:
+            continue
+
+        unmet = [dep for dep in deps if expr_value(dep) == 0]
+        # Undefined dependencies are the 'if 0' of the glue of a missing module
+        if any(
+            presence_module(dep, glue) is None and not (isinstance(dep, Symbol) and not dep.nodes)
+            for dep in unmet
+        ):
+            continue
+
+        for module in missing_modules(sym, unmet, glue):
+            off.setdefault(module, []).append((sym.name, compats[0]))
+
+    return off
+
+
+def enabled_compats(kconf, deps):
+    # Returns the sorted compatibles of the enabled devicetree devices that
+    # the satisfied dependencies among 'deps' refer to
+
+    compats = set()
+    for dep in deps:
+        if expr_value(dep) != 2:
+            continue
+        for item in expr_items(dep):
+            match = DT_HAS_RE.fullmatch(item.name) if isinstance(item, Symbol) else None
+            var = match and f"DT_COMPAT_{match.group(1)}"
+            if item.tri_value == 2 and var in kconf.variables:
+                compats.add(kconf.variables[var].value)
+    return sorted(compats)
+
+
+def report_drivers_off(off):
+    for module, drivers in sorted(off.items()):
+        devices = ", ".join(f"{compat} ({name})" for name, compat in sorted(drivers))
+        if len(drivers) == 1:
+            what = "this device, which the devicetree enables, has"
+        else:
+            what = "these devices, which the devicetree enables, have"
+        print(
+            "\n"
+            + textwrap.fill(
+                f"note: The {module} module is not available, so {what} no driver: {devices}.",
+                100,
+            ),
+            file=sys.stderr,
+        )
+
+
+def report_missing_modules(missing):
+    for module, names in sorted(missing.items()):
+        print(
+            "\n"
+            + textwrap.fill(
+                f"error: The {module} module is not available, but {', '.join(sorted(names))} "
+                f"need{'s' if len(names) == 1 else ''} it. Add the module to the west "
+                "workspace, or to ZEPHYR_MODULES or EXTRA_ZEPHYR_MODULES.",
+                100,
+            ),
+            file=sys.stderr,
+        )
 
 
 def check_assigned_choice_values(kconf):
