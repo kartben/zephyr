@@ -1,0 +1,16 @@
+common:
+  tags:
+    - drivers
+    - rfid
+  harness: ztest
+  platform_allow:
+    - native_sim
+    - native_sim/native/64
+  integration_platforms:
+    - native_sim
+tests:
+  drivers.rfid.nt3h2x11: {}
+  drivers.rfid.nt3h2x11.poll:
+    extra_dtc_overlay_files:
+      - app.overlay
+      - poll.overlay

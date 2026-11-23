@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+config RFID_NT3H2X11
+	bool "NXP NTAG I2C plus (NT3H2111/NT3H2211) driver"
+	default y
+	depends on DT_HAS_NXP_NT3H2111_ENABLED
+	select I2C
+	select GPIO if $(dt_compat_any_has_prop,$(DT_COMPAT_NXP_NT3H2111),fd-gpios)
+	help
+	  Enable the driver for the NXP NTAG I2C plus connected NFC tag. The
+	  tag acts as an ISO/IEC 14443-3 Type A target and exchanges data with
+	  the reader through its SRAM in pass-through mode.
+
+config EMUL_NT3H2X11
+	bool "NXP NTAG I2C plus emulator"
+	default y
+	depends on RFID_NT3H2X11
+	depends on EMUL
+	help
+	  Enable the I2C emulator for the NXP NTAG I2C plus, which models the
+	  session registers and the SRAM pass-through handshake.
